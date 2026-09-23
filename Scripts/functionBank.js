@@ -141,61 +141,12 @@ const ENEMY_SKILL_ASSIGNMENT_MAP = {
   },
 };
 
-const DAMAGE_FLOAT_MAX_ANGLE_DEG = 30;
 const DAMAGE_FLOAT_DEFAULT_TRAVEL = 28;
 const DAMAGE_FLOAT_ENERGY_TRAVEL = 32.2;
-const DAMAGE_FLOAT_CENTER_DEADZONE_FRACTION = 0.15;
-const DAMAGE_FLOAT_SEQUENCE_STRIDE = 0.6180339887498949;
 
-function cleanDamageFloatNumber(value) {
-  return Object.is(value, -0) ? 0 : value;
-}
-
-function wrapDamageFloatUnit(value) {
-  return value - Math.floor(value);
-}
-
-function normalizeDamageFloatAngleDeg(angleDeg = 0, maxAbsAngleDeg = DAMAGE_FLOAT_MAX_ANGLE_DEG) {
-  const maxAbs = Math.max(0, Number.isFinite(Number(maxAbsAngleDeg)) ? Number(maxAbsAngleDeg) : DAMAGE_FLOAT_MAX_ANGLE_DEG);
-  const angle = Number.isFinite(Number(angleDeg)) ? Number(angleDeg) : 0;
-  return Math.max(-maxAbs, Math.min(maxAbs, angle));
-}
-
-function pickDamageFloatAngleDeg({
-  random = Math.random,
-  maxAbsAngleDeg = DAMAGE_FLOAT_MAX_ANGLE_DEG,
-  centerDeadzoneFraction = DAMAGE_FLOAT_CENTER_DEADZONE_FRACTION,
-  sequence = 0,
-} = {}) {
-  const maxAbs = Math.max(0, Number.isFinite(Number(maxAbsAngleDeg)) ? Number(maxAbsAngleDeg) : DAMAGE_FLOAT_MAX_ANGLE_DEG);
-  if (maxAbs === 0) return 0;
-  const raw = typeof random === 'function' ? Number(random()) : 0.5;
-  const rawUnit = Number.isFinite(raw) && raw >= 0 && raw < 1 ? raw : 0.5;
-  const seq = Math.max(0, Number.isFinite(Number(sequence)) ? Number(sequence) : 0);
-  const unit = seq > 0 ? wrapDamageFloatUnit(rawUnit + (seq * DAMAGE_FLOAT_SEQUENCE_STRIDE)) : rawUnit;
-  const deadzone = Math.max(0, Math.min(1, Number(centerDeadzoneFraction || 0)));
-  const minAbs = maxAbs * deadzone;
-  const side = unit < 0.5 ? -1 : 1;
-  const sideUnit = unit < 0.5 ? 1 - (unit * 2) : (unit - 0.5) * 2;
-  return normalizeDamageFloatAngleDeg(side * (minAbs + (sideUnit * (maxAbs - minAbs))), maxAbs);
-}
-
-function deriveDamageFloatVector({
-  angleDeg = 0,
-  travel = DAMAGE_FLOAT_DEFAULT_TRAVEL,
-  maxAbsAngleDeg = DAMAGE_FLOAT_MAX_ANGLE_DEG,
-} = {}) {
-  const normalizedAngleDeg = normalizeDamageFloatAngleDeg(angleDeg, maxAbsAngleDeg);
+function deriveDamageFloatVector({ travel = DAMAGE_FLOAT_DEFAULT_TRAVEL } = {}) {
   const distance = Math.max(0, Number.isFinite(Number(travel)) ? Number(travel) : DAMAGE_FLOAT_DEFAULT_TRAVEL);
-  const radians = normalizedAngleDeg * (Math.PI / 180);
-  const x = cleanDamageFloatNumber(Math.sin(radians) * distance);
-  const y = cleanDamageFloatNumber(-Math.cos(radians) * distance);
-  return {
-    angleDeg: normalizedAngleDeg,
-    x,
-    y: y > 0 ? -Math.abs(y) : y,
-    travel: distance,
-  };
+  return { angleDeg: 0, x: 0, y: -distance, travel: distance };
 }
 
 function getGlobals(ctx) {
@@ -3556,7 +3507,7 @@ function ensureDynamicInitiativeShadowState(g) { if (!g.DynamicInitiativeShadow 
 function getDynamicInitiativeThreshold(g) { const threshold = Number(g.DynamicInitiativeThreshold || g.InitiativeThreshold || 100); return Number.isFinite(threshold) && threshold > 0 ? threshold : 100; }
 function getDynamicInitiativeBattleId(g) { const id = Number(g.BattleId || g.BattleUID || g.EncounterUID || g.EncounterId || 0); return Number.isFinite(id) ? id : 0; }
 function getDynamicInitiativeActorSnapshot(ctx, uid, typeHint = null) { const actor = Number(uid || 0) > 0 ? GetActorByUID(ctx, Number(uid || 0)) : null; const type = typeHint != null ? Number(typeHint || 0) : (actor && actor.kind === 'enemy' ? 1 : 0); if (!actor && !(Number(uid || 0) > 0)) return null; return { uid: Number(uid || actor?.uid || 0), type: type === 1 ? 1 : 0, name: actor ? String(actor.name || actor.uid || uid) : String(uid || ''), speed: actor ? GetEffectiveStat(ctx, actor, 'SPD') : 0, hp: actor ? Number(actor.hp ?? 1) : 0, stunned: !!actor?.stunned, disabled: !!actor?.disabled, pendingDeath: !!actor?.pendingDeath || !!actor?.deathPending, status: actor?.status, state: actor?.state, statuses: Array.isArray(actor?.statuses) ? actor.statuses : [], statusEffects: Array.isArray(actor?.statusEffects) ? actor.statusEffects : [] }; }
-function getDynamicInitiativeRoster(ctx) { const actors = [], seen = new Set(); for (const hero of getHeroes(ctx)) { const uid = Number(hero?.uid || 0); if (!(uid > 0) || Number(hero.hp ?? 0) <= 0 || seen.has(uid)) continue; seen.add(uid); actors.push({ uid, type: 0, name: String(hero.name || uid), speed: GetEffectiveStat(ctx, hero, 'SPD'), hp: Number(hero.hp ?? 0), stunned: !!hero.stunned, disabled: !!hero.disabled, status: hero.status, state: hero.state, statuses: Array.isArray(hero.statuses) ? hero.statuses : [], statusEffects: Array.isArray(hero.statusEffects) ? hero.statusEffects : [] }); } for (const enemy of getEnemies(ctx)) { const uid = Number(enemy?.uid || 0); if (!(uid > 0) || seen.has(uid) || enemy.streamState === 'in_range') continue; seen.add(uid); actors.push({ uid, type: 1, name: String(enemy.name || uid), speed: GetEffectiveStat(ctx, enemy, 'SPD'), hp: Number(enemy.hp ?? 0), stunned: !!enemy.stunned, disabled: !!enemy.disabled, pendingDeath: !!enemy.pendingDeath || !!enemy.deathPending, status: enemy.status, state: enemy.state, statuses: Array.isArray(enemy.statuses) ? enemy.statuses : [], statusEffects: Array.isArray(enemy.statusEffects) ? enemy.statusEffects : [] }); } return actors; }
+function getDynamicInitiativeRoster(ctx) { const actors = [], seen = new Set(); for (const hero of getHeroes(ctx)) { const uid = Number(hero?.uid || 0); if (!(uid > 0) || Number(hero.hp ?? 0) <= 0 || seen.has(uid)) continue; seen.add(uid); actors.push({ uid, type: 0, name: String(hero.name || uid), speed: GetEffectiveStat(ctx, hero, 'SPD'), hp: Number(hero.hp ?? 0), stunned: !!hero.stunned, disabled: !!hero.disabled, status: hero.status, state: hero.state, statuses: Array.isArray(hero.statuses) ? hero.statuses : [], statusEffects: Array.isArray(hero.statusEffects) ? hero.statusEffects : [] }); } for (const enemy of getEnemies(ctx)) { const uid = Number(enemy?.uid || 0); if (!(uid > 0) || seen.has(uid) || enemy.streamState === 'in_range') continue; seen.add(uid); actors.push({ uid, type: 1, name: String(enemy.name || uid), speed: GetEffectiveStat(ctx, enemy, 'SPD'), attackDelivery: Number(enemy.stats?.MAG ?? enemy.mag ?? enemy.MAG ?? 0) > Number(enemy.stats?.ATK ?? enemy.atk ?? enemy.ATK ?? 0) ? 'ranged' : 'melee', enemyRole: String(enemy.enemyRole || enemy.role || '').toLowerCase(), attackPattern: enemy.attackPattern, hp: Number(enemy.hp ?? 0), stunned: !!enemy.stunned, disabled: !!enemy.disabled, pendingDeath: !!enemy.pendingDeath || !!enemy.deathPending, status: enemy.status, state: enemy.state, statuses: Array.isArray(enemy.statuses) ? enemy.statuses : [], statusEffects: Array.isArray(enemy.statusEffects) ? enemy.statusEffects : [] }); } return actors; }
 function recordDynamicInitiativeShadowAfterAction(ctx, currentUID, currentType, cadenceEvents = []) {
   const g = getGlobals(ctx);
   if (g.DynamicInitiativeShadowDisabled) return null;
@@ -7194,10 +7145,10 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
   if (String(redSkillConfig?.skillId || '') === 'INCINERATE') {
     const heroName = String(actor && actor.name || '');
     const presentationProfiles = {
-      Falie: { hitCount: 4, intervalSec: 0.3, scatter: { radiusX: 10, radiusY: 8 } },
-      Huun: { hitCount: 4, intervalSec: 0.3, scatter: { radiusX: 16, radiusY: 6 } },
-      Runa: { hitCount: 4, intervalSec: 0.3, scatter: { radiusX: 14, radiusY: 12 } },
-      Kojonn: { hitCount: 4, intervalSec: 0.3, scatter: { radiusX: 22, radiusY: 16 } },
+      Falie: { hitCount: 4, intervalSec: 0.3 },
+      Huun: { hitCount: 4, intervalSec: 0.3 },
+      Runa: { hitCount: 4, intervalSec: 0.3 },
+      Kojonn: { hitCount: 4, intervalSec: 0.3 },
     };
     const presentation = presentationProfiles[heroName] || null;
     if (presentation && presentation.hitCount > 1) {
@@ -7215,7 +7166,6 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
           finalDmg: shotDamage,
           powerAmpMultiplier: 0,
           consumePowerAmp: ampMult > 0 && hitIndex === 0 ? 1 : 0,
-          damageTextScatter: presentation.scatter,
           calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
           heroName: actorName,
           heroType: mode,
@@ -10002,36 +9952,12 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
   const textKind = String(kind || 'damage');
   const canvasAnchored = targetKind === 'energy' ? 1 : 0;
   const partyMaxHP = Math.max(0, Number(g.PartyMaxHP || 0));
-  const presentationRandom = Math.random;
-  let drawX = x;
-  let drawY = y;
-  if (textKind === 'damage' && g.NextDamageTextScatter && typeof g.NextDamageTextScatter === 'object') {
-    const scatter = g.NextDamageTextScatter;
-    const radiusX = Math.max(0, Number(scatter.radiusX || 0));
-    const radiusY = Math.max(0, Number(scatter.radiusY || 0));
-    const angle = presentationRandom() * Math.PI * 2;
-    const distance = Math.sqrt(presentationRandom());
-    drawX += Math.cos(angle) * radiusX * distance;
-    drawY += Math.sin(angle) * radiusY * distance;
-    delete g.NextDamageTextScatter;
-  }
-  const isDamageLikeText = textKind !== 'heal' && textKind !== 'energy';
-  const floatMaxAngleDeg = Math.max(0, Math.min(45, Number(g.DamageTextMaxAngleDeg ?? DAMAGE_FLOAT_MAX_ANGLE_DEG)));
-  let floatAngleDeg = 0;
-  if (isDamageLikeText) {
-    g.DamageFloatSpawnSeq = (Number(g.DamageFloatSpawnSeq || 0) + 1);
-    floatAngleDeg = pickDamageFloatAngleDeg({
-      random: presentationRandom,
-      maxAbsAngleDeg: floatMaxAngleDeg,
-      sequence: g.DamageFloatSpawnSeq,
-    });
-  }
+  const drawX = x;
+  const drawY = y;
+  delete g.NextDamageTextScatter;
   const floatTravel = textKind === 'energy' ? DAMAGE_FLOAT_ENERGY_TRAVEL : DAMAGE_FLOAT_DEFAULT_TRAVEL;
-  const floatVector = deriveDamageFloatVector({
-    angleDeg: floatAngleDeg,
-    travel: floatTravel,
-    maxAbsAngleDeg: floatMaxAngleDeg,
-  });
+  const floatVector = deriveDamageFloatVector({ angleDeg: 0, travel: floatTravel });
+  const floatMaxAngleDeg = 0;
   if (g.DebugDamageFloatVectors && typeof console !== 'undefined' && typeof console.log === 'function') {
     console.log(
       `[DAMAGE_FLOAT] amount=${amount} kind=${textKind} target=${targetKind || ''} ` +
@@ -10045,9 +9971,9 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
     : { low: 10, high: 80 };
   const heat = computeHeat(g, textKind, amount, defaults);
   const peakScale = 1.02 + (1.10 - 1.02) * heat;
-  const riseInSec = 0.18;
+  const riseInSec = 0.12;
   const holdSec = 0.7;
-  const fadeSec = 0.45;
+  const fadeSec = 0.16;
   const now = Number(g.time || 0);
   const pendingHitEnd = Math.max(0, ...(g.PendingHeroHits || []).map(hit => Number(hit?.at || 0) + 0.32));
   const impactEnd = Math.max(0, ...(g.CombatImpactVisuals || []).map(impact => Number(impact?.startAt || 0) + 0.32));

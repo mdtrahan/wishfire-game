@@ -15,23 +15,22 @@ test('hero red single-target attacks default to a single strike and keep Inciner
     assert.match(src, /const redSkillConfig = ensureActorRedAttackSkillStore\(g\)\[Number\(heroUID \|\| 0\)\] \|\| null;/);
     assert.match(src, /if \(String\(redSkillConfig\?\.skillId \|\| ''\) === 'INCINERATE'\) \{/);
     assert.match(src, /const presentationProfiles = \{/);
-    assert.match(src, /Falie: \{ hitCount: 4, intervalSec: 0\.3, scatter: \{ radiusX: 10, radiusY: 8 \} \}/);
-    assert.match(src, /Huun: \{ hitCount: 4, intervalSec: 0\.3, scatter: \{ radiusX: 16, radiusY: 6 \} \}/);
-    assert.match(src, /Runa: \{ hitCount: 4, intervalSec: 0\.3, scatter: \{ radiusX: 14, radiusY: 12 \} \}/);
-    assert.match(src, /Kojonn: \{ hitCount: 4, intervalSec: 0\.3, scatter: \{ radiusX: 22, radiusY: 16 \} \}/);
+    assert.match(src, /Falie: \{ hitCount: 4, intervalSec: 0\.3 \}/);
+    assert.match(src, /Huun: \{ hitCount: 4, intervalSec: 0\.3 \}/);
+    assert.match(src, /Runa: \{ hitCount: 4, intervalSec: 0\.3 \}/);
+    assert.match(src, /Kojonn: \{ hitCount: 4, intervalSec: 0\.3 \}/);
     assert.match(src, /for \(let hitIndex = 0; hitIndex < presentation\.hitCount; hitIndex \+= 1\)/);
-    assert.match(src, /damageTextScatter: presentation\.scatter,/);
+    assert.doesNotMatch(src, /damageTextScatter:/);
     assert.match(src, /LogCombat\(ctx, `\$\{actorName\} used Incinerate on \$\{target\.name \|\| '\?'\} for \$\{totalBurstDamage\}!`\);/);
     assert.match(src, /const finalDmg = ampMult > 0 \? Math\.max\(1, Math\.ceil\(dmg \* ampMult\)\) : Math\.max\(1, dmg\);/);
     assert.match(src, /g\.PendingHeroHits\.push\(\{\s*at: applyAt,\s*heroUID,\s*targetUID,\s*dmg,\s*powerAmpMultiplier: ampMult,/s);
     assert.match(src, /msg: `\$\{actorName\} hit \$\{target\.name \|\| '\?'\} for \$\{finalDmg\}!`,/);
-    assert.match(src, /if \(textKind === 'damage' && g\.NextDamageTextScatter && typeof g\.NextDamageTextScatter === 'object'\) \{/);
-    assert.match(src, /drawX \+= Math\.cos\(angle\) \* radiusX \* distance;/);
-    assert.match(src, /drawY \+= Math\.sin\(angle\) \* radiusY \* distance;/);
     assert.match(src, /delete g\.NextDamageTextScatter;/);
+    assert.match(src, /const drawX = x;/);
+    assert.match(src, /const drawY = y;/);
     assert.match(src, /x: drawX,/);
     assert.match(src, /baseY: drawY,/);
   }
 
-  assert.match(renderRuntimeSrc, /if \(hit\.damageTextScatter && typeof hit\.damageTextScatter === 'object'\) \{/);
+  assert.doesNotMatch(renderRuntimeSrc, /hit\.damageTextScatter/);
 });

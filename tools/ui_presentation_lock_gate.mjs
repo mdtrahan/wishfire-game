@@ -557,14 +557,17 @@ async function captureCombat(page, viewport, artifactDir) {
       age: 0,
       phase: 0,
       opacity: 1,
-      riseInSec: 0.18,
+      riseInSec: 0.12,
       holdSec: 0.7,
-      fadeSec: 0.45,
+      fadeSec: 0.16,
     }];
     game.stepFrames(1);
   });
   await page.waitForSelector('.damage-number canvas:not([data-ui-lock-existing])', { timeout: 3000 });
-  await page.waitForTimeout(50);
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('.damage-number canvas:not([data-ui-lock-existing])');
+    return canvas && new DOMMatrixReadOnly(getComputedStyle(canvas).transform).a >= 0.99;
+  });
   const damage = await page.evaluate(() => {
     const canvas = document.querySelector('.damage-number canvas:not([data-ui-lock-existing])');
     const box = canvas?.getBoundingClientRect();

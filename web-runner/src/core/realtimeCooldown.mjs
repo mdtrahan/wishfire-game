@@ -14,9 +14,11 @@ export function heroBasicAttackRate(actor) {
 }
 
 export function realtimeCooldownSeconds(actor) {
-  const speed = Math.max(1, finite(actor?.speed ?? actor?.spd ?? actor?.SPD, 1));
   if (Number(actor?.type || 0) === 0) return 1 / heroBasicAttackRate(actor);
-  return Math.max(1.6, Math.min(5, 32 / speed));
+  const bossInterval = String(actor?.enemyRole || '').toLowerCase() === 'boss'
+    ? Number(actor?.attackPattern?.intervalSeconds) : 0;
+  if (Number.isFinite(bossInterval) && bossInterval > 0) return bossInterval;
+  return actor?.attackDelivery === 'ranged' ? 5 : 1.6;
 }
 
 const initialCooldownPhase = uid => (((Number(uid || 0) * 2654435761) >>> 0) / 0x100000000);

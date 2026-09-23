@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { collectRealtimeReadyActors, heroBasicAttackRate, realtimeCooldownSeconds, selectRealtimeReadyActor } from '../web-runner/src/core/realtimeCooldown.mjs';
 
 test('real-time cooldowns advance from wall time and only reset the actor that completed', () => {
@@ -66,6 +67,30 @@ test('an engaged enemy attacks on arrival and waits for its own cooldown afterwa
   const afterAttack = selectRealtimeReadyActor({ actors: [enemy], readyAt: arrival.readyAt, now: 4, completedUID: 9 });
   assert.equal(afterAttack.selected, null);
   assert.equal(afterAttack.readyAt['9'], 4 + realtimeCooldownSeconds(enemy));
+});
+
+test('enemy attack bands follow attack reach, including bosses, independent of travel and SPD', () => {
+  const melee = { uid: 9, type: 1, hp: 10, speed: 3, attackDelivery: 'melee', approachSeconds: 8 };
+  const ranged = { uid: 10, type: 1, hp: 10, speed: 40, attackDelivery: 'ranged', approachSeconds: 0 };
+  assert.equal(realtimeCooldownSeconds(melee), 1.6);
+  assert.equal(realtimeCooldownSeconds(ranged), 5);
+  assert.equal(realtimeCooldownSeconds({ ...melee, enemyRole: 'boss' }), 1.6);
+  assert.equal(realtimeCooldownSeconds({ ...ranged, enemyRole: 'boss' }), 5);
+  assert.equal(realtimeCooldownSeconds({ ...ranged, enemyRole: 'boss', attackPattern: { intervalSeconds: 2.4 } }), 2.4);
+  assert.equal(realtimeCooldownSeconds({ ...ranged, enemyRole: 'boss', attackPattern: { intervalSeconds: -2 } }), 5);
+  const arrival = selectRealtimeReadyActor({ actors: [melee], now: 8 });
+  const completed = selectRealtimeReadyActor({ actors: [melee], readyAt: arrival.readyAt, now: 8.2, completedUID: 9 });
+  assert.ok(Math.abs(completed.readyAt['9'] - 9.8) < 1e-12);
+});
+
+test('both combat mirrors classify every enemy by its actual attack delivery before scheduling', () => {
+  for (const path of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
+    const source = readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+    const roster = source.match(/function getDynamicInitiativeRoster\(ctx\) \{[^\n]+/)[0];
+    assert.match(roster, /attackDelivery: Number\(enemy\.stats\?\.MAG \?\? enemy\.mag \?\? enemy\.MAG \?\? 0\) > Number\(enemy\.stats\?\.ATK \?\? enemy\.atk \?\? enemy\.ATK \?\? 0\) \? 'ranged' : 'melee'/);
+    assert.match(roster, /enemyRole: String\(enemy\.enemyRole \|\| enemy\.role \|\| ''\)\.toLowerCase\(\)/);
+    assert.match(roster, /attackPattern: enemy\.attackPattern/);
+  }
 });
 
 test('hero opening timers start when a target enters range, not while the lane is empty', () => {

@@ -106,7 +106,7 @@ test('dom floating numbers apply outlined gradients, glow, and squash-stretch fo
   assert.match(src, /travel: isEnergy \? DAMAGE_FLOAT_ENERGY_TRAVEL : DAMAGE_FLOAT_DEFAULT_TRAVEL,/);
   assert.match(src, /const floatY = Number\.isFinite\(Number\(floatVector && floatVector\.y\)\)/);
   assert.match(src, /const isWard = normalizedKind === 'ward';/);
-  assert.match(src, /tl\.to\(wrapper,\s*\{[\s\S]*y: floatY,[\s\S]*duration: 0\.8/);
+  assert.match(src, /tl\.to\(wrapper,\s*\{[\s\S]*y: floatY,[\s\S]*duration: 0\.12/);
   assert.match(src, /tl\.to\(wrapper,\s*\{[\s\S]*opacity: 0,[\s\S]*duration: 0\.16/);
   assert.doesNotMatch(src, /ctx\.globalAlpha = 0\.7/);
   assert.doesNotMatch(src, /glowColor/);
@@ -115,7 +115,7 @@ test('dom floating numbers apply outlined gradients, glow, and squash-stretch fo
   assert.doesNotMatch(src, /webkitTextFillColor = 'transparent'/);
 });
 
-test('damage floating text disperses upward and damage tiers scale by amount', () => {
+test('damage floating text rises straight upward and damage tiers scale by amount', () => {
   const animationSrc = read('web-runner/src/core/damageNumberAnimation.mjs');
   const appSrc = read('web-runner/app.js');
   const renderSrc = read('web-runner/systems/renderRuntime.js');
