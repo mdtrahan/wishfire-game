@@ -69,5 +69,7 @@ test('combat status stays on battlefield actors', () => {
   assert.doesNotMatch(app, /heroCommandUI|hero-commands/);
   assert.match(render, /HeroRestBasePosByUID[\s\S]*const hpRatio = Number\(hero\.maxHP/);
   assert.match(render, /const barY = Math\.round\(footPos\.y - actorHeight - 10 \* layoutScale\);/);
-  assert.equal((render.match(/ctx\.fillStyle = '#30343b';/g) || []).length, 2);
+  assert.equal((render.match(/drawCombatHealthBar\(ctx, \{/g) || []).length, 2);
+  const bars = fs.readFileSync(path.join(root, 'web-runner/systems/combatHealthBarPresentation.mjs'), 'utf8');
+  assert.match(bars, /ctx\.fillStyle = '#292E34';/);
 });

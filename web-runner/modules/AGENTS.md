@@ -14,12 +14,13 @@
 ## Local Contracts
 - `state.globals` is the live runtime envelope. New fields need a clear owner, reset/init behavior, tests, and debug/proof visibility when user-facing.
 - `Scripts/functionBank.js` mirrors selected high-risk functions. Do not drift mirrored functions without a test and explicit bead scope.
+- `CalculateDamage` uses each hero's primary ATK or MAG regardless of attack delivery, enemy offense by delivery type, and target DEF or RES by delivery type. Forward skill percentage and target resistance fields through both Rust owner and single-hit shadow packets.
 - Combat uses speed-based interleaved initiative for normal combat. Do not force strict `Heroes -> Enemies -> Heroes` team phases unless a future bead explicitly changes that product decision.
 - A completed native hero action owns its deferred scheduler handoff through `ProcessTurn`. If presentation release exposes another living hero first, reconcile from `ActionOwnerUID` before advancing; retain enemy-roster holds and terminal settlement guards. If the resulting scheduler UID has no live entity, advance before native turn setup.
 - A late enemy-death removal must retain or create that deferred handoff; clearing the defeated actor after FLOW delivery cannot leave `IsPlayerBusy` without `DeferAdvance`.
 - Use `CanPickGems` through numeric readiness helpers such as `isCanPickGemsReady`; do not rely on strict boolean checks.
 - Continuous production uses deterministic readiness and cooldowns. Combat-card acquisition, offers, and proc entrypoints are retired; stale data must not block combat.
-- Continuous hero basics share one enemy focus UID until that enemy dies, then choose the first living enemy in encounter order. Area-skill target sets remain effect-owned.
+- Continuous hero basics share one in-range enemy focus UID until that enemy dies, then choose the first living in-range enemy in encounter order. Engaged enemies acquire only heroes inside the combat group; area-skill target sets remain effect-owned.
 - Native wards, Cover, Reprisal, Rally and weakness are actor-owned combat effects; card-session records cannot activate them.
 - HERO_SINGLE keeps a valid owner-matched manual enemy selection; its automatic fallback delegates to the shared role-targeting rule.
 - Supergem behavior is limited to native board actions. Retired card selection and offer state must fail closed.
@@ -57,7 +58,7 @@
 - Defeated enemies remain renderable through the complete attack package, including every Chain Strike target, impact and damage float. Their FLOW gem delivery follows that package and must finish before removal or another actor action. A lethal native command creates the held death state in the same resolution step that reaches zero HP. Starting gem delivery preserves that state so the sprite cannot leave and re-enter the scene.
 - The queryless `ContinuousCombatStageLoop` advances only after the shared presentation barrier and enemy-death holds clear. Enemy FLOW delivery and removal therefore remain inside the completed action package.
 - Streamed enemies become hero-targetable after crossing the shared attack-range line, then keep walking without receiving actions until they reach home. Ranged and magic enemies stop in the ranged band; melee enemies alternate between two buffered front bands. Overlapping packs receive distinct X offsets so every living enemy remains visible. Neither faction lunges during production attacks. Their transient slot indices support identity and death cleanup only.
-- Continuous combat ignores the retired slot-refill stability gate when scheduling enemy actions; streamed slot indices are not fixed encounter homes.
+- Continuous combat ignores the retired slot-refill stability gate when scheduling enemy actions; streamed slot indices are not fixed encounter homes. Streamed enemy delivery owns its cooldown band, and attack targeting uses living heroes after the enemy reaches home. Rendered hero foot positions do not gate targeting or stop later attacks. A stale hero scheduler claim must yield to an eligible engaged enemy.
 - `reconcileSessionFlowThresholds` no longer opens combat offers. Production stage flow is owned by deterministic readiness and cooldowns; narrative and quest rewards remain separate.
 
 - Paid sequences reserve only their actual SP costs after accepted launch; FLOW specials empty FLOW and preserve SP. Neither resource is projected from the other.

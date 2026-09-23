@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { deriveCombatFormationAnchors } from '../src/core/combatOrientation.mjs';
 import {
   CONTINUOUS_COMBAT_PACK_CP_STEP,
+  CONTINUOUS_COMBAT_PACK_INTERVAL_SEC,
   CONTINUOUS_COMBAT_STAGES,
   activateContinuousCombatSpawnedEnemy,
   advanceContinuousCombatStage,
@@ -91,6 +92,53 @@ test('boss victory advances the checkpoint and wraps stage ten into the next reg
   assert.equal(transition.state.clearedBosses, 1);
 });
 
+test('survivors carry HP and KO state through wave loops and boss clears', () => {
+  for (const stage of [
+    { wave: 4 },
+    { wave: 4, bossAvailable: true, bossArmed: true, bossActive: true },
+  ]) {
+    const heroes = [
+      { uid: 1, kind: 'hero', hp: 13, maxHP: 50, isAlive: true },
+      { uid: 2, kind: 'hero', hp: 0, maxHP: 40, isAlive: false },
+    ];
+    const entities = [...heroes];
+    const globals = {
+      ContinuousCombatStageLoop: 1,
+      ContinuousCombatStage: { ...createContinuousCombatStageState(1), ...stage, nextEmissionAt: 0 },
+      EnemyData: rows, EnemySize: 40, GamePhase: 'RUNTIME', BattleStartActive: 0,
+      time: 10, PendingDeaths: {}, EnemyDeathVisualHoldByUID: {}, EnemySlots: [],
+    };
+    const calls = [];
+    const call = (name, row, slotIndex) => {
+      calls.push(name);
+      if (name !== 'SpawnEnemy') return null;
+      const enemy = { uid: 10 + slotIndex, kind: 'enemy', name: row.name, hp: row.HP, maxHP: row.HP };
+      entities.push(enemy);
+      return enemy;
+    };
+    assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), true);
+    assert.deepEqual(heroes.map(hero => hero.hp), [13, 0]);
+    assert.deepEqual(heroes.map(hero => hero.isAlive), [true, false]);
+    assert.equal(calls.includes('UpdateHeroHPUI'), false);
+    assert.equal(globals.ContinuousCombatStage.wave, 1);
+  }
+});
+
+test('the fourth wave waits for its normal interval before looping', () => {
+  const globals = {
+    ContinuousCombatStageLoop: 1,
+    ContinuousCombatStage: { ...createContinuousCombatStageState(1), wave: 4, nextEmissionAt: 20 },
+    EnemyData: rows, EnemySize: 40, GamePhase: 'RUNTIME', BattleStartActive: 0,
+    time: 19, PendingDeaths: {}, EnemyDeathVisualHoldByUID: {}, EnemySlots: [],
+  };
+  const call = name => name === 'SpawnEnemy' ? { kind: 'enemy', hp: 10 } : null;
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities: [], presentationBarrier: { lanes: {} }, call }), false);
+  assert.equal(globals.ContinuousCombatStage.wave, 4);
+  globals.time = 20;
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities: [], presentationBarrier: { lanes: {} }, call }), true);
+  assert.equal(globals.ContinuousCombatStage.wave, 1);
+});
+
 test('boss control arms only at the gate and defeat resets the current stage', () => {
   const globals = { time: 12, ContinuousCombatStage: createContinuousCombatStageState(42, { region: 2, stage: 4 }) };
   assert.equal(armContinuousCombatBoss(globals), false);
@@ -113,6 +161,28 @@ test('stream enemies begin off-stage and become engaged only after walking to th
   assert.ok(enemy.y >= 190 && enemy.y <= 355);
   assert.equal(enemy.streamEngageX, 130);
   assert.equal(enemy.streamWalkSpeed, Math.max(34, 40 * 0.9) * 0.7 * 0.9);
+});
+
+test('later packs begin three seconds after their last enemy enters hero range', () => {
+  for (const transitions of [0, 2]) {
+  const globals = {
+    EnemySize: 40, EnemyData: rows, time: 0, GamePhase: 'RUNTIME', BattleStartActive: 0,
+    ContinuousCombatStageLoop: 1,
+    ContinuousCombatStage: { ...createContinuousCombatStageState(1), wave: transitions + 1, transitions, awaitingPackArrival: true, nextEmissionAt: 10, lastUpdatedAt: 0.01 },
+  };
+  const enemy = activateContinuousCombatSpawnedEnemy(globals, { uid: 9, kind: 'enemy', name: 'Gobloc', hp: 100 }, { entryOrder: 0, packIndex: transitions });
+  for (let step = 1; step <= 150 && globals.ContinuousCombatStage.awaitingPackArrival; step += 1) {
+    globals.time = 0.01 + step * 0.05;
+    maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], presentationBarrier: { lanes: {} }, call() {}, runCombatStep() {} });
+    assert.equal(globals.ContinuousCombatStage.wave, transitions + 1);
+  }
+  assert.equal(enemy.streamState, 'in_range');
+  assert.ok(enemy.x > enemy.streamEngageX);
+  assert.equal(globals.ContinuousCombatStage.nextEmissionAt, globals.time + CONTINUOUS_COMBAT_PACK_INTERVAL_SEC);
+  globals.time = globals.ContinuousCombatStage.nextEmissionAt;
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], presentationBarrier: { lanes: {} }, call() { return { kind: 'enemy', hp: 10 }; }, runCombatStep() {} }), true);
+  assert.equal(globals.ContinuousCombatStage.wave, transitions + 2);
+  }
 });
 
 test('boss walks to its own home and holds position for attacks', () => {
@@ -210,7 +280,7 @@ test('enemy packs enter on hero Y lanes while a fifth melee enemy uses a separat
   }
   const fifth = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', hp: 10 }, { entryOrder: 4 });
   assert.equal(fifth.y, enemies[0].y);
-  assert.ok(fifth.streamEngageX - enemies[0].streamEngageX >= 40);
+  assert.equal(fifth.streamEngageX - enemies[0].streamEngageX, 20);
 });
 
 test('timed packs emit while survivors remain and the fourth pack waits for a clear field', () => {
@@ -236,10 +306,14 @@ test('timed packs emit while survivors remain and the fourth pack waits for a cl
   assert.equal(globals.ContinuousCombatStage.wave, 2);
   assert.ok(entities.some(enemy => enemy.uid === survivor.uid));
 
-  globals.time = 17;
+  for (const enemy of spawned) { enemy.streamState = 'engaged'; enemy.x = enemy.streamEngageX; }
+  maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} });
+  globals.time = 10;
   assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} }), true);
   assert.equal(globals.ContinuousCombatStage.wave, 3);
-  globals.time = 27;
+  for (const enemy of spawned) { enemy.streamState = 'engaged'; enemy.x = enemy.streamEngageX; }
+  maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} });
+  globals.time = 13;
   assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} }), true);
   assert.equal(globals.ContinuousCombatStage.wave, 4);
   globals.time = 40;
@@ -276,10 +350,10 @@ test('an armed available gate replaces the next farming pack with the boss after
 test('walking completes deterministically and wakes the cooldown scheduler', () => {
   const globals = {
     ContinuousCombatStageLoop: 1,
-    ContinuousCombatStage: { ...createContinuousCombatStageState(1), nextEmissionAt: 99, lastUpdatedAt: 0, spawnSerial: 1 },
+    ContinuousCombatStage: { ...createContinuousCombatStageState(1), awaitingPackArrival: true, nextEmissionAt: 99, lastUpdatedAt: 0, spawnSerial: 1 },
     GamePhase: 'RUNTIME', BattleStartActive: 0, time: 0,
     EnemyAreaRect: { minX: 160, maxX: 200, minY: 60, maxY: 180 }, EnemySize: 40,
-    EnemyData: rows, EnemySlots: [2], PendingDeaths: {}, ActionInProgress: 0, IsPlayerBusy: 0,
+    EnemyData: rows, EnemySlots: [2], PendingDeaths: {}, ActionInProgress: 0, IsPlayerBusy: 1, DeferAdvance: 1,
   };
   const enemy = activateContinuousCombatSpawnedEnemy(globals, { uid: 1, kind: 'enemy', hp: 10 }, { lane: 1, entryOrder: 0 });
   enemy.x = enemy.streamEngageX + 1;
@@ -289,7 +363,7 @@ test('walking completes deterministically and wakes the cooldown scheduler', () 
   maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], presentationBarrier: { lanes: {} }, call() {}, runCombatStep(name) { if (name === 'ProcessTurn') resumed += 1; } });
   assert.equal(enemy.streamState, 'engaged');
   assert.equal(enemy.x, enemy.streamEngageX);
-  assert.equal(globals.ContinuousCombatStage.nextEmissionAt, 11);
+  assert.equal(globals.ContinuousCombatStage.nextEmissionAt, 4);
   assert.equal(resumed, 1);
 });
 
@@ -321,7 +395,7 @@ test('queryless production marks the initial pack as approaching and disables AF
   assert.equal(finalizeContinuousCombatProduction(globals, entities), true);
   assert.equal(entities[0].flow, 0);
   assert.equal(entities[1].streamState, 'approaching');
-  assert.equal(globals.ContinuousCombatStage.nextEmissionAt, 10);
+  assert.equal(globals.ContinuousCombatStage.nextEmissionAt, 3);
 });
 
 test('runtime source targets in-range walkers while keeping them out of the enemy scheduler', async () => {
@@ -344,4 +418,25 @@ test('runtime source targets in-range walkers while keeping them out of the enem
   assert.match(renderer, /enemiesToDraw = .*\.sort\(\(a, b\) => Number\(b\.y/);
   assert.match(renderer, /const completeEnemyTurn = .*'AdvanceTurn'/);
   assert.match(renderer, /!pendingHit && !pendingImpact && !pendingBloom && \(Number\(state\.globals\.ContinuousCombatStageLoop/);
+});
+
+test('engaged enemies can target any living hero regardless of the rendered foot position', async () => {
+  const { readFileSync } = await import('node:fs');
+  for (const path of ['../web-runner/modules/functionBank.js', '../Scripts/functionBank.js']) {
+    const source = readFileSync(new URL(path, import.meta.url), 'utf8');
+    const targeter = source.slice(source.indexOf('function pickEnemyTargetHero('), source.indexOf('function applyRunaMagicResist('));
+    assert.match(targeter, /enemy\?\.streamState === 'engaged'/);
+    assert.doesNotMatch(targeter, /HeroRestBasePosByUID|visibleBottomY/);
+  }
+});
+
+test('continuous scheduler rejects a stale hero claim before selecting an engaged enemy', async () => {
+  const { readFileSync } = await import('node:fs');
+  for (const path of ['../web-runner/modules/functionBank.js', '../Scripts/functionBank.js']) {
+    const source = readFileSync(new URL(path, import.meta.url), 'utf8');
+    const scheduler = source.slice(source.indexOf('export function ProcessTurn(ctx)'), source.indexOf('function isBoardFullyPopulatedForEnemyMutation'));
+    assert.match(scheduler, /current\?\.type === 1/);
+    assert.match(scheduler, /state\.readyAt\?\.\[String\(current\.uid\)\] !== Number\.MAX_SAFE_INTEGER/);
+    assert.match(scheduler, /state\.current = null/);
+  }
 });

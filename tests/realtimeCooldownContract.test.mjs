@@ -28,9 +28,9 @@ test('hero and Pal speeds produce distinct basic rates with independent staggere
   const actors = ['Falie', 'Kojonn', 'Runa', 'Huun'].map((name, index) => ({ uid: index + 1, type: 0, hp: 10, name, speed: [8, 10, 11, 12][index] }));
   const rates = actors.map(heroBasicAttackRate);
   assert.ok(rates.every((rate, index) => index === 0 || rate > rates[index - 1]));
-  assert.ok(Math.abs(rates[0] - (30 / (0.99 * 32) + 0.60 * 1.45)) < 1e-12);
-  assert.ok(Math.abs(rates[3] - (30 / (0.99 * 22) + 1.00 * 1.45)) < 1e-12);
-  assert.ok(Math.abs(heroBasicAttackRate({ ...actors[0], palFlatSpeedBonus: 0.1 }) - rates[0] - 0.145) < 1e-12);
+  assert.ok(Math.abs(rates[0] - (30 / (0.99 * 32) + 0.60 * 1.45) * 0.7) < 1e-12);
+  assert.ok(Math.abs(rates[3] - (30 / (0.99 * 22) + 1.00 * 1.45) * 0.7) < 1e-12);
+  assert.ok(Math.abs(heroBasicAttackRate({ ...actors[0], palFlatSpeedBonus: 0.1 }) - rates[0] - 0.145 * 0.7) < 1e-12);
   const waiting = selectRealtimeReadyActor({ actors, now: 5, selectionEnabled: false });
   assert.equal(waiting.selected, null);
   const openingTimes = Object.values(waiting.readyAt);
@@ -69,6 +69,25 @@ test('an engaged enemy attacks on arrival and waits for its own cooldown afterwa
   assert.equal(afterAttack.readyAt['9'], 4 + realtimeCooldownSeconds(enemy));
 });
 
+test('melee, ranged, and later entrants keep attacking on their own timers', () => {
+  const melee = { uid: 9, type: 1, hp: 100, attackDelivery: 'melee' };
+  const ranged = { uid: 10, type: 1, hp: 100, attackDelivery: 'ranged' };
+  const later = { uid: 11, type: 1, hp: 100, attackDelivery: 'melee' };
+  const hits = { 9: 0, 10: 0, 11: 0 };
+  let readyAt = {};
+  let completedUID = 0;
+  for (let tick = 0; tick <= 200; tick += 1) {
+    const actors = tick >= 50 ? [melee, ranged, later] : [melee, ranged];
+    const result = selectRealtimeReadyActor({ actors, readyAt, now: tick / 10, completedUID });
+    readyAt = result.readyAt;
+    completedUID = result.selected?.uid || 0;
+    if (completedUID) hits[completedUID] += 1;
+  }
+  assert.ok(hits[9] >= 10);
+  assert.ok(hits[10] >= 3);
+  assert.ok(hits[11] >= 8);
+});
+
 test('enemy attack bands follow attack reach, including bosses, independent of travel and SPD', () => {
   const melee = { uid: 9, type: 1, hp: 10, speed: 3, attackDelivery: 'melee', approachSeconds: 8 };
   const ranged = { uid: 10, type: 1, hp: 10, speed: 40, attackDelivery: 'ranged', approachSeconds: 0 };
@@ -87,7 +106,7 @@ test('both combat mirrors classify every enemy by its actual attack delivery bef
   for (const path of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
     const source = readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
     const roster = source.match(/function getDynamicInitiativeRoster\(ctx\) \{[^\n]+/)[0];
-    assert.match(roster, /attackDelivery: Number\(enemy\.stats\?\.MAG \?\? enemy\.mag \?\? enemy\.MAG \?\? 0\) > Number\(enemy\.stats\?\.ATK \?\? enemy\.atk \?\? enemy\.ATK \?\? 0\) \? 'ranged' : 'melee'/);
+    assert.match(roster, /attackDelivery: enemy\.streamDelivery \|\| \(Number\(enemy\.stats\?\.MAG/);
     assert.match(roster, /enemyRole: String\(enemy\.enemyRole \|\| enemy\.role \|\| ''\)\.toLowerCase\(\)/);
     assert.match(roster, /attackPattern: enemy\.attackPattern/);
   }

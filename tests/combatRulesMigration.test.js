@@ -3,6 +3,13 @@ const rules=require('../web-runner/src/core/combatRules.mjs');
 function actor(uid,kind='hero',mode='Warrior'){return {uid,kind,hp:100,maxHP:100,sp:50,spMax:100,flow:0,flowMode:mode,stats:{SPD:10,MAG:10},statuses:[]};}
 function context(actors){return {actors,state:{statusOrder:0},random:()=>.2,flowRandom:()=>0,calculateDamage:()=>10,applyDamage:(s,t,n)=>{const b=t.hp;t.hp=Math.max(0,b-n);return b-t.hp;},isOver:()=>!actors.some(a=>a.kind==='enemy'&&a.hp>0)};}
 const strike={targetType:'enemy',tags:['physical'],effects:[{effectType:'damage',hits:8}]};
+test('listed skill potency reaches base damage before defensive modifiers',()=>{
+ const h=actor(1),e=actor(2,'enemy'),c=context([h,e]);
+ const calls=[];c.calculateDamage=(_source,_target,mode,multiplierPct)=>{calls.push([mode,multiplierPct]);return 12;};
+ rules.resolveSkill(c,h,{targetType:'enemy',tags:['magic'],effects:[{effectType:'damage',potency:1.5}]},[e.uid]);
+ assert.deepEqual(calls,[['magic',150]]);
+ assert.equal(e.hp,88);
+});
 test('damage emits capped orbs; special cannot directly refill caster',()=>{const h=actor(1),e=actor(2,'enemy'),c=context([h,e]);rules.resolveSkill(c,h,strike,[2]);assert.equal(h.flow,0);e.hp=100;rules.resolveSkill(c,h,{...strike,isFlowSpecial:true},[2]);assert.equal(h.flow,0);});
 test('lethal hostile hit emits Stoic and Comrade orbs without direct charge',()=>{const h=actor(1,'hero','Stoic'),a=actor(2,'hero','Comrade'),e=actor(3,'enemy');h.hp=5;const c=context([h,a,e]);rules.resolveSkill(c,e,strike,[1]);assert.equal(h.flow,0);assert.equal(a.flow,0);assert.equal((c.state.FlowOrbs||[]).length,0);assert.equal(h.hp,0);});
 test('status refresh retains stronger magnitude, duration ends on affected turn',()=>{const h=actor(1,'hero','Tactician'),e=actor(2,'enemy'),c=context([h,e]);rules.applyStatus(c,h,e,{statusEffect:'spdDown',magnitude:.4,duration:2});assert.equal(h.flow,0);rules.turnEnd(e);rules.applyStatus(c,h,e,{statusEffect:'spdDown',magnitude:.2,duration:2});assert.equal(h.flow,0);assert.equal(e.statuses[0].magnitude,.4);rules.applyStatus(c,h,e,{statusEffect:'spdDown',magnitude:.2,duration:2});assert.equal(h.flow,0);});

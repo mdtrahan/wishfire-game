@@ -14,13 +14,15 @@
 - Most rule modules should be pure and deterministic: no DOM, Canvas, localStorage, network, or deployment behavior.
 - If a matching module exists in root `src/core/`, keep behavior mirrored or document/test the intentional divergence.
 - Rust-owned rule families should preserve owner-hook packet shapes and diagnostics.
+- Hero `MAG` is the internal MATK stat. Listed skill potency enters base damage as a percentage before resistance and crit; tier durability tuning must leave early packs farmable and elite/boss gates longer lived.
 - Presentation helper modules may touch Canvas-like drawing inputs, but must not own gameplay state transitions.
 - DOM presentation helpers accept viewport-projected sizes from their caller; they must not invent fixed CSS sizes that bypass the Canvas layout scale.
 - DOM child canvases keep CSS dimensions in logical pixels and multiply backing-store dimensions by `devicePixelRatio` before drawing.
 - Damage-number palettes preserve semantic kinds; Blight `dot` text uses the shared purple affliction palette in both DOM and Canvas paths.
 - Damage floats keep their spawn X and rise vertically, popping from 40% to full size at the top of a short rise, then holding and fading quickly in both DOM and Canvas paths.
 - New deterministic rule changes need focused contract tests and, when applicable, fixture rows.
-- `continuousCombatStage.mjs` owns the queryless production stage sequence, one off-stage X emitter, four hero-aligned enemy Y homes, and the independent hero-basic timer tick. Each region has ten stages; every stage loops four normal waves until its boss is armed and cleared. Low, mixed, and high CP pools emit five, four, and three enemies on a ten-second post-engagement cadence. The fifth enemy uses a separate X home when its Y lane repeats. Clear-field transitions wait for active attack presentation to finish.
+- `continuousCombatStage.mjs` owns the queryless production stage sequence, one off-stage X emitter, four hero-aligned enemy Y homes, and the independent hero-basic timer tick. Each region has ten stages; every stage loops four normal waves until its boss is armed and cleared. Low, mixed, and high CP pools emit five, four, and three enemies three seconds after the current pack reaches hero attack range; survivors can keep fighting during the next pack's walk. The fifth enemy uses a separate X home when its Y lane repeats. Clear-field transitions wait for active attack presentation to finish.
+- Continuous wave loops and boss clears preserve every hero's current HP and KO state. Only the defeat recovery session restores the party to full HP before restarting wave one of the current stage.
 - Continuous enemy attack intervals use the existing 1.6–5 second band: melee takes 1.6 seconds, ranged takes 5 seconds, and an explicit boss attack-pattern interval wins. Approach travel does not alter attack cooldown.
 - Approaching enemies become hero-targetable at the shared arena attack line while continuing to walk, and join the enemy action scheduler only after reaching their melee or ranged home X. Enemy sprites draw from larger Y to smaller Y so the lower numeric Y appears in front.
 - Hero basics use each hero's effective SPD, a community-estimated main-character rate, and a fixed Pal-speed band to derive independent clocks. Fire at most one basic per frame while preserving each hero's due-time cadence. Enemy actions retain their own cooldown scheduler.
@@ -28,6 +30,7 @@
 - Marid, Djinn and Chimerilass use ranged homes. Every other enemy uses melee homes.
 - Armed bosses enter from off-stage and hold the combat-grid home at X 290, Y 290 before joining the enemy action scheduler.
 - Engaged enemy cooldowns keep ticking while hero basic projectiles are pending; their actions do not wait for the old presentation barrier.
+- The continuous enemy scheduler may tick while stale `IsPlayerBusy` or `DeferAdvance` flags remain; `ActionInProgress` still protects the active action lane.
 - When a target enters range after an empty lane, each hero waits for its own cooldown plus a deterministic stagger within 1.5 seconds before its first attack. Engaged enemies are ready on arrival and re-arm after each completed attack.
 
 ## Work Guidance

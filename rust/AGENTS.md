@@ -19,6 +19,7 @@
 - Keep Rust functions small and numeric/JSON-compatible at the WASM boundary.
 - Preserve JS rounding/normalization semantics when tests encode them.
 - Rebuild WASM after Rust changes that affect browser behavior.
+- `single_hit_damage_shadow` takes attack percentage, matching resistance, and general resistance after its existing eight arguments. Keep zero-floor damage and modifier order aligned with both JavaScript rule copies and rebuild the checked-in WASM after edits.
 
 ## Verification
 - `cargo test --manifest-path rust/simulation_core/Cargo.toml`

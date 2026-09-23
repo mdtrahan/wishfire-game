@@ -2209,26 +2209,31 @@ pub fn single_hit_damage(
     hero_aoe: f64,
     chain_active: f64,
     chain_multiplier: f64,
+    attack_multiplier_pct: f64,
+    matching_resistance_pct: f64,
+    general_resistance_pct: f64,
 ) -> f64 {
     let source_is_hero = number_or_zero(source_is_hero) == 1.0;
     let _hero_aoe = number_or_zero(hero_aoe) == 1.0;
-    let roll = 0.9 + (unit_interval_or_half(roll01) * 0.2);
+    let _roll = unit_interval_or_half(roll01);
     let power = number_or_zero(power);
     let resist = number_or_zero(resist);
-    let raw_damage = (2.0 + (power.max(0.0) * 0.48)) * (20.0 / (20.0 + resist.max(0.0))) * roll;
-    let base_damage = raw_damage.ceil().max(1.0);
+    let raw_damage = (power - resist).max(0.0) * number_or_zero(attack_multiplier_pct).max(0.0) / 100.0;
+    let matching_factor = 1.0 - number_or_zero(matching_resistance_pct).clamp(0.0, 100.0) / 100.0;
+    let general_factor = 1.0 - number_or_zero(general_resistance_pct).clamp(0.0, 100.0) / 100.0;
+    let base_damage = (raw_damage * matching_factor * general_factor).ceil();
     let crit_multiplier = 1.25;
     let crit_value = if number_or_zero(crit_roll01) < 0.01 {
         base_damage * crit_multiplier
     } else {
         base_damage
     };
-    let mut damage = crit_value.ceil().max(1.0);
+    let mut damage = crit_value.ceil();
     if source_is_hero && number_or_zero(chain_active) == 1.0 {
         let multiplier = number_or_zero(chain_multiplier);
         damage = (damage * if multiplier != 0.0 { multiplier } else { 1.0 }).ceil();
     }
-    damage.max(1.0)
+    damage.max(0.0)
 }
 
 pub fn single_hit_applied_damage(target_hp: f64, incoming_damage: f64, shield: f64) -> f64 {
@@ -2752,6 +2757,9 @@ pub extern "C" fn single_hit_damage_shadow(
     hero_aoe: f64,
     chain_active: f64,
     chain_multiplier: f64,
+    attack_multiplier_pct: f64,
+    matching_resistance_pct: f64,
+    general_resistance_pct: f64,
 ) -> f64 {
     single_hit_damage(
         power,
@@ -2762,6 +2770,9 @@ pub extern "C" fn single_hit_damage_shadow(
         hero_aoe,
         chain_active,
         chain_multiplier,
+        attack_multiplier_pct,
+        matching_resistance_pct,
+        general_resistance_pct,
     )
 }
 
@@ -3166,16 +3177,16 @@ mod single_hit_resolution_tests {
     fn mirrors_current_single_hit_resolution_cases() {
         let cases = [
             (
-                18.0, 12.0, 0.5, 0.9, 1.0, 0.0, 0.0, 1.0, 40.0, 0.0, 7.0, 7.0, 33.0,
+                18.0, 12.0, 0.5, 0.9, 1.0, 0.0, 0.0, 1.0, 40.0, 0.0, 6.0, 6.0, 34.0,
             ),
             (
-                30.0, 20.0, 0.25, 0.05, 0.0, 0.0, 0.0, 1.0, 5.0, 0.0, 8.0, 5.0, 0.0,
+                30.0, 20.0, 0.25, 0.05, 0.0, 0.0, 0.0, 1.0, 5.0, 0.0, 10.0, 5.0, 0.0,
             ),
             (
-                28.0, 14.0, 0.75, 0.11, 1.0, 1.0, 1.0, 1.5, 20.0, 0.0, 15.0, 15.0, 5.0,
+                28.0, 14.0, 0.75, 0.11, 1.0, 1.0, 1.0, 1.5, 20.0, 0.0, 21.0, 20.0, 0.0,
             ),
             (
-                18.0, 10.0, 0.0, 0.9, 0.0, 0.0, 0.0, 1.0, 16.0, 6.0, 7.0, 1.0, 15.0,
+                18.0, 10.0, 0.0, 0.9, 0.0, 0.0, 0.0, 1.0, 16.0, 6.0, 8.0, 2.0, 14.0,
             ),
         ];
 
@@ -3196,7 +3207,7 @@ mod single_hit_resolution_tests {
         ) in cases
         {
             let rust_damage =
-                single_hit_damage(power, resist, roll, crit, hero, aoe, chain, chain_mult);
+                single_hit_damage(power, resist, roll, crit, hero, aoe, chain, chain_mult, 100.0, 0.0, 0.0);
             assert_eq!(rust_damage, damage);
             assert_eq!(single_hit_applied_damage(hp, rust_damage, shield), applied);
             assert_eq!(single_hit_after_hp(hp, rust_damage, shield), after_hp);

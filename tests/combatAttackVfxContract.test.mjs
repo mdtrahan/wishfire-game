@@ -357,6 +357,28 @@ test('named enemy skills override basic magic without painting attack VFX over h
   assert.deepEqual(draws, ['scathe', 'sweep', 'wipe', 'aoe-fire', 'drain']);
 });
 
+test('stationary melee enemy basics show a small strike without a hit splash', () => {
+  const draws = [];
+  const ctx = {
+    save() {}, restore() {}, translate() {}, rotate() {},
+    drawImage(image) { draws.push(image.id); },
+    set globalAlpha(value) {},
+  };
+  const state = {
+    globals: {
+      time: 1, EnemySize: 40, PendingHeroHits: [],
+      HeroRestBasePosByUID: { 1: { x: 100, y: 200 } },
+      EnemyAction: { active: true, uid: 9, targetUID: 1, skillId: 'Enemy_ATK_Single', state: 'LUNGE', visualProgress: 0.6 },
+    },
+    entities: [
+      { uid: 1, kind: 'hero', hp: 100 },
+      { uid: 9, kind: 'enemy', name: 'Gobloc', hp: 100, x: 130, y: 200, stats: { ATK: 10, MAG: 5 } },
+    ],
+  };
+  renderCombatAttackVfx(ctx, { state, images: { CombatMeleeCrescent: { id: 'crescent' } }, worldToCanvas: (x, y) => ({ x, y }) });
+  assert.deepEqual(draws, ['crescent']);
+});
+
 test('Arcane Pulse stages illustrated charge, travel, and matching contact', () => {
   const draws = [];
   const scales = [];

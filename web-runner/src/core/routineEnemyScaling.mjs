@@ -8,6 +8,14 @@ export const ENEMY_COMBAT_TIER_PROFILES = Object.freeze({
 
 export const ROUTINE_ENEMY_TEMPLATE = ENEMY_COMBAT_TIER_PROFILES.routine;
 
+const DURABILITY_BY_TIER = Object.freeze({
+  fodder: { hp: 1.4, def: 8, res: 8 },
+  routine: { hp: 1.3, def: 10, res: 8 },
+  hard: { hp: 1.4, def: 10, res: 12 },
+  elite: { hp: 1.6, def: 11, res: 9 },
+  boss: { hp: 2.2, def: 12, res: 10 },
+});
+
 export function enemyCombatTier(row = {}) {
   const tier = String(row.combatTier || row.routineTier || 'routine').trim().toLowerCase();
   return ENEMY_COMBAT_TIER_PROFILES[tier] ? tier : 'routine';
@@ -16,7 +24,15 @@ export function enemyCombatTier(row = {}) {
 export function scaleRoutineEnemy(row = {}, level = 1) {
   const tier = enemyCombatTier(row);
   const scale = 1 + (Math.max(1, Number(level) || 1) - 1) * .06;
+  const durability = DURABILITY_BY_TIER[tier];
   const stats = Object.fromEntries(Object.entries(ENEMY_COMBAT_TIER_PROFILES[tier])
-    .map(([key, fallback]) => [key, Math.max(1, Math.floor(Number(row[key] ?? fallback) * scale))]));
+    .map(([key, fallback]) => {
+      const authored = Number(row[key] ?? fallback);
+      const tuned = key === 'HP' ? authored * durability.hp
+        : key === 'DEF' ? Math.min(authored, durability.def)
+        : key === 'RES' ? Math.min(authored, durability.res)
+        : authored;
+      return [key, Math.max(1, Math.floor(tuned * scale))];
+    }));
   return { ...row, ...stats, HP: stats.HP, maxHP: stats.HP, combatTier: tier, routineTier: tier };
 }

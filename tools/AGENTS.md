@@ -44,6 +44,7 @@
 - build_runtime_release.mjs packages only tracked runtime files from web-runner/ and src/ into dist/, with commit and SHA-256 manifest. Netlify publishes dist/; checkpoints, governance reviews and generation prompts are excluded.
 
 - UI lock checks that combat hero cards and AF readouts stay absent, that hero and enemy HP bars remain actor-anchored, and that combat controls stay within the Canvas.
+- Actor HP bars use rounded dark tracks; the UI lock counts each clipped track fill for every hero and living enemy.
 - The native command UI gate prepares and executes self Heal, checks only the active hero recovers, and waits for the ordinary turn handoff.
 
 - The UI gate checks full-charge FLOW and a 45/50 SP queue through Act, single-turn completion, absent retired draw controls, and steady scheduled-actor highlighting through busy action frames.

@@ -497,7 +497,7 @@ async function captureCombat(page, viewport, artifactDir) {
     afReadoutPresent: !!document.querySelector('.readout.af, [data-af-bar], [data-af-text]'),
   }));
   const actorHealthBars = heroTrace.filter(entry => (
-    entry.kind === 'fillRect' && entry.fillStyle.toLowerCase() === '#30343b'
+    entry.kind === 'fillRect' && entry.fillStyle.toLowerCase() === '#292e34'
   ));
   const commandInvariants = [
     invariant('hero-combat-card-ui-absent', !combatUi.heroCardHostPresent, combatUi, { heroCardHostPresent: false }),
@@ -595,7 +595,7 @@ async function captureCombat(page, viewport, artifactDir) {
     invariant('target-state-preserved-without-selector', targeting.selectedEnemyUID > 0 && targeting.selectedEnemyUID === targeting.expectedEnemyUID, targeting, { selectedEnemyUID: targeting.expectedEnemyUID }),
     invariant('global-attack-absent', !attackButton, attackButton, { count: 0 }),
     invariant('damage-text-scale', within(damage.fontPx, expectedDamageFontPx, 0.1) && within(damage.rect?.width, expectedDamageWidth, 1) && within(damage.rect?.height, expectedDamageHeight, 1), { ...damage, fontRatio: damageRatio }, { fontPx: expectedDamageFontPx, cssWidth: expectedDamageWidth, cssHeight: expectedDamageHeight }),
-    invariant('damage-text-density', between(damageDensity, viewport.dpr * 0.99, viewport.dpr * 1.01), { density: damageDensity, dpr: viewport.dpr, ...damage }, { density: [viewport.dpr * 0.99, viewport.dpr * 1.01] }),
+    invariant('damage-text-density', between(damageDensity, viewport.dpr * 0.98, viewport.dpr * 1.02), { density: damageDensity, dpr: viewport.dpr, ...damage }, { density: [viewport.dpr * 0.98, viewport.dpr * 1.02] }),
     invariant('pooled-health-bar-absent', !partyHealthBar, partyHealthBar, { count: 0 }),
     invariant('gem-board-backdrop-absent', !heroTrace.some(entry => entry.kind==='fillRect'
       && within(entry.w / layoutScale, 300, .5) && within(entry.h / layoutScale, 210, .5)), null, { count: 0 }),

@@ -88,7 +88,10 @@ export function resolveSkill(ctx,source,skill,targetIds,origin={}){
       if(covers.length){defender=covers[0].a;const coverStatus=covers[0].s;if(coverStatus.coverOnce)original.statuses=statuses(original).filter(s=>s!==coverStatus);const armedCounter=statuses(defender).find(s=>s.statusEffect==='counter'&&s.counterArmedByCover);if(armedCounter)armedCounter.counterTargetUID=source.uid;if(coverStatus.coverCanEvade&&!accuracy(ctx,source,defender,{...skill,accuracy:1,ignoresBlind:true},meta))continue;}
      }}
      const conditional = effect.ifTargetStatus && hasStatus(defender, effect.ifTargetStatus) ? Number(effect.conditionalMultiplier || 1) : 1;
-     const amount=(((defender===original&&(!effect.fixedTargetUID||defender.uid===effect.fixedTargetUID)?effect.fixedDamage:undefined)??ctx.calculateDamage(source,defender,skill.tags?.includes('magic')?'magic':'melee'))*(effect.potency??1)*conditional);
+     const fixedDamage=defender===original&&(!effect.fixedTargetUID||defender.uid===effect.fixedTargetUID)?effect.fixedDamage:undefined;
+     const amount=fixedDamage==null
+      ?ctx.calculateDamage(source,defender,skill.tags?.includes('magic')?'magic':'melee',(effect.potency??1)*conditional*100)
+      :fixedDamage*(effect.potency??1)*conditional;
      damageTarget(ctx,source,defender,amount,meta);defenders.set(defender.uid,defender);
      if(hasStatus(defender,'mark')) defender.statuses=statuses(defender).filter(s=>s.statusEffect!=='mark');
     }

@@ -292,7 +292,6 @@ const renderEnemyMagic = (ctx, { state, images, worldToCanvas, layoutScale }) =>
         : skillId === 'Enemy_MAG_AOE' ? { delivery: 'magic_aoe_brushfire', impact: 'rose' }
           : skillId === 'Enemy_Drain_Buff' ? { delivery: 'drain_buff_orb', impact: 'none' }
         : combatVfxProfileForActor(actor);
-  if (profile.delivery === 'melee') return;
   const sourcePoint = entityAnchor(state, actor?.uid);
   const targetPoint = profile.delivery === 'wipe_wash' ? enemyGroupAnchor(state)
     : profile.delivery === 'magic_aoe_brushfire' ? heroGroupAnchor(state)
@@ -303,6 +302,10 @@ const renderEnemyMagic = (ctx, { state, images, worldToCanvas, layoutScale }) =>
   const target = worldToCanvas(targetPoint.x, targetPoint.y);
   const progress = action.state === 'HIT' ? 1 : Math.max(0, Math.min(1, Number(action.visualProgress || 0)));
   const hitFade = action.state === 'HIT' ? Math.max(0, 1 - Number(action.timer || 0) / 0.22) : 1;
+  if (profile.delivery === 'melee') {
+    if (skillId === 'Enemy_ATK_Single') drawTravel(ctx, images.CombatMeleeCrescent, source, target, progress, Math.max(28, 34 * layoutScale));
+    return;
+  }
   if (profile.delivery === 'marid_crescent' || profile.delivery === 'magic_orb' || profile.delivery === 'sweep_crescent') {
     const image = profile.delivery === 'sweep_crescent' ? images.CombatSweepCrescent : projectileAsset(images, profile.delivery);
     drawTravel(ctx, image, source, target, progress, Math.max(46, 62 * layoutScale));

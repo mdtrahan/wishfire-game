@@ -26,6 +26,9 @@ function rowArgs(row) {
     heroAoe: toNumber(row, 'heroAoe'),
     chainActive: toNumber(row, 'chainActive'),
     chainMultiplier: toNumber(row, 'chainMultiplier'),
+    attackMultiplierPct: toNumber(row, 'attackMultiplierPct'),
+    matchingResistancePct: toNumber(row, 'matchingResistancePct'),
+    generalResistancePct: toNumber(row, 'generalResistancePct'),
   };
 }
 
@@ -60,6 +63,9 @@ test('static simulation core wasm matches CalculateDamage fixtures through singl
       toNumber(row, 'heroAoe'),
       toNumber(row, 'chainActive'),
       toNumber(row, 'chainMultiplier'),
+      toNumber(row, 'attackMultiplierPct'),
+      toNumber(row, 'matchingResistancePct'),
+      toNumber(row, 'generalResistancePct'),
     ];
     const damage = Number(exports.single_hit_damage_shadow(...args));
 

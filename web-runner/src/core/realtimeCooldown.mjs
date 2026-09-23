@@ -10,7 +10,7 @@ export function heroBasicAttackRate(actor) {
   const mainRate = 30 / (0.99 * (2 + Math.ceil(30 / mainSpeed)));
   const palBase = palBaseSpeed[heroPal[actor?.baseHeroName || actor?.name]] || 0;
   const palRate = Math.max(0, palBase + finite(actor?.palFlatSpeedBonus)) * 1.45 * Math.max(0, finite(actor?.palSpeedModifier, 1));
-  return mainRate + palRate;
+  return (mainRate + palRate) * 0.7;
 }
 
 export function realtimeCooldownSeconds(actor) {

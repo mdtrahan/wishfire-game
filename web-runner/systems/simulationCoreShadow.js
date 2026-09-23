@@ -2719,6 +2719,9 @@ export function createSimulationCoreCalculateDamageResolution({
   heroAoe = 0,
   chainActive = 0,
   chainMultiplier = 1,
+  attackMultiplierPct = 100,
+  matchingResistancePct = 0,
+  generalResistancePct = 0,
   jsDamage = 0,
 } = {}, { exportsOverride = null } = {}) {
   const shadow = getShadowState();
@@ -2732,6 +2735,9 @@ export function createSimulationCoreCalculateDamageResolution({
     heroAoe: Number(heroAoe || 0) === 1 ? 1 : 0,
     chainActive: Number(chainActive || 0) === 1 ? 1 : 0,
     chainMultiplier: Number(chainMultiplier || 1),
+    attackMultiplierPct: Number(attackMultiplierPct ?? 100),
+    matchingResistancePct: Number(matchingResistancePct || 0),
+    generalResistancePct: Number(generalResistancePct || 0),
     jsDamage: Number(jsDamage || 0),
   };
   const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
@@ -2755,6 +2761,9 @@ export function createSimulationCoreCalculateDamageResolution({
     normalized.heroAoe,
     normalized.chainActive,
     normalized.chainMultiplier,
+    normalized.attackMultiplierPct,
+    normalized.matchingResistancePct,
+    normalized.generalResistancePct,
   ));
   shadow.calculateDamageOwnerChecks = Number(shadow.calculateDamageOwnerChecks || 0) + 1;
   shadow.lastCalculateDamageOwnerCheck = {
@@ -3190,6 +3199,9 @@ export function createSimulationCoreSingleHitResolution({
   heroAoe = 0,
   chainActive = 0,
   chainMultiplier = 1,
+  attackMultiplierPct = 100,
+  matchingResistancePct = 0,
+  generalResistancePct = 0,
   targetHp = 0,
   shield = 0,
   jsDamage = 0,
@@ -3207,6 +3219,9 @@ export function createSimulationCoreSingleHitResolution({
     heroAoe: Number(heroAoe || 0),
     chainActive: Number(chainActive || 0),
     chainMultiplier: Number(chainMultiplier || 1),
+    attackMultiplierPct: Number(attackMultiplierPct ?? 100),
+    matchingResistancePct: Number(matchingResistancePct || 0),
+    generalResistancePct: Number(generalResistancePct || 0),
     targetHp: Number(targetHp || 0),
     shield: Number(shield || 0),
     jsDamage: Number(jsDamage || 0),
@@ -3241,6 +3256,9 @@ export function createSimulationCoreSingleHitResolution({
     normalized.heroAoe,
     normalized.chainActive,
     normalized.chainMultiplier,
+    normalized.attackMultiplierPct,
+    normalized.matchingResistancePct,
+    normalized.generalResistancePct,
   ));
   const rustAppliedDamage = Number(exports.single_hit_applied_damage_shadow(
     normalized.targetHp,
@@ -3837,6 +3855,9 @@ export function shadowSingleHitResolution({
   heroAoe = 0,
   chainActive = 0,
   chainMultiplier = 1,
+  attackMultiplierPct = 100,
+  matchingResistancePct = 0,
+  generalResistancePct = 0,
   targetHp = 0,
   shield = 0,
   jsDamage = 0,
@@ -3855,6 +3876,9 @@ export function shadowSingleHitResolution({
     Number(heroAoe || 0),
     Number(chainActive || 0),
     Number(chainMultiplier || 1),
+    Number(attackMultiplierPct ?? 100),
+    Number(matchingResistancePct || 0),
+    Number(generalResistancePct || 0),
   ));
   const rustAppliedDamage = Number(shadow.exports.single_hit_applied_damage_shadow(
     Number(targetHp || 0),

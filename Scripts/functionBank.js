@@ -3507,7 +3507,7 @@ function ensureDynamicInitiativeShadowState(g) { if (!g.DynamicInitiativeShadow 
 function getDynamicInitiativeThreshold(g) { const threshold = Number(g.DynamicInitiativeThreshold || g.InitiativeThreshold || 100); return Number.isFinite(threshold) && threshold > 0 ? threshold : 100; }
 function getDynamicInitiativeBattleId(g) { const id = Number(g.BattleId || g.BattleUID || g.EncounterUID || g.EncounterId || 0); return Number.isFinite(id) ? id : 0; }
 function getDynamicInitiativeActorSnapshot(ctx, uid, typeHint = null) { const actor = Number(uid || 0) > 0 ? GetActorByUID(ctx, Number(uid || 0)) : null; const type = typeHint != null ? Number(typeHint || 0) : (actor && actor.kind === 'enemy' ? 1 : 0); if (!actor && !(Number(uid || 0) > 0)) return null; return { uid: Number(uid || actor?.uid || 0), type: type === 1 ? 1 : 0, name: actor ? String(actor.name || actor.uid || uid) : String(uid || ''), speed: actor ? GetEffectiveStat(ctx, actor, 'SPD') : 0, hp: actor ? Number(actor.hp ?? 1) : 0, stunned: !!actor?.stunned, disabled: !!actor?.disabled, pendingDeath: !!actor?.pendingDeath || !!actor?.deathPending, status: actor?.status, state: actor?.state, statuses: Array.isArray(actor?.statuses) ? actor.statuses : [], statusEffects: Array.isArray(actor?.statusEffects) ? actor.statusEffects : [] }; }
-function getDynamicInitiativeRoster(ctx) { const actors = [], seen = new Set(); for (const hero of getHeroes(ctx)) { const uid = Number(hero?.uid || 0); if (!(uid > 0) || Number(hero.hp ?? 0) <= 0 || seen.has(uid)) continue; seen.add(uid); actors.push({ uid, type: 0, name: String(hero.name || uid), speed: GetEffectiveStat(ctx, hero, 'SPD'), hp: Number(hero.hp ?? 0), stunned: !!hero.stunned, disabled: !!hero.disabled, status: hero.status, state: hero.state, statuses: Array.isArray(hero.statuses) ? hero.statuses : [], statusEffects: Array.isArray(hero.statusEffects) ? hero.statusEffects : [] }); } for (const enemy of getEnemies(ctx)) { const uid = Number(enemy?.uid || 0); if (!(uid > 0) || seen.has(uid) || enemy.streamState === 'in_range') continue; seen.add(uid); actors.push({ uid, type: 1, name: String(enemy.name || uid), speed: GetEffectiveStat(ctx, enemy, 'SPD'), attackDelivery: Number(enemy.stats?.MAG ?? enemy.mag ?? enemy.MAG ?? 0) > Number(enemy.stats?.ATK ?? enemy.atk ?? enemy.ATK ?? 0) ? 'ranged' : 'melee', enemyRole: String(enemy.enemyRole || enemy.role || '').toLowerCase(), attackPattern: enemy.attackPattern, hp: Number(enemy.hp ?? 0), stunned: !!enemy.stunned, disabled: !!enemy.disabled, pendingDeath: !!enemy.pendingDeath || !!enemy.deathPending, status: enemy.status, state: enemy.state, statuses: Array.isArray(enemy.statuses) ? enemy.statuses : [], statusEffects: Array.isArray(enemy.statusEffects) ? enemy.statusEffects : [] }); } return actors; }
+function getDynamicInitiativeRoster(ctx) { const actors = [], seen = new Set(); for (const hero of getHeroes(ctx)) { const uid = Number(hero?.uid || 0); if (!(uid > 0) || Number(hero.hp ?? 0) <= 0 || seen.has(uid)) continue; seen.add(uid); actors.push({ uid, type: 0, name: String(hero.name || uid), speed: GetEffectiveStat(ctx, hero, 'SPD'), hp: Number(hero.hp ?? 0), stunned: !!hero.stunned, disabled: !!hero.disabled, status: hero.status, state: hero.state, statuses: Array.isArray(hero.statuses) ? hero.statuses : [], statusEffects: Array.isArray(hero.statusEffects) ? hero.statusEffects : [] }); } for (const enemy of getEnemies(ctx)) { const uid = Number(enemy?.uid || 0); if (!(uid > 0) || seen.has(uid) || enemy.streamState === 'in_range') continue; seen.add(uid); actors.push({ uid, type: 1, name: String(enemy.name || uid), speed: GetEffectiveStat(ctx, enemy, 'SPD'), attackDelivery: enemy.streamDelivery || (Number(enemy.stats?.MAG ?? enemy.mag ?? enemy.MAG ?? 0) > Number(enemy.stats?.ATK ?? enemy.atk ?? enemy.ATK ?? 0) ? 'ranged' : 'melee'), enemyRole: String(enemy.enemyRole || enemy.role || '').toLowerCase(), attackPattern: enemy.attackPattern, hp: Number(enemy.hp ?? 0), stunned: !!enemy.stunned, disabled: !!enemy.disabled, pendingDeath: !!enemy.pendingDeath || !!enemy.deathPending, status: enemy.status, state: enemy.state, statuses: Array.isArray(enemy.statuses) ? enemy.statuses : [], statusEffects: Array.isArray(enemy.statusEffects) ? enemy.statusEffects : [] }); } return actors; }
 function recordDynamicInitiativeShadowAfterAction(ctx, currentUID, currentType, cadenceEvents = []) {
   const g = getGlobals(ctx);
   if (g.DynamicInitiativeShadowDisabled) return null;
@@ -4964,49 +4964,18 @@ export function ApplyScaledCrit({
   };
 }
 
-function calculateDamageFromJsFallback({
-  power = 0,
-  resist = 0,
-  roll01 = 0.5,
-  critRoll01 = 0.5,
-  sourceIsHero = 0,
-  heroAoe = 0,
-  chainActive = 0,
-  chainMultiplier = 1,
-} = {}) {
-  const powerValue = Number(power || 0);
-  const resistValue = Number(resist || 0);
-  const isHero = Number(sourceIsHero || 0) === 1;
-  const roll = 0.9 + Number(roll01 || 0) * 0.2;
-  const rawDamage = (2 + (Math.max(0, powerValue) * .48)) * (20 / (20 + Math.max(0, resistValue))) * roll;
-  const baseDamage = Math.max(1, Math.ceil(rawDamage));
-  const crit = ApplyScaledCrit({
-    baseValue: baseDamage,
-    relevantBuffTotal: 2.5,
-    sourceType: isHero ? 'HERO' : 'ENEMY',
-    critThreshold: .01,
-    rngRoll: critRoll01,
-  });
-  const postCritDamage = Math.max(1, Math.ceil(crit.value));
-  const multiplier = Number(chainMultiplier || 1);
-  const damage = isHero && Number(chainActive || 0) === 1
-    ? Math.max(1, Math.ceil(postCritDamage * multiplier))
-    : postCritDamage;
-  return {
-    damage,
-    baseDamage,
-    postCritDamage,
-    didCrit: crit.didCrit,
-    critMultiplier: crit.critMultiplier,
-    roll,
-  };
-}
-
 function resolveCalculateDamageFromJs(payload) {
-  if (typeof importedCalculateDamageFromJs === 'function') {
-    return importedCalculateDamageFromJs(payload);
-  }
-  return calculateDamageFromJsFallback(payload);
+  if (typeof importedCalculateDamageFromJs === 'function') return importedCalculateDamageFromJs(payload);
+  const rawDamage = Math.max(0, Number(payload.power || 0) - Number(payload.resist || 0))
+    * Math.max(0, Number(payload.attackMultiplierPct ?? 100)) / 100;
+  const factor = value => 1 - Math.min(100, Math.max(0, Number(value || 0))) / 100;
+  const baseDamage = Math.ceil(rawDamage * factor(payload.matchingResistancePct) * factor(payload.generalResistancePct));
+  const didCrit = Number(payload.critRoll01) < 0.01;
+  const postCritDamage = Math.ceil(baseDamage * (didCrit ? 1.25 : 1));
+  const damage = Number(payload.sourceIsHero || 0) === 1 && Number(payload.chainActive || 0) === 1
+    ? Math.max(0, Math.ceil(postCritDamage * Number(payload.chainMultiplier || 1)))
+    : postCritDamage;
+  return { damage, baseDamage, postCritDamage, didCrit, critMultiplier: 1.25, rawDamage };
 }
 
 function recordSingleHitDamageShadow(ctx, payload) {
@@ -5024,6 +4993,9 @@ function recordSingleHitDamageShadow(ctx, payload) {
     heroAoe: Number(payload.heroAoe || 0),
     chainActive: Number(payload.chainActive || 0),
     chainMultiplier: Number(payload.chainMultiplier || 1),
+    attackMultiplierPct: Number(payload.attackMultiplierPct ?? 100),
+    matchingResistancePct: Number(payload.matchingResistancePct || 0),
+    generalResistancePct: Number(payload.generalResistancePct || 0),
     jsDamage: Number(payload.jsDamage || 0),
   };
   return g.LastSingleHitDamageShadow;
@@ -5051,6 +5023,9 @@ function maybeShadowSingleHitResolution(ctx, target, incomingDamage, beforeHP, a
         heroAoe: Number(meta.heroAoe || 0),
         chainActive: Number(meta.chainActive || 0),
         chainMultiplier: Number(meta.chainMultiplier || 1),
+        attackMultiplierPct: Number(meta.attackMultiplierPct ?? 100),
+        matchingResistancePct: Number(meta.matchingResistancePct || 0),
+        generalResistancePct: Number(meta.generalResistancePct || 0),
         targetHp: Number(beforeHP || 0),
         shield: Number(shieldAbsorbed || 0),
         jsDamage,
@@ -5089,6 +5064,9 @@ function maybeResolveSingleHitOwner(ctx, target, beforeHP, shieldBefore, jsDamag
       heroAoe: Number(meta.heroAoe || 0),
       chainActive: Number(meta.chainActive || 0),
       chainMultiplier: Number(meta.chainMultiplier || 1),
+      attackMultiplierPct: Number(meta.attackMultiplierPct ?? 100),
+      matchingResistancePct: Number(meta.matchingResistancePct || 0),
+      generalResistancePct: Number(meta.generalResistancePct || 0),
       targetHp: Number(beforeHP || 0),
       shield: Number(shieldBefore || 0),
       jsDamage: normalizedJsDamage,
@@ -5580,6 +5558,9 @@ function maybeResolveCalculateDamageOwner(ctx, payload) {
       heroAoe: Number(payload.heroAoe || 0),
       chainActive: Number(payload.chainActive || 0),
       chainMultiplier: Number(payload.chainMultiplier || 1),
+      attackMultiplierPct: Number(payload.attackMultiplierPct ?? 100),
+      matchingResistancePct: Number(payload.matchingResistancePct || 0),
+      generalResistancePct: Number(payload.generalResistancePct || 0),
       jsDamage: Number(result?.simulationCoreResponse?.diagnostics?.jsDamage ?? payload.jsDamage ?? 0),
       damage,
       result: String(result?.simulationCoreResponse?.result || ''),
@@ -5597,25 +5578,24 @@ function maybeResolveCalculateDamageOwner(ctx, payload) {
   }
 }
 
-export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
+export function CalculateDamage(ctx, attackerUID, targetUID, mode, attackMultiplierPct = 100) {
   const g = getGlobals(ctx);
   const atk = GetActorByUID(ctx, attackerUID);
   const tgt = GetActorByUID(ctx, targetUID);
-  if (!atk || !tgt) return 1;
+  if (!atk || !tgt) return 0;
 
   const isHeroAttacker = atk.kind === 'hero';
-  const isHeroDefender = tgt.kind === 'hero';
   const isMagic = mode === 'magic';
-  const power = isMagic
-    ? (isHeroAttacker ? GetEffectiveStat(ctx, atk, 'MAG') : GetEffectiveStat(ctx, atk, 'MAG'))
-    : (isHeroAttacker ? GetEffectiveStat(ctx, atk, 'ATK') : GetEffectiveStat(ctx, atk, 'ATK'));
-  const resist = isMagic
-    ? (isHeroDefender ? GetEffectiveStat(ctx, tgt, 'RES') : GetEffectiveStat(ctx, tgt, 'RES'))
-    : (isHeroDefender ? GetEffectiveStat(ctx, tgt, 'DEF') : GetEffectiveStat(ctx, tgt, 'DEF'));
+  const offenseStat = isHeroAttacker ? (atk.attackType === 'magic' ? 'MAG' : 'ATK') : (isMagic ? 'MAG' : 'ATK');
+  const power = GetEffectiveStat(ctx, atk, offenseStat);
+  const resist = GetEffectiveStat(ctx, tgt, isMagic ? 'RES' : 'DEF');
+  const matchingResistancePct = GetBaseStat(ctx, tgt, isMagic ? 'magicDamageResistancePct' : 'physicalDamageResistancePct');
+  const generalResistancePct = GetBaseStat(ctx, tgt, 'damageResistancePct');
   const roll01 = random01(ctx);
   const critRoll01 = random01(ctx);
   const chainActive = isHeroAttacker && g.ApplyChainToNextDamage === 1;
   const chainMultiplier = Number(g.ChainMultiplier || 1);
+  const damageModifiers = { attackMultiplierPct, matchingResistancePct, generalResistancePct };
   const jsDecision = resolveCalculateDamageFromJs({
     power,
     resist,
@@ -5625,6 +5605,7 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
     heroAoe: g.IsAOEMatch === 1 ? 1 : 0,
     chainActive: chainActive ? 1 : 0,
     chainMultiplier,
+    ...damageModifiers,
   });
   const baseDmg = Number(jsDecision.baseDamage || 0);
   let dmg = Number(jsDecision.damage || 0);
@@ -5646,6 +5627,7 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
     heroAoe: g.IsAOEMatch === 1 ? 1 : 0,
     chainActive: chainActive ? 1 : 0,
     chainMultiplier,
+    ...damageModifiers,
     jsDamage: Number(jsDecision.damage || 0),
   });
   if (owner) dmg = Number(owner.damage || 0);
@@ -5661,6 +5643,7 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
     heroAoe: g.IsAOEMatch === 1 ? 1 : 0,
     chainActive: chainActive ? 1 : 0,
     chainMultiplier,
+    ...damageModifiers,
     jsDamage: dmg,
   });
   console.log(
@@ -6307,10 +6290,15 @@ function resolveRunaMagicResistCompat(payload) {
 function pickEnemyTargetHero(ctx, enemyUID = 0) {
   const g = getGlobals(ctx);
   const enemy = GetActorByUID(ctx, enemyUID);
+  const heroes = getHeroes(ctx).filter(hero => {
+    if (Number(g.ContinuousCombatStageLoop || 0) !== 1) return true;
+    return enemy?.streamState === 'engaged'
+      && Number.isFinite(Number(enemy.x)) && Number(enemy.x) <= Number(enemy.streamEngageX ?? enemy.originX);
+  });
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
   const result = resolveEnemyTargetHero({
     enemy,
-    heroes: getHeroes(ctx),
+    heroes,
     rng: getRandomSource(ctx),
     ownerHook: root && typeof root.__ORKA_ENEMY_TARGET_OWNER__ === 'function'
       ? root.__ORKA_ENEMY_TARGET_OWNER__
@@ -6940,7 +6928,7 @@ function queuePartyChainStrikeBounce(ctx, {
   if (!sourceTarget || sourceTarget.kind !== 'enemy' || (allowed && !allowed.has(Number(sourceTarget.uid || 0)))) return false;
   const baseDamage = Math.max(0, Math.floor(Number(originalDamage || 0)));
   if (baseDamage <= 0) return false;
-  const bounceDamage = Math.max(1, Math.ceil(baseDamage * (activeTier.damagePct / 100)));
+  const bounceDamage = Math.max(0, Math.ceil(baseDamage * (activeTier.damagePct / 100)));
   const maxBounces = Math.max(1, Math.floor(Number(activeTier.maxBounces || 1)));
   const g = getGlobals(ctx);
   const now = Number(g.time || 0);
@@ -7066,7 +7054,7 @@ function HeroAttackSplit(ctx, heroUID, rootTargetUID) {
     if (consumed > 0) ampMult = consumed;
   }
   const enemies = getEnemies(ctx);
-  const totalDamage = ampMult > 0 ? Math.max(1, Math.ceil(rootDamage * ampMult)) : Math.max(1, rootDamage);
+  const totalDamage = ampMult > 0 ? Math.max(0, Math.ceil(rootDamage * ampMult)) : Math.max(0, rootDamage);
   const splitDamages = splitDamageAcrossLivingTargets(totalDamage, enemies.length);
   const damageByTargetUID = new Map();
   const now = g.time || 0;
@@ -7116,7 +7104,7 @@ function HeroAttackSplit(ctx, heroUID, rootTargetUID) {
   LogCombat(ctx, `${actorName} used Split on all enemies for ${totalDamage}!`);
 }
 
-export function HeroAttackSingle(ctx, heroUID, targetUID) {
+export function HeroAttackSingle(ctx, heroUID, targetUID, realtimeBasic = false) {
   const actorName = getActorNameByUID(ctx, heroUID);
   const target = GetActorByUID(ctx, targetUID);
   if (!target) {
@@ -7135,10 +7123,10 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
     const consumed = ConsumePowerAmpForActor(ctx, heroUID);
     if (consumed > 0) ampMult = consumed;
   }
-  const finalDmg = ampMult > 0 ? Math.max(1, Math.ceil(dmg * ampMult)) : Math.max(1, dmg);
+  const finalDmg = ampMult > 0 ? Math.max(0, Math.ceil(dmg * ampMult)) : Math.max(0, dmg);
   const g = getGlobals(ctx);
   const now = g.time || 0;
-  const hitDelay = Math.max(0.14 + 0.75 + 0.08, 0.97);
+  const hitDelay = realtimeBasic ? 0.52 : Math.max(0.14 + 0.75 + 0.08, 0.97);
   const applyAt = now + hitDelay;
   g.PendingHeroHits = g.PendingHeroHits || [];
   const redSkillConfig = ensureActorRedAttackSkillStore(g)[Number(heroUID || 0)] || null;
@@ -7156,7 +7144,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
       const base = Math.floor(totalBurstDamage / presentation.hitCount);
       let remainder = totalBurstDamage % presentation.hitCount;
       for (let hitIndex = 0; hitIndex < presentation.hitCount; hitIndex += 1) {
-        const shotDamage = Math.max(1, base + (remainder > 0 ? 1 : 0));
+        const shotDamage = Math.max(0, base + (remainder > 0 ? 1 : 0));
         if (remainder > 0) remainder -= 1;
         g.PendingHeroHits.push({
           at: applyAt + (hitIndex * presentation.intervalSec),
@@ -7227,7 +7215,7 @@ export function HeroAttackAOE(ctx, heroUID) {
   const hits = [];
   for (const e of enemies) {
     const dmg = CalculateDamage(ctx, heroUID, e.uid, mode);
-    const finalDmg = ampMult > 0 ? Math.max(1, Math.ceil(dmg * ampMult)) : dmg;
+    const finalDmg = ampMult > 0 ? Math.max(0, Math.ceil(dmg * ampMult)) : dmg;
     hits.push({ targetUID: e.uid, dmg, powerAmpMultiplier: ampMult, consumePowerAmp: 0, finalDmg });
     totalDamage += finalDmg;
   }
@@ -9254,9 +9242,17 @@ function resolveProcessTurnActorEligibility(ctx, {
 
 export function ProcessTurn(ctx) {
   const g = getGlobals(ctx);
-  if (Number(g.ContinuousCombatStageLoop || 0) === 1 && !getDynamicInitiativeDefaultCurrent(g)) {
-    const prediction = buildDynamicInitiativeDefaultSpeedSelection(ctx, { source: 'realtime_tick' });
-    if (!prediction || !applyDynamicInitiativeDefaultSelection(ctx, prediction)) return;
+  if (Number(g.ContinuousCombatStageLoop || 0) === 1) {
+    const state = syncDynamicInitiativeDefaultSession(ctx);
+    const current = getDynamicInitiativeDefaultCurrent(g);
+    const currentEnemy = current?.type === 1 ? GetActorByUID(ctx, current.uid) : null;
+    if (!currentEnemy || Number(currentEnemy.hp || 0) <= 0 || currentEnemy.streamState !== 'engaged'
+      || state.readyAt?.[String(current.uid)] !== Number.MAX_SAFE_INTEGER) {
+      state.current = null;
+      g.InitiativeCurrentUID = 0;
+      const prediction = buildDynamicInitiativeDefaultSpeedSelection(ctx, { source: 'realtime_tick' });
+      if (!prediction || !applyDynamicInitiativeDefaultSelection(ctx, prediction)) return;
+    }
   }
   const type = GetCurrentType(ctx);
   const uid = GetCurrentTurn(ctx);
@@ -9901,6 +9897,8 @@ export function StartEnemyAction(ctx, enemyUID) {
   const enemy = GetActorByUID(ctx, enemyUID);
   if (!enemy) return;
   if (g.ActionInProgress && g.ActionActorUID && g.ActionActorUID !== enemyUID) return;
+  const target = pickEnemyTargetHero(ctx, enemyUID);
+  if (!target) return;
   g.ActionInProgress = 1;
   g.ActionActorUID = enemyUID;
   g.ActionOwnerUID = Number(enemyUID || 0);
@@ -9908,7 +9906,6 @@ export function StartEnemyAction(ctx, enemyUID) {
   if (enemy.originY == null) enemy.originY = SlotY(ctx, enemy.slotIndex ?? 0);
   if (enemy.x == null) enemy.x = enemy.originX;
   if (enemy.y == null) enemy.y = enemy.originY;
-  const target = pickEnemyTargetHero(ctx, enemyUID);
   const targetUID = target ? target.uid : 0;
   const skillId = PickEnemySkill(ctx, enemyUID);
   const root = typeof globalThis !== 'undefined' ? globalThis : null;

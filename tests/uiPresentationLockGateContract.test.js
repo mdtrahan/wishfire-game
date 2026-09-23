@@ -43,7 +43,7 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
   }
   assert.match(gate, /heroCardHostPresent/);
   assert.match(gate, /actorHealthBars/);
-  assert.match(gate, /fillStyle\.toLowerCase\(\) === '#30343b'/);
+  assert.match(gate, /fillStyle\.toLowerCase\(\) === '#292e34'/);
 
   assert.match(gate, /\{ name: 'compact', width: 216, height: 384, dpr: 1 \}/);
   assert.match(gate, /\{ name: 'reference', width: 360, height: 640, dpr: 1 \}/);

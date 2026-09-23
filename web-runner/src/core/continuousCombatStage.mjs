@@ -1,7 +1,7 @@
 import { computeCombatPower } from './combatPower.mjs';
 import { deriveCombatArenaBounds, deriveCombatFormationAnchors } from '../../../src/core/combatOrientation.mjs';
 
-export const CONTINUOUS_COMBAT_PACK_INTERVAL_SEC = 10;
+export const CONTINUOUS_COMBAT_PACK_INTERVAL_SEC = 3;
 export const CONTINUOUS_COMBAT_PACK_CP_STEP = 0.06;
 export const CONTINUOUS_COMBAT_WAVES_PER_STAGE = 4;
 export const CONTINUOUS_COMBAT_STAGES_PER_REGION = 10;
@@ -31,6 +31,7 @@ export function createContinuousCombatStageState(seed = 1, { region = 1, stage =
     transitions: 0,
     clearedBosses: 0,
     nextEmissionAt: 0,
+    awaitingPackArrival: false,
     lastUpdatedAt: 0,
     spawnSerial: 0,
   };
@@ -85,7 +86,7 @@ export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1,
   const normalizedPackIndex = Math.max(0, Number(packIndex || 0));
   const boss = String(enemy.enemyRole || enemy.role || '').toLowerCase() === 'boss';
   const engageX = boss ? BOSS_HOME.x : delivery === 'melee'
-    ? geometry.bounds.meleeLeftEdgeX + (order >= 4 ? geometry.enemySize + 8 : 0)
+    ? geometry.bounds.meleeLeftEdgeX + (order >= 4 ? geometry.enemySize / 2 : 0)
     : rangedHomeX(geometry.bounds, normalizedPackIndex, order);
   const homeY = boss ? BOSS_HOME.y : geometry.y;
   Object.assign(enemy, {
@@ -120,6 +121,7 @@ export function finalizeContinuousCombatProduction(globals, entities = []) {
   }
   if (globals.ContinuousCombatStage) {
     globals.ContinuousCombatStage.nextEmissionAt = now + CONTINUOUS_COMBAT_PACK_INTERVAL_SEC;
+    globals.ContinuousCombatStage.awaitingPackArrival = true;
     globals.ContinuousCombatStage.lastUpdatedAt = now;
     globals.ContinuousCombatStage.spawnSerial = (entities || []).filter(actor => actor?.kind === 'enemy').length;
   }
@@ -189,6 +191,7 @@ export function resetContinuousCombatAfterDefeat(globals) {
     bossActive: false,
     transitions: Number(state.transitions || 0) + 1,
     nextEmissionAt: Number(globals.time || 0) + CONTINUOUS_COMBAT_PACK_INTERVAL_SEC,
+    awaitingPackArrival: false,
     lastUpdatedAt: Number(globals.time || 0),
   };
   return true;
@@ -265,16 +268,6 @@ export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase
   })).filter(entry => entry.row?.name && Number.isInteger(entry.slotIndex));
 }
 
-function restoreContinuousCombatHeroes(globals, entities, call) {
-  for (const hero of Array.isArray(entities) ? entities : []) {
-    if (hero?.kind !== 'hero') continue;
-    hero.hp = Number(hero.maxHP || hero.hp || 1);
-    hero.isAlive = true;
-    if (globals.PendingDeaths) delete globals.PendingDeaths[hero.uid];
-  }
-  call('UpdateHeroHPUI');
-}
-
 function spawnContinuousCombatStage({ globals, entities, call, state }) {
   const slotBase = Number(state.spawnSerial || 0);
   const plan = buildContinuousCombatSpawnPlan(globals.EnemyData, state, { slotBase });
@@ -282,6 +275,7 @@ function spawnContinuousCombatStage({ globals, entities, call, state }) {
   globals.ContinuousCombatStage = {
     ...state,
     nextEmissionAt: Number(globals.time || 0) + CONTINUOUS_COMBAT_PACK_INTERVAL_SEC,
+    awaitingPackArrival: true,
     lastUpdatedAt: Number(globals.time || 0),
     spawnSerial: slotBase + plan.length,
   };
@@ -313,7 +307,6 @@ function updateApproachingEnemies(globals, entities, now) {
   const dt = Math.max(0, Math.min(0.1, now - prior));
   if (state) state.lastUpdatedAt = now;
   let becameAvailable = 0;
-  const packsReached = new Set();
   for (const enemy of entities || []) {
     if (enemy?.kind !== 'enemy' || Number(enemy.hp || 0) <= 0 || !['approaching', 'in_range'].includes(enemy.streamState)) continue;
     if (now < Number(enemy.streamStartAt || 0)) continue;
@@ -335,15 +328,15 @@ function updateApproachingEnemies(globals, entities, now) {
     enemy.x = engageX;
     enemy.originX = engageX;
     enemy.streamState = 'engaged';
-    packsReached.add(Number(enemy.streamPackIndex || 0));
     becameAvailable += 1;
   }
-  for (const packIndex of packsReached) {
+  if (state?.awaitingPackArrival) {
     const packStillApproaching = (entities || []).some(enemy => enemy?.kind === 'enemy'
       && Number(enemy.hp || 0) > 0
-      && Number(enemy.streamPackIndex || 0) === packIndex
-      && enemy.streamState !== 'engaged');
-    if (!packStillApproaching && Number(state?.stageIndex || 0) === packIndex) {
+      && Number(enemy.streamPackIndex || 0) === Number(state.transitions || 0)
+      && enemy.streamState === 'approaching');
+    if (!packStillApproaching) {
+      state.awaitingPackArrival = false;
       state.nextEmissionAt = now + CONTINUOUS_COMBAT_PACK_INTERVAL_SEC;
     }
   }
@@ -358,7 +351,7 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   const newlyEngaged = updateApproachingEnemies(globals, entities, now);
   if (globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) call('TickRealtimeHeroBasics');
   if ((newlyEngaged > 0 || entities?.some(enemy => enemy?.kind === 'enemy' && Number(enemy.hp || 0) > 0 && enemy.streamState === 'engaged'))
-    && !globals.ActionInProgress && !globals.IsPlayerBusy && !globals.DeferAdvance
+    && !globals.ActionInProgress
     && globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) {
     globals.NativeBattleEnded = false;
     runCombatStep('ProcessTurn');
@@ -372,28 +365,25 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
     pendingDeaths: globals.EnemyDeathVisualHoldByUID || globals.PendingDeaths,
     presentationClear: presentationIsClear(globals, presentationBarrier),
   });
-  const timerReady = now >= Number(stageState.nextEmissionAt || 0);
+  const timerReady = !stageState.awaitingPackArrival && now >= Number(stageState.nextEmissionAt || 0);
   let transition = null;
 
   if (stageState.bossActive) {
     if (!clear) return false;
     call('SettleContinuousCombatRewards');
     transition = advanceContinuousCombatStage(stageState);
-    restoreContinuousCombatHeroes(globals, entities, call);
   } else if (stageState.bossAvailable && stageState.bossArmed) {
     if (!clear) return false;
     call('SettleContinuousCombatRewards');
     const state = { ...stageState, bossActive: true, transitions: Number(stageState.transitions || 0) + 1 };
     transition = { state, stage: getContinuousCombatStage(state) };
   } else if (Number(stageState.wave || 1) >= CONTINUOUS_COMBAT_WAVES_PER_STAGE) {
-    if (!clear) return false;
+    if (!clear || !timerReady) return false;
     call('SettleContinuousCombatRewards');
     transition = advanceContinuousCombatStage(stageState);
     if (transition.state.bossArmed) {
       transition.state = { ...transition.state, bossActive: true };
       transition.stage = getContinuousCombatStage(transition.state);
-    } else {
-      restoreContinuousCombatHeroes(globals, entities, call);
     }
   } else {
     if (!timerReady) return false;
