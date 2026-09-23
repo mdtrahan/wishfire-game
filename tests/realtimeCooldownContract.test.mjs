@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { collectRealtimeReadyActors, realtimeCooldownSeconds, selectRealtimeReadyActor } from '../web-runner/src/core/realtimeCooldown.mjs';
+import { collectRealtimeReadyActors, heroBasicAttackRate, realtimeCooldownSeconds, selectRealtimeReadyActor } from '../web-runner/src/core/realtimeCooldown.mjs';
 
 test('real-time cooldowns advance from wall time and only reset the actor that completed', () => {
   const actors = [
@@ -16,22 +16,47 @@ test('real-time cooldowns advance from wall time and only reset the actor that c
   const idle = selectRealtimeReadyActor({ actors, readyAt: first.readyAt, now: firstReadyAt + 0.1, completedUID: firstUID });
   assert.equal(idle.selected, null);
   assert.equal(idle.readyAt[String(firstUID)], firstReadyAt + 0.1 + realtimeCooldownSeconds(first.selected));
+  const otherUID = actors.find(actor => actor.uid !== firstUID).uid;
+  assert.equal(idle.readyAt[String(otherUID)], opening.readyAt[String(otherUID)]);
   const secondReadyAt = Math.min(...Object.values(idle.readyAt));
   const secondReady = selectRealtimeReadyActor({ actors, readyAt: idle.readyAt, now: secondReadyAt });
   assert.ok(secondReady.selected);
-  assert.notEqual(secondReady.selected.uid, firstUID);
 });
 
-test('hero basics start within a staggered 1.5-second window then use independent cooldowns', () => {
-  const actors = [8, 10, 11, 12].map((speed, index) => ({ uid: index + 1, type: 0, hp: 10, speed }));
-  assert.deepEqual(actors.map(realtimeCooldownSeconds), [0.6, 0.72, 0.78, 0.84]);
+test('hero and Pal speeds produce distinct basic rates with independent staggered clocks', () => {
+  const actors = ['Falie', 'Kojonn', 'Runa', 'Huun'].map((name, index) => ({ uid: index + 1, type: 0, hp: 10, name, speed: [8, 10, 11, 12][index] }));
+  const rates = actors.map(heroBasicAttackRate);
+  assert.ok(rates.every((rate, index) => index === 0 || rate > rates[index - 1]));
+  assert.ok(Math.abs(rates[0] - (30 / (0.99 * 32) + 0.60 * 1.45)) < 1e-12);
+  assert.ok(Math.abs(rates[3] - (30 / (0.99 * 22) + 1.00 * 1.45)) < 1e-12);
+  assert.ok(Math.abs(heroBasicAttackRate({ ...actors[0], palFlatSpeedBonus: 0.1 }) - rates[0] - 0.145) < 1e-12);
   const waiting = selectRealtimeReadyActor({ actors, now: 5, selectionEnabled: false });
   assert.equal(waiting.selected, null);
   const openingTimes = Object.values(waiting.readyAt);
   assert.ok(openingTimes.every((time, index) => time >= 5 + realtimeCooldownSeconds(actors[index]) && time < 6.5 + realtimeCooldownSeconds(actors[index])));
   assert.equal(new Set(openingTimes).size, 4);
   const released = collectRealtimeReadyActors({ actors, readyAt: waiting.readyAt, now: 7.5 });
-  assert.deepEqual(released.ready.map(actor => actor.uid), [1, 2, 3, 4]);
+  assert.equal(released.ready.length, 1);
+  assert.equal(released.ready[0].uid, actors[openingTimes.indexOf(Math.min(...openingTimes))].uid);
+});
+
+test('one hero fires per frame while all four retain their derived rates', () => {
+  const actors = ['Falie', 'Kojonn', 'Runa', 'Huun'].map((name, index) => ({ uid: index + 1, type: 0, hp: 10, name, speed: [8, 10, 11, 12][index] }));
+  let readyAt = {};
+  const shots = [0, 0, 0, 0];
+  for (let frame = 0; frame < 120 * 60; frame += 1) {
+    const now = frame / 60;
+    const result = collectRealtimeReadyActors({ actors, readyAt, now });
+    readyAt = result.readyAt;
+    assert.ok(result.ready.length <= 1);
+    for (const actor of result.ready) {
+      shots[actor.uid - 1] += 1;
+      const interval = realtimeCooldownSeconds(actor);
+      const due = readyAt[String(actor.uid)];
+      readyAt[String(actor.uid)] = due + (Math.floor(Math.max(0, now - due) / interval) + 1) * interval;
+    }
+  }
+  shots.forEach((count, index) => assert.ok(Math.abs(count - 120 * heroBasicAttackRate(actors[index])) < 5));
 });
 
 test('an engaged enemy attacks on arrival and waits for its own cooldown afterward', () => {

@@ -7186,7 +7186,8 @@ export function TickRealtimeHeroBasics(ctx) {
   const g = getGlobals(ctx);
   if (Number(g.ContinuousCombatStageLoop || 0) !== 1 || g.GamePhase !== 'RUNTIME' || g.BattleStartActive || g.NativeBattleEnded) return 0;
   const enemies = getEnemies(ctx).filter(enemy => Number(enemy?.hp || 0) > 0 && enemy.streamState !== 'approaching');
-  const heroes = getEntities(ctx).filter(hero => hero?.kind === 'hero' && Number(hero.hp || 0) > 0);
+  const heroes = getEntities(ctx).filter(hero => hero?.kind === 'hero' && Number(hero.hp || 0) > 0)
+    .map(hero => ({ ...hero, speed: GetEffectiveStat(ctx, hero, 'SPD') }));
   const readiness = collectRealtimeReadyActors({ actors: heroes, readyAt: g.RealtimeHeroBasicReadyAt, now: g.time, selectionEnabled: enemies.length > 0 });
   g.RealtimeHeroBasicReadyAt = readiness.readyAt;
   for (const hero of readiness.ready) {
@@ -7199,7 +7200,9 @@ export function TickRealtimeHeroBasics(ctx) {
       hit.suppressImpactVfx = 1;
       hit.retargetOnDeath = 1;
     }
-    g.RealtimeHeroBasicReadyAt[String(hero.uid)] = Number(g.time || 0) + realtimeCooldownSeconds(hero);
+    const interval = realtimeCooldownSeconds(hero);
+    const due = readiness.readyAt[String(hero.uid)];
+    g.RealtimeHeroBasicReadyAt[String(hero.uid)] = due + (Math.floor(Math.max(0, g.time - due) / interval) + 1) * interval;
   }
   return readiness.ready.length;
 }

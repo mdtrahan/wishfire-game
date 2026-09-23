@@ -21,7 +21,7 @@
 - New deterministic rule changes need focused contract tests and, when applicable, fixture rows.
 - `continuousCombatStage.mjs` owns the queryless production stage sequence, one off-stage X emitter, four hero-aligned enemy Y homes, and the independent hero-basic timer tick. Each region has ten stages; every stage loops four normal waves until its boss is armed and cleared. Low, mixed, and high CP pools emit five, four, and three enemies on a ten-second post-engagement cadence. The fifth enemy uses a separate X home when its Y lane repeats. Clear-field transitions wait for active attack presentation to finish.
 - Approaching enemies become hero-targetable at the shared arena attack line while continuing to walk, and join the enemy action scheduler only after reaching their melee or ranged home X. Enemy sprites draw from larger Y to smaller Y so the lower numeric Y appears in front.
-- Hero basics use independent 0.6-0.84 second clocks and may resolve together. Enemy actions retain their own cooldown scheduler.
+- Hero basics use each hero's effective SPD, a community-estimated main-character rate, and a fixed Pal-speed band to derive independent clocks. Fire at most one basic per frame while preserving each hero's due-time cadence. Enemy actions retain their own cooldown scheduler.
 - Marid, Djinn and Chimerilass use ranged homes. Every other enemy uses melee homes.
 - Armed bosses enter from off-stage and hold the combat-grid home at X 290, Y 290 before joining the enemy action scheduler.
 - Engaged enemy cooldowns keep ticking while hero basic projectiles are pending; their actions do not wait for the old presentation barrier.

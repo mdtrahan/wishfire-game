@@ -45,7 +45,7 @@
 - Full-recovery proof exercises both the app Town wrapper and Continue with zero through six loaded heroes, sparse slots, KO, stale UI health and retained encounter resources.
 - Self-heal checks must use differing actor and party maxima, actual groups 1–6, and KO/wrong-actor cases. Percentage recovery cannot grow with party size.
 
-- Continuous-production coverage proves deterministic stage order, concurrent per-hero basic readiness, enemy cooldown ownership and clean skill presentation barriers. Combat-card modules, assets, connectors and UI must remain absent. Production-party regressions must construct the configured canonical roster before testing UID and role attribution.
+- Continuous-production coverage proves deterministic stage order, independent per-hero basic rates with one firing event per frame, enemy cooldown ownership and clean skill presentation barriers. Combat-card modules, assets, connectors and UI must remain absent. Production-party regressions must construct the configured canonical roster before testing UID and role attribution.
 - Enemy-stream coverage fixes the single-X staggered emitter, bounded varied Y homes, Y-based sprite depth, ten-second post-engagement cadence, CP-based 5/4/3 pack sizing, shallow linear CP rise, survivor overlap, role-shaped attack motion and boss clear gate.
 
 - Migration coverage uses `combatRulesMigration`, `heroProgressionMigration` and `continuousCombatStageContract` for canonical effects, growth, infinite stage wrapping, and immediate no-reward enemy removal. VM function-bank harnesses must inject the real core/module imports.

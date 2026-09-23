@@ -1,8 +1,21 @@
 const finite = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 
+const palBaseSpeed = Object.freeze({ Cat: 0.75, Waterdrop: 0.60, Deer: 0.65, Snail: 0.60, PiyoBat: 0.90, Eclair: 1.00, SkullServant: 0.80 });
+const heroPal = Object.freeze({ Falie: 'Waterdrop', Kojonn: 'Deer', Runa: 'Cat', Huun: 'Eclair' });
+
+export function heroBasicAttackRate(actor) {
+  const speed = Math.max(0.01, finite(actor?.speed ?? actor?.spd ?? actor?.SPD ?? actor?.stats?.SPD, 8));
+  // The current roster's SPD 8-12 spans the estimated main-character S 1.0-1.5 band.
+  const mainSpeed = speed / 8;
+  const mainRate = 30 / (0.99 * (2 + Math.ceil(30 / mainSpeed)));
+  const palBase = palBaseSpeed[heroPal[actor?.baseHeroName || actor?.name]] || 0;
+  const palRate = Math.max(0, palBase + finite(actor?.palFlatSpeedBonus)) * 1.45 * Math.max(0, finite(actor?.palSpeedModifier, 1));
+  return mainRate + palRate;
+}
+
 export function realtimeCooldownSeconds(actor) {
   const speed = Math.max(1, finite(actor?.speed ?? actor?.spd ?? actor?.SPD, 1));
-  if (Number(actor?.type || 0) === 0) return (0.5 + Math.max(0, Math.min(1, (speed - 8) / 4)) * 0.2) * 1.2;
+  if (Number(actor?.type || 0) === 0) return 1 / heroBasicAttackRate(actor);
   return Math.max(1.6, Math.min(5, 32 / speed));
 }
 
@@ -32,6 +45,7 @@ export function selectRealtimeReadyActor({ actors = [], readyAt = {}, now = 0, c
 export function collectRealtimeReadyActors({ actors = [], readyAt = {}, now = 0, selectionEnabled = true } = {}) {
   if (!selectionEnabled) return { ready: [], readyAt: {} };
   const armed = selectRealtimeReadyActor({ actors, readyAt, now, selectionEnabled: false });
-  const ready = actors.filter(actor => Number(actor?.hp || 0) > 0 && armed.readyAt[String(actor.uid)] <= finite(now));
-  return { ready, readyAt: armed.readyAt };
+  const ready = actors.filter(actor => Number(actor?.hp || 0) > 0 && armed.readyAt[String(actor.uid)] <= finite(now))
+    .sort((a, b) => armed.readyAt[String(a.uid)] - armed.readyAt[String(b.uid)] || Number(a.uid) - Number(b.uid));
+  return { ready: ready.slice(0, 1), readyAt: armed.readyAt };
 }
