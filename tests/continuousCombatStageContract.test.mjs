@@ -313,6 +313,7 @@ test('heroes can target an approaching enemy after it crosses the cyan range lin
 test('queryless production marks the initial pack as approaching and disables AF', () => {
   const globals = { EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 }, EnemySize: 40 };
   assert.equal(configureContinuousCombatProduction(globals, { productionPath: true }), true);
+  assert.equal(globals.RealtimeHeroFocusTargetUID, 0);
   const entities = [
     { kind: 'hero', uid: 1, flow: 100, flowReady: true },
     { kind: 'enemy', uid: 2, hp: 20, slotIndex: 1 },

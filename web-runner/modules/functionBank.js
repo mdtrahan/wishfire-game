@@ -7186,15 +7186,15 @@ export function TickRealtimeHeroBasics(ctx) {
   const g = getGlobals(ctx);
   if (Number(g.ContinuousCombatStageLoop || 0) !== 1 || g.GamePhase !== 'RUNTIME' || g.BattleStartActive || g.NativeBattleEnded) return 0;
   const enemies = getEnemies(ctx).filter(enemy => Number(enemy?.hp || 0) > 0 && enemy.streamState !== 'approaching');
+  const focusTarget = resolveHeroAttackTarget({ enemies, focusUID: Number(g.RealtimeHeroFocusTargetUID || 0) });
+  g.RealtimeHeroFocusTargetUID = Number(focusTarget?.uid || 0);
   const heroes = getEntities(ctx).filter(hero => hero?.kind === 'hero' && Number(hero.hp || 0) > 0)
     .map(hero => ({ ...hero, speed: GetEffectiveStat(ctx, hero, 'SPD') }));
-  const readiness = collectRealtimeReadyActors({ actors: heroes, readyAt: g.RealtimeHeroBasicReadyAt, now: g.time, selectionEnabled: enemies.length > 0 });
+  const readiness = collectRealtimeReadyActors({ actors: heroes, readyAt: g.RealtimeHeroBasicReadyAt, now: g.time, selectionEnabled: !!focusTarget });
   g.RealtimeHeroBasicReadyAt = readiness.readyAt;
   for (const hero of readiness.ready) {
-    const target = resolveHeroAttackTarget({ hero, enemies, randomPick: candidates => randomPick(ctx, candidates) });
-    if (!target) continue;
     const before = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits.length : 0;
-    HeroAttackSingle(ctx, hero.uid, target.uid);
+    HeroAttackSingle(ctx, hero.uid, focusTarget.uid);
     for (const hit of (g.PendingHeroHits || []).slice(before)) {
       hit.realtimeBasic = 1;
       hit.suppressImpactVfx = 1;

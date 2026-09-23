@@ -43,6 +43,7 @@ export function configureContinuousCombatProduction(globals, { productionPath = 
   globals.EncounterPolicy = 'fodder_only';
   globals.EncounterMaxSlots = 5;
   globals.ContinuousCombatStageComplete = 0;
+  globals.RealtimeHeroFocusTargetUID = 0;
   globals.ContinuousCombatStage = createContinuousCombatStageState(globals.EncounterSeed || 1);
   return true;
 }
