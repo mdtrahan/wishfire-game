@@ -1,6 +1,6 @@
 # Tests DOX
 
-- `storageHygieneContract.test.mjs` must cover default detached refusal and the opt-in historical path's ancestry, cleanliness, protected-local, Dolt, and exact-target guards before worktree retirement.
+- `storageHygieneContract.test.mjs` must cover default detached and unmerged refusal, the opt-in historical path's ancestry and local guards, and opt-in superseded-ancestor refusal for missing successor ancestry, non-CLOSED Beads, dirty source, Dolt, or protected evidence.
 
 ## Purpose
 - Own regression contracts, ownership-boundary proofs, fixture parity, and targeted runtime behavior tests.
