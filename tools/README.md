@@ -1,5 +1,11 @@
 Legacy C3 conversion tooling retired.
 
+## Storage hygiene
+
+- `npm run storage:audit` reads Git worktrees, Bead status, and directory sizes. It reports gross ecosystem and generated-directory sizes without modifying data.
+- `npm run storage:clean -- --worktree /absolute/registered/path` validates one lane and prints a dry run. Add `--apply` to remove that worktree through Git without `--force`; the branch remains.
+- Removal requires a present, clean, merged worktree tied to a CLOSED Bead. Ignored files are allowed only under `node_modules`, `dist`, `dist-offline`, the Rust target, Serena cache, or `tools/__pycache__`; evidence and other ignored files block removal. `BD_BIN` can select a compatible Beads CLI. Unreadable Beads state or an ignored-file scan failure refuses removal.
+
 Construct 3 JSON artifacts and converter script were removed from the repository on 2026-02-24.
 Runtime authority is the current hand-authored code in `Scripts/` and `web-runner/`.
 

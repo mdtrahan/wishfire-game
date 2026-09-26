@@ -104,6 +104,8 @@ Report conflict class separately from state: `none`, `Metadata Conflict`, `Mecha
 ## Merge And Cleanup
 - Only Integration Ready beads may be merged.
 - Use `$bead-worktree-lifecycle` for QA PASS cleanup, safe merge, worktree removal, and merged branch deletion.
+- At closeout, run `npm run storage:audit`. A CLOSED Bead with a clean worktree whose commit is on `main` is a retirement candidate; remove its worktree through the approved lifecycle after reviewing ignored evidence. Its branch may remain.
+- `npm run storage:clean -- --worktree <absolute-path>` prints a guarded dry run; add `--apply` only for an explicitly approved lane. Dirty, unmerged, OPEN/unknown, detached, missing, main, and worktrees with protected ignored files are protected. Branches remain.
 - Never merge without validation, current Integration Ready evidence, and a rollback checkpoint.
 - Never remove a worktree unless it is clean and its branch has been merged.
 - Never delete a branch unless its tip is reachable from `main`.
