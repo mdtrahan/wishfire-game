@@ -4,7 +4,8 @@ Legacy C3 conversion tooling retired.
 
 - `npm run storage:audit` reads Git worktrees, Bead status, and directory sizes. It reports gross ecosystem and generated-directory sizes without modifying data.
 - `npm run storage:clean -- --worktree /absolute/registered/path` validates one lane and prints a dry run. Add `--apply` to remove that worktree through Git without `--force`; the branch remains.
-- Removal requires a present, clean, merged worktree tied to a CLOSED Bead. Ignored files are allowed only under `node_modules`, `dist`, `dist-offline`, the Rust target, Serena cache, or `tools/__pycache__`; evidence and other ignored files block removal. `BD_BIN` can select a compatible Beads CLI. Unreadable Beads state or an ignored-file scan failure refuses removal.
+- Removal requires a present, clean, merged worktree tied to a CLOSED Bead. Apply discards only ignored files under `node_modules`, `dist`, `dist-offline`, the Rust target, Serena cache, or `tools/__pycache__`, plus ignored `.beads/.local_version`, `.beads/last-touched`, and `web-runner/runtime-fingerprint.js`. Tracked files such as `node_modules/.package-lock.json` stay intact until ordinary Git worktree removal. Apply rescans before removal. Commit-check records, QA evidence, Dolt state, backups, output, and every unknown ignored file block removal until separately preserved or resolved. `BD_BIN` can select a compatible Beads CLI. Unreadable Beads state or an ignored-file scan failure refuses removal.
+- A unique `.beads/commit-check/<bd-id>.json` stays protected until its exact bytes are archived as a Git note on the merged commit in `refs/notes/orka-commit-check` and its SHA-256 is verified. Preserve and explicitly transport that notes ref for future records; ordinary branch syncing does not include it.
 
 Construct 3 JSON artifacts and converter script were removed from the repository on 2026-02-24.
 Runtime authority is the current hand-authored code in `Scripts/` and `web-runner/`.

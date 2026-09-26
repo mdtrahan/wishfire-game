@@ -9,12 +9,15 @@ const generated = [
   '.beads/backup', 'web-runner/assets', 'test-results', 'output',
   'dist', 'dist-offline', 'rust/simulation_core/target', 'node_modules', '.serena/cache', 'tools/__pycache__',
 ];
-const regeneratable = new Set([
+const regeneratableDirs = [
   'dist', 'dist-offline', 'rust/simulation_core/target', 'node_modules', '.serena/cache', 'tools/__pycache__',
-]);
+];
+const regeneratableFiles = ['.beads/.local_version', '.beads/last-touched', 'web-runner/runtime-fingerprint.js'];
+const regeneratable = new Set([...regeneratableDirs, ...regeneratableFiles]);
 
 function protectedIgnored(paths = []) {
-  return paths.filter(target => ![...regeneratable].some(name => target === name || target.startsWith(`${name}/`)));
+  return paths.filter(target => !regeneratableFiles.includes(target) &&
+    !regeneratableDirs.some(name => target === name || target.startsWith(`${name}/`)));
 }
 
 function run(command, args, cwd) {
@@ -112,9 +115,9 @@ function classify(entries, root, main) {
   for (const state of states) {
     state.beadStatus = statuses.get(state.beadId);
     if (retirementReason(state)) continue;
-    const ignored = git(state.path, 'status', '--porcelain=v1', '--ignored', '--untracked-files=normal');
+    const ignored = git(state.path, 'status', '--porcelain=v1', '-z', '--ignored', '--untracked-files=all');
     if (ignored.status !== 0) state.error = ignored.stderr.trim() || 'ignored-file scan failed';
-    else state.ignored = ignored.stdout.split('\n').filter(line => line.startsWith('!! ')).map(line => line.slice(3));
+    else state.ignored = ignored.stdout.split('\0').filter(line => line.startsWith('!! ')).map(line => line.slice(3));
   }
   return states;
 }
@@ -162,14 +165,32 @@ function clean(root, entries, main, args) {
   const state = classify([entry], root, main)[0];
   const reason = retirementReason(state);
   if (reason) throw new Error(`REFUSED: ${target}: ${reason}; no data was removed`);
+  const disposable = state.ignored;
+  const tracked = required(git(target, 'ls-files', '-z'), 'tracked-file scan').split('\0').filter(Boolean);
+  const realTarget = fs.realpathSync(target);
+  for (const name of disposable) {
+    const parent = path.dirname(name);
+    if (fs.realpathSync(path.join(target, parent)) !== path.join(realTarget, parent))
+      throw new Error(`REFUSED: ${target}: symlinked parent of ${name}; no data was removed`);
+    if (tracked.some(file => file === name || file.startsWith(`${name.replace(/\/$/, '')}/`)))
+      throw new Error(`REFUSED: ${target}: tracked files under ${name}; no data was removed`);
+    if (!fs.lstatSync(path.join(target, name), { throwIfNoEntry: false }))
+      throw new Error(`REFUSED: ${target}: ignored path disappeared (${name}); no data was removed`);
+  }
   if (apply) {
     const before = sizeKiB(target);
+    for (const name of disposable) fs.rmSync(path.join(target, name), { recursive: true });
+    const remaining = classify([entry], root, main)[0];
+    const remainingReason = retirementReason(remaining);
+    if (remainingReason || remaining.ignored.length)
+      throw new Error(`REFUSED: ${target}: ${remainingReason || 'ignored files remain'}; worktree was preserved`);
     required(git(root, 'worktree', 'remove', target), `remove ${target}`);
     console.log(`REMOVED: ${target} (${size(before)} measured before removal). Branch ${state.branch} remains.`);
     return;
   }
   console.log(`DRY RUN: ${target} is CLOSED, merged, and clean (${size(sizeKiB(target))}).`);
-  console.log(`Branch ${state.branch} would remain. Only approved regeneratable ignored files may be removed.`);
+  console.log(`Regeneratable ignored paths to discard: ${disposable.length} (${disposable.slice(0, 5).join(', ')}${disposable.length > 5 ? ', ...' : ''}).`);
+  console.log(`Branch ${state.branch} would remain.`);
   console.log('No worktree, file, branch, backup, or Git history was changed.');
 }
 

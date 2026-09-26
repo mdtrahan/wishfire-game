@@ -16,7 +16,7 @@
 - Hot-file, cleanup, archive, and Beads/Git visibility helpers support repo workflow.
 
 ## Local Contracts
-- `storage_hygiene.mjs` audits read-only. Its cleanup command defaults to dry-run and must fail closed on unreadable Beads state, dirty, unmerged, OPEN/unknown, detached, missing, main, or protected ignored-file worktrees. Apply uses Git worktree removal without force and retains branches.
+- `storage_hygiene.mjs` audits read-only. Its cleanup command defaults to dry-run and must fail closed on unreadable Beads state, dirty, unmerged, OPEN/unknown, detached, missing, main, or protected ignored-file worktrees. Apply removes only the explicit regeneratable path allowlist, rescans the lane, then uses Git worktree removal without force and retains branches. Commit-check records, QA evidence, Dolt state, backups, output, and unknown paths stay protected until separately preserved or resolved.
 - Do not create a second batch game-test pipeline beside `npm run balance-harness` without explicit scope.
 - Keep `npm run test:ui-lock` presentation-only. It may arrange deterministic test state through `window.__codexGame`; it must not become a balance or gameplay simulation harness.
 - UI lock failures must name the viewport, invariant, measured value, allowed range, and JSON report path.
