@@ -1,6 +1,7 @@
 # Tests DOX
 
 - `storageHygieneContract.test.mjs` must cover default detached and unmerged refusal, the opt-in historical path's ancestry and local guards, and opt-in superseded-ancestor refusal for missing successor ancestry, non-CLOSED Beads, dirty source, Dolt, or protected evidence.
+- General `--historical` coverage must prove unmerged branches with durable refs can retire while dirty source, unknown evidence, Dolt, main, and detached HEADs without a local ref refuse.
 
 ## Purpose
 - Own regression contracts, ownership-boundary proofs, fixture parity, and targeted runtime behavior tests.

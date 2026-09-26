@@ -51,18 +51,19 @@ export function beadId(branch) {
   return /^refs\/heads\/(?:bead|codex)\/(ORKA-[a-z0-9]+(?:\.\d+)?)(?:-|$)/.exec(branch || '')?.[1];
 }
 
-export function retirementReason(state, { historicalDetached = false, supersededAncestor = false } = {}) {
+export function retirementReason(state, { historicalDetached = false, supersededAncestor = false, historical = false } = {}) {
   if (state.prunable || !state.exists || state.error) return 'missing or unreadable worktree';
   if (state.path === state.root || state.branch === 'refs/heads/main') return 'main worktree';
-  if (historicalDetached ? !state.detached || state.branch : !state.branch || state.detached)
+  if (historical ? !state.branch && !state.detached : historicalDetached ? !state.detached || state.branch : !state.branch || state.detached)
     return historicalDetached ? 'not a detached worktree' : 'detached worktree';
   if (state.dirty) return 'dirty worktree';
-  if (!state.merged && !supersededAncestor) return 'unmerged commit';
+  if (!state.merged && !supersededAncestor && !historical) return 'unmerged commit';
   if (supersededAncestor && !state.successorContains) return 'target HEAD is not an ancestor of successor HEAD';
-  if (historicalDetached || supersededAncestor) {
+  if (historical && !state.durableRef) return 'HEAD lacks a durable local branch or tag';
+  if (historicalDetached || supersededAncestor || historical) {
     if (state.dolt) return 'lane-local Dolt state';
   }
-  if (!historicalDetached) {
+  if (!historicalDetached && !historical) {
     if (!state.beadId) return 'unknown Bead identity';
     if (state.beadStatus !== 'closed') return `${state.beadStatus || 'unknown'} Bead status`;
   }
@@ -106,6 +107,15 @@ function inspect(entry, root, main, options = {}) {
   state.dirty = status.stdout.length > 0;
   state.dolt = Boolean(fs.lstatSync(path.join(target, '.beads/dolt'), { throwIfNoEntry: false }));
   state.merged = git(root, 'merge-base', '--is-ancestor', head.stdout.trim(), main).status === 0;
+  if (options.historical) {
+    if (state.branch) {
+      const ref = git(root, 'rev-parse', '--verify', state.branch);
+      state.durableRef = ref.status === 0 && ref.stdout.trim() === head.stdout.trim();
+    } else if (state.detached) {
+      const refs = git(root, 'for-each-ref', '--contains', head.stdout.trim(), '--format=%(refname)', 'refs/heads', 'refs/tags');
+      state.durableRef = refs.status === 0 && Boolean(refs.stdout.trim());
+    }
+  }
   if (options.supersededAncestor)
     state.successorContains = git(root, 'merge-base', '--is-ancestor', head.stdout.trim(), options.successorHead).status === 0;
   return state;
@@ -125,7 +135,7 @@ function beadStatuses(ids, root) {
 
 function classify(entries, root, main, options = {}) {
   const states = entries.map(entry => inspect(entry, root, main, options));
-  const ids = [...new Set(states.filter(state => state.beadId && !state.dirty && (state.merged || options.supersededAncestor)).map(state => state.beadId))];
+  const ids = options.historical ? [] : [...new Set(states.filter(state => state.beadId && !state.dirty && (state.merged || options.supersededAncestor)).map(state => state.beadId))];
   const statuses = beadStatuses(ids, root);
   for (const state of states) {
     state.beadStatus = statuses.get(state.beadId);
@@ -174,15 +184,17 @@ function clean(root, entries, main, args) {
   const flags = args.slice(2);
   const apply = flags.includes('--apply');
   const historicalDetached = flags.includes('--historical-detached');
+  const historical = flags.includes('--historical');
   const successorFlag = flags.indexOf('--superseded-by');
   const supersededAncestor = successorFlag >= 0;
   const successorPath = supersededAncestor ? flags[successorFlag + 1] : null;
   if (args[0] !== '--worktree' || !args[1] || !path.isAbsolute(args[1]) ||
+      (historical && (historicalDetached || supersededAncestor)) ||
       (supersededAncestor && (!successorPath || !path.isAbsolute(successorPath) || historicalDetached)) ||
-      flags.length !== Number(apply) + Number(historicalDetached) + (supersededAncestor ? 2 : 0) ||
+      flags.length !== Number(apply) + Number(historicalDetached) + Number(historical) + (supersededAncestor ? 2 : 0) ||
       flags.some((flag, index) => flag !== '--apply' && flag !== '--historical-detached' &&
-        flag !== '--superseded-by' && index !== successorFlag + 1))
-    throw new Error('REFUSED: specify one exact registered absolute path with --worktree [--historical-detached | --superseded-by <registered-successor-path>] [--apply]');
+        flag !== '--historical' && flag !== '--superseded-by' && index !== successorFlag + 1))
+    throw new Error('REFUSED: specify one exact registered absolute path with --worktree [--historical | --historical-detached | --superseded-by <registered-successor-path>] [--apply]');
   const target = path.resolve(args[1]);
   const entry = entries.find(item => item.worktree === target);
   if (!entry) throw new Error(`REFUSED: unregistered worktree ${target}`);
@@ -192,7 +204,7 @@ function clean(root, entries, main, args) {
   const successorHead = supersededAncestor && required(git(successor.worktree, 'rev-parse', 'HEAD'), 'successor HEAD');
   if (supersededAncestor && successorHead !== successor.HEAD)
     throw new Error('REFUSED: successor HEAD changed or could not be verified');
-  const options = { historicalDetached, supersededAncestor, successorHead };
+  const options = { historicalDetached, supersededAncestor, successorHead, historical };
   const state = classify([entry], root, main, options)[0];
   const reason = retirementReason(state, options);
   if (reason) throw new Error(`REFUSED: ${target}: ${reason}; no data was removed`);
@@ -223,12 +235,12 @@ function clean(root, entries, main, args) {
     if (remainingReason || remaining.ignored.length)
       throw new Error(`REFUSED: ${target}: ${remainingReason || 'ignored files remain'}; worktree was preserved`);
     required(git(root, 'worktree', 'remove', target), `remove ${target}`);
-    console.log(`REMOVED: ${target} (${size(before)} measured before removal).${historicalDetached ? ' Detached commit remains on main.' : ` Branch ${state.branch} remains.`}`);
+    console.log(`REMOVED: ${target} (${size(before)} measured before removal).${historicalDetached ? ' Detached commit remains on main.' : historical && state.detached ? ' Detached commit remains reachable through a local branch or tag.' : ` Branch ${state.branch} remains.`}`);
     return;
   }
-  console.log(`DRY RUN: ${target} is ${historicalDetached ? 'detached with HEAD on main' : supersededAncestor ? 'CLOSED with HEAD on registered successor' : 'CLOSED and merged'}, and clean (${size(sizeKiB(target))}).`);
+  console.log(`DRY RUN: ${target} is ${historical ? 'historical with HEAD held by a local ref' : historicalDetached ? 'detached with HEAD on main' : supersededAncestor ? 'CLOSED with HEAD on registered successor' : 'CLOSED and merged'}, and clean (${size(sizeKiB(target))}).`);
   console.log(`Regeneratable ignored paths to discard: ${disposable.length} (${disposable.slice(0, 5).join(', ')}${disposable.length > 5 ? ', ...' : ''}).`);
-  console.log(historicalDetached ? 'Detached commit is retained on main.' : `Branch ${state.branch} would remain.`);
+  console.log(historicalDetached ? 'Detached commit is retained on main.' : historical && state.detached ? 'Detached commit remains reachable through a local branch or tag.' : `Branch ${state.branch} would remain.`);
   console.log('No worktree, file, branch, backup, or Git history was changed.');
 }
 

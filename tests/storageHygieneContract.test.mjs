@@ -241,3 +241,70 @@ test('superseded ancestor mode requires a CLOSED clean lane and exact registered
     fs.rmSync(temp, { recursive: true, force: true });
   }
 });
+
+test('historical mode retires only clean checkouts whose HEAD stays reachable by a local ref', () => {
+  const temp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'orka-historical-')));
+  const lane = path.join(temp, 'old-branch');
+  const snapshot = path.join(temp, 'snapshot');
+  const tool = fileURLToPath(new URL('../tools/storage_hygiene.mjs', import.meta.url));
+  const git = (...args) => {
+    const result = spawnSync('git', args, { cwd: temp, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+  };
+  const clean = (target, flags = []) => spawnSync(process.execPath,
+    [tool, 'clean', '--worktree', target, '--historical', ...flags], { cwd: temp, encoding: 'utf8' });
+  const refused = (target, pattern, flags = ['--apply']) => {
+    const result = clean(target, flags);
+    assert.equal(result.status, 2, result.stdout + result.stderr);
+    assert.match(result.stderr, pattern);
+    assert.equal(fs.existsSync(target), true);
+  };
+  try {
+    git('init', '-b', 'main');
+    fs.writeFileSync(path.join(temp, '.gitignore'), '.beads/.local_version\n.beads/dolt/\ntest-results/\n');
+    git('add', '.gitignore');
+    git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'base');
+    git('worktree', 'add', '-b', 'history/old-direction', lane, 'main');
+    fs.writeFileSync(path.join(lane, 'feature.txt'), 'historical source');
+    git('-C', lane, 'add', 'feature.txt');
+    git('-C', lane, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'unmerged work');
+    const original = spawnSync(process.execPath, [tool, 'clean', '--worktree', lane], { cwd: temp, encoding: 'utf8' });
+    assert.match(original.stderr, /unmerged commit/);
+    refused(temp, /main worktree/);
+    refused(lane, /specify one exact registered absolute path/, ['--worktree', snapshot]);
+    assert.match(clean(path.join(temp, 'missing')).stderr, /unregistered worktree/);
+    fs.appendFileSync(path.join(lane, 'feature.txt'), 'dirty');
+    refused(lane, /dirty worktree/);
+    git('-C', lane, 'restore', 'feature.txt');
+    fs.writeFileSync(path.join(lane, 'unique.txt'), 'keep');
+    refused(lane, /dirty worktree/);
+    fs.rmSync(path.join(lane, 'unique.txt'));
+    fs.mkdirSync(path.join(lane, 'test-results'), { recursive: true });
+    fs.writeFileSync(path.join(lane, 'test-results/proof.json'), '{}');
+    refused(lane, /protected ignored files present/);
+    fs.rmSync(path.join(lane, 'test-results'), { recursive: true });
+    fs.mkdirSync(path.join(lane, '.beads/dolt'), { recursive: true });
+    refused(lane, /lane-local Dolt state/);
+    fs.rmdirSync(path.join(lane, '.beads/dolt'));
+    fs.writeFileSync(path.join(lane, '.beads/.local_version'), 'runtime');
+    assert.match(clean(lane).stdout, /historical with HEAD held by a local ref/);
+    assert.equal(clean(lane, ['--apply']).status, 0);
+    assert.equal(fs.existsSync(lane), false);
+    assert.match(spawnSync('git', ['branch', '--list', 'history/old-direction'], { cwd: temp, encoding: 'utf8' }).stdout, /history\/old-direction/);
+
+    git('worktree', 'add', '--detach', snapshot, 'main');
+    fs.writeFileSync(path.join(snapshot, 'snapshot.txt'), 'unique commit');
+    git('-C', snapshot, 'add', 'snapshot.txt');
+    git('-C', snapshot, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'unreferenced snapshot');
+    refused(snapshot, /HEAD lacks a durable local branch or tag/);
+    git('tag', 'history/snapshot', 'HEAD');
+    // The tag above points to main; the detached snapshot still lacks a ref.
+    refused(snapshot, /HEAD lacks a durable local branch or tag/);
+    git('tag', 'history/unique-snapshot', spawnSync('git', ['-C', snapshot, 'rev-parse', 'HEAD'], { cwd: temp, encoding: 'utf8' }).stdout.trim());
+    assert.match(clean(snapshot).stdout, /historical with HEAD held by a local ref/);
+    assert.equal(clean(snapshot, ['--apply']).status, 0);
+    assert.equal(fs.existsSync(snapshot), false);
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
+});

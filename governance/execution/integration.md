@@ -106,8 +106,9 @@ Report conflict class separately from state: `none`, `Metadata Conflict`, `Mecha
 - Use `$bead-worktree-lifecycle` for QA PASS cleanup, safe merge, worktree removal, and merged branch deletion.
 - At closeout, run `npm run storage:audit`. A CLOSED Bead with a clean worktree whose commit is on `main` is a retirement candidate; remove its worktree through the approved lifecycle after reviewing ignored evidence. Its branch may remain.
 - `npm run storage:clean -- --worktree <absolute-path>` prints a guarded dry run; add `--apply` only for an explicitly approved lane. Dirty, unmerged, OPEN/unknown, missing, main, and worktrees with protected ignored files are protected. Detached worktrees require the opt-in `--historical-detached` flag plus exact HEAD ancestry on main and no lane-local Dolt state; without it, they remain protected. The opt-in `--superseded-by <registered-successor-path>` mode requires a CLOSED clean branch, exact HEAD ancestry in the live successor, and no protected local material or Dolt state. Patch equivalence cannot qualify. Branches remain.
+- Historical checkout retirement uses explicit `--historical` on one registered path. A clean checkout may be retired when its HEAD remains reachable through a local branch or tag, no live work depends on the checkout, and no Dolt or protected local data remains. Merge, patch equivalence, and Bead status are not retirement prerequisites in this mode; unknown local material still blocks. Keep every historical ref.
 - Never merge without validation, current Integration Ready evidence, and a rollback checkpoint.
-- Never remove a worktree unless it is clean and its branch has been merged.
+- Never remove a dirty worktree. An unmerged historical branch may lose its working copy only through the guarded historical mode while its Git ref remains.
 - Never delete a branch unless its tip is reachable from `main`.
 - After merge, verify the feature exists on `main`, branch containment, clean repo state, smoke tests, and workflow metadata or audit record.
 
