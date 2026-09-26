@@ -51,14 +51,19 @@ export function beadId(branch) {
   return /^refs\/heads\/(?:bead|codex)\/(ORKA-[a-z0-9]+(?:\.\d+)?)(?:-|$)/.exec(branch || '')?.[1];
 }
 
-export function retirementReason(state) {
+export function retirementReason(state, { historicalDetached = false } = {}) {
   if (state.prunable || !state.exists || state.error) return 'missing or unreadable worktree';
   if (state.path === state.root || state.branch === 'refs/heads/main') return 'main worktree';
-  if (!state.branch || state.detached) return 'detached worktree';
+  if (historicalDetached ? !state.detached || state.branch : !state.branch || state.detached)
+    return historicalDetached ? 'not a detached worktree' : 'detached worktree';
   if (state.dirty) return 'dirty worktree';
   if (!state.merged) return 'unmerged commit';
-  if (!state.beadId) return 'unknown Bead identity';
-  if (state.beadStatus !== 'closed') return `${state.beadStatus || 'unknown'} Bead status`;
+  if (historicalDetached) {
+    if (state.dolt) return 'lane-local Dolt state';
+  } else {
+    if (!state.beadId) return 'unknown Bead identity';
+    if (state.beadStatus !== 'closed') return `${state.beadStatus || 'unknown'} Bead status`;
+  }
   const protectedPaths = protectedIgnored(state.ignored);
   if (protectedPaths.length) return `protected ignored files present (${protectedPaths.slice(0, 3).join(', ')})`;
   return null;
@@ -91,8 +96,14 @@ function inspect(entry, root, main) {
   if (!state.exists || state.prunable) return state;
   const status = git(target, 'status', '--porcelain=v1', '-z', '--untracked-files=normal');
   if (status.status !== 0) { state.error = status.stderr.trim(); return state; }
+  const head = git(target, 'rev-parse', 'HEAD');
+  if (head.status !== 0 || head.stdout.trim() !== entry.HEAD) {
+    state.error = 'HEAD changed or could not be verified';
+    return state;
+  }
   state.dirty = status.stdout.length > 0;
-  state.merged = git(root, 'merge-base', '--is-ancestor', entry.HEAD, main).status === 0;
+  state.dolt = Boolean(fs.lstatSync(path.join(target, '.beads/dolt'), { throwIfNoEntry: false }));
+  state.merged = git(root, 'merge-base', '--is-ancestor', head.stdout.trim(), main).status === 0;
   return state;
 }
 
@@ -108,13 +119,13 @@ function beadStatuses(ids, root) {
   }
 }
 
-function classify(entries, root, main) {
+function classify(entries, root, main, options = {}) {
   const states = entries.map(entry => inspect(entry, root, main));
   const ids = [...new Set(states.filter(state => state.beadId && !state.dirty && state.merged).map(state => state.beadId))];
   const statuses = beadStatuses(ids, root);
   for (const state of states) {
     state.beadStatus = statuses.get(state.beadId);
-    if (retirementReason(state)) continue;
+    if (retirementReason(state, options)) continue;
     const ignored = git(state.path, 'status', '--porcelain=v1', '-z', '--ignored', '--untracked-files=all');
     if (ignored.status !== 0) state.error = ignored.stderr.trim() || 'ignored-file scan failed';
     else state.ignored = ignored.stdout.split('\0').filter(line => line.startsWith('!! ')).map(line => line.slice(3));
@@ -156,14 +167,19 @@ function audit(root, entries, states) {
 }
 
 function clean(root, entries, main, args) {
-  const apply = args[2] === '--apply';
-  if (args[0] !== '--worktree' || !args[1] || !path.isAbsolute(args[1]) || args.length !== (apply ? 3 : 2))
-    throw new Error('REFUSED: specify one exact registered absolute path with --worktree [--apply]');
+  const flags = args.slice(2);
+  const apply = flags.includes('--apply');
+  const historicalDetached = flags.includes('--historical-detached');
+  if (args[0] !== '--worktree' || !args[1] || !path.isAbsolute(args[1]) ||
+      flags.length !== Number(apply) + Number(historicalDetached) ||
+      flags.some(flag => flag !== '--apply' && flag !== '--historical-detached'))
+    throw new Error('REFUSED: specify one exact registered absolute path with --worktree [--historical-detached] [--apply]');
   const target = path.resolve(args[1]);
   const entry = entries.find(item => item.worktree === target);
   if (!entry) throw new Error(`REFUSED: unregistered worktree ${target}`);
-  const state = classify([entry], root, main)[0];
-  const reason = retirementReason(state);
+  const options = { historicalDetached };
+  const state = classify([entry], root, main, options)[0];
+  const reason = retirementReason(state, options);
   if (reason) throw new Error(`REFUSED: ${target}: ${reason}; no data was removed`);
   const disposable = state.ignored;
   const tracked = required(git(target, 'ls-files', '-z'), 'tracked-file scan').split('\0').filter(Boolean);
@@ -180,17 +196,17 @@ function clean(root, entries, main, args) {
   if (apply) {
     const before = sizeKiB(target);
     for (const name of disposable) fs.rmSync(path.join(target, name), { recursive: true });
-    const remaining = classify([entry], root, main)[0];
-    const remainingReason = retirementReason(remaining);
+    const remaining = classify([entry], root, main, options)[0];
+    const remainingReason = retirementReason(remaining, options);
     if (remainingReason || remaining.ignored.length)
       throw new Error(`REFUSED: ${target}: ${remainingReason || 'ignored files remain'}; worktree was preserved`);
     required(git(root, 'worktree', 'remove', target), `remove ${target}`);
-    console.log(`REMOVED: ${target} (${size(before)} measured before removal). Branch ${state.branch} remains.`);
+    console.log(`REMOVED: ${target} (${size(before)} measured before removal).${historicalDetached ? ' Detached commit remains on main.' : ` Branch ${state.branch} remains.`}`);
     return;
   }
-  console.log(`DRY RUN: ${target} is CLOSED, merged, and clean (${size(sizeKiB(target))}).`);
+  console.log(`DRY RUN: ${target} is ${historicalDetached ? 'detached with HEAD on main' : 'CLOSED and merged'}, and clean (${size(sizeKiB(target))}).`);
   console.log(`Regeneratable ignored paths to discard: ${disposable.length} (${disposable.slice(0, 5).join(', ')}${disposable.length > 5 ? ', ...' : ''}).`);
-  console.log(`Branch ${state.branch} would remain.`);
+  console.log(historicalDetached ? 'Detached commit is retained on main.' : `Branch ${state.branch} would remain.`);
   console.log('No worktree, file, branch, backup, or Git history was changed.');
 }
 

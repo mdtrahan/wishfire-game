@@ -98,3 +98,68 @@ test('cleanup refuses unknown evidence and dirty files, then removes only allowl
     fs.rmSync(temp, { recursive: true, force: true });
   }
 });
+
+test('historical detached mode retires only a clean ancestor with allowlisted local files', () => {
+  const temp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'orka-detached-')));
+  const lane = path.join(temp, 'snapshot');
+  const other = path.join(temp, 'branch-lane');
+  const stale = path.join(temp, 'unique-commit');
+  const tool = fileURLToPath(new URL('../tools/storage_hygiene.mjs', import.meta.url));
+  const git = (...args) => {
+    const result = spawnSync('git', args, { cwd: temp, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+  };
+  const clean = (target, flags = ['--historical-detached', '--apply']) =>
+    spawnSync(process.execPath, [tool, 'clean', '--worktree', target, ...flags], { cwd: temp, encoding: 'utf8' });
+  const refused = (target, reason, flags) => {
+    const result = clean(target, flags);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, reason);
+    assert.equal(fs.existsSync(target), true);
+  };
+  try {
+    git('init', '-b', 'main');
+    fs.writeFileSync(path.join(temp, '.gitignore'), '.beads/.local_version\n.beads/dolt/\n.beads/unknown\ntest-results/\n');
+    git('add', '.gitignore');
+    git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'fixture');
+    git('worktree', 'add', '--detach', lane, 'main');
+    git('worktree', 'add', '-b', 'bead/ORKA-123-other', other, 'main');
+    refused(lane, /detached worktree/, ['--apply']);
+    refused(temp, /main worktree/);
+    refused(other, /not a detached worktree/);
+    assert.match(clean(path.join(temp, 'unregistered')).stderr, /unregistered worktree/);
+    assert.match(clean(lane, ['--historical-detached', '--worktree', other]).stderr, /specify one exact registered absolute path/);
+
+    fs.appendFileSync(path.join(lane, '.gitignore'), '# changed\n');
+    refused(lane, /dirty worktree/);
+    git('-C', lane, 'restore', '.gitignore');
+    fs.writeFileSync(path.join(lane, 'unique-source.txt'), 'keep');
+    refused(lane, /dirty worktree/);
+    fs.rmSync(path.join(lane, 'unique-source.txt'));
+    fs.mkdirSync(path.join(lane, '.beads'), { recursive: true });
+    fs.writeFileSync(path.join(lane, '.beads/unknown'), 'keep');
+    refused(lane, /protected ignored files present/);
+    fs.rmSync(path.join(lane, '.beads/unknown'));
+    fs.mkdirSync(path.join(lane, 'test-results/ui-lock'), { recursive: true });
+    fs.writeFileSync(path.join(lane, 'test-results/ui-lock/proof.json'), '{}');
+    refused(lane, /protected ignored files present/);
+    fs.rmSync(path.join(lane, 'test-results'), { recursive: true });
+    fs.mkdirSync(path.join(lane, '.beads/dolt'), { recursive: true });
+    refused(lane, /lane-local Dolt state/);
+    fs.rmdirSync(path.join(lane, '.beads/dolt'));
+
+    fs.writeFileSync(path.join(lane, '.beads/.local_version'), 'runtime');
+    assert.match(clean(lane, ['--historical-detached']).stdout, /DRY RUN:.*detached with HEAD on main/);
+    const removed = clean(lane);
+    assert.equal(removed.status, 0, removed.stderr);
+    assert.equal(fs.existsSync(lane), false);
+
+    git('worktree', 'add', '--detach', stale, 'main');
+    fs.writeFileSync(path.join(stale, 'unique-commit.txt'), 'not on main');
+    git('-C', stale, 'add', 'unique-commit.txt');
+    git('-C', stale, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'unique');
+    refused(stale, /unmerged commit/);
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
+});
