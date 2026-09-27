@@ -185,7 +185,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--allow-active-doc-output",
         action="store_true",
-        help="Permit writing to governance/bead-reviews instead of a quarantine or temporary directory.",
+        help="Permit writing to governance/bead-reviews instead of a temporary directory.",
     )
     return parser.parse_args()
 
@@ -194,7 +194,7 @@ def main() -> int:
     args = parse_args()
     if not args.allow_generated_doc_output:
         print("Refusing to write generated Beads review packets without --allow-generated-doc-output.")
-        print("Use an explicit --output-dir, preferably under governance/audit/quarantine/ or /tmp.")
+        print("Use an explicit --output-dir, preferably under /tmp.")
         return 2
     if not args.output_dir:
         print("Refusing to choose a default output directory. Pass --output-dir explicitly.")
@@ -204,7 +204,7 @@ def main() -> int:
             "Refusing to write generated review packets into the retired active path without "
             "--allow-active-doc-output."
         )
-        print("Prefer a dated quarantine or temporary output directory.")
+        print("Prefer a temporary output directory outside the repository.")
         return 2
     if not args.mapping:
         print("Refusing to choose a default mapping input. Pass --mapping explicitly.")

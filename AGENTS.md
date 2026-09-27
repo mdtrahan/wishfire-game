@@ -3,7 +3,7 @@
 ## Repository Philosophy
 - Beads represent work.
 - Git transports work.
-- Main represents the game.
+- Main represents the current game. Historical recovery belongs outside ordinary repository search and indexing.
 - Branches are temporary.
 
 Primary branch: `main`; legacy Construct 3 artifacts are retired.
@@ -69,7 +69,7 @@ Runtime
 Product └── `governance/product/` (`abilities.html`)
 Execution └── `governance/execution/`
 Memory └── `ai-memory/`
-Reference ├── `docs/`, `goals/`, `skills/`
+Reference ├── `docs/`, `skills/`
           └── `inputs/`, `output/`
 Support ├── `agents/` (retired)
         └── `node-app/`, `python-app/`, root package/deploy/config files

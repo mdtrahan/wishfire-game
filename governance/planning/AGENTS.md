@@ -1,12 +1,12 @@
 # Governance Planning DOX
 
 ## Purpose
-- Own architecture contracts, turn-state invariants, roadmaps, migration plans, and process planning.
+- Own architecture contracts, turn-state invariants, current migration plans and process planning.
 
 ## Ownership
 - SimulationCore Rust/JS boundary docs.
 - Turn-state invariants and layout/automation/backend contracts.
-- Roadmaps, backlog exports, consolidation plans, and process debt documents.
+- Current consolidation plans and process decisions.
 
 ## Local Contracts
 - Planning contracts describe intended boundaries and stop conditions; they do not authorize implementation unless the active bead scope does.

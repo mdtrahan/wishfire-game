@@ -13,7 +13,7 @@
 - Rust build helper generates the browser WASM artifact.
 - `build_offline_release.mjs` reuses the hosted runtime staging pass, embeds the three startup JSON payloads and SimulationCore WASM, and emits the portable file:// artifact; it must leave the Netlify release path unchanged.
 - Offline builds must validate dependencies before touching `dist-offline`, assemble in a sibling candidate directory, and replace the prior playable artifact only after the bundle and manifest are complete.
-- Hot-file, cleanup, archive, and Beads/Git visibility helpers support repo workflow.
+- Hot-file, cleanup, archive, and Beads/Git visibility helpers support repo workflow. Generated review/export output belongs in an explicit temporary directory outside current main.
 
 ## Local Contracts
 - `storage_hygiene.mjs` audits read-only. Its cleanup command defaults to dry-run and must fail closed on unreadable Beads state, dirty, unmerged, OPEN/unknown, missing, main, or protected ignored-file worktrees. Detached worktrees remain refused unless `--historical-detached` is explicitly passed; that mode requires a detached HEAD already on main, no lane-local Dolt state, and the same clean/allowlisted-local checks. Apply removes only the explicit regeneratable path allowlist, rescans the lane, then uses Git worktree removal without force and retains branches. Commit-check records, QA evidence, Dolt state, backups, output, and unknown paths stay protected until separately preserved or resolved.

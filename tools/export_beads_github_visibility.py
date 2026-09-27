@@ -872,7 +872,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--allow-active-doc-output",
         action="store_true",
-        help="Permit writing to governance/planning/beads-github-export instead of a quarantine or temporary directory.",
+        help="Permit writing to governance/planning/beads-github-export instead of a temporary directory.",
     )
     return parser.parse_args()
 
@@ -884,7 +884,7 @@ def main() -> int:
             "Refusing to write generated Beads/GitHub visibility docs without "
             "--allow-generated-doc-output."
         )
-        print("Use an explicit --output-dir, preferably under governance/audit/quarantine/ or /tmp.")
+        print("Use an explicit --output-dir, preferably under /tmp.")
         return 2
     if not args.output_dir:
         print("Refusing to choose a default output directory. Pass --output-dir explicitly.")
@@ -894,7 +894,7 @@ def main() -> int:
             "Refusing to write generated export artifacts into the active planning path without "
             "--allow-active-doc-output."
         )
-        print("Prefer a dated quarantine or temporary output directory.")
+        print("Prefer a temporary output directory outside the repository.")
         return 2
     repo = Path.cwd()
     bd_cwd = Path(args.bd_cwd).expanduser().resolve() if args.bd_cwd else primary_worktree(repo)

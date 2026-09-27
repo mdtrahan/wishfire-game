@@ -1,13 +1,13 @@
 # Governance DOX
 
 ## Purpose
-- Own durable product truth, planning contracts, audits, quarantined Beads review material, and process documentation.
+- Own durable product truth, planning contracts, current audit evidence and process documentation.
 - Keep gameplay/design intent discoverable without bloating root AGENTS.md.
 
 ## Ownership
 - `product/` owns player-facing and design-facing gameplay truth.
-- `planning/` owns architecture contracts, invariants, roadmaps, and process plans.
-- `audit/`, `metrics/`, and `qa/` own evidence, reports, QA packets, review artifacts, and quarantined generated docs.
+- `planning/` owns architecture contracts, invariants, and current process plans.
+- `metrics/` and `qa/` own current evidence and metrics. `audit/` is reserved for current audit records. Historical generated packets belong outside normal repository search.
 - `execution/` owns process guidance and active execution directives.
 
 ## Local Contracts
@@ -23,7 +23,7 @@
 - For repo-context retrieval, follow `execution/repo-context-retrieval.md` before adding more always-on guidance to root `AGENTS.md`.
 - For root execution policy, prefer the focused docs in `execution/`: `implementation-gate.md`, `integration.md`, `retrieval.md`, `validation.md`, and `output-contracts.md`.
 - For branch/worktree lifecycle, QA PASS, merge readiness, and repository audit classification, follow `execution/integration.md`.
-- Do not treat quarantined generated review packets, export manifests, agent logs, or rollback plans as current workflow truth.
+- Keep historical generated review packets, export manifests, agent logs, and rollback plans outside current main.
 - When docs disagree, preserve the conflict and ask or create a decision bead rather than flattening it.
 - Avoid turning governance docs into event logs; record reusable rules, decisions, and evidence.
 
@@ -34,4 +34,4 @@
 
 ## Child DOX Index
 - `governance/product/AGENTS.md` - gameplay, player-facing, hero/skill/progression truth.
-- `governance/planning/AGENTS.md` - architecture contracts, invariants, roadmaps, and process plans.
+- `governance/planning/AGENTS.md` - architecture contracts, invariants, and current process plans.

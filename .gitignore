@@ -32,3 +32,8 @@ web-runner/runtime-fingerprint.js
 /output/ORKA-aoq-checkpoint/
 /dist/
 /dist-offline/
+
+# Historical and generated context kept outside current main
+/docs/archive/
+/governance/audit/quarantine/
+/governance/execution/dev-directives/archive/
