@@ -16,7 +16,7 @@
 - Preserve unrelated dirty files; do not stage, reset, clean, or remove them.
 
 ## Branch Disposition Gate
-Every branch, worktree, or PR found during audit must receive an explicit owner-facing disposition. Do not leave branches in an ambiguous "maybe merge later" state.
+During branch, release, or integration audits, every in-scope branch, worktree, or PR must receive an explicit owner-facing disposition. Do not leave branches in an ambiguous "maybe merge later" state.
 
 Allowed dispositions:
 - `backlog` - preserve idea, not active now
@@ -115,7 +115,7 @@ Report conflict class separately from state: `none`, `Metadata Conflict`, `Mecha
 - After merge, verify the feature exists on `main`, branch containment, clean repo state, smoke tests, and workflow metadata or audit record.
 
 ## Repository Audits
-Every repository audit must identify branches that are QA PASS, not Integration Ready, and drifting from current `main`. Report these separately as `Integration Drift`.
+For branch, release, and integration audits, identify branches that are QA PASS, not Integration Ready, and drifting from current `main`. Report these separately as `Integration Drift`. Other audits use these checks only when integration state affects their scope.
 
 Audit buckets: `Ready to Merge`, `Metadata Conflicts`, `Mechanical Conflicts`, `Semantic Conflicts`, `Needs Bug Fixes`, `Active Development`, `Already Integrated`, `Unknown`.
 

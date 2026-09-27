@@ -34,12 +34,11 @@ Validate
 Integration Ready
 
 ## Startup
-1. Run `pwd`.
-2. Read `ai-memory/context.md`.
-3. Ensure a compatible `bd` resolves.
-4. Run `bd ready`.
-5. Verify `bd list`.
-6. Run `bd show <id>` once a bead is selected or assigned.
+1. Run `pwd` and read the applicable `AGENTS.md` chain.
+2. Classify the task under the Implementation Gate before task-specific startup checks.
+3. Read `ai-memory/context.md` when project context is relevant.
+4. When implementation, scope, ownership, or lifecycle work depends on Beads, ensure a compatible `bd` resolves, run `bd ready` and `bd list`, then `bd show <id>` once selected or assigned.
+5. Minor-exempt review or policy wording may proceed without Beads startup when scope and ownership are independently clear. Runtime work retains the full Beads gate.
 
 Shell notes: prefix commands with `rtk` when available; keep output bounded and targeted.
 
@@ -69,14 +68,14 @@ Runtime
 Product └── `governance/product/` (`abilities.html`)
 Execution └── `governance/execution/`
 Memory └── `ai-memory/`
-Reference ├── `docs/`, `skills/`
+Reference ├── `docs/`, `goals/`, `skills/`
           └── `inputs/`, `output/`
 Support ├── `agents/` (retired)
         └── `node-app/`, `python-app/`, root package/deploy/config files
 
 ## Implementation Rules
 - Edit the minimum necessary files; avoid unrelated refactors; resolve conflicts locally.
-- Stop on unexpected tracked changes unless authorized; keep one ownership lane per bead unless authorized.
+- Inspect unexpected tracked changes; preserve unrelated dirt and edit only clean or explicitly owned paths. Pause affected edits if ownership remains unclear. Keep one ownership lane per bead unless authorized.
 - Prefer deterministic shared logic in `src/` or Rust-owned SimulationCore seams over new browser-shell logic.
 - Keep `web-runner/app.js` orchestration-only; detailed ownership rules live in `governance/execution/implementation-gate.md`.
 - Use `governance/execution/validation.md` for focused proof and `governance/execution/integration.md` for merge readiness.

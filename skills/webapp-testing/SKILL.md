@@ -1,118 +1,18 @@
 ---
 name: webapp-testing
-description: Toolkit for interacting with and testing local web applications using Playwright. Supports verifying frontend functionality, debugging UI behavior, capturing browser screenshots, and viewing browser logs.
-source: anthropics/skills
+description: Use for Codex-Orka browser QA with the existing server and test tools.
 license: Apache-2.0
+metadata:
+  source: "anthropics/skills"
 ---
 
-# Web App Testing with Playwright
+# Codex-Orka Browser QA
 
-## Setup
+Use the checkout being tested as the authority for commands and acceptance criteria. Read `governance/execution/validation.md` for browser routing and `web-runner/AGENTS.md` when visual or responsive behavior is affected.
 
-```bash
-npm init playwright@latest
-```
+- Start or reuse `npm run serve:qa` from that checkout. Its default port is 8000; use `http://localhost:8000/` and verify the served checkout before drawing conclusions. Server startup writes `web-runner/runtime-fingerprint.js`.
+- Use the Codex in-app Browser first for manual and visual checks. Use another browser surface when explicitly requested or when a required capability is unavailable.
+- Use the existing `npm run balance-harness` for batch gameplay checks. Use `npm run playwright:doctor` or `npm run playwright:launch-matrix` only to investigate browser startup or attachment failures.
+- Read the current `package.json` before choosing an automated check. Playwright is already declared; reuse the existing installation and QA tools. Install or initialize tooling only when the requested work requires it and its scope authorizes that change.
 
-## Basic Test Structure
-
-```typescript
-import { test, expect } from '@playwright/test';
-
-test('homepage has title', async ({ page }) => {
-  await page.goto('http://localhost:3000');
-  await expect(page).toHaveTitle(/My App/);
-});
-
-test('can navigate to about page', async ({ page }) => {
-  await page.goto('http://localhost:3000');
-  await page.click('text=About');
-  await expect(page).toHaveURL(/.*about/);
-});
-```
-
-## Common Actions
-
-### Navigation
-```typescript
-await page.goto('http://localhost:3000');
-await page.goBack();
-await page.reload();
-```
-
-### Clicking
-```typescript
-await page.click('button');
-await page.click('text=Submit');
-await page.click('#submit-btn');
-await page.click('[data-testid="submit"]');
-```
-
-### Form Input
-```typescript
-await page.fill('input[name="email"]', 'test@example.com');
-await page.fill('#password', 'secret123');
-await page.selectOption('select#country', 'USA');
-await page.check('input[type="checkbox"]');
-```
-
-### Waiting
-```typescript
-await page.waitForSelector('.loaded');
-await page.waitForURL('**/dashboard');
-await page.waitForResponse('**/api/data');
-await page.waitForTimeout(1000); // Avoid if possible
-```
-
-## Assertions
-
-```typescript
-await expect(page.locator('h1')).toHaveText('Welcome');
-await expect(page.locator('.items')).toHaveCount(5);
-await expect(page.locator('button')).toBeEnabled();
-await expect(page.locator('.modal')).toBeVisible();
-await expect(page.locator('input')).toHaveValue('test');
-```
-
-## Screenshots
-
-```typescript
-// Full page
-await page.screenshot({ path: 'screenshot.png', fullPage: true });
-
-// Element only
-await page.locator('.chart').screenshot({ path: 'chart.png' });
-```
-
-## Console Logs
-
-```typescript
-page.on('console', msg => console.log(msg.text()));
-page.on('pageerror', err => console.error(err.message));
-```
-
-## Network Interception
-
-```typescript
-await page.route('**/api/data', route => {
-  route.fulfill({
-    status: 200,
-    body: JSON.stringify({ items: [] })
-  });
-});
-```
-
-## Running Tests
-
-```bash
-# Run all tests
-npx playwright test
-
-# Run specific file
-npx playwright test tests/login.spec.ts
-
-# Run in headed mode
-npx playwright test --headed
-
-# Run with UI
-npx playwright test --ui
-```
+Exercise the affected user flow, inspect its final rendered state, and check relevant browser errors. Fix failures caused by the requested change and repeat the affected checks. Report the served checkout, observed result, and any remaining blocker. A successful connection alone does not establish a passing visual result.

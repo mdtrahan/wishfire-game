@@ -2,7 +2,7 @@
 
 Purpose: track every player-visible combat effect from initiation through impact so new work fills gaps without replacing approved presentation.
 
-Reference: the user-supplied G123 combat recording. Its useful grammar is a bold painted silhouette, one dominant color, low interior detail, quick anticipation, readable contact, and residue that clears before the next action.
+Reference: the [user-supplied G123 combat recording](../../inputs/reference/g123-combat-reference.gif). Its useful grammar is a bold painted silhouette, one dominant color, low interior detail, quick anticipation, readable contact, and residue that clears before the next action.
 
 ## Sequence contract
 

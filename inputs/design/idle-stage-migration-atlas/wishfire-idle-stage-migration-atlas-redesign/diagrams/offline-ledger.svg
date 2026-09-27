@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="440" viewBox="0 0 800 440" role="img" aria-labelledby="offline-ledger-title offline-ledger-desc">
+<title id="offline-ledger-title">Offline settlement behaves like a bank ledger</title>
+<desc id="offline-ledger-desc">A time window becomes one capped reward and one idempotent claim.</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#17232D"/></marker></defs>
+<rect width="800" height="440" fill="#F7F2E8"/>
+<text x="28" y="30" font-family="Arial, sans-serif" font-size="18" font-weight="700" text-anchor="start" fill="#17232D">Offline settlement behaves like a bank ledger</text>
+<text x="28" y="52" font-family="Arial, sans-serif" font-size="10" font-weight="400" text-anchor="start" fill="#58646D">A time window becomes one capped reward and one idempotent claim.</text>
+<path d="M205,123.0 L225,123.0" stroke="#17232D" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+<path d="M390,123.0 L410,123.0" stroke="#17232D" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+<path d="M575,123.0 L595,123.0" stroke="#17232D" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+<rect x="40" y="82" width="165" height="82" fill="#FCFAF5" stroke="#00A8B5" stroke-width="3"/><rect x="40" y="82" width="8" height="82" fill="#00A8B5"/><text x="58" y="109" font-family="Arial, sans-serif" font-size="13" font-weight="700" text-anchor="start" fill="#17232D">SESSION CLOSE</text><text x="58" y="131" font-family="Arial, sans-serif" font-size="10" font-weight="400" text-anchor="start" fill="#58646D">Store stage, power snapshot, server time.</text>
+<rect x="225" y="82" width="165" height="82" fill="#FCFAF5" stroke="#7357B3" stroke-width="3"/><rect x="225" y="82" width="8" height="82" fill="#7357B3"/><text x="243" y="109" font-family="Arial, sans-serif" font-size="13" font-weight="700" text-anchor="start" fill="#17232D">ELAPSED WINDOW</text><text x="243" y="131" font-family="Arial, sans-serif" font-size="10" font-weight="400" text-anchor="start" fill="#58646D">Clamp duration; exclude paused or invalid time.</text>
+<rect x="410" y="82" width="165" height="82" fill="#FCFAF5" stroke="#B98522" stroke-width="3"/><rect x="410" y="82" width="8" height="82" fill="#B98522"/><text x="428" y="109" font-family="Arial, sans-serif" font-size="13" font-weight="700" text-anchor="start" fill="#17232D">REWARD CALC</text><text x="428" y="131" font-family="Arial, sans-serif" font-size="10" font-weight="400" text-anchor="start" fill="#58646D">Rate x eligible time with caps.</text>
+<rect x="595" y="82" width="165" height="82" fill="#FCFAF5" stroke="#2E8B68" stroke-width="3"/><rect x="595" y="82" width="8" height="82" fill="#2E8B68"/><text x="613" y="109" font-family="Arial, sans-serif" font-size="13" font-weight="700" text-anchor="start" fill="#17232D">ATOMIC CLAIM</text><text x="613" y="131" font-family="Arial, sans-serif" font-size="10" font-weight="400" text-anchor="start" fill="#58646D">One claim key; commit once.</text>
+</svg>
