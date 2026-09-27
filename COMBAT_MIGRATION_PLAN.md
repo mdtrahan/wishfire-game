@@ -1,6 +1,6 @@
 # Hero-command combat and progression migration
 
-Status: runtime implementation delivered in the owned migration worktree. This contract supersedes conflicting earlier plans and comments. `COMBAT_MIGRATION_REPORT.md` records current implementation evidence and release scope; `MIGRATION_CHECKPOINT.md` retains history.
+Status: runtime implementation delivered in the owned migration worktree. This contract supersedes conflicting earlier plans and comments. `COMBAT_MIGRATION_REPORT.md` records current implementation evidence and release scope; Git history retains prior checkpoints.
 
 ## 1. Scope and superseded decisions
 
