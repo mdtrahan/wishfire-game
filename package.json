@@ -12,6 +12,7 @@
     "test:ui-lock": "node tools/ui_presentation_lock_gate.mjs",
     "storage:audit": "node tools/storage_hygiene.mjs audit",
     "storage:clean": "node tools/storage_hygiene.mjs clean",
+    "beads:link-worktree": "node tools/link_beads_worktree.mjs",
     "rust:build-wasm": "node tools/build_simulation_core_wasm.js",
     "build:offline": "node tools/build_offline_release.mjs",
     "serve:qa": "node tools/serve_web.js --port 8000",
