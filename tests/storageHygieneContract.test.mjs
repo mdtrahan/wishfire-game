@@ -35,7 +35,7 @@ test('retirement requires a present, clean, merged, CLOSED Bead worktree', () =>
     [{ ignored: ['test-results/ui-lock/'] }, 'protected ignored files present (test-results/ui-lock/)'],
     [{ ignored: ['node_modules/'] }, null],
     [{ ignored: ['tools/__pycache__/'] }, null],
-    [{ ignored: ['.beads/.local_version', '.beads/last-touched', 'web-runner/runtime-fingerprint.js'] }, null],
+    [{ ignored: ['.beads/.local_version', '.beads/last-touched', '.beads/redirect', 'web-runner/runtime-fingerprint.js'] }, null],
     [{ ignored: ['.beads/dolt/.dolt/noms/journal.idx'] }, 'protected ignored files present (.beads/dolt/.dolt/noms/journal.idx)'],
     [{ ignored: ['test-results/ui-lock/run/report.json'] }, 'protected ignored files present (test-results/ui-lock/run/report.json)'],
     [{ ignored: ['node_modules/custom', 'output/unique.png'] }, 'protected ignored files present (output/unique.png)'],
@@ -63,7 +63,7 @@ test('cleanup refuses unknown evidence and dirty files, then removes only allowl
     { cwd: temp, encoding: 'utf8', env: { ...process.env, BD_BIN: bd, BD_STATUS: status } });
   try {
     git('init', '-b', 'main');
-    fs.writeFileSync(path.join(temp, '.gitignore'), 'dist/\nnode_modules/\n.beads/.local_version\n.beads/dolt/\ntest-results/\nweb-runner/runtime-fingerprint.js\n');
+    fs.writeFileSync(path.join(temp, '.gitignore'), 'dist/\nnode_modules/\n.beads/.local_version\n.beads/redirect\n.beads/dolt/\ntest-results/\nweb-runner/runtime-fingerprint.js\n');
     fs.mkdirSync(path.join(temp, 'node_modules'));
     fs.writeFileSync(path.join(temp, 'node_modules/.package-lock.json'), '{}');
     git('add', '.gitignore');
@@ -71,7 +71,7 @@ test('cleanup refuses unknown evidence and dirty files, then removes only allowl
     git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'fixture');
     git('worktree', 'add', '-b', 'bead/ORKA-123-clean', lane, 'main');
     fs.writeFileSync(bd, '#!/bin/sh\nprintf "[{\\"id\\":\\"ORKA-123\\",\\"status\\":\\"%s\\"}]\\n" "$BD_STATUS"\n', { mode: 0o755 });
-    for (const file of ['dist/cache.bin', 'node_modules/cache.bin', '.beads/.local_version', 'web-runner/runtime-fingerprint.js', '.beads/dolt/unique']) {
+    for (const file of ['dist/cache.bin', 'node_modules/cache.bin', '.beads/.local_version', '.beads/redirect', 'web-runner/runtime-fingerprint.js', '.beads/dolt/unique']) {
       fs.mkdirSync(path.dirname(path.join(lane, file)), { recursive: true });
       fs.writeFileSync(path.join(lane, file), file);
     }
@@ -88,7 +88,7 @@ test('cleanup refuses unknown evidence and dirty files, then removes only allowl
     fs.rmSync(path.join(lane, 'unique-source.txt'));
     assert.match(clean('open').stderr, /open Bead status/);
     assert.match(clean('unknown').stderr, /unknown Bead status/);
-    assert.match(clean('closed', false).stdout, /Regeneratable ignored paths to discard: 4/);
+    assert.match(clean('closed', false).stdout, /Regeneratable ignored paths to discard: 5/);
     const result = clean();
     assert.equal(result.status, 0, result.stderr);
     assert.equal(fs.existsSync(lane), false);

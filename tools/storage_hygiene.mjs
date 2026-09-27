@@ -12,7 +12,7 @@ const generated = [
 const regeneratableDirs = [
   'dist', 'dist-offline', 'rust/simulation_core/target', 'node_modules', '.serena/cache', 'tools/__pycache__',
 ];
-const regeneratableFiles = ['.beads/.local_version', '.beads/last-touched', 'web-runner/runtime-fingerprint.js'];
+const regeneratableFiles = ['.beads/.local_version', '.beads/last-touched', '.beads/redirect', 'web-runner/runtime-fingerprint.js'];
 const regeneratable = new Set([...regeneratableDirs, ...regeneratableFiles]);
 
 function protectedIgnored(paths = []) {
