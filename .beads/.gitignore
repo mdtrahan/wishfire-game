@@ -6,6 +6,9 @@ dolt-access.lock
 backup/
 
 # Runtime files
+dolt-server.log
+dolt-server.lock
+dolt-config.log
 bd.sock
 bd.sock.startlock
 sync-state.json
