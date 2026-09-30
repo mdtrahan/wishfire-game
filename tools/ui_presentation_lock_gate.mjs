@@ -448,35 +448,21 @@ async function captureDevPanels(page, viewport, artifactDir, metrics) {
 }
 
 async function captureCombat(page, viewport, artifactDir) {
-  const setup = await page.evaluate(() => window.__codexGame.setupDynamicInitiativeAuthorityScenario());
-  if (!setup?.ok) throw new Error(`Combat QA setup failed: ${JSON.stringify(setup)}`);
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text())?.flags?.layoutId === 'combat');
   await page.locator('[aria-label="Entering combat"]').waitFor({state:'hidden'});
   await page.evaluate(() => {
     const game = window.__codexGame;
     const globals = game.globals;
-    const hero = game.state.entities.find((entity) => entity?.kind === 'hero');
-    const enemies = game.state.entities.filter((entity) => entity?.kind === 'enemy' && Number(entity.hp || 0) > 0);
-    globals.GamePhase = 'RUNTIME';
-    globals.DynamicInitiativeAuthorityEnabled = 0;
-    globals.DynamicInitiativeAuthority = null;
-    globals.DynamicInitiative = null;
-    globals.RoundActive = 0;
-    globals.TurnOrderArray = [
-      { uid: Number(hero?.uid || 0), type: 0 },
-      ...enemies.map((enemy) => ({ uid: Number(enemy.uid || 0), type: 1 })),
-    ];
-    globals.CurrentTurnIndex = 0;
-    globals.CurrentHeroUID = Number(hero?.uid || 0);
-    globals.TurnPhase = 0;
-    globals.HideHeroSelector = 0;
-    globals.CanPickGems = 1;
-    globals.IsPlayerBusy = 0;
-    globals.ActionInProgress = 0;
-    globals.PendingSkillID = '';
-    globals.PendingActor = 0;
+    globals.ContinuousCombatStageLoop = 1;
+    game.callFunction('TickRealtimeHeroBasics');
+    game.callFunction('TickRealtimeEnemyActions');
     game.stepFrames(1);
   });
+  await page.waitForFunction(() => {
+    const globals = window.__codexGame.globals;
+    return Number(globals.RealtimeHeroFocusTargetUID || 0) > 0
+      && Object.keys(globals.RealtimeHeroBasicClocks || {}).length > 0;
+  }, null, { timeout: 5000 });
   await resetTrace(page);
   await page.evaluate(() => window.__codexGame.stepFrames(2));
   const heroTrace = await readTrace(page);
@@ -509,28 +495,17 @@ async function captureCombat(page, viewport, artifactDir) {
   const targeting = await page.evaluate(() => {
     const game = window.__codexGame;
     const globals = game.globals;
-    const heroes = game.state.entities.filter((entity) => entity?.kind === 'hero');
     const enemies = game.state.entities.filter((entity) => entity?.kind === 'enemy' && Number(entity.hp || 0) > 0);
-    const hero = heroes.find((entity) => Number(entity.uid || 0) === Number(globals.CurrentHeroUID || 0)) || heroes[0];
-    const enemy = enemies[0];
-    globals.CurrentHeroUID = Number(hero?.uid || 0);
-    globals.PendingSkillID = 'HERO_SINGLE';
-    globals.PendingActor = Number(hero?.uid || 0);
-    globals.SelectedEnemyUID = Number(enemy?.uid || 0);
-    globals.SelectedEnemyUIDOwner = Number(hero?.uid || 0);
-    globals.HideHeroSelector = 1;
-    globals.CanPickGems = 0;
-    globals.IsPlayerBusy = 1;
     game.stepFrames(2);
     return {
-      ...game.getTargetDebugGeometry(),
-      selectedEnemyUID: Number(globals.SelectedEnemyUID || 0),
-      expectedEnemyUID: Number(enemy?.uid || 0),
+      focusTargetUID: Number(globals.RealtimeHeroFocusTargetUID || 0),
+      livingEnemyUIDs: enemies.map((enemy) => Number(enemy.uid || 0)),
+      basicClockCount: Object.keys(globals.RealtimeHeroBasicClocks || {}).length,
+      scheduledBasics: Object.keys(globals.RealtimeHeroBasicScheduledActions || {}).length,
     };
   });
   const targetTrace = await readTrace(page);
   const targetSelector = latestImage(targetTrace, /heroselect|selector/i);
-  const attackButton = latestImage(targetTrace, /attackbutton|atk_down/i);
   await page.screenshot({ path: path.join(artifactDir, `${viewport.name}-06-target-state.png`) });
 
   await resetTrace(page);
@@ -592,8 +567,8 @@ async function captureCombat(page, viewport, artifactDir) {
   return [
     ...commandInvariants,
     invariant('battlefield-selectors-absent', !heroSelector && !targetSelector, { heroSelector, targetSelector }, { count: 0 }),
-    invariant('target-state-preserved-without-selector', targeting.selectedEnemyUID > 0 && targeting.selectedEnemyUID === targeting.expectedEnemyUID, targeting, { selectedEnemyUID: targeting.expectedEnemyUID }),
-    invariant('global-attack-absent', !attackButton, attackButton, { count: 0 }),
+    invariant('automatic-focus-target-is-living', targeting.focusTargetUID > 0 && targeting.livingEnemyUIDs.includes(targeting.focusTargetUID), targeting, { focusTargetIsLivingEnemy: true }),
+    invariant('realtime-basic-clocks-present', targeting.basicClockCount > 0, targeting, { minimum: 1 }),
     invariant('damage-text-scale', within(damage.fontPx, expectedDamageFontPx, 0.1) && within(damage.rect?.width, expectedDamageWidth, 1) && within(damage.rect?.height, expectedDamageHeight, 1), { ...damage, fontRatio: damageRatio }, { fontPx: expectedDamageFontPx, cssWidth: expectedDamageWidth, cssHeight: expectedDamageHeight }),
     invariant('damage-text-density', between(damageDensity, viewport.dpr * 0.98, viewport.dpr * 1.02), { density: damageDensity, dpr: viewport.dpr, ...damage }, { density: [viewport.dpr * 0.98, viewport.dpr * 1.02] }),
     invariant('pooled-health-bar-absent', !partyHealthBar, partyHealthBar, { count: 0 }),
@@ -677,13 +652,13 @@ async function runQuestViewport(browser, baseUrl, viewport, artifactDir) {
     };
     await page.waitForFunction(() => JSON.parse(window.render_game_to_text()).flags.layout0Ready);
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-    for (const label of ['HERO', 'VAULT', 'FLOW', 'QUESTS']) {
+    for (const label of ['HERO', 'VAULT', 'SHOP', 'QUESTS']) {
       await page.getByRole('button', {name:label, exact:true}).click();
       await page.waitForFunction(label => document.querySelector('#game-meta-nav [aria-current="page"]')?.textContent === label, label);
     }
-    await page.waitForFunction(() => [...document.querySelectorAll('#game-meta-nav img')].length === 6 && [...document.querySelectorAll('#game-meta-nav img')].every(img => img.complete && img.naturalWidth > 0));
+    await page.waitForFunction(() => [...document.querySelectorAll('#game-meta-nav img')].length === 5 && [...document.querySelectorAll('#game-meta-nav img')].every(img => img.complete && img.naturalWidth > 0));
     const nav = await page.locator('#game-meta-nav').evaluate(el => ({labels:[...el.children].map(b=>b.textContent),width:el.offsetWidth,height:el.offsetHeight,daily:el.firstChild.disabled,overflow:el.scrollWidth>el.clientWidth}));
-    if (nav.labels.join(',') !== 'DAILY,HERO,QUESTS,VAULT,SHOP,FLOW' || nav.width !== 360 || nav.height !== 60 || !nav.daily || nav.overflow) throw new Error('Shared navigation geometry/labels failed: '+JSON.stringify(nav));
+    if (nav.labels.join(',') !== 'DAILY,HERO,QUESTS,VAULT,SHOP' || nav.width !== 360 || nav.height !== 60 || !nav.daily || nav.overflow) throw new Error('Shared navigation geometry/labels failed: '+JSON.stringify(nav));
     await page.getByRole('button', {name:/Main Story/}).waitFor();
     const metrics = await page.evaluate(() => {
       const canvas = document.querySelector('canvas').getBoundingClientRect();
@@ -724,7 +699,6 @@ async function runQuestViewport(browser, baseUrl, viewport, artifactDir) {
       if (!column) throw new Error(`Quest card column drift at ${viewport.name}, Stage ${i}`);
       const enemy = await card.locator('img').getAttribute('alt');
       await card.click();
-      await page.waitForFunction(() => window.__codexGame.state.entities.filter(actor => actor.kind === 'hero').every(hero => Number(hero.flow || 0) === 0));
       await page.waitForFunction(name => window.__codexGame.state.entities.filter(e=>e.kind==='enemy').length===1 && window.__codexGame.state.entities.some(e=>e.kind==='enemy' && e.name===name),enemy);
       await page.locator('[aria-label="Entering combat"]').waitFor({state:'hidden'});
       await page.getByRole('button',{name:'QA clear monsters',exact:true}).click();

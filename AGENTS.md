@@ -86,7 +86,7 @@ Support ├── `agents/` (retired)
 - Do not write outside the repo without approval.
 
 ## Combat Migration Specification
-- `COMBAT_MIGRATION_PLAN.md` owns the active hero-kit, EXP/progression, SP/FLOW and combat-resolution design. Keep confirmed owner decisions, tuning proposals and delivered runtime state distinct; `MIGRATION_CHECKPOINT.md` records superseded decisions and implementation receipts.
+- `COMBAT_ENGINE_CLEANUP_PLAN.md` owns the real-time cutover plan; `COMBAT_MIGRATION_PLAN.md` keeps the earlier hero-command contract as history. SP/FLOW, hidden Pals and playable turns are retired targets. Keep confirmed owner decisions, tuning proposals and delivered runtime state distinct; `MIGRATION_CHECKPOINT.md` records superseded decisions and implementation receipts.
 
 ## Child DOX Index
 - `Scripts/AGENTS.md` - Construct-style runtime mirror and high-risk function parity.

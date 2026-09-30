@@ -74,7 +74,7 @@ test('right-wise geometry reflects X while preserving shared Y homes', async () 
   assert.equal(rules.orientCombatWorldOffsetX(18, 'left-wise'), 18);
 });
 
-test('runtime-shaped formation anchors keep both factions inside the shared visible band', async () => {
+test('runtime-shaped hero anchors reserve a status-icon row above HP bars', async () => {
   const rules = await loadRules();
   const globals = {
     EnemyAreaRect: { minY: 38.638, maxY: 203.974 },
@@ -103,14 +103,25 @@ test('runtime-shaped formation anchors keep both factions inside the shared visi
     meleeLeftEdgeX: 130,
     rangedMinX: 225,
     rangedMaxX: 283,
-    attackStartX: 330,
+    attackStartX: 290,
     visibleTopY: 170,
     visibleBottomY: 375,
   });
   assert.deepEqual(anchors.enemyYs, [190, 272.5, 355]);
   assert.equal(anchors.arenaBounds.visibleTopY - 10, 160);
-  assert.equal(anchors.heroYs[0] - anchors.heroH * 1.55 / 2, anchors.arenaBounds.visibleTopY);
-  assert.equal(anchors.heroYs.at(-1) + anchors.heroH * 1.55 / 2, anchors.arenaBounds.visibleBottomY);
+  const heroHalfHeight = anchors.heroH * 1.55 / 2;
+  const heroTop = anchors.heroYs[0] - heroHalfHeight;
+  const heroBottom = anchors.heroYs.at(-1) + heroHalfHeight;
+  const heroBarTop = heroTop - 10;
+  const buffRowBottom = heroBarTop - rules.HERO_BUFF_ICON_ROW_GAP;
+  const buffRowTop = buffRowBottom - rules.HERO_BUFF_ICON_ROW_HEIGHT;
+  const buffRowReserve = rules.HERO_BUFF_ICON_ROW_HEIGHT + rules.HERO_BUFF_ICON_ROW_GAP;
+  assert.equal(heroTop, anchors.arenaBounds.visibleTopY + buffRowReserve);
+  assert.equal(heroBarTop, 180);
+  assert.equal(buffRowTop, 160);
+  assert.equal(buffRowBottom, 178);
+  assert.equal(heroBottom, anchors.arenaBounds.visibleBottomY + buffRowReserve);
+  assert.ok(heroBottom <= 420);
   assert.equal(anchors.enemyYs[0] - globals.EnemySize / 2, anchors.arenaBounds.visibleTopY);
   assert.equal(anchors.enemyYs.at(-1) + globals.EnemySize / 2, anchors.arenaBounds.visibleBottomY);
   assert.equal(projection.enemyTranslateY, 0);

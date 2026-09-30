@@ -187,46 +187,9 @@ test('combat renderer and attack hit target consume shared presentation sizing',
   assert.match(render, /const fontSize = computeCombatDamageFontSize\(\{/);
 });
 
-test('retired questQA route shows one contained notice', () => {
-  const html = read('web-runner/index.html');
+test('questQA exposes a hidden pause snapshot without retired combat controls', () => {
   const hooks = read('web-runner/systems/devBrowserTestHooks.js');
-  const computeLayout = new Function(`${extractExportedFunction(hooks, 'computeQuestQaControlLayout')}; return computeQuestQaControlLayout;`)();
-
-  assert.deepEqual(computeLayout({ viewportWidth: 1068, canvasLeft: 286.5, canvasRight: 781.5 }), {
-    mode: 'rails', railWidth: 184, leftGutter: 286.5, rightGutter: 286.5,
-  });
-  assert.equal(computeLayout({ viewportWidth: 216, canvasLeft: 0, canvasRight: 216 }).mode, 'dock');
-  assert.equal(computeLayout({ viewportWidth: 316, canvasLeft: 31, canvasRight: 285 }).mode, 'dock');
-
-  assert.match(html, /\.quest-qa-controls\{[\s\S]*position:fixed;[\s\S]*z-index:9990;/);
-  assert.match(html, /\.quest-qa-controls\{[\s\S]*overflow:hidden;[\s\S]*pointer-events:none;/);
-  assert.match(html, /\.quest-qa-rail\{[\s\S]*overflow-x:hidden;[\s\S]*overflow-y:auto;/);
-  assert.match(html, /\.quest-qa-controls\[data-qa-layout="dock"\]\{[\s\S]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
-  assert.match(html, /\.quest-qa-controls\[data-qa-layout="dock"\] \.quest-qa-rail\{[\s\S]*width:auto;[\s\S]*max-width:none;/);
-  assert.match(html, /\.dev2-diagnostics\{[\s\S]*z-index:10001;/);
-  assert.match(html, /<canvas id="view" width="360" height="640"><\/canvas>/);
-
-  assert.match(hooks, /controls\.id = 'quest-qa-controls';/);
-  assert.match(hooks, /controls\.className = 'quest-qa-controls';/);
-  assert.match(hooks, /controls\.dataset\.qaLayout = 'dock';/);
-  assert.match(hooks, /Combat QA controls are retired; use the normal queryless runtime\./);
-  assert.match(hooks, /controls\.append\(readout\);/);
-  assert.match(hooks, /document\.body\.append\(pauseSnapshot, controls\);/);
-  assert.doesNotMatch(hooks, /top:4px;left:4px;z-index:10001/);
-  assert.doesNotMatch(hooks, /top:32px;left:4px;z-index:10001/);
-});
-
-test('compact questQA notice flows below the stage without horizontal overflow', () => {
-  const html = read('web-runner/index.html');
-  const viewport = { width: 240, height: 384 };
-  const stage = rect(12, 0, 228, 384);
-  const dock = rect(0, 384, 240, 768);
-
-  assert.match(html, /html:has\(\.quest-qa-controls\[data-qa-layout="dock"\]\)/);
-  assert.match(html, /body:has\(\.quest-qa-controls\[data-qa-layout="dock"\]\)\{[\s\S]*position:static;[\s\S]*height:auto;/);
-  assert.match(html, /body:has\(\.quest-qa-controls\[data-qa-layout="dock"\]\)[\s\S]*overflow-y:auto;/);
-  assert.match(html, /\.quest-qa-controls\[data-qa-layout="dock"\]\{[\s\S]*position:static;[\s\S]*width:100%;[\s\S]*max-height:none;[\s\S]*overflow:visible;/);
-
-  assertContained(dock, viewport);
-  assert.ok(dock.top >= stage.bottom);
+  assert.match(hooks, /pauseSnapshot\.id = 'quest-qa-pause-snapshot';/);
+  assert.match(hooks, /document\.body\.append\(pauseSnapshot\);/);
+  assert.doesNotMatch(hooks, /quest-qa-controls|computeQuestQaControlLayout/);
 });

@@ -6,14 +6,13 @@
 ## Ownership
 - `serve_web.js` serves the browser runner and writes `web-runner/runtime-fingerprint.js`.
 - `balance_harness.js` is the canonical batch game automation path.
-- `cp_balance_report.mjs` owns deterministic CP scaling simulations and writes bounded balance artifacts.
-- Its production-catalog section runs 256 fixed seeds at every Lv1–9 and Lv91–99 balance surface, recording the first actual enemy HP transition to zero separately from total encounter actions.
 - `ui_presentation_lock_gate.mjs` is the canonical fail-closed rendered presentation gate for approved responsive UI seams.
 - Playwright doctor, launch matrix, and Chrome CDP helpers diagnose browser startup/control issues.
 - Rust build helper generates the browser WASM artifact.
-- `build_offline_release.mjs` reuses the hosted runtime staging pass, embeds the three startup JSON payloads and SimulationCore WASM, and emits the portable file:// artifact; it must leave the Netlify release path unchanged.
+- `build_offline_release.mjs` reuses hosted runtime staging, embeds startup JSON, the optional elemental impact manifest, and SimulationCore WASM, and emits the portable file:// artifact with relative frame assets; it must leave the Netlify release path unchanged.
 - Offline builds must validate dependencies before touching `dist-offline`, assemble in a sibling candidate directory, and replace the prior playable artifact only after the bundle and manifest are complete.
 - Hot-file, cleanup, archive, and Beads/Git visibility helpers support repo workflow.
+- The hot-file regression gate exercises live realtime hero/enemy scheduling, impact timing, rewards, and the still-shared damage/skill mirror; retired turn and gem scheduler tests are outside that gate.
 
 ## Local Contracts
 - Do not create a second batch game-test pipeline beside `npm run balance-harness` without explicit scope.
@@ -26,7 +25,6 @@
 - Hot-file commit helpers own `.beads/hot-file-lock` metadata generation; do not hand-author scope files except when debugging the tooling.
 - Tooling should not mutate runtime gameplay state except through explicit test/harness interfaces.
 - The balance harness enters through the current Canvas START hit target, fixes the encounter seed, and drives native autoplay. It writes completed metrics before bounded cleanup and force-closes only browser/server processes it owns.
-- Seeded CP simulations must pass their seeded picker into shared hero targeting; omitting it produces idle heroes rather than a deterministic target choice.
 
 ## Work Guidance
 - Keep command output bounded and failure messages classifiable.

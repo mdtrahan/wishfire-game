@@ -19,6 +19,75 @@ import {
   fitCanvasText,
 } from './combatPresentationScale.mjs';
 
+export function assembleCombatRenderBody(body) {
+let effectiveBody = body;
+const removeBetween = (start, end) => {
+  const startAt = effectiveBody.indexOf(start);
+  if (startAt < 0) throw new Error(`[RENDER_EXTRACTION] missing start: ${start}`);
+  const endAt = effectiveBody.indexOf(end, startAt + start.length);
+  if (endAt < 0) throw new Error(`[RENDER_EXTRACTION] missing end: ${end}`);
+  effectiveBody = effectiveBody.slice(0, startAt) + effectiveBody.slice(endAt);
+};
+const removeBlock = (marker, searchFrom = 0) => {
+  const startAt = effectiveBody.indexOf(marker, searchFrom);
+  if (startAt < 0) throw new Error(`[RENDER_EXTRACTION] missing block: ${marker}`);
+  const openAt = effectiveBody.indexOf('{', startAt);
+  let depth = 0;
+  let quote = '';
+  let escaped = false;
+  for (let i = openAt; i < effectiveBody.length; i++) {
+    const ch = effectiveBody[i];
+    const next = effectiveBody[i + 1];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === quote) quote = '';
+      continue;
+    }
+    if (ch === '/' && next === '/') {
+      i = effectiveBody.indexOf('\n', i);
+      if (i < 0) break;
+      continue;
+    }
+    if (ch === '/' && next === '*') {
+      const close = effectiveBody.indexOf('*/', i + 2);
+      if (close < 0) break;
+      i = close + 1;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') { quote = ch; continue; }
+    if (ch === '{') depth += 1;
+    else if (ch === '}' && --depth === 0) {
+      effectiveBody = effectiveBody.slice(0, startAt) + effectiveBody.slice(i + 1);
+      return;
+    }
+  }
+  throw new Error(`[RENDER_EXTRACTION] unterminated block: ${marker}`);
+};
+effectiveBody = effectiveBody.replace('    if (!state.globals.time) state.globals.time = 0;\n    state.globals.time += dt;\n', '');
+removeBetween('    if (state.globals.BattleStartActive) {', '    const casino = gameState.yellowCasino;');
+removeBetween('    const refill = gameState.refillBounce;\n    if (refill && refill.active) {', '    // Apply delayed hero hits after lunge/impact timing');
+removeBetween('    // Apply delayed hero hits after lunge/impact timing', '    // Enemy action state machine (advance -> act -> retreat -> done)');
+removeBetween('    // Enemy action state machine (advance -> act -> retreat -> done)', '    // Hero action lunge (toward center, mirrored enemy motion)');
+removeBetween('    // Hero action lunge (toward center, mirrored enemy motion)', '    // Buff progress bar expiry');
+removeBetween('    const casino = gameState.yellowCasino;', '    // Buff progress bar expiry');
+effectiveBody = effectiveBody.replace('    // Buff progress bar expiry', '    spawnPendingDamageNumbers(projectCombatDamageWorldToCanvas);\n    // Buff progress bar expiry');
+removeBlock('    if (state.globals.BlueBuffSequenceActive) {');
+const mergeDrawAt = effectiveBody.indexOf('const merge = gameState.gemMergeFx;');
+    removeBlock('      if (t >= 1) {\n        const goldAward = Math.max(0, Number(merge.goldAward || 0));', mergeDrawAt);
+removeBlock('    if (!gameState.buffIconPresentation) {');
+effectiveBody = effectiveBody.replace(
+  '    const iconPresentation = gameState.buffIconPresentation;',
+  "    const iconPresentation = gameState.buffIconPresentation || { active: false, phase: 'idle', frameType: -1, slotType: '', from: { x: 0, y: 0, w: 0, h: 0 }, to: { x: 0, y: 0, w: 0, h: 0 }, travelSec: 0, travelStartAt: 0 };"
+);
+effectiveBody = effectiveBody.replace(
+  '    const popTypeNow = state.globals.BuffIconPopType;',
+  '    gameState.buffIconSlotsByFrame = buffSlotByFrame;\n    gameState.buffIconPresentationCenter = { x: layoutOffsetX + (layoutW * layoutScale) / 2, y: layoutOffsetY + (layoutH * layoutScale) / 2 - 40 };\n    const popTypeNow = state.globals.BuffIconPopType;'
+);
+removeBetween('    const beginIconPresentation = (target, key) => {', '    const rouletteTargetFrame');
+  return effectiveBody;
+}
+
 let renderImpl = null;
 
 export function renderRuntime(deps) {
@@ -224,6 +293,31 @@ export function renderRuntime(deps) {
       const barX = Math.round(pos.x - baseW / 2);
       const barY = Math.round(footPos.y - actorHeight - 10 * layoutScale);
       drawCombatHealthBar(ctx, { x: barX, y: barY, width: baseW, height: baseH, fillWidth: barState.fillW, trailWidth: barState.yellowW, team: 'hero' });
+      const buffs = Object.entries(state.globals.RealtimeSkillEffects?.[uid] || {})
+        .filter(([, entry]) => Number(entry?.expiresAt || 0) > Number(state.globals.time || 0))
+        .slice(0, 5);
+      const buffStyle = {
+        cover: ['C', '#4f9ce8'], brace: ['B', '#6794bc'], wishgrant: ['W', '#dcb64b'],
+        quickload: ['Q', '#eac445'], split_feed: ['S', '#71bc88'], patchwork: ['P', '#d27ea8'],
+        fortunes_blessing: ['F', '#e2b861'],
+      };
+      const iconSize = Math.max(9, 10 * layoutScale);
+      const iconGap = Math.max(1, 2 * layoutScale);
+      const iconsWidth = buffs.length * iconSize + Math.max(0, buffs.length - 1) * iconGap;
+      ctx.save();
+      buffs.forEach(([id, entry], index) => {
+        const x = Math.round(pos.x - iconsWidth / 2 + index * (iconSize + iconGap));
+        const y = Math.round(barY - iconSize - 3 * layoutScale);
+        const [label, color] = buffStyle[id] || [id[0]?.toUpperCase() || '?', '#9e92c7'];
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, iconSize, iconSize);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold ' + Math.max(6, Math.floor(7 * layoutScale)) + 'px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(id === 'fortunes_blessing' ? String(entry.stat || label).slice(0, 1) : label, x + iconSize / 2, y + iconSize / 2);
+      });
+      ctx.restore();
     }
 
     // Render hero damage/heal text above hero sprites
@@ -433,7 +527,8 @@ export function renderRuntime(deps) {
         "        const hpRatio = enemy.maxHP ? Math.max(0, Math.min(1, enemy.hp / enemy.maxHP)) : 0;",
         "        const pendingDamageText = (state.globals.DamageTexts || []).find(text => Number(text?.targetUID || 0) === Number(enemy.uid || 0) && Number(text?.notBefore || 0) > Number(state.globals.time || 0));\n        const presentedHP = pendingDamageText ? Number(pendingDamageText.hpBefore ?? enemy.hp) : Number(enemy.hp || 0);\n        const hpRatio = enemy.maxHP ? Math.max(0, Math.min(1, presentedHP / enemy.maxHP)) : 0;",
       );
-    renderImpl = new Function('scope', 'dtOverride', 'with (scope) {\n' + body + '\n}');
+    const effectiveBody = assembleCombatRenderBody(body);
+    renderImpl = new Function('scope', 'dtOverride', 'with (scope) {\n' + effectiveBody + '\n}');
   }
   return renderImpl(deps, deps.dtOverride);
 }

@@ -5,10 +5,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 node --test \
-  tests/powerAmpLifecycleContract.test.js \
-  tests/yellowTurnHandoffContract.test.js \
-  tests/huunExecutionDropBonusContract.test.js \
-  tests/turnSchedulerRepeatGuardContract.test.js \
-  tests/functionBankParityContract.test.js
-
-node tools/audit_initiative_fairness.js
+  tests/functionBankParityContract.test.js \
+  tests/realtimeHeroSkillsContract.test.mjs \
+  tests/realtimeHeroBasicSchedulingContract.test.mjs \
+  tests/realtimeEnemyActionSchedulingContract.test.mjs \
+  tests/combatSimulationTickContract.test.mjs \
+  tests/enemyRewardLifecycleContract.test.js

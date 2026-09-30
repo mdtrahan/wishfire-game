@@ -13,8 +13,11 @@ import {
   createContinuousCombatStageState,
   finalizeContinuousCombatProduction,
   maybeAdvanceContinuousCombatStage,
+  pushContinuousCombatEnemy,
+  reverseContinuousCombatEnemy,
   resetContinuousCombatAfterDefeat,
   scaleContinuousCombatPackRow,
+  teleportContinuousCombatEnemy,
 } from '../web-runner/src/core/continuousCombatStage.mjs';
 
 const rows = ['Gobloc', 'Skeleton', 'High Gobloc', 'Lizardo', 'Orc', 'High Orc', 'Chimerilass', 'Djinn', 'Troll']
@@ -29,6 +32,22 @@ test('continuous combat ignores retired enemy-slot refill holds in both runtime 
   for (const path of ['../web-runner/modules/functionBank.js', '../Scripts/functionBank.js']) {
     const source = readFileSync(new URL(path, import.meta.url), 'utf8');
     assert.match(source, /if \(Number\(g\.ContinuousCombatStageLoop \|\| 0\) === 1\) return getEnemyRosterStability\(\{ entities: getEntities\(ctx\) \}\);/);
+  }
+});
+
+test('continuous stage simulation makes no movement, emission or action claim while paused', () => {
+  for (const pauseKey of ['DevToolingPaused', 'QaScenarioPaused', 'QaFixtureHoldTurn']) {
+    const stage = createContinuousCombatStageState(91);
+    stage.nextEmissionAt = 0;
+    const enemy = { uid: 8, kind: 'enemy', hp: 10, streamState: 'approaching', streamPackIndex: 0, x: 650, y: 290, streamEngageX: 300, streamWalkSpeed: 100, streamStartAt: 0 };
+    const globals = { ContinuousCombatStageLoop: 1, ContinuousCombatStage: stage, GamePhase: 'RUNTIME', time: 20, [pauseKey]: 1 };
+    const calls = [];
+    assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], call: (...args) => calls.push(args) }), false, pauseKey);
+    assert.equal(enemy.x, 650, pauseKey);
+    assert.equal(enemy.streamState, 'approaching', pauseKey);
+    assert.equal(stage.transitions, 0, pauseKey);
+    assert.equal(stage.nextEmissionAt, 0, pauseKey);
+    assert.deepEqual(calls, [], pauseKey);
   }
 });
 
@@ -92,14 +111,14 @@ test('boss victory advances the checkpoint and wraps stage ten into the next reg
   assert.equal(transition.state.clearedBosses, 1);
 });
 
-test('survivors carry HP and KO state through wave loops and boss clears', () => {
+test('ordinary waves carry HP while a boss clear restores and cleanses the party', () => {
   for (const stage of [
     { wave: 4 },
     { wave: 4, bossAvailable: true, bossArmed: true, bossActive: true },
   ]) {
     const heroes = [
-      { uid: 1, kind: 'hero', hp: 13, maxHP: 50, isAlive: true },
-      { uid: 2, kind: 'hero', hp: 0, maxHP: 40, isAlive: false },
+      { uid: 1, kind: 'hero', baseHeroName: 'Falie', hp: 13, maxHP: 50, isAlive: true, statuses: [{ statusEffect: 'dot' }, { statusEffect: 'atkUp' }], statusEffects: [{ statusEffect: 'blind' }, { statusEffect: 'barrier' }] },
+      { uid: 2, kind: 'hero', baseHeroName: 'Huun', hp: 0, maxHP: 40, isAlive: false, statuses: [{ statusEffect: 'silence' }] },
     ];
     const entities = [...heroes];
     const globals = {
@@ -107,19 +126,27 @@ test('survivors carry HP and KO state through wave loops and boss clears', () =>
       ContinuousCombatStage: { ...createContinuousCombatStageState(1), ...stage, nextEmissionAt: 0 },
       EnemyData: rows, EnemySize: 40, GamePhase: 'RUNTIME', BattleStartActive: 0,
       time: 10, PendingDeaths: {}, EnemyDeathVisualHoldByUID: {}, EnemySlots: [],
+      HeroProgress: { heroes: {} },
     };
     const calls = [];
     const call = (name, row, slotIndex) => {
       calls.push(name);
+      if (name === 'SettleContinuousCombatRewards' && stage.bossActive) heroes[0].maxHP = 60;
       if (name !== 'SpawnEnemy') return null;
       const enemy = { uid: 10 + slotIndex, kind: 'enemy', name: row.name, hp: row.HP, maxHP: row.HP };
       entities.push(enemy);
       return enemy;
     };
     assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), true);
-    assert.deepEqual(heroes.map(hero => hero.hp), [13, 0]);
-    assert.deepEqual(heroes.map(hero => hero.isAlive), [true, false]);
-    assert.equal(calls.includes('UpdateHeroHPUI'), false);
+    const clearedBoss = !!stage.bossActive;
+    assert.deepEqual(heroes.map(hero => hero.hp), clearedBoss ? [60, 40] : [13, 0]);
+    assert.deepEqual(heroes.map(hero => hero.isAlive), clearedBoss ? [true, true] : [true, false]);
+    assert.deepEqual(heroes.map(hero => hero.statuses.map(status => status.statusEffect)),
+      clearedBoss ? [['atkUp'], []] : [['dot', 'atkUp'], ['silence']]);
+    assert.deepEqual(heroes[0].statusEffects.map(status => status.statusEffect), clearedBoss ? ['barrier'] : ['blind', 'barrier']);
+    assert.equal(calls.includes('UpdateHeroHPUI'), clearedBoss);
+    assert.equal(globals.HeroProgress.heroes.Falie?.hp, clearedBoss ? 60 : undefined);
+    assert.equal(globals.HeroProgress.heroes.Huun?.hp, clearedBoss ? 40 : undefined);
     assert.equal(globals.ContinuousCombatStage.wave, 1);
   }
 });
@@ -158,9 +185,106 @@ test('stream enemies begin off-stage and become engaged only after walking to th
   const enemy = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', hp: 10 }, { lane: 1, rank: 0, packIndex: 0 });
   assert.equal(enemy.streamState, 'approaching');
   assert.ok(enemy.x > 360);
-  assert.ok(enemy.y >= 190 && enemy.y <= 355);
+  const heroYs = deriveCombatFormationAnchors({ globals, heroCount: 4 }).heroYs;
+  assert.ok(enemy.y >= heroYs[0] && enemy.y <= heroYs.at(-1));
   assert.equal(enemy.streamEngageX, 130);
   assert.equal(enemy.streamWalkSpeed, Math.max(34, 40 * 0.9) * 0.7 * 0.9);
+});
+
+test('Shield Slam and Return Gate move right within the attack boundary', () => {
+  const enemy = { uid: 71, kind: 'enemy', hp: 10, streamState: 'engaged', x: 280, originX: 280, streamEngageX: 280 };
+  assert.equal(pushContinuousCombatEnemy(enemy, 80, 5), 10);
+  assert.equal(enemy.x, 290);
+  assert.equal(enemy.streamState, 'in_range');
+  enemy.x = 200;
+  enemy.originX = 200;
+  enemy.streamEngageX = 200;
+  enemy.streamState = 'engaged';
+  assert.equal(pushContinuousCombatEnemy(enemy, 80, 5), 55);
+  assert.equal(enemy.x, 255);
+  enemy.x = 180;
+  enemy.originX = 180;
+  enemy.streamEngageX = 180;
+  enemy.streamState = 'engaged';
+  assert.equal(teleportContinuousCombatEnemy(enemy, 100, 6), 100);
+  assert.equal(enemy.x, 280);
+  enemy.x = 300;
+  enemy.originX = 300;
+  enemy.streamEngageX = 300;
+  assert.equal(teleportContinuousCombatEnemy(enemy, 100, 7), 0);
+  assert.equal(enemy.x, 300);
+});
+
+test('displacement preserves an active stationary impact and returns the enemy to its attack anchor', () => {
+  const enemy = { uid: 74, kind: 'enemy', hp: 10, streamState: 'engaged', x: 200, originX: 200, originY: 210, streamEngageX: 200, streamWalkSpeed: 80, streamStartAt: 0 };
+  const action = { uid: enemy.uid, active: true, stationary: true, state: 'HIT', timer: 0.2, nextReadyAt: 7 };
+  const pendingImpact = { ownerUID: enemy.uid, impactAt: 1.2 };
+  const stage = { ...createContinuousCombatStageState(3), lastUpdatedAt: 1 };
+  const globals = {
+    ContinuousCombatStageLoop: 1,
+    ContinuousCombatStage: stage,
+    RealtimeEnemyActionsByUID: { [enemy.uid]: action },
+    PendingHeroHits: [pendingImpact],
+    GamePhase: 'RUNTIME',
+    time: 1,
+  };
+
+  assert.equal(pushContinuousCombatEnemy(enemy, 55, 1), 55);
+  assert.equal(enemy.x, 255);
+  assert.equal(enemy.streamEngageX, 200);
+  globals.time = 1.1;
+  enemy.x = enemy.originX;
+  maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], call() {} });
+  assert.equal(enemy.originX, 255);
+  assert.equal(enemy.x, 255);
+  assert.equal(enemy.streamState, 'in_range');
+  assert.equal(action.active, true);
+  assert.equal(action.timer, 0.2);
+  assert.equal(action.nextReadyAt, 7);
+  assert.equal(globals.PendingHeroHits[0], pendingImpact);
+
+  action.active = false;
+  globals.time = 1.2;
+  maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], call() {} });
+  assert.equal(enemy.streamEngageX, 200);
+  assert.ok(enemy.x < 255);
+});
+
+test('Frost Reversal retreats on simulation time, blocks new enemy actions, and preserves pending impacts', () => {
+  const stage = { ...createContinuousCombatStageState(4), lastUpdatedAt: 1 };
+  const enemy = { uid: 72, kind: 'enemy', hp: 10, streamState: 'engaged', x: 200, originX: 200, originY: 210, streamEngageX: 200, streamWalkSpeed: 80, streamStartAt: 0 };
+  const pendingHit = { uid: 9, targetUID: enemy.uid, impactAt: 1.3 };
+  const globals = { ContinuousCombatStageLoop: 1, ContinuousCombatStage: stage, GamePhase: 'RUNTIME', time: 1, PendingHeroHits: [pendingHit] };
+  assert.equal(reverseContinuousCombatEnemy(enemy, 1), true);
+  assert.equal(enemy.streamState, 'retreating');
+  let enemyActionCalls = 0;
+  for (let step = 1; step <= 10; step += 1) {
+    globals.time = 1 + step * 0.1;
+    maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], call(name) { if (name === 'TickRealtimeEnemyActions') enemyActionCalls += 1; } });
+  }
+  assert.equal(enemy.x, 280);
+  assert.equal(enemy.streamState, 'retreating');
+  assert.equal(enemyActionCalls, 0);
+  assert.equal(globals.PendingHeroHits[0], pendingHit);
+
+  for (let step = 11; step <= 14; step += 1) {
+    globals.time = 1 + step * 0.1;
+    maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], call(name) { if (name === 'TickRealtimeEnemyActions') enemyActionCalls += 1; } });
+    if (step === 12) assert.equal(enemy.streamState, 'retreating');
+    if (step === 13) assert.equal(enemy.streamState, 'in_range');
+  }
+  assert.ok(enemy.x < 300, 'the enemy resumes its leftward approach after 1.25 seconds');
+  assert.equal(enemy.streamState, 'in_range');
+  assert.equal(globals.PendingHeroHits[0], pendingHit);
+});
+
+test('paused simulation time freezes a forced retreat', () => {
+  const enemy = { uid: 73, kind: 'enemy', hp: 10, streamState: 'engaged', x: 200, originX: 200, streamEngageX: 200, streamWalkSpeed: 80, streamStartAt: 0 };
+  assert.equal(reverseContinuousCombatEnemy(enemy, 2), true);
+  const globals = { ContinuousCombatStageLoop: 1, ContinuousCombatStage: { ...createContinuousCombatStageState(1), lastUpdatedAt: 2 }, GamePhase: 'RUNTIME', time: 2, DevToolingPaused: 1 };
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], call() {} }), false);
+  assert.equal(enemy.x, 200);
+  assert.equal(enemy.streamState, 'retreating');
 });
 
 test('later packs begin three seconds after their last enemy enters hero range', () => {
@@ -199,7 +323,7 @@ test('boss walks to its own home and holds position for attacks', () => {
   boss.x = 291;
   let resumed = 0;
   globals.time = 1.1;
-  maybeAdvanceContinuousCombatStage({ globals, entities: [boss], presentationBarrier: { lanes: {} }, call() {}, runCombatStep() { resumed += 1; } });
+  maybeAdvanceContinuousCombatStage({ globals, entities: [boss], presentationBarrier: { lanes: {} }, call(name) { if (name === 'TickRealtimeEnemyActions') resumed += 1; }, runCombatStep() {} });
   assert.equal(boss.streamState, 'engaged');
   assert.equal(boss.x, 290);
   assert.equal(boss.y, 290);
@@ -215,12 +339,25 @@ test('engaged enemy cooldowns keep ticking while hero projectiles are in flight'
     ContinuousCombatStageLoop: 1,
     ContinuousCombatStage: { ...createContinuousCombatStageState(1), bossActive: true },
     GamePhase: 'RUNTIME', BattleStartActive: 0, time: 2,
-    PendingHeroHits: [{ targetUID: 1 }], ActionInProgress: 0, IsPlayerBusy: 0,
+    PendingHeroHits: [{ targetUID: 1 }], ActionInProgress: 1, IsPlayerBusy: 1,
   };
   const boss = { kind: 'enemy', hp: 10, streamState: 'engaged', x: 290, y: 290 };
   let enemyTimerChecks = 0;
-  maybeAdvanceContinuousCombatStage({ globals, entities: [boss], presentationBarrier: { lanes: { pendingHeroHits: true } }, call() {}, runCombatStep() { enemyTimerChecks += 1; } });
+  maybeAdvanceContinuousCombatStage({ globals, entities: [boss], presentationBarrier: { lanes: { pendingHeroHits: true } }, call(name) { if (name === 'TickRealtimeEnemyActions') enemyTimerChecks += 1; }, runCombatStep() { assert.fail('continuous enemy scheduling must not use ProcessTurn'); } });
   assert.equal(enemyTimerChecks, 1);
+});
+
+test('active per-enemy actions hold boss or wave clearance through their own impact', () => {
+  const globals = {
+    ContinuousCombatStageLoop: 1,
+    ContinuousCombatStage: { ...createContinuousCombatStageState(1), bossActive: true, bossAvailable: true, bossArmed: true },
+    GamePhase: 'RUNTIME', BattleStartActive: 0, time: 2,
+    RealtimeEnemyActionsByUID: { 9: { uid: 9, active: true, state: 'HIT' } },
+  };
+  let settled = 0;
+  maybeAdvanceContinuousCombatStage({ globals, entities: [], presentationBarrier: { lanes: {} }, call(name) { if (name === 'SettleContinuousCombatRewards') settled += 1; }, runCombatStep() {} });
+  assert.equal(settled, 0);
+  assert.equal(globals.ContinuousCombatStage.bossActive, true);
 });
 
 test('five-enemy packs enter with deterministic stagger instead of marching in unison', () => {
@@ -360,7 +497,7 @@ test('walking completes deterministically and wakes the cooldown scheduler', () 
   globals.ContinuousCombatStage.lastUpdatedAt = 0.9;
   globals.time = 1;
   let resumed = 0;
-  maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], presentationBarrier: { lanes: {} }, call() {}, runCombatStep(name) { if (name === 'ProcessTurn') resumed += 1; } });
+  maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], presentationBarrier: { lanes: {} }, call(name) { if (name === 'TickRealtimeEnemyActions') resumed += 1; }, runCombatStep() {} });
   assert.equal(enemy.streamState, 'engaged');
   assert.equal(enemy.x, enemy.streamEngageX);
   assert.equal(globals.ContinuousCombatStage.nextEmissionAt, 4);
@@ -375,11 +512,11 @@ test('heroes can target an approaching enemy after it crosses the cyan range lin
     EnemySize: 40, EnemyData: rows, EnemySlots: [2], PendingDeaths: {}, ActionInProgress: 0, IsPlayerBusy: 0,
   };
   const enemy = activateContinuousCombatSpawnedEnemy(globals, { uid: 1, kind: 'enemy', hp: 10 }, { lane: 1, entryOrder: 0 });
-  enemy.x = 331;
+  enemy.x = 291;
   let resumed = 0;
-  maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], presentationBarrier: { lanes: {} }, call() {}, runCombatStep(name) { if (name === 'ProcessTurn') resumed += 1; } });
+  maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], presentationBarrier: { lanes: {} }, call(name) { if (name === 'TickRealtimeEnemyActions') resumed += 1; }, runCombatStep() {} });
   assert.equal(enemy.streamState, 'in_range');
-  assert.ok(enemy.x <= 330);
+  assert.ok(enemy.x <= 290);
   assert.ok(enemy.x > enemy.streamEngageX);
   assert.equal(resumed, 1);
 });
@@ -406,7 +543,7 @@ test('runtime source targets in-range walkers while keeping them out of the enem
   assert.match(source, /enemy\.streamState && enemy\.streamState !== 'engaged'/);
   assert.doesNotMatch(source, /stationary: enemy\.streamState === 'engaged'/);
   assert.match(source, /stationary: Number\(g\.ContinuousCombatStageLoop \|\| 0\) === 1 \|\| profile === 'ranged'/);
-  assert.match(source, /stationary: Number\(g\.ContinuousCombatStageLoop \|\| 0\) === 1 \|\| \/\^Enemy_Heal_/);
+  assert.match(source, /stationary: continuousCombat \|\| \/\^Enemy_Heal_/);
   assert.match(source, /forwardX: originX/);
   assert.match(source, /selectionEnabled: targetAvailable/);
   assert.match(source, /actorRoster\.eligible\.filter\(actor => Number\(actor\.type \|\| 0\) === 1\)/);
@@ -415,9 +552,15 @@ test('runtime source targets in-range walkers while keeping them out of the enem
   assert.match(heroCommands, /noLivingEnemy&&streamComplete/);
   assert.match(source, /Number\(astralFlowAward\?\.spawned \|\| 0\) > 0 && markEnemyDeathVisualHold/);
   const renderer = fs.readFileSync(new URL('../web-runner/systems/renderRuntime.js', import.meta.url), 'utf8');
+  const simulationTick = fs.readFileSync(new URL('../web-runner/systems/combatSimulationTick.mjs', import.meta.url), 'utf8');
+  const stage = fs.readFileSync(new URL('../web-runner/src/core/continuousCombatStage.mjs', import.meta.url), 'utf8');
   assert.match(renderer, /enemiesToDraw = .*\.sort\(\(a, b\) => Number\(b\.y/);
-  assert.match(renderer, /const completeEnemyTurn = .*'AdvanceTurn'/);
-  assert.match(renderer, /!pendingHit && !pendingImpact && !pendingBloom && \(Number\(state\.globals\.ContinuousCombatStageLoop/);
+  assert.match(simulationTick, /const completeEnemyTurn =/);
+  assert.match(simulationTick, /delete actionMap\[key\]/);
+  assert.doesNotMatch(simulationTick.slice(simulationTick.indexOf('export function advanceEnemyActionSimulation')), /callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
+  assert.match(simulationTick, /!pendingHit && !pendingImpact && !pendingBloom && \(Number\(state\.globals\.ContinuousCombatStageLoop/);
+  assert.match(stage, /call\('TickRealtimeEnemyActions'\)/);
+  assert.doesNotMatch(stage, /runCombatStep\('ProcessTurn'\)/);
 });
 
 test('engaged enemies can target any living hero regardless of the rendered foot position', async () => {

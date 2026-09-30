@@ -7,6 +7,7 @@
 ## Ownership
 - `render*.js` files own Canvas/UI presentation for combat, HUD, map, overlays, and progression shells.
 - `renderRuntime.js` owns a large partially purified runtime render path and remains high-risk.
+- `combatSimulationTick.mjs` owns the frozen-aware combat clock, queued hero impacts, independently scheduled hero/enemy actions, action presentation, status/effect timing, and reward settlement; renderers consume prepared state and presentation events.
 - `inputHandling.js` owns browser pointer/map input helpers.
 - `superGemRuntime.js` owns supergem board/effect runtime behavior.
 - `heroProgressStorage.js` owns versioned localStorage hero EXP/progression persistence.
@@ -15,10 +16,14 @@
 - `devToolingControls.js` and runtime debug helpers own QA/dev surfaces.
 
 ## Local Contracts
+- `combatAttackVfxPresentation.mjs` lazily requests elemental impact flipbooks by skill slug and centers their one-shot frame on the queued target point; keep the rendered canvas within 52 logical pixels at layout scale 1.
+- `combatSimulationTick.mjs` ages and expires damage text on simulation time; `renderRuntime.js` only spawns its DOM presentation. Damage text must clear so the continuous-stage boss gate can advance.
 - Combat initialization consumes supplied hero members through slot 5, preserving sparse formation indexes and instance identity. Catalog size must not cap deployed members; escort and enemy UIDs follow the instantiated heroes. This initializer capacity does not expand the configuration UI or define new hero content.
 - Production mixed encounters draw only fodder/routine catalog tiers and remain within a 13–18% party-CP band so the party clears ordinary packs decisively; hard, elite and boss tiers require an explicit encounter policy.
-- The queryless production auto-combat slice uses the authored continuous stage adapter: four repeating fodder waves unlock each boss, an armed boss clear advances to the next stage, and stage ten advances the region. It reuses the existing time-initiative scheduler and serialized action barrier; QA query paths retain their existing encounter controls.
+- Production, orientation, and developer QA entry use the authored continuous stage adapter: four repeating fodder waves unlock each boss, an armed boss clear advances to the next stage, and stage ten advances the region. Heroes and each engaged enemy schedule independently; no entry variant dispatches turn initiative.
 - Pending hero hits in production may retarget after a death only to living enemies already inside the hero attack range; renderer fallback must agree with the shared focus rule.
+- Refill bounce, YellowCasino progression and payout, BlueBuff logical completion, buff-icon phase transitions, and gem-merge payout/gate release advance from simulation time without drawing. YellowCasino's ghost remains a presentation read in `renderBoard.js`.
+- Continuous combat is the automatic action owner. The app asks the Rust-owned combat outcome resolver after scheduled combat work; continuous defeat settles rewards, resets the stage gate, restores heroes, and resumes from wave one with `QuestFiniteEncounter=1` so legacy slot refill stays disabled. Every paused/background/defeat frame resets the simulation timestamp and performs no simulation work; resume starts with a bounded first step.
 - `storyEntryFlow.mjs` owns quest card flow. Confirmed Skip advances within the current card; embedded combat begins immediately. Defeat waits for Continue or Quit; Quit returns to Quests.
 - Active combat can leave through the shared navigation at a synchronous frame boundary. Layout snapshots preserve CTB, the current fan and pending target state; Quests uses the existing ladder modal for Continue Battle or Quit Battle, and only Quit clears the combat snapshot and resets a fresh session.
 - Narrative rendering preserves the existing two-sentence pages and solo/pair shots. Scene startup, Auto advancement, and layout changes belong to the controller/entry flow, outside `renderNarrativeScene.js`.
@@ -31,6 +36,7 @@
 - Hero rendering publishes each caster's resting sprite-base anchor before applying lunge offsets so attached effects such as Arcane Pulse remain planted.
 - Impact presentation uses the pale diffused glance ring for non-critical damage at or below 5% target max HP. Keep that ring at the target's rendered midpoint on Y while retaining the attacker-facing contact X. Stronger physical basics use the red-orange melee flare on the common contact line, 17% of actor size above that midpoint.
 - Impact rasters face into their target: enemy-target art uses the authored orientation and hero-target art mirrors on X. Common contact stays on the attack-facing side within 5% of the target's actor-size center, matching the Photoshop guide; projectile travel must not pull it toward the attacker. Ground effects stay behind targets. Eruptions, including Venom Sigil and enemy heal blooms, begin at the target's feet and remain in front through every frame. Slice contacts retain their authored completion offset.
+- Launched hero projectile visuals keep their first heading independent of pending-hit removal and target movement. A landed hit clears its projectile at impact; a missed shot travels until its drawn center passes five percent beyond the canvas edge.
 - Late combat overlays must resolve authored asset dimensions after `assetsLayout` loads, then apply the active layout scale through `combatPresentationScale.mjs`. DOM overlays use that same scale instead of fixed CSS dimensions.
 - Developer panels may scroll vertically at compact viewports. Their transformed shells must opt out of flex shrink and finish with 16px physical viewport gutters; every child keeps `scrollWidth <= clientWidth`.
 - Quest-QA controls are query-gated and use fixed side-gutter rails from measured Canvas bounds; when gutters are too narrow they use a contained scrollable two-column dock below the diagnostics z-order.
@@ -42,7 +48,7 @@
 - Hero status presentation uses actor-owned HP and readiness state. The shared Astral Flow HUD and pooled health bar are retired.
 - `combatHealthBarPresentation.mjs` draws both actor HP bars as rounded dark-grey tracks with blue hero and orange enemy fills; keep the hero bar's existing width and height rule for both teams.
 - Combat draws neither the legacy `radiatorPanels.track` backdrop nor the `EnemyArea` texture. The `EnemyArea` layer position triggers one full-canvas logical reference grid behind combat actors.
-- `renderRuntime.js` should shrink over time. Do not add broad new gameplay branches there when a focused render module or gameplay module can own the change.
+- `renderRuntime.js` should shrink over time. Draw calls may prepare buff-icon geometry for the ticker, but must not advance refill, buff completion, icon phases, merge payout, or turn dispatch. Do not add broad new gameplay branches there when a focused render module or gameplay module can own the change.
 - `heroProgressStorage.js` may use `window.localStorage`; SimulationCore packets and Rust-owned code must not.
 - `simulationCoreShadow.js` must expose stable owner markers for Rust-owned rule families and should surface mismatches as diagnostics, not silent fallbacks.
 - Supergem runtime owns native board effects only. Production action selection uses actor readiness and cooldowns.
@@ -73,7 +79,7 @@
 
 - Pending single-target attacks receive an actor-owned living default target before rendering, using the same target-intent capture as an enemy click. Preserve a valid player choice; replace dead/stale targets. ATK must accept the displayed default without an extra enemy tap.
 
-- Fresh encounter initialization clears transient battle conditions through combatSessionReset.mjs. Production combat uses speed readiness and skill cooldowns. Gold and persistent progression are outside this reset. Hero and enemy HP bars render over their owning actors.
+- Fresh encounter initialization clears transient battle conditions and pending realtime hero basic clocks through combatSessionReset.mjs. Production combat uses speed readiness and skill cooldowns. Gold and persistent progression are outside this reset. Hero and enemy HP bars render over their owning actors.
 
 - Gold is currency persisted by goldProgressStorage.mjs under wishfire.gold.v1. Fresh encounters and resurrection never reset it; balance changes, including spending, are saved locally.
 
@@ -87,7 +93,7 @@
 
 - Chapter, story and combat panels use fully opaque fills. Do not reuse the world map as chapter-panel artwork or apply translucent fills that visually merge the panel with terrain.
 
-- Combat-session completion, Quit, or return to Quests clears dev-tool overrides and invalidates pending autoplay work. Continue retains the same session. Reset staged settings and persisted dev config while preserving saved gold.
+- Combat-session completion, Quit, or return to Quests clears dev-tool overrides. Continue retains the same session. Reset staged settings and persisted dev config while preserving saved gold.
 
 - Resource Continue restores party HP while preserving energy, encounter progress, buffs and skills.
 
@@ -106,11 +112,11 @@
 - The combat boss control is hidden during normal waves. At the boss gate its 50x50 graphic is centered on the game grid's horizontal midpoint, X 180, and vertically centered on Y 50. Its draw and pointer boxes use the same `worldToCanvas` projection as the reference grid.
 - Cooldown and readiness rules belong to the deterministic combat owners. Hero lunges use display slots, so catalog identity does not collapse repeated or later formation positions.
 - Prepared commands belong to the combat session and member UIDs. Replacing actor objects while restoring the same session must preserve prepared selections; a new session or changed roster clears them.
-- Full-health recovery is owned by questCombatSession.mjs for both Town and Continue. Restore actual hero actors, then project HP through UpdateHeroHPUI; empty groups clear old totals. Continue alone retains its existing turn-restart sequence.
+- Full-health recovery is owned by questCombatSession.mjs for both Town and Continue. Restore actual hero actors, then project HP through UpdateHeroHPUI; empty groups clear old totals. Continue resumes the same encounter with its realtime cooldown/effect state.
 
-- Active production combat has no AF fills, AF HUD, or combat-card resource gates. Skill readiness is cooldown-owned; SP remains independent where retained by native action rules.
+- Active production combat has no SP or FLOW resource gates or gauges. Skill readiness is cooldown-owned.
 
-- `renderHeroScreen.js` consumes canonical hero definitions and owned progression; skill ranks and independent skill-point upgrades are retired. Show all level locks and passives.
+- `renderHeroScreen.js` consumes canonical hero definitions and owned progression; each hero presents a basic attack and five active skills without unlock/rank/passive categories.
 - `questCombatSession.mjs` presents settled progression before allowing the victory return. Queue settlement and EXP computation remain core/module-owned.
 - Player Start enters an endless combat session through `storyEntryFlow.mjs`; it sets `QuestFiniteEncounter` to zero and never inserts Quest Ladder stages or opening dialogue. QA may still reach retained story hooks explicitly.
 
@@ -123,9 +129,10 @@
 
 - Victory results use 80% of the game canvas width and height, centered on that canvas. A separate canvas-sized black shade has 40% opacity; the native modal backdrop is transparent. ResizeObserver keeps panel/shade geometry current and cleanup removes both shade and observer.
 
-- Hero management uses HERO / GEAR / SKILLS with a persistent hero display and roster. Overview shows EXP and three upcoming unlocks; full stats use a disclosure control. Skills separates seven actives, six passives and the unique FLOW special. FLOW copy follows enemy-death orb rules. Gear uses the canonical equipment economy and loadouts.
+- Hero management uses HERO / GEAR / SKILLS with a persistent hero display and roster. Overview shows EXP and full stats through a disclosure control. Skills presents one basic attack and five active skills. Gear uses the canonical equipment economy and loadouts.
 
 - equipmentStorage.mjs owns the single persisted Gold/equipment/loadout/market record. Import the legacy Gold value once, serialize purchases/equips with Web Locks, and save before applying mutations to runtime state. Equipment bonuses are derived from owned item IDs and projected to saved heroes and live actors; removing equipment never heals or revives.
+- Pending enemy rewards persist beside HeroProgress until recovery settlement. Persist a Gold settlement receipt before wallet sync, commit the receipt with Gold in equipmentStorage, then clear the HeroProgress outbox after wallet confirmation. The two localStorage records remain separate; receipt replay must stay idempotent across interrupted sync.
 - astralMarketUI.mjs replaces the collector at idleFarmLayout. Only the active screen reconstructs/draws offers; leaving checkpoints time without running a hidden simulation. Item inspection never pauses expiration. No collector update/claim path remains.
 
 - Shop background uses an original pearly vertical-ribbon shader with rarity-color blooms following the timed item stream driven by the visible shop draw loop, capped to 360 pixels across and 30 FPS. Reduced motion freezes it; unavailable WebGL uses a static pearl gradient. resourceChrome.mjs shares the existing Quests wallet and curved SVG Back control with the shop; balances read canonical Gold and story-entry resources/energy.
@@ -150,7 +157,7 @@
 - Approved impact assignments are semantic: Kaja uses G03 purple, Runa uses G03 blue, Spectral Orb uses G01 blue, Chain Strike uses G04 original, and Split uses G03 original. Preserve the reviewed source rasters and their intrinsic aspect ratios. The maximum animated painted width is 55 logical pixels at layout scale 1; calculate compliance from the alpha bounding box rather than the full canvas.
 - Hero and enemy weak contacts use the visible sprite midpoint. Common non-weak contacts share the tuned line 17% of actor size above it; do not reuse either contact line for eruptions, ground effects, or slice exceptions.
 - `output/qa/splash-candidates/guide/` and `guide-v2/` are cropped reference tiles and are forbidden as runtime assets. A guide ID may enter runtime only from its reviewed `individual-approved/gNN.png` master.
-- Lethal attack presentation keeps its defeated target visible until queued and active contact impacts clear. Astral Flow KO payout may begin only after `CombatImpactRequests` and `CombatImpactVisuals` are empty.
+- Lethal attack presentation keeps its defeated target visible until queued and active contact impacts clear. Combat outcome checks run after scheduled actions and impacts.
 - Action presentation stays with its actor until the last visible effect completes. Ranged and healing profiles remain on their stored slot-home anchors, while melee `HOLD` waits for the owner's pending hits, impacts, blooms, and `ActionLockUntil` before retreat and handoff. A hero action claimed during its heal keeps its timer at zero until the heal lock clears.
 - Named enemy skills override that basic profile: Scathe crackles on its target, Sweep emits its own crescent, Wipe washes the enemy group, and heal skills rely on resolved heal blooms instead of offensive imagery.
 - Shipping enemy magic AOE and Drain Buff use their own brushfire and inward-orb sequences rather than a generic caster profile. Spectral Orb reuses the drain-orb raster as its counter-clockwise rotating projectile, then resolves with its approved G01 blue contact.

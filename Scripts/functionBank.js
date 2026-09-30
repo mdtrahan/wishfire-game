@@ -9892,16 +9892,10 @@ export function ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID = 0) {
   return resultValue;
 }
 
-export function StartEnemyAction(ctx, enemyUID) {
+function createEnemyActionState(ctx, enemyUID, target, { continuousCombat = false, cooldownSeconds = 0, source = 'functionBank.StartEnemyAction' } = {}) {
   const g = getGlobals(ctx);
   const enemy = GetActorByUID(ctx, enemyUID);
   if (!enemy) return;
-  if (g.ActionInProgress && g.ActionActorUID && g.ActionActorUID !== enemyUID) return;
-  const target = pickEnemyTargetHero(ctx, enemyUID);
-  if (!target) return;
-  g.ActionInProgress = 1;
-  g.ActionActorUID = enemyUID;
-  g.ActionOwnerUID = Number(enemyUID || 0);
   if (enemy.originX == null) enemy.originX = SlotX(ctx, enemy.slotIndex ?? 0);
   if (enemy.originY == null) enemy.originY = SlotY(ctx, enemy.slotIndex ?? 0);
   if (enemy.x == null) enemy.x = enemy.originX;
@@ -9910,7 +9904,7 @@ export function StartEnemyAction(ctx, enemyUID) {
   const skillId = PickEnemySkill(ctx, enemyUID);
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
   const decision = resolveStartEnemyActionCompat({
-    source: 'functionBank.StartEnemyAction',
+    source,
     enemyExists: 1,
     enemyUID,
     targetUID,
@@ -9922,7 +9916,7 @@ export function StartEnemyAction(ctx, enemyUID) {
   });
   g.LastStartEnemyActionOwner = {
     owner: String(decision.owner || 'fallback'),
-    source: 'functionBank.StartEnemyAction',
+    source,
     targetUID: Number(decision.targetUID || 0),
     skillId: String(decision.skillId || ''),
     jsTargetUID: Number(decision.jsDecision?.targetUID ?? decision.targetUID ?? 0),
@@ -9930,7 +9924,7 @@ export function StartEnemyAction(ctx, enemyUID) {
   };
   if (!Number(decision.active || 0)) return;
   const originX = Number(enemy.originX ?? enemy.x ?? 0);
-  g.EnemyAction = {
+  const action = {
     active: true,
     uid: Number(decision.uid || enemyUID || 0),
     state: String(decision.state || 'ADVANCE'),
@@ -9938,9 +9932,33 @@ export function StartEnemyAction(ctx, enemyUID) {
     actionApplied: Number(decision.actionApplied || 0) === 1,
     targetUID: Number(decision.targetUID || 0),
     skillId: String(decision.skillId || skillId || ''),
-    stationary: Number(g.ContinuousCombatStageLoop || 0) === 1 || /^Enemy_Heal_/.test(String(decision.skillId || skillId || '')),
+    stationary: continuousCombat || /^Enemy_Heal_/.test(String(decision.skillId || skillId || '')),
     forwardX: originX,
   };
+  if (continuousCombat) {
+    action.cooldownSeconds = Math.max(0, Number(cooldownSeconds || 0));
+    action.startedAt = Number(g.time || 0);
+    action.nextReadyAt = action.startedAt + action.cooldownSeconds;
+    const key = String(Number(enemyUID || 0));
+    (g.RealtimeEnemyActionsByUID ||= {})[key] = action;
+    (g.RealtimeEnemyActionReadyAt ||= {})[key] = action.nextReadyAt;
+  } else {
+    g.EnemyAction = action;
+  }
+  return action;
+}
+
+export function StartEnemyAction(ctx, enemyUID) {
+  const g = getGlobals(ctx);
+  const enemy = GetActorByUID(ctx, enemyUID);
+  if (!enemy) return;
+  if (g.ActionInProgress && g.ActionActorUID && g.ActionActorUID !== enemyUID) return;
+  const target = pickEnemyTargetHero(ctx, enemyUID);
+  if (!target) return;
+  g.ActionInProgress = 1;
+  g.ActionActorUID = enemyUID;
+  g.ActionOwnerUID = Number(enemyUID || 0);
+  return createEnemyActionState(ctx, enemyUID, target, { source: 'functionBank.StartEnemyAction' });
 }
 
 export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind = null, notBeforeOverride = null) {

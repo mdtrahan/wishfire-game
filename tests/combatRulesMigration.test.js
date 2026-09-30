@@ -22,11 +22,11 @@ test('single-target skills reject target sets; group skills retain surviving sto
 test('special ancestry excludes caster FLOW through a counter reaction',()=>{const h=actor(1,'hero','Stoic'),e=actor(2,'enemy'),c=context([h,e]);e.statuses=[{statusEffect:'counter',magnitude:1}];rules.resolveSkill(c,h,{...strike,isFlowSpecial:true,effects:[{effectType:'damage'}]},[2]);assert.equal(h.hp,90);assert.equal(h.flow,0);});
 test('Healer credits actual immediate restoration once including revival; pure HoT grants none',()=>{const h=actor(1,'hero','Healer'),a=actor(2),e=actor(3,'enemy'),c=context([h,a,e]);a.hp=0;rules.resolveSkill(c,h,{targetType:'deadAlly',effects:[{effectType:'revive',amount:10},{effectType:'heal',amount:10}]},[2]);assert.equal(a.hp,20);assert.equal(h.flow,0);rules.resolveSkill(c,h,{targetType:'ally',effects:[{effectType:'status',statusEffect:'hot',snapshotPotency:10,duration:2}]},[2]);assert.equal(h.flow,0);});
 test('newest Provoke controls single attacks while AoE bypasses it',()=>{const h=actor(1),a=actor(2),e=actor(3,'enemy'),c=context([h,a,e]);rules.applyStatus(c,h,h,{statusEffect:'provoke',duration:3});rules.applyStatus(c,a,a,{statusEffect:'provoke',duration:3});rules.resolveSkill(c,e,{...strike,effects:[{effectType:'damage'}]},[1]);assert.equal(a.hp,90);assert.equal(h.hp,100);rules.resolveSkill(c,e,{...strike,targetType:'allEnemies',effects:[{effectType:'damage'}]},[1,2]);assert.equal(h.hp,90);assert.equal(a.hp,80);});
-test('all four complete authored kits execute through the canonical resolver',()=>{
+test('all four realtime kits expose one basic and five active skills',()=>{
  const {HERO_DEFINITIONS}=require('../web-runner/src/core/heroDefinitions.mjs');
- for(const d of Object.values(HERO_DEFINITIONS)) for(const skill of [d.basic,...d.actives,d.special]){
-  const h={...actor(1,'hero',d.flowMode),name:d.key,currentLevel:50},ally=actor(2),e=actor(3,'enemy');
-  const c=context([h,ally,e]);const ids=rules.targetCandidates(c.actors,h,skill).map(a=>a.uid);
-  assert.equal(rules.resolveSkill(c,h,skill,['allEnemies','allAllies'].includes(skill.targetType)?ids:ids.slice(0,1)),true,d.name+': '+skill.displayName);
+ for(const d of Object.values(HERO_DEFINITIONS)){
+  assert.ok(d.basic?.skillId, d.name);
+  assert.equal(d.actives.length, 5, d.name);
+  assert.equal(new Set(d.actives.map(skill=>skill.skillId)).size, 5, d.name);
  }
 });

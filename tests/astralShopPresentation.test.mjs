@@ -12,9 +12,9 @@ test('shop shader, live shared wallet, back navigation and compact containment',
   const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:dpr});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
   if(width===360)await page.clock.install();
   await page.goto('http://localhost:8047/web-runner/index.html');
-  await page.getByRole('button',{name:'FLOW',exact:true}).waitFor();
+  await page.getByRole('button',{name:'SHOP',exact:true}).waitFor();
   await page.evaluate(async()=>{const {createMarket}=await import('/web-runner/src/core/astralMarket.mjs');const key='wishfire.equipment-economy.v1';const data=JSON.parse(localStorage.getItem(key))||{version:1,loadouts:{},market:createMarket(123,Date.now())};data.gold=5000;data.items=[{instanceId:'test-iron',equipmentId:'iron-sword'},{instanceId:'test-ember',equipmentId:'ember-blade'}];localStorage.setItem(key,JSON.stringify(data));});
-  await page.getByRole('button',{name:'FLOW',exact:true}).click();
+  await page.getByRole('button',{name:'SHOP',exact:true}).click();
   const shop=page.locator('#astral-market');await shop.getByLabel('Energy 200 of 200',{exact:true}).waitFor();
   assert.equal(await shop.getByLabel('Resources 150',{exact:true}).count(),1);
   assert.equal(await shop.locator('.rainbow').getAttribute('data-renderer'),'webgl');

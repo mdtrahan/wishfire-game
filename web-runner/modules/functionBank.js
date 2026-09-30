@@ -1,5 +1,5 @@
 import { effectiveStat } from '../src/core/combatRules.mjs';
-import { executeHeroCommand, resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat, settleContinuousCombatRewards, emitResolvedHealEvent } from './heroCommands.mjs';
+import { executeHeroCommand, resolveNativeCommandStep, resolveRealtimeBasicImpact, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat, settleContinuousCombatRewards, emitResolvedHealEvent, recordEnemyDefeatReward } from './heroCommands.mjs';
 import { state } from './state.js';
 import { MONSTER_KEYS, MONSTER_LOOT_TABLE, TOKEN, EMPTY } from './monsterLootTableEventTokens.js';
 import { ACTIVE_EVENT_IDS, LIVE_OPS_EVENTS, TOKEN_REGISTRY } from './liveOpsTokens.js';
@@ -53,7 +53,11 @@ import {
   applyDynamicInitiativeActionCompleted,
   selectDynamicInitiativeTurn,
 } from '../src/core/dynamicInitiativeRules.mjs';
-import { collectRealtimeReadyActors, realtimeCooldownSeconds, selectRealtimeReadyActor } from '../src/core/realtimeCooldown.mjs';
+import { realtimeCooldownSeconds, scheduleRealtimeActions, selectRealtimeReadyActor } from '../src/core/realtimeCooldown.mjs';
+import { selectRealtimeHeroSkillTarget } from '../src/core/realtimeHeroTargeting.mjs';
+import { castRealtimeHeroSkill, tickRealtimeHeroSkillZones, realtimeBasicInterval, realtimeStatMultiplier, realtimeProvokeTarget, realtimeCoverTarget, realtimeIncomingDamage, realtimeMagicBlocked, realtimeRetaliation } from './heroCommands.mjs';
+import { heroDefinition } from '../src/core/heroDefinitions.mjs';
+import { pushContinuousCombatEnemy, reverseContinuousCombatEnemy, teleportContinuousCombatEnemy } from '../src/core/continuousCombatStage.mjs';
 
 import { sanitizeInitiativeQueue, shouldAutoCorrectImproperRepeat } from '../src/core/initiativeGuards.mjs';
 import {
@@ -5006,7 +5010,7 @@ export function GetEffectiveStat(ctx, inst, stat) {
     jsValue: Number(jsValue || 0),
   });
 
-  return owner ? owner.value : jsValue;
+  return Math.max(0, (owner ? owner.value : jsValue) * realtimeStatMultiplier(g, inst, stat));
 }
 
 export function GetBaseStat(ctx, inst, stat) {
@@ -5987,6 +5991,7 @@ function resolveActorDefeatTransition(ctx, target, killerUID = 0, options = unde
   if (target.kind === 'enemy') {
     target.pendingOfficialDeath = 1;
     target.deathState = 'pending_attack';
+    recordEnemyDefeatReward(g.ProgressionBattle, target);
   } else {
     target.isAlive = false;
   }
@@ -6009,9 +6014,10 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   if (!t || Number(t.hp ?? 0) <= 0) return 0;
   const source = GetActorByUID(ctx, g.LastDamageSourceUID);
   if (source?.kind === 'enemy' && t.kind === 'hero' && !opts.nativeResolved) {
-    const before = t.hp;
-    resolveIncomingNativeHit(ctx, source, t, Math.max(0, Number(dmg) || 0), opts);
-    return Math.max(0, before - t.hp);
+    const recipient = opts.singleTarget ? realtimeCoverTarget(ctx, t) : t;
+    const before = recipient.hp;
+    resolveIncomingNativeHit(ctx, source, recipient, Math.max(0, Number(dmg) || 0), opts);
+    return Math.max(0, before - recipient.hp);
   }
   const targetTraceHit = findMatchingPendingHeroHit(ctx, uid, dmg, (hit) => Number(hit.targetTraceSequence || 0) > 0);
   const chainStrikeIIHit = findMatchingPendingHeroHit(ctx, uid, dmg, (hit) => Number(hit.astralFlowChainStrikeII || 0) === 1);
@@ -6019,7 +6025,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   const suppressHitFlash = shouldSuppressHitFlash(ctx, uid, dmg, opts);
   const suppressDamageText = shouldSuppressDamageText(ctx, uid, dmg, opts);
   const beforeHP = Number(t.hp ?? 0);
-  let incomingDamage = Math.max(0, Number(dmg || 0));
+  let incomingDamage = realtimeIncomingDamage(ctx, t, source, Math.max(0, Number(dmg || 0)));
   const shieldBefore = t.kind === 'hero' ? Math.max(0, Number(g.PartyTempHPShield || 0)) : 0;
   const jsShieldAbsorbed = t.kind === 'hero' ? Math.min(shieldBefore, incomingDamage) : 0;
   const jsDamageToHP = Math.max(0, incomingDamage - jsShieldAbsorbed);
@@ -6057,6 +6063,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   }
   const afterHP = Number(t.hp ?? 0);
   const appliedDamage = Math.max(0, beforeHP - afterHP);
+  if (appliedDamage > 0 && source?.kind === 'enemy' && t.kind === 'hero') realtimeRetaliation(ctx, t, source.uid);
   if (chainStrikeIIHit) recordAstralFlowChainStrikeIIHit(g, { targetUID: Number(uid || 0), preHP: beforeHP, postHP: afterHP, damage: appliedDamage, coefficient: Number(chainStrikeIIHit.chainStrikeDamagePct || 396), primary: Number(chainStrikeIIHit.chainStrikeIIPrimary || 0) === 1 });
   g.LastDamageSourceUID = source?.uid || g.LastDamageSourceUID;
 
@@ -6386,8 +6393,21 @@ function pickEnemyTargetHero(ctx, enemyUID = 0) {
       : null,
   });
   g.LastEnemyTargetBias = result.trace;
-  const target = result.target;
+  const target = realtimeProvokeTarget(ctx, enemy, result.target);
   return target;
+}
+
+export function ResolveEnemyActionTarget(ctx, enemyUID, preferredTargetUID = 0) {
+  const enemy = GetActorByUID(ctx, enemyUID);
+  const preferred = GetActorByUID(ctx, preferredTargetUID);
+  if (Number(getGlobals(ctx).ContinuousCombatStageLoop || 0) !== 1) {
+    return preferred?.kind === 'hero' && Number(preferred.hp || 0) > 0 ? preferred : null;
+  }
+  const enemyInRange = enemy?.streamState === 'engaged'
+    && Number.isFinite(Number(enemy.x))
+    && Number(enemy.x) <= Number(enemy.streamEngageX ?? enemy.originX ?? enemy.x);
+  if (enemyInRange && preferred?.kind === 'hero' && Number(preferred.hp || 0) > 0) return realtimeProvokeTarget(ctx, enemy, preferred);
+  return pickEnemyTargetHero(ctx, enemyUID);
 }
 
 function applyRunaMagicResist(ctx, enemyUID, targetHeroUID, incomingDamage, skillId = 'Enemy_MAG_Single') {
@@ -7124,6 +7144,7 @@ function combatAttackVfxKind(actor) {
 export function TickRealtimeHeroBasics(ctx) {
   const g = getGlobals(ctx);
   if (Number(g.ContinuousCombatStageLoop || 0) !== 1 || g.GamePhase !== 'RUNTIME' || g.BattleStartActive || g.NativeBattleEnded) return 0;
+  tickRealtimeHeroSkillZones(ctx);
   const enemies = getEnemies(ctx);
   const focusTarget = resolveHeroAttackTarget({ enemies, focusUID: Number(g.RealtimeHeroFocusTargetUID || 0), inRange: isHeroBasicTargetInRange });
   g.RealtimeHeroFocusTargetUID = Number(focusTarget?.uid || 0);
@@ -7136,23 +7157,159 @@ export function TickRealtimeHeroBasics(ctx) {
     }
   }
   const heroes = getEntities(ctx).filter(hero => hero?.kind === 'hero' && Number(hero.hp || 0) > 0)
-    .map(hero => ({ ...hero, speed: GetEffectiveStat(ctx, hero, 'SPD') }));
-  const readiness = collectRealtimeReadyActors({ actors: heroes, readyAt: g.RealtimeHeroBasicReadyAt, now: g.time, selectionEnabled: !!focusTarget });
-  g.RealtimeHeroBasicReadyAt = readiness.readyAt;
-  for (const hero of readiness.ready) {
+    .map(hero => ({ ...hero, type: 0, speed: GetEffectiveStat(ctx, hero, 'SPD') }));
+  const now = Number(g.time || 0);
+  const clocks = { ...(g.RealtimeHeroBasicClocks || {}) };
+  const scheduled = { ...(g.RealtimeHeroBasicScheduledActions || {}) };
+  const liveUIDs = new Set(heroes.map(hero => String(hero.uid)));
+  for (const uid of Object.keys(clocks)) if (!liveUIDs.has(uid)) delete clocks[uid];
+  for (const uid of Object.keys(scheduled)) if (!liveUIDs.has(uid)) delete scheduled[uid];
+  for (const hero of heroes) {
+    const key = String(hero.uid);
+    const previous = clocks[key] || {};
+    const legacyReadyAt = Number(g.RealtimeHeroBasicReadyAt?.[key]);
+    clocks[key] = {
+      ...previous,
+      basicReadyAt: Number.isFinite(Number(previous.basicReadyAt))
+        ? Number(previous.basicReadyAt)
+        : (Number.isFinite(legacyReadyAt) ? legacyReadyAt : undefined),
+      castUntil: Number(previous.castUntil || 0),
+    };
+  }
+
+  if (focusTarget && heroes.some(hero => !Number.isFinite(Number(clocks[String(hero.uid)].basicReadyAt)))) {
+    const seeded = selectRealtimeReadyActor({
+      actors: heroes,
+      readyAt: Object.fromEntries(heroes.filter(hero => Number.isFinite(Number(clocks[String(hero.uid)].basicReadyAt))).map(hero => [String(hero.uid), Number(clocks[String(hero.uid)].basicReadyAt)])),
+      now,
+      selectionEnabled: false,
+    });
+    for (const hero of heroes) {
+      const key = String(hero.uid);
+      if (!Number.isFinite(Number(clocks[key].basicReadyAt))) clocks[key].basicReadyAt = seeded.readyAt[key];
+    }
+  }
+
+  g.RealtimeHeroBasicClocks = clocks;
+  const servicedUIDs = new Set();
+  const skillSelection = (hero, skill) => selectRealtimeHeroSkillTarget({
+    skill, hero, heroes, enemies: getEnemies(ctx), effects: g.RealtimeSkillEffects,
+    zones: g.RealtimeSkillZones, now: Number(g.time || 0),
+  });
+  const fireSkill = (hero, skillId) => {
+    const skill = heroDefinition(hero)?.actives.find(entry => entry.skillId === skillId);
+    const selection = skill && skillSelection(hero, skill);
+    return selection ? castRealtimeHeroSkill(ctx, hero.uid, skill, selection, {
+      push: pushContinuousCombatEnemy, reverse: reverseContinuousCombatEnemy, teleport: teleportContinuousCombatEnemy,
+    }) : false;
+  };
+  const fireBasic = (heroUID, target) => {
+    if (!target || Number(target.hp || 0) <= 0 || !isHeroBasicTargetInRange(target)) return false;
     const before = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits.length : 0;
-    HeroAttackSingle(ctx, hero.uid, focusTarget.uid, true);
+    HeroAttackSingle(ctx, heroUID, target.uid, true);
     for (const hit of (g.PendingHeroHits || []).slice(before)) {
       if (hit.effectType || hit.actionName || hit.generatedBySkillId || hit.attackVfxKind === 'split') continue;
       hit.realtimeBasic = 1;
       hit.suppressImpactVfx = 1;
       hit.retargetOnDeath = 1;
     }
-    const interval = realtimeCooldownSeconds(hero);
-    const due = readiness.readyAt[String(hero.uid)];
-    g.RealtimeHeroBasicReadyAt[String(hero.uid)] = due + (Math.floor(Math.max(0, g.time - due) / interval) + 1) * interval;
+    return true;
+  };
+
+  for (const hero of heroes) {
+    const key = String(hero.uid);
+    const action = scheduled[key];
+    if (!action) continue;
+    if (!focusTarget) {
+      if (action.kind === 'skill') (clocks[key].skillReadyAt ||= {})[action.skillId] = action.dueAt;
+      else clocks[key].basicReadyAt = Math.min(Number(clocks[key].basicReadyAt || action.dueAt), Number(action.dueAt));
+      clocks[key].castUntil = 0;
+      delete scheduled[key];
+      continue;
+    }
+    if (Number(action.startAt || 0) > now) continue;
+    const fired = action.kind === 'skill' ? fireSkill(hero, action.skillId) : fireBasic(hero.uid, focusTarget);
+    if (fired) servicedUIDs.add(Number(hero.uid));
+    else if (action.kind === 'skill') (clocks[key].skillReadyAt ||= {})[action.skillId] = action.dueAt;
+    else clocks[key].basicReadyAt = Math.min(Number(clocks[key].basicReadyAt || action.dueAt), Number(action.dueAt));
+    delete scheduled[key];
   }
-  return readiness.ready.length;
+
+  if (focusTarget) {
+    const actors = heroes.map(hero => ({
+      ...hero,
+      basicIntervalSeconds: realtimeBasicInterval(g, hero, realtimeCooldownSeconds(hero)),
+      basicCastSeconds: 0,
+      projectileFlightSeconds: 0.52,
+      basicEligible: !scheduled[String(hero.uid)] && !servicedUIDs.has(Number(hero.uid)),
+      skills: (heroDefinition(hero)?.actives || []).filter(skill => skill.skillId !== 'retaliation_burst').map(skill => ({
+        id: skill.skillId, cooldownSeconds: skill.cooldownSeconds,
+        eligible: !scheduled[String(hero.uid)] && !servicedUIDs.has(Number(hero.uid)) && !!skillSelection(hero, skill),
+      })),
+    }));
+    const result = scheduleRealtimeActions({ actors, clocks, now, frameSeconds: 1 / 60 });
+    Object.assign(clocks, result.clocks);
+    for (const action of result.actions) {
+      scheduled[String(action.uid)] = { ...action };
+    }
+    for (const hero of heroes) {
+      const key = String(hero.uid);
+      const action = scheduled[key];
+      if (!action || Number(action.startAt || 0) > now || servicedUIDs.has(Number(hero.uid))) continue;
+      const fired = action.kind === 'skill' ? fireSkill(hero, action.skillId) : fireBasic(hero.uid, focusTarget);
+      if (fired) servicedUIDs.add(Number(hero.uid));
+      else if (action.kind === 'skill') (clocks[key].skillReadyAt ||= {})[action.skillId] = action.dueAt;
+      else clocks[key].basicReadyAt = Math.min(Number(clocks[key].basicReadyAt || action.dueAt), Number(action.dueAt));
+      delete scheduled[key];
+    }
+  }
+
+  g.RealtimeHeroBasicClocks = clocks;
+  g.RealtimeHeroBasicScheduledActions = scheduled;
+  g.RealtimeHeroBasicReadyAt = Object.fromEntries(Object.entries(clocks)
+    .filter(([, clock]) => Number.isFinite(Number(clock.basicReadyAt)))
+    .map(([uid, clock]) => [uid, Number(clock.basicReadyAt)]));
+  return servicedUIDs.size;
+}
+
+export function TickRealtimeEnemyActions(ctx) {
+  const g = getGlobals(ctx);
+  if (Number(g.ContinuousCombatStageLoop || 0) !== 1 || g.GamePhase !== 'RUNTIME' || g.BattleStartActive || g.NativeBattleEnded) return 0;
+  const now = Number(g.time || 0);
+  const actors = getEntities(ctx).filter(enemy => enemy?.kind === 'enemy'
+    && Number(enemy.hp || 0) > 0
+    && enemy.streamState === 'engaged'
+    && Number.isFinite(Number(enemy.x))
+    && Number(enemy.x) <= Number(enemy.streamEngageX ?? enemy.originX ?? enemy.x));
+  const liveUIDs = new Set(actors.map(enemy => String(enemy.uid)));
+  const readyAt = g.RealtimeEnemyActionReadyAt ||= {};
+  const active = g.RealtimeEnemyActionsByUID ||= {};
+  for (const uid of Object.keys(readyAt)) {
+    if (!liveUIDs.has(uid) && !active[uid]) delete readyAt[uid];
+  }
+  for (const uid of Object.keys(active)) {
+    if (!liveUIDs.has(uid)) continue;
+    if (!active[uid]?.active) delete active[uid];
+  }
+  const due = [];
+  for (const enemy of actors) {
+    const key = String(enemy.uid);
+    if (!Number.isFinite(Number(readyAt[key]))) readyAt[key] = now;
+    if (active[key]?.active || Number(readyAt[key]) > now) continue;
+    due.push({ enemy, dueAt: Number(readyAt[key]) });
+  }
+  due.sort((a, b) => a.dueAt - b.dueAt || Number(a.enemy.uid) - Number(b.enemy.uid));
+  let started = 0;
+  for (const { enemy } of due) {
+    const target = pickEnemyTargetHero(ctx, enemy.uid);
+    if (!target) {
+      readyAt[String(enemy.uid)] = now;
+      continue;
+    }
+    StartRealtimeEnemyAction(ctx, enemy.uid);
+    if (active[String(enemy.uid)]?.active) started += 1;
+  }
+  return started;
 }
 
 function HeroAttackSplit(ctx, heroUID, rootTargetUID) {
@@ -7227,7 +7384,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID, realtimeBasic = false)
     LogCombat(ctx, `${actorName} had no target`);
     return;
   }
-  if (IsPartySkillActive(ctx, PARTY_SPLIT_ID)) {
+  if (!realtimeBasic && IsPartySkillActive(ctx, PARTY_SPLIT_ID)) {
     HeroAttackSplit(ctx, heroUID, targetUID);
     return;
   }
@@ -7303,6 +7460,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID, realtimeBasic = false)
     calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
     heroName: actorName,
     heroType: mode,
+    combatRulesBasic: realtimeBasic ? 1 : 0,
     attackVfxKind: combatAttackVfxKind(actor),
     targetTraceSequence: Number(g.ActiveManualTargetTraceSequence || 0),
     msg: `${actorName} hit ${target.name || '?'} for ${finalDmg}!`,
@@ -7589,7 +7747,7 @@ export function ProcessEnemyTurnDamageOverTime(ctx, enemyUID) {
 
 export function Enemy_ATK_Single(ctx, enemyUID, targetHeroUID) {
   const dmg = CalculateDamage(ctx, enemyUID, targetHeroUID, 'melee');
-  const appliedDamage = ApplyDamageToTarget(ctx, targetHeroUID, dmg, {sourceUID:enemyUID});
+  const appliedDamage = ApplyDamageToTarget(ctx, targetHeroUID, dmg, {sourceUID:enemyUID,singleTarget:true});
   const enemyName = getActorNameByUID(ctx, enemyUID);
   const heroName = getActorNameByUID(ctx, targetHeroUID);
   LogCombat(ctx, `${enemyName} hit ${heroName} for ${appliedDamage}!`);
@@ -7597,7 +7755,7 @@ export function Enemy_ATK_Single(ctx, enemyUID, targetHeroUID) {
 
 export function Enemy_MAG_Single(ctx, enemyUID, targetHeroUID) {
   const dmg = CalculateDamage(ctx, enemyUID, targetHeroUID, 'magic');
-  const appliedDamage = ApplyDamageToTarget(ctx, targetHeroUID, dmg, {sourceUID:enemyUID,magic:true});
+  const appliedDamage = ApplyDamageToTarget(ctx, targetHeroUID, dmg, {sourceUID:enemyUID,magic:true,singleTarget:true});
   LogCombat(ctx, `${getActorNameByUID(ctx, enemyUID)} cast for ${appliedDamage}!`);
 }
 
@@ -7909,6 +8067,7 @@ export function SpawnEnemy(ctx, enemyData, slotIndex = 0) {
     },
     faction: String(enemyData.faction || 'wishless'),
     enemyRole: String(enemyData.enemyRole || enemyData.role || 'fodder'),
+    attackPattern: enemyData.attackPattern && typeof enemyData.attackPattern === 'object' ? { ...enemyData.attackPattern } : undefined,
     targetPreference: enemyData.targetPreference || enemyData.targetingPreference || enemyData.targetingPolicy || enemyData.targetPolicy || '',
     localeTags: normalizeLocaleTags(enemyData.localeTags || enemyData.locale || enemyData.biomes || enemyData.biome || 'all'),
     slotIndex,
@@ -10109,25 +10268,20 @@ export function ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID = 0) {
   return resultValue;
 }
 
-export function StartEnemyAction(ctx, enemyUID) {
+function createEnemyActionState(ctx, enemyUID, target, { continuousCombat = false, cooldownSeconds = 0, source = 'functionBank.StartEnemyAction' } = {}) {
   const g = getGlobals(ctx);
   const enemy = GetActorByUID(ctx, enemyUID);
   if (!enemy) return;
-  if (g.ActionInProgress && g.ActionActorUID && g.ActionActorUID !== enemyUID) return;
-  const target = pickEnemyTargetHero(ctx, enemyUID);
-  if (!target) return;
-  g.ActionInProgress = 1;
-  g.ActionActorUID = enemyUID;
-  g.ActionOwnerUID = Number(enemyUID || 0);
   if (enemy.originX == null) enemy.originX = SlotX(ctx, enemy.slotIndex ?? 0);
   if (enemy.originY == null) enemy.originY = SlotY(ctx, enemy.slotIndex ?? 0);
   if (enemy.x == null) enemy.x = enemy.originX;
   if (enemy.y == null) enemy.y = enemy.originY;
   const targetUID = target ? target.uid : 0;
   const skillId = PickEnemySkill(ctx, enemyUID);
+  if (continuousCombat && /^Enemy_MAG_/.test(String(skillId)) && realtimeMagicBlocked(g, enemy)) return;
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
   const decision = resolveStartEnemyActionCompat({
-    source: 'functionBank.StartEnemyAction',
+    source,
     enemyExists: 1,
     enemyUID,
     targetUID,
@@ -10139,7 +10293,7 @@ export function StartEnemyAction(ctx, enemyUID) {
   });
   g.LastStartEnemyActionOwner = {
     owner: String(decision.owner || 'fallback'),
-    source: 'functionBank.StartEnemyAction',
+    source,
     targetUID: Number(decision.targetUID || 0),
     skillId: String(decision.skillId || ''),
     jsTargetUID: Number(decision.jsDecision?.targetUID ?? decision.targetUID ?? 0),
@@ -10147,7 +10301,7 @@ export function StartEnemyAction(ctx, enemyUID) {
   };
   if (!Number(decision.active || 0)) return;
   const originX = Number(enemy.originX ?? enemy.x ?? 0);
-  g.EnemyAction = {
+  const action = {
     active: true,
     uid: Number(decision.uid || enemyUID || 0),
     state: String(decision.state || 'ADVANCE'),
@@ -10155,9 +10309,54 @@ export function StartEnemyAction(ctx, enemyUID) {
     actionApplied: Number(decision.actionApplied || 0) === 1,
     targetUID: Number(decision.targetUID || 0),
     skillId: String(decision.skillId || skillId || ''),
-    stationary: Number(g.ContinuousCombatStageLoop || 0) === 1 || /^Enemy_Heal_/.test(String(decision.skillId || skillId || '')),
+    stationary: continuousCombat || /^Enemy_Heal_/.test(String(decision.skillId || skillId || '')),
     forwardX: originX,
   };
+  if (continuousCombat) {
+    action.cooldownSeconds = Math.max(0, Number(cooldownSeconds || 0));
+    action.startedAt = Number(g.time || 0);
+    action.nextReadyAt = action.startedAt + action.cooldownSeconds;
+    const key = String(Number(enemyUID || 0));
+    (g.RealtimeEnemyActionsByUID ||= {})[key] = action;
+    (g.RealtimeEnemyActionReadyAt ||= {})[key] = action.nextReadyAt;
+  } else {
+    g.EnemyAction = action;
+  }
+  return action;
+}
+
+export function StartRealtimeEnemyAction(ctx, enemyUID) {
+  const g = getGlobals(ctx);
+  const enemy = GetActorByUID(ctx, enemyUID);
+  if (!enemy) return;
+  const key = String(Number(enemyUID || 0));
+  if (g.RealtimeEnemyActionsByUID?.[key]?.active) return;
+  const target = pickEnemyTargetHero(ctx, enemyUID);
+  if (!target) return;
+  const cooldownSeconds = realtimeCooldownSeconds({
+    ...enemy,
+    type: 1,
+    attackDelivery: enemy.streamDelivery || enemy.attackDelivery,
+    attackPattern: enemy.attackPattern,
+  });
+  return createEnemyActionState(ctx, enemyUID, target, {
+    continuousCombat: true,
+    cooldownSeconds,
+    source: 'functionBank.StartRealtimeEnemyAction',
+  });
+}
+
+export function StartEnemyAction(ctx, enemyUID) {
+  const g = getGlobals(ctx);
+  const enemy = GetActorByUID(ctx, enemyUID);
+  if (!enemy) return;
+  if (g.ActionInProgress && g.ActionActorUID && g.ActionActorUID !== enemyUID) return;
+  const target = pickEnemyTargetHero(ctx, enemyUID);
+  if (!target) return;
+  g.ActionInProgress = 1;
+  g.ActionActorUID = enemyUID;
+  g.ActionOwnerUID = Number(enemyUID || 0);
+  return createEnemyActionState(ctx, enemyUID, target, { source: 'functionBank.StartEnemyAction' });
 }
 
 export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind = null, notBeforeOverride = null) {
@@ -10352,5 +10551,6 @@ export function RegisterPartyBuffSlot(ctx, buffType) {
 }
 
 export function ResolveNativeCommandStep(ctx, hit) { return resolveNativeCommandStep(ctx, hit); }
+export function ResolveRealtimeHeroBasicImpact(ctx, hit) { return resolveRealtimeBasicImpact(ctx, hit); }
 export function SettleCombatDefeat(ctx) { return settleDefeat(ctx); }
 export function SettleContinuousCombatRewards(ctx) { return settleContinuousCombatRewards(ctx); }

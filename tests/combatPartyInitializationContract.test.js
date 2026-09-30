@@ -125,9 +125,9 @@ test('production starting party maps canonical identities', async () => {
   });
   assert.deepEqual(JSON.parse(JSON.stringify(mapping)), [
     [0, 1, 'Falie', 'Fara', 'Tank', 'Falie'],
-    [1, 2, 'Huun', 'Hondo', 'DPS / Fighter', 'Huun'],
+    [1, 2, 'Huun', 'Hondo', 'Fighter', 'Huun'],
     [2, 3, 'Runa', 'Runa', 'Controller', 'Runa'],
-    [3, 4, 'Kojonn', 'Kaja', 'Support / Guardian', 'Kojonn'],
+    [3, 4, 'Kojonn', 'Kaja', 'Support', 'Kojonn'],
   ]);
 });
 

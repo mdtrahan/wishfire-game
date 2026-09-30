@@ -24,13 +24,13 @@ test('real-time cooldowns advance from wall time and only reset the actor that c
   assert.ok(secondReady.selected);
 });
 
-test('hero and Pal speeds produce distinct basic rates with independent staggered clocks', () => {
+test('hero SPD alone produces distinct basic rates with independent staggered clocks', () => {
   const actors = ['Falie', 'Kojonn', 'Runa', 'Huun'].map((name, index) => ({ uid: index + 1, type: 0, hp: 10, name, speed: [8, 10, 11, 12][index] }));
   const rates = actors.map(heroBasicAttackRate);
   assert.ok(rates.every((rate, index) => index === 0 || rate > rates[index - 1]));
-  assert.ok(Math.abs(rates[0] - (30 / (0.99 * 32) + 0.60 * 1.45) * 0.7) < 1e-12);
-  assert.ok(Math.abs(rates[3] - (30 / (0.99 * 22) + 1.00 * 1.45) * 0.7) < 1e-12);
-  assert.ok(Math.abs(heroBasicAttackRate({ ...actors[0], palFlatSpeedBonus: 0.1 }) - rates[0] - 0.145 * 0.7) < 1e-12);
+  assert.ok(Math.abs(rates[0] - 30 / (0.99 * 32) * 1.4) < 1e-12);
+  assert.ok(Math.abs(rates[3] - 30 / (0.99 * 22) * 1.4) < 1e-12);
+  assert.equal(heroBasicAttackRate({ ...actors[0], palFlatSpeedBonus: 0.1, palSpeedModifier: 5 }), rates[0]);
   const waiting = selectRealtimeReadyActor({ actors, now: 5, selectionEnabled: false });
   assert.equal(waiting.selected, null);
   const openingTimes = Object.values(waiting.readyAt);

@@ -27,8 +27,8 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
     'dev-panel-2-containment',
     'dev-panel-1-action-order',
     'battlefield-selectors-absent',
-    'target-state-preserved-without-selector',
-    'global-attack-absent',
+    'automatic-focus-target-is-living',
+    'realtime-basic-clocks-present',
     'hero-combat-card-ui-absent',
     'actor-health-bars-present',
     'gem-board-backdrop-absent',
@@ -53,7 +53,11 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
   assert.match(gate, /CanvasRenderingContext2D\.prototype\.drawImage/);
   assert.match(gate, /CanvasRenderingContext2D\.prototype\.fillText/);
   assert.match(gate, /CanvasRenderingContext2D\.prototype\.fillRect/);
-  assert.match(gate, /setupDynamicInitiativeAuthorityScenario/);
+  assert.match(gate, /TickRealtimeHeroBasics/);
+  assert.match(gate, /RealtimeHeroBasicClocks/);
+  assert.match(gate, /RealtimeHeroFocusTargetUID/);
+  assert.doesNotMatch(gate, /DynamicInitiativeAuthority|setupDynamicInitiative/);
+  assert.doesNotMatch(gate, /AstralFlow|\bFLOW\b/);
   assert.match(gate, /ui-lock-report\.json/);
   assert.match(gate, /page\.screenshot/);
   assert.match(gate, /--prove-rejection/);

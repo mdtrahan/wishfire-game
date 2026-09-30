@@ -19,6 +19,13 @@ export const APPROVED_IMPACT_DRAW_SCALE = Object.freeze({
   g03_original: 0.82,
   g04_original: 0.82,
 });
+const ELEMENTAL_SLUGS = new Set(['fire', 'ice', 'wind', 'dark', 'lightning', 'light', 'void', 'earth', 'bloom', 'water', 'metal', 'mark', 'poison', 'smoke', 'blood', 'arcane']);
+const ELEMENTAL_IMPACT_BY_SKILL = Object.freeze({
+  challenge_bolt: 'mark', shield_relay: 'light', brace: 'metal', retaliation_burst: 'earth', shield_slam: 'wind',
+  ambush: 'dark', cheap_shot: 'metal', razor_sweep: 'wind', piercing_throw: 'metal', finish_the_job: 'blood',
+  frost_reversal: 'ice', hex_beacon: 'dark', burn_sigil: 'fire', null_field: 'void', return_gate: 'arcane',
+  wishgrant: 'light', quickload: 'lightning', split_feed: 'wind', patchwork: 'bloom', fortunes_blessing: 'mark',
+});
 const IMPACT_PAINTED_WIDTH_RATIO = Object.freeze({
   g03_blue: 293 / 307,
   g03_purple: 297 / 307,
@@ -36,6 +43,12 @@ const contactPointTowardSource = (source, target, distance) => ({
 });
 const torsoSideOffset = state => Math.max(24, Number(state.globals?.EnemySize || 40)) * 0.04;
 const commonImpactYOffset = state => Math.max(24, Number(state.globals?.EnemySize || 40)) * 0.17;
+
+export function elementalImpactSlugForSkill(skillId, elementalSlug = '') {
+  const supplied = String(elementalSlug || '').toLowerCase();
+  if (ELEMENTAL_SLUGS.has(supplied)) return supplied;
+  return ELEMENTAL_IMPACT_BY_SKILL[String(skillId || '')] || '';
+}
 
 export function combatVfxProfileForActor(actor) {
   const name = String(actor?.name || '').trim().toLowerCase();
@@ -123,7 +136,8 @@ const heroGroupAnchor = (state) => {
 
 export function queueCombatAttackImpactVfx(state, hit, target, now) {
   if (Number(hit?.suppressImpactVfx || 0) === 1) return;
-  if ((!hit?.attackVfxKind && !hit?.impactVfxKind) || !target) return;
+  const elementalSlug = elementalImpactSlugForSkill(hit?.skillId, hit?.elementalSlug);
+  if ((!hit?.attackVfxKind && !hit?.impactVfxKind && !elementalSlug) || !target) return;
   const g = state.globals || {};
   const actor = (state.entities || []).find(entity => Number(entity?.uid || 0) === Number(hit.heroUID || hit.actorUID || 0));
   const delivery = String(hit.attackVfxKind || '');
@@ -137,11 +151,14 @@ export function queueCombatAttackImpactVfx(state, hit, target, now) {
     || combatVfxProfileForActor(actor).impact);
   const damage = Math.max(0, Number(hit.finalDmg ?? hit.dmg ?? hit.damage ?? 0));
   const maxHP = Math.max(0, Number(target.maxHP ?? target.max ?? 0));
-  const weak = !hit.didCrit && !hit.isCrit && maxHP > 0 && damage > 0 && damage <= maxHP * 0.05;
+  const weak = !elementalSlug && !hit.didCrit && !hit.isCrit && maxHP > 0 && damage > 0 && damage <= maxHP * 0.05;
   const impactScale = weak ? 1 : compliantImpactScale(kind);
   const targetCenter = entityAnchor(state, target.uid) || { x: Number(target.x || 0), y: Number(target.y || 0) };
   const sourcePoint = entityAnchor(state, actor?.uid);
-  const targetPoint = sourcePoint
+  const point = hit.point && Number.isFinite(Number(hit.point.x)) && Number.isFinite(Number(hit.point.y))
+    ? { x: Number(hit.point.x), y: Number(hit.point.y) }
+    : null;
+  const targetPoint = elementalSlug ? (point || targetCenter) : sourcePoint
     ? contactPointTowardSource(sourcePoint, targetCenter, torsoSideOffset(state))
     : targetCenter;
   const impacts = Array.isArray(g.CombatImpactVisuals) ? g.CombatImpactVisuals : [];
@@ -149,9 +166,10 @@ export function queueCombatAttackImpactVfx(state, hit, target, now) {
     ownerUID: Number(hit.heroUID || hit.actorUID || 0),
     targetUID: Number(target.uid || 0),
     targetKind: String(target.kind || ''),
+    elementalSlug,
     mirrorX: target.kind === 'hero',
     x: targetPoint.x,
-    y: weak ? targetPoint.y : targetPoint.y - commonImpactYOffset(state),
+    y: elementalSlug || weak ? targetPoint.y : targetPoint.y - commonImpactYOffset(state),
     kind,
     weak,
     impactScale,
@@ -181,6 +199,20 @@ const drawTravel = (ctx, image, from, to, progress, width) => {
   ctx.drawImage(image, -width * 0.62, -width * 0.33, width, width * 0.66);
   ctx.restore();
 };
+
+function elementalImpactDurationMs(slug, animation) {
+  return Number(animation?.totalDurationMs) || (slug === 'wind' ? 468 : 601);
+}
+
+function elementalImpactFrame(animation, ageMs) {
+  if (!animation?.frames?.length || !animation.frameHoldMs?.length) return null;
+  let elapsed = 0;
+  for (let index = 0; index < animation.frames.length; index += 1) {
+    elapsed += Number(animation.frameHoldMs[index] || 1);
+    if (ageMs < elapsed) return animation.frames[index];
+  }
+  return animation.frames.at(-1);
+}
 
 const drawVerticalReveal = (ctx, image, pos, progress, width, alpha, direction = 'down') => {
   if (!image || !pos) return;
@@ -346,13 +378,14 @@ export function renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layou
   renderGrowVfx(ctx, { state, images, worldToCanvas, layoutScale });
   renderArcanePulseVfx(ctx, { state, images, worldToCanvas, layoutScale });
   const pending = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
+  const projectiles = g.CombatProjectileVisuals ||= [];
   for (const hit of pending) {
     const kind = String(hit?.attackVfxKind || '');
     if (!kind || hit.followUpAwaitTextClear) continue;
     const impactAt = Number(hit.at || 0);
     const lead = kind === 'split' ? 0.44 : 0.52;
     const progress = Math.max(0, Math.min(1, (now - (impactAt - lead)) / lead));
-    if (progress <= 0 || progress >= 1) continue;
+    if (progress >= 1) continue;
     const targetPoint = entityAnchor(state, hit.targetUID);
     if (!targetPoint) continue;
     if (kind === 'split') {
@@ -373,21 +406,67 @@ export function renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layou
     }
     const sourcePoint = entityAnchor(state, hit.heroUID);
     if (!sourcePoint) continue;
-    drawTravel(
-      ctx,
-      projectileAsset(images, kind),
-      worldToCanvas(sourcePoint.x, sourcePoint.y),
-      worldToCanvas(targetPoint.x, targetPoint.y),
-      progress,
-      Math.max(28, (kind === 'melee_crescent' ? 34 : kind === 'kaja_orb' ? 50 : 46) * layoutScale),
-    );
+    if (!projectiles.some(visual => visual.hit === hit && visual.impactAt === impactAt)) {
+      projectiles.push({ hit, kind, targetUID: hit.targetUID, impactAt, lead,
+        from: worldToCanvas(sourcePoint.x, sourcePoint.y), to: worldToCanvas(targetPoint.x, targetPoint.y) });
+    }
   }
+
+  const left = worldToCanvas(0, 0).x;
+  const right = worldToCanvas(360, 0).x;
+  g.CombatProjectileVisuals = projectiles.filter(visual => {
+    const target = (state.entities || []).find(entity => Number(entity?.uid || 0) === Number(visual.targetUID || 0));
+    if (!visual.hit.projectileLanded && (!pending.includes(visual.hit) || Number(visual.hit.at) !== visual.impactAt
+      || Number(visual.hit.targetUID) !== Number(visual.targetUID) || !target || Number(target.hp || 0) <= 0)) visual.missed = true;
+    const progress = (now - (visual.impactAt - visual.lead)) / visual.lead;
+    const width = Math.max(28, (visual.kind === 'melee_crescent' ? 34 : visual.kind === 'kaja_orb' ? 50 : 46) * layoutScale);
+    const dx = visual.to.x - visual.from.x;
+    const edge = dx >= 0 ? right + (right - left) * 0.05 : left - (right - left) * 0.05;
+    const drawnDx = dx - Math.sign(dx) * width * 0.38;
+    const exitProgress = drawnDx ? (edge - visual.from.x) / drawnDx : 1;
+    if (progress < 0) return !visual.missed;
+    if (visual.hit.projectileLanded || progress >= (visual.missed ? exitProgress : 1)) return false;
+    drawTravel(ctx, projectileAsset(images, visual.kind), visual.from, visual.to, progress, width);
+    return true;
+  });
 
   renderEnemyMagic(ctx, { state, images, worldToCanvas, layoutScale });
 
   const impacts = Array.isArray(g.CombatImpactVisuals) ? g.CombatImpactVisuals : [];
   g.CombatImpactVisuals = impacts.filter((impact) => {
     const age = now - Number(impact.startAt || 0);
+    const elementalSlug = ELEMENTAL_SLUGS.has(String(impact?.elementalSlug || '').toLowerCase())
+      ? String(impact.elementalSlug).toLowerCase()
+      : '';
+    if (elementalSlug) {
+      const animation = images.ElementalImpactFrames?.[elementalSlug];
+      const durationMs = elementalImpactDurationMs(elementalSlug, animation);
+      if (age < 0 || age * 1000 >= durationMs) return false;
+      if (!animation && typeof images.loadElementalImpactFrames === 'function') {
+        const loading = images.ElementalImpactLoading ||= new Set();
+        if (!loading.has(elementalSlug)) {
+          loading.add(elementalSlug);
+          Promise.resolve(images.loadElementalImpactFrames(elementalSlug))
+            .catch(() => null)
+            .finally(() => loading.delete(elementalSlug));
+        }
+      }
+      const frame = elementalImpactFrame(animation, age * 1000);
+      if (frame) {
+        const pos = worldToCanvas(Number(impact.x || 0), Number(impact.y || 0));
+        const size = Math.max(1, 52 * layoutScale);
+        ctx.save();
+        if (impact.mirrorX) {
+          ctx.translate(pos.x, pos.y);
+          ctx.scale(-1, 1);
+          ctx.drawImage(frame, -size / 2, -size / 2, size, size);
+        } else {
+          ctx.drawImage(frame, pos.x - size / 2, pos.y - size / 2, size, size);
+        }
+        ctx.restore();
+        return true;
+      }
+    }
     const flare = impact.weak ? images.CombatWeakGlanceRing : impactAsset(images, impact.kind);
     if (age < 0.32 && flare) {
       const t = Math.max(0, age / 0.32);

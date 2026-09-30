@@ -10,6 +10,7 @@ const runtimeBank = fs.readFileSync(path.join(root, 'web-runner/modules/function
 const scriptsBank = fs.readFileSync(path.join(root, 'Scripts/functionBank.js'), 'utf8');
 const loader = fs.readFileSync(path.join(root, 'web-runner/systems/runtimeVisualAssetLoader.js'), 'utf8');
 const renderer = fs.readFileSync(path.join(root, 'web-runner/systems/renderRuntime.js'), 'utf8');
+const simulation = fs.readFileSync(path.join(root, 'web-runner/systems/combatSimulationTick.mjs'), 'utf8');
 const qaHooks = fs.readFileSync(path.join(root, 'web-runner/systems/devBrowserTestHooks.js'), 'utf8');
 const heroCommands = fs.readFileSync(path.join(root, 'web-runner/modules/heroCommands.mjs'), 'utf8');
 
@@ -24,12 +25,12 @@ test('attack packets declare mirrored illustrated presentation and magic heroes 
     assert.match(source, /function HeroAttackAOE[\s\S]{0,2500}attackVfxKind: combatAttackVfxKind\(actor\)/);
     assert.match(source, /const profile = actor\?\.attackType === 'magic' \? 'ranged' : requestedProfile/);
   }
-  assert.match(renderer, /queueCombatAttackImpactVfx\(state, hit, targetEntity, now\)/);
+  assert.match(simulation, /queueImpactVfx\(state, hit, targetEntity, now\)/);
   assert.match(fs.readFileSync(path.join(root, 'web-runner/systems/combatAttackVfxPresentation.mjs'), 'utf8'), /CombatImpactRequests[\s\S]*queueCombatAttackImpactVfx\(state, request, target, now\)/);
   assert.match(renderer, /renderCombatAttackVfx\(ctx, \{ state, images, worldToCanvas, layoutScale \}\)/);
   assert.match(heroCommands, /nativeBasicAttackVfx/);
   assert.match(heroCommands, /attackVfxTargetUIDs/);
-  assert.match(renderer, /ResolveNativeCommandStep[\s\S]*queueCombatAttackImpactVfx/);
+  assert.match(simulation, /ResolveNativeCommandStep[\s\S]*queueImpactVfx/);
   assert.doesNotMatch(renderer, /    renderArcanePulseVisuals\(\);/);
 });
 
@@ -91,7 +92,7 @@ test('regular basics keep their delivery art and suppress contact splashes', () 
   queueCombatAttackImpactVfx(state, { heroUID: 1, attackVfxKind: 'melee_crescent', suppressImpactVfx: 1, finalDmg: 12 }, target, 1);
   assert.equal(state.globals.CombatImpactVisuals, undefined);
   assert.match(runtimeBank, /hit\.suppressImpactVfx = 1/);
-  assert.match(renderer, /\['Enemy_ATK_Single', 'Enemy_MAG_Single'\]\.includes\(enemyAction\.skillId\)/);
+  assert.match(simulation, /\['Enemy_ATK_Single', 'Enemy_MAG_Single'\]\.includes\(enemyAction\.skillId\)/);
 });
 
 test('approved splash sheet assignments route by hero and action identity', () => {
@@ -495,13 +496,13 @@ test('Grow raises illustrated spectral hands from each affected hero', () => {
 });
 
 test('enemy damage wiring queues a typed hero impact after the shipping skill call', () => {
-  assert.match(renderer, /const heroHpBefore = new Map/);
-  assert.match(renderer, /ApplyEnemySkill[\s\S]*heroHpBefore\.get\(hero\.uid\)[\s\S]*queueCombatAttackImpactVfx/);
-  assert.match(renderer, /enemyAction\.skillId === 'Enemy_MAG_AOE' \? 'rose'/);
-  assert.match(renderer, /enemyUsesRangedMagic \? enemy\.originX/);
+  assert.match(simulation, /const heroHpBefore = new Map/);
+  assert.match(simulation, /ApplyEnemySkill[\s\S]*heroHpBefore\.get\(hero\.uid\)[\s\S]*queueCombatAttackImpactVfx/);
+  assert.match(simulation, /enemyAction\.skillId === 'Enemy_MAG_AOE' \? 'rose'/);
+  assert.match(simulation, /enemyUsesRangedMagic \? enemy\.originX/);
 });
 
-test('hero projectiles follow a moving target current position', () => {
+test('launched projectiles keep their heading and missed shots leave five percent beyond the canvas', () => {
   const translations = [];
   const ctx = {
     save() {}, restore() {}, rotate() {}, drawImage() {},
@@ -526,9 +527,38 @@ test('hero projectiles follow a moving target current position', () => {
   });
   render();
   const firstX = translations.at(-1)[0];
+  const firstY = translations.at(-1)[1];
   target.x = 300;
   target.y = 180;
   render();
-  assert.ok(translations.at(-1)[0] > firstX);
-  assert.ok(translations.at(-1)[1] > translations.at(-2)[1]);
+  assert.deepEqual(translations.at(-1), [firstX, firstY]);
+  state.entities.pop();
+  state.globals.PendingHeroHits = [];
+  state.globals.time = 1.12;
+  render();
+  assert.ok(translations.at(-1)[0] > 250);
+  assert.equal(translations.at(-1)[1], firstY);
+  assert.equal(state.globals.CombatProjectileVisuals.length, 1);
+  state.globals.time = 1.42;
+  render();
+  assert.ok(translations.at(-1)[0] > 360);
+  assert.equal(state.globals.CombatProjectileVisuals.length, 1);
+  state.globals.time = 1.48;
+  render();
+  assert.equal(state.globals.CombatProjectileVisuals.length, 0);
+});
+
+test('a landed projectile clears at impact', () => {
+  const hit = { at: 1, heroUID: 1, targetUID: 2, attackVfxKind: 'runa_bolt' };
+  const state = { globals: { time: 0.74, HeroRestBasePosByUID: { 1: { x: 50, y: 200 } }, PendingHeroHits: [hit] },
+    entities: [{ uid: 1, kind: 'hero' }, { uid: 2, kind: 'enemy', hp: 10, x: 250, y: 200 }] };
+  const ctx = { save() {}, restore() {}, rotate() {}, translate() {}, drawImage() {}, set globalAlpha(value) {} };
+  const render = () => renderCombatAttackVfx(ctx, { state, images: { CombatRunaBolt: {} }, worldToCanvas: (x, y) => ({ x, y }) });
+  render();
+  assert.equal(state.globals.CombatProjectileVisuals.length, 1);
+  hit.projectileLanded = 1;
+  state.globals.PendingHeroHits = [];
+  state.globals.time = 1;
+  render();
+  assert.equal(state.globals.CombatProjectileVisuals.length, 0);
 });

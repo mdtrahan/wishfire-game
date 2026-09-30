@@ -1,11 +1,30 @@
 import {actionCapacity} from '../src/core/actionSelection.mjs';
 import {settleBattleEXP} from '../src/core/heroProgression.mjs';
 import {heroDefinition,PROGRESSION} from '../src/core/heroDefinitions.mjs';
+import {realtimeBasicDamageMultiplier,realtimeBasicFollowups} from '../src/core/realtimeHeroSkills.mjs';
+import {isHeroBasicTargetInRange} from '../../src/core/heroAttackTargetingRules.mjs';
+export {castRealtimeHeroSkill,tickRealtimeHeroSkillZones,realtimeBasicInterval,realtimeStatMultiplier,realtimeProvokeTarget,realtimeCoverTarget,realtimeIncomingDamage,realtimeMagicBlocked,realtimeRetaliation} from '../src/core/realtimeHeroSkills.mjs';
 import {getHeroFlowState,getHeroSkillOptions,recordFlowThreshold,resolveRoleFlowAward} from '../src/core/personalFlow.mjs';
 import {applyStatus,legalSkill,validTargets,resolveSkill,turnStart,turnEnd} from '../src/core/combatRules.mjs';
 import {derivePresentationTurnBarrier} from '../src/core/turnGateController.mjs';
 import {beginSessionLevelUpSettlement,updateSessionLevelUpSettlement} from './sessionLevelUpSettlementPresentation.mjs';
 export {getHeroFlowState,getHeroSkillOptions};
+export function recordEnemyDefeatReward(battle, actor){
+ if(!battle||!actor||actor.kind!=='enemy')return false;
+ battle.defeated||={};battle.defeatedGold||={};
+ const key=String(actor.uid),hasExp=Object.prototype.hasOwnProperty.call(battle.defeated,key),hasGold=Object.prototype.hasOwnProperty.call(battle.defeatedGold,key);
+ if(!hasExp)battle.defeated[key]=actor.expValue??PROGRESSION.enemyEXP;
+ if(!hasGold)battle.defeatedGold[key]=Math.max(0,Math.floor(actor.goldValue??PROGRESSION.enemyGold));
+ const changed=!hasExp||!hasGold;
+ if(changed)battle.persistPendingRewards?.();
+ return changed;
+}
+function queueSettlementGold(g,battleId,amount){
+ const gold=Math.max(0,Math.floor(Number(amount)||0));
+ g.goldTotal=Number(g.goldTotal||0)+gold;
+ if(gold>0){(g.PendingGoldSettlements||={})[String(battleId)]=gold;(g.HeroProgress.pendingGoldSettlements||={})[String(battleId)]=gold;}
+ return gold;
+}
 export function getHeroCommandSlots(entities){const slots=Array(6).fill(null);for(const hero of entities){const i=Number(hero.heroDisplaySlot??hero.displaySlot??hero.heroIndex);if(hero?.kind==='hero'&&Number.isInteger(i)&&i>=0&&i<6)slots[i]=hero;}return slots;}
 export function emitResolvedHealEvent(ctx, source, target, beforeHP, { allowRevive = false, presentation = 'minor' } = {}) {
  const before=Math.max(0,Number(beforeHP||0)),after=Math.max(0,Number(target?.hp||0));
@@ -65,7 +84,7 @@ export function rulesContext(ctx,roleEvents=null){
  onHeal:(source,target,delta,meta={})=>{if(delta>0)emitResolvedHealEvent(ctx,source,target,Math.max(0,Number(target?.hp||0)-Number(delta||0)),{allowRevive:true,presentation:meta.healPresentation==='minor'||meta.statusEffect==='hot'?'minor':['heal','revive'].includes(meta.effectType)?'major':'minor'});},
  onDamage:(source,target,delta,meta={})=>{if(roleEvents&&delta>0)roleEvents.push({type:'damage',sourceUID:Number(source?.uid||0),sourceKind:source?.kind,targetUID:Number(target?.uid||0),targetKind:target?.kind,delta:Number(delta||0),targetWasLiving:meta.targetWasLiving!==false});},
  onStatus:(source,target,effect,meta={})=>{if(roleEvents&&!meta.refreshed&&source?.kind==='hero')roleEvents.push({type:'status',sourceUID:Number(source.uid||0),targetUID:Number(target?.uid||0)});},
- onKO:actor=>{if(actor.kind==='enemy'){const battle=g.ProgressionBattle;if(battle){battle.defeated[actor.uid]=actor.expValue??PROGRESSION.enemyEXP;(battle.defeatedGold||={})[actor.uid]=Math.max(0,Math.floor(actor.goldValue??PROGRESSION.enemyGold));}}},
+ onKO:actor=>{if(actor.kind==='enemy')recordEnemyDefeatReward(g.ProgressionBattle,actor);},
  isOver:()=>{
   const noLivingEnemy=!ctx.state.entities.some(a=>a.kind==='enemy'&&a.hp>0);
   const streamComplete=Number(g.ContinuousCombatStageLoop||0)!==1||Number(g.ContinuousCombatStageComplete||0)===1;
@@ -100,10 +119,10 @@ function resolveRoleAction(ctx,source,skill,targetIds,origin={}){
 }
 
 export function buildCommandActions(ctx,hero,{queue=[],flow=false,targetUID}={}){
- const d=heroDefinition(hero);if(!d)return null;const entries=flow?[{skillId:d.special.skillId,targetIds:queue[0]?.targetIds||[targetUID]}]:queue.length?queue:[{skillId:d.basic.skillId,targetIds:[targetUID]}];
+ const d=heroDefinition(hero);if(!d||flow)return null;const entries=queue.length?queue:[{skillId:d.basic.skillId,targetIds:[targetUID]}];
  if(entries.length>actionCapacity(hero))return null;
  const seen=new Set(),actions=[];
- for(const entry of entries){if(!entry||typeof entry!=='object')return null;const skill=[d.basic,...d.actives,d.special].find(s=>s.skillId===entry.skillId);if(!skill||!legalSkill(hero,skill)||(!flow&&skill.isFlowSpecial)||(flow&&(hero.flow||0)<skill.meterRequirement))return null;
+ for(const entry of entries){if(!entry||typeof entry!=='object')return null;const skill=[d.basic,...d.actives].find(s=>s.skillId===entry.skillId);if(!skill||!legalSkill(hero,skill))return null;
  if(seen.has(skill.skillId)&&!skill.multiCast)return null;seen.add(skill.skillId);if(entries.length>1&&skill.skillId===d.basic.skillId)return null;
  const ids=entry.targetIds||[entry.targetId??targetUID];if(!validTargets(ctx.state.entities,hero,skill,ids).length)return null;actions.push({skillId:skill.skillId,targetIds:[...new Set(ids)],sequenceOrder:actions.length,skill});}
  return actions;
@@ -131,6 +150,24 @@ export function resolveNativeCommandStep(ctx,hit){
  if(actor.hp<=0||rules.isOver()){cancelNativeSequence(ctx);if(g.NativeBattleEnded)settleVictory(ctx);return true;}
  if(s.index<s.actions.length)g.PendingHeroHits.push({at:Number(g.time||0)+0.4,heroUID:s.actorUID,effectType:'native_command',sequence:s,...nativeBasicAttackVfx(actor,s.actions[s.index])});else delete g.NativeCommandSequence;
  return true;
+}
+export function resolveRealtimeBasicImpact(ctx,hit={}){
+ const sourceUID=Number(hit.heroUID||hit.sourceUID||0),targetUID=Number(hit.targetUID||0);
+ const source=ctx.state.entities.find(actor=>actor?.kind==='hero'&&Number(actor.uid||0)===sourceUID);
+ const target=ctx.state.entities.find(actor=>actor?.kind==='enemy'&&Number(actor.uid||0)===targetUID);
+ if(!source||!target||Number(target.hp||0)<=0||Number(ctx.state.globals.ContinuousCombatStageLoop||0)===1&&!isHeroBasicTargetInRange(target))return {resolved:false,damage:0,targetUID};
+ const events=[],rules=rulesContext(ctx,events),mode=String(hit.heroType||source.attackType||'melee');
+ const baseDamage=Math.max(0,Number(hit.finalDmg??hit.dmg)||0);
+ const boostedDamage=Number(ctx.state.globals.ContinuousCombatStageLoop||0)===1
+  ? Math.max(0,Math.floor(baseDamage*realtimeBasicDamageMultiplier(ctx.state.globals,source,target))) : baseDamage;
+ const skill={skillId:'realtime_basic',targetType:'enemy',tags:[mode==='magic'?'magic':'physical'],effects:[{effectType:'damage',fixedDamage:boostedDamage}]};
+ const resolved=resolveSkill(rules,source,skill,[targetUID],{realtimeBasic:true,allowSourceKO:true,suppressPartySkillHitHooks:Number(hit.suppressPartySkillHitHooks||0)});
+ const damageEvents=events.filter(event=>event.type==='damage'&&Number(event.sourceUID||0)===sourceUID);
+ const damage=damageEvents.reduce((sum,event)=>sum+Math.max(0,Number(event.delta)||0),0);
+ if(Number(ctx.state.globals.ContinuousCombatStageLoop||0)===1)realtimeBasicFollowups(ctx,source,target,damage);
+ if(!ctx.state.entities.some(actor=>actor?.kind==='hero'&&Number(actor.hp||0)>0))settleDefeat(ctx);
+ else if(ctx.state.globals.NativeBattleEnded)settleVictory(ctx);
+ return {resolved,damage,targetUID:Number(damageEvents[0]?.targetUID||targetUID)};
 }
 export function nativeTurnStarted(ctx,actor){
  if(!actor)return;
@@ -162,7 +199,19 @@ export function settleDefeat(ctx) {
  cancelNativeSequence(ctx);
  delete g.SessionLevelUpSettlement;
  g.NativeBattleEnded=true;
- if(g.ProgressionBattle){g.ProgressionBattle.outcome='defeat';g.ProgressionBattle.defeatSettled=true;g.ProgressionBattle.settled=true;g.ProgressionBattle.goldReward=0;g.ProgressionResults=[];}
+ const battle=g.ProgressionBattle;
+ if(battle){
+  battle.outcome='defeat';
+  if(Number(g.ContinuousCombatStageLoop||0)===1){battle.defeatSettled=true;battle.settled=false;g.ProgressionResults=[];}
+  else if(!battle.settled&&!g.HeroProgress?.settledBattles?.includes(battle.id)){
+   const heroes=ctx.state.entities.filter(actor=>actor?.kind==='hero');
+   const participants=heroes.filter(hero=>(battle.participants||[]).includes(hero.heroInstanceKey||hero.baseHeroName||hero.name));
+   const gold=Object.values(battle.defeatedGold||{}).reduce((sum,value)=>sum+Math.max(0,Number(value)||0),0);
+   const previousGold=Number(g.goldTotal||0),previousReceipts={...(g.PendingGoldSettlements||{})},previousProgressReceipts={...(g.HeroProgress.pendingGoldSettlements||{})};queueSettlementGold(g,battle.id,gold);
+   try{g.ProgressionResults=settleBattleEXP(g.HeroProgress,battle,participants);}catch(error){g.goldTotal=previousGold;g.PendingGoldSettlements=previousReceipts;g.HeroProgress.pendingGoldSettlements=previousProgressReceipts;throw error;}
+   battle.goldReward=gold;battle.defeatSettled=true;g.HeroProgress.pendingBattleRewards=null;g.HeroProgressDirty=true;
+  }else{battle.settled=true;battle.defeatSettled=true;g.ProgressionResults=[];}
+ }
  return true;
 }
 
@@ -172,31 +221,39 @@ export function settleVictory(ctx) {
  cancelNativeSequence(ctx);
  const heroes=ctx.state.entities.filter(a=>a.kind==='hero');
  const participants=heroes.filter(hero=>g.ProgressionBattle.participants.includes(hero.heroInstanceKey||hero.baseHeroName||hero.name));
- g.ProgressionResults=settleBattleEXP(g.HeroProgress,g.ProgressionBattle,participants);
+ const battle=g.ProgressionBattle,gold=Object.values(battle.defeatedGold||{}).reduce((sum,value)=>sum+Math.max(0,Number(value)||0),0);
+ const previousGold=Number(g.goldTotal||0),previousReceipts={...(g.PendingGoldSettlements||{})},previousProgressReceipts={...(g.HeroProgress.pendingGoldSettlements||{})};queueSettlementGold(g,battle.id,gold);
+ try{g.ProgressionResults=settleBattleEXP(g.HeroProgress,battle,participants);}catch(error){g.goldTotal=previousGold;g.PendingGoldSettlements=previousReceipts;g.HeroProgress.pendingGoldSettlements=previousProgressReceipts;throw error;}
  beginSessionLevelUpSettlement(g,g.ProgressionResults,participants,Number(g.time||0));
- g.ProgressionBattle.outcome='victory';
- g.ProgressionBattle.goldReward=Object.values(g.ProgressionBattle.defeatedGold||{}).reduce((sum,value)=>sum+value,0);
- g.goldTotal=Number(g.goldTotal||0)+g.ProgressionBattle.goldReward;
+ battle.outcome='victory';battle.goldReward=gold;
+ g.HeroProgress.pendingBattleRewards=null;
  g.HeroProgressDirty=true;
 }
 
 export function settleContinuousCombatRewards(ctx) {
  const g=ctx.state.globals,battle=g.ProgressionBattle;
- if(!battle||battle.settled)return [];
+ if(!battle||battle.settled||g.HeroProgress?.settledBattles?.includes(battle.id))return [];
  const heroes=ctx.state.entities.filter(actor=>actor?.kind==='hero');
  const participants=heroes.filter(hero=>battle.participants.includes(hero.heroInstanceKey||hero.baseHeroName||hero.name));
- const results=settleBattleEXP(g.HeroProgress,battle,participants);
  const gold=Object.values(battle.defeatedGold||{}).reduce((sum,value)=>sum+Math.max(0,Number(value)||0),0);
- g.goldTotal=Number(g.goldTotal||0)+gold;
+ const previousGold=Number(g.goldTotal||0),previousReceipts={...(g.PendingGoldSettlements||{})},previousProgressReceipts={...(g.HeroProgress.pendingGoldSettlements||{})};
+ queueSettlementGold(g,battle.id,gold);
+ let results;
+ try{results=settleBattleEXP(g.HeroProgress,battle,participants);}catch(error){g.goldTotal=previousGold;g.PendingGoldSettlements=previousReceipts;g.HeroProgress.pendingGoldSettlements=previousProgressReceipts;throw error;}
  g.ProgressionResults=results;
+ g.HeroProgress.pendingBattleRewards=null;
  g.HeroProgressDirty=true;
+ battle.goldReward=gold;battle.settled=true;
  const serial=Number(g.ContinuousCombatRewardSerial||0)+1;
  g.ContinuousCombatRewardSerial=serial;
+ const persistPendingRewards=battle.persistPendingRewards,rewardLineageId=battle.rewardLineageId||String(battle.id||globalThis.crypto.randomUUID());
  g.ProgressionBattle={
-  id:`continuous-${Number(g.CombatSessionId||0)}-${serial}`,
+  id:`${rewardLineageId}-continuous-${serial}`,
   participants:heroes.map(hero=>hero.heroInstanceKey),
   defeated:{},defeatedGold:{},settled:false,outcome:'active',
  };
+ if(persistPendingRewards)Object.defineProperty(g.ProgressionBattle,'persistPendingRewards',{value:persistPendingRewards,configurable:true});
+ Object.defineProperty(g.ProgressionBattle,'rewardLineageId',{value:rewardLineageId,configurable:true});
  return results;
 }
 export function updateSessionLevelUpSettlementPresentation(ctx){return updateSessionLevelUpSettlement(ctx.state.globals,Number(ctx.state.globals.time||0));}

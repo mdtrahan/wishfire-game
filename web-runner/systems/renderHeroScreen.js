@@ -1,9 +1,9 @@
 import {renderHeroGear} from './heroGearUI.mjs';
 import {computeCombatPower} from '../src/core/combatPower.mjs';
-import {heroDefinition,FLOW_ORB_TUNING} from '../src/core/heroDefinitions.mjs';
+import {heroDefinition} from '../src/core/heroDefinitions.mjs';
 import {createHeroProgressStore} from '../src/core/heroProgression.mjs';
 import {heroArtKey} from '../state/heroArtAssets.mjs';
-let host, content, lastKey, currentTab='hero', skillTab='actives';
+let host, content, lastKey, currentTab='hero';
 export function hideHeroScreen(){if(host)host.hidden=true;}
 export function renderHeroScreen({equipmentProgress,canvas,gameState,fnContext,heroPortraitImages,onClose}) {
  const g=fnContext.state.globals;g.HeroProgress ||= createHeroProgressStore();
@@ -32,37 +32,29 @@ export function renderHeroScreen({equipmentProgress,canvas,gameState,fnContext,h
   `;document.head.append(style);content=document.createElement('div');host.append(content);document.body.append(host);
  }
  host.hidden=false;const rect=canvas.getBoundingClientRect();Object.assign(host.style,{left:`${rect.left}px`,top:`${rect.top}px`,width:`${rect.width}px`,height:`${rect.height}px`,padding:`${14*rect.width/360}px`,fontSize:`${14*rect.width/360}px`});
- const key=JSON.stringify([index,currentTab,skillTab,hero.currentLevel,hero.currentEXP,hero.hp,hero.flow,hero.stats,roster.map(h=>h.currentLevel),g.Equipment]);
+ const key=JSON.stringify([index,currentTab,hero.currentLevel,hero.currentEXP,hero.hp,hero.stats,roster.map(h=>h.currentLevel),g.Equipment]);
  if(key!==lastKey){lastKey=key;const focused=content.contains(document.activeElement)?document.activeElement:null;const focusLabel=focused?.getAttribute('aria-label')||focused?.textContent;content.replaceChildren();
   const el=(tag,text,parent=content)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;parent.append(n);return n;};
   const button=(parent,text,action)=>{const n=el('button',text,parent);n.type='button';n.onclick=action;return n;};
   const portrait=(owner,parent)=>{const def=heroDefinition(owner);const image=heroPortraitImages[heroArtKey(owner)];if(image?.src){const img=el('img',null,parent);img.src=image.src;img.alt=def.name;}};
   const nav=el('nav');button(nav,'Back',onClose);
-  const identity=el('header');identity.className='identity';portrait(hero,identity);el('h1',d.name,identity);el('p',`Lv. ${hero.currentLevel} · ${d.role} · ${d.flowMode}`,identity);el('p',`CP ${computeCombatPower(hero)}`,identity);el('p',`HP ${hero.maxHP} · ATK ${hero.stats.ATK} · AF ${Math.min(100,Math.max(0,Number(hero.flow||0)))}`,identity);
+  const identity=el('header');identity.className='identity';portrait(hero,identity);el('h1',d.name,identity);el('p',`Lv. ${hero.currentLevel} · ${d.role}`,identity);el('p',`CP ${computeCombatPower(hero)}`,identity);el('p',`HP ${hero.maxHP} · ATK ${hero.stats.ATK}`,identity);
   const tabs=el('nav');tabs.className='tabs';tabs.setAttribute('aria-label','Hero management');
   for(const [id,label] of [['hero','HERO'],['gear','GEAR'],['skills','SKILLS']]){const b=button(tabs,label,()=>{currentTab=id;});b.setAttribute('aria-pressed',String(currentTab===id));}
   const pane=el('div');pane.className='pane';pane.setAttribute('aria-label',`${currentTab} view`);
   if(currentTab==='hero'){
    el('h2','Level progress',pane);const exp=el('progress',null,pane);exp.max=hero.EXPToNextLevel||1;exp.value=hero.currentLevel>=hero.maxLevel?1:hero.currentEXP;exp.setAttribute('aria-label','Level EXP');
    el('small',hero.currentLevel>=hero.maxLevel?'Maximum level':`${hero.currentEXP} / ${hero.EXPToNextLevel} EXP`,pane);
-   button(pane,d.special.displayName,()=>{currentTab='skills';skillTab='special';});
-   const next=[...d.actives,...d.passives].filter(a=>a.unlockLevel>hero.currentLevel).sort((a,b)=>a.unlockLevel-b.unlockLevel).slice(0,3);
-   el('h2',next.length?'Coming next':'Base kit complete',pane).style.marginTop='.8em';
-   for(const ability of next){const row=el('div',null,pane);row.className='milestone';el('small',`Lv. ${ability.unlockLevel}`,row);el('span',ability.displayName,row);}
+   button(pane,'View skills',()=>{currentTab='skills';});
    const details=el('details',null,pane);el('summary','Stats',details);const stats=el('dl',null,details);
-   for(const [name,value] of Object.entries({HP:hero.maxHP,...hero.stats,AF:Math.min(100,Math.max(0,Number(hero.flow||0)))})){const cell=el('div',null,stats);el('dt',name,cell);el('dd',String(value),cell);}
+   for(const [name,value] of Object.entries({HP:hero.maxHP,...hero.stats})){const cell=el('div',null,stats);el('dt',name,cell);el('dd',String(value),cell);}
   }else if(currentTab==='gear'){
    renderHeroGear({stage:identity,pane,hero,economy:equipmentProgress,roster,invalidate:()=>{lastKey=null;}});
   }else{
-   const categories=el('nav',null,pane);categories.className='tabs';categories.setAttribute('aria-label','Skill categories');
-   for(const [id,label] of [['actives','Active'],['passives','Passive'],['special','FLOW']]){const b=button(categories,label,()=>{skillTab=id;});b.setAttribute('aria-pressed',String(skillTab===id));}
-   if(skillTab==='special'){el('h2',`${d.flowMode} · AF trait`,pane);el('h2','How FLOW builds',pane).style.marginTop='.8em';el('p','Role actions send blue AF to the hero who earned it.',pane);}
-   const entries=skillTab==='special'?[d.special]:skillTab==='actives'?d.actives:d.passives;
-   for(const ability of entries){const item=el('article',null,pane);const locked=hero.currentLevel<ability.unlockLevel;if(locked)item.className='locked';el('h2',ability.displayName,item);
-    if(ability.spCost!=null)el('small',ability.isFlowSpecial?'Full AF':'Action',item);
-    el('p',ability.description.replaceAll('magic-tagged actions','magic skills'),item);el('small',locked?`Unlocks Lv. ${ability.unlockLevel}`:'Unlocked',item);
+   const basic=el('article',null,pane);el('h2','Basic Attack',basic);el('p',d.basic.description,basic);
+   for(const ability of d.actives){const item=el('article',null,pane);el('h2',ability.displayName,item);
+    el('p',ability.description.replaceAll('magic-tagged actions','magic skills'),item);
    }
-   if(skillTab==='actives'){const basic=el('details',null,pane);el('summary','Basic Attack',basic);el('p',`${d.basic.description} Uses the whole turn.`,basic);}
   }
    const selection=el('div');selection.className='roster';selection.setAttribute('aria-label','Hero roster');
    roster.forEach((member,i)=>{const def=heroDefinition(member);const card=button(selection,'',()=>{gameState.selectedHero=i;});portrait(member,card);el('span',def.name,card);el('small',`Lv. ${member.currentLevel}`,card);card.setAttribute('aria-pressed',String(i===index));card.setAttribute('aria-label',`Inspect ${def.name}`);});

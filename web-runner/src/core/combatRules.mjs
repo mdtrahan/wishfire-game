@@ -3,13 +3,14 @@ import {unlockedPassives} from './heroProgression.mjs';
 const clamp=(v,min,max)=>Math.min(max,Math.max(min,v));
 const debuffs=new Set(['atkDown','defDown','magDown','resDown','spdDown','blind','silence','dot','taunted','delayNextTurn']);
 export const statuses=actor=>actor.statuses||(actor.statuses=[]);
+export const cleanseDebuffs=actor=>{actor.statuses=statuses(actor).filter(status=>!debuffs.has(status.statusEffect));if(Array.isArray(actor.statusEffects))actor.statusEffects=actor.statusEffects.filter(status=>!debuffs.has(status.statusEffect));};
 export const hasStatus=(actor,id)=>statuses(actor).some(s=>s.statusEffect===id);
 export function effectiveStat(actor,key,base=actor.stats?.[key]||1){
  let multiplier=1;for(const s of statuses(actor)){if(s.statusEffect===key.toLowerCase()+'Up')multiplier+=s.magnitude;if(s.statusEffect===key.toLowerCase()+'Down')multiplier-=s.magnitude;}
  for(const p of unlockedPassives(actor))if(p.effect===key&&p.conditions?.criticalHP&&actor.hp/actor.maxHP<=T.criticalHP)multiplier+=p.magnitude;
  return Math.max(1,Math.floor(base*multiplier));
 }
-export function legalSkill(actor,skill){return !!skill&&actor.hp>0&&(actor.currentLevel||1)>=(skill.unlockLevel||1)&&(!hasStatus(actor,'silence')||!skill.tags?.includes('magic')||skill.ignoresSilence);}
+export function legalSkill(actor,skill,{allowKO=false}={}){return !!skill&&(actor.hp>0||(allowKO&&actor.kind==='hero'&&actor.hp===0))&&(actor.currentLevel||1)>=(skill.unlockLevel||1)&&(!hasStatus(actor,'silence')||!skill.tags?.includes('magic')||skill.ignoresSilence);}
 export function validTargets(actors,actor,skill,ids){
  const type=skill.targetType;if(!['allAllies','allEnemies'].includes(type)&&new Set(ids||[]).size>1)return [];return [...new Set(ids||[])].map(uid=>actors.find(a=>a.uid===uid)).filter(t=>t&&(
  type==='self'?t.uid===actor.uid&&t.hp>0:type==='deadAlly'?t.kind===actor.kind&&t.hp<=0:
@@ -67,7 +68,7 @@ function accuracy(ctx,source,target,skill,origin){
  const evasion=clamp(target.evasion||T.evasion,0,1);if(evasion&&ctx.random()<evasion){return false;}return true;
 }
 export function resolveSkill(ctx,source,skill,targetIds,origin={}){
- if(!legalSkill(source,skill))return false;
+ if(!legalSkill(source,skill,{allowKO:!!origin.allowSourceKO}))return false;
  let targets=validTargets(ctx.actors,source,skill,targetIds);if(!targets.length&&skill.retargetOnInvalid)targets=targetCandidates(ctx.actors,source,skill).slice(0,1);if(!targets.length)return false;
  const meta={...origin,flowOwnerUID:skill.isFlowSpecial?source.uid:origin.flowOwnerUID,excludedFlowUIDs:[...new Set([...(origin.excludedFlowUIDs||[]),origin.flowOwnerUID,...(skill.isFlowSpecial?[source.uid]:[])].filter(uid=>uid!=null))]};
  const defenders=new Map();
@@ -99,7 +100,7 @@ export function resolveSkill(ctx,source,skill,targetIds,origin={}){
    else if(['heal','revive'].includes(effect.effectType)){
     const before=recipient.hp;if(effect.effectType==='revive'?before===0:before>0){recipient.hp=clamp(before+(effect.amount??Math.floor(recipient.maxHP*(effect.potency??0.25))),0,recipient.maxHP);recipient.isAlive=recipient.hp>0;const delta=Math.max(0,recipient.hp-before);if(delta>0)ctx.onHeal?.(source,recipient,delta,effect);
 }
-   }else if(effect.effectType==='cleanse')recipient.statuses=statuses(recipient).filter(s=>!debuffs.has(s.statusEffect));
+   }else if(effect.effectType==='cleanse')cleanseDebuffs(recipient);
    else if(effect.effectType==='dispel')recipient.statuses=statuses(recipient).filter(s=>debuffs.has(s.statusEffect));
   }
  }

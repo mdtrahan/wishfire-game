@@ -20,6 +20,9 @@
 - A late enemy-death removal must retain or create that deferred handoff; clearing the defeated actor after FLOW delivery cannot leave `IsPlayerBusy` without `DeferAdvance`.
 - Use `CanPickGems` through numeric readiness helpers such as `isCanPickGemsReady`; do not rely on strict boolean checks.
 - Continuous production uses deterministic readiness and cooldowns. Combat-card acquisition, offers, and proc entrypoints are retired; stale data must not block combat.
+- Continuous hero basics schedule independently from each SPD-derived cooldown. Opening readiness starts on first in-range acquisition with the existing UID phase; staged starts wait for their scheduled time, and fresh-session reset clears pending basic clocks so reused actor UIDs do not inherit old actions.
+- Continuous enemy actions use independent UID clocks and action states. They share the legacy action-state builder, while `StartEnemyAction` and `ProcessTurn` remain the story/QA path; continuous actions do not use the global `ActionInProgress` lane. Revalidate target at impact and leave readiness available when no eligible target remains.
+- Ordinary continuous `HeroAttackSingle` packets keep launch-computed `finalDmg`, then resolve through `heroCommands` and `combatRules` at impact. The resolver preserves on-hit hooks, counter/KO effects, and committed projectiles after source KO; Split, Incinerate, Chain Strike, and Arcane Pulse keep their existing effect-specific queues.
 - Continuous hero basics share one in-range enemy focus UID until that enemy dies, then choose the first living in-range enemy in encounter order. Engaged enemies acquire only heroes inside the combat group; area-skill target sets remain effect-owned.
 - Native wards, Cover, Reprisal, Rally and weakness are actor-owned combat effects; card-session records cannot activate them.
 - HERO_SINGLE keeps a valid owner-matched manual enemy selection; its automatic fallback delegates to the shared role-targeting rule.
@@ -66,9 +69,9 @@
 - `heroCommands.mjs` reserves a legal sequence once, revalidates each action, refunds only unexecuted costs, and settles victory before progression. Ordinary counters never own a turn.
 - Native hero actions remain session and turn serial scoped. Automatic production actions resolve through readiness and cooldowns, then hand off to the shared lunge, targeting, damage, and healing seams. Narrative quest cards remain owned by `storyEntryFlow`, outside the combat action path.
 
-- Enemy KO uses the shared defeat transition with per-enemy reward deduplication. Damage telemetry records before death removal and stage handoff.
+- Enemy KO uses one per-enemy reward ledger shared by direct damage and role-rule callbacks. The active battle binds an immediate HeroProgress flush at that shared seam; reload recovery settles any durable pending ledger before a fresh session reuses enemy UIDs.
 
-- Native victory awards each defeated enemy's goldValue (configurable fallback PROGRESSION.enemyGold) once at the same guarded settlement as EXP. Defeat gives no victory Gold. The shared equipment economy persists the resulting wallet.
+- Victory and non-continuous defeat settle each earned enemy EXP and Gold reward once. Gold settlement receipts remain in HeroProgress until equipmentStorage confirms the wallet commit; continuous defeat pays the pending ledger during retry recovery.
 - In continuous production combat, party KO settles earned kills, clears transient combat state, disarms boss progression, fully heals the party, and restarts Wave 1 of the current stage without a resource cost or defeat menu. Other modes retain the native defeat terminal path.
 - Resolved healing emits one `DamageTexts` heal record with the actual positive HP delta; the app-owned bloom follows that record. Crimson Ward consumes its shared ward before every hostile hero HP change. Dawn Chorus checks its owned seeded session roll once at full-party defeat and restores the party only on success.
 - Arcane Pulse visual packets source from the casting hero's rendered resting sprite base. They never average the party formation or inherit lunge displacement.

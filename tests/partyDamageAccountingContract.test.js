@@ -269,7 +269,7 @@ test('Town and Continue recover actual hero HP for groups through six without re
       assert.equal(state.globals.AstralFlowAmpPoints, 7);
       assert.deepEqual(state.globals.Skills, { ward: true });
       assert.equal(calls.filter(name => name === 'UpdateHeroHPUI').length, 1);
-      assert.equal(calls.includes('ProcessTurn'), entry === 'continue');
+      assert.equal(calls.includes('ProcessTurn'), false);
     }
   }
 });

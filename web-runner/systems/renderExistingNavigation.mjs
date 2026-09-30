@@ -3,7 +3,7 @@ let host;
 const items = [
   ['DAILY', 'Daily', 'daily'], ['HERO', 'Hero', 'hero'],
   ['QUESTS', 'Quests', 'quests'], ['VAULT', 'Vault', 'vault'],
-  ['SHOP', 'Shop', 'shop'], ['FLOW', 'AstralFlow', 'flow'],
+  ['SHOP', 'Shop', 'shop'],
 ];
 export function renderExistingNavigation(ctx, { worldToCanvas, layoutScale, gameState, layoutState, eventBus }) {
   gameState.sharedNavHitZones = [];
@@ -28,7 +28,7 @@ export function renderExistingNavigation(ctx, { worldToCanvas, layoutScale, game
       button.type = 'button';
       button.innerHTML = `<img src="assets/images/navigation/${asset}.png" alt="" draggable="false"><span>${text}</span>`;
       button.onclick = () => eventBus.emit('nav:clicked', { label });
-      if (['Daily', 'Shop'].includes(label)) button.title = `${text} is not available yet`;
+      if (label === 'Daily') button.title = `${text} is not available yet`;
       host.append(button);
     }
     document.body.append(host);
@@ -48,9 +48,9 @@ export function renderExistingNavigation(ctx, { worldToCanvas, layoutScale, game
   host.style.left = `${canvasRect.left + pos.x}px`;
   host.style.top = `${canvasRect.top + pos.y}px`;
   host.style.transform = `scale(${layoutScale})`;
-  const active = { heroLayout: 'Hero', chestsLayout: 'Vault', idleFarmLayout: 'AstralFlow', storyMock: 'Quests', combat: 'Quests' }[layoutState.getActiveLayoutId()];
+  const active = { heroLayout: 'Hero', chestsLayout: 'Vault', idleFarmLayout: 'Shop', storyMock: 'Quests', combat: 'Quests' }[layoutState.getActiveLayoutId()];
   [...host.children].forEach((button, index) => {
-    button.disabled = host.inert || ['Daily', 'Shop'].includes(items[index][1]);
+    button.disabled = host.inert || items[index][1] === 'Daily';
     if (items[index][1] === active) button.setAttribute('aria-current', 'page');
     else button.removeAttribute('aria-current');
   });

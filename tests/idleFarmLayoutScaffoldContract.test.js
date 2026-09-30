@@ -9,7 +9,7 @@ test('web-runner state defines Astral Flow destination outside app shell', () =>
   assert.match(src, /idleFarmLayout:\s*\{/);
 });
 
-test('web-runner app retains Astral Flow navigation for the equipment shop', () => {
+test('web-runner keeps the Gold equipment shop under the Shop navigation label', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
   const registrySrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'runtimeLayoutRegistry.js'), 'utf8');
   const surfaceRouterSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'surfaceRenderRouter.js'), 'utf8');
@@ -18,10 +18,12 @@ test('web-runner app retains Astral Flow navigation for the equipment shop', () 
 
   assert.match(src, /import \{ createInitialGameState \} from '\.\/state\/gameState\.js';/);
   assert.match(src, /const gameState = createInitialGameState\(\);/);
-  assert.match(fs.readFileSync(path.join(__dirname, '..', 'web-runner/systems/storyEntryFlow.mjs'), 'utf8'), /AstralFlow: 'idleFarmLayout'/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'web-runner/systems/storyEntryFlow.mjs'), 'utf8'), /Shop: 'idleFarmLayout'/);
   assert.match(registrySrc, /id:\s*'idleFarmLayout'/);
   assert.match(surfaceRouterSrc, /case 'idleFarmLayout':/);
   assert.match(surfaceRouterSrc, /renderAstralMarket\(\)/);
   assert.doesNotMatch(src, /updateIdleFarmEmissions|claimIdleFarmRewards/);
   assert.match(devBrowserHookSrc, /astralMarket:/);
+  assert.doesNotMatch(fs.readFileSync(path.join(__dirname, '..', 'web-runner/systems/renderExistingNavigation.mjs'), 'utf8'), /AstralFlow|\['FLOW'/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'web-runner/systems/astralMarketUI.mjs'), 'utf8'), /Gold equipment shop|EQUIPMENT SHOP/);
 });

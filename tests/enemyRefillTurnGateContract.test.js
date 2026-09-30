@@ -9,6 +9,13 @@ function read(relPath) {
   return fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
 }
 
+function productionTickSource(src = read('web-runner/app.js')) {
+  const start = src.indexOf('function tick(){');
+  const end = src.indexOf('\n  tick();', start);
+  assert.ok(start >= 0 && end > start, 'missing production tick boundary');
+  return src.slice(start, end);
+}
+
 function extractFunctionSource(src, name) {
   const patterns = [`export function ${name}(`, `function ${name}(`];
   const start = patterns
@@ -274,32 +281,12 @@ test('function banks wire roster stability and gate scheduler mutation before ad
   }
 });
 
-test('app pending attack and hero pickability honor enemy roster refill gate', () => {
-  const src = read('web-runner/app.js');
-  assert.match(src, /createEnemyRosterRefillHold/);
-  assert.match(src, /GetEnemyRosterStability/);
-  assert.match(src, /function hasPendingEnemyDeathResolution/);
-  assert.match(src, /pendingEnemyDeathResolution/);
-
-  const commandSrc = read('web-runner/modules/heroCommands.mjs');
-  assert.match(commandSrc, /GetEnemyRosterStability/);
-
-  const deferredHoldStart = src.indexOf('!deferredAdvanceState.enemyRosterStability.stable');
-  assert.notEqual(deferredHoldStart, -1, 'missing deferred roster refill hold');
-  const deferredHoldBlock = src.slice(deferredHoldStart, deferredHoldStart + 500);
-  assert.match(deferredHoldBlock, /!deferredAdvanceState\.pendingEnemyDeathResolution/);
-  assert.doesNotMatch(deferredHoldBlock, /preservePendingSkill/, 'deferred action holds must not preserve stale target selection');
-
-  const canResolveDeferredAdvance = extractFunctionSource(src, 'canResolveDeferredAdvance');
-  assert.match(canResolveDeferredAdvance, /pendingEnemyDeathResolution/);
-  assert.match(canResolveDeferredAdvance, /\(rosterStability\.stable \|\| pendingEnemyDeathResolution\)/);
-
-  const heroRestoreStart = src.indexOf('const noRefillActive = !(gameState.refillBounce && gameState.refillBounce.active);');
-  assert.notEqual(heroRestoreStart, -1, 'missing hero pickability restore block');
-  const heroRestoreIdx = src.indexOf('state.globals.CanPickGems = true;', heroRestoreStart);
-  assert.notEqual(heroRestoreIdx, -1, 'missing hero pickability restore');
-  const beforeHeroRestore = src.slice(Math.max(0, heroRestoreIdx - 900), heroRestoreIdx);
-  assert.match(beforeHeroRestore, /enemyRosterStability\.stable/);
+test('production app no longer dispatches turn or board-refill gates', () => {
+  const tick = productionTickSource();
+  assert.match(tick, /combatSimulationTicker\.tick\(\{/);
+  assert.match(tick, /maybeAdvanceContinuousCombatStage\(\{/);
+  assert.doesNotMatch(tick, /GetEnemyRosterStability|createEnemyRosterRefillHold|canResolveDeferredAdvance/);
+  assert.doesNotMatch(tick, /callFunctionWithContext\(fnContext, '(?:AdvanceTurn|ProcessTurn|EnemyTurn)'/);
 });
 
 test('action handoff gates prevent queued damage from detached action starts', async () => {
@@ -427,50 +414,21 @@ test('function banks block scheduler reentry while any action is active', () => 
   }
 });
 
-test('runtime action handoff diagnostics cover dev pending-selection failure points', () => {
+test('retired autoplay and turn-stuck diagnostics are absent from production app wiring', () => {
   const appSrc = read('web-runner/app.js');
-  const debugSrc = read('web-runner/systems/runtimeDebugLogging.js');
-  const superGemSrc = read('web-runner/systems/superGemRuntime.js');
-
-  assert.match(debugSrc, /\[DEV_AUTOPLAY_RESOLVE\]/);
-  assert.match(debugSrc, /\[PENDING_ATTACK_RESOLVE\]/);
-  assert.match(debugSrc, /\[TURNPHASE1_STUCK\]/);
-  assert.match(debugSrc, /\[ACTION_HANDOFF_REFUSED\]/);
-  assert.match(appSrc, /logActionHandoffDebug\('\[DEV_AUTOPLAY_RESOLVE\]'[\s\S]*stage: 'after-action-attempt-before-clear'/);
-  assert.match(appSrc, /runtimeDebugLogging\.gemDebugLog\('\[TURNPHASE1_STUCK\]'/);
-  assert.match(superGemSrc, /logActionHandoff\(state, '\[ACTION_HANDOFF_CLAIM\]'/);
-  assert.match(superGemSrc, /logActionHandoff\(state, '\[PENDING_SUPERGEM_REJECT\]'/);
+  const devTools = read('web-runner/systems/devToolingRuntime.js');
+  assert.doesNotMatch(appSrc, /DEV_AUTOPLAY_RESOLVE|TURNPHASE1_STUCK|PENDING_ATTACK_RESOLVE/);
+  assert.doesNotMatch(devTools, /autoplay/i);
 });
 
-test('app deferred advance can clear stale same-owner action locks', () => {
-  const src = read('web-runner/app.js');
-  assert.match(src, /createDeferredStaleActionRecovery/);
-  const canResolveDeferredAdvance = extractFunctionSource(src, 'canResolveDeferredAdvance');
-  assert.match(canResolveDeferredAdvance, /staleActionInProgress/);
-  assert.match(canResolveDeferredAdvance, /heroActionActive/);
-  assert.match(canResolveDeferredAdvance, /enemyActionActive/);
-  assert.match(canResolveDeferredAdvance, /!!state\.globals\.ActionInProgress && !staleActionInProgress/);
-
-  const tickStart = src.indexOf('let deferredAdvanceState = canResolveDeferredAdvance');
-  assert.notEqual(tickStart, -1, 'missing deferred advance state check');
-  const recoveryIdx = src.indexOf('createDeferredStaleActionRecovery', tickStart);
-  assert.notEqual(recoveryIdx, -1, 'missing stale action recovery in deferred advance loop');
-  const advanceIdx = src.indexOf("callFunctionWithContext(fnContext, 'AdvanceTurn')", tickStart);
-  assert.ok(recoveryIdx < advanceIdx, 'stale action recovery must run before AdvanceTurn');
+test('production app has no deferred turn recovery dispatch', () => {
+  const tick = productionTickSource();
+  assert.doesNotMatch(tick, /createDeferredStaleActionRecovery|canResolveDeferredAdvance/);
+  assert.doesNotMatch(tick, /callFunctionWithContext\(fnContext, '(?:AdvanceTurn|ProcessTurn|EnemyTurn)'/);
 });
 
-test('app preserves owned deferred advance when AdvanceTurn is held for enemy refill', () => {
-  const src = read('web-runner/app.js');
-  const tickStart = src.indexOf('let deferredAdvanceState = canResolveDeferredAdvance');
-  assert.notEqual(tickStart, -1, 'missing deferred advance state check');
-  const okBranch = src.slice(tickStart, src.indexOf("} else if (!deferredAdvanceState.ownerOk)", tickStart));
-  assert.match(okBranch, /const beforeAdvanceUID = deferredAdvanceState\.currentUID;/);
-  assert.match(okBranch, /callFunctionWithContext\(fnContext, 'AdvanceTurn'\);/);
-  assert.match(okBranch, /const postAdvanceRosterStability = getEnemyRosterStabilitySnapshot\(\);/);
-  assert.match(okBranch, /const rosterHoldKeptDeferredAdvance = \(/);
-  const advanceIdx = okBranch.indexOf("callFunctionWithContext(fnContext, 'AdvanceTurn')");
-  const clearIdx = okBranch.indexOf('applyTurnGateIntent(createDeferredAdvanceResolved)');
-  assert.ok(advanceIdx < clearIdx, 'deferred advance must clear only after AdvanceTurn succeeds');
-  assert.match(okBranch, /if \(!rosterHoldKeptDeferredAdvance\) \{[\s\S]*combatRuntimeGateway\.runCombatStep\(fnContext, 'ProcessTurn'\);/);
-  assert.match(okBranch, /\[TURN_DEFER_PRESERVED\]/);
+test('production app has no owned deferred turn handoff state', () => {
+  const tick = productionTickSource();
+  assert.doesNotMatch(tick, /callFunctionWithContext\(fnContext, '(?:AdvanceTurn|ProcessTurn|EnemyTurn)'/);
+  assert.match(tick, /combatSimulationTicker\.tick\(\{/);
 });

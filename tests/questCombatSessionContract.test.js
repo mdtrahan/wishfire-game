@@ -13,7 +13,9 @@ test('resurrection retains enemy progress, buffs and skills while reviving every
  assert.deepEqual(state.globals.PendingDeaths,{3:true});
  assert.deepEqual(state.globals.Skills,{faze:true});assert.deepEqual(state.globals.HeroBuffs,{ward:3});
  assert.equal(gameState.combatFailExitRequested,false);
- assert.ok(calls.includes('ProcessTurn'));
+ assert.ok(calls.includes('UpdateHeroHPUI'));
+ assert.equal(calls.includes('ProcessTurn'),false);
+ assert.equal(calls.includes('RebuildTurnOrderPreserveCurrent'),false);
  state.entities=state.entities.filter(e=>e.kind!=='enemy');
  state.globals.AstralFlowKoOrbQueue=[{}];assert.equal(session.isCleared(),false);
  state.globals.NativeBattleEnded=false;assert.equal(session.isCleared(),false);
@@ -59,17 +61,19 @@ test('continuous defeat is free, disarms the boss gate and restarts wave one at 
  assert.ok(state.entities.slice(1).every(actor=>actor.kind==='enemy'&&actor.streamState==='approaching'));
  assert.ok(calls.includes('SettleContinuousCombatRewards'));
  assert.equal(calls.includes('ProcessTurn'),false);
+ assert.equal(calls.includes('RebuildTurnOrderPreserveCurrent'),false);
+ assert.equal(state.globals.QuestFiniteEncounter,1, 'continuous recovery must keep legacy slot refills disabled');
  assert.equal(gameState.combatFailExitRequested,false);
 });
 
-test('new battle clears combat conditions and Astral Flow while retaining gold and progression', async () => {
+test('new battle clears combat conditions and retired Flow state while retaining gold and progression', async () => {
  const {resetCombatSessionConditions}=await import('../web-runner/systems/combatSessionReset.mjs');
  const g={goldTotal:321,HeroGemUsage:{RED:9},AstralFlowAmpPoints:12,AstralFlowAmpReady:1,
  PartyBuff_ATK:8,BuffTurns_ATK:3,PartyTempHPShield:40,PowerAmpByUID:{1:{}},
  EnemyDebuffs:{2:{DEF:8}},EnemyDamageOverTime:[{}],PartyRegens:[{}],TaintedGroundZones:[{}]};
  const ui={partyHpTextRoll:{displayHp:1}}; resetCombatSessionConditions(g,ui);
  assert.equal(g.goldTotal,321);assert.deepEqual(g.HeroGemUsage,{RED:9});
- assert.equal(g.AstralFlowAmpPoints,0);assert.equal(g.AstralFlowAmpReady,0);
+ assert.equal(g.AstralFlowAmpPoints,undefined);assert.equal(g.AstralFlowAmpReady,undefined);
  for(const key of ['PartyBuff_ATK','BuffTurns_ATK','PartyTempHPShield','PowerAmpByUID']) assert.equal(g[key],undefined);
  assert.deepEqual(g.EnemyDebuffs,{});assert.deepEqual(g.EnemyDamageOverTime,[]);
  assert.deepEqual(g.PartyRegens,[]);assert.deepEqual(g.TaintedGroundZones,[]);

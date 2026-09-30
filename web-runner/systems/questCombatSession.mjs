@@ -42,7 +42,6 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
       state.globals.DeferAdvance = 0;
       gameState.combatFailExitRequested = false;
       call('UpdateEnemyHPUI');
-      call('RebuildTurnOrderPreserveCurrent');
       sync();
       return true;
     },
@@ -54,13 +53,11 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
         state.globals.ProgressionBattle.defeatSettled = false;
         state.globals.ProgressionBattle.settled = false;
       }
-      call('RebuildTurnOrderPreserveCurrent');
       state.globals.ActionInProgress = 0;
       state.globals.IsPlayerBusy = 0;
       state.globals.DeferAdvance = 0;
       gameState.combatFailExitRequested = false;
       sync();
-      call('ProcessTurn');
     },
   };
 }

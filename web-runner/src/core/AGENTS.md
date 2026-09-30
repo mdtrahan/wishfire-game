@@ -22,16 +22,18 @@
 - Damage floats keep their spawn X and rise vertically, popping from 40% to full size at the top of a short rise, then holding and fading quickly in both DOM and Canvas paths.
 - New deterministic rule changes need focused contract tests and, when applicable, fixture rows.
 - `continuousCombatStage.mjs` owns the queryless production stage sequence, one off-stage X emitter, four hero-aligned enemy Y homes, and the independent hero-basic timer tick. Each region has ten stages; every stage loops four normal waves until its boss is armed and cleared. Low, mixed, and high CP pools emit five, four, and three enemies three seconds after the current pack reaches hero attack range; survivors can keep fighting during the next pack's walk. The fifth enemy uses a separate X home when its Y lane repeats. Clear-field transitions wait for active attack presentation to finish.
-- Continuous wave loops and boss clears preserve every hero's current HP and KO state. Only the defeat recovery session restores the party to full HP before restarting wave one of the current stage.
+- Ordinary continuous wave loops preserve every hero's HP and KO state. A boss clear restores every hero to full HP, revives KO heroes and clears harmful statuses while retaining buffs before the next stage. Defeat recovery also restores the party before restarting wave one of the current stage.
+- `maybeAdvanceContinuousCombatStage` must be inert while dev tooling, QA scenarios, or QA fixture holds are paused; the app also freezes it for story pause, background, and defeat presentation.
 - Continuous enemy attack intervals use the existing 1.6–5 second band: melee takes 1.6 seconds, ranged takes 5 seconds, and an explicit boss attack-pattern interval wins. Approach travel does not alter attack cooldown.
 - Approaching enemies become hero-targetable at the shared arena attack line while continuing to walk, and join the enemy action scheduler only after reaching their melee or ranged home X. Enemy sprites draw from larger Y to smaller Y so the lower numeric Y appears in front.
-- Hero basics use each hero's effective SPD, a community-estimated main-character rate, and a fixed Pal-speed band to derive independent clocks. Fire at most one basic per frame while preserving each hero's due-time cadence. Enemy actions retain their own cooldown scheduler.
+- Hero basics use each hero's effective SPD and a community-estimated main-character curve to derive independent clocks. The four heroes are the attack sources; no hidden Pal assignments contribute attacks. Fire at most one basic per hero per tick while preserving each hero's due-time cadence. Continuous enemies use independent per-UID action clocks and may overlap one another and pending hero projectiles; each enemy starts at most one action per tick.
 - Continuous production initializes the shared hero focus to zero; runtime basics retain its UID until death and clear it when no living target remains.
 - Marid, Djinn and Chimerilass use ranged homes. Every other enemy uses melee homes.
 - Armed bosses enter from off-stage and hold the combat-grid home at X 290, Y 290 before joining the enemy action scheduler.
-- Engaged enemy cooldowns keep ticking while hero basic projectiles are pending; their actions do not wait for the old presentation barrier.
+- Engaged enemy cooldowns keep ticking while hero basic projectiles are pending; their actions do not wait for the old presentation barrier. Captured hero targets are revalidated at impact, with stable encounter-order fallback after existing Provoke/Cover rules; no eligible target leaves the enemy ready.
 - The continuous enemy scheduler may tick while stale `IsPlayerBusy` or `DeferAdvance` flags remain; `ActionInProgress` still protects the active action lane.
-- When a target enters range after an empty lane, each hero waits for its own cooldown plus a deterministic stagger within 1.5 seconds before its first attack. Engaged enemies are ready on arrival and re-arm after each completed attack.
+- When a target enters range after an empty lane, each hero waits for its own cooldown plus a deterministic stagger within 1.5 seconds before its first attack. Engaged enemies are ready on arrival and retain start-to-start cooldown cadence independently of animation length.
+- Continuous enemy actions use per-enemy clocks. Real-time skills and their effects use simulation seconds; pause and background state freeze those clocks.
 
 ## Work Guidance
 - Prefer extracting deterministic decisions here or in root `src/core/` instead of adding branches to `app.js` or render modules.
@@ -52,23 +54,17 @@
 
 - Party-damage packets support up to six actual members; match the root core and shipped Rust ABI, including zero-filled unused entries.
 
-- personalFlow.mjs owns browser-shipped personal charge and current hero skill budgets, shared with both function registries. It has no DOM or timer access. FLOW event attribution occurs only at resolved gameplay seams, and the canonical hero definition owns each role mode instead of mutable actor copies.
-
-- Combat SP and FLOW are independent actor balances: fresh encounters start full SP and zero FLOW; enemy defeat produces orbs only.
-
-- `heroDefinitions.mjs` is the single kit/tuning source for combat and hero detail UI. `heroProgression.mjs` owns individual EXP, stat growth and unlock evaluation; KO remains zero HP during growth.
+- `heroDefinitions.mjs` is the single source for the four five-active-skill kits and basic attacks. Skills are available from the start; `heroProgression.mjs` owns individual EXP and stat growth. KO remains zero HP during growth.
 - `heroDefinitions.mjs` owns role-shaped HP directly. Do not add a global hero HP multiplier; it hides role balance and breaks CP calibration.
-- `combatRules.mjs` resolves statuses, accuracy, Cover and reactions. Preserve action source ancestry, reject illegal actions before spending, and grant no routine periodic FLOW.
+- Realtime hero skills resolve target geometry against enemy centers inside the shared attack line. Direct hits, area effects, marks, splashes, and Burn Sigil ticks exclude enemies beyond that line. Null Field marks current occupants once; Burn Sigil ticks at each simulation second through expiry. A committed basic projectile may resolve after its hero is KO when the impact supplies `allowSourceKO`, provided its target is still in range.
+- Party-wide support skills enqueue one impact visual per affected ally and leave hero point resolution to the shared renderer anchor; no missing selection point may become a canvas-origin impact.
 - `routineEnemyScaling.mjs` preserves each enemy row's authored combat stats and applies only the level curve. Tier profiles are fallbacks for missing values, not replacements that make ordinary enemies disposable.
 
-- Native hero actions resolve living targets and healing through `heroCommands`; narrative quest cards remain outside the combat core. Resolved healing reports only its actual HP delta to presentation, while barrier visuals project from the actor-owned barrier status.
+- Narrative quest cards remain outside the combat core. Resolved healing reports only its actual HP delta to presentation.
 
-- `actionSelection.mjs` owns action capacity and draft budgets independently of SP and CTB scheduling. High SP cannot increase the action count.
-
-- Queryless production selects actions through deterministic initiative and cooldown readiness. Combat presentation never waits on a meter threshold or card choice.
+- Production uses independent hero basics, active skill cooldowns, and enemy action clocks.
 - Queryless production emits staggered fodder packs from off-stage on a shallow stage-owned linear CP ramp. Hero level does not scale enemies. The next cadence starts when a pack reaches its engagement boundary; survivors may overlap later packs, while bosses wait for a clear field.
-- The production action handoff clears transient busy, action, and animation locks only after the presentation barrier releases. Preserve the completed-action owner and deferred-advance fields so the readiness scheduler resumes exactly once.
-- Combat presentation has one owner at a time. Attack motion and impacts finish before damage floats; heal art finishes before heal floats; enemy-death FLOW delivery starts after those floats and blocks the next actor through collection. A held enemy death remains a presentation lane until removal commits, preventing a new actor claim between gem completion and refill.
+- Combat presentation consumes simulation events; it does not grant actor readiness or advance the combat clock.
 - A fresh session enters with the restored party and deterministic actor cooldown state. Defeat recovery remains owned by the encounter session.
 
 - equipment.mjs is the canonical placeholder catalog, slots, rarity balance and loadout math. astralMarket.mjs reconstructs only the live offer window using persisted seed/epoch and a monotonic time floor. Each offer ID may be acquired once; revalidate price, expiration and Gold at commit.

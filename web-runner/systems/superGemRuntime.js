@@ -109,7 +109,8 @@ function beginQueuedHeroAction({
       actionInProgress: Number(state.globals.ActionInProgress || 0),
       actionActorUID: Number(state.globals.ActionActorUID || 0),
       heroActionActive: !!(state.globals.HeroAction && state.globals.HeroAction.active),
-      enemyActionActive: !!(state.globals.EnemyAction && state.globals.EnemyAction.active),
+      enemyActionActive: !!(state.globals.EnemyAction && state.globals.EnemyAction.active)
+        || Object.values(state.globals.RealtimeEnemyActionsByUID || {}).some(action => action?.active),
       actionLockUntil: Number(state.globals.ActionLockUntil || 0),
       time: Number(state.globals.time || 0),
     });

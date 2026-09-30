@@ -151,7 +151,7 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
       }
       return changed;
     }
-    const targets = { Hero: 'heroLayout', Vault: 'chestsLayout', AstralFlow: 'idleFarmLayout', Map: 'storyMock', Quests: 'storyMock' };
+    const targets = { Hero: 'heroLayout', Vault: 'chestsLayout', Shop: 'idleFarmLayout', Map: 'storyMock', Quests: 'storyMock' };
     const target = targets[label];
     if (!target) return false;
     if (entry.phase === 'combat' && label !== 'Quests') {

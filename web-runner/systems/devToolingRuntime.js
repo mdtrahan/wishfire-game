@@ -1,5 +1,4 @@
 import * as devToolingControls from './devToolingControls.js';
-import { renderCombatTurnQaReadoutHtml } from './combatTurnQaReadout.mjs';
 import { normalizeCombatOrientation } from '../../src/core/combatOrientation.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 
@@ -52,14 +51,12 @@ export function createDevToolingRuntime(deps = {}) {
     rebuildGridFromGems,
     hasEmptySlots,
     getPresentationTurnBarrier,
-    getEnemyRosterStabilitySnapshot,
     applyTurnGateGlobals,
     createCombatTurnRefreshBaseline,
   } = deps;
 
   let devToolingDom = null;
   let devToolingRefreshHandler = null;
-  let devToolingAutoplayHandler = null;
   let devToolingPauseSnapshot = null;
 
   const layoutState = {
@@ -350,26 +347,13 @@ export function createDevToolingRuntime(deps = {}) {
 
   function updateDevToolingStatus(message = '') {
     if (!devToolingDom) return;
-    const autoplayActive = !!state.globals.DevAutoplayActive;
-    if (devToolingDom.autoplay) {
-      devToolingDom.autoplay.textContent = devToolingControls.getAutoplayButtonLabel(autoplayActive);
-    }
     if (!devToolingDom.status) return;
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
       ? layoutState.getActiveLayoutId()
       : 'unknown';
     const suffix = message ? `\n${message}` : '';
     devToolingDom.status.textContent =
-      `Hotkey: ${DEV_TOOL_HOTKEY_LABEL}\nActive Layout: ${activeLayoutId}\nIdle Mode: ${autoplayActive ? 'ACTIVE' : 'idle'}\nApply: writes only the selected condition; no combat reset, turn advance, or loadout refresh${suffix}`;
-  }
-
-  function refreshCombatTurnQaReadout() {
-    if (!devToolingDom?.turnOrderQaSlot) return;
-    devToolingDom.turnOrderQaSlot.innerHTML = renderCombatTurnQaReadoutHtml({
-      state,
-      callFunctionWithContext,
-      fnContext,
-    });
+      `Hotkey: ${DEV_TOOL_HOTKEY_LABEL}\nActive Layout: ${activeLayoutId}\nApply: writes only the selected condition; no combat reset or loadout refresh${suffix}`;
   }
 
   function populateDevToolSlotSelect(selectEl, { choices = [], includeRandom = false, selected = '' } = {}) {
@@ -567,7 +551,6 @@ export function createDevToolingRuntime(deps = {}) {
       <div data-devtool-button-row style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:14px;">
         <button type="button" data-devtool-apply style="border:1px solid #14532d;background:#1f8f4a;color:#fff;padding:6px 10px;border-radius:8px;font-weight:800;cursor:pointer;">Apply</button>
         <button type="button" data-devtool-refresh style="border:1px solid #475569;background:#fff;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Apply &amp; Refresh</button>
-        <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">AutoPlay</button>
         <button type="button" data-devtool-restart style="border:1px solid #92400e;background:#fff7ed;color:#9a3412;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Restart</button>
       </div>
       <div data-devtool-control-grid style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;">
@@ -627,7 +610,6 @@ export function createDevToolingRuntime(deps = {}) {
           <select data-devtool-double-attack-hero></select>
         </label>
       </div>
-      <div data-devtool-turn-order-qa-slot></div>
     `;
     root.appendChild(panel);
     document.body.appendChild(root);
@@ -660,7 +642,6 @@ export function createDevToolingRuntime(deps = {}) {
       apply: panel.querySelector('[data-devtool-apply]'),
       refresh: panel.querySelector('[data-devtool-refresh]'),
       restart: panel.querySelector('[data-devtool-restart]'),
-      autoplay: panel.querySelector('[data-devtool-autoplay]'),
       heroSlots: Array.from(panel.querySelectorAll('[data-devtool-hero-slot]')),
       enemySlots: Array.from(panel.querySelectorAll('[data-devtool-enemy-slot]')),
       boardGemColor: panel.querySelector('[data-devtool-board-color]'),
@@ -670,7 +651,6 @@ export function createDevToolingRuntime(deps = {}) {
       rewardDrops: panel.querySelector('[data-devtool-reward-drops]'),
       rewardCount: panel.querySelector('[data-devtool-reward-count]'),
       doubleAttackHero: panel.querySelector('[data-devtool-double-attack-hero]'),
-      turnOrderQaSlot: panel.querySelector('[data-devtool-turn-order-qa-slot]'),
       status: null,
     };
     devToolingDom.launcher.addEventListener('click', () => toggleDevToolingModal(true));
@@ -682,39 +662,18 @@ export function createDevToolingRuntime(deps = {}) {
       devToolingRefreshHandler,
       updateDevToolingStatus,
     }));
-    devToolingDom.autoplay.addEventListener('click', async () => {
-      if (state.globals.DevAutoplayActive) {
-        state.globals.DevAutoplayStopRequested = 1;
-        updateDevToolingStatus('AutoPlay stop requested');
-        return;
-      }
-      closeDevToolingModal({ restorePauseSnapshot: true });
-      if (typeof devToolingAutoplayHandler === 'function') {
-        await devToolingAutoplayHandler();
-      }
-    });
     root.addEventListener('click', (ev) => {
       if (ev.target === root) toggleDevToolingModal(false);
     });
     syncDevToolingDomFromConfig();
-    refreshCombatTurnQaReadout();
     return devToolingDom;
   }
 
   function pauseGameplayForDevTooling() {
     if (devToolingPauseSnapshot) return;
-    devToolingPauseSnapshot = {
-      CanPickGems: Number(state.globals.CanPickGems || 0),
-      IsPlayerBusy: Number(state.globals.IsPlayerBusy || 0),
-      DeferAdvance: Number(state.globals.DeferAdvance || 0),
-      PendingSkillID: String(state.globals.PendingSkillID || ''),
-      CombatSessionId: Number(state.globals.CombatSessionId || 0),
-      TurnSerial: Number(state.globals.TurnSerial || 0),
-    };
-    applyTurnGateGlobals({
-      CanPickGems: 0,
-      IsPlayerBusy: 1,
-    });
+    // Keep the live scheduler state intact. DevToolingPaused freezes simulation
+    // time; resume simply releases the same state without a catch-up step.
+    devToolingPauseSnapshot = {};
     state.globals.DevToolingPaused = 1;
   }
 
@@ -727,50 +686,7 @@ export function createDevToolingRuntime(deps = {}) {
     devToolingPauseSnapshot = null;
   }
 
-  function restorePlayableHeroInputAfterDevToolingResume() {
-    const heroInputBarrier = getPresentationTurnBarrier({
-      hasEmpty: hasEmptySlots(),
-      enemyLineClearPressureActive: !!state.globals.EnemyLineClearPressureActive,
-    });
-    const combatIdleHeroInputReady = (
-      state.globals.GamePhase === 'RUNTIME' &&
-      callFunctionWithContext(fnContext, 'GetCurrentType') === 0 &&
-      state.globals.TurnPhase === 0 &&
-      !(gameState.refillBounce && gameState.refillBounce.active) &&
-      !(gameState.yellowCasino && gameState.yellowCasino.active) &&
-      !hasEmptySlots() &&
-      heroInputBarrier.canRestoreHeroInput &&
-      getEnemyRosterStabilitySnapshot().stable
-    );
-    if (!combatIdleHeroInputReady) return false;
-    gameState.selectedGems = [];
-    gameState.selectionLocked = false;
-    for (const gem of (gameState.gems || [])) {
-      if (!gem) continue;
-      gem.selected = false;
-      gem.Selected = 0;
-    }
-    state.globals.TapIndex = 0;
-    state.globals.CanPickGems = true;
-    state.globals.IsPlayerBusy = 0;
-    state.globals.DeferAdvance = 0;
-    state.globals.BoardFillActive = 0;
-    return true;
-  }
-
   function resumeGameplayFromDevTooling() {
-    if (!devToolingPauseSnapshot) {
-      state.globals.DevToolingPaused = 0;
-      return;
-    }
-    const sameCombatSession =
-      Number(devToolingPauseSnapshot.CombatSessionId || 0) === Number(state.globals.CombatSessionId || 0);
-    const sameTurnSerial =
-      Number(devToolingPauseSnapshot.TurnSerial || 0) === Number(state.globals.TurnSerial || 0);
-    if (sameCombatSession && sameTurnSerial) {
-      applyTurnGateGlobals(devToolingPauseSnapshot);
-      restorePlayableHeroInputAfterDevToolingResume();
-    }
     state.globals.DevToolingPaused = 0;
     clearDevToolingPauseSnapshot();
   }
@@ -798,14 +714,6 @@ export function createDevToolingRuntime(deps = {}) {
 
   function clearCombatSessionOverrides() {
     const g = state.globals;
-    // Invalidate sleeping autoplay work before resetting its visible controls.
-    g.DevAutoplayRunId = Number(g.DevAutoplayRunId || 0) + 1;
-    g.DevAutoplayActive = 0;
-    g.DevAutoplayStopRequested = 0;
-    g.DevAutoplayMatchesPlayed = 0;
-    g.DevAutoplayStartedAt = 0;
-    g.DevAutoplayEndedAt = 0;
-    g.DevAutoplayLastReason = '';
     clearPersistedDevToolingConfig();
     const cfg = { ...createDefaultDevToolingConfig(), combatOrientation: normalizeCombatOrientation(), goldAmount: Number(g.goldTotal || 0) };
     g.DevToolingConfig = cfg;
@@ -907,8 +815,7 @@ export function createDevToolingRuntime(deps = {}) {
     if (open) {
       pauseGameplayForDevTooling();
       syncDevToolingDomFromConfig();
-      refreshCombatTurnQaReadout();
-      devToolingDom.heroSlots[0]?.focus();
+        devToolingDom.heroSlots[0]?.focus();
     } else {
       closeDevToolingModal({ restorePauseSnapshot: true });
     }
@@ -968,9 +875,6 @@ export function createDevToolingRuntime(deps = {}) {
     isEditableDomTarget,
     setRefreshHandler(handler) {
       devToolingRefreshHandler = typeof handler === 'function' ? handler : null;
-    },
-    setAutoplayHandler(handler) {
-      devToolingAutoplayHandler = typeof handler === 'function' ? handler : null;
     },
   };
 }

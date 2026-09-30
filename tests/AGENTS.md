@@ -7,14 +7,17 @@
 ## Ownership
 - `*.test.js` files use Node's built-in test runner for contracts and static/runtime checks.
 - `*.spec.js` files cover browser-style flows where present.
-- `offlineBundleContract.test.js` protects the portable file:// release shape, embedded startup payloads, relative assets, manifest hashes, and separation from the hosted release.
+- `offlineBundleContract.test.js` protects the portable file:// release shape, embedded startup and elemental impact manifests, relative frame assets, manifest hashes, and separation from the hosted release.
 - `fixtures/` owns deterministic CSV cases shared by JS and Rust/WASM tests.
 
 ## Local Contracts
+- `elementalImpactVfxContract.test.mjs` protects lazy per-element frame loading, approved manifest cadence, skill mapping, target centering and the 52 logical-pixel impact size cap.
+- Function-bank VM tests that extract individual helpers must terminate slices at either exported or private function declarations.
 - Story-entry checks exercise the shared layout registry and transition controller: deny early navigation, preserve pagination, hand off at the authored marker or Skip, stop Auto in combat, and retain Town recovery. Browser QA must exercise the visible Canvas controls too.
 - Quest-QA layout contracts cover fixed rail containment, the compact dock fallback, Canvas geometry preservation, diagnostics z-order, zero horizontal overflow, Combat-layout scenario setup, pause ownership, fresh telemetry reset, and isolated role-award readouts.
 - Paused-combat navigation checks must preserve the active card and snapshot through Continue, intercept Quests from any suspended screen, and clear the snapshot only on Quit without settlement or rewards.
 - Tests are often the clearest owner of regression-prone behavior. Read the relevant test before changing gameplay, rendering, persistence, or SimulationCore code.
+- The continuous stage contract distinguishes ordinary wave HP carryover from boss-clear full-party revival, cleanse and saved HP refresh.
 - Prefer focused deterministic tests over broad suite runs during development.
 - Static source assertions are allowed in this repo when they protect architecture boundaries, but avoid adding brittle source-shape checks when behavior can be tested directly.
 - Full `npm test` may include unrelated legacy/static failures; report focused validation scope honestly.
@@ -45,7 +48,13 @@
 - Full-recovery proof exercises both the app Town wrapper and Continue with zero through six loaded heroes, sparse slots, KO, stale UI health and retained encounter resources.
 - Self-heal checks must use differing actor and party maxima, actual groups 1–6, and KO/wrong-actor cases. Percentage recovery cannot grow with party size.
 
-- Continuous-production coverage proves deterministic stage order, independent per-hero basic rates with one firing event per frame, enemy cooldown ownership and clean skill presentation barriers. Combat-card modules, assets, connectors and UI must remain absent. Production-party regressions must construct the configured canonical roster before testing UID and role attribution.
+- Continuous-production coverage proves deterministic stage order, independent per-hero basic rates with staggered due-time starts, enemy cooldown ownership and clean skill presentation barriers. Combat-card modules, assets, connectors and UI must remain absent. Production-party regressions must construct the configured canonical roster before testing UID and role attribution.
+- `realtimeHeroBasicSchedulingContract` exercises live `TickRealtimeHeroBasics` for opening cooldown seeding, staggered due-time dispatch, target-range revalidation, overdue readiness, bounded catch-up, and same-UID session reset.
+- `realtimeTwoWaveIntegration.test.mjs` records scheduled hero and enemy actions across overlapping waves, active-skill recurrence, per-actor clocks, impact HP/time, boss gating, pause/resume, and once-only defeat/retry reward receipts.
+- `continuousCombatLifecycleContract` protects continuous-mode fences around app-owned legacy turn calls and requires pause/hidden/defeat exits before simulation scheduling. `continuousCombatStageContract` and `combatSimulationTickContract` prove paused stage state does not move and resumed simulation does not catch up wall time.
+- `realtimeEnemyActionSchedulingContract` exercises independent concurrent enemy actions, later wave entrants, stable target revalidation at impact, no-target readiness, spawned melee/ranged/boss intervals, bounded per-tick service, and start-to-start cooldown cadence.
+- `realtimeBasicCombatRulesContract` proves launch damage parity and impact-time Blind, damageCut/barrier, counter, KO reward, source-KO projectile continuity, target-range revalidation and impact VFX through the shared resolver.
+- Combat simulation tick coverage executes pending hits, damage-text expiry, HeroAction, refill, YellowCasino progression/payout, BlueBuff, buff-icon, and merge transitions without relying on draw calls; assembled-renderer checks protect the remaining presentation-only seam for those flows. YellowCasino tests also preserve ghost drawing through `renderBoard.js` and guard one-shot Gold/gate settlement.
 - Shared-focus coverage keeps all continuous hero basics on one living enemy until death, then advances in encounter order without random selection. Legacy HERO_SINGLE random fallback and effect-owned area targeting remain separate.
 - Enemy-stream coverage fixes the single-X staggered emitter, bounded varied Y homes, Y-based sprite depth, three-second post-range-entry cadence, CP-based 5/4/3 pack sizing, shallow linear CP rise, survivor overlap, role-shaped attack motion and boss clear gate.
 

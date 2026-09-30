@@ -12,6 +12,7 @@
 - Rust owns deterministic simulation slices named in `governance/planning/simulation-core-rust-final-audit.md`.
 - Rust must not depend on DOM, Canvas, audio, storage APIs, Netlify, browser globals, or presentation timing.
 - Public shadow export names are part of the JS/WASM contract and are asserted by tests.
+- The realtime combat ABI excludes turn, hero/enemy turn flow, round-pointer, and gem-action shadow exports; keep the required-export gate aligned with the rebuilt WASM.
 - Fixture-driven behavior must match `tests/fixtures/*.csv` and JS packet expectations.
 - Do not flip ownership of a new rule family without updating Rust, JS packet routing, shadow markers, WASM, fixtures, and tests together.
 

@@ -185,7 +185,7 @@ test('combat end resets overrides once; Continue preserves the active session', 
 });
 
 test('every enabled non-combat destination pauses before its shared Quests resume-or-quit gate', async () => {
- for (const label of ['Hero', 'Vault', 'AstralFlow', 'Map']) {
+ for (const label of ['Hero', 'Vault', 'Shop', 'Map']) {
   const { createStoryEntryFlow } = await import('../web-runner/systems/storyEntryFlow.mjs');
   let active = 'combat';
   const gameState = {};

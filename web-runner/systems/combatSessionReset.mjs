@@ -2,16 +2,21 @@
 // A continuing adventure carries its chosen buffs into its next battle; terminal
 // callers use the default and clear them with the rest of the session state.
 export function resetCombatSessionConditions(globals, gameState) {
+  for (const key of [
+    'AstralFlowAmpPoints', 'AstralFlowAmpReady', 'AstralFlowWallet', 'FlowOrbs',
+    'FlowOrbSerial', 'FlowThresholdSerial', 'PendingFlowThresholds',
+    'AstralFlowKoOrbPresentationActive', 'AstralFlowKoOrbPresentationPending', 'AstralFlowKoOrbQueue',
+    'QaLastAstralFlowSpecial', 'LastAstralFlowSpecial', 'FlowOrbAudit',
+    'LastAstralFlowChainStrikeII', 'AstralFlowMagicFruitLast', 'AstralFlowDestinyRegensByUID',
+  ]) delete globals[key];
   for (const key of Object.keys(globals)) {
     if (/^(PartyBuff_|BuffTurns_|BuffExpire_|BuffRoll|BuffIconPop|BuffProg|PartyTempHPShield|PartyWardBarrier|PowerAmp)/.test(key)) delete globals[key];
   }
   Object.assign(globals, {
-    AstralFlowAmpPoints: 0, AstralFlowAmpReady: 0,
-    FlowOrbs: [], FlowOrbSerial: 0, FlowThresholdSerial: 0, PendingFlowThresholds: [], NativeCommandSequence: null,
-    AstralFlowKoOrbPresentationActive: 0, AstralFlowKoOrbPresentationPending: 0,
-    AstralFlowKoOrbQueue: [], PartyRegens: [], TrackBuffs: [], PartyBuffSlots: [],
+    PartyRegens: [], TrackBuffs: [], PartyBuffSlots: [],
     PartyBuffUI: {}, EnemyDebuffs: {}, EnemyDebuffSlots: {}, EnemyDebuffTurns: {},
     EnemyDebuffPop: {}, EnemyDamageOverTime: [], HeroTempSkillStateByUID: {},
+    RealtimeSkillEffects: [], RealtimeSkillZones: [],
     EnemyGemLockActive: 0, EnemyGemLockGroups: {}, TaintedGroundZones: [],
     BlueBuffSequenceActive: 0, PendingDeaths: {}, PendingHeroHits: [],
     // A new encounter may retain selected session buffs, never an outgoing
@@ -23,7 +28,7 @@ export function resetCombatSessionConditions(globals, gameState) {
     SessionLevelUpSettlement: null,
     PendingSkillID: '', PendingActor: 0, PendingSuperGemAction: null,
     SelectedEnemyUID: 0, SelectedEnemyUIDOwner: 0, PendingManualTargetIntent: null,
-    DamageTexts: [], ChainStrikeVisuals: [], ArcanePulseVisuals: [], CombatImpactRequests: [], CombatImpactVisuals: [],
+    DamageTexts: [], ChainStrikeVisuals: [], ArcanePulseVisuals: [], CombatImpactRequests: [], CombatImpactVisuals: [], CombatProjectileVisuals: [],
     Gems: [], BoardFillActive: 0, TapIndex: 0,
   });
   Object.assign(gameState, {
@@ -33,13 +38,18 @@ export function resetCombatSessionConditions(globals, gameState) {
   });
   delete globals.HeroAction;
   delete globals.EnemyAction;
+  delete globals.RealtimeHeroBasicReadyAt;
+  delete globals.RealtimeHeroBasicClocks;
+  delete globals.RealtimeHeroBasicScheduledActions;
+  delete globals.RealtimeEnemyActionReadyAt;
+  delete globals.RealtimeEnemyActionsByUID;
   // QA readouts mirror live combat state and must never survive abandonment or
   // a fresh session. Encounter continuation deliberately retains session buffs.
   for (const key of [
-    'QaLastAstralFlowSpecial', 'LastAstralFlowSpecial', 'QaFixtureHeal', 'QaEnemyLowHpFixture',
-    'FlowOrbAudit', 'LastPartyChainStrike', 'LastAstralFlowChainStrikeII',
+    'QaFixtureHeal', 'QaEnemyLowHpFixture',
+    'LastPartyChainStrike',
     'PartyChainStrikeIIProcs', 'PartyChainStrikeIProcs', 'AstralFlowMagicFruitLast',
-    'AstralFlowDestinyRegensByUID', 'LastCrimsonWard', 'QaDawnRollArmed',
+    'LastCrimsonWard', 'QaDawnRollArmed',
     'LastPartyWardBarrierAbsorbed', 'LastPartyWardBarrierHitUID',
     'PartyWardBarrierFadeOutUntil', 'PartyTempHPShield',
     'QaScenarioPaused', 'QaScenarioResetCount', 'QaSelectedHeroUID',

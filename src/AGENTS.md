@@ -11,7 +11,7 @@
 ## Local Contracts
 - Prefer shared deterministic logic here before adding new browser-shell behavior.
 - Keep shared code free of DOM, Canvas, localStorage, deployment, and browser-global dependencies unless a child AGENTS.md explicitly permits it.
-- `core/combatOrientation.mjs` owns the 360-wide combat arena contract: hero back-column center X 40, hero visible right edge 106, melee enemy home X 130, ranged/boss home X 225-283, hero attack range X 330, and shared spawn/home visible Y 170-375. The highest hero HP bar begins below grid Y 150. Action animation may leave the Y band.
+- `core/combatOrientation.mjs` owns the 360-wide combat arena contract: hero back-column center X 40, hero visible right edge 106, melee enemy home X 130, ranged enemy home X 225-283, boss home X 290, hero attack range X 290, and shared spawn/home visible Y 170-375. The highest hero HP bar begins below grid Y 150. Action animation may leave the Y band.
 - The same owner derives the 10-unit reference grid and 50-unit major lines used by runtime placement QA. Hero formation Y and enemy actor Y denote the rendered sprite center; the renderer derives hero feet from that center.
 - When shared behavior is mirrored into `web-runner/src/core/`, keep tests aligned and update both surfaces in one bead unless scoped otherwise.
 

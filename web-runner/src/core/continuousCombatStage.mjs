@@ -1,5 +1,7 @@
 import { computeCombatPower } from './combatPower.mjs';
 import { deriveCombatArenaBounds, deriveCombatFormationAnchors } from '../../../src/core/combatOrientation.mjs';
+import { cleanseDebuffs } from './combatRules.mjs';
+import { saveHeroProgress } from './heroProgression.mjs';
 
 export const CONTINUOUS_COMBAT_PACK_INTERVAL_SEC = 3;
 export const CONTINUOUS_COMBAT_PACK_CP_STEP = 0.06;
@@ -71,6 +73,53 @@ const PACK_ENTRY_DELAY_SEC = Object.freeze([0, 0.4, 0.92, 1.48, 2.12]);
 const PACK_WALK_SPEED_SCALE = Object.freeze([1, 0.9, 1.12, 0.82, 1.17]);
 const RANGED_ENEMY_NAMES = new Set(['marid', 'djinn', 'chimerilass']);
 const BOSS_HOME = Object.freeze({ x: 290, y: 290 });
+const MAX_SHIELD_SLAM_PUSH = 55;
+const MAX_RETURN_GATE_DISTANCE = 100;
+const MIN_RETURN_GATE_DISTANCE = 40;
+
+function isDisplaceableStreamEnemy(enemy) {
+  return enemy?.kind === 'enemy' && Number(enemy.hp || 0) > 0
+    && ['approaching', 'in_range', 'engaged', 'retreating'].includes(enemy.streamState)
+    && Number.isFinite(Number(enemy.x));
+}
+
+function moveStreamEnemyRight(enemy, distance, maxDistance, minimumDistance = 0) {
+  if (!isDisplaceableStreamEnemy(enemy)) return 0;
+  const attackStartX = deriveCombatArenaBounds().attackStartX;
+  const currentX = Number(enemy.x);
+  const room = Math.max(0, attackStartX - currentX);
+  const moved = Math.min(Math.max(0, Number(distance) || 0), maxDistance, room);
+  if (moved < minimumDistance) return 0;
+  const nextX = currentX + moved;
+  enemy.streamEngageX = Number(enemy.streamEngageX ?? enemy.originX ?? currentX);
+  enemy.x = nextX;
+  enemy.streamPendingDisplacementDelta = Number(enemy.streamPendingDisplacementDelta || 0) + moved;
+  delete enemy.streamRetreatStartedAt;
+  delete enemy.streamRetreatRemaining;
+  delete enemy.streamRetreatEngageX;
+  enemy.streamState = 'in_range';
+  return moved;
+}
+
+export function pushContinuousCombatEnemy(enemy, distance = MAX_SHIELD_SLAM_PUSH, _now = 0) {
+  return moveStreamEnemyRight(enemy, distance, MAX_SHIELD_SLAM_PUSH);
+}
+
+export function teleportContinuousCombatEnemy(enemy, distance = MAX_RETURN_GATE_DISTANCE, _now = 0) {
+  return moveStreamEnemyRight(enemy, distance, MAX_RETURN_GATE_DISTANCE, MIN_RETURN_GATE_DISTANCE);
+}
+
+export function reverseContinuousCombatEnemy(enemy, now, durationSeconds = 1.25) {
+  if (!isDisplaceableStreamEnemy(enemy) || enemy.streamState === 'retreating') return false;
+  const start = Number(now);
+  const duration = Number(durationSeconds);
+  if (!Number.isFinite(start) || !Number.isFinite(duration) || duration <= 0) return false;
+  enemy.streamRetreatStartedAt = start;
+  enemy.streamRetreatRemaining = duration;
+  enemy.streamRetreatEngageX = Number(enemy.streamEngageX ?? enemy.originX ?? enemy.x);
+  enemy.streamState = 'retreating';
+  return true;
+}
 
 function rangedHomeX(bounds, packIndex, order) {
   const slot = (packIndex * 3 + order) % 5;
@@ -290,8 +339,10 @@ function spawnContinuousCombatStage({ globals, entities, call, state }) {
 
 function presentationIsClear(globals, presentationBarrier) {
   const lanes = presentationBarrier?.lanes || {};
+  const enemyActionActive = Object.values(globals.RealtimeEnemyActionsByUID || {}).some(action => action?.active);
   return !Object.entries(lanes).some(([name, active]) => !['levelUpSettlement', 'flowOrbs'].includes(name) && active)
     && !globals.ActionInProgress
+    && !enemyActionActive
     && !(Array.isArray(globals.PendingHeroHits) && globals.PendingHeroHits.length)
     && Object.keys(globals.EnemyDeathVisualHoldByUID || {}).length === 0;
 }
@@ -308,13 +359,48 @@ function updateApproachingEnemies(globals, entities, now) {
   if (state) state.lastUpdatedAt = now;
   let becameAvailable = 0;
   for (const enemy of entities || []) {
-    if (enemy?.kind !== 'enemy' || Number(enemy.hp || 0) <= 0 || !['approaching', 'in_range'].includes(enemy.streamState)) continue;
+    if (enemy?.kind !== 'enemy' || Number(enemy.hp || 0) <= 0 || !['approaching', 'in_range', 'retreating'].includes(enemy.streamState)) continue;
     if (now < Number(enemy.streamStartAt || 0)) continue;
     const geometry = streamGeometry(globals, {
       packIndex: Number(enemy.streamPackIndex || 0),
       rank: Number(enemy.streamRank || 0),
       order: Number(enemy.streamEntryOrder ?? enemy.streamLane ?? 0),
     });
+    const action = globals.RealtimeEnemyActionsByUID?.[String(enemy.uid)]
+      ?? globals.RealtimeEnemyActionsByUID?.[enemy.uid];
+    const pendingDisplacement = Number(enemy.streamPendingDisplacementDelta || 0);
+    if (action?.active) {
+      if (pendingDisplacement) {
+        enemy.originX = Number(enemy.originX ?? enemy.streamEngageX ?? enemy.x) + pendingDisplacement;
+        if (action.forwardX != null && Number.isFinite(Number(action.forwardX))) action.forwardX = Number(action.forwardX) + pendingDisplacement;
+        if (action.anticipationX != null && Number.isFinite(Number(action.anticipationX))) action.anticipationX = Number(action.anticipationX) + pendingDisplacement;
+        enemy.x = enemy.originX;
+        delete enemy.streamPendingDisplacementDelta;
+      }
+      continue;
+    }
+    if (pendingDisplacement) delete enemy.streamPendingDisplacementDelta;
+    if (enemy.streamState === 'retreating') {
+      const retreatStart = Number(enemy.streamRetreatStartedAt ?? now);
+      const retreatRemaining = Math.max(0, Number(enemy.streamRetreatRemaining || 0));
+      const retreatEngageX = Number(enemy.streamRetreatEngageX ?? enemy.streamEngageX ?? enemy.originX ?? enemy.x);
+      const availableDt = Math.max(0, Math.min(dt, now - retreatStart));
+      const retreatDuration = Math.min(availableDt, retreatRemaining);
+      const retreatX = Math.min(geometry.bounds.attackStartX, Number(enemy.x || 0) + Number(enemy.streamWalkSpeed || 40) * retreatDuration);
+      enemy.x = retreatX;
+      enemy.y = Number(enemy.originY ?? enemy.y ?? 0);
+      enemy.streamRetreatRemaining = Math.max(0, retreatRemaining - retreatDuration);
+      if (enemy.streamRetreatRemaining > 1e-9) continue;
+      const returnDuration = Math.max(0, availableDt - retreatDuration);
+      const returnX = Math.max(retreatEngageX, retreatX - Number(enemy.streamWalkSpeed || 40) * returnDuration);
+      enemy.x = returnX;
+      delete enemy.streamRetreatStartedAt;
+      delete enemy.streamRetreatRemaining;
+      delete enemy.streamRetreatEngageX;
+      enemy.streamState = returnX <= retreatEngageX ? 'engaged' : 'in_range';
+      if (enemy.streamState === 'engaged') becameAvailable += 1;
+      continue;
+    }
     const engageX = Number(enemy.streamEngageX || enemy.originX || enemy.x || 0);
     enemy.streamEngageX = engageX;
     enemy.originX = engageX;
@@ -345,16 +431,16 @@ function updateApproachingEnemies(globals, entities, now) {
 
 export function maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier, call, runCombatStep } = {}) {
   if (!globals || Number(globals.ContinuousCombatStageLoop || 0) !== 1) return false;
+  if (globals.DevToolingPaused || globals.QaScenarioPaused || globals.QaFixtureHoldTurn) return false;
   const stageState = globals.ContinuousCombatStage;
   if (!stageState) return false;
   const now = Number(globals.time || 0);
   const newlyEngaged = updateApproachingEnemies(globals, entities, now);
   if (globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) call('TickRealtimeHeroBasics');
   if ((newlyEngaged > 0 || entities?.some(enemy => enemy?.kind === 'enemy' && Number(enemy.hp || 0) > 0 && enemy.streamState === 'engaged'))
-    && !globals.ActionInProgress
     && globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) {
     globals.NativeBattleEnded = false;
-    runCombatStep('ProcessTurn');
+    call('TickRealtimeEnemyActions');
   }
   if (globals.GamePhase !== 'RUNTIME' || globals.BattleStartActive) return false;
 
@@ -391,6 +477,16 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   }
 
   if (!transition?.stage || !spawnContinuousCombatStage({ globals, entities, call, state: transition.state })) return false;
+  if (transition.clearedBoss) {
+    for (const hero of entities.filter(actor => actor?.kind === 'hero')) {
+      hero.hp = Number(hero.maxHP || 0);
+      hero.isAlive = hero.hp > 0;
+      cleanseDebuffs(hero);
+      if (globals.HeroProgress) saveHeroProgress(hero, globals.HeroProgress);
+    }
+    if (globals.HeroProgress) globals.HeroProgressDirty = true;
+    call('UpdateHeroHPUI');
+  }
   globals.ContinuousCombatStageLastTransition = { from: current?.id || '', to: transition.stage.id, at: now };
   globals.NativeBattleEnded = false;
   return true;

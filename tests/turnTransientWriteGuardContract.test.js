@@ -21,18 +21,11 @@ for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBa
   });
 }
 
-test('deferred advance gate is centralized in app runtime', () => {
+test('production app delegates combat to the realtime stage scheduler', () => {
   const src = read('web-runner/app.js');
-  assert.match(src, /function canResolveDeferredAdvance\(\{ hasEmpty = false, enemyLineClearPressureActive = false \} = \{\}\)/);
-  assert.match(src, /function getPresentationTurnBarrier\(\{ hasEmpty = false, enemyLineClearPressureActive = false \} = \{\}\)/);
-  assert.match(src, /derivePresentationTurnBarrier\(\{/);
-  assert.match(src, /const refillPending = presentationBarrier\.refillPending && presentationBarrier\.canStartRefill;/);
-  assert.match(src, /const textHold = presentationBarrier\.lanes\.textAnimating;/);
-  assert.match(src, /const pendingSelect = state\.globals\.TurnPhase === 1 && !!state\.globals\.PendingSkillID;/);
-  assert.match(src, /const mergeInFlight = presentationBarrier\.lanes\.gemMerge;/);
-  assert.match(src, /const ownerOk = !ownerUID \|\| ownerUID === currentUID;/);
-  assert.match(src, /let deferredAdvanceState = canResolveDeferredAdvance\(\{/);
-  assert.match(src, /!deferredAdvanceState\.ownerOk &&\s*!deferredAdvanceState\.blockedPhase &&\s*deferredAdvanceState\.presentationBarrier\.canAdvanceTurn/s);
-  assert.doesNotMatch(src, /callFunctionWithContext\(fnContext, 'EnemyTurn'/);
-  assert.match(src, /combatRuntimeGateway\.runCombatStep\(fnContext, 'ProcessTurn'\)/);
+  assert.match(src, /createCombatSimulationTicker\(\)/);
+  assert.match(src, /combatSimulationTicker\.tick\(\{/);
+  assert.match(src, /maybeAdvanceContinuousCombatStage\(\{/);
+  assert.doesNotMatch(src, /callFunctionWithContext\(fnContext, '(?:AdvanceTurn|ProcessTurn|EnemyTurn)'/);
+  assert.doesNotMatch(src, /runCombatStep\(fnContext, '(?:AdvanceTurn|ProcessTurn|EnemyTurn)'/);
 });

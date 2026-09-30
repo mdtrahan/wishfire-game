@@ -560,7 +560,6 @@ function hasRequiredExports(exports) {
     && hasPartyDamageExports(exports)
     && hasPartyRegenTickExports(exports)
     && hasPartyRegenLifecycleExports(exports)
-    && hasTurnSummaryExports(exports)
     && hasEnemyDotPacketExports(exports)
     && hasEnemyDotTickExports(exports)
     && hasEnemyDotLifecycleExports(exports)
@@ -570,18 +569,11 @@ function hasRequiredExports(exports) {
     && hasEffectiveStatExports(exports)
     && hasCombatOutcomeExports(exports)
     && hasCombatSnapshotExports(exports)
-    && hasTurnActorEligibilityExports(exports)
-    && hasTurnPhaseAssignmentExports(exports)
     && hasEnemySkillChoiceExports(exports)
     && hasEnemyJobSkillExports(exports)
     && hasStartEnemyActionExports(exports)
-    && hasEnemyTurnFlowExports(exports)
-    && hasHeroTurnEntryExports(exports)
     && hasEnemyTargetExports(exports)
-    && hasRunaMagicResistExports(exports)
-    && hasTurnOrderGroupExports(exports)
-    && hasRoundPointerAdvanceExports(exports)
-    && hasGemActionExports(exports);
+    && hasRunaMagicResistExports(exports);
 }
 
 async function instantiateWasm(wasmUrl) {
@@ -1017,9 +1009,9 @@ function runEnemyTargetOwnerStartupCheck(shadow) {
       { uid: 33, hp: 30, maxHP: 30, atk: 8, slot: 2, roleCode: 1 },
       { uid: 44, hp: 40, maxHP: 40, atk: 3, slot: 3, roleCode: 0 },
     ],
-    jsTargetUID: 44,
-    jsModeCode: 1,
-    jsRollIndex: 3,
+    jsTargetUID: 11,
+    jsModeCode: 3,
+    jsRollIndex: 0,
   });
 }
 
@@ -1129,8 +1121,6 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_PARTY_DAMAGE_OWNER__ = createSimulationCorePartyDamageResolution;
     window.__ORKA_PARTY_REGEN_LIFECYCLE_OWNER__ = createSimulationCorePartyRegenLifecycleResolution;
     window.__ORKA_PARTY_REGEN_TICK_OWNER__ = createSimulationCorePartyRegenTickResolution;
-    window.__ORKA_TURN_SUMMARY_SHADOW__ = shadowTurnSummary;
-    window.__ORKA_TURN_SUMMARY_OWNER__ = createSimulationCoreTurnSummaryResolution;
     window.__ORKA_ENEMY_DOT_PACKET_OWNER__ = createSimulationCoreEnemyDotPacketResolution;
     window.__ORKA_ENEMY_DOT_TICK_SHADOW__ = shadowEnemyDotTick;
     window.__ORKA_ENEMY_DOT_TICK_OWNER__ = createSimulationCoreEnemyDotTickResolution;
@@ -1140,18 +1130,11 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_ENEMY_DEBUFF_SLOT_OWNER__ = createSimulationCoreEnemyDebuffSlotTransition;
     window.__ORKA_EFFECTIVE_STAT_OWNER__ = createSimulationCoreEffectiveStatResolution;
     window.__ORKA_COMBAT_OUTCOME_OWNER__ = createSimulationCoreCombatOutcomeResolution;
-    window.__ORKA_TURN_ACTOR_ELIGIBILITY_OWNER__ = createSimulationCoreTurnActorEligibilityResolution;
-    window.__ORKA_TURN_PHASE_ASSIGNMENT_OWNER__ = createSimulationCoreTurnPhaseAssignmentResolution;
     window.__ORKA_ENEMY_SKILL_CHOICE_OWNER__ = createSimulationCoreEnemySkillChoiceResolution;
     window.__ORKA_ENEMY_JOB_SKILL_OWNER__ = createSimulationCoreEnemyJobSkillResolution;
     window.__ORKA_START_ENEMY_ACTION_OWNER__ = createSimulationCoreStartEnemyActionResolution;
-    window.__ORKA_ENEMY_TURN_FLOW_OWNER__ = createSimulationCoreEnemyTurnFlowResolution;
-    window.__ORKA_HERO_TURN_ENTRY_OWNER__ = createSimulationCoreHeroTurnEntryResolution;
     window.__ORKA_ENEMY_TARGET_OWNER__ = createSimulationCoreEnemyTargetResolution;
     window.__ORKA_RUNA_MAGIC_RESIST_OWNER__ = createSimulationCoreRunaMagicResistResolution;
-    window.__ORKA_TURN_ORDER_GROUP_OWNER__ = createSimulationCoreTurnOrderGroupProjection;
-    window.__ORKA_ROUND_POINTER_ADVANCE_OWNER__ = createSimulationCoreRoundPointerAdvanceResolution;
-    window.__ORKA_GEM_ACTION_OWNER__ = createSimulationCoreGemActionResolution;
     window.__ORKA_SEEDED_RNG_SHADOW__ = shadowSeededRng;
     window.__ORKA_SEEDED_RNG_OWNER__ = createSimulationCoreSeededRng;
   }
@@ -1174,7 +1157,6 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
         runPartyDamageOwnerStartupCheck(shadow);
         runPartyRegenLifecycleOwnerStartupCheck(shadow);
         runPartyRegenTickOwnerStartupCheck(shadow);
-        runTurnSummaryOwnerStartupCheck(shadow);
         runEnemyDotPacketOwnerStartupCheck(shadow);
         runEnemyDotTickOwnerStartupCheck(shadow);
         runEnemyDotLifecycleOwnerStartupCheck(shadow);
@@ -1183,18 +1165,11 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
         runEnemyDebuffSlotOwnerStartupCheck(shadow);
         runEffectiveStatOwnerStartupCheck(shadow);
         runCombatOutcomeOwnerStartupCheck(shadow);
-        runTurnActorEligibilityOwnerStartupCheck(shadow);
-        runTurnPhaseAssignmentOwnerStartupCheck(shadow);
         runEnemySkillChoiceOwnerStartupCheck(shadow);
         runEnemyJobSkillOwnerStartupCheck(shadow);
         runStartEnemyActionOwnerStartupCheck(shadow);
-        runEnemyTurnFlowOwnerStartupCheck(shadow);
-        runHeroTurnEntryOwnerStartupCheck(shadow);
         runEnemyTargetOwnerStartupCheck(shadow);
         runRunaMagicResistOwnerStartupCheck(shadow);
-        runTurnOrderGroupOwnerStartupCheck(shadow);
-        runRoundPointerAdvanceOwnerStartupCheck(shadow);
-        runGemActionOwnerStartupCheck(shadow);
       }
       updateShadowDomMarker(shadow);
       return shadow;

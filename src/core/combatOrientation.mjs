@@ -2,13 +2,15 @@ export const COMBAT_ORIENTATION_LEFT_WISE = 'left-wise';
 export const COMBAT_ORIENTATION_RIGHT_WISE = 'right-wise';
 export const RIGHT_WISE_FORMATION_TRANSLATE_X = -40;
 export const COMBAT_ARENA_REFERENCE_WIDTH = 360;
+export const HERO_BUFF_ICON_ROW_HEIGHT = 18;
+export const HERO_BUFF_ICON_ROW_GAP = 2;
 export const COMBAT_ARENA_BOUNDS = Object.freeze({
   heroBackCenterX: 40,
   heroRightEdgeX: 106,
   meleeLeftEdgeX: 130,
   rangedMinX: 225,
   rangedMaxX: 283,
-  attackStartX: 330,
+  attackStartX: 290,
   visibleTopY: 170,
   visibleBottomY: 375,
 });
@@ -81,8 +83,10 @@ export function deriveCombatFormationAnchors({ globals = {}, entities = [], hero
       const availableH = maxY - minY;
       heroH = Math.min(enemySize, (availableH - gap * Math.max(0, count - 1)) / count);
       const heroRenderHalfH = heroH * 1.55 / 2;
-      const firstY = arenaBounds.visibleTopY + heroRenderHalfH;
-      const lastY = arenaBounds.visibleBottomY - heroRenderHalfH;
+      // Keep a fixed icon row plus its gap between the hero head and HP bar.
+      const buffRowReserve = HERO_BUFF_ICON_ROW_HEIGHT + HERO_BUFF_ICON_ROW_GAP;
+      const firstY = arenaBounds.visibleTopY + heroRenderHalfH + buffRowReserve;
+      const lastY = arenaBounds.visibleBottomY - heroRenderHalfH + buffRowReserve;
       for (let index = 0; index < count; index += 1) {
         heroYs.push(count === 1 ? (firstY + lastY) / 2 : firstY + index * ((lastY - firstY) / (count - 1)));
       }

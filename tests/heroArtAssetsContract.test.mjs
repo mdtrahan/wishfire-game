@@ -21,7 +21,7 @@ test('one canonical hero-art mapping resolves strip and battlefield names', () =
 test('battlefield consumes each complete canonical hero sprite while enemy sprites keep their source intact', () => {
   const source = read('web-runner/systems/renderRuntime.js');
   const bodyStart = source.indexOf('    const body = [');
-  const bodyEnd = source.indexOf('    renderImpl = new Function', bodyStart);
+  const bodyEnd = source.indexOf('    const effectiveBody = assembleCombatRenderBody(body);', bodyStart);
   const compiledBody = vm.runInNewContext(`(function(){${source.slice(bodyStart, bodyEnd)};return body;})()`);
   assert.match(source, /const heroArt = heroArtAsset\(entry\.portraitName\);/);
   assert.match(source, /const img = heroPortraitImages\[heroArt\?\.key \|\| entry\.portraitName\];/);

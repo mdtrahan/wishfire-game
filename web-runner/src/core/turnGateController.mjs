@@ -69,10 +69,12 @@ export function hasActiveCombatEffects(globals = {}) {
 
 export function hasActiveAttackPresentation(globals = {}) {
   const now = Number(globals.time || 0);
+  const enemyActionActive = !!globals.EnemyAction?.active
+    || Object.values(globals.RealtimeEnemyActionsByUID || {}).some(action => action?.active);
   return hasActiveCombatEffects(globals)
     || (Array.isArray(globals.PendingHeroHits) && globals.PendingHeroHits.length > 0)
     || !!globals.HeroAction?.active
-    || !!globals.EnemyAction?.active
+    || enemyActionActive
     || !!globals.TextAnimating
     || Number(globals.TextAnimEndAt || 0) > now;
 }
@@ -97,10 +99,10 @@ export function derivePresentationTurnBarrier({
     gemMerge: false,
     textAnimating: !!globals.TextAnimating || Number(globals.TextAnimEndAt || 0) > now,
     heroAction: !!(globals.HeroAction && globals.HeroAction.active),
-    enemyAction: !!(globals.EnemyAction && globals.EnemyAction.active),
+    enemyAction: !!(globals.EnemyAction && globals.EnemyAction.active)
+      || Object.values(globals.RealtimeEnemyActionsByUID || {}).some(action => action?.active),
     pendingHeroHits,
     combatEffects: hasActiveCombatEffects(globals),
-    flowOrbs: Array.isArray(globals.FlowOrbs) && globals.FlowOrbs.length > 0,
     pendingEnemyDeaths: Object.keys(globals.EnemyDeathVisualHoldByUID || {}).length > 0,
     actionLock: Number(globals.ActionLockUntil || 0) > now,
     actionInProgress: !!globals.ActionInProgress,
@@ -116,7 +118,6 @@ export function derivePresentationTurnBarrier({
     ['enemy-action', lanes.enemyAction],
     ['pending-hero-hits', lanes.pendingHeroHits],
     ['combat-effects', lanes.combatEffects],
-    ['flow-orbs', lanes.flowOrbs],
     ['pending-enemy-deaths', lanes.pendingEnemyDeaths],
     ['action-lock', lanes.actionLock],
     ['action-in-progress', lanes.actionInProgress],
@@ -135,7 +136,7 @@ export function derivePresentationTurnBarrier({
     blockingLane: firstBlockingLane,
     firstBlockingLane,
     canStartRefill: !presentationBlocked,
-    canAdvanceTurn: !presentationBlocked && !refillPending,
+    presentationClear: !presentationBlocked && !refillPending,
     canClaimCombatAction: !presentationBlocked && !refillPending && !globals.DeferAdvance,
     canResolvePendingTargetAction: pendingTargetAction && !presentationBlocked && !globals.DeferAdvance,
     canRestoreHeroInput: (

@@ -3,11 +3,11 @@ const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-test('dev autoplay uses native cooldown combat commands', () => {
+test('retired turn-based autoplay controls are absent from the player runtime', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
-  const start = src.indexOf('async function runDevAutoplayUntilDepleted()');
-  const end = src.indexOf('async function runGemInteractivityDiagnostic()', start);
-  const loop = src.slice(start, end);
-  assert.match(loop, /playScheduledHeroCommand\(\)/);
-  assert.doesNotMatch(loop, /autoResolveSkillDraught|autoResolvePendingSelection|pickIdleAutoplayTriplet|pickIdleAutoplaySuperGem/);
+  const hooks = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js'), 'utf8');
+  const tooling = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devToolingRuntime.js'), 'utf8');
+  assert.doesNotMatch(src, /runDevAutoplayUntilDepleted|playScheduledHeroCommand/);
+  assert.doesNotMatch(hooks, /runDevAutoplayUntilDepleted|stopDevAutoplay/);
+  assert.doesNotMatch(tooling, /data-devtool-autoplay|setAutoplayHandler/);
 });

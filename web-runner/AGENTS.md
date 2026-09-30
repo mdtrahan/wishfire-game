@@ -20,6 +20,7 @@
 - JavaScript owns browser integration: Canvas rendering, input, menus, overlays, audio, save/load wrappers, deployment, and presentation timing.
 - Rust SimulationCore owns deterministic simulation rule families that have owner markers and fixture contracts.
 - Browser runtime code may apply returned state and render presentation events; it must not recompute Rust-owned outcomes.
+- Production and developer QA variants enter the same realtime combat loop. The app routes defeat checks through the Rust-owned outcome resolver after scheduled combat work, freezes clocks while paused or backgrounded, and never dispatches turn advancement.
 - Do not store durable gameplay rules in render modules, asset JSON, or `app.js` when a module/core owner exists.
 
 ## Work Guidance

@@ -5,6 +5,30 @@ import {
   HERO_PACK_PLUS_PATH,
 } from '../state/heroScreenConfig.js';
 import { heroArtPath } from '../state/heroArtAssets.mjs';
+import { getEmbeddedJson } from './runtimeAssetUrl.mjs';
+
+export function createElementalImpactFrameLoader({ loadManifest, loadImage, frameUrl }) {
+  let manifestPromise = null;
+  const framePromises = new Map();
+  return (slug) => {
+    const key = String(slug || '').toLowerCase();
+    if (!/^[a-z]+$/.test(key)) return Promise.resolve(null);
+    if (framePromises.has(key)) return framePromises.get(key);
+    const promise = (async () => {
+      manifestPromise ||= Promise.resolve().then(loadManifest).catch(() => null);
+      const manifest = await manifestPromise;
+      const effect = manifest?.effects?.find(entry => entry?.slug === key);
+      if (!effect || !Array.isArray(effect.frames) || !effect.frames.length) return null;
+      const images = await Promise.all(effect.frames.map(name => loadImage(frameUrl(manifest.frameDirectory || 'frames', name))));
+      if (images.some(image => !image)) return null;
+      const frameHoldMs = (effect.frameHoldMs || manifest.playback?.previewFrameHoldMs || []).map(value => Math.max(1, Number(value) || 1));
+      if (frameHoldMs.length !== images.length) return null;
+      return { frames: images, frameHoldMs, totalDurationMs: frameHoldMs.reduce((sum, value) => sum + value, 0) };
+    })().catch(() => null);
+    framePromises.set(key, promise);
+    return promise;
+  };
+}
 
 export async function loadRuntimeImage(url, { resolveRuntimeImageUrl = (value) => value } = {}) {
   return new Promise((res) => {
@@ -26,6 +50,25 @@ export async function loadRuntimeVisualAssets({
 }) {
   const loadImage = (url) => loadRuntimeImage(url, { resolveRuntimeImageUrl });
   const images = {};
+  const elementalImpactFrames = {};
+  const loadElementalImpactFrames = createElementalImpactFrameLoader({
+    loadManifest: async () => {
+      const url = assetUrl('elemental-impact/manifest.json');
+      const embedded = getEmbeddedJson(url);
+      if (embedded) return embedded;
+      if (typeof fetch !== 'function') return null;
+      const response = await fetch(typeof resolveRuntimeImageUrl === 'function' ? resolveRuntimeImageUrl(url) : url);
+      return response.ok ? response.json() : null;
+    },
+    loadImage,
+    frameUrl: (directory, name) => assetUrl(`elemental-impact/${directory}/${name}`),
+  });
+  images.ElementalImpactFrames = elementalImpactFrames;
+  images.loadElementalImpactFrames = async (slug) => {
+    const result = await loadElementalImpactFrames(slug);
+    if (result) elementalImpactFrames[String(slug).toLowerCase()] = result;
+    return result;
+  };
   const enemySpriteImages = {};
   const heroPortraitImages = {};
   let wardBarrierImage = null;

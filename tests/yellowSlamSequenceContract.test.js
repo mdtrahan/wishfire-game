@@ -50,13 +50,7 @@ test('yellow casino sequence no longer owns unrelated board-yellow or empty-slot
   assert.doesNotMatch(sequence, /pickYellowRefillTarget\(\)/);
 });
 
-test('gate-stuck diagnostic does not fire during normal deferred yellow handoff windows', () => {
+test('retired turn-gate stuck diagnostic is absent from the production app', () => {
   const src = read('web-runner/app.js');
-  const start = src.indexOf("console.error('[GATE_STUCK_CANPICK]'");
-  assert.notEqual(start, -1, 'missing gate-stuck diagnostic');
-  const blockStart = src.lastIndexOf('noRefillActive', start);
-  const block = src.slice(blockStart, start + 220);
-
-  assert.match(block, /!state\.globals\.DeferAdvance/);
-  assert.match(block, /\(state\.globals\.ActionLockUntil \|\| 0\) <= \(state\.globals\.time \|\| 0\)/);
+  assert.doesNotMatch(src, /GATE_STUCK_CANPICK/);
 });
