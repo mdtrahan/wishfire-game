@@ -82,3 +82,5 @@
 - Every successful lamp emission shares a saved two-second minimum interval. The core rejects early calls before rolling or granting EXP; UI disables/re-enables the lamp from that saved cooldown. Auto keeps its five-second cadence. Reloads, concurrent clicks and switching manual/Auto cannot reset the gate.
 
 - Dismantling grants essence only. It never changes cumulative party EXP, hero EXP/levels or emits an EXP float; resource previews and receipts show essence. Lamp emissions remain the EXP source.
+
+- Lamp upgrade confirmation carries the previewed capacity tier. Reject a stale tier before spending so concurrent confirmations cannot purchase the next tier. Preserve earned gear and hero EXP; all tier benefits apply in the same saved transaction.

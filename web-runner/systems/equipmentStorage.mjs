@@ -76,7 +76,7 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=g
   equip(heroId,id){if(!globals.HeroProgress?.heroes?.[heroId])return Promise.reject(new Error('Hero is not owned'));return transact(next=>commitEquip(next,heroId,id));},
   autoEquip(){return transact(next=>{const heroes=Object.values(globals.HeroProgress?.heroes||{}).slice(0,4),used=new Set(),results=[];for(const candidate of selectLampUpgrades(next,heroes)){const heroId=selectAutoEquipHero(next,candidate,heroes.filter(h=>!used.has(h.heroInstanceKey)));if(heroId){results.push(commitEquip(next,heroId,candidate.instanceId));used.add(heroId);}}finishLampReview(next);return results;});},
   finishReview(){return transact(next=>finishLampReview(next));},
-  upgrade(){return transact(next=>upgradeLamp(next));},
+  upgrade(expectedTier=record?.lamp.capacityTier){return transact(next=>upgradeLamp(next,expectedTier));},
   dismantle(ids){return transact(next=>dismantleLampItems(next,ids));},
  };
 }

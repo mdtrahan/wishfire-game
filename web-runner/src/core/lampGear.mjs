@@ -10,7 +10,7 @@ export const LAMP_CAPACITY_TIERS=Object.freeze([
  {capacity:50,cost:null,rarityWeights:{common:20,uncommon:35,rare:30,epic:14,legendary:1}},
 ].map(t=>Object.freeze({...t,rarityWeights:Object.freeze(t.rarityWeights)})));
 export const lampCapacity=data=>LAMP_CAPACITY_TIERS[data.lamp.capacityTier||0].capacity;
-export function upgradeLamp(data){const tier=LAMP_CAPACITY_TIERS[data.lamp.capacityTier];if(tier.cost===null)throw new Error('Lamp is fully upgraded.');if(data.lamp.essence<tier.cost)throw new Error('Dismantle gear to earn more essence.');data.lamp.essence-=tier.cost;data.lamp.capacityTier++;return lampCapacity(data);}
+export function upgradeLamp(data,expectedTier=data.lamp.capacityTier){if(data.lamp.capacityTier!==expectedTier)throw new Error('Lamp level changed. Review the updated upgrade.');const tier=LAMP_CAPACITY_TIERS[data.lamp.capacityTier];if(tier.cost===null)throw new Error('Lamp is fully upgraded.');if(data.lamp.essence<tier.cost)throw new Error('Need '+(tier.cost-data.lamp.essence)+' more essence.');data.lamp.essence-=tier.cost;data.lamp.capacityTier++;return lampCapacity(data);}
 export const GEAR_STATS=Object.freeze(['ATK','DEF','MAG','RES','HP']);
 export const GEAR_ARCHETYPES=Object.freeze([
  {id:'guardian-hat',name:'Guardian Helm',type:'hat',art:0,stats:{ATK:1,DEF:3,MAG:1,RES:2,HP:5}},

@@ -10,6 +10,25 @@ function fixture(initial={}){const values=new Map(Object.entries(initial));let f
  const globals={goldTotal:0,HeroProgress:createHeroProgressStore()};const store=createEquipmentStorage({globals,storage,locks,seed:()=>42,now:()=>clock,reportError:()=>{}});
  return{values,storage,locks,globals,store,setFail:v=>fail=v,setClock:v=>clock=v};}
 
+test('a confirmed lamp tier spends once under concurrent requests and survives failed writes and reload',async()=>{
+ const data=createLampEconomy(42);activateLamp(data,{},0);data.lamp.essence=200;
+ const f=fixture({[EQUIPMENT_SAVE_KEY]:JSON.stringify(data)});await f.store.sync();
+ const heroes=structuredClone(f.globals.HeroProgress.heroes),gear=structuredClone(f.store.data.items),saved=f.values.get(EQUIPMENT_SAVE_KEY);
+ f.setFail(true);await assert.rejects(f.store.upgrade(0),/disk full/);
+ assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),saved);assert.equal(f.store.data.lamp.essence,200);assert.equal(f.store.data.lamp.capacityTier,0);
+ f.setFail(false);const results=await Promise.allSettled([f.store.upgrade(0),f.store.upgrade(0)]);
+ assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.match(results.find(r=>r.status==='rejected').reason.message,/level changed/);
+ assert.equal(f.store.data.lamp.essence,180);assert.equal(f.store.data.lamp.capacityTier,1);assert.equal(lampStoredCount(f.store.data),1);
+ assert.deepEqual(f.store.data.items,gear);assert.deepEqual(f.globals.HeroProgress.heroes,heroes);assert.equal(f.store.data.partyEXP,25);
+ const restarted=createEquipmentStorage({globals:f.globals,storage:f.storage,locks:f.locks,now:()=>11000,reportError:()=>{}});
+ await restarted.sync();assert.equal(restarted.data.lamp.capacityTier,1);assert.equal(restarted.data.lamp.essence,180);
+ await assert.rejects(restarted.upgrade(0),/level changed/);
+ await restarted.upgrade(1);await restarted.upgrade(2);assert.equal(restarted.data.lamp.essence,30);
+ const maximum=JSON.stringify(restarted.data);await assert.rejects(restarted.upgrade(3),/fully upgraded/);assert.equal(JSON.stringify(restarted.data),maximum);
+ const poor=fixture();await poor.store.sync();const before=JSON.stringify(poor.store.data);
+ await assert.rejects(poor.store.upgrade(0),/Need 20 more essence/);assert.equal(JSON.stringify(poor.store.data),before);
+});
+
 test('seed and sequence reproduce exact gear; quality never rerolls on comparison',()=>{
  for(let sequence=0;sequence<200;sequence++){const i=generateLampItem(42,sequence,9);assert.deepEqual(i,generateLampItem(42,sequence,9));assert.ok(['hat','body','boots'].includes(i.type));assert.deepEqual(Object.keys(i.stats),['ATK','DEF','MAG','RES','HP']);assert.ok(Object.values(i.stats).every(n=>n>=1));}
  assert.notDeepEqual(generateLampItem(42,1,0),generateLampItem(42,2,0));

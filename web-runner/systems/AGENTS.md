@@ -212,3 +212,5 @@
 - CP receipt lifetime never holds the durable action lock or freezes ordinary recipient/item selection. Track concurrent receipt elements; only final review/close waits for all receipts, keeping feedback inside the modal. Collection entry awaits any in-flight transaction, storage sync and decoded shared gear atlas, then renders the full sorted cache together. Auto generation pauses while collection is opening/open and resumes afterward when enabled.
 
 - Strip party progress reads currentLevel/currentEXP/EXPToNextLevel from the lowest-level hero. Include EXP in the render key so every draw updates the meter. Manual and Auto share level-up feedback; preserve leftover EXP rather than showing a full meter after a level increase. Lamp tier/essence are a separate upgrade-modal display.
+
+- Lamp upgrade preview shows current/next rarity odds, increased percentages, capacity, exact cost, balance and shortfall; final tier displays MAX. Confirmation passes the rendered tier to equipmentStorage, whose locked transaction rejects stale confirmations before spending. Verify hero EXP separately from the combat reward ledger because combat continues while the modal is open.
