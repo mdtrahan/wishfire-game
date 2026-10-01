@@ -9,7 +9,7 @@ The original blue hand/rings use the existing15-second idle timer through draw, 
 ## Validation
 
 - `node --test tests/lampEquipment.test.mjs`:31/31 PASS; failed save, concurrent duplicate receipt, corrupt bits, reload and unchanged resources/gear/hero EXP covered.
-- `LAMP_QA_URL=http://localhost:8032/web-runner/index.html npm run test:lamp-ui`: PASS on360×640 DPR1,216×384 DPR2,233×452 DPR2 and316×452 DPR2 after decorative containment fix. Final added banner/wheel assertions await the checkpoint hook; its outcome is recorded in Beads and the final receipt.
+- `LAMP_QA_URL=http://localhost:8032/web-runner/index.html npm run test:lamp-ui`: PASS on360×640 DPR1,216×384 DPR2,233×452 DPR2 and316×452 DPR2 after decorative containment fix. Final banner/wheel assertions also PASS through the staged-owner commit hook at e41173fa3166d5b95d30dcf197cf7d03b9072f68. `phone-report.json` retains the four-phone report (2026-10-01T05:29:31.340Z).
 - Before fix the new animated containment assertion failed at lamp-upgrades. After fix12 animation-frame samples per target stay within the viewport±0.5px with zero horizontal overflow. The control/modal layout remains unchanged. The existing commit hook routes staged lampUI/CSS/presentation-test owners through this command.
 - Native in-app final reload:1280×720 CSS,DPR2,body zoom1/transform none; Canvas405×720 at437.5,0 with810×1440 backing. Lamp draw control92.336×82.578, font12.375px; no horizontal overflow. `native-guide-generate.jpg` was visually reviewed. A later final native capture measured the same1280×720 and405×720 geometry atDPR1/backing405×720, draw92.328×82.578; `native-guide-generate-final.jpg` was reviewed with no console errors.
 
