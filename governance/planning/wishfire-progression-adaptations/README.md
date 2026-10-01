@@ -49,3 +49,5 @@ The earlier [hero progression plan](../../../.worktrees/wt-ORKA-0ln-lamp/governa
 ## Current tuning decision
 
 Owner chose “Keep current tuning”: retain the existing EXP curve and manual2s/Auto5s cadence. Sheet02’s eight-second/150-draw trial and1500 floor are declined; normal progression proof remains required. Other pending owner decisions remain explicit in the acceptance matrix.
+
+The verified primary-hero ownership defect and proposed save-preserving repair are tracked in [hero-owner-decision.md](hero-owner-decision.md); owner selection precedes runtime migration.
