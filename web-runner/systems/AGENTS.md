@@ -220,3 +220,7 @@
 - Lamp recipient previews use lampItemCPGain for signed total hero CP changes. Previous/Next reuse hero selection and wrap the four portrait recipients; current matching-slot gear is identified before confirmation. These UI reads do not repair canonical versus combat-instance ownership.
 
 - Concurrent saved CP receipts use their measured wrapped heights and34px spacing for32px animation travel. Place each hero column in modal coordinates under its stationary portrait; keep ordinary rapid bursts within the visible modal.
+
+- Hero Gear inspection displays the owned item level beside rarity. Read the existing item record; presentation must never reroll, rescale, reassign or mutate saved gear.
+
+- Hero equipment presentation uses the existing three slots around the full-body hero and reserves the bottom navigation area. Cards inspect saved items without mutation; the power bar displays the greater of ATK or MAG, labeling MAG as MATK (ties show ATK). Keep HERO/GEAR/SKILLS, numeric EXP and every supported roster record reachable.
