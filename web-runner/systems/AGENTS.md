@@ -216,3 +216,5 @@
 - Lamp upgrade preview shows current/next rarity odds, increased percentages, capacity, exact cost, balance and shortfall; final tier displays MAX. Confirmation passes the rendered tier to equipmentStorage, whose locked transaction rejects stale confirmations before spending. Verify hero EXP separately from the combat reward ledger because combat continues while the modal is open.
 
 - The lamp helper extends the15-second idle threshold through draw, collection, Hondo comparison, equip, dismantle and free/affordable upgrade preview. Retarget disabled controls to useful enabled actions; hide during reward banners and after a completed upgrade loop outside review. Any input dismisses it. Guide receipts persist once through the existing locked equipment transaction.
+
+- Lamp recipient previews use lampItemCPGain for signed total hero CP changes. Previous/Next reuse hero selection and wrap the four portrait recipients; current matching-slot gear is identified before confirmation. These UI reads do not repair canonical versus combat-instance ownership.

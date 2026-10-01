@@ -108,3 +108,5 @@
 - Lamp upgrade regression covers concurrent confirmations for one previewed tier, failed save, insufficient essence, reload and MAX. Record ordinary draws only after their durable sequence receipt; compare hero level/EXP fields across upgrades while allowing the live combat reward ledger to advance.
 
 - Guidance proof checks durable duplicate receipts and failed saves without rewards; phone QA covers dismantle/preview/shortfall/affordable/MAX retargets and reload. Disclosed monotonic-clock offsets test idle guidance only, preserving Date.now draw cooldown and combat inputs.
+
+- Lamp comparison proves positive/zero/negative total hero CP previews, Previous/Next wrap, one selected portrait, matching-slot gear identification and saved equip receipt agreement across the four phone profiles.
