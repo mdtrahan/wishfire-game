@@ -34,7 +34,7 @@
             "label": "Inspect Hat: Wayfarer Cap, Rare, level 1",
             "box": [
               14,
-              91.546875,
+              50.890625,
               76.359375,
               90.46875
             ]
@@ -43,7 +43,7 @@
             "label": "Inspect Body: Wayfarer Vest, Common, level 7",
             "box": [
               269.640625,
-              91.546875,
+              50.890625,
               76.359375,
               90.46875
             ]
@@ -52,7 +52,7 @@
             "label": "Inspect Boots: Scholar Slippers, Common, level 12",
             "box": [
               269.640625,
-              223.234375,
+              221.84375,
               76.359375,
               90.46875
             ]
@@ -138,7 +138,7 @@
             "label": "Inspect Hat: Wayfarer Cap, Rare, level 1",
             "box": [
               8.390625,
-              54.71875,
+              30.34375,
               45.8125,
               54.265625
             ]
@@ -147,7 +147,7 @@
             "label": "Inspect Body: Wayfarer Vest, Common, level 7",
             "box": [
               161.796875,
-              54.71875,
+              30.34375,
               45.8125,
               54.265625
             ]
@@ -156,7 +156,7 @@
             "label": "Inspect Boots: Scholar Slippers, Common, level 12",
             "box": [
               161.796875,
-              132.484375,
+              131.65625,
               45.8125,
               54.265625
             ]
@@ -242,7 +242,7 @@
             "label": "Inspect Hat: Wayfarer Cap, Rare, level 1",
             "box": [
               9.046875,
-              78.03125,
+              51.75,
               49.421875,
               58.5625
             ]
@@ -251,7 +251,7 @@
             "label": "Inspect Body: Wayfarer Vest, Common, level 7",
             "box": [
               174.53125,
-              78.03125,
+              51.75,
               49.421875,
               58.5625
             ]
@@ -260,7 +260,7 @@
             "label": "Inspect Boots: Scholar Slippers, Common, level 12",
             "box": [
               174.53125,
-              162.046875,
+              161.140625,
               49.421875,
               58.5625
             ]
@@ -346,7 +346,7 @@
             "label": "Inspect Hat: Wayfarer Cap, Rare, level 1",
             "box": [
               40.875,
-              64.5,
+              35.828125,
               53.875,
               63.828125
             ]
@@ -355,7 +355,7 @@
             "label": "Inspect Body: Wayfarer Vest, Common, level 7",
             "box": [
               221.25,
-              64.5,
+              35.828125,
               53.875,
               63.828125
             ]
@@ -364,7 +364,7 @@
             "label": "Inspect Boots: Scholar Slippers, Common, level 12",
             "box": [
               221.25,
-              156.84375,
+              155.859375,
               53.875,
               63.828125
             ]

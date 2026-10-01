@@ -5,7 +5,7 @@ import {createHeroProgressStore} from '../src/core/heroProgression.mjs';
 import {heroArtKey} from '../state/heroArtAssets.mjs';
 let host, content, lastKey, currentTab='gear';
 export function hideHeroScreen(){if(host)host.hidden=true;}
-export function renderHeroScreen({equipmentProgress,canvas,gameState,fnContext,heroPortraitImages,onClose}) {
+export function renderHeroScreen({equipmentProgress,canvas,gameState,fnContext,heroPortraitImages}) {
  const g=fnContext.state.globals;g.HeroProgress ||= createHeroProgressStore();
  const roster=Object.values(g.HeroProgress.heroes);
  const index=((Number(gameState.selectedHero)||0)%roster.length+roster.length)%roster.length;
@@ -40,7 +40,6 @@ export function renderHeroScreen({equipmentProgress,canvas,gameState,fnContext,h
   const el=(tag,text,parent=content)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;parent.append(n);return n;};
   const button=(parent,text,action)=>{const n=el('button',text,parent);n.type='button';n.onclick=action;return n;};
   const portrait=(owner,parent)=>{const def=heroDefinition(owner);const image=heroPortraitImages[heroArtKey(owner)];if(image?.src){const img=el('img',null,parent);img.src=image.src;img.alt=def.name;}};
-  const nav=el('nav');button(nav,'Back',onClose);
   const identity=el('header');identity.className='identity';portrait(hero,identity);identity.querySelector('img')?.classList.add('hero-portrait');el('h1',d.name,identity);el('p',`Lv. ${hero.currentLevel} · ${d.role}`,identity);el('p',`CP ${computeCombatPower(hero)}`,identity);const power=el('div');power.className='power-bar';const magic=hero.stats.MAG>hero.stats.ATK;el('span',`${magic?'MATK':'ATK'} ${magic?hero.stats.MAG:hero.stats.ATK}`,power);el('span',`HP ${hero.maxHP}`,power);
   const tabs=el('nav');tabs.className='tabs';tabs.setAttribute('aria-label','Hero management');
   for(const [id,label] of [['hero','HERO'],['gear','GEAR'],['skills','SKILLS']]){const b=button(tabs,label,()=>{currentTab=id;});b.setAttribute('aria-pressed',String(currentTab===id));}

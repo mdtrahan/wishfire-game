@@ -21,7 +21,7 @@ const {pathToFileURL}=require('node:url');
    const c=await page.locator('canvas').first().boundingBox();await page.mouse.click(c.x+c.width/2,c.y+426*c.width/360);
    await page.locator('#wishfire-lamp').waitFor();const before=await page.evaluate(()=>localStorage.getItem('wishfire.equipment-economy.v5'));
    await page.getByRole('button',{name:'HERO',exact:true}).click();const panel=page.locator('#hero-details');
-   await panel.locator('.gear-slot').first().waitFor();assert.equal(await panel.getAttribute('data-tab'),'gear');
+   await panel.locator('.gear-slot').first().waitFor();assert.equal(await panel.getByRole('button',{name:'Back',exact:true}).count(),0);assert.equal(await panel.getAttribute('data-tab'),'gear');
    assert.deepEqual(await panel.locator('.gear-slot>small').allTextContents(),['Hat · Lv. 1','Body · Lv. 7','Boots · Lv. 12']);
    assert.equal(await panel.locator('.power-bar').innerText(),'ATK 7\nHP 75'); // Fara's ATK/MAG tie displays ATK.
    for(const slot of ['hat','body','boots']){
@@ -48,7 +48,8 @@ const {pathToFileURL}=require('node:url');
    await panel.getByRole('button',{name:'View skills',exact:true}).click();await panel.locator('.pane article').first().waitFor();assert.ok((await panel.locator('.pane').innerText()).includes('Basic Attack'));
    await panel.getByRole('button',{name:'GEAR',exact:true}).click();await panel.locator('.gear-slot').first().waitFor();
    assert.equal(await page.evaluate(()=>localStorage.getItem('wishfire.equipment-economy.v5')),before);assert.deepEqual(errors,[]);
-   await panel.getByRole('button',{name:'Back',exact:true}).click();await panel.waitFor({state:'hidden'});
+   await page.locator('#game-meta-nav').getByRole('button',{name:'VAULT',exact:true}).click();await panel.waitFor({state:'hidden'});
+   await page.locator('#game-meta-nav').getByRole('button',{name:'HERO',exact:true}).click();await panel.locator('.gear-slot').first().waitFor();
    report.push({width,height,dpr,geometry,powerCases:['ATK tie','ATK greater','MATK greater'],navigation:true,ownedStateUnchanged:true,errors});
   }catch(e){await page.screenshot({path:path.join(__dirname,width+'-failure.png')});throw e;}
   finally{await context.close();}
