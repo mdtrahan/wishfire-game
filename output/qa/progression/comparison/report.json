@@ -1,0 +1,438 @@
+[
+  {
+    "width": 360,
+    "height": 640,
+    "dpr": 1,
+    "expectedPreview": [
+      12.1,
+      -22.2,
+      7.7,
+      0
+    ],
+    "preview": [
+      {
+        "change": 12.1,
+        "text": "CP +12.1",
+        "label": "Fara total CP change +12.1"
+      },
+      {
+        "change": -22.2,
+        "text": "CP -22.2",
+        "label": "Hondo total CP change -22.2"
+      },
+      {
+        "change": 7.7,
+        "text": "CP +7.7",
+        "label": "Runa total CP change +7.7"
+      },
+      {
+        "change": 0,
+        "text": "CP +0",
+        "label": "Kaja total CP change +0"
+      }
+    ],
+    "navigation": {
+      "contained": true,
+      "buttons": true,
+      "gearWrap": true
+    },
+    "geometry": {
+      "viewport": [
+        360,
+        640,
+        1
+      ],
+      "overflow": false,
+      "stripOverflow": false,
+      "controls": true,
+      "anchor": 488,
+      "height": 92,
+      "lampRight": true
+    },
+    "stripBalance": {
+      "autoState": "off",
+      "autoLeft": 7.59375,
+      "count": "2",
+      "level": "5",
+      "progress": 50,
+      "max": 1119,
+      "barLeft": 292.9375,
+      "barHeight": 10.28125,
+      "discEnd": 308.25
+    },
+    "emission": {
+      "lamp-burp": [
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1.0000000000000002,
+          "scaleY": 1.0000000000000002,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        }
+      ]
+    },
+    "queueGeometry": {
+      "rows": 1.4998933674557475,
+      "fiveAcross": true,
+      "square": true,
+      "filled": true,
+      "stable": true
+    },
+    "containment": {
+      "overflow": false,
+      "inViewport": true,
+      "columns": true
+    },
+    "errors": []
+  },
+  {
+    "width": 216,
+    "height": 384,
+    "dpr": 2,
+    "expectedPreview": [
+      12.1,
+      -22.2,
+      7.7,
+      0
+    ],
+    "preview": [
+      {
+        "change": 12.1,
+        "text": "CP +12.1",
+        "label": "Fara total CP change +12.1"
+      },
+      {
+        "change": -22.2,
+        "text": "CP -22.2",
+        "label": "Hondo total CP change -22.2"
+      },
+      {
+        "change": 7.7,
+        "text": "CP +7.7",
+        "label": "Runa total CP change +7.7"
+      },
+      {
+        "change": 0,
+        "text": "CP +0",
+        "label": "Kaja total CP change +0"
+      }
+    ],
+    "navigation": {
+      "contained": true,
+      "buttons": true,
+      "gearWrap": true
+    },
+    "geometry": {
+      "viewport": [
+        216,
+        384,
+        2
+      ],
+      "overflow": false,
+      "stripOverflow": false,
+      "controls": true,
+      "anchor": 487.9947916666667,
+      "height": 91.97916666666667,
+      "lampRight": true
+    },
+    "stripBalance": {
+      "autoState": "off",
+      "autoLeft": 7.578125,
+      "count": "2",
+      "level": "5",
+      "progress": 50,
+      "max": 1119,
+      "barLeft": 175.75,
+      "barHeight": 5.984375,
+      "discEnd": 184.9375
+    },
+    "emission": {
+      "lamp-burp": [
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1.0000000000000002,
+          "scaleY": 1.0000000000000002,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        }
+      ]
+    },
+    "queueGeometry": {
+      "rows": 1.5,
+      "fiveAcross": true,
+      "square": true,
+      "filled": true,
+      "stable": true
+    },
+    "containment": {
+      "overflow": false,
+      "inViewport": true,
+      "columns": true
+    },
+    "errors": []
+  },
+  {
+    "width": 233,
+    "height": 452,
+    "dpr": 2,
+    "expectedPreview": [
+      12.1,
+      -22.2,
+      7.7,
+      0
+    ],
+    "preview": [
+      {
+        "change": 12.1,
+        "text": "CP +12.1",
+        "label": "Fara total CP change +12.1"
+      },
+      {
+        "change": -22.2,
+        "text": "CP -22.2",
+        "label": "Hondo total CP change -22.2"
+      },
+      {
+        "change": 7.7,
+        "text": "CP +7.7",
+        "label": "Runa total CP change +7.7"
+      },
+      {
+        "change": 0,
+        "text": "CP +0",
+        "label": "Kaja total CP change +0"
+      }
+    ],
+    "navigation": {
+      "contained": true,
+      "buttons": true,
+      "gearWrap": true
+    },
+    "geometry": {
+      "viewport": [
+        233,
+        452,
+        2
+      ],
+      "overflow": false,
+      "stripOverflow": false,
+      "controls": true,
+      "anchor": 487.99892703862656,
+      "height": 91.97961373390558,
+      "lampRight": true
+    },
+    "stripBalance": {
+      "autoState": "off",
+      "autoLeft": 7.580472103004292,
+      "count": "2",
+      "level": "5",
+      "progress": 50,
+      "max": 1119,
+      "barLeft": 189.59375,
+      "barHeight": 6.484375,
+      "discEnd": 199.5
+    },
+    "emission": {
+      "lamp-burp": [
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1.0000000000000002,
+          "scaleY": 1.0000000000000002,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        }
+      ]
+    },
+    "queueGeometry": {
+      "rows": 1.4998351467194198,
+      "fiveAcross": true,
+      "square": true,
+      "filled": true,
+      "stable": true
+    },
+    "containment": {
+      "overflow": false,
+      "inViewport": true,
+      "columns": true
+    },
+    "errors": []
+  },
+  {
+    "width": 316,
+    "height": 452,
+    "dpr": 2,
+    "expectedPreview": [
+      12.1,
+      -22.2,
+      7.7,
+      0
+    ],
+    "preview": [
+      {
+        "change": 12.1,
+        "text": "CP +12.1",
+        "label": "Fara total CP change +12.1"
+      },
+      {
+        "change": -22.2,
+        "text": "CP -22.2",
+        "label": "Hondo total CP change -22.2"
+      },
+      {
+        "change": 7.7,
+        "text": "CP +7.7",
+        "label": "Runa total CP change +7.7"
+      },
+      {
+        "change": 0,
+        "text": "CP +0",
+        "label": "Kaja total CP change +0"
+      }
+    ],
+    "navigation": {
+      "contained": true,
+      "buttons": true,
+      "gearWrap": true
+    },
+    "geometry": {
+      "viewport": [
+        316,
+        452,
+        2
+      ],
+      "overflow": false,
+      "stripOverflow": false,
+      "controls": true,
+      "anchor": 487.97982283464563,
+      "height": 91.99311023622046,
+      "lampRight": true
+    },
+    "stripBalance": {
+      "autoState": "off",
+      "autoLeft": 7.595964566929133,
+      "count": "2",
+      "level": "5",
+      "progress": 50,
+      "max": 1119,
+      "barLeft": 237.6875,
+      "barHeight": 7.125,
+      "discEnd": 248.484375
+    },
+    "emission": {
+      "lamp-burp": [
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1.0000000000000002,
+          "scaleY": 1.0000000000000002,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        }
+      ]
+    },
+    "queueGeometry": {
+      "rows": 1.5,
+      "fiveAcross": true,
+      "square": true,
+      "filled": true,
+      "stable": true
+    },
+    "containment": {
+      "overflow": false,
+      "inViewport": true,
+      "columns": true
+    },
+    "errors": []
+  }
+]
