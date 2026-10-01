@@ -108,13 +108,12 @@ export function lampItemCPGain(data,item,hero){
 }
 export const lampGearCP=item=>item?computeCombatPower({stats:item.stats,level:1}):0;
 export function sortedLampItems(data,ids=data.lamp.pending){return ids.map(id=>data.items.find(i=>i.instanceId===id)).sort((a,b)=>lampGearCP(b)-lampGearCP(a)||(a.sequence??0)-(b.sequence??0)||a.instanceId.localeCompare(b.instanceId));}
-export function selectLampUpgrades(data,heroes){return sortedLampItems(data).filter(i=>heroes.some(h=>lampGearCP(i)>lampGearCP(data.items.find(x=>x.instanceId===data.loadouts[h.heroInstanceKey]?.[i.type])))).slice(0,4);}
+export function selectLampUpgrades(data,heroes){return sortedLampItems(data).filter(i=>heroes.some(h=>lampItemCPGain(data,i,h)>0));}
 export function selectAutoEquipHero(data,item,heroes){
  let best=null,bestGain=0,bestMaxHP=Infinity;
  for(const hero of heroes){
-  const current=data.items.find(i=>i.instanceId===data.loadouts[hero.heroInstanceKey]?.[item.type]);
-  const gain=lampGearCP(item)-lampGearCP(current),maxHP=hero.maxHP??refreshHeroStats({...hero,equipmentStats:equipmentStats(data.items,data.loadouts[hero.heroInstanceKey])}).maxHP;
-  if(gain>0&&lampItemCPGain(data,item,hero)>0&&(gain>bestGain||(gain===bestGain&&maxHP<bestMaxHP))){best=hero.heroInstanceKey;bestGain=gain;bestMaxHP=maxHP;}
+  const gain=lampItemCPGain(data,item,hero),maxHP=hero.maxHP??refreshHeroStats({...hero,equipmentStats:equipmentStats(data.items,data.loadouts[hero.heroInstanceKey])}).maxHP;
+  if(gain>0&&(gain>bestGain||(gain===bestGain&&maxHP<bestMaxHP))){best=hero.heroInstanceKey;bestGain=gain;bestMaxHP=maxHP;}
  }
  return best;
 }

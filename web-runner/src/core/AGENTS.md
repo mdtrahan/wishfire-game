@@ -73,7 +73,7 @@
 
 - isEquipmentUpgrade requires compatible item types, no lower stat and at least one higher stat; stat tradeoffs are not automatic upgrades. Empty compatible slots qualify.
 
-- Auto Equip ranks strict same-slot item CP improvements; recipient ties favor lowest current max HP then party order, and actual hero CP must also increase. Manual overrides can decrease CP.
+- Auto Equip filters and ranks recipients by strictly positive matching-slot total hero CP gain. Scan eligible items in displayed item-CP order without truncating to four before recipient allocation; the transaction limits assignment to one piece per hero/four total. Equal hero gains favor lowest current max HP then party order. Manual overrides can decrease CP.
 
 - Lamp progression: manual/Auto draws grant all four heroes saved EXP, with cumulative receipts and per-hero lampEXPClaimed replay. Enemy rewards grant zero new EXP/Gold. Auto requires all four Lv5, switches off at capacity, and requires explicit restart. Dismantling essence upgrades lamp levels 1–4, raising capacity 20/30/40/50 and rarity odds. The upper-left level badge opens current/next bonuses and cost; no Gold is used. Strip rarity letters are doubled and the storage preview is 65% with unchanged touch area.
 

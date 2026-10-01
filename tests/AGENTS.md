@@ -114,3 +114,5 @@
 - The four-phone lamp guard hit-tests and clicks Close during active CP feedback, verifies deferred closure, and rejects remaining CP floats after departure.
 
 - Four-phone rapid feedback proof uses a disclosed six-item fixture, alternates three receipts per hero, and samples12 animation frames for containment and pairwise overlap. Earned videos separately prove saved values and natural pacing.
+
+- Auto Equip regression freezes an ordinary 69-draw batch whose top standalone item-CP candidates have no total hero gain. It must reach later useful items, return positive saved CP receipts, keep one item per hero/four total and preserve EXP. Recipient ranking uses total hero gain before maxHP/party tie rules.

@@ -1,5 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {LAMP_CONFIG,LAMP_CAPACITY_TIERS,generateLampItem,createLampEconomy,activateLamp,lampStoredCount,lampItemCPGain,lampGearCP,sortedLampItems,selectLampUpgrades,finishLampReview,upgradeLamp,validateLampEconomy,compareLampItem,selectAutoEquipHero,equipLampItem,dismantleLampItems,migrateLegacyEquipment,salvageValue} from '../web-runner/src/core/lampGear.mjs';
 import {createEquipmentStorage,EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
 import {createHeroProgressStore} from '../web-runner/src/core/heroProgression.mjs';
@@ -120,13 +121,13 @@ test('draft saves keep identity, Gold and assigned gear while dropping retired S
  assert.equal(f.store.data.gold,old.gold);assert.equal(f.store.data.items[0].stats.MAG,7);assert.deepEqual(Object.keys(f.store.data.items[0].stats),['ATK','DEF','MAG','RES','HP']);assert.equal(f.values.get('wishfire.equipment-economy.v2'),raw);assert.equal(f.store.data.loadouts.Runa[old.items[0].type],old.items[0].instanceId);
 });
 
-test('Auto Equip chooses matching-slot item CP gain, then lowest current max HP, then party order',()=>{
+test('Auto Equip chooses matching-slot total hero CP gain, then lowest current max HP, then party order',()=>{
  const data=createLampEconomy(1),heroes=Object.values(createHeroProgressStore().heroes);
  const item={instanceId:'candidate',type:'body',stats:{ATK:4,DEF:3,MAG:1,RES:1}};data.items.push(item);data.lamp.pending.push(item.instanceId);
  assert.equal(selectAutoEquipHero(data,item,heroes),'Huun');
  assert.equal(selectAutoEquipHero(data,item,[{...heroes[3],hp:1},{...heroes[2],hp:40}]),'Runa','equal CP favors lower max HP even when current HP is higher');
  data.items.push({...item,instanceId:'old',stats:{ATK:100,DEF:100,MAG:100,RES:100}});data.loadouts.Huun={body:'old'};
- assert.equal(selectAutoEquipHero(data,item,heroes),'Runa');
+ assert.equal(selectAutoEquipHero(data,item,heroes),'Falie');
  assert.equal(selectAutoEquipHero(data,item,[heroes[0],{...heroes[0],heroInstanceKey:'tie'}]),'Falie');
  for(const hero of heroes)data.loadouts[hero.heroInstanceKey]={body:'old'};
  const snapshot=JSON.stringify(data);assert.equal(selectAutoEquipHero(data,item,heroes),null);assert.equal(JSON.stringify(data),snapshot);
@@ -230,4 +231,19 @@ test('review sorting leaves emission order intact and Auto equips at most one it
 });
 test('entering dismantling permanently removes equip eligibility without converting resources',async()=>{
  const f=fixture();await f.store.sync();await f.store.generate({});const id=f.store.data.lamp.pending[0],before=structuredClone(f.store.data);await f.store.finishReview();assert.deepEqual(f.store.data.lamp.pending,[]);assert.deepEqual(f.store.data.lamp.discarded,[id]);assert.equal(f.store.data.lamp.essence,before.lamp.essence);assert.equal(f.store.data.partyEXP,before.partyEXP);await f.store.refresh();await assert.rejects(f.store.equip('Huun',id),/no longer/);assert.deepEqual(await f.store.autoEquip(),[]);
+});
+
+
+test('earned batch Auto Equip bypasses item-CP leaders that give no hero gain',async()=>{
+ const captured=JSON.parse(readFileSync(new URL('./fixtures/lamp-auto-earned-69.json',import.meta.url)));
+ const data=structuredClone(captured.economy),heroes=Object.values(captured.heroes.heroes).slice(0,4);
+ const eligible=sortedLampItems(data).filter(i=>heroes.some(h=>lampItemCPGain(data,i,h)>0));
+ assert.equal(eligible.length,21);
+ assert.deepEqual(selectLampUpgrades(data,heroes).map(i=>i.instanceId),eligible.map(i=>i.instanceId));
+ const f=fixture({[EQUIPMENT_SAVE_KEY]:JSON.stringify(data)});f.globals.HeroProgress=structuredClone(captured.heroes);await f.store.sync();
+ const exp=data.partyEXP,progress=heroes.map(h=>[h.currentLevel,h.currentEXP,h.lampEXPClaimed]);
+ const receipts=await f.store.autoEquip();assert.ok(receipts.length>0&&receipts.length<=4);
+ assert.equal(new Set(receipts.map(r=>r.heroId)).size,receipts.length);
+ for(const r of receipts){const item=data.items.find(i=>i.instanceId===r.item.instanceId),hero=heroes.find(h=>h.heroInstanceKey===r.heroId);assert.ok(item);assert.ok(r.cpChange>0);assert.equal(r.cpChange,lampItemCPGain(data,item,hero));assert.equal(f.store.data.loadouts[r.heroId][item.type],item.instanceId);}
+ assert.equal(f.store.data.partyEXP,exp);assert.deepEqual(Object.values(f.globals.HeroProgress.heroes).slice(0,4).map(h=>[h.currentLevel,h.currentEXP,h.lampEXPClaimed]),progress);assert.equal(f.store.data.lamp.pending.length,0);
 });
