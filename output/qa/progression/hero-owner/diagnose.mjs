@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {createLampEconomy,activateLamp} from '../../../../web-runner/src/core/lampGear.mjs';
+import {createHeroProgressStore,attachHeroProgress} from '../../../../web-runner/src/core/heroProgression.mjs';
+import {createEquipmentStorage,EQUIPMENT_SAVE_KEY} from '../../../../web-runner/systems/equipmentStorage.mjs';
+const record=createLampEconomy(42),item=activateLamp(record,{region:1,stage:1},0);
+const globals={goldTotal:0,HeroProgress:createHeroProgressStore()};
+const actor=attachHeroProgress({kind:'hero',name:'Falie',baseHeroName:'Falie',heroInstanceKey:'falie#1',heroCloneOrdinal:1},globals.HeroProgress);
+const values=new Map([[EQUIPMENT_SAVE_KEY,JSON.stringify(record)]]);
+const storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
+const economy=createEquipmentStorage({globals,getActors:()=>[actor],storage,locks:{request:async(_key,fn)=>fn()},now:()=>0});
+await economy.sync();const before={...actor.stats};const result=await economy.equip('Falie',item.instanceId);
+console.log(JSON.stringify({canonicalCPGain:result.cpChange,loadoutOwner:'Falie',actorInstance:actor.heroInstanceKey,actorStatsBefore:before,actorStatsAfter:actor.stats,canonicalEquipment:globals.HeroProgress.heroes.Falie.equipmentStats,actorEquipment:actor.equipmentStats},null,2));
+assert.deepEqual(actor.equipmentStats,globals.HeroProgress.heroes.Falie.equipmentStats,'canonical primary equipment must reach the intended live actor');

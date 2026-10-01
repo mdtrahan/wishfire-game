@@ -23,3 +23,5 @@ Choose one contract before runtime edits. Reuse heroProgression attach/save, equ
 Retrieval receipt: codebase-memory exposes only an unrelated temporary project. jcodemunch indexes current main5f48703; exact attachHeroProgress query returns no symbol because the preserved realtime foundation differs from main. Focused rg and narrow current-lane reads verified every attach/save caller, equipmentStorage, renderHeroScreen/Gear, lampUI, combat initializer and party builder. Large files were read only at matching functions.
 
 Lane starts from guidance receipt ad7f1f918c9c824e5cf0315641535c955f977224. Preserve original root/lamp/upgrade/guidance lanes; no merge/publication. Pending EXP-source, Auto restart and rarity/income decisions remain separate. Current EXP/cadence tuning stays unchanged.
+
+Runnable counter-evidence: `node output/qa/progression/hero-owner/diagnose.mjs` exits1 on the preserved foundation. The saved `before-repair.txt` reports canonicalCPGain12 with unchanged live actor stats and empty actorEquipment; the final assertion requires matching primary gear projection. This is the expected red check for the repair, with no runtime/save files modified.
