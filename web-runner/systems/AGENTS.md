@@ -226,3 +226,5 @@
 - Hero equipment presentation uses the existing three slots around the full-body hero and reserves the bottom navigation area. Cards inspect saved items without mutation; the power bar displays the greater of ATK or MAG, labeling MAG as MATK (ties show ATK). Keep HERO/GEAR/SKILLS, numeric EXP and every supported roster record reachable.
 
 - Hero is a primary shared-navigation destination. Its screen has no Back button; use the existing main navigation to switch destinations.
+
+- The short HERO/SKILLS header keeps its portrait below the identity/CP text. Gear uses the larger equipment-stage portrait.

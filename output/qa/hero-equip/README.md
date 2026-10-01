@@ -11,3 +11,5 @@ Native earned profile: 835×1025, DPR2, Canvas CSS [129.5,0,576,1025], backing [
 Existing source-owner mismatch and duplicate canonical/live roster records remain separate owner decisions. Tuning, slots, saved items and ownership are preserved. This lane is not Integration Ready against current main.
 
 Owner follow-up removes Back because Hero belongs to main navigation. The revised four-phone guard requires no Back control and leaves/reenters through VAULT/HERO; shared navigation remains the exit path.
+
+Full-flow review found portrait/CP overlap in the short HERO/SKILLS header. The non-Gear portrait now occupies the lower45% of that existing header; the four-phone guard verifies its box starts below the CP title. Gear composition remains unchanged.

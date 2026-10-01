@@ -45,6 +45,7 @@ const {pathToFileURL}=require('node:url');
    }
    await page.screenshot({path:path.join(__dirname,width+'-magic.png')});
    await panel.getByRole('button',{name:'HERO',exact:true}).click();await panel.getByRole('progressbar',{name:'Level EXP'}).waitFor();assert.ok((await panel.locator('.pane').innerText()).includes('0 / 100 EXP'));
+   const titleClear=await panel.locator('.identity').evaluate(e=>e.querySelector('.hero-portrait').getBoundingClientRect().top>=e.querySelector('p:last-of-type').getBoundingClientRect().bottom-.5);assert.equal(titleClear,true,'non-Gear portrait clears CP title');
    await panel.getByRole('button',{name:'View skills',exact:true}).click();await panel.locator('.pane article').first().waitFor();assert.ok((await panel.locator('.pane').innerText()).includes('Basic Attack'));
    await panel.getByRole('button',{name:'GEAR',exact:true}).click();await panel.locator('.gear-slot').first().waitFor();
    assert.equal(await page.evaluate(()=>localStorage.getItem('wishfire.equipment-economy.v5')),before);assert.deepEqual(errors,[]);
