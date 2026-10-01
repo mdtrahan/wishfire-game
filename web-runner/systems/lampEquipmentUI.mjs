@@ -97,11 +97,14 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   const feedback=document.createElement('div');feedback.className='lamp-cp-feedback '+(result.cpChange>0?'positive':result.cpChange<0?'negative':'neutral');feedback.setAttribute('role','status');
   feedback.dataset.hero=result.heroId;feedback.dataset.change=result.cpChange;feedback.dataset.before=result.cpBefore;feedback.dataset.after=result.cpAfter;
   feedback.style.width=Math.min(anchor.width,48)+'px';
-  feedback.style.left=Math.max(58,Math.min(window.innerWidth-58,anchor.x+anchor.width/2))+'px';feedback.style.top=Math.max(12,Math.min(window.innerHeight-130,anchor.y))+'px';
+  const bounds=modal.getBoundingClientRect();feedback.style.left=(anchor.x+anchor.width/2-bounds.left)+'px';
   feedback.textContent='CP '+(result.cpChange>0?'+':'')+result.cpChange;
   feedback.setAttribute('aria-label',name+' '+feedback.textContent);
-  const stacked=[...feedbacks].filter(n=>n.dataset.hero===result.heroId).length;feedback.style.top=(parseFloat(feedback.style.top)-stacked*22)+'px';
   feedbacks.add(feedback);modal.append(feedback);
+  const column=[...feedbacks].filter(n=>n.dataset.hero===result.heroId),gap=34;
+  const height=column.reduce((sum,n)=>sum+n.offsetHeight,0)+gap*(column.length-1);
+  let top=Math.max(bounds.top+24,Math.min(anchor.y,bounds.bottom-height-10));
+  for(const node of column){node.style.top=(top-bounds.top)+'px';top+=node.offsetHeight+gap;}
   setTimeout(()=>{feedback.remove();feedbacks.delete(feedback);lastKey='';if(closeRequested)close();else render();},1800);
  }
  function render(){

@@ -120,7 +120,7 @@
 .lamp-quality-band{min-height:112px}
 @container(max-width:260px){.lamp-quality-band{min-height:96px}}
 
-.lamp-cp-feedback{position:fixed;z-index:110;pointer-events:none;white-space:normal;text-align:center;font:850 18px/1.2 system-ui,sans-serif;text-shadow:0 2px 3px #000;transform:translateX(-50%);animation:lamp-cp-rise 1.8s ease-out forwards}
+.lamp-cp-feedback{position:absolute;z-index:110;pointer-events:none;white-space:normal;text-align:center;font:850 18px/1.2 system-ui,sans-serif;text-shadow:0 2px 3px #000;transform:translateX(-50%);animation:lamp-cp-rise 1.8s ease-out forwards}
 @keyframes lamp-cp-rise{0%{opacity:0;translate:0 10px}15%{opacity:1}80%{opacity:1}100%{opacity:0;translate:0 -22px}}
 @media(prefers-reduced-motion:reduce){.lamp-cp-feedback{animation:none}}
 

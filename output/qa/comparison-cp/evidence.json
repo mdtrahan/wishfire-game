@@ -1,0 +1,181 @@
+{
+  "runtimeBase": "382e497",
+  "video": "output/qa/comparison-cp/rapid-close/rapid-close.webm",
+  "sha256": "18ef4b899880c506e65f2d23c8dad97f85def817f24607fc0f39228f7c227791",
+  "bytes": 2069917,
+  "durationSeconds": 20.32,
+  "size": [
+    360,
+    640
+  ],
+  "native": {
+    "viewport": [
+      1280,
+      720,
+      2
+    ],
+    "canvas": [
+      437.5,
+      0,
+      405,
+      720
+    ],
+    "backing": [
+      810,
+      1440
+    ],
+    "receipts": [
+      {
+        "hero": "Falie",
+        "change": 13.7
+      },
+      {
+        "hero": "Falie",
+        "change": -6.6
+      }
+    ],
+    "portraitCenters": [
+      535.875,
+      614.625,
+      693.375,
+      772.125
+    ]
+  },
+  "reviewProof": {
+    "checks": "PASS",
+    "pausedSequence": 6,
+    "pausedEXP": 150,
+    "pauseSeconds": 0,
+    "closePoint": [
+      328,
+      30
+    ],
+    "closeHit": "close",
+    "receipts": [
+      {
+        "hero": "Falie",
+        "change": 8.4,
+        "before": 47.1,
+        "after": 55.5,
+        "text": "CP +8.4"
+      },
+      {
+        "hero": "Huun",
+        "change": 8.9,
+        "before": 66.8,
+        "after": 75.7,
+        "text": "CP +8.9"
+      },
+      {
+        "hero": "Falie",
+        "change": -0.8,
+        "before": 55.5,
+        "after": 54.7,
+        "text": "CP -0.8"
+      },
+      {
+        "hero": "Huun",
+        "change": 6.6,
+        "before": 75.7,
+        "after": 82.3,
+        "text": "CP +6.6"
+      },
+      {
+        "hero": "Falie",
+        "change": -1.2,
+        "before": 54.7,
+        "after": 53.5,
+        "text": "CP -1.2"
+      },
+      {
+        "hero": "Huun",
+        "change": 0.1,
+        "before": 82.3,
+        "after": 82.4,
+        "text": "CP +0.1"
+      }
+    ],
+    "beforePortraits": [
+      {
+        "src": "http://localhost:8035/web-runner/assets/images/icon_hero1-animation%201-000.png",
+        "x": 64,
+        "y": 67.875,
+        "width": 60.25,
+        "height": 60.25,
+        "animation": "none",
+        "transform": "none"
+      },
+      {
+        "src": "http://localhost:8035/web-runner/assets/images/icon_hero2-animation%201-000.png",
+        "x": 134.25,
+        "y": 67.875,
+        "width": 60.25,
+        "height": 60.25,
+        "animation": "none",
+        "transform": "none"
+      },
+      {
+        "src": "http://localhost:8035/web-runner/assets/images/icon_hero3-animation%201-000.png",
+        "x": 204.5,
+        "y": 67.875,
+        "width": 60.25,
+        "height": 60.25,
+        "animation": "none",
+        "transform": "none"
+      },
+      {
+        "src": "http://localhost:8035/web-runner/assets/images/icon_hero4-animation%201-000.png",
+        "x": 274.75,
+        "y": 67.875,
+        "width": 60.25,
+        "height": 60.25,
+        "animation": "none",
+        "transform": "none"
+      }
+    ],
+    "afterPortraits": [
+      {
+        "src": "http://localhost:8035/web-runner/assets/images/icon_hero1-animation%201-000.png",
+        "x": 64,
+        "y": 67.875,
+        "width": 60.25,
+        "height": 60.25,
+        "animation": "none",
+        "transform": "none"
+      },
+      {
+        "src": "http://localhost:8035/web-runner/assets/images/icon_hero2-animation%201-000.png",
+        "x": 134.25,
+        "y": 67.875,
+        "width": 60.25,
+        "height": 60.25,
+        "animation": "none",
+        "transform": "none"
+      },
+      {
+        "src": "http://localhost:8035/web-runner/assets/images/icon_hero3-animation%201-000.png",
+        "x": 204.5,
+        "y": 67.875,
+        "width": 60.25,
+        "height": 60.25,
+        "animation": "none",
+        "transform": "none"
+      },
+      {
+        "src": "http://localhost:8035/web-runner/assets/images/icon_hero4-animation%201-000.png",
+        "x": 274.75,
+        "y": 67.875,
+        "width": 60.25,
+        "height": 60.25,
+        "animation": "none",
+        "transform": "none"
+      }
+    ],
+    "overflow": {
+      "page": 0,
+      "panel": 0
+    },
+    "autoResumePolicy": "Existing runtime only; owner choice remains pending",
+    "errors": []
+  }
+}

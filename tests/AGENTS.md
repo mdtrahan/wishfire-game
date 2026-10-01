@@ -112,3 +112,5 @@
 - Lamp comparison proves positive/zero/negative total hero CP previews, Previous/Next wrap, one selected portrait, matching-slot gear identification and saved equip receipt agreement across the four phone profiles.
 
 - The four-phone lamp guard hit-tests and clicks Close during active CP feedback, verifies deferred closure, and rejects remaining CP floats after departure.
+
+- Four-phone rapid feedback proof uses a disclosed six-item fixture, alternates three receipts per hero, and samples12 animation frames for containment and pairwise overlap. Earned videos separately prove saved values and natural pacing.

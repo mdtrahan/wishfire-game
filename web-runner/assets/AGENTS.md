@@ -72,3 +72,5 @@
 - Current matching-slot gear text wraps without a fixed paragraph height; comparison navigation reuses the existing action control styling and preserves the fixed queue geometry.
 
 - Lamp modals stack above fixed DEV launchers (10000); idle guidance stacks above the modal and remains pointer-transparent. Close must receive a pointer at its center while saved CP feedback is active.
+
+- CP feedback positions are absolute within the fixed lamp overlay, so modal offsets never shift receipts away from their hero. Preserve18px type and1.8-second animation.
