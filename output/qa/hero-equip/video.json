@@ -1,8 +1,13 @@
 {
-  "path": "output/qa/hero-equip/f7567e644a3b438ab47a92a78dc8097e.webm",
-  "bytes": 572494,
-  "sha256": "e2f5a44a32b61243cba05ab382ef27bc5fc791112e3fb8a778e8a8f1298b2813",
+  "path": "output/qa/hero-equip/a78f4757a873d5840433aa06379206bf.webm",
+  "bytes": 573888,
+  "sha256": "dbb80f2468e6935cda0f990197a4887cb8748323809d70909a8d4b8b365a09f9",
   "fixture": true,
   "timingClaim": false,
-  "navigation": "No Back; ordinary VAULT/HERO leave and return"
+  "metadataStatus": "ffprobe cannot load missing libx265.215.dylib; duration unverified",
+  "layout": "Six boxes; left Hat/Body/Boots, right blank/blank/disabled Orbs; descriptions behind Skills tab",
+  "sourceHashes": {
+    "web-runner/systems/heroGearUI.mjs": "a11ca20fb9e13ce6f9477381c38042d4594b9e96eaea4bcba4c87fcf0d9a6904",
+    "web-runner/systems/renderHeroScreen.js": "c814b20b994081516f34d3a64f97f0c33a552c4ae1189f659d033f1429ac1834"
+  }
 }

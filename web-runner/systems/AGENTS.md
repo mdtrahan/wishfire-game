@@ -223,7 +223,7 @@
 
 - Hero Gear inspection displays the owned item level beside rarity. Read the existing item record; presentation must never reroll, rescale, reassign or mutate saved gear.
 
-- Hero equipment presentation uses the existing three slots around the full-body hero and reserves the bottom navigation area. Cards inspect saved items without mutation; the power bar displays the greater of ATK or MAG, labeling MAG as MATK (ties show ATK). Keep HERO/GEAR/SKILLS, numeric EXP and every supported roster record reachable.
+- Hero equipment presentation shows six boxes around the centered full-body hero: Hat/Body/Boots on the left, two blank unassigned equipment boxes and a disabled future Orbs slot on the right and reserves the bottom navigation area. Cards inspect saved items without mutation; the power bar displays the greater of ATK or MAG, labeling MAG as MATK (ties show ATK). Gear is the landing view; skill descriptions belong only in SKILLS. Keep HERO/GEAR/SKILLS, numeric EXP and every supported roster record reachable.
 
 - Hero is a primary shared-navigation destination. Its screen has no Back button; use the existing main navigation to switch destinations.
 

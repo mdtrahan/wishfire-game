@@ -34,27 +34,54 @@
             "label": "Inspect Hat: Wayfarer Cap, Rare, level 1",
             "box": [
               14,
-              50.890625,
-              76.359375,
-              90.46875
+              66.296875,
+              73.03125,
+              73.03125
             ]
           },
           {
             "label": "Inspect Body: Wayfarer Vest, Common, level 7",
             "box": [
-              269.640625,
-              50.890625,
-              76.359375,
-              90.46875
+              14,
+              154.34375,
+              73.03125,
+              73.03125
             ]
           },
           {
             "label": "Inspect Boots: Scholar Slippers, Common, level 12",
             "box": [
-              269.640625,
-              221.84375,
-              76.359375,
-              90.46875
+              14,
+              242.375,
+              73.03125,
+              73.03125
+            ]
+          },
+          {
+            "label": "Unassigned equipment slot",
+            "box": [
+              272.96875,
+              66.296875,
+              73.03125,
+              73.03125
+            ]
+          },
+          {
+            "label": "Unassigned equipment slot",
+            "box": [
+              272.96875,
+              154.34375,
+              73.03125,
+              73.03125
+            ]
+          },
+          {
+            "label": "Orbs: unavailable",
+            "box": [
+              272.96875,
+              242.375,
+              73.03125,
+              73.03125
             ]
           },
           {
@@ -138,27 +165,54 @@
             "label": "Inspect Hat: Wayfarer Cap, Rare, level 1",
             "box": [
               8.390625,
-              30.34375,
-              45.8125,
-              54.265625
+              38.515625,
+              43.828125,
+              43.828125
             ]
           },
           {
             "label": "Inspect Body: Wayfarer Vest, Common, level 7",
             "box": [
-              161.796875,
-              30.34375,
-              45.8125,
-              54.265625
+              8.390625,
+              91.828125,
+              43.828125,
+              43.828125
             ]
           },
           {
             "label": "Inspect Boots: Scholar Slippers, Common, level 12",
             "box": [
-              161.796875,
-              131.65625,
-              45.8125,
-              54.265625
+              8.390625,
+              145.140625,
+              43.828125,
+              43.828125
+            ]
+          },
+          {
+            "label": "Unassigned equipment slot",
+            "box": [
+              163.78125,
+              38.515625,
+              43.828125,
+              43.828125
+            ]
+          },
+          {
+            "label": "Unassigned equipment slot",
+            "box": [
+              163.78125,
+              91.828125,
+              43.828125,
+              43.828125
+            ]
+          },
+          {
+            "label": "Orbs: unavailable",
+            "box": [
+              163.78125,
+              145.140625,
+              43.828125,
+              43.828125
             ]
           },
           {
@@ -242,27 +296,54 @@
             "label": "Inspect Hat: Wayfarer Cap, Rare, level 1",
             "box": [
               9.046875,
-              51.75,
-              49.421875,
-              58.5625
+              60.796875,
+              47.265625,
+              47.265625
             ]
           },
           {
             "label": "Inspect Body: Wayfarer Vest, Common, level 7",
             "box": [
-              174.53125,
-              51.75,
-              49.421875,
-              58.5625
+              9.046875,
+              118.15625,
+              47.265625,
+              47.265625
             ]
           },
           {
             "label": "Inspect Boots: Scholar Slippers, Common, level 12",
             "box": [
-              174.53125,
-              161.140625,
-              49.421875,
-              58.5625
+              9.046875,
+              175.515625,
+              47.265625,
+              47.265625
+            ]
+          },
+          {
+            "label": "Unassigned equipment slot",
+            "box": [
+              176.6875,
+              60.796875,
+              47.265625,
+              47.265625
+            ]
+          },
+          {
+            "label": "Unassigned equipment slot",
+            "box": [
+              176.6875,
+              118.15625,
+              47.265625,
+              47.265625
+            ]
+          },
+          {
+            "label": "Orbs: unavailable",
+            "box": [
+              176.6875,
+              175.515625,
+              47.265625,
+              47.265625
             ]
           },
           {
@@ -346,27 +427,54 @@
             "label": "Inspect Hat: Wayfarer Cap, Rare, level 1",
             "box": [
               40.875,
-              35.828125,
-              53.875,
-              63.828125
+              45.953125,
+              51.53125,
+              51.53125
             ]
           },
           {
             "label": "Inspect Body: Wayfarer Vest, Common, level 7",
             "box": [
-              221.25,
-              35.828125,
-              53.875,
-              63.828125
+              40.875,
+              108.546875,
+              51.53125,
+              51.53125
             ]
           },
           {
             "label": "Inspect Boots: Scholar Slippers, Common, level 12",
             "box": [
-              221.25,
-              155.859375,
-              53.875,
-              63.828125
+              40.875,
+              171.140625,
+              51.53125,
+              51.53125
+            ]
+          },
+          {
+            "label": "Unassigned equipment slot",
+            "box": [
+              223.59375,
+              45.953125,
+              51.53125,
+              51.53125
+            ]
+          },
+          {
+            "label": "Unassigned equipment slot",
+            "box": [
+              223.59375,
+              108.546875,
+              51.53125,
+              51.53125
+            ]
+          },
+          {
+            "label": "Orbs: unavailable",
+            "box": [
+              223.59375,
+              171.140625,
+              51.53125,
+              51.53125
             ]
           },
           {

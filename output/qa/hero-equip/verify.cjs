@@ -22,6 +22,11 @@ const {pathToFileURL}=require('node:url');
    await page.locator('#wishfire-lamp').waitFor();const before=await page.evaluate(()=>localStorage.getItem('wishfire.equipment-economy.v5'));
    await page.getByRole('button',{name:'HERO',exact:true}).click();const panel=page.locator('#hero-details');
    await panel.locator('.gear-slot').first().waitFor();assert.equal(await panel.getByRole('button',{name:'Back',exact:true}).count(),0);assert.equal(await panel.getAttribute('data-tab'),'gear');
+   assert.equal(await panel.locator('.gear-slot').count(),6);
+   assert.equal(await panel.locator('.gear-placeholder:not(button)').count(),2);
+   assert.deepEqual(await panel.locator('.gear-placeholder:not(button)').allTextContents(),['','']);
+   assert.equal(await panel.getByRole('button',{name:'Orbs: unavailable'}).isEnabled(),false);
+   assert.equal(await panel.locator('.pane article').count(),0);
    assert.deepEqual(await panel.locator('.gear-slot>small').allTextContents(),['Hat · Lv. 1','Body · Lv. 7','Boots · Lv. 12']);
    assert.equal(await panel.locator('.power-bar').innerText(),'ATK 7\nHP 75'); // Fara's ATK/MAG tie displays ATK.
    for(const slot of ['hat','body','boots']){
@@ -37,7 +42,10 @@ const {pathToFileURL}=require('node:url');
    });
    assert.equal(geometry.overflow,false);
    for(const t of geometry.targets){const [x,y,w,h]=t.box;assert.ok(x>=geometry.host[0]-.5&&x+w<=geometry.host[0]+geometry.host[2]+.5,t.label+' horizontal containment');assert.ok(y>=geometry.host[1]-.5&&y+h<=geometry.nav[1]+.5,t.label+' above navigation');}
-   const cards=geometry.targets.slice(0,3);for(let i=0;i<cards.length;i++)for(let j=i+1;j<cards.length;j++){const [x,y,w,h]=cards[i].box,[a,b,c,d]=cards[j].box;assert.ok(x+w<=a||a+c<=x||y+h+8<=b||b+d+8<=y,'gear cards plus focus ring must remain separate');}
+   const cards=geometry.targets.slice(0,6);for(let i=0;i<cards.length;i++)for(let j=i+1;j<cards.length;j++){const [x,y,w,h]=cards[i].box,[a,b,c,d]=cards[j].box;assert.ok(x+w<=a||a+c<=x||y+h+8<=b||b+d+8<=y,'gear cards plus focus ring must remain separate '+JSON.stringify({width,i,j,first:cards[i].box,second:cards[j].box}));}
+   assert.deepEqual(cards.slice(0,3).map(c=>c.box[0]),Array(3).fill(cards[0].box[0]));
+   assert.deepEqual(cards.slice(3).map(c=>c.box[0]),Array(3).fill(cards[3].box[0]));
+   for(const col of [cards.slice(0,3),cards.slice(3)])assert.ok(col[0].box[1]<col[1].box[1]&&col[1].box[1]<col[2].box[1]);
    await page.screenshot({path:path.join(__dirname,width+'-gear.png')});
    for(const [name,power]of [['Hondo','ATK 16'],['Runa','MATK 16'],['Kaja','MATK 9']]){
     await panel.getByRole('button',{name:'Inspect '+name,exact:true}).first().click();await page.waitForFunction(power=>document.querySelector('#hero-details .power-bar')?.textContent.startsWith(power),power,{timeout:3000});
