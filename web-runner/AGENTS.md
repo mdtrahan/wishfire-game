@@ -57,3 +57,5 @@
 - `web-runner/assets/AGENTS.md` - runtime data, images, fonts, gems, and WASM artifact.
 
 - Quest entry: map -> ladder -> authored sub-chapter. Navigation uses one shared charcoal/brass menu with a teal active glow across non-dialogue screens. The test-only questQA query exposes deterministic defeat/monster-clear controls for browser proof.
+
+- Lamp progression: manual/Auto draws grant all four heroes saved EXP, with cumulative receipts and per-hero lampEXPClaimed replay. Enemy rewards grant zero new EXP/Gold. Auto requires all four Lv5, switches off at capacity, and requires explicit restart. Dismantling essence buys 20/30/40/50 capacity tiers; the combat-only strip carries item levels and a collection bubble above Auto.

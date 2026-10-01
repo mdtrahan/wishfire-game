@@ -11,6 +11,7 @@
 - `fixtures/` owns deterministic CSV cases shared by JS and Rust/WASM tests.
 
 ## Local Contracts
+- Lamp rules protect durable spending, migration, unique assignment and previewed salvage. `npm run test:lamp-ui` starts an owned local server, checks four phone viewports and proves combat continues during comparison; screenshots and numeric evidence live under `test-results/lamp/`.
 - `elementalImpactVfxContract.test.mjs` protects lazy per-element frame loading, approved manifest cadence, skill mapping, target centering and the 52 logical-pixel impact size cap.
 - Function-bank VM tests that extract individual helpers must terminate slices at either exported or private function declarations.
 - Story-entry checks exercise the shared layout registry and transition controller: deny early navigation, preserve pagination, hand off at the authored marker or Skip, stop Auto in combat, and retain Town recovery. Browser QA must exercise the visible Canvas controls too.
@@ -75,3 +76,29 @@
 - Run node --test tests/astralShopPresentation.test.mjs with localhost:8047 serving the owned checkout to check the shop shader, reduced motion, shared balances, Back navigation and compact/reference containment in isolated contexts.
 
 - Shop presentation test covers touch and mouse drop purchases without confirmation, exact wallet deduction, canonical inventory and green upgrade badges. FLOW Back returns to the main shell; open Quests explicitly before comparing the shared wallet. Equipment contract tests cover equal, stronger, incompatible and tradeoff comparisons.
+
+- Lamp equip proof covers five mandatory stats including HP, v3-to-v4 preservation, no healing from gear, Skip retention, and recipient floats using the saved before/after CP receipt.
+
+- Lamp presentation verifies 15-second idle guidance, Hondo-to-Auto-Equip targeting and dismissal by ordinary document clicks using an offset monotonic clock, preserving live combat timing.
+
+- Lamp progression: manual/Auto draws grant all four heroes saved EXP, with cumulative receipts and per-hero lampEXPClaimed replay. Enemy rewards grant zero new EXP/Gold. Auto requires all four Lv5, switches off at capacity, and requires explicit restart. Dismantling essence upgrades lamp levels 1–4, raising capacity 20/30/40/50 and rarity odds. The upper-left level badge opens current/next bonuses and cost; no Gold is used. Strip rarity letters are doubled and the storage preview is 65% with unchanged touch area.
+
+- Lamp cache presentation checks five full-width square columns, a stable one-and-a-half-row scroll viewport, selected halo and preserved idle guidance across four phone widths.
+
+- Lamp regression proof checks descending item CP review, raw last-five emission order, manual lower-CP override, positive same-slot Auto gains with at most one item per hero, permanent loss of equip eligibility on entering dismantling, and finite storage/EXP capacity. Browser proof checks sorted equip tiles, inert dismantling tiles, absent pre-confirmation resource amounts and the committed essence receipt.
+
+- Equip-close proof requires the modal to remain visible while its CP float plays, including the last Auto-Equip item; after automatic close no CP float may remain.
+
+- Every successful lamp emission shares a saved two-second minimum interval. The core rejects early calls before rolling or granting EXP; UI disables/re-enables the lamp from that saved cooldown. Auto keeps its five-second cadence. Reloads, concurrent clicks and switching manual/Auto cannot reset the gate.
+
+- Dismantling grants essence only. It never changes cumulative party EXP, hero EXP/levels or emits an EXP float; only post-confirmation resource receipts show essence. Lamp emissions remain the EXP source.
+
+- Confirmed dismantling closes the item modal and shows a passive essence reward strip with one original orb and the saved awarded total. Hold three seconds, fade over 250ms, remove automatically. No Close/Continue control; pointer events pass through to combat. Failed saves never show rewards.
+
+- Lamp restart proof separates durable cache/EXP/loadouts from session arrivals. Test saved Auto-on restarts off, idle emits nothing, the first manual burp appears, and an explicit unlocked Auto toggle resumes generation.
+
+- Dismantle lifecycle proof generates more than five raw items, confirms conversion, requires five empty arrival positions at cache zero, then verifies exactly one new arrival on the next manual burp.
+
+- Strip redesign checks the count-only speech bubble, upper-right Auto states and saved essence/current-tier progress. Review retains rarity initials; restored arrivals stay empty. Use natural emission video plus separately disclosed Lv5/essence fixture for the upgrade and Auto-state proof.
+
+- Lamp strip checks follow the reference upper-left AUTO position and require the complete left progress corner beneath the level disc. Shared strip coordinates, circular badge bounds and the left-centered 95% arrival group are measured by `output/qa/lamp-check-alignment.cjs`.

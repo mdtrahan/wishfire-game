@@ -13,8 +13,8 @@ export function recordEnemyDefeatReward(battle, actor){
  if(!battle||!actor||actor.kind!=='enemy')return false;
  battle.defeated||={};battle.defeatedGold||={};
  const key=String(actor.uid),hasExp=Object.prototype.hasOwnProperty.call(battle.defeated,key),hasGold=Object.prototype.hasOwnProperty.call(battle.defeatedGold,key);
- if(!hasExp)battle.defeated[key]=actor.expValue??PROGRESSION.enemyEXP;
- if(!hasGold)battle.defeatedGold[key]=Math.max(0,Math.floor(actor.goldValue??PROGRESSION.enemyGold));
+ if(!hasExp)battle.defeated[key]=0;
+ if(!hasGold)battle.defeatedGold[key]=0;
  const changed=!hasExp||!hasGold;
  if(changed)battle.persistPendingRewards?.();
  return changed;

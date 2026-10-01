@@ -44,7 +44,7 @@ test('pending kill rewards settle on reload before fresh session IDs can reuse e
   restoreHeroProgressFromStorage({ fnContext: { state: { globals: reloaded, entities: [hero] } } });
   assert.deepEqual({ ...reloaded.ProgressionBattle.defeated }, {});
   assert.equal(reloaded.ProgressionBattle.id, 'new-session');
-  assert.equal(hero.currentEXP, 7);
+  assert.equal(hero.currentEXP, 0);
   assert.equal(reloaded.goldTotal, 6);
   assert.ok(reloaded.HeroProgress.settledBattles.includes('mid-battle'));
   assert.equal(reloaded.HeroProgress.pendingBattleRewards, null);
@@ -60,9 +60,9 @@ test('pending kill rewards settle on reload before fresh session IDs can reuse e
   };
   const againHero = { ...newHeroProgress('Falie'), kind: 'hero', uid: 1 };
   restoreHeroProgressFromStorage({ fnContext: { state: { globals: again, entities: [againHero] } } });
-  assert.equal(againHero.currentEXP, 18);
+  assert.equal(againHero.currentEXP, 0);
   await createEquipmentStorage({ globals: again, storage, locks, seed: () => 8, now: () => 2000, reportError() {} }).sync();
-  assert.equal(again.goldTotal, 11);
+  assert.equal(again.goldTotal, 6);
   assert.equal(again.ProgressionBattle.id, 'third-session');
   assert.deepEqual({ ...again.ProgressionBattle.defeated }, {});
   assert.ok(values.has('orka.hero_progress.v2'));
@@ -74,16 +74,16 @@ test('a KO flushes its pending reward ledger before any animation-frame save', (
   assert.equal(recordEnemyDefeatReward(globals.ProgressionBattle, { uid: 9, kind: 'enemy', expValue: 8, goldValue: 3 }), true);
   const immediate = JSON.parse(values.get('orka.hero_progress.v2'));
   assert.equal(immediate.pendingBattleRewards.id, 'same-frame-ko');
-  assert.deepEqual(immediate.pendingBattleRewards.defeated, { 9: 8 });
+  assert.deepEqual(immediate.pendingBattleRewards.defeated, { 9: 0 });
 
   const hero = { ...newHeroProgress('Falie'), kind: 'hero', uid: 1 };
   const reloaded = { HeroProgress: createHeroProgressStore(), ProgressionBattle: { id: 'new-uuid', participants: ['Falie'], defeated: {}, settled: false }, goldTotal: 0 };
   restoreHeroProgressFromStorage({ fnContext: { state: { globals: reloaded, entities: [hero] } } });
-  assert.equal(hero.currentEXP, 8);
+  assert.equal(hero.currentEXP, 0);
   assert.equal(reloaded.ProgressionBattle.id, 'new-uuid');
 }));
 
-test('reload recovery credits saved participants even when the new live roster differs', () => withStorage(async values => {
+test('reload recovery preserves saved participants without awarding EXP even when the new live roster differs', () => withStorage(async values => {
   const before = createHeroProgressStore();
   before.pendingBattleRewards = { id: 'roster-change', participants: ['Falie'], defeated: { 9: 5 }, defeatedGold: {} };
   globalThis.window.localStorage.setItem('orka.hero_progress.v2', JSON.stringify(before));
@@ -91,20 +91,20 @@ test('reload recovery credits saved participants even when the new live roster d
   const globals = { HeroProgress: createHeroProgressStore(), ProgressionBattle: { id: 'new-roster', participants: ['Huun'], defeated: {}, settled: false } };
   restoreHeroProgressFromStorage({ fnContext: { state: { globals, entities: [hondo] } } });
   assert.equal(hondo.currentEXP, 0);
-  assert.equal(globals.HeroProgress.heroes.Falie.currentEXP, 5);
+  assert.equal(globals.HeroProgress.heroes.Falie.currentEXP, 0);
 }));
 
-test('ordinary defeat pays earned EXP and Gold before settlement', () => {
+test('ordinary defeat preserves legacy Gold without awarding EXP before settlement', () => {
   const hero = { ...newHeroProgress('Falie'), kind: 'hero', uid: 1 };
   const battle = { id: 'ordinary-defeat', participants: ['Falie'], defeated: { 9: 7 }, defeatedGold: { 9: 4 }, settled: false };
   const globals = { ProgressionBattle: battle, HeroProgress: createHeroProgressStore(), goldTotal: 2 };
   settleDefeat({ state: { globals, entities: [hero] }, callFunction() {} });
-  assert.equal(hero.currentEXP, 7);
+  assert.equal(hero.currentEXP, 0);
   assert.equal(globals.goldTotal, 6);
   assert.equal(battle.settled, true);
   assert.ok(globals.HeroProgress.settledBattles.includes('ordinary-defeat'));
   settleDefeat({ state: { globals, entities: [hero] }, callFunction() {} });
-  assert.equal(hero.currentEXP, 7);
+  assert.equal(hero.currentEXP, 0);
   assert.equal(globals.goldTotal, 6);
 });
 
@@ -141,21 +141,21 @@ test('role skill, counter and DoT KOs reach the shared reward callback', () => {
   };
   const skillCase = make();
   resolveSkill(rulesContext(skillCase.ctx), skillCase.hero, { skillId: 'test_role', targetType: 'enemy', tags: ['physical'], effects: [{ effectType: 'damage', fixedDamage: 5 }] }, [9]);
-  assert.deepEqual({ ...skillCase.globals.ProgressionBattle.defeated }, { 9: 25 });
-  assert.deepEqual({ ...skillCase.globals.ProgressionBattle.defeatedGold }, { 9: PROGRESSION.enemyGold });
+  assert.deepEqual({ ...skillCase.globals.ProgressionBattle.defeated }, { 9: 0 });
+  assert.deepEqual({ ...skillCase.globals.ProgressionBattle.defeatedGold }, { 9: 0 });
   assert.equal(skillCase.rewardFlushes(), 1);
 
   const counterCase = make(5, [{ statusEffect: 'counter', magnitude: 1, duration: 2 }]);
   resolveSkill(rulesContext(counterCase.ctx), counterCase.enemy, { skillId: 'test_enemy', targetType: 'enemy', tags: ['physical'], effects: [{ effectType: 'damage', fixedDamage: 1 }] }, [1]);
-  assert.deepEqual({ ...counterCase.globals.ProgressionBattle.defeated }, { 9: 25 });
-  assert.deepEqual({ ...counterCase.globals.ProgressionBattle.defeatedGold }, { 9: PROGRESSION.enemyGold });
+  assert.deepEqual({ ...counterCase.globals.ProgressionBattle.defeated }, { 9: 0 });
+  assert.deepEqual({ ...counterCase.globals.ProgressionBattle.defeatedGold }, { 9: 0 });
   assert.equal(counterCase.rewardFlushes(), 1);
 
   const dotCase = make(1);
   dotCase.enemy.statuses = [{ statusEffect: 'dot', snapshotPotency: 1, duration: 2, sourceUID: 1 }];
   turnStart(rulesContext(dotCase.ctx), dotCase.enemy, 1);
-  assert.deepEqual({ ...dotCase.globals.ProgressionBattle.defeated }, { 9: 25 });
-  assert.deepEqual({ ...dotCase.globals.ProgressionBattle.defeatedGold }, { 9: PROGRESSION.enemyGold });
+  assert.deepEqual({ ...dotCase.globals.ProgressionBattle.defeated }, { 9: 0 });
+  assert.deepEqual({ ...dotCase.globals.ProgressionBattle.defeatedGold }, { 9: 0 });
   assert.equal(dotCase.rewardFlushes(), 1);
 });
 
@@ -200,7 +200,7 @@ test('a reload between HeroProgress settlement and wallet sync replays its durab
   const first = { HeroProgress: createHeroProgressStore(), ProgressionBattle: { id: 'first-live', participants: ['Falie'], defeated: {}, settled: false }, goldTotal: 0 };
   restoreHeroProgressFromStorage({ fnContext: { state: { globals: first, entities: [firstHero] } } });
   const persistedAfterSettlement = JSON.parse(values.get('orka.hero_progress.v2'));
-  assert.equal(firstHero.currentEXP, 7);
+  assert.equal(firstHero.currentEXP, 0);
   assert.equal(persistedAfterSettlement.pendingGoldSettlements.interrupted, 4);
   assert.ok(persistedAfterSettlement.settledBattles.includes('interrupted'));
 
@@ -210,7 +210,7 @@ test('a reload between HeroProgress settlement and wallet sync replays its durab
   const wallet = createEquipmentStorage({ globals: second, storage, locks, seed: () => 8, now: () => 2000, reportError() {} });
   await wallet.sync();
   assert.equal(wallet.data.gold, 6);
-  assert.equal(secondHero.currentEXP, 7);
+  assert.equal(secondHero.currentEXP, 0);
   confirmGoldSettlements({ stateGlobals: second });
   persistHeroProgressIfDirty({ stateGlobals: second });
   assert.deepEqual(JSON.parse(values.get('orka.hero_progress.v2')).pendingGoldSettlements, {});
@@ -218,6 +218,6 @@ test('a reload between HeroProgress settlement and wallet sync replays its durab
   const final = { HeroProgress: createHeroProgressStore(), ProgressionBattle: { id: 'after-payment', participants: ['Falie'], defeated: {}, settled: false }, goldTotal: 0 };
   restoreHeroProgressFromStorage({ fnContext: { state: { globals: final, entities: [finalHero] } } });
   await createEquipmentStorage({ globals: final, storage, locks, seed: () => 9, now: () => 3000, reportError() {} }).sync();
-  assert.equal(finalHero.currentEXP, 7);
+  assert.equal(finalHero.currentEXP, 0);
   assert.equal(final.goldTotal, 6);
 }));

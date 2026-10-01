@@ -50,7 +50,7 @@ Central defaults:
 
 | Setting | Placeholder |
 | --- | --- |
-| Maximum level | 50 |
+| Maximum level | 99 |
 | EXP needed from level L to L+1 | `100 × L^1.5` |
 | Max SP | 100 |
 | Starting SP | 100 |
@@ -58,15 +58,15 @@ Central defaults:
 
 Keep the EXP curve behind one data-backed lookup so a level table can replace the formula. Choose and document one consistent integer rounding rule during implementation. EXP represents progress toward the next threshold; subtract each threshold and continue checking for multiple level-ups. At maximum level, use a centrally defined cap state, stop accumulation and discard excess EXP. No EXP banking for future cap increases.
 
-Victory reward is the sum of configured EXP values of defeated enemies. Every participating hero receives that full amount, including KO'd participants. Nonparticipants receive zero. Never divide the reward by party size. Record actual encounter participants and credited enemy defeats so duplicate callbacks cannot award EXP twice.
+Confirmed lamp progression supersedes defeated-enemy EXP: each manual or Auto lamp draw awards the full configured EXP to all four heroes. A full cache switches Auto off and stops EXP until the player clears space and resumes Auto. Dismantling grants EXP plus essence for capacity upgrades. Enemy deaths, victory, defeat and retry grant no new hero EXP or Gold. Existing per-hero levels and EXP remain saved; lamp receipts prevent duplicate grants. LAMP_EQUIPMENT_MVP.md owns delivered lamp tuning and cache upgrades.
 
 Victory order is strict:
 
 1. Final enemy is defeated; victory is triggered immediately.
 2. Cancel all unexecuted actions and refund their reserved SP.
 3. End combat; no later healing, buffs, attacks or reactions run.
-4. Award EXP once to participants.
-5. Process all earned levels, stat growth and unlocks.
+4. Record combat settlement once without granting hero EXP.
+5. Preserve existing hero progression; lamp draws own earned levels and stat growth.
 6. Show progression results, including EXP, levels, stat changes and newly unlocked abilities.
 
 Per-hero data defines growth for HP, ATK, DEF, MAG, RES and SPD. Max SP growth may be supported as optional data; baseline SP need not grow. Avoid cumulative rounding drift by deriving level stats consistently from base/growth data.
@@ -158,7 +158,7 @@ Each enemy death awards one guaranteed 10-FLOW orb by default. Central tuning an
 
 Each orb independently chooses a random living eligible hero. Full gauges clamp at 100. A recipient who becomes KO/ineligible before arrival receives no charge. New encounters clear pending orbs. Existing special-source exclusions remain: a FLOW special cannot recharge its own caster from its kills.
 
-Reuse `getAstralFlowKoOrbFrame` from the existing blue death-orb presentation: 0.24-second spill, three diminishing ground bounces lasting 0.18/0.16/0.14 seconds, then a 0.46-second eased flight to the assigned hero. Apply charge at arrival, followed by a 0.18-second flash. Ground contact uses the enemy's half-height offset. Orbs never own CTB barriers, SP or action slots. Combat and EXP settle immediately on victory; the progression dialog waits for the last orbs to finish so their bounce remains visible.
+Reuse `getAstralFlowKoOrbFrame` from the existing blue death-orb presentation: 0.24-second spill, three diminishing ground bounces lasting 0.18/0.16/0.14 seconds, then a 0.46-second eased flight to the assigned hero. Apply charge at arrival, followed by a 0.18-second flash. Ground contact uses the enemy's half-height offset. Orbs never own CTB barriers, SP or action slots. Combat settles immediately on victory; lamp draws own EXP; the progression dialog waits for the last orbs to finish so their bounce remains visible.
 
 ## 8. Accuracy, Provoke and Cover
 

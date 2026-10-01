@@ -1,3 +1,5 @@
+Original prompt: Build and validate the Wishfire Lamp Equipment MVP in the current combat worktree with original art matching the characters, immediate result inspection and simultaneous four-hero comparison.
+
 # Moved To Archive
 
 Moved to: `docs/archive/2026-02/progress.md`
@@ -125,3 +127,25 @@ Validation: 60 focused combat contracts, 28 Rust unit tests, hot-file gate, 120/
 
 2026-09-23: Restored slow enemy walking, narrowed the fifth melee X offset, reduced all four heroes' basic-attack rates by 30%, and removed the rendered-hero-foot gate that could leave engaged enemies without a target. Each pack now starts a three-second next-wave clock when its last living entrant enters hero attack range, so earlier enemies may still be fighting as the next pack walks in. Wave four observes the same interval. Focused contracts pass; changes remain uncommitted for human QA.
 2026-09-23: Live diagnostics found stale `IsPlayerBusy=1` and `DeferAdvance=1` with no action in progress, plus a retained hero scheduler claim. The continuous tick now enters `ProcessTurn` whenever the action lane is free, and `ProcessTurn` keeps only a valid pending enemy claim. A fresh browser run showed repeated enemy turns and outgoing enemy damage with no console errors. Temporary diagnostics were removed; 38 focused contracts pass. Human QA remains pending.
+
+## ORKA-0ln · Lamp MVP
+
+- Isolated snapshot lane preserves ORKA-p11 combat changes. Hat/body/boots only, seeded stage scaling, atomic v2 saves and legacy migration.
+- Lamp sits right of five glowing result types. Highest-level pending item is the review preview, with pending count; collector art is unused.
+- Focused core and reward checks pass. Browser QA and phone containment are being validated; inherited damage-float scale failures are outside this lane.
+
+- Owner corrections applied: heroes and delta rows above item; full four combat stats; portrait recipient choice and named confirmation; filled directional arrows sized to painted digit bounds; white/green/blue/purple/gold rarity.
+- Core 18 focused checks and 44 inherited hot-file combat checks passed. Browser gate passes equip/reload/dismantle/foreground Auto and active combat during inspection at four phone sizes. Final screenshot review caught the compact column label; shortened it to STAT.
+
+- Final art direction: larger portrait-only recipient row, no heading/status labels, original broad rarity banner with readable tier text.
+- Checkpoint commit is blocked by the inherited damage-float UI lock, reproduced at the same four viewports as the source baseline. Keep the reviewed changes staged and retain the binary checkpoint patch under output/qa/lamp-mvp-checkpoint.patch. Human QA and Integration Ready remain pending.
+
+- Painted-height closeout: stat digits and arrows share a tightly bounded raster at the current DPR. Actual screenshots prove identical pixel rows for both up/down directions at all four viewport sizes; evidence is test-results/lamp/pixel-proof.json. Core/navigation/app-boundary checks: 22 pass.
+
+Owner corrections: Skip replaced by immediate CP-ranked Auto Equip through the existing saved transaction. Equipment dialog widened to 560px where space permits, comparison and item fonts enlarged, rows spaced, and item stats moved to full-width fixed label/value columns. Six-digit alignment added to the existing phone gate.
+
+Owner correction: Skip/Equip/Auto controls restored in that order; successful equipment saves return exact permanent CP before/after/change and display a recipient portrait float. New gear rolls HP (Hat/Boots base 5, Body base 10) alongside ATK/DEF/MAG/RES, with SPD excluded. v4 migration retains prior v3 rolls with HP zero and never heals or revives. Five comparison rows remain present even for old zero-HP gear.
+
+## ORKA-0ln owner checkpoint · 2026-09-30
+
+Owner requests committing the accumulated lamp work, including the existing storage foundation. This lane descends from 2b127fb, which already preserves the previous combat/progression/storage baseline. Current checkpoint includes v5 atomic lamp saves and earlier-save migrations, raw item cache and sorted review, same-slot positive-CP Auto, irrevocable dismantle review and essence-only banner, lamp upgrades/party EXP, CP feedback lifecycle, player-controlled manual/Auto emission, and the redesigned strip. Last spacing revision gives approximately 10px art-box gaps at the 755×1025 preview; visuals will be revisited later. All source, supplied/generated art, reproduction drivers and video receipts are retained. No merge or publication is requested.

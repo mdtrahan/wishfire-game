@@ -1,0 +1,215 @@
+#wishfire-lamp{position:fixed;z-index:21;box-sizing:border-box;color:#fff1d1;background:linear-gradient(#454241,#252729);border-top:2px solid #d8b46c;border-bottom:2px solid #8b6835;box-shadow:0 -3px 12px #16100b80;font-family:system-ui,sans-serif;overflow:hidden}
+#wishfire-lamp[hidden],#lamp-overlay[hidden]{display:none}
+#wishfire-lamp *,#lamp-overlay *{box-sizing:border-box}
+#wishfire-lamp button,#lamp-overlay button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+#wishfire-lamp button:disabled,#lamp-overlay button:disabled{opacity:.45;cursor:default}
+#wishfire-lamp button:focus-visible,#lamp-overlay button:focus-visible{outline:2px solid #75e4dd;outline-offset:1px}
+.lamp-strip-top{height:22%;display:flex;align-items:center;padding:0 3%;gap:3%;font-size:.84em}
+.lamp-title{font-weight:900;letter-spacing:.08em;color:#edcf8a;margin-right:auto}
+.lamp-wallet{font-weight:800;color:#f5d985;font-variant-numeric:tabular-nums}
+.lamp-strip-top button{border:1px solid #957746;border-radius:5px;background:#1f3434;padding:.12em .6em;min-height:1.9em}
+.lamp-strip-body{height:62%;display:flex;align-items:center;padding:0 1.8%;gap:1.5%}
+.lamp-burp,.lamp-collect{position:relative;height:100%;padding:0;flex:0 0 16%;border:0;background:transparent}
+.lamp-collect{flex-basis:14%;border:2px solid var(--rarity);border-radius:8px;background:#292331;box-shadow:inset 0 0 12px color-mix(in srgb,var(--rarity) 30%,transparent)}
+.lamp-count{position:absolute;top:-5px;right:-4px;padding:1px 4px;border:1px solid #e1ba76;border-radius:9px;background:#8c4433;color:#fff;font-size:.75em;font-weight:900}
+.lamp-preview-empty{display:grid;place-items:center;height:100%;color:#cdb27e;font-size:2em}
+.lamp-burp small,.lamp-collect small{position:absolute;bottom:0;left:0;right:0;color:#ffe9b4;font-size:.75em;font-weight:900;text-shadow:0 1px 2px #000;background:#20231ce0;border:1px solid #947747;border-radius:5px}
+.lamp-results{height:100%;align-items:center;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4%;flex:1;min-width:0}
+.lamp-tile,.lamp-empty{position:relative;display:block;aspect-ratio:1;border:1px solid #947343;border-radius:7px;background:linear-gradient(#423a36,#211f22);min-width:0;padding:0;box-shadow:inset 0 0 8px #0006}
+.lamp-tile{border:2px solid var(--rarity);box-shadow:inset 0 0 12px color-mix(in srgb,var(--rarity) 23%,transparent),0 1px 2px #0008}
+.lamp-tile small{position:absolute;bottom:1px;right:3px;font-weight:900;color:#fff;font-size:.65em;text-shadow:0 1px 2px #000}
+.lamp-empty:after{content:'';position:absolute;inset:28%;border:1px dashed #776647;transform:rotate(45deg);opacity:.5}
+.lamp-art{display:block;width:100%;aspect-ratio:1;background-image:url('images/lamp/gear-atlas.png');background-size:300% 300%;background-position:calc(var(--col)*50%) calc(var(--row)*50%);background-repeat:no-repeat}
+.lamp-device{display:block;width:100%;aspect-ratio:1;background-image:url('images/lamp/device-atlas.png');background-size:200% 200%;background-position:calc(var(--col)*100%) calc(var(--row)*100%);background-repeat:no-repeat}
+.lamp-status{height:16%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.74em;color:#e5d5b7;padding:0 3%}
+.burping .lamp-burp .lamp-device{animation:lamp-burp .55s ease-out}
+.burping.lamp-upgrade-emission .lamp-results .lamp-tile:last-of-type{animation:lamp-reveal .45s ease-out}
+@keyframes lamp-burp{0%,100%{transform:rotate(0)}30%{transform:rotate(-12deg)}60%{transform:rotate(8deg)}80%{transform:rotate(-3deg)}}
+@keyframes lamp-reveal{from{transform:translateY(20px)}65%{transform:translateY(-8px)}to{transform:translateY(0)}}
+#lamp-overlay{position:fixed;z-index:65;display:grid;place-items:center;padding:8px;background:#0d1114b8;container-type:inline-size;font:14px/1.4 system-ui,sans-serif;color:#fff0d6;isolation:isolate}
+#lamp-dialog{width:100%;max-width:560px;max-height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;border:2px solid #c7a35c;border-radius:12px;background:linear-gradient(#3c3d3e,#202426);box-shadow:0 8px 24px #000a;padding:0 10px 10px;scrollbar-width:thin;scrollbar-color:#ad8b52 #282827;outline:none}
+.lamp-modal-header{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;background:#363535;border-bottom:1px solid #8a7047;color:#efce8a;font-size:14px;font-weight:900;letter-spacing:.06em;margin:0 -10px;padding-left:10px}
+.lamp-modal-header button{font-size:24px;min-width:44px;min-height:40px;border:0;background:transparent}
+.lamp-candidate{display:flex;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid #776245}
+.lamp-candidate>.lamp-art{width:58px;flex-shrink:0;border:2px solid var(--rarity);border-radius:8px;background-color:#202123}
+.lamp-candidate h2{font-size:16px;line-height:1.1;margin:4px 0;color:var(--rarity)}
+.lamp-candidate small{font-size:10px;color:var(--rarity)}
+.lamp-candidate p{font-size:10px;margin:3px 0;color:#e9d9b9}
+.lamp-instruction{font-size:14px;text-align:center;color:#d7c6a5;margin:12px 0}
+.lamp-compare{width:100%;table-layout:fixed;border-collapse:collapse;text-align:center;font-variant-numeric:tabular-nums;font-size:clamp(12px,4.4cqw,18px)}
+.lamp-compare th:first-child{width:39px;text-align:left;font-size:clamp(11px,3.8cqw,14px);color:#d7c7a5}
+.lamp-compare td,.lamp-compare tbody th{padding:8px 0;border-bottom:1px solid #65553d55}
+.lamp-compare tbody tr:nth-child(odd){background:#ffffff04}
+.lamp-hero{display:flex;flex-direction:column;align-items:center;width:100%;min-height:54px;gap:2px;border:1px solid transparent;border-radius:8px;background:transparent;padding:3px 0;font-size:10px!important}
+.lamp-hero img{width:30px;height:30px;object-fit:contain}
+.lamp-hero[aria-pressed=true]{background:#4e777063;border-color:#83c7bc;color:#fff4c3}
+.lamp-compare thead small{font-size:9px;font-weight:500;display:block;margin:3px 0}
+.positive{color:#9ce4af}.negative{color:#ff9a90}.neutral{color:#aeb3b1}
+.lamp-compare td{font-weight:850}
+.lamp-selected{font-size:13px;text-align:center;color:#ead7b6;margin:10px 0}
+.lamp-actions{display:flex;gap:8px;margin:10px 0}
+.lamp-actions button{flex:1;min-height:44px;min-width:0;padding:6px 4px;border:1px solid #a48751;border-radius:7px;background:linear-gradient(#535253,#353a3c);font-size:15px!important;font-weight:800!important}
+.lamp-actions button.primary{background:linear-gradient(#e0b66b,#a16a2f);border:2px solid #f1d593;color:#221c14;box-shadow:inset 0 1px 0 #fff5}
+.lamp-modal-notice{font-size:11px;color:#bce4d0;text-align:center}
+.lamp-finish{display:block;min-height:40px;width:100%;font-size:13px!important;border:0;background:transparent;color:#dbc28e!important;text-decoration:underline}
+.lamp-salvage-hero{text-align:center;padding:10px 0}
+.lamp-salvage-hero>.lamp-device{width:100px;margin:auto}
+.lamp-salvage-hero h2{font-size:17px;margin:3px 0}
+.lamp-salvage-hero p{font-size:11px;color:#d7c7a8;margin:5px 0}
+@container(max-width:260px){#lamp-dialog{padding-left:6px;padding-right:6px}.lamp-modal-header{margin:0 -6px}.lamp-candidate>.lamp-art{width:44px}.lamp-candidate h2{font-size:13px}.lamp-compare th:first-child{width:32px}.lamp-compare{font-size:12px}.lamp-hero{font-size:9px!important}.lamp-hero img{width:25px;height:25px}.lamp-actions{gap:5px}}
+@media(prefers-reduced-motion:reduce){.burping .lamp-device,.burping .lamp-tile{animation:none}}
+
+/* Strip results communicate gear and rarity without an extra collector prop. */
+.lamp-results .lamp-tile,.lamp-results .lamp-empty{border:0;background:transparent;box-shadow:none}
+.lamp-results .lamp-tile:before{content:"";position:absolute;bottom:0;left:9%;right:9%;height:20%;border-radius:50%;background:var(--rarity);filter:blur(5px);opacity:.8;pointer-events:none}
+.lamp-results .lamp-art{position:relative}
+.lamp-results .lamp-empty:after{opacity:.2}
+
+.lamp-portrait{display:flex;flex-direction:column;align-items:center;gap:3px;padding-top:9px;color:#fff0d6;font-size:10px}
+.lamp-portrait img{width:34px;height:34px;object-fit:contain}
+.lamp-compare .lamp-candidate{text-align:left;font-weight:400;border-bottom:0}
+@container(max-width:260px){.lamp-portrait img{width:28px;height:28px}}
+/* Fixed label tracks keep every item value on the same left edge. */
+.lamp-item-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;margin:0;padding:14px 0 4px;grid-column:1/-1;font-size:clamp(13px,4.5cqw,20px);line-height:1.4}
+.lamp-item-stats>div{display:grid;grid-template-columns:2.8em minmax(0,1fr);column-gap:8px;align-items:baseline;min-width:0}
+.lamp-item-stats>div:first-child{grid-column:1/-1}
+.lamp-item-stats dt{color:#d8c6a5;font-size:clamp(11px,3.9cqw,15px)}
+.lamp-item-stats dd{margin:0;font-weight:850;font-variant-numeric:tabular-nums;text-align:left;white-space:nowrap}
+.lamp-candidate>div{display:contents}
+
+/* Digits and directional arrows share one tightly bounded raster at display DPR. */
+.lamp-stat-value{display:inline-block;vertical-align:middle;line-height:0}
+.lamp-stat-paint{display:block;background:transparent}
+.lamp-stat-number,.lamp-stat-arrow{display:none}
+/* Portraits identify recipients; the named confirmation supplies the selection text. */
+.lamp-hero.lamp-portrait{padding:8px 3px;min-height:92px;justify-content:center}
+.lamp-hero.lamp-portrait img{width:72px;height:auto;max-width:100%;aspect-ratio:1;object-fit:contain}
+.lamp-candidate{position:relative;display:grid;grid-template-columns:72px minmax(0,1fr);padding:0 0 16px;gap:0 12px;border-top:2px solid var(--rarity);border-bottom:1px solid #776245}
+.lamp-candidate>.lamp-art{position:relative;z-index:1;align-self:center;width:72px;margin:10px 0;grid-column:1;grid-row:1}
+.lamp-quality-band{position:relative;padding:12px 0;isolation:isolate;grid-column:2;grid-row:1;align-self:stretch;display:flex;flex-direction:column;justify-content:center}
+.lamp-quality-band:before{content:"";position:absolute;z-index:-1;top:0;bottom:0;left:-94px;right:-1px;background:linear-gradient(105deg,color-mix(in srgb,var(--rarity) 38%,#202426),color-mix(in srgb,var(--rarity) 65%,#202426));border-bottom:1px solid var(--rarity)}
+.lamp-quality-band small{color:var(--quality-ink);text-shadow:var(--quality-shadow);font-size:clamp(11px,3.5cqw,14px)}
+.lamp-quality-band h2{color:var(--quality-ink);text-shadow:var(--quality-shadow);font-size:clamp(16px,5.3cqw,23px);line-height:1.2;margin:5px 0 0}
+
+@media(max-width:260px){#lamp-overlay{padding:6px 4px}}
+@container(max-width:260px){
+ .lamp-hero.lamp-portrait{min-height:68px;padding:8px 1px}
+ .lamp-candidate{grid-template-columns:48px minmax(0,1fr);gap:0 8px}
+ .lamp-candidate>.lamp-art{width:48px}
+ .lamp-quality-band:before{left:-62px}
+ .lamp-quality-band{padding:10px 0}
+ .lamp-item-stats{gap:10px 8px}
+ .lamp-item-stats>div{grid-template-columns:26px minmax(0,1fr);column-gap:4px}
+ .lamp-actions button{font-size:13px!important}
+ .lamp-compare th:first-child{width:28px}
+}
+
+/* Rarity initials remain readable over every gear illustration. */
+.lamp-art{position:relative}
+.lamp-rarity{position:absolute;top:2px;left:2px;z-index:1;padding:1px 3px;border-radius:3px;background:#171c20e8;color:var(--rarity);font-size:.9em;font-weight:950;line-height:1.1;text-shadow:0 1px 1px #000;pointer-events:none}
+.lamp-candidate .lamp-rarity{font-size:18px}
+@container(max-width:260px){.lamp-candidate .lamp-rarity{font-size:14px}}
+
+/* Five square columns; measured one-and-a-half-row viewport stays stable as rolls arrive. */
+.lamp-queue{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-auto-rows:max-content;gap:4px;height:100px;scrollbar-gutter:stable;overflow-y:auto;overflow-x:hidden;align-content:start;justify-content:start;padding:4px 2px;border-top:1px solid #756044;font-size:12px;scrollbar-width:thin}
+.lamp-queue .lamp-tile{width:100%;height:auto;aspect-ratio:1;border:1px solid #e6dbca90;background:linear-gradient(145deg,color-mix(in srgb,var(--rarity) 85%,#fff),color-mix(in srgb,var(--rarity) 65%,#202426));box-shadow:inset 0 0 4px #0004}
+.lamp-queue .lamp-tile[aria-current="true"]{border-color:#fff2a0;box-shadow:0 0 4px 2px #ffc928,inset 0 0 0 1px #fff2a0;z-index:1}
+.lamp-instruction{height:1.3em;margin:8px 0}
+.lamp-selected{height:1.3em;margin:8px 0}
+.lamp-modal-notice{height:2.8em;margin:8px 0}
+.lamp-quality-band{min-height:112px}
+@container(max-width:260px){.lamp-quality-band{min-height:96px}}
+
+.lamp-cp-feedback{position:fixed;z-index:110;pointer-events:none;white-space:normal;text-align:center;font:850 18px/1.2 system-ui,sans-serif;text-shadow:0 2px 3px #000;transform:translateX(-50%);animation:lamp-cp-rise 1.8s ease-out forwards}
+@keyframes lamp-cp-rise{0%{opacity:0;translate:0 10px}15%{opacity:1}80%{opacity:1}100%{opacity:0;translate:0 -22px}}
+@media(prefers-reduced-motion:reduce){.lamp-cp-feedback{animation:none}}
+
+/* Tutorial overlay follows the actual control, without participating in layout. */
+.lamp-idle-helper{position:fixed;z-index:100;pointer-events:none;--hand-size:60px;width:1px;height:1px}
+.lamp-idle-helper[hidden]{display:none}
+.lamp-idle-helper img{position:absolute;width:var(--hand-size);height:var(--hand-size);left:calc(var(--hand-size)*-.18);top:calc(var(--hand-size)*-.18);object-fit:contain;filter:drop-shadow(0 2px 2px #0009);animation:lamp-hand-bob 1.1s ease-in-out infinite}
+.lamp-idle-helper[data-target="auto-equip"] img{rotate:180deg;transform-origin:18% 18%}
+.lamp-idle-helper span{position:absolute;width:var(--hand-size);height:var(--hand-size);left:calc(var(--hand-size)*-.5);top:calc(var(--hand-size)*-.5);border:3px solid #82fbff;border-radius:50%;box-shadow:0 0 8px #28d9ee,inset 0 0 6px #28d9ee;animation:lamp-hand-ring 1.6s ease-out infinite}
+.lamp-idle-helper span:nth-child(2){animation-delay:-.8s}
+@keyframes lamp-hand-bob{50%{transform:translate(5px,5px)}}
+@keyframes lamp-hand-ring{from{transform:scale(.45);opacity:.95}to{transform:scale(1.5);opacity:0}}
+@media(prefers-reduced-motion:reduce){.lamp-idle-helper img,.lamp-idle-helper[data-target="auto-equip"] img{rotate:180deg;transform-origin:18% 18%}
+.lamp-idle-helper span{animation:none}.lamp-idle-helper span:nth-child(2){display:none}}
+
+/* Combat strip: five results, centered lamp, collection bubble above Auto. */
+#wishfire-lamp .lamp-strip-body{height:100%;padding:4% 1.8%;gap:1.5%}
+#wishfire-lamp .lamp-burp{height:auto;flex-basis:20%;align-self:center}
+.lamp-side{flex:0 0 14%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:5%}
+#wishfire-lamp .lamp-collect{flex:none;width:100%;height:auto;aspect-ratio:1;border:0;background:transparent;box-shadow:none}
+.lamp-preview-group{position:relative;display:block;width:100%;aspect-ratio:1;border-radius:50%;background:color-mix(in srgb,var(--rarity) 60%,#243235);transform:scale(.65)}
+#wishfire-lamp .lamp-rarity{font-size:1.8em}
+#wishfire-lamp .lamp-collect .lamp-art{border-radius:50%}
+.lamp-auto{position:relative;width:100%;min-height:24%;padding:1px 0;border:1px solid #aa8a51;border-radius:5px;background:#243638;font-weight:700!important;font-size:.8em!important;white-space:nowrap}
+#wishfire-lamp .lamp-auto:disabled{opacity:1;color:#c4bba5}
+.lamp-lock{position:absolute;width:12px;height:10px;border-radius:2px;background:#fff1d1;left:50%;top:50%;transform:translate(-50%,-25%);box-shadow:0 0 3px #111}
+.lamp-lock:before{content:'';position:absolute;left:2px;top:-6px;width:8px;height:8px;border:2px solid #fff1d1;border-bottom:0;border-radius:7px 7px 0 0}
+.lamp-level{position:absolute;bottom:0;right:0;padding:0 2px;border-radius:3px;background:#1a1d23dd;color:#fff;font-size:10px;font-weight:900;line-height:1.2;text-shadow:0 1px #000;white-space:nowrap}
+.lamp-queue .lamp-level{font-size:clamp(8px,3.5cqw,13px)}
+.lamp-candidate .lamp-level{font-size:12px}
+
+.lamp-party-exp{position:fixed;z-index:102;pointer-events:none;transform:translateX(-50%);font:800 14px system-ui;color:#b9f3db;text-shadow:0 2px 2px #000;padding:3px 8px;border-radius:8px;background:#18342cdd;animation:lamp-cp-rise 1.5s ease-out forwards}
+@media(prefers-reduced-motion:reduce){.lamp-party-exp{animation:none}}
+
+.lamp-upgrade{width:100%;min-height:44px;margin-top:8px;border:1px solid #9e8050;border-radius:6px;background:#283a3a;font-size:12px!important;padding:6px}
+
+.lamp-results .lamp-level{font-size:.8em}
+
+/* Offset the lamp cell’s transparent top margin to center its painted art. */
+#wishfire-lamp .lamp-burp .lamp-device{translate:0 -4%}
+
+.lamp-tier-badge{position:absolute;z-index:2;left:2px;top:2px;width:2em;height:2em;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0;border:2px solid #dfba72;border-radius:50%;background:linear-gradient(#83613b,#302b22);box-shadow:0 1px 3px #0009;color:#ffe6a7!important;line-height:1}
+.lamp-tier-badge b{font-size:1.1em}.lamp-tier-badge small{font-size:.55em}
+.lamp-upgrade-summary{text-align:center;padding:16px 0 8px;font-size:18px}.lamp-upgrade-summary p{font-size:14px;color:#d8c6a5;margin:8px 0}
+.lamp-odds{width:100%;table-layout:fixed;border-collapse:collapse;font-size:clamp(11px,4cqw,16px);text-align:right}.lamp-odds th:first-child{width:46%;text-align:left}.lamp-odds th,.lamp-odds td{padding:10px 4px;border-bottom:1px solid #80684666}.lamp-odds tbody th{color:var(--rarity)}.lamp-odds td{font-variant-numeric:tabular-nums}.lamp-odds td:last-child{font-weight:800}.lamp-essence{text-align:center;font-size:16px;color:#b9e4c9;margin:16px 0}
+
+/* CP lives below the art; rarity and item level remain on the art. */
+.lamp-queue button.lamp-tile{aspect-ratio:auto}
+.lamp-queue .lamp-tile small{position:static;display:block;padding:1px 2px;background:#202426;font-size:clamp(7px,2.8cqw,10px);text-align:left;white-space:nowrap}
+.lamp-quality-band .lamp-item-cp{margin:0;padding:3px 6px;font-size:clamp(12px,4cqw,16px);font-weight:850;color:var(--quality-ink)}
+
+/* Three-second reward receipt follows saved conversion; combat remains interactive. */
+.lamp-reward-banner{position:fixed;z-index:66;box-sizing:border-box;pointer-events:none;color:#fff1bf;text-align:center;font-family:system-ui,sans-serif;background:linear-gradient(90deg,#5e431ab8,#80602cd9,#5e431ab8);border-block:2px solid #d6b770;box-shadow:0 3px 16px #0005;padding:.35em 0 .5em;animation:lamp-reward-out 3.25s linear forwards}
+.lamp-reward-banner>strong{display:block;letter-spacing:.05em;text-shadow:0 2px 3px #211506;font-size:1em}
+.lamp-reward-banner>div{display:grid;justify-items:center;margin:.2em auto 0;width:3.5em;border:1px solid #d9bc77;border-radius:.3em;background:#183c3dd9}
+.lamp-reward-banner img{display:block;width:3em;height:3em;object-fit:contain}
+.lamp-reward-banner b{font-size:1.1em;line-height:1.2;padding:0 .15em .15em;text-shadow:0 2px 2px #000}
+@keyframes lamp-reward-out{0%,92.3077%{opacity:1}100%{opacity:0}}
+
+/* Reference-led strip: larger raw arrivals, supplied lamp/puff, compact right controls. */
+#wishfire-lamp .lamp-strip-body{padding:0 1.5%;gap:1%;align-items:stretch}
+#wishfire-lamp .lamp-results{flex:0 0 75%;height:100%;gap:1.05em;align-items:center;transform:scale(.95);transform-origin:left center;translate:1.42em 0}
+#wishfire-lamp .lamp-results .lamp-tile{width:100%;overflow:visible}
+#wishfire-lamp .lamp-results .lamp-rarity{display:none}
+#wishfire-lamp .lamp-results .lamp-level{font-size:.85em;right:22%;bottom:-3%}
+#wishfire-lamp .lamp-results .lamp-tile:before{bottom:1%;height:15%;filter:blur(4px)}
+#wishfire-lamp .lamp-side{position:static;flex:1;height:100%;display:block}
+#wishfire-lamp .lamp-burp{position:absolute;left:76.52%;top:0;width:22.8%;height:83%;display:flex;align-items:center;justify-content:center}
+#wishfire-lamp .lamp-burp .lamp-device{position:absolute;left:0;top:-10.67%;display:block;width:100%;height:97.45%;aspect-ratio:auto;object-fit:fill;background:none;translate:none}
+#wishfire-lamp .lamp-burp:disabled{opacity:1}
+#wishfire-lamp .lamp-auto{position:absolute;z-index:3;top:4%;left:2.11%;width:6.95%;height:15.5%;min-height:0;border:.16em solid #dfdfdc;border-radius:50%;background:linear-gradient(#929695,#424645 48%,#343737);box-shadow:0 0 0 1px #3b3933,inset 0 0 0 1px #666;text-shadow:0 1px 2px #111;color:white;font-size:.84em!important;font-weight:950!important;line-height:1;padding:0;letter-spacing:-.035em}
+#wishfire-lamp .lamp-auto[data-state=on]{background:linear-gradient(#e9795c,#b83427 48%,#92241c);box-shadow:0 0 0 1px #674b36,inset 0 0 0 1px #f49b7a}
+#wishfire-lamp .lamp-auto:disabled{color:#fff;opacity:1}
+#wishfire-lamp .lamp-auto .lamp-lock{width:.8em;height:.65em;top:44%;background:#fff;border-radius:2px;transform:translate(-50%,0);box-shadow:0 0 2px #000}
+#wishfire-lamp .lamp-auto .lamp-lock:before{width:.55em;height:.55em;left:.12em;top:-.38em;border:2px solid white;border-bottom:0;border-radius:50% 50% 0 0}
+#wishfire-lamp .lamp-auto .lamp-lock:after{content:'';position:absolute;width:2px;height:3px;left:45%;top:30%;background:#252525;border-radius:1px}
+#wishfire-lamp .lamp-collect{position:absolute;z-index:2;top:4%;right:.4%;width:6.9%;height:20%;aspect-ratio:auto;border:2px solid #ece6cf;border-radius:50% 50% 45% 30%;background:linear-gradient(#89c2f4 5%,#3972b9 18%,#193d86 70%,#306cae);box-shadow:0 0 0 1px #182f54,inset 0 0 0 1px #c4e5ff}
+#wishfire-lamp .lamp-collect:after{content:'';position:absolute;left:9%;bottom:-14%;width:27%;height:25%;background:#285493;border-left:2px solid #ece6cf;transform:skewY(-35deg);z-index:-1}
+#wishfire-lamp .lamp-count{position:static;display:block;padding:0;border:0;background:none;color:#fff;font-size:1.2em;line-height:1;font-weight:950;text-shadow:0 1px 2px #122458;letter-spacing:-.04em}
+#wishfire-lamp .lamp-tier-badge{position:absolute;left:80.5%;top:74%;width:17.5%;height:22.5%;padding:0;border:0;border-radius:0;background:none;box-shadow:none;display:block}
+.lamp-progress{position:absolute;left:5%;right:0;top:26%;height:52%;border:.12em solid #b777d8;border-radius:20px;background:#242130;overflow:hidden;box-shadow:inset 0 1px 3px #000}
+.lamp-progress>span{display:block;height:100%;background:linear-gradient(90deg,#9f11d8,#b829ec 60%,#4933cf);transition:width .25s ease-out}
+.lamp-level-disc{position:absolute;left:0;top:4.5%;width:29.3%;min-width:0;height:95%;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border:.09em solid #dba7f5;border-radius:50%;background:radial-gradient(circle at 40% 25%,#983cce,#4a167e 55%,#281139);box-shadow:0 0 0 1px #321742,0 2px 3px #0009;color:#ffe38e;text-shadow:0 2px 1px #381b11;line-height:.9}
+#wishfire-lamp .lamp-level-disc b{position:absolute;left:0;top:-8%;width:100%;font-family:Arial,sans-serif;font-size:1.4em;font-style:normal;font-weight:950;line-height:.9}
+#wishfire-lamp .lamp-level-disc small{position:absolute;left:0;bottom:3%;width:100%;background:none;border:0;color:#ffe38e;font-family:Georgia,serif;font-weight:900;font-size:.55em;line-height:1}
+.lamp-equip-puff{position:absolute;z-index:4;inset:-9%;width:118%;height:118%;object-fit:contain;pointer-events:none;animation:lamp-puff .9s ease-out both}
+.lamp-arriving>.lamp-art{animation:lamp-item-arrive 1.35s ease-out both}
+@keyframes lamp-puff{0%,65%{opacity:1}100%{opacity:0}}
+@keyframes lamp-item-arrive{0%,48%{visibility:hidden;transform:translateY(18px) scale(.65)}49%{visibility:visible;transform:translateY(18px) scale(.65)}78%{transform:translateY(-8px) scale(1.15)}100%{visibility:visible;transform:translateY(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){.lamp-arriving>.lamp-art{animation:none}.lamp-equip-puff{display:none}.lamp-progress>span{transition:none}}
+
+#wishfire-lamp .lamp-results .lamp-art{width:112.1%;margin-left:-6.05%}

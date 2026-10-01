@@ -15,6 +15,7 @@
 - The hot-file regression gate exercises live realtime hero/enemy scheduling, impact timing, rewards, and the still-shared damage/skill mirror; retired turn and gem scheduler tests are outside that gate.
 
 ## Local Contracts
+- The hot-file regression gate runs the lamp phone gate when lamp presentation owners change. That gate owns and stops its temporary server; `LAMP_QA_URL` explicitly selects an existing review server.
 - Do not create a second batch game-test pipeline beside `npm run balance-harness` without explicit scope.
 - Keep `npm run test:ui-lock` presentation-only. It may arrange deterministic test state through `window.__codexGame`; it must not become a balance or gameplay simulation harness.
 - UI lock failures must name the viewport, invariant, measured value, allowed range, and JSON report path.
