@@ -15,22 +15,22 @@ function loadFunctionBank(){
  return context.module.exports;
 }
 
-test('basic damage records one enemy EXP and Gold reward at the shared KO seam',()=>{
+test('basic damage records one zero-value enemy reward receipt at the shared KO seam',()=>{
  const hero={uid:1,kind:'hero',name:'Falie',heroInstanceKey:'Falie',hp:10,maxHP:10};
  const enemy={uid:9,kind:'enemy',name:'Gobloc',hp:3,maxHP:3,slotIndex:0,expValue:7,goldValue:4,x:1,y:1};
  let rewardFlushes=0;const globals={ProgressionBattle:{id:'basic-ko',participants:['Falie'],defeated:{},persistPendingRewards(){rewardFlushes++;}},EnemySlots:[9],EnemyData:[],DamageTexts:[],SpawnDamageText:0,HeroHPByIndex:[],EnemyHPByIndex:[],RoundActive:1,GroupResolving:1};
  const ctx={state:{globals,entities:[hero,enemy]},callFunction(name,...args){return bank[name]?.(ctx,...args);}};
  const bank=loadFunctionBank();
  assert.equal(bank.ApplyDamageToTarget(ctx,enemy.uid,3,{sourceUID:hero.uid}),3);
- assert.deepEqual({...globals.ProgressionBattle.defeated},{9:7});
- assert.deepEqual({...globals.ProgressionBattle.defeatedGold},{9:4});
+ assert.deepEqual({...globals.ProgressionBattle.defeated},{9:0});
+ assert.deepEqual({...globals.ProgressionBattle.defeatedGold},{9:0});
  assert.equal(rewardFlushes,1);
  assert.equal(bank.ApplyDamageToTarget(ctx,enemy.uid,3,{sourceUID:hero.uid}),0);
  assert.equal(Object.keys(globals.ProgressionBattle.defeated).length,1);
  assert.equal(rewardFlushes,1);
 });
 
-test('continuous defeat leaves earned kills payable until retry settlement',()=>{
+test('continuous defeat leaves legacy Gold payable without hero EXP until retry settlement',()=>{
  const hero={...newHeroProgress('Falie'),kind:'hero',uid:1};
  const progress=createHeroProgressStore();
  const battle={id:'continuous-defeat',participants:['Falie'],defeated:{9:7},defeatedGold:{9:4}};
@@ -39,24 +39,24 @@ test('continuous defeat leaves earned kills payable until retry settlement',()=>
  settleDefeat(ctx);
  assert.equal(battle.settled,false);
  assert.equal(settleContinuousCombatRewards(ctx).length,1);
- assert.equal(hero.currentEXP,7);
+ assert.equal(hero.currentEXP,0);
  assert.equal(globals.goldTotal,6);
  assert.equal(battle.settled,true);
  settleContinuousCombatRewards(ctx);
  assert.equal(globals.goldTotal,6);
- assert.equal(hero.currentEXP,7);
+ assert.equal(hero.currentEXP,0);
  const reloadedGlobals={ContinuousCombatStageLoop:1,ProgressionBattle:{...battle,settled:false},HeroProgress:JSON.parse(JSON.stringify(progress)),goldTotal:6};
  const reloadedCtx={state:{globals:reloadedGlobals,entities:[{...hero}]},callFunction(){}};
  assert.equal(settleContinuousCombatRewards(reloadedCtx).length,0);
  assert.equal(reloadedGlobals.goldTotal,6);
- assert.equal(reloadedGlobals.HeroProgress.heroes.Falie.currentEXP,7);
+ assert.equal(reloadedGlobals.HeroProgress.heroes.Falie.currentEXP,0);
 });
 
 test('repeated role KO callbacks retain the first per-enemy reward entry',()=>{
  const battle={defeated:{9:7},defeatedGold:{}};
  assert.equal(recordEnemyDefeatReward(battle,{uid:9,kind:'enemy',expValue:7,goldValue:4}),true);
  assert.equal(recordEnemyDefeatReward(battle,{uid:9,kind:'enemy',expValue:99,goldValue:99}),false);
- assert.deepEqual(battle,{defeated:{9:7},defeatedGold:{9:4}});
+ assert.deepEqual(battle,{defeated:{9:7},defeatedGold:{9:0}});
 });
 
 test('continuous reward rollover preserves the battle outcome',()=>{

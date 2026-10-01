@@ -1,0 +1,97 @@
+{
+  "events": [
+    {
+      "at": 1.319,
+      "label": "Quest start: lamp absent"
+    },
+    {
+      "at": 3.51,
+      "label": "Combat: lamp on right, Auto locked before Lv5"
+    },
+    {
+      "at": 5.061,
+      "label": "Raw emission 1"
+    },
+    {
+      "at": 7.405,
+      "label": "Raw emission 2"
+    },
+    {
+      "at": 9.76,
+      "label": "Raw emission 3"
+    },
+    {
+      "at": 12.107,
+      "label": "Raw emission 4"
+    },
+    {
+      "at": 14.456,
+      "label": "Raw emission 5"
+    },
+    {
+      "at": 16.808,
+      "label": "Raw emission 6"
+    },
+    {
+      "at": 19.161,
+      "label": "Raw emission 7"
+    },
+    {
+      "at": 21.505,
+      "label": "Raw emission 8"
+    },
+    {
+      "at": 23.891,
+      "label": "Eight raw items: descending CP equip cache"
+    },
+    {
+      "at": 24.023,
+      "label": "Equip grid and Skip / Equip / Auto-Equip controls"
+    },
+    {
+      "at": 43.035,
+      "label": "15-second helper points to Hondo"
+    },
+    {
+      "at": 44.392,
+      "label": "Fara selected: named confirmation"
+    },
+    {
+      "at": 60.394,
+      "label": "Selected-hero idle helper points to Auto-Equip"
+    },
+    {
+      "at": 61.984,
+      "label": "Manual equip: saved CP floats at stationary portrait"
+    },
+    {
+      "at": 64.785,
+      "label": "Auto-Equip: at most one positive upgrade per hero"
+    },
+    {
+      "at": 67.218,
+      "label": "Separate inert dismantle grid before resource conversion"
+    },
+    {
+      "at": 69.644,
+      "label": "Confirmed reward: centered DISMANTLED, one orb, awarded total"
+    },
+    {
+      "at": 73.768,
+      "label": "Banner disappears automatically; combat remains active"
+    },
+    {
+      "at": 75.338,
+      "label": "Empty cache stays closed"
+    },
+    {
+      "at": 77.751,
+      "label": "New item reopens equip cache after banner"
+    },
+    {
+      "at": 80.35,
+      "label": "Recorded flow complete"
+    }
+  ],
+  "errors": []
+}

@@ -16,6 +16,7 @@
 - `devToolingControls.js` and runtime debug helpers own QA/dev surfaces.
 
 ## Local Contracts
+- Lamp equipment commits one v4 record before changing runtime Gold, exact rolls or loadouts. Preserve old save records on migration/error. Equip applies canonical stats without healing. The comparison keeps four portrait recipients and their changes above the candidate; inspection must leave combat advancing.
 - `combatAttackVfxPresentation.mjs` lazily requests elemental impact flipbooks by skill slug and centers their one-shot frame on the queued target point; keep the rendered canvas within 52 logical pixels at layout scale 1.
 - `combatSimulationTick.mjs` ages and expires damage text on simulation time; `renderRuntime.js` only spawns its DOM presentation. Damage text must clear so the continuous-stage boss gate can advance.
 - Combat initialization consumes supplied hero members through slot 5, preserving sparse formation indexes and instance identity. Catalog size must not cap deployed members; escort and enemy UIDs follow the instantiated heroes. This initializer capacity does not expand the configuration UI or define new hero content.
@@ -131,11 +132,11 @@
 
 - Hero management uses HERO / GEAR / SKILLS with a persistent hero display and roster. Overview shows EXP and full stats through a disclosure control. Skills presents one basic attack and five active skills. Gear uses the canonical equipment economy and loadouts.
 
-- equipmentStorage.mjs owns the single persisted Gold/equipment/loadout/market record. Import the legacy Gold value once, serialize purchases/equips with Web Locks, and save before applying mutations to runtime state. Equipment bonuses are derived from owned item IDs and projected to saved heroes and live actors; removing equipment never heals or revives.
-- Pending enemy rewards persist beside HeroProgress until recovery settlement. Persist a Gold settlement receipt before wallet sync, commit the receipt with Gold in equipmentStorage, then clear the HeroProgress outbox after wallet confirmation. The two localStorage records remain separate; receipt replay must stay idempotent across interrupted sync.
+- equipmentStorage.mjs owns the v5 lamp/equipment record and Web Lock transactions. Commit exact rolls, assignments, essence and cumulative EXP before projecting onto saved heroes and live actors. Each hero saves lampEXPClaimed to replay a missing grant once.
+- Historical pending enemy rewards persist beside HeroProgress until recovery settlement; new KOs record zero EXP/Gold. Persist a Gold settlement receipt before wallet sync, commit the receipt with Gold in equipmentStorage, then clear the HeroProgress outbox after wallet confirmation. The two localStorage records remain separate; receipt replay must stay idempotent across interrupted sync.
 - astralMarketUI.mjs replaces the collector at idleFarmLayout. Only the active screen reconstructs/draws offers; leaving checkpoints time without running a hidden simulation. Item inspection never pauses expiration. No collector update/claim path remains.
 
-- Shop background uses an original pearly vertical-ribbon shader with rarity-color blooms following the timed item stream driven by the visible shop draw loop, capped to 360 pixels across and 30 FPS. Reduced motion freezes it; unavailable WebGL uses a static pearl gradient. resourceChrome.mjs shares the existing Quests wallet and curved SVG Back control with the shop; balances read canonical Gold and story-entry resources/energy.
+
 
 - Shop Back is left-aligned with its bottom five reference pixels above the purchase tray; keep inspection clear of its hit area.
 - Quests Back matches that lower screen position: its bottom is -3 reference pixels relative to the screen container ending 78 pixels above the game bottom. The shop presentation test compares both buttons' position and size.
@@ -166,3 +167,48 @@
 - Session behavior procs publish semantic visuals: Spectral Orb shares Arcane Pulse, Chain Strike shares its ribbon, Venom reveals a ground sigil upward, Glass Reprisal travels as a glass crescent with matching contact, and Dawn Chorus shares staged revival healing.
 - Immediate multi-target damage publishes timed `CombatImpactRequests`; the shared attack presentation consumes one request per resolved target.
 - Standalone combat VFX scenarios must clear any opening buff queue and enter through `StartRound` plus `ProcessTurn`; do not leave retired manual `PendingSkillID` fixtures holding the scheduler busy.
+
+- The item selector offers immediate Auto Equip through the same atomic transaction as manual equip; it greedily assigns the top four qualifying items with at most one per hero before permanently routing the remaining gear to Dismantle All.
+
+- Lamp gear illustrations carry the rarity initial C/U/R/E/L in addition to quality color and full rarity text. Item level remains separate from rarity.
+
+
+- Pending gear fills five equal square columns across the review frame. Its scrolling viewport exposes one-and-a-half rows at each phone width; incoming rolls and recipient selection preserve frame height and scroll position.
+
+- Equip returns saved permanent CP before/after/change; only the CP value floats after successful persistence, anchored at the stationary recipient portrait, and reports positive, zero or negative values honestly. HP gear raises max HP without healing or reviving. v3 migrates to v5 with HP zero, preserving previous stat rolls and source records.
+
+- Pending gear tiles use rarity-colored backgrounds; the currently compared item alone carries a gold selection halo and aria-current. Selection preserves the fixed queue dimensions.
+
+- Hero Gear Upgrade idle guidance uses the Hondo-inspired blue pointer and cyan rings: 15 seconds since input points to Hondo (Huun), or Auto-Equip after portrait selection. Document pointer/click, key and wheel input dismisses and resets it. Hidden/closed/busy review suppresses guidance; the overlay never intercepts input.
+
+- Lamp progression: manual/Auto draws grant all four heroes saved EXP, with cumulative receipts and per-hero lampEXPClaimed replay. Enemy rewards grant zero new EXP/Gold. Auto requires all four Lv5, switches off at capacity, and requires explicit restart. Dismantling essence upgrades lamp levels 1–4, raising capacity 20/30/40/50 and rarity odds. The lower-right level disc/bar opens current/next bonuses and cost; no Gold is used. Strip arrivals omit rarity initials while review retains them. The blue speech counter opens storage; lamp taps generate. The progress bar measures saved essence toward the next upgrade and the disc shows the current tier.
+
+- Lamp burp presentation clears its trigger at animation completion so unrelated review renders do not repeat emission. Manual and Auto share the same current-lamp tilt and gear pop tween.
+
+- Raw lamp emissions append every roll without CP filtering. lamp.recent preserves the last five emission snapshots independently of equip/collection routing. Equip review sorts descending lampGearCP, derived from the shared CP evaluator using gear stats at neutral level 1; item level already scales those stats. Auto silently selects the top four slot-CP upgrades, greedily assigns at most one per hero, and also requires positive actual hero CP gain. Ties use lowest max HP then party order. Manual equip permits lower-CP overrides. Auto completion or finishing review moves all remaining pending pieces permanently into lamp.discarded. Dismantle All has an inert item grid, no rescue/review/equip controls and no resource amount before confirmation. Confirmed conversion grants essence only and shows its receipt. Later raw arrivals remain separate from the confirmed pile. Capacity includes pending, discarded and historical aggregate credits; full storage stops Auto/EXP. Optional recent/discarded fields preserve supported older v5 saves.
+
+- Gear review displays stats in HP, ATK, DEF, MAG, RES order. Candidate HP occupies its first row above the two-column attack/defense stats; presentation order does not change saved rolls.
+
+- Equip releases its save/action guard before the 1.8-second CP float finishes, allowing immediate recipient and item selection. Only the final review transition or modal close waits for all active floats; feedback stays inside the modal.
+
+- Every successful lamp emission shares a saved two-second minimum interval. The core rejects early calls before rolling or granting EXP; UI disables/re-enables the lamp from that saved cooldown. Auto keeps its five-second cadence. Reloads, concurrent clicks and switching manual/Auto cannot reset the gate.
+
+- Dismantling grants essence only. It never changes cumulative party EXP, hero EXP/levels or emits an EXP float; only post-confirmation receipts show essence. Lamp emissions remain the EXP source.
+
+- Confirmed dismantling closes the item modal and shows a passive essence reward strip with one original orb and the saved awarded total. Hold three seconds, fade over 250ms, remove automatically. No Close/Continue control; pointer events pass through to combat. Failed saves never show rewards.
+
+- Empty lamp storage opens no review/dismantling modal. Finishing a review with no remaining pieces closes after CP feedback; lamp upgrades still open independently of storage count.
+
+- Equip and Auto restore the portrait row before measuring CP feedback anchors. Validate the equip → dismantle → passive reward → next equip sequence through player controls and recorded visual evidence before presentation handoff.
+
+- Game boot restores the saved cache, EXP and loadouts while switching Auto off in the first durable transaction. Arrival positions display only emission sequences at or after the UI session baseline; gear sequence is zero-based while the saved lamp sequence counts completed emissions. Reload starts an empty strip and requires a fresh unlocked Auto toggle.
+
+- Arrival illustrations display only session emissions still in pending or discarded storage. Equipped and confirmed-dismantled pieces disappear from the strip; a zero cache leaves all five positions empty. Historical emission snapshots remain saved independently.
+
+- Strip presentation uses supplied transparent lamp/puff rasters. Manual and Auto share one puff-before-bounce emission path. Larger five-position gear art retains quality glow and item level; AUTO is upper-left with on/off/locked pills. Controls and strip remain anchored to the existing 360×640 Canvas frame.
+
+- Emission puff holds at full opacity for roughly 585ms and fades by 900ms. Gear appears after roughly 650ms, grows from 65% through a 115% upward overshoot, then settles at 100% by 1.35s. Keep the emission class alive 1.45s for both manual and Auto; the saved two-second draw gate is unchanged.
+
+- CP receipt lifetime never holds the durable action lock or freezes ordinary recipient/item selection. Track concurrent receipt elements; only final review/close waits for all receipts, keeping feedback inside the modal. Collection entry awaits any in-flight transaction, storage sync and decoded shared gear atlas, then renders the full sorted cache together. Auto generation pauses while collection is opening/open and resumes afterward when enabled.
+
+- Strip party progress reads currentLevel/currentEXP/EXPToNextLevel from the lowest-level hero. Include EXP in the render key so every draw updates the meter. Manual and Auto share level-up feedback; preserve leftover EXP rather than showing a full meter after a level increase. Lamp tier/essence are a separate upgrade-modal display.

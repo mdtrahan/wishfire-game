@@ -86,6 +86,7 @@ Support ├── `agents/` (retired)
 - Do not write outside the repo without approval.
 
 ## Combat Migration Specification
+- `LAMP_EQUIPMENT_MVP.md` owns the approved lamp replacement, publisher-quality MVP DoD and review boundaries; its three-slot acquisition contract supersedes earlier shop/inventory preservation.
 - `COMBAT_ENGINE_CLEANUP_PLAN.md` owns the real-time cutover plan; `COMBAT_MIGRATION_PLAN.md` keeps the earlier hero-command contract as history. SP/FLOW, hidden Pals and playable turns are retired targets. Keep confirmed owner decisions, tuning proposals and delivered runtime state distinct; `MIGRATION_CHECKPOINT.md` records superseded decisions and implementation receipts.
 
 ## Child DOX Index

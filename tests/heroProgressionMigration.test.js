@@ -35,7 +35,7 @@ test('role-shaped base durability is explicit rather than globally multiplied',(
  assert.equal('heroHPScale' in PROGRESSION,false);
  assert.deepEqual(Object.keys(HERO_DEFINITIONS).map(key=>newHeroProgress(key).maxHP),[75,60,60,65]);
 });
-test('victory awards full defeated-enemy EXP once to every participant including KO',()=>{
+test('victory records settlement without awarding idle hero EXP',()=>{
  const store=createHeroProgressStore();const heroes=Object.values(store.heroes);heroes[1].hp=0;const battle={id:'one',participants:heroes.slice(0,2).map(h=>h.heroInstanceKey),defeated:{a:40,b:60}};
- assert.equal(settleBattleEXP(store,battle,heroes).length,2);assert.equal(heroes[0].currentLevel,2);assert.equal(heroes[1].currentLevel,2);assert.equal(heroes[1].hp,0);assert.equal(heroes[2].currentLevel,1);assert.deepEqual(settleBattleEXP(store,battle,heroes),[]);
+ assert.equal(settleBattleEXP(store,battle,heroes).length,2);assert.equal(heroes[0].currentLevel,1);assert.equal(heroes[1].currentLevel,1);assert.equal(heroes[1].hp,0);assert.equal(heroes[2].currentLevel,1);assert.deepEqual(settleBattleEXP(store,battle,heroes),[]);
 });

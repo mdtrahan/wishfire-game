@@ -254,12 +254,9 @@ export function registerDevBrowserTestHooks({
         enemySlotOptions: getDevToolEnemyOptions(),
         enemyTypeOptions: getDevToolEnemyOptions(),
       },
-      astralMarket: {
-        active: layoutState && typeof layoutState.getActiveLayoutId === 'function'
-          ? layoutState.getActiveLayoutId() === 'idleFarmLayout'
-          : false,
-        state: state.globals.Equipment?.market || null,
-      },
+      lamp: state.globals.Equipment?.lamp || null,
+      items: state.globals.Equipment?.items || [],
+      loadouts: state.globals.Equipment?.loadouts || {},
       mapLayout: {
         panX: Number(mapLayoutState.getMapLayoutState().panX || 0),
         panY: Number(mapLayoutState.getMapLayoutState().panY || 0),

@@ -571,3 +571,17 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - 2026-09-23: In a repeating DPS-gate session, preserve hero HP and KO state across wave loops and boss clears. Restore the party only in the defeat recovery owner, which resets to wave one of the current stage; otherwise each clear silently erases the attrition that makes upgrades observable.
 - 2026-09-23: In streamed combat, start the next-pack timer when the last entrant becomes targetable, not when it reaches its final attack position. A slow walker can otherwise create a long empty break. Enemy targeting should use the living hero roster after the enemy engages; rendered sprite feet can fall outside the formation's standing-center bounds and silently remove valid targets.
 - 2026-09-23: If continuous enemies stand idle while hero basics continue, inspect the stream's outer action gate and the scheduler's retained current actor together. Stale `IsPlayerBusy`/`DeferAdvance` flags can suppress every scheduler tick, and a hero left as current can block an enemy claim even after the outer gate opens.
+
+- Lamp auto-selection must filter for strictly positive canonical replacement CP before ranking. Recheck under the save lock, including manual equip; discard stale/non-upgrade pending gear into aggregate returns and count those returns toward capacity so filtering cannot create unlimited unattended EXP.
+
+- Modal-owned equip feedback must finish before review advances or closes. Keep the transient float inside the modal and await its cleanup while inputs remain busy, so it cannot outlive its context over combat.
+
+- 2026-09-30: Test transient arrival strips separately from restored inventory. Use the persisted completed-emission counter as a session baseline and account for zero-based item sequence; verify the first manual result visibly appears. Automatic production must require current-session player intent.
+
+- Historical emission snapshots are presentation inputs, not inventory ownership. Filter transient arrival art by live pending/discarded IDs so settled items cannot survive an empty-cache transition.
+
+- Reference-led strip QA must compare both X and Y painted edges at a common uniform scale. Matching height alone leaves horizontal drift undetected. Flex text can override an aspect-ratio badge's width; measure the resulting circle and its visible text separately.
+
+- Scope feedback holds to their final transition. A global render freeze plus awaiting animation inside the save/action lock blocks unrelated selections and makes cache updates look delayed. Review entry should settle in-flight acquisition and pause background generation before presenting a complete inventory.
+
+- Progression proof must record the player-visible level and EXP-meter rollover, not only a downstream unlock or saved state. Label party EXP separately from device-upgrade resources, and include current EXP in render invalidation.
