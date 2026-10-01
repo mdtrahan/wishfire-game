@@ -26,7 +26,7 @@
 .burping.lamp-upgrade-emission .lamp-results .lamp-tile:last-of-type{animation:lamp-reveal .45s ease-out}
 @keyframes lamp-burp{0%,100%{transform:rotate(0)}30%{transform:rotate(-12deg)}60%{transform:rotate(8deg)}80%{transform:rotate(-3deg)}}
 @keyframes lamp-reveal{from{transform:translateY(20px)}65%{transform:translateY(-8px)}to{transform:translateY(0)}}
-#lamp-overlay{position:fixed;z-index:65;display:grid;place-items:center;padding:8px;background:#0d1114b8;container-type:inline-size;font:14px/1.4 system-ui,sans-serif;color:#fff0d6;isolation:isolate}
+#lamp-overlay{position:fixed;z-index:10001;display:grid;place-items:center;padding:8px;background:#0d1114b8;container-type:inline-size;font:14px/1.4 system-ui,sans-serif;color:#fff0d6;isolation:isolate}
 #lamp-dialog{width:100%;max-width:560px;max-height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;border:2px solid #c7a35c;border-radius:12px;background:linear-gradient(#3c3d3e,#202426);box-shadow:0 8px 24px #000a;padding:0 10px 10px;scrollbar-width:thin;scrollbar-color:#ad8b52 #282827;outline:none}
 .lamp-modal-header{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;background:#363535;border-bottom:1px solid #8a7047;color:#efce8a;font-size:14px;font-weight:900;letter-spacing:.06em;margin:0 -10px;padding-left:10px}
 .lamp-modal-header button{font-size:24px;min-width:44px;min-height:40px;border:0;background:transparent}
@@ -125,7 +125,7 @@
 @media(prefers-reduced-motion:reduce){.lamp-cp-feedback{animation:none}}
 
 /* Tutorial overlay follows the actual control, without participating in layout. */
-.lamp-idle-helper{position:fixed;z-index:100;pointer-events:none;--hand-size:60px;width:1px;height:1px}
+.lamp-idle-helper{position:fixed;z-index:10002;pointer-events:none;--hand-size:60px;width:1px;height:1px}
 .lamp-idle-helper[hidden]{display:none}
 .lamp-idle-helper img{position:absolute;width:var(--hand-size);height:var(--hand-size);left:calc(var(--hand-size)*-.18);top:calc(var(--hand-size)*-.18);object-fit:contain;filter:drop-shadow(0 2px 2px #0009);animation:lamp-hand-bob 1.1s ease-in-out infinite;scale:var(--hand-x,1) var(--hand-y,1);transform-origin:18% 18%}
 .lamp-idle-helper[data-target="auto-equip"] img{rotate:180deg;transform-origin:18% 18%}

@@ -70,3 +70,5 @@
 - Helper hand direction and ring diameter follow the target’s distance from viewport edges. Preserve the supplied blue art, bob and ring timing; only decorative orientation/bounds adapt, with strip/modal geometry unchanged. `test:lamp-ui` checks every new target over animation frames and runs on staged lamp presentation owners.
 
 - Current matching-slot gear text wraps without a fixed paragraph height; comparison navigation reuses the existing action control styling and preserves the fixed queue geometry.
+
+- Lamp modals stack above fixed DEV launchers (10000); idle guidance stacks above the modal and remains pointer-transparent. Close must receive a pointer at its center while saved CP feedback is active.

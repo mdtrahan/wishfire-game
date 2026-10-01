@@ -110,3 +110,5 @@
 - Guidance proof checks durable duplicate receipts and failed saves without rewards; phone QA covers dismantle/preview/shortfall/affordable/MAX retargets and reload. Disclosed monotonic-clock offsets test idle guidance only, preserving Date.now draw cooldown and combat inputs.
 
 - Lamp comparison proves positive/zero/negative total hero CP previews, Previous/Next wrap, one selected portrait, matching-slot gear identification and saved equip receipt agreement across the four phone profiles.
+
+- The four-phone lamp guard hit-tests and clicks Close during active CP feedback, verifies deferred closure, and rejects remaining CP floats after departure.
