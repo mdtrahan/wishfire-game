@@ -56,3 +56,9 @@ if printf '%s\n' "$UI_LOCK_STAGED_FILES" | grep -Eq "$UI_LOCK_OWNER_PATTERN"; th
   echo "UI presentation owner changed; running rendered UI lock..."
   npm run test:ui-lock
 fi
+
+# The lamp hand and rings share one measured Canvas-adjacent scale owner.
+if printf '%s\n' "$UI_LOCK_STAGED_FILES" | grep -Eq '^(web-runner/systems/lampEquipmentUI\.mjs|web-runner/assets/lampEquipmentUI\.css|tests/lampPresentation\.test\.mjs)$'; then
+  echo "Lamp presentation owner changed; running phone geometry and guide lock..."
+  npm run test:lamp-ui
+fi

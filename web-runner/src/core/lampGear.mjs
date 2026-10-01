@@ -3,6 +3,8 @@ import {refreshHeroStats} from './heroProgression.mjs';
 import {computeCombatPower} from './combatPower.mjs';
 
 export const LAMP_CONFIG=Object.freeze({capacity:20,drawEXP:25,minEmissionIntervalMs:2000,autoIntervalMs:5000,autoUnlockLevel:5,maxOrdinal:990});
+export const LAMP_GUIDE=Object.freeze({storage:1,comparison:2,preview:4});
+export function markLampGuide(data,step){if(!Object.hasOwn(LAMP_GUIDE,step))throw new Error('Unknown lamp guide step.');if(step!=='preview'&&!lampStoredCount(data))throw new Error('Open stored equipment first.');if(step==='comparison'&&!data.lamp.pending.length)throw new Error('Choose pending equipment first.');return data.lamp.guide=(data.lamp.guide||0)|LAMP_GUIDE[step];}
 export const LAMP_CAPACITY_TIERS=Object.freeze([
  {capacity:20,cost:20,rarityWeights:{common:75,uncommon:25,rare:0,epic:0,legendary:0}},
  {capacity:30,cost:50,rarityWeights:{common:55,uncommon:35,rare:10,epic:0,legendary:0}},
@@ -40,6 +42,7 @@ export function validateLampEconomy(data,version=5){
  const bad=()=>{throw new Error('Lamp save is invalid. Original data is preserved.');};
  if((version===5&&(!Number.isSafeInteger(data?.partyEXP)||data.partyEXP<0))||data?.version!==version||!Number.isSafeInteger(data.gold)||data.gold<0||!Array.isArray(data.items)||!data.loadouts||Array.isArray(data.loadouts)||!Array.isArray(data.settledGoldRewards))bad();
  const l=data.lamp;
+ if(l?.guide!==undefined&&(!Number.isInteger(l.guide)||l.guide<0||l.guide>7))bad();
  if(version===5&&(!l||!Number.isInteger(l.capacityTier)||l.capacityTier<0||l.capacityTier>=LAMP_CAPACITY_TIERS.length||!Number.isSafeInteger(l.essence)||l.essence<0))bad();
  if(!l||!Number.isInteger(l.seed)||l.seed<0||l.seed>4294967295||!Number.isSafeInteger(l.sequence)||l.sequence<0||!Number.isSafeInteger(l.highestOrdinal)||l.highestOrdinal<0||l.highestOrdinal>LAMP_CONFIG.maxOrdinal||!Number.isFinite(l.lastActivationAt)||typeof l.autoEnabled!=='boolean'||!Array.isArray(l.pending)||!Number.isSafeInteger(l.salvage?.count)||l.salvage.count<0||!Number.isSafeInteger(l.salvage.gold)||l.salvage.gold<0||l.pending.length>(version===5?lampCapacity(data):LAMP_CONFIG.capacity))bad();
  const ids=new Set();

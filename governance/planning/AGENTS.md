@@ -30,3 +30,5 @@
 - `session-level-up-buff-pool.md` - final 48-card universal Wishfire session buff catalog, stage rules, runtime limits, and deterministic validation.
 
 - `wishfire-progression-adaptations/README.md` owns the full adaptation goal, active stories, research holds, withdrawals and trial status; the acceptance matrix must cover every active spec criterion before full-goal completion.
+
+- Wishfire progression keeps the owner-selected current EXP curve and manual2s/Auto5s cadence; sheet02 records the declined numeric trial. Combat/gear/hero-panel source agreement requires live deployed-actor evidence, including canonical versus instance identity.

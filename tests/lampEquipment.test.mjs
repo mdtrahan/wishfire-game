@@ -10,6 +10,17 @@ function fixture(initial={}){const values=new Map(Object.entries(initial));let f
  const globals={goldTotal:0,HeroProgress:createHeroProgressStore()};const store=createEquipmentStorage({globals,storage,locks,seed:()=>42,now:()=>clock,reportError:()=>{}});
  return{values,storage,locks,globals,store,setFail:v=>fail=v,setClock:v=>clock=v};}
 
+test('guide actions persist once without awarding resources or changing earned progression',async()=>{
+ const f=fixture();await f.store.sync();
+ await assert.rejects(f.store.markGuide('storage'),/stored equipment/);await assert.rejects(f.store.markGuide('comparison'),/stored equipment/);await assert.rejects(f.store.markGuide('invented'),/Unknown/);
+ f.setFail(true);const saved=f.values.get(EQUIPMENT_SAVE_KEY);await assert.rejects(f.store.markGuide('preview'),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),saved);assert.equal(f.store.data.lamp.guide,undefined);f.setFail(false);
+ await f.store.generate();const before=structuredClone(f.store.data),heroes=structuredClone(f.globals.HeroProgress.heroes);
+ await Promise.all(['storage','comparison','preview','storage','preview'].map(step=>f.store.markGuide(step)));
+ assert.equal(f.store.data.lamp.guide,7);const after=structuredClone(f.store.data);delete after.lamp.guide;assert.deepEqual(after,before);assert.deepEqual(f.globals.HeroProgress.heroes,heroes);
+ const reopened=createEquipmentStorage({globals:f.globals,storage:f.storage,locks:f.locks,reportError:()=>{}});await reopened.sync();assert.equal(reopened.data.lamp.guide,7);await reopened.markGuide('preview');assert.deepEqual(reopened.data,f.store.data);assert.deepEqual(f.globals.HeroProgress.heroes,heroes);
+ for(const guide of [-1,8,1.5,'1']){const invalid=structuredClone(before);invalid.lamp.guide=guide;assert.throws(()=>validateLampEconomy(invalid),/invalid/);}
+});
+
 test('a confirmed lamp tier spends once under concurrent requests and survives failed writes and reload',async()=>{
  const data=createLampEconomy(42);activateLamp(data,{},0);data.lamp.essence=200;
  const f=fixture({[EQUIPMENT_SAVE_KEY]:JSON.stringify(data)});await f.store.sync();

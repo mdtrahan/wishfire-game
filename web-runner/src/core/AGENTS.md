@@ -84,3 +84,5 @@
 - Dismantling grants essence only. It never changes cumulative party EXP, hero EXP/levels or emits an EXP float; resource previews and receipts show essence. Lamp emissions remain the EXP source.
 
 - Lamp upgrade confirmation carries the previewed capacity tier. Reject a stale tier before spending so concurrent confirmations cannot purchase the next tier. Preserve earned gear and hero EXP; all tier benefits apply in the same saved transaction.
+
+- Lamp guidance stores validated optional v5 bits for actual storage/comparison/preview actions. They are monotonic receipts with no currency, EXP, gear or tier effect; existing earned draw/equip/dismantle/tier records own the other milestones.

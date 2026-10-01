@@ -1,4 +1,4 @@
-import {LAMP_CONFIG,GEAR_STATS,lampStoredCount,lampCooldownRemaining,compareLampItem,selectLampUpgrades,sortedLampItems,lampGearCP,lampAutoUnlocked,lampCapacity,LAMP_CAPACITY_TIERS} from '../src/core/lampGear.mjs';
+import {LAMP_CONFIG,LAMP_GUIDE,GEAR_STATS,lampStoredCount,lampCooldownRemaining,compareLampItem,selectLampUpgrades,sortedLampItems,lampGearCP,lampAutoUnlocked,lampCapacity,LAMP_CAPACITY_TIERS} from '../src/core/lampGear.mjs';
 import {RARITIES,EQUIPMENT_SLOTS,equipmentDefinition} from '../src/core/equipment.mjs';
 import {heroDefinition} from '../src/core/heroDefinitions.mjs';
 import {expToNextLevel} from '../src/core/heroProgression.mjs';
@@ -36,7 +36,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
  }
  async function openCollection(id,upgrades=false){
   init();if(opening)return;opening=true;
-  try{await pendingAction;await Promise.all([economy.sync(),gearReady]);if(!upgrades&&!lampStoredCount(economy.data))return close();resetHelper();lastFocus=document.activeElement;closeRequested=false;open=true;upgradeOpen=upgrades;batch=!id;reviewed=new Set();selectedItem=upgrades?null:id||sortedLampItems(economy.data)[0]?.instanceId||null;selectedHero=null;notice='';lastKey='';render();dialog.focus();}
+  try{await pendingAction;await Promise.all([economy.sync(),gearReady]);if(!upgrades&&!lampStoredCount(economy.data))return close();resetHelper();lastFocus=document.activeElement;closeRequested=false;open=true;upgradeOpen=upgrades;batch=!id;reviewed=new Set();selectedItem=upgrades?null:id||sortedLampItems(economy.data)[0]?.instanceId||null;selectedHero=null;notice='';lastKey='';render();dialog.focus();const step=upgrades?'preview':'storage';if(!(economy.data.lamp.guide&LAMP_GUIDE[step]))await economy.markGuide(step);}
   catch(e){notice=e.message;lastKey='';render();}finally{opening=false;}
  }
  function close(){if(feedbacks.size){closeRequested=true;return;}closeRequested=false;resetHelper();open=false;modal.hidden=true;lastKey='';lastFocus?.focus?.();}
@@ -49,7 +49,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   if(kind==='inspect')return openCollection(economy.data.lamp.pending.includes(id)?id:undefined);
   if(kind==='collect')return openCollection();
   if(kind==='lamp-upgrades')return openCollection(null,true);
-  if(kind==='hero'){closeRequested=false;selectedHero=id;lastKey='';return render();}
+  if(kind==='hero'){closeRequested=false;selectedHero=id;lastKey='';render();if(!(economy.data.lamp.guide&LAMP_GUIDE.comparison))return void action(()=>economy.markGuide('comparison'));return;}
   if(kind==='skip'){reviewed.add(selectedItem);nextItem();batch=true;if(!selectedItem)return void action(async()=>{await economy.finishReview();});lastKey='';return render();}
   if(kind==='queue'&&economy.data.lamp.pending.includes(id)){closeRequested=false;batch=true;selectedItem=id;selectedHero=null;lastKey='';return render();}
   if(kind==='generate')return void action(async()=>{await reveal(()=>economy.generate(context()));});
@@ -77,13 +77,21 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
  }
  function resetHelper(){lastInteraction=performance.now();if(helper)helper.hidden=true;}
  function updateHelper(){
-  if(strip.hidden||!open||upgradeOpen||busy||document.hidden||!selectedItem||performance.now()-lastInteraction<15000){helper.hidden=true;return;}
-  const target=dialog.querySelector(selectedHero?'[data-action="auto-equip"]':'[data-action="hero"][data-id="Huun"]');
-  if(!target||target.disabled){helper.hidden=true;return;}
-  let r=target.getBoundingClientRect();const bounds=dialog.getBoundingClientRect();
-  if(r.top<bounds.top||r.bottom>bounds.bottom){target.scrollIntoView({block:'nearest'});r=target.getBoundingClientRect();}
-  helper.dataset.target=selectedHero?'auto-equip':'Huun';
-  helper.style.left=(r.left+r.width/2)+'px';helper.style.top=(r.top+r.height/2)+'px';helper.style.setProperty('--hand-size',Math.max(48,Math.min(80,bounds.width*.19))+'px');helper.hidden=false;
+  if(strip.hidden||busy||opening||document.hidden||rewardBanner?.isConnected||performance.now()-lastInteraction<15000){helper.hidden=true;return;}
+  const data=economy.data,l=data?.lamp;if(!l){helper.hidden=true;return;}
+  let selectors;
+  if(open)selectors=upgradeOpen?['[data-action="upgrade"]','[data-action="close"]']:selectedItem?(selectedHero?['[data-action="auto-equip"]','[data-action="equip"]','[data-action="skip"]']:['[data-action="hero"][data-id="Huun"]','[data-action="hero"]','[data-action="finish"]']):['[data-action="dismantle"]','[data-action="close"]'];
+  else if(l.capacityTier===0)selectors=lampStoredCount(data)?['[data-action="collect"]']:(!(l.guide&LAMP_GUIDE.preview)&&l.essence>0||l.essence>=LAMP_CAPACITY_TIERS[0].cost)?['[data-action="lamp-upgrades"]']:['[data-action="generate"]'];
+  const scope=open?dialog:strip,target=selectors?.map(s=>scope.querySelector(s+':not(:disabled)')).find(Boolean);
+  if(!target){helper.hidden=true;return;}
+  let r=target.getBoundingClientRect();const bounds=scope.getBoundingClientRect();
+  if(open&&(r.top<bounds.top||r.bottom>bounds.bottom)){target.scrollIntoView({block:'nearest'});r=target.getBoundingClientRect();}
+  helper.dataset.target=target.dataset.action==='hero'?target.dataset.id:target.dataset.action;
+  helper.dataset.step=upgradeOpen?'upgrade':target.dataset.action;
+  const x=r.left+r.width/2,y=r.top+r.height/2,size=Math.max(48,Math.min(80,bounds.width*.19)),rotated=helper.dataset.target==='auto-equip';
+  helper.style.left=x+'px';helper.style.top=y+'px';helper.style.setProperty('--hand-size',size+'px');
+  helper.style.setProperty('--hand-x',!rotated&&x+size*.82+5>innerWidth-2?'-1':'1');helper.style.setProperty('--hand-y',!rotated&&y+size*.82+5>innerHeight-2?'-1':'1');
+  helper.style.setProperty('--ring-size',Math.min(size,Math.max(12,Math.min(x,innerWidth-x,y,innerHeight-y)*4/3-8))+'px');helper.hidden=false;
  }
  function showEquipFeedback(result,name,anchor){
   const feedback=document.createElement('div');feedback.className='lamp-cp-feedback '+(result.cpChange>0?'positive':result.cpChange<0?'negative':'neutral');feedback.setAttribute('role','status');

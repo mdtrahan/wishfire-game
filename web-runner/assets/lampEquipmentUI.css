@@ -127,9 +127,9 @@
 /* Tutorial overlay follows the actual control, without participating in layout. */
 .lamp-idle-helper{position:fixed;z-index:100;pointer-events:none;--hand-size:60px;width:1px;height:1px}
 .lamp-idle-helper[hidden]{display:none}
-.lamp-idle-helper img{position:absolute;width:var(--hand-size);height:var(--hand-size);left:calc(var(--hand-size)*-.18);top:calc(var(--hand-size)*-.18);object-fit:contain;filter:drop-shadow(0 2px 2px #0009);animation:lamp-hand-bob 1.1s ease-in-out infinite}
+.lamp-idle-helper img{position:absolute;width:var(--hand-size);height:var(--hand-size);left:calc(var(--hand-size)*-.18);top:calc(var(--hand-size)*-.18);object-fit:contain;filter:drop-shadow(0 2px 2px #0009);animation:lamp-hand-bob 1.1s ease-in-out infinite;scale:var(--hand-x,1) var(--hand-y,1);transform-origin:18% 18%}
 .lamp-idle-helper[data-target="auto-equip"] img{rotate:180deg;transform-origin:18% 18%}
-.lamp-idle-helper span{position:absolute;width:var(--hand-size);height:var(--hand-size);left:calc(var(--hand-size)*-.5);top:calc(var(--hand-size)*-.5);border:3px solid #82fbff;border-radius:50%;box-shadow:0 0 8px #28d9ee,inset 0 0 6px #28d9ee;animation:lamp-hand-ring 1.6s ease-out infinite}
+.lamp-idle-helper span{position:absolute;box-sizing:border-box;width:var(--ring-size,var(--hand-size));height:var(--ring-size,var(--hand-size));left:calc(var(--ring-size,var(--hand-size))*-.5);top:calc(var(--ring-size,var(--hand-size))*-.5);border:3px solid #82fbff;border-radius:50%;box-shadow:0 0 8px #28d9ee,inset 0 0 6px #28d9ee;animation:lamp-hand-ring 1.6s ease-out infinite}
 .lamp-idle-helper span:nth-child(2){animation-delay:-.8s}
 @keyframes lamp-hand-bob{50%{transform:translate(5px,5px)}}
 @keyframes lamp-hand-ring{from{transform:scale(.45);opacity:.95}to{transform:scale(1.5);opacity:0}}

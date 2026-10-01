@@ -45,3 +45,7 @@ All four heroes receive EXP when a lamp draw succeeds. Dismantling grants resour
 ## Decisions to reconcile
 
 The earlier [hero progression plan](../../../.worktrees/wt-ORKA-0ln-lamp/governance/planning/hero-exp-skill-unlock-plan.md) proposed banked battle EXP, Spend EXP and skill milestones 2/3/4/6/8. Those remain proposals. The EXP sheet proposes automatic lamp-earned levels. Later skill milestones are withdrawn pending acquisition research. Approve one coherent progression model before implementation. Reconcile older combat documentation with the current realtime kits rather than importing obsolete SP/FLOW behavior.
+
+## Current tuning decision
+
+Owner chose “Keep current tuning”: retain the existing EXP curve and manual2s/Auto5s cadence. Sheet02’s eight-second/150-draw trial and1500 floor are declined; normal progression proof remains required. Other pending owner decisions remain explicit in the acceptance matrix.

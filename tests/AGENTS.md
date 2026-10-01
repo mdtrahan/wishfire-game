@@ -106,3 +106,5 @@
 - Strip progress is party EXP, not lamp-upgrade essence. Verify displayed party level/current EXP/next threshold against persisted hero progression, including a meter rollover at each level change; lamp tier and essence remain in the upgrade modal.
 
 - Lamp upgrade regression covers concurrent confirmations for one previewed tier, failed save, insufficient essence, reload and MAX. Record ordinary draws only after their durable sequence receipt; compare hero level/EXP fields across upgrades while allowing the live combat reward ledger to advance.
+
+- Guidance proof checks durable duplicate receipts and failed saves without rewards; phone QA covers dismantle/preview/shortfall/affordable/MAX retargets and reload. Disclosed monotonic-clock offsets test idle guidance only, preserving Date.now draw cooldown and combat inputs.

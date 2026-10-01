@@ -585,3 +585,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Scope feedback holds to their final transition. A global render freeze plus awaiting animation inside the save/action lock blocks unrelated selections and makes cache updates look delayed. Review entry should settle in-flight acquisition and pause background generation before presenting a complete inventory.
 
 - Progression proof must record the player-visible level and EXP-meter rollover, not only a downstream unlock or saved state. Label party EXP separately from device-upgrade resources, and include current EXP in render invalidation.
+
+- Lamp edge guidance: measure the animated decorative image/rings against the viewport before changing target controls. Flip the hand inward and bound ring diameter at the shared helper owner; guard every target at compact and reference sizes.

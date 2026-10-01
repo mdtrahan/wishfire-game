@@ -1,5 +1,5 @@
 import {equipmentStats} from '../src/core/equipment.mjs';
-import {createLampEconomy,validateLampEconomy,lampItemCPGain,selectAutoEquipHero,selectLampUpgrades,finishLampReview,lampStoredCount,migrateLegacyEquipment,migrateDraftLamp,migrateFourStatLamp,migrateLampEconomy,lampAutoUnlocked,lampCapacity,upgradeLamp,activateLamp,equipLampItem,dismantleLampItems,LAMP_CONFIG,progressionOrdinal} from '../src/core/lampGear.mjs';
+import {markLampGuide,createLampEconomy,validateLampEconomy,lampItemCPGain,selectAutoEquipHero,selectLampUpgrades,finishLampReview,lampStoredCount,migrateLegacyEquipment,migrateDraftLamp,migrateFourStatLamp,migrateLampEconomy,lampAutoUnlocked,lampCapacity,upgradeLamp,activateLamp,equipLampItem,dismantleLampItems,LAMP_CONFIG,progressionOrdinal} from '../src/core/lampGear.mjs';
 import {refreshHeroStats,awardHeroEXP} from '../src/core/heroProgression.mjs';
 import {computeCombatPower} from '../src/core/combatPower.mjs';
 export const EQUIPMENT_SAVE_KEY='wishfire.equipment-economy.v5';
@@ -76,6 +76,7 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=g
   equip(heroId,id){if(!globals.HeroProgress?.heroes?.[heroId])return Promise.reject(new Error('Hero is not owned'));return transact(next=>commitEquip(next,heroId,id));},
   autoEquip(){return transact(next=>{const heroes=Object.values(globals.HeroProgress?.heroes||{}).slice(0,4),used=new Set(),results=[];for(const candidate of selectLampUpgrades(next,heroes)){const heroId=selectAutoEquipHero(next,candidate,heroes.filter(h=>!used.has(h.heroInstanceKey)));if(heroId){results.push(commitEquip(next,heroId,candidate.instanceId));used.add(heroId);}}finishLampReview(next);return results;});},
   finishReview(){return transact(next=>finishLampReview(next));},
+  markGuide(step){return transact(next=>markLampGuide(next,step));},
   upgrade(expectedTier=record?.lamp.capacityTier){return transact(next=>upgradeLamp(next,expectedTier));},
   dismantle(ids){return transact(next=>dismantleLampItems(next,ids));},
  };

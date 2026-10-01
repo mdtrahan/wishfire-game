@@ -80,6 +80,7 @@ Support ├── `agents/` (retired)
 - Prefer deterministic shared logic in `src/` or Rust-owned SimulationCore seams over new browser-shell logic.
 - Keep `web-runner/app.js` orchestration-only; detailed ownership rules live in `governance/execution/implementation-gate.md`.
 - Use `governance/execution/validation.md` for focused proof and `governance/execution/integration.md` for merge readiness.
+- Lamp presentation owners run `test:lamp-ui` through the commit hook; four-phone checks enforce helper and overlay containment.
 
 ## Escalation
 - Follow the Escalation section in `governance/execution/implementation-gate.md`.
