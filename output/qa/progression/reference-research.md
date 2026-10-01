@@ -25,3 +25,15 @@ Reference Auto unlock modal displays heroLv16 or Monthly Card purchase. Wishfire
 ## Remaining evidence
 
 Observe first-slot opening from an appropriate fresh session, actual2-10/3-10/5-10/9-10 slot transitions and task conditions; acquire/equip/enhance allies; document guarantee/rate changes and rank names; record continuous reference evidence and annotate an equal-viewport delivered comparison. Any proposal must distinguish acquisition, ownership, slot access, equip and upgrade. Current Wishfire hero kits remain intact pending owner approval.
+
+## Fresh guest recording, ORKA-5af.4
+
+The isolated fallback guest player3V4P10 starts at Lv1, EXP0/350, CP11060 and diamonds100. Installed agent-browser/Chromium replaces ineffective native Canvas input without importing authentication state. RECOVERY.md records routing and the rejected duplicate-session capture. The continuous single-reference.webm lasts3392.88 seconds. Its1280×720 video contains a later360×640 game viewport with gray padding; it is research rather than an equal-viewport comparison.
+
+Gear equips leave EXP unchanged. Three displaced Normal Lv1 items each award96EXP when dismantled:0→96→192→288 of350. An Uncommon Lv1 Battle Axe awards115EXP, reaching Lv2 with53/400 remainder and unchanged CP12571. A Normal Lv3 Small Crown awards96EXP,53→149/400; a displaced Uncommon Lv1 gauntlet awards115EXP,149→264/400; a Normal Lv1 crown awards96EXP,264→360/400. Screenshots41–54,65–68,80–81 and87–88 identify items and values. The complete formula remains unknown. Reviewed actual video frames at1561s show96/350,1947s show the displaced Frying Pan, and2006s show Lv2 with53/400.
+
+Observed task claims award60diamonds each: UseMidnightLostChild1x, DefeatEnemy3x, UseMidnightLostChild3x, DefeatEnemy5x and ClearStage1-2 raise100→160→220→280→340→400. Continuous combat confounds exact coin attribution.
+
+After training/idle/reload, the same guest header remains while stage advances from1-2 to1-7 and EXP remains53/400. That advance occurred offscreen. Slot1 looks like a plus, but clicking it displays Clear Task Mortal1-5 (screenshot69). It remains inaccessible while the current task is ClearStage1-2, then UseMidnightLostChild5x. Combat stage and claimed task gate are distinct. The first actual slot opening, slots2–5 and ally acquisition remain outstanding.
+
+Final observed guest state: Lv2,360/400,CP13303,diamonds400,fuel36,stage1-7,UseMidnightLostChild5x4/5, with pauldron review interrupted by repeated boss-loss overlays. Screenshot95 preserves the state. Numbered screenshots and four reviewed video frames have UTC capture/hash metadata. The336730024-byte raw video remains locally in the lane artifact directory outside this Git checkpoint; capture-ledger.csv identifies its hash. Wishfire runtime, kits and current tuning remain unchanged.

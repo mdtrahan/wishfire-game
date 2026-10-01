@@ -34,3 +34,5 @@
 - Wishfire progression keeps the owner-selected current EXP curve and manual2s/Auto5s cadence; sheet02 records the declined numeric trial. Combat/gear/hero-panel source agreement requires live deployed-actor evidence, including canonical versus instance identity.
 
 - Hero ownership repairs require explicit saved-progress and loadout conflict rules before migration; verify deployed actor and panel agreement while preserving unique gear across independent instances.
+
+- Reference progression evidence distinguishes combat stage from claimed task gates; a plus-looking skill control can stay task-locked. Use actual video frames for timestamps and preserve raw hashes when large recordings remain outside Git checkpoints.
