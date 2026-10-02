@@ -587,3 +587,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Progression proof must record the player-visible level and EXP-meter rollover, not only a downstream unlock or saved state. Label party EXP separately from device-upgrade resources, and include current EXP in render invalidation.
 
 - Lamp edge guidance: measure the animated decorative image/rings against the viewport before changing target controls. Flip the hand inward and bound ring diameter at the shared helper owner; guard every target at compact and reference sizes.
+
+- Lamp smoke belongs to the supplied image positioned above the strip. Keep the strip overflow visible; apply readiness darkening to the image through the shared disabled button so manual and Auto emission use the same cue.

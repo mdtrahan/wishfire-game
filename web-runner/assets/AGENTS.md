@@ -74,3 +74,5 @@
 - Lamp modals stack above fixed DEV launchers (10000); idle guidance stacks above the modal and remains pointer-transparent. Close must receive a pointer at its center while saved CP feedback is active.
 
 - CP feedback positions are absolute within the fixed lamp overlay, so modal offsets never shift receipts away from their hero. Preserve18px type and1.8-second animation.
+
+- Lamp readiness uses 80% image brightness whenever its shared reveal button is disabled. Let supplied smoke paint above the fixed 92 logical-pixel strip; preserve control anchors and horizontal containment.

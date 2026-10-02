@@ -116,3 +116,5 @@
 - Four-phone rapid feedback proof uses a disclosed six-item fixture, alternates three receipts per hero, and samples12 animation frames for containment and pairwise overlap. Earned videos separately prove saved values and natural pacing.
 
 - Auto Equip regression freezes an ordinary 69-draw batch whose top standalone item-CP candidates have no total hero gain. It must reach later useful items, return positive saved CP receipts, keep one item per hero/four total and preserve EXP. Recipient ranking uses total hero gain before maxHP/party tie rules.
+
+- The four-phone lamp guard rejects ancestor clipping of smoke above the unchanged strip and verifies 80% disabled brightness with full brightness restored after cooldown.

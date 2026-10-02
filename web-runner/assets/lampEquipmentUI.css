@@ -1,4 +1,4 @@
-#wishfire-lamp{position:fixed;z-index:21;box-sizing:border-box;color:#fff1d1;background:linear-gradient(#454241,#252729);border-top:2px solid #d8b46c;border-bottom:2px solid #8b6835;box-shadow:0 -3px 12px #16100b80;font-family:system-ui,sans-serif;overflow:hidden}
+#wishfire-lamp{position:fixed;z-index:21;box-sizing:border-box;color:#fff1d1;background:linear-gradient(#454241,#252729);border-top:2px solid #d8b46c;border-bottom:2px solid #8b6835;box-shadow:0 -3px 12px #16100b80;font-family:system-ui,sans-serif;overflow:visible}
 #wishfire-lamp[hidden],#lamp-overlay[hidden]{display:none}
 #wishfire-lamp *,#lamp-overlay *{box-sizing:border-box}
 #wishfire-lamp button,#lamp-overlay button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
@@ -191,6 +191,7 @@
 #wishfire-lamp .lamp-burp{position:absolute;left:76.52%;top:0;width:22.8%;height:83%;display:flex;align-items:center;justify-content:center}
 #wishfire-lamp .lamp-burp .lamp-device{position:absolute;left:0;top:-10.67%;display:block;width:100%;height:97.45%;aspect-ratio:auto;object-fit:fill;background:none;translate:none}
 #wishfire-lamp .lamp-burp:disabled{opacity:1}
+#wishfire-lamp .lamp-burp:disabled .lamp-device{filter:brightness(.8)}
 #wishfire-lamp .lamp-auto{position:absolute;z-index:3;top:4%;left:2.11%;width:6.95%;height:15.5%;min-height:0;border:.16em solid #dfdfdc;border-radius:50%;background:linear-gradient(#929695,#424645 48%,#343737);box-shadow:0 0 0 1px #3b3933,inset 0 0 0 1px #666;text-shadow:0 1px 2px #111;color:white;font-size:.84em!important;font-weight:950!important;line-height:1;padding:0;letter-spacing:-.035em}
 #wishfire-lamp .lamp-auto[data-state=on]{background:linear-gradient(#e9795c,#b83427 48%,#92241c);box-shadow:0 0 0 1px #674b36,inset 0 0 0 1px #f49b7a}
 #wishfire-lamp .lamp-auto:disabled{color:#fff;opacity:1}
