@@ -1,0 +1,626 @@
+{
+  "scope": "Ordinary 100-draw lamp replay on the Auto CP correction54565bf; Hero footage precedes six-box413674b. Actor gear projection still FAIL. Final model and Integration Ready remain pending.",
+  "checks": "PASS for the explicit data assertions in this verifier",
+  "startedUTC": "2026-10-01T23:04:12.057Z",
+  "viewport": [
+    360,
+    640,
+    1
+  ],
+  "tuning": "owner kept current curve, manual2s/Auto5s; existing tier prices20/50/100 recorded provisionally",
+  "canonicalMilestone": {
+    "eventSeconds": 200.076,
+    "draws": 69,
+    "level": 5,
+    "exp": 22,
+    "partyEXP": 1725
+  },
+  "timing": {
+    "explicitIdleSeconds": 36.06,
+    "postIdleToLv5Seconds": 167.716,
+    "lastEvent": 303.175,
+    "filmDuration": 304.08,
+    "manual69Waiting": 144.98599999999996,
+    "manualMinimumSavedInterval": 2167,
+    "auto71SavedInterval": 5050,
+    "clockWarning": "Event and decoder clocks are separate. Listed film frame times were directly decoded; no global event offset is assumed."
+  },
+  "resources": {
+    "draws": 100,
+    "converted": 88,
+    "earned": 116,
+    "spent": 20,
+    "balance": 96,
+    "retainedItemRecords": 12
+  },
+  "transactions": [
+    {
+      "kind": "auto_equip",
+      "at": 80.951,
+      "draws": 20,
+      "receipts": [
+        {
+          "hero": "Kojonn",
+          "change": 11.1
+        },
+        {
+          "hero": "Huun",
+          "change": 11.1
+        },
+        {
+          "hero": "Falie",
+          "change": 8.5
+        },
+        {
+          "hero": "Runa",
+          "change": 5.2
+        }
+      ]
+    },
+    {
+      "kind": "dismantle",
+      "at": 83.096,
+      "draws": 20,
+      "newDraws": 20,
+      "removed": 15,
+      "displacedEarlierGear": 0,
+      "essence": 18,
+      "balance": 18
+    },
+    {
+      "kind": "auto_equip",
+      "at": 130.517,
+      "draws": 40,
+      "receipts": [
+        {
+          "hero": "Huun",
+          "change": 14
+        },
+        {
+          "hero": "Runa",
+          "change": 13.5
+        },
+        {
+          "hero": "Kojonn",
+          "change": 1.7
+        },
+        {
+          "hero": "Falie",
+          "change": 5.9
+        }
+      ]
+    },
+    {
+      "kind": "dismantle",
+      "at": 132.662,
+      "draws": 40,
+      "newDraws": 20,
+      "removed": 17,
+      "displacedEarlierGear": 1,
+      "essence": 18,
+      "balance": 36
+    },
+    {
+      "kind": "upgrade",
+      "at": 136.176,
+      "cost": 20,
+      "capacity": 30,
+      "balance": 16
+    },
+    {
+      "kind": "auto_equip",
+      "at": 200.399,
+      "draws": 69,
+      "receipts": [
+        {
+          "hero": "Falie",
+          "change": 4.9
+        },
+        {
+          "hero": "Huun",
+          "change": 1.9
+        },
+        {
+          "hero": "Kojonn",
+          "change": 14
+        },
+        {
+          "hero": "Runa",
+          "change": 2.5
+        }
+      ]
+    },
+    {
+      "kind": "dismantle",
+      "at": 202.546,
+      "draws": 69,
+      "newDraws": 29,
+      "removed": 28,
+      "displacedEarlierGear": 3,
+      "essence": 41,
+      "balance": 57
+    },
+    {
+      "kind": "auto_equip",
+      "at": 290.336,
+      "draws": 99,
+      "receipts": [
+        {
+          "hero": "Huun",
+          "change": 1.5
+        },
+        {
+          "hero": "Falie",
+          "change": 3.7
+        },
+        {
+          "hero": "Kojonn",
+          "change": 5.7
+        },
+        {
+          "hero": "Runa",
+          "change": 10.9
+        }
+      ]
+    },
+    {
+      "kind": "dismantle",
+      "at": 292.463,
+      "draws": 99,
+      "newDraws": 30,
+      "removed": 28,
+      "displacedEarlierGear": 2,
+      "essence": 39,
+      "balance": 96
+    }
+  ],
+  "imageDimensions": [
+    {
+      "path": "198.9.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "83.3.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "65.2.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "3.2.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "136.4.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "197.7.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "200.8.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "278.9.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "136.2.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "66.2.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "289.6.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "287.8.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "136.1.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "290.6.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "136.15.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "292.8.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "136.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "121.4.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "302.7.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "38.9.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "197.9.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "136.05.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "303.5.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "122.4.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "39.9.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    },
+    {
+      "path": "135.9.jpg",
+      "dimensions": [
+        360,
+        640
+      ],
+      "format": "JPEG"
+    }
+  ],
+  "actorGearProjection": {
+    "status": "FAIL",
+    "rows": [
+      {
+        "hero": "Falie",
+        "canonical": {
+          "ATK": 15,
+          "DEF": 27,
+          "MAG": 10,
+          "RES": 17,
+          "SPD": 8
+        },
+        "actor": {
+          "ATK": 10,
+          "DEF": 19,
+          "MAG": 5,
+          "RES": 12,
+          "SPD": 8
+        },
+        "actorEquipment": {}
+      },
+      {
+        "hero": "Huun",
+        "canonical": {
+          "ATK": 32,
+          "DEF": 11,
+          "MAG": 6,
+          "RES": 8,
+          "SPD": 13
+        },
+        "actor": {
+          "ATK": 24,
+          "DEF": 7,
+          "MAG": 4,
+          "RES": 6,
+          "SPD": 13
+        },
+        "actorEquipment": {}
+      },
+      {
+        "hero": "Runa",
+        "canonical": {
+          "ATK": 8,
+          "DEF": 10,
+          "MAG": 29,
+          "RES": 19,
+          "SPD": 12
+        },
+        "actor": {
+          "ATK": 4,
+          "DEF": 6,
+          "MAG": 24,
+          "RES": 15,
+          "SPD": 12
+        },
+        "actorEquipment": {}
+      },
+      {
+        "hero": "Kojonn",
+        "canonical": {
+          "ATK": 6,
+          "DEF": 13,
+          "MAG": 18,
+          "RES": 21,
+          "SPD": 11
+        },
+        "actor": {
+          "ATK": 5,
+          "DEF": 11,
+          "MAG": 14,
+          "RES": 18,
+          "SPD": 11
+        },
+        "actorEquipment": {}
+      }
+    ]
+  },
+  "film": {
+    "path": "full-storage-current-tuning.webm",
+    "bytes": 32767747,
+    "sha256": "93f8b533b4a4c8cd1e37fd73d1dd486cc8d0148b1fe42ec180b45203d5b61b41"
+  },
+  "files": [
+    {
+      "path": "events.json",
+      "bytes": 3742107,
+      "sha256": "730776f012df3cb1c2ecdf439c749e61e95587bcd7b18b89ea110dc1e185eb09"
+    },
+    {
+      "path": "record.cjs",
+      "bytes": 23258,
+      "sha256": "4936094cf2d5d7fda1f39b8572447a5c2013396c31086a09b84161200364ba30"
+    },
+    {
+      "path": "queue-proof.json",
+      "bytes": 1088,
+      "sha256": "82c9a2eaa3bf351eb8d4424a6dc9318a84cdd7b058a0b1a8ac7703a1d823ac3a"
+    },
+    {
+      "path": "decoded-frames/3.2.jpg",
+      "bytes": 42221,
+      "sha256": "f986ea4747dbd1b756b59a293307fc986f504ee69cc749b0a0ddc0e10b7bdf83"
+    },
+    {
+      "path": "decoded-frames/38.9.jpg",
+      "bytes": 50654,
+      "sha256": "242cccaeb672fe6c53c5eb115eea3276cc3df4e7a241508dd6527d0e3c78a223"
+    },
+    {
+      "path": "decoded-frames/39.9.jpg",
+      "bytes": 52287,
+      "sha256": "13644babd9f65250f7a7d59324ec89e3533e3d1f6971d235b55c58e8b54b4330"
+    },
+    {
+      "path": "decoded-frames/65.2.jpg",
+      "bytes": 49564,
+      "sha256": "56760c5c5273da022fccabc5be97b33de18b328752155df222e2fd071022a4b7"
+    },
+    {
+      "path": "decoded-frames/66.2.jpg",
+      "bytes": 52508,
+      "sha256": "518728d590fcb33136537801beb672eb88e386de97e10f8b86e882981ed34a0a"
+    },
+    {
+      "path": "decoded-frames/121.4.jpg",
+      "bytes": 51224,
+      "sha256": "aa0b43b4163d5e42d137859904da11ff1532cc8fd38b93a4dce63cbddb21e39d"
+    },
+    {
+      "path": "decoded-frames/122.4.jpg",
+      "bytes": 52257,
+      "sha256": "91d904915356f6f0cec2df9d958fd98032be1fda46fea8a4a573da5db5585558"
+    },
+    {
+      "path": "decoded-frames/197.9.jpg",
+      "bytes": 51059,
+      "sha256": "eb7ee29f20b07405184baec9885d8f4d3730a1a25f3547f0f61ae96eba162905"
+    },
+    {
+      "path": "decoded-frames/198.9.jpg",
+      "bytes": 52054,
+      "sha256": "136034cf863f8a72ca7148103e93722ea16726075aa0e749395ecf21a7672d48"
+    },
+    {
+      "path": "decoded-frames/200.8.jpg",
+      "bytes": 37069,
+      "sha256": "bac0ea493b602431dea0153f973b580bedea972550818cab2ccc79931771059a"
+    },
+    {
+      "path": "decoded-frames/83.3.jpg",
+      "bytes": 43454,
+      "sha256": "2340b60b0f9dbaa1d7968ffcbe860c27aba5ffa72411e95e39114e81f6a13c7f"
+    },
+    {
+      "path": "decoded-frames/136.4.jpg",
+      "bytes": 54109,
+      "sha256": "b2829ec7c37d19e238b0c57b8f4573948381380d7f477f987d411d460c0762b1"
+    },
+    {
+      "path": "decoded-frames/278.9.jpg",
+      "bytes": 57853,
+      "sha256": "1cc29fb0cde6a6f18f14c6f0000816d8f8448f0069ec1af2854a10bfad11ab20"
+    },
+    {
+      "path": "decoded-frames/287.8.jpg",
+      "bytes": 10126,
+      "sha256": "5b3ddfa70cb1b799af5d17de60e3450897bf73f908c976ee251d648d57531b40"
+    },
+    {
+      "path": "decoded-frames/289.6.jpg",
+      "bytes": 40233,
+      "sha256": "37ca71244179c54a485ba8b7e04898851b0e7746194ade9d19dde111dbbb42e0"
+    },
+    {
+      "path": "decoded-frames/290.6.jpg",
+      "bytes": 35367,
+      "sha256": "ae780fd863da8a060f78fce1fad135a84045d304b17e36ec583622ba758f3b4a"
+    },
+    {
+      "path": "decoded-frames/292.8.jpg",
+      "bytes": 45035,
+      "sha256": "f97885d1dc7e10f212f28992ed0191acf5f94ba2f6c82803f5633abdb17f24fb"
+    },
+    {
+      "path": "decoded-frames/302.7.jpg",
+      "bytes": 43901,
+      "sha256": "109e539732ab9fb4a2525a63a54f5eb8171538a4cc17536540f234a6851db75d"
+    },
+    {
+      "path": "decoded-frames/303.5.jpg",
+      "bytes": 43955,
+      "sha256": "77ff60fcc3bfed2dc4941d2f6181f3b50456c9b372553a408a6d0ee06dea77f7"
+    },
+    {
+      "path": "decoded-frames/135.9.jpg",
+      "bytes": 53031,
+      "sha256": "5812aacdb4fe1ba5d921e8a9cce9b93400568287bc639af9c0ff8b54d4d3d3de"
+    },
+    {
+      "path": "decoded-frames/136.jpg",
+      "bytes": 26144,
+      "sha256": "13ef39ae275468fa9a4fca8f2f40fd2b8d07e3ba9bdd18a5f9f69d176c8f3ab8"
+    },
+    {
+      "path": "decoded-frames/136.05.jpg",
+      "bytes": 25605,
+      "sha256": "6a4dfc0717ad9d6158cff15acf453d4f2488c0de18eac108ceba17900e56803e"
+    },
+    {
+      "path": "decoded-frames/136.1.jpg",
+      "bytes": 25662,
+      "sha256": "e31cc6a3aa7e70b5533195154e654713117a1d255feeac95898c62c3370b3ff8"
+    },
+    {
+      "path": "decoded-frames/136.15.jpg",
+      "bytes": 25649,
+      "sha256": "d625d4a2560b491810c5959d3a33554375e0afb2ec9037811c6b140a4276454b"
+    },
+    {
+      "path": "decoded-frames/136.2.jpg",
+      "bytes": 53109,
+      "sha256": "fba5c7610e38c798c93544411bf11120a7c4a8ebe66dde8ac92ef2afe898563b"
+    },
+    {
+      "path": "decoded-frames/197.7.jpg",
+      "bytes": 50860,
+      "sha256": "f12edba51a8acc0b9ff1d8eaddf9165da9c67a557c8e0f08425d5dd3f74c27e1"
+    }
+  ],
+  "sourceHashes": [
+    {
+      "path": "web-runner/src/core/lampGear.mjs",
+      "sha256": "6bea280c2e62dab515e8ffa24e4bd86e4bf633a395218706f9e9bf098fcbe2cc"
+    },
+    {
+      "path": "web-runner/src/core/heroProgression.mjs",
+      "sha256": "efa6e44430e208fbc01a75d58b92172d18c9bc7a780ba870e9f4559f98163015"
+    }
+  ]
+}

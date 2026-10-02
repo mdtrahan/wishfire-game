@@ -13,3 +13,5 @@ The first corrected ordinary movie reaches100draws, essence conversion, earned u
 Canonical/live equipment projection remains failed and owner-dependent. This feature evidence is separate from final model decisions and Integration Ready.
 
 Checks: node --test tests/lampEquipment.test.mjs; node output/qa/auto-cp/verify.cjs. The ordinary recorder uses only real inputs, fresh storage, owner-kept manual2s/Auto5s timing and current provisional essence prices.
+
+The completed ordinary100-draw replay, decoded304.08s film, exact resource/EXP/Auto allocation audit and scoped timing ledger live in ordinary-flow/README.md and report.json. Accepted film frames show earned upgrade confirmation, rollovers, positive saved CP feedback, full30-item queue and essence banner. Hero presentation is superseded by413674b; final six-box native proof is output/qa/hero-equip/native-current-six-boxes.png.
