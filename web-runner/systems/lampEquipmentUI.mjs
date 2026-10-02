@@ -168,7 +168,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
    if(arrow){
     ctx.fillStyle=getComputedStyle(arrow).color;ctx.save();ctx.translate(arrowLeft,0);
     if(arrow.classList.contains('down')){ctx.translate(arrowWidth,height);ctx.rotate(Math.PI);}
-    ctx.beginPath();ctx.moveTo(arrowWidth*.38,0);ctx.lineTo(arrowWidth*.62,0);ctx.lineTo(arrowWidth,height*.45);ctx.lineTo(arrowWidth*.7,height*.45);ctx.lineTo(arrowWidth*.7,height);ctx.lineTo(arrowWidth*.3,height);ctx.lineTo(arrowWidth*.3,height*.45);ctx.lineTo(0,height*.45);ctx.closePath();ctx.fill();ctx.restore();
+    ctx.beginPath();ctx.moveTo(arrowWidth*.5,0);ctx.lineTo(arrowWidth,height*.45);ctx.lineTo(arrowWidth*.7,height*.45);ctx.lineTo(arrowWidth*.7,height);ctx.lineTo(arrowWidth*.3,height);ctx.lineTo(arrowWidth*.3,height*.45);ctx.lineTo(0,height*.45);ctx.closePath();ctx.fill();ctx.restore();
    }
   }
   restoreFocus();

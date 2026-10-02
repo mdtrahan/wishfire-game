@@ -80,3 +80,5 @@
 - Lamp cache review follows a 4/8px internal rhythm, rounded bordered identity/stat card and three-column stats. The equip frame has no master scrollbar; only its five-column inventory scrolls and exposes two to two-and-a-half rows across the phone profiles. CP direction glyphs use green up/red down; equal stats/CP omit glyphs.
 
 - Nonempty equip notices, including save failures, stay visible as compact callouts above the action row without consuming inventory height. Empty notices reserve no space.
+
+- Comparison CP arrows use a single pointed apex; preserve their bounds and direction colors. The selected-stat Canvas renderer shares this silhouette.

@@ -122,3 +122,5 @@
 - Compact lamp review checks current hero art, independent positive/zero/negative CP direction, selected-hero stat arrows/equality, absent rarity letters/table/navigation/link, rounded three-column card, two-to-two-and-a-half inventory rows and no master scroll. Await durable guide/Skip transactions before asserting enabled actions or dismantling contents.
 
 - Lamp phone proof injects one isolated equipment-save failure, requires the saved record to remain byte-identical and no CP receipt, and verifies a readable contained notice without master overflow.
+
+- Lamp phone proof samples rendered arrow tip/head widths for positive and negative portrait and stat glyphs; reject flat tips independently of ancestor overflow.

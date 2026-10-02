@@ -230,3 +230,5 @@
 - The short HERO/SKILLS header keeps its portrait below the identity/CP text. Gear uses the larger equipment-stage portrait.
 
 - Lamp review uses canonical hero art and independent total-CP arrows, omitting numeric per-hero CP labels and the character stat table. Its three-column item card compares only the selected hero; unchanged values have no arrow. Only the five-column cache scrolls; the equip dialog fits the measured Canvas height. Preserve manual downgrade eligibility, saved receipts and existing Skip/Auto-to-dismantle transactions.
+
+- Selected-stat arrows paint a single apex into the DPR-sized Canvas; preserve the CSS portrait arrows’ pointed silhouette and existing dimensions.

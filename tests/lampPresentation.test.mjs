@@ -15,6 +15,19 @@ let url=process.env.LAMP_QA_URL,server;
 const directory='test-results/lamp';
 async function guideIdle(page,ms=15100){await page.evaluate(ms=>{if(window.lampIdleOffset===undefined){const now=performance.now.bind(performance);window.lampIdleOffset=0;performance.now=()=>now()+window.lampIdleOffset;}window.lampIdleOffset+=ms;},ms);}
 async function guideBounds(page){const result=await page.evaluate(async()=>{const helper=document.querySelector('.lamp-idle-helper'),samples=[];for(let n=0;n<12;n++){await new Promise(requestAnimationFrame);samples.push([...helper.querySelectorAll('img,span')].every(e=>{const r=e.getBoundingClientRect();return r.left>=-.5&&r.right<=innerWidth+.5&&r.top>=-.5&&r.bottom<=innerHeight+.5;}));}return{target:helper.dataset.target,contained:samples.every(Boolean),overflow:document.documentElement.scrollWidth>innerWidth};});assert.deepEqual(result,{target:result.target,contained:true,overflow:false});return result;}
+async function pointedArrow(page,locator,direction,arrowX=0){
+ const raster=arrowX?await locator.evaluate(c=>({width:c.width,height:c.height,pixels:Array.from(c.getContext('2d').getImageData(0,0,c.width,c.height).data)})):null;
+ const png=raster?null:(await page.screenshot({clip:await locator.boundingBox()})).toString('base64');
+ const shape=await page.evaluate(async({png,raster,direction,arrowX})=>{
+  if(!raster){const image=new Image();image.src='data:image/png;base64,'+png;await image.decode();
+   const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
+   const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0);raster={width:image.width,height:image.height,pixels:ctx.getImageData(0,0,image.width,image.height).data};}
+  const {width,height,pixels}=raster,rows=[];
+  for(let y=0;y<height;y++){let count=0;for(let x=arrowX;x<width;x++){const i=(y*width+x)*4,r=pixels[i],g=pixels[i+1],b=pixels[i+2];if(direction==='up'?g>130&&r<70&&b>70&&b<210:r>170&&g<90&&b<110)count++;}rows.push(count);}
+  if(direction==='down')rows.reverse();const ink=rows.filter(n=>n>0);return{tip:ink[0],head:Math.max(...rows.slice(0,Math.ceil(rows.length/2)))};
+ },{png,raster,direction,arrowX});
+ assert.ok(shape.tip>0&&shape.tip/shape.head<(arrowX ? .4 : .25),`${direction} arrow has a pointed apex: ${JSON.stringify(shape)}`);return shape;
+}
 test('lamp immediate review, four recipients, durable equip, Auto and phone containment',async()=>{
  if(!url){
   const socket=createServer();await new Promise(resolve=>socket.listen(0,'127.0.0.1',resolve));const port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
@@ -69,6 +82,7 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
   assert.deepEqual(preview.map(p=>p.change),expectedPreview,'preview uses total hero CP change, including level and existing gear');
   assert.ok(expectedPreview.some(n=>n>0)&&expectedPreview.some(n=>n<0)&&expectedPreview.includes(0),'fixture covers increase, decrease and unchanged total CP');
   preview.forEach(p=>{assert.equal(p.text,'');assert.match(p.label,/total CP change/);assert.equal(p.arrow,p.change?'lamp-cp-direction '+(p.change>0?'up':'down'):undefined);assert.match(p.src,/assets\/images\/(Fara|Hondo|Runa|Kaja)\.png$/);});
+  const arrowTips={};for(const direction of ['up','down'])arrowTips['portrait-'+direction]=await pointedArrow(page,dialog.locator('.lamp-cp-direction.'+direction).first(),direction);
   const containment=await dialog.evaluate(d=>{const r=d.getBoundingClientRect();return {overflow:d.scrollWidth>d.clientWidth,inViewport:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight,columns:[...d.querySelectorAll('.lamp-hero')].every(n=>{const b=n.getBoundingClientRect();return b.left>=r.left&&b.right<=r.right;})};});
   assert.deepEqual(containment,{overflow:false,inViewport:true,columns:true});
   const order=await dialog.evaluate(d=>{const stats=d.querySelector('.lamp-hero-row').getBoundingClientRect(),item=d.querySelector('.lamp-candidate').getBoundingClientRect(),buttons=d.querySelector('.lamp-actions').getBoundingClientRect();return stats.bottom<=item.top&&item.bottom<=buttons.top;});assert.equal(order,true,'heroes and deltas precede item, confirmation follows it');
@@ -103,7 +117,7 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
   await dialog.locator('.lamp-queue').screenshot({path:`${directory}/${width}-inventory-expanded.png`});
   await dialog.locator('.lamp-queue [data-qa-clone]').evaluateAll(nodes=>nodes.forEach(n=>n.remove()));
   assert.equal(await dialog.locator('.lamp-rarity').count(),0);assert.equal(await strip.locator('.lamp-rarity').count(),0);
-  await dialog.getByRole('button',{name:'Choose Hondo',exact:true}).click();
+  for(const [hero,direction] of [['Fara','up'],['Hondo','down']]){await dialog.getByRole('button',{name:'Choose '+hero,exact:true}).click();const paint=dialog.locator('.lamp-stat-value').filter({has:page.locator('.lamp-stat-arrow.'+direction)}).first().locator('canvas');arrowTips['stat-'+direction]=await pointedArrow(page,paint,direction,Number(await paint.getAttribute('data-arrow-x')));}
   const expectedDeltas=compareLampItem(fixture,fixture.items[0],'Huun').deltas;
   const statSignals=await dialog.locator('.lamp-item-stats>div').evaluateAll(nodes=>nodes.map(n=>({stat:n.querySelector('dt').textContent,value:n.querySelector('.lamp-stat-number').textContent,delta:Number(n.querySelector('dd').dataset.delta),arrow:n.querySelector('.lamp-stat-arrow')?.className})));
   for(const n of statSignals){assert.equal(Number(n.value),fixture.items[0].stats[n.stat]);assert.equal(n.delta,expectedDeltas[n.stat]);assert.equal(n.arrow,n.delta?'lamp-stat-arrow '+(n.delta>0?'up':'down'):undefined);}
@@ -182,7 +196,7 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
   const afterUpgrade=await page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')));assert.equal(afterUpgrade.lamp.essence,30);assert.deepEqual(afterUpgrade.items,beforeUpgrade.items);assert.equal(afterUpgrade.partyEXP,beforeUpgrade.partyEXP);
   const upgradeContainment=await dialog.evaluate(d=>{const r=d.getBoundingClientRect();return{overflow:d.scrollWidth>d.clientWidth,inViewport:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight};});assert.deepEqual(upgradeContainment,{overflow:false,inViewport:true});await page.screenshot({path:`${directory}/${width}-upgrade-max-fixture.png`});await guideIdle(page);await page.locator('.lamp-idle-helper').waitFor();assert.equal(await page.locator('.lamp-idle-helper').getAttribute('data-target'),'close');await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await guideIdle(page);assert.equal(await page.locator('.lamp-idle-helper').isVisible(),false,'completed upgrade loop stops strip guidance');
   await page.keyboard.press('Escape');
-  assert.deepEqual(errors,[]);report.push({width,height,dpr,expectedPreview,preview,navigation,closePoint,closeHit,geometry,lampPaint,stripBalance,emission,queueGeometry,containment,errors});await context.close();
+  assert.deepEqual(errors,[]);report.push({width,height,dpr,arrowTips,expectedPreview,preview,navigation,closePoint,closeHit,geometry,lampPaint,stripBalance,emission,queueGeometry,containment,errors});await context.close();
   // Disclosed six-item fixture stresses concurrent receipt layout without timing claims.
   const rapidFixture=createLampEconomy(43,1000);for(let n=0;n<6;n++)activateLamp(rapidFixture,{region:1,stage:1},n*2000);
   const rapidContext=await browser.newContext({viewport:{width,height},deviceScaleFactor:dpr}),rapidPage=await rapidContext.newPage();
