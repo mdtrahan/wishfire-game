@@ -88,3 +88,5 @@
 - Selected-item stat groups span the centered card content width. Both rows share six equal label/value subgrid tracks; right-align labels, separate each value by roughly one stat digit width and reserve flexible value tracks for larger numbers.
 
 - Gear frames center visible artwork vertically, excluding near-transparent atlas bleed. Preserve square art space, independent level badges and CP footers; the original gear atlas remains unchanged.
+
+- Selected equip-cache artwork undulates from100% to94% and back over1.6 seconds, centered inside its fixed tile. The gold outer halo uses4.92px blur/2.46px spread,23% above the prior4px/2px; reduced motion retains this static halo.

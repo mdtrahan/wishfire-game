@@ -87,7 +87,11 @@
 .lamp-art{position:relative}
 .lamp-queue{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-auto-rows:max-content;gap:4px;height:100px;min-height:0;flex-shrink:1;scrollbar-gutter:stable;overflow-y:auto;overflow-x:hidden;align-content:start;justify-content:start;padding:4px 2px;border-top:1px solid #756044;font-size:12px;scrollbar-width:thin}
 .lamp-queue .lamp-tile{width:100%;height:auto;aspect-ratio:1;border:1px solid #e6dbca90;background:linear-gradient(145deg,color-mix(in srgb,var(--rarity) 85%,#fff),color-mix(in srgb,var(--rarity) 65%,#202426));box-shadow:inset 0 0 4px #0004}
-.lamp-queue .lamp-tile[aria-current="true"]{border-color:#fff2a0;box-shadow:0 0 4px 2px #ffc928,inset 0 0 0 1px #fff2a0;z-index:1}
+/* Owner tuning: outer glow blur/spread are 1.23 times the original 4px/2px. */
+.lamp-queue .lamp-tile[aria-current="true"]{border-color:#fff2a0;box-shadow:0 0 4.92px 2.46px #ffc928,inset 0 0 0 1px #fff2a0;z-index:1}
+.lamp-queue .lamp-tile[aria-current="true"]>.lamp-art{animation:lamp-cache-selected 1.6s ease-in-out infinite;transform-origin:center}
+@keyframes lamp-cache-selected{0%,100%{transform:scale(1)}50%{transform:scale(.94)}}
+@media(prefers-reduced-motion:reduce){.lamp-queue .lamp-tile[aria-current="true"]>.lamp-art{animation:none}}
 #lamp-dialog[data-view=equip] .lamp-actions{margin:0;gap:8px}
 #lamp-dialog[data-view=equip] .lamp-modal-notice{position:absolute;z-index:2;bottom:60px;left:8px;right:8px;height:auto;margin:0;padding:4px 6px;border:1px solid #aa9061;border-radius:5px;background:#252a29;color:#fff1d1;font-size:11px;text-align:left;overflow-wrap:anywhere;pointer-events:none}
 @container(max-width:260px){

@@ -106,11 +106,28 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
   assert.equal(await dialog.locator('.lamp-queue').count(),1);
   const selectedTile=dialog.locator('.lamp-queue [aria-current="true"]');
   assert.equal(await selectedTile.count(),1);assert.equal(await selectedTile.getAttribute('data-id'),fixture.items[0].instanceId);
+  const selectionPulse=await selectedTile.evaluate(tile=>{
+   const art=tile.querySelector('.lamp-art'),animation=art.getAnimations().find(a=>a.animationName==='lamp-cache-selected');
+   if(!animation)return {animated:false};
+   animation.pause();const samples=[0,800,1600].map(time=>{animation.currentTime=time;const r=art.getBoundingClientRect(),t=tile.getBoundingClientRect(),footer=tile.querySelector('small').getBoundingClientRect();return {scale:new DOMMatrix(getComputedStyle(art).transform).a,center:[r.x+r.width/2,r.y+r.height/2],tile:[t.x,t.y,t.width,t.height],footer:[footer.x,footer.y,footer.width,footer.height],contained:r.left>=t.left-.5&&r.right<=t.right+.5&&r.top>=t.top-.5&&r.bottom<=footer.top+.5};});animation.play();
+   return {animated:true,duration:animation.effect.getTiming().duration,iterations:animation.effect.getTiming().iterations===Infinity,shadow:getComputedStyle(tile).boxShadow,samples};
+  });
+  assert.equal(selectionPulse.animated,true,'selected cache artwork undulates');
+  assert.equal(selectionPulse.duration,1600);assert.equal(selectionPulse.iterations,true);
+  assert.deepEqual(selectionPulse.samples.map(s=>Number(s.scale.toFixed(2))),[1,.94,1]);
+  assert.match(selectionPulse.shadow,/4\.92px 2\.46px/,'outer glow blur and spread increase23 percent');
+  for(const sample of selectionPulse.samples){assert.equal(sample.contained,true);assert.deepEqual(sample.tile,selectionPulse.samples[0].tile);assert.deepEqual(sample.footer,selectionPulse.samples[0].footer);sample.center.forEach((n,i)=>assert.ok(Math.abs(n-selectionPulse.samples[0].center[i])<.1,'artwork remains centered during pulse'));}
+  await page.emulateMedia({reducedMotion:'reduce'});
+  assert.equal(await selectedTile.locator('.lamp-art').evaluate(n=>getComputedStyle(n).animationName),'none');
+  assert.match(await selectedTile.evaluate(n=>getComputedStyle(n).boxShadow),/4\.92px 2\.46px/,'reduced motion retains stronger highlight');
+  await page.emulateMedia({reducedMotion:'no-preference'});
+
   const queueBounds=await dialog.locator('.lamp-queue').boundingBox();
   await dialog.locator('.lamp-queue [data-id="'+fixture.items[1].instanceId+'"]').click();
   assert.equal(await selectedTile.getAttribute('data-id'),fixture.items[1].instanceId);
   const changedBounds=await dialog.locator('.lamp-queue').boundingBox();
   assert.equal(changedBounds.width,queueBounds.width);assert.equal(changedBounds.height,queueBounds.height);
+  assert.equal(await dialog.locator('.lamp-queue .lamp-tile').evaluateAll(nodes=>nodes.every(n=>(n.getAttribute('aria-current')==='true')===n.querySelector('.lamp-art').getAnimations().some(a=>a.animationName==='lamp-cache-selected'))),true,'pulse follows the selected cache item');
   assert.ok((await selectedTile.evaluate(e=>getComputedStyle(e).boxShadow)).includes('255, 201, 40'),'selected item has gold halo');
   await dialog.locator('.lamp-queue .lamp-tile').first().click();
   assert.equal(await selectedTile.getAttribute('data-id'),fixture.items[1].instanceId);
@@ -219,7 +236,7 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
   const afterUpgrade=await page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')));assert.equal(afterUpgrade.lamp.essence,30);assert.deepEqual(afterUpgrade.items,beforeUpgrade.items);assert.equal(afterUpgrade.partyEXP,beforeUpgrade.partyEXP);
   const upgradeContainment=await dialog.evaluate(d=>{const r=d.getBoundingClientRect();return{overflow:d.scrollWidth>d.clientWidth,inViewport:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight};});assert.deepEqual(upgradeContainment,{overflow:false,inViewport:true});await page.screenshot({path:`${directory}/${width}-upgrade-max-fixture.png`});await guideIdle(page);await page.locator('.lamp-idle-helper').waitFor();assert.equal(await page.locator('.lamp-idle-helper').getAttribute('data-target'),'close');await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await guideIdle(page);assert.equal(await page.locator('.lamp-idle-helper').isVisible(),false,'completed upgrade loop stops strip guidance');
   await page.keyboard.press('Escape');
-  assert.deepEqual(errors,[]);report.push({gearCentering,width,height,dpr,arrowTips,statHeights,bandColors,itemLayout,expectedPreview,preview,navigation,closePoint,closeHit,geometry,lampPaint,stripBalance,emission,queueGeometry,containment,errors});await context.close();
+  assert.deepEqual(errors,[]);report.push({selectionPulse,gearCentering,width,height,dpr,arrowTips,statHeights,bandColors,itemLayout,expectedPreview,preview,navigation,closePoint,closeHit,geometry,lampPaint,stripBalance,emission,queueGeometry,containment,errors});await context.close();
   // Disclosed six-item fixture stresses concurrent receipt layout without timing claims.
   const rapidFixture=createLampEconomy(43,1000);for(let n=0;n<6;n++)activateLamp(rapidFixture,{region:1,stage:1},n*2000);
   const rapidContext=await browser.newContext({viewport:{width,height},deviceScaleFactor:dpr}),rapidPage=await rapidContext.newPage();
