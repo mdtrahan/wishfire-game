@@ -170,10 +170,10 @@
 
 - The item selector offers immediate Auto Equip through the same atomic transaction as manual equip; it greedily assigns the top four qualifying items with at most one per hero before permanently routing the remaining gear to Dismantle All.
 
-- Lamp gear illustrations carry the rarity initial C/U/R/E/L in addition to quality color and full rarity text. Item level remains separate from rarity.
+- Gear artwork carries item level and rarity color, with no corner rarity letters. Full rarity names remain in item identity and accessible labels.
 
 
-- Pending gear fills five equal square columns across the review frame. Its scrolling viewport exposes one-and-a-half rows at each phone width; incoming rolls and recipient selection preserve frame height and scroll position.
+- Pending gear fills five equal square columns across the review frame. Its scrolling viewport exposes two to two-and-a-half rows at each phone width; incoming rolls and recipient selection preserve frame height and scroll position.
 
 - Equip returns saved permanent CP before/after/change; only the CP value floats after successful persistence, anchored at the stationary recipient portrait, and reports positive, zero or negative values honestly. HP gear raises max HP without healing or reviving. v3 migrates to v5 with HP zero, preserving previous stat rolls and source records.
 
@@ -181,13 +181,13 @@
 
 - Hero Gear Upgrade idle guidance uses the Hondo-inspired blue pointer and cyan rings: 15 seconds since input points to Hondo (Huun), or Auto-Equip after portrait selection. Document pointer/click, key and wheel input dismisses and resets it. Hidden/closed/busy review suppresses guidance; the overlay never intercepts input.
 
-- Lamp progression: manual/Auto draws grant all four heroes saved EXP, with cumulative receipts and per-hero lampEXPClaimed replay. Enemy rewards grant zero new EXP/Gold. Auto requires all four Lv5, switches off at capacity, and requires explicit restart. Dismantling essence upgrades lamp levels 1–4, raising capacity 20/30/40/50 and rarity odds. The lower-right level disc/bar opens current/next bonuses and cost; no Gold is used. Strip arrivals omit rarity initials while review retains them. The blue speech counter opens storage; lamp taps generate. The progress bar measures saved essence toward the next upgrade and the disc shows the current tier.
+- Lamp progression: manual/Auto draws grant all four heroes saved EXP, with cumulative receipts and per-hero lampEXPClaimed replay. Enemy rewards grant zero new EXP/Gold. Auto requires all four Lv5, switches off at capacity, and requires explicit restart. Dismantling essence upgrades lamp levels 1–4, raising capacity 20/30/40/50 and rarity odds. The lower-right level disc/bar opens current/next bonuses and cost; no Gold is used. Gear artwork omits corner rarity initials across strip, review and dismantling. The blue speech counter opens storage; lamp taps generate. The progress bar measures saved essence toward the next upgrade and the disc shows the current tier.
 
 - Lamp burp presentation clears its trigger at animation completion so unrelated review renders do not repeat emission. Manual and Auto share the same current-lamp tilt and gear pop tween.
 
 - Raw lamp emissions append every roll without CP filtering. lamp.recent preserves the last five emission snapshots independently of equip/collection routing. Equip review sorts descending lampGearCP, derived from the shared CP evaluator using gear stats at neutral level 1; item level already scales those stats. Auto scans all candidates with positive total hero CP gain in displayed item-CP order, selecting at most one per hero/four total. Recipient selection ranks actual hero CP gain. Ties use lowest max HP then party order. Manual equip permits lower-CP overrides. Auto completion or finishing review moves all remaining pending pieces permanently into lamp.discarded. Dismantle All has an inert item grid, no rescue/review/equip controls and no resource amount before confirmation. Confirmed conversion grants essence only and shows its receipt. Later raw arrivals remain separate from the confirmed pile. Capacity includes pending, discarded and historical aggregate credits; full storage stops Auto/EXP. Optional recent/discarded fields preserve supported older v5 saves.
 
-- Gear review displays stats in HP, ATK, DEF, MAG, RES order. Candidate HP occupies its first row above the two-column attack/defense stats; presentation order does not change saved rolls.
+- Gear review displays stats in HP, ATK, DEF, MAG, RES order. Candidate stats occupy three columns: HP/ATK/DEF followed by MAG/RES; presentation order does not change saved rolls.
 
 - Equip releases its save/action guard before the 1.8-second CP float finishes, allowing immediate recipient and item selection. Only the final review transition or modal close waits for all active floats; feedback stays inside the modal.
 
@@ -217,7 +217,7 @@
 
 - The lamp helper extends the15-second idle threshold through draw, collection, Hondo comparison, equip, dismantle and free/affordable upgrade preview. Retarget disabled controls to useful enabled actions; hide during reward banners and after a completed upgrade loop outside review. Any input dismisses it. Guide receipts persist once through the existing locked equipment transaction.
 
-- Lamp recipient previews use lampItemCPGain for signed total hero CP changes. Previous/Next reuse hero selection and wrap the four portrait recipients; current matching-slot gear is identified before confirmation. These UI reads do not repair canonical versus combat-instance ownership.
+- Lamp recipient previews use lampItemCPGain for signed total hero CP changes. Direct portrait taps select the recipient, with stat arrows comparing its matching slot. Equality has no indicator and there are no Previous/Next controls. These UI reads do not repair canonical versus combat-instance ownership.
 
 - Concurrent saved CP receipts use their measured wrapped heights and34px spacing for32px animation travel. Place each hero column in modal coordinates under its stationary portrait; keep ordinary rapid bursts within the visible modal.
 
@@ -228,3 +228,5 @@
 - Hero is a primary shared-navigation destination. Its screen has no Back button; use the existing main navigation to switch destinations.
 
 - The short HERO/SKILLS header keeps its portrait below the identity/CP text. Gear uses the larger equipment-stage portrait.
+
+- Lamp review uses canonical hero art and independent total-CP arrows, omitting numeric per-hero CP labels and the character stat table. Its three-column item card compares only the selected hero; unchanged values have no arrow. Only the five-column cache scrolls; the equip dialog fits the measured Canvas height. Preserve manual downgrade eligibility, saved receipts and existing Skip/Auto-to-dismantle transactions.

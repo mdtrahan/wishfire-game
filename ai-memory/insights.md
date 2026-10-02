@@ -589,3 +589,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Lamp edge guidance: measure the animated decorative image/rings against the viewport before changing target controls. Flip the hand inward and bound ring diameter at the shared helper owner; guard every target at compact and reference sizes.
 
 - Lamp smoke belongs to the supplied image positioned above the strip. Keep the strip overflow visible; apply readiness darkening to the image through the shared disabled button so manual and Auto emission use the same cue.
+
+- 2026-10-01: Compact equipment review can keep identity and actions fixed while a flex inventory absorbs the height limit. Show independent total-hero CP direction and selected-hero slot-stat direction; equal values carry no indicator. Remove retired comparison chrome instead of reserving blank rows.

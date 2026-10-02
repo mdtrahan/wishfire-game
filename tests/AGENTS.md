@@ -81,9 +81,9 @@
 
 - Lamp presentation verifies 15-second idle guidance, Hondo-to-Auto-Equip targeting and dismissal by ordinary document clicks using an offset monotonic clock, preserving live combat timing.
 
-- Lamp progression: manual/Auto draws grant all four heroes saved EXP, with cumulative receipts and per-hero lampEXPClaimed replay. Enemy rewards grant zero new EXP/Gold. Auto requires all four Lv5, switches off at capacity, and requires explicit restart. Dismantling essence upgrades lamp levels 1–4, raising capacity 20/30/40/50 and rarity odds. The upper-left level badge opens current/next bonuses and cost; no Gold is used. Strip rarity letters are doubled and the storage preview is 65% with unchanged touch area.
+- Lamp progression: manual/Auto draws grant all four heroes saved EXP, with cumulative receipts and per-hero lampEXPClaimed replay. Enemy rewards grant zero new EXP/Gold. Auto requires all four Lv5, switches off at capacity, and requires explicit restart. Dismantling essence upgrades lamp levels 1–4, raising capacity 20/30/40/50 and rarity odds. The upper-left level badge opens current/next bonuses and cost; no Gold is used. Gear artwork has no corner rarity letters; storage uses its count-only bubble.
 
-- Lamp cache presentation checks five full-width square columns, a stable one-and-a-half-row scroll viewport, selected halo and preserved idle guidance across four phone widths.
+- Lamp cache presentation checks five full-width square columns, a stable two-to-two-and-a-half-row scroll viewport, selected halo and preserved idle guidance across four phone widths.
 
 - Lamp regression proof checks descending item CP review, raw last-five emission order, manual lower-CP override, positive same-slot Auto gains with at most one item per hero, permanent loss of equip eligibility on entering dismantling, and finite storage/EXP capacity. Browser proof checks sorted equip tiles, inert dismantling tiles, absent pre-confirmation resource amounts and the committed essence receipt.
 
@@ -99,7 +99,7 @@
 
 - Dismantle lifecycle proof generates more than five raw items, confirms conversion, requires five empty arrival positions at cache zero, then verifies exactly one new arrival on the next manual burp.
 
-- Strip redesign checks the count-only speech bubble, upper-right Auto states and saved essence/current-tier progress. Review retains rarity initials; restored arrivals stay empty. Use natural emission video plus separately disclosed Lv5/essence fixture for the upgrade and Auto-state proof.
+- Strip redesign checks the count-only speech bubble, upper-right Auto states and saved essence/current-tier progress. Review omits corner rarity letters; restored arrivals stay empty. Use natural emission video plus separately disclosed Lv5/essence fixture for the upgrade and Auto-state proof.
 
 - Lamp strip checks follow the reference upper-left AUTO position and require the complete left progress corner beneath the level disc. Shared strip coordinates, circular badge bounds and the left-centered 95% arrival group are measured by `output/qa/lamp-check-alignment.cjs`.
 
@@ -109,7 +109,7 @@
 
 - Guidance proof checks durable duplicate receipts and failed saves without rewards; phone QA covers dismantle/preview/shortfall/affordable/MAX retargets and reload. Disclosed monotonic-clock offsets test idle guidance only, preserving Date.now draw cooldown and combat inputs.
 
-- Lamp comparison proves positive/zero/negative total hero CP previews, Previous/Next wrap, one selected portrait, matching-slot gear identification and saved equip receipt agreement across the four phone profiles.
+- Lamp comparison proves positive/zero/negative total hero CP previews, direct portrait selection, one selected portrait, selected-hero matching-slot stat arrows and saved equip receipt agreement across the four phone profiles.
 
 - The four-phone lamp guard hit-tests and clicks Close during active CP feedback, verifies deferred closure, and rejects remaining CP floats after departure.
 
@@ -118,3 +118,7 @@
 - Auto Equip regression freezes an ordinary 69-draw batch whose top standalone item-CP candidates have no total hero gain. It must reach later useful items, return positive saved CP receipts, keep one item per hero/four total and preserve EXP. Recipient ranking uses total hero gain before maxHP/party tie rules.
 
 - The four-phone lamp guard rejects ancestor clipping of smoke above the unchanged strip and verifies 80% disabled brightness with full brightness restored after cooldown.
+
+- Compact lamp review checks current hero art, independent positive/zero/negative CP direction, selected-hero stat arrows/equality, absent rarity letters/table/navigation/link, rounded three-column card, two-to-two-and-a-half inventory rows and no master scroll. Await durable guide/Skip transactions before asserting enabled actions or dismantling contents.
+
+- Lamp phone proof injects one isolated equipment-save failure, requires the saved record to remain byte-identical and no CP receipt, and verifies a readable contained notice without master overflow.

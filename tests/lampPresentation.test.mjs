@@ -8,7 +8,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {RARITIES} from '../web-runner/src/core/equipment.mjs';
 import {createHeroProgressStore,refreshHeroStats} from '../web-runner/src/core/heroProgression.mjs';
-import {createLampEconomy,activateLamp,lampItemCPGain,lampGearCP} from '../web-runner/src/core/lampGear.mjs';
+import {createLampEconomy,activateLamp,lampItemCPGain,lampGearCP,compareLampItem} from '../web-runner/src/core/lampGear.mjs';
 const require=createRequire(import.meta.url);
 const {detectChromeExecutable}=require('../tools/playwright_support.js');
 let url=process.env.LAMP_QA_URL,server;
@@ -63,17 +63,16 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
   assert.equal(emission['lamp-reveal'],undefined,'restored cache does not animate arrivals into the empty strip');
 
   await strip.locator('.lamp-collect').click();const dialog=page.locator('#lamp-dialog');await dialog.waitFor({state:'visible'});await dialog.locator('[data-action="queue"][data-id="'+fixture.items[0].instanceId+'"]').click();
-  assert.equal(await dialog.locator('.lamp-hero').count(),4);assert.equal(await dialog.locator('thead small').count(),4);assert.equal(await dialog.locator('.lamp-quality-band').count(),1);assert.equal(await dialog.locator('td.positive .lamp-stat-arrow.up').count()>0,true);assert.equal(await dialog.locator('td.positive').first().innerText().then(t=>!t.includes('+')),true);assert.equal(await dialog.locator('tbody tr').count()>0,true);
+  assert.equal(await dialog.locator('.lamp-hero').count(),4);assert.equal(await dialog.locator('.lamp-compare,.lamp-rarity,[data-action="finish"],.lamp-hero-navigation').count(),0);assert.equal(await dialog.locator('.lamp-quality-band').count(),1);
   const expectedPreview=Object.values(heroSave.heroes).map(h=>lampItemCPGain(fixture,fixture.items[0],h));
-  const preview=await dialog.locator('thead small').evaluateAll(nodes=>nodes.map(n=>({change:Number(n.dataset.cpChange),text:n.textContent,label:n.getAttribute('aria-label')})));
+  const preview=await dialog.locator('.lamp-hero').evaluateAll(nodes=>nodes.map(n=>({change:Number(n.dataset.cpChange),text:n.textContent,label:n.getAttribute('aria-description'),arrow:n.querySelector('.lamp-cp-direction')?.className,src:n.querySelector('img').getAttribute('src')})));
   assert.deepEqual(preview.map(p=>p.change),expectedPreview,'preview uses total hero CP change, including level and existing gear');
   assert.ok(expectedPreview.some(n=>n>0)&&expectedPreview.some(n=>n<0)&&expectedPreview.includes(0),'fixture covers increase, decrease and unchanged total CP');
-  preview.forEach((p,i)=>{assert.equal(p.text,'CP '+(p.change>=0?'+':'')+p.change);assert.match(p.label,/total CP change/);});
+  preview.forEach(p=>{assert.equal(p.text,'');assert.match(p.label,/total CP change/);assert.equal(p.arrow,p.change?'lamp-cp-direction '+(p.change>0?'up':'down'):undefined);assert.match(p.src,/assets\/images\/(Fara|Hondo|Runa|Kaja)\.png$/);});
   const containment=await dialog.evaluate(d=>{const r=d.getBoundingClientRect();return {overflow:d.scrollWidth>d.clientWidth,inViewport:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight,columns:[...d.querySelectorAll('.lamp-hero')].every(n=>{const b=n.getBoundingClientRect();return b.left>=r.left&&b.right<=r.right;})};});
   assert.deepEqual(containment,{overflow:false,inViewport:true,columns:true});
-  const order=await dialog.evaluate(d=>{const stats=d.querySelector('.lamp-compare').getBoundingClientRect(),item=d.querySelector('.lamp-candidate').getBoundingClientRect(),buttons=d.querySelector('.lamp-actions').getBoundingClientRect();return stats.bottom<=item.top&&item.bottom<=buttons.top;});assert.equal(order,true,'heroes and deltas precede item, confirmation follows it');
+  const order=await dialog.evaluate(d=>{const stats=d.querySelector('.lamp-hero-row').getBoundingClientRect(),item=d.querySelector('.lamp-candidate').getBoundingClientRect(),buttons=d.querySelector('.lamp-actions').getBoundingClientRect();return stats.bottom<=item.top&&item.bottom<=buttons.top;});assert.equal(order,true,'heroes and deltas precede item, confirmation follows it');
   assert.equal(await dialog.locator('.lamp-item-stats dd').count(),Object.keys(fixture.items[0].stats).length);
-  assert.deepEqual(await dialog.locator('tbody th').allTextContents(),['HP','ATK','DEF','MAG','RES']);
   assert.deepEqual(await dialog.locator('.lamp-item-stats dt').allTextContents(),['HP','ATK','DEF','MAG','RES']);
   assert.deepEqual(await dialog.locator('.lamp-actions:not(.lamp-hero-navigation) button').allTextContents(),['Skip','Equip','Auto-Equip']);
   assert.equal(await dialog.locator('.lamp-queue').count(),1);
@@ -94,45 +93,41 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
    const original=[...e.children],frame=e.getBoundingClientRect(),style=getComputedStyle(e),size=original[0].getBoundingClientRect().height;
    for(let n=0;n<20;n++){const clone=original[n%original.length].cloneNode(true);clone.removeAttribute('aria-current');clone.dataset.qaClone='true';e.append(clone);}
    const tiles=[...e.children].slice(0,6).map(n=>n.getBoundingClientRect()),inset=parseFloat(style.paddingTop)+parseFloat(style.paddingBottom)+parseFloat(style.borderTopWidth)+parseFloat(style.borderBottomWidth),gap=parseFloat(style.rowGap);
-   const result={rows:(frame.height-inset-gap)/size,fiveAcross:tiles.slice(0,5).every(t=>t.y===tiles[0].y)&&tiles[5].y>tiles[0].y,square:(()=>{const r=original[0].querySelector('.lamp-art').getBoundingClientRect();return Math.abs(r.width-r.height)<.1;})(),filled:Math.abs(tiles[4].right-tiles[0].left-(e.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)))<1,stable:e.getBoundingClientRect().height===frame.height&&e.scrollHeight>e.clientHeight};
+   const result={rows:(()=>{const available=frame.height-inset,full=Math.floor((available+gap)/(size+gap));return full+Math.max(0,available-full*(size+gap))/size;})(),fiveAcross:tiles.slice(0,5).every(t=>t.y===tiles[0].y)&&tiles[5].y>tiles[0].y,square:(()=>{const r=original[0].querySelector('.lamp-art').getBoundingClientRect();return Math.abs(r.width-r.height)<.1;})(),filled:Math.abs(tiles[4].right-tiles[0].left-(e.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)))<1,stable:e.getBoundingClientRect().height===frame.height&&e.scrollHeight>e.clientHeight};
    return result;
   });
-  assert.ok(Math.abs(queueGeometry.rows-1.5)<.01,'cache exposes one and a half rows');
-  assert.deepEqual({...queueGeometry,rows:1.5},{rows:1.5,fiveAcross:true,square:true,filled:true,stable:true});
+  await page.screenshot({path:`${directory}/${width}-inventory-geometry.png`});
+  assert.ok(queueGeometry.rows>=2&&queueGeometry.rows<=2.51,'cache exposes two to two-and-a-half rows: '+JSON.stringify(queueGeometry));
+  assert.deepEqual({...queueGeometry,rows:2.5},{rows:2.5,fiveAcross:true,square:true,filled:true,stable:true});
+  await page.screenshot({path:`${directory}/${width}-expanded-cache-comparison.png`});
   await dialog.locator('.lamp-queue').screenshot({path:`${directory}/${width}-inventory-expanded.png`});
   await dialog.locator('.lamp-queue [data-qa-clone]').evaluateAll(nodes=>nodes.forEach(n=>n.remove()));
-  assert.equal(await dialog.locator('.lamp-candidate .lamp-rarity').innerText(),fixture.items[0].rarity[0].toUpperCase());assert.equal(await strip.locator('.lamp-collect .lamp-rarity').count(),0);
+  assert.equal(await dialog.locator('.lamp-rarity').count(),0);assert.equal(await strip.locator('.lamp-rarity').count(),0);
+  await dialog.getByRole('button',{name:'Choose Hondo',exact:true}).click();
+  const expectedDeltas=compareLampItem(fixture,fixture.items[0],'Huun').deltas;
+  const statSignals=await dialog.locator('.lamp-item-stats>div').evaluateAll(nodes=>nodes.map(n=>({stat:n.querySelector('dt').textContent,value:n.querySelector('.lamp-stat-number').textContent,delta:Number(n.querySelector('dd').dataset.delta),arrow:n.querySelector('.lamp-stat-arrow')?.className})));
+  for(const n of statSignals){assert.equal(Number(n.value),fixture.items[0].stats[n.stat]);assert.equal(n.delta,expectedDeltas[n.stat]);assert.equal(n.arrow,n.delta?'lamp-stat-arrow '+(n.delta>0?'up':'down'):undefined);}
+  await page.waitForFunction(()=>!document.querySelector('#lamp-dialog [data-action="equip"]').disabled);assert.equal(await dialog.getByRole('button',{name:'Equip',exact:true}).isEnabled(),true,'manual lower-CP equip remains available');
   assert.equal(await dialog.locator('.lamp-stat-paint').evaluateAll(nodes=>nodes.every(c=>Math.abs(c.width/c.getBoundingClientRect().width-devicePixelRatio)<.05&&Math.abs(c.height/c.getBoundingClientRect().height-devicePixelRatio)<.05)),true,'stat backing pixels match display DPR');
-  for(const direction of ['up','down']){
-   const indicator=dialog.locator('tbody tr').filter({has:page.getByRole('rowheader',{name:'MAG',exact:true})}).locator(direction==='up'?'td.positive .lamp-stat-value':'td.negative .lamp-stat-value').first();
-   const split=await indicator.locator('canvas').getAttribute('data-arrow-x'),png=await indicator.screenshot({path:`${directory}/${width}-stat-${direction}.png`});
-   const painted=await page.evaluate(async({base64,split,red})=>{
-    const image=new Image();image.src='data:image/png;base64,'+base64;await image.decode();const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0);const pixels=ctx.getImageData(0,0,canvas.width,canvas.height).data;
-    return [0,1].map(part=>{const rows=[];for(let y=0;y<canvas.height;y++)for(let x=part?split:0;x<(part?canvas.width:split);x++){const i=(y*canvas.width+x)*4,ink=red?pixels[i]>pixels[i+1]+20&&pixels[i]>pixels[i+2]+20&&pixels[i]>90:pixels[i+1]>pixels[i]+20&&pixels[i+1]>pixels[i+2]+8&&pixels[i+1]>90;if(ink){rows.push(y);break;}}return [Math.min(...rows),Math.max(...rows)];});
-   },{base64:png.toString('base64'),split:Number(split),red:direction==='down'});
-   assert.deepEqual(painted[1],painted[0],direction+' arrow and digit occupy identical painted pixel rows');
-  }
   const itemLayout=await dialog.locator('.lamp-item-stats').evaluate(dl=>{
-   const values=[...dl.querySelectorAll('dd')],original=values.map(e=>e.textContent),before=values.map(e=>e.getBoundingClientRect().x);
-   values.forEach((e,i)=>e.textContent=['1','999','10000','100000','12345'][i]);
-   const after=values.map(e=>e.getBoundingClientRect().x),bounds=dl.getBoundingClientRect();
-   const result={aligned:Math.abs(before[0]-before[1])<.5&&Math.abs(before[1]-before[3])<.5&&Math.abs(before[2]-before[4])<.5,stable:before.every((x,i)=>Math.abs(x-after[i])<.5),contained:values.every(e=>{const r=e.getBoundingClientRect();return r.right<=bounds.right+.5&&e.scrollWidth<=e.clientWidth;}),font:parseFloat(getComputedStyle(values[0]).fontSize)};
-   values.forEach((e,i)=>e.textContent=original[i]);return result;
+   const cells=[...dl.children].map(n=>n.getBoundingClientRect());return {threeAcross:cells[0].y===cells[1].y&&cells[1].y===cells[2].y&&cells[3].y>cells[0].y&&cells[3].y===cells[4].y,aligned:Math.abs(cells[0].x-cells[3].x)<.5&&Math.abs(cells[1].x-cells[4].x)<.5,contained:[...dl.querySelectorAll('dd')].every(e=>e.scrollWidth<=e.clientWidth),cardRadius:parseFloat(getComputedStyle(dl.closest('.lamp-candidate')).borderRadius)};
   });
-  assert.equal(itemLayout.aligned,true,'item values share hard left edges');assert.equal(itemLayout.stable,true,'larger numbers preserve left edges');assert.equal(itemLayout.contained,true,'six-digit item values fit');assert.ok(itemLayout.font>=13);
+  assert.deepEqual(itemLayout,{threeAcross:true,aligned:true,contained:true,cardRadius:9});
   await page.screenshot({path:`${directory}/${width}-comparison.png`});
-  const previous=dialog.getByRole('button',{name:'Previous hero',exact:true}),next=dialog.getByRole('button',{name:'Next hero',exact:true});
-  await next.click();assert.equal(await dialog.locator('.lamp-portrait[aria-pressed="true"]').getAttribute('data-id'),'Falie');
-  await previous.click();assert.equal(await dialog.locator('.lamp-portrait[aria-pressed="true"]').getAttribute('data-id'),'Kojonn');
-  await next.click();await next.click();assert.equal(await dialog.locator('.lamp-portrait[aria-pressed="true"]').getAttribute('data-id'),'Huun');
-  assert.equal(await dialog.locator('.lamp-portrait[aria-pressed="true"]').count(),1);
-  assert.equal(await dialog.locator('.lamp-selected').innerText(),'Replaces '+current.name+' · '+RARITIES[current.rarity].label+' · Lv. '+current.level+' · CP '+lampGearCP(current));
-  await dialog.locator('.lamp-selected').scrollIntoViewIfNeeded();
-  const navigation=await dialog.locator('.lamp-hero-navigation').evaluate(e=>{const r=e.getBoundingClientRect();return{contained:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight,buttons:[...e.querySelectorAll('button')].every(b=>b.getBoundingClientRect().height>=44),gearWrap:(()=>{const p=document.querySelector('.lamp-selected');return p.scrollWidth<=p.clientWidth&&p.scrollHeight<=p.getBoundingClientRect().height+.5;})()};});
-  assert.deepEqual(navigation,{contained:true,buttons:true,gearWrap:true});
+  const beforeFailedSave=await page.evaluate(()=>localStorage.getItem('wishfire.equipment-economy.v5'));
+  await page.evaluate(()=>{const set=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key==='wishfire.equipment-economy.v5'){Storage.prototype.setItem=set;throw Error('QA save failure');}return set.call(this,key,value);};});
+  await dialog.getByRole('button',{name:'Equip',exact:true}).click();await dialog.getByText('QA save failure',{exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>localStorage.getItem('wishfire.equipment-economy.v5')),beforeFailedSave,'failed equip preserves the saved loadout and cache');
+  assert.equal(await page.locator('.lamp-cp-feedback').count(),0,'failed equip grants no CP receipt');
+  const errorNotice=await dialog.locator('.lamp-modal-notice').evaluate(n=>{const r=n.getBoundingClientRect(),c=getComputedStyle(n);return{readable:r.width>40&&r.height>10&&c.clipPath==='none',contained:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight,masterOverflow:n.closest('#lamp-dialog').scrollHeight>n.closest('#lamp-dialog').clientHeight+1};});
+  assert.deepEqual(errorNotice,{readable:true,contained:true,masterOverflow:false});await page.screenshot({path:`${directory}/${width}-failed-save-notice.png`});
+
+  await dialog.getByRole('button',{name:'Choose Kaja',exact:true}).click();assert.equal(await dialog.locator('.lamp-item-stats .lamp-stat-arrow').count(),0,'equal gear shows no stat arrows');
+  await dialog.getByRole('button',{name:'Choose Fara',exact:true}).click();assert.equal(await dialog.locator('.lamp-portrait[aria-pressed="true"]').count(),1);
+  const navigation=await dialog.evaluate(d=>({masterOverflow:d.scrollHeight>d.clientHeight+1,removed:d.querySelectorAll('.lamp-hero-navigation,.lamp-finish,.lamp-instruction,.lamp-selected').length,controls:[...d.querySelectorAll('.lamp-actions button')].every(n=>{const r=n.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight&&r.left>=0&&r.right<=innerWidth;})}));
+  assert.deepEqual(navigation,{masterOverflow:false,removed:0,controls:true});
   await page.screenshot({path:`${directory}/${width}-current-gear-navigation.png`});
-  await dialog.locator('[data-action="queue"][data-id="'+fixture.items[0].instanceId+'"]').click(); // Ordinary item selection clears the navigation-selected recipient.
-  await dialog.evaluate(d=>{d.scrollTop=0;});
+  await dialog.locator('[data-action="queue"][data-id="'+fixture.items[0].instanceId+'"]').click();
   assert.equal(await dialog.locator('.lamp-modal-header span').innerText(),'HERO GEAR UPGRADE');
   {
    // Offset the monotonic browser clock without advancing combat or Auto farming.
@@ -149,7 +144,7 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
    await dialog.locator('.lamp-item-stats').click();assert.equal(await page.locator('.lamp-idle-helper').isVisible(),false);
   }
 
-  await dialog.getByRole('button',{name:'Choose Runa',exact:true}).click();await dialog.getByText('Equip to Runa?',{exact:true}).waitFor();await page.screenshot({path:`${directory}/${width}-selected.png`});await dialog.getByRole('button',{name:'Equip',exact:true}).click();
+  await dialog.getByRole('button',{name:'Choose Runa',exact:true}).click();assert.equal(await dialog.locator('.lamp-portrait[aria-pressed="true"]').getAttribute('data-id'),'Runa');await page.screenshot({path:`${directory}/${width}-selected.png`});await dialog.getByRole('button',{name:'Equip',exact:true}).click();
   const feedback=page.locator('.lamp-cp-feedback').last();await feedback.waitFor();assert.equal(await feedback.getAttribute('data-hero'),'Runa');assert.equal(await dialog.isVisible(),true,'comparison stays open during CP feedback');assert.equal(await feedback.evaluate(e=>e.closest('#lamp-overlay')!==null),true,'CP feedback belongs to its modal');
   const receipt=await feedback.evaluate(e=>({change:Number(e.dataset.change),before:Number(e.dataset.before),after:Number(e.dataset.after)}));assert.equal(receipt.change,Math.round((receipt.after-receipt.before)*10)/10);assert.ok(receipt.change>0,'selected Runa equip raises total CP');assert.equal(receipt.change,expectedPreview[2],'saved receipt matches the recipient preview');assert.equal(await feedback.locator('img').count(),0,'equip feedback floats only the CP value');assert.equal(await feedback.innerText(),'CP '+(receipt.change>0?'+':'')+receipt.change);await page.waitForFunction(()=>Number(getComputedStyle(document.querySelector('.lamp-cp-feedback')).opacity)>.9);await page.screenshot({path:`${directory}/${width}-cp-feedback.png`});
   const closeBox=await dialog.locator('[data-action="close"]').boundingBox(),closePoint=[closeBox.x+closeBox.width/2,closeBox.y+closeBox.height/2];
@@ -157,7 +152,7 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
   await page.mouse.click(...closePoint);assert.equal(await dialog.isVisible(),true,'Close waits for active saved CP feedback');await dialog.waitFor({state:'hidden'});assert.equal(await page.locator('.lamp-cp-feedback').count(),0,'float finishes before modal closes');
   let state=await page.evaluate(()=>JSON.parse(window.render_game_to_text()));assert.equal(state.lamp.pending.length,1);assert.equal(state.loadouts.Runa[fixture.items[0].type],fixture.items[0].instanceId);
   await page.reload();await page.waitForTimeout(2000);const reloadCanvas=await page.locator('canvas').first().boundingBox();await page.mouse.click(reloadCanvas.x+reloadCanvas.width/2,reloadCanvas.y+426*reloadCanvas.width/360);await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).quest.phase==='combat');await strip.getByRole('button',{name:'Reveal equipment',exact:true}).waitFor();state=await page.evaluate(()=>JSON.parse(window.render_game_to_text()));assert.equal(state.loadouts.Runa[fixture.items[0].type],fixture.items[0].instanceId);assert.equal(await strip.locator('.lamp-results button').count(),0,'reload restores cache without filling arrival positions');assert.equal(state.lamp.autoEnabled,false);
-  await strip.locator('.lamp-collect').click();await dialog.getByRole('button',{name:'Dismantle',exact:true}).click();await dialog.getByText('DISMANTLE ALL',{exact:true}).waitFor();assert.equal(await dialog.getAttribute('aria-label'),'Dismantle All');assert.equal(await dialog.locator('.lamp-queue .lamp-tile').count(),1);assert.equal(await dialog.locator('.lamp-queue button').count(),0,'dismantling items cannot be selected');assert.equal((await dialog.innerText()).includes('Essence'),false,'resource amount appears only after confirmation');assert.equal(await dialog.getByRole('button',{name:'Review again',exact:true}).count(),0);
+  await strip.locator('.lamp-collect').click();await dialog.getByRole('button',{name:'Skip',exact:true}).click();await dialog.getByText('DISMANTLE ALL',{exact:true}).waitFor();await dialog.locator('.lamp-queue .lamp-tile').waitFor();assert.equal(await dialog.getAttribute('aria-label'),'Dismantle All');assert.equal(await dialog.locator('.lamp-queue .lamp-tile').count(),1);assert.equal(await dialog.locator('.lamp-queue button').count(),0,'dismantling items cannot be selected');assert.equal((await dialog.innerText()).includes('Essence'),false,'resource amount appears only after confirmation');assert.equal(await dialog.getByRole('button',{name:'Review again',exact:true}).count(),0);
   await guideIdle(page);await page.locator('.lamp-idle-helper').waitFor();assert.equal(await page.locator('.lamp-idle-helper').getAttribute('data-target'),'dismantle');await guideBounds(page);await page.screenshot({path:`${directory}/${width}-guide-dismantle.png`});await dialog.locator('.lamp-modal-header span').click();assert.equal(await page.locator('.lamp-idle-helper').isVisible(),false);
   const beforeDismantleEXP=await page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')).partyEXP);await page.screenshot({path:`${directory}/${width}-dismantle-all.png`});await dialog.getByRole('button',{name:'Dismantle All',exact:true}).click();await dialog.waitFor({state:'hidden'});await page.locator('.lamp-reward-banner').getByText('DISMANTLED',{exact:true}).waitFor();await guideIdle(page);await page.waitForTimeout(50);assert.equal(await page.locator('.lamp-idle-helper').isVisible(),false,'guidance never interrupts the active reward banner');assert.equal(await page.locator('.lamp-party-exp').count(),0);assert.equal(await page.locator('.lamp-reward-banner button').count(),0);assert.equal(await page.locator('.lamp-reward-banner img').count(),1);assert.match(await page.locator('.lamp-reward-banner b').innerText(),/^[\d,]+$/);const rewardBounds=await page.locator('.lamp-reward-banner').boundingBox();assert.ok(rewardBounds.x>=0&&rewardBounds.x+rewardBounds.width<=width+.5);assert.ok(rewardBounds.height<height*.3);assert.equal(await page.locator('.lamp-reward-banner').evaluate(n=>getComputedStyle(n).pointerEvents),'none');await page.screenshot({path:`${directory}/${width}-dismantled.png`});await page.locator('.lamp-reward-banner').waitFor({state:'detached'});assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')).partyEXP),beforeDismantleEXP);state=await page.evaluate(()=>JSON.parse(window.render_game_to_text()));assert.equal(state.lamp.pending.length,0);assert.equal(state.items.length,3);await strip.locator('.lamp-collect').click();assert.equal(await dialog.isVisible(),false,'empty storage never opens a dismantle modal');
   const guideBefore=await page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')));

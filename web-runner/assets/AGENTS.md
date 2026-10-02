@@ -43,11 +43,11 @@
 
 - Lamp item stats occupy the full candidate width with fixed label tracks and left-aligned values. Keep six-digit values contained and preserve the enlarged comparison type across phone widths.
 
-- Pending gear tiles use rarity-colored backgrounds; the currently compared item alone carries a gold selection halo and aria-current. Five columns of square art with compact item-CP footers fill the equip frame; selection and arrivals preserve the one-and-a-half-row viewport. The separate dismantling view has three-and-a-half inert rows and shows resources only after confirmation.
+- Pending gear tiles use rarity-colored backgrounds; the currently compared item alone carries a gold selection halo and aria-current. Five columns of square art with compact item-CP footers fill the equip frame; selection and arrivals preserve the two-to-two-and-a-half-row viewport. The separate dismantling view has three-and-a-half inert rows and shows resources only after confirmation.
 
 - Hero Gear Upgrade idle guidance uses the Hondo-inspired blue pointer and cyan rings: 15 seconds since input points to Hondo (Huun), or Auto-Equip after portrait selection. Document pointer/click, key and wheel input dismisses and resets it. Hidden/busy surfaces, active reward banners and the completed strip tutorial suppress guidance; the overlay never intercepts input.
 
-- Lamp progression: manual/Auto draws grant all four heroes saved EXP, with cumulative receipts and per-hero lampEXPClaimed replay. Enemy rewards grant zero new EXP/Gold. Auto requires all four Lv5, switches off at capacity, and requires explicit restart. Dismantling essence upgrades lamp levels 1–4, raising capacity 20/30/40/50 and rarity odds. The lower-right level disc/bar opens current/next bonuses and cost; no Gold is used. Strip arrivals omit rarity initials while review retains them. The blue speech counter opens storage; lamp taps generate. The strip disc/bar shows the lowest party hero level and its current EXP toward the next level; leftover EXP resets the bar on level-up. Lamp tier, essence and upgrade costs remain in the upgrade modal. The disc label is Party to distinguish these systems.
+- Lamp progression: manual/Auto draws grant all four heroes saved EXP, with cumulative receipts and per-hero lampEXPClaimed replay. Enemy rewards grant zero new EXP/Gold. Auto requires all four Lv5, switches off at capacity, and requires explicit restart. Dismantling essence upgrades lamp levels 1–4, raising capacity 20/30/40/50 and rarity odds. The lower-right level disc/bar opens current/next bonuses and cost; no Gold is used. Gear artwork omits corner rarity initials across strip, review and dismantling. The blue speech counter opens storage; lamp taps generate. The strip disc/bar shows the lowest party hero level and its current EXP toward the next level; leftover EXP resets the bar on level-up. Lamp tier, essence and upgrade costs remain in the upgrade modal. The disc label is Party to distinguish these systems.
 
 - Equip feedback animates only the saved CP value. Keep hero art stationary and name the recipient in the accessible status announcement.
 
@@ -55,7 +55,7 @@
 
 - Every raw emission tilts the lamp and pops its newest arrival; CP selection occurs in equip review. Persisted five-item arrival history remains independent of review/dismantling routing.
 
-- Gear review displays stats in HP, ATK, DEF, MAG, RES order. Candidate HP occupies its first row above the two-column attack/defense stats; presentation order does not change saved rolls.
+- Gear review displays stats in HP, ATK, DEF, MAG, RES order. Candidate stats occupy three columns: HP/ATK/DEF followed by MAG/RES; presentation order does not change saved rolls.
 
 - Confirmed dismantling closes the item modal and shows a passive essence reward strip with one original orb and the saved awarded total. Hold three seconds, fade over 250ms, remove automatically. No Close/Continue control; pointer events pass through to combat. Failed saves never show rewards.
 
@@ -69,10 +69,14 @@
 
 - Helper hand direction and ring diameter follow the target’s distance from viewport edges. Preserve the supplied blue art, bob and ring timing; only decorative orientation/bounds adapt, with strip/modal geometry unchanged. `test:lamp-ui` checks every new target over animation frames and runs on staged lamp presentation owners.
 
-- Current matching-slot gear text wraps without a fixed paragraph height; comparison navigation reuses the existing action control styling and preserves the fixed queue geometry.
+- The rounded selected-item card groups identity and five stats. Current gear comparisons use selected-hero stat arrows; equality has no indicator. Direct portrait/cache selection replaces Previous/Next and the inline Dismantle link. Finish review through Skip/Auto-Equip before dismantling confirmation.
 
 - Lamp modals stack above fixed DEV launchers (10000); idle guidance stacks above the modal and remains pointer-transparent. Close must receive a pointer at its center while saved CP feedback is active.
 
 - CP feedback positions are absolute within the fixed lamp overlay, so modal offsets never shift receipts away from their hero. Preserve18px type and1.8-second animation.
 
 - Lamp readiness uses 80% image brightness whenever its shared reveal button is disabled. Let supplied smoke paint above the fixed 92 logical-pixel strip; preserve control anchors and horizontal containment.
+
+- Lamp cache review follows a 4/8px internal rhythm, rounded bordered identity/stat card and three-column stats. The equip frame has no master scrollbar; only its five-column inventory scrolls and exposes two to two-and-a-half rows across the phone profiles. CP direction glyphs use green up/red down; equal stats/CP omit glyphs.
+
+- Nonempty equip notices, including save failures, stay visible as compact callouts above the action row without consuming inventory height. Empty notices reserve no space.

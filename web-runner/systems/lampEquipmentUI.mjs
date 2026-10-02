@@ -1,5 +1,6 @@
 import {LAMP_CONFIG,LAMP_GUIDE,GEAR_STATS,lampStoredCount,lampCooldownRemaining,compareLampItem,selectLampUpgrades,sortedLampItems,lampGearCP,lampItemCPGain,lampAutoUnlocked,lampCapacity,LAMP_CAPACITY_TIERS} from '../src/core/lampGear.mjs';
-import {RARITIES,EQUIPMENT_SLOTS,equipmentDefinition} from '../src/core/equipment.mjs';
+import {RARITIES,EQUIPMENT_SLOTS} from '../src/core/equipment.mjs';
+import {HERO_ART_ASSETS,heroArtKey} from '../state/heroArtAssets.mjs';
 import {heroDefinition} from '../src/core/heroDefinitions.mjs';
 import {expToNextLevel} from '../src/core/heroProgression.mjs';
 
@@ -11,8 +12,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
  const context=()=>globals.ContinuousCombatStage||{region:1,stage:1};
  const item=id=>economy.data?.items.find(i=>i.instanceId===id);
  const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const atlas=(i,cls='')=>'<span class="lamp-art '+cls+'" style="--col:'+(i.art%3)+';--row:'+Math.floor(i.art/3)+'" aria-hidden="true"><span class="lamp-rarity">'+RARITIES[i.rarity].label[0]+'</span><span class="lamp-level">Lv.'+i.level+'</span></span>';
- const device=(cell,cls='')=>'<span class="lamp-device '+cls+'" style="--col:'+(cell%2)+';--row:'+Math.floor(cell/2)+'" aria-hidden="true"></span>';
+ const atlas=(i,cls='')=>'<span class="lamp-art '+cls+'" style="--col:'+(i.art%3)+';--row:'+Math.floor(i.art/3)+'" aria-hidden="true"><span class="lamp-level">Lv.'+i.level+'</span></span>';
  const tile=(i,action='inspect')=>'<button class="lamp-tile'+(action==='inspect'&&i.instanceId===emissionId?' lamp-arriving':'')+'" style="--rarity:'+RARITIES[i.rarity].color+'" data-action="'+action+'" data-cp="'+lampGearCP(i)+'" data-id="'+escape(i.instanceId)+'"'+(action==='queue'&&i.instanceId===selectedItem?' aria-current="true"':'')+' aria-label="Inspect '+escape(i.name)+', '+RARITIES[i.rarity].label+', level '+i.level+'">'+(action==='inspect'&&i.instanceId===emissionId?'<img class="lamp-equip-puff" src="assets/images/lamp/equip-puff.png" alt="">':'')+atlas(i)+(action==='queue'?'<small>CP '+new Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:1}).format(lampGearCP(i))+'</small>':'')+'</button>';
  function init(){
   if(strip)return;
@@ -56,7 +56,6 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   if(kind==='auto')return void action(async()=>{await economy.setAuto(!economy.data.lamp.autoEnabled);notice=economy.data.lamp.autoEnabled?'Auto is on. Inspect whenever you like.':'Auto is off.';});
   if(kind==='equip'&&selectedHero&&selectedItem)return void action(async()=>{dialog.scrollTop=0;const result=await economy.equip(selectedHero,selectedItem),name=heroDefinition(heroes().find(h=>h.heroInstanceKey===result.heroId)).name,anchor=dialog.querySelector('[data-action="hero"][data-id="'+result.heroId+'"]').getBoundingClientRect();notice='Equipped to '+name;showEquipFeedback(result,name,anchor);if(batch){nextItem();if(!selectedItem)await economy.finishReview();}else close();});
   if(kind==='auto-equip')return void action(async()=>{dialog.scrollTop=0;const anchors=new Map(heroes().map(h=>[h.heroInstanceKey,dialog.querySelector('[data-action="hero"][data-id="'+h.heroInstanceKey+'"]').getBoundingClientRect()])),results=await economy.autoEquip();results.forEach(r=>showEquipFeedback(r,heroDefinition(heroes().find(h=>h.heroInstanceKey===r.heroId)).name,anchors.get(r.heroId)));selectedItem=null;selectedHero=null;notice='';});
-  if(kind==='finish')return void action(async()=>{await economy.finishReview();selectedItem=null;selectedHero=null;notice='';});
   if(kind==='upgrade')return void action(async()=>{await economy.upgrade(Number(b.dataset.tier));notice='Lamp upgraded to Lv. '+(economy.data.lamp.capacityTier+1);});
   if(kind==='dismantle')return void action(async()=>{const r=await economy.dismantle([...previewIds]);document.querySelectorAll('.lamp-party-exp').forEach(n=>n.remove());notice='';selectedItem=null;selectedHero=null;reviewed=new Set();close();showDismantleReward(r);});
  }
@@ -80,7 +79,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   if(strip.hidden||busy||opening||document.hidden||rewardBanner?.isConnected||performance.now()-lastInteraction<15000){helper.hidden=true;return;}
   const data=economy.data,l=data?.lamp;if(!l){helper.hidden=true;return;}
   let selectors;
-  if(open)selectors=upgradeOpen?['[data-action="upgrade"]','[data-action="close"]']:selectedItem?(selectedHero?['[data-action="auto-equip"]','[data-action="equip"]','[data-action="skip"]']:['[data-action="hero"][data-id="Huun"]','[data-action="hero"]','[data-action="finish"]']):['[data-action="dismantle"]','[data-action="close"]'];
+  if(open)selectors=upgradeOpen?['[data-action="upgrade"]','[data-action="close"]']:selectedItem?(selectedHero?['[data-action="auto-equip"]','[data-action="equip"]','[data-action="skip"]']:['[data-action="hero"][data-id="Huun"]','[data-action="hero"]']):['[data-action="dismantle"]','[data-action="close"]'];
   else if(l.capacityTier===0)selectors=lampStoredCount(data)?['[data-action="collect"]']:(!(l.guide&LAMP_GUIDE.preview)&&l.essence>0||l.essence>=LAMP_CAPACITY_TIERS[0].cost)?['[data-action="lamp-upgrades"]']:['[data-action="generate"]'];
   const scope=open?dialog:strip,target=selectors?.map(s=>scope.querySelector(s+':not(:disabled)')).find(Boolean);
   if(!target){helper.hidden=true;return;}
@@ -123,6 +122,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   const party=partyProgress(),level=party.level,progress=party.max?Math.min(1,party.exp/party.max):1;
   strip.innerHTML='<div class="lamp-strip-body"><div class="lamp-results">'+latest.map(i=>tile(i)).join('')+Array.from({length:5-latest.length},()=>'<span class="lamp-empty" aria-hidden="true"></span>').join('')+'</div><div class="lamp-side"><button class="lamp-burp" data-action="generate" aria-label="Reveal equipment" '+(busy||cooling||lampStoredCount(data)>=lampCapacity(data)?'disabled':'')+'><img class="lamp-device" src="assets/images/lamp/lamp.png" alt=""></button><button class="lamp-collect" data-action="collect" aria-label="Review collection, '+lampStoredCount(data)+' of '+lampCapacity(data)+'"><span class="lamp-count">'+lampStoredCount(data)+'</span></button><button class="lamp-auto" data-state="'+(!autoUnlocked?'locked':l.autoEnabled?'on':'off')+'" data-action="auto" aria-label="'+(autoUnlocked?'Auto generation':'Auto unlocks when all four heroes reach level 5')+'" aria-pressed="'+(autoUnlocked&&l.autoEnabled)+'" '+(!autoUnlocked||lampStoredCount(data)>=lampCapacity(data)?'disabled':'')+'>AUTO'+(!autoUnlocked?'<span class="lamp-lock" aria-hidden="true"></span>':'')+'</button><button class="lamp-tier-badge" data-action="lamp-upgrades" aria-label="Party level '+level+', '+party.exp+' of '+party.max+' EXP; open lamp upgrades"><span class="lamp-progress" role="progressbar" aria-label="Party EXP toward next level" aria-valuemin="0" aria-valuemax="'+(party.max||1)+'" aria-valuenow="'+(party.max?party.exp:1)+'"><span style="width:'+(progress*100)+'%"></span><small class="lamp-exp-value">'+(party.max?party.exp+' / '+party.max:'MAX')+'</small></span><span class="lamp-level-disc"><b>'+level+'</b><small>Party</small></span></button></div></div>';
 
+  dialog.dataset.view=upgradeOpen?'upgrade':selectedItem?'equip':'dismantle';
   dialog.setAttribute('aria-label',upgradeOpen?'Lamp upgrades':selectedItem?'Choose a hero for lamp equipment':'Dismantle All');
   modal.hidden=!open;if(!open){restoreFocus();return;}
   const candidate=item(selectedItem);
@@ -132,19 +132,14 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
    const tier=LAMP_CAPACITY_TIERS[l.capacityTier],next=LAMP_CAPACITY_TIERS[l.capacityTier+1];
    body+='<div class="lamp-upgrade-summary"><strong>Lamp Lv. '+(l.capacityTier+1)+(next?' → Lv. '+(l.capacityTier+2):' · MAX')+'</strong><p>Storage '+tier.capacity+(next?' → '+next.capacity:'')+'</p></div><table class="lamp-odds"><thead><tr><th>Quality</th><th>Current</th><th>Next</th></tr></thead><tbody>'+Object.entries(RARITIES).map(([key,r])=>'<tr style="--rarity:'+r.color+'"><th>'+r.label+'</th><td>'+tier.rarityWeights[key]+'%</td><td>'+(next?next.rarityWeights[key]+'%'+(next.rarityWeights[key]>tier.rarityWeights[key]?' ↑':''):'—')+'</td></tr>').join('')+'</tbody></table><p class="lamp-essence">Essence '+l.essence+(next?' · Cost '+tier.cost:'')+'</p>'+(next&&l.essence<tier.cost?'<p class="lamp-modal-notice">Need '+(tier.cost-l.essence)+' more essence</p>':'')+'<button class="lamp-upgrade" data-action="upgrade" data-tier="'+l.capacityTier+'" '+(busy||!next||l.essence<tier.cost?'disabled':'')+'>'+(next?'Confirm upgrade · '+tier.cost+' Essence':'MAX')+'</button>';
   }else if(candidate){
-   const comparisons=roster.map(h=>compareLampItem(data,candidate,h.heroInstanceKey));
+   const comparison=selectedHero?compareLampItem(data,candidate,selectedHero):null;
    const rows=['HP',...GEAR_STATS.filter(k=>k!=='HP')];
-   body+='<table class="lamp-compare"><thead><tr><th scope="col" aria-label="Stat"></th>';
-   body+=roster.map((h,index)=>{const d=heroDefinition(h),gain=lampItemCPGain(data,candidate,h),change=(gain>=0?'+':'')+gain;return '<th scope="col"><button class="lamp-hero lamp-portrait" data-action="hero" data-id="'+escape(h.heroInstanceKey)+'" aria-pressed="'+(selectedHero===h.heroInstanceKey)+'" aria-label="Choose '+d.name+'"><img decoding="sync" src="assets/images/icon_hero'+({Fara:1,Hondo:2,Runa:3,Kaja:4}[d.name])+'-animation%201-000.png" alt=""></button><small class="'+(gain>0?'positive':gain<0?'negative':'neutral')+'" data-cp-change="'+gain+'" aria-label="'+d.name+' total CP change '+change+'">CP '+change+'</small></th>';}).join('')+'</tr></thead><tbody>';
-   body+=rows.map(k=>'<tr><th scope="row">'+k+'</th>'+comparisons.map(c=>{const n=c.deltas[k]||0;return'<td class="'+(n>0?'positive':n<0?'negative':'neutral')+'" aria-label="'+(n>0?'Increase ':n<0?'Decrease ':'No change ')+Math.abs(n)+' '+k+'">'+'<span class="lamp-stat-value"><canvas class="lamp-stat-paint" aria-hidden="true"></canvas><span class="lamp-stat-number" aria-hidden="true">'+Math.abs(n)+'</span>'+(n?' <span class="lamp-stat-arrow '+(n<0?'down':'up')+'" aria-hidden="true">'+(n>0?'↑':'↓')+'</span>':'')+'</span></td>';}).join('')+'</tr>').join('')+'</tbody></table>';
-   body+='<div class="lamp-candidate" style="--rarity:'+RARITIES[candidate.rarity].color+';--quality-ink:'+(['common','legendary'].includes(candidate.rarity)?'#211f1b':'#fff9eb')+';--quality-shadow:'+(['common','legendary'].includes(candidate.rarity)?'none':'0 1px 2px #000')+'">'+atlas(candidate)+'<div><div class="lamp-quality-band"><small>'+RARITIES[candidate.rarity].label+' · '+EQUIPMENT_SLOTS[candidate.type]+' · Lv. '+candidate.level+'</small><h2>'+escape(candidate.name)+'</h2><p class="lamp-item-cp">CP '+lampGearCP(candidate)+'</p></div><dl class="lamp-item-stats">'+rows.filter(k=>Object.hasOwn(candidate.stats,k)).map(k=>'<div><dt>'+k+'</dt><dd>'+candidate.stats[k]+'</dd></div>').join('')+'</dl></div></div>';
+   body+='<div class="lamp-hero-row" aria-label="Choose equipment recipient">'+roster.map(h=>{
+    const d=heroDefinition(h),gain=lampItemCPGain(data,candidate,h),art=HERO_ART_ASSETS[heroArtKey(h)];
+    return '<button class="lamp-hero lamp-portrait" data-action="hero" data-id="'+escape(h.heroInstanceKey)+'" data-cp-change="'+gain+'" aria-pressed="'+(selectedHero===h.heroInstanceKey)+'" aria-label="Choose '+d.name+'" aria-description="'+d.name+' total CP change '+(gain>0?'+':'')+gain+'" style="--portrait-position:'+art.strip.position+'"><img decoding="sync" src="assets/'+art.path+'" alt="">'+(gain?'<span class="lamp-cp-direction '+(gain>0?'up':'down')+'" aria-hidden="true"></span>':'')+'</button>';
+   }).join('')+'</div>';
+   body+='<div class="lamp-candidate" style="--rarity:'+RARITIES[candidate.rarity].color+'">'+atlas(candidate)+'<div><div class="lamp-quality-band"><small>'+RARITIES[candidate.rarity].label+' · '+EQUIPMENT_SLOTS[candidate.type]+' · Lv. '+candidate.level+'</small><h2>'+escape(candidate.name)+'</h2><p class="lamp-item-cp">CP '+lampGearCP(candidate)+'</p></div><dl class="lamp-item-stats">'+rows.filter(k=>Object.hasOwn(candidate.stats,k)).map(k=>{const delta=comparison?.deltas[k]||0;return '<div><dt>'+k+'</dt><dd data-delta="'+delta+'" aria-label="'+k+' '+candidate.stats[k]+(selectedHero?', '+(delta>0?'increase ':delta<0?'decrease ':'no change ')+Math.abs(delta):'')+'"><span class="lamp-stat-value"><canvas class="lamp-stat-paint" aria-hidden="true"></canvas><span class="lamp-stat-number" aria-hidden="true">'+candidate.stats[k]+'</span>'+(delta?'<span class="lamp-stat-arrow '+(delta>0?'up':'down')+'" aria-hidden="true"></span>':'')+'</span></dd></div>';}).join('')+'</dl></div></div>';
    body+='<div class="lamp-queue" aria-label="Pending collection">'+sortedLampItems(data).map(i=>tile(i,'queue')).join('')+'</div>';
-   body+='<button class="lamp-finish" data-action="finish">Dismantle</button>';
-   const selectedIndex=roster.findIndex(h=>h.heroInstanceKey===selectedHero);
-   body+='<div class="lamp-actions lamp-hero-navigation"><button data-action="hero" data-id="'+roster[(selectedIndex<0?roster.length-1:(selectedIndex+roster.length-1)%roster.length)].heroInstanceKey+'" aria-label="Previous hero">Previous</button><button data-action="hero" data-id="'+roster[(selectedIndex+1)%roster.length].heroInstanceKey+'" aria-label="Next hero">Next</button></div>';
-   if(l.discarded?.includes(candidate.instanceId))body+='<p class="lamp-instruction">Replaced gear</p><p class="lamp-selected">Stored for dismantling</p>';
-   else if(selectedHero){const c=comparisons.find(c=>c.heroId===selectedHero),h=roster.find(h=>h.heroInstanceKey===selectedHero);body+='<p class="lamp-instruction">Equip to '+heroDefinition(h).name+'?</p><p class="lamp-selected">Replaces '+(c.current?escape(c.current.name)+' · '+RARITIES[c.current.rarity].label+' · Lv. '+c.current.level+' · CP '+lampGearCP(c.current):'an empty '+EQUIPMENT_SLOTS[candidate.type].toLowerCase()+' position')+'</p>';}
-   else body+='<p class="lamp-instruction" aria-hidden="true">&#160;</p><p class="lamp-selected" aria-hidden="true">&#160;</p>';
    body+='<div class="lamp-actions"><button data-action="skip" '+(busy?'disabled':'')+'>Skip</button><button class="primary" data-action="equip" '+(!l.pending.includes(candidate.instanceId)||!selectedHero||busy?'disabled':'')+'>Equip</button><button data-action="auto-equip" '+(busy||!selectLampUpgrades(data,roster).length?'disabled':'')+'>Auto-Equip</button></div>';
   }else{
    previewIds=[...(l.discarded||[]),'salvage:'+l.salvage.count+':'+l.salvage.gold];const salvageCount=(l.discarded?.length||0)+l.salvage.count;
@@ -154,7 +149,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
     body+='<div class="lamp-actions"><button class="primary" data-action="dismantle" '+(busy?'disabled':'')+'>Dismantle All</button></div>';
    }
   }
-  body+='<p class="lamp-modal-notice" role="status">'+(notice?escape(notice):'&#160;')+'</p>';
+  if(notice)body+='<p class="lamp-modal-notice" role="status">'+escape(notice)+'</p>';
 
   const portraits=new Map([...dialog.querySelectorAll('.lamp-hero img')].map(img=>[img.src,img]));
   dialog.innerHTML=body;
@@ -171,7 +166,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
    const paint=value.querySelector('canvas');paint.width=width;paint.height=height;paint.style.width=width/dpr+'px';paint.style.height=height/dpr+'px';paint.dataset.arrowX=arrowLeft;
    const ctx=paint.getContext('2d');ctx.putImageData(pixels,-left,-top);ctx.clearRect(right-left+1,0,width-(right-left+1),height);
    if(arrow){
-    ctx.fillStyle=style.color;ctx.save();ctx.translate(arrowLeft,0);
+    ctx.fillStyle=getComputedStyle(arrow).color;ctx.save();ctx.translate(arrowLeft,0);
     if(arrow.classList.contains('down')){ctx.translate(arrowWidth,height);ctx.rotate(Math.PI);}
     ctx.beginPath();ctx.moveTo(arrowWidth*.38,0);ctx.lineTo(arrowWidth*.62,0);ctx.lineTo(arrowWidth,height*.45);ctx.lineTo(arrowWidth*.7,height*.45);ctx.lineTo(arrowWidth*.7,height);ctx.lineTo(arrowWidth*.3,height);ctx.lineTo(arrowWidth*.3,height*.45);ctx.lineTo(0,height*.45);ctx.closePath();ctx.fill();ctx.restore();
    }
@@ -180,7 +175,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   const queue=dialog.querySelector('.lamp-queue');
   if(queue){
    const style=getComputedStyle(queue),tile=queue.querySelector('.lamp-tile');
-   queue.style.height=(tile.getBoundingClientRect().height*(candidate?1.5:3.5)+parseFloat(style.rowGap)*(candidate?1:3)+parseFloat(style.paddingTop)+parseFloat(style.paddingBottom)+parseFloat(style.borderTopWidth)+parseFloat(style.borderBottomWidth))+'px';
+   queue.style.height=(tile.getBoundingClientRect().height*(candidate?2.5:3.5)+parseFloat(style.rowGap)*(candidate?2:3)+parseFloat(style.paddingTop)+parseFloat(style.paddingBottom)+parseFloat(style.borderTopWidth)+parseFloat(style.borderBottomWidth))+'px';
    queue.scrollTop=candidate?queueScroll:0;
   }
   dialog.scrollTop=dialogScroll;
