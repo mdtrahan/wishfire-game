@@ -5,6 +5,7 @@ import {heroDefinition} from '../src/core/heroDefinitions.mjs';
 import {expToNextLevel} from '../src/core/heroProgression.mjs';
 
 export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=()=>false}){
+ const gearBounds=[];
  let strip,modal,dialog,helper,lastInteraction=performance.now(),open=false,upgradeOpen=false,batch=false,selectedItem=null,selectedHero=null,reviewed=new Set(),busy=false,opening=false,closeRequested=false,pendingAction=Promise.resolve(),gearReady,feedbacks=new Set(),notice='',rewardBanner,lastRewardTimer,lastKey='',lastAutoCheck=0,lastFocus,previewIds=[],arrivalSequence,emissionId,emissionTimer;
  const fontMeasure=document.createElement('canvas').getContext('2d');
  const heroes=()=>Object.values(globals.HeroProgress?.heroes||{}).slice(0,4);
@@ -12,7 +13,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
  const context=()=>globals.ContinuousCombatStage||{region:1,stage:1};
  const item=id=>economy.data?.items.find(i=>i.instanceId===id);
  const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const atlas=(i,cls='')=>'<span class="lamp-art '+cls+'" style="--col:'+(i.art%3)+';--row:'+Math.floor(i.art/3)+'" aria-hidden="true"><span class="lamp-level">Lv.'+i.level+'</span></span>';
+ const atlas=(i,cls='')=>'<span class="lamp-art '+cls+'" style="--col:'+(i.art%3)+';--row:'+Math.floor(i.art/3)+';--gear-midpoint:var(--lamp-gear-midpoint-'+i.art+',50%)" aria-hidden="true"><span class="lamp-level">Lv.'+i.level+'</span></span>';
  const tile=(i,action='inspect')=>'<button class="lamp-tile'+(action==='inspect'&&i.instanceId===emissionId?' lamp-arriving':'')+'" style="--rarity:'+RARITIES[i.rarity].color+'" data-action="'+action+'" data-cp="'+lampGearCP(i)+'" data-id="'+escape(i.instanceId)+'"'+(action==='queue'&&i.instanceId===selectedItem?' aria-current="true"':'')+' aria-label="Inspect '+escape(i.name)+', '+RARITIES[i.rarity].label+', level '+i.level+'">'+(action==='inspect'&&i.instanceId===emissionId?'<img class="lamp-equip-puff" src="assets/images/lamp/equip-puff.png" alt="">':'')+atlas(i)+(action==='queue'?'<small>CP '+new Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:1}).format(lampGearCP(i))+'</small>':'')+'</button>';
  function init(){
   if(strip)return;
@@ -23,6 +24,8 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
     const left=n%3*size,row=Math.floor(n/3)*size;let top=size,bottom=-1;
     // Ignore nearly transparent atlas bleed when locating the visible silhouette.
     for(let y=0;y<size;y++)for(let x=0;x<size;x++)if(pixels[((row+y)*art.width+left+x)*4+3]>8){top=Math.min(top,y);bottom=Math.max(bottom,y);}
+    gearBounds[n]={height:Math.max(0,bottom-top+1),midpoint:bottom<0?50:(top+bottom+1)/2/size*100};
+    document.documentElement.style.setProperty('--lamp-gear-midpoint-'+n,gearBounds[n].midpoint+'%');
     const offset=bottom<0?0:(size-top-bottom-1)/2;
     ctx.save();ctx.beginPath();ctx.rect(left,row,size,size);ctx.clip();ctx.drawImage(art,left,row,size,size,left,row+offset,size,size);ctx.restore();
    }
@@ -82,7 +85,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   rewardBanner.innerHTML='<strong>DISMANTLED</strong><div><img src="assets/images/lamp/essence-orb.png" alt="Essence"><b>'+new Intl.NumberFormat('en').format(result.essence)+'</b></div>';
   document.body.append(rewardBanner);position();lastRewardTimer=setTimeout(()=>{rewardBanner.remove();rewardBanner=null;},3250);
  }
- async function reveal(draw){const before=partyProgress().level,i=await draw();if(i){notice='Revealed '+i.name;showPartyEXP(LAMP_CONFIG.drawEXP,before);startEmission(i);}}
+ async function reveal(draw){await gearReady;const before=partyProgress().level,i=await draw();if(i){notice='Revealed '+i.name;showPartyEXP(LAMP_CONFIG.drawEXP,before);startEmission(i);}}
  function showPartyEXP(amount,before){
   const feedback=document.createElement('div');feedback.className='lamp-party-exp';feedback.setAttribute('role','status');const level=partyProgress().level;feedback.textContent=level>before?'Party Lv. '+before+' → '+level+' · EXP +'+amount:'Party EXP +'+amount;feedback.dataset.level=level;
   const r=strip.getBoundingClientRect();feedback.style.left=(r.left+r.width/2)+'px';feedback.style.top=(r.top-24)+'px';document.body.append(feedback);setTimeout(()=>feedback.remove(),1500);
@@ -131,9 +134,11 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   const restoreFocus=()=>{if(focusParent&&focusAction){const target=[...focusParent.querySelectorAll('button')].find(b=>b.dataset.action===focusAction&&b.dataset.id===focusId&&!b.disabled);(target||dialog).focus();}};
   const storedIds=new Set([...l.pending,...(l.discarded||[])]);
   const latest=(l.recent||data.items.filter(i=>Number.isSafeInteger(i.sequence)).sort((a,b)=>a.sequence-b.sequence).slice(-5)).filter(i=>i.sequence>=arrivalSequence&&storedIds.has(i.instanceId));
+  const tallest=latest.reduce((best,i)=>!best||gearBounds[i.art]?.height>gearBounds[best.art]?.height?i:best,null);
+  const arrivalMidpoint=gearBounds[tallest?.art]?.midpoint??50;
   const autoUnlocked=lampAutoUnlocked(roster);
   const level=l.capacityTier+1,stages=l.upgradeStage||0,maxLevel=level===LAMP_CONFIG.lampLevels,progress=maxLevel?1:stages/LAMP_CONFIG.upgradeStages;
-  strip.innerHTML='<div class="lamp-strip-body"><div class="lamp-results">'+latest.map(i=>tile(i)).join('')+Array.from({length:5-latest.length},()=>'<span class="lamp-empty" aria-hidden="true"></span>').join('')+'</div><div class="lamp-side"><button class="lamp-burp" data-action="generate" aria-label="Reveal equipment" '+(busy||cooling||lampStoredCount(data)>=lampCapacity(data)?'disabled':'')+'><img class="lamp-device" src="assets/images/lamp/lamp.png" alt=""></button><button class="lamp-collect" data-action="collect" aria-label="Review collection, '+lampStoredCount(data)+' of '+lampCapacity(data)+'"><span class="lamp-count">'+lampStoredCount(data)+'</span></button><button class="lamp-auto" data-state="'+(!autoUnlocked?'locked':l.autoEnabled?'on':'off')+'" data-action="auto" aria-label="'+(autoUnlocked?'Auto generation':'Auto unlocks when all four heroes reach level 5')+'" aria-pressed="'+(autoUnlocked&&l.autoEnabled)+'" '+(!autoUnlocked||lampStoredCount(data)>=lampCapacity(data)?'disabled':'')+'>AUTO'+(!autoUnlocked?'<span class="lamp-lock" aria-hidden="true"></span>':'')+'</button><button class="lamp-tier-badge" data-action="lamp-upgrades" aria-label="Lamp level '+level+', '+(maxLevel?'fully upgraded':stages+' of '+LAMP_CONFIG.upgradeStages+' upgrade stages purchased')+'; open lamp upgrades"><span class="lamp-progress" role="progressbar" aria-label="Purchased lamp upgrade stages" aria-valuemin="0" aria-valuemax="'+LAMP_CONFIG.upgradeStages+'" aria-valuenow="'+(maxLevel?LAMP_CONFIG.upgradeStages:stages)+'"><span style="width:'+(progress*100)+'%"></span><small class="lamp-exp-value">'+(maxLevel?'MAX':stages+' / '+LAMP_CONFIG.upgradeStages)+'</small></span><span class="lamp-level-disc"><b>'+level+'</b><small>Lamp</small></span></button></div></div>';
+  strip.innerHTML='<div class="lamp-strip-body"><div class="lamp-results" style="--gear-target-midpoint:'+arrivalMidpoint+'%">'+latest.map(i=>tile(i)).join('')+Array.from({length:5-latest.length},()=>'<span class="lamp-empty" aria-hidden="true"></span>').join('')+'</div><div class="lamp-side"><button class="lamp-burp" data-action="generate" aria-label="Reveal equipment" '+(busy||cooling||lampStoredCount(data)>=lampCapacity(data)?'disabled':'')+'><img class="lamp-device" src="assets/images/lamp/lamp.png" alt=""></button><button class="lamp-collect" data-action="collect" aria-label="Review collection, '+lampStoredCount(data)+' of '+lampCapacity(data)+'"><span class="lamp-count">'+lampStoredCount(data)+'</span></button><button class="lamp-auto" data-state="'+(!autoUnlocked?'locked':l.autoEnabled?'on':'off')+'" data-action="auto" aria-label="'+(autoUnlocked?'Auto generation':'Auto unlocks when all four heroes reach level 5')+'" aria-pressed="'+(autoUnlocked&&l.autoEnabled)+'" '+(!autoUnlocked||lampStoredCount(data)>=lampCapacity(data)?'disabled':'')+'>AUTO'+(!autoUnlocked?'<span class="lamp-lock" aria-hidden="true"></span>':'')+'</button><button class="lamp-tier-badge" data-action="lamp-upgrades" aria-label="Lamp level '+level+', '+(maxLevel?'fully upgraded':stages+' of '+LAMP_CONFIG.upgradeStages+' upgrade stages purchased')+'; open lamp upgrades"><span class="lamp-progress" role="progressbar" aria-label="Purchased lamp upgrade stages" aria-valuemin="0" aria-valuemax="'+LAMP_CONFIG.upgradeStages+'" aria-valuenow="'+(maxLevel?LAMP_CONFIG.upgradeStages:stages)+'"><span style="width:'+(progress*100)+'%"></span><small class="lamp-exp-value">'+(maxLevel?'MAX':stages+' / '+LAMP_CONFIG.upgradeStages)+'</small></span><span class="lamp-level-disc"><b>'+level+'</b><small>Lamp</small></span></button></div></div>';
 
   dialog.dataset.view=upgradeOpen?'upgrade':selectedItem?'equip':'dismantle';
   dialog.setAttribute('aria-label',upgradeOpen?'Lamp upgrades':selectedItem?'Choose a hero for lamp equipment':'Dismantle All');

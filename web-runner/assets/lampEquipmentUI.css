@@ -216,3 +216,7 @@
 .lamp-upgrade small{font-size:11px;white-space:nowrap}
 #lamp-dialog[data-view=upgrade] .lamp-modal-notice{margin:0;min-height:0;font-size:11px}
 @container(max-width:260px){.lamp-upgrade-path{gap:8px;padding:8px 6px}.lamp-stage-label{font-size:11px}}
+
+/* Sprite-only alignment keeps badges fixed while every bounce returns to one array midpoint. */
+#wishfire-lamp .lamp-results .lamp-art{background-image:none}
+#wishfire-lamp .lamp-results .lamp-art:before{content:"";position:absolute;inset:0;background-image:url('images/lamp/gear-atlas.png');background-size:300% 300%;background-position:calc(var(--col)*50%) calc(var(--row)*50%);background-repeat:no-repeat;translate:0 calc(var(--gear-target-midpoint,50%) - var(--gear-midpoint,50%))}

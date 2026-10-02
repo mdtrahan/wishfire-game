@@ -36,7 +36,22 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
  }
  const browser=await chromium.launch({headless:true,executablePath:detectChromeExecutable()});
  await mkdir(directory,{recursive:true});const report=[];
- try{for(const [width,height,dpr]of [[360,640,1],[216,384,2],[233,452,2],[316,452,2]]){
+ try{
+  // Isolated slow-art fixture holds atlas preparation while a real hat draw is requested.
+  const delayedContext=await browser.newContext({viewport:{width:360,height:640}}),delayedPage=await delayedContext.newPage();
+  await delayedPage.addInitScript(save=>{
+   localStorage.setItem('wishfire.equipment-economy.v5',JSON.stringify(save));
+   const original=HTMLCanvasElement.prototype.toBlob;
+   HTMLCanvasElement.prototype.toBlob=function(callback,...args){if(this.width===1254&&this.height===1254){window.releaseLampArtwork=()=>original.call(this,callback,...args);}else original.call(this,callback,...args);};
+  },createLampEconomy(4));
+  await delayedPage.goto(url);await delayedPage.waitForFunction(()=>typeof window.releaseLampArtwork==='function');
+  await delayedPage.waitForTimeout(2000);const delayedCanvas=await delayedPage.locator('canvas').first().boundingBox();await delayedPage.mouse.click(delayedCanvas.x+delayedCanvas.width/2,delayedCanvas.y+426*delayedCanvas.width/360);
+  await delayedPage.locator('.lamp-burp').waitFor();await delayedPage.locator('.lamp-burp').click();await delayedPage.waitForTimeout(120);
+  assert.equal(await delayedPage.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')).lamp.sequence),0,'a draw waits for the centered artwork; the original uncentered fallback never becomes an arrival');
+  await delayedPage.evaluate(()=>window.releaseLampArtwork());await delayedPage.locator('.lamp-results .lamp-tile').waitFor();await delayedPage.waitForFunction(()=>!document.querySelector('.lamp-arriving'));
+  assert.equal(await delayedPage.locator('.lamp-results .lamp-art').evaluate(n=>getComputedStyle(n).transform),'none','real hat draw settles after its bounce');
+  await delayedPage.screenshot({path:`${directory}/delayed-art-settled.png`});await delayedContext.close();
+  for(const [width,height,dpr]of [[360,640,1],[216,384,2],[233,452,2],[316,452,2]]){
   const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:dpr});const page=await context.newPage();const errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   const fixture=createLampEconomy(42,1000);
@@ -86,10 +101,25 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
    // Isolated DOM geometry fixture: reuse one real cache tile in an arrival slot.
    const probe=frames[1].parentElement.cloneNode(true);probe.querySelector('small')?.remove();document.querySelector('.lamp-results').append(probe);
    const slot=probe.getBoundingClientRect(),paint=probe.querySelector('.lamp-art').getBoundingClientRect(),stripFrameOffset=(paint.top+paint.bottom-slot.top-slot.bottom)/2;probe.remove();
-   return {offsets,stripFrameOffset,shared:frames.every(n=>getComputedStyle(n).backgroundImage===background)&&getComputedStyle(document.querySelector('#wishfire-lamp')).getPropertyValue('--lamp-gear-atlas')===getComputedStyle(document.querySelector('#lamp-overlay')).getPropertyValue('--lamp-gear-atlas')};
+   const results=document.querySelector('.lamp-results'),saved=results.innerHTML,savedTarget=results.style.getPropertyValue('--gear-target-midpoint');
+   const original=new Image();original.src=new URL('assets/images/lamp/gear-atlas.png',location.href).href;await original.decode();ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(original,0,0);
+   const raw=ctx.getImageData(0,0,original.width,original.height).data;
+   const bounds=Array.from({length:9},(_,n)=>{let top=size,bottom=-1;for(let y=0;y<size;y++)for(let x=0;x<size;x++)if(raw[((Math.floor(n/3)*size+y)*original.width+n%3*size+x)*4+3]>8){top=Math.min(top,y);bottom=Math.max(bottom,y);}return{top,bottom,height:bottom-top+1,midpoint:(top+bottom+1)/2};});
+   const settled=[];
+   for(const group of [[6,4,2,1,0],[3,5,7,8]]){
+    results.replaceChildren(...group.map(n=>{const tile=frames[1].parentElement.cloneNode(true);tile.querySelector('small')?.remove();tile.removeAttribute('aria-current');tile.classList.add('lamp-arriving');const art=tile.querySelector('.lamp-art');art.style.setProperty('--col',n%3);art.style.setProperty('--row',Math.floor(n/3));art.style.setProperty('--gear-midpoint','var(--lamp-gear-midpoint-'+n+')');return tile;}));
+    const tallest=group.reduce((best,n)=>bounds[n].height>bounds[best].height?n:best,group[0]);results.style.setProperty('--gear-target-midpoint',bounds[tallest].midpoint/size*100+'%');
+    for(const art of results.querySelectorAll('.lamp-art'))for(const animation of art.getAnimations()){animation.pause();animation.currentTime=1350;}
+    const arts=[...results.querySelectorAll('.lamp-art')],anchor=arts[group.indexOf(tallest)].getBoundingClientRect(),target=anchor.top+bounds[tallest].midpoint/size*anchor.height;
+    for(let index=0;index<group.length;index++){const n=group[index],art=arts[index],r=art.getBoundingClientRect(),paint=getComputedStyle(art,'::before'),y=paint.translate.split(' ')[1],shift=parseFloat(y)*(y.endsWith('%')?r.height/100:1),center=r.top+bounds[n].midpoint/size*r.height+shift;settled.push({art:n,tallest,target,center,error:center-target,transform:getComputedStyle(art).transform,source:paint.backgroundImage});}
+   }
+   results.innerHTML=saved;results.style.setProperty('--gear-target-midpoint',savedTarget);
+   return {offsets,stripFrameOffset,settled,shared:frames.every(n=>getComputedStyle(n).backgroundImage===background)&&getComputedStyle(document.querySelector('#wishfire-lamp')).getPropertyValue('--lamp-gear-atlas')===getComputedStyle(document.querySelector('#lamp-overlay')).getPropertyValue('--lamp-gear-atlas')};
   });
   assert.ok(gearCentering.offsets.every(n=>Math.abs(n)<=1),'all nine visible gear bounds are vertically centered: '+gearCentering.offsets);
-  assert.equal(gearCentering.shared,true,'strip, cache and candidate share the centered atlas');
+  assert.equal(gearCentering.shared,true,'cache and candidate retain their shared centered atlas');
+  assert.equal(gearCentering.settled.length,9);assert.ok(gearCentering.settled.every(s=>Math.abs(s.error)<=.5),'all nine final sprite midpoints match the tallest arrival: '+JSON.stringify(gearCentering.settled));
+  assert.ok(gearCentering.settled.every(s=>s.source.includes('gear-atlas.png')&&s.transform==='matrix(1, 0, 0, 1, 0, 0)'),'settled sprites use the approved raster and zero final tween offset');
   assert.ok(Math.abs(gearCentering.stripFrameOffset)<=.5,'enlarged arrival artwork frame is centered in its slot: '+gearCentering.stripFrameOffset);
   const expectedPreview=Object.values(heroSave.heroes).map(h=>lampItemCPGain(fixture,fixture.items[0],h));
   const preview=await dialog.locator('.lamp-hero').evaluateAll(nodes=>nodes.map(n=>({change:Number(n.dataset.cpChange),text:n.textContent,label:n.getAttribute('aria-description'),arrow:n.querySelector('.lamp-cp-direction')?.className,src:n.querySelector('img').getAttribute('src')})));

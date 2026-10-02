@@ -233,4 +233,4 @@
 
 - Selected-stat numbers and arrows share one font-derived digit height across both rows, independent of the displayed numeral. Normalize digit ink into that height; keep arrows pointed in both Canvas and CSS.
 
-- Lamp gear decodes the original atlas once and centers each cell by visible alpha bounds; one derived atlas serves strip, inventory and candidate without changing source artwork or scale.
+- Lamp gear decodes original alpha bounds once. Cache/card artwork keeps its derived centered atlas. Arrivals paint the original raster through a sprite-only offset: every silhouette midpoint equals the tallest current arrival's midpoint, independently of fixed level badges. Manual and Auto reveal await preparation before spending/granting or starting the bounce; its final transform returns to zero.

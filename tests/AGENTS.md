@@ -131,7 +131,7 @@
 
 - Lamp stat alignment proof checks matching label right edges/value left edges across rows, right justification, centered allocated grid within1px, broad card coverage, mockup column anchors, a digit-width label/value gap and value headroom at all phone profiles.
 
-- Lamp centering proof reads all nine derived atlas silhouettes and requires vertical midpoint error within one source pixel, with strip/cache/candidate sharing that atlas.
+- Lamp centering proof retains cache/card atlas bounds and checks all nine real strip sprites in five-slot arrays at the final bounce frame, against the tallest silhouette's midpoint within0.5CSSpx. A held artwork-preparation fixture must prevent a draw/EXP receipt until release, then settle the real cap draw without a residual transform.
 
 - Cache-selection proof samples full/shrunken/full animation phases, preserving artwork midpoint, tile/CP-footer bounds and containment. Check selection transfer,23% halo dimensions and reduced-motion suppression.
 

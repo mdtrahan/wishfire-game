@@ -603,3 +603,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - 2026-10-01: Centering a sprite cell does not center its visible artwork when atlas padding varies. Normalize visible alpha bounds once at the shared atlas renderer; keep labels outside that normalization and retain the original source asset.
 
 - Lamp progression: an adjacent party-EXP meter read as lamp level. Display earned lamp level and a durable purchased-stage ledger; currency balances are affordability data. Guard tier and stage before each saved purchase, and require the completed ledger for manual promotion.
+
+- Sprite atlas centering cannot certify the rendered tween endpoint. Measure original alpha bounds with the actual sprite offset and final animation matrix in the array. Gate shared manual/Auto reveal on artwork readiness so fallback frames never start an earned arrival; translate artwork independently of fixed badges.
