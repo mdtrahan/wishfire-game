@@ -1,6 +1,6 @@
 import {renderHeroGear} from './heroGearUI.mjs';
 import {computeCombatPower} from '../src/core/combatPower.mjs';
-import {heroDefinition} from '../src/core/heroDefinitions.mjs';
+import {heroDefinition,heroSkillUnlocked} from '../src/core/heroDefinitions.mjs';
 import {createHeroProgressStore} from '../src/core/heroProgression.mjs';
 import {heroArtKey} from '../state/heroArtAssets.mjs';
 let host, content, lastKey, currentTab='gear';
@@ -49,6 +49,7 @@ export function renderHeroScreen({equipmentProgress,canvas,gameState,fnContext,h
   if(currentTab==='hero'){
    el('h2','Level progress',pane);const exp=el('progress',null,pane);exp.max=hero.EXPToNextLevel||1;exp.value=hero.currentLevel>=hero.maxLevel?1:hero.currentEXP;exp.setAttribute('aria-label','Level EXP');
    el('small',hero.currentLevel>=hero.maxLevel?'Maximum level':`${hero.currentEXP} / ${hero.EXPToNextLevel} EXP`,pane);
+   const next=d.actives.find(a=>!heroSkillUnlocked(hero,a));if(next)el('p',`Next skill: ${next.displayName} at Lv. ${next.unlockLevel}`,pane);
    button(pane,'View skills',()=>{currentTab='skills';});
    const details=el('details',null,pane);el('summary','Stats',details);const stats=el('dl',null,details);
    for(const [name,value] of Object.entries({HP:hero.maxHP,...hero.stats})){const cell=el('div',null,stats);el('dt',name==='MAG'?'MATK':name,cell);el('dd',String(value),cell);}
@@ -57,6 +58,8 @@ export function renderHeroScreen({equipmentProgress,canvas,gameState,fnContext,h
   }else{
    const basic=el('article',null,pane);el('h2','Basic Attack',basic);el('p',d.basic.description,basic);
    for(const ability of d.actives){const item=el('article',null,pane);el('h2',ability.displayName,item);
+    el('small',heroSkillUnlocked(hero,ability)?'Unlocked · Lv. '+ability.unlockLevel:'Unlocks at Lv. '+ability.unlockLevel,item);
+    item.dataset.locked=String(!heroSkillUnlocked(hero,ability));
     el('p',ability.description.replaceAll('magic-tagged actions','magic skills'),item);
    }
   }

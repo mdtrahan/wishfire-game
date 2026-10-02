@@ -1,4 +1,4 @@
-import { heroDefinition, heroKey } from './heroDefinitions.mjs';
+import { heroDefinition, heroKey, heroSkillUnlocked } from './heroDefinitions.mjs';
 import { enemiesInSkillShape } from './realtimeHeroTargeting.mjs';
 import { isHeroBasicTargetInRange } from '../../../src/core/heroAttackTargetingRules.mjs';
 
@@ -77,7 +77,7 @@ export function realtimeMagicBlocked(globals, enemy) {
 
 export function castRealtimeHeroSkill(ctx, heroUID, skill, selection, displacement = {}) {
   const globals = ctx.state.globals, source = actor(ctx, heroUID);
-  if (!living(source) || !skill || !selection) return false;
+  if (!living(source) || !skill || !selection || !heroSkillUnlocked(source, skill)) return false;
   const now = nowOf(globals), mode = heroKey(source) === 'Runa' ? 'magic' : source.attackType === 'magic' ? 'magic' : 'melee';
   const target = actor(ctx, selection.targetUID);
   if (target?.kind === 'enemy' && !isHeroBasicTargetInRange(target)) return false;

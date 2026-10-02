@@ -3094,7 +3094,7 @@ function getStoryCardLiveLineState() {
     deriveEncounterRequestFromMapState,
     getHeroScreenRoster,
     normalizeHeroSelectionIndex,
-    onBossButtonClick: () => armContinuousCombatBoss(state.globals),
+    onBossButtonClick: () => armContinuousCombatBoss(state.globals, state.entities, (...args) => callFunctionWithContext(fnContext, ...args)),
   });
 
   // pointer handler for nav menu and overlay (more responsive than click)

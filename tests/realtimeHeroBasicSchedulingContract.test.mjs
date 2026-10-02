@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { realtimeCooldownSeconds, scheduleRealtimeActions, selectRealtimeReadyActor } from '../web-runner/src/core/realtimeCooldown.mjs';
 import { isHeroBasicTargetInRange, resolveHeroAttackTarget } from '../src/core/heroAttackTargetingRules.mjs';
 import { resetCombatSessionConditions } from '../web-runner/systems/combatSessionReset.mjs';
-import { heroDefinition } from '../web-runner/src/core/heroDefinitions.mjs';
+import { heroDefinition, heroSkillUnlocked } from '../web-runner/src/core/heroDefinitions.mjs';
 import { selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
 import { castRealtimeHeroSkill, realtimeBasicInterval, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
 
@@ -17,7 +17,7 @@ function loadTickRealtimeHeroBasics() {
   return new Function(
     'getGlobals', 'getEnemies', 'resolveHeroAttackTarget', 'isHeroBasicTargetInRange', 'getEntities',
     'GetEffectiveStat', 'realtimeCooldownSeconds', 'selectRealtimeReadyActor', 'scheduleRealtimeActions',
-    'HeroAttackSingle', 'GetActorByUID', 'tickRealtimeHeroSkillZones', 'heroDefinition',
+    'HeroAttackSingle', 'GetActorByUID', 'tickRealtimeHeroSkillZones', 'heroDefinition', 'heroSkillUnlocked',
     'selectRealtimeHeroSkillTarget', 'castRealtimeHeroSkill', 'realtimeBasicInterval',
     'pushContinuousCombatEnemy', 'reverseContinuousCombatEnemy', 'teleportContinuousCombatEnemy',
     `${body}; return TickRealtimeHeroBasics;`,
@@ -34,7 +34,7 @@ function loadTickRealtimeHeroBasics() {
       ctx.state.globals.PendingHeroHits.push({ at: ctx.state.globals.time + 0.52, heroUID, targetUID });
     },
     (ctx, uid) => ctx.state.entities.find(entity => Number(entity.uid) === Number(uid)) || null,
-    tickRealtimeHeroSkillZones, heroDefinition, selectRealtimeHeroSkillTarget, castRealtimeHeroSkill, realtimeBasicInterval,
+    tickRealtimeHeroSkillZones, heroDefinition, heroSkillUnlocked, selectRealtimeHeroSkillTarget, castRealtimeHeroSkill, realtimeBasicInterval,
     () => false, () => false, () => false,
   );
 }
@@ -141,4 +141,17 @@ test('fresh session reset discards pending clocks before hero UIDs repeat', () =
   assert.equal(tick(ctx), 0);
   assert.ok(Object.values(globals.RealtimeHeroBasicReadyAt).every(at => at > globals.time));
   assert.equal(globals.PendingHeroHits.length, 0);
+});
+
+
+test('the real scheduler filters locked skills even when every skill clock is ready',()=>{
+ const {ctx,globals,actors,tick}=fixture({heroes:[1],enemies:[{uid:90,kind:'enemy',hp:1000,maxHP:1000,x:220,y:200,streamState:'engaged'}]});
+ Object.assign(actors[0],{baseHeroName:'Huun',currentLevel:1});
+ ctx.callFunction=()=>0;
+ const used=new Set();
+ for(let n=0;n<1800;n++){globals.time=n/30;tick(ctx);if(globals.LastRealtimeHeroSkill)used.add(globals.LastRealtimeHeroSkill.skillId);globals.PendingHeroHits=[];}
+ assert.deepEqual([...used],['ambush']);
+ actors[0].currentLevel=5;globals.RealtimeHeroBasicClocks={};globals.RealtimeHeroBasicScheduledActions={};
+ for(let n=1800;n<2400;n++){globals.time=n/30;tick(ctx);if(globals.LastRealtimeHeroSkill)used.add(globals.LastRealtimeHeroSkill.skillId);globals.PendingHeroHits=[];}
+ assert.deepEqual([...used].sort(),['ambush','cheap_shot']);
 });

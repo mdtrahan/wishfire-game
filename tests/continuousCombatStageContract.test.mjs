@@ -106,7 +106,7 @@ test('boss victory advances the checkpoint and wraps stage ten into the next reg
   assert.equal(transition.state.region, 3);
   assert.equal(transition.state.stage, 1);
   assert.equal(transition.state.wave, 1);
-  assert.equal(transition.state.bossArmed, true);
+  assert.equal(transition.state.bossArmed, false);
   assert.equal(transition.state.bossAvailable, false);
   assert.equal(transition.state.clearedBosses, 1);
 });
@@ -166,18 +166,22 @@ test('the fourth wave waits for its normal interval before looping', () => {
   assert.equal(globals.ContinuousCombatStage.wave, 1);
 });
 
-test('boss control arms only at the gate and defeat resets the current stage', () => {
-  const globals = { time: 12, ContinuousCombatStage: createContinuousCombatStageState(42, { region: 2, stage: 4 }) };
-  assert.equal(armContinuousCombatBoss(globals), false);
+test('boss access survives defeat and retries immediately without normal kills', () => {
+  const globals = { time: 12, EnemyData: rows, ContinuousCombatStage: createContinuousCombatStageState(42, { region: 2, stage: 4 }) };
+  const entities=[{uid:1,kind:'hero',hp:40,maxHP:75}];
+  const call=(name,row)=>{if(name==='SpawnEnemy'){const e={uid:2,kind:'enemy',hp:row.HP};entities.push(e);return e;}};
+  assert.equal(armContinuousCombatBoss(globals,entities,call), false);
   globals.ContinuousCombatStage.bossAvailable = true;
-  assert.equal(armContinuousCombatBoss(globals), true);
+  assert.equal(armContinuousCombatBoss(globals,entities,call), true);
   assert.equal(globals.ContinuousCombatStage.bossArmed, true);
   assert.equal(resetContinuousCombatAfterDefeat(globals), true);
   assert.equal(globals.ContinuousCombatStage.region, 2);
   assert.equal(globals.ContinuousCombatStage.stage, 4);
   assert.equal(globals.ContinuousCombatStage.wave, 1);
-  assert.equal(globals.ContinuousCombatStage.bossAvailable, false);
+  assert.equal(globals.ContinuousCombatStage.bossAvailable, true);
   assert.equal(globals.ContinuousCombatStage.bossArmed, false);
+  assert.equal(armContinuousCombatBoss(globals,entities,call),true);
+  assert.equal(entities.filter(a=>a.kind==='enemy').length,1);
 });
 
 test('stream enemies begin off-stage and become engaged only after walking to the boundary', () => {
@@ -458,14 +462,15 @@ test('timed packs emit while survivors remain and the fourth pack waits for a cl
   assert.equal(globals.ContinuousCombatStage.wave, 4);
 });
 
-test('an armed available gate replaces the next farming pack with the boss after clear', () => {
+test('boss click removes living fodder and pending actions before immediate boss spawn', () => {
   const globals = {
     ContinuousCombatStageLoop: 1,
-    ContinuousCombatStage: { ...createContinuousCombatStageState(9), wave: 2, bossAvailable: true, bossArmed: true, nextEmissionAt: 99 },
+    ContinuousCombatStage: { ...createContinuousCombatStageState(9), wave: 2, bossAvailable: true, bossArmed: false, nextEmissionAt: 99 },
     GamePhase: 'RUNTIME', BattleStartActive: 0, time: 7,
     EnemySize: 40, EnemyData: rows, EnemySlots: [999], PendingDeaths: {}, ProgressionBattle: { outcome: 'active', settled: false },
   };
-  const entities = [];
+  const entities = [{uid:999,kind:'enemy',hp:100}];
+  globals.PendingHeroHits=[{targetUID:999}];globals.RealtimeEnemyActionsByUID={999:{active:true}};
   const spawned = [];
   const call = (name, data, slotIndex) => {
     if (name === 'SettleContinuousCombatRewards') return [];
@@ -475,7 +480,8 @@ test('an armed available gate replaces the next farming pack with the boss after
     spawned.push(enemy);
     return enemy;
   };
-  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} }), true);
+  assert.equal(armContinuousCombatBoss(globals,entities,call),true);
+  assert.deepEqual(globals.PendingHeroHits,[]);assert.deepEqual(globals.RealtimeEnemyActionsByUID,{});assert.ok(!entities.some(e=>e.uid===999));
   assert.equal(globals.ContinuousCombatStage.bossActive, true);
   assert.equal(spawned.length, 1);
   assert.equal(spawned[0].name, 'Troll');

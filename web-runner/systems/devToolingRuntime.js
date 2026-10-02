@@ -554,6 +554,11 @@ export function createDevToolingRuntime(deps = {}) {
         <button type="button" data-devtool-restart style="border:1px solid #92400e;background:#fff7ed;color:#9a3412;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Restart</button>
       </div>
       <div data-devtool-control-grid style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;">
+        <fieldset data-devtool-progression style="grid-column:1/-1;border:1px solid #94a3b8;border-radius:8px;padding:8px;min-width:0;">
+          <legend>Developer only · Progression QA</legend>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">${['RESET GAME',1,5,25,100].map(p=>`<button type="button" data-devtool-level="${p}" style="border:1px solid #475569;border-radius:6px;padding:6px;background:#e2e8f0;color:#172033;">${typeof p==='number'?'LV '+p:p}</button>`).join('')}</div>
+          <small data-devtool-progression-status role="status">Level presets save real stats and unlocks. Reset saves a recovery snapshot.</small>
+        </fieldset>
         <div style="display:flex;flex-direction:column;gap:4px;">
           <div style="font-weight:700;">Hero Slots</div>
           <label style="display:flex;flex-direction:column;gap:4px;">Hero Slot 1
@@ -662,6 +667,23 @@ export function createDevToolingRuntime(deps = {}) {
       devToolingRefreshHandler,
       updateDevToolingStatus,
     }));
+    const presetButtons=[...panel.querySelectorAll('[data-devtool-level]')];
+    for (const button of presetButtons) button.addEventListener('click', async () => {
+      presetButtons.forEach(b=>b.disabled=true);
+      const status=panel.querySelector('[data-devtool-progression-status]');
+      try {
+        if (button.dataset.devtoolLevel==='RESET GAME') {
+          if (!navigator.locks) throw new Error('This browser cannot safely reset game saves.');
+          await navigator.locks.request('wishfire.equipment-economy.v5',()=>devToolingControls.resetDeveloperGame(window.localStorage));
+          hardRestartRuntimeFromDevTooling();
+        } else {
+          const level=Number(button.dataset.devtoolLevel);
+          await devToolingControls.applyDeveloperLevel({state,gameState,call:(...args)=>callFunctionWithContext(fnContext,...args),storage:window.localStorage,locks:navigator.locks,level});
+          status.textContent='All heroes set to Lv. '+level+' with EXP 0 and matching skills.';
+        }
+      } catch (error) { status.textContent=error.message; }
+      finally { presetButtons.forEach(b=>b.disabled=false); }
+    });
     root.addEventListener('click', (ev) => {
       if (ev.target === root) toggleDevToolingModal(false);
     });

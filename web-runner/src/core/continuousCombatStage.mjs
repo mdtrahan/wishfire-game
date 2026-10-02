@@ -47,7 +47,8 @@ export function configureContinuousCombatProduction(globals, { productionPath = 
   globals.EncounterMaxSlots = 5;
   globals.ContinuousCombatStageComplete = 0;
   globals.RealtimeHeroFocusTargetUID = 0;
-  globals.ContinuousCombatStage = createContinuousCombatStageState(globals.EncounterSeed || 1);
+  const checkpoint = globals.HeroProgress?.continuousStage;
+  globals.ContinuousCombatStage = { ...createContinuousCombatStageState(globals.EncounterSeed || 1, checkpoint), ...checkpoint };
   return true;
 }
 
@@ -209,6 +210,7 @@ export function advanceContinuousCombatStage(stageState) {
       stage: nextStage,
       wave: 1,
       bossAvailable: false,
+      bossArmed: false,
       bossActive: false,
       transitions,
       clearedBosses: Number(stageState?.clearedBosses || 0) + 1,
@@ -222,10 +224,29 @@ export function advanceContinuousCombatStage(stageState) {
   return { done: false, stage: getContinuousCombatStage(state), state };
 }
 
-export function armContinuousCombatBoss(globals) {
+export function armContinuousCombatBoss(globals, entities, call) {
   const state = globals?.ContinuousCombatStage;
   if (!state || !state.bossAvailable || state.bossActive) return false;
-  state.bossArmed = true;
+  const next = { ...state, bossArmed: true, bossActive: true, transitions: Number(state.transitions || 0) + 1 };
+  if (!buildContinuousCombatSpawnPlan(globals.EnemyData, next).length) return false;
+  call('SettleContinuousCombatRewards');
+  // Abandon the fodder encounter, including its queued hits, without awarding kills.
+  const heroUIDs = new Set(entities.filter(a => a?.kind === 'hero').map(a => String(a.uid)));
+  entities.splice(0, entities.length, ...entities.filter(a => a?.kind !== 'enemy'));
+  Object.assign(globals, {
+    EnemySlots: [], PendingDeaths: {}, EnemyDeathVisualHoldByUID: {},
+    RealtimeEnemyActionsByUID: {}, RealtimeEnemyActionReadyAt: {},
+    PendingHeroHits: [], RealtimeHeroBasicScheduledActions: {}, RealtimeHeroFocusTargetUID: 0,
+    EnemyDebuffs: {}, EnemyDebuffSlots: {}, EnemyDebuffTurns: {}, EnemyDebuffPop: {}, EnemyDamageOverTime: [],
+    RealtimeSkillZones: [], ChainStrikeVisuals: [], ArcanePulseVisuals: [], DamageTexts: [], CombatImpactRequests: [], CombatImpactVisuals: [], CombatProjectileVisuals: [],
+    SelectedEnemyUID: 0, SelectedEnemyUIDOwner: 0, ActionInProgress: 0, IsPlayerBusy: 0,
+    ActionOwnerUID: 0, ActionActorUID: 0, ActionLockUntil: 0, DeferAdvance: 0, AdvanceAfterAction: 0, TextAnimEndAt: 0,
+    NativeBattleEnded: false,
+  });
+  globals.RealtimeSkillEffects = Object.fromEntries(Object.entries(globals.RealtimeSkillEffects || {}).filter(([uid]) => heroUIDs.has(uid)));
+  delete globals.HeroAction; delete globals.EnemyAction; delete globals.NativeCommandSequence;
+  for (const clock of Object.values(globals.RealtimeHeroBasicClocks || {})) clock.castUntil = 0;
+  spawnContinuousCombatStage({ globals, entities, call, state: next });
   return true;
 }
 
@@ -235,7 +256,7 @@ export function resetContinuousCombatAfterDefeat(globals) {
   globals.ContinuousCombatStage = {
     ...state,
     wave: 1,
-    bossAvailable: false,
+    bossAvailable: !!state.bossAvailable || !!state.bossActive,
     bossArmed: false,
     bossActive: false,
     transitions: Number(state.transitions || 0) + 1,
@@ -458,19 +479,10 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
     if (!clear) return false;
     call('SettleContinuousCombatRewards');
     transition = advanceContinuousCombatStage(stageState);
-  } else if (stageState.bossAvailable && stageState.bossArmed) {
-    if (!clear) return false;
-    call('SettleContinuousCombatRewards');
-    const state = { ...stageState, bossActive: true, transitions: Number(stageState.transitions || 0) + 1 };
-    transition = { state, stage: getContinuousCombatStage(state) };
   } else if (Number(stageState.wave || 1) >= CONTINUOUS_COMBAT_WAVES_PER_STAGE) {
     if (!clear || !timerReady) return false;
     call('SettleContinuousCombatRewards');
     transition = advanceContinuousCombatStage(stageState);
-    if (transition.state.bossArmed) {
-      transition.state = { ...transition.state, bossActive: true };
-      transition.stage = getContinuousCombatStage(transition.state);
-    }
   } else {
     if (!timerReady) return false;
     transition = advanceContinuousCombatStage(stageState);

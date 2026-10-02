@@ -4,7 +4,7 @@ import { HERO_DEFINITIONS } from '../web-runner/src/core/heroDefinitions.mjs';
 import { castRealtimeHeroSkill, realtimeBasicDamageMultiplier, realtimeBasicFollowups, realtimeCoverTarget, realtimeIncomingDamage, realtimeMagicBlocked, realtimeProvokeTarget, realtimeStatMultiplier, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
 import { renderCombatAttackVfx } from '../web-runner/systems/combatAttackVfxPresentation.mjs';
 
-const hero = (uid, name, hp = 100) => ({ uid, kind: 'hero', baseHeroName: name, name, hp, maxHP: 100 });
+const hero = (uid, name, hp = 100) => ({ uid, kind: 'hero', currentLevel: 100, baseHeroName: name, name, hp, maxHP: 100 });
 const enemy = (uid, x, y, hp = 100) => ({ uid, kind: 'enemy', hp, maxHP: 100, x, y, streamState: 'engaged' });
 function combat() {
   const fara = hero(1, 'Falie'), hondo = hero(2, 'Huun', 50), runa = hero(3, 'Runa'), kaja = hero(4, 'Kojonn');

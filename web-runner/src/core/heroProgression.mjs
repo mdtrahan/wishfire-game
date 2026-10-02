@@ -10,6 +10,14 @@ export function levelStats(hero){
 }
 export function refreshHeroStats(hero){const stats=levelStats(hero);hero.maxHP=stats.HP;delete stats.HP;hero.stats=stats;hero.maxLevel=heroDefinition(hero)?.maxLevel||PROGRESSION.maxLevel;hero.EXPToNextLevel=expToNextLevel(hero.currentLevel,{...PROGRESSION,maxLevel:hero.maxLevel});return hero;}
 export function newHeroProgress(key,instanceKey=key){const definition=heroDefinition(key);if(!definition)throw new Error('Unknown hero: '+key);const hero={heroInstanceKey:instanceKey,baseHeroName:definition.key,name:definition.key,currentLevel:1,currentEXP:0,lampEXPClaimed:0,maxLevel:definition.maxLevel};refreshHeroStats(hero);hero.hp=hero.maxHP;return hero;}
+export function setHeroProgressLevel(store,level,partyEXP=0){
+ if(!Number.isInteger(level)||level<1||level>PROGRESSION.maxLevel||!Number.isSafeInteger(partyEXP)||partyEXP<0)throw new Error('Invalid hero progression preset.');
+ for(const hero of Object.values(store.heroes)){
+  hero.currentLevel=level;hero.currentEXP=0;hero.lampEXPClaimed=partyEXP;
+  refreshHeroStats(hero);hero.hp=hero.maxHP;
+ }
+ return store;
+}
 export function awardHeroEXP(hero,amount){
  const before={level:hero.currentLevel,hp:hero.maxHP,stats:{...hero.stats},exp:Math.max(0,Number(hero.currentEXP||0)),expToNext:Math.max(0,Number(hero.EXPToNextLevel||0))};let exp=Math.max(0,Math.floor(Number(amount)||0));
  if(hero.currentLevel>=hero.maxLevel){hero.currentEXP=0;hero.EXPToNextLevel=0;return {hero:heroKey(hero),exp:0,fromLevel:before.level,toLevel:before.level,expBefore:before.exp,expAfter:0,expToNextBefore:before.expToNext};}
@@ -31,6 +39,8 @@ export function createHeroProgressStore(snapshot){
   const pending=snapshot.pendingBattleRewards;
   if(pending&&typeof pending.id==='string'&&pending.id&&Array.isArray(pending.participants))store.pendingBattleRewards={id:pending.id,participants:pending.participants.filter(id=>typeof id==='string'),defeated:sanitizeRewardLedger(pending.defeated),defeatedGold:sanitizeRewardLedger(pending.defeatedGold)};
   store.pendingGoldSettlements=sanitizeRewardLedger(snapshot.pendingGoldSettlements);
+  const stage=snapshot.continuousStage;
+  if(stage&&Number.isSafeInteger(stage.region)&&stage.region>=1&&Number.isInteger(stage.stage)&&stage.stage>=1&&stage.stage<=10&&Number.isInteger(stage.wave)&&stage.wave>=1&&stage.wave<=4&&typeof stage.bossAvailable==='boolean'&&Number.isSafeInteger(stage.clearedBosses)&&stage.clearedBosses>=0)store.continuousStage={region:stage.region,stage:stage.stage,wave:stage.wave,bossAvailable:stage.bossAvailable,clearedBosses:stage.clearedBosses};
  }
  for(const key of Object.keys(HERO_DEFINITIONS))if(!store.heroes[key])store.heroes[key]=newHeroProgress(key);
  return store;

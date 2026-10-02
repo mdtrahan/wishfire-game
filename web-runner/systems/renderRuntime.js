@@ -71,7 +71,7 @@ removeBetween('    // Apply delayed hero hits after lunge/impact timing', '    /
 removeBetween('    // Enemy action state machine (advance -> act -> retreat -> done)', '    // Hero action lunge (toward center, mirrored enemy motion)');
 removeBetween('    // Hero action lunge (toward center, mirrored enemy motion)', '    // Buff progress bar expiry');
 removeBetween('    const casino = gameState.yellowCasino;', '    // Buff progress bar expiry');
-effectiveBody = effectiveBody.replace('    // Buff progress bar expiry', '    spawnPendingDamageNumbers(projectCombatDamageWorldToCanvas);\n    // Buff progress bar expiry');
+effectiveBody = effectiveBody.replace('    // Buff progress bar expiry', '    spawnPendingDamageNumbers(projectCombatDamageWorldToCanvas, layoutScale);\n    // Buff progress bar expiry');
 removeBlock('    if (state.globals.BlueBuffSequenceActive) {');
 const mergeDrawAt = effectiveBody.indexOf('const merge = gameState.gemMergeFx;');
     removeBlock('      if (t >= 1) {\n        const goldAward = Math.max(0, Number(merge.goldAward || 0));', mergeDrawAt);
@@ -381,7 +381,7 @@ export function renderRuntime(deps) {
       )
       .replace(
         "spawnPendingDamageNumbers(worldToCanvas);",
-        "spawnPendingDamageNumbers(projectCombatDamageWorldToCanvas);",
+        "spawnPendingDamageNumbers(projectCombatDamageWorldToCanvas, layoutScale);",
       )
       .replaceAll(
         "const pos = worldToCanvas(x, y);",

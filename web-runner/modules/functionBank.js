@@ -56,7 +56,7 @@ import {
 import { realtimeCooldownSeconds, scheduleRealtimeActions, selectRealtimeReadyActor } from '../src/core/realtimeCooldown.mjs';
 import { selectRealtimeHeroSkillTarget } from '../src/core/realtimeHeroTargeting.mjs';
 import { castRealtimeHeroSkill, tickRealtimeHeroSkillZones, realtimeBasicInterval, realtimeStatMultiplier, realtimeProvokeTarget, realtimeCoverTarget, realtimeIncomingDamage, realtimeMagicBlocked, realtimeRetaliation } from './heroCommands.mjs';
-import { heroDefinition } from '../src/core/heroDefinitions.mjs';
+import { heroDefinition, heroSkillUnlocked } from '../src/core/heroDefinitions.mjs';
 import { pushContinuousCombatEnemy, reverseContinuousCombatEnemy, teleportContinuousCombatEnemy } from '../src/core/continuousCombatStage.mjs';
 
 import { sanitizeInitiativeQueue, shouldAutoCorrectImproperRepeat } from '../src/core/initiativeGuards.mjs';
@@ -7242,7 +7242,7 @@ export function TickRealtimeHeroBasics(ctx) {
       basicCastSeconds: 0,
       projectileFlightSeconds: 0.52,
       basicEligible: !scheduled[String(hero.uid)] && !servicedUIDs.has(Number(hero.uid)),
-      skills: (heroDefinition(hero)?.actives || []).filter(skill => skill.skillId !== 'retaliation_burst').map(skill => ({
+      skills: (heroDefinition(hero)?.actives || []).filter(skill => skill.skillId !== 'retaliation_burst' && heroSkillUnlocked(hero, skill)).map(skill => ({
         id: skill.skillId, cooldownSeconds: skill.cooldownSeconds,
         eligible: !scheduled[String(hero.uid)] && !servicedUIDs.has(Number(hero.uid)) && !!skillSelection(hero, skill),
       })),

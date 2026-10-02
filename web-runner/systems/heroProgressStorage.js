@@ -1,5 +1,6 @@
 import {attachHeroProgress,createHeroProgressStore,settleBattleEXP} from '../src/core/heroProgression.mjs';
-const KEY = 'orka.hero_progress.v2';
+export const HERO_PROGRESS_SAVE_KEY = 'orka.hero_progress.v2';
+const KEY = HERO_PROGRESS_SAVE_KEY;
 export function restoreHeroProgressFromStorage({fnContext}) {
   const g = fnContext.state.globals;
   if (!g.HeroProgressStorageRestored) {
@@ -20,6 +21,14 @@ export function restoreHeroProgressFromStorage({fnContext}) {
 }
 export function persistHeroProgressIfDirty({stateGlobals:g}) {
   if (!g.HeroProgress || g.HeroProgressStorageError) return false;
+  const stage = g.ContinuousCombatStage;
+  if (Number(g.ContinuousCombatStageLoop) === 1 && stage) {
+    const checkpoint = { region: stage.region, stage: stage.stage, wave: stage.bossActive ? 1 : stage.wave, bossAvailable: !!stage.bossAvailable || !!stage.bossActive, clearedBosses: stage.clearedBosses };
+    if (JSON.stringify(checkpoint) !== JSON.stringify(g.HeroProgress.continuousStage)) {
+      g.HeroProgress.continuousStage = checkpoint;
+      g.HeroProgressDirty = true;
+    }
+  }
   if (capturePendingBattleRewards(g)) g.HeroProgressDirty = true;
   if (capturePendingGoldSettlements(g)) g.HeroProgressDirty = true;
   if (!g.HeroProgressDirty) return false;

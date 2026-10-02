@@ -6,15 +6,15 @@ test('progress records retain the four internal hero keys without retired combat
  const store=createHeroProgressStore();assert.deepEqual(Object.keys(store.heroes),['Falie','Huun','Runa','Kojonn']);
  for(const hero of Object.values(store.heroes))for(const field of ['actionSlotsPerTurn','sp','spMax','flow','flowMode'])assert.equal(Object.hasOwn(hero,field),false,`${field} is not progression state`);
 });
-test('each internal hero key has five active skills with no skill unlock or rank categories',()=>{
- assert.equal(PROGRESSION.maxLevel,99);
+test('each internal hero key has five active skills with progressive unlocks and no ranks',()=>{
+ assert.equal(PROGRESSION.maxLevel,100);
  for(const [key,definition] of Object.entries(HERO_DEFINITIONS)){
   assert.equal(newHeroProgress(key).baseHeroName,key);
   assert.equal(definition.actives.length,5,`${key} active skill count`);
   for(const field of ['special','passives','actionSlotsPerTurn','startingSP','maxSP','flowMode'])assert.equal(Object.hasOwn(definition,field),false,`${key}.${field} is retired`);
   for(const skill of definition.actives){
-   for(const field of ['unlockLevel','rank','ranks','skillRank'])assert.equal(Object.hasOwn(skill,field),false,`${skill.skillId}.${field} is retired`);
-   assert.ok(skill.description);assert.ok(skill.cooldownSeconds>=0);assert.ok(skill.durationSeconds>=0);assert.ok(skill.targetType);
+   for(const field of ['rank','ranks','skillRank'])assert.equal(Object.hasOwn(skill,field),false,`${skill.skillId}.${field} is retired`);
+   assert.ok([1,5,10,15,25].includes(skill.unlockLevel));assert.ok(skill.description);assert.ok(skill.cooldownSeconds>=0);assert.ok(skill.durationSeconds>=0);assert.ok(skill.targetType);
   }
  }
 });
@@ -29,7 +29,7 @@ test('legacy combat resource fields are dropped while identity, growth, HP, and 
 });
 test('individual progression handles multi-level growth, living HP delta, KO and cap',()=>{
  const hero=newHeroProgress('Falie');hero.hp=10;const old=hero.maxHP;awardHeroEXP(hero,100);assert.equal(hero.currentLevel,2);assert.equal(hero.hp,10+hero.maxHP-old);
- hero.hp=0;awardHeroEXP(hero,1000);assert.ok(hero.currentLevel>2);assert.equal(hero.hp,0);awardHeroEXP(hero,1e10);assert.equal(hero.currentLevel,99);assert.equal(hero.currentEXP,0);assert.equal(hero.EXPToNextLevel,0);
+ hero.hp=0;awardHeroEXP(hero,1000);assert.ok(hero.currentLevel>2);assert.equal(hero.hp,0);awardHeroEXP(hero,1e10);assert.equal(hero.currentLevel,100);assert.equal(hero.currentEXP,0);assert.equal(hero.EXPToNextLevel,0);
 });
 test('role-shaped base durability is explicit rather than globally multiplied',()=>{
  assert.equal('heroHPScale' in PROGRESSION,false);

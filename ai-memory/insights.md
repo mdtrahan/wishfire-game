@@ -605,3 +605,7 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Lamp progression: an adjacent party-EXP meter read as lamp level. Display earned lamp level and a durable purchased-stage ledger; currency balances are affordability data. Guard tier and stage before each saved purchase, and require the completed ledger for manual promotion.
 
 - 2026-10-02: Sprite atlas centering cannot certify the rendered tween endpoint. Measure original alpha bounds with the actual sprite offset and final animation matrix in the array. Gate shared manual/Auto reveal on artwork readiness so fallback frames never start an earned arrival; translate artwork independently of fixed badges.
+
+- 2026-10-02: Boss access belongs to the progression tier, while arming/active flags belong to an encounter. Keep tier access through retries and reload, clear it only on boss victory, and cancel obsolete enemy actions when switching encounters. Spending, timed construction and completion need distinct durable states; test expiry and ticket commits against failed saves. Level QA must reset receipt baselines and execution queues as well as labels so stored EXP or pending skills cannot replay.
+
+- 2026-10-02: The rendered UI lock caught inherited unscaled damage-number injections that a source-string check missed. Assert generated calls forward layoutScale and retain rendered compact/Retina proof.

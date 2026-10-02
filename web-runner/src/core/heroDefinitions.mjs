@@ -1,16 +1,19 @@
 // Canonical hero identities and approved real-time combat kits.
-export const PROGRESSION = Object.freeze({ maxLevel: 99, expBase: 100, expExponent: 1.5, enemyEXP: 25, enemyGold: 10 });
+export const PROGRESSION = Object.freeze({ maxLevel: 100, expBase: 100, expExponent: 1.5, enemyEXP: 25, enemyGold: 10 });
 export const COMBAT_TUNING = Object.freeze({ criticalHP: 0.25, blindPenalty: 0.35, accuracy: 1, evasion: 0, counterPotency: 1 });
 
 // Retained only while story and QA callers migrate off the retired FLOW path.
 export const FLOW_ORB_TUNING = Object.freeze({ flowMax: 100, limitOrbValue: 10, limitOrbDropCount: 1, releaseSeconds: .72, flightSeconds: .52, collectFlashSeconds: .18 });
 export const FLOW_MODES = Object.freeze({ Stoic: 'Take hostile HP damage.', Warrior: 'Deal positive enemy HP damage.', Tactician: 'Deal magic damage or apply a new eligible status.', Comrade: 'Another living ally takes hostile HP damage.' });
 
+export const ACTIVE_UNLOCK_LEVELS = Object.freeze([1, 5, 10, 15, 25]);
+export const heroSkillUnlocked = (hero, skill) => Number(hero?.currentLevel || 1) >= Number(skill?.unlockLevel || 1);
+
 const active = (skillId, displayName, cooldownSeconds, durationSeconds, targetType, description, extra = {}) =>
   Object.freeze({ skillId, displayName, cooldownSeconds, durationSeconds, targetType, description, ...extra });
 const basic = magic => Object.freeze({ skillId: 'basic_attack', displayName: 'Attack', targetType: 'enemy', tags: [magic ? 'magic' : 'physical'], effects: [{ effectType: 'damage', potency: 1, hits: 1 }], description: 'Attack the first living enemy in range.' });
 const kit = (key, name, role, baseStats, growth, actives, magicBasic = false) =>
-  Object.freeze({ key, name, role, baseStats, growth, maxLevel: PROGRESSION.maxLevel, basic: basic(magicBasic), actives: Object.freeze(actives) });
+  Object.freeze({ key, name, role, baseStats, growth, maxLevel: PROGRESSION.maxLevel, basic: basic(magicBasic), actives: Object.freeze(actives.map((skill, i) => Object.freeze({ ...skill, unlockLevel: ACTIVE_UNLOCK_LEVELS[i] }))) });
 
 export const HERO_DEFINITIONS = Object.freeze({
   Falie: kit('Falie', 'Fara', 'Tank',

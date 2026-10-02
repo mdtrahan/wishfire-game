@@ -1,5 +1,5 @@
 import {equipmentStats} from '../src/core/equipment.mjs';
-import {markLampGuide,createLampEconomy,validateLampEconomy,lampItemCPGain,selectAutoEquipHero,selectLampUpgrades,finishLampReview,lampStoredCount,migrateLegacyEquipment,migrateDraftLamp,migrateFourStatLamp,migrateLampEconomy,lampAutoUnlocked,lampCapacity,purchaseLampStage,upgradeLamp,activateLamp,equipLampItem,dismantleLampItems,LAMP_CONFIG,progressionOrdinal} from '../src/core/lampGear.mjs';
+import {markLampGuide,createLampEconomy,validateLampEconomy,lampItemCPGain,selectAutoEquipHero,selectLampUpgrades,finishLampReview,lampStoredCount,migrateLegacyEquipment,migrateDraftLamp,migrateFourStatLamp,migrateLampEconomy,lampAutoUnlocked,lampCapacity,purchaseLampStage,upgradeLamp,completeLampUpgrade,speedUpLampUpgrade,activateLamp,equipLampItem,dismantleLampItems,LAMP_CONFIG,progressionOrdinal} from '../src/core/lampGear.mjs';
 import {refreshHeroStats,awardHeroEXP} from '../src/core/heroProgression.mjs';
 import {computeCombatPower} from '../src/core/combatPower.mjs';
 export const EQUIPMENT_SAVE_KEY='wishfire.equipment-economy.v5';
@@ -49,7 +49,8 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=g
     if(receipts.has(id)){if(appliedGold!==undefined)delta-=amount;continue;}
     receipts.add(id);next.settledGoldRewards.push(id);if(appliedGold===undefined)delta+=amount;
    }
-   next.gold+=delta;const result=change?.(next,time());validateLampEconomy(next);
+   const t=time();completeLampUpgrade(next,t);
+   next.gold+=delta;const result=change?.(next,t);validateLampEconomy(next);
    // One durable record owns spending, rolls, assignments and salvage receipts.
    storage.setItem(EQUIPMENT_SAVE_KEY,JSON.stringify(next));apply(next);return result;
   }).catch(error=>{globals.LampStorageError=error.message;reportError('Lamp save failed',error);throw error;});
@@ -64,7 +65,7 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=g
  }
  return{
   get data(){return record;},time,
-  sync(){if(loading)return loading;if(record&&Number(globals.goldTotal)===appliedGold&&!dirty){apply(record);return Promise.resolve();}dirty=false;loading=transact().finally(()=>loading=null);return loading;},
+  sync(){if(loading)return loading;if(record&&Number(globals.goldTotal)===appliedGold&&!dirty&&!(record.lamp.upgradeEndsAt&&time()>=record.lamp.upgradeEndsAt)){apply(record);return Promise.resolve();}dirty=false;loading=transact().finally(()=>loading=null);return loading;},
   refresh(){dirty=true;return this.sync();},
   generate(context={}){return transact((next,t)=>activateLamp(next,context,t));},
   setAuto(enabled){return transact(next=>{if(enabled&&lampStoredCount(next)>=lampCapacity(next))throw new Error('Clear collection space to resume Auto.');if(enabled&&!lampAutoUnlocked(Object.values(globals.HeroProgress?.heroes||{}).slice(0,4)))throw new Error('All four heroes must reach Lv. 5 to unlock Auto.');next.lamp.autoEnabled=!!enabled;});},
@@ -77,8 +78,9 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=g
   autoEquip(){return transact(next=>{const heroes=Object.values(globals.HeroProgress?.heroes||{}).slice(0,4),used=new Set(),results=[];for(const candidate of selectLampUpgrades(next,heroes)){const heroId=selectAutoEquipHero(next,candidate,heroes.filter(h=>!used.has(h.heroInstanceKey)));if(heroId){results.push(commitEquip(next,heroId,candidate.instanceId));used.add(heroId);}}finishLampReview(next);return results;});},
   finishReview(){return transact(next=>finishLampReview(next));},
   markGuide(step){return transact(next=>markLampGuide(next,step));},
-  purchaseStage(expectedTier=record?.lamp.capacityTier,expectedStage=record?.lamp.upgradeStage||0){return transact(next=>purchaseLampStage(next,expectedTier,expectedStage));},
-  upgrade(expectedTier=record?.lamp.capacityTier){return transact(next=>upgradeLamp(next,expectedTier));},
+  purchaseStage(expectedTier=record?.lamp.capacityTier,expectedStage=record?.lamp.upgradeStage||0){return transact((next,t)=>purchaseLampStage(next,expectedTier,expectedStage,t));},
+  upgrade(expectedTier=record?.lamp.capacityTier){return transact((next,t)=>upgradeLamp(next,expectedTier,t));},
+  speedUp(expectedTier=record?.lamp.capacityTier){return transact((next,t)=>speedUpLampUpgrade(next,expectedTier,t));},
   dismantle(ids){return transact(next=>dismantleLampItems(next,ids));},
  };
 }

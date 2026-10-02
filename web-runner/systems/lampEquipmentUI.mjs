@@ -71,8 +71,9 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   if(kind==='auto')return void action(async()=>{await economy.setAuto(!economy.data.lamp.autoEnabled);notice=economy.data.lamp.autoEnabled?'Auto is on. Inspect whenever you like.':'Auto is off.';});
   if(kind==='equip'&&selectedHero&&selectedItem)return void action(async()=>{dialog.scrollTop=0;const result=await economy.equip(selectedHero,selectedItem),name=heroDefinition(heroes().find(h=>h.heroInstanceKey===result.heroId)).name,anchor=dialog.querySelector('[data-action="hero"][data-id="'+result.heroId+'"]').getBoundingClientRect();notice='Equipped to '+name;showEquipFeedback(result,name,anchor);if(batch){nextItem();if(!selectedItem)await economy.finishReview();}else close();});
   if(kind==='auto-equip')return void action(async()=>{dialog.scrollTop=0;const anchors=new Map(heroes().map(h=>[h.heroInstanceKey,dialog.querySelector('[data-action="hero"][data-id="'+h.heroInstanceKey+'"]').getBoundingClientRect()])),results=await economy.autoEquip();results.forEach(r=>showEquipFeedback(r,heroDefinition(heroes().find(h=>h.heroInstanceKey===r.heroId)).name,anchors.get(r.heroId)));selectedItem=null;selectedHero=null;notice='';});
-  if(kind==='purchase-stage')return void action(async()=>{await economy.purchaseStage(Number(b.dataset.tier),Number(b.dataset.stage));notice='Upgrade stage '+economy.data.lamp.upgradeStage+' of '+LAMP_CONFIG.upgradeStages+' purchased.';});
-  if(kind==='upgrade')return void action(async()=>{await economy.upgrade(Number(b.dataset.tier));notice='Lamp upgraded to Lv. '+(economy.data.lamp.capacityTier+1);});
+  if(kind==='purchase-stage')return void action(async()=>{await economy.purchaseStage(Number(b.dataset.tier),Number(b.dataset.stage));notice=economy.data.lamp.upgradeEndsAt?'Upgrade construction started.':'Upgrade stage '+economy.data.lamp.upgradeStage+' of '+LAMP_CONFIG.upgradeStages+' purchased.';});
+  if(kind==='upgrade')return void action(async()=>{await economy.upgrade(Number(b.dataset.tier));notice='Upgrade construction started.';});
+  if(kind==='speed-up')return void action(async()=>{const used=await economy.speedUp(Number(b.dataset.tier));notice=used+' speed-up ticket'+(used===1?'':'s')+' spent.';});
   if(kind==='dismantle')return void action(async()=>{const r=await economy.dismantle([...previewIds]);document.querySelectorAll('.lamp-party-exp').forEach(n=>n.remove());notice='';selectedItem=null;selectedHero=null;reviewed=new Set();close();showDismantleReward(r);});
  }
  function startEmission(i){
@@ -95,7 +96,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   if(strip.hidden||busy||opening||document.hidden||rewardBanner?.isConnected||performance.now()-lastInteraction<15000){helper.hidden=true;return;}
   const data=economy.data,l=data?.lamp;if(!l){helper.hidden=true;return;}
   let selectors;
-  if(open)selectors=upgradeOpen?['[data-action="purchase-stage"]','[data-action="upgrade"]','[data-action="close"]']:selectedItem?(selectedHero?['[data-action="auto-equip"]','[data-action="equip"]','[data-action="skip"]']:['[data-action="hero"][data-id="Huun"]','[data-action="hero"]']):['[data-action="dismantle"]','[data-action="close"]'];
+  if(open)selectors=upgradeOpen?['[data-action="purchase-stage"]','[data-action="speed-up"]','[data-action="upgrade"]','[data-action="close"]']:selectedItem?(selectedHero?['[data-action="auto-equip"]','[data-action="equip"]','[data-action="skip"]']:['[data-action="hero"][data-id="Huun"]','[data-action="hero"]']):['[data-action="dismantle"]','[data-action="close"]'];
   else if(l.capacityTier===0)selectors=lampStoredCount(data)?['[data-action="collect"]']:(!(l.guide&LAMP_GUIDE.preview)&&l.essence>0||l.essence>=lampStageCost(data))?['[data-action="lamp-upgrades"]']:['[data-action="generate"]'];
   const scope=open?dialog:strip,target=selectors?.map(s=>scope.querySelector(s+':not(:disabled)')).find(Boolean);
   if(!target){helper.hidden=true;return;}
@@ -125,9 +126,10 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
  function render(){
   if(!strip||feedbacks.size&&open&&(!selectedItem||closeRequested))return;const data=economy.data;if(!data){strip.innerHTML='<div class="lamp-status">'+escape(globals.LampStorageError||'Preparing the lamp…')+'</div>';return;}
   const l=data.lamp,roster=heroes(),cooling=lampCooldownRemaining(data,economy.time())>0;
+  const remaining=l.upgradeEndsAt?Math.max(0,Math.ceil((l.upgradeEndsAt-economy.time())/1000)):0;
   arrivalSequence??=l.sequence;
   if(selectedItem&&!l.pending.includes(selectedItem)&&!l.discarded?.includes(selectedItem))nextItem();
-  const key=JSON.stringify([l.pending,l.discarded,l.salvage,l.sequence,l.autoEnabled,data.gold,data.loadouts,l.capacityTier,l.upgradeStage,l.essence,roster.map(h=>[h.currentLevel,h.currentEXP,h.EXPToNextLevel]),selectedItem,selectedHero,open,upgradeOpen,busy,cooling,notice,emissionId,window.innerWidth,window.innerHeight,window.devicePixelRatio]);
+  const key=JSON.stringify([l.pending,l.discarded,l.salvage,l.sequence,l.autoEnabled,data.gold,data.loadouts,l.capacityTier,l.upgradeStage,l.essence,l.upgradeEndsAt,l.speedUpTickets,open&&upgradeOpen?remaining:0,roster.map(h=>[h.currentLevel,h.currentEXP,h.EXPToNextLevel]),selectedItem,selectedHero,open,upgradeOpen,busy,cooling,notice,emissionId,window.innerWidth,window.innerHeight,window.devicePixelRatio]);
   if(key===lastKey)return;lastKey=key;
   const dialogScroll=dialog.scrollTop,queueScroll=dialog.querySelector('.lamp-queue')?.scrollTop||0;
   const focused=document.activeElement,focusAction=focused?.dataset.action,focusId=focused?.dataset.id,focusParent=dialog.contains(focused)?dialog:strip.contains(focused)?strip:null;
@@ -150,8 +152,13 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
    const tier=LAMP_CAPACITY_TIERS[l.capacityTier],next=LAMP_CAPACITY_TIERS[l.capacityTier+1];
    const cost=lampStageCost(data),ready=stages===LAMP_CONFIG.upgradeStages;
    body+='<div class="lamp-upgrade-summary"><strong>Lamp Lv. '+level+(next?' → Lv. '+(level+1):' · MAX')+'</strong><p>Storage '+tier.capacity+(next?' → '+next.capacity:'')+'</p></div><div class="lamp-odds-scroll"><table class="lamp-odds"><thead><tr><th>Quality</th><th>Current</th><th>Next</th></tr></thead><tbody>'+Object.entries(RARITIES).map(([key,r])=>'<tr style="--rarity:'+r.color+'"><th>'+r.label+'</th><td>'+tier.rarityWeights[key].toFixed(3)+'%</td><td>'+(next?next.rarityWeights[key].toFixed(3)+'%':'—')+'</td></tr>').join('')+'</tbody></table></div><p class="lamp-essence">Essence available <strong>'+new Intl.NumberFormat('en').format(l.essence)+'</strong></p>';
-   if(next)body+='<section class="lamp-upgrade-path" aria-label="Purchased upgrade stages"><div><div class="lamp-stage-label"><strong>'+(ready?'Ready':'Stages')+'</strong><span>'+stages+' / '+LAMP_CONFIG.upgradeStages+'</span></div><ol class="lamp-stage-slots">'+Array.from({length:LAMP_CONFIG.upgradeStages},(_,n)=>'<li class="'+(n<stages?'purchased':'')+'" aria-label="Stage '+(n+1)+(n<stages?' purchased':' unpurchased')+'">'+(n<stages?'<img src="assets/images/lamp/essence-orb.png" alt="">':'<span></span>')+'</li>').join('')+'</ol></div>';
-   body+='<button class="lamp-upgrade" data-action="'+(ready?'upgrade':'purchase-stage')+'" data-tier="'+l.capacityTier+'" data-stage="'+stages+'" '+(busy||!next||!ready&&l.essence<cost?'disabled':'')+'>'+(next?ready?'Lv.UP':'Purchase<br><small>'+cost+' Essence</small>':'MAX')+'</button>'+(next?'</section>':'');
+   if(next&&l.upgradeEndsAt){
+    const countdown=[Math.floor(remaining/3600),Math.floor(remaining/60)%60,remaining%60].map(n=>String(n).padStart(2,'0')).join(':');
+    body+='<section class="lamp-upgrade-path constructing" aria-label="Upgrade under construction"><div class="lamp-construction"><time class="lamp-countdown" role="timer" aria-label="Time remaining"><span>Time left: </span>'+countdown+'</time></div><button class="lamp-upgrade speed-up" data-action="speed-up" data-tier="'+l.capacityTier+'" '+(busy||!l.speedUpTickets?'disabled':'')+'>SPD UP ALL<small>'+ (l.speedUpTickets||0)+' tickets · 5m each</small></button></section>';
+   }else{
+    if(next)body+='<section class="lamp-upgrade-path" aria-label="Purchased upgrade stages"><div><div class="lamp-stage-label"><strong>'+(ready?'Ready':'Stages')+'</strong><span>'+stages+' / '+LAMP_CONFIG.upgradeStages+'</span></div><ol class="lamp-stage-slots">'+Array.from({length:LAMP_CONFIG.upgradeStages},(_,n)=>'<li class="'+(n<stages?'purchased':'')+'" aria-label="Stage '+(n+1)+(n<stages?' purchased':' unpurchased')+'">'+(n<stages?'<img src="assets/images/lamp/essence-orb.png" alt="">':'<span></span>')+'</li>').join('')+'</ol></div>';
+    body+='<button class="lamp-upgrade" data-action="'+(ready?'upgrade':'purchase-stage')+'" data-tier="'+l.capacityTier+'" data-stage="'+stages+'" '+(busy||!next||!ready&&l.essence<cost?'disabled':'')+'>'+(next?ready?'LEVEL UP':'Purchase<br><small>'+cost+' Essence</small>':'MAX')+'</button>'+(next?'</section>':'');
+   }
    if(next&&!ready&&l.essence<cost)body+='<p class="lamp-modal-notice">Need '+(cost-l.essence)+' more essence</p>';
   }else if(candidate){
    const comparison=selectedHero?compareLampItem(data,candidate,selectedHero):null;

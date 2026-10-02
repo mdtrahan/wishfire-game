@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { HERO_DEFINITIONS } from '../web-runner/src/core/heroDefinitions.mjs';
+import { HERO_DEFINITIONS, heroSkillUnlocked } from '../web-runner/src/core/heroDefinitions.mjs';
 import { isHeroBasicTargetInRange, resolveHeroAttackTarget } from '../src/core/heroAttackTargetingRules.mjs';
 import { realtimeCooldownSeconds, scheduleRealtimeActions, selectRealtimeReadyActor } from '../web-runner/src/core/realtimeCooldown.mjs';
 import { selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
@@ -27,7 +27,7 @@ function makeTickBasics(ctx) {
   return loadBankFunction('export function TickRealtimeHeroBasics(ctx) {', '\nexport function TickRealtimeEnemyActions(', [
     'getGlobals', 'getEnemies', 'resolveHeroAttackTarget', 'isHeroBasicTargetInRange', 'getEntities', 'GetEffectiveStat',
     'realtimeCooldownSeconds', 'selectRealtimeReadyActor', 'scheduleRealtimeActions', 'HeroAttackSingle', 'GetActorByUID',
-    'tickRealtimeHeroSkillZones', 'heroDefinition', 'selectRealtimeHeroSkillTarget', 'castRealtimeHeroSkill',
+    'tickRealtimeHeroSkillZones', 'heroDefinition', 'heroSkillUnlocked', 'selectRealtimeHeroSkillTarget', 'castRealtimeHeroSkill',
     'realtimeBasicInterval', 'pushContinuousCombatEnemy', 'reverseContinuousCombatEnemy', 'teleportContinuousCombatEnemy',
   ], [
     c => c.state.globals,
@@ -37,7 +37,7 @@ function makeTickBasics(ctx) {
     realtimeCooldownSeconds, selectRealtimeReadyActor, scheduleRealtimeActions,
     (c, heroUID, targetUID) => c.state.globals.PendingHeroHits.push({ at: c.state.globals.time + 0.52, heroUID, targetUID, dmg: 1, finalDmg: 1, heroType: 'melee', combatRulesBasic: 1, realtimeBasic: 1, retargetOnDeath: 1 }),
     (c, uid) => c.state.entities.find(e => Number(e.uid) === Number(uid)) || null,
-    tickRealtimeHeroSkillZones, actor => HERO_DEFINITIONS[actor.baseHeroName], selectRealtimeHeroSkillTarget,
+    tickRealtimeHeroSkillZones, actor => HERO_DEFINITIONS[actor.baseHeroName], heroSkillUnlocked, selectRealtimeHeroSkillTarget,
     castRealtimeHeroSkill, realtimeBasicInterval, () => 0, () => 0, () => 0,
   ]);
 }
@@ -112,7 +112,7 @@ function makeTickEnemies(ctx, actionEvents) {
   };
 }
 
-const makeHero = (uid, key, hp, maxHP) => ({ uid, kind: 'hero', heroInstanceKey: `hero-${uid}`, baseHeroName: key, name: key, hp, maxHP, stats: { ...HERO_DEFINITIONS[key].baseStats }, attackType: key === 'Runa' || key === 'Kojonn' ? 'magic' : 'melee', heroDisplaySlot: uid - 1 });
+const makeHero = (uid, key, hp, maxHP) => ({ uid, kind: 'hero', currentLevel:25, heroInstanceKey: `hero-${uid}`, baseHeroName: key, name: key, hp, maxHP, stats: { ...HERO_DEFINITIONS[key].baseStats }, attackType: key === 'Runa' || key === 'Kojonn' ? 'magic' : 'melee', heroDisplaySlot: uid - 1 });
 const makeEnemy = (uid, name, x, y, hp = 1_000_000, maxHP = 1_000_000, extra = {}) => ({ uid, kind: 'enemy', name, hp, maxHP, x, y, originX: x, originY: y, streamEngageX: x, streamState: 'engaged', enemyRole: 'fodder', ATK: 1, stats: { ATK: 1, MAG: 2 }, ...extra });
 
 function createTwoWaveFixture() {
@@ -270,14 +270,13 @@ test('stage and recovery seams keep wave overlap, boss availability, paused cloc
   const gateCall = (name, ...args) => name === 'SpawnEnemy' ? makeEnemy(500 + args[1], args[0].name, 240, 180) : true;
   maybeAdvanceContinuousCombatStage({ globals: gateGlobals, entities: gateEntities, call: gateCall });
   assert.equal(gateGlobals.ContinuousCombatStage.bossAvailable, true);
-  assert.equal(armContinuousCombatBoss(gateGlobals), true);
   const bossSpawned = [];
-  maybeAdvanceContinuousCombatStage({ globals: gateGlobals, entities: gateEntities, call(name, ...args) {
-    if (name === 'SpawnEnemy') { const enemy = makeEnemy(600 + args[1], args[0].name, 240, 180, 1_000_000, 1_000_000, { enemyRole: args[0].enemyRole }); bossSpawned.push(enemy); return enemy; }
+  assert.equal(armContinuousCombatBoss(gateGlobals,gateEntities,(name,...args)=>{
+    if(name==='SpawnEnemy'){const enemy=makeEnemy(600+args[1],args[0].name,240,180,1_000_000,1_000_000,{enemyRole:args[0].enemyRole});bossSpawned.push(enemy);gateEntities.push(enemy);return enemy;}
     return true;
-  } });
+  }),true);
   assert.equal(gateGlobals.ContinuousCombatStage.bossActive, true);
-  assert.ok(bossSpawned.some(enemy => enemy.enemyRole === 'boss'), 'armed boss gate spawns the boss only after the clear barrier');
+  assert.ok(bossSpawned.some(enemy => enemy.enemyRole === 'boss'), 'boss click immediately replaces farming with the boss');
 
   const hero = Object.assign(newHeroProgress('Falie', 'hero-1'), { uid: 1, kind: 'hero', heroDisplaySlot: 0 });
   const heroes = [hero];
@@ -292,18 +291,18 @@ test('stage and recovery seams keep wave overlap, boss availability, paused cloc
   assert.equal(battle.settled, false, 'defeat keeps pending kills open for recovery settlement');
   settleContinuousCombatRewards(rewardCtx);
   const paidEXP = rewardGlobals.HeroProgress.heroes['hero-1'].currentEXP;
-  assert.ok(hero.currentLevel > 1 || paidEXP > 0);
+  assert.equal(hero.currentLevel,1);assert.equal(paidEXP,0);
   assert.equal(battle.settled, true);
-  assert.equal(rewardGlobals.goldTotal, 10);
+  assert.equal(rewardGlobals.goldTotal, 0);
   const retryBattle = rewardGlobals.ProgressionBattle;
   rewardGlobals.ProgressionBattle = battle;
   assert.deepEqual(settleContinuousCombatRewards(rewardCtx), [], 'replaying the already-settled defeat receipt pays nothing');
   rewardGlobals.ProgressionBattle = retryBattle;
   assert.equal(rewardGlobals.HeroProgress.heroes['hero-1'].currentEXP, paidEXP);
-  assert.equal(rewardGlobals.goldTotal, 10, 'duplicate defeat settlement does not award a pending kill twice');
+  assert.equal(rewardGlobals.goldTotal, 0, 'duplicate defeat settlement does not award a pending kill twice');
   assert.notEqual(rewardGlobals.ProgressionBattle.id, battle.id, 'retry begins with a new continuous reward receipt');
   assert.equal(recordEnemyDefeatReward(retryBattle, killed), true, 'repeated enemy UID in a retry belongs to the new battle receipt');
   settleContinuousCombatRewards(rewardCtx);
-  assert.equal(rewardGlobals.goldTotal, 20, 'a distinct retry kill is paid once');
-  assert.equal(rewardGlobals.HeroProgress.heroes['hero-1'].currentEXP, paidEXP + 25);
+  assert.equal(rewardGlobals.goldTotal, 0, 'a distinct retry kill grants no progression resources');
+  assert.equal(rewardGlobals.HeroProgress.heroes['hero-1'].currentEXP, paidEXP);
 });

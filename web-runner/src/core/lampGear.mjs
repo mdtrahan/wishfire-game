@@ -2,7 +2,7 @@ import {EQUIPMENT,RARITIES,EQUIPMENT_SLOTS,equipmentDefinition,equipmentStats,is
 import {refreshHeroStats} from './heroProgression.mjs';
 import {computeCombatPower} from './combatPower.mjs';
 
-export const LAMP_CONFIG=Object.freeze({capacity:20,drawEXP:25,minEmissionIntervalMs:2000,autoIntervalMs:5000,autoUnlockLevel:5,maxOrdinal:990,mapStatGrowth:.005,lampLevels:100,upgradeStages:4,upgradeCostGrowth:1.082});
+export const LAMP_CONFIG=Object.freeze({capacity:20,drawEXP:25,minEmissionIntervalMs:2000,autoIntervalMs:5000,autoUnlockLevel:5,maxOrdinal:990,mapStatGrowth:.005,lampLevels:100,upgradeStages:4,upgradeCostGrowth:1.082,upgradeDurationMs:7*60*60*1000,speedUpTicketMs:5*60*1000});
 export const LAMP_GUIDE=Object.freeze({storage:1,comparison:2,preview:4});
 export function markLampGuide(data,step){if(!Object.hasOwn(LAMP_GUIDE,step))throw new Error('Unknown lamp guide step.');if(step!=='preview'&&!lampStoredCount(data))throw new Error('Open stored equipment first.');if(step==='comparison'&&!data.lamp.pending.length)throw new Error('Choose pending equipment first.');return data.lamp.guide=(data.lamp.guide||0)|LAMP_GUIDE[step];}
 export const LAMP_CAPACITY_TIERS=Object.freeze(Array.from({length:LAMP_CONFIG.lampLevels},(_,n)=>{
@@ -13,14 +13,39 @@ export const LAMP_CAPACITY_TIERS=Object.freeze(Array.from({length:LAMP_CONFIG.la
 }));
 export const lampCapacity=data=>LAMP_CAPACITY_TIERS[data.lamp.capacityTier||0].capacity;
 export function lampStageCost(data){const cost=LAMP_CAPACITY_TIERS[data.lamp.capacityTier].cost,stage=data.lamp.upgradeStage||0;return cost===null||stage===LAMP_CONFIG.upgradeStages?0:Math.floor(cost*(stage+1)/LAMP_CONFIG.upgradeStages)-Math.floor(cost*stage/LAMP_CONFIG.upgradeStages);}
-export function purchaseLampStage(data,expectedTier=data.lamp.capacityTier,expectedStage=data.lamp.upgradeStage||0){
+export function purchaseLampStage(data,expectedTier=data.lamp.capacityTier,expectedStage=data.lamp.upgradeStage||0,now){
  const l=data.lamp;if(l.capacityTier!==expectedTier||(l.upgradeStage||0)!==expectedStage)throw new Error('Lamp upgrade changed. Review the updated purchase.');
  if(LAMP_CAPACITY_TIERS[l.capacityTier].cost===null)throw new Error('Lamp is fully upgraded.');
- if(expectedStage===LAMP_CONFIG.upgradeStages)throw new Error('All stages purchased. Press Lv.UP.');
+ if(expectedStage===LAMP_CONFIG.upgradeStages)throw new Error('All stages already purchased.');
+ if(!Number.isSafeInteger(now)||now<0||!Number.isSafeInteger(now+LAMP_CONFIG.upgradeDurationMs))throw new Error('Invalid upgrade clock.');
  const cost=lampStageCost(data);if(l.essence<cost)throw new Error('Need '+(cost-l.essence)+' more essence.');
- l.essence-=cost;return l.upgradeStage=expectedStage+1;
+ l.essence-=cost;l.upgradeStage=expectedStage+1;
+ if(l.upgradeStage===LAMP_CONFIG.upgradeStages)upgradeLamp(data,expectedTier,now);
+ return l.upgradeStage;
 }
-export function upgradeLamp(data,expectedTier=data.lamp.capacityTier){if(data.lamp.capacityTier!==expectedTier)throw new Error('Lamp level changed. Review the updated upgrade.');if(LAMP_CAPACITY_TIERS[data.lamp.capacityTier].cost===null)throw new Error('Lamp is fully upgraded.');if(data.lamp.upgradeStage!==LAMP_CONFIG.upgradeStages)throw new Error('Purchase all four upgrade stages first.');data.lamp.capacityTier++;data.lamp.upgradeStage=0;return lampCapacity(data);}
+// Already-paid 4/4 saves start construction through LEVEL UP; new fourth purchases start it atomically.
+export function upgradeLamp(data,expectedTier=data.lamp.capacityTier,now){
+ const l=data.lamp;
+ if(l.capacityTier!==expectedTier)throw new Error('Lamp level changed. Review the updated upgrade.');
+ if(LAMP_CAPACITY_TIERS[l.capacityTier].cost===null)throw new Error('Lamp is fully upgraded.');
+ if(l.upgradeStage!==LAMP_CONFIG.upgradeStages)throw new Error('Purchase all four upgrade stages first.');
+ if(l.upgradeEndsAt)throw new Error('Upgrade is already under construction.');
+ if(!Number.isSafeInteger(now)||now<0||!Number.isSafeInteger(now+LAMP_CONFIG.upgradeDurationMs))throw new Error('Invalid upgrade clock.');
+ return l.upgradeEndsAt=now+LAMP_CONFIG.upgradeDurationMs;
+}
+export function completeLampUpgrade(data,now){
+ const l=data.lamp;if(!l.upgradeEndsAt||now<l.upgradeEndsAt)return false;
+ l.capacityTier++;l.upgradeStage=0;l.upgradeEndsAt=0;return true;
+}
+export function speedUpLampUpgrade(data,expectedTier,now){
+ if(!Number.isSafeInteger(now)||now<0)throw new Error('Invalid upgrade clock.');
+ const l=data.lamp;if(l.capacityTier!==expectedTier||!l.upgradeEndsAt||now>=l.upgradeEndsAt)throw new Error('Construction changed. Review the updated upgrade.');
+ const spent=Math.min(l.speedUpTickets||0,Math.ceil((l.upgradeEndsAt-now)/LAMP_CONFIG.speedUpTicketMs));
+ if(!spent)throw new Error('No speed-up tickets available.');
+ l.speedUpTickets-=spent;
+ if(!completeLampUpgrade(data,now+spent*LAMP_CONFIG.speedUpTicketMs))l.upgradeEndsAt-=spent*LAMP_CONFIG.speedUpTicketMs;
+ return spent;
+}
 export const GEAR_STATS=Object.freeze(['ATK','DEF','MAG','RES','HP']);
 export const GEAR_ARCHETYPES=Object.freeze([
  {id:'guardian-hat',name:'Guardian Helm',type:'hat',art:0,stats:{ATK:1,DEF:3,MAG:1,RES:2,HP:5}},
@@ -52,6 +77,8 @@ export function validateLampEconomy(data,version=5){
  const l=data.lamp;
  if(l?.guide!==undefined&&(!Number.isInteger(l.guide)||l.guide<0||l.guide>7))bad();
  if(l?.upgradeStage!==undefined&&(!Number.isInteger(l.upgradeStage)||l.upgradeStage<0||l.upgradeStage>LAMP_CONFIG.upgradeStages||l.capacityTier===LAMP_CONFIG.lampLevels-1&&l.upgradeStage!==0))bad();
+ if(l?.upgradeEndsAt!==undefined&&(!Number.isSafeInteger(l.upgradeEndsAt)||l.upgradeEndsAt<0||l.upgradeEndsAt>0&&(l.upgradeStage!==LAMP_CONFIG.upgradeStages||l.capacityTier>=LAMP_CONFIG.lampLevels-1)))bad();
+ if(l?.speedUpTickets!==undefined&&(!Number.isSafeInteger(l.speedUpTickets)||l.speedUpTickets<0))bad();
  if(version===5&&(!l||!Number.isInteger(l.capacityTier)||l.capacityTier<0||l.capacityTier>=LAMP_CAPACITY_TIERS.length||!Number.isSafeInteger(l.essence)||l.essence<0))bad();
  if(!l||!Number.isInteger(l.seed)||l.seed<0||l.seed>4294967295||!Number.isSafeInteger(l.sequence)||l.sequence<0||!Number.isSafeInteger(l.highestOrdinal)||l.highestOrdinal<0||l.highestOrdinal>LAMP_CONFIG.maxOrdinal||!Number.isFinite(l.lastActivationAt)||typeof l.autoEnabled!=='boolean'||!Array.isArray(l.pending)||!Number.isSafeInteger(l.salvage?.count)||l.salvage.count<0||!Number.isSafeInteger(l.salvage.gold)||l.salvage.gold<0||l.pending.length>(version===5?lampCapacity(data):LAMP_CONFIG.capacity))bad();
  const ids=new Set();

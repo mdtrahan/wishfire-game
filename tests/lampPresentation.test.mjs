@@ -59,7 +59,7 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
   const current={...fixture.items[0],instanceId:'owned-Huun',stats:{...fixture.items[0].stats,ATK:fixture.items[0].stats.ATK+10,MAG:fixture.items[0].stats.MAG+1}};fixture.items.push(current);fixture.loadouts.Huun={[current.type]:current.instanceId};
   const equal={...fixture.items[0],instanceId:'owned-Kojonn'};fixture.items.push(equal);fixture.loadouts.Kojonn={[equal.type]:equal.instanceId};
   const heroSave=createHeroProgressStore();for(const h of Object.values(heroSave.heroes)){h.currentLevel=5;refreshHeroStats(h);h.hp=h.maxHP;}
-  await page.addInitScript(({save,heroes})=>{if(!localStorage.getItem('wishfire.equipment-economy.v5'))localStorage.setItem('wishfire.equipment-economy.v5',JSON.stringify(save));if(!localStorage.getItem('orka.hero_progress.v2'))localStorage.setItem('orka.hero_progress.v2',JSON.stringify(heroes));},{save:fixture,heroes:heroSave});
+  await page.addInitScript(({save,heroes})=>{const realNow=Date.now;let offset=0;Date.now=()=>realNow()+offset;window.setLampQAClock=t=>offset=t-realNow();if(localStorage.getItem('test.lamp.seeded'))return;localStorage.setItem('test.lamp.seeded','1');if(!localStorage.getItem('wishfire.equipment-economy.v5'))localStorage.setItem('wishfire.equipment-economy.v5',JSON.stringify(save));if(!localStorage.getItem('orka.hero_progress.v2'))localStorage.setItem('orka.hero_progress.v2',JSON.stringify(heroes));},{save:fixture,heroes:heroSave});
   await page.goto(url);await page.waitForFunction(()=>typeof window.render_game_to_text==='function');const strip=page.locator('#wishfire-lamp');assert.equal(await strip.isVisible(),false,'lamp is hidden before combat');
   await page.waitForTimeout(2000);const startCanvas=await page.locator('canvas').first().boundingBox();await page.mouse.click(startCanvas.x+startCanvas.width/2,startCanvas.y+426*startCanvas.width/360);
   await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).quest.phase==='combat',null,{timeout:15000});await strip.getByRole('button',{name:'Reveal equipment',exact:true}).waitFor();
@@ -262,7 +262,8 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
   const stageReceipts=[];
   const checkUpgradeLayout=async()=>{
    const layout=await dialog.evaluate(d=>{const r=d.getBoundingClientRect(),b=d.querySelector('.lamp-upgrade').getBoundingClientRect();return{overflow:d.scrollWidth>d.clientWidth,masterOverflow:d.scrollHeight>d.clientHeight,inViewport:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight,buttonContained:b.left>=r.left&&b.right<=r.right&&b.top>=r.top&&b.bottom<=r.bottom,textContained:[...d.querySelectorAll('.lamp-odds th,.lamp-odds td')].every(cell=>{const range=document.createRange();range.selectNodeContents(cell);const t=range.getBoundingClientRect(),r=cell.getBoundingClientRect();return t.left>=r.left-.5&&t.right<=r.right+.5;})};});
-   assert.deepEqual(layout,{overflow:false,masterOverflow:false,inViewport:true,buttonContained:true,textContained:true});return layout;
+   assert.deepEqual(layout,{overflow:false,masterOverflow:false,inViewport:true,buttonContained:true,textContained:true});
+   const visibleOdds=await dialog.locator('.lamp-odds-scroll').evaluate(n=>n.clientHeight);assert.ok(visibleOdds>=60,'odds retain a readable scrolling viewport');return layout;
   };
   await checkUpgradeLayout();
   for(let tier=0;tier<3;tier++){
@@ -270,11 +271,16 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
    for(let stage=0;stage<4;stage++){
     const button=dialog.locator('[data-action="purchase-stage"]');await page.waitForFunction(()=>!document.querySelector('[data-action="purchase-stage"]')?.disabled);
     await button.click();await page.waitForFunction(({tier,stage})=>{const l=JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')).lamp;return l.capacityTier===tier&&l.upgradeStage===stage+1;},{tier,stage});
-    assert.equal(await dialog.locator('.lamp-stage-slots .purchased').count(),stage+1);assert.equal(await strip.locator('.lamp-progress').getAttribute('aria-valuenow'),String(stage+1));assert.equal(await strip.locator('.lamp-tier-badge b').textContent(),String(tier+1));
+    if(stage<3)assert.equal(await dialog.locator('.lamp-stage-slots .purchased').count(),stage+1);else assert.equal(await dialog.locator('.lamp-countdown').count(),1);assert.equal(await strip.locator('.lamp-progress').getAttribute('aria-valuenow'),String(stage+1));assert.equal(await strip.locator('.lamp-tier-badge b').textContent(),String(tier+1));
    }
    const ready=await page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')));stageReceipts.push({level:tier+1,stages:ready.lamp.upgradeStage,bank:ready.lamp.essence,layout:await checkUpgradeLayout()});assert.equal(await dialog.locator('[role=status]').count(),1,'one saved purchase announcement');
    await page.screenshot({path:`${directory}/${width}-upgrade-ready.png`});
-   await dialog.getByRole('button',{name:'Lv.UP',exact:true}).click();await page.waitForFunction(t=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')).lamp.capacityTier===t+1,tier);
+   assert.ok(ready.lamp.upgradeEndsAt>Date.now(),'paid stages wait for construction');
+   assert.match(await dialog.locator('.lamp-countdown').textContent(),/^Time left: 0[67]:[0-5]\d:[0-5]\d$/);
+   assert.equal(await dialog.locator('.lamp-stage-slots').count(),0);
+   assert.equal(await dialog.getByRole('button',{name:/SPD UP ALL/}).isEnabled(),false,'no tickets means no speed-up');
+   const centered=await dialog.locator('.lamp-countdown').evaluate(n=>{const a=n.getBoundingClientRect(),b=n.closest('.lamp-upgrade-path').getBoundingClientRect();return Math.abs((a.left+a.right-b.left-b.right)/2)<1;});assert.equal(centered,true);
+   await page.evaluate(end=>window.setLampQAClock(end+1),ready.lamp.upgradeEndsAt);await page.waitForFunction(t=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')).lamp.capacityTier===t+1,tier);
    assert.equal(await strip.locator('.lamp-progress').getAttribute('aria-valuenow'),'0');
   }
   const afterUpgrade=await page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')));assert.equal(afterUpgrade.lamp.essence,200-LAMP_CAPACITY_TIERS.slice(0,3).reduce((sum,t)=>sum+t.cost,0));assert.deepEqual(afterUpgrade.items,beforeUpgrade.items);assert.equal(afterUpgrade.partyEXP,beforeUpgrade.partyEXP);
@@ -284,7 +290,30 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
   await page.reload();await page.waitForTimeout(1000);const maxCanvas=await page.locator('canvas').first().boundingBox();await page.mouse.click(maxCanvas.x+maxCanvas.width/2,maxCanvas.y+426*maxCanvas.width/360);await strip.locator('.lamp-tier-badge').waitFor();await strip.locator('.lamp-tier-badge').click();await dialog.getByText('Lamp Lv. 100 · MAX',{exact:true}).waitFor();assert.equal(await dialog.getByRole('button',{name:'MAX',exact:true}).isEnabled(),false);
   const upgradeContainment=await checkUpgradeLayout();await page.screenshot({path:`${directory}/${width}-upgrade-max-fixture.png`});await guideIdle(page);await page.locator('.lamp-idle-helper').waitFor();assert.equal(await page.locator('.lamp-idle-helper').getAttribute('data-target'),'close');await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await guideIdle(page);assert.equal(await page.locator('.lamp-idle-helper').isVisible(),false,'completed upgrade loop stops strip guidance');
   await page.keyboard.press('Escape');
-  assert.deepEqual(errors,[]);report.push({stageReceipts,selectionPulse,gearCentering,width,height,dpr,arrowTips,statHeights,bandColors,itemLayout,expectedPreview,preview,navigation,closePoint,closeHit,geometry,lampPaint,stripBalance,emission,queueGeometry,containment,errors});await context.close();
+  // Developer controls mutate real canonical state in this isolated context only.
+  const presetProof=[];
+  for(const level of [1,5,25,100]){
+   await page.getByRole('button',{name:'Open developer tooling modal',exact:true}).click();
+   await page.locator('[data-devtool-level="'+level+'"]').click();
+   await page.getByText('All heroes set to Lv. '+level+' with EXP 0 and matching skills.',{exact:true}).waitFor();
+   const proof=await page.evaluate(()=>{const g=window.__codexGame.globals,actors=window.__codexGame.state.entities.filter(a=>a.kind==='hero'),saved=JSON.parse(localStorage.getItem('orka.hero_progress.v2'));return {heroes:actors.map(a=>({level:a.currentLevel,exp:a.currentEXP,max:a.maxLevel,stats:a.stats,maxHP:a.maxHP,toNext:a.EXPToNextLevel,saved:saved.heroes[a.heroInstanceKey]})),pending:g.PendingHeroHits.length,effects:Object.keys(g.RealtimeSkillEffects).length};});
+   assert.equal(proof.pending,0);assert.equal(proof.effects,0);assert.equal(proof.heroes.length,4);
+   for(const h of proof.heroes){assert.equal(h.level,level);assert.equal(h.exp,0);assert.equal(h.max,100);assert.equal(h.saved.currentLevel,level);assert.deepEqual(h.stats,h.saved.stats);assert.equal(h.maxHP,h.saved.maxHP);assert.equal(h.toNext,h.saved.EXPToNextLevel);}
+   const qaBounds=await page.locator('[data-devtool-progression]').evaluate(n=>{const r=n.getBoundingClientRect();return {viewport:r.left>=0&&r.right<=innerWidth,overflow:n.scrollWidth>n.clientWidth,buttons:[...n.querySelectorAll('button')].every(b=>{const a=b.getBoundingClientRect();return a.left>=r.left&&a.right<=r.right;})};});assert.deepEqual(qaBounds,{viewport:true,overflow:false,buttons:true});
+   await page.screenshot({path:`${directory}/${width}-qa-lv${level}.png`});
+   await page.locator('[data-devtool-close]').click();await page.locator('#game-meta-nav').getByRole('button',{name:'HERO',exact:true}).click();await page.locator('#hero-details').getByRole('button',{name:'SKILLS',exact:true}).click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details')?.dataset.tab==='skills'&&document.querySelectorAll('#hero-details article[data-locked]').length===5);
+   assert.equal(await page.locator('#hero-details article[data-locked=true]').count(),level===1?4:level===5?3:0);
+   assert.equal(await page.locator('#hero-details article[data-locked=false]').count(),level===1?1:level===5?2:5);
+   await page.locator('#hero-details').getByRole('button',{name:'HERO',exact:true}).click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details')?.dataset.tab==='hero');
+   const heroView=await page.locator('#hero-details .pane').textContent();assert.match(heroView,level===100?/Maximum level/:/0 \/ \d+ EXP/);
+   presetProof.push({level,qaBounds,heroes:proof.heroes.map(({saved,...h})=>h)});
+  }
+  await page.getByRole('button',{name:'Open developer tooling modal',exact:true}).click();await page.locator('[data-devtool-level="RESET GAME"]').click();
+  await page.waitForFunction(()=>window.__codexGame?.globals.HeroProgress&&Object.values(window.__codexGame.globals.HeroProgress.heroes).every(h=>h.currentLevel===1&&h.currentEXP===0));
+  const clean=await page.evaluate(()=>({backup:!!localStorage.getItem('wishfire.qa.reset-backup.v1'),lamp:JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')),heroes:window.__codexGame.globals.HeroProgress.heroes}));assert.equal(clean.backup,true);assert.equal(clean.lamp?.partyEXP||0,0);assert.equal(clean.lamp?.lamp.capacityTier||0,0);assert.ok(Object.values(clean.heroes).every(h=>h.currentLevel===1&&h.currentEXP===0));
+  assert.deepEqual(errors,[]);report.push({presetProof,stageReceipts,selectionPulse,gearCentering,width,height,dpr,arrowTips,statHeights,bandColors,itemLayout,expectedPreview,preview,navigation,closePoint,closeHit,geometry,lampPaint,stripBalance,emission,queueGeometry,containment,errors});await context.close();
   // Disclosed six-item fixture stresses concurrent receipt layout without timing claims.
   const rapidFixture=createLampEconomy(43,1000);for(let n=0;n<6;n++)activateLamp(rapidFixture,{region:1,stage:1},n*2000);
   const rapidContext=await browser.newContext({viewport:{width,height},deviceScaleFactor:dpr}),rapidPage=await rapidContext.newPage();

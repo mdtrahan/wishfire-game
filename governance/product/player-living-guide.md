@@ -2,15 +2,15 @@
 
 ## Combat
 
-Fara, Hondo, Runa and Kaja hold their positions while enemies approach from the right. Each living hero fires a basic attack and uses five active skills automatically when their cooldowns are ready and the skill has a useful target. Heroes and enemies act on their own clocks. Combat has no turns, action slots, gem matching, SP or FLOW.
+Fara, Hondo, Runa and Kaja hold their positions while enemies approach from the right. Each living hero fires a basic attack and uses unlocked active skills automatically when their cooldowns are ready and the skill has a useful target. Heroes and enemies act on their own clocks. Combat has no turns, action slots, gem matching, SP or FLOW.
 
 Ordinary hero attacks focus the first living enemy in range until it falls or leaves range. Area skills use their own targeting rules. Enemies attack the first living hero in range unless a skill redirects or covers that attack. An attack with no eligible target waits ready.
 
-Enemy packs arrive during each wave. Four waves lead to a boss, which appears when armed. Heroes keep their HP between ordinary waves. Defeating a boss restores the whole party to full HP, revives KO heroes and clears their debuffs before the next stage. If the party falls, it recovers and restarts at wave 1 of the current stage. Defeat costs no resource.
+Enemy packs arrive during each wave. Four waves earn Boss access. Pressing Boss immediately replaces the current enemies with that boss. Heroes keep their HP between ordinary waves. Defeating a boss restores the whole party to full HP, revives KO heroes and clears their debuffs before the next stage. If the party falls, it recovers and restarts at wave 1 of the current stage. Earned Boss access survives defeat and reload; the player can retry whenever they choose. Boss victory clears access for the next stage. Defeat costs no resource.
 
 ## Heroes
 
-Each hero has individual HP, stats, level, EXP and equipment. Basic attacks and all five active skills are available from the start. Levels, gear and other progression increase their power; the skills have no separate unlock or rank ladder.
+Each hero has individual HP, stats, level, EXP and equipment. Heroes begin at level 1 with zero EXP. Basic attacks and the first active are available at level 1; the remaining actives unlock at levels 5, 10, 15 and 25 under the current configurable milestone schedule. Levels and gear increase their power.
 
 | Hero | What they do |
 | --- | --- |
@@ -30,3 +30,5 @@ Gold buys equipment from the shop. Purchased gear enters the shared inventory un
 ## Places
 
 Quests provide story and combat encounters. The HERO screen shows owned heroes and their progression. Vault and other navigation remain available where implemented.
+
+Lamp upgrades require four Essence purchases. The fourth starts seven hours of construction; the level completes automatically when that timer expires. SPD UP ALL spends available five-minute tickets to shorten construction. Banked Essence alone grants no lamp levels.

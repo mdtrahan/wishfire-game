@@ -182,6 +182,7 @@ test('combat renderer and attack hit target consume shared presentation sizing',
   assert.match(app, /displayFontSize: computeCombatDamageFontSize\(\{/);
   assert.match(app, /function spawnPendingDamageNumbers\(projectToCanvas = null, presentationScale = 1\)/);
   assert.match(render, /spawnPendingDamageNumbers\(projectCombatDamageWorldToCanvas, layoutScale\);/);
+  assert.doesNotMatch(render, /spawnPendingDamageNumbers\(projectCombatDamageWorldToCanvas\);/);
   assert.match(render, /deps\.computeCombatDamageFontSize = computeCombatDamageFontSize/);
   assert.doesNotMatch(render, /selectorAsset|selectorImg/);
   assert.match(render, /const fontSize = computeCombatDamageFontSize\(\{/);

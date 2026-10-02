@@ -50,7 +50,7 @@ Central defaults:
 
 | Setting | Placeholder |
 | --- | --- |
-| Maximum level | 99 |
+| Maximum level |100 |
 | EXP needed from level L to L+1 | `100 × L^1.5` |
 | Max SP | 100 |
 | Starting SP | 100 |
@@ -58,7 +58,7 @@ Central defaults:
 
 Keep the EXP curve behind one data-backed lookup so a level table can replace the formula. Choose and document one consistent integer rounding rule during implementation. EXP represents progress toward the next threshold; subtract each threshold and continue checking for multiple level-ups. At maximum level, use a centrally defined cap state, stop accumulation and discard excess EXP. No EXP banking for future cap increases.
 
-Confirmed lamp progression supersedes defeated-enemy EXP: each manual or Auto lamp draw awards the full configured EXP to all four heroes. A full cache switches Auto off and stops EXP until the player clears space and resumes Auto. Dismantling grants essence only. Lamp upgrades require four explicit essence purchases followed by manual Lv.UP; earned lamp level and purchased stages own the strip meter. Banked essence grants no level. Enemy deaths, victory, defeat and retry grant no new hero EXP or Gold. Existing per-hero levels and EXP remain saved; lamp receipts prevent duplicate grants. LAMP_EQUIPMENT_MVP.md owns delivered lamp tuning and cache upgrades.
+Confirmed lamp progression supersedes defeated-enemy EXP: each manual or Auto lamp draw awards the full configured EXP to all four heroes. A full cache switches Auto off and stops EXP until the player clears space and resumes Auto. Dismantling grants essence only. Lamp upgrades require four explicit essence purchases followed by7-hour construction and automatic completion; earned lamp level and purchased stages own the strip meter. Banked essence grants no level. Enemy deaths, victory, defeat and retry grant no new hero EXP or Gold. Existing per-hero levels and EXP remain saved; lamp receipts prevent duplicate grants. LAMP_EQUIPMENT_MVP.md owns delivered lamp tuning and cache upgrades.
 
 Victory order is strict:
 
@@ -241,3 +241,13 @@ The victory results panel measures 80% of the visible game canvas width and 80% 
 The current hero screen is replaced in place with HERO / GEAR / SKILLS for one selected canonical hero. Keep the portrait, name, level, HP/ATK summary and compact selectable roster visible across views. HERO shows EXP, three upcoming level unlocks and expandable full stats. SKILLS separates Active (seven), Passive (six) and FLOW (one special); Basic Attack is separately inspectable. Internal tags are not player-facing labels. The supplied role-charge examples do not restore retired FLOW generation: enemy-death orbs remain authoritative.
 
 GEAR must share canonical inventory with the requested Astral Flow equipment shop. The owner authorized placeholder high-fantasy items. Canonical slots are Weapon, Head, Armor, Boots and two Accessories. The shared persisted inventory feeds Gear and its loadouts feed canonical hero stats. Overview also exposes SP, existing CP and the named AF trait; role-based charging remains retired.
+
+## Current progression correction (2026-10-02)
+
+The owner requires tier-owned boss access: four normal waves unlock Boss. Pressing it immediately replaces fodder; defeat returns to wave 1 with access retained. Victory clears the gate, advances the stage/region and starts earning the next boss. The existing HeroProgress record preserves the tier/access across reload.
+
+All four heroes start at Lv. 1 and zero EXP. The existing five actives unlock through their canonical definitions; the configurable runtime default is 1/5/10/15/25. Later skills remain described as locked in SKILLS and cannot schedule, cast or retaliate. Current maximum level is 100, supporting the requested LV100 QA preset. The EXP curve and lamp receipt tuning remain unchanged.
+
+The fourth paid lamp stage starts a saved 7-hour construction deadline. Current odds/capacity stay effective until expiry; sync completes automatically, including offline return. A centered live countdown replaces flames. Blue SPD UP ALL consumes banked five-minute tickets, up to the amount needed; tickets are not granted by this correction. Paid 4/4 saves without a deadline may start construction with LEVEL UP. Existing earned lamp levels are preserved.
+
+The DEV modal contains RESET GAME / LV 1 / LV 5 / LV 25 / LV 100. Presets save real hero levels, zero EXP, derived stats and current draw receipts, clear stale combat effects and retain equipment/map progress. RESET GAME preserves a recovery snapshot, clears only game save namespaces, and restores the clean new-player entry.

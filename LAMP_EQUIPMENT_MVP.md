@@ -100,3 +100,7 @@ Emission reuses the current lamp illustration with a tilt only. New gear pops up
 - Arrival illustrations display only session emissions still in pending or discarded storage. Equipped and confirmed-dismantled pieces disappear from the strip; a zero cache leaves all five positions empty. Historical emission snapshots remain saved independently.
 
 - Strip presentation uses supplied transparent lamp/puff rasters. Manual and Auto share one puff-before-bounce emission path. Larger five-position gear art retains quality glow and item level; AUTO is upper-right with on/off/locked pills. Controls and strip remain anchored to the existing 360×640 Canvas frame.
+
+### Timed upgrades (2026-10-02 owner correction)
+
+Purchasing the final of four essence installments records upgradeEndsAt for7hours later. Capacity, lamp level and drop odds remain current during construction; durable sync grants the upgrade automatically when due. Optional v5 deadline/ticket fields preserve existing saves. Legacy paid4/4 progress uses LEVEL UP to start the timer. The construction card centers a live countdown and changes its control to blue SPD UP ALL. Each saved ticket skips5minutes; spend only tickets required, preserve leftovers, and never grant tickets automatically.
