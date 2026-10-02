@@ -597,3 +597,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - 2026-10-01: Tight per-numeral raster crops vary in height even at one font size. Derive the shared number/arrow height from the font’s full digit range and normalize each crop into it; test both rows with differing values.
 
 - 2026-10-01: Removing redundant rarity initials must preserve the color channel. Bind the candidate identity band and inventory tile to the same existing rarity variable and check the full palette.
+
+- 2026-10-01: Separate auto-sized label tracks misalign HP/MAG even when outer cells align. Share row tracks with native subgrid and reserve flexible value columns across the card. Center the whole allocated grid; max-content-only centering crowds current values and leaves no space for their growth.

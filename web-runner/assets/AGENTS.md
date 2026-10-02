@@ -84,3 +84,5 @@
 - Comparison CP arrows use a single pointed apex; preserve their bounds and direction colors. The selected-stat Canvas renderer shares this silhouette.
 
 - Selected-item identity bands retain the shared rarity palette through --rarity. Removing corner rarity letters never removes color cues.
+
+- Selected-item stat groups span the centered card content width. Both rows share six equal label/value subgrid tracks; right-align labels, separate each value by roughly one stat digit width and reserve flexible value tracks for larger numbers.

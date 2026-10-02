@@ -76,9 +76,9 @@
 .lamp-quality-band small{color:#252a28;font-size:clamp(10px,3.2cqw,13px);text-shadow:none}
 .lamp-quality-band h2{color:#1c211f;font-size:clamp(13px,4.8cqw,20px);line-height:1.15;margin:0;text-shadow:none}
 .lamp-quality-band .lamp-item-cp{color:#252a28;margin:0;padding:0;font-size:clamp(11px,3.5cqw,15px);font-weight:850}
-.lamp-item-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 6px;grid-column:1/-1;margin:0;padding:2px 0;font-size:clamp(12px,4.5cqw,18px);line-height:1.3}
-.lamp-item-stats>div{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px;align-items:center;min-width:0}
-.lamp-item-stats dt{color:#d8c6a5;font-size:clamp(9px,3cqw,12px)}
+.lamp-item-stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px 4px;grid-column:1/-1;margin:0;padding:2px 0;font-size:clamp(12px,4.5cqw,18px);line-height:1.3}
+.lamp-item-stats>div{display:grid;grid-column:span 2;grid-template-columns:subgrid;column-gap:1ch;align-items:center;min-width:0}
+.lamp-item-stats dt{text-align:right;color:#d8c6a5;font-size:clamp(9px,3cqw,12px)}
 .lamp-item-stats dd{margin:0;color:#fff1d1;font-weight:850;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:0}
 /* Digits and arrows share one tightly bounded raster at display DPR. */
 .lamp-stat-value{display:inline-block;vertical-align:middle;line-height:0;max-width:100%}
