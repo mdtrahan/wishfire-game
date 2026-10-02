@@ -2,17 +2,25 @@ import {EQUIPMENT,RARITIES,EQUIPMENT_SLOTS,equipmentDefinition,equipmentStats,is
 import {refreshHeroStats} from './heroProgression.mjs';
 import {computeCombatPower} from './combatPower.mjs';
 
-export const LAMP_CONFIG=Object.freeze({capacity:20,drawEXP:25,minEmissionIntervalMs:2000,autoIntervalMs:5000,autoUnlockLevel:5,maxOrdinal:990});
+export const LAMP_CONFIG=Object.freeze({capacity:20,drawEXP:25,minEmissionIntervalMs:2000,autoIntervalMs:5000,autoUnlockLevel:5,maxOrdinal:990,mapStatGrowth:.005,lampLevels:100,upgradeStages:4,upgradeCostGrowth:1.082});
 export const LAMP_GUIDE=Object.freeze({storage:1,comparison:2,preview:4});
 export function markLampGuide(data,step){if(!Object.hasOwn(LAMP_GUIDE,step))throw new Error('Unknown lamp guide step.');if(step!=='preview'&&!lampStoredCount(data))throw new Error('Open stored equipment first.');if(step==='comparison'&&!data.lamp.pending.length)throw new Error('Choose pending equipment first.');return data.lamp.guide=(data.lamp.guide||0)|LAMP_GUIDE[step];}
-export const LAMP_CAPACITY_TIERS=Object.freeze([
- {capacity:20,cost:20,rarityWeights:{common:75,uncommon:25,rare:0,epic:0,legendary:0}},
- {capacity:30,cost:50,rarityWeights:{common:55,uncommon:35,rare:10,epic:0,legendary:0}},
- {capacity:40,cost:100,rarityWeights:{common:35,uncommon:40,rare:20,epic:5,legendary:0}},
- {capacity:50,cost:null,rarityWeights:{common:20,uncommon:35,rare:30,epic:14,legendary:1}},
-].map(t=>Object.freeze({...t,rarityWeights:Object.freeze(t.rarityWeights)})));
+export const LAMP_CAPACITY_TIERS=Object.freeze(Array.from({length:LAMP_CONFIG.lampLevels},(_,n)=>{
+ const p=n/(LAMP_CONFIG.lampLevels-1),round=v=>Math.round(v*1000)/1000;
+ const rarityWeights={common:0,uncommon:round(25+10*p),rare:round(30*p),epic:round(14*p),legendary:round(p)};
+ rarityWeights.common=round(100-rarityWeights.uncommon-rarityWeights.rare-rarityWeights.epic-rarityWeights.legendary);
+ return Object.freeze({capacity:[20,30,40,50][Math.min(n,3)],cost:n===LAMP_CONFIG.lampLevels-1?null:Math.round(20*LAMP_CONFIG.upgradeCostGrowth**n),rarityWeights:Object.freeze(rarityWeights)});
+}));
 export const lampCapacity=data=>LAMP_CAPACITY_TIERS[data.lamp.capacityTier||0].capacity;
-export function upgradeLamp(data,expectedTier=data.lamp.capacityTier){if(data.lamp.capacityTier!==expectedTier)throw new Error('Lamp level changed. Review the updated upgrade.');const tier=LAMP_CAPACITY_TIERS[data.lamp.capacityTier];if(tier.cost===null)throw new Error('Lamp is fully upgraded.');if(data.lamp.essence<tier.cost)throw new Error('Need '+(tier.cost-data.lamp.essence)+' more essence.');data.lamp.essence-=tier.cost;data.lamp.capacityTier++;return lampCapacity(data);}
+export function lampStageCost(data){const cost=LAMP_CAPACITY_TIERS[data.lamp.capacityTier].cost,stage=data.lamp.upgradeStage||0;return cost===null||stage===LAMP_CONFIG.upgradeStages?0:Math.floor(cost*(stage+1)/LAMP_CONFIG.upgradeStages)-Math.floor(cost*stage/LAMP_CONFIG.upgradeStages);}
+export function purchaseLampStage(data,expectedTier=data.lamp.capacityTier,expectedStage=data.lamp.upgradeStage||0){
+ const l=data.lamp;if(l.capacityTier!==expectedTier||(l.upgradeStage||0)!==expectedStage)throw new Error('Lamp upgrade changed. Review the updated purchase.');
+ if(LAMP_CAPACITY_TIERS[l.capacityTier].cost===null)throw new Error('Lamp is fully upgraded.');
+ if(expectedStage===LAMP_CONFIG.upgradeStages)throw new Error('All stages purchased. Press Lv.UP.');
+ const cost=lampStageCost(data);if(l.essence<cost)throw new Error('Need '+(cost-l.essence)+' more essence.');
+ l.essence-=cost;return l.upgradeStage=expectedStage+1;
+}
+export function upgradeLamp(data,expectedTier=data.lamp.capacityTier){if(data.lamp.capacityTier!==expectedTier)throw new Error('Lamp level changed. Review the updated upgrade.');if(LAMP_CAPACITY_TIERS[data.lamp.capacityTier].cost===null)throw new Error('Lamp is fully upgraded.');if(data.lamp.upgradeStage!==LAMP_CONFIG.upgradeStages)throw new Error('Purchase all four upgrade stages first.');data.lamp.capacityTier++;data.lamp.upgradeStage=0;return lampCapacity(data);}
 export const GEAR_STATS=Object.freeze(['ATK','DEF','MAG','RES','HP']);
 export const GEAR_ARCHETYPES=Object.freeze([
  {id:'guardian-hat',name:'Guardian Helm',type:'hat',art:0,stats:{ATK:1,DEF:3,MAG:1,RES:2,HP:5}},
@@ -32,17 +40,18 @@ export function generateLampItem(seed,sequence,ordinal,weights=Object.fromEntrie
  const a=GEAR_ARCHETYPES[Math.floor(seededUnit(seed,sequence,0)*GEAR_ARCHETYPES.length)];
  let roll=seededUnit(seed,sequence,1)*100,rarity='common';
  for(const [key,weight]of Object.entries(weights)){roll-=weight;if(roll<0){rarity=key;break;}}
- const scale=1+Math.min(LAMP_CONFIG.maxOrdinal,Math.max(0,ordinal))*.08;
+ const scale=1+Math.min(LAMP_CONFIG.maxOrdinal,Math.max(0,ordinal))*LAMP_CONFIG.mapStatGrowth;
  const stats=Object.fromEntries(Object.entries(a.stats).map(([stat,value],i)=>[stat,Math.max(1,Math.round(value*scale*QUALITY[rarity]*(.8+.4*seededUnit(seed,sequence,i+2))))]));
  return {instanceId:`lamp:${seed}:${sequence}`,equipmentId:a.id,name:a.name,type:a.type,art:a.art,rarity,level:ordinal+1,stats,sequence,ordinal};
 }
 export function salvageValue(item){return Math.min(7,1+Object.keys(RARITIES).indexOf(item.rarity));}
-export function createLampEconomy(seed,gold=0){return{version:5,partyEXP:0,gold:Math.max(0,Math.floor(gold)),items:[],loadouts:{},settledGoldRewards:[],lamp:{capacityTier:0,essence:0,seed:seed>>>0,sequence:0,pending:[],discarded:[],recent:[],salvage:{count:0,gold:0},autoEnabled:false,highestOrdinal:0,lastActivationAt:0},migration:{}};}
+export function createLampEconomy(seed,gold=0){return{version:5,partyEXP:0,gold:Math.max(0,Math.floor(gold)),items:[],loadouts:{},settledGoldRewards:[],lamp:{capacityTier:0,upgradeStage:0,essence:0,seed:seed>>>0,sequence:0,pending:[],discarded:[],recent:[],salvage:{count:0,gold:0},autoEnabled:false,highestOrdinal:0,lastActivationAt:0},migration:{}};}
 export function validateLampEconomy(data,version=5){
  const bad=()=>{throw new Error('Lamp save is invalid. Original data is preserved.');};
  if((version===5&&(!Number.isSafeInteger(data?.partyEXP)||data.partyEXP<0))||data?.version!==version||!Number.isSafeInteger(data.gold)||data.gold<0||!Array.isArray(data.items)||!data.loadouts||Array.isArray(data.loadouts)||!Array.isArray(data.settledGoldRewards))bad();
  const l=data.lamp;
  if(l?.guide!==undefined&&(!Number.isInteger(l.guide)||l.guide<0||l.guide>7))bad();
+ if(l?.upgradeStage!==undefined&&(!Number.isInteger(l.upgradeStage)||l.upgradeStage<0||l.upgradeStage>LAMP_CONFIG.upgradeStages||l.capacityTier===LAMP_CONFIG.lampLevels-1&&l.upgradeStage!==0))bad();
  if(version===5&&(!l||!Number.isInteger(l.capacityTier)||l.capacityTier<0||l.capacityTier>=LAMP_CAPACITY_TIERS.length||!Number.isSafeInteger(l.essence)||l.essence<0))bad();
  if(!l||!Number.isInteger(l.seed)||l.seed<0||l.seed>4294967295||!Number.isSafeInteger(l.sequence)||l.sequence<0||!Number.isSafeInteger(l.highestOrdinal)||l.highestOrdinal<0||l.highestOrdinal>LAMP_CONFIG.maxOrdinal||!Number.isFinite(l.lastActivationAt)||typeof l.autoEnabled!=='boolean'||!Array.isArray(l.pending)||!Number.isSafeInteger(l.salvage?.count)||l.salvage.count<0||!Number.isSafeInteger(l.salvage.gold)||l.salvage.gold<0||l.pending.length>(version===5?lampCapacity(data):LAMP_CONFIG.capacity))bad();
  const ids=new Set();
@@ -54,16 +63,16 @@ export function validateLampEconomy(data,version=5){
  if(l.recent!==undefined&&(!Array.isArray(l.recent)||l.recent.length>5||l.recent.some(i=>!i||typeof i.instanceId!=='string'||typeof i.name!=='string'||!RARITIES[i.rarity]||!Number.isInteger(i.art)||i.art<0||i.art>8||!Number.isSafeInteger(i.level)||i.level<1||i.level>LAMP_CONFIG.maxOrdinal+1)))bad();
  l.pending.forEach(assign);if(l.discarded!==undefined&&!Array.isArray(l.discarded))bad();(l.discarded||[]).forEach(assign);if(assigned.size!==ids.size)bad();return data;
 }
-export function migrateLampEconomy(old){validateLampEconomy(old,4);const next={...structuredClone(old),version:5,partyEXP:0};next.lamp.capacityTier=0;next.lamp.essence=0;if(next.lamp.pending.length>=LAMP_CONFIG.capacity)next.lamp.autoEnabled=false;return validateLampEconomy(next);}
+export function migrateLampEconomy(old){validateLampEconomy(old,4);const next={...structuredClone(old),version:5,partyEXP:0};next.lamp.capacityTier=0;next.lamp.upgradeStage=0;next.lamp.essence=0;if(next.lamp.pending.length>=LAMP_CONFIG.capacity)next.lamp.autoEnabled=false;return validateLampEconomy(next);}
 export function lampAutoUnlocked(heroes){return heroes.length===4&&heroes.every(h=>h.currentLevel>=LAMP_CONFIG.autoUnlockLevel);}
 export function migrateFourStatLamp(old){
- validateLampEconomy(old,3);const next=structuredClone(old);next.version=5;next.partyEXP=0;next.lamp.capacityTier=0;next.lamp.essence=0;if(next.lamp.pending.length>=LAMP_CONFIG.capacity)next.lamp.autoEnabled=false;
+ validateLampEconomy(old,3);const next=structuredClone(old);next.version=5;next.partyEXP=0;next.lamp.capacityTier=0;next.lamp.upgradeStage=0;next.lamp.essence=0;if(next.lamp.pending.length>=LAMP_CONFIG.capacity)next.lamp.autoEnabled=false;
  for(const item of next.items)item.stats.HP=0;
  return validateLampEconomy(next);
 }
 export function migrateDraftLamp(old){
  validateLampEconomy(old,2);
- const next=structuredClone(old);next.version=5;next.partyEXP=0;next.lamp.capacityTier=0;next.lamp.essence=0;if(next.lamp.pending.length>=LAMP_CONFIG.capacity)next.lamp.autoEnabled=false;
+ const next=structuredClone(old);next.version=5;next.partyEXP=0;next.lamp.capacityTier=0;next.lamp.upgradeStage=0;next.lamp.essence=0;if(next.lamp.pending.length>=LAMP_CONFIG.capacity)next.lamp.autoEnabled=false;
  for(const i of next.items){
   const generated=Number.isInteger(i.sequence)&&Number.isInteger(i.ordinal)?generateLampItem(next.lamp.seed,i.sequence,i.ordinal):null;
   i.stats=Object.fromEntries(GEAR_STATS.map(k=>[k,i.stats[k]??(k==='HP'?0:generated?.stats[k]??0)]));

@@ -601,3 +601,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - 2026-10-01: Separate auto-sized label tracks misalign HP/MAG even when outer cells align. Share row tracks with native subgrid and reserve flexible value columns across the card. Center the whole allocated grid; max-content-only centering crowds current values and leaves no space for their growth.
 
 - 2026-10-01: Centering a sprite cell does not center its visible artwork when atlas padding varies. Normalize visible alpha bounds once at the shared atlas renderer; keep labels outside that normalization and retain the original source asset.
+
+- Lamp progression: an adjacent party-EXP meter read as lamp level. Display earned lamp level and a durable purchased-stage ledger; currency balances are affordability data. Guard tier and stage before each saved purchase, and require the completed ledger for manual promotion.

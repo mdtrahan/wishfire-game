@@ -58,7 +58,7 @@ Central defaults:
 
 Keep the EXP curve behind one data-backed lookup so a level table can replace the formula. Choose and document one consistent integer rounding rule during implementation. EXP represents progress toward the next threshold; subtract each threshold and continue checking for multiple level-ups. At maximum level, use a centrally defined cap state, stop accumulation and discard excess EXP. No EXP banking for future cap increases.
 
-Confirmed lamp progression supersedes defeated-enemy EXP: each manual or Auto lamp draw awards the full configured EXP to all four heroes. A full cache switches Auto off and stops EXP until the player clears space and resumes Auto. Dismantling grants EXP plus essence for capacity upgrades. Enemy deaths, victory, defeat and retry grant no new hero EXP or Gold. Existing per-hero levels and EXP remain saved; lamp receipts prevent duplicate grants. LAMP_EQUIPMENT_MVP.md owns delivered lamp tuning and cache upgrades.
+Confirmed lamp progression supersedes defeated-enemy EXP: each manual or Auto lamp draw awards the full configured EXP to all four heroes. A full cache switches Auto off and stops EXP until the player clears space and resumes Auto. Dismantling grants essence only. Lamp upgrades require four explicit essence purchases followed by manual Lv.UP; earned lamp level and purchased stages own the strip meter. Banked essence grants no level. Enemy deaths, victory, defeat and retry grant no new hero EXP or Gold. Existing per-hero levels and EXP remain saved; lamp receipts prevent duplicate grants. LAMP_EQUIPMENT_MVP.md owns delivered lamp tuning and cache upgrades.
 
 Victory order is strict:
 

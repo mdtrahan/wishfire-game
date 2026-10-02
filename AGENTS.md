@@ -90,6 +90,8 @@ Support ├── `agents/` (retired)
 - `LAMP_EQUIPMENT_MVP.md` owns the approved lamp replacement, publisher-quality MVP DoD and review boundaries; its three-slot acquisition contract supersedes earlier shop/inventory preservation.
 - `COMBAT_ENGINE_CLEANUP_PLAN.md` owns the real-time cutover plan; `COMBAT_MIGRATION_PLAN.md` keeps the earlier hero-command contract as history. SP/FLOW, hidden Pals and playable turns are retired targets. Keep confirmed owner decisions, tuning proposals and delivered runtime state distinct; `MIGRATION_CHECKPOINT.md` records superseded decisions and implementation receipts.
 
+- `LAMP_EQUIPMENT_MVP.md` owns the active lamp economy; `goals/wishfire-lamp-progression.md` separates delivered paid progression from proposed quality tiers and pacing assumptions.
+
 ## Child DOX Index
 - `Scripts/AGENTS.md` - Construct-style runtime mirror and high-risk function parity.
 - `web-runner/AGENTS.md` - browser runtime shell, rendering/input systems, runtime data, and browser-shipped core rules.

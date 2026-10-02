@@ -8,7 +8,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {RARITIES} from '../web-runner/src/core/equipment.mjs';
 import {createHeroProgressStore,refreshHeroStats} from '../web-runner/src/core/heroProgression.mjs';
-import {createLampEconomy,activateLamp,lampItemCPGain,lampGearCP,compareLampItem} from '../web-runner/src/core/lampGear.mjs';
+import {LAMP_CAPACITY_TIERS,createLampEconomy,activateLamp,lampItemCPGain,lampGearCP,compareLampItem,sortedLampItems} from '../web-runner/src/core/lampGear.mjs';
 const require=createRequire(import.meta.url);
 const {detectChromeExecutable}=require('../tools/playwright_support.js');
 let url=process.env.LAMP_QA_URL,server;
@@ -63,7 +63,7 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
   assert.equal(await strip.locator('.lamp-collect .lamp-art').count(),0,'counter bubble contains no competing gear preview');
   assert.equal(await strip.locator('.lamp-strip-top,.lamp-status,.lamp-wallet').count(),0);assert.equal(await strip.locator('.lamp-results .lamp-level').count(),0);
   const stripBalance=await strip.evaluate(s=>{const r=s.getBoundingClientRect(),auto=s.querySelector('.lamp-auto'),bubble=s.querySelector('.lamp-collect'),progress=s.querySelector('.lamp-progress');return{autoState:auto.dataset.state,autoLeft:(auto.getBoundingClientRect().left-r.left)/(r.width/360),count:bubble.textContent,level:s.querySelector('.lamp-tier-badge b').textContent,progress:Number(progress.getAttribute('aria-valuenow')),max:Number(progress.getAttribute('aria-valuemax')),barLeft:progress.getBoundingClientRect().left,barHeight:progress.getBoundingClientRect().height,discEnd:s.querySelector('.lamp-level-disc').getBoundingClientRect().right};});
-  assert.equal(stripBalance.autoState,'off');assert.ok(Math.abs(stripBalance.autoLeft-7.92)<1);assert.equal(stripBalance.count,'2');assert.equal(stripBalance.level,'5');assert.equal(stripBalance.progress,50);assert.equal(stripBalance.max,1119);assert.ok(stripBalance.barLeft+stripBalance.barHeight/2<stripBalance.discEnd,'level disc covers the entire rounded left end of the bar');
+  assert.equal(stripBalance.autoState,'off');assert.ok(Math.abs(stripBalance.autoLeft-7.92)<1);assert.equal(stripBalance.count,'2');assert.equal(stripBalance.level,'1');assert.equal(stripBalance.progress,0);assert.equal(stripBalance.max,4);assert.ok(stripBalance.barLeft+stripBalance.barHeight/2<stripBalance.discEnd,'level disc covers the entire rounded left end of the bar');
   await page.waitForTimeout(1500); // Let the combat entry transition finish before visual capture.
   await page.screenshot({path:`${directory}/${width}-strip.png`});
   const emission=await strip.evaluate(s=>{
@@ -130,7 +130,7 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
   assert.equal(await dialog.locator('.lamp-queue .lamp-tile').evaluateAll(nodes=>nodes.every(n=>(n.getAttribute('aria-current')==='true')===n.querySelector('.lamp-art').getAnimations().some(a=>a.animationName==='lamp-cache-selected'))),true,'pulse follows the selected cache item');
   assert.ok((await selectedTile.evaluate(e=>getComputedStyle(e).boxShadow)).includes('255, 201, 40'),'selected item has gold halo');
   await dialog.locator('.lamp-queue .lamp-tile').first().click();
-  assert.equal(await selectedTile.getAttribute('data-id'),fixture.items[1].instanceId);
+  assert.equal(await selectedTile.getAttribute('data-id'),sortedLampItems(fixture)[0].instanceId);
   await dialog.locator('.lamp-queue [data-id="'+fixture.items[0].instanceId+'"]').click();
 
   assert.equal(await dialog.getByText('Tap a hero portrait to choose.',{exact:true}).count(),0);
@@ -227,16 +227,34 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
   await page.reload();await page.locator('canvas').first().waitFor();await page.waitForTimeout(1000);const restartBox=await page.locator('canvas').first().boundingBox();await page.mouse.click(restartBox.x+restartBox.width/2,restartBox.y+426*restartBox.width/360);await strip.locator('.lamp-tier-badge').waitFor();await strip.locator('.lamp-tier-badge').click();
   assert.equal(await dialog.getAttribute('aria-label'),'Lamp upgrades');assert.equal(await dialog.locator('.lamp-odds tbody tr').count(),5);
   const beforeUpgrade=await page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')));
-  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')).lamp.guide),7,'reload retains completed guidance without rewards');assert.equal(await page.locator('.lamp-reward-banner').count(),0);await guideIdle(page);await page.locator('.lamp-idle-helper').waitFor();assert.equal(await page.locator('.lamp-idle-helper').getAttribute('data-target'),'upgrade');await guideBounds(page);await page.screenshot({path:`${directory}/${width}-guide-affordable.png`});
+  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')).lamp.guide),7,'reload retains completed guidance without rewards');assert.equal(await page.locator('.lamp-reward-banner').count(),0);await guideIdle(page);await page.locator('.lamp-idle-helper').waitFor();assert.equal(await page.locator('.lamp-idle-helper').getAttribute('data-target'),'purchase-stage');await guideBounds(page);await page.screenshot({path:`${directory}/${width}-guide-affordable.png`});
+  assert.equal(await strip.locator('.lamp-progress').getAttribute('aria-valuenow'),'0','banked essence grants no stage');
+  const stageReceipts=[];
+  const checkUpgradeLayout=async()=>{
+   const layout=await dialog.evaluate(d=>{const r=d.getBoundingClientRect(),b=d.querySelector('.lamp-upgrade').getBoundingClientRect();return{overflow:d.scrollWidth>d.clientWidth,masterOverflow:d.scrollHeight>d.clientHeight,inViewport:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight,buttonContained:b.left>=r.left&&b.right<=r.right&&b.top>=r.top&&b.bottom<=r.bottom};});
+   assert.deepEqual(layout,{overflow:false,masterOverflow:false,inViewport:true,buttonContained:true});return layout;
+  };
+  await checkUpgradeLayout();
   for(let tier=0;tier<3;tier++){
-   const sums=await dialog.locator('.lamp-odds tbody').evaluate(n=>[1,2].map(column=>[...n.rows].reduce((sum,row)=>sum+parseFloat(row.cells[column].textContent),0)));assert.deepEqual(sums,[100,100]);
-   await dialog.locator('[data-action="upgrade"]').dblclick();await page.waitForFunction(t=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')).lamp.capacityTier===t+1,tier);
+   const sums=await dialog.locator('.lamp-odds tbody').evaluate(n=>[1,2].map(column=>[...n.rows].reduce((sum,row)=>sum+parseFloat(row.cells[column].textContent),0)));sums.forEach(sum=>assert.ok(Math.abs(sum-100)<1e-8));
+   for(let stage=0;stage<4;stage++){
+    const button=dialog.locator('[data-action="purchase-stage"]');await page.waitForFunction(()=>!document.querySelector('[data-action="purchase-stage"]')?.disabled);
+    await button.click();await page.waitForFunction(({tier,stage})=>{const l=JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')).lamp;return l.capacityTier===tier&&l.upgradeStage===stage+1;},{tier,stage});
+    assert.equal(await dialog.locator('.lamp-stage-slots .purchased').count(),stage+1);assert.equal(await strip.locator('.lamp-progress').getAttribute('aria-valuenow'),String(stage+1));assert.equal(await strip.locator('.lamp-tier-badge b').textContent(),String(tier+1));
+   }
+   const ready=await page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')));stageReceipts.push({level:tier+1,stages:ready.lamp.upgradeStage,bank:ready.lamp.essence,layout:await checkUpgradeLayout()});assert.equal(await dialog.locator('[role=status]').count(),1,'one saved purchase announcement');
+   await page.screenshot({path:`${directory}/${width}-upgrade-ready.png`});
+   await dialog.getByRole('button',{name:'Lv.UP',exact:true}).click();await page.waitForFunction(t=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')).lamp.capacityTier===t+1,tier);
+   assert.equal(await strip.locator('.lamp-progress').getAttribute('aria-valuenow'),'0');
   }
-  await dialog.getByText('Lamp Lv. 4 · MAX',{exact:true}).waitFor();assert.equal(await dialog.getByRole('button',{name:'MAX',exact:true}).isEnabled(),false);
-  const afterUpgrade=await page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')));assert.equal(afterUpgrade.lamp.essence,30);assert.deepEqual(afterUpgrade.items,beforeUpgrade.items);assert.equal(afterUpgrade.partyEXP,beforeUpgrade.partyEXP);
-  const upgradeContainment=await dialog.evaluate(d=>{const r=d.getBoundingClientRect();return{overflow:d.scrollWidth>d.clientWidth,inViewport:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight};});assert.deepEqual(upgradeContainment,{overflow:false,inViewport:true});await page.screenshot({path:`${directory}/${width}-upgrade-max-fixture.png`});await guideIdle(page);await page.locator('.lamp-idle-helper').waitFor();assert.equal(await page.locator('.lamp-idle-helper').getAttribute('data-target'),'close');await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await guideIdle(page);assert.equal(await page.locator('.lamp-idle-helper').isVisible(),false,'completed upgrade loop stops strip guidance');
+  const afterUpgrade=await page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')));assert.equal(afterUpgrade.lamp.essence,200-LAMP_CAPACITY_TIERS.slice(0,3).reduce((sum,t)=>sum+t.cost,0));assert.deepEqual(afterUpgrade.items,beforeUpgrade.items);assert.equal(afterUpgrade.partyEXP,beforeUpgrade.partyEXP);
+  await page.screenshot({path:`${directory}/${width}-upgrade-earned.png`});
+  // Isolated end-of-curve fixture exercises MAX without purchasing99 levels in browser QA.
+  await page.evaluate(()=>{const save=JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5'));save.lamp.capacityTier=99;save.lamp.upgradeStage=0;localStorage.setItem('wishfire.equipment-economy.v5',JSON.stringify(save));});
+  await page.reload();await page.waitForTimeout(1000);const maxCanvas=await page.locator('canvas').first().boundingBox();await page.mouse.click(maxCanvas.x+maxCanvas.width/2,maxCanvas.y+426*maxCanvas.width/360);await strip.locator('.lamp-tier-badge').waitFor();await strip.locator('.lamp-tier-badge').click();await dialog.getByText('Lamp Lv. 100 · MAX',{exact:true}).waitFor();assert.equal(await dialog.getByRole('button',{name:'MAX',exact:true}).isEnabled(),false);
+  const upgradeContainment=await checkUpgradeLayout();await page.screenshot({path:`${directory}/${width}-upgrade-max-fixture.png`});await guideIdle(page);await page.locator('.lamp-idle-helper').waitFor();assert.equal(await page.locator('.lamp-idle-helper').getAttribute('data-target'),'close');await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await guideIdle(page);assert.equal(await page.locator('.lamp-idle-helper').isVisible(),false,'completed upgrade loop stops strip guidance');
   await page.keyboard.press('Escape');
-  assert.deepEqual(errors,[]);report.push({selectionPulse,gearCentering,width,height,dpr,arrowTips,statHeights,bandColors,itemLayout,expectedPreview,preview,navigation,closePoint,closeHit,geometry,lampPaint,stripBalance,emission,queueGeometry,containment,errors});await context.close();
+  assert.deepEqual(errors,[]);report.push({stageReceipts,selectionPulse,gearCentering,width,height,dpr,arrowTips,statHeights,bandColors,itemLayout,expectedPreview,preview,navigation,closePoint,closeHit,geometry,lampPaint,stripBalance,emission,queueGeometry,containment,errors});await context.close();
   // Disclosed six-item fixture stresses concurrent receipt layout without timing claims.
   const rapidFixture=createLampEconomy(43,1000);for(let n=0;n<6;n++)activateLamp(rapidFixture,{region:1,stage:1},n*2000);
   const rapidContext=await browser.newContext({viewport:{width,height},deviceScaleFactor:dpr}),rapidPage=await rapidContext.newPage();

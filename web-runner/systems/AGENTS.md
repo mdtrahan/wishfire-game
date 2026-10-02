@@ -181,7 +181,7 @@
 
 - Hero Gear Upgrade idle guidance uses the Hondo-inspired blue pointer and cyan rings: 15 seconds since input points to Hondo (Huun), or Auto-Equip after portrait selection. Document pointer/click, key and wheel input dismisses and resets it. Hidden/closed/busy review suppresses guidance; the overlay never intercepts input.
 
-- Lamp progression: manual/Auto draws grant all four heroes saved EXP, with cumulative receipts and per-hero lampEXPClaimed replay. Enemy rewards grant zero new EXP/Gold. Auto requires all four Lv5, switches off at capacity, and requires explicit restart. Dismantling essence upgrades lamp levels 1–4, raising capacity 20/30/40/50 and rarity odds. The lower-right level disc/bar opens current/next bonuses and cost; no Gold is used. Gear artwork omits corner rarity initials across strip, review and dismantling. The blue speech counter opens storage; lamp taps generate. The progress bar measures saved essence toward the next upgrade and the disc shows the current tier.
+- Lamp draws preserve the configured saved party EXP and timing. Essence is a bank, never a level calculation: each earned lamp level requires four explicitly purchased stages, then manual Lv.UP. `capacityTier` is level minus one; optional v5 `upgradeStage` defaults to zero. Levels 1–100 interpolate the original initial/final rarity odds; capacities remain 20/30/40/50 at levels 1/2/3/4+. Future gear gains 0.5% linear stat scaling per map ordinal. Saved gear rolls, hero EXP and earned lamp levels remain intact.
 
 - Lamp burp presentation clears its trigger at animation completion so unrelated review renders do not repeat emission. Manual and Auto share the same current-lamp tilt and gear pop tween.
 
@@ -211,9 +211,9 @@
 
 - CP receipt lifetime never holds the durable action lock or freezes ordinary recipient/item selection. Track concurrent receipt elements; only final review/close waits for all receipts, keeping feedback inside the modal. Collection entry awaits any in-flight transaction, storage sync and decoded shared gear atlas, then renders the full sorted cache together. Auto generation pauses while collection is opening/open and resumes afterward when enabled.
 
-- Strip party progress reads currentLevel/currentEXP/EXPToNextLevel from the lowest-level hero. Include EXP in the render key so every draw updates the meter. Manual and Auto share level-up feedback; preserve leftover EXP rather than showing a full meter after a level increase. Lamp tier/essence are a separate upgrade-modal display.
+- The strip disc displays the earned lamp level; its meter displays purchased stages out of four, or MAX. Party EXP appears only in its draw feedback. Bank changes and reloads never purchase stages or promote the lamp.
 
-- Lamp upgrade preview shows current/next rarity odds, increased percentages, capacity, exact cost, balance and shortfall; final tier displays MAX. Confirmation passes the rendered tier to equipmentStorage, whose locked transaction rejects stale confirmations before spending. Verify hero EXP separately from the combat reward ledger because combat continues while the modal is open.
+- Upgrade preview shows current/next odds to three decimals, capacity, essence bank and next installment. Purchase carries the rendered tier and stage; locked storage rejects stale clicks before spending. Four saved purchases expose Lv.UP, which alone promotes the lamp and resets stages. Failed writes retain the bank, stage and level. Only the odds table may scroll on compact phones; purchase controls stay visible.
 
 - The lamp helper extends the15-second idle threshold through draw, collection, Hondo comparison, equip, dismantle and free/affordable upgrade preview. Retarget disabled controls to useful enabled actions; hide during reward banners and after a completed upgrade loop outside review. Any input dismisses it. Guide receipts persist once through the existing locked equipment transaction.
 

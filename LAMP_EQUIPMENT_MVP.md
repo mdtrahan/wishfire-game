@@ -34,28 +34,23 @@ Nine archetypes provide Guardian, Scholar and Wayfarer variants for each positio
 
 `ordinal = min(990, (region - 1) × 10 + stage - 1)`
 
-`stat = max(1, round(archetypeStat × (1 + 0.08 × highestOrdinal) × rarityMultiplier × seededVariance))`
+`stat = max(1, round(archetypeStat × (1 + 0.005 × highestOrdinal) × rarityMultiplier × seededVariance))`
 
 Variance is 0.8–1.2 independently per stat. Rarity multipliers are 1 / 1.18 / 1.42 / 1.7 / 2; active draw weights depend on lamp level (table below). White → green → blue → purple → gold communicates rarity consistently through glow, frames and names. Rarity can lose to a lower rarity piece because of archetype and variance. Seed and draw sequence are persisted, so opening/reloading a comparison never rerolls a piece.
 
 Current MVP tuning: each free lamp draw grants 25 EXP to each of the four heroes through the existing per-hero level curve. Manual and Auto draws use the same durable grant and saved two-second minimum interval. The lamp disables during cooldown; rapid clicks and reloads produce no extra gear or EXP. All four heroes reaching Lv5 unlocks Auto, which produces one foreground item every five seconds. Cache capacity starts at 20; reaching capacity switches Auto off and awards no further EXP. Clearing space and explicitly switching Auto on resumes it. Backgrounding or pausing produces no offline catch-up burst.
 
-Dismantling returns 1–5 essence per rarity and grants no EXP, including the aggregate return from displaced equipment. Essence upgrades lamp levels 1 → 2 → 3 → 4, increasing capacity through 20 → 30 → 40 → 50 and rarity odds, costing 20 / 50 / 100 essence. Upgrading grants no EXP and never resumes Auto. Gold has no role in this loop. These rates and costs are provisional action-based tuning. With the current `ceil(100 × L^1.5)` curve, Lv5 requires 1,703 EXP from Lv1, 69 successful lamp emissions. Lamp capacity upgrades extend the next idle cycle while preserving a finite cache and a player action to resume it.
+Dismantling returns 1–5 essence per rarity and grants no EXP. The bank has no automatic level effect. Each lamp promotion requires four paid stages, then the player's Lv.UP action. Only promotion applies the next odds and capacity; it grants no EXP and never resumes Auto. Gold has no role in this loop. The strip shows actual lamp level and purchased stages, independently of party EXP.
 
-| Lamp level | Capacity | Common | Uncommon | Rare | Epic | Legendary | Next upgrade essence |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 20 | 75% | 25% | 0% | 0% | 0% | 20 |
-| 2 | 30 | 55% | 35% | 10% | 0% | 0% | 50 |
-| 3 | 40 | 35% | 40% | 20% | 5% | 0% | 100 |
-| 4 | 50 | 20% | 35% | 30% | 14% | 1% | Max |
+The lamp now spans 100 levels. With `p = (level - 1) / 99`, the weight percentages are Uncommon `25 + 10p`, Rare `30p`, Epic `14p`, Legendary `p`, each rounded to three decimals; Common is the remaining percentage. This retains 75/25/0/0/0 at Lv1 and reaches 20/35/30/14/1 at Lv100. Capacity is 20, 30, 40, then 50 from Lv4 onward, preserving existing earned storage.
 
-These weights are provisional MVP tuning. Saved pieces retain their original rolls. The upper-left level badge opens current/next odds, storage and essence cost. Existing `capacityTier` stores lamp level minus one.
+The full next-level cost is `round(20 × 1.082^(level - 1))`. For purchased stage `s` in 0–3, the next installment is `floor(total × (s + 1) / 4) - floor(total × s / 4)`. Four installments total the full cost exactly. Lv.UP requires all four saved receipts and charges no additional essence. The tier/stage preview protects concurrent purchases; promotion checks the previewed tier. Existing v5 records without stage receipts begin at zero purchased stages, retaining earned level, essence and exact gear.
 
-Enemy stage scaling already uses the same linear 0.08 step. This matches a growth basis; it does not prove long-term encounter balance. Three equipped pieces must be evaluated alongside hero levels, skills, armor formulas, boss multipliers and incoming damage. The ordinal ceiling bounds unvalidated content rather than asserting 991 authored stages exist. Map chapters currently enter the canonical continuous-stage context; no invented chapter-to-region mapping is added.
+New gear uses 0.5% linear map growth per ordinal, replacing 8%; saved pieces retain their rolls. Enemy scaling remains independently owned by combat, so slower gear growth requires encounter-balance playtesting alongside hero EXP, skills and defenses. The ordinal ceiling bounds unvalidated content rather than asserting 991 authored stages exist. [Pacing assumptions and the proposed quality ladder](goals/wishfire-lamp-progression.md) separate this delivered tuning from future owner decisions.
 
 ## Saves and migration
 
-`wishfire.equipment-economy.v5` atomically owns cumulative party EXP, essence, capacity tier, exact rolls, assignments, pending collection, seed, sequence, Auto timing and salvage. Web Locks serialize writers. A failed equipment write grants no EXP and leaves runtime stats unchanged. Each hero saves `lampEXPClaimed` beside existing progression, so a reload between the lamp receipt and hero-save write replays the missing grant once. Live actors and saved heroes receive the same grant. Existing Gold balances and historical outbox receipts remain preserved for recovery; Gold is no longer the lamp fuel or a new enemy reward.
+`wishfire.equipment-economy.v5` atomically owns cumulative party EXP, essence, capacity tier, purchased upgrade stages, exact rolls, assignments, pending collection, seed, sequence, Auto timing and salvage. Web Locks serialize writers. A failed equipment write grants no EXP and leaves runtime stats unchanged. Each hero saves `lampEXPClaimed` beside existing progression, so a reload between the lamp receipt and hero-save write replays the missing grant once. Live actors and saved heroes receive the same grant. Existing Gold balances and historical outbox receipts remain preserved for recovery; Gold is no longer the lamp fuel or a new enemy reward.
 
 v4 migrates to v5 with zero new EXP/essence and the starting capacity. The v3 four-stat save migrates with HP zero; its existing rolls, assignments, currency and pending results remain unchanged. Earlier v2 saves preserve supported values including HP, fill missing ATK/DEF/MAG/RES from the original deterministic roll, and discard SPD. Original records remain for recovery.
 
