@@ -83,10 +83,14 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
    const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
    const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0);const pixels=ctx.getImageData(0,0,image.width,image.height).data,size=image.height/3;
    const offsets=Array.from({length:9},(_,n)=>{let top=size,bottom=-1;for(let y=0;y<size;y++)for(let x=0;x<size;x++)if(pixels[((Math.floor(n/3)*size+y)*image.width+n%3*size+x)*4+3]>8){top=Math.min(top,y);bottom=Math.max(bottom,y);}return (top+bottom+1-size)/2;});
-   return {offsets,shared:frames.every(n=>getComputedStyle(n).backgroundImage===background)&&getComputedStyle(document.querySelector('#wishfire-lamp')).getPropertyValue('--lamp-gear-atlas')===getComputedStyle(document.querySelector('#lamp-overlay')).getPropertyValue('--lamp-gear-atlas')};
+   // Isolated DOM geometry fixture: reuse one real cache tile in an arrival slot.
+   const probe=frames[1].parentElement.cloneNode(true);probe.querySelector('small')?.remove();document.querySelector('.lamp-results').append(probe);
+   const slot=probe.getBoundingClientRect(),paint=probe.querySelector('.lamp-art').getBoundingClientRect(),stripFrameOffset=(paint.top+paint.bottom-slot.top-slot.bottom)/2;probe.remove();
+   return {offsets,stripFrameOffset,shared:frames.every(n=>getComputedStyle(n).backgroundImage===background)&&getComputedStyle(document.querySelector('#wishfire-lamp')).getPropertyValue('--lamp-gear-atlas')===getComputedStyle(document.querySelector('#lamp-overlay')).getPropertyValue('--lamp-gear-atlas')};
   });
   assert.ok(gearCentering.offsets.every(n=>Math.abs(n)<=1),'all nine visible gear bounds are vertically centered: '+gearCentering.offsets);
   assert.equal(gearCentering.shared,true,'strip, cache and candidate share the centered atlas');
+  assert.ok(Math.abs(gearCentering.stripFrameOffset)<=.5,'enlarged arrival artwork frame is centered in its slot: '+gearCentering.stripFrameOffset);
   const expectedPreview=Object.values(heroSave.heroes).map(h=>lampItemCPGain(fixture,fixture.items[0],h));
   const preview=await dialog.locator('.lamp-hero').evaluateAll(nodes=>nodes.map(n=>({change:Number(n.dataset.cpChange),text:n.textContent,label:n.getAttribute('aria-description'),arrow:n.querySelector('.lamp-cp-direction')?.className,src:n.querySelector('img').getAttribute('src')})));
   assert.deepEqual(preview.map(p=>p.change),expectedPreview,'preview uses total hero CP change, including level and existing gear');
