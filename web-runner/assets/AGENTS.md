@@ -90,3 +90,5 @@
 - Gear frames center visible artwork vertically, excluding near-transparent atlas bleed. Preserve square art space, independent level badges and CP footers; the original gear atlas remains unchanged.
 
 - Selected equip-cache artwork undulates from100% to94% and back over1.6 seconds, centered inside its fixed tile. The gold outer halo uses4.92px blur/2.46px spread,23% above the prior4px/2px; reduced motion retains this static halo.
+
+- Lamp odds keep equal numeric weight across Current/Next and reserve 40% of table width for quality names; three-decimal percentages must fit each cell on compact phones. The odds viewport may scroll vertically while purchase controls remain visible.

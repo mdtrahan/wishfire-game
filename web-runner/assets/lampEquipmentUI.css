@@ -150,7 +150,7 @@
 .lamp-tier-badge{position:absolute;z-index:2;left:2px;top:2px;width:2em;height:2em;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0;border:2px solid #dfba72;border-radius:50%;background:linear-gradient(#83613b,#302b22);box-shadow:0 1px 3px #0009;color:#ffe6a7!important;line-height:1}
 .lamp-tier-badge b{font-size:1.1em}.lamp-tier-badge small{font-size:.55em}
 .lamp-upgrade-summary{text-align:center;padding:8px 0 8px;font-size:18px}.lamp-upgrade-summary p{font-size:14px;color:#d8c6a5;margin:8px 0}
-.lamp-odds{width:100%;table-layout:fixed;border-collapse:collapse;font-size:clamp(11px,4cqw,16px);text-align:right}.lamp-odds th:first-child{width:46%;text-align:left}.lamp-odds th,.lamp-odds td{padding:8px 4px;border-bottom:1px solid #80684666}.lamp-odds tbody th{color:var(--rarity)}.lamp-odds td{font-variant-numeric:tabular-nums}.lamp-odds td:last-child{font-weight:800}.lamp-essence{text-align:center;font-size:clamp(12px,4cqw,16px);color:#b9e4c9;margin:12px 0}
+.lamp-odds{width:100%;table-layout:fixed;border-collapse:collapse;font-size:clamp(11px,4cqw,16px);text-align:right}.lamp-odds th:first-child{width:40%;text-align:left}.lamp-odds th,.lamp-odds td{white-space:nowrap;padding:8px 4px;border-bottom:1px solid #80684666}.lamp-odds tbody th{color:var(--rarity)}.lamp-odds td{font-variant-numeric:tabular-nums}.lamp-essence{text-align:center;font-size:clamp(12px,4cqw,16px);color:#b9e4c9;margin:12px 0}
 
 /* CP lives below the art; rarity and item level remain on the art. */
 .lamp-queue button.lamp-tile{aspect-ratio:auto}

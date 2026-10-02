@@ -231,8 +231,8 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
   assert.equal(await strip.locator('.lamp-progress').getAttribute('aria-valuenow'),'0','banked essence grants no stage');
   const stageReceipts=[];
   const checkUpgradeLayout=async()=>{
-   const layout=await dialog.evaluate(d=>{const r=d.getBoundingClientRect(),b=d.querySelector('.lamp-upgrade').getBoundingClientRect();return{overflow:d.scrollWidth>d.clientWidth,masterOverflow:d.scrollHeight>d.clientHeight,inViewport:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight,buttonContained:b.left>=r.left&&b.right<=r.right&&b.top>=r.top&&b.bottom<=r.bottom};});
-   assert.deepEqual(layout,{overflow:false,masterOverflow:false,inViewport:true,buttonContained:true});return layout;
+   const layout=await dialog.evaluate(d=>{const r=d.getBoundingClientRect(),b=d.querySelector('.lamp-upgrade').getBoundingClientRect();return{overflow:d.scrollWidth>d.clientWidth,masterOverflow:d.scrollHeight>d.clientHeight,inViewport:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight,buttonContained:b.left>=r.left&&b.right<=r.right&&b.top>=r.top&&b.bottom<=r.bottom,textContained:[...d.querySelectorAll('.lamp-odds th,.lamp-odds td')].every(cell=>{const range=document.createRange();range.selectNodeContents(cell);const t=range.getBoundingClientRect(),r=cell.getBoundingClientRect();return t.left>=r.left-.5&&t.right<=r.right+.5;})};});
+   assert.deepEqual(layout,{overflow:false,masterOverflow:false,inViewport:true,buttonContained:true,textContained:true});return layout;
   };
   await checkUpgradeLayout();
   for(let tier=0;tier<3;tier++){

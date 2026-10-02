@@ -134,3 +134,5 @@
 - Lamp centering proof reads all nine derived atlas silhouettes and requires vertical midpoint error within one source pixel, with strip/cache/candidate sharing that atlas.
 
 - Cache-selection proof samples full/shrunken/full animation phases, preserving artwork midpoint, tile/CP-footer bounds and containment. Check selection transfer,23% halo dimensions and reduced-motion suppression.
+
+- Lamp odds containment checks text ranges inside every table cell, alongside panel and action bounds; a contained outer panel cannot certify unclipped percentages.
