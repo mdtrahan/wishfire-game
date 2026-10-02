@@ -86,3 +86,5 @@
 - Selected-item identity bands retain the shared rarity palette through --rarity. Removing corner rarity letters never removes color cues.
 
 - Selected-item stat groups span the centered card content width. Both rows share six equal label/value subgrid tracks; right-align labels, separate each value by roughly one stat digit width and reserve flexible value tracks for larger numbers.
+
+- Gear frames center visible artwork vertically, excluding near-transparent atlas bleed. Preserve square art space, independent level badges and CP footers; the original gear atlas remains unchanged.

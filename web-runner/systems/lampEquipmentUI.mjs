@@ -16,7 +16,19 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
  const tile=(i,action='inspect')=>'<button class="lamp-tile'+(action==='inspect'&&i.instanceId===emissionId?' lamp-arriving':'')+'" style="--rarity:'+RARITIES[i.rarity].color+'" data-action="'+action+'" data-cp="'+lampGearCP(i)+'" data-id="'+escape(i.instanceId)+'"'+(action==='queue'&&i.instanceId===selectedItem?' aria-current="true"':'')+' aria-label="Inspect '+escape(i.name)+', '+RARITIES[i.rarity].label+', level '+i.level+'">'+(action==='inspect'&&i.instanceId===emissionId?'<img class="lamp-equip-puff" src="assets/images/lamp/equip-puff.png" alt="">':'')+atlas(i)+(action==='queue'?'<small>CP '+new Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:1}).format(lampGearCP(i))+'</small>':'')+'</button>';
  function init(){
   if(strip)return;
-  const art=new Image();art.src='assets/images/lamp/gear-atlas.png';gearReady=art.decode();gearReady.catch(()=>{});
+  const art=new Image();art.src='assets/images/lamp/gear-atlas.png';gearReady=art.decode().then(async()=>{
+   const centered=document.createElement('canvas');centered.width=art.width;centered.height=art.height;
+   const ctx=centered.getContext('2d');ctx.drawImage(art,0,0);const pixels=ctx.getImageData(0,0,art.width,art.height).data,size=art.height/3;ctx.clearRect(0,0,art.width,art.height);
+   for(let n=0;n<9;n++){
+    const left=n%3*size,row=Math.floor(n/3)*size;let top=size,bottom=-1;
+    // Ignore nearly transparent atlas bleed when locating the visible silhouette.
+    for(let y=0;y<size;y++)for(let x=0;x<size;x++)if(pixels[((row+y)*art.width+left+x)*4+3]>8){top=Math.min(top,y);bottom=Math.max(bottom,y);}
+    const offset=bottom<0?0:(size-top-bottom-1)/2;
+    ctx.save();ctx.beginPath();ctx.rect(left,row,size,size);ctx.clip();ctx.drawImage(art,left,row,size,size,left,row+offset,size,size);ctx.restore();
+   }
+   const background=await new Promise(resolve=>centered.toBlob(blob=>resolve(URL.createObjectURL(blob))));
+   document.documentElement.style.setProperty('--lamp-gear-atlas','url("'+background+'")');
+  });gearReady.catch(()=>{});
   const style=document.createElement('link');style.rel='stylesheet';style.href='assets/lampEquipmentUI.css';document.head.append(style);
   strip=document.createElement('section');strip.id='wishfire-lamp';strip.setAttribute('aria-label','Equipment lamp');strip.hidden=true;
   modal=document.createElement('div');modal.id='lamp-overlay';modal.hidden=true;

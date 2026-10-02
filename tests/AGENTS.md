@@ -130,3 +130,5 @@
 - Lamp band proof checks all five shared rarity colors in an isolated CSS palette fixture, then restores the candidate; rarity letters remain absent.
 
 - Lamp stat alignment proof checks matching label right edges/value left edges across rows, right justification, centered allocated grid within1px, broad card coverage, mockup column anchors, a digit-width label/value gap and value headroom at all phone profiles.
+
+- Lamp centering proof reads all nine derived atlas silhouettes and requires vertical midpoint error within one source pixel, with strip/cache/candidate sharing that atlas.

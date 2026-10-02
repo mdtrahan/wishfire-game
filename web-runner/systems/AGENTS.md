@@ -232,3 +232,5 @@
 - Lamp review uses canonical hero art and independent total-CP arrows, omitting numeric per-hero CP labels and the character stat table. Its three-column item card compares only the selected hero; unchanged values have no arrow. Only the five-column cache scrolls; the equip dialog fits the measured Canvas height. Preserve manual downgrade eligibility, saved receipts and existing Skip/Auto-to-dismantle transactions.
 
 - Selected-stat numbers and arrows share one font-derived digit height across both rows, independent of the displayed numeral. Normalize digit ink into that height; keep arrows pointed in both Canvas and CSS.
+
+- Lamp gear decodes the original atlas once and centers each cell by visible alpha bounds; one derived atlas serves strip, inventory and candidate without changing source artwork or scale.

@@ -599,3 +599,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - 2026-10-01: Removing redundant rarity initials must preserve the color channel. Bind the candidate identity band and inventory tile to the same existing rarity variable and check the full palette.
 
 - 2026-10-01: Separate auto-sized label tracks misalign HP/MAG even when outer cells align. Share row tracks with native subgrid and reserve flexible value columns across the card. Center the whole allocated grid; max-content-only centering crowds current values and leaves no space for their growth.
+
+- 2026-10-01: Centering a sprite cell does not center its visible artwork when atlas padding varies. Normalize visible alpha bounds once at the shared atlas renderer; keep labels outside that normalization and retain the original source asset.

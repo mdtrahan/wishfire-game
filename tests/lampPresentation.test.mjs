@@ -77,6 +77,16 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
 
   await strip.locator('.lamp-collect').click();const dialog=page.locator('#lamp-dialog');await dialog.waitFor({state:'visible'});await dialog.locator('[data-action="queue"][data-id="'+fixture.items[0].instanceId+'"]').click();
   assert.equal(await dialog.locator('.lamp-hero').count(),4);assert.equal(await dialog.locator('.lamp-compare,.lamp-rarity,[data-action="finish"],.lamp-hero-navigation').count(),0);assert.equal(await dialog.locator('.lamp-quality-band').count(),1);
+  const gearCentering=await page.evaluate(async()=>{
+   const frames=[...document.querySelectorAll('#lamp-dialog .lamp-art')],background=getComputedStyle(frames[0]).backgroundImage;
+   const image=new Image();image.src=background.slice(5,-2);await image.decode();
+   const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
+   const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0);const pixels=ctx.getImageData(0,0,image.width,image.height).data,size=image.height/3;
+   const offsets=Array.from({length:9},(_,n)=>{let top=size,bottom=-1;for(let y=0;y<size;y++)for(let x=0;x<size;x++)if(pixels[((Math.floor(n/3)*size+y)*image.width+n%3*size+x)*4+3]>8){top=Math.min(top,y);bottom=Math.max(bottom,y);}return (top+bottom+1-size)/2;});
+   return {offsets,shared:frames.every(n=>getComputedStyle(n).backgroundImage===background)&&getComputedStyle(document.querySelector('#wishfire-lamp')).getPropertyValue('--lamp-gear-atlas')===getComputedStyle(document.querySelector('#lamp-overlay')).getPropertyValue('--lamp-gear-atlas')};
+  });
+  assert.ok(gearCentering.offsets.every(n=>Math.abs(n)<=1),'all nine visible gear bounds are vertically centered: '+gearCentering.offsets);
+  assert.equal(gearCentering.shared,true,'strip, cache and candidate share the centered atlas');
   const expectedPreview=Object.values(heroSave.heroes).map(h=>lampItemCPGain(fixture,fixture.items[0],h));
   const preview=await dialog.locator('.lamp-hero').evaluateAll(nodes=>nodes.map(n=>({change:Number(n.dataset.cpChange),text:n.textContent,label:n.getAttribute('aria-description'),arrow:n.querySelector('.lamp-cp-direction')?.className,src:n.querySelector('img').getAttribute('src')})));
   assert.deepEqual(preview.map(p=>p.change),expectedPreview,'preview uses total hero CP change, including level and existing gear');
@@ -205,7 +215,7 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
   const afterUpgrade=await page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')));assert.equal(afterUpgrade.lamp.essence,30);assert.deepEqual(afterUpgrade.items,beforeUpgrade.items);assert.equal(afterUpgrade.partyEXP,beforeUpgrade.partyEXP);
   const upgradeContainment=await dialog.evaluate(d=>{const r=d.getBoundingClientRect();return{overflow:d.scrollWidth>d.clientWidth,inViewport:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight};});assert.deepEqual(upgradeContainment,{overflow:false,inViewport:true});await page.screenshot({path:`${directory}/${width}-upgrade-max-fixture.png`});await guideIdle(page);await page.locator('.lamp-idle-helper').waitFor();assert.equal(await page.locator('.lamp-idle-helper').getAttribute('data-target'),'close');await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await guideIdle(page);assert.equal(await page.locator('.lamp-idle-helper').isVisible(),false,'completed upgrade loop stops strip guidance');
   await page.keyboard.press('Escape');
-  assert.deepEqual(errors,[]);report.push({width,height,dpr,arrowTips,statHeights,bandColors,itemLayout,expectedPreview,preview,navigation,closePoint,closeHit,geometry,lampPaint,stripBalance,emission,queueGeometry,containment,errors});await context.close();
+  assert.deepEqual(errors,[]);report.push({gearCentering,width,height,dpr,arrowTips,statHeights,bandColors,itemLayout,expectedPreview,preview,navigation,closePoint,closeHit,geometry,lampPaint,stripBalance,emission,queueGeometry,containment,errors});await context.close();
   // Disclosed six-item fixture stresses concurrent receipt layout without timing claims.
   const rapidFixture=createLampEconomy(43,1000);for(let n=0;n<6;n++)activateLamp(rapidFixture,{region:1,stage:1},n*2000);
   const rapidContext=await browser.newContext({viewport:{width,height},deviceScaleFactor:dpr}),rapidPage=await rapidContext.newPage();
