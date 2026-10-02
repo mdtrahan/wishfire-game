@@ -231,4 +231,4 @@
 
 - Lamp review uses canonical hero art and independent total-CP arrows, omitting numeric per-hero CP labels and the character stat table. Its three-column item card compares only the selected hero; unchanged values have no arrow. Only the five-column cache scrolls; the equip dialog fits the measured Canvas height. Preserve manual downgrade eligibility, saved receipts and existing Skip/Auto-to-dismantle transactions.
 
-- Selected-stat arrows paint a single apex into the DPR-sized Canvas; preserve the CSS portrait arrows’ pointed silhouette and existing dimensions.
+- Selected-stat numbers and arrows share one font-derived digit height across both rows, independent of the displayed numeral. Normalize digit ink into that height; keep arrows pointed in both Canvas and CSS.

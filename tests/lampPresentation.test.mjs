@@ -123,6 +123,12 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
   for(const n of statSignals){assert.equal(Number(n.value),fixture.items[0].stats[n.stat]);assert.equal(n.delta,expectedDeltas[n.stat]);assert.equal(n.arrow,n.delta?'lamp-stat-arrow '+(n.delta>0?'up':'down'):undefined);}
   await page.waitForFunction(()=>!document.querySelector('#lamp-dialog [data-action="equip"]').disabled);assert.equal(await dialog.getByRole('button',{name:'Equip',exact:true}).isEnabled(),true,'manual lower-CP equip remains available');
   assert.equal(await dialog.locator('.lamp-stat-paint').evaluateAll(nodes=>nodes.every(c=>Math.abs(c.width/c.getBoundingClientRect().width-devicePixelRatio)<.05&&Math.abs(c.height/c.getBoundingClientRect().height-devicePixelRatio)<.05)),true,'stat backing pixels match display DPR');
+  const statHeights=await dialog.locator('.lamp-stat-paint').evaluateAll(nodes=>nodes.map(c=>{
+   const pixels=c.getContext('2d').getImageData(0,0,c.width,c.height).data,arrowX=Number(c.dataset.arrowX),rows=[];
+   for(let y=0;y<c.height;y++)for(let x=0;x<Math.min(c.width,arrowX);x++)if(pixels[(y*c.width+x)*4+3]>=96){rows.push(y);break;}
+   return{backing:c.height,display:c.getBoundingClientRect().height,number:Math.max(...rows)-Math.min(...rows)+1};
+  }));
+  for(const key of ['backing','display','number'])assert.equal(new Set(statHeights.map(s=>s[key])).size,1,`all stat ${key} heights match across both rows: ${JSON.stringify(statHeights)}`);
   const itemLayout=await dialog.locator('.lamp-item-stats').evaluate(dl=>{
    const cells=[...dl.children].map(n=>n.getBoundingClientRect());return {threeAcross:cells[0].y===cells[1].y&&cells[1].y===cells[2].y&&cells[3].y>cells[0].y&&cells[3].y===cells[4].y,aligned:Math.abs(cells[0].x-cells[3].x)<.5&&Math.abs(cells[1].x-cells[4].x)<.5,contained:[...dl.querySelectorAll('dd')].every(e=>e.scrollWidth<=e.clientWidth),cardRadius:parseFloat(getComputedStyle(dl.closest('.lamp-candidate')).borderRadius)};
   });
@@ -196,7 +202,7 @@ test('lamp immediate review, four recipients, durable equip, Auto and phone cont
   const afterUpgrade=await page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')));assert.equal(afterUpgrade.lamp.essence,30);assert.deepEqual(afterUpgrade.items,beforeUpgrade.items);assert.equal(afterUpgrade.partyEXP,beforeUpgrade.partyEXP);
   const upgradeContainment=await dialog.evaluate(d=>{const r=d.getBoundingClientRect();return{overflow:d.scrollWidth>d.clientWidth,inViewport:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight};});assert.deepEqual(upgradeContainment,{overflow:false,inViewport:true});await page.screenshot({path:`${directory}/${width}-upgrade-max-fixture.png`});await guideIdle(page);await page.locator('.lamp-idle-helper').waitFor();assert.equal(await page.locator('.lamp-idle-helper').getAttribute('data-target'),'close');await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await guideIdle(page);assert.equal(await page.locator('.lamp-idle-helper').isVisible(),false,'completed upgrade loop stops strip guidance');
   await page.keyboard.press('Escape');
-  assert.deepEqual(errors,[]);report.push({width,height,dpr,arrowTips,expectedPreview,preview,navigation,closePoint,closeHit,geometry,lampPaint,stripBalance,emission,queueGeometry,containment,errors});await context.close();
+  assert.deepEqual(errors,[]);report.push({width,height,dpr,arrowTips,statHeights,expectedPreview,preview,navigation,closePoint,closeHit,geometry,lampPaint,stripBalance,emission,queueGeometry,containment,errors});await context.close();
   // Disclosed six-item fixture stresses concurrent receipt layout without timing claims.
   const rapidFixture=createLampEconomy(43,1000);for(let n=0;n<6;n++)activateLamp(rapidFixture,{region:1,stage:1},n*2000);
   const rapidContext=await browser.newContext({viewport:{width,height},deviceScaleFactor:dpr}),rapidPage=await rapidContext.newPage();

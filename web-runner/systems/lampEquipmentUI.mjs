@@ -162,9 +162,9 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
    const pixels=fontMeasure.getImageData(0,0,fontMeasure.canvas.width,fontMeasure.canvas.height);
    let left=pixels.width,top=pixels.height,right=0,bottom=0;
    for(let y=0;y<pixels.height;y++)for(let x=0;x<pixels.width;x++)if(pixels.data[(y*pixels.width+x)*4+3]>=96){left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y);}
-   const height=bottom-top+1,arrowWidth=Math.max(3,Math.ceil(height*.75)),arrowLeft=right-left+1+Math.round(3*dpr),width=arrow?arrowLeft+arrowWidth:right-left+1;
+   const metrics=fontMeasure.measureText('0123456789'),height=Math.ceil((metrics.actualBoundingBoxAscent+metrics.actualBoundingBoxDescent)*dpr),arrowWidth=Math.max(3,Math.ceil(height*.75)),arrowLeft=right-left+1+Math.round(3*dpr),width=arrow?arrowLeft+arrowWidth:right-left+1;
    const paint=value.querySelector('canvas');paint.width=width;paint.height=height;paint.style.width=width/dpr+'px';paint.style.height=height/dpr+'px';paint.dataset.arrowX=arrowLeft;
-   const ctx=paint.getContext('2d');ctx.putImageData(pixels,-left,-top);ctx.clearRect(right-left+1,0,width-(right-left+1),height);
+   const ctx=paint.getContext('2d');ctx.drawImage(fontMeasure.canvas,left,top,right-left+1,bottom-top+1,0,0,right-left+1,height);
    if(arrow){
     ctx.fillStyle=getComputedStyle(arrow).color;ctx.save();ctx.translate(arrowLeft,0);
     if(arrow.classList.contains('down')){ctx.translate(arrowWidth,height);ctx.rotate(Math.PI);}

@@ -593,3 +593,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - 2026-10-01: Compact equipment review can keep identity and actions fixed while a flex inventory absorbs the height limit. Show independent total-hero CP direction and selected-hero slot-stat direction; equal values carry no indicator. Remove retired comparison chrome instead of reserving blank rows.
 
 - 2026-10-01: Apparent arrow cropping can come from a polygon’s two apex vertices. Inspect the rendered silhouette and ancestor bounds; use one apex in both CSS and Canvas and guard both directions with pixel samples.
+
+- 2026-10-01: Tight per-numeral raster crops vary in height even at one font size. Derive the shared number/arrow height from the font’s full digit range and normalize each crop into it; test both rows with differing values.

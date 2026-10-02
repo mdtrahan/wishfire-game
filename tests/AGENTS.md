@@ -124,3 +124,5 @@
 - Lamp phone proof injects one isolated equipment-save failure, requires the saved record to remain byte-identical and no CP receipt, and verifies a readable contained notice without master overflow.
 
 - Lamp phone proof samples rendered arrow tip/head widths for positive and negative portrait and stat glyphs; reject flat tips independently of ancestor overflow.
+
+- Lamp stat-height proof compares all five backing/display heights and painted numeral heights across both rows; different numeral bounds must not resize arrows.
