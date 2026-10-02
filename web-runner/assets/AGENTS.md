@@ -82,3 +82,5 @@
 - Nonempty equip notices, including save failures, stay visible as compact callouts above the action row without consuming inventory height. Empty notices reserve no space.
 
 - Comparison CP arrows use a single pointed apex; preserve their bounds and direction colors. The selected-stat Canvas renderer shares this silhouette.
+
+- Selected-item identity bands retain the shared rarity palette through --rarity. Removing corner rarity letters never removes color cues.

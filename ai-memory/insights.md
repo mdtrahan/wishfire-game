@@ -595,3 +595,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - 2026-10-01: Apparent arrow cropping can come from a polygon’s two apex vertices. Inspect the rendered silhouette and ancestor bounds; use one apex in both CSS and Canvas and guard both directions with pixel samples.
 
 - 2026-10-01: Tight per-numeral raster crops vary in height even at one font size. Derive the shared number/arrow height from the font’s full digit range and normalize each crop into it; test both rows with differing values.
+
+- 2026-10-01: Removing redundant rarity initials must preserve the color channel. Bind the candidate identity band and inventory tile to the same existing rarity variable and check the full palette.

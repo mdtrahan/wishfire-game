@@ -72,7 +72,7 @@
 .lamp-candidate>.lamp-art{position:relative;grid-column:1;grid-row:1;align-self:center;width:100%;margin:0;border:1px solid #eceee8;border-radius:5px;background-color:#202123}
 .lamp-candidate>div{display:contents}
 .lamp-quality-band{grid-column:2;grid-row:1;min-height:0;padding:0;align-self:center;display:flex;flex-direction:column;gap:3px}
-.lamp-quality-band:before{content:'';position:absolute;z-index:-1;inset:0 0 auto;height:calc(clamp(44px,17cqw,64px) + 16px);background:linear-gradient(#a0a5a2,#848b88);border-bottom:1px solid #c4c8c2}
+.lamp-quality-band:before{content:'';position:absolute;z-index:-1;inset:0 0 auto;height:calc(clamp(44px,17cqw,64px) + 16px);background:linear-gradient(color-mix(in srgb,var(--rarity) 85%,#fff),var(--rarity));border-bottom:1px solid color-mix(in srgb,var(--rarity) 70%,#fff)}
 .lamp-quality-band small{color:#252a28;font-size:clamp(10px,3.2cqw,13px);text-shadow:none}
 .lamp-quality-band h2{color:#1c211f;font-size:clamp(13px,4.8cqw,20px);line-height:1.15;margin:0;text-shadow:none}
 .lamp-quality-band .lamp-item-cp{color:#252a28;margin:0;padding:0;font-size:clamp(11px,3.5cqw,15px);font-weight:850}

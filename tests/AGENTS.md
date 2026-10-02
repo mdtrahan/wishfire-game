@@ -126,3 +126,5 @@
 - Lamp phone proof samples rendered arrow tip/head widths for positive and negative portrait and stat glyphs; reject flat tips independently of ancestor overflow.
 
 - Lamp stat-height proof compares all five backing/display heights and painted numeral heights across both rows; different numeral bounds must not resize arrows.
+
+- Lamp band proof checks all five shared rarity colors in an isolated CSS palette fixture, then restores the candidate; rarity letters remain absent.
