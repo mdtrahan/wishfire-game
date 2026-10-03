@@ -35,7 +35,7 @@ function makeTickBasics(ctx) {
     resolveHeroAttackTarget, isHeroBasicTargetInRange, c => c.state.entities,
     (_c, hero, stat) => Number(hero.stats?.[stat] ?? hero[stat] ?? 1),
     realtimeCooldownSeconds, selectRealtimeReadyActor, scheduleRealtimeActions,
-    (c, heroUID, targetUID) => c.state.globals.PendingHeroHits.push({ at: c.state.globals.time + 0.52, heroUID, targetUID, dmg: 1, finalDmg: 1, heroType: 'melee', combatRulesBasic: 1, realtimeBasic: 1, retargetOnDeath: 1 }),
+    (c, heroUID, targetUID) => (c.state.globals.PendingHeroHits ||= []).push({ at: c.state.globals.time + 0.52, heroUID, targetUID, dmg: 1, finalDmg: 1, heroType: 'melee', combatRulesBasic: 1, realtimeBasic: 1, retargetOnDeath: 1 }),
     (c, uid) => c.state.entities.find(e => Number(e.uid) === Number(uid)) || null,
     tickRealtimeHeroSkillZones, actor => HERO_DEFINITIONS[actor.baseHeroName], heroSkillUnlocked, selectRealtimeHeroSkillTarget,
     castRealtimeHeroSkill, realtimeBasicInterval, () => 0, () => 0, () => 0,
@@ -147,7 +147,7 @@ function createTwoWaveFixture() {
   return { state, ctx, heroes, waveOne, actionLog, tick(now) {
     globals.time = now;
     const before = skillEventIndex();
-    const pendingBefore = new Set(globals.PendingHeroHits);
+    const pendingBefore = new Set(globals.PendingHeroHits || []);
     const clocksBefore = JSON.parse(JSON.stringify(globals.RealtimeHeroBasicClocks));
     const scheduledBefore = JSON.parse(JSON.stringify(globals.RealtimeHeroBasicScheduledActions));
     const hpBeforeTick = new Map(state.entities.map(actor => [Number(actor.uid), Number(actor.hp || 0)]));
@@ -160,7 +160,7 @@ function createTwoWaveFixture() {
         hpBefore: hpBeforeTick.get(Number(request.targetUID)) ?? null,
         hpAfter: state.entities.find(actor => actor.uid === request.targetUID)?.hp ?? null, kind: 'skill' });
     }
-    const newHits = globals.PendingHeroHits.filter(hit => !pendingBefore.has(hit));
+    const newHits = (globals.PendingHeroHits || []).filter(hit => !pendingBefore.has(hit));
     for (const hit of newHits) if (hit.realtimeBasic) {
       const clock = clocksBefore[String(hit.heroUID)] || {};
       const dueAt = scheduledBefore[String(hit.heroUID)]?.dueAt ?? Number(clock.basicReadyAt ?? now);

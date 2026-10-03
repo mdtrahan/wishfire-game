@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { collectRealtimeReadyActors, heroBasicAttackRate, realtimeCooldownSeconds, selectRealtimeReadyActor } from '../web-runner/src/core/realtimeCooldown.mjs';
+import { HERO_DEFINITIONS } from '../web-runner/src/core/heroDefinitions.mjs';
+import { collectRealtimeReadyActors, heroBasicAttackRate, realtimeCooldownSeconds, selectRealtimeReadyActor, scheduleRealtimeActions } from '../web-runner/src/core/realtimeCooldown.mjs';
 
 test('real-time cooldowns advance from wall time and only reset the actor that completed', () => {
   const actors = [
@@ -24,13 +25,17 @@ test('real-time cooldowns advance from wall time and only reset the actor that c
   assert.ok(secondReady.selected);
 });
 
-test('hero SPD alone produces distinct basic rates with independent staggered clocks', () => {
+test('authored hero intervals produce distinct basic rates with independent staggered clocks', () => {
   const actors = ['Falie', 'Kojonn', 'Runa', 'Huun'].map((name, index) => ({ uid: index + 1, type: 0, hp: 10, name, speed: [8, 10, 11, 12][index] }));
   const rates = actors.map(heroBasicAttackRate);
   assert.ok(rates.every((rate, index) => index === 0 || rate > rates[index - 1]));
-  assert.ok(Math.abs(rates[0] - 30 / (0.99 * 32) * 1.4) < 1e-12);
-  assert.ok(Math.abs(rates[3] - 30 / (0.99 * 22) * 1.4) < 1e-12);
+  assert.ok(Math.abs(rates[0] - 1 / 1.8) < 1e-12);
+  assert.ok(Math.abs(rates[3] - 1 / 1.2) < 1e-12);
   assert.equal(heroBasicAttackRate({ ...actors[0], palFlatSpeedBonus: 0.1, palSpeedModifier: 5 }), rates[0]);
+  for (const actor of actors) {
+    const baseline = heroBasicAttackRate(actor);
+    for (const speed of [1, 8, 12, 100]) assert.equal(heroBasicAttackRate({ ...actor, speed, stats: { SPD: speed } }), baseline);
+  }
   const waiting = selectRealtimeReadyActor({ actors, now: 5, selectionEnabled: false });
   assert.equal(waiting.selected, null);
   const openingTimes = Object.values(waiting.readyAt);
@@ -41,7 +46,7 @@ test('hero SPD alone produces distinct basic rates with independent staggered cl
   assert.equal(released.ready[0].uid, actors[openingTimes.indexOf(Math.min(...openingTimes))].uid);
 });
 
-test('one hero fires per frame while all four retain their derived rates', () => {
+test('one hero fires per frame while all four retain their authored rates', () => {
   const actors = ['Falie', 'Kojonn', 'Runa', 'Huun'].map((name, index) => ({ uid: index + 1, type: 0, hp: 10, name, speed: [8, 10, 11, 12][index] }));
   let readyAt = {};
   const shots = [0, 0, 0, 0];
@@ -121,4 +126,21 @@ test('hero opening timers start when a target enters range, not while the lane i
   const times = Object.values(armed.readyAt);
   assert.ok(times.every((time, index) => time > 8 + realtimeCooldownSeconds(actors[index]) && time < 9.5 + realtimeCooldownSeconds(actors[index])));
   assert.equal(new Set(times).size, 4);
+});
+
+
+test('every static skill cooldown stays independent of the basic interval', () => {
+  for (const hero of Object.values(HERO_DEFINITIONS)) for (const skill of hero.actives) {
+    const actor = { uid: 1, kind: 'hero', type: 0, hp: 100, name: hero.name,
+      skills: [{ id: skill.skillId, cooldownSeconds: skill.cooldownSeconds }] };
+    const clocks = { 1: { basicReadyAt: 50 } };
+    const slow = scheduleRealtimeActions({ actors: [{ ...actor, basicIntervalSeconds: 1.8 }], clocks, now: 42 });
+    const fast = scheduleRealtimeActions({ actors: [{ ...actor, basicIntervalSeconds: .4 }], clocks, now: 42 });
+    assert.deepEqual(slow, fast);
+    assert.equal(slow.clocks[1].skillReadyAt[skill.skillId], 42 + skill.cooldownSeconds);
+    const ready = { 1: { ...slow.clocks[1], basicReadyAt: 42.5 } };
+    const basic = scheduleRealtimeActions({ actors: [actor], clocks: ready, now: 42.5 });
+    assert.equal(basic.actions[0].kind, 'basic');
+    assert.deepEqual(basic.clocks[1].skillReadyAt, slow.clocks[1].skillReadyAt);
+  }
 });

@@ -39,8 +39,9 @@ test('Kaja support targets allies while enemy-only attacks require useful enemie
 });
 
 test('Quickload selects the slowest effective basic clock', () => {
+  const fara = { ...hero(4, 'Falie'), speed: 100 };
   const kaja = { ...hero(1, 'Kojonn'), speed: 30 };
   const hondo = { ...hero(2, 'Huun'), speed: 20 };
   const runa = { ...hero(3, 'Runa'), speed: 2 };
-  assert.equal(choose('Kojonn', 'quickload', kaja, [kaja, hondo, runa], [enemy(10, 200, 200)]).targetUID, runa.uid);
+  assert.equal(choose('Kojonn', 'quickload', kaja, [kaja, hondo, runa, fara], [enemy(10, 200, 200)]).targetUID, fara.uid);
 });

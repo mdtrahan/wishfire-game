@@ -1,10 +1,9 @@
+import { HERO_DEFINITIONS, heroDefinition } from './heroDefinitions.mjs';
+
 const finite = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 
 export function heroBasicAttackRate(actor) {
-  const speed = Math.max(0.01, finite(actor?.speed ?? actor?.spd ?? actor?.SPD ?? actor?.stats?.SPD, 8));
-  // Map the roster's SPD band onto the community-estimated main attack curve.
-  const mainSpeed = speed / 8;
-  return 30 / (0.99 * (2 + Math.ceil(30 / mainSpeed))) * 1.4;
+  return 1 / (heroDefinition(actor)?.baseAttackInterval ?? HERO_DEFINITIONS.Falie.baseAttackInterval);
 }
 
 export function realtimeCooldownSeconds(actor) {

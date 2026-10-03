@@ -12,11 +12,11 @@ export const heroSkillUnlocked = (hero, skill) => Number(hero?.currentLevel || 1
 const active = (skillId, displayName, cooldownSeconds, durationSeconds, targetType, description, extra = {}) =>
   Object.freeze({ skillId, displayName, cooldownSeconds, durationSeconds, targetType, description, ...extra });
 const basic = magic => Object.freeze({ skillId: 'basic_attack', displayName: 'Attack', targetType: 'enemy', tags: [magic ? 'magic' : 'physical'], effects: [{ effectType: 'damage', potency: 1, hits: 1 }], description: 'Attack the first living enemy in range.' });
-const kit = (key, name, role, baseStats, growth, actives, magicBasic = false) =>
-  Object.freeze({ key, name, role, baseStats, growth, maxLevel: PROGRESSION.maxLevel, basic: basic(magicBasic), actives: Object.freeze(actives.map((skill, i) => Object.freeze({ ...skill, unlockLevel: ACTIVE_UNLOCK_LEVELS[i] }))) });
+const kit = (key, name, role, baseAttackInterval, baseStats, growth, actives, magicBasic = false) =>
+  Object.freeze({ key, name, role, baseAttackInterval, baseStats, growth, maxLevel: PROGRESSION.maxLevel, basic: basic(magicBasic), actives: Object.freeze(actives.map((skill, i) => Object.freeze({ ...skill, unlockLevel: ACTIVE_UNLOCK_LEVELS[i] }))) });
 
 export const HERO_DEFINITIONS = Object.freeze({
-  Falie: kit('Falie', 'Fara', 'Tank',
+  Falie: kit('Falie', 'Fara', 'Tank', 1.8,
     { HP: 75, ATK: 7, DEF: 12, MAG: 4, RES: 8, SPD: 8 },
     { HP: 8, ATK: .8, DEF: 1.8, MAG: .4, RES: 1.1, SPD: .15 }, [
       active('challenge_bolt', 'Challenge Bolt', 7, 4, 'enemy', 'Hit the first in-range enemy without Provoke for 80% damage and redirect its eligible single-target attacks to Fara.', { damagePct: 80 }),
@@ -25,7 +25,7 @@ export const HERO_DEFINITIONS = Object.freeze({
       active('retaliation_burst', 'Retaliation Burst', 16, 0, 'area', 'When an in-range enemy damages Fara, deal 80% damage to enemies within radius 75 of the attacker.', { damagePct: 80, radius: 75 }),
       active('shield_slam', 'Shield Slam', 20, 0, 'area', 'Hit a two-enemy cluster or boss within radius 65 for 100% damage and push each hit enemy up to 55 units right.', { damagePct: 100, radius: 65, pushDistance: 55 }),
     ]),
-  Huun: kit('Huun', 'Hondo', 'Fighter',
+  Huun: kit('Huun', 'Hondo', 'Fighter', 1.2,
     { HP: 60, ATK: 16, DEF: 5, MAG: 3, RES: 4, SPD: 12 },
     { HP: 6, ATK: 2.1, DEF: .7, MAG: .3, RES: .6, SPD: .35 }, [
       active('ambush', 'Ambush', 7, 6, 'enemy', 'Hit the first unmarked enemy in range for 120% damage. Hondo’s next two basics against it gain 20% damage.', { damagePct: 120, bonusPct: 20, charges: 2 }),
@@ -34,7 +34,7 @@ export const HERO_DEFINITIONS = Object.freeze({
       active('piercing_throw', 'Piercing Throw', 12, 0, 'line', 'Hit enemies along a 28-wide line through the first in-range enemy, ending 60 units beyond it, for 130% damage.', { damagePct: 130, lineWidth: 28, beyond: 60 }),
       active('finish_the_job', 'Finish the Job', 16, 0, 'enemy', 'Hit the lowest-HP enemy in range below 35% HP for 220% damage. A kill splashes 80% within radius 50.', { damagePct: 220, threshold: .35, splashPct: 80, splashRadius: 50 }),
     ]),
-  Runa: kit('Runa', 'Runa', 'Controller',
+  Runa: kit('Runa', 'Runa', 'Controller', 1.4,
     { HP: 60, ATK: 3, DEF: 4, MAG: 16, RES: 10, SPD: 11 },
     { HP: 5, ATK: .3, DEF: .7, MAG: 2.1, RES: 1.4, SPD: .3 }, [
       active('frost_reversal', 'Frost Reversal', 9, 1.25, 'area', 'Hit a two-enemy cluster or boss within radius 75 for 80% magic damage and force a short retreat.', { damagePct: 80, radius: 75 }),
@@ -43,7 +43,7 @@ export const HERO_DEFINITIONS = Object.freeze({
       active('null_field', 'Null Field', 18, 3, 'area', 'Block magic-tagged actions for enemies within radius 90 of the first in-range magic attacker.', { radius: 90 }),
       active('return_gate', 'Return Gate', 20, 0, 'enemy', 'Teleport the furthest-advanced in-range enemy up to 100 units right when it can move at least 40 units.', { teleportDistance: 100, minUsefulDistance: 40 }),
     ], true),
-  Kojonn: kit('Kojonn', 'Kaja', 'Support',
+  Kojonn: kit('Kojonn', 'Kaja', 'Support', 1.6,
     { HP: 65, ATK: 4, DEF: 7, MAG: 9, RES: 12, SPD: 10 },
     { HP: 7, ATK: .4, DEF: 1.1, MAG: 1.4, RES: 1.7, SPD: .25 }, [
       active('wishgrant', 'Wishgrant', 22, 10, 'allAllies', 'Give every living ally one charge making its next successful basic hit deal 330% normal damage. Cast for two engaged allies or a boss.', { basicDamagePct: 330, charges: 1 }),
