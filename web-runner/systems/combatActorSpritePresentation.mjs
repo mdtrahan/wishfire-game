@@ -18,12 +18,14 @@ export function drawCombatActorSprite(ctx, image, {
   sourceY,
   sourceWidth,
   sourceHeight,
+  actorUID, effects, now = 0,
 } = {}) {
   if (!ctx || !image) return null;
-  const x = Number(drawX);
-  const y = Number(drawY);
-  const w = Number(width);
-  const h = Number(height);
+  const shrink=Number(effects?.[String(actorUID)]?.shrink?.expiresAt)>now ? .7 : 1;
+  const x = Number(drawX)+(Number(width)*(1-shrink)/2);
+  const y = Number(drawY)+Number(height)*(1-shrink);
+  const w = Number(width)*shrink;
+  const h = Number(height)*shrink;
   const pivot = Number(pivotX);
   if (![x, y, w, h, pivot].every(Number.isFinite)) return null;
   const sourceRect = [sourceX, sourceY, sourceWidth, sourceHeight].map(Number);

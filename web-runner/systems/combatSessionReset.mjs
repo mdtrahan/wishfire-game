@@ -1,7 +1,9 @@
+import { resetRealtimeSkillAttempt } from '../src/core/realtimeSkillState.mjs';
 // Called only when creating a battle. Resurrection resumes the existing instance.
 // A continuing adventure carries its chosen buffs into its next battle; terminal
 // callers use the default and clear them with the rest of the session state.
-export function resetCombatSessionConditions(globals, gameState) {
+export function resetCombatSessionConditions(globals, gameState, entities = []) {
+  resetRealtimeSkillAttempt(globals,entities);
   for (const key of [
     'AstralFlowAmpPoints', 'AstralFlowAmpReady', 'AstralFlowWallet', 'FlowOrbs',
     'FlowOrbSerial', 'FlowThresholdSerial', 'PendingFlowThresholds',
@@ -16,7 +18,7 @@ export function resetCombatSessionConditions(globals, gameState) {
     PartyRegens: [], TrackBuffs: [], PartyBuffSlots: [],
     PartyBuffUI: {}, EnemyDebuffs: {}, EnemyDebuffSlots: {}, EnemyDebuffTurns: {},
     EnemyDebuffPop: {}, EnemyDamageOverTime: [], HeroTempSkillStateByUID: {},
-    RealtimeSkillEffects: [], RealtimeSkillZones: [],
+    RealtimeSkillEffects: {}, RealtimeSkillZones: [],
     EnemyGemLockActive: 0, EnemyGemLockGroups: {}, TaintedGroundZones: [],
     BlueBuffSequenceActive: 0, PendingDeaths: {}, PendingHeroHits: [],
     // A new encounter may retain selected session buffs, never an outgoing

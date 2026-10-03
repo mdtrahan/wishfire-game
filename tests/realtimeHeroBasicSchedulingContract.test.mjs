@@ -155,3 +155,17 @@ test('the real scheduler filters locked skills even when every skill clock is re
  for(let n=1800;n<2400;n++){globals.time=n/30;tick(ctx);if(globals.LastRealtimeHeroSkill)used.add(globals.LastRealtimeHeroSkill.skillId);globals.PendingHeroHits=[];}
  assert.deepEqual([...used].sort(),['ambush','cheap_shot']);
 });
+
+test('the live scheduler lets Sanctuary see KO allies while preserving the caster cooldowns',()=>{
+ const {ctx,globals,actors,tick}=fixture({time:10,heroes:[1,2],enemies:[{uid:90,kind:'enemy',hp:1000,maxHP:1000,x:220,y:200,streamState:'engaged'}]});
+ Object.assign(actors[0],{baseHeroName:'Falie',maxHP:100,hp:0,currentLevel:100});Object.assign(actors[1],{baseHeroName:'Kojonn',maxHP:100,hp:100,currentLevel:100});
+ globals.RealtimeHeroBasicClocks={1:{basicReadyAt:20,skillReadyAt:{cover:100}},2:{basicReadyAt:100,skillReadyAt:Object.fromEntries(heroDefinition(actors[1]).actives.map(skill=>[skill.skillId,skill.skillId==='sanctuary'?0:100]))}};
+ ctx.callFunction=(name,sourceUID,targetUID,pct,revive)=>{if(name==='HealRealtimeActor'){const target=ctx.state.entities.find(a=>a.uid===targetUID);if(revive&&target.hp===0){target.hp=Math.floor(target.maxHP*pct/100);return target.hp;}}return 0;};
+ assert.equal(tick(ctx),1);assert.equal(actors[0].hp,30);assert.equal(globals.LastRealtimeHeroSkill.skillId,'sanctuary');assert.equal(globals.RealtimeHeroBasicClocks[1].skillReadyAt.cover,100);
+ assert.equal(globals.RealtimeHeroBasicClocks[2].skillReadyAt.sanctuary,75);
+});
+test('a cancelled skill refunds its due time if its caster KOs before commitment',()=>{
+ const {ctx,globals,actors,tick}=fixture({time:10,heroes:[1],enemies:[{uid:90,kind:'enemy',hp:1000,maxHP:1000,x:220,y:200,streamState:'engaged'}]});
+ actors[0].hp=0;globals.RealtimeHeroBasicClocks={1:{basicReadyAt:20,skillReadyAt:{cover:100}}};globals.RealtimeHeroBasicScheduledActions={1:{kind:'skill',skillId:'cover',dueAt:5,startAt:11}};
+ tick(ctx);assert.equal(globals.RealtimeHeroBasicClocks[1].skillReadyAt.cover,5);assert.equal(globals.RealtimeHeroBasicScheduledActions[1],undefined);
+});

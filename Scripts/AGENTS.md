@@ -39,3 +39,5 @@
 - Mirror per-target attack VFX metadata for native hero AOE damage packets.
 - Mirror the enemy scheduler exclusion for targetable stream walkers; they may receive hero attacks after crossing the range line and may act only after reaching home.
 - Keep automatic `HeroTurn` target selection aligned with the browser mirror: draw a fresh living enemy per acting hero and record the result only after selection.
+
+- The mirrored CalculateDamage function retains Rust-owned baseline arithmetic and applies the same bounded realtime damage amplification as the browser owner; conditional selection and effect execution remain in the live browser/shared-core path.

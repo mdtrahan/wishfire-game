@@ -61,7 +61,7 @@ test('fresh heroes gate every skill at the authoritative milestone including dir
  for(const [key,d] of Object.entries(HERO_DEFINITIONS)){
   const h=store.heroes[key];h.uid=1;h.kind='hero';const target={uid:2,kind:'enemy',hp:1000,maxHP:1000,x:220,y:200,streamState:'engaged'};
   const ctx={state:{globals:{time:100,RuntimeRandom:()=>.5,RealtimeHeroBasicClocks:{1:{skillReadyAt:{}}}},entities:[h,target]},callFunction:()=>0};
-  assert.deepEqual(d.actives.map(s=>s.unlockLevel),[1,5,10,15,25]);assert.equal(h.currentLevel,1);assert.equal(h.currentEXP,0);
+  assert.deepEqual(d.actives.map(s=>s.unlockLevel),key==='Kojonn'?[1,5,10,15,25,35,50,60,75]:[1,5,10,15,25,35,50,75]);assert.equal(h.currentLevel,1);assert.equal(h.currentEXP,0);
   for(const skill of d.actives){
    h.currentLevel=skill.unlockLevel-1;if(h.currentLevel<1)continue;
    assert.equal(heroSkillUnlocked(h,skill),false);const snapshot=JSON.stringify(ctx.state);
@@ -80,12 +80,12 @@ test('developer presets save real levels, stats, EXP and receipt baselines witho
  for(const level of [1,5,25,100]){
   state.globals.PendingHeroHits=[{effectType:'skill'}];state.globals.RealtimeSkillEffects={1:{old:{expiresAt:100}}};
   await controls.applyDeveloperLevel({state,gameState,call:()=>0,storage:f.storage,locks:f.locks,level});
-  assert.deepEqual(state.globals.PendingHeroHits,[]);assert.deepEqual(state.globals.RealtimeSkillEffects,[]);
+  assert.deepEqual(state.globals.PendingHeroHits,[]);assert.deepEqual(state.globals.RealtimeSkillEffects,{});
   const saved=createHeroProgressStore(JSON.parse(f.values.get(HERO_PROGRESS_SAVE_KEY)));
   for(const actor of state.entities){
    const h=saved.heroes[actor.heroInstanceKey];assert.equal(actor.currentLevel,level);assert.equal(h.currentLevel,level);assert.equal(h.currentEXP,0);assert.equal(h.lampEXPClaimed,25);assert.equal(h.maxLevel,100);
    assert.deepEqual(actor.stats,h.stats);assert.equal(actor.maxHP,h.maxHP);assert.equal(actor.EXPToNextLevel,h.EXPToNextLevel);
-   assert.equal(HERO_DEFINITIONS[actor.baseHeroName].actives.filter(s=>heroSkillUnlocked(actor,s)).length,level===1?1:level===5?2:5);
+   assert.equal(HERO_DEFINITIONS[actor.baseHeroName].actives.filter(s=>heroSkillUnlocked(actor,s)).length,level===1?1:level===5?2:level===25?5:actor.baseHeroName==='Kojonn'?9:8);
   }
   await f.store.sync();assert.ok(state.entities.every(h=>h.currentLevel===level&&h.currentEXP===0));assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),gear);
  }

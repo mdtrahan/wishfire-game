@@ -1,3 +1,4 @@
+import { REALTIME_SKILL_ELEMENTS } from '../src/core/realtimeHeroSkills.mjs';
 const stat = (actor, key) => Number(actor?.stats?.[key] ?? actor?.[key.toLowerCase()] ?? actor?.[key] ?? 0);
 const ARCANE_PULSE_IMPACT_SEC = 0.5;
 const IMPACT_VISIBLE_CENTER_X = Object.freeze({
@@ -21,10 +22,7 @@ export const APPROVED_IMPACT_DRAW_SCALE = Object.freeze({
 });
 const ELEMENTAL_SLUGS = new Set(['fire', 'ice', 'wind', 'dark', 'lightning', 'light', 'void', 'earth', 'bloom', 'water', 'metal', 'mark', 'poison', 'smoke', 'blood', 'arcane']);
 const ELEMENTAL_IMPACT_BY_SKILL = Object.freeze({
-  challenge_bolt: 'mark', shield_relay: 'light', brace: 'metal', retaliation_burst: 'earth', shield_slam: 'wind',
-  ambush: 'dark', cheap_shot: 'metal', razor_sweep: 'wind', piercing_throw: 'metal', finish_the_job: 'blood',
-  frost_reversal: 'ice', hex_beacon: 'dark', burn_sigil: 'fire', null_field: 'void', return_gate: 'arcane',
-  wishgrant: 'light', quickload: 'lightning', split_feed: 'wind', patchwork: 'bloom', fortunes_blessing: 'mark',
+  ...REALTIME_SKILL_ELEMENTS,
 });
 const IMPACT_PAINTED_WIDTH_RATIO = Object.freeze({
   g03_blue: 293 / 307,

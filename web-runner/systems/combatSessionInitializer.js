@@ -275,7 +275,7 @@ export function createCombatSessionInitializer({
   return function initCombatSessionEntities(enemyRows) {
     beforeInit?.();
     assertCombatLayoutDev('initEntities');
-    resetCombatSessionConditions(state.globals, gameState);
+    resetCombatSessionConditions(state.globals, gameState, state.entities);
     state.entities = [];
     const routineLevel=Number(state.globals.ContinuousCombatStageLoop||0)===1?1:Number(state.globals.PartyLevel||1);
     state.globals.EnemyData = (enemyRows || []).map((rawRow) => {

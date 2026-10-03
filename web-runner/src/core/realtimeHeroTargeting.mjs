@@ -1,72 +1,101 @@
+import {resolveBasicInterval} from '../../../src/core/combatModifierRules.mjs';
 import { isHeroBasicTargetInRange } from '../../../src/core/heroAttackTargetingRules.mjs';
 import { COMBAT_ARENA_BOUNDS } from '../../../src/core/combatOrientation.mjs';
+import { evaluateSkillCondition, livingCombatActor as alive } from '../../../src/core/skillConditionRules.mjs';
 import { realtimeCooldownSeconds } from './realtimeCooldown.mjs';
-
-const value = number => Number.isFinite(Number(number)) ? Number(number) : 0;
-const alive = actor => actor && value(actor.hp) > 0;
-const boss = enemy => String(enemy?.enemyRole || enemy?.role || '').toLowerCase() === 'boss';
-const point = actor => ({ x: value(actor.x), y: value(actor.y) });
-const has = (effects, uid, id, now) => value(effects?.[String(uid)]?.[id]?.expiresAt) > now;
-const circle = (enemy, center, radius) => (value(enemy.x) - center.x) ** 2 + (value(enemy.y) - center.y) ** 2 <= radius ** 2;
-const rectangle = (enemy, center, width, height) => Math.abs(value(enemy.x) - center.x) <= width / 2 && Math.abs(value(enemy.y) - center.y) <= height / 2;
-
+import { rawCombatStat, realtimeCombatStat, projectedSkillBenefit } from './realtimeSkillState.mjs';
+import { previewSeededRng } from '../../../src/core/seededRngRules.mjs';
+const point = actor => ({x:Number(actor?.x || 0),y:Number(actor?.y || 0)});
+const ratio = actor => Number(actor.hp)/Math.max(1,Number(actor.maxHP));
 export function enemiesInSkillShape(enemies, shape) {
-  const living = (enemies || []).filter(enemy => isHeroBasicTargetInRange(enemy));
-  if (shape?.kind === 'circle') return living.filter(enemy => circle(enemy, shape.center, shape.radius));
-  if (shape?.kind === 'rectangle') return living.filter(enemy => rectangle(enemy, shape.center, shape.width, shape.height));
-  if (shape?.kind === 'line') {
-    const { from, to, width } = shape;
-    const dx = to.x - from.x, dy = to.y - from.y, lengthSq = dx * dx + dy * dy;
-    return living.filter(enemy => {
-      const t = lengthSq > 0 ? Math.max(0, Math.min(1, ((value(enemy.x) - from.x) * dx + (value(enemy.y) - from.y) * dy) / lengthSq)) : 0;
-      return (value(enemy.x) - from.x - t * dx) ** 2 + (value(enemy.y) - from.y - t * dy) ** 2 <= (width / 2) ** 2;
-    });
-  }
-  return [];
+  return (enemies || []).filter(a=>isHeroBasicTargetInRange(a)).filter(enemy => {
+    const center = shape.center || shape.from;
+    const dx = Number(enemy.x)-center.x, dy = Number(enemy.y)-center.y;
+    switch (shape.kind) {
+      case 'circle': return dx*dx+dy*dy <= shape.radius*shape.radius;
+      case 'rectangle': return Math.abs(dx)<=shape.width/2 && Math.abs(dy)<=shape.height/2;
+      case 'horizontalLine': return dx>=0 && Number(enemy.x)<=shape.toX && Math.abs(dy)<=shape.width/2;
+      case 'cone': return dx>=0 && dx*dx+dy*dy<=shape.length*shape.length && Math.abs(dy)<=dx*Math.tan(shape.angleDegrees*Math.PI/360)+1e-9;
+      default: throw new Error(`Unknown skill shape: ${shape.kind}`);
+    }
+  });
 }
-
-export function selectRealtimeHeroSkillTarget({ skill, hero, heroes = [], enemies = [], effects = {}, zones = [], now = 0, damagedByEnemyUID = 0 } = {}) {
+export function selectRealtimeHeroSkillTarget({skill,hero,heroes=[],enemies=[],effects={},zones=[],now=0,globals={},event=null,statReader}={}) {
   if (!skill || !alive(hero)) return null;
-  const inRange = enemies.filter(enemy => isHeroBasicTargetInRange(enemy));
-  const livingHeroes = heroes.filter(alive);
-  const first = inRange[0];
-  const target = enemy => enemy ? { targetUID: Number(enemy.uid), point: point(enemy) } : null;
-  const cluster = (radius, minimum = 2) => first && (boss(first) || inRange.filter(enemy => circle(enemy, point(first), radius)).length >= minimum) ? target(first) : null;
-  const active = (uid, id) => has(effects, uid, id, now);
-  const readyArea = (radius, predicate) => first && inRange.some(enemy => circle(enemy, point(first), radius) && predicate(enemy)) ? target(first) : null;
-  switch (skill.skillId) {
-    case 'challenge_bolt': return target(inRange.find(enemy => !active(enemy.uid, 'provoke')));
-    case 'shield_relay': {
-      if (!first) return null;
-      const ally = livingHeroes.filter(actor => actor.uid !== hero.uid && value(actor.hp) / Math.max(1, value(actor.maxHP)) < .75 && !active(actor.uid, 'cover'))
-        .sort((a, b) => value(a.hp) / Math.max(1, value(a.maxHP)) - value(b.hp) / Math.max(1, value(b.maxHP)) || heroes.indexOf(a) - heroes.indexOf(b))[0];
-      return ally ? { targetUID: Number(ally.uid) } : null;
-    }
-    case 'brace': return first && value(hero.hp) / Math.max(1, value(hero.maxHP)) < .6 && !active(hero.uid, 'brace') ? { targetUID: Number(hero.uid) } : null;
-    case 'retaliation_burst': return target(inRange.find(enemy => Number(enemy.uid) === Number(damagedByEnemyUID)));
-    case 'shield_slam': return cluster(skill.radius);
-    case 'ambush': return target(inRange.find(enemy => !active(enemy.uid, 'ambush')));
-    case 'cheap_shot': return target(inRange.reduce((best, enemy) => !best || value(enemy.stats?.ATK ?? enemy.ATK ?? enemy.atk) > value(best.stats?.ATK ?? best.ATK ?? best.atk) ? enemy : best, null));
-    case 'razor_sweep': return first && inRange.filter(enemy => rectangle(enemy, point(first), skill.width, skill.height)).length >= 2 ? target(first) : null;
-    case 'piercing_throw': return target(first);
-    case 'finish_the_job': return target(inRange.filter(enemy => value(enemy.hp) / Math.max(1, value(enemy.maxHP)) < skill.threshold)
-      .sort((a, b) => value(a.hp) / Math.max(1, value(a.maxHP)) - value(b.hp) / Math.max(1, value(b.maxHP)) || inRange.indexOf(a) - inRange.indexOf(b))[0]);
-    case 'frost_reversal': return cluster(skill.radius);
-    case 'hex_beacon': return readyArea(skill.radius, enemy => !active(enemy.uid, 'hex_beacon'));
-    case 'burn_sigil': return zones.some(zone => zone.kind === 'burn_sigil' && value(zone.expiresAt) > now) ? null : cluster(skill.radius);
-    case 'null_field': return target(inRange.find(enemy => (enemy.attackType === 'magic' || enemy.streamDelivery === 'ranged' && value(enemy.stats?.MAG ?? enemy.MAG) > value(enemy.stats?.ATK ?? enemy.ATK)) && !active(enemy.uid, 'null_field')));
-    case 'return_gate': return target(inRange.filter(enemy => Math.min(skill.teleportDistance, COMBAT_ARENA_BOUNDS.attackStartX - value(enemy.x)) >= skill.minUsefulDistance)
-      .sort((a, b) => value(a.x) - value(b.x) || inRange.indexOf(a) - inRange.indexOf(b))[0]);
-    case 'wishgrant': return first && (livingHeroes.length >= 2 || inRange.some(boss)) && !livingHeroes.every(actor => active(actor.uid, 'wishgrant')) ? { targetUIDs: livingHeroes.map(actor => Number(actor.uid)) } : null;
-    case 'quickload': {
-      if (!first) return null;
-      const ally = livingHeroes.filter(actor => !active(actor.uid, 'quickload'))
-        .sort((a, b) => realtimeCooldownSeconds({ ...b, type: 0 }) - realtimeCooldownSeconds({ ...a, type: 0 }) || heroes.indexOf(a) - heroes.indexOf(b))[0];
-      return ally ? { targetUID: Number(ally.uid) } : null;
-    }
-    case 'split_feed': return first && inRange.some(enemy => inRange.some(other => other !== enemy && circle(other, point(enemy), skill.splashRadius))) && !livingHeroes.every(actor => active(actor.uid, 'split_feed')) ? { targetUIDs: livingHeroes.map(actor => Number(actor.uid)) } : null;
-    case 'patchwork': return first && livingHeroes.some(actor => value(actor.hp) / Math.max(1, value(actor.maxHP)) < .75) && !livingHeroes.every(actor => active(actor.uid, 'patchwork')) ? { targetUIDs: livingHeroes.map(actor => Number(actor.uid)) } : null;
-    case 'fortunes_blessing': return (inRange.some(boss) || inRange.length >= 3) && !livingHeroes.every(actor => active(actor.uid, 'fortunes_blessing')) ? { targetUIDs: livingHeroes.map(actor => Number(actor.uid)) } : null;
-    default: return null;
+  const livingHeroes = heroes.filter(alive), inRange = enemies.filter(a=>isHeroBasicTargetInRange(a));
+  const read = statReader || ((actor,stat)=>realtimeCombatStat({...globals,time:now,RealtimeSkillEffects:effects},actor,stat));
+  const rule = skill.targetRule;
+  if (!rule) throw new Error(`Missing target rule: ${skill.skillId}`);
+  let effectChoice;
+  if (skill.randomStats) {
+    if (typeof globals.RuntimeRandom !== 'function' || !Number.isFinite(globals.RuntimeRandomSeed)) return null;
+    effectChoice = skill.randomStats[Math.floor(previewSeededRng(globals.RuntimeRandomSeed,globals.RuntimeRandomDraws || 0)*skill.randomStats.length)];
   }
+  const projectGlobals = {...globals,time:now,RealtimeSkillEffects:effects};
+  const shapeAt = (shape, anchor) => ({...shape,center:point(['cone','horizontalLine'].includes(shape.kind)?hero:anchor)});
+  const context = {self:hero,candidate:null,groups:{livingHeroes,deployedHeroes:heroes,attackableEnemies:inRange},effects,zones,now,event,
+    stat:read,attackable:isHeroBasicTargetInRange,attackLine:COMBAT_ARENA_BOUNDS.attackStartX,
+    battle:globals.RealtimeSkillBattleState || {},resources:{wardHP:Number(globals.PartyTempHPShield || 0)},
+    canImprove:(actor,id)=>projectedSkillBenefit(projectGlobals,actor,id,effectChoice),
+    shapeTargets:(shape,anchor)=>enemiesInSkillShape(inRange,shapeAt(shape,anchor))};
+  const matches = candidate => evaluateSkillCondition(skill.conditions,{...context,candidate});
+  const effectId = skill.effectSpec.effectId || (skill.effectSpec.kind==='blight'?'blight':skill.skillId);
+  const eligible = target => {
+    if (skill.recipientPolicy==='skip_active' && Number(effects[String(target.uid)]?.[effectId]?.expiresAt)>now) return false;
+    if (skill.effectSpec.kind==='modifier' && !context.canImprove(target,effectId)) return false;
+    if (['heal','regen','sanctuary'].includes(skill.effectSpec.kind) && skill.effectSpec.kind!=='regen' && target.hp>=target.maxHP) return false;
+    if (['tempo','quickload'].includes(skill.effectSpec.kind)) {
+      const ordinary=realtimeCooldownSeconds({...target,type:0,speed:read(target,'SPD')}), current=effects[String(target.uid)] || {};
+      if(resolveBasicInterval(ordinary,{...current,[effectId]:{expiresAt:now+skill.durationSeconds}},now)>=resolveBasicInterval(ordinary,current,now))return false;
+    }
+    return true;
+  };
+  let candidates, anchor, targets, shape;
+  switch (rule.kind) {
+    case 'self': anchor=hero; targets=matches(hero)&&eligible(hero)?[hero]:[]; break;
+    case 'party':
+      if (!matches(hero)) return null;
+      targets=livingHeroes.filter(eligible); anchor=hero;
+      if (skill.effectSpec.kind==='sanctuary') {
+        const ko=heroes.find(a=>!alive(a)); if (ko) targets.push(ko);
+      }
+      break;
+    case 'lowestHPAlly': case 'slowestAlly':
+      candidates=livingHeroes.filter(a=>matches(a)&&eligible(a));
+      candidates.sort(rule.kind==='lowestHPAlly' ? (a,b)=>ratio(a)-ratio(b) : (a,b)=>realtimeCooldownSeconds({...b,type:0,speed:read(b,'SPD')})-realtimeCooldownSeconds({...a,type:0,speed:read(a,'SPD')}));
+      anchor=candidates[0]; targets=anchor?[anchor]:[]; break;
+    case 'enemy':
+      candidates=inRange.filter(a=>matches(a)&&eligible(a));
+      if (rule.order==='highestBaseATK') candidates.sort((a,b)=>rawCombatStat(b,'ATK')-rawCombatStat(a,'ATK'));
+      if (rule.order==='highestDEF') candidates.sort((a,b)=>read(b,'DEF')-read(a,'DEF'));
+      if (rule.order==='lowestHP') candidates.sort((a,b)=>ratio(a)-ratio(b));
+      if (rule.order==='furthestAdvanced') candidates.sort((a,b)=>a.x-b.x);
+      anchor=candidates[0]; targets=anchor?[anchor]:[]; break;
+    case 'firstArea': case 'bestArea':
+      candidates=inRange.filter(matches).map(a=>({actor:a,shape:shapeAt(rule.shape,a)})).map(a=>({...a,targets:enemiesInSkillShape(inRange,a.shape).filter(eligible)})).filter(a=>a.targets.length);
+      if (rule.kind==='bestArea') candidates.sort((a,b)=>{
+        const preferred=entry=>rule.bossFirst && entry.actor.combatRank==='boss' && (rule.bossHP==null || ratio(entry.actor)<rule.bossHP);
+        return Number(preferred(b))-Number(preferred(a)) || b.targets.length-a.targets.length;
+      });
+      anchor=candidates[0]?.actor; targets=candidates[0]?.targets || []; shape=candidates[0]?.shape; break;
+    case 'horizontalLine': case 'cone':
+      if (!matches(hero)) return null;
+      anchor=hero; shape=shapeAt(rule.shape,hero); targets=enemiesInSkillShape(inRange,shape); break;
+    case 'allEnemies':
+      if (!matches(hero)) return null;
+      anchor=inRange[0]; targets=inRange.filter(eligible); break;
+    case 'eventArea': case 'eventChain':
+      if (!matches(hero)) return null;
+      anchor=enemies.find(a=>Number(a.uid)===Number(rule.kind==='eventArea'?event?.sourceUID:event?.targetUID));
+      if (!anchor && rule.kind==='eventChain' && event?.point) anchor={uid:event.targetUID,...event.point};
+      if (!anchor) return null;
+      if (rule.kind==='eventArea') {
+        if (!isHeroBasicTargetInRange(anchor)) return null;
+        shape=shapeAt(rule.shape,anchor); targets=enemiesInSkillShape(inRange,shape);
+      } else { targets=inRange.filter(a=>a.uid!==anchor.uid).slice(0,rule.minimum); if(targets.length<rule.minimum)return null; }
+      break;
+    default: throw new Error(`Unknown target rule: ${rule.kind}`);
+  }
+  if (!targets?.length) return null;
+  return {targetUID:anchor?.uid,targetUIDs:targets.map(a=>Number(a.uid)),point:point(anchor),shape,event,effectChoice};
 }

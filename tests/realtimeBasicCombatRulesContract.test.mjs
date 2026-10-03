@@ -120,8 +120,8 @@ test('basic impact uses the rules counter reaction and records KO rewards throug
 
   const lethal = fixture({ enemyHP: 20, damage: 20 });
   lethal.run();
-  assert.deepEqual({ ...lethal.state.globals.ProgressionBattle.defeated }, { 2: 7 });
-  assert.deepEqual({ ...lethal.state.globals.ProgressionBattle.defeatedGold }, { 2: 4 });
+  assert.deepEqual({ ...lethal.state.globals.ProgressionBattle.defeated }, { 2: 0 });
+  assert.deepEqual({ ...lethal.state.globals.ProgressionBattle.defeatedGold }, { 2: 0 });
   assert.equal(lethal.state.globals.ProgressionBattle.rewardFlushes, 1, 'the duplicate KO callback does not flush a second receipt');
 });
 

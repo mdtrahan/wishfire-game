@@ -1,3 +1,4 @@
+import { resetRealtimeSkillAttempt } from './realtimeSkillState.mjs';
 import { computeCombatPower } from './combatPower.mjs';
 import { deriveCombatArenaBounds, deriveCombatFormationAnchors } from '../../../src/core/combatOrientation.mjs';
 import { cleanseDebuffs } from './combatRules.mjs';
@@ -140,6 +141,7 @@ export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1,
     : rangedHomeX(geometry.bounds, normalizedPackIndex, order);
   const homeY = boss ? BOSS_HOME.y : geometry.y;
   Object.assign(enemy, {
+    combatRank: ['boss','subboss'].includes(String(enemy.enemyRole || enemy.role || '').toLowerCase()) ? String(enemy.enemyRole || enemy.role).toLowerCase() : 'ordinary',
     streamState: 'approaching', streamLane: lane, streamRank: rank, streamPackIndex: packIndex, streamEntryOrder: order,
     streamDelivery: delivery, streamMeleeLine: meleeLine,
     streamEngageX: engageX, streamWalkSpeed: geometry.walkSpeed * PACK_WALK_SPEED_SCALE[order],
@@ -490,6 +492,7 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
 
   if (!transition?.stage || !spawnContinuousCombatStage({ globals, entities, call, state: transition.state })) return false;
   if (transition.clearedBoss) {
+    resetRealtimeSkillAttempt(globals,entities);
     for (const hero of entities.filter(actor => actor?.kind === 'hero')) {
       hero.hp = Number(hero.maxHP || 0);
       hero.isAlive = hero.hp > 0;

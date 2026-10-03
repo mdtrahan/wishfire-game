@@ -61,10 +61,10 @@ test('elemental frames load only when requested and are cached per effect', asyn
 
 test('approved hero skill IDs resolve to their source-thread element slugs', () => {
   const mapping = {
-    challenge_bolt: 'mark', shield_relay: 'light', brace: 'metal', retaliation_burst: 'earth', shield_slam: 'wind',
+    challenge_bolt: 'mark', cover: 'light', brace: 'metal', retaliation_burst: 'earth', shield_slam: 'wind',
     ambush: 'dark', cheap_shot: 'metal', razor_sweep: 'wind', piercing_throw: 'metal', finish_the_job: 'blood',
     frost_reversal: 'ice', hex_beacon: 'dark', burn_sigil: 'fire', null_field: 'void', return_gate: 'arcane',
-    wishgrant: 'light', quickload: 'lightning', split_feed: 'wind', patchwork: 'bloom', fortunes_blessing: 'mark',
+    wishgrant: 'light', quickload: 'lightning', shared_tempo: 'wind', patchwork: 'bloom', fortunes_blessing: 'mark',
   };
   for (const [skillId, slug] of Object.entries(mapping)) assert.equal(elementalImpactSlugForSkill(skillId), slug);
   assert.equal(elementalImpactSlugForSkill('frost_reversal', 'wind'), 'wind');

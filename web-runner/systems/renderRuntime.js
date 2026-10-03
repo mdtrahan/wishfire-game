@@ -445,7 +445,7 @@ export function renderRuntime(deps) {
       )
       .replaceAll(
         "ctx.drawImage(sprite, drawX, drawY, enemyW, enemyH)",
-        "drawCombatActorSprite(ctx, sprite, { drawX, drawY, width: enemyW, height: enemyH, pivotX: pos.x, orientation: activeCombatOrientation })",
+        "drawCombatActorSprite(ctx, sprite, { drawX, drawY, width: enemyW, height: enemyH, pivotX: pos.x, orientation: activeCombatOrientation, actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) })",
       )
       .replaceAll(
         "ctx.drawImage(img, drawX, drawY, scaledW, scaledH)",

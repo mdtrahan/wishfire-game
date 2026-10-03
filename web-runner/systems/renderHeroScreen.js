@@ -59,6 +59,7 @@ export function renderHeroScreen({equipmentProgress,canvas,gameState,fnContext,h
    const basic=el('article',null,pane);el('h2','Basic Attack',basic);el('p',d.basic.description,basic);
    for(const ability of d.actives){const item=el('article',null,pane);el('h2',ability.displayName,item);
     el('small',heroSkillUnlocked(hero,ability)?'Unlocked · Lv. '+ability.unlockLevel:'Unlocks at Lv. '+ability.unlockLevel,item);
+    el('p',`When: ${ability.conditionLabel} · CD ${ability.cooldownSeconds}s`,item);
     item.dataset.locked=String(!heroSkillUnlocked(hero,ability));
     el('p',ability.description.replaceAll('magic-tagged actions','magic skills'),item);
    }

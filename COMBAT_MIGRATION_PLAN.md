@@ -2,7 +2,7 @@
 
 Status: the hero-command contract below records an earlier delivered state. [The real-time engine cleanup plan](COMBAT_ENGINE_CLEANUP_PLAN.md) is the current technical cutover plan. The owner decisions dated 2026-09-23 supersede this document's turn, SP, FLOW and Pal assumptions. The separate Legend of Mushroom gap analysis is diagnostic evidence, not a migration plan or redesign policy. `COMBAT_MIGRATION_REPORT.md` records earlier implementation evidence; `MIGRATION_CHECKPOINT.md` retains history.
 
-Current target: four independently statted heroes replace the main-character-and-Pals attack sources. Each hero has five progressively scaling skills. Cooldowns determine basic and skill actions; combat has no playable turn commands, SP or FLOW resources, or turn-measured effect durations. Effects use seconds. The exact five skills per hero are awaiting owner selection. Do not treat the historical sections below as authority for those superseded rules.
+Current target: four independently statted heroes replace the main-character-and-Pals attack sources. The implemented conditional kits contain eight skills for Fara, Hondo and Runa, and nine for Kaja; [the conditional-skill catalog](governance/planning/conditional-skill-catalog.md) owns their effects, conditions, cooldowns and explicit unlocks. Cooldowns determine basic and skill actions; combat has no playable turn commands, SP or FLOW resources, or turn-measured effect durations. Effects use seconds. The exact five skills per hero are awaiting owner selection. Do not treat the historical sections below as authority for those superseded rules.
 
 ## 1. Scope and superseded decisions
 

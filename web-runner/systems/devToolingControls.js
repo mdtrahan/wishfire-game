@@ -12,7 +12,7 @@ export async function applyDeveloperLevel({ state, gameState, call, storage, loc
     const next=setHeroProgressLevel(createHeroProgressStore(g.HeroProgress), level, bank);
     storage.setItem(HERO_PROGRESS_SAVE_KEY, JSON.stringify(next));
     g.HeroProgress=next;g.HeroProgressDirty=false;g.HeroProgressStorageError='';
-    resetCombatSessionConditions(g, gameState);
+    resetCombatSessionConditions(g, gameState, state.entities);
     for (const hero of state.entities.filter(a=>a?.kind==='hero')) attachHeroProgress(hero,next);
     call('UpdateHeroHPUI');
     return next;

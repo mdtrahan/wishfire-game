@@ -1,226 +1,184 @@
 import { heroDefinition, heroKey, heroSkillUnlocked } from './heroDefinitions.mjs';
-import { enemiesInSkillShape } from './realtimeHeroTargeting.mjs';
+import { enemiesInSkillShape, selectRealtimeHeroSkillTarget } from './realtimeHeroTargeting.mjs';
 import { isHeroBasicTargetInRange } from '../../../src/core/heroAttackTargetingRules.mjs';
-
-const nowOf = globals => Number(globals.time || 0);
-const living = actor => actor && Number(actor.hp || 0) > 0;
-const point = actor => ({ x: Number(actor?.x || 0), y: Number(actor?.y || 0) });
-const actors = (ctx, kind) => ctx.state.entities.filter(actor => actor?.kind === kind && living(actor));
-const actor = (ctx, uid) => ctx.state.entities.find(entry => Number(entry?.uid || 0) === Number(uid || 0));
-const state = globals => globals.RealtimeSkillEffects ||= {};
-const effect = (globals, uid, id) => {
-  const entry = state(globals)[String(uid)]?.[id];
-  return entry && Number(entry.expiresAt || 0) > nowOf(globals) ? entry : null;
+import { activeCombatEffect, incomingReduction, resolveBasicInterval, projectCombatStat } from '../../../src/core/combatModifierRules.mjs';
+import { ensureSkillBattle, realtimeCombatStat, actorCombatModifiers, skillModifiers } from './realtimeSkillState.mjs';
+export { realtimeCombatStat } from './realtimeSkillState.mjs';
+const nowOf = g => Number(g.time || 0);
+const living = a => Number(a?.hp || 0)>0;
+const actor = (ctx,uid)=>ctx.state.entities.find(a=>Number(a.uid)===Number(uid));
+const point = a=>({x:Number(a?.x || 0),y:Number(a?.y || 0)});
+const effects = g=>g.RealtimeSkillEffects ||= {};
+export function realtimeEffect(g,uid,id) {
+  const record=effects(g)[String(uid)]?.[id];
+  return activeCombatEffect(record,nowOf(g))?record:null;
+}
+const grant = (g,source,target,id,seconds,extra={}) => {
+  (effects(g)[String(target.uid)] ||= {})[id]={sourceUID:source.uid,appliedAt:nowOf(g),expiresAt:nowOf(g)+seconds,...extra};
 };
-const grant = (globals, uid, id, seconds, extra = {}) => {
-  const effects = state(globals);
-  (effects[String(uid)] ||= {})[id] = { expiresAt: nowOf(globals) + seconds, ...extra };
+const damage = (ctx,source,target,pct,mode)=>{
+  if(!isHeroBasicTargetInRange(target))return 0;
+  const amount=ctx.callFunction('CalculateDamage',source.uid,target.uid,mode,pct);
+  return ctx.callFunction('ApplyDamageToTarget',target.uid,amount,{sourceUID:source.uid,suppressPartySkillHitHooks:1,actionKind:'skill'}) || 0;
 };
-const inRangeEnemies = ctx => actors(ctx, 'enemy').filter(enemy => isHeroBasicTargetInRange(enemy));
-const skillDamage = (ctx, source, target, pct, mode) => {
-  if (!isHeroBasicTargetInRange(target)) return 0;
-  const damage = ctx.callFunction('CalculateDamage', source.uid, target.uid, mode, pct);
-  return ctx.callFunction('ApplyDamageToTarget', target.uid, damage, { sourceUID: source.uid, suppressPartySkillHitHooks: 1 }) || 0;
+const rawDamage = (ctx,source,target,raw,mode)=>{
+  if(!isHeroBasicTargetInRange(target))return 0;
+  return ctx.callFunction('ApplyRealtimeRawDamage',source.uid,target.uid,raw,mode) || 0;
 };
-const hitArea = (ctx, source, shape, pct, mode) => enemiesInSkillShape(actors(ctx, 'enemy'), shape)
-  .map(target => ({ target, damage: skillDamage(ctx, source, target, pct, mode) }));
-const skillElement = Object.freeze({
-  challenge_bolt: 'mark', shield_relay: 'light', brace: 'metal', retaliation_burst: 'earth', shield_slam: 'wind',
-  ambush: 'dark', cheap_shot: 'metal', razor_sweep: 'wind', piercing_throw: 'metal', finish_the_job: 'blood',
-  frost_reversal: 'ice', hex_beacon: 'dark', burn_sigil: 'fire', null_field: 'void', return_gate: 'arcane',
-  wishgrant: 'light', quickload: 'lightning', split_feed: 'wind', patchwork: 'bloom', fortunes_blessing: 'mark',
-});
-
-export function realtimeEffect(globals, uid, id) { return effect(globals, uid, id); }
-
-export function realtimeStatMultiplier(globals, target, stat) {
-  if (Number(globals.ContinuousCombatStageLoop || 0) !== 1) return 1;
-  let multiplier = 1;
-  if (target.kind === 'hero' && effect(globals, target.uid, 'fortunes_blessing')?.stat === stat) multiplier *= 1.25;
-  if (target.kind === 'enemy' && stat === 'RES' && effect(globals, target.uid, 'hex_beacon')) multiplier *= .75;
-  return multiplier;
+const heal = (ctx,source,target,pct,revive=false)=>ctx.callFunction('HealRealtimeActor',source.uid,target.uid,pct,revive) || 0;
+export const REALTIME_SKILL_ELEMENTS = {challenge_bolt:'mark',iron_resolve:'bloom',brace:'metal',retaliation_burst:'earth',shield_slam:'wind',crimson_ward:'blood',destiny:'bloom',cover:'light',ambush:'dark',cheap_shot:'metal',razor_sweep:'wind',piercing_throw:'metal',finish_the_job:'blood',split:'wind',arcane_pulse:'wind',overrun:'metal',frost_reversal:'ice',hex_beacon:'dark',burn_sigil:'fire',null_field:'void',return_gate:'arcane',faze:'dark',chain_strike:'lightning',cataclysm:'fire',wishgrant:'light',quickload:'lightning',shared_tempo:'wind',patchwork:'bloom',fortunes_blessing:'mark',magic_fruit:'bloom',grow:'light',shrink:'arcane',sanctuary:'bloom'};
+export function realtimeBasicInterval(g,hero,ordinary) { return resolveBasicInterval(ordinary,effects(g)[String(hero.uid)],nowOf(g)); }
+export function realtimeProvokeTarget(ctx,enemy,preferred) {
+  const source=actor(ctx,realtimeEffect(ctx.state.globals,enemy?.uid,'provoke')?.sourceUID);
+  return living(source)&&source.kind==='hero'?source:preferred;
 }
-
-export function realtimeBasicInterval(globals, hero, ordinarySeconds) {
-  return effect(globals, hero.uid, 'quickload') ? .4 : ordinarySeconds;
+export function realtimeCoverTarget(ctx,target) {
+  const source=actor(ctx,realtimeEffect(ctx.state.globals,target?.uid,'cover')?.sourceUID);
+  return living(source)&&source.kind==='hero'&&source.uid!==target.uid?source:target;
 }
-
-export function realtimeProvokeTarget(ctx, enemy, preferred) {
-  const globals = ctx.state.globals;
-  const provoke = effect(globals, enemy?.uid, 'provoke');
-  const fara = provoke && actor(ctx, provoke.heroUID);
-  return living(fara) && fara.kind === 'hero' ? fara : preferred;
+export function realtimeIncomingDamage(ctx,target,source,amount) {
+  const g=ctx.state.globals;
+  if(Number(g.ContinuousCombatStageLoop)!==1||target?.kind!=='hero'||source?.kind!=='enemy')return amount;
+  const entries=effects(g)[String(target.uid)] || {}, cut=incomingReduction(entries,nowOf(g));
+  const brace=realtimeEffect(g,target.uid,'brace');
+  if(brace && --brace.charges<=0)delete entries.brace;
+  return Math.max(0,Math.floor(amount*(1-cut)));
 }
-
-export function realtimeCoverTarget(ctx, target) {
-  const globals = ctx.state.globals;
-  const cover = target?.kind === 'hero' && effect(globals, target.uid, 'cover');
-  const fara = cover && actor(ctx, cover.heroUID);
-  if (!living(fara) || fara.uid === target.uid) return target;
-  if (--cover.charges <= 0) delete state(globals)[String(target.uid)].cover;
-  return fara;
-}
-
-export function realtimeIncomingDamage(ctx, target, source, damage) {
-  const globals = ctx.state.globals;
-  if (Number(globals.ContinuousCombatStageLoop || 0) !== 1 || target?.kind !== 'hero' || source?.kind !== 'enemy') return damage;
-  const brace = effect(globals, target.uid, 'brace');
-  if (!brace) return damage;
-  if (--brace.charges <= 0) delete state(globals)[String(target.uid)].brace;
-  return Math.max(0, Math.floor(damage * .5));
-}
-
-export function realtimeMagicBlocked(globals, enemy) {
-  if (Number(globals.ContinuousCombatStageLoop || 0) !== 1) return false;
-  return !!effect(globals, enemy?.uid, 'null_field');
-}
-
-export function castRealtimeHeroSkill(ctx, heroUID, skill, selection, displacement = {}) {
-  const globals = ctx.state.globals, source = actor(ctx, heroUID);
-  if (!living(source) || !skill || !selection || !heroSkillUnlocked(source, skill)) return false;
-  const now = nowOf(globals), mode = heroKey(source) === 'Runa' ? 'magic' : source.attackType === 'magic' ? 'magic' : 'melee';
-  const target = actor(ctx, selection.targetUID);
-  if (target?.kind === 'enemy' && !isHeroBasicTargetInRange(target)) return false;
-  const targets = (selection.targetUIDs || []).map(uid => actor(ctx, uid)).filter(living);
-  const center = selection.point || (target && point(target));
-  const circle = radius => ({ kind: 'circle', center, radius });
-  const damage = (victim, pct = skill.damagePct) => skillDamage(ctx, source, victim, pct, mode);
-  const area = (shape, pct = skill.damagePct) => hitArea(ctx, source, shape, pct, mode);
-  let castFeedback = '';
-  switch (skill.skillId) {
-    case 'challenge_bolt':
-      damage(target); grant(globals, target.uid, 'provoke', skill.durationSeconds, { heroUID: source.uid }); break;
-    case 'shield_relay':
-      grant(globals, target.uid, 'cover', skill.durationSeconds, { heroUID: source.uid, charges: skill.charges }); break;
+export function realtimeMagicBlocked(g,enemy) { return Number(g.ContinuousCombatStageLoop)===1 && !!realtimeEffect(g,enemy?.uid,'null_field'); }
+export function castRealtimeHeroSkill(ctx,heroUID,skill,selection,displacement={}) {
+  const g=ctx.state.globals, source=actor(ctx,heroUID);
+  if(!living(source)||!skill||!selection||!heroSkillUnlocked(source,skill))return false;
+  const battle=ensureSkillBattle(ctx), now=nowOf(g);
+  // The action queue owns poll cooldowns. Commit rechecks live conditions and recipients.
+  const fresh=selectRealtimeHeroSkillTarget({skill,hero:source,heroes:ctx.state.entities.filter(a=>a.kind==='hero'),enemies:ctx.state.entities.filter(a=>a.kind==='enemy'),globals:g,effects:effects(g),zones:g.RealtimeSkillZones,now,event:selection.event,
+    statReader:(a,stat)=>ctx.callFunction('GetEffectiveStat',a,stat)});
+  if(!fresh)return false;
+  const targets=fresh.targetUIDs.map(uid=>actor(ctx,uid)).filter(Boolean), target=actor(ctx,fresh.targetUID);
+  const spec=skill.effectSpec, mode=heroKey(source)==='Runa'?'magic':'melee';
+  let feedback='';
+  switch(spec.kind) {
+    case 'damage': case 'damagePush': case 'damageRetreat': case 'damageDelay': case 'damageProvoke': case 'finisher':
+      for(const victim of targets) {
+        damage(ctx,source,victim,spec.damagePct,mode);
+        if(!living(victim))continue;
+        if(spec.kind==='damagePush' && victim.combatRank!=='boss')displacement.push?.(victim,skill.pushDistance,now);
+        if(spec.kind==='damageRetreat' && victim.combatRank!=='boss')displacement.reverse?.(victim,now,skill.durationSeconds);
+        if(spec.kind==='damageProvoke')grant(g,source,victim,'provoke',skill.durationSeconds);
+        if(spec.kind==='damageDelay') {
+          const clocks=g.RealtimeEnemyActionReadyAt ||= {}, key=String(victim.uid);
+          clocks[key]=Math.max(now,Number(clocks[key] || now))+skill.attackDelaySeconds;
+          const ongoing=g.RealtimeEnemyActionsByUID?.[key]; if(ongoing?.active)ongoing.nextReadyAt=Math.max(Number(ongoing.nextReadyAt || now),clocks[key]);
+        }
+      }
+      if(spec.kind==='finisher' && !living(target))for(const enemy of enemiesInSkillShape(ctx.state.entities.filter(a=>a.kind==='enemy'),{kind:'circle',center:fresh.point,radius:skill.splashRadius}))damage(ctx,source,enemy,skill.splashPct,mode);
+      break;
+    case 'split': {
+      const budget=Math.floor(ctx.callFunction('GetEffectiveStat',source,'ATK')*spec.damagePct/100),part=Math.floor(budget/targets.length);
+      targets.forEach((victim,index)=>rawDamage(ctx,source,victim,part+(index<budget%targets.length?1:0),'melee')); break;
+    }
+    case 'chain':
+      if(!(fresh.event.rawDamage>0))return false;
+      for(const victim of targets)rawDamage(ctx,source,victim,Number(fresh.event.rawDamage || 0)*spec.bouncePct/100,'magic'); break;
+    case 'heal':
+      if(!targets.reduce((total,victim)=>total+heal(ctx,source,victim,spec.healPctMaxHP),0))return false; break;
+    case 'sanctuary': {
+      for(const victim of targets) {
+        if(!living(victim)) { ensureSkillBattle(ctx); heal(ctx,source,victim,30,true); }
+        else heal(ctx,source,victim,20);
+      }
+      break;
+    }
+    case 'ward':
+      g.PartyTempHPShield=Math.floor(targets.reduce((sum,a)=>sum+Number(a.maxHP),0)*.18);
+      if(g.PartyTempHPShield<=0)return false;
+      g.PartyTempHPShieldSourceUID=source.uid; ctx.callFunction('StartRealtimeWardPresentation'); break;
+    case 'fruit':
+      battle.magicFruitUsed=1;
+      battle.fruitUIDs=ctx.state.entities.filter(a=>a.kind==='hero'&&living(a)).map(a=>Number(a.uid));
+      ensureSkillBattle(ctx); heal(ctx,source,target,32); break;
+    case 'grow':
+      battle.growTier=Math.min(3,Number(battle.growTier)+1); ensureSkillBattle(ctx); ctx.callFunction('UpdateHeroHPUI'); break;
     case 'brace':
-      grant(globals, source.uid, 'brace', skill.durationSeconds, { charges: skill.charges }); break;
-    case 'retaliation_burst': area(circle(skill.radius)); break;
-    case 'shield_slam':
-      for (const hit of area(circle(skill.radius))) displacement.push?.(hit.target, skill.pushDistance, now);
+      grant(g,source,source,'brace',skill.durationSeconds,{charges:skill.charges,damageCutPct:skill.damageCutPct}); break;
+    case 'cover':
+      for(const victim of targets)grant(g,source,victim,'cover',skill.durationSeconds,{damageCutPct:victim.uid===source.uid?skill.damageCutPct:0}); break;
+    case 'modifier':
+      if(skill.randomStats) {
+        const random=Number(g.RuntimeRandom());
+        if(skill.randomStats[Math.floor(random*skill.randomStats.length)]!==fresh.effectChoice)throw new Error('Combat RNG preview diverged from its owner');
+        feedback=` (${fresh.effectChoice} +25%)`;
+      }
+      for(const victim of targets)grant(g,source,victim,spec.effectId,skill.durationSeconds,{modifiers:skillModifiers(spec.effectId,fresh.effectChoice),data:{stat:fresh.effectChoice}});
       break;
-    case 'ambush':
-      damage(target); if (living(target)) grant(globals, target.uid, 'ambush', skill.durationSeconds, { heroUID: source.uid, charges: skill.charges, bonusPct: skill.bonusPct }); break;
-    case 'cheap_shot': {
-      damage(target);
-      const key = String(target.uid), clocks = globals.RealtimeEnemyActionReadyAt ||= {};
-      clocks[key] = Math.max(now, Number(clocks[key] || now)) + skill.attackDelaySeconds;
-      const ongoing = globals.RealtimeEnemyActionsByUID?.[key];
-      if (ongoing?.active) ongoing.nextReadyAt = Math.max(Number(ongoing.nextReadyAt || now), clocks[key]);
+    case 'quickload': case 'tempo': case 'null':
+      for(const victim of targets)grant(g,source,victim,skill.skillId,skill.durationSeconds);
+      if(spec.kind==='quickload') {
+        const clock=g.RealtimeHeroBasicClocks?.[String(target.uid)]; if(clock)clock.basicReadyAt=Math.min(Number(clock.basicReadyAt || now+.4),now+.4);
+      }
       break;
-    }
-    case 'razor_sweep': area({ kind: 'rectangle', center, width: skill.width, height: skill.height }); break;
-    case 'piercing_throw': area({ kind: 'line', from: point(source), to: { x: center.x + skill.beyond, y: center.y }, width: skill.lineWidth }); break;
-    case 'finish_the_job': {
-      const before = Number(target.hp || 0), dealt = damage(target);
-      if (before > 0 && !living(target)) for (const hit of enemiesInSkillShape(actors(ctx, 'enemy'), circle(skill.splashRadius))) damage(hit, skill.splashPct);
-      break;
-    }
-    case 'frost_reversal':
-      for (const hit of area(circle(skill.radius))) displacement.reverse?.(hit.target, now, skill.durationSeconds);
-      break;
-    case 'hex_beacon':
-      for (const enemy of enemiesInSkillShape(actors(ctx, 'enemy'), circle(skill.radius))) grant(globals, enemy.uid, 'hex_beacon', skill.durationSeconds);
-      break;
-    case 'burn_sigil':
-      (globals.RealtimeSkillZones ||= []).push({ kind: skill.skillId, sourceUID: source.uid, point: center, radius: skill.radius,
-        expiresAt: now + skill.durationSeconds, nextTickAt: now + 1, damagePct: skill.damagePctPerSecond });
-      break;
-    case 'null_field':
-      for (const enemy of enemiesInSkillShape(actors(ctx, 'enemy'), circle(skill.radius))) grant(globals, enemy.uid, 'null_field', skill.durationSeconds);
-      break;
-    case 'return_gate': displacement.teleport?.(target, skill.teleportDistance, now); break;
-    case 'wishgrant':
-      for (const ally of targets) grant(globals, ally.uid, 'wishgrant', skill.durationSeconds, { charges: skill.charges, damagePct: skill.basicDamagePct });
-      break;
-    case 'quickload': {
-      grant(globals, target.uid, 'quickload', skill.durationSeconds);
-      const clock = globals.RealtimeHeroBasicClocks?.[String(target.uid)];
-      if (clock) clock.basicReadyAt = Math.min(Number(clock.basicReadyAt || now + .4), now + .4);
-      break;
-    }
-    case 'split_feed':
-    case 'patchwork':
-      for (const ally of targets) grant(globals, ally.uid, skill.skillId, skill.durationSeconds,
-        skill.skillId === 'split_feed' ? { splashPct: skill.splashPct, splashRadius: skill.splashRadius } : { healPctMaxHP: skill.healPctMaxHP });
-      break;
-    case 'fortunes_blessing': {
-      if (typeof globals.RuntimeRandom !== 'function') return false;
-      const random = globals.RuntimeRandom();
-      const stat = skill.randomStats[Math.min(skill.randomStats.length - 1, Math.floor(random * skill.randomStats.length))];
-      for (const ally of targets) grant(globals, ally.uid, 'fortunes_blessing', skill.durationSeconds, { stat });
-      castFeedback = ` (${stat} +25%)`;
-      break;
-    }
-    default: return false;
+    case 'regen': case 'blight':
+      for(const victim of targets)grant(g,source,victim,spec.kind==='blight'?'blight':skill.skillId,skill.durationSeconds,{nextTickAt:now+spec.intervalSeconds,ticksRemaining:spec.ticks,data:{...spec}}); break;
+    case 'teleport':
+      if(!displacement.teleport?.(target,skill.teleportDistance,now))return false; break;
+    case 'zone':
+      (g.RealtimeSkillZones ||= []).push({kind:skill.skillId,sourceUID:source.uid,point:fresh.point,radius:skill.radius,appliedAt:now,expiresAt:now+skill.durationSeconds,nextTickAt:now+1,damagePct:spec.damagePct}); break;
+    default: throw new Error(`Unknown skill effect: ${spec.kind}`);
   }
-  globals.LastRealtimeHeroSkill = { heroUID: source.uid, skillId: skill.skillId, at: now, targetUID: target?.uid || 0, feedback: castFeedback };
-  for (const recipient of targets.length ? targets : [target || source]) {
-    (globals.CombatImpactRequests ||= []).push({ at: now, heroUID: source.uid,
-      targetUID: recipient.uid, ...(recipient.kind === 'enemy' ? { point: center } : {}),
-      skillId: skill.skillId, elementalSlug: skillElement[skill.skillId], damage: skill.damagePct || 0 });
-  }
-  ctx.callFunction('LogCombat', `${heroDefinition(source)?.name || source.name}: ${skill.displayName}${castFeedback}`);
+  g.LastRealtimeHeroSkill={heroUID:source.uid,skillId:skill.skillId,at:now,targetUID:target?.uid || 0,feedback};
+  for(const recipient of targets)(g.CombatImpactRequests ||= []).push({at:now,heroUID:source.uid,targetUID:recipient.uid,...(recipient.kind==='enemy'?{point:point(recipient)}:{}),skillId:skill.skillId,elementalSlug:REALTIME_SKILL_ELEMENTS[skill.skillId],damage:spec.damagePct || 0});
+  ctx.callFunction('LogCombat',`${heroDefinition(source).name}: ${skill.displayName}${feedback}`);
   return true;
 }
-
+export function cleanupRealtimeSkillActors(ctx) {
+  const g=ctx.state.globals;
+  for(const [uid,entries] of Object.entries(effects(g))) {
+    const target=actor(ctx,uid);
+    if(!living(target)) { delete effects(g)[uid]; continue; }
+    for(const [id,entry] of Object.entries(entries))if(['provoke','cover'].includes(id)&&!living(actor(ctx,entry.sourceUID)))delete entries[id];
+  }
+  g.RealtimeSkillZones=(g.RealtimeSkillZones || []).filter(zone=>living(actor(ctx,zone.sourceUID)));
+  if(g.PartyTempHPShieldSourceUID&&!living(actor(ctx,g.PartyTempHPShieldSourceUID))) {g.PartyTempHPShield=0;g.PartyWardBarrierActive=0;g.PartyWardBarrierVisualsByUID={};delete g.PartyTempHPShieldSourceUID;}
+}
 export function tickRealtimeHeroSkillZones(ctx) {
-  const globals = ctx.state.globals, now = nowOf(globals), zones = globals.RealtimeSkillZones || [];
-  for (const zone of zones) {
-    if (zone.kind !== 'burn_sigil' || Number(zone.nextTickAt || 0) > now) continue;
-    const source = actor(ctx, zone.sourceUID);
-    while (Number(zone.nextTickAt || 0) <= Math.min(now, Number(zone.expiresAt || 0))) {
-      if (source) hitArea(ctx, source, { kind: 'circle', center: zone.point, radius: zone.radius }, zone.damagePct, 'magic');
-      zone.nextTickAt += 1;
+  const g=ctx.state.globals;
+  if(g.GamePaused || g.CombatPaused || g.BattlePaused || g.DevToolingPaused || g.QaScenarioPaused)return;
+  cleanupRealtimeSkillActors(ctx); ensureSkillBattle(ctx);
+  const now=nowOf(g);
+  for(const zone of g.RealtimeSkillZones || []) {
+    const source=actor(ctx,zone.sourceUID);
+    while(zone.nextTickAt<=Math.min(now,zone.expiresAt)) {
+      for(const target of enemiesInSkillShape(ctx.state.entities.filter(a=>a.kind==='enemy'),{kind:'circle',center:zone.point,radius:zone.radius}))damage(ctx,source,target,zone.damagePct,'magic');
+      zone.nextTickAt+=1;
     }
   }
-  globals.RealtimeSkillZones = zones.filter(zone => zone.expiresAt > now);
-  for (const [uid, effects] of Object.entries(state(globals))) {
-    for (const [id, entry] of Object.entries(effects)) if (Number(entry.expiresAt || 0) <= now) delete effects[id];
-    if (!Object.keys(effects).length) delete state(globals)[uid];
-  }
-}
-
-export function realtimeBasicDamageMultiplier(globals, source, target) {
-  let multiplier = 1;
-  const wish = effect(globals, source.uid, 'wishgrant');
-  if (wish) multiplier *= Number(wish.damagePct || 330) / 100;
-  const ambush = effect(globals, target.uid, 'ambush');
-  if (ambush && Number(ambush.heroUID) === Number(source.uid)) {
-    multiplier *= 1 + Number(ambush.bonusPct || 20) / 100;
-  }
-  return multiplier;
-}
-
-export function realtimeBasicFollowups(ctx, source, target, damage) {
-  if (damage <= 0) return;
-  const globals = ctx.state.globals;
-  for (const [uid, id] of [[source.uid, 'wishgrant'], [target.uid, 'ambush']]) {
-    const buff = effect(globals, uid, id);
-    if (buff && (id !== 'ambush' || Number(buff.heroUID) === Number(source.uid)) && --buff.charges <= 0) delete state(globals)[String(uid)][id];
-  }
-  const splash = effect(globals, source.uid, 'split_feed');
-  if (splash) {
-    for (const enemy of enemiesInSkillShape(actors(ctx, 'enemy'), { kind: 'circle', center: point(target), radius: splash.splashRadius })) {
-      if (enemy.uid !== target.uid) ctx.callFunction('ApplyDamageToTarget', enemy.uid, Math.max(1, Math.floor(damage * splash.splashPct / 100)), { sourceUID: source.uid, suppressPartySkillHitHooks: 1 });
+  g.RealtimeSkillZones=(g.RealtimeSkillZones || []).filter(zone=>zone.expiresAt>now);
+  for(const [uid,entries] of Object.entries(effects(g)))for(const [id,entry] of Object.entries(entries)) {
+    const source=actor(ctx,entry.sourceUID),target=actor(ctx,uid);
+    while(living(target)&&entry.ticksRemaining>0&&entry.nextTickAt<=Math.min(now,entry.expiresAt)) {
+      if(id==='blight')rawDamage(ctx,source || {uid:entry.sourceUID},target,entry.data.rawDamage,'magic');
+      else heal(ctx,source || {uid:entry.sourceUID},target,entry.data.healPctMaxHP);
+      entry.ticksRemaining--;entry.nextTickAt+=entry.data.intervalSeconds;
     }
+    if(entry.expiresAt<=now)delete entries[id];
   }
-  const patchwork = effect(globals, source.uid, 'patchwork');
-  if (patchwork && living(source)) {
-    const before = Number(source.hp || 0);
-    source.hp = Math.min(Number(source.maxHP || before), before + Math.max(1, Math.floor(Number(source.maxHP || 0) * patchwork.healPctMaxHP / 100)));
-    if (source.hp > before) ctx.callFunction('UpdateHeroHPUI');
-  }
+  cleanupRealtimeSkillActors(ctx); ensureSkillBattle(ctx);
 }
-
-export function realtimeRetaliation(ctx, damagedHero, attackerUID, displacement = {}) {
-  const globals = ctx.state.globals;
-  if (heroKey(damagedHero) !== 'Falie' || Number(globals.ContinuousCombatStageLoop || 0) !== 1) return false;
-  const skill = heroDefinition(damagedHero)?.actives.find(entry => entry.skillId === 'retaliation_burst');
-  const clock = globals.RealtimeHeroBasicClocks?.[String(damagedHero.uid)];
-  if (!skill || !clock || Number(clock.skillReadyAt?.retaliation_burst || 0) > nowOf(globals)) return false;
-  const attacker = actor(ctx, attackerUID);
-  if (!living(attacker) || !isHeroBasicTargetInRange(attacker)) return false;
-  const cast = castRealtimeHeroSkill(ctx, damagedHero.uid, skill, { targetUID: attacker.uid, point: point(attacker) }, displacement);
-  if (cast) (clock.skillReadyAt ||= {}).retaliation_burst = nowOf(globals) + skill.cooldownSeconds;
-  return cast;
+export function realtimeBasicDamageMultiplier(g,source) {return projectCombatStat(1,'damageAmp',actorCombatModifiers(g,source));}
+function castReaction(ctx,source,skillId,event,displacement={}) {
+  if(!living(source))return false;
+  const g=ctx.state.globals,skill=heroDefinition(source)?.actives.find(a=>a.skillId===skillId);
+  if(!skill||!heroSkillUnlocked(source,skill))return false;
+  const clocks=g.RealtimeHeroBasicClocks ||= {},clock=clocks[String(source.uid)] ||= {skillReadyAt:{}};
+  if(Number(clock.skillReadyAt?.[skillId] || 0)>nowOf(g))return false;
+  const fired=castRealtimeHeroSkill(ctx,source.uid,skill,{event},displacement);
+  if(fired)(clock.skillReadyAt ||= {})[skillId]=nowOf(g)+skill.cooldownSeconds;
+  return fired;
+}
+export function realtimeBasicFollowups(ctx,source,target,hpDamage,raw=0) {
+  if(heroKey(source)!=='Runa'||hpDamage<=0)return false;
+  return castReaction(ctx,source,'chain_strike',{sourceUID:source.uid,targetUID:target.uid,actionKind:'basic',isPrimary:true,hpDamage,rawDamage:raw,point:point(target)});
+}
+export function realtimeRetaliation(ctx,damagedHero,attackerUID,displacement={},hpDamage=1) {
+  if(heroKey(damagedHero)!=='Falie'||Number(ctx.state.globals.ContinuousCombatStageLoop)!==1||hpDamage<=0)return false;
+  return castReaction(ctx,damagedHero,'retaliation_burst',{sourceUID:attackerUID,targetUID:damagedHero.uid,actionKind:'enemy',isPrimary:true,hpDamage},displacement);
 }

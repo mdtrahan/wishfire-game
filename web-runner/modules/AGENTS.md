@@ -86,3 +86,5 @@
 - Lamp progression: manual/Auto draws grant all four heroes saved EXP, with cumulative receipts and per-hero lampEXPClaimed replay. Enemy rewards grant zero new EXP/Gold. Auto requires all four Lv5, switches off at capacity, and requires explicit restart. Dismantling essence buys 20/30/40/50 capacity tiers; the combat-only strip carries item levels and a collection bubble above Auto.
 
 - Realtime hero skill scheduling filters the canonical unlock level before reserving a cooldown; shared cast validation rechecks it at impact, including reactive skills. Level presets clear stale scheduled actions and effects.
+
+- Conditional skills execute through the live realtime scheduler and UID damage/heal adapters. Scheduled commits revalidate targets; cancelled casts refund readiness. Deployed KO heroes remain visible to Sanctuary and retain cooldowns; only living heroes take actions. Retaliation and Chain evaluate immediate damage/basic events once, without recursive skill triggers.

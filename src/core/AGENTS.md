@@ -39,3 +39,5 @@
 - Party-damage packets carry six HP entries and the actual loaded member count. Empty capacity contributes no damage recipient or health.
 
 - Presentation barriers ignore retired combat-card flags. Animation, pending-hit and refill barriers remain enforced.
+
+- Conditional combat predicates and modifier limits are shared pure rules. HP thresholds are fractions; comparison groups use current projected stats. Repeated stat changes resolve the strongest increase and strongest decrease against a clean baseline. Seeded RNG previews never consume a draw.

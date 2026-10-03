@@ -8,6 +8,8 @@ Foes are living and in attack range; CDs use integer seconds with every pair mor
 
 ## Owner review
 
+V1 is implemented locally in `codex/ORKA-ood-conditional-skills` (ORKA-ood): all 33 skills use the conditions below, with shared overlap limits, integer cooldowns and explicit unlocks. Skill names remain editable. Listed tuning values are the implementation defaults; weather and biomes remain future proposals. See the [implementation goal](../../goals/wishfire-conditional-skills.md) for validation and checkpoint receipts.
+
 Read the hero cards below for skill behavior; [coder direction](#coder-direction) defines how to build them. Names are editable display labels; changing a name will not change its saved/internal ID. All 33 skills stay in the proposal.
 
 | Change to review | Player-facing result | Status |

@@ -1,0 +1,45 @@
+
+> codex-orka@1.0.0 test:ui-lock
+> node tools/ui_presentation_lock_gate.mjs
+
+✔ developer controls never shrink the game stage (21.404083ms)
+✔ viewport runtime scales launchers without reserving layout width (5.823ms)
+✔ both developer launchers consume the shared compact control scale (1.801708ms)
+✔ developer panels permit vertical scrolling without horizontal overflow (1.000042ms)
+✔ progress bars and damage bitmaps obey the presentation scale (4.787292ms)
+✔ fallback text scales or elides against the measured logical Canvas width (4.854542ms)
+✔ compact fallback copy wraps inside measured Canvas bounds without truncation (1.189584ms)
+✔ combat transient controls and damage text share the compact layout scale (16.838917ms)
+✔ combat renderer and attack hit target consume shared presentation sizing (1.405167ms)
+✔ questQA exposes a hidden pause snapshot without retired combat controls (0.502ms)
+✔ dev tooling runtime owns modal/config while app keeps restart wiring (30.114333ms)
+✔ dev tooling restart helper owns restart button labels and reset delegation (0.53725ms)
+✔ editable dev tooling fields bypass gameplay keyboard shortcuts (0.872917ms)
+✔ dev hooks omit retired turn-order, initiative, and autoplay QA controls (1.1685ms)
+✔ dev tooling pause preserves realtime state and resumes without turn-input repair (5.948291ms)
+✔ startup preload can prepare combat assets while story mock is active (1.228042ms)
+✔ runtime render scope includes board integrity helper used by extracted runtime (1.192166ms)
+✔ runtime render scope includes gem gate snapshot helper used by extracted runtime (1.4425ms)
+✔ debug gem diagnostics do not mutate timing samples unless explicitly requested (7.42975ms)
+✔ combat end clears staged dev overrides while preserving gold (11.246708ms)
+✔ Speed Link Fixture uses the existing dev selector to force one two-times-Speed threshold (7.863041ms)
+✔ one through six actual heroes retain their command positions, including KO and empty capacity (53.237625ms)
+✔ native attack commits once for the scheduled living actor and never spends on a rejected command (2.527833ms)
+✔ an arranged Battle B owner reports the exact presentation predicate before a QA fixture claims its turn (0.619542ms)
+✔ a refused animation handoff restores combat intent (0.459583ms)
+✔ native basic attacks expose their resolved damage to impact presentation (3.340917ms)
+✔ native lethal attacks create the enemy death hold before the next render (2.080541ms)
+✔ native queued commands resolve once at the simulation seam while future hits remain queued (4.705334ms)
+✔ combat strips the legacy outlined tracker backdrop from the generated renderer (10.237792ms)
+✔ UI lock command covers the approved DOM and Canvas presentation seams (16.185459ms)
+✔ pre-commit routes staged UI-owner changes through the full UI lock (0.566875ms)
+ℹ tests 31
+ℹ suites 0
+ℹ pass 31
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 398.087292
+[UI_LOCK_PASS] 120/120 rendered invariants passed
+[UI_LOCK_REPORT] /Users/Mace/.codex/worktrees/orka-ood-conditional-skills/Codex-Orka/test-results/ui-lock/2026-10-03T19-32-20-279Z/ui-lock-report.json

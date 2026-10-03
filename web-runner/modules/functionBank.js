@@ -55,7 +55,7 @@ import {
 } from '../src/core/dynamicInitiativeRules.mjs';
 import { realtimeCooldownSeconds, scheduleRealtimeActions, selectRealtimeReadyActor } from '../src/core/realtimeCooldown.mjs';
 import { selectRealtimeHeroSkillTarget } from '../src/core/realtimeHeroTargeting.mjs';
-import { castRealtimeHeroSkill, tickRealtimeHeroSkillZones, realtimeBasicInterval, realtimeStatMultiplier, realtimeProvokeTarget, realtimeCoverTarget, realtimeIncomingDamage, realtimeMagicBlocked, realtimeRetaliation } from './heroCommands.mjs';
+import { castRealtimeHeroSkill, tickRealtimeHeroSkillZones, realtimeBasicInterval, realtimeCombatStat,realtimeBasicDamageMultiplier,cleanupRealtimeSkillActors, realtimeProvokeTarget, realtimeCoverTarget, realtimeIncomingDamage, realtimeMagicBlocked, realtimeRetaliation } from './heroCommands.mjs';
 import { heroDefinition, heroSkillUnlocked } from '../src/core/heroDefinitions.mjs';
 import { pushContinuousCombatEnemy, reverseContinuousCombatEnemy, teleportContinuousCombatEnemy } from '../src/core/continuousCombatStage.mjs';
 
@@ -5010,7 +5010,9 @@ export function GetEffectiveStat(ctx, inst, stat) {
     jsValue: Number(jsValue || 0),
   });
 
-  return Math.max(0, (owner ? owner.value : jsValue) * realtimeStatMultiplier(g, inst, stat));
+  const ownedValue=owner ? owner.value : jsValue;
+  return Number(g.ContinuousCombatStageLoop || 0)===1 && ['ATK','DEF','MAG','RES','SPD'].includes(stat)
+    ? realtimeCombatStat(g,inst,stat,Number(inst.stats?.[stat] ?? inst[stat] ?? 0),Number(inst.stats?.[stat] ?? inst[stat] ?? 0)+(ownedValue-jsValue)) : Math.max(0,ownedValue);
 }
 
 export function GetBaseStat(ctx, inst, stat) {
@@ -5735,7 +5737,30 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode, attackMultipl
     `[DMG_AUDIT] attackerType=${isHeroAttacker ? 'H' : 'E'} base=${baseDmg} final=${dmg} target=${tgt.name || tgt.uid || 'unknown'}`
   );
   console.log(`[DMG_AUDIT] chainApplied=${chainApplied} attackerType=${isHeroAttacker ? 'H' : 'E'}`);
-  return dmg;
+  g.LastCalculateDamageRaw = Math.ceil(Math.max(0,power)*Math.max(0,attackMultiplierPct)/100*(jsDecision.didCrit?1.25:1));
+  return isHeroAttacker && Number(g.ContinuousCombatStageLoop || 0)===1 ? Math.ceil(dmg*realtimeBasicDamageMultiplier(g,atk)) : dmg;
+}
+
+// Explicit raw skill budgets bypass another potency or critical roll, then mitigate once.
+export function ApplyRealtimeRawDamage(ctx,sourceUID,targetUID,rawAmount,mode='magic') {
+  const g=getGlobals(ctx),source=GetActorByUID(ctx,sourceUID),target=GetActorByUID(ctx,targetUID);
+  if(!target || !isHeroBasicTargetInRange(target))return 0;
+  const magic=mode==='magic';
+  const decision=resolveCalculateDamageFromJs({power:Math.max(0,Number(rawAmount || 0)),resist:GetEffectiveStat(ctx,target,magic?'RES':'DEF'),matchingResistancePct:GetBaseStat(ctx,target,magic?'magicDamageResistancePct':'physicalDamageResistancePct'),generalResistancePct:GetBaseStat(ctx,target,'damageResistancePct'),critRoll01:1});
+  const amp=source?realtimeBasicDamageMultiplier(g,source):1;
+  return ApplyDamageToTarget(ctx,targetUID,Math.ceil(decision.damage*amp),{sourceUID,suppressPartySkillHitHooks:1,actionKind:'skill'});
+}
+
+export function HealRealtimeActor(ctx,sourceUID,targetUID,pct,revive=false) {
+  const target=GetActorByUID(ctx,targetUID),source=GetActorByUID(ctx,sourceUID);
+  if(!target || target.kind!=='hero' || (revive ? target.hp>0 : target.hp<=0))return 0;
+  const before=Number(target.hp || 0),amount=Math.floor(Number(target.maxHP || 0)*Number(pct)/100);
+  target.hp=Math.min(Number(target.maxHP || 0),before+amount);
+  target.isAlive=target.hp>0;
+  if(revive && target.isAlive) {delete target.ko;delete target.isKO;target.statuses=[];}
+  const healed=emitResolvedHealEvent(ctx,source || {uid:sourceUID},target,before,{allowRevive:revive});
+  if(target.hp>before)UpdateHeroHPUI(ctx);
+  return healed;
 }
 
 function absorbPartyTempHPShield(g, dmg) {
@@ -5824,6 +5849,12 @@ function refreshCrimsonWardBarrierVisuals(ctx) {
   g.PartyWardBarrierBaseAlpha = CRIMSON_WARD_BARRIER_BASE_ALPHA;
   g.PartyWardBarrierFadeOutUntil = 0;
   return true;
+}
+
+export function StartRealtimeWardPresentation(ctx) {
+  const g=getGlobals(ctx),maxHP=getHeroes(ctx).reduce((sum,hero)=>sum+Number(hero.maxHP || 0),0);
+  Object.assign(g,{PartyTempHPShieldStacks:1,PartyTempHPShieldRatio:g.PartyTempHPShield/Math.max(1,maxHP),PartyTempHPShieldMax:maxHP,PartyTempHPShieldColor:CRIMSON_WARD_SHIELD_COLOR,PartyTempHPShieldSource:'realtime_crimson_ward'});
+  return refreshCrimsonWardBarrierVisuals(ctx);
 }
 
 function activateCrimsonWardSkill(ctx) {
@@ -6061,9 +6092,10 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   } else {
     t.hp = Math.max(0, (t.hp ?? 0) - damageToHP);
   }
+  cleanupRealtimeSkillActors(ctx);
   const afterHP = Number(t.hp ?? 0);
   const appliedDamage = Math.max(0, beforeHP - afterHP);
-  if (appliedDamage > 0 && source?.kind === 'enemy' && t.kind === 'hero') realtimeRetaliation(ctx, t, source.uid);
+  if (appliedDamage > 0 && source?.kind === 'enemy' && t.kind === 'hero') realtimeRetaliation(ctx, t, source.uid, {}, appliedDamage);
   if (chainStrikeIIHit) recordAstralFlowChainStrikeIIHit(g, { targetUID: Number(uid || 0), preHP: beforeHP, postHP: afterHP, damage: appliedDamage, coefficient: Number(chainStrikeIIHit.chainStrikeDamagePct || 396), primary: Number(chainStrikeIIHit.chainStrikeIIPrimary || 0) === 1 });
   g.LastDamageSourceUID = source?.uid || g.LastDamageSourceUID;
 
@@ -7162,8 +7194,13 @@ export function TickRealtimeHeroBasics(ctx) {
   const clocks = { ...(g.RealtimeHeroBasicClocks || {}) };
   const scheduled = { ...(g.RealtimeHeroBasicScheduledActions || {}) };
   const liveUIDs = new Set(heroes.map(hero => String(hero.uid)));
-  for (const uid of Object.keys(clocks)) if (!liveUIDs.has(uid)) delete clocks[uid];
-  for (const uid of Object.keys(scheduled)) if (!liveUIDs.has(uid)) delete scheduled[uid];
+  const deployedUIDs=new Set(getEntities(ctx).filter(a=>a?.kind==='hero').map(a=>String(a.uid)));
+  for (const uid of Object.keys(clocks)) if (!deployedUIDs.has(uid)) delete clocks[uid];
+  for (const uid of Object.keys(scheduled)) if (!liveUIDs.has(uid)) {
+    const cancelled=scheduled[uid];
+    if(cancelled.kind==='skill' && clocks[uid])(clocks[uid].skillReadyAt ||= {})[cancelled.skillId]=cancelled.dueAt;
+    delete scheduled[uid];
+  }
   for (const hero of heroes) {
     const key = String(hero.uid);
     const previous = clocks[key] || {};
@@ -7193,8 +7230,9 @@ export function TickRealtimeHeroBasics(ctx) {
   g.RealtimeHeroBasicClocks = clocks;
   const servicedUIDs = new Set();
   const skillSelection = (hero, skill) => selectRealtimeHeroSkillTarget({
-    skill, hero, heroes, enemies: getEnemies(ctx), effects: g.RealtimeSkillEffects,
-    zones: g.RealtimeSkillZones, now: Number(g.time || 0),
+    skill, hero, heroes:getEntities(ctx).filter(a=>a?.kind==='hero'), enemies: getEnemies(ctx), effects: g.RealtimeSkillEffects,
+    zones: g.RealtimeSkillZones, now: Number(g.time || 0), globals:g,
+    statReader:(actor,stat)=>GetEffectiveStat(ctx,actor,stat),
   });
   const fireSkill = (hero, skillId) => {
     const skill = heroDefinition(hero)?.actives.find(entry => entry.skillId === skillId);
@@ -7242,7 +7280,7 @@ export function TickRealtimeHeroBasics(ctx) {
       basicCastSeconds: 0,
       projectileFlightSeconds: 0.52,
       basicEligible: !scheduled[String(hero.uid)] && !servicedUIDs.has(Number(hero.uid)),
-      skills: (heroDefinition(hero)?.actives || []).filter(skill => skill.skillId !== 'retaliation_burst' && heroSkillUnlocked(hero, skill)).map(skill => ({
+      skills: (heroDefinition(hero)?.actives || []).filter(skill => skill.trigger === 'poll' && heroSkillUnlocked(hero, skill)).map(skill => ({
         id: skill.skillId, cooldownSeconds: skill.cooldownSeconds,
         eligible: !scheduled[String(hero.uid)] && !servicedUIDs.has(Number(hero.uid)) && !!skillSelection(hero, skill),
       })),
@@ -7391,6 +7429,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID, realtimeBasic = false)
   const actor = GetActorByUID(ctx, heroUID);
   const mode = actor && actor.attackType === 'magic' ? 'magic' : 'melee';
   const dmg = CalculateDamage(ctx, heroUID, targetUID, mode);
+  const rawDamage = Number(getGlobals(ctx).LastCalculateDamageRaw || 0);
   const ampEntry = ensurePowerAmpByUID(ctx)[heroUID];
   const ampLifecycleId = Number(ampEntry?.lifecycleId || 0);
   let ampMult = GetPowerAmpMultiplierForActor(ctx, heroUID);
@@ -7461,6 +7500,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID, realtimeBasic = false)
     heroName: actorName,
     heroType: mode,
     combatRulesBasic: realtimeBasic ? 1 : 0,
+    rawDamage,
     attackVfxKind: combatAttackVfxKind(actor),
     targetTraceSequence: Number(g.ActiveManualTargetTraceSequence || 0),
     msg: `${actorName} hit ${target.name || '?'} for ${finalDmg}!`,

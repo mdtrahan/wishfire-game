@@ -763,7 +763,7 @@ export function createDevToolingRuntime(deps = {}) {
     // Quit and fresh-session transitions discard any in-flight native command.
     state.globals.NativeCommandSequence = null;
     if (options.clearSessionSettlement) {
-      resetCombatSessionConditions(state.globals, gameState);
+      resetCombatSessionConditions(state.globals, gameState, state.entities);
     }
     const refill = gameState.refillBounce || (gameState.refillBounce = {});
     refill.active = false;

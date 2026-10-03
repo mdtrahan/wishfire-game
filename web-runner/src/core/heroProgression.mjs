@@ -8,7 +8,7 @@ export function levelStats(hero){
  for(const [stat,value] of Object.entries(hero.equipmentStats||{}))if(stat in stats)stats[stat]+=value;
  return Object.fromEntries(Object.entries(stats).map(([k,v])=>[k,Math.max(1,Math.floor(v))]));
 }
-export function refreshHeroStats(hero){const stats=levelStats(hero);hero.maxHP=stats.HP;delete stats.HP;hero.stats=stats;hero.maxLevel=heroDefinition(hero)?.maxLevel||PROGRESSION.maxLevel;hero.EXPToNextLevel=expToNextLevel(hero.currentLevel,{...PROGRESSION,maxLevel:hero.maxLevel});return hero;}
+export function refreshHeroStats(hero){const stats=levelStats(hero);hero.combatBaseMaxHP=stats.HP;hero.maxHP=Math.max(1,Math.floor(stats.HP*Number(hero.combatMaxHPMultiplier || 1)));delete stats.HP;hero.stats=stats;hero.maxLevel=heroDefinition(hero)?.maxLevel||PROGRESSION.maxLevel;hero.EXPToNextLevel=expToNextLevel(hero.currentLevel,{...PROGRESSION,maxLevel:hero.maxLevel});return hero;}
 export function newHeroProgress(key,instanceKey=key){const definition=heroDefinition(key);if(!definition)throw new Error('Unknown hero: '+key);const hero={heroInstanceKey:instanceKey,baseHeroName:definition.key,name:definition.key,currentLevel:1,currentEXP:0,lampEXPClaimed:0,maxLevel:definition.maxLevel};refreshHeroStats(hero);hero.hp=hero.maxHP;return hero;}
 export function setHeroProgressLevel(store,level,partyEXP=0){
  if(!Number.isInteger(level)||level<1||level>PROGRESSION.maxLevel||!Number.isSafeInteger(partyEXP)||partyEXP<0)throw new Error('Invalid hero progression preset.');
@@ -51,7 +51,7 @@ export function attachHeroProgress(actor,store){
  const saved=store.heroes[id]||(store.heroes[id]=newHeroProgress(key,id));
  Object.assign(actor,{currentLevel:saved.currentLevel,currentEXP:saved.currentEXP,lampEXPClaimed:saved.lampEXPClaimed,maxLevel:saved.maxLevel,heroInstanceKey:id,equipmentStats:{...saved.equipmentStats}});for(const key of ['actionSlotsPerTurn','sp','spMax','flow','flowMode'])delete actor[key];refreshHeroStats(actor);actor.hp=Math.min(actor.maxHP,saved.hp);actor.statuses=[];return actor;
 }
-export function saveHeroProgress(actor,store){const id=actor.heroInstanceKey||heroKey(actor);store.heroes[id]={heroInstanceKey:id,equipmentStats:{...actor.equipmentStats},baseHeroName:heroKey(actor),name:heroKey(actor),currentLevel:actor.currentLevel,currentEXP:actor.currentEXP,lampEXPClaimed:actor.lampEXPClaimed||0,maxLevel:actor.maxLevel,hp:actor.hp,maxHP:actor.maxHP,stats:{...actor.stats},EXPToNextLevel:actor.EXPToNextLevel};}
+export function saveHeroProgress(actor,store){const id=actor.heroInstanceKey||heroKey(actor);store.heroes[id]={heroInstanceKey:id,equipmentStats:{...actor.equipmentStats},baseHeroName:heroKey(actor),name:heroKey(actor),currentLevel:actor.currentLevel,currentEXP:actor.currentEXP,lampEXPClaimed:actor.lampEXPClaimed||0,maxLevel:actor.maxLevel,hp:Math.min(actor.hp,actor.combatBaseMaxHP || actor.maxHP),maxHP:actor.combatBaseMaxHP || actor.maxHP,stats:{...actor.stats},EXPToNextLevel:actor.EXPToNextLevel};}
 export function settleBattleEXP(store,battle,heroes){
  if(battle.settled||store.settledBattles.includes(battle.id))return [];
  battle.settled=true;store.settledBattles.push(battle.id);store.settledBattles=store.settledBattles.slice(-100);

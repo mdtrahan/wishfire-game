@@ -23,4 +23,8 @@ Shared pure condition/modifier rules; canonical definitions; realtime selection/
 
 ## Progress
 
-Design checkpoint prepared; implementation active.
+Development Complete. Design checkpoint: `072fcac`; implementation checkpoint follows in this lane's Git history.
+
+All 33 skills and four awakenings are implemented. The focused batch passed 142 tests; the hot-file gate passed 85, with 34 lamp regressions passing. The rendered UI lock passed 120 invariants across five viewport/DPR settings, plus 31 supporting contracts. Live in-app QA confirmed active combat and readable conditions/CDs at the natural viewport. [Validation and screenshots](../output/qa/conditional-skills/validation.md) record the proof and inherited test mismatch.
+
+Local preview: http://localhost:8040/web-runner/index.html. Human review and integration remain pending; this goal ends at the scoped, validated implementation checkpoint.

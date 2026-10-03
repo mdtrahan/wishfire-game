@@ -138,3 +138,5 @@
 - Lamp odds containment checks text ranges inside every table cell, alongside panel and action bounds; a contained outer panel cannot certify unclipped percentages.
 
 - progressionTransitions protects 7-hour construction, reload/expiry, atomic last-stage/ticket spending, unlocked/direct/reactive skill gates, genuine progression presets, recoverable namespace-only reset and tier-owned boss restoration. Phone QA exercises the real DEV buttons, canonical saved/live stats and SKILLS disclosure, then RESET GAME in isolated contexts.
+
+- Conditional-skill proof covers all 33 IDs, current-stat comparisons, recipient guards, modifier bounds, deterministic RNG preview, final expiry ticks, KO/revival identity, clean saved progression and real scheduler dispatch/refunds. Runtime VM fixtures must bind the actual imported realtime services when exercising changed seams.

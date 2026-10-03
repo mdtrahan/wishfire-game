@@ -1,3 +1,4 @@
+import { realtimeBasicDamageMultiplier } from '../web-runner/src/core/realtimeHeroSkills.mjs';
 import { effectiveStat } from '../web-runner/src/core/combatRules.mjs';
 import { executeHeroCommand, resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat, settleContinuousCombatRewards, emitResolvedHealEvent } from '../web-runner/modules/heroCommands.mjs';
 import { state } from './state.js';
@@ -5650,7 +5651,8 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode, attackMultipl
     `[DMG_AUDIT] attackerType=${isHeroAttacker ? 'H' : 'E'} base=${baseDmg} final=${dmg} target=${tgt.name || tgt.uid || 'unknown'}`
   );
   console.log(`[DMG_AUDIT] chainApplied=${chainApplied} attackerType=${isHeroAttacker ? 'H' : 'E'}`);
-  return dmg;
+  g.LastCalculateDamageRaw = Math.ceil(Math.max(0,power)*Math.max(0,attackMultiplierPct)/100*(jsDecision.didCrit?1.25:1));
+  return isHeroAttacker && Number(g.ContinuousCombatStageLoop || 0)===1 ? Math.ceil(dmg*realtimeBasicDamageMultiplier(g,atk)) : dmg;
 }
 
 function absorbPartyTempHPShield(g, dmg) {

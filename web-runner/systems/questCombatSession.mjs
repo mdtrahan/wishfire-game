@@ -20,7 +20,7 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
     recoverContinuousDefeat() {
       if (Number(state.globals.ContinuousCombatStageLoop || 0) !== 1) return false;
       call('SettleContinuousCombatRewards');
-      resetCombatSessionConditions(state.globals, gameState);
+      resetCombatSessionConditions(state.globals, gameState, state.entities);
       state.entities = state.entities.filter(actor => actor?.kind === 'hero');
       state.globals.EnemySlots = [];
       state.globals.EnemyDeathVisualHoldByUID = {};
