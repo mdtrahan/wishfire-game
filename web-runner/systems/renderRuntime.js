@@ -104,7 +104,7 @@ effectiveBody = effectiveBody.replace(
 effectiveBody = effectiveBody
   .replace(
     'const combatFormationProjection = createCombatFormationProjection({ orientation: activeCombatOrientation, layoutW, ...combatFormationAnchors });\n    const projectCombatActorWorldToCanvas = (x, y, actorKind = \'\') => { const point = combatFormationProjection.project(x, y, actorKind); return worldToCanvas(point.x, point.y); };',
-    'const combatWorldBounds = deriveCombatWorldBounds(layoutW, COMBAT_BATTLEFIELD_ZOOM);\n    const livingHeroesForCamera = state.entities.filter(actor => actor?.kind === \'hero\' && Number(actor.hp || 0) > 0);\n    const squadCenterX = livingHeroesForCamera.length ? livingHeroesForCamera.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? layoutW / 2), 0) / livingHeroesForCamera.length : layoutW / 2;\n    const combatCameraProjection = createCombatCameraProjection({ viewportWidth: layoutW, worldWidth: combatWorldBounds.worldWidth, zoom: COMBAT_BATTLEFIELD_ZOOM, centerX: squadCenterX, orientation: activeCombatOrientation });\n    const projectCombatActorWorldToCanvas = (x, y, actorKind = \'\') => { const point = combatCameraProjection.project(x, y, actorKind); return worldToCanvas(point.x, point.y); };',
+    'const combatWorldVfxScale = layoutScale * COMBAT_BATTLEFIELD_ZOOM;\n    const combatWorldBounds = deriveCombatWorldBounds(layoutW, COMBAT_BATTLEFIELD_ZOOM);\n    const livingHeroesForCamera = state.entities.filter(actor => actor?.kind === \'hero\' && Number(actor.hp || 0) > 0);\n    const squadCenterX = livingHeroesForCamera.length ? livingHeroesForCamera.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? layoutW / 2), 0) / livingHeroesForCamera.length : layoutW / 2;\n    const combatCameraProjection = createCombatCameraProjection({ viewportWidth: layoutW, worldWidth: combatWorldBounds.worldWidth, zoom: COMBAT_BATTLEFIELD_ZOOM, centerX: squadCenterX, orientation: activeCombatOrientation });\n    const projectCombatActorWorldToCanvas = (x, y, actorKind = \'\') => { const point = combatCameraProjection.project(x, y, actorKind); return worldToCanvas(point.x, point.y); };',
   )
   .replace('const grid = deriveCombatReferenceGrid(layoutW, layoutH);', 'const grid = deriveCombatReferenceGrid(combatWorldBounds.worldWidth, layoutH);')
   .replace('grid.vertical.filter(line => line.major && line.value < layoutW).forEach(line => {', 'grid.vertical.filter(line => line.major && line.value < combatWorldBounds.worldWidth).forEach(line => {')
@@ -112,8 +112,8 @@ effectiveBody = effectiveBody
   .replace('const center = worldToCanvas(grid.centerX, 0);', 'const center = projectCombatActorWorldToCanvas(grid.centerX, 0);')
   .replace('const point = worldToCanvas(line.value, 0);\n        ctx.fillText(String(line.value)', 'const point = projectCombatActorWorldToCanvas(line.value, 0);\n        if (point.x < topLeft.x || point.x > bottomRight.x) return;\n        ctx.fillText(String(line.value)')
   .replace('const point = worldToCanvas(0, line.value);\n        ctx.fillText(String(line.value)', 'const point = projectCombatActorWorldToCanvas(0, line.value);\n        ctx.fillText(String(line.value)')
-  .replace('renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layoutScale });', 'renderCombatAttackVfx(ctx, { state, images, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: layoutScale * COMBAT_BATTLEFIELD_ZOOM, viewportLeft: layoutOffsetX, viewportRight: layoutOffsetX + layoutW * layoutScale });')
-  .replace('renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale });', 'renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: layoutScale * COMBAT_BATTLEFIELD_ZOOM });')
+  .replace('renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layoutScale });', 'renderCombatAttackVfx(ctx, { state, images, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: combatWorldVfxScale, viewportLeft: layoutOffsetX, viewportRight: layoutOffsetX + layoutW * layoutScale });')
+  .replace('renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale });', 'renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: combatWorldVfxScale });')
   .replaceAll('const enemyH = (g.EnemySize || 40) * layoutScale;', 'const enemyH = (g.EnemySize || 40) * layoutScale * COMBAT_BATTLEFIELD_ZOOM;')
   .replaceAll('const scaledW = w * heroScale * 1.55;', 'const scaledW = w * heroScale * 1.55 * COMBAT_BATTLEFIELD_ZOOM;')
   .replaceAll('const scaledH = h * heroScale * 1.55;', 'const scaledH = h * heroScale * 1.55 * COMBAT_BATTLEFIELD_ZOOM;')
@@ -146,7 +146,7 @@ effectiveBody = effectiveBody.replace(
   "    renderHealBlooms('front');",
   "    actorPaintQueue.sort((a, b) => Number(a.footY || 0) - Number(b.footY || 0) || Number(a.uid || 0) - Number(b.uid || 0));\n    for (const entry of actorPaintQueue) entry.paint();\n    for (const paint of actorFrontOverlayQueue) paint();\n\n    renderHealBlooms('front');",
 );
-effectiveBody = effectiveBody.replace('    actorPaintQueue.sort(', '    renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale });\n    actorPaintQueue.sort(');
+effectiveBody = effectiveBody.replace('    actorPaintQueue.sort(', '    renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: combatWorldVfxScale });\n    actorPaintQueue.sort(');
   return effectiveBody;
 }
 
@@ -226,15 +226,19 @@ export function renderRuntime(deps) {
       )
       .replace(
         "const sigilW = Math.max(48, 66 * layoutScale);",
-        "const sigilW = Math.max(36, 46 * layoutScale);",
+        "const sigilW = Math.max(36 * combatWorldVfxScale, 46 * combatWorldVfxScale);",
       )
       .replace(
         "const width = Math.max(54, 72 * layoutScale);",
-        "const width = Math.max(38, 48 * layoutScale);",
+        "const width = Math.max(38 * combatWorldVfxScale, 48 * combatWorldVfxScale);",
       )
       .replace(
         "const width = Math.max(46, 62 * layoutScale);",
-        "const width = Math.max(34, 46 * layoutScale);",
+        "const width = Math.max(34 * combatWorldVfxScale, 46 * combatWorldVfxScale);",
+      )
+      .replace(
+        "const width = Math.max(88, 116 * layoutScale);",
+        "const width = Math.max(88 * combatWorldVfxScale, 116 * combatWorldVfxScale);",
       )
       .replace(
         "const renderHealBlooms = () => {",
@@ -255,7 +259,7 @@ export function renderRuntime(deps) {
       .replace(
         `if (images.CombatHealMotes && stage.progress > 0.34) {
             const moteT = Math.min(1, (stage.progress - 0.34) / 0.66);
-            const width = Math.max(34, 46 * layoutScale);
+            const width = Math.max(34 * combatWorldVfxScale, 46 * combatWorldVfxScale);
             const height = width * (images.CombatHealMotes.height / Math.max(1, images.CombatHealMotes.width));
             ctx.save();
             ctx.globalAlpha = stage.opacity * moteT;
@@ -271,15 +275,15 @@ export function renderRuntime(deps) {
           } : null;
           const targetFeet = restFeet || enemyFeet;
           const anchor = targetFeet ? projectCombatActorWorldToCanvas(Number(targetFeet.x || 0), Number(targetFeet.y || 0), targetActor?.kind || 'hero') : basePos;
-          const heroHeight = Number(state.globals.HeroRenderHeightByUID?.[targetUID] || state.globals.EnemySize || 40) * layoutScale;
-          const heroWidth = Number(state.globals.HeroRenderWidthByUID?.[targetUID] || state.globals.EnemySize || 40) * layoutScale;
+          const heroHeight = Number(state.globals.HeroRenderHeightByUID?.[targetUID] || state.globals.EnemySize || 40) * combatWorldVfxScale;
+          const heroWidth = Number(state.globals.HeroRenderWidthByUID?.[targetUID] || state.globals.EnemySize || 40) * combatWorldVfxScale;
           if (bloom.presentation === 'major' && images.CombatHealSwirl && stage.progress > 0.01) {
             const frameCount = 10;
             const frameWidth = images.CombatHealSwirl.width / frameCount;
             const frameHeight = images.CombatHealSwirl.height;
             const frameIndex = Math.max(0, Math.min(frameCount - 1, Math.floor(stage.progress * frameCount)));
             const sourceX = frameIndex * frameWidth;
-            const drawSize = Math.max(1, heroHeight * 1.25);
+            const drawSize = Math.max(combatWorldVfxScale, heroHeight * 1.25);
             const drawWidth = Math.max(heroHeight * 1.9, heroWidth * 1.55);
             const drawX = anchor.x - drawWidth / 2;
             const drawY = anchor.y - drawSize * 0.78;
@@ -306,17 +310,17 @@ export function renderRuntime(deps) {
             const moteParticles = (bloom.particles || []).filter(particle => particle && Number(particle.opacity || 0) > 0.02).slice(0, 7);
             for (let i = 0; i < moteParticles.length; i += 1) {
               const particle = moteParticles[i];
-              const moteX = anchor.x + Number(particle.x || 0) * 0.8 * layoutScale;
-              const moteY = anchor.y - heroHeight * 0.12 + Number(particle.y || 0) * 0.65 * layoutScale;
-              const moteSize = Math.max(1.5, heroHeight * 0.035);
+              const moteX = anchor.x + Number(particle.x || 0) * 0.8 * combatWorldVfxScale;
+              const moteY = anchor.y - heroHeight * 0.12 + Number(particle.y || 0) * 0.65 * combatWorldVfxScale;
+              const moteSize = Math.max(1.5 * combatWorldVfxScale, heroHeight * 0.035);
               ctx.save();
               ctx.translate(moteX, moteY);
               ctx.globalAlpha = Math.max(0, Math.min(0.9, Number(particle.opacity || 0)));
               ctx.fillStyle = '#B9FFD0';
               ctx.strokeStyle = '#58D98D';
-              ctx.lineWidth = Math.max(1, heroHeight * 0.018);
+              ctx.lineWidth = Math.max(combatWorldVfxScale, heroHeight * 0.018);
               ctx.shadowColor = '#8CFFB0';
-              ctx.shadowBlur = Math.max(3, heroHeight * 0.08);
+              ctx.shadowBlur = Math.max(3 * combatWorldVfxScale, heroHeight * 0.08);
               ctx.beginPath();
               ctx.arc(0, 0, moteSize, 0, Math.PI * 2);
               ctx.fill();
