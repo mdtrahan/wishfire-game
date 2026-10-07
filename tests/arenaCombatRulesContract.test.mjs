@@ -34,6 +34,26 @@ test('arena advances both factions to contact with bounded semantic actor state'
   }
 });
 
+test('missing-feet party fallback tightens its authored horizontal spread by twenty percent', () => {
+  const heroes = [200, 240, 280, 320].map((footY, index) => ({ uid: index + 1, kind: 'hero', hp: 100, footY }));
+  advanceContinuousCombatArena({ globals: {}, entities: heroes, seconds: 0 });
+  const spread = Math.max(...heroes.map(hero => hero.footX)) - Math.min(...heroes.map(hero => hero.footX));
+  const center = (Math.max(...heroes.map(hero => hero.footX)) + Math.min(...heroes.map(hero => hero.footX))) / 2;
+  assert.ok(Math.abs(spread - 52.8) < 1e-9, '66-unit startup offset is reduced to 52.8 around its original center');
+  assert.ok(Math.abs(center - 73) < 1e-9, 'the fallback formation center stays fixed');
+});
+
+test('straggler regroup begins at the tightened 144-unit squad leash', () => {
+  const heroes = [
+    { uid: 1, name: 'Fara', kind: 'hero', hp: 100, attackType: 'physical', footX: 100, footY: 220 },
+    { uid: 2, name: 'Hondo', kind: 'hero', hp: 100, attackType: 'physical', footX: 110, footY: 260 },
+    { uid: 3, name: 'Runa', kind: 'hero', hp: 100, attackType: 'magic', footX: 120, footY: 300 },
+    { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: 320, footY: 340 },
+  ];
+  advanceContinuousCombatArena({ globals: {}, entities: heroes, seconds: 0.1 });
+  assert.ok(heroes[3].footX < 320, 'a 150-plus unit outlier starts moving toward the party before the old 180-unit leash');
+});
+
 test('four heroes retain stable targets and separate crowded footprints', () => {
   const heroes = Array.from({ length: 4 }, (_, index) => ({ uid: index + 1, kind: 'hero', hp: 100, attackType: index === 2 ? 'magic' : 'melee', footX: 106, footY: 240, arenaEnabled: true }));
   const enemies = [
@@ -147,7 +167,7 @@ test('frontline roles follow diagonal target reversals while ranged supports sta
       const beforeVector = { x: target.footX - beforeCenter.x, y: target.footY - beforeCenter.y };
       const beforeLength = Math.hypot(beforeVector.x, beforeVector.y);
       const beforeProgress = hero => ((hero.footX - beforeCenter.x) * beforeVector.x + (hero.footY - beforeCenter.y) * beforeVector.y) / beforeLength;
-      const regrouping = Math.min(...heroes.slice(0, 2).map(beforeProgress)) <= Math.max(...heroes.slice(2).map(beforeProgress)) + 8;
+      const regrouping = Math.min(...heroes.slice(0, 2).map(beforeProgress)) <= Math.max(...heroes.slice(2).map(beforeProgress)) + 6.4;
       const supportProgress = heroes.slice(2).map(beforeProgress);
       advanceContinuousCombatArena({ globals, entities: [...heroes, first, second], seconds: 0.1 });
       if (regrouping) {
@@ -164,10 +184,10 @@ test('frontline roles follow diagonal target reversals while ranged supports sta
     const progress = hero => ((hero.footX - center.x) * vector.x + (hero.footY - center.y) * vector.y) / length;
     const frontline = heroes.slice(0, 2).map(progress);
     const support = heroes.slice(2).map(progress);
-    assert.ok(Math.min(...frontline) > Math.max(...support) + 8,
+    assert.ok(Math.min(...frontline) > Math.max(...support) + 6.4,
       `each frontline hero leads each support along target direction ${sign}; ${frontline.map(value => value.toFixed(1))} vs ${support.map(value => value.toFixed(1))}`);
     assert.equal(heroes[1].facing, sign.startsWith('right') ? 'right' : 'left', 'Hondo faces the actual horizontal travel/target direction');
-    assert.ok(Math.max(...heroes.map(hero => Math.hypot(hero.footX - center.x, hero.footY - center.y))) < 100, 'party stays cohesive through the turn');
+    assert.ok(Math.max(...heroes.map(hero => Math.hypot(hero.footX - center.x, hero.footY - center.y))) < 80, 'party stays within the tightened cohort envelope through the turn');
   };
   checkOrder(first, 'right/up', false);
   first.hp = 0;
@@ -212,10 +232,10 @@ test('rear supports retain authored reach while both tanks lead in close contact
     const vector = { x: (enemy.footX - center.x) * direction, y: (enemy.footY - center.y) * direction };
     const length = Math.hypot(vector.x, vector.y);
     const progress = hero => ((hero.footX - center.x) * vector.x + (hero.footY - center.y) * vector.y) / length;
-    assert.ok(Math.min(...heroes.slice(0, 2).map(progress)) > Math.max(...heroes.slice(2).map(progress)) + 8,
+    assert.ok(Math.min(...heroes.slice(0, 2).map(progress)) > Math.max(...heroes.slice(2).map(progress)) + 6.4,
       'both frontline heroes lead both supports during the committed contact turn');
     assert.ok(heroes.slice(2).every(hero => isActorTargetInRange(hero, enemy)), 'rear ranged heroes remain inside their authored contact range');
-    assert.ok(heroes.every(hero => Math.hypot(hero.footX - center.x, hero.footY - center.y) < 100), 'all four remain a compact squad during close-contact regrouping');
+    assert.ok(heroes.every(hero => Math.hypot(hero.footX - center.x, hero.footY - center.y) < 80), 'all four remain inside the tightened cohort envelope during close-contact regrouping');
   };
   assertFormation(1);
   enemy.footX = 145;
@@ -240,7 +260,7 @@ test('frontline ordering follows pure vertical approaches without injecting hori
   const centerY = heroes.reduce((sum, hero) => sum + hero.footY / heroes.length, 0);
   const frontAdvance = heroes.slice(0, 2).map(hero => centerY - hero.footY);
   const supportAdvance = heroes.slice(2).map(hero => centerY - hero.footY);
-  assert.ok(Math.min(...frontAdvance) > Math.max(...supportAdvance) + 8,
+  assert.ok(Math.min(...frontAdvance) > Math.max(...supportAdvance) + 6.4,
     `both tanks lead both supports on vertical travel; ${frontAdvance.map(value => value.toFixed(1))} vs ${supportAdvance.map(value => value.toFixed(1))}`);
 });
 

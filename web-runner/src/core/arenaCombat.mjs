@@ -44,10 +44,14 @@ export function selectContinuousEnemyTarget({ enemy = null, heroes = [], globals
 }
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const DETECTION_RADIUS = 460;
-const SQUAD_STRAGGLE_RADIUS = 180;
+const SQUAD_STRAGGLE_RADIUS = 144;
 const SEARCH_SPEED = 78;
-const TRAVEL_FRONT_OFFSET = 28;
-const FORMATION_ROW_GAP = 10;
+const TRAVEL_FRONT_OFFSET = 22.4;
+const FORMATION_ROW_GAP = 8;
+const FRONTLINE_LEAD_GAP = 6.4;
+const REGROUP_BACK_OFFSET = 9.6;
+const SUPPORT_STEP_BACK = 12.8;
+const CONTACT_INSET = 6.4;
 const FRONTLINE_HERO_NAMES = new Set(['fara', 'falie', 'hondo', 'huun']);
 function heroFormationSlot(hero, index) {
   const name = String(hero?.baseHeroName || hero?.name || '').trim().toLowerCase();
@@ -126,9 +130,11 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
     bounds.bossMaxY = Math.min(worldYBounds.maxY, bossAnchorY + 32);
   }
   const minY = bounds.visibleTopY, maxY = bounds.visibleBottomY;
+  const fallbackCenterX = (bounds.heroBackCenterX + bounds.heroRightEdgeX) / 2;
+  const fallbackHalfSpreadX = (bounds.heroRightEdgeX - bounds.heroBackCenterX) * 0.8 / 2;
   heroes.forEach((hero, index) => {
     if (!Number.isFinite(Number(hero.footX))) {
-      hero.footX = index % 2 === 0 ? bounds.heroRightEdgeX : bounds.heroBackCenterX;
+      hero.footX = index % 2 === 0 ? fallbackCenterX + fallbackHalfSpreadX : fallbackCenterX - fallbackHalfSpreadX;
       hero.footY = Number(anchors.heroYs[index] ?? (minY + maxY) / 2) + Number(anchors.heroH || 0) / 2;
     }
     hero.arenaEnabled = true;
@@ -186,7 +192,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
     return (point.x - center) * directionX + (point.y - centerY) * directionY;
   };
   const regrouping = !bossEncounter && frontline.length > 0 && supports.length > 0
-    && Math.min(...frontline.map(progress)) <= Math.max(...supports.map(progress)) + 8;
+    && Math.min(...frontline.map(progress)) <= Math.max(...supports.map(progress)) + FRONTLINE_LEAD_GAP;
   for (const enemy of focusedEnemies) if (enemy.streamState === 'roaming') enemy.streamState = 'in_range';
   for (const [index, hero] of heroes.entries()) {
     const formation = heroFormationSlot(hero, index);
@@ -194,8 +200,8 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
       const point = actorFootPoint(hero);
       if (Math.hypot(point.x - center, point.y - centerY) > SQUAD_STRAGGLE_RADIUS) {
         const regroupTarget = {
-          footX: center - directionX * 12 - directionY * formation.rowOffset,
-          footY: centerY - directionY * 12 + directionX * formation.rowOffset,
+          footX: center - directionX * REGROUP_BACK_OFFSET - directionY * formation.rowOffset,
+          footY: centerY - directionY * REGROUP_BACK_OFFSET + directionX * formation.rowOffset,
         };
         hero.arenaTargetUID = 0;
         advanceActorToward(hero, regroupTarget, { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
@@ -204,9 +210,9 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
       }
       // Let supports ease back a short step while either tank catches up.
       // The reach compensation makes advanceActorToward move the actor by the
-      // intended 16 world units without changing its authored attack range.
+      // intended 12.8 world units without changing its authored attack range.
       const supportPoint = actorFootPoint(hero);
-      const retreatDistance = actorAttackReach(hero) + actorFootprintRadius({}) + 16;
+      const retreatDistance = actorAttackReach(hero) + actorFootprintRadius({}) + SUPPORT_STEP_BACK;
       const retreatTarget = {
         footX: supportPoint.x - directionX * retreatDistance,
         footY: supportPoint.y - directionY * retreatDistance,
@@ -220,7 +226,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
     const target = sharedTarget;
     if (target) {
       hero.arenaTargetUID = Number(target.uid || 0);
-      const alongOffset = 8;
+      const alongOffset = CONTACT_INSET;
       const contactTarget = {
         ...target,
         footX: targetPoint.x + directionX * alongOffset - directionY * formation.rowOffset,
