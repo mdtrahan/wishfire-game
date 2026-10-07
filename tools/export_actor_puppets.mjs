@@ -27,7 +27,7 @@ for(const actor of ['fara','gobloc']) {
  const actorManifest={sourceFacing:actor==='fara'?'right':'left',oppositeFacing:'mirrored-source; asymmetric costume reverses sides',clips:{}};
  const names=Object.keys(parts).filter(name=>layout[name]);
  for(const state of Object.keys(curves))for(const facing of ['left','right']){
-  const d=duration[state];const id=guid(`${actor}/${state}`);const rootId=guid(`${id}/root`);const bodyId=guid(`${id}/body`);
+  const d=duration[state];const poseTimes=state==='attack'?[0,.25,.375,.5625,.75]:[0,d/4,d/2,d*3/4,d];const id=guid(`${actor}/${state}`);const rootId=guid(`${id}/root`);const bodyId=guid(`${id}/body`);
   const directional=['attack','cast','hit'].includes(state);
   const sign=actor==='fara'?1:-1, lead=actor==='fara'?'near':'far';
   const bones=names.map(name=>{const p=layout[name], parentName=p.parent||(directional&&name==='hair_back'?'head':null), parent=parentName?layout[parentName]:{x:128,y:144};const parentId=parentName?guid(`${id}/${parentName}`):bodyId;let curve=curves[state];
@@ -36,10 +36,11 @@ for(const actor of ['fara','gobloc']) {
    if(directional){
     const isLead=name.endsWith(lead);
     if(state==='attack'){
-     if(name.startsWith('upper_arm')) motion=(isLead?[0,-35,65,40,0]:[0,25,10,12,0]).map(a=>a*sign);
-     if(name.startsWith('forearm')) motion=(isLead?[0,-70,25,15,0]:[0,-55,-50,-25,0]).map(a=>a*sign);
-     if(name==='torso'){motion=[0,sign*5,-sign*8,-sign*3,0];dx=[0,-sign*3,sign*8,sign*4,0];dy=[0,-3,0,0,0];}
-     if(name==='head'){motion=[0,sign*6,-sign*8,-sign*3,0];dx=[0,-sign*3,sign*12,sign*5,0];dy=[0,-6,0,0,0];}
+     if(name.startsWith('upper_arm')) motion=(isLead?[0,-90,65,40,0]:[0,40,10,12,0]).map(a=>a*sign);
+     if(name.startsWith('forearm')) motion=(isLead?[0,0,25,15,0]:[0,-85,-50,-25,0]).map(a=>a*sign);
+     if(name.startsWith('upper_arm')){dx=[0,-sign*(isLead?48:10),0,0,0];dy=[0,-16,0,0,0];}
+     if(name==='torso'){motion=[0,sign*18,-sign*8,-sign*3,0];dx=[0,-sign*10,sign*8,sign*4,0];dy=[0,-16,0,0,0];}
+     if(name==='head'){motion=[0,sign*25,-sign*8,-sign*3,0];dx=[0,-sign*17,sign*12,sign*5,0];dy=[0,-25,0,0,0];}
     }
     if(state==='cast'){
      if(name.startsWith('upper_arm')) motion=(isLead?[0,-35,112,90,0]:[0,30,-110,-90,0]).map(a=>a*sign);
@@ -54,8 +55,8 @@ for(const actor of ['fara','gobloc']) {
      if(name==='head'){motion=[0,sign*25,sign*20,sign*8,0];dx=[0,-sign*14,-sign*20,-sign*8,0];dy=[0,2,0,0,0];}
     }
    }
-   const origin=animatedVector(dx.map((x,i)=>[d*i/4,p.x-parent.x+x,parent.y-p.y+dy[i]]));
-   return `<bone type="bone_object" guid="${guid(`${id}/${name}`)}"><name><string>${name}</string></name><parent><bone_valuenode type="bone_object" guid="${parentId}"/></parent><origin>${directional?origin:vector(p.x-parent.x,parent.y-p.y)}</origin><angle>${frames(motion.map((v,i)=>[d*i/4,v]))}</angle><scalelx><real value="1"/></scalelx><scalex><real value="1"/></scalex><width><real value=".1"/></width><tipwidth><real value=".1"/></tipwidth><bone_depth><real value="0"/></bone_depth><length><real value="1"/></length></bone>`;}).join('');
+   const origin=animatedVector(dx.map((x,i)=>[poseTimes[i],p.x-parent.x+x,parent.y-p.y+dy[i]]));
+   return `<bone type="bone_object" guid="${guid(`${id}/${name}`)}"><name><string>${name}</string></name><parent><bone_valuenode type="bone_object" guid="${parentId}"/></parent><origin>${directional?origin:vector(p.x-parent.x,parent.y-p.y)}</origin><angle>${frames(motion.map((v,i)=>[poseTimes[i],v]))}</angle><scalelx><real value="1"/></scalelx><scalex><real value="1"/></scalex><width><real value=".1"/></width><tipwidth><real value=".1"/></tipwidth><bone_depth><real value="0"/></bone_depth><length><real value="1"/></length></bone>`;}).join('');
   const bodyAngle=state==='defeated'?curves[state]:[0,0,0,0,0];
   const boneBody=`<bone type="bone_object" guid="${bodyId}"><name><string>body</string></name><parent><bone_valuenode type="bone_object" guid="${rootId}"/></parent><origin>${state==='defeated'?`<animated type="vector">${[112,105,82,67,67].map((y,i)=>`<waypoint time="${d*i/4}s" before="linear" after="linear">${vector(128,y)}</waypoint>`).join('')}</animated>`:vector(128,112)}</origin><angle>${frames(bodyAngle.map((v,i)=>[d*i/4,v]))}</angle><scalelx><real value="1"/></scalelx><scalex><real value="1"/></scalex><width><real value=".1"/></width><tipwidth><real value=".1"/></tipwidth><bone_depth><real value="0"/></bone_depth><length><real value="1"/></length></bone>`;
   const order=['head','torso','pelvis','upper_arm_near','forearm_near','hand_near','shin_boot_near','thigh_near','upper_arm_far','forearm_far','hand_far','shin_boot_far','thigh_far','hair_back','coat_back'];
