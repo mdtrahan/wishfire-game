@@ -1,0 +1,44 @@
+
+> codex-orka@1.0.0 test:lamp-ui
+> node --test tests/lampPresentation.test.mjs
+
+✖ lamp immediate review, four recipients, durable equip, Auto and phone containment (6295.665292ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6554.879542
+
+✖ failing tests:
+
+test at tests/lampPresentation.test.mjs:17:1
+✖ lamp immediate review, four recipients, durable equip, Auto and phone containment (6295.665292ms)
+  AssertionError [ERR_ASSERTION]: preview uses total hero CP change, including level and existing gear
+  + actual - expected
+  
+    [
+  +   NaN,
+  +   NaN,
+  +   NaN,
+  +   NaN
+  -   12.1,
+  -   0,
+  -   7.7,
+  -   0
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/Mace/Codex-Orka/.worktrees/wt-ORKA-5af.5-lamp-comparison/tests/lampPresentation.test.mjs:62:10)
+      at runNextTicks (node:internal/process/task_queues:65:5)
+      at process.processImmediate (node:internal/timers:472:9)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ NaN, NaN, NaN, NaN ],
+    expected: [ 12.1, 0, 7.7, 0 ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

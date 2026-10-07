@@ -1,3 +1,5 @@
+import { combatBossControlRect } from './renderCombatBossControl.mjs';
+
 export function returnToQuest(gameState, layoutState, reason) {
   const entry = gameState.storyEntry;
   if (typeof entry?.openPausedBattleGate === 'function' && (entry.phase === 'combat' || entry.combatPaused)) {
@@ -72,6 +74,7 @@ function routeCardGalleryLayout({
 export function createPointerRoutingShell({
   canvas,
   getDpr,
+  worldToCanvas,
   state,
   gameState,
   uiState,
@@ -88,6 +91,7 @@ export function createPointerRoutingShell({
   deriveEncounterRequestFromMapState,
   getHeroScreenRoster,
   normalizeHeroSelectionIndex,
+  onBossButtonClick = () => false,
 }) {
   const routePointerDown = (event) => {
     const dpr = typeof getDpr === 'function' ? getDpr() : 1;
@@ -97,6 +101,11 @@ export function createPointerRoutingShell({
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
       ? layoutState.getActiveLayoutId()
       : null;
+
+    if (activeLayoutId === 'combat' && isPointInRect(mx, my, combatBossControlRect(worldToCanvas))) {
+      if (onBossButtonClick()) drawFrame();
+      return { handled: true, mx, my, rect };
+    }
 
     const navHit = (gameState.sharedNavHitZones || []).find(zone => isPointInRect(mx, my, zone));
     if (navHit) {

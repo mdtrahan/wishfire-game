@@ -13,7 +13,9 @@ test('resurrection retains enemy progress, buffs and skills while reviving every
  assert.deepEqual(state.globals.PendingDeaths,{3:true});
  assert.deepEqual(state.globals.Skills,{faze:true});assert.deepEqual(state.globals.HeroBuffs,{ward:3});
  assert.equal(gameState.combatFailExitRequested,false);
- assert.ok(calls.includes('ProcessTurn'));
+ assert.ok(calls.includes('UpdateHeroHPUI'));
+ assert.equal(calls.includes('ProcessTurn'),false);
+ assert.equal(calls.includes('RebuildTurnOrderPreserveCurrent'),false);
  state.entities=state.entities.filter(e=>e.kind!=='enemy');
  state.globals.AstralFlowKoOrbQueue=[{}];assert.equal(session.isCleared(),false);
  state.globals.NativeBattleEnded=false;assert.equal(session.isCleared(),false);
@@ -21,7 +23,7 @@ test('resurrection retains enemy progress, buffs and skills while reviving every
 
 test('endless sessions never surface a finite-victory completion path', async () => {
  const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
- const state={entities:[],globals:{QuestFiniteEncounter:1,NativeBattleEnded:true,ProgressionBattle:{id:'victory-auto',outcome:'victory'},SessionLevelUpQueue:{status:'complete'},SessionLevelUpSettlement:null,FlowOrbs:[]}};
+ const state={entities:[],globals:{QuestFiniteEncounter:1,NativeBattleEnded:true,ProgressionBattle:{id:'victory-auto',outcome:'victory'},SessionLevelUpSettlement:null,FlowOrbs:[]}};
  const session=createQuestCombatSession({state,gameState:{},call(){},sync(){}});
  session.prepare();
  assert.equal(state.globals.QuestFiniteEncounter,0);
@@ -29,23 +31,49 @@ test('endless sessions never surface a finite-victory completion path', async ()
  state.globals.SessionLevelUpSettlement={phase:'active'};
  assert.equal(session.isCleared(),false, 'EXP rows do not create a finite completion');
  state.globals.SessionLevelUpSettlement=null;
- state.globals.SessionLevelUpQueue={status:'active'};
- assert.equal(session.isCleared(),false, 'queued hero choices stay sequential');
- state.globals.SessionLevelUpQueue={status:'complete'};
  state.globals.FlowOrbs=[{}];
  assert.equal(session.isCleared(),false, 'remaining victory presentation clears before auto-advance');
  const src=require('node:fs').readFileSync(require('node:path').join(__dirname,'../web-runner/systems/questCombatSession.mjs'),'utf8');
  assert.doesNotMatch(src,/battle-results|showResults|Continue/);
 });
 
-test('new battle clears combat conditions and Astral Flow while retaining gold and progression', async () => {
+test('continuous defeat is free, preserves the earned boss gate and restarts wave one at full health', async () => {
+ const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
+ const enemyRows=['Gobloc','Skeleton'].map((name,index)=>({name,HP:20+index*2,ATK:2,DEF:2,MAG:1,RES:1,SPD:8,CombatPower:20+index}));
+ const state={entities:[{uid:1,kind:'hero',heroInstanceKey:'Hondo',hp:0,maxHP:42,isAlive:false},{uid:9,kind:'enemy',hp:30,maxHP:30}],globals:{
+  ContinuousCombatStageLoop:1,ContinuousCombatStage:{seed:1,region:2,stage:3,wave:4,bossAvailable:true,bossArmed:true,bossActive:true,transitions:8,clearedBosses:12,nextEmissionAt:0,lastUpdatedAt:0,spawnSerial:9},
+  EnemyData:enemyRows,EnemySlots:[9],PendingDeaths:{1:true,9:true},EnemyDeathVisualHoldByUID:{9:true},time:5,ProgressionBattle:{id:'run',participants:['Hondo'],defeated:{},settled:false},
+ }};
+ const gameState={combatFailExitRequested:true};const calls=[];
+ const call=(name,data,slotIndex)=>{
+  calls.push(name);
+  if(name!=='SpawnEnemy')return null;
+  const enemy={uid:20+slotIndex,kind:'enemy',name:data.name,hp:data.HP,maxHP:data.HP,slotIndex};state.entities.push(enemy);return enemy;
+ };
+ const session=createQuestCombatSession({state,gameState,call,sync(){}});
+ assert.equal(session.recoverContinuousDefeat(),true);
+ assert.equal(state.globals.ContinuousCombatStage.region,2);
+ assert.equal(state.globals.ContinuousCombatStage.stage,3);
+ assert.equal(state.globals.ContinuousCombatStage.wave,1);
+ assert.equal(state.globals.ContinuousCombatStage.bossAvailable,true);
+ assert.equal(state.globals.ContinuousCombatStage.bossArmed,false);
+ assert.equal(state.entities[0].hp,42);
+ assert.ok(state.entities.slice(1).every(actor=>actor.kind==='enemy'&&actor.streamState==='approaching'));
+ assert.ok(calls.includes('SettleContinuousCombatRewards'));
+ assert.equal(calls.includes('ProcessTurn'),false);
+ assert.equal(calls.includes('RebuildTurnOrderPreserveCurrent'),false);
+ assert.equal(state.globals.QuestFiniteEncounter,1, 'continuous recovery must keep legacy slot refills disabled');
+ assert.equal(gameState.combatFailExitRequested,false);
+});
+
+test('new battle clears combat conditions and retired Flow state while retaining gold and progression', async () => {
  const {resetCombatSessionConditions}=await import('../web-runner/systems/combatSessionReset.mjs');
  const g={goldTotal:321,HeroGemUsage:{RED:9},AstralFlowAmpPoints:12,AstralFlowAmpReady:1,
  PartyBuff_ATK:8,BuffTurns_ATK:3,PartyTempHPShield:40,PowerAmpByUID:{1:{}},
  EnemyDebuffs:{2:{DEF:8}},EnemyDamageOverTime:[{}],PartyRegens:[{}],TaintedGroundZones:[{}]};
  const ui={partyHpTextRoll:{displayHp:1}}; resetCombatSessionConditions(g,ui);
  assert.equal(g.goldTotal,321);assert.deepEqual(g.HeroGemUsage,{RED:9});
- assert.equal(g.AstralFlowAmpPoints,0);assert.equal(g.AstralFlowAmpReady,0);
+ assert.equal(g.AstralFlowAmpPoints,undefined);assert.equal(g.AstralFlowAmpReady,undefined);
  for(const key of ['PartyBuff_ATK','BuffTurns_ATK','PartyTempHPShield','PowerAmpByUID']) assert.equal(g[key],undefined);
  assert.deepEqual(g.EnemyDebuffs,{});assert.deepEqual(g.EnemyDamageOverTime,[]);
  assert.deepEqual(g.PartyRegens,[]);assert.deepEqual(g.TaintedGroundZones,[]);

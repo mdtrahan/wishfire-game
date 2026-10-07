@@ -13,6 +13,7 @@
 - Do not edit mirrored high-risk functions in only one runtime path. Check `tests/functionBankParityContract.test.js` before changing function-bank behavior.
 - Keep names and state vocabulary compatible with `web-runner/modules/` unless a bead explicitly authorizes a migration.
 - Deterministic gameplay rules should move toward shared `src/core/` or Rust SimulationCore seams, not deeper into the mirror.
+- Mirror the production stream's bypass of retired enemy-slot refill holds in `GetEnemyRosterStability`.
 - Avoid using this folder as a dumping ground for new browser UI, rendering, storage, or tooling behavior.
 
 ## Work Guidance
@@ -35,8 +36,8 @@
 - Mirror deployed-versus-living hero enumeration and actor-owned HP totals by heroDisplaySlot. Damage cannot consume a barrier on a KO target; ordinary healing procs cannot revive.
 - Mirror active-hero healing and percentage amounts based on that hero maximum. The pooled ApplyPartyHeal/SyncPartyHPToHeroes API is retired; retain party max-HP buffs and explicit full recovery.
 - Mirror Arcane Pulse's caster-specific resting sprite-base source; never restore the retired party-midpoint source.
-- Mirror the post-card-reveal start time for transient Astral Flow attack visuals.
-- Mirror per-target attack VFX metadata for Chain Strike and hero AOE damage packets, including the neutral impact identity across every party-owned AF Chain Strike II hit.
-
-- Mirror personal FLOW damage attribution and paused party-card entrypoints. Shared AF KO rewards are retired; qualifying role actions use the directed blue-orb seam while enemy-death completion remains reward-neutral.
+- Mirror per-target attack VFX metadata for native hero AOE damage packets.
+- Mirror the enemy scheduler exclusion for targetable stream walkers; they may receive hero attacks after crossing the range line and may act only after reaching home.
 - Keep automatic `HeroTurn` target selection aligned with the browser mirror: draw a fresh living enemy per acting hero and record the result only after selection.
+
+- The mirrored CalculateDamage function retains Rust-owned baseline arithmetic and applies the same bounded realtime damage amplification as the browser owner; conditional selection and effect execution remain in the live browser/shared-core path.

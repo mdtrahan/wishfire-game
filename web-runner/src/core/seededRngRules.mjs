@@ -160,3 +160,17 @@ export function createSeededRngSimulationPacket({
 export const seededRngConstants = Object.freeze({
   UINT32_MOD,
 });
+
+// Copy the existing LCG at a given draw index without advancing the combat owner.
+// Affine exponentiation keeps late-battle selection logarithmic in the draw count.
+export function previewSeededRng(seed, draws = 0) {
+  let count = Math.max(0, Math.floor(Number(draws) || 0)) + 1;
+  let multiplier = 1664525, increment = 1013904223, state = normalizeSeed(seed);
+  while (count > 0) {
+    if (count % 2) state = (Math.imul(multiplier,state) + increment) >>> 0;
+    increment = (Math.imul(multiplier,increment) + increment) >>> 0;
+    multiplier = Math.imul(multiplier,multiplier) >>> 0;
+    count = Math.floor(count/2);
+  }
+  return state/4294967296;
+}

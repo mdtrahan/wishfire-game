@@ -45,7 +45,7 @@ test('runtime exposes mirrored skill proc and event helper seams', () => {
     'ExpireHeroTempSkillState',
     'AddSessionPassive',
     'GetSessionPassiveTotal',
-    'IsHeroSessionSkillActive',
+    'IsHeroSkillActive',
   ];
 
   for (const filePath of [runtimePath, scriptsPath]) {
@@ -71,7 +71,7 @@ test('growth value resolves rank-based chance from canonical skill growth', () =
   const growthSrc = extractFunctionSource(runtimeSrc, 'GetHeroSkillGrowthValue');
   assert.match(growthSrc, /GetSkillDefinition\(ctx, skillRef\)/);
   assert.match(growthSrc, /GetHeroSkillState\(ctx, heroUID, skillId\)/);
-  assert.match(growthSrc, /IsHeroSessionSkillActive\(ctx, heroUID, skillId\)/);
+  assert.match(growthSrc, /IsHeroSkillActive\(ctx, heroUID, skillId\)/);
   assert.match(growthSrc, /definition\.growth/);
   assert.match(growthSrc, /rank - 1/);
 });

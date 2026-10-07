@@ -8,7 +8,7 @@ const test = require('node:test');
 
 const root = path.join(__dirname, '..');
 const output = path.join(root, 'dist-offline');
-const runtimeData = ['layouts.json', 'objectTypes.json', 'enemies.json'];
+const runtimeData = ['layouts.json', 'objectTypes.json', 'enemies.json', 'elemental-impact/manifest.json'];
 
 function listFiles(directory, prefix = '') {
   const entries = fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name));
@@ -57,17 +57,21 @@ test('embedded JSON and WASM branches precede hosted fetch fallbacks', () => {
 });
 
 test('offline artifact retains relative presentation assets and omits JSON/WASM sidecars', () => {
-  assert.ok(fs.existsSync(path.join(output, 'assets', 'images', 'navigation', 'flow.png')));
   assert.ok(fs.existsSync(path.join(output, 'assets', 'fonts', 'Bungee-Regular.ttf')));
   const sidecars = listFiles(path.join(output, 'assets')).filter((file) => /\.(json|wasm)$/i.test(file));
   assert.deepEqual(sidecars, []);
 
   const embeddedNames = new Set([...runtimeData, 'simulation_core.wasm']);
   const stagedAssets = listFiles(path.join(root, 'dist', 'web-runner', 'assets'))
-    .filter((file) => !embeddedNames.has(path.basename(file)))
+    .filter((file) => !embeddedNames.has(file))
     .sort();
   const offlineAssets = listFiles(path.join(output, 'assets')).sort();
   assert.deepEqual(offlineAssets, stagedAssets, 'offline bundle must retain every non-embedded staged asset');
+  if (fs.existsSync(path.join(root, 'dist', 'web-runner', 'assets', 'elemental-impact', 'manifest.json'))) {
+    const release = JSON.parse(fs.readFileSync(path.join(output, 'release-manifest.json'), 'utf8'));
+    assert.ok(release.embedded.json.includes('elemental-impact/manifest.json'));
+    assert.equal(offlineAssets.filter(file => file.startsWith('elemental-impact/frames/')).length, 111);
+  }
 });
 
 test('offline resolver maps document assets and embedded payloads without network APIs', async () => {
@@ -75,13 +79,14 @@ test('offline resolver maps document assets and embedded payloads without networ
   const oldRuntime = global.__ORKA_OFFLINE_RUNTIME__;
   global.document = { baseURI: 'file:///offline/index.html' };
   global.__ORKA_OFFLINE_RUNTIME__ = {
-    json: { 'layouts.json': { version: 1 } },
+    json: { 'layouts.json': { version: 1 }, 'elemental-impact/manifest.json': { effects: [] } },
     wasm: { 'simulation_core.wasm': Buffer.from([0, 97, 115, 109]).toString('base64') },
   };
   try {
     const resolver = await import(pathToFileURL(path.join(root, 'web-runner', 'systems', 'runtimeAssetUrl.mjs')).href);
     assert.equal(resolver.runtimeAssetUrl('images/Fara.png'), 'file:///offline/assets/images/Fara.png');
     assert.deepEqual(resolver.getEmbeddedJson('file:///offline/assets/layouts.json'), { version: 1 });
+    assert.deepEqual(resolver.getEmbeddedJson('file:///offline/assets/elemental-impact/manifest.json'), { effects: [] });
     assert.deepEqual([...resolver.getEmbeddedWasmBytes('./assets/simulation_core.wasm')], [0, 97, 115, 109]);
   } finally {
     if (oldDocument === undefined) delete global.document;

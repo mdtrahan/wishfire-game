@@ -1,0 +1,21 @@
+Lamp presentation owner changed; running phone geometry and guide lock...
+
+> codex-orka@1.0.0 test:lamp-ui
+> node --test tests/lampPresentation.test.mjs
+
+✔ lamp immediate review, four recipients, durable equip, Auto and phone containment (129943.970958ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 130218.717958
+[codex/ORKA-5af.5-lamp-comparison f8dd05b] fix(lamp): show signed hero CP and recipient navigation bd-ORKA-5af.5
+ 12 files changed, 107 insertions(+), 12 deletions(-)
+ create mode 100644 output/qa/progression/comparison/QA-US15-CP.md
+ create mode 100644 output/qa/progression/comparison/before-fix.txt
+ create mode 100644 output/qa/progression/comparison/initial-four-phone-pass.txt
+ create mode 100644 output/qa/progression/comparison/native-cp-final.jpg
+ create mode 100644 output/qa/progression/comparison/native-navigation-final.jpg

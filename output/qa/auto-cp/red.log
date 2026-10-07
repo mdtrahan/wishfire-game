@@ -1,0 +1,69 @@
+✖ earned batch Auto Equip bypasses item-CP leaders that give no hero gain (5.255334ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 87.84125
+
+✖ failing tests:
+
+test at tests/lampEquipment.test.mjs:237:1
+✖ earned batch Auto Equip bypasses item-CP leaders that give no hero gain (5.255334ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+  +   'lamp:2467343298:59',
+  +   'lamp:2467343298:42',
+  +   'lamp:2467343298:41',
+  +   'lamp:2467343298:66'
+  -   'lamp:2467343298:67',
+  -   'lamp:2467343298:51',
+  -   'lamp:2467343298:44',
+  -   'lamp:2467343298:49',
+  -   'lamp:2467343298:62',
+  -   'lamp:2467343298:45',
+  -   'lamp:2467343298:50',
+  -   'lamp:2467343298:58',
+  -   'lamp:2467343298:40',
+  -   'lamp:2467343298:46',
+  -   'lamp:2467343298:57',
+  -   'lamp:2467343298:52',
+  -   'lamp:2467343298:68',
+  -   'lamp:2467343298:43',
+  -   'lamp:2467343298:61',
+  -   'lamp:2467343298:47',
+  -   'lamp:2467343298:55',
+  -   'lamp:2467343298:60',
+  -   'lamp:2467343298:64',
+  -   'lamp:2467343298:48',
+  -   'lamp:2467343298:65'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/Mace/Codex-Orka/.worktrees/wt-ORKA-5af.7-auto-cp/tests/lampEquipment.test.mjs:242:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'lamp:2467343298:59', 'lamp:2467343298:42', 'lamp:2467343298:41', 'lamp:2467343298:66' ],
+    expected: [
+      'lamp:2467343298:67', 'lamp:2467343298:51',
+      'lamp:2467343298:44', 'lamp:2467343298:49',
+      'lamp:2467343298:62', 'lamp:2467343298:45',
+      'lamp:2467343298:50', 'lamp:2467343298:58',
+      'lamp:2467343298:40', 'lamp:2467343298:46',
+      'lamp:2467343298:57', 'lamp:2467343298:52',
+      'lamp:2467343298:68', 'lamp:2467343298:43',
+      'lamp:2467343298:61', 'lamp:2467343298:47',
+      'lamp:2467343298:55', 'lamp:2467343298:60',
+      'lamp:2467343298:64', 'lamp:2467343298:48',
+      'lamp:2467343298:65'
+    ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

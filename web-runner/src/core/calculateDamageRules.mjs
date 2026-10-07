@@ -51,8 +51,8 @@ function unitIntervalOrHalf(value) {
   return Number.isFinite(normalized) && normalized >= 0 && normalized < 1 ? normalized : 0.5;
 }
 
-function ceilAtLeastOne(value) {
-  return Math.max(1, Math.ceil(numberOr(value, 0)));
+function resistanceFactor(value) {
+  return 1 - Math.min(100, Math.max(0, numberOr(value, 0))) / 100;
 }
 
 export function calculateDamageFromJs({
@@ -64,21 +64,22 @@ export function calculateDamageFromJs({
   heroAoe = 0,
   chainActive = 0,
   chainMultiplier = 1,
+  attackMultiplierPct = 100,
+  matchingResistancePct = 0,
+  generalResistancePct = 0,
 } = {}) {
   const powerValue = numberOr(power, 0);
   const resistValue = numberOr(resist, 0);
   const isHero = Number(sourceIsHero || 0) === 1;
-  const roll = 0.9 + (unitIntervalOrHalf(roll01) * 0.2);
-  // The same bounded attack/guard curve applies in both directions.  Damage kind
-  // selects ATK/DEF or MAG/RES before this contract receives its inputs.
-  const rawDamage = (2 + (Math.max(0, powerValue) * 0.48)) * (20 / (20 + Math.max(0, resistValue))) * roll;
-  const baseDamage = ceilAtLeastOne(rawDamage);
+  const rawDamage = Math.max(0, powerValue - resistValue) * Math.max(0, numberOr(attackMultiplierPct, 100)) / 100;
+  const resistedDamage = rawDamage * resistanceFactor(matchingResistancePct) * resistanceFactor(generalResistancePct);
+  const baseDamage = Math.ceil(resistedDamage);
   const critMultiplier = 1.25;
   const didCrit = numberOr(critRoll01, 1) < 0.01;
-  const postCritDamage = ceilAtLeastOne(didCrit ? baseDamage * critMultiplier : baseDamage);
+  const postCritDamage = Math.ceil(didCrit ? baseDamage * critMultiplier : baseDamage);
   const shouldChain = isHero && Number(chainActive || 0) === 1;
   const multiplier = numberOr(chainMultiplier, 1) || 1;
-  const damage = shouldChain ? ceilAtLeastOne(postCritDamage * multiplier) : postCritDamage;
+  const damage = shouldChain ? Math.max(0, Math.ceil(postCritDamage * multiplier)) : postCritDamage;
 
   return {
     damage,
@@ -86,7 +87,8 @@ export function calculateDamageFromJs({
     postCritDamage,
     didCrit,
     critMultiplier,
-    roll,
+    roll: unitIntervalOrHalf(roll01),
+    rawDamage,
   };
 }
 
@@ -103,6 +105,9 @@ function normalizeCalculateDamageInput({
   heroAoe = 0,
   chainActive = 0,
   chainMultiplier = 1,
+  attackMultiplierPct = 100,
+  matchingResistancePct = 0,
+  generalResistancePct = 0,
 } = {}) {
   return {
     source: String(source || 'unknown'),
@@ -117,6 +122,9 @@ function normalizeCalculateDamageInput({
     heroAoe: Number(heroAoe || 0) === 1 ? 1 : 0,
     chainActive: Number(chainActive || 0) === 1 ? 1 : 0,
     chainMultiplier: numberOr(chainMultiplier, 1) || 1,
+    attackMultiplierPct: Math.max(0, numberOr(attackMultiplierPct, 100)),
+    matchingResistancePct: Math.max(0, numberOr(matchingResistancePct, 0)),
+    generalResistancePct: Math.max(0, numberOr(generalResistancePct, 0)),
   };
 }
 

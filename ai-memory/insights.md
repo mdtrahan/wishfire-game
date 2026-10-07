@@ -565,3 +565,47 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Validate required build tools before touching release output. Assemble into a sibling candidate directory and replace the last playable artifact only after the bundle and manifest are complete.
 - A missing-dependency regression check must seed the existing artifact, force the dependency failure, and prove the prior files survive.
 - 2026-09-18: Opening-session cards that execute an immediate AF special must not also persist the similarly named session-buff family. Chain Strike II is one attack; storing `mirage_chain` made later random hero basics look like a hidden toggle with silent expiry.
+- 2026-09-21: Continuous combat must separate target eligibility from enemy action eligibility. Pre-arm each hero's own cooldown while enemies approach, allow hero targeting at the shared range line, admit enemies to their scheduler only at home, and read moving targets from current coordinates rather than their future home anchors.
+- 2026-09-21: A shared action owner makes cooldown combat look turn based even when readiness uses wall time. Tick regular hero basics independently of the skill presentation lock, keep enemy scheduling separate, and mark basic packets so delivery art can remain without contact splashes.
+- 2026-09-22: In four-turret continuous combat, compare enemy travel-to-home against the party's time-to-kill, not only the attack cooldown. A slow walker can die before it is eligible to attack; stationary melee basics also need a visible delivery cue once lunges and contact splashes are gone. Use the spawned enemy's authored delivery range for its cooldown band.
+- 2026-09-23: In a repeating DPS-gate session, preserve hero HP and KO state across wave loops and boss clears. Restore the party only in the defeat recovery owner, which resets to wave one of the current stage; otherwise each clear silently erases the attrition that makes upgrades observable.
+- 2026-09-23: In streamed combat, start the next-pack timer when the last entrant becomes targetable, not when it reaches its final attack position. A slow walker can otherwise create a long empty break. Enemy targeting should use the living hero roster after the enemy engages; rendered sprite feet can fall outside the formation's standing-center bounds and silently remove valid targets.
+- 2026-09-23: If continuous enemies stand idle while hero basics continue, inspect the stream's outer action gate and the scheduler's retained current actor together. Stale `IsPlayerBusy`/`DeferAdvance` flags can suppress every scheduler tick, and a hero left as current can block an enemy claim even after the outer gate opens.
+
+- Lamp Auto eligibility and recipient ranking use total hero replacement CP. Standalone item CP remains display order; never truncate candidates to four before unique-hero allocation, since leaders can offer no hero gain while later items do. Recheck eligibility under the save lock. Raw draws stay unfiltered, manual downgrades remain allowed, and leftovers entering dismantling count toward capacity.
+
+- Modal-owned equip feedback must finish before review advances or closes. Keep the transient float inside the modal and await its cleanup while inputs remain busy, so it cannot outlive its context over combat.
+
+- 2026-09-30: Test transient arrival strips separately from restored inventory. Use the persisted completed-emission counter as a session baseline and account for zero-based item sequence; verify the first manual result visibly appears. Automatic production must require current-session player intent.
+
+- Historical emission snapshots are presentation inputs, not inventory ownership. Filter transient arrival art by live pending/discarded IDs so settled items cannot survive an empty-cache transition.
+
+- Reference-led strip QA must compare both X and Y painted edges at a common uniform scale. Matching height alone leaves horizontal drift undetected. Flex text can override an aspect-ratio badge's width; measure the resulting circle and its visible text separately.
+
+- Scope feedback holds to their final transition. A global render freeze plus awaiting animation inside the save/action lock blocks unrelated selections and makes cache updates look delayed. Review entry should settle in-flight acquisition and pause background generation before presenting a complete inventory.
+
+- Progression proof must record the player-visible level and EXP-meter rollover, not only a downstream unlock or saved state. Label party EXP separately from device-upgrade resources, and include current EXP in render invalidation.
+
+- Lamp edge guidance: measure the animated decorative image/rings against the viewport before changing target controls. Flip the hand inward and bound ring diameter at the shared helper owner; guard every target at compact and reference sizes.
+
+- Lamp smoke belongs to the supplied image positioned above the strip. Keep the strip overflow visible; apply readiness darkening to the image through the shared disabled button so manual and Auto emission use the same cue.
+
+- 2026-10-01: Compact equipment review can keep identity and actions fixed while a flex inventory absorbs the height limit. Show independent total-hero CP direction and selected-hero slot-stat direction; equal values carry no indicator. Remove retired comparison chrome instead of reserving blank rows.
+
+- 2026-10-01: Apparent arrow cropping can come from a polygon’s two apex vertices. Inspect the rendered silhouette and ancestor bounds; use one apex in both CSS and Canvas and guard both directions with pixel samples.
+
+- 2026-10-01: Tight per-numeral raster crops vary in height even at one font size. Derive the shared number/arrow height from the font’s full digit range and normalize each crop into it; test both rows with differing values.
+
+- 2026-10-01: Removing redundant rarity initials must preserve the color channel. Bind the candidate identity band and inventory tile to the same existing rarity variable and check the full palette.
+
+- 2026-10-01: Separate auto-sized label tracks misalign HP/MAG even when outer cells align. Share row tracks with native subgrid and reserve flexible value columns across the card. Center the whole allocated grid; max-content-only centering crowds current values and leaves no space for their growth.
+
+- 2026-10-01: Centering a sprite cell does not center its visible artwork when atlas padding varies. Normalize visible alpha bounds once at the shared atlas renderer; keep labels outside that normalization and retain the original source asset.
+
+- Lamp progression: an adjacent party-EXP meter read as lamp level. Display earned lamp level and a durable purchased-stage ledger; currency balances are affordability data. Guard tier and stage before each saved purchase, and require the completed ledger for manual promotion.
+
+- 2026-10-02: Sprite atlas centering cannot certify the rendered tween endpoint. Measure original alpha bounds with the actual sprite offset and final animation matrix in the array. Gate shared manual/Auto reveal on artwork readiness so fallback frames never start an earned arrival; translate artwork independently of fixed badges.
+
+- 2026-10-02: Boss access belongs to the progression tier, while arming/active flags belong to an encounter. Keep tier access through retries and reload, clear it only on boss victory, and cancel obsolete enemy actions when switching encounters. Spending, timed construction and completion need distinct durable states; test expiry and ticket commits against failed saves. Level QA must reset receipt baselines and execution queues as well as labels so stored EXP or pending skills cannot replay.
+
+- 2026-10-02: The rendered UI lock caught inherited unscaled damage-number injections that a source-string check missed. Assert generated calls forward layoutScale and retain rendered compact/Retina proof.

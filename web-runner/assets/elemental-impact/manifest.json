@@ -1,0 +1,334 @@
+{
+  "format": "Wishfire 2D impact flipbook animation frames",
+  "canvas": {
+    "width": 627,
+    "height": 627,
+    "origin": [
+      313.5,
+      313.5
+    ]
+  },
+  "sourceSheet": {
+    "width": 1254,
+    "height": 1254,
+    "columns": 2,
+    "rows": 2,
+    "cellOrder": [
+      "Hit",
+      "Spread",
+      "Secondary",
+      "Dissipate"
+    ]
+  },
+  "frameDirectory": "frames",
+  "playback": {
+    "fps": 30,
+    "loop": false,
+    "totalDurationMs": 601,
+    "previewFrameHoldMs": [
+      100,
+      67,
+      100,
+      67,
+      100,
+      67,
+      100
+    ]
+  },
+  "effects": [
+    {
+      "color": "RED",
+      "element": "Fire",
+      "slug": "fire",
+      "cue": "Flame lashes and ember flecks",
+      "source": "source/fire.png",
+      "frames": [
+        "fire-01-hit.png",
+        "fire-02-hit-spread.png",
+        "fire-02-spread.png",
+        "fire-03-spread-secondary.png",
+        "fire-03-secondary.png",
+        "fire-04-secondary-dissipate.png",
+        "fire-04-dissipate.png"
+      ]
+    },
+    {
+      "color": "BLUE",
+      "element": "Ice",
+      "slug": "ice",
+      "cue": "Faceted shards and fracture lines",
+      "source": "source/ice.png",
+      "frames": [
+        "ice-01-hit.png",
+        "ice-02-hit-spread.png",
+        "ice-02-spread.png",
+        "ice-03-spread-secondary.png",
+        "ice-03-secondary.png",
+        "ice-04-secondary-dissipate.png",
+        "ice-04-dissipate.png"
+      ]
+    },
+    {
+      "color": "GREEN",
+      "element": "Wind",
+      "slug": "wind",
+      "cue": "Sweeping gust crescents and trailing jade ribbons",
+      "source": "source/wind-redone-6frame.png",
+      "frames": [
+        "wind-redone-01-hit.png",
+        "wind-redone-02-sweep.png",
+        "wind-redone-03-crossgust.png",
+        "wind-redone-04-pass.png",
+        "wind-redone-05-ribbon.png",
+        "wind-redone-06-dissipate.png"
+      ],
+      "sourceLayout": {
+        "width": 1881,
+        "height": 1254,
+        "columns": 3,
+        "rows": 2,
+        "cellOrder": [
+          "Hit",
+          "Sweep",
+          "Cross Gust",
+          "Pass",
+          "Ribbon",
+          "Dissipate"
+        ]
+      },
+      "framePhases": [
+        "Hit",
+        "Sweep",
+        "Cross Gust",
+        "Pass",
+        "Ribbon",
+        "Dissipate"
+      ],
+      "frameHoldMs": [
+        67,
+        67,
+        67,
+        67,
+        67,
+        133
+      ]
+    },
+    {
+      "color": "PURPLE",
+      "element": "Dark",
+      "slug": "dark",
+      "cue": "Broken shadow ring and inward cuts",
+      "source": "source/dark.png",
+      "frames": [
+        "dark-01-hit.png",
+        "dark-02-hit-spread.png",
+        "dark-02-spread.png",
+        "dark-03-spread-secondary.png",
+        "dark-03-secondary.png",
+        "dark-04-secondary-dissipate.png",
+        "dark-04-dissipate.png"
+      ]
+    },
+    {
+      "color": "YELLOW",
+      "element": "Lightning",
+      "slug": "lightning",
+      "cue": "Forking electric bolts",
+      "source": "source/lightning.png",
+      "frames": [
+        "lightning-01-hit.png",
+        "lightning-02-hit-spread.png",
+        "lightning-02-spread.png",
+        "lightning-03-spread-secondary.png",
+        "lightning-03-secondary.png",
+        "lightning-04-secondary-dissipate.png",
+        "lightning-04-dissipate.png"
+      ]
+    },
+    {
+      "color": "WHITE",
+      "element": "Light",
+      "slug": "light",
+      "cue": "Sun spokes and a shrinking halo",
+      "source": "source/light.png",
+      "frames": [
+        "light-01-hit.png",
+        "light-02-hit-spread.png",
+        "light-02-spread.png",
+        "light-03-spread-secondary.png",
+        "light-03-secondary.png",
+        "light-04-secondary-dissipate.png",
+        "light-04-dissipate.png"
+      ]
+    },
+    {
+      "color": "BLACK",
+      "element": "Void",
+      "slug": "void",
+      "cue": "Inward-folding petals and empty center",
+      "source": "source/void.png",
+      "frames": [
+        "void-01-hit.png",
+        "void-02-hit-spread.png",
+        "void-02-spread.png",
+        "void-03-spread-secondary.png",
+        "void-03-secondary.png",
+        "void-04-secondary-dissipate.png",
+        "void-04-dissipate.png"
+      ]
+    },
+    {
+      "color": "ORANGE",
+      "element": "Earth",
+      "slug": "earth",
+      "cue": "Stone plates, chips, and low dust",
+      "source": "source/earth.png",
+      "frames": [
+        "earth-01-hit.png",
+        "earth-02-hit-spread.png",
+        "earth-02-spread.png",
+        "earth-03-spread-secondary.png",
+        "earth-03-secondary.png",
+        "earth-04-secondary-dissipate.png",
+        "earth-04-dissipate.png"
+      ]
+    },
+    {
+      "color": "PINK",
+      "element": "Bloom",
+      "slug": "bloom",
+      "cue": "Thorned petals and pollen glints",
+      "source": "source/bloom.png",
+      "frames": [
+        "bloom-01-hit.png",
+        "bloom-02-hit-spread.png",
+        "bloom-02-spread.png",
+        "bloom-03-spread-secondary.png",
+        "bloom-03-secondary.png",
+        "bloom-04-secondary-dissipate.png",
+        "bloom-04-dissipate.png"
+      ]
+    },
+    {
+      "color": "TEAL",
+      "element": "Water",
+      "slug": "water",
+      "cue": "Liquid crown, arcs, and detached droplets",
+      "source": "source/water.png",
+      "frames": [
+        "water-01-hit.png",
+        "water-02-hit-spread.png",
+        "water-02-spread.png",
+        "water-03-spread-secondary.png",
+        "water-03-secondary.png",
+        "water-04-secondary-dissipate.png",
+        "water-04-dissipate.png"
+      ]
+    },
+    {
+      "color": "SILVER",
+      "element": "Metal",
+      "slug": "metal",
+      "cue": "Shearing slivers and hard glints",
+      "source": "source/metal.png",
+      "frames": [
+        "metal-01-hit.png",
+        "metal-02-hit-spread.png",
+        "metal-02-spread.png",
+        "metal-03-spread-secondary.png",
+        "metal-03-secondary.png",
+        "metal-04-secondary-dissipate.png",
+        "metal-04-dissipate.png"
+      ]
+    },
+    {
+      "color": "GOLD",
+      "element": "Mark",
+      "slug": "mark",
+      "cue": "Broken geometric rings and gold ticks",
+      "source": "source/mark.png",
+      "frames": [
+        "mark-01-hit.png",
+        "mark-02-hit-spread.png",
+        "mark-02-spread.png",
+        "mark-03-spread-secondary.png",
+        "mark-03-secondary.png",
+        "mark-04-secondary-dissipate.png",
+        "mark-04-dissipate.png"
+      ]
+    },
+    {
+      "color": "BROWN",
+      "element": "Poison",
+      "slug": "poison",
+      "cue": "Viscous lobes, barbs, and bubbles",
+      "source": "source/poison.png",
+      "frames": [
+        "poison-01-hit.png",
+        "poison-02-hit-spread.png",
+        "poison-02-spread.png",
+        "poison-03-spread-secondary.png",
+        "poison-03-secondary.png",
+        "poison-04-secondary-dissipate.png",
+        "poison-04-dissipate.png"
+      ]
+    },
+    {
+      "color": "GRAY",
+      "element": "Smoke",
+      "slug": "smoke",
+      "cue": "Torn smoke lobes and thin wisps",
+      "source": "source/smoke.png",
+      "frames": [
+        "smoke-01-hit.png",
+        "smoke-02-hit-spread.png",
+        "smoke-02-spread.png",
+        "smoke-03-spread-secondary.png",
+        "smoke-03-secondary.png",
+        "smoke-04-secondary-dissipate.png",
+        "smoke-04-dissipate.png"
+      ]
+    },
+    {
+      "color": "CRIMSON",
+      "element": "Blood",
+      "slug": "blood",
+      "cue": "Crimson ribbons and stylized droplets",
+      "source": "source/blood.png",
+      "frames": [
+        "blood-01-hit.png",
+        "blood-02-hit-spread.png",
+        "blood-02-spread.png",
+        "blood-03-spread-secondary.png",
+        "blood-03-secondary.png",
+        "blood-04-secondary-dissipate.png",
+        "blood-04-dissipate.png"
+      ]
+    },
+    {
+      "color": "INDIGO",
+      "element": "Arcane",
+      "slug": "arcane",
+      "cue": "Crystal spokes and abstract glyph fragments",
+      "source": "source/arcane.png",
+      "frames": [
+        "arcane-01-hit.png",
+        "arcane-02-hit-spread.png",
+        "arcane-02-spread.png",
+        "arcane-03-spread-secondary.png",
+        "arcane-03-secondary.png",
+        "arcane-04-secondary-dissipate.png",
+        "arcane-04-dissipate.png"
+      ]
+    }
+  ],
+  "framePhases": [
+    "Hit",
+    "Hit to Spread",
+    "Spread",
+    "Spread to Secondary",
+    "Secondary",
+    "Secondary to Dissipate",
+    "Dissipate"
+  ]
+}

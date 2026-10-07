@@ -26,34 +26,24 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
     'dev-panel-1-action-scale',
     'dev-panel-2-containment',
     'dev-panel-1-action-order',
-    'hero-selector-scale',
-    'target-selector-scale',
-    'global-attack-absent',
-    'hero-command-containment',
-    'hero-command-column-order',
-    'hero-command-scale',
-    'hero-command-two-row-layout',
-    'hero-command-hp-af-readouts',
-    'hero-command-active-highlight',
+    'battlefield-selectors-absent',
+    'automatic-focus-target-is-living',
+    'realtime-basic-clocks-present',
+    'hero-combat-card-ui-absent',
+    'actor-health-bars-present',
     'gem-board-backdrop-absent',
-    'hero-command-native-input',
-    'hero-editor-containment',
     'damage-text-scale',
     'damage-text-density',
     'pooled-health-bar-absent',
     'shared-astral-bar-absent',
-    'personal-af-meters',
-    'party-card-draw-controls-absent',
-    'hero-command-personal-af',
-    'hero-command-paid-sequence',
+    'personal-af-ui-absent',
     'legacy-backdrop-absent',
   ]) {
     assert.match(gate, new RegExp(requiredEvidence), `missing ${requiredEvidence} invariant`);
   }
-  assert.match(gate, /\.readout\.hp/);
-  assert.match(gate, /\.readout\.af/);
-  assert.match(gate, /data-hp-bar/);
-  assert.match(gate, /data-af-bar/);
+  assert.match(gate, /heroCardHostPresent/);
+  assert.match(gate, /actorHealthBars/);
+  assert.match(gate, /fillStyle\.toLowerCase\(\) === '#292e34'/);
 
   assert.match(gate, /\{ name: 'compact', width: 216, height: 384, dpr: 1 \}/);
   assert.match(gate, /\{ name: 'reference', width: 360, height: 640, dpr: 1 \}/);
@@ -63,7 +53,11 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
   assert.match(gate, /CanvasRenderingContext2D\.prototype\.drawImage/);
   assert.match(gate, /CanvasRenderingContext2D\.prototype\.fillText/);
   assert.match(gate, /CanvasRenderingContext2D\.prototype\.fillRect/);
-  assert.match(gate, /setupDynamicInitiativeAuthorityScenario/);
+  assert.match(gate, /TickRealtimeHeroBasics/);
+  assert.match(gate, /RealtimeHeroBasicClocks/);
+  assert.match(gate, /RealtimeHeroFocusTargetUID/);
+  assert.doesNotMatch(gate, /DynamicInitiativeAuthority|setupDynamicInitiative/);
+  assert.doesNotMatch(gate, /AstralFlow|\bFLOW\b/);
   assert.match(gate, /ui-lock-report\.json/);
   assert.match(gate, /page\.screenshot/);
   assert.match(gate, /--prove-rejection/);
@@ -78,11 +72,9 @@ test('pre-commit routes staged UI-owner changes through the full UI lock', () =>
   assert.match(hook, /git diff --cached --name-only --diff-filter=ACMRD/);
   assert.match(hook, /npm run test:ui-lock/);
   assert.match(hook, /web-runner\/systems\/renderRuntime\.js/);
-  assert.ok(hook.includes('web-runner/systems/heroCommandUI\\.mjs'));
   assert.match(hook, /web-runner\/systems\/devToolingRuntime\.js/);
   assert.match(hook, /web-runner\/systems\/combatPresentationScale\.mjs/);
   assert.match(hook, /web-runner\/systems\/appShellViewport\.js/);
-  assert.match(hook, /web-runner\/systems\/renderSkillDraughtOverlay\.js/);
   assert.match(hook, /web-runner\/app\.js/);
   assert.match(hook, /web-runner\/systems\/surfaceRenderRouter\.js/);
   assert.match(hook, /web-runner\/systems\/pointerRoutingShell\.js/);

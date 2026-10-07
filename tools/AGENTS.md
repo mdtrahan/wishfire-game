@@ -6,12 +6,10 @@
 ## Ownership
 - `serve_web.js` serves the browser runner and writes `web-runner/runtime-fingerprint.js`.
 - `balance_harness.js` is the canonical batch game automation path.
-- `cp_balance_report.mjs` owns deterministic CP scaling simulations and writes bounded balance artifacts.
-- Its production-catalog section runs 256 fixed seeds at every Lv1–9 and Lv91–99 balance surface, recording the first actual enemy HP transition to zero separately from total encounter actions.
 - `ui_presentation_lock_gate.mjs` is the canonical fail-closed rendered presentation gate for approved responsive UI seams.
 - Playwright doctor, launch matrix, and Chrome CDP helpers diagnose browser startup/control issues.
 - Rust build helper generates the browser WASM artifact.
-- `build_offline_release.mjs` reuses the hosted runtime staging pass, embeds the three startup JSON payloads and SimulationCore WASM, and emits the portable file:// artifact; it must leave the Netlify release path unchanged.
+- `build_offline_release.mjs` reuses hosted runtime staging, embeds startup JSON, the optional elemental impact manifest, and SimulationCore WASM, and emits the portable file:// artifact with relative frame assets; it must leave the Netlify release path unchanged.
 - Offline builds must validate dependencies before touching `dist-offline`, assemble in a sibling candidate directory, and replace the prior playable artifact only after the bundle and manifest are complete.
 - Hot-file, cleanup, archive, and Beads/Git visibility helpers support repo workflow. Generated review/export output belongs in an explicit temporary directory outside current main.
 
@@ -20,6 +18,8 @@
 - `link_beads_worktree.mjs` adds only the ignored native `.beads/redirect` in a Codex-created worktree. It refuses lane-local Dolt state or a conflicting redirect and points at the authoritative checkout's live Beads database and backup. The exact redirect file is disposable at guarded retirement; lane-local Dolt state is not.
 - Superseded-ancestor retirement requires explicit `--superseded-by <registered-successor-path>`, a CLOSED clean target, exact target HEAD ancestry in the live registered successor HEAD, and no Dolt or protected local material. Patch equivalence is insufficient; the successor is never modified.
 - General historical retirement requires explicit `--historical`, a clean registered non-main checkout, a durable local branch or tag containing HEAD, no Dolt or protected local files, and a separate live-process check. It does not require merge ancestry or Bead status. Unknown material remains protected; refs remain.
+- The hot-file regression gate exercises live realtime hero/enemy scheduling, impact timing, rewards, and the shared damage/skill mirror; retired turn and gem scheduler tests are outside that gate.
+- The hot-file regression gate runs the lamp phone gate when lamp presentation owners change. That gate owns and stops its temporary server; `LAMP_QA_URL` explicitly selects an existing review server.
 - Do not create a second batch game-test pipeline beside `npm run balance-harness` without explicit scope.
 - Keep `npm run test:ui-lock` presentation-only. It may arrange deterministic test state through `window.__codexGame`; it must not become a balance or gameplay simulation harness.
 - UI lock failures must name the viewport, invariant, measured value, allowed range, and JSON report path.
@@ -30,7 +30,6 @@
 - Hot-file commit helpers own `.beads/hot-file-lock` metadata generation; do not hand-author scope files except when debugging the tooling.
 - Tooling should not mutate runtime gameplay state except through explicit test/harness interfaces.
 - The balance harness enters through the current Canvas START hit target, fixes the encounter seed, and drives native autoplay. It writes completed metrics before bounded cleanup and force-closes only browser/server processes it owns.
-- Seeded CP simulations must pass their seeded picker into shared hero targeting; omitting it produces idle heroes rather than a deterministic target choice.
 
 ## Work Guidance
 - Keep command output bounded and failure messages classifiable.
@@ -44,11 +43,11 @@
 - `npm run test:ui-lock` after changes to a listed UI presentation owner; inspect its compact, reference, natural-preview, and Retina screenshots before accepting new bounds.
 
 ## Child DOX Index
-- `export_session_level_up_buff_contract.mjs` - deterministic adapter from the Wishfire session buff catalog to the validate-card-skills JSON contract.
 
 - build_runtime_release.mjs packages only tracked runtime files from web-runner/ and src/ into dist/, with commit and SHA-256 manifest. Netlify publishes dist/; checkpoints, governance reviews and generation prompts are excluded.
 
-- UI lock checks native hero commands, column-major capacity, individual HP, absent global attack/pooled health bars and personal FLOW meters. Its group-size loop uses test actors only and exercises the native card/editor controls through presentation completion.
+- UI lock checks that combat hero cards and AF readouts stay absent, that hero and enemy HP bars remain actor-anchored, and that combat controls stay within the Canvas.
+- Actor HP bars use rounded dark tracks; the UI lock counts each clipped track fill for every hero and living enemy.
 - The native command UI gate prepares and executes self Heal, checks only the active hero recovers, and waits for the ordinary turn handoff.
 
 - The UI gate checks full-charge FLOW and a 45/50 SP queue through Act, single-turn completion, absent retired draw controls, and steady scheduled-actor highlighting through busy action frames.

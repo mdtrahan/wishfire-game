@@ -5,6 +5,30 @@ import {
   HERO_PACK_PLUS_PATH,
 } from '../state/heroScreenConfig.js';
 import { heroArtPath } from '../state/heroArtAssets.mjs';
+import { getEmbeddedJson } from './runtimeAssetUrl.mjs';
+
+export function createElementalImpactFrameLoader({ loadManifest, loadImage, frameUrl }) {
+  let manifestPromise = null;
+  const framePromises = new Map();
+  return (slug) => {
+    const key = String(slug || '').toLowerCase();
+    if (!/^[a-z]+$/.test(key)) return Promise.resolve(null);
+    if (framePromises.has(key)) return framePromises.get(key);
+    const promise = (async () => {
+      manifestPromise ||= Promise.resolve().then(loadManifest).catch(() => null);
+      const manifest = await manifestPromise;
+      const effect = manifest?.effects?.find(entry => entry?.slug === key);
+      if (!effect || !Array.isArray(effect.frames) || !effect.frames.length) return null;
+      const images = await Promise.all(effect.frames.map(name => loadImage(frameUrl(manifest.frameDirectory || 'frames', name))));
+      if (images.some(image => !image)) return null;
+      const frameHoldMs = (effect.frameHoldMs || manifest.playback?.previewFrameHoldMs || []).map(value => Math.max(1, Number(value) || 1));
+      if (frameHoldMs.length !== images.length) return null;
+      return { frames: images, frameHoldMs, totalDurationMs: frameHoldMs.reduce((sum, value) => sum + value, 0) };
+    })().catch(() => null);
+    framePromises.set(key, promise);
+    return promise;
+  };
+}
 
 export async function loadRuntimeImage(url, { resolveRuntimeImageUrl = (value) => value } = {}) {
   return new Promise((res) => {
@@ -26,11 +50,29 @@ export async function loadRuntimeVisualAssets({
 }) {
   const loadImage = (url) => loadRuntimeImage(url, { resolveRuntimeImageUrl });
   const images = {};
+  const elementalImpactFrames = {};
+  const loadElementalImpactFrames = createElementalImpactFrameLoader({
+    loadManifest: async () => {
+      const url = assetUrl('elemental-impact/manifest.json');
+      const embedded = getEmbeddedJson(url);
+      if (embedded) return embedded;
+      if (typeof fetch !== 'function') return null;
+      const response = await fetch(typeof resolveRuntimeImageUrl === 'function' ? resolveRuntimeImageUrl(url) : url);
+      return response.ok ? response.json() : null;
+    },
+    loadImage,
+    frameUrl: (directory, name) => assetUrl(`elemental-impact/${directory}/${name}`),
+  });
+  images.ElementalImpactFrames = elementalImpactFrames;
+  images.loadElementalImpactFrames = async (slug) => {
+    const result = await loadElementalImpactFrames(slug);
+    if (result) elementalImpactFrames[String(slug).toLowerCase()] = result;
+    return result;
+  };
   const enemySpriteImages = {};
   const heroPortraitImages = {};
   let wardBarrierImage = null;
   let heroSkillIconsBySlot = [];
-  let heroSelectorImage = null;
   let gemFrameImages = [];
   let superGemFrameImages = [];
   let superGemRainbowImage = null;
@@ -149,7 +191,6 @@ export async function loadRuntimeVisualAssets({
       ...heroSkillIconLoads,
       ...heroCapsuleLoads,
       gemVisualLoads,
-      (async () => { heroSelectorImage = await loadImage(assetUrl('images/h_selector-animation 1-000.png')); })(),
       (async () => { images.SkillArcanePulse = await loadImage(assetUrl('images/vfx_arcane_pulse_crescent.png')); })(),
       (async () => { images.CombatArcanePulseImpact = await loadImage(assetUrl('images/vfx_arcane_pulse_impact.png')); })(),
       (async () => { images.CombatHealSwirl = await loadImage(assetUrl('images/vfx_heal_swirl_10.png')); })(),
@@ -169,6 +210,7 @@ export async function loadRuntimeVisualAssets({
       (async () => { images.CombatKajaOrb = await loadImage(assetUrl('images/vfx_kaja_orb.png')); })(),
       (async () => { images.CombatDjinnRain = await loadImage(assetUrl('images/vfx_djinn_rain.png')); })(),
       (async () => { images.CombatMaridCrescent = await loadImage(assetUrl('images/vfx_marid_crescent.png')); })(),
+      (async () => { images.CombatMeleeCrescent = await loadImage(assetUrl('images/vfx_melee_crescent_g09.png')); })(),
       (async () => { images.CombatChimerilassEruption = await loadImage(assetUrl('images/vfx_chimerilass_eruption.png')); })(),
       (async () => { images.CombatScatheCrackle = await loadImage(assetUrl('images/vfx_scathe_crackle.png')); })(),
       (async () => { images.CombatSweepCrescent = await loadImage(assetUrl('images/vfx_sweep_crescent.png')); })(),
@@ -178,6 +220,7 @@ export async function loadRuntimeVisualAssets({
       (async () => { images.CombatGrowSpectralHands = await loadImage(assetUrl('images/vfx_grow_spectral_hands.png')); })(),
       (async () => { images.CombatVenomSigil = await loadImage(assetUrl('images/vfx_venom_sigil.png')); })(),
       (async () => { images.CombatGlassReprisal = await loadImage(assetUrl('images/vfx_glass_reprisal.png')); })(),
+      (async () => { images.CombatBossButton = await loadImage(assetUrl('images/boss_button.png')); })(),
       (async () => { mapBackgroundImage = await loadImage(assetUrl('images/genielands-geography.png')); })(),
       (async () => { mapCaveImage = await loadImage(assetUrl('images/map_cave_46.png')); })(),
       (async () => { mapPortalImage = await loadImage(assetUrl('images/map_warp_portal_46x52.png')); })(),
@@ -253,7 +296,6 @@ export async function loadRuntimeVisualAssets({
     heroPortraitImages,
     wardBarrierImage,
     heroSkillIconsBySlot,
-    heroSelectorImage,
     gemFrameImages,
     superGemFrameImages,
     superGemRainbowImage,

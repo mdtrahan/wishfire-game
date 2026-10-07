@@ -50,7 +50,7 @@ function wasmArgsFromRow(row, rules) {
 }
 
 for (const rulesPath of rulesPaths) {
-  test(`enemy target fixtures encode current JS target selection in ${path.relative(path.join(__dirname, '..'), rulesPath)}`, async () => {
+  test(`enemy target fixtures encode stable encounter-order selection in ${path.relative(path.join(__dirname, '..'), rulesPath)}`, async () => {
     const rows = parseCsvRows(fs.readFileSync(fixturePath, 'utf8'));
     const { enemyTargetSelectionFromJs } = await import(pathToFileURL(rulesPath));
 
@@ -68,6 +68,13 @@ for (const rulesPath of rulesPaths) {
     }
   });
 }
+
+test('root and browser-shipped enemy targeting rules stay mirrored', () => {
+  assert.equal(
+    fs.readFileSync(rulesPaths[0], 'utf8'),
+    fs.readFileSync(rulesPaths[1], 'utf8'),
+  );
+});
 
 test('Rust simulation core declares enemy target selection shadow exports', () => {
   const rustSrc = fs.readFileSync(rustLibPath, 'utf8');

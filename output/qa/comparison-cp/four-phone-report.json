@@ -1,0 +1,2866 @@
+[
+  {
+    "width": 360,
+    "height": 640,
+    "dpr": 1,
+    "expectedPreview": [
+      12.1,
+      -22.2,
+      7.7,
+      0
+    ],
+    "preview": [
+      {
+        "change": 12.1,
+        "text": "CP +12.1",
+        "label": "Fara total CP change +12.1"
+      },
+      {
+        "change": -22.2,
+        "text": "CP -22.2",
+        "label": "Hondo total CP change -22.2"
+      },
+      {
+        "change": 7.7,
+        "text": "CP +7.7",
+        "label": "Runa total CP change +7.7"
+      },
+      {
+        "change": 0,
+        "text": "CP +0",
+        "label": "Kaja total CP change +0"
+      }
+    ],
+    "navigation": {
+      "contained": true,
+      "buttons": true,
+      "gearWrap": true
+    },
+    "closePoint": [
+      328,
+      30
+    ],
+    "closeHit": "close",
+    "geometry": {
+      "viewport": [
+        360,
+        640,
+        1
+      ],
+      "overflow": false,
+      "stripOverflow": false,
+      "controls": true,
+      "anchor": 488,
+      "height": 92,
+      "lampRight": true
+    },
+    "stripBalance": {
+      "autoState": "off",
+      "autoLeft": 7.59375,
+      "count": "2",
+      "level": "5",
+      "progress": 50,
+      "max": 1119,
+      "barLeft": 292.9375,
+      "barHeight": 10.28125,
+      "discEnd": 308.25
+    },
+    "emission": {
+      "lamp-burp": [
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1.0000000000000002,
+          "scaleY": 1.0000000000000002,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        }
+      ]
+    },
+    "queueGeometry": {
+      "rows": 1.4998933674557475,
+      "fiveAcross": true,
+      "square": true,
+      "filled": true,
+      "stable": true
+    },
+    "containment": {
+      "overflow": false,
+      "inViewport": true,
+      "columns": true
+    },
+    "errors": [],
+    "rapidBounds": [
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 41.063568115234375,
+          "bottom": 84.25106811523438
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 43.099002838134766,
+          "bottom": 86.2864990234375
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 122.2538070678711,
+          "bottom": 165.44131469726562
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 124.52241516113281,
+          "bottom": 167.7099151611328
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 203.90086364746094,
+          "bottom": 247.08836364746094
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 206.38697814941406,
+          "bottom": 249.57447814941406
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 40.73574447631836,
+          "bottom": 83.92324829101562
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 42.75059509277344,
+          "bottom": 85.93809509277344
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 121.8858871459961,
+          "bottom": 165.07339477539062
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 124.13581848144531,
+          "bottom": 167.3233184814453
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 203.49612426757812,
+          "bottom": 246.68362426757812
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 205.9643096923828,
+          "bottom": 249.1518096923828
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 40.41148376464844,
+          "bottom": 83.59898376464844
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 42.40554428100586,
+          "bottom": 85.59304809570312
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 121.52117156982422,
+          "bottom": 164.70867919921875
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 123.75228881835938,
+          "bottom": 166.93978881835938
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 203.09439086914062,
+          "bottom": 246.28189086914062
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 205.54466247558594,
+          "bottom": 248.73216247558594
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 40.092735290527344,
+          "bottom": 83.28023529052734
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 42.06591796875,
+          "bottom": 85.25341796875
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 121.16181945800781,
+          "bottom": 164.3493194580078
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 123.3741226196289,
+          "bottom": 166.56161499023438
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 202.6980438232422,
+          "bottom": 245.8855438232422
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 205.13046264648438,
+          "bottom": 248.31796264648438
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 39.775691986083984,
+          "bottom": 82.96319580078125
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 41.7276496887207,
+          "bottom": 84.91514587402344
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 120.80354309082031,
+          "bottom": 163.9910430908203
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 122.99678039550781,
+          "bottom": 166.1842803955078
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 202.3023223876953,
+          "bottom": 245.4898223876953
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 204.71676635742188,
+          "bottom": 247.90426635742188
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 39.46233367919922,
+          "bottom": 82.64983367919922
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 41.39283752441406,
+          "bottom": 84.58033752441406
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 120.44853210449219,
+          "bottom": 163.6360321044922
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 122.62256622314453,
+          "bottom": 165.81005859375
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 201.90963745117188,
+          "bottom": 245.09713745117188
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 204.30606079101562,
+          "bottom": 247.49356079101562
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 39.15270233154297,
+          "bottom": 82.34020233154297
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 41.06151580810547,
+          "bottom": 84.24901580810547
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 120.0968246459961,
+          "bottom": 163.28433227539062
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 122.25150299072266,
+          "bottom": 165.43899536132812
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 201.52000427246094,
+          "bottom": 244.70750427246094
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 203.89834594726562,
+          "bottom": 247.08584594726562
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 38.84865951538086,
+          "bottom": 82.03616333007812
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 40.73566436767578,
+          "bottom": 83.92316436767578
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 119.7505111694336,
+          "bottom": 162.93801879882812
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 121.88580322265625,
+          "bottom": 165.07330322265625
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 201.13572692871094,
+          "bottom": 244.32322692871094
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 203.49603271484375,
+          "bottom": 246.68353271484375
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 38.546592712402344,
+          "bottom": 81.73409271240234
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 40.411407470703125,
+          "bottom": 83.59890747070312
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 119.40546417236328,
+          "bottom": 162.59295654296875
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 121.52108001708984,
+          "bottom": 164.70858764648438
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 200.752197265625,
+          "bottom": 243.939697265625
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 203.09429931640625,
+          "bottom": 246.28179931640625
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 38.24838638305664,
+          "bottom": 81.43588256835938
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 40.09074783325195,
+          "bottom": 83.27824401855469
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 119.06379699707031,
+          "bottom": 162.2512969970703
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 121.15958404541016,
+          "bottom": 164.34707641601562
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 200.37176513671875,
+          "bottom": 243.55926513671875
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 202.69557189941406,
+          "bottom": 245.88307189941406
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 37.95584487915039,
+          "bottom": 81.14334106445312
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 39.77561569213867,
+          "bottom": 82.96311950683594
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 118.72756958007812,
+          "bottom": 161.91506958007812
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 120.80345916748047,
+          "bottom": 163.990966796875
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 199.99668884277344,
+          "bottom": 243.18418884277344
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 202.30223083496094,
+          "bottom": 245.48973083496094
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 37.66549301147461,
+          "bottom": 80.85299682617188
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 39.462257385253906,
+          "bottom": 82.6497573852539
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 118.39276123046875,
+          "bottom": 161.58026123046875
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 120.44844818115234,
+          "bottom": 163.63595581054688
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 70.125,
+          "right": 118.125,
+          "top": 199.6224822998047,
+          "bottom": 242.8099822998047
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 140.375,
+          "right": 188.375,
+          "top": 201.9095458984375,
+          "bottom": 245.0970458984375
+        }
+      ]
+    ]
+  },
+  {
+    "width": 216,
+    "height": 384,
+    "dpr": 2,
+    "expectedPreview": [
+      12.1,
+      -22.2,
+      7.7,
+      0
+    ],
+    "preview": [
+      {
+        "change": 12.1,
+        "text": "CP +12.1",
+        "label": "Fara total CP change +12.1"
+      },
+      {
+        "change": -22.2,
+        "text": "CP -22.2",
+        "label": "Hondo total CP change -22.2"
+      },
+      {
+        "change": 7.7,
+        "text": "CP +7.7",
+        "label": "Runa total CP change +7.7"
+      },
+      {
+        "change": 0,
+        "text": "CP +0",
+        "label": "Kaja total CP change +0"
+      }
+    ],
+    "navigation": {
+      "contained": true,
+      "buttons": true,
+      "gearWrap": true
+    },
+    "closePoint": [
+      188,
+      28
+    ],
+    "closeHit": "close",
+    "geometry": {
+      "viewport": [
+        216,
+        384,
+        2
+      ],
+      "overflow": false,
+      "stripOverflow": false,
+      "controls": true,
+      "anchor": 487.9947916666667,
+      "height": 91.97916666666667,
+      "lampRight": true
+    },
+    "stripBalance": {
+      "autoState": "off",
+      "autoLeft": 7.578125,
+      "count": "2",
+      "level": "5",
+      "progress": 50,
+      "max": 1119,
+      "barLeft": 175.75,
+      "barHeight": 5.984375,
+      "discEnd": 184.9375
+    },
+    "emission": {
+      "lamp-burp": [
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1.0000000000000002,
+          "scaleY": 1.0000000000000002,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        }
+      ]
+    },
+    "queueGeometry": {
+      "rows": 1.5,
+      "fiveAcross": true,
+      "square": true,
+      "filled": true,
+      "stable": true
+    },
+    "containment": {
+      "overflow": false,
+      "inViewport": true,
+      "columns": true
+    },
+    "errors": [],
+    "rapidBounds": [
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 80,
+          "top": 38.7346305847168,
+          "bottom": 81.92213439941406
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 82,
+          "right": 121,
+          "top": 40.749412536621094,
+          "bottom": 83.9369125366211
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 80,
+          "top": 119.8846435546875,
+          "bottom": 163.0721435546875
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 82,
+          "right": 121,
+          "top": 122.1344985961914,
+          "bottom": 165.32199096679688
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 80,
+          "top": 201.4947509765625,
+          "bottom": 244.6822509765625
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 82,
+          "right": 121,
+          "top": 203.96287536621094,
+          "bottom": 247.15037536621094
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 80,
+          "top": 38.412315368652344,
+          "bottom": 81.59981536865234
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 82,
+          "right": 121,
+          "top": 40.406429290771484,
+          "bottom": 83.59393310546875
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 80,
+          "top": 119.52210235595703,
+          "bottom": 162.7095947265625
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 82,
+          "right": 121,
+          "top": 121.7532730102539,
+          "bottom": 164.94076538085938
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 80,
+          "top": 201.09542846679688,
+          "bottom": 244.28292846679688
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 82,
+          "right": 121,
+          "top": 203.5457305908203,
+          "bottom": 246.7332305908203
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 80,
+          "top": 38.091644287109375,
+          "bottom": 81.27914428710938
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 82,
+          "right": 121,
+          "top": 40.064754486083984,
+          "bottom": 83.25225830078125
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 80,
+          "top": 119.16059875488281,
+          "bottom": 162.3480987548828
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 82,
+          "right": 121,
+          "top": 121.37283325195312,
+          "bottom": 164.56033325195312
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 80,
+          "top": 200.69668579101562,
+          "bottom": 243.88418579101562
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 82,
+          "right": 121,
+          "top": 203.12905883789062,
+          "bottom": 246.31655883789062
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 80,
+          "top": 37.77650451660156,
+          "bottom": 80.96400451660156
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 82,
+          "right": 121,
+          "top": 39.728515625,
+          "bottom": 82.916015625
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 80,
+          "top": 118.80445861816406,
+          "bottom": 161.99195861816406
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 82,
+          "right": 121,
+          "top": 120.99774932861328,
+          "bottom": 164.18524169921875
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 80,
+          "top": 200.3033447265625,
+          "bottom": 243.4908447265625
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 82,
+          "right": 121,
+          "top": 202.71783447265625,
+          "bottom": 245.90533447265625
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 80,
+          "top": 37.463134765625,
+          "bottom": 80.650634765625
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 82,
+          "right": 121,
+          "top": 39.39369583129883,
+          "bottom": 82.58119201660156
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 80,
+          "top": 118.44944763183594,
+          "bottom": 161.63694763183594
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 82,
+          "right": 121,
+          "top": 120.62352752685547,
+          "bottom": 163.81103515625
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 80,
+          "top": 199.91064453125,
+          "bottom": 243.09814453125
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 82,
+          "right": 121,
+          "top": 202.30711364746094,
+          "bottom": 245.49461364746094
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 80,
+          "top": 37.15349578857422,
+          "bottom": 80.34099578857422
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 82,
+          "right": 121,
+          "top": 39.06236267089844,
+          "bottom": 82.24986267089844
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 80,
+          "top": 118.09772491455078,
+          "bottom": 161.28521728515625
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 82,
+          "right": 121,
+          "top": 120.25245666503906,
+          "bottom": 163.43995666503906
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 80,
+          "top": 199.52099609375,
+          "bottom": 242.70849609375
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 82,
+          "right": 121,
+          "top": 201.89938354492188,
+          "bottom": 245.08688354492188
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 80,
+          "top": 36.84944152832031,
+          "bottom": 80.03694152832031
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 82,
+          "right": 121,
+          "top": 38.73650360107422,
+          "bottom": 81.92400360107422
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 80,
+          "top": 117.75140380859375,
+          "bottom": 160.93890380859375
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 82,
+          "right": 121,
+          "top": 119.88674926757812,
+          "bottom": 163.07424926757812
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 80,
+          "top": 199.13671875,
+          "bottom": 242.32421875
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 82,
+          "right": 121,
+          "top": 201.4970703125,
+          "bottom": 244.6845703125
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 80,
+          "top": 36.54556655883789,
+          "bottom": 79.73306274414062
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 82,
+          "right": 121,
+          "top": 38.41030502319336,
+          "bottom": 81.59780883789062
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 80,
+          "top": 117.40428924560547,
+          "bottom": 160.591796875
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 82,
+          "right": 121,
+          "top": 119.51984405517578,
+          "bottom": 162.70733642578125
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 80,
+          "top": 198.7509002685547,
+          "bottom": 241.9384002685547
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 82,
+          "right": 121,
+          "top": 201.09292602539062,
+          "bottom": 244.28042602539062
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 80,
+          "top": 36.249149322509766,
+          "bottom": 79.4366455078125
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 82,
+          "right": 121,
+          "top": 38.09156799316406,
+          "bottom": 81.27906799316406
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 80,
+          "top": 117.0646743774414,
+          "bottom": 160.25216674804688
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 82,
+          "right": 121,
+          "top": 119.16050720214844,
+          "bottom": 162.34800720214844
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 80,
+          "top": 198.37274169921875,
+          "bottom": 241.56024169921875
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 82,
+          "right": 121,
+          "top": 200.69659423828125,
+          "bottom": 243.88409423828125
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 80,
+          "top": 35.95659637451172,
+          "bottom": 79.14409637451172
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 82,
+          "right": 121,
+          "top": 37.77642822265625,
+          "bottom": 80.96392822265625
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 80,
+          "top": 116.72843170166016,
+          "bottom": 159.91592407226562
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 82,
+          "right": 121,
+          "top": 118.80437469482422,
+          "bottom": 161.99188232421875
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 80,
+          "top": 197.99766540527344,
+          "bottom": 241.18516540527344
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 82,
+          "right": 121,
+          "top": 200.30325317382812,
+          "bottom": 243.49075317382812
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 80,
+          "top": 35.666236877441406,
+          "bottom": 78.8537368774414
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 82,
+          "right": 121,
+          "top": 37.46306228637695,
+          "bottom": 80.65055847167969
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 80,
+          "top": 116.39361572265625,
+          "bottom": 159.58111572265625
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 82,
+          "right": 121,
+          "top": 118.4493637084961,
+          "bottom": 161.63687133789062
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 80,
+          "top": 197.62342834472656,
+          "bottom": 240.81092834472656
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 82,
+          "right": 121,
+          "top": 199.91055297851562,
+          "bottom": 243.09805297851562
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 80,
+          "top": 35.379886627197266,
+          "bottom": 78.5673828125
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 82,
+          "right": 121,
+          "top": 37.153419494628906,
+          "bottom": 80.3409194946289
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 80,
+          "top": 116.06228637695312,
+          "bottom": 159.24978637695312
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 82,
+          "right": 121,
+          "top": 118.09764099121094,
+          "bottom": 161.28514099121094
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 80,
+          "top": 197.2523651123047,
+          "bottom": 240.4398651123047
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 82,
+          "right": 121,
+          "top": 199.52090454101562,
+          "bottom": 242.70840454101562
+        }
+      ]
+    ]
+  },
+  {
+    "width": 233,
+    "height": 452,
+    "dpr": 2,
+    "expectedPreview": [
+      12.1,
+      -22.2,
+      7.7,
+      0
+    ],
+    "preview": [
+      {
+        "change": 12.1,
+        "text": "CP +12.1",
+        "label": "Fara total CP change +12.1"
+      },
+      {
+        "change": -22.2,
+        "text": "CP -22.2",
+        "label": "Hondo total CP change -22.2"
+      },
+      {
+        "change": 7.7,
+        "text": "CP +7.7",
+        "label": "Runa total CP change +7.7"
+      },
+      {
+        "change": 0,
+        "text": "CP +0",
+        "label": "Kaja total CP change +0"
+      }
+    ],
+    "navigation": {
+      "contained": true,
+      "buttons": true,
+      "gearWrap": true
+    },
+    "closePoint": [
+      205,
+      47
+    ],
+    "closeHit": "close",
+    "geometry": {
+      "viewport": [
+        233,
+        452,
+        2
+      ],
+      "overflow": false,
+      "stripOverflow": false,
+      "controls": true,
+      "anchor": 487.99892703862656,
+      "height": 91.97961373390558,
+      "lampRight": true
+    },
+    "stripBalance": {
+      "autoState": "off",
+      "autoLeft": 7.580472103004292,
+      "count": "2",
+      "level": "5",
+      "progress": 50,
+      "max": 1119,
+      "barLeft": 189.59375,
+      "barHeight": 6.484375,
+      "discEnd": 199.5
+    },
+    "emission": {
+      "lamp-burp": [
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1.0000000000000002,
+          "scaleY": 1.0000000000000002,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        }
+      ]
+    },
+    "queueGeometry": {
+      "rows": 1.4998351467194198,
+      "fiveAcross": true,
+      "square": true,
+      "filled": true,
+      "stable": true
+    },
+    "containment": {
+      "overflow": false,
+      "inViewport": true,
+      "columns": true
+    },
+    "errors": [],
+    "rapidBounds": [
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 84.25,
+          "top": 57.411136627197266,
+          "bottom": 100.5986328125
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 59.405174255371094,
+          "bottom": 102.5926742553711
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 84.25,
+          "top": 138.52078247070312,
+          "bottom": 181.70828247070312
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 140.7518768310547,
+          "bottom": 183.9393768310547
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 84.25,
+          "top": 220.09396362304688,
+          "bottom": 263.2814636230469
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 222.54420471191406,
+          "bottom": 265.731689453125
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 84.25,
+          "top": 57.09238815307617,
+          "bottom": 100.27989196777344
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 59.0655517578125,
+          "bottom": 102.2530517578125
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 84.25,
+          "top": 138.16143798828125,
+          "bottom": 181.34893798828125
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 140.37371826171875,
+          "bottom": 183.56121826171875
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 84.25,
+          "top": 219.69761657714844,
+          "bottom": 262.8851318359375
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 222.13002014160156,
+          "bottom": 265.3175048828125
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 84.25,
+          "top": 56.775352478027344,
+          "bottom": 99.96285247802734
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 58.72728729248047,
+          "bottom": 101.91478729248047
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 84.25,
+          "top": 137.80316162109375,
+          "bottom": 180.99066162109375
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 139.99636840820312,
+          "bottom": 183.18386840820312
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 84.25,
+          "top": 219.30191040039062,
+          "bottom": 262.4894104003906
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 221.71632385253906,
+          "bottom": 264.90380859375
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 84.25,
+          "top": 56.461997985839844,
+          "bottom": 99.64949798583984
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 58.392478942871094,
+          "bottom": 101.5799789428711
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 84.25,
+          "top": 137.44815063476562,
+          "bottom": 180.63565063476562
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 139.62216186523438,
+          "bottom": 182.80966186523438
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 84.25,
+          "top": 218.9092254638672,
+          "bottom": 262.09674072265625
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 221.3056182861328,
+          "bottom": 264.49310302734375
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 84.25,
+          "top": 56.154212951660156,
+          "bottom": 99.34171295166016
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 58.063133239746094,
+          "bottom": 101.2506332397461
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 84.25,
+          "top": 137.09854125976562,
+          "bottom": 180.28604125976562
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 139.25332641601562,
+          "bottom": 182.44082641601562
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 84.25,
+          "top": 218.52191162109375,
+          "bottom": 261.70941162109375
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 220.90032958984375,
+          "bottom": 264.08782958984375
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 84.25,
+          "top": 55.848331451416016,
+          "bottom": 99.03582763671875
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 57.735313415527344,
+          "bottom": 100.92281341552734
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 84.25,
+          "top": 136.75013732910156,
+          "bottom": 179.93763732910156
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 138.88540649414062,
+          "bottom": 182.07290649414062
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 84.25,
+          "top": 218.13531494140625,
+          "bottom": 261.32281494140625
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 220.49560546875,
+          "bottom": 263.68310546875
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 84.25,
+          "top": 55.548065185546875,
+          "bottom": 98.73556518554688
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 57.41299057006836,
+          "bottom": 100.60049438476562
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 84.25,
+          "top": 136.4071502685547,
+          "bottom": 179.5946502685547
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 138.52285766601562,
+          "bottom": 181.71035766601562
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 84.25,
+          "top": 217.7540740966797,
+          "bottom": 260.94158935546875
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 220.0962677001953,
+          "bottom": 263.28375244140625
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 84.25,
+          "top": 55.249839782714844,
+          "bottom": 98.43733978271484
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 57.09231185913086,
+          "bottom": 100.27981567382812
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 84.25,
+          "top": 136.06546020507812,
+          "bottom": 179.25296020507812
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 138.16134643554688,
+          "bottom": 181.34884643554688
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 84.25,
+          "top": 217.37362670898438,
+          "bottom": 260.5611267089844
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 219.69752502441406,
+          "bottom": 262.885009765625
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 84.25,
+          "top": 54.95728302001953,
+          "bottom": 98.14478302001953
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 56.777164459228516,
+          "bottom": 99.96466064453125
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 84.25,
+          "top": 135.72921752929688,
+          "bottom": 178.91671752929688
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 137.80520629882812,
+          "bottom": 180.99270629882812
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 84.25,
+          "top": 216.99853515625,
+          "bottom": 260.18603515625
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 219.30416870117188,
+          "bottom": 262.4916687011719
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 84.25,
+          "top": 54.666908264160156,
+          "bottom": 97.85440826416016
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 56.46379089355469,
+          "bottom": 99.65129089355469
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 84.25,
+          "top": 135.39439392089844,
+          "bottom": 178.58189392089844
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 137.4501953125,
+          "bottom": 180.6376953125
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 84.25,
+          "top": 216.62429809570312,
+          "bottom": 259.8117980957031
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 218.91146850585938,
+          "bottom": 262.0989685058594
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 84.25,
+          "top": 54.378849029541016,
+          "bottom": 97.56634521484375
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 56.15229797363281,
+          "bottom": 99.33979797363281
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 84.25,
+          "top": 135.0610809326172,
+          "bottom": 178.2485809326172
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 137.0963592529297,
+          "bottom": 180.2838592529297
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 84.25,
+          "top": 216.2510223388672,
+          "bottom": 259.43853759765625
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 218.5194854736328,
+          "bottom": 261.70697021484375
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 41,
+          "right": 84.25,
+          "top": 54.098262786865234,
+          "bottom": 97.2857666015625
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 55.84825897216797,
+          "bottom": 99.03575897216797
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 41,
+          "right": 84.25,
+          "top": 134.7352294921875,
+          "bottom": 177.9227294921875
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 136.75006103515625,
+          "bottom": 179.93756103515625
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 41,
+          "right": 84.25,
+          "top": 215.88531494140625,
+          "bottom": 259.07281494140625
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 86.25,
+          "right": 129.5,
+          "top": 218.13522338867188,
+          "bottom": 261.3227233886719
+        }
+      ]
+    ]
+  },
+  {
+    "width": 316,
+    "height": 452,
+    "dpr": 2,
+    "expectedPreview": [
+      12.1,
+      -22.2,
+      7.7,
+      0
+    ],
+    "preview": [
+      {
+        "change": 12.1,
+        "text": "CP +12.1",
+        "label": "Fara total CP change +12.1"
+      },
+      {
+        "change": -22.2,
+        "text": "CP -22.2",
+        "label": "Hondo total CP change -22.2"
+      },
+      {
+        "change": 7.7,
+        "text": "CP +7.7",
+        "label": "Runa total CP change +7.7"
+      },
+      {
+        "change": 0,
+        "text": "CP +0",
+        "label": "Kaja total CP change +0"
+      }
+    ],
+    "navigation": {
+      "contained": true,
+      "buttons": true,
+      "gearWrap": true
+    },
+    "closePoint": [
+      253,
+      30
+    ],
+    "closeHit": "close",
+    "geometry": {
+      "viewport": [
+        316,
+        452,
+        2
+      ],
+      "overflow": false,
+      "stripOverflow": false,
+      "controls": true,
+      "anchor": 487.97982283464563,
+      "height": 91.99311023622046,
+      "lampRight": true
+    },
+    "stripBalance": {
+      "autoState": "off",
+      "autoLeft": 7.595964566929133,
+      "count": "2",
+      "level": "5",
+      "progress": 50,
+      "max": 1119,
+      "barLeft": 237.6875,
+      "barHeight": 7.125,
+      "discEnd": 248.484375
+    },
+    "emission": {
+      "lamp-burp": [
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1.0000000000000002,
+          "scaleY": 1.0000000000000002,
+          "y": 0
+        },
+        {
+          "opacity": 1,
+          "scaleX": 1,
+          "scaleY": 1,
+          "y": 0
+        }
+      ]
+    },
+    "queueGeometry": {
+      "rows": 1.5,
+      "fiveAcross": true,
+      "square": true,
+      "filled": true,
+      "stable": true
+    },
+    "containment": {
+      "overflow": false,
+      "inViewport": true,
+      "columns": true
+    },
+    "errors": [],
+    "rapidBounds": [
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 76,
+          "right": 122.5,
+          "top": 40.412315368652344,
+          "bottom": 83.59981536865234
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 42.406429290771484,
+          "bottom": 85.59393310546875
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 76,
+          "right": 122.5,
+          "top": 121.52210235595703,
+          "bottom": 164.7095947265625
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 124.5,
+          "right": 171,
+          "top": 123.7532730102539,
+          "bottom": 166.94076538085938
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 76,
+          "right": 122.5,
+          "top": 203.09542846679688,
+          "bottom": 246.28292846679688
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 205.5457305908203,
+          "bottom": 248.7332305908203
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 76,
+          "right": 122.5,
+          "top": 40.091644287109375,
+          "bottom": 83.27914428710938
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 42.064754486083984,
+          "bottom": 85.25225830078125
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 76,
+          "right": 122.5,
+          "top": 121.16059875488281,
+          "bottom": 164.3480987548828
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 124.5,
+          "right": 171,
+          "top": 123.37283325195312,
+          "bottom": 166.56033325195312
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 76,
+          "right": 122.5,
+          "top": 202.69668579101562,
+          "bottom": 245.88418579101562
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 205.12905883789062,
+          "bottom": 248.31655883789062
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 76,
+          "right": 122.5,
+          "top": 39.77461624145508,
+          "bottom": 82.96211242675781
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 41.72650146484375,
+          "bottom": 84.91400146484375
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 76,
+          "right": 122.5,
+          "top": 120.80233001708984,
+          "bottom": 163.98983764648438
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 124.5,
+          "right": 171,
+          "top": 122.99549865722656,
+          "bottom": 166.18299865722656
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 76,
+          "right": 122.5,
+          "top": 202.3009796142578,
+          "bottom": 245.4884796142578
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 204.71536254882812,
+          "bottom": 247.90286254882812
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 76,
+          "right": 122.5,
+          "top": 39.463134765625,
+          "bottom": 82.650634765625
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 41.39369583129883,
+          "bottom": 84.58119201660156
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 76,
+          "right": 122.5,
+          "top": 120.44944763183594,
+          "bottom": 163.63694763183594
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 124.5,
+          "right": 171,
+          "top": 122.62352752685547,
+          "bottom": 165.81103515625
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 76,
+          "right": 122.5,
+          "top": 201.91064453125,
+          "bottom": 245.09814453125
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 204.30711364746094,
+          "bottom": 247.49461364746094
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 76,
+          "right": 122.5,
+          "top": 39.15349578857422,
+          "bottom": 82.34099578857422
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 41.06236267089844,
+          "bottom": 84.24986267089844
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 76,
+          "right": 122.5,
+          "top": 120.09772491455078,
+          "bottom": 163.28521728515625
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 124.5,
+          "right": 171,
+          "top": 122.25245666503906,
+          "bottom": 165.43995666503906
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 76,
+          "right": 122.5,
+          "top": 201.52099609375,
+          "bottom": 244.70849609375
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 203.89938354492188,
+          "bottom": 247.08688354492188
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 76,
+          "right": 122.5,
+          "top": 38.84944152832031,
+          "bottom": 82.03694152832031
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 40.73650360107422,
+          "bottom": 83.92400360107422
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 76,
+          "right": 122.5,
+          "top": 119.75140380859375,
+          "bottom": 162.93890380859375
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 124.5,
+          "right": 171,
+          "top": 121.88674926757812,
+          "bottom": 165.07424926757812
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 76,
+          "right": 122.5,
+          "top": 201.13671875,
+          "bottom": 244.32421875
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 203.4970703125,
+          "bottom": 246.6845703125
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 76,
+          "right": 122.5,
+          "top": 38.54736328125,
+          "bottom": 81.73486328125
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 40.41223907470703,
+          "bottom": 83.59973907470703
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 76,
+          "right": 122.5,
+          "top": 119.4063491821289,
+          "bottom": 162.59384155273438
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 124.5,
+          "right": 171,
+          "top": 121.52201843261719,
+          "bottom": 164.7095184326172
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 76,
+          "right": 122.5,
+          "top": 200.75318908691406,
+          "bottom": 243.94068908691406
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 203.09532165527344,
+          "bottom": 246.28282165527344
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 76,
+          "right": 122.5,
+          "top": 38.25092315673828,
+          "bottom": 81.43842315673828
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 40.093475341796875,
+          "bottom": 83.28097534179688
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 76,
+          "right": 122.5,
+          "top": 119.06671142578125,
+          "bottom": 162.25421142578125
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 124.5,
+          "right": 171,
+          "top": 121.16266632080078,
+          "bottom": 164.35015869140625
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 76,
+          "right": 122.5,
+          "top": 200.37501525878906,
+          "bottom": 243.56251525878906
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 202.698974609375,
+          "bottom": 245.886474609375
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 76,
+          "right": 122.5,
+          "top": 37.95484924316406,
+          "bottom": 81.14234924316406
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 39.774539947509766,
+          "bottom": 82.9620361328125
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 76,
+          "right": 122.5,
+          "top": 118.7264175415039,
+          "bottom": 161.91390991210938
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 124.5,
+          "right": 171,
+          "top": 120.80224609375,
+          "bottom": 163.98974609375
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 76,
+          "right": 122.5,
+          "top": 199.9954071044922,
+          "bottom": 243.1829071044922
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 202.30088806152344,
+          "bottom": 245.48838806152344
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 76,
+          "right": 122.5,
+          "top": 37.666236877441406,
+          "bottom": 80.8537368774414
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 39.46306228637695,
+          "bottom": 82.65055847167969
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 76,
+          "right": 122.5,
+          "top": 118.39361572265625,
+          "bottom": 161.58111572265625
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 124.5,
+          "right": 171,
+          "top": 120.4493637084961,
+          "bottom": 163.63687133789062
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 76,
+          "right": 122.5,
+          "top": 199.62342834472656,
+          "bottom": 242.81092834472656
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 201.91055297851562,
+          "bottom": 245.09805297851562
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 76,
+          "right": 122.5,
+          "top": 37.379886627197266,
+          "bottom": 80.5673828125
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 39.153419494628906,
+          "bottom": 82.3409194946289
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 76,
+          "right": 122.5,
+          "top": 118.06228637695312,
+          "bottom": 161.24978637695312
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 124.5,
+          "right": 171,
+          "top": 120.09764099121094,
+          "bottom": 163.28514099121094
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 76,
+          "right": 122.5,
+          "top": 199.2523651123047,
+          "bottom": 242.4398651123047
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 201.52090454101562,
+          "bottom": 244.70840454101562
+        }
+      ],
+      [
+        {
+          "hero": "Falie",
+          "text": "CP +7.7",
+          "left": 76,
+          "right": 122.5,
+          "top": 37.09928894042969,
+          "bottom": 80.28678894042969
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +13.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 38.849369049072266,
+          "bottom": 82.036865234375
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +8",
+          "left": 76,
+          "right": 122.5,
+          "top": 117.7364273071289,
+          "bottom": 160.92391967773438
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +9.3",
+          "left": 124.5,
+          "right": 171,
+          "top": 119.7513198852539,
+          "bottom": 162.93881225585938
+        },
+        {
+          "hero": "Falie",
+          "text": "CP +6",
+          "left": 76,
+          "right": 122.5,
+          "top": 198.88665771484375,
+          "bottom": 242.07415771484375
+        },
+        {
+          "hero": "Huun",
+          "text": "CP +6.1",
+          "left": 124.5,
+          "right": 171,
+          "top": 201.13662719726562,
+          "bottom": 244.32412719726562
+        }
+      ]
+    ]
+  }
+]

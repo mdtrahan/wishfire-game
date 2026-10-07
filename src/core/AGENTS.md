@@ -6,7 +6,7 @@
 ## Ownership
 - Combat formulas, turn gates, scheduler rules, targeting, status effects, RNG, packet normalization, GameState envelope rules, input domains, and layout state primitives.
 - CommonJS entrypoints used by tests and compatibility surfaces.
-- `sessionLevelBuffCatalog.mjs` owns the final 48-card universal Wishfire session pool. Keep its typed numeric formulas, stage relationships, and player-facing copy aligned with `governance/planning/session-level-up-buff-pool.md`; `sessionLevelBuffOffers.mjs` owns eligibility and replacement resolution.
+- Session level-up owns visible XP settlement only. Retired combat-card catalogs and offer queues have no production owner.
 
 ## Local Contracts
 - Keep rule modules deterministic and JSON-safe.
@@ -14,9 +14,11 @@
 - Speed-based interleaved initiative is canonical for normal combat; team-phase helpers are compatibility/shadow surfaces unless a bead explicitly changes the product decision.
 - SimulationCore packet shapes must exclude browser-owned presentation/storage state.
 - If Rust owns a rule family, JS code should preserve packet/diagnostic compatibility and avoid acting as final authority.
-- `heroAttackTargetingRules.mjs` owns living-enemy random HERO_SINGLE fallback targeting; manual target ownership remains in functionBank.
+- Damage packets carry attack percentage plus matching and general resistance percentages. The shared base rule subtracts applicable defense, permits zero damage, applies resistance, then preserves crit and final modifier order; keep the browser copy and Rust/WASM export in parity.
+- `heroAttackTargetingRules.mjs` owns the continuous party's persistent first-living focus inside the current X attack range and the legacy random HERO_SINGLE fallback. Manual target ownership remains in functionBank.
 - CJS mirrors such as `simulationCorePacket.cjs`, `gameStateEnvelopeRules.cjs`, and `combatRuntimeGateway.cjs` must stay aligned with their intended test/runtime consumers.
 - `combatOrientation.mjs` owns presentation-only left/right normalization and formation projection. Right-wise reflects then translates both formations `-40` logical X; heroes keep Y while enemies receive one derived block-Y offset aligning team formation midpoints. Derive that enemy offset from the fixed slot grid, never the currently living roster, so death and refill cannot move survivors. Do not put orientation in SimulationCore packets or mutate canonical actor coordinates.
+- `deriveCombatFormationAnchors` reserves an 18-unit hero buff-icon row plus a 2-unit gap above HP bars. The four-slot hero sprite band spans Y 190-395, and continuous enemy lanes follow those hero anchors.
 
 ## Work Guidance
 - Add fixture rows for deterministic behavior with meaningful edge cases.
@@ -36,4 +38,6 @@
 
 - Party-damage packets carry six HP entries and the actual loaded member count. Empty capacity contributes no damage recipient or health.
 
-- Presentation barriers ignore retired SkillDraught open/pending flags. Animation, pending-hit and refill barriers remain enforced.
+- Presentation barriers ignore retired combat-card flags. Animation, pending-hit and refill barriers remain enforced.
+
+- Conditional combat predicates and modifier limits are shared pure rules. HP thresholds are fractions; comparison groups use current projected stats. Repeated stat changes resolve the strongest increase and strongest decrease against a clean baseline. Seeded RNG previews never consume a draw.

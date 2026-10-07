@@ -1,0 +1,1056 @@
+{
+  "source": "Ordinary 69-draw current-tuning attempt, seed2467343298, no injected progression; frozen regression only.",
+  "economy": {
+    "version": 5,
+    "partyEXP": 1725,
+    "gold": 0,
+    "items": [
+      {
+        "instanceId": "lamp:2467343298:2",
+        "equipmentId": "wanderer-hat",
+        "name": "Wayfarer Cap",
+        "type": "hat",
+        "art": 2,
+        "rarity": "uncommon",
+        "level": 1,
+        "stats": {
+          "ATK": 3,
+          "DEF": 3,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 6
+        },
+        "sequence": 2,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:9",
+        "equipmentId": "scholar-body",
+        "name": "Scholar Vest",
+        "type": "body",
+        "art": 4,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 1,
+          "DEF": 2,
+          "MAG": 3,
+          "RES": 3,
+          "HP": 10
+        },
+        "sequence": 9,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:12",
+        "equipmentId": "wanderer-boots",
+        "name": "Wayfarer Boots",
+        "type": "boots",
+        "art": 8,
+        "rarity": "uncommon",
+        "level": 1,
+        "stats": {
+          "ATK": 3,
+          "DEF": 2,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 5
+        },
+        "sequence": 12,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:14",
+        "equipmentId": "wanderer-hat",
+        "name": "Wayfarer Cap",
+        "type": "hat",
+        "art": 2,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 3,
+          "DEF": 2,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 6
+        },
+        "sequence": 14,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:20",
+        "equipmentId": "wanderer-body",
+        "name": "Wayfarer Vest",
+        "type": "body",
+        "art": 5,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 4,
+          "DEF": 2,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 11
+        },
+        "sequence": 20,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:34",
+        "equipmentId": "scholar-body",
+        "name": "Scholar Vest",
+        "type": "body",
+        "art": 4,
+        "rarity": "uncommon",
+        "level": 1,
+        "stats": {
+          "ATK": 1,
+          "DEF": 3,
+          "MAG": 4,
+          "RES": 4,
+          "HP": 13
+        },
+        "sequence": 34,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:36",
+        "equipmentId": "wanderer-body",
+        "name": "Wayfarer Vest",
+        "type": "body",
+        "art": 5,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 5,
+          "DEF": 2,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 11
+        },
+        "sequence": 36,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:40",
+        "equipmentId": "wanderer-boots",
+        "name": "Wayfarer Boots",
+        "type": "boots",
+        "art": 8,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 3,
+          "DEF": 2,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 5
+        },
+        "sequence": 40,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:41",
+        "equipmentId": "wanderer-body",
+        "name": "Wayfarer Vest",
+        "type": "body",
+        "art": 5,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 4,
+          "DEF": 2,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 9
+        },
+        "sequence": 41,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:42",
+        "equipmentId": "wanderer-body",
+        "name": "Wayfarer Vest",
+        "type": "body",
+        "art": 5,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 4,
+          "DEF": 2,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 10
+        },
+        "sequence": 42,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:43",
+        "equipmentId": "scholar-boots",
+        "name": "Scholar Slippers",
+        "type": "boots",
+        "art": 7,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 1,
+          "DEF": 1,
+          "MAG": 2,
+          "RES": 3,
+          "HP": 5
+        },
+        "sequence": 43,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:44",
+        "equipmentId": "wanderer-hat",
+        "name": "Wayfarer Cap",
+        "type": "hat",
+        "art": 2,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 4,
+          "DEF": 2,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 5
+        },
+        "sequence": 44,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:45",
+        "equipmentId": "scholar-boots",
+        "name": "Scholar Slippers",
+        "type": "boots",
+        "art": 7,
+        "rarity": "rare",
+        "level": 1,
+        "stats": {
+          "ATK": 2,
+          "DEF": 2,
+          "MAG": 3,
+          "RES": 4,
+          "HP": 6
+        },
+        "sequence": 45,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:46",
+        "equipmentId": "wanderer-hat",
+        "name": "Wayfarer Cap",
+        "type": "hat",
+        "art": 2,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 3,
+          "DEF": 2,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 5
+        },
+        "sequence": 46,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:47",
+        "equipmentId": "guardian-boots",
+        "name": "Guardian Boots",
+        "type": "boots",
+        "art": 6,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 1,
+          "DEF": 3,
+          "MAG": 1,
+          "RES": 2,
+          "HP": 6
+        },
+        "sequence": 47,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:48",
+        "equipmentId": "guardian-boots",
+        "name": "Guardian Boots",
+        "type": "boots",
+        "art": 6,
+        "rarity": "uncommon",
+        "level": 1,
+        "stats": {
+          "ATK": 1,
+          "DEF": 4,
+          "MAG": 1,
+          "RES": 3,
+          "HP": 5
+        },
+        "sequence": 48,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:49",
+        "equipmentId": "wanderer-hat",
+        "name": "Wayfarer Cap",
+        "type": "hat",
+        "art": 2,
+        "rarity": "uncommon",
+        "level": 1,
+        "stats": {
+          "ATK": 4,
+          "DEF": 2,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 5
+        },
+        "sequence": 49,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:50",
+        "equipmentId": "scholar-hat",
+        "name": "Scholar Turban",
+        "type": "hat",
+        "art": 1,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 1,
+          "DEF": 1,
+          "MAG": 3,
+          "RES": 2,
+          "HP": 6
+        },
+        "sequence": 50,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:51",
+        "equipmentId": "wanderer-hat",
+        "name": "Wayfarer Cap",
+        "type": "hat",
+        "art": 2,
+        "rarity": "uncommon",
+        "level": 1,
+        "stats": {
+          "ATK": 4,
+          "DEF": 2,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 6
+        },
+        "sequence": 51,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:52",
+        "equipmentId": "wanderer-hat",
+        "name": "Wayfarer Cap",
+        "type": "hat",
+        "art": 2,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 3,
+          "DEF": 2,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 4
+        },
+        "sequence": 52,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:53",
+        "equipmentId": "guardian-body",
+        "name": "Guardian Cuirass",
+        "type": "body",
+        "art": 3,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 1,
+          "DEF": 4,
+          "MAG": 1,
+          "RES": 2,
+          "HP": 12
+        },
+        "sequence": 53,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:54",
+        "equipmentId": "scholar-body",
+        "name": "Scholar Vest",
+        "type": "body",
+        "art": 4,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 1,
+          "DEF": 2,
+          "MAG": 3,
+          "RES": 3,
+          "HP": 9
+        },
+        "sequence": 54,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:55",
+        "equipmentId": "guardian-boots",
+        "name": "Guardian Boots",
+        "type": "boots",
+        "art": 6,
+        "rarity": "uncommon",
+        "level": 1,
+        "stats": {
+          "ATK": 1,
+          "DEF": 3,
+          "MAG": 1,
+          "RES": 2,
+          "HP": 6
+        },
+        "sequence": 55,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:56",
+        "equipmentId": "guardian-body",
+        "name": "Guardian Cuirass",
+        "type": "body",
+        "art": 3,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 1,
+          "DEF": 4,
+          "MAG": 1,
+          "RES": 2,
+          "HP": 9
+        },
+        "sequence": 56,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:57",
+        "equipmentId": "wanderer-hat",
+        "name": "Wayfarer Cap",
+        "type": "hat",
+        "art": 2,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 3,
+          "DEF": 2,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 5
+        },
+        "sequence": 57,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:58",
+        "equipmentId": "wanderer-hat",
+        "name": "Wayfarer Cap",
+        "type": "hat",
+        "art": 2,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 3,
+          "DEF": 2,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 6
+        },
+        "sequence": 58,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:59",
+        "equipmentId": "wanderer-body",
+        "name": "Wayfarer Vest",
+        "type": "body",
+        "art": 5,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 4,
+          "DEF": 2,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 11
+        },
+        "sequence": 59,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:60",
+        "equipmentId": "guardian-boots",
+        "name": "Guardian Boots",
+        "type": "boots",
+        "art": 6,
+        "rarity": "uncommon",
+        "level": 1,
+        "stats": {
+          "ATK": 1,
+          "DEF": 3,
+          "MAG": 1,
+          "RES": 2,
+          "HP": 6
+        },
+        "sequence": 60,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:61",
+        "equipmentId": "wanderer-boots",
+        "name": "Wayfarer Boots",
+        "type": "boots",
+        "art": 8,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 2,
+          "DEF": 2,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 5
+        },
+        "sequence": 61,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:62",
+        "equipmentId": "wanderer-boots",
+        "name": "Wayfarer Boots",
+        "type": "boots",
+        "art": 8,
+        "rarity": "uncommon",
+        "level": 1,
+        "stats": {
+          "ATK": 3,
+          "DEF": 2,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 7
+        },
+        "sequence": 62,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:63",
+        "equipmentId": "guardian-body",
+        "name": "Guardian Cuirass",
+        "type": "body",
+        "art": 3,
+        "rarity": "uncommon",
+        "level": 1,
+        "stats": {
+          "ATK": 1,
+          "DEF": 4,
+          "MAG": 1,
+          "RES": 2,
+          "HP": 12
+        },
+        "sequence": 63,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:64",
+        "equipmentId": "guardian-boots",
+        "name": "Guardian Boots",
+        "type": "boots",
+        "art": 6,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 1,
+          "DEF": 4,
+          "MAG": 1,
+          "RES": 2,
+          "HP": 6
+        },
+        "sequence": 64,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:65",
+        "equipmentId": "guardian-boots",
+        "name": "Guardian Boots",
+        "type": "boots",
+        "art": 6,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 1,
+          "DEF": 4,
+          "MAG": 1,
+          "RES": 2,
+          "HP": 5
+        },
+        "sequence": 65,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:66",
+        "equipmentId": "wanderer-body",
+        "name": "Wayfarer Vest",
+        "type": "body",
+        "art": 5,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 4,
+          "DEF": 2,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 8
+        },
+        "sequence": 66,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:67",
+        "equipmentId": "scholar-body",
+        "name": "Scholar Vest",
+        "type": "body",
+        "art": 4,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 1,
+          "DEF": 2,
+          "MAG": 3,
+          "RES": 3,
+          "HP": 11
+        },
+        "sequence": 67,
+        "ordinal": 0
+      },
+      {
+        "instanceId": "lamp:2467343298:68",
+        "equipmentId": "wanderer-boots",
+        "name": "Wayfarer Boots",
+        "type": "boots",
+        "art": 8,
+        "rarity": "common",
+        "level": 1,
+        "stats": {
+          "ATK": 3,
+          "DEF": 2,
+          "MAG": 1,
+          "RES": 1,
+          "HP": 4
+        },
+        "sequence": 68,
+        "ordinal": 0
+      }
+    ],
+    "loadouts": {
+      "Falie": {
+        "body": "lamp:2467343298:20",
+        "boots": "lamp:2467343298:12"
+      },
+      "Runa": {
+        "body": "lamp:2467343298:9"
+      },
+      "Huun": {
+        "hat": "lamp:2467343298:2",
+        "body": "lamp:2467343298:36"
+      },
+      "Kojonn": {
+        "hat": "lamp:2467343298:14",
+        "body": "lamp:2467343298:34"
+      }
+    },
+    "settledGoldRewards": [],
+    "lamp": {
+      "capacityTier": 1,
+      "essence": 19,
+      "seed": 2467343298,
+      "sequence": 69,
+      "pending": [
+        "lamp:2467343298:40",
+        "lamp:2467343298:41",
+        "lamp:2467343298:42",
+        "lamp:2467343298:43",
+        "lamp:2467343298:44",
+        "lamp:2467343298:45",
+        "lamp:2467343298:46",
+        "lamp:2467343298:47",
+        "lamp:2467343298:48",
+        "lamp:2467343298:49",
+        "lamp:2467343298:50",
+        "lamp:2467343298:51",
+        "lamp:2467343298:52",
+        "lamp:2467343298:53",
+        "lamp:2467343298:54",
+        "lamp:2467343298:55",
+        "lamp:2467343298:56",
+        "lamp:2467343298:57",
+        "lamp:2467343298:58",
+        "lamp:2467343298:59",
+        "lamp:2467343298:60",
+        "lamp:2467343298:61",
+        "lamp:2467343298:62",
+        "lamp:2467343298:63",
+        "lamp:2467343298:64",
+        "lamp:2467343298:65",
+        "lamp:2467343298:66",
+        "lamp:2467343298:67",
+        "lamp:2467343298:68"
+      ],
+      "discarded": [],
+      "recent": [
+        {
+          "instanceId": "lamp:2467343298:64",
+          "equipmentId": "guardian-boots",
+          "name": "Guardian Boots",
+          "type": "boots",
+          "art": 6,
+          "rarity": "common",
+          "level": 1,
+          "stats": {
+            "ATK": 1,
+            "DEF": 4,
+            "MAG": 1,
+            "RES": 2,
+            "HP": 6
+          },
+          "sequence": 64,
+          "ordinal": 0
+        },
+        {
+          "instanceId": "lamp:2467343298:65",
+          "equipmentId": "guardian-boots",
+          "name": "Guardian Boots",
+          "type": "boots",
+          "art": 6,
+          "rarity": "common",
+          "level": 1,
+          "stats": {
+            "ATK": 1,
+            "DEF": 4,
+            "MAG": 1,
+            "RES": 2,
+            "HP": 5
+          },
+          "sequence": 65,
+          "ordinal": 0
+        },
+        {
+          "instanceId": "lamp:2467343298:66",
+          "equipmentId": "wanderer-body",
+          "name": "Wayfarer Vest",
+          "type": "body",
+          "art": 5,
+          "rarity": "common",
+          "level": 1,
+          "stats": {
+            "ATK": 4,
+            "DEF": 2,
+            "MAG": 1,
+            "RES": 1,
+            "HP": 8
+          },
+          "sequence": 66,
+          "ordinal": 0
+        },
+        {
+          "instanceId": "lamp:2467343298:67",
+          "equipmentId": "scholar-body",
+          "name": "Scholar Vest",
+          "type": "body",
+          "art": 4,
+          "rarity": "common",
+          "level": 1,
+          "stats": {
+            "ATK": 1,
+            "DEF": 2,
+            "MAG": 3,
+            "RES": 3,
+            "HP": 11
+          },
+          "sequence": 67,
+          "ordinal": 0
+        },
+        {
+          "instanceId": "lamp:2467343298:68",
+          "equipmentId": "wanderer-boots",
+          "name": "Wayfarer Boots",
+          "type": "boots",
+          "art": 8,
+          "rarity": "common",
+          "level": 1,
+          "stats": {
+            "ATK": 3,
+            "DEF": 2,
+            "MAG": 1,
+            "RES": 1,
+            "HP": 4
+          },
+          "sequence": 68,
+          "ordinal": 0
+        }
+      ],
+      "salvage": {
+        "count": 0,
+        "gold": 0
+      },
+      "autoEnabled": false,
+      "highestOrdinal": 0,
+      "lastActivationAt": 1790890381455,
+      "guide": 7
+    },
+    "migration": {}
+  },
+  "heroes": {
+    "version": 2,
+    "heroes": {
+      "Falie": {
+        "heroInstanceKey": "Falie",
+        "baseHeroName": "Falie",
+        "name": "Falie",
+        "currentLevel": 5,
+        "currentEXP": 22,
+        "lampEXPClaimed": 1725,
+        "maxLevel": 99,
+        "maxHP": 123,
+        "stats": {
+          "ATK": 17,
+          "DEF": 23,
+          "MAG": 7,
+          "RES": 14,
+          "SPD": 8
+        },
+        "EXPToNextLevel": 1119,
+        "hp": 107,
+        "combatPower": 81.6,
+        "equipmentStats": {
+          "ATK": 7,
+          "DEF": 4,
+          "MAG": 2,
+          "RES": 2,
+          "HP": 16
+        }
+      },
+      "Huun": {
+        "heroInstanceKey": "Huun",
+        "baseHeroName": "Huun",
+        "name": "Huun",
+        "currentLevel": 5,
+        "currentEXP": 22,
+        "lampEXPClaimed": 1725,
+        "maxLevel": 99,
+        "maxHP": 101,
+        "stats": {
+          "ATK": 32,
+          "DEF": 12,
+          "MAG": 6,
+          "RES": 8,
+          "SPD": 13
+        },
+        "EXPToNextLevel": 1119,
+        "hp": 84,
+        "combatPower": 115.3,
+        "equipmentStats": {
+          "ATK": 8,
+          "DEF": 5,
+          "MAG": 2,
+          "RES": 2,
+          "HP": 17
+        }
+      },
+      "Runa": {
+        "heroInstanceKey": "Runa",
+        "baseHeroName": "Runa",
+        "name": "Runa",
+        "currentLevel": 5,
+        "currentEXP": 22,
+        "lampEXPClaimed": 1725,
+        "maxLevel": 99,
+        "maxHP": 90,
+        "stats": {
+          "ATK": 5,
+          "DEF": 8,
+          "MAG": 27,
+          "RES": 18,
+          "SPD": 12
+        },
+        "EXPToNextLevel": 1119,
+        "hp": 80,
+        "combatPower": 97.7,
+        "equipmentStats": {
+          "ATK": 1,
+          "DEF": 2,
+          "MAG": 3,
+          "RES": 3,
+          "HP": 10
+        }
+      },
+      "Kojonn": {
+        "heroInstanceKey": "Kojonn",
+        "baseHeroName": "Kojonn",
+        "name": "Kojonn",
+        "currentLevel": 5,
+        "currentEXP": 22,
+        "lampEXPClaimed": 1725,
+        "maxLevel": 99,
+        "maxHP": 112,
+        "stats": {
+          "ATK": 9,
+          "DEF": 16,
+          "MAG": 19,
+          "RES": 23,
+          "SPD": 11
+        },
+        "EXPToNextLevel": 1119,
+        "hp": 93,
+        "combatPower": 92.6,
+        "equipmentStats": {
+          "ATK": 4,
+          "DEF": 5,
+          "MAG": 5,
+          "RES": 5,
+          "HP": 19
+        }
+      },
+      "falie#1": {
+        "heroInstanceKey": "falie#1",
+        "equipmentStats": {},
+        "baseHeroName": "Falie",
+        "name": "Falie",
+        "currentLevel": 5,
+        "currentEXP": 22,
+        "lampEXPClaimed": 1725,
+        "maxLevel": 99,
+        "hp": 107,
+        "maxHP": 107,
+        "stats": {
+          "ATK": 10,
+          "DEF": 19,
+          "MAG": 5,
+          "RES": 12,
+          "SPD": 8
+        },
+        "EXPToNextLevel": 1119,
+        "combatPower": 62.1
+      },
+      "huun#1": {
+        "heroInstanceKey": "huun#1",
+        "equipmentStats": {},
+        "baseHeroName": "Huun",
+        "name": "Huun",
+        "currentLevel": 5,
+        "currentEXP": 22,
+        "lampEXPClaimed": 1725,
+        "maxLevel": 99,
+        "hp": 84,
+        "maxHP": 84,
+        "stats": {
+          "ATK": 24,
+          "DEF": 7,
+          "MAG": 4,
+          "RES": 6,
+          "SPD": 13
+        },
+        "EXPToNextLevel": 1119,
+        "combatPower": 88.8
+      },
+      "runa#1": {
+        "heroInstanceKey": "runa#1",
+        "equipmentStats": {},
+        "baseHeroName": "Runa",
+        "name": "Runa",
+        "currentLevel": 5,
+        "currentEXP": 22,
+        "lampEXPClaimed": 1725,
+        "maxLevel": 99,
+        "hp": 80,
+        "maxHP": 80,
+        "stats": {
+          "ATK": 4,
+          "DEF": 6,
+          "MAG": 24,
+          "RES": 15,
+          "SPD": 12
+        },
+        "EXPToNextLevel": 1119,
+        "combatPower": 85.8
+      },
+      "kojonn#1": {
+        "heroInstanceKey": "kojonn#1",
+        "equipmentStats": {},
+        "baseHeroName": "Kojonn",
+        "name": "Kojonn",
+        "currentLevel": 5,
+        "currentEXP": 22,
+        "lampEXPClaimed": 1725,
+        "maxLevel": 99,
+        "hp": 93,
+        "maxHP": 93,
+        "stats": {
+          "ATK": 5,
+          "DEF": 11,
+          "MAG": 14,
+          "RES": 18,
+          "SPD": 11
+        },
+        "EXPToNextLevel": 1119,
+        "combatPower": 70.4
+      }
+    },
+    "settledBattles": [
+      "6e825a0b-c1ef-4bf4-8b7e-c801ea5dba6a",
+      "6e825a0b-c1ef-4bf4-8b7e-c801ea5dba6a-continuous-1",
+      "6e825a0b-c1ef-4bf4-8b7e-c801ea5dba6a-continuous-2",
+      "6e825a0b-c1ef-4bf4-8b7e-c801ea5dba6a-continuous-3"
+    ],
+    "pendingBattleRewards": {
+      "id": "6e825a0b-c1ef-4bf4-8b7e-c801ea5dba6a-continuous-4",
+      "participants": [
+        "falie#1",
+        "huun#1",
+        "runa#1",
+        "kojonn#1"
+      ],
+      "defeated": {
+        "66": 0,
+        "67": 0,
+        "68": 0,
+        "69": 0,
+        "70": 0,
+        "71": 0,
+        "72": 0,
+        "73": 0,
+        "74": 0,
+        "75": 0,
+        "76": 0,
+        "77": 0
+      },
+      "defeatedGold": {
+        "66": 0,
+        "67": 0,
+        "68": 0,
+        "69": 0,
+        "70": 0,
+        "71": 0,
+        "72": 0,
+        "73": 0,
+        "74": 0,
+        "75": 0,
+        "76": 0,
+        "77": 0
+      }
+    },
+    "pendingGoldSettlements": {}
+  }
+}

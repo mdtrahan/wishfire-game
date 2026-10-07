@@ -139,7 +139,7 @@ for (const modulePath of [
     assert.equal(actionPhase.IsPlayerBusy, 0);
   });
 
-  test(`presentation barrier serializes refill, turn advance, action claim, and input restore in ${modulePath}`, async () => {
+  test(`presentation barrier tracks realtime effects and ignores retired Flow orbs in ${modulePath}`, async () => {
     const mod = await import(modulePath);
 
     const retiredBoard = mod.derivePresentationTurnBarrier({
@@ -147,42 +147,27 @@ for (const modulePath of [
       refillBounce:{active:true},gemMergeFx:{active:true},yellowCasino:{active:true},
     });
     assert.equal(retiredBoard.canClaimCombatAction,true);
-    assert.equal(retiredBoard.canAdvanceTurn,true);
+    assert.equal(retiredBoard.presentationClear,true);
     assert.equal(retiredBoard.blockingLane,null);
 
     const textEndHold = mod.derivePresentationTurnBarrier({
       globals: { time: 10, TurnPhase: 0, TextAnimEndAt: 11.5 },
     });
     assert.equal(textEndHold.canStartRefill, false);
-    assert.equal(textEndHold.canAdvanceTurn, false);
+    assert.equal(textEndHold.presentationClear, false);
     assert.equal(textEndHold.canClaimCombatAction, false);
     assert.equal(textEndHold.firstBlockingLane, 'text-animation');
 
     const effectHold = mod.derivePresentationTurnBarrier({ globals: { time: 10, TurnPhase: 0, CombatImpactVisuals: [{ targetUID: 2 }] } });
-    assert.equal(effectHold.canAdvanceTurn, false);
+    assert.equal(effectHold.presentationClear, false);
     assert.equal(effectHold.firstBlockingLane, 'combat-effects');
-    const orbHold = mod.derivePresentationTurnBarrier({ globals: { time: 10, TurnPhase: 0, FlowOrbs: [{ sourceUID: 2 }] } });
-    assert.equal(orbHold.canClaimCombatAction, false);
-    assert.equal(orbHold.firstBlockingLane, 'flow-orbs');
+    const retiredOrb = mod.derivePresentationTurnBarrier({ globals: { time: 10, FlowOrbs: [{ sourceUID: 2 }] } });
+    assert.equal(retiredOrb.canClaimCombatAction, true);
+    assert.equal(retiredOrb.presentationClear, true);
+    assert.equal(retiredOrb.firstBlockingLane, null);
     const deathHold = mod.derivePresentationTurnBarrier({ globals: { time: 10, TurnPhase: 0, EnemyDeathVisualHoldByUID: { 2: { slotIndex: 0 } } } });
     assert.equal(deathHold.canClaimCombatAction, false);
     assert.equal(deathHold.firstBlockingLane, 'pending-enemy-deaths');
-
-    // Paused card state cannot block native combat; existing presentation gates still apply.
-    const withoutCardFlags = mod.derivePresentationTurnBarrier({
-      globals: { time: 10, TurnPhase: 0 }, boardHasEmptySlots: true,
-    });
-    for (const staleFlags of [{ SkillDraughtOpen: 1 }, { SkillDraughtPendingOpen: 1 }]) {
-      assert.deepEqual(mod.derivePresentationTurnBarrier({
-        globals: { time: 10, TurnPhase: 0, ...staleFlags }, boardHasEmptySlots: true,
-      }), withoutCardFlags);
-      const duringAnimation = mod.derivePresentationTurnBarrier({
-        globals: { time: 10, TurnPhase: 0, ...staleFlags, TextAnimEndAt: 11 },
-        boardHasEmptySlots: true,
-      });
-      assert.equal(duringAnimation.canClaimSkillDraught, false);
-      assert.equal(duringAnimation.firstBlockingLane, 'text-animation');
-    }
 
     const actionHold = mod.derivePresentationTurnBarrier({
       globals: {
@@ -195,7 +180,7 @@ for (const modulePath of [
       },
     });
     assert.equal(actionHold.canStartRefill, false);
-    assert.equal(actionHold.canAdvanceTurn, false);
+    assert.equal(actionHold.presentationClear, false);
     assert.equal(actionHold.canClaimCombatAction, false);
     assert.equal(actionHold.firstBlockingLane, 'hero-action');
     assert.equal(actionHold.lanes.pendingHeroHits, true);
@@ -204,16 +189,14 @@ for (const modulePath of [
       globals: { time: 10, TurnPhase: 0 },
     });
     assert.equal(idleHero.canStartRefill, true);
-    assert.equal(idleHero.canAdvanceTurn, true);
+    assert.equal(idleHero.presentationClear, true);
     assert.equal(idleHero.canClaimCombatAction, true);
-    assert.equal(idleHero.canRestoreHeroInput, true);
     assert.equal(idleHero.firstBlockingLane, null);
 
     const staleBusyIdleHero = mod.derivePresentationTurnBarrier({
       globals: { time: 10, TurnPhase: 0, IsPlayerBusy: 1 },
     });
-    assert.equal(staleBusyIdleHero.canRestoreHeroInput, true);
-    assert.equal(staleBusyIdleHero.canAdvanceTurn, true);
+    assert.equal(staleBusyIdleHero.presentationClear, true);
 
     const activeBusyHeroAction = mod.derivePresentationTurnBarrier({
       globals: {
@@ -223,6 +206,38 @@ for (const modulePath of [
         ActionInProgress: 1,
       },
     });
-    assert.equal(activeBusyHeroAction.canRestoreHeroInput, false);
   });
 }
+
+test('queued legacy FlowOrbs do not hold timed wave advancement in either turn-gate copy', async () => {
+  const { createContinuousCombatStageState, maybeAdvanceContinuousCombatStage } = await import('../web-runner/src/core/continuousCombatStage.mjs');
+  const enemies = [{ name: 'Gobloc', HP: 20, ATK: 2, DEF: 2, MAG: 1, RES: 1, SPD: 8 }];
+
+  for (const modulePath of [
+    path.join('file://', __dirname, '..', 'src', 'core', 'turnGateController.mjs'),
+    path.join('file://', __dirname, '..', 'web-runner', 'src', 'core', 'turnGateController.mjs'),
+  ]) {
+    const gate = await import(modulePath);
+    const stageState = createContinuousCombatStageState(17);
+    const globals = {
+      ContinuousCombatStageLoop: 1,
+      ContinuousCombatStage: stageState,
+      EnemyData: enemies,
+      EnemySlots: [],
+      EnemySize: 40,
+      EnemyDeathVisualHoldByUID: {},
+      FlowOrbs: [{ sourceUID: 8, queuedAt: 1 }],
+      GamePhase: 'RUNTIME',
+      BattleStartActive: 0,
+      time: 9,
+    };
+    const barrier = gate.derivePresentationTurnBarrier({ globals });
+    assert.equal(barrier.presentationClear, true, modulePath);
+    assert.equal(barrier.lanes.flowOrbs, undefined, modulePath);
+
+    const entities = [];
+    const call = name => name === 'SpawnEnemy' ? { uid: 20, kind: 'enemy', hp: 20, maxHP: 20 } : null;
+    assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: barrier, call }), true, modulePath);
+    assert.equal(globals.ContinuousCombatStage.wave, 2, modulePath);
+  }
+});

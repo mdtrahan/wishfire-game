@@ -22,7 +22,7 @@ test('combat orientation input is defensive and defaults left-wise', async () =>
   assert.equal(rules.readCombatOrientationFromSearch(''), 'left-wise');
 });
 
-test('right-wise geometry reflects and translates formations as whole blocks', async () => {
+test('right-wise geometry reflects X while preserving shared Y homes', async () => {
   const rules = await loadRules();
   const layoutW = 960;
   const actorSets = [
@@ -68,18 +68,13 @@ test('right-wise geometry reflects and translates formations as whole blocks', a
         assert.equal(left.actors[i].y, right.actors[i].y);
       }
     }
-    const rightHeroYs = right.actors.filter((actor) => actor.kind === 'hero').map((actor) => actor.y);
-    const rightEnemyYs = right.actors.filter((actor) => actor.kind === 'enemy').map((actor) => actor.y);
-    if (rightHeroYs.length && rightEnemyYs.length) {
-      const midpoint = (values) => (Math.min(...values) + Math.max(...values)) / 2;
-      assert.equal(midpoint(rightEnemyYs), midpoint(rightHeroYs));
-    }
+    assert.equal(right.enemyTranslateY, 0);
   }
   assert.equal(rules.orientCombatWorldOffsetX(18, 'right-wise'), -18);
   assert.equal(rules.orientCombatWorldOffsetX(18, 'left-wise'), 18);
 });
 
-test('runtime-shaped formation anchors preserve hero Y and align the enemy block midpoint', async () => {
+test('runtime-shaped hero anchors reserve a status-icon row above HP bars', async () => {
   const rules = await loadRules();
   const globals = {
     EnemyAreaRect: { minY: 38.638, maxY: 203.974 },
@@ -102,13 +97,54 @@ test('runtime-shaped formation anchors preserve hero Y and align the enemy block
   });
 
   assert.equal(anchors.heroYs.length, 4);
-  assert.deepEqual(anchors.enemyYs, [60.791, 115.791, 170.791]);
-  assert.ok(Math.abs(projection.enemyTranslateY - 5.515) < 0.001);
+  assert.deepEqual(rules.deriveCombatArenaBounds(360), {
+    heroBackCenterX: 40,
+    heroRightEdgeX: 106,
+    meleeLeftEdgeX: 130,
+    rangedMinX: 225,
+    rangedMaxX: 283,
+    attackStartX: 290,
+    visibleTopY: 170,
+    visibleBottomY: 375,
+  });
+  assert.deepEqual(anchors.enemyYs, [190, 272.5, 355]);
+  assert.equal(anchors.arenaBounds.visibleTopY - 10, 160);
+  const heroHalfHeight = anchors.heroH * 1.55 / 2;
+  const heroTop = anchors.heroYs[0] - heroHalfHeight;
+  const heroBottom = anchors.heroYs.at(-1) + heroHalfHeight;
+  const heroBarTop = heroTop - 10;
+  const buffRowBottom = heroBarTop - rules.HERO_BUFF_ICON_ROW_GAP;
+  const buffRowTop = buffRowBottom - rules.HERO_BUFF_ICON_ROW_HEIGHT;
+  const buffRowReserve = rules.HERO_BUFF_ICON_ROW_HEIGHT + rules.HERO_BUFF_ICON_ROW_GAP;
+  assert.equal(heroTop, anchors.arenaBounds.visibleTopY + buffRowReserve);
+  assert.equal(heroBarTop, 180);
+  assert.equal(buffRowTop, 160);
+  assert.equal(buffRowBottom, 178);
+  assert.equal(heroBottom, anchors.arenaBounds.visibleBottomY + buffRowReserve);
+  assert.ok(heroBottom <= 420);
+  assert.equal(anchors.enemyYs[0] - globals.EnemySize / 2, anchors.arenaBounds.visibleTopY);
+  assert.equal(anchors.enemyYs.at(-1) + globals.EnemySize / 2, anchors.arenaBounds.visibleBottomY);
+  assert.equal(projection.enemyTranslateY, 0);
   assert.equal(projection.project(68, anchors.heroYs[0], 'hero').y, anchors.heroYs[0]);
   const shiftedEnemyYs = anchors.enemyYs.map((y) => projection.project(290, y, 'enemy').y);
   assert.equal(shiftedEnemyYs[1] - shiftedEnemyYs[0], anchors.enemyYs[1] - anchors.enemyYs[0]);
   assert.equal(shiftedEnemyYs[2] - shiftedEnemyYs[1], anchors.enemyYs[2] - anchors.enemyYs[1]);
-  assert.ok(Math.abs(projection.heroMidY - (projection.enemyMidY + projection.enemyTranslateY)) < 1e-9);
+  assert.equal(shiftedEnemyYs[1], anchors.enemyYs[1]);
+  const renderer = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
+  assert.match(renderer, /const footY = pos\.y \+ h \* 1\.55 \/ 2/);
+  assert.match(renderer, /restFeetByUID\[hero\.uid\] = \{ x: baseX, y: yWorld \+ hWorld \* 1\.55 \/ 2 \}/);
+  assert.match(renderer, /i % 2 === 0\\n\s+\? combatFormationAnchors\.arenaBounds\.heroRightEdgeX[\s\S]{0,160}: combatFormationAnchors\.arenaBounds\.heroBackCenterX/);
+});
+
+test('combat reference grid covers the logical canvas in ten-pixel increments', async () => {
+  const rules = await loadRules();
+  const grid = rules.deriveCombatReferenceGrid(360, 640);
+  assert.equal(grid.vertical.length, 37);
+  assert.equal(grid.horizontal.length, 65);
+  assert.equal(grid.centerX, 180);
+  assert.deepEqual(grid.vertical.filter(line => line.major).map(line => line.value), [0, 50, 100, 150, 200, 250, 300, 350]);
+  assert.equal(grid.vertical.at(-1).value, 360);
+  assert.equal(grid.horizontal.at(-1).value, 640);
 });
 
 test('enemy death and refill never change surviving right-wise slot projections', async () => {
@@ -151,8 +187,8 @@ test('enemy death and refill never change surviving right-wise slot projections'
   });
 
   for (const snapshot of snapshots) {
-    assert.deepEqual(snapshot.anchors.enemyYs, [60.791, 115.791, 170.791]);
-    assert.ok(Math.abs(snapshot.projection.enemyTranslateY - 5.515) < 0.001);
+    assert.deepEqual(snapshot.anchors.enemyYs, [190, 272.5, 355]);
+    assert.equal(snapshot.projection.enemyTranslateY, 0);
   }
   assert.deepEqual(snapshots[1].positions.get(7), snapshots[0].positions.get(7));
   assert.deepEqual(snapshots[1].positions.get(8), snapshots[0].positions.get(8));
@@ -189,7 +225,7 @@ test('runtime projects actor visuals, hit regions, and action anchors without mu
   assert.doesNotMatch(app, /prepareAstralFlowKoOrbPresentation/);
   assert.match(app, /orientCombatWorldOffsetX\(Number\(d\.floatVectorX/);
 
-  assert.match(render, /spawnPendingDamageNumbers\(projectCombatDamageWorldToCanvas\)/);
+  assert.match(render, /spawnPendingDamageNumbers\(projectCombatDamageWorldToCanvas, layoutScale\)/);
   assert.match(render, /projectCombatActorWorldToCanvas\(xWorld, yWorld, 'hero'\)/);
   assert.match(render, /projectCombatActorWorldToCanvas\(wardWorldX, wardWorldY, 'hero'\)/);
   assert.match(render, /projectCombatActorWorldToCanvas\(Number\(pulse\.sourceX[^\n]*'hero'/);

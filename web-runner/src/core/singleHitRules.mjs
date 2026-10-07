@@ -61,6 +61,9 @@ function normalizeSingleHitInput({
   heroAoe = 0,
   chainActive = 0,
   chainMultiplier = 1,
+  attackMultiplierPct = 100,
+  matchingResistancePct = 0,
+  generalResistancePct = 0,
   targetHp = 0,
   shield = 0,
   jsDamage = null,
@@ -76,6 +79,9 @@ function normalizeSingleHitInput({
     heroAoe,
     chainActive,
     chainMultiplier,
+    attackMultiplierPct,
+    matchingResistancePct,
+    generalResistancePct,
   }).damage;
   const normalizedJsDamage = jsDamage == null
     ? Number(formulaDamage || 0)
@@ -99,6 +105,9 @@ function normalizeSingleHitInput({
     heroAoe: Number(heroAoe || 0) === 1 ? 1 : 0,
     chainActive: Number(chainActive || 0) === 1 ? 1 : 0,
     chainMultiplier: numberOr(chainMultiplier, 1) || 1,
+    attackMultiplierPct: Math.max(0, numberOr(attackMultiplierPct, 100)),
+    matchingResistancePct: Math.max(0, numberOr(matchingResistancePct, 0)),
+    generalResistancePct: Math.max(0, numberOr(generalResistancePct, 0)),
     targetHp: normalizedTargetHp,
     shield: normalizedShield,
     formulaDamage: Number(formulaDamage || 0),

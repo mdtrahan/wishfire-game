@@ -5,7 +5,7 @@ function createCombatLayout({ combatGateway } = {}) {
 
   return {
     id: 'combat',
-    allowedTransitions: ['base', 'shop', 'intro', 'astralOverlay'],
+    allowedTransitions: ['base', 'shop', 'intro'],
     systems: ['combat-core', 'gem-input', 'turn-order'],
     onEnter({ resumeSnapshot, payload, eventBus }) {
       const snapshot = resumeSnapshot || payload.combatSnapshot || null;

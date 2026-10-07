@@ -225,7 +225,8 @@ function hasPendingAttackPresentation(globals) {
   if (Array.isArray(globals.CombatImpactVisuals) && globals.CombatImpactVisuals.length > 0) return true;
   if (Array.isArray(globals.ArcanePulseVisuals) && globals.ArcanePulseVisuals.length > 0) return true;
   if (globals.HeroAction && globals.HeroAction.active) return true;
-  if (globals.EnemyAction && globals.EnemyAction.active) return true;
+  if ((globals.EnemyAction && globals.EnemyAction.active)
+    || Object.values(globals.RealtimeEnemyActionsByUID || {}).some(action => action?.active)) return true;
   if (numberOr(globals.TextAnimEndAt, 0) > now) return true;
   if (Array.isArray(globals.DamageTexts) && globals.DamageTexts.length > 0) return true;
   return false;

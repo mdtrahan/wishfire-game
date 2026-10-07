@@ -30,7 +30,6 @@ async function resetScenario(page, { missingPendingActor = false } = {}) {
       .filter((entity) => entity?.kind === 'enemy' && Number(entity.hp || 0) > 0)
       .sort((left, right) => Number(left.slotIndex || 0) - Number(right.slotIndex || 0));
     const hero = heroes.find((entity) => Number(entity.uid || 0) === Number(setup.heroUID || 0)) || heroes[0];
-    g.SessionSkillsByHeroUID = {};
     g.PendingHeroHits = [];
     g.ChainStrikeVisuals = [];
     g.DamageTexts = [];

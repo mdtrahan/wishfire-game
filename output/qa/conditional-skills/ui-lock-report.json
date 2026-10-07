@@ -1,0 +1,2811 @@
+{
+  "generatedAt": "2026-10-03T19:33:10.492Z",
+  "baseUrl": "http://127.0.0.1:58223",
+  "artifactDir": "/Users/Mace/.codex/worktrees/orka-ood-conditional-skills/Codex-Orka/test-results/ui-lock/2026-10-03T19-32-20-279Z",
+  "focusedContracts": [
+    "tests/heroCommandsContract.test.js",
+    "tests/uiPresentationLockGateContract.test.js",
+    "tests/compactViewportContainmentContract.test.js",
+    "tests/devToolingModalContract.test.js",
+    "tests/legacyCombatBackdropContract.test.js"
+  ],
+  "runs": [
+    {
+      "viewport": {
+        "name": "compact",
+        "width": 216,
+        "height": 384,
+        "dpr": 1
+      },
+      "metrics": {
+        "requestedViewport": {
+          "width": 216,
+          "height": 384,
+          "dpr": 1
+        },
+        "viewport": {
+          "width": 216,
+          "height": 384
+        },
+        "document": {
+          "clientWidth": 216,
+          "clientHeight": 384,
+          "scrollWidth": 216,
+          "scrollHeight": 384
+        },
+        "visualViewport": {
+          "width": 216,
+          "height": 384,
+          "scale": 1
+        },
+        "dpr": 1,
+        "controlScale": 0.6,
+        "appViewport": {
+          "dpr": 1,
+          "layoutScale": 0.6,
+          "layoutOffsetX": 0,
+          "layoutOffsetY": 0,
+          "viewportWidth": 216,
+          "viewportHeight": 384,
+          "stageWidth": 216,
+          "stageHeight": 384,
+          "controlRailWidth": 0,
+          "controlScale": 0.6
+        },
+        "canvas": {
+          "x": 0,
+          "y": 0,
+          "width": 216,
+          "height": 384,
+          "scrollWidth": 216,
+          "scrollHeight": 384,
+          "clientWidth": 216,
+          "clientHeight": 384,
+          "backing": {
+            "width": 216,
+            "height": 384
+          }
+        },
+        "devLauncher": {
+          "x": 191.1843719482422,
+          "y": 6,
+          "width": 18.815628051757812,
+          "height": 10.799999237060547,
+          "scrollWidth": 29,
+          "scrollHeight": 16,
+          "clientWidth": 29,
+          "clientHeight": 16,
+          "backing": null
+        },
+        "dev2Launcher": {
+          "x": 187.97811889648438,
+          "y": 18,
+          "width": 22.021881103515625,
+          "height": 10.799999237060547,
+          "scrollWidth": 35,
+          "scrollHeight": 16,
+          "clientWidth": 35,
+          "clientHeight": 16,
+          "backing": null
+        }
+      },
+      "invariants": [
+        {
+          "name": "actual-viewport-metrics",
+          "pass": true,
+          "measured": {
+            "requestedViewport": {
+              "width": 216,
+              "height": 384,
+              "dpr": 1
+            },
+            "viewport": {
+              "width": 216,
+              "height": 384
+            },
+            "document": {
+              "clientWidth": 216,
+              "clientHeight": 384,
+              "scrollWidth": 216,
+              "scrollHeight": 384
+            },
+            "visualViewport": {
+              "width": 216,
+              "height": 384,
+              "scale": 1
+            },
+            "dpr": 1,
+            "controlScale": 0.6,
+            "appViewport": {
+              "dpr": 1,
+              "layoutScale": 0.6,
+              "layoutOffsetX": 0,
+              "layoutOffsetY": 0,
+              "viewportWidth": 216,
+              "viewportHeight": 384,
+              "stageWidth": 216,
+              "stageHeight": 384,
+              "controlRailWidth": 0,
+              "controlScale": 0.6
+            },
+            "canvas": {
+              "x": 0,
+              "y": 0,
+              "width": 216,
+              "height": 384,
+              "scrollWidth": 216,
+              "scrollHeight": 384,
+              "clientWidth": 216,
+              "clientHeight": 384,
+              "backing": {
+                "width": 216,
+                "height": 384
+              }
+            },
+            "devLauncher": {
+              "x": 191.1843719482422,
+              "y": 6,
+              "width": 18.815628051757812,
+              "height": 10.799999237060547,
+              "scrollWidth": 29,
+              "scrollHeight": 16,
+              "clientWidth": 29,
+              "clientHeight": 16,
+              "backing": null
+            },
+            "dev2Launcher": {
+              "x": 187.97811889648438,
+              "y": 18,
+              "width": 22.021881103515625,
+              "height": 10.799999237060547,
+              "scrollWidth": 35,
+              "scrollHeight": 16,
+              "clientWidth": 35,
+              "clientHeight": 16,
+              "backing": null
+            }
+          },
+          "allowed": {
+            "requestedViewport": {
+              "name": "compact",
+              "width": 216,
+              "height": 384,
+              "dpr": 1
+            },
+            "clientMatchesWindow": true,
+            "visualScale": 1
+          }
+        },
+        {
+          "name": "page-horizontal-overflow",
+          "pass": true,
+          "measured": {
+            "clientWidth": 216,
+            "clientHeight": 384,
+            "scrollWidth": 216,
+            "scrollHeight": 384
+          },
+          "allowed": {
+            "scrollWidthAtMostClientWidth": true
+          }
+        },
+        {
+          "name": "canvas-contained-reference-aspect",
+          "pass": true,
+          "measured": {
+            "canvas": {
+              "x": 0,
+              "y": 0,
+              "width": 216,
+              "height": 384,
+              "scrollWidth": 216,
+              "scrollHeight": 384,
+              "clientWidth": 216,
+              "clientHeight": 384,
+              "backing": {
+                "width": 216,
+                "height": 384
+              }
+            },
+            "appViewport": {
+              "dpr": 1,
+              "layoutScale": 0.6,
+              "layoutOffsetX": 0,
+              "layoutOffsetY": 0,
+              "viewportWidth": 216,
+              "viewportHeight": 384,
+              "stageWidth": 216,
+              "stageHeight": 384,
+              "controlRailWidth": 0,
+              "controlScale": 0.6
+            }
+          },
+          "allowed": {
+            "expectedStage": {
+              "width": 216,
+              "height": 384
+            },
+            "centered": true,
+            "backingMatchesDpr": true
+          }
+        },
+        {
+          "name": "quests-banner-text-scale",
+          "pass": true,
+          "measured": {
+            "text": "QUESTS",
+            "font": "bold 13px sans-serif",
+            "normalizedFontPx": 13.00000051657359
+          },
+          "allowed": {
+            "normalizedPx": 18,
+            "tolerancePx": 0.5
+          }
+        },
+        {
+          "name": "combat-entry-landmark",
+          "pass": true,
+          "measured": {
+            "heroCount": 4,
+            "heroCardHostPresent": false
+          },
+          "allowed": {
+            "heroCountAtLeast": 1,
+            "heroCardHostPresent": false
+          }
+        },
+        {
+          "name": "dev-launcher-scale",
+          "pass": true,
+          "measured": {
+            "launchers": [
+              {
+                "name": "DEV",
+                "width": 18.815628051757812,
+                "height": 10.799999237060547,
+                "normalizedWidth": 31.359380086263023,
+                "normalizedHeight": 17.999998728434246
+              },
+              {
+                "name": "DEV2",
+                "width": 22.021881103515625,
+                "height": 10.799999237060547,
+                "normalizedWidth": 36.703135172526046,
+                "normalizedHeight": 17.999998728434246
+              }
+            ],
+            "canvasRight": 216,
+            "canvasIsNarrowerThanViewport": false
+          },
+          "allowed": {
+            "dev": {
+              "width": 31.36,
+              "height": 18
+            },
+            "dev2": {
+              "width": 36.7,
+              "height": 18
+            },
+            "tolerancePx": 0.8,
+            "narrowCanvasUsesRightGutter": true
+          }
+        },
+        {
+          "name": "dev-panel-1-containment",
+          "pass": true,
+          "measured": {
+            "rect": {
+              "left": 16.00312042236328,
+              "right": 199.99689483642578,
+              "top": 23.043746948242188,
+              "bottom": 360.9562225341797,
+              "width": 183.9937744140625,
+              "height": 337.9124755859375
+            },
+            "scrollWidth": 303,
+            "clientWidth": 303,
+            "scrollHeight": 950,
+            "clientHeight": 559,
+            "actionButton": {
+              "width": 35.41875076293945,
+              "height": 16.799999237060547
+            },
+            "title": {
+              "right": 123.6656265258789,
+              "height": 15.112503051757812,
+              "whiteSpace": "nowrap"
+            },
+            "close": {
+              "left": 153.00936889648438
+            },
+            "order": {
+              "close": 4,
+              "actions": 4
+            }
+          },
+          "allowed": {
+            "fullyInsideViewport": true,
+            "horizontalOverflowPx": 0,
+            "physicalWidth": "viewport minus 32px gutter"
+          }
+        },
+        {
+          "name": "dev-panel-1-title-single-line",
+          "pass": true,
+          "measured": {
+            "title": {
+              "right": 123.6656265258789,
+              "height": 15.112503051757812,
+              "whiteSpace": "nowrap"
+            },
+            "close": {
+              "left": 153.00936889648438
+            }
+          },
+          "allowed": {
+            "whiteSpace": "nowrap",
+            "clearsCloseButton": true
+          }
+        },
+        {
+          "name": "dev-panel-1-action-scale",
+          "pass": true,
+          "measured": {
+            "width": 35.41875076293945,
+            "height": 16.799999237060547,
+            "normalizedHeight": 27.999998728434246
+          },
+          "allowed": {
+            "gutterPx": 32,
+            "widthTolerancePx": 1.5,
+            "actionHeightPx": 28,
+            "actionTolerancePx": 0.5
+          }
+        },
+        {
+          "name": "dev-panel-2-containment",
+          "pass": true,
+          "measured": {
+            "rect": {
+              "left": 16.00312042236328,
+              "right": 199.99689483642578,
+              "top": 100.79999542236328,
+              "bottom": 283.2000198364258,
+              "width": 183.9937744140625,
+              "height": 182.4000244140625
+            },
+            "scrollWidth": 305,
+            "clientWidth": 305,
+            "scrollHeight": 302,
+            "clientHeight": 302
+          },
+          "allowed": {
+            "fullyInsideViewport": true,
+            "horizontalOverflowPx": 0,
+            "physicalWidth": "viewport minus 32px gutter"
+          }
+        },
+        {
+          "name": "dev-panel-1-action-order",
+          "pass": true,
+          "measured": {
+            "close": 4,
+            "actions": 4
+          },
+          "allowed": "close before action buttons before settings fields"
+        },
+        {
+          "name": "hero-combat-card-ui-absent",
+          "pass": true,
+          "measured": {
+            "heroCount": 4,
+            "enemyCount": 5,
+            "heroCardHostPresent": false,
+            "afReadoutPresent": false
+          },
+          "allowed": {
+            "heroCardHostPresent": false
+          }
+        },
+        {
+          "name": "actor-health-bars-present",
+          "pass": true,
+          "measured": {
+            "count": 27,
+            "heroCount": 4,
+            "enemyCount": 5,
+            "heroCardHostPresent": false,
+            "afReadoutPresent": false
+          },
+          "allowed": {
+            "minimum": 9
+          }
+        },
+        {
+          "name": "battlefield-selectors-absent",
+          "pass": true,
+          "measured": {},
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "automatic-focus-target-is-living",
+          "pass": true,
+          "measured": {
+            "focusTargetUID": 6,
+            "livingEnemyUIDs": [
+              6,
+              7,
+              8,
+              9,
+              10
+            ],
+            "basicClockCount": 4,
+            "scheduledBasics": 0
+          },
+          "allowed": {
+            "focusTargetIsLivingEnemy": true
+          }
+        },
+        {
+          "name": "realtime-basic-clocks-present",
+          "pass": true,
+          "measured": {
+            "focusTargetUID": 6,
+            "livingEnemyUIDs": [
+              6,
+              7,
+              8,
+              9,
+              10
+            ],
+            "basicClockCount": 4,
+            "scheduledBasics": 0
+          },
+          "allowed": {
+            "minimum": 1
+          }
+        },
+        {
+          "name": "damage-text-scale",
+          "pass": true,
+          "measured": {
+            "rect": {
+              "width": 24.827239990234375,
+              "height": 20.854873657226562
+            },
+            "backing": {
+              "width": 25,
+              "height": 21
+            },
+            "font": "8px Bungee, \"Trebuchet MS\", Verdana, sans-serif",
+            "fontPx": 8,
+            "fontRatio": null
+          },
+          "allowed": {
+            "fontPx": 8,
+            "cssWidth": 25,
+            "cssHeight": 21
+          }
+        },
+        {
+          "name": "damage-text-density",
+          "pass": true,
+          "measured": {
+            "density": 1.0069584863171894,
+            "dpr": 1,
+            "rect": {
+              "width": 24.827239990234375,
+              "height": 20.854873657226562
+            },
+            "backing": {
+              "width": 25,
+              "height": 21
+            },
+            "font": "8px Bungee, \"Trebuchet MS\", Verdana, sans-serif",
+            "fontPx": 8
+          },
+          "allowed": {
+            "density": [
+              0.98,
+              1.02
+            ]
+          }
+        },
+        {
+          "name": "pooled-health-bar-absent",
+          "pass": true,
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "gem-board-backdrop-absent",
+          "pass": true,
+          "measured": null,
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "shared-astral-bar-absent",
+          "pass": true,
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "personal-af-ui-absent",
+          "pass": true,
+          "measured": {
+            "heroCount": 4,
+            "enemyCount": 5,
+            "heroCardHostPresent": false,
+            "afReadoutPresent": false
+          },
+          "allowed": {
+            "afUi": false
+          }
+        },
+        {
+          "name": "legacy-backdrop-absent",
+          "pass": true,
+          "measured": {
+            "forbiddenPanelDraws": []
+          },
+          "allowed": {
+            "forbiddenPanelDraws": 0
+          }
+        },
+        {
+          "name": "page-runtime-errors",
+          "pass": true,
+          "measured": [],
+          "allowed": {
+            "count": 0
+          }
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "reference",
+        "width": 360,
+        "height": 640,
+        "dpr": 1
+      },
+      "metrics": {
+        "requestedViewport": {
+          "width": 360,
+          "height": 640,
+          "dpr": 1
+        },
+        "viewport": {
+          "width": 360,
+          "height": 640
+        },
+        "document": {
+          "clientWidth": 360,
+          "clientHeight": 640,
+          "scrollWidth": 360,
+          "scrollHeight": 640
+        },
+        "visualViewport": {
+          "width": 360,
+          "height": 640,
+          "scale": 1
+        },
+        "dpr": 1,
+        "controlScale": 1,
+        "appViewport": {
+          "dpr": 1,
+          "layoutScale": 1,
+          "layoutOffsetX": 0,
+          "layoutOffsetY": 0,
+          "viewportWidth": 360,
+          "viewportHeight": 640,
+          "stageWidth": 360,
+          "stageHeight": 640,
+          "controlRailWidth": 0,
+          "controlScale": 1
+        },
+        "canvas": {
+          "x": 0,
+          "y": 0,
+          "width": 360,
+          "height": 640,
+          "scrollWidth": 360,
+          "scrollHeight": 640,
+          "clientWidth": 360,
+          "clientHeight": 640,
+          "backing": {
+            "width": 360,
+            "height": 640
+          }
+        },
+        "devLauncher": {
+          "x": 318.640625,
+          "y": 10,
+          "width": 31.359375,
+          "height": 18,
+          "scrollWidth": 29,
+          "scrollHeight": 16,
+          "clientWidth": 29,
+          "clientHeight": 16,
+          "backing": null
+        },
+        "dev2Launcher": {
+          "x": 313.296875,
+          "y": 30,
+          "width": 36.703125,
+          "height": 18,
+          "scrollWidth": 35,
+          "scrollHeight": 16,
+          "clientWidth": 35,
+          "clientHeight": 16,
+          "backing": null
+        }
+      },
+      "invariants": [
+        {
+          "name": "actual-viewport-metrics",
+          "pass": true,
+          "measured": {
+            "requestedViewport": {
+              "width": 360,
+              "height": 640,
+              "dpr": 1
+            },
+            "viewport": {
+              "width": 360,
+              "height": 640
+            },
+            "document": {
+              "clientWidth": 360,
+              "clientHeight": 640,
+              "scrollWidth": 360,
+              "scrollHeight": 640
+            },
+            "visualViewport": {
+              "width": 360,
+              "height": 640,
+              "scale": 1
+            },
+            "dpr": 1,
+            "controlScale": 1,
+            "appViewport": {
+              "dpr": 1,
+              "layoutScale": 1,
+              "layoutOffsetX": 0,
+              "layoutOffsetY": 0,
+              "viewportWidth": 360,
+              "viewportHeight": 640,
+              "stageWidth": 360,
+              "stageHeight": 640,
+              "controlRailWidth": 0,
+              "controlScale": 1
+            },
+            "canvas": {
+              "x": 0,
+              "y": 0,
+              "width": 360,
+              "height": 640,
+              "scrollWidth": 360,
+              "scrollHeight": 640,
+              "clientWidth": 360,
+              "clientHeight": 640,
+              "backing": {
+                "width": 360,
+                "height": 640
+              }
+            },
+            "devLauncher": {
+              "x": 318.640625,
+              "y": 10,
+              "width": 31.359375,
+              "height": 18,
+              "scrollWidth": 29,
+              "scrollHeight": 16,
+              "clientWidth": 29,
+              "clientHeight": 16,
+              "backing": null
+            },
+            "dev2Launcher": {
+              "x": 313.296875,
+              "y": 30,
+              "width": 36.703125,
+              "height": 18,
+              "scrollWidth": 35,
+              "scrollHeight": 16,
+              "clientWidth": 35,
+              "clientHeight": 16,
+              "backing": null
+            }
+          },
+          "allowed": {
+            "requestedViewport": {
+              "name": "reference",
+              "width": 360,
+              "height": 640,
+              "dpr": 1
+            },
+            "clientMatchesWindow": true,
+            "visualScale": 1
+          }
+        },
+        {
+          "name": "page-horizontal-overflow",
+          "pass": true,
+          "measured": {
+            "clientWidth": 360,
+            "clientHeight": 640,
+            "scrollWidth": 360,
+            "scrollHeight": 640
+          },
+          "allowed": {
+            "scrollWidthAtMostClientWidth": true
+          }
+        },
+        {
+          "name": "canvas-contained-reference-aspect",
+          "pass": true,
+          "measured": {
+            "canvas": {
+              "x": 0,
+              "y": 0,
+              "width": 360,
+              "height": 640,
+              "scrollWidth": 360,
+              "scrollHeight": 640,
+              "clientWidth": 360,
+              "clientHeight": 640,
+              "backing": {
+                "width": 360,
+                "height": 640
+              }
+            },
+            "appViewport": {
+              "dpr": 1,
+              "layoutScale": 1,
+              "layoutOffsetX": 0,
+              "layoutOffsetY": 0,
+              "viewportWidth": 360,
+              "viewportHeight": 640,
+              "stageWidth": 360,
+              "stageHeight": 640,
+              "controlRailWidth": 0,
+              "controlScale": 1
+            }
+          },
+          "allowed": {
+            "expectedStage": {
+              "width": 360,
+              "height": 640
+            },
+            "centered": true,
+            "backingMatchesDpr": true
+          }
+        },
+        {
+          "name": "quests-banner-text-scale",
+          "pass": true,
+          "measured": {
+            "text": "QUESTS",
+            "font": "bold 13px sans-serif",
+            "normalizedFontPx": 13
+          },
+          "allowed": {
+            "normalizedPx": 18,
+            "tolerancePx": 0.5
+          }
+        },
+        {
+          "name": "combat-entry-landmark",
+          "pass": true,
+          "measured": {
+            "heroCount": 4,
+            "heroCardHostPresent": false
+          },
+          "allowed": {
+            "heroCountAtLeast": 1,
+            "heroCardHostPresent": false
+          }
+        },
+        {
+          "name": "dev-launcher-scale",
+          "pass": true,
+          "measured": {
+            "launchers": [
+              {
+                "name": "DEV",
+                "width": 31.359375,
+                "height": 18,
+                "normalizedWidth": 31.359375,
+                "normalizedHeight": 18
+              },
+              {
+                "name": "DEV2",
+                "width": 36.703125,
+                "height": 18,
+                "normalizedWidth": 36.703125,
+                "normalizedHeight": 18
+              }
+            ],
+            "canvasRight": 360,
+            "canvasIsNarrowerThanViewport": false
+          },
+          "allowed": {
+            "dev": {
+              "width": 31.36,
+              "height": 18
+            },
+            "dev2": {
+              "width": 36.7,
+              "height": 18
+            },
+            "tolerancePx": 0.8,
+            "narrowCanvasUsesRightGutter": true
+          }
+        },
+        {
+          "name": "dev-panel-1-containment",
+          "pass": true,
+          "measured": {
+            "rect": {
+              "left": 16,
+              "right": 344,
+              "top": 38.40625,
+              "bottom": 601.59375,
+              "width": 328,
+              "height": 563.1875
+            },
+            "scrollWidth": 324,
+            "clientWidth": 324,
+            "scrollHeight": 914,
+            "clientHeight": 559,
+            "actionButton": {
+              "width": 59.03125,
+              "height": 28
+            },
+            "title": {
+              "right": 195.4375,
+              "height": 25.1875,
+              "whiteSpace": "nowrap"
+            },
+            "close": {
+              "left": 265.6875
+            },
+            "order": {
+              "close": 4,
+              "actions": 4
+            }
+          },
+          "allowed": {
+            "fullyInsideViewport": true,
+            "horizontalOverflowPx": 0,
+            "physicalWidth": "viewport minus 32px gutter"
+          }
+        },
+        {
+          "name": "dev-panel-1-title-single-line",
+          "pass": true,
+          "measured": {
+            "title": {
+              "right": 195.4375,
+              "height": 25.1875,
+              "whiteSpace": "nowrap"
+            },
+            "close": {
+              "left": 265.6875
+            }
+          },
+          "allowed": {
+            "whiteSpace": "nowrap",
+            "clearsCloseButton": true
+          }
+        },
+        {
+          "name": "dev-panel-1-action-scale",
+          "pass": true,
+          "measured": {
+            "width": 59.03125,
+            "height": 28,
+            "normalizedHeight": 28
+          },
+          "allowed": {
+            "gutterPx": 32,
+            "widthTolerancePx": 1.5,
+            "actionHeightPx": 28,
+            "actionTolerancePx": 0.5
+          }
+        },
+        {
+          "name": "dev-panel-2-containment",
+          "pass": true,
+          "measured": {
+            "rect": {
+              "left": 16,
+              "right": 344,
+              "top": 168,
+              "bottom": 472,
+              "width": 328,
+              "height": 304
+            },
+            "scrollWidth": 326,
+            "clientWidth": 326,
+            "scrollHeight": 302,
+            "clientHeight": 302
+          },
+          "allowed": {
+            "fullyInsideViewport": true,
+            "horizontalOverflowPx": 0,
+            "physicalWidth": "viewport minus 32px gutter"
+          }
+        },
+        {
+          "name": "dev-panel-1-action-order",
+          "pass": true,
+          "measured": {
+            "close": 4,
+            "actions": 4
+          },
+          "allowed": "close before action buttons before settings fields"
+        },
+        {
+          "name": "hero-combat-card-ui-absent",
+          "pass": true,
+          "measured": {
+            "heroCount": 4,
+            "enemyCount": 5,
+            "heroCardHostPresent": false,
+            "afReadoutPresent": false
+          },
+          "allowed": {
+            "heroCardHostPresent": false
+          }
+        },
+        {
+          "name": "actor-health-bars-present",
+          "pass": true,
+          "measured": {
+            "count": 27,
+            "heroCount": 4,
+            "enemyCount": 5,
+            "heroCardHostPresent": false,
+            "afReadoutPresent": false
+          },
+          "allowed": {
+            "minimum": 9
+          }
+        },
+        {
+          "name": "battlefield-selectors-absent",
+          "pass": true,
+          "measured": {},
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "automatic-focus-target-is-living",
+          "pass": true,
+          "measured": {
+            "focusTargetUID": 6,
+            "livingEnemyUIDs": [
+              6,
+              7,
+              8,
+              9,
+              10
+            ],
+            "basicClockCount": 4,
+            "scheduledBasics": 0
+          },
+          "allowed": {
+            "focusTargetIsLivingEnemy": true
+          }
+        },
+        {
+          "name": "realtime-basic-clocks-present",
+          "pass": true,
+          "measured": {
+            "focusTargetUID": 6,
+            "livingEnemyUIDs": [
+              6,
+              7,
+              8,
+              9,
+              10
+            ],
+            "basicClockCount": 4,
+            "scheduledBasics": 0
+          },
+          "allowed": {
+            "minimum": 1
+          }
+        },
+        {
+          "name": "damage-text-scale",
+          "pass": true,
+          "measured": {
+            "rect": {
+              "width": 43.95245361328125,
+              "height": 36.96002197265625
+            },
+            "backing": {
+              "width": 44,
+              "height": 37
+            },
+            "font": "14px Bungee, \"Trebuchet MS\", Verdana, sans-serif",
+            "fontPx": 14,
+            "fontRatio": null
+          },
+          "allowed": {
+            "fontPx": 14,
+            "cssWidth": 44,
+            "cssHeight": 37
+          }
+        },
+        {
+          "name": "damage-text-density",
+          "pass": true,
+          "measured": {
+            "density": 1.0010817686570377,
+            "dpr": 1,
+            "rect": {
+              "width": 43.95245361328125,
+              "height": 36.96002197265625
+            },
+            "backing": {
+              "width": 44,
+              "height": 37
+            },
+            "font": "14px Bungee, \"Trebuchet MS\", Verdana, sans-serif",
+            "fontPx": 14
+          },
+          "allowed": {
+            "density": [
+              0.98,
+              1.02
+            ]
+          }
+        },
+        {
+          "name": "pooled-health-bar-absent",
+          "pass": true,
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "gem-board-backdrop-absent",
+          "pass": true,
+          "measured": null,
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "shared-astral-bar-absent",
+          "pass": true,
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "personal-af-ui-absent",
+          "pass": true,
+          "measured": {
+            "heroCount": 4,
+            "enemyCount": 5,
+            "heroCardHostPresent": false,
+            "afReadoutPresent": false
+          },
+          "allowed": {
+            "afUi": false
+          }
+        },
+        {
+          "name": "legacy-backdrop-absent",
+          "pass": true,
+          "measured": {
+            "forbiddenPanelDraws": []
+          },
+          "allowed": {
+            "forbiddenPanelDraws": 0
+          }
+        },
+        {
+          "name": "page-runtime-errors",
+          "pass": true,
+          "measured": [],
+          "allowed": {
+            "count": 0
+          }
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "natural-preview",
+        "width": 316,
+        "height": 452,
+        "dpr": 1
+      },
+      "metrics": {
+        "requestedViewport": {
+          "width": 316,
+          "height": 452,
+          "dpr": 1
+        },
+        "viewport": {
+          "width": 316,
+          "height": 452
+        },
+        "document": {
+          "clientWidth": 316,
+          "clientHeight": 452,
+          "scrollWidth": 316,
+          "scrollHeight": 452
+        },
+        "visualViewport": {
+          "width": 316,
+          "height": 452,
+          "scale": 1
+        },
+        "dpr": 1,
+        "controlScale": 0.7055555555555556,
+        "appViewport": {
+          "dpr": 1,
+          "layoutScale": 0.7055555555555556,
+          "layoutOffsetX": -1.4210854715202004e-14,
+          "layoutOffsetY": 0.22222222222220012,
+          "viewportWidth": 316,
+          "viewportHeight": 452,
+          "stageWidth": 254,
+          "stageHeight": 452,
+          "controlRailWidth": 0,
+          "controlScale": 0.7055555555555556
+        },
+        "canvas": {
+          "x": 31,
+          "y": 0,
+          "width": 254,
+          "height": 452,
+          "scrollWidth": 254,
+          "scrollHeight": 452,
+          "clientWidth": 254,
+          "clientHeight": 452,
+          "backing": {
+            "width": 254,
+            "height": 452
+          }
+        },
+        "devLauncher": {
+          "x": 293.87420654296875,
+          "y": 7.046875,
+          "width": 22.12579345703125,
+          "height": 12.700000762939453,
+          "scrollWidth": 29,
+          "scrollHeight": 16,
+          "clientWidth": 29,
+          "clientHeight": 16,
+          "backing": null
+        },
+        "dev2Launcher": {
+          "x": 290.1039123535156,
+          "y": 21.15625,
+          "width": 25.896087646484375,
+          "height": 12.700000762939453,
+          "scrollWidth": 35,
+          "scrollHeight": 16,
+          "clientWidth": 35,
+          "clientHeight": 16,
+          "backing": null
+        }
+      },
+      "invariants": [
+        {
+          "name": "actual-viewport-metrics",
+          "pass": true,
+          "measured": {
+            "requestedViewport": {
+              "width": 316,
+              "height": 452,
+              "dpr": 1
+            },
+            "viewport": {
+              "width": 316,
+              "height": 452
+            },
+            "document": {
+              "clientWidth": 316,
+              "clientHeight": 452,
+              "scrollWidth": 316,
+              "scrollHeight": 452
+            },
+            "visualViewport": {
+              "width": 316,
+              "height": 452,
+              "scale": 1
+            },
+            "dpr": 1,
+            "controlScale": 0.7055555555555556,
+            "appViewport": {
+              "dpr": 1,
+              "layoutScale": 0.7055555555555556,
+              "layoutOffsetX": -1.4210854715202004e-14,
+              "layoutOffsetY": 0.22222222222220012,
+              "viewportWidth": 316,
+              "viewportHeight": 452,
+              "stageWidth": 254,
+              "stageHeight": 452,
+              "controlRailWidth": 0,
+              "controlScale": 0.7055555555555556
+            },
+            "canvas": {
+              "x": 31,
+              "y": 0,
+              "width": 254,
+              "height": 452,
+              "scrollWidth": 254,
+              "scrollHeight": 452,
+              "clientWidth": 254,
+              "clientHeight": 452,
+              "backing": {
+                "width": 254,
+                "height": 452
+              }
+            },
+            "devLauncher": {
+              "x": 293.87420654296875,
+              "y": 7.046875,
+              "width": 22.12579345703125,
+              "height": 12.700000762939453,
+              "scrollWidth": 29,
+              "scrollHeight": 16,
+              "clientWidth": 29,
+              "clientHeight": 16,
+              "backing": null
+            },
+            "dev2Launcher": {
+              "x": 290.1039123535156,
+              "y": 21.15625,
+              "width": 25.896087646484375,
+              "height": 12.700000762939453,
+              "scrollWidth": 35,
+              "scrollHeight": 16,
+              "clientWidth": 35,
+              "clientHeight": 16,
+              "backing": null
+            }
+          },
+          "allowed": {
+            "requestedViewport": {
+              "name": "natural-preview",
+              "width": 316,
+              "height": 452,
+              "dpr": 1
+            },
+            "clientMatchesWindow": true,
+            "visualScale": 1
+          }
+        },
+        {
+          "name": "page-horizontal-overflow",
+          "pass": true,
+          "measured": {
+            "clientWidth": 316,
+            "clientHeight": 452,
+            "scrollWidth": 316,
+            "scrollHeight": 452
+          },
+          "allowed": {
+            "scrollWidthAtMostClientWidth": true
+          }
+        },
+        {
+          "name": "canvas-contained-reference-aspect",
+          "pass": true,
+          "measured": {
+            "canvas": {
+              "x": 31,
+              "y": 0,
+              "width": 254,
+              "height": 452,
+              "scrollWidth": 254,
+              "scrollHeight": 452,
+              "clientWidth": 254,
+              "clientHeight": 452,
+              "backing": {
+                "width": 254,
+                "height": 452
+              }
+            },
+            "appViewport": {
+              "dpr": 1,
+              "layoutScale": 0.7055555555555556,
+              "layoutOffsetX": -1.4210854715202004e-14,
+              "layoutOffsetY": 0.22222222222220012,
+              "viewportWidth": 316,
+              "viewportHeight": 452,
+              "stageWidth": 254,
+              "stageHeight": 452,
+              "controlRailWidth": 0,
+              "controlScale": 0.7055555555555556
+            }
+          },
+          "allowed": {
+            "expectedStage": {
+              "width": 254,
+              "height": 452
+            },
+            "centered": true,
+            "backingMatchesDpr": true
+          }
+        },
+        {
+          "name": "quests-banner-text-scale",
+          "pass": true,
+          "measured": {
+            "text": "QUESTS",
+            "font": "bold 13px sans-serif",
+            "normalizedFontPx": 13.000000048810103
+          },
+          "allowed": {
+            "normalizedPx": 18,
+            "tolerancePx": 0.5
+          }
+        },
+        {
+          "name": "combat-entry-landmark",
+          "pass": true,
+          "measured": {
+            "heroCount": 4,
+            "heroCardHostPresent": false
+          },
+          "allowed": {
+            "heroCountAtLeast": 1,
+            "heroCardHostPresent": false
+          }
+        },
+        {
+          "name": "dev-launcher-scale",
+          "pass": true,
+          "measured": {
+            "launchers": [
+              {
+                "name": "DEV",
+                "width": 22.12579345703125,
+                "height": 12.700000762939453,
+                "normalizedWidth": 31.359392301304133,
+                "normalizedHeight": 18.000001081331508
+              },
+              {
+                "name": "DEV2",
+                "width": 25.896087646484375,
+                "height": 12.700000762939453,
+                "normalizedWidth": 36.70311634934793,
+                "normalizedHeight": 18.000001081331508
+              }
+            ],
+            "canvasRight": 285,
+            "canvasIsNarrowerThanViewport": true
+          },
+          "allowed": {
+            "dev": {
+              "width": 31.36,
+              "height": 18
+            },
+            "dev2": {
+              "width": 36.7,
+              "height": 18
+            },
+            "tolerancePx": 0.8,
+            "narrowCanvasUsesRightGutter": true
+          }
+        },
+        {
+          "name": "dev-panel-1-containment",
+          "pass": true,
+          "measured": {
+            "rect": {
+              "left": 16.009246826171875,
+              "right": 300.0063781738281,
+              "top": 27.12152099609375,
+              "bottom": 424.87847900390625,
+              "width": 283.99713134765625,
+              "height": 397.7569580078125
+            },
+            "scrollWidth": 399,
+            "clientWidth": 399,
+            "scrollHeight": 880,
+            "clientHeight": 560,
+            "actionButton": {
+              "width": 41.64982986450195,
+              "height": 19.75555419921875
+            },
+            "title": {
+              "right": 142.61236190795898,
+              "height": 17.771183013916016,
+              "whiteSpace": "nowrap"
+            },
+            "close": {
+              "left": 244.7525634765625
+            },
+            "order": {
+              "close": 4,
+              "actions": 4
+            }
+          },
+          "allowed": {
+            "fullyInsideViewport": true,
+            "horizontalOverflowPx": 0,
+            "physicalWidth": "viewport minus 32px gutter"
+          }
+        },
+        {
+          "name": "dev-panel-1-title-single-line",
+          "pass": true,
+          "measured": {
+            "title": {
+              "right": 142.61236190795898,
+              "height": 17.771183013916016,
+              "whiteSpace": "nowrap"
+            },
+            "close": {
+              "left": 244.7525634765625
+            }
+          },
+          "allowed": {
+            "whiteSpace": "nowrap",
+            "clearsCloseButton": true
+          }
+        },
+        {
+          "name": "dev-panel-1-action-scale",
+          "pass": true,
+          "measured": {
+            "width": 41.64982986450195,
+            "height": 19.75555419921875,
+            "normalizedHeight": 27.99999807763287
+          },
+          "allowed": {
+            "gutterPx": 32,
+            "widthTolerancePx": 1.5,
+            "actionHeightPx": 28,
+            "actionTolerancePx": 0.5
+          }
+        },
+        {
+          "name": "dev-panel-2-containment",
+          "pass": true,
+          "measured": {
+            "rect": {
+              "left": 16.009246826171875,
+              "right": 300.0063781738281,
+              "top": 118.75555419921875,
+              "bottom": 333.24444580078125,
+              "width": 283.99713134765625,
+              "height": 214.4888916015625
+            },
+            "scrollWidth": 401,
+            "clientWidth": 401,
+            "scrollHeight": 302,
+            "clientHeight": 302
+          },
+          "allowed": {
+            "fullyInsideViewport": true,
+            "horizontalOverflowPx": 0,
+            "physicalWidth": "viewport minus 32px gutter"
+          }
+        },
+        {
+          "name": "dev-panel-1-action-order",
+          "pass": true,
+          "measured": {
+            "close": 4,
+            "actions": 4
+          },
+          "allowed": "close before action buttons before settings fields"
+        },
+        {
+          "name": "hero-combat-card-ui-absent",
+          "pass": true,
+          "measured": {
+            "heroCount": 4,
+            "enemyCount": 5,
+            "heroCardHostPresent": false,
+            "afReadoutPresent": false
+          },
+          "allowed": {
+            "heroCardHostPresent": false
+          }
+        },
+        {
+          "name": "actor-health-bars-present",
+          "pass": true,
+          "measured": {
+            "count": 36,
+            "heroCount": 4,
+            "enemyCount": 5,
+            "heroCardHostPresent": false,
+            "afReadoutPresent": false
+          },
+          "allowed": {
+            "minimum": 9
+          }
+        },
+        {
+          "name": "battlefield-selectors-absent",
+          "pass": true,
+          "measured": {},
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "automatic-focus-target-is-living",
+          "pass": true,
+          "measured": {
+            "focusTargetUID": 6,
+            "livingEnemyUIDs": [
+              6,
+              7,
+              8,
+              9,
+              10
+            ],
+            "basicClockCount": 4,
+            "scheduledBasics": 0
+          },
+          "allowed": {
+            "focusTargetIsLivingEnemy": true
+          }
+        },
+        {
+          "name": "realtime-basic-clocks-present",
+          "pass": true,
+          "measured": {
+            "focusTargetUID": 6,
+            "livingEnemyUIDs": [
+              6,
+              7,
+              8,
+              9,
+              10
+            ],
+            "basicClockCount": 4,
+            "scheduledBasics": 0
+          },
+          "allowed": {
+            "minimum": 1
+          }
+        },
+        {
+          "name": "damage-text-scale",
+          "pass": true,
+          "measured": {
+            "rect": {
+              "width": 31.83660888671875,
+              "height": 25.867233276367188
+            },
+            "backing": {
+              "width": 32,
+              "height": 26
+            },
+            "font": "10px Bungee, \"Trebuchet MS\", Verdana, sans-serif",
+            "fontPx": 10,
+            "fontRatio": null
+          },
+          "allowed": {
+            "fontPx": 10,
+            "cssWidth": 32,
+            "cssHeight": 26
+          }
+        },
+        {
+          "name": "damage-text-density",
+          "pass": true,
+          "measured": {
+            "density": 1.0051321770438124,
+            "dpr": 1,
+            "rect": {
+              "width": 31.83660888671875,
+              "height": 25.867233276367188
+            },
+            "backing": {
+              "width": 32,
+              "height": 26
+            },
+            "font": "10px Bungee, \"Trebuchet MS\", Verdana, sans-serif",
+            "fontPx": 10
+          },
+          "allowed": {
+            "density": [
+              0.98,
+              1.02
+            ]
+          }
+        },
+        {
+          "name": "pooled-health-bar-absent",
+          "pass": true,
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "gem-board-backdrop-absent",
+          "pass": true,
+          "measured": null,
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "shared-astral-bar-absent",
+          "pass": true,
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "personal-af-ui-absent",
+          "pass": true,
+          "measured": {
+            "heroCount": 4,
+            "enemyCount": 5,
+            "heroCardHostPresent": false,
+            "afReadoutPresent": false
+          },
+          "allowed": {
+            "afUi": false
+          }
+        },
+        {
+          "name": "legacy-backdrop-absent",
+          "pass": true,
+          "measured": {
+            "forbiddenPanelDraws": []
+          },
+          "allowed": {
+            "forbiddenPanelDraws": 0
+          }
+        },
+        {
+          "name": "page-runtime-errors",
+          "pass": true,
+          "measured": [],
+          "allowed": {
+            "count": 0
+          }
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "live-narrow",
+        "width": 233,
+        "height": 452,
+        "dpr": 1
+      },
+      "metrics": {
+        "requestedViewport": {
+          "width": 233,
+          "height": 452,
+          "dpr": 1
+        },
+        "viewport": {
+          "width": 233,
+          "height": 452
+        },
+        "document": {
+          "clientWidth": 233,
+          "clientHeight": 452,
+          "scrollWidth": 233,
+          "scrollHeight": 452
+        },
+        "visualViewport": {
+          "width": 233,
+          "height": 452,
+          "scale": 1
+        },
+        "dpr": 1,
+        "controlScale": 0.646875,
+        "appViewport": {
+          "dpr": 1,
+          "layoutScale": 0.646875,
+          "layoutOffsetX": 0.0625,
+          "layoutOffsetY": 0,
+          "viewportWidth": 233,
+          "viewportHeight": 452,
+          "stageWidth": 233,
+          "stageHeight": 414,
+          "controlRailWidth": 0,
+          "controlScale": 0.646875
+        },
+        "canvas": {
+          "x": 0,
+          "y": 19,
+          "width": 233,
+          "height": 414,
+          "scrollWidth": 233,
+          "scrollHeight": 414,
+          "clientWidth": 233,
+          "clientHeight": 414,
+          "backing": {
+            "width": 233,
+            "height": 414
+          }
+        },
+        "devLauncher": {
+          "x": 206.2456512451172,
+          "y": 6.46875,
+          "width": 20.285598754882812,
+          "height": 11.643749237060547,
+          "scrollWidth": 29,
+          "scrollHeight": 16,
+          "clientWidth": 29,
+          "clientHeight": 16,
+          "backing": null
+        },
+        "dev2Launcher": {
+          "x": 202.78890991210938,
+          "y": 19.40625,
+          "width": 23.742340087890625,
+          "height": 11.643749237060547,
+          "scrollWidth": 35,
+          "scrollHeight": 16,
+          "clientWidth": 35,
+          "clientHeight": 16,
+          "backing": null
+        }
+      },
+      "invariants": [
+        {
+          "name": "actual-viewport-metrics",
+          "pass": true,
+          "measured": {
+            "requestedViewport": {
+              "width": 233,
+              "height": 452,
+              "dpr": 1
+            },
+            "viewport": {
+              "width": 233,
+              "height": 452
+            },
+            "document": {
+              "clientWidth": 233,
+              "clientHeight": 452,
+              "scrollWidth": 233,
+              "scrollHeight": 452
+            },
+            "visualViewport": {
+              "width": 233,
+              "height": 452,
+              "scale": 1
+            },
+            "dpr": 1,
+            "controlScale": 0.646875,
+            "appViewport": {
+              "dpr": 1,
+              "layoutScale": 0.646875,
+              "layoutOffsetX": 0.0625,
+              "layoutOffsetY": 0,
+              "viewportWidth": 233,
+              "viewportHeight": 452,
+              "stageWidth": 233,
+              "stageHeight": 414,
+              "controlRailWidth": 0,
+              "controlScale": 0.646875
+            },
+            "canvas": {
+              "x": 0,
+              "y": 19,
+              "width": 233,
+              "height": 414,
+              "scrollWidth": 233,
+              "scrollHeight": 414,
+              "clientWidth": 233,
+              "clientHeight": 414,
+              "backing": {
+                "width": 233,
+                "height": 414
+              }
+            },
+            "devLauncher": {
+              "x": 206.2456512451172,
+              "y": 6.46875,
+              "width": 20.285598754882812,
+              "height": 11.643749237060547,
+              "scrollWidth": 29,
+              "scrollHeight": 16,
+              "clientWidth": 29,
+              "clientHeight": 16,
+              "backing": null
+            },
+            "dev2Launcher": {
+              "x": 202.78890991210938,
+              "y": 19.40625,
+              "width": 23.742340087890625,
+              "height": 11.643749237060547,
+              "scrollWidth": 35,
+              "scrollHeight": 16,
+              "clientWidth": 35,
+              "clientHeight": 16,
+              "backing": null
+            }
+          },
+          "allowed": {
+            "requestedViewport": {
+              "name": "live-narrow",
+              "width": 233,
+              "height": 452,
+              "dpr": 1
+            },
+            "clientMatchesWindow": true,
+            "visualScale": 1
+          }
+        },
+        {
+          "name": "page-horizontal-overflow",
+          "pass": true,
+          "measured": {
+            "clientWidth": 233,
+            "clientHeight": 452,
+            "scrollWidth": 233,
+            "scrollHeight": 452
+          },
+          "allowed": {
+            "scrollWidthAtMostClientWidth": true
+          }
+        },
+        {
+          "name": "canvas-contained-reference-aspect",
+          "pass": true,
+          "measured": {
+            "canvas": {
+              "x": 0,
+              "y": 19,
+              "width": 233,
+              "height": 414,
+              "scrollWidth": 233,
+              "scrollHeight": 414,
+              "clientWidth": 233,
+              "clientHeight": 414,
+              "backing": {
+                "width": 233,
+                "height": 414
+              }
+            },
+            "appViewport": {
+              "dpr": 1,
+              "layoutScale": 0.646875,
+              "layoutOffsetX": 0.0625,
+              "layoutOffsetY": 0,
+              "viewportWidth": 233,
+              "viewportHeight": 452,
+              "stageWidth": 233,
+              "stageHeight": 414,
+              "controlRailWidth": 0,
+              "controlScale": 0.646875
+            }
+          },
+          "allowed": {
+            "expectedStage": {
+              "width": 233,
+              "height": 414
+            },
+            "centered": true,
+            "backingMatchesDpr": true
+          }
+        },
+        {
+          "name": "quests-banner-text-scale",
+          "pass": true,
+          "measured": {
+            "text": "QUESTS",
+            "font": "bold 13px sans-serif",
+            "normalizedFontPx": 13.00000047914072
+          },
+          "allowed": {
+            "normalizedPx": 18,
+            "tolerancePx": 0.5
+          }
+        },
+        {
+          "name": "combat-entry-landmark",
+          "pass": true,
+          "measured": {
+            "heroCount": 4,
+            "heroCardHostPresent": false
+          },
+          "allowed": {
+            "heroCountAtLeast": 1,
+            "heroCardHostPresent": false
+          }
+        },
+        {
+          "name": "dev-launcher-scale",
+          "pass": true,
+          "measured": {
+            "launchers": [
+              {
+                "name": "DEV",
+                "width": 20.285598754882812,
+                "height": 11.643749237060547,
+                "normalizedWidth": 31.359379717693237,
+                "normalizedHeight": 17.999998820576693
+              },
+              {
+                "name": "DEV2",
+                "width": 23.742340087890625,
+                "height": 11.643749237060547,
+                "normalizedWidth": 36.703134435386474,
+                "normalizedHeight": 17.999998820576693
+              }
+            ],
+            "canvasRight": 233,
+            "canvasIsNarrowerThanViewport": false
+          },
+          "allowed": {
+            "dev": {
+              "width": 31.36,
+              "height": 18
+            },
+            "dev2": {
+              "width": 36.7,
+              "height": 18
+            },
+            "tolerancePx": 0.8,
+            "narrowCanvasUsesRightGutter": true
+          }
+        },
+        {
+          "name": "dev-panel-1-containment",
+          "pass": true,
+          "measured": {
+            "rect": {
+              "left": 16.00189971923828,
+              "right": 216.99811553955078,
+              "top": 27.129119873046875,
+              "bottom": 424.8865051269531,
+              "width": 200.9962158203125,
+              "height": 397.75738525390625
+            },
+            "scrollWidth": 307,
+            "clientWidth": 307,
+            "scrollHeight": 914,
+            "clientHeight": 611,
+            "actionButton": {
+              "width": 38.18584442138672,
+              "height": 18.112503051757812
+            },
+            "title": {
+              "right": 132.07553100585938,
+              "height": 16.293167114257812,
+              "whiteSpace": "nowrap"
+            },
+            "close": {
+              "left": 166.33969116210938
+            },
+            "order": {
+              "close": 4,
+              "actions": 4
+            }
+          },
+          "allowed": {
+            "fullyInsideViewport": true,
+            "horizontalOverflowPx": 0,
+            "physicalWidth": "viewport minus 32px gutter"
+          }
+        },
+        {
+          "name": "dev-panel-1-title-single-line",
+          "pass": true,
+          "measured": {
+            "title": {
+              "right": 132.07553100585938,
+              "height": 16.293167114257812,
+              "whiteSpace": "nowrap"
+            },
+            "close": {
+              "left": 166.33969116210938
+            }
+          },
+          "allowed": {
+            "whiteSpace": "nowrap",
+            "clearsCloseButton": true
+          }
+        },
+        {
+          "name": "dev-panel-1-action-scale",
+          "pass": true,
+          "measured": {
+            "width": 38.18584442138672,
+            "height": 18.112503051757812,
+            "normalizedHeight": 28.000004717693237
+          },
+          "allowed": {
+            "gutterPx": 32,
+            "widthTolerancePx": 1.5,
+            "actionHeightPx": 28,
+            "actionTolerancePx": 0.5
+          }
+        },
+        {
+          "name": "dev-panel-2-containment",
+          "pass": true,
+          "measured": {
+            "rect": {
+              "left": 16.00189971923828,
+              "right": 216.99811553955078,
+              "top": 127.67499542236328,
+              "bottom": 324.3250198364258,
+              "width": 200.9962158203125,
+              "height": 196.6500244140625
+            },
+            "scrollWidth": 309,
+            "clientWidth": 309,
+            "scrollHeight": 302,
+            "clientHeight": 302
+          },
+          "allowed": {
+            "fullyInsideViewport": true,
+            "horizontalOverflowPx": 0,
+            "physicalWidth": "viewport minus 32px gutter"
+          }
+        },
+        {
+          "name": "dev-panel-1-action-order",
+          "pass": true,
+          "measured": {
+            "close": 4,
+            "actions": 4
+          },
+          "allowed": "close before action buttons before settings fields"
+        },
+        {
+          "name": "hero-combat-card-ui-absent",
+          "pass": true,
+          "measured": {
+            "heroCount": 4,
+            "enemyCount": 5,
+            "heroCardHostPresent": false,
+            "afReadoutPresent": false
+          },
+          "allowed": {
+            "heroCardHostPresent": false
+          }
+        },
+        {
+          "name": "actor-health-bars-present",
+          "pass": true,
+          "measured": {
+            "count": 27,
+            "heroCount": 4,
+            "enemyCount": 5,
+            "heroCardHostPresent": false,
+            "afReadoutPresent": false
+          },
+          "allowed": {
+            "minimum": 9
+          }
+        },
+        {
+          "name": "battlefield-selectors-absent",
+          "pass": true,
+          "measured": {},
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "automatic-focus-target-is-living",
+          "pass": true,
+          "measured": {
+            "focusTargetUID": 6,
+            "livingEnemyUIDs": [
+              6,
+              7,
+              8,
+              9,
+              10
+            ],
+            "basicClockCount": 4,
+            "scheduledBasics": 0
+          },
+          "allowed": {
+            "focusTargetIsLivingEnemy": true
+          }
+        },
+        {
+          "name": "realtime-basic-clocks-present",
+          "pass": true,
+          "measured": {
+            "focusTargetUID": 6,
+            "livingEnemyUIDs": [
+              6,
+              7,
+              8,
+              9,
+              10
+            ],
+            "basicClockCount": 4,
+            "scheduledBasics": 0
+          },
+          "allowed": {
+            "minimum": 1
+          }
+        },
+        {
+          "name": "damage-text-scale",
+          "pass": true,
+          "measured": {
+            "rect": {
+              "width": 28.823028564453125,
+              "height": 23.853530883789062
+            },
+            "backing": {
+              "width": 29,
+              "height": 24
+            },
+            "font": "9px Bungee, \"Trebuchet MS\", Verdana, sans-serif",
+            "fontPx": 9,
+            "fontRatio": null
+          },
+          "allowed": {
+            "fontPx": 9,
+            "cssWidth": 29,
+            "cssHeight": 24
+          }
+        },
+        {
+          "name": "damage-text-density",
+          "pass": true,
+          "measured": {
+            "density": 1.0061399320044089,
+            "dpr": 1,
+            "rect": {
+              "width": 28.823028564453125,
+              "height": 23.853530883789062
+            },
+            "backing": {
+              "width": 29,
+              "height": 24
+            },
+            "font": "9px Bungee, \"Trebuchet MS\", Verdana, sans-serif",
+            "fontPx": 9
+          },
+          "allowed": {
+            "density": [
+              0.98,
+              1.02
+            ]
+          }
+        },
+        {
+          "name": "pooled-health-bar-absent",
+          "pass": true,
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "gem-board-backdrop-absent",
+          "pass": true,
+          "measured": null,
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "shared-astral-bar-absent",
+          "pass": true,
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "personal-af-ui-absent",
+          "pass": true,
+          "measured": {
+            "heroCount": 4,
+            "enemyCount": 5,
+            "heroCardHostPresent": false,
+            "afReadoutPresent": false
+          },
+          "allowed": {
+            "afUi": false
+          }
+        },
+        {
+          "name": "legacy-backdrop-absent",
+          "pass": true,
+          "measured": {
+            "forbiddenPanelDraws": []
+          },
+          "allowed": {
+            "forbiddenPanelDraws": 0
+          }
+        },
+        {
+          "name": "page-runtime-errors",
+          "pass": true,
+          "measured": [],
+          "allowed": {
+            "count": 0
+          }
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "compact-retina",
+        "width": 216,
+        "height": 384,
+        "dpr": 2
+      },
+      "metrics": {
+        "requestedViewport": {
+          "width": 216,
+          "height": 384,
+          "dpr": 2
+        },
+        "viewport": {
+          "width": 216,
+          "height": 384
+        },
+        "document": {
+          "clientWidth": 216,
+          "clientHeight": 384,
+          "scrollWidth": 216,
+          "scrollHeight": 384
+        },
+        "visualViewport": {
+          "width": 216,
+          "height": 384,
+          "scale": 1
+        },
+        "dpr": 2,
+        "controlScale": 0.6,
+        "appViewport": {
+          "dpr": 2,
+          "layoutScale": 0.6,
+          "layoutOffsetX": 0,
+          "layoutOffsetY": 0,
+          "viewportWidth": 216,
+          "viewportHeight": 384,
+          "stageWidth": 216,
+          "stageHeight": 384,
+          "controlRailWidth": 0,
+          "controlScale": 0.6
+        },
+        "canvas": {
+          "x": 0,
+          "y": 0,
+          "width": 216,
+          "height": 384,
+          "scrollWidth": 216,
+          "scrollHeight": 384,
+          "clientWidth": 216,
+          "clientHeight": 384,
+          "backing": {
+            "width": 432,
+            "height": 768
+          }
+        },
+        "devLauncher": {
+          "x": 191.1843719482422,
+          "y": 6,
+          "width": 18.815628051757812,
+          "height": 10.799999237060547,
+          "scrollWidth": 29,
+          "scrollHeight": 16,
+          "clientWidth": 29,
+          "clientHeight": 16,
+          "backing": null
+        },
+        "dev2Launcher": {
+          "x": 187.97811889648438,
+          "y": 18,
+          "width": 22.021881103515625,
+          "height": 10.799999237060547,
+          "scrollWidth": 35,
+          "scrollHeight": 16,
+          "clientWidth": 35,
+          "clientHeight": 16,
+          "backing": null
+        }
+      },
+      "invariants": [
+        {
+          "name": "actual-viewport-metrics",
+          "pass": true,
+          "measured": {
+            "requestedViewport": {
+              "width": 216,
+              "height": 384,
+              "dpr": 2
+            },
+            "viewport": {
+              "width": 216,
+              "height": 384
+            },
+            "document": {
+              "clientWidth": 216,
+              "clientHeight": 384,
+              "scrollWidth": 216,
+              "scrollHeight": 384
+            },
+            "visualViewport": {
+              "width": 216,
+              "height": 384,
+              "scale": 1
+            },
+            "dpr": 2,
+            "controlScale": 0.6,
+            "appViewport": {
+              "dpr": 2,
+              "layoutScale": 0.6,
+              "layoutOffsetX": 0,
+              "layoutOffsetY": 0,
+              "viewportWidth": 216,
+              "viewportHeight": 384,
+              "stageWidth": 216,
+              "stageHeight": 384,
+              "controlRailWidth": 0,
+              "controlScale": 0.6
+            },
+            "canvas": {
+              "x": 0,
+              "y": 0,
+              "width": 216,
+              "height": 384,
+              "scrollWidth": 216,
+              "scrollHeight": 384,
+              "clientWidth": 216,
+              "clientHeight": 384,
+              "backing": {
+                "width": 432,
+                "height": 768
+              }
+            },
+            "devLauncher": {
+              "x": 191.1843719482422,
+              "y": 6,
+              "width": 18.815628051757812,
+              "height": 10.799999237060547,
+              "scrollWidth": 29,
+              "scrollHeight": 16,
+              "clientWidth": 29,
+              "clientHeight": 16,
+              "backing": null
+            },
+            "dev2Launcher": {
+              "x": 187.97811889648438,
+              "y": 18,
+              "width": 22.021881103515625,
+              "height": 10.799999237060547,
+              "scrollWidth": 35,
+              "scrollHeight": 16,
+              "clientWidth": 35,
+              "clientHeight": 16,
+              "backing": null
+            }
+          },
+          "allowed": {
+            "requestedViewport": {
+              "name": "compact-retina",
+              "width": 216,
+              "height": 384,
+              "dpr": 2
+            },
+            "clientMatchesWindow": true,
+            "visualScale": 1
+          }
+        },
+        {
+          "name": "page-horizontal-overflow",
+          "pass": true,
+          "measured": {
+            "clientWidth": 216,
+            "clientHeight": 384,
+            "scrollWidth": 216,
+            "scrollHeight": 384
+          },
+          "allowed": {
+            "scrollWidthAtMostClientWidth": true
+          }
+        },
+        {
+          "name": "canvas-contained-reference-aspect",
+          "pass": true,
+          "measured": {
+            "canvas": {
+              "x": 0,
+              "y": 0,
+              "width": 216,
+              "height": 384,
+              "scrollWidth": 216,
+              "scrollHeight": 384,
+              "clientWidth": 216,
+              "clientHeight": 384,
+              "backing": {
+                "width": 432,
+                "height": 768
+              }
+            },
+            "appViewport": {
+              "dpr": 2,
+              "layoutScale": 0.6,
+              "layoutOffsetX": 0,
+              "layoutOffsetY": 0,
+              "viewportWidth": 216,
+              "viewportHeight": 384,
+              "stageWidth": 216,
+              "stageHeight": 384,
+              "controlRailWidth": 0,
+              "controlScale": 0.6
+            }
+          },
+          "allowed": {
+            "expectedStage": {
+              "width": 216,
+              "height": 384
+            },
+            "centered": true,
+            "backingMatchesDpr": true
+          }
+        },
+        {
+          "name": "quests-banner-text-scale",
+          "pass": true,
+          "measured": {
+            "text": "QUESTS",
+            "font": "bold 13px sans-serif",
+            "normalizedFontPx": 13.00000051657359
+          },
+          "allowed": {
+            "normalizedPx": 18,
+            "tolerancePx": 0.5
+          }
+        },
+        {
+          "name": "combat-entry-landmark",
+          "pass": true,
+          "measured": {
+            "heroCount": 4,
+            "heroCardHostPresent": false
+          },
+          "allowed": {
+            "heroCountAtLeast": 1,
+            "heroCardHostPresent": false
+          }
+        },
+        {
+          "name": "dev-launcher-scale",
+          "pass": true,
+          "measured": {
+            "launchers": [
+              {
+                "name": "DEV",
+                "width": 18.815628051757812,
+                "height": 10.799999237060547,
+                "normalizedWidth": 31.359380086263023,
+                "normalizedHeight": 17.999998728434246
+              },
+              {
+                "name": "DEV2",
+                "width": 22.021881103515625,
+                "height": 10.799999237060547,
+                "normalizedWidth": 36.703135172526046,
+                "normalizedHeight": 17.999998728434246
+              }
+            ],
+            "canvasRight": 216,
+            "canvasIsNarrowerThanViewport": false
+          },
+          "allowed": {
+            "dev": {
+              "width": 31.36,
+              "height": 18
+            },
+            "dev2": {
+              "width": 36.7,
+              "height": 18
+            },
+            "tolerancePx": 0.8,
+            "narrowCanvasUsesRightGutter": true
+          }
+        },
+        {
+          "name": "dev-panel-1-containment",
+          "pass": true,
+          "measured": {
+            "rect": {
+              "left": 16.00312042236328,
+              "right": 199.99689483642578,
+              "top": 23.043746948242188,
+              "bottom": 360.9562225341797,
+              "width": 183.9937744140625,
+              "height": 337.9124755859375
+            },
+            "scrollWidth": 303,
+            "clientWidth": 303,
+            "scrollHeight": 950,
+            "clientHeight": 559,
+            "actionButton": {
+              "width": 35.41875076293945,
+              "height": 16.799999237060547
+            },
+            "title": {
+              "right": 123.6656265258789,
+              "height": 15.112503051757812,
+              "whiteSpace": "nowrap"
+            },
+            "close": {
+              "left": 153.00936889648438
+            },
+            "order": {
+              "close": 4,
+              "actions": 4
+            }
+          },
+          "allowed": {
+            "fullyInsideViewport": true,
+            "horizontalOverflowPx": 0,
+            "physicalWidth": "viewport minus 32px gutter"
+          }
+        },
+        {
+          "name": "dev-panel-1-title-single-line",
+          "pass": true,
+          "measured": {
+            "title": {
+              "right": 123.6656265258789,
+              "height": 15.112503051757812,
+              "whiteSpace": "nowrap"
+            },
+            "close": {
+              "left": 153.00936889648438
+            }
+          },
+          "allowed": {
+            "whiteSpace": "nowrap",
+            "clearsCloseButton": true
+          }
+        },
+        {
+          "name": "dev-panel-1-action-scale",
+          "pass": true,
+          "measured": {
+            "width": 35.41875076293945,
+            "height": 16.799999237060547,
+            "normalizedHeight": 27.999998728434246
+          },
+          "allowed": {
+            "gutterPx": 32,
+            "widthTolerancePx": 1.5,
+            "actionHeightPx": 28,
+            "actionTolerancePx": 0.5
+          }
+        },
+        {
+          "name": "dev-panel-2-containment",
+          "pass": true,
+          "measured": {
+            "rect": {
+              "left": 16.00312042236328,
+              "right": 199.99689483642578,
+              "top": 100.79999542236328,
+              "bottom": 283.2000198364258,
+              "width": 183.9937744140625,
+              "height": 182.4000244140625
+            },
+            "scrollWidth": 305,
+            "clientWidth": 305,
+            "scrollHeight": 302,
+            "clientHeight": 302
+          },
+          "allowed": {
+            "fullyInsideViewport": true,
+            "horizontalOverflowPx": 0,
+            "physicalWidth": "viewport minus 32px gutter"
+          }
+        },
+        {
+          "name": "dev-panel-1-action-order",
+          "pass": true,
+          "measured": {
+            "close": 4,
+            "actions": 4
+          },
+          "allowed": "close before action buttons before settings fields"
+        },
+        {
+          "name": "hero-combat-card-ui-absent",
+          "pass": true,
+          "measured": {
+            "heroCount": 4,
+            "enemyCount": 5,
+            "heroCardHostPresent": false,
+            "afReadoutPresent": false
+          },
+          "allowed": {
+            "heroCardHostPresent": false
+          }
+        },
+        {
+          "name": "actor-health-bars-present",
+          "pass": true,
+          "measured": {
+            "count": 36,
+            "heroCount": 4,
+            "enemyCount": 5,
+            "heroCardHostPresent": false,
+            "afReadoutPresent": false
+          },
+          "allowed": {
+            "minimum": 9
+          }
+        },
+        {
+          "name": "battlefield-selectors-absent",
+          "pass": true,
+          "measured": {},
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "automatic-focus-target-is-living",
+          "pass": true,
+          "measured": {
+            "focusTargetUID": 6,
+            "livingEnemyUIDs": [
+              6,
+              7,
+              8,
+              9,
+              10
+            ],
+            "basicClockCount": 4,
+            "scheduledBasics": 0
+          },
+          "allowed": {
+            "focusTargetIsLivingEnemy": true
+          }
+        },
+        {
+          "name": "realtime-basic-clocks-present",
+          "pass": true,
+          "measured": {
+            "focusTargetUID": 6,
+            "livingEnemyUIDs": [
+              6,
+              7,
+              8,
+              9,
+              10
+            ],
+            "basicClockCount": 4,
+            "scheduledBasics": 0
+          },
+          "allowed": {
+            "minimum": 1
+          }
+        },
+        {
+          "name": "damage-text-scale",
+          "pass": true,
+          "measured": {
+            "rect": {
+              "width": 24.946807861328125,
+              "height": 20.955307006835938
+            },
+            "backing": {
+              "width": 50,
+              "height": 42
+            },
+            "font": "8px Bungee, \"Trebuchet MS\", Verdana, sans-serif",
+            "fontPx": 8,
+            "fontRatio": null
+          },
+          "allowed": {
+            "fontPx": 8,
+            "cssWidth": 25,
+            "cssHeight": 21
+          }
+        },
+        {
+          "name": "damage-text-density",
+          "pass": true,
+          "measured": {
+            "density": 2.004264444490658,
+            "dpr": 2,
+            "rect": {
+              "width": 24.946807861328125,
+              "height": 20.955307006835938
+            },
+            "backing": {
+              "width": 50,
+              "height": 42
+            },
+            "font": "8px Bungee, \"Trebuchet MS\", Verdana, sans-serif",
+            "fontPx": 8
+          },
+          "allowed": {
+            "density": [
+              1.96,
+              2.04
+            ]
+          }
+        },
+        {
+          "name": "pooled-health-bar-absent",
+          "pass": true,
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "gem-board-backdrop-absent",
+          "pass": true,
+          "measured": null,
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "shared-astral-bar-absent",
+          "pass": true,
+          "allowed": {
+            "count": 0
+          }
+        },
+        {
+          "name": "personal-af-ui-absent",
+          "pass": true,
+          "measured": {
+            "heroCount": 4,
+            "enemyCount": 5,
+            "heroCardHostPresent": false,
+            "afReadoutPresent": false
+          },
+          "allowed": {
+            "afUi": false
+          }
+        },
+        {
+          "name": "legacy-backdrop-absent",
+          "pass": true,
+          "measured": {
+            "forbiddenPanelDraws": []
+          },
+          "allowed": {
+            "forbiddenPanelDraws": 0
+          }
+        },
+        {
+          "name": "page-runtime-errors",
+          "pass": true,
+          "measured": [],
+          "allowed": {
+            "count": 0
+          }
+        }
+      ]
+    }
+  ],
+  "failed": [],
+  "pass": true,
+  "rejectionProof": null,
+  "serverOutput": [
+    "[FINGERPRINT] worktree=Codex-Orka2 branch=codex/ORKA-ood-conditional-skills issue=ORKA-ood ORKA69R_READY=true\n",
+    "Serving /Users/Mace/.codex/worktrees/orka-ood-conditional-skills/Codex-Orka on http://127.0.0.1:58223\n"
+  ]
+}

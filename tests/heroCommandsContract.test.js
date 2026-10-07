@@ -14,7 +14,7 @@ test('one through six actual heroes retain their command positions, including KO
 test('native attack commits once for the scheduled living actor and never spends on a rejected command', async () => {
   const { executeHeroCommand, canUseHeroCommand } = await import('../web-runner/modules/heroCommands.mjs');
   const hero = { uid: 1, name:'Huun', sp:100, spMax:100, kind: 'hero', hp: 10 }, enemy = { uid: 9, kind: 'enemy', hp: 10 };
-  const g = { GamePhase: 'RUNTIME', time: 5, TurnPhase: 0, SkillDraughtOpen: 1, SkillDraughtPendingOpen: 1 };
+  const g = { GamePhase: 'RUNTIME', time: 5, TurnPhase: 0 };
   let calls = 0;
   const ctx = { state: { globals: g, entities: [hero, enemy] }, callFunction(name, skill, actorUID) {
     if (name === 'GetCurrentTurn') return 1;
@@ -114,36 +114,24 @@ test('native lethal attacks create the enemy death hold before the next render',
 });
 
 
-test('native queued render events dispatch once while unrelated damage stays queued', () => {
-  const fs = require('node:fs'), vm = require('node:vm');
-  const source = fs.readFileSync(require('node:path').join(__dirname, '../web-runner/systems/renderRuntime.js'), 'utf8');
-  const start = source.indexOf('    const body = [');
-  const end = source.indexOf('    renderImpl = new Function', start);
-  const body = vm.runInNewContext('(function(){' + source.slice(start, end) + ';return body;})()');
-  assert.doesNotThrow(() => new Function('scope', 'dtOverride', 'with(scope){' + body + '\n}'));
-  assert.doesNotMatch(body, /renderAstralFlowMeter/);
-  const branchStart = body.indexOf("        if (hit.effectType === 'native_command') {");
-  const branchEnd = body.indexOf("        if (hit.effectType === 'dot_apply') {", branchStart);
-  assert.ok(branchStart >= 0 && branchEnd > branchStart);
-  const pending = [{ effectType: 'native_command', heroUID: 1 }, { effectType: 'damage', heroUID: 2 }];
+test('native queued commands resolve once at the simulation seam while future hits remain queued', async () => {
+  const { processPendingHeroHits } = await import('../web-runner/systems/combatSimulationTick.mjs');
+  const target = { uid: 9, kind: 'enemy', hp: 10 };
+  const pending = [
+    { at: 5, effectType: 'native_command', heroUID: 1, targetUID: 9 },
+    { at: 8, effectType: 'damage', heroUID: 2, targetUID: 9, dmg: 4 },
+  ];
+  const globals = { time: 5, PendingHeroHits: pending };
   const calls = [];
-  const run = new Function('pending', 'callFunctionWithContext', 'fnContext',
-    'for(let i=pending.length-1;i>=0;i--){const hit=pending[i];' + body.slice(branchStart, branchEnd) + '}');
-  run(pending, (...args) => calls.push(args), {});
-  run(pending, (...args) => calls.push(args), {});
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0][1], 'ResolveNativeCommandStep');
-  assert.equal(pending.length, 1);
-  assert.equal(pending[0].effectType, 'damage');
-});
-
-test('retired blue supergems cannot acquire party cards or consume an action', () => {
-  const fs = require('node:fs'), vm = require('node:vm');
-  const source = fs.readFileSync(require('node:path').join(__dirname, '../web-runner/systems/superGemRuntime.js'), 'utf8')
-    .replaceAll('export function', 'function').replace(/export \{[^}]+\};/g, '');
-  const activate = vm.runInNewContext(source + ';activateSuperGemEffect');
-  const state = { globals: {} };
-  assert.equal(activate({state, superGem:{baseColor:2}, actorUID:1,
-    callFunctionWithContext() { throw Error('retired draw invoked'); }}), false);
-  assert.deepEqual(state, {globals:{}});
+  const state = { globals, entities: [target] };
+  const callFunctionWithContext = (_ctx, name, ...args) => {
+    calls.push([name, ...args]);
+    if (name === 'ResolveNativeCommandStep') return true;
+    return null;
+  };
+  processPendingHeroHits({ state, fnContext: {}, callFunctionWithContext, animationMath: {} });
+  processPendingHeroHits({ state, fnContext: {}, callFunctionWithContext, animationMath: {} });
+  assert.equal(calls.filter(([name]) => name === 'ResolveNativeCommandStep').length, 1);
+  assert.equal(globals.PendingHeroHits.length, 1);
+  assert.equal(globals.PendingHeroHits[0].effectType, 'damage');
 });

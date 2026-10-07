@@ -13,6 +13,7 @@ const runtimeData = [
   'layouts.json',
   'objectTypes.json',
   'enemies.json',
+  'elemental-impact/manifest.json',
 ];
 const wasmName = 'simulation_core.wasm';
 const esbuild = process.env.ORKA_OFFLINE_ESBUILD || path.join(root, 'node_modules', '.bin', process.platform === 'win32' ? 'esbuild.cmd' : 'esbuild');
@@ -36,6 +37,7 @@ const sourceAssets = path.join(staging, 'web-runner', 'assets');
 if (!fs.existsSync(sourceIndex) || !fs.existsSync(sourceAssets)) {
   throw new Error('Offline release requires the staged runtime release and asset tree');
 }
+const embeddedJson = runtimeData.filter(name => fs.existsSync(path.join(sourceAssets, name)));
 
 fs.rmSync(candidate, { recursive: true, force: true });
 fs.mkdirSync(candidate, { recursive: true });
@@ -67,11 +69,12 @@ const offlineAssets = path.join(candidate, 'assets');
 fs.cpSync(sourceAssets, offlineAssets, {
   recursive: true,
   filter(source) {
-    return !runtimeData.includes(path.basename(source)) && path.basename(source) !== wasmName;
+    const relative = path.relative(sourceAssets, source).split(path.sep).join('/');
+    return !embeddedJson.includes(relative) && path.basename(source) !== wasmName;
   },
 });
 
-const jsonPayload = Object.fromEntries(runtimeData.map((name) => {
+const jsonPayload = Object.fromEntries(embeddedJson.map((name) => {
   const file = path.join(staging, 'web-runner', 'assets', name);
   return [name, JSON.parse(fs.readFileSync(file, 'utf8'))];
 }));
@@ -108,7 +111,7 @@ const manifest = {
   commit,
   format: 'offline-portable',
   entry: 'index.html',
-  embedded: { json: runtimeData, wasm: [wasmName] },
+  embedded: { json: embeddedJson, wasm: [wasmName] },
   files: Object.fromEntries(files.map((file) => [
     file,
     createHash('sha256').update(fs.readFileSync(path.join(candidate, file))).digest('hex'),

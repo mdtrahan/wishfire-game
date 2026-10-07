@@ -7,6 +7,11 @@ const { pathToFileURL } = require('node:url');
 const shadowPath = path.join(__dirname, '..', 'web-runner', 'systems', 'simulationCoreShadow.js');
 const rulesPath = path.join(__dirname, '..', 'web-runner', 'src', 'core', 'enemyTargetingRules.mjs');
 
+function nextFunctionStart(source, start) {
+  const match = /\n(?:export )?function\s/.exec(source.slice(start));
+  return match ? start + match.index : -1;
+}
+
 test('simulation core module exposes a Rust-owned enemy target marker', () => {
   const shadowSrc = fs.readFileSync(shadowPath, 'utf8');
 
@@ -28,7 +33,7 @@ test('enemy target resolver follows Rust owner when Rust and JS disagree', async
     ownerHook: () => ({
       owner: 'rust',
       targetUID: 22,
-      modeCode: ENEMY_TARGET_MODE_CODES.uniform,
+      modeCode: ENEMY_TARGET_MODE_CODES.stable_order,
       rollIndex: 1,
     }),
   });
@@ -37,6 +42,69 @@ test('enemy target resolver follows Rust owner when Rust and JS disagree', async
   assert.equal(decision.target.uid, 22);
   assert.equal(decision.jsDecision.target.uid, 11);
   assert.equal(decision.trace.owner, 'rust');
+});
+
+test('continuous engagement admits heroes in roster order without using rendered positions', async () => {
+  const vm = require('node:vm');
+  const { resolveEnemyTargetHero } = await import(pathToFileURL(rulesPath));
+  const { realtimeProvokeTarget } = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'realtimeHeroSkills.mjs')));
+  const source = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'modules', 'functionBank.js'), 'utf8');
+  const start = source.indexOf('function pickEnemyTargetHero(ctx, enemyUID = 0)');
+  const end = nextFunctionStart(source, start + 1);
+  const globals = { ContinuousCombatStageLoop: 1 };
+  const enemy = { uid: 900, kind: 'enemy', hp: 20, x: 250, originX: 280, streamEngageX: 254, streamState: 'engaged' };
+  const heroes = [
+    { uid: 11, kind: 'hero', hp: 5, x: -500, y: 900 },
+    { uid: 22, kind: 'hero', hp: 50, x: 999, y: -300 },
+  ];
+  const neverRandom = () => { throw new Error('stable enemy targeting must not draw RNG'); };
+  const context = {
+    console,
+    getGlobals: () => globals,
+    GetActorByUID: (_ctx, uid) => (Number(uid) === enemy.uid ? enemy : heroes.find(hero => hero.uid === Number(uid))),
+    getHeroes: () => heroes,
+    getRandomSource: () => neverRandom,
+    resolveEnemyTargetHero,
+    realtimeProvokeTarget,
+  };
+  vm.createContext(context);
+  vm.runInContext(`${source.slice(start, end)}; globalThis.pickEnemyTargetHero = pickEnemyTargetHero;`, context);
+  const ctx = { state: { globals, entities: [enemy, ...heroes] } };
+  assert.equal(context.pickEnemyTargetHero(ctx, enemy.uid).uid, 11);
+  enemy.streamState = 'approaching';
+  assert.equal(context.pickEnemyTargetHero(ctx, enemy.uid), null);
+});
+
+test('no eligible target leaves the enemy attack lane ready', async () => {
+  const vm = require('node:vm');
+  const { resolveEnemyTargetHero } = await import(pathToFileURL(rulesPath));
+  const { realtimeProvokeTarget } = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'realtimeHeroSkills.mjs')));
+  const source = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'modules', 'functionBank.js'), 'utf8');
+  const pickerStart = source.indexOf('function pickEnemyTargetHero(ctx, enemyUID = 0)');
+  const pickerEnd = nextFunctionStart(source, pickerStart + 1);
+  const actionStart = source.indexOf('export function StartEnemyAction(ctx, enemyUID)');
+  const actionEnd = nextFunctionStart(source, actionStart + 1);
+  const globals = { ContinuousCombatStageLoop: 1, ActionInProgress: 0, ActionActorUID: 0 };
+  const enemy = { uid: 900, kind: 'enemy', hp: 20, streamState: 'approaching', x: 255, streamEngageX: 254 };
+  const hero = { uid: 11, kind: 'hero', hp: 30, x: -500, y: 900 };
+  const neverRandom = () => { throw new Error('stable enemy targeting must not draw RNG'); };
+  const context = {
+    console,
+    getGlobals: () => globals,
+    GetActorByUID: (_ctx, uid) => Number(uid) === enemy.uid ? enemy : null,
+    getHeroes: () => [hero],
+    getRandomSource: () => neverRandom,
+    resolveEnemyTargetHero,
+    realtimeProvokeTarget,
+  };
+  vm.createContext(context);
+  const sourceFns = `${source.slice(pickerStart, pickerEnd)}\n${source.slice(actionStart, actionEnd).replace('export function ', 'function ')}; globalThis.StartEnemyAction = StartEnemyAction;`;
+  vm.runInContext(sourceFns, context);
+  context.StartEnemyAction({ state: { globals, entities: [enemy, hero] } }, enemy.uid);
+  assert.equal(globals.ActionInProgress, 0);
+  assert.equal(globals.ActionActorUID, 0);
+  assert.equal(enemy.EnemyAction, undefined);
+  assert.equal(globals.LastEnemyTargetBias.targetUID, 0);
 });
 
 test('pickEnemyTargetHero routes final enemy target through Rust-owned resolver', () => {

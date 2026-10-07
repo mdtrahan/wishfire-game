@@ -79,13 +79,17 @@ Support ├── `agents/` (retired)
 - Prefer deterministic shared logic in `src/` or Rust-owned SimulationCore seams over new browser-shell logic.
 - Keep `web-runner/app.js` orchestration-only; detailed ownership rules live in `governance/execution/implementation-gate.md`.
 - Use `governance/execution/validation.md` for focused proof and `governance/execution/integration.md` for merge readiness.
+- Lamp presentation owners run `test:lamp-ui` through the commit hook; four-phone checks enforce helper and overlay containment.
 
 ## Escalation
 - Follow the Escalation section in `governance/execution/implementation-gate.md`.
 - Do not write outside the repo without approval.
 
 ## Combat Migration Specification
-- `COMBAT_MIGRATION_PLAN.md` owns the active hero-kit, EXP/progression, SP/FLOW and combat-resolution design. Keep confirmed owner decisions, tuning proposals and delivered runtime state distinct; Git history retains superseded decisions and implementation receipts.
+- `LAMP_EQUIPMENT_MVP.md` owns the approved lamp replacement; `goals/wishfire-lamp-progression.md` separates delivered paid progression from proposed quality tiers and pacing assumptions.
+- `COMBAT_ENGINE_CLEANUP_PLAN.md` owns the realtime foundation. Approved conditional-skill definitions and their progression supersede its earlier five-active kit contract. `COMBAT_MIGRATION_PLAN.md` retains the earlier hero-command contract as history; SP/FLOW, hidden Pals and playable turns are retired.
+- `governance/planning/conditional-skill-catalog.md` owns the 33 conditional skill definitions and effect guards; `COMBAT_MIGRATION_PLAN.md` links this current kit contract.
+
 
 ## Child DOX Index
 - `Scripts/AGENTS.md` - Construct-style runtime mirror and high-risk function parity.

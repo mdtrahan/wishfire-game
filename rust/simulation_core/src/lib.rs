@@ -581,115 +581,18 @@ pub fn hero_turn_entry_current_hero_uid_after(hero_uid: f64, current_hero_uid_be
     }
 }
 
-pub fn hero_turn_entry_should_reset_astral_flow(
-    skill_draught_open: f64,
-    amp_ready: f64,
-    amp_points: f64,
-    amp_max: f64,
-    time: f64,
-    pinned_until: f64,
-) -> f64 {
-    if number_or_zero(skill_draught_open) != 0.0 {
-        return 0.0;
-    }
-    if number_or_zero(amp_ready) == 0.0 {
-        return 0.0;
-    }
-    let max_input = number_or_zero(amp_max);
-    let max_value = if max_input == 0.0 { 18.0 } else { max_input }.max(1.0);
-    if number_or_zero(amp_points).max(0.0) < max_value {
-        return 0.0;
-    }
-    if number_or_zero(time) >= number_or_zero(pinned_until) {
-        1.0
-    } else {
-        0.0
-    }
-}
-
-pub fn hero_turn_entry_amp_points_after(
-    skill_draught_open: f64,
-    amp_ready: f64,
-    amp_points: f64,
-    amp_max: f64,
-    time: f64,
-    pinned_until: f64,
-) -> f64 {
-    if hero_turn_entry_should_reset_astral_flow(
-        skill_draught_open,
-        amp_ready,
-        amp_points,
-        amp_max,
-        time,
-        pinned_until,
-    ) == 1.0
-    {
-        0.0
-    } else {
-        number_or_zero(amp_points).max(0.0)
-    }
-}
-
-pub fn hero_turn_entry_amp_ready_after(
-    skill_draught_open: f64,
-    amp_ready: f64,
-    amp_points: f64,
-    amp_max: f64,
-    time: f64,
-    pinned_until: f64,
-) -> f64 {
-    if hero_turn_entry_should_reset_astral_flow(
-        skill_draught_open,
-        amp_ready,
-        amp_points,
-        amp_max,
-        time,
-        pinned_until,
-    ) == 1.0
-    {
-        0.0
-    } else if number_or_zero(amp_ready) != 0.0 {
-        1.0
-    } else {
-        0.0
-    }
-}
-
-pub fn hero_turn_entry_clear_pinned_action(should_reset: f64) -> f64 {
-    if number_or_zero(should_reset) != 0.0 {
-        1.0
-    } else {
-        0.0
-    }
-}
-
 #[derive(Clone, Copy)]
 struct EnemyTargetHero {
     uid: f64,
-    hp: f64,
-    max_hp: f64,
-    atk: f64,
-    slot: f64,
-    role_code: f64,
-}
-
-fn enemy_target_preference_code(value: f64) -> f64 {
-    match number_or_zero(value).floor() as i32 {
-        1 => 1.0,
-        2 => 2.0,
-        3 => 3.0,
-        4 => 4.0,
-        _ => 0.0,
-    }
 }
 
 fn enemy_target_hero(
     uid: f64,
     hp: f64,
-    max_hp: f64,
-    atk: f64,
-    slot: f64,
-    role_code: f64,
+    _max_hp: f64,
+    _atk: f64,
+    _slot: f64,
+    _role_code: f64,
 ) -> Option<EnemyTargetHero> {
     let normalized_uid = positive_floor_or_zero(uid);
     let normalized_hp = number_or_zero(hp);
@@ -698,15 +601,6 @@ fn enemy_target_hero(
     }
     Some(EnemyTargetHero {
         uid: normalized_uid,
-        hp: normalized_hp,
-        max_hp: number_or_zero(max_hp).max(1.0),
-        atk: number_or_zero(atk),
-        slot: number_or_zero(slot),
-        role_code: if number_or_zero(role_code) == 1.0 {
-            1.0
-        } else {
-            0.0
-        },
     })
 }
 
@@ -724,71 +618,15 @@ fn enemy_target_push_hero(
     }
 }
 
-fn enemy_target_roll_index_for_size(roll: f64, size: usize) -> f64 {
-    if size == 0 {
-        return 0.0;
-    }
-    let max_index = (size - 1) as f64;
-    (clamp_roll(roll) * size as f64)
-        .floor()
-        .clamp(0.0, max_index)
-}
-
-fn enemy_target_hp_ratio(hero: EnemyTargetHero) -> f64 {
-    hero.hp.max(0.0) / hero.max_hp.max(1.0)
-}
-
 fn enemy_target_choice_from_heroes(
-    preference_code: f64,
-    roll: f64,
+    _preference_code: f64,
+    _roll: f64,
     heroes: &[EnemyTargetHero],
 ) -> (f64, f64, f64) {
-    if heroes.is_empty() {
-        return (0.0, 0.0, 0.0);
-    }
-
-    let preference = enemy_target_preference_code(preference_code);
-    if preference == 1.0 {
-        let mut best = heroes[0];
-        for hero in heroes.iter().copied().skip(1) {
-            let hero_ratio = enemy_target_hp_ratio(hero);
-            let best_ratio = enemy_target_hp_ratio(best);
-            if hero_ratio < best_ratio || (hero_ratio == best_ratio && hero.uid < best.uid) {
-                best = hero;
-            }
-        }
-        return (best.uid, 2.0, 0.0);
-    }
-    if preference == 2.0 {
-        let mut best = heroes[0];
-        for hero in heroes.iter().copied().skip(1) {
-            if hero.atk > best.atk || (hero.atk == best.atk && hero.uid < best.uid) {
-                best = hero;
-            }
-        }
-        return (best.uid, 2.0, 0.0);
-    }
-    if preference == 3.0 {
-        let mut best = heroes[0];
-        for hero in heroes.iter().copied().skip(1) {
-            if hero.slot < best.slot {
-                best = hero;
-            }
-        }
-        return (best.uid, 2.0, 0.0);
-    }
-    if preference == 4.0 {
-        if let Some(hero) = heroes.iter().copied().find(|hero| hero.role_code == 1.0) {
-            return (hero.uid, 2.0, 0.0);
-        }
-    }
-
-    let roll_index = enemy_target_roll_index_for_size(roll, heroes.len());
-    let target = heroes
-        .get(roll_index as usize)
-        .copied()
-        .unwrap_or(heroes[0]);
-    (target.uid, 1.0, roll_index)
+    heroes
+        .first()
+        .map(|hero| (hero.uid, 3.0, 0.0))
+        .unwrap_or((0.0, 0.0, 0.0))
 }
 
 fn enemy_target_choice_pair(
@@ -1359,7 +1197,7 @@ pub fn gem_action_blue_wallet_after(current_wallet: f64, consumed_count: f64) ->
     number_or_zero(current_wallet).max(0.0) + gem_action_consumed_count(consumed_count)
 }
 
-pub fn gem_action_blue_open_draught(
+pub fn gem_action_blue_amp_ready_triggered(
     consumed_count: f64,
     current_amp_points: f64,
     amp_max: f64,
@@ -1399,7 +1237,7 @@ pub fn gem_action_blue_amp_ready_after(
     amp_ready: f64,
 ) -> f64 {
     if number_or_zero(amp_ready) == 1.0
-        || gem_action_blue_open_draught(consumed_count, current_amp_points, amp_max, amp_ready)
+        || gem_action_blue_amp_ready_triggered(consumed_count, current_amp_points, amp_max, amp_ready)
             == 1.0
     {
         1.0
@@ -1413,7 +1251,7 @@ pub fn gem_action_action_lock_until(
     current_lock_until: f64,
     time: f64,
     text_anim_end_at: f64,
-    _blue_open_draught: f64,
+    _blue_amp_ready_triggered: f64,
 ) -> f64 {
     let route = number_or_zero(route_code);
     let current = if current_lock_until.is_finite() {
@@ -1613,32 +1451,6 @@ pub extern "C" fn combat_snapshot_resume_token_valid_shadow(
 }
 
 #[no_mangle]
-pub extern "C" fn turn_actor_eligibility_code_shadow(
-    turn_type: f64,
-    actor_exists: f64,
-    actor_hp: f64,
-    party_hp: f64,
-    round_active: f64,
-    pending_group_matches: f64,
-    blue_buff_sequence_active: f64,
-) -> f64 {
-    turn_actor_eligibility_code(
-        turn_type,
-        actor_exists,
-        actor_hp,
-        party_hp,
-        round_active,
-        pending_group_matches,
-        blue_buff_sequence_active,
-    )
-}
-
-#[no_mangle]
-pub extern "C" fn turn_phase_from_type_shadow(turn_type: f64) -> f64 {
-    turn_phase_from_type(turn_type)
-}
-
-#[no_mangle]
 pub extern "C" fn enemy_skill_choice_selected_code_shadow(
     kind_code: f64,
     hp: f64,
@@ -1743,120 +1555,6 @@ pub extern "C" fn start_enemy_action_skill_code_shadow(enemy_exists: f64, skill_
 #[no_mangle]
 pub extern "C" fn start_enemy_action_forward_x_shadow(enemy_exists: f64, origin_x: f64) -> f64 {
     start_enemy_action_forward_x(enemy_exists, origin_x)
-}
-
-#[no_mangle]
-pub extern "C" fn enemy_turn_flow_active_uid_shadow(active_enemy_uid: f64) -> f64 {
-    enemy_turn_flow_active_uid(active_enemy_uid)
-}
-
-#[no_mangle]
-pub extern "C" fn enemy_turn_flow_turn_phase_shadow() -> f64 {
-    enemy_turn_flow_turn_phase()
-}
-
-#[no_mangle]
-pub extern "C" fn enemy_turn_flow_action_code_shadow(
-    active_enemy_uid: f64,
-    enemy_exists: f64,
-    enemy_hp: f64,
-) -> f64 {
-    enemy_turn_flow_action_code(active_enemy_uid, enemy_exists, enemy_hp)
-}
-
-#[no_mangle]
-pub extern "C" fn enemy_turn_flow_should_advance_shadow(action_code: f64) -> f64 {
-    enemy_turn_flow_should_advance(action_code)
-}
-
-#[no_mangle]
-pub extern "C" fn enemy_turn_flow_should_start_action_shadow(action_code: f64) -> f64 {
-    enemy_turn_flow_should_start_action(action_code)
-}
-
-#[no_mangle]
-pub extern "C" fn hero_turn_entry_turn_phase_shadow() -> f64 {
-    hero_turn_entry_turn_phase()
-}
-
-#[no_mangle]
-pub extern "C" fn hero_turn_entry_hide_hero_selector_shadow() -> f64 {
-    hero_turn_entry_hide_hero_selector()
-}
-
-#[no_mangle]
-pub extern "C" fn hero_turn_entry_accept_hero_uid_shadow(hero_uid: f64) -> f64 {
-    hero_turn_entry_accept_hero_uid(hero_uid)
-}
-
-#[no_mangle]
-pub extern "C" fn hero_turn_entry_current_hero_uid_after_shadow(
-    hero_uid: f64,
-    current_hero_uid_before: f64,
-) -> f64 {
-    hero_turn_entry_current_hero_uid_after(hero_uid, current_hero_uid_before)
-}
-
-#[no_mangle]
-pub extern "C" fn hero_turn_entry_should_reset_astral_flow_shadow(
-    skill_draught_open: f64,
-    amp_ready: f64,
-    amp_points: f64,
-    amp_max: f64,
-    time: f64,
-    pinned_until: f64,
-) -> f64 {
-    hero_turn_entry_should_reset_astral_flow(
-        skill_draught_open,
-        amp_ready,
-        amp_points,
-        amp_max,
-        time,
-        pinned_until,
-    )
-}
-
-#[no_mangle]
-pub extern "C" fn hero_turn_entry_amp_points_after_shadow(
-    skill_draught_open: f64,
-    amp_ready: f64,
-    amp_points: f64,
-    amp_max: f64,
-    time: f64,
-    pinned_until: f64,
-) -> f64 {
-    hero_turn_entry_amp_points_after(
-        skill_draught_open,
-        amp_ready,
-        amp_points,
-        amp_max,
-        time,
-        pinned_until,
-    )
-}
-
-#[no_mangle]
-pub extern "C" fn hero_turn_entry_amp_ready_after_shadow(
-    skill_draught_open: f64,
-    amp_ready: f64,
-    amp_points: f64,
-    amp_max: f64,
-    time: f64,
-    pinned_until: f64,
-) -> f64 {
-    hero_turn_entry_amp_ready_after(
-        skill_draught_open,
-        amp_ready,
-        amp_points,
-        amp_max,
-        time,
-        pinned_until,
-    )
-}
-
-#[no_mangle]
-pub extern "C" fn hero_turn_entry_clear_pinned_action_shadow(should_reset: f64) -> f64 {
-    hero_turn_entry_clear_pinned_action(should_reset)
 }
 
 #[no_mangle]
@@ -2109,196 +1807,6 @@ pub extern "C" fn enemy_target_roll_index_shadow(
 }
 
 #[no_mangle]
-pub extern "C" fn turn_order_actor_in_phase_shadow(
-    actor_type: f64,
-    phase_type: f64,
-    uid: f64,
-    hp: f64,
-    is_alive: f64,
-    able_to_act: f64,
-    disabled: f64,
-    stunned: f64,
-    stopped: f64,
-    paralyzed: f64,
-    status_blocked: f64,
-) -> f64 {
-    turn_order_actor_in_phase(
-        actor_type,
-        phase_type,
-        uid,
-        hp,
-        is_alive,
-        able_to_act,
-        disabled,
-        stunned,
-        stopped,
-        paralyzed,
-        status_blocked,
-    )
-}
-
-#[no_mangle]
-pub extern "C" fn turn_order_phase_type_shadow(
-    requested_phase_type: f64,
-    requested_count: f64,
-    alternate_count: f64,
-) -> f64 {
-    turn_order_phase_type(requested_phase_type, requested_count, alternate_count)
-}
-
-#[no_mangle]
-pub extern "C" fn turn_order_compare_slots_shadow(
-    a_uid: f64,
-    a_type: f64,
-    a_spd: f64,
-    b_uid: f64,
-    b_type: f64,
-    b_spd: f64,
-) -> f64 {
-    turn_order_compare_slots(a_uid, a_type, a_spd, b_uid, b_type, b_spd)
-}
-
-#[no_mangle]
-pub extern "C" fn round_pointer_next_member_index_shadow(round_member_index: f64) -> f64 {
-    round_pointer_next_member_index(round_member_index)
-}
-
-#[no_mangle]
-pub extern "C" fn round_pointer_group_complete_shadow(
-    next_member_index: f64,
-    group_member_count: f64,
-) -> f64 {
-    round_pointer_group_complete(next_member_index, group_member_count)
-}
-
-#[no_mangle]
-pub extern "C" fn round_pointer_next_group_index_shadow(round_group_index: f64) -> f64 {
-    round_pointer_next_group_index(round_group_index)
-}
-
-#[no_mangle]
-pub extern "C" fn round_pointer_round_complete_shadow(
-    next_group_index: f64,
-    group_count: f64,
-    group_complete: f64,
-) -> f64 {
-    round_pointer_round_complete(next_group_index, group_count, group_complete)
-}
-
-#[no_mangle]
-pub extern "C" fn round_pointer_next_team_phase_type_shadow(team_phase_type: f64) -> f64 {
-    round_pointer_next_team_phase_type(team_phase_type)
-}
-
-#[no_mangle]
-pub extern "C" fn round_pointer_advance_code_shadow(
-    group_complete: f64,
-    round_complete: f64,
-) -> f64 {
-    round_pointer_advance_code(group_complete, round_complete)
-}
-
-#[no_mangle]
-pub extern "C" fn gem_action_route_code_shadow(gem_color: f64) -> f64 {
-    gem_action_route_code(gem_color)
-}
-
-#[no_mangle]
-pub extern "C" fn gem_action_pending_skill_code_shadow(route_code: f64) -> f64 {
-    gem_action_pending_skill_code(route_code)
-}
-
-#[no_mangle]
-pub extern "C" fn gem_action_set_aoe_shadow(route_code: f64) -> f64 {
-    gem_action_set_aoe(route_code)
-}
-
-#[no_mangle]
-pub extern "C" fn gem_action_is_aoe_shadow(route_code: f64) -> f64 {
-    gem_action_is_aoe(route_code)
-}
-
-#[no_mangle]
-pub extern "C" fn gem_action_show_attack_ui_shadow(route_code: f64) -> f64 {
-    gem_action_show_attack_ui(route_code)
-}
-
-#[no_mangle]
-pub extern "C" fn gem_action_call_code_shadow(route_code: f64) -> f64 {
-    gem_action_call_code(route_code)
-}
-
-#[no_mangle]
-pub extern "C" fn gem_action_consumes_turn_shadow(route_code: f64) -> f64 {
-    gem_action_consumes_turn(route_code)
-}
-
-#[no_mangle]
-pub extern "C" fn gem_action_consumed_count_shadow(consumed_count: f64) -> f64 {
-    gem_action_consumed_count(consumed_count)
-}
-
-#[no_mangle]
-pub extern "C" fn gem_action_blue_wallet_after_shadow(
-    current_wallet: f64,
-    consumed_count: f64,
-) -> f64 {
-    gem_action_blue_wallet_after(current_wallet, consumed_count)
-}
-
-#[no_mangle]
-pub extern "C" fn gem_action_blue_amp_points_after_shadow(
-    consumed_count: f64,
-    current_amp_points: f64,
-    amp_max: f64,
-    amp_ready: f64,
-) -> f64 {
-    gem_action_blue_amp_points_after(consumed_count, current_amp_points, amp_max, amp_ready)
-}
-
-#[no_mangle]
-pub extern "C" fn gem_action_blue_amp_ready_after_shadow(
-    consumed_count: f64,
-    current_amp_points: f64,
-    amp_max: f64,
-    amp_ready: f64,
-) -> f64 {
-    gem_action_blue_amp_ready_after(consumed_count, current_amp_points, amp_max, amp_ready)
-}
-
-#[no_mangle]
-pub extern "C" fn gem_action_blue_open_draught_shadow(
-    consumed_count: f64,
-    current_amp_points: f64,
-    amp_max: f64,
-    amp_ready: f64,
-) -> f64 {
-    gem_action_blue_open_draught(consumed_count, current_amp_points, amp_max, amp_ready)
-}
-
-#[no_mangle]
-pub extern "C" fn gem_action_action_lock_until_shadow(
-    route_code: f64,
-    current_lock_until: f64,
-    time: f64,
-    text_anim_end_at: f64,
-    blue_open_draught: f64,
-) -> f64 {
-    gem_action_action_lock_until(
-        route_code,
-        current_lock_until,
-        time,
-        text_anim_end_at,
-        blue_open_draught,
-    )
-}
-
-#[no_mangle]
-pub extern "C" fn gem_action_purple_energy_amount_shadow(roll: f64) -> f64 {
-    gem_action_purple_energy_amount(roll)
-}
-
-#[no_mangle]
 pub extern "C" fn seeded_rng_next_state_shadow(seed: f64, draws: f64) -> f64 {
     seeded_rng_next_state(seed, draws)
 }
@@ -2353,26 +1861,31 @@ pub fn single_hit_damage(
     hero_aoe: f64,
     chain_active: f64,
     chain_multiplier: f64,
+    attack_multiplier_pct: f64,
+    matching_resistance_pct: f64,
+    general_resistance_pct: f64,
 ) -> f64 {
     let source_is_hero = number_or_zero(source_is_hero) == 1.0;
     let _hero_aoe = number_or_zero(hero_aoe) == 1.0;
-    let roll = 0.9 + (unit_interval_or_half(roll01) * 0.2);
+    let _roll = unit_interval_or_half(roll01);
     let power = number_or_zero(power);
     let resist = number_or_zero(resist);
-    let raw_damage = (2.0 + (power.max(0.0) * 0.48)) * (20.0 / (20.0 + resist.max(0.0))) * roll;
-    let base_damage = raw_damage.ceil().max(1.0);
+    let raw_damage = (power - resist).max(0.0) * number_or_zero(attack_multiplier_pct).max(0.0) / 100.0;
+    let matching_factor = 1.0 - number_or_zero(matching_resistance_pct).clamp(0.0, 100.0) / 100.0;
+    let general_factor = 1.0 - number_or_zero(general_resistance_pct).clamp(0.0, 100.0) / 100.0;
+    let base_damage = (raw_damage * matching_factor * general_factor).ceil();
     let crit_multiplier = 1.25;
     let crit_value = if number_or_zero(crit_roll01) < 0.01 {
         base_damage * crit_multiplier
     } else {
         base_damage
     };
-    let mut damage = crit_value.ceil().max(1.0);
+    let mut damage = crit_value.ceil();
     if source_is_hero && number_or_zero(chain_active) == 1.0 {
         let multiplier = number_or_zero(chain_multiplier);
         damage = (damage * if multiplier != 0.0 { multiplier } else { 1.0 }).ceil();
     }
-    damage.max(1.0)
+    damage.max(0.0)
 }
 
 pub fn single_hit_applied_damage(target_hp: f64, incoming_damage: f64, shield: f64) -> f64 {
@@ -2896,6 +2409,9 @@ pub extern "C" fn single_hit_damage_shadow(
     hero_aoe: f64,
     chain_active: f64,
     chain_multiplier: f64,
+    attack_multiplier_pct: f64,
+    matching_resistance_pct: f64,
+    general_resistance_pct: f64,
 ) -> f64 {
     single_hit_damage(
         power,
@@ -2906,6 +2422,9 @@ pub extern "C" fn single_hit_damage_shadow(
         hero_aoe,
         chain_active,
         chain_multiplier,
+        attack_multiplier_pct,
+        matching_resistance_pct,
+        general_resistance_pct,
     )
 }
 
@@ -2988,33 +2507,6 @@ pub extern "C" fn runa_magic_resist_mode_code_shadow(
     nullify_roll: f64,
 ) -> f64 {
     runa_magic_resist_mode_code(target_is_runa, incoming_damage, trigger_roll, nullify_roll)
-}
-
-#[no_mangle]
-pub extern "C" fn turn_summary_code_shadow(
-    hero_count: f64,
-    hero0_hp: f64,
-    hero1_hp: f64,
-    hero2_hp: f64,
-    hero3_hp: f64,
-    enemy_count: f64,
-    enemy0_hp: f64,
-    enemy1_hp: f64,
-    enemy2_hp: f64,
-    enemy3_hp: f64,
-) -> f64 {
-    turn_summary_code(
-        hero_count,
-        hero0_hp,
-        hero1_hp,
-        hero2_hp,
-        hero3_hp,
-        enemy_count,
-        enemy0_hp,
-        enemy1_hp,
-        enemy2_hp,
-        enemy3_hp,
-    )
 }
 
 #[no_mangle]
@@ -3310,16 +2802,16 @@ mod single_hit_resolution_tests {
     fn mirrors_current_single_hit_resolution_cases() {
         let cases = [
             (
-                18.0, 12.0, 0.5, 0.9, 1.0, 0.0, 0.0, 1.0, 40.0, 0.0, 7.0, 7.0, 33.0,
+                18.0, 12.0, 0.5, 0.9, 1.0, 0.0, 0.0, 1.0, 40.0, 0.0, 6.0, 6.0, 34.0,
             ),
             (
-                30.0, 20.0, 0.25, 0.05, 0.0, 0.0, 0.0, 1.0, 5.0, 0.0, 8.0, 5.0, 0.0,
+                30.0, 20.0, 0.25, 0.05, 0.0, 0.0, 0.0, 1.0, 5.0, 0.0, 10.0, 5.0, 0.0,
             ),
             (
-                28.0, 14.0, 0.75, 0.11, 1.0, 1.0, 1.0, 1.5, 20.0, 0.0, 15.0, 15.0, 5.0,
+                28.0, 14.0, 0.75, 0.11, 1.0, 1.0, 1.0, 1.5, 20.0, 0.0, 21.0, 20.0, 0.0,
             ),
             (
-                18.0, 10.0, 0.0, 0.9, 0.0, 0.0, 0.0, 1.0, 16.0, 6.0, 7.0, 1.0, 15.0,
+                18.0, 10.0, 0.0, 0.9, 0.0, 0.0, 0.0, 1.0, 16.0, 6.0, 8.0, 2.0, 14.0,
             ),
         ];
 
@@ -3340,7 +2832,7 @@ mod single_hit_resolution_tests {
         ) in cases
         {
             let rust_damage =
-                single_hit_damage(power, resist, roll, crit, hero, aoe, chain, chain_mult);
+                single_hit_damage(power, resist, roll, crit, hero, aoe, chain, chain_mult, 100.0, 0.0, 0.0);
             assert_eq!(rust_damage, damage);
             assert_eq!(single_hit_applied_damage(hp, rust_damage, shield), applied);
             assert_eq!(single_hit_after_hp(hp, rust_damage, shield), after_hp);
@@ -4323,53 +3815,10 @@ mod single_hit_resolution_tests {
 
     #[test]
     fn mirrors_current_hero_turn_entry_cases() {
-        let cases = [
-            // hero_uid, current_before, draught_open, amp_points, amp_max, ready, time, pinned, accept, current_after, reset, points_after, ready_after, clear
-            (
-                0.0, 77.0, 0.0, 0.0, 18.0, 0.0, 0.0, 0.0, 0.0, 77.0, 0.0, 0.0, 0.0, 0.0,
-            ),
-            (
-                101.0, 77.0, 0.0, 7.0, 18.0, 0.0, 10.0, 0.0, 1.0, 101.0, 0.0, 7.0, 0.0, 0.0,
-            ),
-            (
-                101.0, 77.0, 0.0, 18.0, 18.0, 1.0, 15.0, 14.0, 1.0, 101.0, 1.0, 0.0, 0.0, 1.0,
-            ),
-            (
-                101.0, 77.0, 0.0, 18.0, 18.0, 1.0, 12.0, 14.0, 1.0, 101.0, 0.0, 18.0, 1.0, 0.0,
-            ),
-            (
-                101.0, 77.0, 1.0, 18.0, 18.0, 1.0, 15.0, 14.0, 1.0, 101.0, 0.0, 18.0, 1.0, 0.0,
-            ),
-            (
-                101.0, 77.0, 0.0, 18.0, 0.0, 1.0, 15.0, 14.0, 1.0, 101.0, 1.0, 0.0, 0.0, 1.0,
-            ),
-        ];
-
-        for (
-            hero_uid,
-            current_before,
-            draught_open,
-            amp_points,
-            amp_max,
-            ready,
-            time,
-            pinned,
-            expected_accept,
-            expected_current_after,
-            expected_reset,
-            expected_points_after,
-            expected_ready_after,
-            expected_clear,
-        ) in cases
-        {
-            let reset = hero_turn_entry_should_reset_astral_flow(
-                draught_open,
-                ready,
-                amp_points,
-                amp_max,
-                time,
-                pinned,
-            );
+        for (hero_uid, current_before, expected_accept, expected_current_after) in [
+            (0.0, 77.0, 0.0, 77.0),
+            (101.0, 77.0, 1.0, 101.0),
+        ] {
             assert_eq!(hero_turn_entry_turn_phase(), 0.0);
             assert_eq!(hero_turn_entry_hide_hero_selector(), 0.0);
             assert_eq!(hero_turn_entry_accept_hero_uid(hero_uid), expected_accept);
@@ -4377,35 +3826,11 @@ mod single_hit_resolution_tests {
                 hero_turn_entry_current_hero_uid_after(hero_uid, current_before),
                 expected_current_after
             );
-            assert_eq!(reset, expected_reset);
-            assert_eq!(
-                hero_turn_entry_amp_points_after(
-                    draught_open,
-                    ready,
-                    amp_points,
-                    amp_max,
-                    time,
-                    pinned,
-                ),
-                expected_points_after
-            );
-            assert_eq!(
-                hero_turn_entry_amp_ready_after(
-                    draught_open,
-                    ready,
-                    amp_points,
-                    amp_max,
-                    time,
-                    pinned,
-                ),
-                expected_ready_after
-            );
-            assert_eq!(hero_turn_entry_clear_pinned_action(reset), expected_clear);
         }
     }
 
     #[test]
-    fn mirrors_current_enemy_target_selection_cases() {
+    fn enemy_target_selection_uses_first_living_hero_in_encounter_order() {
         fn assert_target(
             preference: f64,
             roll: f64,
@@ -4522,13 +3947,13 @@ mod single_hit_resolution_tests {
             (44.0, 40.0, 40.0, 3.0, 3.0, 0.0),
         ];
 
-        assert_target(0.0, 0.01, base, 11.0, 1.0, 0.0);
-        assert_target(0.0, 0.90, base, 44.0, 1.0, 3.0);
-        assert_target(0.0, 0.999_999_999, base, 44.0, 1.0, 3.0);
-        assert_target(1.0, 0.99, base, 22.0, 2.0, 0.0);
-        assert_target(2.0, 0.99, base, 22.0, 2.0, 0.0);
-        assert_target(3.0, 0.99, base, 11.0, 2.0, 0.0);
-        assert_target(4.0, 0.99, base, 33.0, 2.0, 0.0);
+        assert_target(0.0, 0.01, base, 11.0, 3.0, 0.0);
+        assert_target(0.0, 0.90, base, 11.0, 3.0, 0.0);
+        assert_target(0.0, 0.999_999_999, base, 11.0, 3.0, 0.0);
+        assert_target(1.0, 0.99, base, 11.0, 3.0, 0.0);
+        assert_target(2.0, 0.99, base, 11.0, 3.0, 0.0);
+        assert_target(3.0, 0.99, base, 11.0, 3.0, 0.0);
+        assert_target(4.0, 0.99, base, 11.0, 3.0, 0.0);
         assert_target(
             0.0,
             0.01,
@@ -4539,7 +3964,7 @@ mod single_hit_resolution_tests {
                 (0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
             ],
             22.0,
-            1.0,
+            3.0,
             0.0,
         );
         assert_target(0.0, 0.5, [(0.0, 0.0, 0.0, 0.0, 0.0, 0.0); 4], 0.0, 0.0, 0.0);
@@ -4667,7 +4092,7 @@ mod single_hit_resolution_tests {
         ) in cases
         {
             let actual_route = gem_action_route_code(color);
-            let actual_open = gem_action_blue_open_draught(consumed, amp, max, ready);
+            let actual_open = gem_action_blue_amp_ready_triggered(consumed, amp, max, ready);
             assert_eq!(actual_route, route);
             assert_eq!(gem_action_pending_skill_code(actual_route), pending);
             assert_eq!(gem_action_set_aoe(actual_route), set_aoe);

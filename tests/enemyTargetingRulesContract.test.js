@@ -12,7 +12,7 @@ function read(relPath) {
   return fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
 }
 
-test('default enemy targeting uniformly selects among living heroes', async () => {
+test('enemy targeting selects the first living hero in encounter order regardless of RNG', async () => {
   const { pickEnemyTargetHeroFromRoster } = await loadRules();
   const heroes = [
     { uid: 11, name: 'Falie', hp: 10, stats: { ATK: 5 } },
@@ -22,18 +22,15 @@ test('default enemy targeting uniformly selects among living heroes', async () =
   ];
 
   const first = pickEnemyTargetHeroFromRoster({ heroes, rng: () => 0.01 });
-  const second = pickEnemyTargetHeroFromRoster({ heroes, rng: () => 0.30 });
-  const third = pickEnemyTargetHeroFromRoster({ heroes, rng: () => 0.55 });
-  const fourth = pickEnemyTargetHeroFromRoster({ heroes, rng: () => 0.90 });
+  const second = pickEnemyTargetHeroFromRoster({ heroes, rng: () => 0.90 });
 
   assert.equal(first.target.uid, 11);
-  assert.equal(second.target.uid, 22);
-  assert.equal(third.target.uid, 33);
-  assert.equal(fourth.target.uid, 44);
-  assert.equal(first.trace.mode, 'uniform');
+  assert.equal(second.target.uid, 11);
+  assert.equal(first.trace.mode, 'stable_order');
+  assert.equal(first.trace.rollUnit, 0);
 });
 
-test('enemy identity target preference applies only when the enemy defines it', async () => {
+test('enemy identity preferences do not override encounter order', async () => {
   const { pickEnemyTargetHeroFromRoster } = await loadRules();
   const heroes = [
     { uid: 11, name: 'Falie', hp: 40, maxHP: 40, stats: { ATK: 5 } },
@@ -47,9 +44,16 @@ test('enemy identity target preference applies only when the enemy defines it', 
     rng: () => 0.99,
   });
 
-  assert.equal(result.target.uid, 22);
-  assert.equal(result.trace.mode, 'identity_preference');
-  assert.equal(result.trace.preference, 'low_hp');
+  assert.equal(result.target.uid, 11);
+  assert.equal(result.trace.mode, 'stable_order');
+});
+
+test('no living eligible hero returns no target', async () => {
+  const { pickEnemyTargetHeroFromRoster } = await loadRules();
+  const result = pickEnemyTargetHeroFromRoster({ heroes: [{ uid: 11, hp: 0 }, { uid: 22, hp: 0 }] });
+  assert.equal(result.target, null);
+  assert.equal(result.trace.mode, 'none');
+  assert.equal(result.trace.targetUID, 0);
 });
 
 test('runtime mirrors route enemy target selection through shared identity policy', () => {

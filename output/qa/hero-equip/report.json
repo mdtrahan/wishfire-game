@@ -1,0 +1,529 @@
+{
+  "fixture": "Staged owned levels 1/7/12; Hat MAG+3 and other empty stats create an ATK/MAG tie. Layout/inspection proof only.",
+  "report": [
+    {
+      "width": 360,
+      "height": 640,
+      "dpr": 1,
+      "geometry": {
+        "viewport": [
+          360,
+          640,
+          1
+        ],
+        "canvas": [
+          0,
+          0,
+          360,
+          640
+        ],
+        "host": [
+          0,
+          0,
+          360,
+          640
+        ],
+        "nav": [
+          0,
+          580,
+          360,
+          60
+        ],
+        "targets": [
+          {
+            "label": "Inspect Hat: Wayfarer Cap, Rare, level 1",
+            "box": [
+              14,
+              66.296875,
+              73.03125,
+              73.03125
+            ]
+          },
+          {
+            "label": "Inspect Body: Wayfarer Vest, Common, level 7",
+            "box": [
+              14,
+              154.34375,
+              73.03125,
+              73.03125
+            ]
+          },
+          {
+            "label": "Inspect Boots: Scholar Slippers, Common, level 12",
+            "box": [
+              14,
+              242.375,
+              73.03125,
+              73.03125
+            ]
+          },
+          {
+            "label": "Unassigned equipment slot",
+            "box": [
+              272.96875,
+              66.296875,
+              73.03125,
+              73.03125
+            ]
+          },
+          {
+            "label": "Unassigned equipment slot",
+            "box": [
+              272.96875,
+              154.34375,
+              73.03125,
+              73.03125
+            ]
+          },
+          {
+            "label": "Orbs: unavailable",
+            "box": [
+              272.96875,
+              242.375,
+              73.03125,
+              73.03125
+            ]
+          },
+          {
+            "label": "Inspect Fara",
+            "box": [
+              16.09375,
+              455.8125,
+              78.578125,
+              69.90625
+            ]
+          },
+          {
+            "label": "HERO",
+            "box": [
+              14,
+              534.8125,
+              106,
+              39.1875
+            ]
+          },
+          {
+            "label": "GEAR",
+            "box": [
+              127,
+              534.8125,
+              106,
+              39.1875
+            ]
+          },
+          {
+            "label": "SKILLS",
+            "box": [
+              240,
+              534.8125,
+              106,
+              39.1875
+            ]
+          }
+        ],
+        "overflow": false
+      },
+      "powerCases": [
+        "ATK tie",
+        "ATK greater",
+        "MATK greater"
+      ],
+      "navigation": true,
+      "ownedStateUnchanged": true,
+      "errors": []
+    },
+    {
+      "width": 216,
+      "height": 384,
+      "dpr": 2,
+      "geometry": {
+        "viewport": [
+          216,
+          384,
+          2
+        ],
+        "canvas": [
+          0,
+          0,
+          216,
+          384
+        ],
+        "host": [
+          0,
+          0,
+          216,
+          384
+        ],
+        "nav": [
+          0,
+          348,
+          216.00001525878906,
+          36
+        ],
+        "targets": [
+          {
+            "label": "Inspect Hat: Wayfarer Cap, Rare, level 1",
+            "box": [
+              8.390625,
+              38.515625,
+              43.828125,
+              43.828125
+            ]
+          },
+          {
+            "label": "Inspect Body: Wayfarer Vest, Common, level 7",
+            "box": [
+              8.390625,
+              91.828125,
+              43.828125,
+              43.828125
+            ]
+          },
+          {
+            "label": "Inspect Boots: Scholar Slippers, Common, level 12",
+            "box": [
+              8.390625,
+              145.140625,
+              43.828125,
+              43.828125
+            ]
+          },
+          {
+            "label": "Unassigned equipment slot",
+            "box": [
+              163.78125,
+              38.515625,
+              43.828125,
+              43.828125
+            ]
+          },
+          {
+            "label": "Unassigned equipment slot",
+            "box": [
+              163.78125,
+              91.828125,
+              43.828125,
+              43.828125
+            ]
+          },
+          {
+            "label": "Orbs: unavailable",
+            "box": [
+              163.78125,
+              145.140625,
+              43.828125,
+              43.828125
+            ]
+          },
+          {
+            "label": "Inspect Fara",
+            "box": [
+              9.640625,
+              272.71875,
+              47.15625,
+              42.734375
+            ]
+          },
+          {
+            "label": "HERO",
+            "box": [
+              8.390625,
+              320.890625,
+              63.609375,
+              23.515625
+            ]
+          },
+          {
+            "label": "GEAR",
+            "box": [
+              76.1875,
+              320.890625,
+              63.625,
+              23.515625
+            ]
+          },
+          {
+            "label": "SKILLS",
+            "box": [
+              144,
+              320.890625,
+              63.609375,
+              23.515625
+            ]
+          }
+        ],
+        "overflow": false
+      },
+      "powerCases": [
+        "ATK tie",
+        "ATK greater",
+        "MATK greater"
+      ],
+      "navigation": true,
+      "ownedStateUnchanged": true,
+      "errors": []
+    },
+    {
+      "width": 233,
+      "height": 452,
+      "dpr": 2,
+      "geometry": {
+        "viewport": [
+          233,
+          452,
+          2
+        ],
+        "canvas": [
+          0,
+          19,
+          233,
+          414
+        ],
+        "host": [
+          0,
+          19,
+          233,
+          414
+        ],
+        "nav": [
+          0.0625,
+          394.1875,
+          232.87501525878906,
+          38.8125
+        ],
+        "targets": [
+          {
+            "label": "Inspect Hat: Wayfarer Cap, Rare, level 1",
+            "box": [
+              9.046875,
+              60.796875,
+              47.265625,
+              47.265625
+            ]
+          },
+          {
+            "label": "Inspect Body: Wayfarer Vest, Common, level 7",
+            "box": [
+              9.046875,
+              118.15625,
+              47.265625,
+              47.265625
+            ]
+          },
+          {
+            "label": "Inspect Boots: Scholar Slippers, Common, level 12",
+            "box": [
+              9.046875,
+              175.515625,
+              47.265625,
+              47.265625
+            ]
+          },
+          {
+            "label": "Unassigned equipment slot",
+            "box": [
+              176.6875,
+              60.796875,
+              47.265625,
+              47.265625
+            ]
+          },
+          {
+            "label": "Unassigned equipment slot",
+            "box": [
+              176.6875,
+              118.15625,
+              47.265625,
+              47.265625
+            ]
+          },
+          {
+            "label": "Orbs: unavailable",
+            "box": [
+              176.6875,
+              175.515625,
+              47.265625,
+              47.265625
+            ]
+          },
+          {
+            "label": "Inspect Fara",
+            "box": [
+              10.390625,
+              313.15625,
+              50.875,
+              45.921875
+            ]
+          },
+          {
+            "label": "HERO",
+            "box": [
+              9.046875,
+              364.9375,
+              68.625,
+              25.359375
+            ]
+          },
+          {
+            "label": "GEAR",
+            "box": [
+              82.1875,
+              364.9375,
+              68.625,
+              25.359375
+            ]
+          },
+          {
+            "label": "SKILLS",
+            "box": [
+              155.328125,
+              364.9375,
+              68.625,
+              25.359375
+            ]
+          }
+        ],
+        "overflow": false
+      },
+      "powerCases": [
+        "ATK tie",
+        "ATK greater",
+        "MATK greater"
+      ],
+      "navigation": true,
+      "ownedStateUnchanged": true,
+      "errors": []
+    },
+    {
+      "width": 316,
+      "height": 452,
+      "dpr": 2,
+      "geometry": {
+        "viewport": [
+          316,
+          452,
+          2
+        ],
+        "canvas": [
+          31,
+          0,
+          254,
+          452
+        ],
+        "host": [
+          31,
+          0,
+          254,
+          452
+        ],
+        "nav": [
+          31,
+          409.4375,
+          254,
+          42.333343505859375
+        ],
+        "targets": [
+          {
+            "label": "Inspect Hat: Wayfarer Cap, Rare, level 1",
+            "box": [
+              40.875,
+              45.953125,
+              51.53125,
+              51.53125
+            ]
+          },
+          {
+            "label": "Inspect Body: Wayfarer Vest, Common, level 7",
+            "box": [
+              40.875,
+              108.546875,
+              51.53125,
+              51.53125
+            ]
+          },
+          {
+            "label": "Inspect Boots: Scholar Slippers, Common, level 12",
+            "box": [
+              40.875,
+              171.140625,
+              51.53125,
+              51.53125
+            ]
+          },
+          {
+            "label": "Unassigned equipment slot",
+            "box": [
+              223.59375,
+              45.953125,
+              51.53125,
+              51.53125
+            ]
+          },
+          {
+            "label": "Unassigned equipment slot",
+            "box": [
+              223.59375,
+              108.546875,
+              51.53125,
+              51.53125
+            ]
+          },
+          {
+            "label": "Orbs: unavailable",
+            "box": [
+              223.59375,
+              171.140625,
+              51.53125,
+              51.53125
+            ]
+          },
+          {
+            "label": "Inspect Fara",
+            "box": [
+              42.34375,
+              321.46875,
+              55.453125,
+              49.90625
+            ]
+          },
+          {
+            "label": "HERO",
+            "box": [
+              40.875,
+              377.78125,
+              74.78125,
+              27.65625
+            ]
+          },
+          {
+            "label": "GEAR",
+            "box": [
+              120.59375,
+              377.78125,
+              74.796875,
+              27.65625
+            ]
+          },
+          {
+            "label": "SKILLS",
+            "box": [
+              200.328125,
+              377.78125,
+              74.796875,
+              27.65625
+            ]
+          }
+        ],
+        "overflow": false
+      },
+      "powerCases": [
+        "ATK tie",
+        "ATK greater",
+        "MATK greater"
+      ],
+      "navigation": true,
+      "ownedStateUnchanged": true,
+      "errors": []
+    }
+  ]
+}

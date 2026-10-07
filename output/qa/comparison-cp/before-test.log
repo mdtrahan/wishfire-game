@@ -1,0 +1,29 @@
+
+> codex-orka@1.0.0 test:lamp-ui
+> node --test tests/lampPresentation.test.mjs
+
+✖ lamp immediate review, four recipients, durable equip, Auto and phone containment (47526.325917ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 47759.206292
+
+✖ failing tests:
+
+test at tests/lampPresentation.test.mjs:18:1
+✖ lamp immediate review, four recipients, durable equip, Auto and phone containment (47526.325917ms)
+  AssertionError [ERR_ASSERTION]: rapid saved CP receipts do not overlap
+      at TestContext.<anonymous> (file:///Users/Mace/Codex-Orka/.worktrees/wt-ORKA-5af.5-lamp-comparison/tests/lampPresentation.test.mjs:194:294)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

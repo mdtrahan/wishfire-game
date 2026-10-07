@@ -7,6 +7,14 @@ function read(relPath) {
   return fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
 }
 
+function productionTickSource() {
+  const src = read('web-runner/app.js');
+  const start = src.indexOf('function tick(){');
+  const end = src.indexOf('\n  tick();', start);
+  assert.ok(start >= 0 && end > start, 'missing production tick boundary');
+  return src.slice(start, end);
+}
+
 test('enemy-turn idle recovery gate keeps enemy turns non-pickable while scheduling deferred advance', async () => {
   const runtimeTurnGate = await import(path.join('file://', __dirname, '..', 'web-runner', 'src', 'core', 'turnGateController.mjs'));
   const sharedTurnGate = await import(path.join('file://', __dirname, '..', 'src', 'core', 'turnGateController.mjs'));
@@ -62,17 +70,19 @@ test('the same production completion handoff advances Battle A and continuing Ba
     assert.equal(afterAdvance.DeferAdvance, 0, `${battle} cannot schedule a second advance`);
     assert.equal(afterAdvance.AdvanceAfterAction, 0, `${battle} clears its action handoff`);
   }
-  const app = read('web-runner/app.js');
-  assert.match(app, /state\.globals\.DeferAdvance[\s\S]*callFunctionWithContext\(fnContext, 'AdvanceTurn'\)[\s\S]*createDeferredAdvanceResolved[\s\S]*runCombatStep\(fnContext, 'ProcessTurn'\)/);
+  const tick = productionTickSource();
+  assert.match(tick, /combatSimulationTicker\.tick\(\{/);
+  assert.doesNotMatch(tick, /callFunctionWithContext\(fnContext, '(?:AdvanceTurn|ProcessTurn|EnemyTurn)'/);
 });
 
 test('normal enemy-action completion uses the shared deferred finalizer rather than an isolated release state', () => {
-  const source = read('web-runner/systems/renderRuntime.js').replace(/\\n/g, '\n');
-  const actionStart = source.indexOf('// Enemy action state machine');
-  const actionEnd = source.indexOf('// Hero action lunge', actionStart);
-  const action = source.slice(actionStart, actionEnd);
-  assert.match(action, /if \(!enemy \|\| \(enemy\.hp \?\? 0\) <= 0\)[\s\S]*applyTurnGateIntent\(createEnemyTurnIdleRecovery/);
-  assert.match(action, /if \(enemyAction\.state === 'DONE'\)[\s\S]*applyTurnGateIntent\(createEnemyTurnIdleRecovery, \{[\s\S]*currentTurnUID:[\s\S]*releaseDelay: 0\.35/);
+  const source = read('web-runner/systems/combatSimulationTick.mjs');
+  const actionStart = source.indexOf('// Continuous combat owns one independent action state per enemy.');
+  const action = source.slice(actionStart);
+  assert.match(action, /if \(!enemy \|\| \(enemy\.hp \?\? 0\) <= 0\)[\s\S]*completeEnemyTurn\(enemyAction\)/);
+  assert.match(action, /if \(enemyAction\.state === 'DONE'\)[\s\S]*completeEnemyTurn\(enemyAction, 0\.35\)/);
+  assert.match(action, /readyAt\[key\] = enemyAction\?\.noTargetAtImpact[\s\S]*enemyAction\?\.nextReadyAt/);
+  assert.doesNotMatch(action, /callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
   assert.doesNotMatch(action, /const releaseState = \{[\s\S]*ActionLockUntil: \(state\.globals\.time \|\| 0\) \+ 0\.35/);
 });
 
@@ -108,19 +118,15 @@ test('enemy-turn retry hold preserves a live enemy turn instead of scheduling ad
   }
 });
 
-test('app enemy-action abort routes through recovery while leaked live enemy-idle re-enters ProcessTurn', () => {
-  const src = read('web-runner/app.js');
-  assert.match(src, /createEnemyTurnIdleRecovery/);
-  assert.match(
-    src,
-    /currentTurnType === 1[\s\S]*state\.globals\.TurnPhase === 2[\s\S]*!state\.globals\.ActionInProgress[\s\S]*!state\.globals\.IsPlayerBusy[\s\S]*\(isCanPickGemsReady\(state\.globals\.CanPickGems\) \|\| !state\.globals\.DeferAdvance\)[\s\S]*const currentEnemy = currentTurnUID[\s\S]*const liveCurrentEnemy = currentEnemy && currentEnemy\.kind === 'enemy'[\s\S]*if \(liveCurrentEnemy && !hasEmpty && !refillActive && actionClaimBarrier\.canClaimCombatAction\)[\s\S]*applyTurnGateIntent\(createEnemyTurnGateBaseline\);[\s\S]*combatRuntimeGateway\.runCombatStep\(fnContext, 'ProcessTurn'\);[\s\S]*else if \(liveCurrentEnemy\)[\s\S]*applyTurnGateIntent\(createEnemyTurnRetryHold, \{[\s\S]*currentTurnUID,[\s\S]*\}\);[\s\S]*else if \(actionClaimBarrier\.canClaimCombatAction\) \{[\s\S]*applyTurnGateIntent\(createEnemyTurnIdleRecovery, \{[\s\S]*currentTurnUID,[\s\S]*\}\);[\s\S]*combatRuntimeGateway\.runCombatStep\(fnContext, 'ProcessTurn'\);/,
-  );
+test('production app no longer recovers or re-enters turn-based enemy actions', () => {
+  const tick = productionTickSource();
+  assert.doesNotMatch(tick, /currentTurnType/);
+  assert.doesNotMatch(tick, /callFunctionWithContext\(fnContext, '(?:AdvanceTurn|ProcessTurn|EnemyTurn)'/);
+  assert.match(tick, /combatSimulationTicker\.tick\(\{/);
 });
 
-test('battle start owns the first turn claim before enemy idle recovery can run', () => {
-  const src = read('web-runner/app.js');
-  assert.match(
-    src,
-    /state\.globals\.GamePhase === 'RUNTIME' &&\s+!state\.globals\.QaFixtureHoldTurn &&\s+!state\.globals\.BattleStartActive &&\s+currentTurnType === 1/,
-  );
+test('production battle start uses the realtime scheduler without a first-turn claim', () => {
+  const tick = productionTickSource();
+  assert.match(tick, /combatSimulationTicker\.tick\(\{/);
+  assert.doesNotMatch(tick, /QaFixtureHoldTurn|currentTurnType/);
 });
