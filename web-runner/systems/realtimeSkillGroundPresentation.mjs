@@ -10,6 +10,7 @@ export function renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas, layout
   const g = state.globals || {}, now = Number(g.time || 0);
   if (Number(g.ContinuousCombatStageLoop) !== 1) return;
   const actors = new Map((state.entities || []).filter(Boolean).map(actor => [Number(actor.uid), actor]));
+  const markedCoverSources = new Set();
   ctx.save();
   ctx.lineWidth = Math.max(.75, 1.4 * layoutScale);
   for (const zone of g.RealtimeSkillZones || []) {
@@ -36,9 +37,18 @@ export function renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas, layout
     const p = worldToCanvas(point.x, point.y, target.kind);
     for (const [id, effect] of active) {
       const source = actors.get(Number(effect.sourceUID)), origin = feet(source);
-      if (id !== 'cover' || source === target || !origin) continue;
+      if (id !== 'cover' || !origin) continue;
       const from = worldToCanvas(origin.x, origin.y, source.kind);
-      ctx.strokeStyle = 'rgba(193,149,61,0.75)'; ctx.lineWidth = 2 * layoutScale; ctx.setLineDash([3 * layoutScale, 4 * layoutScale]);
+      ctx.strokeStyle = 'rgba(168,122,40,0.9)'; ctx.lineWidth = 2 * layoutScale;
+      if (!markedCoverSources.has(source.uid)) {
+        const y = from.y + 12 * layoutScale, radius = 4 * layoutScale;
+        ctx.fillStyle = cues.cover;
+        ctx.beginPath(); ctx.moveTo(from.x, y - radius); ctx.lineTo(from.x + radius, y);
+        ctx.lineTo(from.x, y + radius); ctx.lineTo(from.x - radius, y); ctx.closePath(); ctx.fill(); ctx.stroke();
+        markedCoverSources.add(source.uid);
+      }
+      if (source === target) continue;
+      ctx.setLineDash([3 * layoutScale, 4 * layoutScale]);
       ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(p.x, p.y); ctx.stroke(); ctx.setLineDash([]);
     }
     active.forEach(([id]) => {

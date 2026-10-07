@@ -6,7 +6,7 @@ test('committed ground cues follow recipients, preserve planted zones and expire
   const state = { globals: { ContinuousCombatStageLoop: 1, time: 2,
     RealtimeSkillZones: [{ kind: 'burn_sigil', sourceUID: 1, point: { x: 190, y: 180 }, radius: 60, appliedAt: 1, expiresAt: 5 }],
     RealtimeSkillEffects: {
-      1: { brace: { sourceUID: 1, appliedAt: 1, expiresAt: 5, charges: 1 } },
+      1: { cover: { sourceUID: 1, appliedAt: 1, expiresAt: 5 }, brace: { sourceUID: 1, appliedAt: 1, expiresAt: 5, charges: 1 } },
       2: { cover: { sourceUID: 1, appliedAt: 1, expiresAt: 5 }, destiny: { sourceUID: 1, appliedAt: 1, expiresAt: 5 } },
       3: { blight: { sourceUID: 1, appliedAt: 1, expiresAt: 5 } },
     } }, entities: [
@@ -24,6 +24,7 @@ test('committed ground cues follow recipients, preserve planted zones and expire
     return calls;
   };
   const initial = draw();
+  assert.equal(initial.filter(c => c[0] === 'moveTo' && c[1] === 145 && c[2] === 134).length, 1, 'Cover marks its source once across self and recipient effects');
   assert.deepEqual(draw(), initial, 'paused combat clock freezes every cue');
   assert.ok(initial.some(c => c[0] === 'ellipse' && c[1] === 95 && c[2] === 110 && c[3] === 30 && c[4] === 30), 'zone uses recorded point and true world radius');
   assert.ok(initial.some(c => c[0] === 'lineTo' && c[1] === 130 && c[2] === 145), 'Cover follows current recipient foot');
