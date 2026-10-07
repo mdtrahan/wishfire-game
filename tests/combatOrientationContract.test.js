@@ -38,6 +38,11 @@ test('combat camera presents four screens of world at half battlefield zoom', as
   assert.equal(last.project(bounds.worldWidth, 272.5).x, 360);
 });
 
+test('four-times boss health bar stays above its ground-anchored head', () => {
+  const renderer = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
+  assert.match(renderer, /const barY = Math\.round\(\(pos\.y - \(enemy\.combatRank === 'boss' \? enemyH : enemyH \/ 2\)\) - \(10 \* layoutScale\)\)/);
+});
+
 test('right-wise camera keeps hero footprints inside both world edges', async () => {
   const rules = await loadRules();
   const arenaRules = await import(pathToFileURL(path.join(root, 'src', 'core', 'arenaCombatRules.mjs')).href);

@@ -539,7 +539,7 @@ test('boss click removes living fodder and pending actions before immediate boss
   assert.equal(spawned.length, 1);
   assert.equal(spawned[0].name, 'Troll');
   assert.equal(spawned[0].enemyRole, 'boss');
-  assert.equal(spawned[0].streamEngageX, 290);
+  assert.equal(spawned[0].streamEngageX, globals.ContinuousCombatStage.bossWorldX);
   assert.equal(spawned[0].originY, 290);
 });
 

@@ -18,6 +18,7 @@
 - `heroAttackTargetingRules.mjs` owns the continuous party's persistent first-living focus inside the current X attack range and the legacy random HERO_SINGLE fallback. Manual target ownership remains in functionBank.
 - CJS mirrors such as `simulationCorePacket.cjs`, `gameStateEnvelopeRules.cjs`, and `combatRuntimeGateway.cjs` must stay aligned with their intended test/runtime consumers.
 - `combatOrientation.mjs` owns presentation-only left/right normalization, static formation projection, and wide-world camera projection. Right-wise static formation geometry reflects then translates both formations `-40` logical X; the wide-world camera reflects without that offset so the hero's 40-unit world-edge margin remains visible. Heroes keep Y while enemies receive one derived block-Y offset aligning team formation midpoints. Derive that enemy offset from the fixed slot grid, never the currently living roster, so death and refill cannot move survivors. Do not put orientation in SimulationCore packets or mutate canonical actor coordinates.
+- `arenaCombatRules.mjs` scales the boss footprint with its 4x linear sprite size and adds that boss body radius to boss-origin contact reach; ordinary actors retain foot-to-target reach.
 - `deriveCombatFormationAnchors` reserves an 18-unit hero buff-icon row plus a 2-unit gap above HP bars. The four-slot hero sprite band spans Y 190-395, and continuous enemy lanes follow those hero anchors.
 
 ## Work Guidance

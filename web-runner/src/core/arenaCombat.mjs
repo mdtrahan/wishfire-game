@@ -62,6 +62,12 @@ function heroFormationSlot(hero, index) {
   };
 }
 function separateFootprints(actors, bounds) {
+  const actorXBounds = actor => actor?.kind === 'hero'
+    ? { min: bounds.heroMinX, max: bounds.heroMaxX }
+    : String(actor?.combatRank || actor?.enemyRole || actor?.role || '').toLowerCase() === 'boss'
+      && Number.isFinite(bounds.bossMinX) && Number.isFinite(bounds.bossMaxX)
+      ? { min: bounds.bossMinX, max: bounds.bossMaxX }
+      : { min: bounds.heroMinX, max: bounds.maxX };
   const ordered = actors.slice().sort((a, b) => Number(a.uid || 0) - Number(b.uid || 0));
   // Several passes settle a compact crowd after one separation changes a
   // neighboring pair. Zero-distance actors split vertically so an X boundary
@@ -74,11 +80,22 @@ function separateFootprints(actors, bounds) {
     const dx = currentDistance > 0.001 ? (b.x - a.x) / currentDistance : 0;
     const dy = currentDistance > 0.001 ? (b.y - a.y) / currentDistance : (Number(first.uid || 0) <= Number(second.uid || 0) ? -1 : 1);
     const push = (minDistance - currentDistance) / 2;
-    first.footX = clamp(a.x - dx * push, bounds.heroMinX, first.kind === 'hero' ? bounds.heroMaxX : bounds.maxX);
+    const firstBounds = actorXBounds(first);
+    const secondBounds = actorXBounds(second);
+    first.footX = clamp(a.x - dx * push, firstBounds.min, firstBounds.max);
     first.footY = clamp(a.y - dy * push, bounds.visibleTopY, bounds.visibleBottomY);
-    second.footX = clamp(b.x + dx * push, bounds.heroMinX, second.kind === 'hero' ? bounds.heroMaxX : bounds.maxX);
+    second.footX = clamp(b.x + dx * push, secondBounds.min, secondBounds.max);
     second.footY = clamp(b.y + dy * push, bounds.visibleTopY, bounds.visibleBottomY);
     for (const actor of [first, second]) { actor.x = actor.footX; actor.y = actor.footY; }
+  }
+  // A stationary actor can arrive outside the encounter band through a skill
+  // or restore path. Enforce the same bounds after movement and separation.
+  for (const actor of ordered) {
+    const point = actorFootPoint(actor), xBounds = actorXBounds(actor);
+    actor.footX = clamp(point.x, xBounds.min, xBounds.max);
+    actor.footY = clamp(point.y, bounds.visibleTopY, bounds.visibleBottomY);
+    actor.x = actor.footX;
+    actor.y = actor.footY;
   }
 }
 
@@ -89,7 +106,19 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   const enemies = entities.filter(actor => actor?.kind === 'enemy' && isLiving(actor)
     && ['roaming', 'in_range', 'engaged'].includes(actor.streamState));
   const anchors = deriveCombatFormationAnchors({ globals, entities, heroCount: heroes.length });
-  const bounds = { ...anchors.arenaBounds, ...deriveCombatWorldBounds() };
+  const worldBounds = deriveCombatWorldBounds();
+  const stage = globals.ContinuousCombatStage;
+  const bossEncounter = !!stage?.bossActive;
+  const boss = bossEncounter ? enemies.find(enemy => String(enemy.combatRank || enemy.enemyRole || enemy.role || '').toLowerCase() === 'boss') : null;
+  const bossAnchorX = Number.isFinite(stage?.bossWorldX) ? Number(stage.bossWorldX) : Number(boss?.footX ?? boss?.x ?? 0);
+  const bossRadius = boss ? actorFootprintRadius(boss) : 0;
+  const bounds = { ...anchors.arenaBounds, ...worldBounds };
+  if (bossEncounter && boss) {
+    bounds.heroMinX = Math.max(worldBounds.heroMinX, bossAnchorX - worldBounds.visibleWorldWidth * 0.75);
+    bounds.heroMaxX = Math.min(worldBounds.heroMaxX, bossAnchorX - bossRadius - 18);
+    bounds.bossMinX = bossAnchorX;
+    bounds.bossMaxX = Math.min(worldBounds.heroMaxX - bossRadius, bossAnchorX + 32);
+  }
   const minY = bounds.visibleTopY, maxY = bounds.visibleBottomY;
   heroes.forEach((hero, index) => {
     if (!Number.isFinite(Number(hero.footX))) {
@@ -148,7 +177,8 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   for (const enemy of focusedEnemies) {
     const target = selectContinuousEnemyTarget({ enemy, heroes, globals });
     if (!target) { enemy.locomotion = 'idle'; if (Number(enemy.actionStateUntil || 0) <= Number(globals.time || 0)) enemy.actionState = 'idle'; continue; }
-    advanceActorToward(enemy, target, { seconds, speed: Math.max(34, Number(enemy.streamWalkSpeed || 40)), now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.maxX, minY, maxY,
+    const isBoss = bossEncounter && enemy === boss;
+    advanceActorToward(enemy, target, { seconds, speed: Math.max(34, Number(enemy.streamWalkSpeed || 40)), now: Number(globals.time || 0), minX: isBoss ? bounds.bossMinX : bounds.heroMinX, maxX: isBoss ? bounds.bossMaxX : bounds.maxX, minY, maxY,
       preserveActionState: Number(enemy.actionStateUntil || 0) > Number(globals.time || 0) });
   }
   separateFootprints([...heroes, ...enemies], bounds);

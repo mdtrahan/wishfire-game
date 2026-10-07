@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
+import { actorFootprintRadius, isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
 import { advanceContinuousCombatArena } from '../web-runner/src/core/arenaCombat.mjs';
 import { activateContinuousCombatSpawnedEnemy, pushContinuousCombatEnemy } from '../web-runner/src/core/continuousCombatStage.mjs';
 
@@ -123,6 +123,41 @@ test('enemy pursuit retains two-dimensional feet over repeated arena ticks', () 
   assert.ok(enemy.footY > 90, 'enemy pursues the vertically offset hero');
   assert.equal(enemy.y, enemy.footY, 'render mirror retains semantic foot Y');
   assert.notEqual(enemy.footX, enemy.originX, 'arena motion does not restore the stream entry origin');
+});
+
+test('boss combat keeps the four-times body to the right of the party and preserves surface reach', () => {
+  for (const orientation of ['left-wise', 'right-wise']) {
+    const heroes = [
+      { uid: 1, name: 'Fara', kind: 'hero', hp: 100, attackType: 'melee', footX: 400, footY: 230 },
+      { uid: 2, name: 'Hondo', kind: 'hero', hp: 100, attackType: 'melee', footX: 400, footY: 250 },
+      { uid: 3, name: 'Runa', kind: 'hero', hp: 100, attackType: 'magic', footX: 400, footY: 270 },
+      { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: 400, footY: 290 },
+    ];
+    const boss = { uid: 90, name: 'Troll', kind: 'enemy', combatRank: 'boss', hp: 5000,
+      streamState: 'roaming', streamSectorIndex: 0, streamDelivery: 'melee', streamWalkSpeed: 40, footX: 660, footY: 260 };
+    const anchorX = 660;
+    const globals = { time: 0, CombatOrientation: orientation,
+      ContinuousCombatStage: { bossActive: true, bossWorldX: anchorX } };
+    for (let tick = 0; tick < 500; tick += 1) {
+      globals.time = tick * 0.1;
+      advanceContinuousCombatArena({ globals, entities: [...heroes, boss], seconds: 0.1 });
+    }
+
+    assert.equal(actorFootprintRadius(boss), 72, 'boss collision radius matches its four-times linear sprite scale');
+    assert.ok(boss.footX >= anchorX && boss.footX <= anchorX + 32, 'boss pursuit stays inside the local right-side encounter band');
+    assert.ok(heroes.every(hero => hero.footX < boss.footX - actorFootprintRadius(boss) - actorFootprintRadius(hero)),
+      'all living heroes remain left of the full boss footprint in either saved roam orientation');
+    assert.ok(isActorTargetInRange(heroes[0], boss), 'frontline melee reaches the visible boss surface');
+    assert.ok(isActorTargetInRange(boss, heroes[0]), 'boss melee reaches back from its visible body edge');
+    assert.ok(heroes[0].footX > heroes[2].footX, 'frontline remains ahead of the ranged backline toward the boss');
+
+    heroes[0].footX = boss.footX + 20;
+    boss.footX = anchorX + 120;
+    advanceContinuousCombatArena({ globals, entities: [...heroes, boss], seconds: 0 });
+    assert.ok(heroes.every(hero => hero.footX <= anchorX - actorFootprintRadius(boss) - actorFootprintRadius(hero)),
+      'post-separation bounds restore any skill or stationary displacement to the heroes-left side');
+    assert.ok(boss.footX <= anchorX + 32, 'post-separation bounds keep the boss inside its local encounter band');
+  }
 });
 
 test('a live Provoke redirects arena pursuit before an enemy can start another contact attack', () => {

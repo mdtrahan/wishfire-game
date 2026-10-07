@@ -75,6 +75,7 @@ export function createContinuousCombatStageState(seed = 1, { region = 1, stage =
     bossAvailable: false,
     bossArmed: false,
     bossActive: false,
+    bossWorldX: null,
     transitions: 0,
     clearedBosses: 0,
     nextEmissionAt: 0,
@@ -285,6 +286,7 @@ export function advanceContinuousCombatStage(stageState) {
       bossArmed: false,
       bossActive: false,
       bossCameraCenterX: null,
+      bossWorldX: null,
       bossTransitionStartedAtMs: null,
       bossTransitionEndsAtMs: null,
       transitions,
@@ -308,7 +310,7 @@ export function armContinuousCombatBoss(globals, entities, call, { wallNowMs = D
     : BOSS_HOME.x - 130;
   if (livingHeroes.length) {
     const world = deriveCombatWorldBounds();
-    const safeCenterX = Math.max(world.heroMinX + 320, Math.min(world.heroMaxX - 320, squadCenterX));
+    const safeCenterX = Math.max(world.heroMinX + 320, Math.min(world.heroMaxX - 260 - 72 - 32, squadCenterX));
     const shiftX = safeCenterX - squadCenterX;
     if (shiftX) for (const hero of livingHeroes) {
       const nextX = Math.max(world.heroMinX, Math.min(world.heroMaxX, Number(hero.footX ?? hero.x ?? safeCenterX) + shiftX));
@@ -321,6 +323,7 @@ export function armContinuousCombatBoss(globals, entities, call, { wallNowMs = D
     ...state,
     bossArmed: true,
     bossActive: true,
+    bossWorldX: squadCenterX + 260,
     bossCameraCenterX: squadCenterX + 130,
     bossTransitionStartedAtMs: startedAtMs,
     bossTransitionEndsAtMs: startedAtMs + Math.max(0, Number(transitionDurationMs) || 0),
@@ -358,6 +361,7 @@ export function resetContinuousCombatAfterDefeat(globals) {
     bossArmed: false,
     bossActive: false,
     bossCameraCenterX: null,
+    bossWorldX: null,
     bossTransitionStartedAtMs: null,
     bossTransitionEndsAtMs: null,
     transitions: Number(state.transitions || 0) + 1,
@@ -455,7 +459,9 @@ function spawnContinuousCombatStage({ globals, entities, call, state }) {
     const stage = getContinuousCombatStage(state);
     const enemy = call('SpawnEnemy', { ...entry.row, enemyRole: stage?.kind === 'boss' ? 'boss' : String(entry.row.enemyRole || entry.row.role || 'fodder') }, entry.slotIndex);
     const livingHeroes = entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
-    const bossX = livingHeroes.length ? livingHeroes.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? 0), 0) / livingHeroes.length + 260 : BOSS_HOME.x;
+    const bossX = Number.isFinite(state.bossWorldX)
+      ? Number(state.bossWorldX)
+      : livingHeroes.length ? livingHeroes.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? 0), 0) / livingHeroes.length + 260 : BOSS_HOME.x;
     activateContinuousCombatSpawnedEnemy(globals, enemy, { ...entry, bossX, entryOrder: entry.entryOrder });
   }
   call('UpdateEnemyHPUI');

@@ -141,6 +141,10 @@ effectiveBody = effectiveBody.replace(
   '        drawCombatHealthBar(ctx, { x: barX, y: barY, width: drawBarW, height: drawBarH, fillWidth: drawFillW, trailWidth: drawYellowW, team: \'enemy\' });',
   '        actorFrontOverlayQueue.push(() => drawCombatHealthBar(ctx, { x: barX, y: barY, width: drawBarW, height: drawBarH, fillWidth: drawFillW, trailWidth: drawYellowW, team: \'enemy\' }));',
 );
+effectiveBody = effectiveBody.replace(
+  '        const barY = Math.round((pos.y - enemyH / 2) - (10 * layoutScale));',
+  "        const barY = Math.round((pos.y - (enemy.combatRank === 'boss' ? enemyH : enemyH / 2)) - (10 * layoutScale));",
+);
 replaceBetween(
   '          const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0), activeCombatOrientation);',
   '\n          if (hero && wardBarrierImage) {',
