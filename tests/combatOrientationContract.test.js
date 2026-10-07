@@ -38,6 +38,31 @@ test('combat camera presents four screens of world at half battlefield zoom', as
   assert.equal(last.project(bounds.worldWidth, 272.5).x, 360);
 });
 
+test('right-wise camera keeps hero footprints inside both world edges', async () => {
+  const rules = await loadRules();
+  const arenaRules = await import(pathToFileURL(path.join(root, 'src', 'core', 'arenaCombatRules.mjs')).href);
+  const bounds = rules.deriveCombatWorldBounds(360, 0.5);
+  const heroRadiusPx = arenaRules.actorFootprintRadius({ kind: 'hero' }) * 0.5;
+  const camera = (orientation, centerX) => rules.createCombatCameraProjection({
+    viewportWidth: 360,
+    worldWidth: bounds.worldWidth,
+    zoom: 0.5,
+    centerX,
+    orientation,
+  });
+  const leftWiseNear = camera('left-wise', bounds.heroMinX).project(bounds.heroMinX, 272.5).x;
+  const rightWiseFar = camera('right-wise', bounds.heroMaxX).project(bounds.heroMaxX, 272.5).x;
+  const leftWiseFar = camera('left-wise', bounds.heroMaxX).project(bounds.heroMaxX, 272.5).x;
+  const rightWiseNear = camera('right-wise', bounds.heroMinX).project(bounds.heroMinX, 272.5).x;
+
+  assert.equal(leftWiseNear, bounds.heroMinX * bounds.zoom);
+  assert.equal(rightWiseFar, leftWiseNear);
+  assert.equal(leftWiseFar, 360 - leftWiseNear);
+  assert.equal(rightWiseNear, leftWiseFar);
+  for (const x of [leftWiseNear, rightWiseFar]) assert.ok(x >= heroRadiusPx);
+  for (const x of [leftWiseFar, rightWiseNear]) assert.ok(x + heroRadiusPx <= 360);
+});
+
 test('wide world grid keeps numbered major lines inside the camera view while it pans', async () => {
   const rules = await loadRules();
   const grid = rules.deriveCombatReferenceGrid(2880, 640);
