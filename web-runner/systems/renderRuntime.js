@@ -266,11 +266,11 @@ export function renderRuntime(deps) {
           const restFeet = state.globals.HeroRestFeetPosByUID?.[targetUID];
           const targetActor = state.entities.find(actor => Number(actor?.uid || 0) === targetUID);
           const enemyFeet = targetActor?.kind === 'enemy' ? {
-            x: Number(targetActor.originX ?? targetActor.x ?? 0),
-            y: Number(targetActor.originY ?? targetActor.y ?? 0) + Math.max(24, Number(state.globals.EnemySize || 40)) / 2,
+            x: Number(targetActor.footX ?? targetActor.x ?? targetActor.originX ?? 0),
+            y: Number(targetActor.footY ?? targetActor.y ?? targetActor.originY ?? 0) + Math.max(24, Number(state.globals.EnemySize || 40)) / 2,
           } : null;
           const targetFeet = restFeet || enemyFeet;
-          const anchor = targetFeet ? worldToCanvas(Number(targetFeet.x || 0), Number(targetFeet.y || 0)) : basePos;
+          const anchor = targetFeet ? projectCombatActorWorldToCanvas(Number(targetFeet.x || 0), Number(targetFeet.y || 0), targetActor?.kind || 'hero') : basePos;
           const heroHeight = Number(state.globals.HeroRenderHeightByUID?.[targetUID] || state.globals.EnemySize || 40) * layoutScale;
           const heroWidth = Number(state.globals.HeroRenderWidthByUID?.[targetUID] || state.globals.EnemySize || 40) * layoutScale;
           if (bloom.presentation === 'major' && images.CombatHealSwirl && stage.progress > 0.01) {

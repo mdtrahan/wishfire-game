@@ -95,7 +95,12 @@ function displacementDirection(enemy, source) {
   const dx = target.x - origin.x, dy = target.y - origin.y, length = Math.hypot(dx, dy);
   return length > 0.001 ? { x: dx / length, y: dy / length } : { x: 1, y: 0 };
 }
-function boundedEnemyFoot(point, clampY = true) {
+function boundedEnemyFoot(point, clampY = true, enemy = null) {
+  if (enemy?.arenaEnabled) {
+    const world = deriveCombatWorldBounds();
+    const bounds = deriveCombatArenaBounds();
+    return { x: Math.max(world.heroMinX, Math.min(world.heroMaxX, point.x)), y: clampY ? Math.max(bounds.visibleTopY, Math.min(bounds.visibleBottomY, point.y)) : point.y };
+  }
   const bounds = deriveCombatArenaBounds();
   return { x: Math.max(bounds.heroBackCenterX, Math.min(bounds.attackStartX, point.x)), y: clampY ? Math.max(bounds.visibleTopY, Math.min(bounds.visibleBottomY, point.y)) : point.y };
 }
@@ -103,7 +108,7 @@ function moveStreamEnemyAway(enemy, distance, maxDistance, minimumDistance = 0, 
   if (!isDisplaceableStreamEnemy(enemy)) return 0;
   const current = source ? enemyFoot(enemy) : { x: Number(enemy.x || 0), y: Number(enemy.y || 0) }, direction = source ? displacementDirection(enemy, source) : { x: 1, y: 0 };
   const requested = Math.min(Math.max(0, Number(distance) || 0), maxDistance);
-  const next = boundedEnemyFoot({ x: current.x + direction.x * requested, y: current.y + direction.y * requested }, !!source || Number(enemy.y || 0) >= deriveCombatArenaBounds().visibleTopY);
+  const next = boundedEnemyFoot({ x: current.x + direction.x * requested, y: current.y + direction.y * requested }, !!source || Number(enemy.y || 0) >= deriveCombatArenaBounds().visibleTopY, enemy);
   const moved = Math.hypot(next.x - current.x, next.y - current.y);
   if (moved < minimumDistance) return 0;
   enemy.streamEngageX = Number(enemy.streamEngageX ?? enemy.originX ?? current.x);
@@ -186,11 +191,12 @@ export function finalizeContinuousCombatProduction(globals, entities = []) {
     } else if (actor?.kind === 'enemy') {
       const sectorIndex = enemyOrder % 3;
       activateContinuousCombatSpawnedEnemy(globals, actor, { lane: Number(actor.slotIndex ?? 1), rank: 0, packIndex: 0, entryOrder: sectorIndex, sectorIndex });
+      enemyOrder += 1;
     }
   }
   if (globals.ContinuousCombatStage) {
     globals.ContinuousCombatStage.nextEmissionAt = now + CONTINUOUS_COMBAT_PACK_INTERVAL_SEC;
-    globals.ContinuousCombatStage.awaitingPackArrival = true;
+    globals.ContinuousCombatStage.awaitingPackArrival = false;
     globals.ContinuousCombatStage.lastUpdatedAt = now;
     globals.ContinuousCombatStage.spawnSerial = (entities || []).filter(actor => actor?.kind === 'enemy').length;
   }
@@ -365,7 +371,7 @@ function spawnContinuousCombatStage({ globals, entities, call, state }) {
   globals.ContinuousCombatStage = {
     ...state,
     nextEmissionAt: Number(globals.time || 0) + CONTINUOUS_COMBAT_PACK_INTERVAL_SEC,
-    awaitingPackArrival: true,
+    awaitingPackArrival: false,
     lastUpdatedAt: Number(globals.time || 0),
     spawnSerial: slotBase + plan.length,
   };
@@ -435,7 +441,7 @@ function updateApproachingEnemies(globals, entities, now) {
       const currentFoot = enemyFoot(enemy);
       const availableDt = Math.max(0, Math.min(dt, now - retreatStart));
       const retreatDuration = Math.min(availableDt, retreatRemaining);
-      const retreatFoot = boundedEnemyFoot({ x: currentFoot.x + retreatDirection.x * Number(enemy.streamWalkSpeed || 40) * retreatDuration, y: currentFoot.y + retreatDirection.y * Number(enemy.streamWalkSpeed || 40) * retreatDuration });
+      const retreatFoot = boundedEnemyFoot({ x: currentFoot.x + retreatDirection.x * Number(enemy.streamWalkSpeed || 40) * retreatDuration, y: currentFoot.y + retreatDirection.y * Number(enemy.streamWalkSpeed || 40) * retreatDuration }, true, enemy);
       writeEnemyFoot(enemy, retreatFoot);
       enemy.streamRetreatRemaining = Math.max(0, retreatRemaining - retreatDuration);
       if (enemy.streamRetreatRemaining > 1e-9) continue;
@@ -479,16 +485,6 @@ function updateApproachingEnemies(globals, entities, now) {
       becameAvailable += 1;
     }
   }
-  if (state?.awaitingPackArrival) {
-    const packStillApproaching = (entities || []).some(enemy => enemy?.kind === 'enemy'
-      && Number(enemy.hp || 0) > 0
-      && Number(enemy.streamPackIndex || 0) === Number(state.transitions || 0)
-      && enemy.streamState === 'approaching');
-    if (!packStillApproaching) {
-      state.awaitingPackArrival = false;
-      state.nextEmissionAt = now + CONTINUOUS_COMBAT_PACK_INTERVAL_SEC;
-    }
-  }
   return becameAvailable;
 }
 
@@ -516,7 +512,7 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
     pendingDeaths: globals.EnemyDeathVisualHoldByUID || globals.PendingDeaths,
     presentationClear: presentationIsClear(globals, presentationBarrier),
   });
-  const timerReady = !stageState.awaitingPackArrival && now >= Number(stageState.nextEmissionAt || 0);
+  const timerReady = now >= Number(stageState.nextEmissionAt || 0);
   let transition = null;
 
   if (stageState.bossActive) {
@@ -528,7 +524,7 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
     call('SettleContinuousCombatRewards');
     transition = advanceContinuousCombatStage(stageState);
   } else {
-    if (!timerReady) return false;
+    if (!clear || !timerReady) return false;
     transition = advanceContinuousCombatStage(stageState);
   }
 

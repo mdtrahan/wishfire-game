@@ -94,3 +94,4 @@
 - The conditional hero kits have 33 stable skill IDs and explicit unlocks. Target selection and commitment share the same composable predicates, shapes, recipient policies and projected stat reader. Attempt state owns Fruit/Grow; ordinary waves and boss entry preserve hero state, while boss victory, defeat and exit clear it. Level/gear refresh preserves clean max HP and never saves battle modifiers.
 
 - Seeded RNG preview stays byte-identical to the shared source mirror; preview must never advance the combat draw owner.
+- Continuous roaming owns pack spawns and settlement. Every wave clears before the next emission, with at least three seconds between emissions; the boss gate and existing reward/KO rules remain stage-owned. Arena displacement uses full world bounds for arena-enabled actors.

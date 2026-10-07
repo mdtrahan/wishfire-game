@@ -264,6 +264,9 @@ test('runtime projects actor visuals, hit regions, and action anchors without mu
   assert.match(render, /projectCombatActorWorldToCanvas\(wardWorldX, wardWorldY, 'hero'\)/);
   assert.match(render, /projectCombatActorWorldToCanvas\(Number\(pulse\.sourceX[^\n]*'hero'/);
   assert.match(render, /projectCombatActorWorldToCanvas\(Number\(pulse\.targetX[^\n]*'enemy'/);
+  assert.match(render, /targetActor\.footX \?\? targetActor\.x \?\? targetActor\.originX/);
+  assert.match(render, /targetActor\.footY \?\? targetActor\.y \?\? targetActor\.originY/);
+  assert.match(render, /projectCombatActorWorldToCanvas\(Number\(targetFeet\.x[^\n]*targetActor\?\.kind/);
   assert.match(render, /projectCombatActorWorldToCanvas\(x, y, 'enemy'\)/);
   assert.match(render, /CombatOrientationGeometry = createCombatOrientationGeometry\([^\n]*\.\.\.combatFormationAnchors/);
   assert.match(hooks, /combatOrientation:/);
