@@ -14,6 +14,7 @@ const runtimeData = [
   'objectTypes.json',
   'enemies.json',
   'elemental-impact/manifest.json',
+  'puppets/manifest.json',
 ];
 const wasmName = 'simulation_core.wasm';
 const esbuild = process.env.ORKA_OFFLINE_ESBUILD || path.join(root, 'node_modules', '.bin', process.platform === 'win32' ? 'esbuild.cmd' : 'esbuild');
@@ -70,7 +71,7 @@ fs.cpSync(sourceAssets, offlineAssets, {
   recursive: true,
   filter(source) {
     const relative = path.relative(sourceAssets, source).split(path.sep).join('/');
-    return !embeddedJson.includes(relative) && path.basename(source) !== wasmName;
+    return !embeddedJson.includes(relative) && !relative.endsWith('.json') && path.basename(source) !== wasmName;
   },
 });
 
