@@ -114,3 +114,27 @@ test('render boundaries retire empty and unsupported scenes even at a paused clo
   presentation.beginFrame(); presentation.frameFor({ uid: 2, name: 'Hondo', hp: 1 }, 0); presentation.endFrame();
   assert.equal(presentation.retention().displayedActors, 0);
 });
+
+test('deferred replacements cannot hold a ready clip across KO or revival', async () => {
+  const pending = [];
+  let pins;
+  const load = (actor, state, facing) => new Promise(resolve => pending.push({ state, facing, resolve }));
+  load.protect = keys => { pins = keys; };
+  const presentation = createActorPuppetPresentation({ loadClip: load });
+  const actor = { uid: 1, name: 'Fara', hp: 10, facing: 'right', locomotion: 'idle' };
+  const flush = () => new Promise(resolve => setImmediate(resolve));
+  presentation.frameFor(actor, 1); await flush(); pending[0].resolve(clip); await flush();
+  assert.equal(presentation.frameFor(actor, 1).state, 'idle');
+  actor.hp = 0;
+  assert.equal(presentation.frameFor(actor, 1), null, 'alive ready clip cannot paint a newly KO actor');
+  assert.ok(pins.includes('fara/idle/right'));
+  assert.ok(pins.includes('fara/ko/right'));
+  await flush(); pending[1].resolve(clip); await flush();
+  assert.equal(presentation.frameFor(actor, 1).state, 'ko');
+  actor.hp = 10;
+  assert.equal(presentation.frameFor(actor, 1), null, 'KO ready clip cannot paint a revived actor');
+  await flush(); pending[2].resolve(clip); await flush();
+  assert.equal(presentation.frameFor(actor, 1).state, 'idle');
+  actor.locomotion = 'walk';
+  assert.equal(presentation.frameFor(actor, 1).state, 'idle', 'ordinary live-state transitions retain the ready clip');
+});

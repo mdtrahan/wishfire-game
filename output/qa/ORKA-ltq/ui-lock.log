@@ -2,37 +2,37 @@
 > codex-orka@1.0.0 test:ui-lock
 > node tools/ui_presentation_lock_gate.mjs
 
-✔ developer controls never shrink the game stage (78.639166ms)
-✔ viewport runtime scales launchers without reserving layout width (0.64075ms)
-✔ both developer launchers consume the shared compact control scale (1.090958ms)
-✔ developer panels permit vertical scrolling without horizontal overflow (14.329083ms)
-✔ progress bars and damage bitmaps obey the presentation scale (45.498958ms)
-✔ fallback text scales or elides against the measured logical Canvas width (103.0975ms)
-✔ compact fallback copy wraps inside measured Canvas bounds without truncation (28.326042ms)
-✔ combat transient controls and damage text share the compact layout scale (23.477583ms)
-✔ combat renderer and attack hit target consume shared presentation sizing (15.369208ms)
-✔ questQA exposes a hidden pause snapshot without retired combat controls (1.424167ms)
-✔ dev tooling runtime owns modal/config while app keeps restart wiring (190.116333ms)
-✔ dev tooling restart helper owns restart button labels and reset delegation (7.103167ms)
-✔ editable dev tooling fields bypass gameplay keyboard shortcuts (1.759583ms)
-✔ dev hooks omit retired turn-order, initiative, and autoplay QA controls (0.905125ms)
-✔ dev tooling pause preserves realtime state and resumes without turn-input repair (39.882042ms)
-✔ startup preload can prepare combat assets while story mock is active (9.858709ms)
-✔ runtime render scope includes board integrity helper used by extracted runtime (1.074792ms)
-✔ runtime render scope includes gem gate snapshot helper used by extracted runtime (28.175166ms)
-✔ debug gem diagnostics do not mutate timing samples unless explicitly requested (19.059959ms)
-✔ combat end clears staged dev overrides while preserving gold (70.26ms)
-✔ Speed Link Fixture uses the existing dev selector to force one two-times-Speed threshold (10.907167ms)
-✔ one through six actual heroes retain their command positions, including KO and empty capacity (518.478458ms)
-✔ native attack commits once for the scheduled living actor and never spends on a rejected command (2.647167ms)
-✔ an arranged Battle B owner reports the exact presentation predicate before a QA fixture claims its turn (4.12025ms)
-✔ a refused animation handoff restores combat intent (0.784375ms)
-✔ native basic attacks expose their resolved damage to impact presentation (6.002875ms)
-✔ native lethal attacks create the enemy death hold before the next render (2.98025ms)
-✔ native queued commands resolve once at the simulation seam while future hits remain queued (14.086542ms)
-✔ combat strips the legacy outlined tracker backdrop from the generated renderer (3.019ms)
-✔ UI lock command covers the approved DOM and Canvas presentation seams (44.725625ms)
-✔ pre-commit routes staged UI-owner changes through the full UI lock (18.555875ms)
+✔ developer controls never shrink the game stage (12.045292ms)
+✔ viewport runtime scales launchers without reserving layout width (0.44675ms)
+✔ both developer launchers consume the shared compact control scale (2.161833ms)
+✔ developer panels permit vertical scrolling without horizontal overflow (2.521167ms)
+✔ progress bars and damage bitmaps obey the presentation scale (1.049292ms)
+✔ fallback text scales or elides against the measured logical Canvas width (9.586083ms)
+✔ compact fallback copy wraps inside measured Canvas bounds without truncation (1.030792ms)
+✔ combat transient controls and damage text share the compact layout scale (11.283292ms)
+✔ combat renderer and attack hit target consume shared presentation sizing (6.256375ms)
+✔ questQA exposes a hidden pause snapshot without retired combat controls (0.724042ms)
+✔ dev tooling runtime owns modal/config while app keeps restart wiring (17.575875ms)
+✔ dev tooling restart helper owns restart button labels and reset delegation (1.062542ms)
+✔ editable dev tooling fields bypass gameplay keyboard shortcuts (0.9225ms)
+✔ dev hooks omit retired turn-order, initiative, and autoplay QA controls (1.746625ms)
+✔ dev tooling pause preserves realtime state and resumes without turn-input repair (0.757208ms)
+✔ startup preload can prepare combat assets while story mock is active (2.95625ms)
+✔ runtime render scope includes board integrity helper used by extracted runtime (8.502833ms)
+✔ runtime render scope includes gem gate snapshot helper used by extracted runtime (0.876333ms)
+✔ debug gem diagnostics do not mutate timing samples unless explicitly requested (4.826458ms)
+✔ combat end clears staged dev overrides while preserving gold (12.319958ms)
+✔ Speed Link Fixture uses the existing dev selector to force one two-times-Speed threshold (7.94025ms)
+✔ one through six actual heroes retain their command positions, including KO and empty capacity (71.460416ms)
+✔ native attack commits once for the scheduled living actor and never spends on a rejected command (8.411292ms)
+✔ an arranged Battle B owner reports the exact presentation predicate before a QA fixture claims its turn (5.664625ms)
+✔ a refused animation handoff restores combat intent (0.724084ms)
+✔ native basic attacks expose their resolved damage to impact presentation (6.970875ms)
+✔ native lethal attacks create the enemy death hold before the next render (4.553667ms)
+✔ native queued commands resolve once at the simulation seam while future hits remain queued (18.768584ms)
+✔ combat strips the legacy outlined tracker backdrop from the generated renderer (2.765584ms)
+✔ UI lock command covers the approved DOM and Canvas presentation seams (4.114375ms)
+✔ pre-commit routes staged UI-owner changes through the full UI lock (1.231208ms)
 ℹ tests 31
 ℹ suites 0
 ℹ pass 31
@@ -40,6 +40,6 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 3040.827083
+ℹ duration_ms 527.267542
 [UI_LOCK_PASS] 120/120 rendered invariants passed
-[UI_LOCK_REPORT] /Users/Mace/Codex-Orka/.worktrees/wt-ORKA-ltq-clip-retention/test-results/ui-lock/2026-10-07T08-50-00-240Z/ui-lock-report.json
+[UI_LOCK_REPORT] /Users/Mace/Codex-Orka/.worktrees/wt-ORKA-ltq-clip-retention/test-results/ui-lock/2026-10-07T09-20-00-323Z/ui-lock-report.json

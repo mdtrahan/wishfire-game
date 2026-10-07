@@ -91,7 +91,8 @@ export function createActorPuppetPresentation({ loadClip }) {
       }
       const ready = slot.ready;
       const clip = ready?.clip;
-      const frame = ready?.facing === facing && clip && sampleActorClip(clip, actorClipAgeMs(actor, ready.state, clip, now));
+      const sameLifeState = (ready?.state === 'ko') === (Number(actor.hp) <= 0);
+      const frame = sameLifeState && ready?.facing === facing && clip && sampleActorClip(clip, actorClipAgeMs(actor, ready.state, clip, now));
       return frame ? { frame, clip, state: ready.state, facing } : null;
     },
     retention() { return { displayedActors: actors.size, ...loadClip.retention?.() }; },

@@ -1,0 +1,8 @@
+{
+  "semanticResetCheckpoint": "5d674b0c76d40305dc6c0317dbcf8e53606c3784",
+  "sameSimulationTime": 2,
+  "cachedKoBeforeRestore": true,
+  "coldIdleAfterRestoreReturnsNull": true,
+  "resolvedIdleAfterRestore": true,
+  "status": "PASS"
+}
