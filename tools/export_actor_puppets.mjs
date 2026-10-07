@@ -10,6 +10,7 @@ const param = (name,value) => `<param name="${name}">${value}</param>`;
 const guid = text => createHash('md5').update(text).digest('hex').toUpperCase();
 const frames = values => `<animated type="angle">${values.map(([time,value])=>`<waypoint time="${time}s" before="linear" after="linear"><angle value="${value}"/></waypoint>`).join('')}</animated>`;
 const curves={idle:[0,0,0,0,0],walk:[-18,18,-18,18,-18],attack:[0,-35,48,12,0],cast:[0,-40,-55,-40,0],hit:[0,14,-8,0,0],defeated:[0,20,65,80,80],spawn:[0,-8,5,0,0]};
+const animatedVector = values => `<animated type="vector">${values.map(([time,x,y])=>`<waypoint time="${time}s" before="linear" after="linear">${vector(x,y)}</waypoint>`).join('')}</animated>`;
 const duration={idle:1,walk:1,attack:.75,cast:1,hit:.5,defeated:1,spawn:.75};
 const layout={
  head:{x:128,y:134,w:110,h:116,pivot:.86},hair_back:{x:120,y:66,w:93,h:132},coat_back:{x:126,y:150,w:103,h:101},
@@ -27,13 +28,38 @@ for(const actor of ['fara','gobloc']) {
  const names=Object.keys(parts).filter(name=>layout[name]);
  for(const state of Object.keys(curves))for(const facing of ['left','right']){
   const d=duration[state];const id=guid(`${actor}/${state}`);const rootId=guid(`${id}/root`);const bodyId=guid(`${id}/body`);
-  const bones=names.map(name=>{const p=layout[name], parent=p.parent?layout[p.parent]:{x:128,y:144};const parentId=p.parent?guid(`${id}/${p.parent}`):bodyId;let curve=curves[state];
+  const directional=['attack','cast','hit'].includes(state);
+  const sign=actor==='fara'?1:-1, lead=actor==='fara'?'near':'far';
+  const bones=names.map(name=>{const p=layout[name], parentName=p.parent||(directional&&name==='hair_back'?'head':null), parent=parentName?layout[parentName]:{x:128,y:144};const parentId=parentName?guid(`${id}/${parentName}`):bodyId;let curve=curves[state];
    let motion=[0,0,0,0,0];if(name.includes('upper_arm') && state!=='defeated') motion=curve.map(a=>a*(name.endsWith('far')?-1:1));if(name.startsWith('thigh')&&state==='walk')motion=curve.map(a=>a*(name.endsWith('far')?1:-1));if(name.startsWith('shin')&&state==='walk')motion=curve.map(a=>Math.abs(a)*.4);if(name==='head'&&state==='idle')motion=[0,2,0,-2,0];
-   return `<bone type="bone_object" guid="${guid(`${id}/${name}`)}"><name><string>${name}</string></name><parent><bone_valuenode type="bone_object" guid="${parentId}"/></parent><origin>${vector(p.x-parent.x,parent.y-p.y)}</origin><angle>${frames(motion.map((v,i)=>[d*i/4,v]))}</angle><scalelx><real value="1"/></scalelx><scalex><real value="1"/></scalex><width><real value=".1"/></width><tipwidth><real value=".1"/></tipwidth><bone_depth><real value="0"/></bone_depth><length><real value="1"/></length></bone>`;}).join('');
-  const bodyAngle=state==='defeated'?curves[state]:state==='hit'?curves.hit.map(a=>a*.4):[0,0,0,0,0];
+   let dx=[0,0,0,0,0],dy=[0,0,0,0,0];
+   if(directional){
+    const isLead=name.endsWith(lead);
+    if(state==='attack'){
+     if(name.startsWith('upper_arm')) motion=(isLead?[0,-35,65,40,0]:[0,25,10,12,0]).map(a=>a*sign);
+     if(name.startsWith('forearm')) motion=(isLead?[0,-70,25,15,0]:[0,-55,-50,-25,0]).map(a=>a*sign);
+     if(name==='torso'){motion=[0,sign*5,-sign*8,-sign*3,0];dx=[0,-sign*3,sign*8,sign*4,0];dy=[0,-3,0,0,0];}
+     if(name==='head'){motion=[0,sign*6,-sign*8,-sign*3,0];dx=[0,-sign*3,sign*12,sign*5,0];dy=[0,-6,0,0,0];}
+    }
+    if(state==='cast'){
+     if(name.startsWith('upper_arm')) motion=(isLead?[0,-35,112,90,0]:[0,30,-110,-90,0]).map(a=>a*sign);
+     if(name.startsWith('forearm')) motion=(isLead?[0,-90,-15,0,0]:[0,55,0,5,0]).map(a=>a*sign);
+     if(name==='torso'){motion=[0,sign*8,-sign*6,-sign*3,0];dx=[0,-sign*3,sign*5,sign*2,0];dy=[0,-5,4,0,0];}
+     if(name==='head'){motion=[0,sign*8,-sign*6,-sign*2,0];dx=[0,-sign*4,sign*7,sign*2,0];dy=[0,-5,4,0,0];}
+    }
+    if(state==='hit'){
+     if(name.startsWith('upper_arm')) motion=(isLead?[0,-20,-30,-15,0]:[0,-80,-60,-20,0]).map(a=>a*sign);
+     if(name.startsWith('forearm')) motion=(isLead?[0,-60,-50,-20,0]:[0,30,35,10,0]).map(a=>a*sign);
+     if(name==='torso'){motion=[0,sign*12,sign*10,sign*4,0];dx=[0,-sign*8,-sign*10,-sign*4,0];dy=[0,0,0,0,0];}
+     if(name==='head'){motion=[0,sign*25,sign*20,sign*8,0];dx=[0,-sign*14,-sign*20,-sign*8,0];dy=[0,2,0,0,0];}
+    }
+   }
+   const origin=animatedVector(dx.map((x,i)=>[d*i/4,p.x-parent.x+x,parent.y-p.y+dy[i]]));
+   return `<bone type="bone_object" guid="${guid(`${id}/${name}`)}"><name><string>${name}</string></name><parent><bone_valuenode type="bone_object" guid="${parentId}"/></parent><origin>${directional?origin:vector(p.x-parent.x,parent.y-p.y)}</origin><angle>${frames(motion.map((v,i)=>[d*i/4,v]))}</angle><scalelx><real value="1"/></scalelx><scalex><real value="1"/></scalex><width><real value=".1"/></width><tipwidth><real value=".1"/></tipwidth><bone_depth><real value="0"/></bone_depth><length><real value="1"/></length></bone>`;}).join('');
+  const bodyAngle=state==='defeated'?curves[state]:[0,0,0,0,0];
   const boneBody=`<bone type="bone_object" guid="${bodyId}"><name><string>body</string></name><parent><bone_valuenode type="bone_object" guid="${rootId}"/></parent><origin>${state==='defeated'?`<animated type="vector">${[112,105,82,67,67].map((y,i)=>`<waypoint time="${d*i/4}s" before="linear" after="linear">${vector(128,y)}</waypoint>`).join('')}</animated>`:vector(128,112)}</origin><angle>${frames(bodyAngle.map((v,i)=>[d*i/4,v]))}</angle><scalelx><real value="1"/></scalelx><scalex><real value="1"/></scalex><width><real value=".1"/></width><tipwidth><real value=".1"/></tipwidth><bone_depth><real value="0"/></bone_depth><length><real value="1"/></length></bone>`;
   const order=['head','torso','pelvis','upper_arm_near','forearm_near','hand_near','shin_boot_near','thigh_near','upper_arm_far','forearm_far','hand_far','shin_boot_far','thigh_far','hair_back','coat_back'];
-  if (state==='cast') { order.splice(order.indexOf('forearm_near'),1); order.splice(order.indexOf('hand_near'),1); order.splice(1,0,'forearm_near','hand_near'); }
+  if (directional) { for(const name of [`forearm_${lead}`,`hand_${lead}`])order.splice(order.indexOf(name),1);order.splice(1,0,`forearm_${lead}`,`hand_${lead}`); }
   const layers=order.filter(n=>parts[n]).reverse().map(name=>{const p=layout[name];return `<layer type="group" version="0.2" desc="${name}">${param('amount','<real value="1"/>')}${param('blend_method','<integer value="0"/>')}${param('origin',vector(0,0))}${param('transformation',`<bone_link type="transformation"><bone><bone_valuenode type="bone_object" guid="${guid(`${id}/${name}`)}"/></bone><base_value><composite type="transformation"><offset>${vector(0,0)}</offset><angle><angle value="0"/></angle><skew_angle><angle value="0"/></skew_angle><scale>${vector(1,1)}</scale></composite></base_value><translate><bool value="true"/></translate><rotate><bool value="true"/></rotate><skew><bool value="true"/></skew><scale_x><bool value="true"/></scale_x><scale_y><bool value="true"/></scale_y></bone_link>`)}${param('canvas',`<canvas><layer type="import" version="0.1" desc="${name}.png">${param('amount','<real value="1"/>')}${param('blend_method','<integer value="0"/>')}${param('tl',vector(-p.w/2,p.h*(p.pivot??.12)))}${param('br',vector(p.w/2,-p.h*(1-(p.pivot??.12))))}${param('filename',`<string>${name}.png</string>`)}</layer></canvas>`)}</layer>`;}).join('');
   const mirror=facing!==actorManifest.sourceFacing;const transformation=`<composite type="transformation"><offset>${vector(mirror?256:0,0)}</offset><angle><angle value="0"/></angle><skew_angle><angle value="0"/></skew_angle><scale>${vector(mirror?-1:1,1)}</scale></composite>`;
   const skeleton=`<layer type="skeleton" active="true" exclude_from_rendering="true" version="0.1" desc="editable bones">${param('name','<string>actor skeleton</string>')}${param('bones',`<static_list type="bone_object">${[bodyId,...names.map(name=>guid(`${id}/${name}`))].map(boneId=>`<entry><bone type="bone_object" guid="${boneId}"/></entry>`).join('')}</static_list>`)}</layer>`;

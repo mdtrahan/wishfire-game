@@ -62,10 +62,38 @@
 <bone_valuenode type="bone_object" guid="25E733EA4AE7DC12DF3D677062B34654"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>0</x>
 <y>10</y>
 </vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>-4</x>
+<y>5</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>7</x>
+<y>14</y>
+</vector>
+</waypoint>
+<waypoint time="0.75s" before="linear" after="linear">
+<vector>
+<x>2</x>
+<y>10</y>
+</vector>
+</waypoint>
+<waypoint time="1s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>10</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -73,13 +101,13 @@
 <angle value="0"/>
 </waypoint>
 <waypoint time="0.25s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="8"/>
 </waypoint>
 <waypoint time="0.5s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="-6"/>
 </waypoint>
 <waypoint time="0.75s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="-2"/>
 </waypoint>
 <waypoint time="1s" before="linear" after="linear">
 <angle value="0"/>
@@ -110,13 +138,41 @@
 <string>hair_back</string>
 </name>
 <parent>
-<bone_valuenode type="bone_object" guid="25E733EA4AE7DC12DF3D677062B34654"/>
+<bone_valuenode type="bone_object" guid="F3979D8C31B5B6E5FC7A968B3E4E4637"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>-8</x>
-<y>78</y>
+<y>68</y>
 </vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>-8</x>
+<y>68</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>-8</x>
+<y>68</y>
+</vector>
+</waypoint>
+<waypoint time="0.75s" before="linear" after="linear">
+<vector>
+<x>-8</x>
+<y>68</y>
+</vector>
+</waypoint>
+<waypoint time="1s" before="linear" after="linear">
+<vector>
+<x>-8</x>
+<y>68</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -164,10 +220,38 @@
 <bone_valuenode type="bone_object" guid="25E733EA4AE7DC12DF3D677062B34654"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>0</x>
 <y>20</y>
 </vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>-3</x>
+<y>15</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>5</x>
+<y>24</y>
+</vector>
+</waypoint>
+<waypoint time="0.75s" before="linear" after="linear">
+<vector>
+<x>2</x>
+<y>20</y>
+</vector>
+</waypoint>
+<waypoint time="1s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>20</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -175,13 +259,13 @@
 <angle value="0"/>
 </waypoint>
 <waypoint time="0.25s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="8"/>
 </waypoint>
 <waypoint time="0.5s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="-6"/>
 </waypoint>
 <waypoint time="0.75s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="-3"/>
 </waypoint>
 <waypoint time="1s" before="linear" after="linear">
 <angle value="0"/>
@@ -215,10 +299,38 @@
 <bone_valuenode type="bone_object" guid="25E733EA4AE7DC12DF3D677062B34654"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>0</x>
 <y>-30</y>
 </vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>-30</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>-30</y>
+</vector>
+</waypoint>
+<waypoint time="0.75s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>-30</y>
+</vector>
+</waypoint>
+<waypoint time="1s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>-30</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -266,10 +378,38 @@
 <bone_valuenode type="bone_object" guid="25E733EA4AE7DC12DF3D677062B34654"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>-38</x>
 <y>12</y>
 </vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>-38</x>
+<y>12</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>-38</x>
+<y>12</y>
+</vector>
+</waypoint>
+<waypoint time="0.75s" before="linear" after="linear">
+<vector>
+<x>-38</x>
+<y>12</y>
+</vector>
+</waypoint>
+<waypoint time="1s" before="linear" after="linear">
+<vector>
+<x>-38</x>
+<y>12</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -277,13 +417,13 @@
 <angle value="0"/>
 </waypoint>
 <waypoint time="0.25s" before="linear" after="linear">
-<angle value="40"/>
+<angle value="30"/>
 </waypoint>
 <waypoint time="0.5s" before="linear" after="linear">
-<angle value="55"/>
+<angle value="-110"/>
 </waypoint>
 <waypoint time="0.75s" before="linear" after="linear">
-<angle value="40"/>
+<angle value="-90"/>
 </waypoint>
 <waypoint time="1s" before="linear" after="linear">
 <angle value="0"/>
@@ -317,10 +457,38 @@
 <bone_valuenode type="bone_object" guid="289EBDDDAA4ECF6D675D45EFABE234A3"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>-1</x>
 <y>-31</y>
 </vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>-1</x>
+<y>-31</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>-1</x>
+<y>-31</y>
+</vector>
+</waypoint>
+<waypoint time="0.75s" before="linear" after="linear">
+<vector>
+<x>-1</x>
+<y>-31</y>
+</vector>
+</waypoint>
+<waypoint time="1s" before="linear" after="linear">
+<vector>
+<x>-1</x>
+<y>-31</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -328,13 +496,13 @@
 <angle value="0"/>
 </waypoint>
 <waypoint time="0.25s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="55"/>
 </waypoint>
 <waypoint time="0.5s" before="linear" after="linear">
 <angle value="0"/>
 </waypoint>
 <waypoint time="0.75s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="5"/>
 </waypoint>
 <waypoint time="1s" before="linear" after="linear">
 <angle value="0"/>
@@ -368,10 +536,38 @@
 <bone_valuenode type="bone_object" guid="DFCED85800A6FF78274BD02523AE0F7C"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>-1</x>
 <y>-25</y>
 </vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>-1</x>
+<y>-25</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>-1</x>
+<y>-25</y>
+</vector>
+</waypoint>
+<waypoint time="0.75s" before="linear" after="linear">
+<vector>
+<x>-1</x>
+<y>-25</y>
+</vector>
+</waypoint>
+<waypoint time="1s" before="linear" after="linear">
+<vector>
+<x>-1</x>
+<y>-25</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -419,10 +615,38 @@
 <bone_valuenode type="bone_object" guid="25E733EA4AE7DC12DF3D677062B34654"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>41</x>
 <y>10</y>
 </vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>41</x>
+<y>10</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>41</x>
+<y>10</y>
+</vector>
+</waypoint>
+<waypoint time="0.75s" before="linear" after="linear">
+<vector>
+<x>41</x>
+<y>10</y>
+</vector>
+</waypoint>
+<waypoint time="1s" before="linear" after="linear">
+<vector>
+<x>41</x>
+<y>10</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -430,13 +654,13 @@
 <angle value="0"/>
 </waypoint>
 <waypoint time="0.25s" before="linear" after="linear">
-<angle value="-40"/>
+<angle value="-35"/>
 </waypoint>
 <waypoint time="0.5s" before="linear" after="linear">
-<angle value="-55"/>
+<angle value="112"/>
 </waypoint>
 <waypoint time="0.75s" before="linear" after="linear">
-<angle value="-40"/>
+<angle value="90"/>
 </waypoint>
 <waypoint time="1s" before="linear" after="linear">
 <angle value="0"/>
@@ -470,10 +694,38 @@
 <bone_valuenode type="bone_object" guid="4B367B31E1F046D9D5E10123FD6BC543"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>3</x>
 <y>-31</y>
 </vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>3</x>
+<y>-31</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>3</x>
+<y>-31</y>
+</vector>
+</waypoint>
+<waypoint time="0.75s" before="linear" after="linear">
+<vector>
+<x>3</x>
+<y>-31</y>
+</vector>
+</waypoint>
+<waypoint time="1s" before="linear" after="linear">
+<vector>
+<x>3</x>
+<y>-31</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -481,10 +733,10 @@
 <angle value="0"/>
 </waypoint>
 <waypoint time="0.25s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="-90"/>
 </waypoint>
 <waypoint time="0.5s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="-15"/>
 </waypoint>
 <waypoint time="0.75s" before="linear" after="linear">
 <angle value="0"/>
@@ -521,10 +773,38 @@
 <bone_valuenode type="bone_object" guid="A5F746932920F1BF334F0A5C91424ECB"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>2</x>
 <y>-25</y>
 </vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>2</x>
+<y>-25</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>2</x>
+<y>-25</y>
+</vector>
+</waypoint>
+<waypoint time="0.75s" before="linear" after="linear">
+<vector>
+<x>2</x>
+<y>-25</y>
+</vector>
+</waypoint>
+<waypoint time="1s" before="linear" after="linear">
+<vector>
+<x>2</x>
+<y>-25</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -572,10 +852,38 @@
 <bone_valuenode type="bone_object" guid="25E733EA4AE7DC12DF3D677062B34654"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>-19</x>
 <y>-46</y>
 </vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>-19</x>
+<y>-46</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>-19</x>
+<y>-46</y>
+</vector>
+</waypoint>
+<waypoint time="0.75s" before="linear" after="linear">
+<vector>
+<x>-19</x>
+<y>-46</y>
+</vector>
+</waypoint>
+<waypoint time="1s" before="linear" after="linear">
+<vector>
+<x>-19</x>
+<y>-46</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -623,10 +931,38 @@
 <bone_valuenode type="bone_object" guid="8AFC7DC8A956580B7D1697B49B4754D7"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>1</x>
 <y>-24</y>
 </vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>1</x>
+<y>-24</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>1</x>
+<y>-24</y>
+</vector>
+</waypoint>
+<waypoint time="0.75s" before="linear" after="linear">
+<vector>
+<x>1</x>
+<y>-24</y>
+</vector>
+</waypoint>
+<waypoint time="1s" before="linear" after="linear">
+<vector>
+<x>1</x>
+<y>-24</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -674,10 +1010,38 @@
 <bone_valuenode type="bone_object" guid="25E733EA4AE7DC12DF3D677062B34654"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>20</x>
 <y>-46</y>
 </vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>20</x>
+<y>-46</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>20</x>
+<y>-46</y>
+</vector>
+</waypoint>
+<waypoint time="0.75s" before="linear" after="linear">
+<vector>
+<x>20</x>
+<y>-46</y>
+</vector>
+</waypoint>
+<waypoint time="1s" before="linear" after="linear">
+<vector>
+<x>20</x>
+<y>-46</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -725,10 +1089,38 @@
 <bone_valuenode type="bone_object" guid="44A317E8D4E07D5EA648FCAE6DE74997"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>0</x>
 <y>-24</y>
 </vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>-24</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>-24</y>
+</vector>
+</waypoint>
+<waypoint time="0.75s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>-24</y>
+</vector>
+</waypoint>
+<waypoint time="1s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>-24</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">

@@ -22,10 +22,10 @@
 <angle value="0"/>
 </waypoint>
 <waypoint time="0.125s" before="linear" after="linear">
-<angle value="5.6000000000000005"/>
+<angle value="0"/>
 </waypoint>
 <waypoint time="0.25s" before="linear" after="linear">
-<angle value="-3.2"/>
+<angle value="0"/>
 </waypoint>
 <waypoint time="0.375s" before="linear" after="linear">
 <angle value="0"/>
@@ -62,10 +62,38 @@
 <bone_valuenode type="bone_object" guid="A9427133C6851A0DDBB97F0C2EB0D04A"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>0</x>
 <y>10</y>
 </vector>
+</waypoint>
+<waypoint time="0.125s" before="linear" after="linear">
+<vector>
+<x>14</x>
+<y>12</y>
+</vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>20</x>
+<y>10</y>
+</vector>
+</waypoint>
+<waypoint time="0.375s" before="linear" after="linear">
+<vector>
+<x>8</x>
+<y>10</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>10</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -73,13 +101,13 @@
 <angle value="0"/>
 </waypoint>
 <waypoint time="0.125s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="-25"/>
 </waypoint>
 <waypoint time="0.25s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="-20"/>
 </waypoint>
 <waypoint time="0.375s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="-8"/>
 </waypoint>
 <waypoint time="0.5s" before="linear" after="linear">
 <angle value="0"/>
@@ -113,10 +141,38 @@
 <bone_valuenode type="bone_object" guid="A9427133C6851A0DDBB97F0C2EB0D04A"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>-2</x>
 <y>-6</y>
 </vector>
+</waypoint>
+<waypoint time="0.125s" before="linear" after="linear">
+<vector>
+<x>-2</x>
+<y>-6</y>
+</vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>-2</x>
+<y>-6</y>
+</vector>
+</waypoint>
+<waypoint time="0.375s" before="linear" after="linear">
+<vector>
+<x>-2</x>
+<y>-6</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>-2</x>
+<y>-6</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -164,10 +220,38 @@
 <bone_valuenode type="bone_object" guid="A9427133C6851A0DDBB97F0C2EB0D04A"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>0</x>
 <y>20</y>
 </vector>
+</waypoint>
+<waypoint time="0.125s" before="linear" after="linear">
+<vector>
+<x>8</x>
+<y>20</y>
+</vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>10</x>
+<y>20</y>
+</vector>
+</waypoint>
+<waypoint time="0.375s" before="linear" after="linear">
+<vector>
+<x>4</x>
+<y>20</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>20</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -175,13 +259,13 @@
 <angle value="0"/>
 </waypoint>
 <waypoint time="0.125s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="-12"/>
 </waypoint>
 <waypoint time="0.25s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="-10"/>
 </waypoint>
 <waypoint time="0.375s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="-4"/>
 </waypoint>
 <waypoint time="0.5s" before="linear" after="linear">
 <angle value="0"/>
@@ -215,10 +299,38 @@
 <bone_valuenode type="bone_object" guid="A9427133C6851A0DDBB97F0C2EB0D04A"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>0</x>
 <y>-30</y>
 </vector>
+</waypoint>
+<waypoint time="0.125s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>-30</y>
+</vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>-30</y>
+</vector>
+</waypoint>
+<waypoint time="0.375s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>-30</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>-30</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -266,10 +378,38 @@
 <bone_valuenode type="bone_object" guid="A9427133C6851A0DDBB97F0C2EB0D04A"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>-38</x>
 <y>12</y>
 </vector>
+</waypoint>
+<waypoint time="0.125s" before="linear" after="linear">
+<vector>
+<x>-38</x>
+<y>12</y>
+</vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>-38</x>
+<y>12</y>
+</vector>
+</waypoint>
+<waypoint time="0.375s" before="linear" after="linear">
+<vector>
+<x>-38</x>
+<y>12</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>-38</x>
+<y>12</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -277,13 +417,13 @@
 <angle value="0"/>
 </waypoint>
 <waypoint time="0.125s" before="linear" after="linear">
-<angle value="-14"/>
+<angle value="20"/>
 </waypoint>
 <waypoint time="0.25s" before="linear" after="linear">
-<angle value="8"/>
+<angle value="30"/>
 </waypoint>
 <waypoint time="0.375s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="15"/>
 </waypoint>
 <waypoint time="0.5s" before="linear" after="linear">
 <angle value="0"/>
@@ -317,10 +457,38 @@
 <bone_valuenode type="bone_object" guid="C5DEFF138469BA1B4225FDF68BB91678"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>-1</x>
 <y>-31</y>
 </vector>
+</waypoint>
+<waypoint time="0.125s" before="linear" after="linear">
+<vector>
+<x>-1</x>
+<y>-31</y>
+</vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>-1</x>
+<y>-31</y>
+</vector>
+</waypoint>
+<waypoint time="0.375s" before="linear" after="linear">
+<vector>
+<x>-1</x>
+<y>-31</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>-1</x>
+<y>-31</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -328,13 +496,13 @@
 <angle value="0"/>
 </waypoint>
 <waypoint time="0.125s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="60"/>
 </waypoint>
 <waypoint time="0.25s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="50"/>
 </waypoint>
 <waypoint time="0.375s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="20"/>
 </waypoint>
 <waypoint time="0.5s" before="linear" after="linear">
 <angle value="0"/>
@@ -368,10 +536,38 @@
 <bone_valuenode type="bone_object" guid="9EB036000B888FC05C5DFD1F5A85D809"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>-1</x>
 <y>-25</y>
 </vector>
+</waypoint>
+<waypoint time="0.125s" before="linear" after="linear">
+<vector>
+<x>-1</x>
+<y>-25</y>
+</vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>-1</x>
+<y>-25</y>
+</vector>
+</waypoint>
+<waypoint time="0.375s" before="linear" after="linear">
+<vector>
+<x>-1</x>
+<y>-25</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>-1</x>
+<y>-25</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -419,10 +615,38 @@
 <bone_valuenode type="bone_object" guid="A9427133C6851A0DDBB97F0C2EB0D04A"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>41</x>
 <y>10</y>
 </vector>
+</waypoint>
+<waypoint time="0.125s" before="linear" after="linear">
+<vector>
+<x>41</x>
+<y>10</y>
+</vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>41</x>
+<y>10</y>
+</vector>
+</waypoint>
+<waypoint time="0.375s" before="linear" after="linear">
+<vector>
+<x>41</x>
+<y>10</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>41</x>
+<y>10</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -430,13 +654,13 @@
 <angle value="0"/>
 </waypoint>
 <waypoint time="0.125s" before="linear" after="linear">
-<angle value="14"/>
+<angle value="80"/>
 </waypoint>
 <waypoint time="0.25s" before="linear" after="linear">
-<angle value="-8"/>
+<angle value="60"/>
 </waypoint>
 <waypoint time="0.375s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="20"/>
 </waypoint>
 <waypoint time="0.5s" before="linear" after="linear">
 <angle value="0"/>
@@ -470,10 +694,38 @@
 <bone_valuenode type="bone_object" guid="E241E4254FFC851AC4B6AF7424CA08AC"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>3</x>
 <y>-31</y>
 </vector>
+</waypoint>
+<waypoint time="0.125s" before="linear" after="linear">
+<vector>
+<x>3</x>
+<y>-31</y>
+</vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>3</x>
+<y>-31</y>
+</vector>
+</waypoint>
+<waypoint time="0.375s" before="linear" after="linear">
+<vector>
+<x>3</x>
+<y>-31</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>3</x>
+<y>-31</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -481,13 +733,13 @@
 <angle value="0"/>
 </waypoint>
 <waypoint time="0.125s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="-30"/>
 </waypoint>
 <waypoint time="0.25s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="-35"/>
 </waypoint>
 <waypoint time="0.375s" before="linear" after="linear">
-<angle value="0"/>
+<angle value="-10"/>
 </waypoint>
 <waypoint time="0.5s" before="linear" after="linear">
 <angle value="0"/>
@@ -521,10 +773,38 @@
 <bone_valuenode type="bone_object" guid="A9983EA571033F07A19381FEEF9706EB"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>2</x>
 <y>-25</y>
 </vector>
+</waypoint>
+<waypoint time="0.125s" before="linear" after="linear">
+<vector>
+<x>2</x>
+<y>-25</y>
+</vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>2</x>
+<y>-25</y>
+</vector>
+</waypoint>
+<waypoint time="0.375s" before="linear" after="linear">
+<vector>
+<x>2</x>
+<y>-25</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>2</x>
+<y>-25</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -572,10 +852,38 @@
 <bone_valuenode type="bone_object" guid="A9427133C6851A0DDBB97F0C2EB0D04A"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>-19</x>
 <y>-46</y>
 </vector>
+</waypoint>
+<waypoint time="0.125s" before="linear" after="linear">
+<vector>
+<x>-19</x>
+<y>-46</y>
+</vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>-19</x>
+<y>-46</y>
+</vector>
+</waypoint>
+<waypoint time="0.375s" before="linear" after="linear">
+<vector>
+<x>-19</x>
+<y>-46</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>-19</x>
+<y>-46</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -623,10 +931,38 @@
 <bone_valuenode type="bone_object" guid="32C0CB408515BBCD5B0CB9A1C3E0B50B"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>1</x>
 <y>-24</y>
 </vector>
+</waypoint>
+<waypoint time="0.125s" before="linear" after="linear">
+<vector>
+<x>1</x>
+<y>-24</y>
+</vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>1</x>
+<y>-24</y>
+</vector>
+</waypoint>
+<waypoint time="0.375s" before="linear" after="linear">
+<vector>
+<x>1</x>
+<y>-24</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>1</x>
+<y>-24</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -674,10 +1010,38 @@
 <bone_valuenode type="bone_object" guid="A9427133C6851A0DDBB97F0C2EB0D04A"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>20</x>
 <y>-46</y>
 </vector>
+</waypoint>
+<waypoint time="0.125s" before="linear" after="linear">
+<vector>
+<x>20</x>
+<y>-46</y>
+</vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>20</x>
+<y>-46</y>
+</vector>
+</waypoint>
+<waypoint time="0.375s" before="linear" after="linear">
+<vector>
+<x>20</x>
+<y>-46</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>20</x>
+<y>-46</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -725,10 +1089,38 @@
 <bone_valuenode type="bone_object" guid="1FE6944E69E4CB2110056C5B75446978"/>
 </parent>
 <origin>
+<animated type="vector">
+<waypoint time="0s" before="linear" after="linear">
 <vector>
 <x>0</x>
 <y>-24</y>
 </vector>
+</waypoint>
+<waypoint time="0.125s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>-24</y>
+</vector>
+</waypoint>
+<waypoint time="0.25s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>-24</y>
+</vector>
+</waypoint>
+<waypoint time="0.375s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>-24</y>
+</vector>
+</waypoint>
+<waypoint time="0.5s" before="linear" after="linear">
+<vector>
+<x>0</x>
+<y>-24</y>
+</vector>
+</waypoint>
+</animated>
 </origin>
 <angle>
 <animated type="angle">
@@ -1107,176 +1499,6 @@
 </param>
 <param name="filename">
 <string>shin_boot_far.png</string>
-</param>
-</layer>
-</canvas>
-</param>
-</layer>
-<layer type="group" version="0.2" desc="hand_far">
-<param name="amount">
-<real value="1"/>
-</param>
-<param name="blend_method">
-<integer value="0"/>
-</param>
-<param name="origin">
-<vector>
-<x>0</x>
-<y>0</y>
-</vector>
-</param>
-<param name="transformation">
-<bone_link type="transformation">
-<bone>
-<bone_valuenode type="bone_object" guid="C3439CF826F891A619BDB62C39678E70"/>
-</bone>
-<base_value>
-<composite type="transformation">
-<offset>
-<vector>
-<x>0</x>
-<y>0</y>
-</vector>
-</offset>
-<angle>
-<angle value="0"/>
-</angle>
-<skew_angle>
-<angle value="0"/>
-</skew_angle>
-<scale>
-<vector>
-<x>1</x>
-<y>1</y>
-</vector>
-</scale>
-</composite>
-</base_value>
-<translate>
-<bool value="true"/>
-</translate>
-<rotate>
-<bool value="true"/>
-</rotate>
-<skew>
-<bool value="true"/>
-</skew>
-<scale_x>
-<bool value="true"/>
-</scale_x>
-<scale_y>
-<bool value="true"/>
-</scale_y>
-</bone_link>
-</param>
-<param name="canvas">
-<canvas>
-<layer type="import" version="0.1" desc="hand_far.png">
-<param name="amount">
-<real value="1"/>
-</param>
-<param name="blend_method">
-<integer value="0"/>
-</param>
-<param name="tl">
-<vector>
-<x>-11.5</x>
-<y>3.96</y>
-</vector>
-</param>
-<param name="br">
-<vector>
-<x>11.5</x>
-<y>-29.04</y>
-</vector>
-</param>
-<param name="filename">
-<string>hand_far.png</string>
-</param>
-</layer>
-</canvas>
-</param>
-</layer>
-<layer type="group" version="0.2" desc="forearm_far">
-<param name="amount">
-<real value="1"/>
-</param>
-<param name="blend_method">
-<integer value="0"/>
-</param>
-<param name="origin">
-<vector>
-<x>0</x>
-<y>0</y>
-</vector>
-</param>
-<param name="transformation">
-<bone_link type="transformation">
-<bone>
-<bone_valuenode type="bone_object" guid="9EB036000B888FC05C5DFD1F5A85D809"/>
-</bone>
-<base_value>
-<composite type="transformation">
-<offset>
-<vector>
-<x>0</x>
-<y>0</y>
-</vector>
-</offset>
-<angle>
-<angle value="0"/>
-</angle>
-<skew_angle>
-<angle value="0"/>
-</skew_angle>
-<scale>
-<vector>
-<x>1</x>
-<y>1</y>
-</vector>
-</scale>
-</composite>
-</base_value>
-<translate>
-<bool value="true"/>
-</translate>
-<rotate>
-<bool value="true"/>
-</rotate>
-<skew>
-<bool value="true"/>
-</skew>
-<scale_x>
-<bool value="true"/>
-</scale_x>
-<scale_y>
-<bool value="true"/>
-</scale_y>
-</bone_link>
-</param>
-<param name="canvas">
-<canvas>
-<layer type="import" version="0.1" desc="forearm_far.png">
-<param name="amount">
-<real value="1"/>
-</param>
-<param name="blend_method">
-<integer value="0"/>
-</param>
-<param name="tl">
-<vector>
-<x>-12.5</x>
-<y>5.16</y>
-</vector>
-</param>
-<param name="br">
-<vector>
-<x>12.5</x>
-<y>-37.84</y>
-</vector>
-</param>
-<param name="filename">
-<string>forearm_far.png</string>
 </param>
 </layer>
 </canvas>
@@ -1957,6 +2179,176 @@
 </param>
 <param name="filename">
 <string>torso.png</string>
+</param>
+</layer>
+</canvas>
+</param>
+</layer>
+<layer type="group" version="0.2" desc="hand_far">
+<param name="amount">
+<real value="1"/>
+</param>
+<param name="blend_method">
+<integer value="0"/>
+</param>
+<param name="origin">
+<vector>
+<x>0</x>
+<y>0</y>
+</vector>
+</param>
+<param name="transformation">
+<bone_link type="transformation">
+<bone>
+<bone_valuenode type="bone_object" guid="C3439CF826F891A619BDB62C39678E70"/>
+</bone>
+<base_value>
+<composite type="transformation">
+<offset>
+<vector>
+<x>0</x>
+<y>0</y>
+</vector>
+</offset>
+<angle>
+<angle value="0"/>
+</angle>
+<skew_angle>
+<angle value="0"/>
+</skew_angle>
+<scale>
+<vector>
+<x>1</x>
+<y>1</y>
+</vector>
+</scale>
+</composite>
+</base_value>
+<translate>
+<bool value="true"/>
+</translate>
+<rotate>
+<bool value="true"/>
+</rotate>
+<skew>
+<bool value="true"/>
+</skew>
+<scale_x>
+<bool value="true"/>
+</scale_x>
+<scale_y>
+<bool value="true"/>
+</scale_y>
+</bone_link>
+</param>
+<param name="canvas">
+<canvas>
+<layer type="import" version="0.1" desc="hand_far.png">
+<param name="amount">
+<real value="1"/>
+</param>
+<param name="blend_method">
+<integer value="0"/>
+</param>
+<param name="tl">
+<vector>
+<x>-11.5</x>
+<y>3.96</y>
+</vector>
+</param>
+<param name="br">
+<vector>
+<x>11.5</x>
+<y>-29.04</y>
+</vector>
+</param>
+<param name="filename">
+<string>hand_far.png</string>
+</param>
+</layer>
+</canvas>
+</param>
+</layer>
+<layer type="group" version="0.2" desc="forearm_far">
+<param name="amount">
+<real value="1"/>
+</param>
+<param name="blend_method">
+<integer value="0"/>
+</param>
+<param name="origin">
+<vector>
+<x>0</x>
+<y>0</y>
+</vector>
+</param>
+<param name="transformation">
+<bone_link type="transformation">
+<bone>
+<bone_valuenode type="bone_object" guid="9EB036000B888FC05C5DFD1F5A85D809"/>
+</bone>
+<base_value>
+<composite type="transformation">
+<offset>
+<vector>
+<x>0</x>
+<y>0</y>
+</vector>
+</offset>
+<angle>
+<angle value="0"/>
+</angle>
+<skew_angle>
+<angle value="0"/>
+</skew_angle>
+<scale>
+<vector>
+<x>1</x>
+<y>1</y>
+</vector>
+</scale>
+</composite>
+</base_value>
+<translate>
+<bool value="true"/>
+</translate>
+<rotate>
+<bool value="true"/>
+</rotate>
+<skew>
+<bool value="true"/>
+</skew>
+<scale_x>
+<bool value="true"/>
+</scale_x>
+<scale_y>
+<bool value="true"/>
+</scale_y>
+</bone_link>
+</param>
+<param name="canvas">
+<canvas>
+<layer type="import" version="0.1" desc="forearm_far.png">
+<param name="amount">
+<real value="1"/>
+</param>
+<param name="blend_method">
+<integer value="0"/>
+</param>
+<param name="tl">
+<vector>
+<x>-12.5</x>
+<y>5.16</y>
+</vector>
+</param>
+<param name="br">
+<vector>
+<x>12.5</x>
+<y>-37.84</y>
+</vector>
+</param>
+<param name="filename">
+<string>forearm_far.png</string>
 </param>
 </layer>
 </canvas>
