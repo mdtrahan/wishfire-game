@@ -242,3 +242,5 @@
 - The generated render body must pass layoutScale into each injected DOM damage-number call; a scaled replacement elsewhere does not fix an unscaled injection.
 
 - Shrink scales only the enemy sprite to 70% around its existing center/feet; expiry restores its original size and never changes hitboxes or movement. Skill impact mappings share the authored realtime ID registry. Combat session reset restores clean temporary-HP baselines before creating the next encounter.
+
+- `actorClipPlayback.mjs` lazily loads explicit actor/state/facing PNG sequences and samples supplied simulation age. It never advances clocks or computes gameplay outcomes; unsupported facing/state returns null so integration can use its existing static art.

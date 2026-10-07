@@ -1,0 +1,1079 @@
+{
+  "version": 1,
+  "sourceTool": "Synfig 1.5.5",
+  "fps": 12,
+  "actors": {
+    "fara": {
+      "sourceFacing": "right",
+      "oppositeFacing": "mirrored-source; asymmetric costume reverses sides",
+      "clips": {
+        "idle": {
+          "left": {
+            "source": "fara/source/idle-left.sif",
+            "frames": [
+              "fara/frames/idle-left-000.png",
+              "fara/frames/idle-left-001.png",
+              "fara/frames/idle-left-002.png",
+              "fara/frames/idle-left-003.png",
+              "fara/frames/idle-left-004.png",
+              "fara/frames/idle-left-005.png",
+              "fara/frames/idle-left-006.png",
+              "fara/frames/idle-left-007.png",
+              "fara/frames/idle-left-008.png",
+              "fara/frames/idle-left-009.png",
+              "fara/frames/idle-left-010.png",
+              "fara/frames/idle-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "fara/source/idle-right.sif",
+            "frames": [
+              "fara/frames/idle-right-000.png",
+              "fara/frames/idle-right-001.png",
+              "fara/frames/idle-right-002.png",
+              "fara/frames/idle-right-003.png",
+              "fara/frames/idle-right-004.png",
+              "fara/frames/idle-right-005.png",
+              "fara/frames/idle-right-006.png",
+              "fara/frames/idle-right-007.png",
+              "fara/frames/idle-right-008.png",
+              "fara/frames/idle-right-009.png",
+              "fara/frames/idle-right-010.png",
+              "fara/frames/idle-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "walk": {
+          "left": {
+            "source": "fara/source/walk-left.sif",
+            "frames": [
+              "fara/frames/walk-left-000.png",
+              "fara/frames/walk-left-001.png",
+              "fara/frames/walk-left-002.png",
+              "fara/frames/walk-left-003.png",
+              "fara/frames/walk-left-004.png",
+              "fara/frames/walk-left-005.png",
+              "fara/frames/walk-left-006.png",
+              "fara/frames/walk-left-007.png",
+              "fara/frames/walk-left-008.png",
+              "fara/frames/walk-left-009.png",
+              "fara/frames/walk-left-010.png",
+              "fara/frames/walk-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "fara/source/walk-right.sif",
+            "frames": [
+              "fara/frames/walk-right-000.png",
+              "fara/frames/walk-right-001.png",
+              "fara/frames/walk-right-002.png",
+              "fara/frames/walk-right-003.png",
+              "fara/frames/walk-right-004.png",
+              "fara/frames/walk-right-005.png",
+              "fara/frames/walk-right-006.png",
+              "fara/frames/walk-right-007.png",
+              "fara/frames/walk-right-008.png",
+              "fara/frames/walk-right-009.png",
+              "fara/frames/walk-right-010.png",
+              "fara/frames/walk-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "basic": {
+          "left": {
+            "source": "fara/source/attack-left.sif",
+            "frames": [
+              "fara/frames/attack-left-000.png",
+              "fara/frames/attack-left-001.png",
+              "fara/frames/attack-left-002.png",
+              "fara/frames/attack-left-003.png",
+              "fara/frames/attack-left-004.png",
+              "fara/frames/attack-left-005.png",
+              "fara/frames/attack-left-006.png",
+              "fara/frames/attack-left-007.png",
+              "fara/frames/attack-left-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "impactTimeMs": 416.6666666666667,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "fara/source/attack-right.sif",
+            "frames": [
+              "fara/frames/attack-right-000.png",
+              "fara/frames/attack-right-001.png",
+              "fara/frames/attack-right-002.png",
+              "fara/frames/attack-right-003.png",
+              "fara/frames/attack-right-004.png",
+              "fara/frames/attack-right-005.png",
+              "fara/frames/attack-right-006.png",
+              "fara/frames/attack-right-007.png",
+              "fara/frames/attack-right-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "impactTimeMs": 416.6666666666667,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "cast": {
+          "left": {
+            "source": "fara/source/cast-left.sif",
+            "frames": [
+              "fara/frames/cast-left-000.png",
+              "fara/frames/cast-left-001.png",
+              "fara/frames/cast-left-002.png",
+              "fara/frames/cast-left-003.png",
+              "fara/frames/cast-left-004.png",
+              "fara/frames/cast-left-005.png",
+              "fara/frames/cast-left-006.png",
+              "fara/frames/cast-left-007.png",
+              "fara/frames/cast-left-008.png",
+              "fara/frames/cast-left-009.png",
+              "fara/frames/cast-left-010.png",
+              "fara/frames/cast-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "releaseTimeMs": 500,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "fara/source/cast-right.sif",
+            "frames": [
+              "fara/frames/cast-right-000.png",
+              "fara/frames/cast-right-001.png",
+              "fara/frames/cast-right-002.png",
+              "fara/frames/cast-right-003.png",
+              "fara/frames/cast-right-004.png",
+              "fara/frames/cast-right-005.png",
+              "fara/frames/cast-right-006.png",
+              "fara/frames/cast-right-007.png",
+              "fara/frames/cast-right-008.png",
+              "fara/frames/cast-right-009.png",
+              "fara/frames/cast-right-010.png",
+              "fara/frames/cast-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "releaseTimeMs": 500,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "hurt": {
+          "left": {
+            "source": "fara/source/hit-left.sif",
+            "frames": [
+              "fara/frames/hit-left-000.png",
+              "fara/frames/hit-left-001.png",
+              "fara/frames/hit-left-002.png",
+              "fara/frames/hit-left-003.png",
+              "fara/frames/hit-left-004.png",
+              "fara/frames/hit-left-005.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "fara/source/hit-right.sif",
+            "frames": [
+              "fara/frames/hit-right-000.png",
+              "fara/frames/hit-right-001.png",
+              "fara/frames/hit-right-002.png",
+              "fara/frames/hit-right-003.png",
+              "fara/frames/hit-right-004.png",
+              "fara/frames/hit-right-005.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "ko": {
+          "left": {
+            "source": "fara/source/defeated-left.sif",
+            "frames": [
+              "fara/frames/defeated-left-000.png",
+              "fara/frames/defeated-left-001.png",
+              "fara/frames/defeated-left-002.png",
+              "fara/frames/defeated-left-003.png",
+              "fara/frames/defeated-left-004.png",
+              "fara/frames/defeated-left-005.png",
+              "fara/frames/defeated-left-006.png",
+              "fara/frames/defeated-left-007.png",
+              "fara/frames/defeated-left-008.png",
+              "fara/frames/defeated-left-009.png",
+              "fara/frames/defeated-left-010.png",
+              "fara/frames/defeated-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "fara/source/defeated-right.sif",
+            "frames": [
+              "fara/frames/defeated-right-000.png",
+              "fara/frames/defeated-right-001.png",
+              "fara/frames/defeated-right-002.png",
+              "fara/frames/defeated-right-003.png",
+              "fara/frames/defeated-right-004.png",
+              "fara/frames/defeated-right-005.png",
+              "fara/frames/defeated-right-006.png",
+              "fara/frames/defeated-right-007.png",
+              "fara/frames/defeated-right-008.png",
+              "fara/frames/defeated-right-009.png",
+              "fara/frames/defeated-right-010.png",
+              "fara/frames/defeated-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "spawn": {
+          "left": {
+            "source": "fara/source/spawn-left.sif",
+            "frames": [
+              "fara/frames/spawn-left-000.png",
+              "fara/frames/spawn-left-001.png",
+              "fara/frames/spawn-left-002.png",
+              "fara/frames/spawn-left-003.png",
+              "fara/frames/spawn-left-004.png",
+              "fara/frames/spawn-left-005.png",
+              "fara/frames/spawn-left-006.png",
+              "fara/frames/spawn-left-007.png",
+              "fara/frames/spawn-left-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "fara/source/spawn-right.sif",
+            "frames": [
+              "fara/frames/spawn-right-000.png",
+              "fara/frames/spawn-right-001.png",
+              "fara/frames/spawn-right-002.png",
+              "fara/frames/spawn-right-003.png",
+              "fara/frames/spawn-right-004.png",
+              "fara/frames/spawn-right-005.png",
+              "fara/frames/spawn-right-006.png",
+              "fara/frames/spawn-right-007.png",
+              "fara/frames/spawn-right-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        }
+      }
+    },
+    "gobloc": {
+      "sourceFacing": "left",
+      "oppositeFacing": "mirrored-source; asymmetric costume reverses sides",
+      "clips": {
+        "idle": {
+          "left": {
+            "source": "gobloc/source/idle-left.sif",
+            "frames": [
+              "gobloc/frames/idle-left-000.png",
+              "gobloc/frames/idle-left-001.png",
+              "gobloc/frames/idle-left-002.png",
+              "gobloc/frames/idle-left-003.png",
+              "gobloc/frames/idle-left-004.png",
+              "gobloc/frames/idle-left-005.png",
+              "gobloc/frames/idle-left-006.png",
+              "gobloc/frames/idle-left-007.png",
+              "gobloc/frames/idle-left-008.png",
+              "gobloc/frames/idle-left-009.png",
+              "gobloc/frames/idle-left-010.png",
+              "gobloc/frames/idle-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "gobloc/source/idle-right.sif",
+            "frames": [
+              "gobloc/frames/idle-right-000.png",
+              "gobloc/frames/idle-right-001.png",
+              "gobloc/frames/idle-right-002.png",
+              "gobloc/frames/idle-right-003.png",
+              "gobloc/frames/idle-right-004.png",
+              "gobloc/frames/idle-right-005.png",
+              "gobloc/frames/idle-right-006.png",
+              "gobloc/frames/idle-right-007.png",
+              "gobloc/frames/idle-right-008.png",
+              "gobloc/frames/idle-right-009.png",
+              "gobloc/frames/idle-right-010.png",
+              "gobloc/frames/idle-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "walk": {
+          "left": {
+            "source": "gobloc/source/walk-left.sif",
+            "frames": [
+              "gobloc/frames/walk-left-000.png",
+              "gobloc/frames/walk-left-001.png",
+              "gobloc/frames/walk-left-002.png",
+              "gobloc/frames/walk-left-003.png",
+              "gobloc/frames/walk-left-004.png",
+              "gobloc/frames/walk-left-005.png",
+              "gobloc/frames/walk-left-006.png",
+              "gobloc/frames/walk-left-007.png",
+              "gobloc/frames/walk-left-008.png",
+              "gobloc/frames/walk-left-009.png",
+              "gobloc/frames/walk-left-010.png",
+              "gobloc/frames/walk-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "gobloc/source/walk-right.sif",
+            "frames": [
+              "gobloc/frames/walk-right-000.png",
+              "gobloc/frames/walk-right-001.png",
+              "gobloc/frames/walk-right-002.png",
+              "gobloc/frames/walk-right-003.png",
+              "gobloc/frames/walk-right-004.png",
+              "gobloc/frames/walk-right-005.png",
+              "gobloc/frames/walk-right-006.png",
+              "gobloc/frames/walk-right-007.png",
+              "gobloc/frames/walk-right-008.png",
+              "gobloc/frames/walk-right-009.png",
+              "gobloc/frames/walk-right-010.png",
+              "gobloc/frames/walk-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "basic": {
+          "left": {
+            "source": "gobloc/source/attack-left.sif",
+            "frames": [
+              "gobloc/frames/attack-left-000.png",
+              "gobloc/frames/attack-left-001.png",
+              "gobloc/frames/attack-left-002.png",
+              "gobloc/frames/attack-left-003.png",
+              "gobloc/frames/attack-left-004.png",
+              "gobloc/frames/attack-left-005.png",
+              "gobloc/frames/attack-left-006.png",
+              "gobloc/frames/attack-left-007.png",
+              "gobloc/frames/attack-left-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "impactTimeMs": 416.6666666666667,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "gobloc/source/attack-right.sif",
+            "frames": [
+              "gobloc/frames/attack-right-000.png",
+              "gobloc/frames/attack-right-001.png",
+              "gobloc/frames/attack-right-002.png",
+              "gobloc/frames/attack-right-003.png",
+              "gobloc/frames/attack-right-004.png",
+              "gobloc/frames/attack-right-005.png",
+              "gobloc/frames/attack-right-006.png",
+              "gobloc/frames/attack-right-007.png",
+              "gobloc/frames/attack-right-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "impactTimeMs": 416.6666666666667,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "cast": {
+          "left": {
+            "source": "gobloc/source/cast-left.sif",
+            "frames": [
+              "gobloc/frames/cast-left-000.png",
+              "gobloc/frames/cast-left-001.png",
+              "gobloc/frames/cast-left-002.png",
+              "gobloc/frames/cast-left-003.png",
+              "gobloc/frames/cast-left-004.png",
+              "gobloc/frames/cast-left-005.png",
+              "gobloc/frames/cast-left-006.png",
+              "gobloc/frames/cast-left-007.png",
+              "gobloc/frames/cast-left-008.png",
+              "gobloc/frames/cast-left-009.png",
+              "gobloc/frames/cast-left-010.png",
+              "gobloc/frames/cast-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "releaseTimeMs": 500,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "gobloc/source/cast-right.sif",
+            "frames": [
+              "gobloc/frames/cast-right-000.png",
+              "gobloc/frames/cast-right-001.png",
+              "gobloc/frames/cast-right-002.png",
+              "gobloc/frames/cast-right-003.png",
+              "gobloc/frames/cast-right-004.png",
+              "gobloc/frames/cast-right-005.png",
+              "gobloc/frames/cast-right-006.png",
+              "gobloc/frames/cast-right-007.png",
+              "gobloc/frames/cast-right-008.png",
+              "gobloc/frames/cast-right-009.png",
+              "gobloc/frames/cast-right-010.png",
+              "gobloc/frames/cast-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "releaseTimeMs": 500,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "hurt": {
+          "left": {
+            "source": "gobloc/source/hit-left.sif",
+            "frames": [
+              "gobloc/frames/hit-left-000.png",
+              "gobloc/frames/hit-left-001.png",
+              "gobloc/frames/hit-left-002.png",
+              "gobloc/frames/hit-left-003.png",
+              "gobloc/frames/hit-left-004.png",
+              "gobloc/frames/hit-left-005.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "gobloc/source/hit-right.sif",
+            "frames": [
+              "gobloc/frames/hit-right-000.png",
+              "gobloc/frames/hit-right-001.png",
+              "gobloc/frames/hit-right-002.png",
+              "gobloc/frames/hit-right-003.png",
+              "gobloc/frames/hit-right-004.png",
+              "gobloc/frames/hit-right-005.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "ko": {
+          "left": {
+            "source": "gobloc/source/defeated-left.sif",
+            "frames": [
+              "gobloc/frames/defeated-left-000.png",
+              "gobloc/frames/defeated-left-001.png",
+              "gobloc/frames/defeated-left-002.png",
+              "gobloc/frames/defeated-left-003.png",
+              "gobloc/frames/defeated-left-004.png",
+              "gobloc/frames/defeated-left-005.png",
+              "gobloc/frames/defeated-left-006.png",
+              "gobloc/frames/defeated-left-007.png",
+              "gobloc/frames/defeated-left-008.png",
+              "gobloc/frames/defeated-left-009.png",
+              "gobloc/frames/defeated-left-010.png",
+              "gobloc/frames/defeated-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "gobloc/source/defeated-right.sif",
+            "frames": [
+              "gobloc/frames/defeated-right-000.png",
+              "gobloc/frames/defeated-right-001.png",
+              "gobloc/frames/defeated-right-002.png",
+              "gobloc/frames/defeated-right-003.png",
+              "gobloc/frames/defeated-right-004.png",
+              "gobloc/frames/defeated-right-005.png",
+              "gobloc/frames/defeated-right-006.png",
+              "gobloc/frames/defeated-right-007.png",
+              "gobloc/frames/defeated-right-008.png",
+              "gobloc/frames/defeated-right-009.png",
+              "gobloc/frames/defeated-right-010.png",
+              "gobloc/frames/defeated-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "spawn": {
+          "left": {
+            "source": "gobloc/source/spawn-left.sif",
+            "frames": [
+              "gobloc/frames/spawn-left-000.png",
+              "gobloc/frames/spawn-left-001.png",
+              "gobloc/frames/spawn-left-002.png",
+              "gobloc/frames/spawn-left-003.png",
+              "gobloc/frames/spawn-left-004.png",
+              "gobloc/frames/spawn-left-005.png",
+              "gobloc/frames/spawn-left-006.png",
+              "gobloc/frames/spawn-left-007.png",
+              "gobloc/frames/spawn-left-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "gobloc/source/spawn-right.sif",
+            "frames": [
+              "gobloc/frames/spawn-right-000.png",
+              "gobloc/frames/spawn-right-001.png",
+              "gobloc/frames/spawn-right-002.png",
+              "gobloc/frames/spawn-right-003.png",
+              "gobloc/frames/spawn-right-004.png",
+              "gobloc/frames/spawn-right-005.png",
+              "gobloc/frames/spawn-right-006.png",
+              "gobloc/frames/spawn-right-007.png",
+              "gobloc/frames/spawn-right-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        }
+      }
+    }
+  }
+}

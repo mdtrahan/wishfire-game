@@ -94,3 +94,5 @@
 - Lamp odds keep equal numeric weight across Current/Next and reserve 40% of table width for quality names; three-decimal percentages must fit each cell on compact phones. The odds viewport may scroll vertically while purchase controls remain visible.
 
 - Construction replaces the stage/flame card with a centered tabular countdown. SPD UP ALL uses the blue alternate button state below it; zero tickets disables it. Keep the card and countdown centered at compact and reference widths.
+
+- `puppets/` holds the Fara/Gobloc layered source pilot and Synfig-authored clips. Preserve original static hero/enemy sprites. Native bone sources export transparent PNG frames; runtime metadata owns presentation cadence and foot origins only. Opposite facing uses documented mirrored source until authored coverage replaces it.
