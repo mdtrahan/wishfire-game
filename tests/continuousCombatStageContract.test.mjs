@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createCombatCameraProjection, deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldVerticalBounds } from '../src/core/combatOrientation.mjs';
+import { advanceContinuousCombatArena } from '../web-runner/src/core/arenaCombat.mjs';
 import {
   CONTINUOUS_COMBAT_PACK_CP_STEP,
   CONTINUOUS_COMBAT_PACK_INTERVAL_SEC,
@@ -211,15 +212,19 @@ test('boss access survives defeat and retries immediately without normal kills',
   assert.equal(entities.filter(a=>a.kind==='enemy').length,1);
 });
 
-test('stream packs spawn across the four-screen world in deterministic sectors', () => {
+test('stream packs distribute deterministically across A, B, and C in the three-screen world', () => {
   const globals = { EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 }, EnemySize: 40 };
-  const enemies = [0, 1, 2].map(sectorIndex => activateContinuousCombatSpawnedEnemy(
+  const enemies = [0, 1, 2, 3, 4, 5].map(sectorIndex => activateContinuousCombatSpawnedEnemy(
     globals, { kind: 'enemy', hp: 10 }, { lane: 1, rank: 0, packIndex: 0, sectorIndex },
   ));
-  assert.deepEqual(enemies.map(enemy => enemy.streamState), ['roaming', 'roaming', 'roaming']);
-  assert.deepEqual(enemies.map(enemy => enemy.streamSectorIndex), [0, 1, 2]);
+  assert.deepEqual(enemies.map(enemy => enemy.streamState), Array(6).fill('roaming'));
+  assert.deepEqual(enemies.map(enemy => enemy.streamSectorIndex), [0, 1, 2, 3, 4, 5]);
   assert.ok(enemies[0].x < enemies[1].x && enemies[1].x < enemies[2].x);
-  assert.ok(enemies[2].x <= 2880);
+  assert.ok(enemies.every(enemy => enemy.x >= 0 && enemy.x <= 2160));
+  assert.deepEqual(enemies.reduce((counts, enemy) => {
+    counts[Math.min(2, Math.floor(enemy.x / 720))] += 1;
+    return counts;
+  }, [0, 0, 0]), [2, 2, 2]);
   const safeY = deriveCombatWorldVerticalBounds();
   assert.ok(enemies.every(enemy => enemy.y >= safeY.minY + 32 && enemy.y <= safeY.maxY - 32));
   assert.ok(enemies.every(enemy => enemy.streamEngageX === enemy.x));
@@ -250,11 +255,11 @@ test('Shield Slam and Return Gate move right within the attack boundary', () => 
   assert.equal(enemy.x, 300);
 });
 
-test('active arena displacement clamps against the world edge rather than the legacy viewport', () => {
-  const enemy = { uid: 90, kind: 'enemy', hp: 10, streamState: 'engaged', arenaEnabled: true, x: 2790, y: 280, footX: 2790, footY: 280 };
-  const source = { uid: 1, kind: 'hero', hp: 100, footX: 2735, footY: 280 };
-  assert.equal(pushContinuousCombatEnemy(enemy, 55, 0, source), 50);
-  assert.equal(enemy.footX, 2840);
+test('active arena displacement clamps against the three-screen world edge', () => {
+  const enemy = { uid: 90, kind: 'enemy', hp: 10, streamState: 'engaged', arenaEnabled: true, x: 2110, y: 280, footX: 2110, footY: 280 };
+  const source = { uid: 1, kind: 'hero', hp: 100, footX: 2055, footY: 280 };
+  assert.equal(pushContinuousCombatEnemy(enemy, 55, 0, source), 10);
+  assert.equal(enemy.footX, 2120);
   assert.equal(reverseContinuousCombatEnemy(enemy, 1, 1, source), true);
 });
 
@@ -612,18 +617,39 @@ test('heroes leave remote roaming packs dormant until local detection', () => {
   assert.equal(resumed, 0);
 });
 
-test('queryless production marks initial enemies as roaming and disables AF', () => {
+test('queryless production centers only the fresh continuous party in B and disables AF', () => {
   const globals = { EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 }, EnemySize: 40 };
   assert.equal(configureContinuousCombatProduction(globals, { productionPath: true }), true);
   assert.equal(globals.RealtimeHeroFocusTargetUID, 0);
+  const heroes = Array.from({ length: 4 }, (_, index) => ({ kind: 'hero', uid: index + 1, flow: 100, flowReady: true }));
   const entities = [
-    { kind: 'hero', uid: 1, flow: 100, flowReady: true },
+    ...heroes,
     { kind: 'enemy', uid: 2, hp: 20, slotIndex: 1 },
   ];
   assert.equal(finalizeContinuousCombatProduction(globals, entities), true);
-  assert.equal(entities[0].flow, 0);
-  assert.equal(entities[1].streamState, 'roaming');
+  assert.ok(heroes.every(hero => hero.flow === 0));
+  assert.equal(heroes.reduce((sum, hero) => sum + hero.footX, 0) / heroes.length, 1080);
+  assert.ok(heroes.every(hero => hero.footX >= 720 && hero.footX <= 1440));
+  assert.ok(Math.abs(Math.max(...heroes.map(hero => hero.footX)) - Math.min(...heroes.map(hero => hero.footX)) - 52.8) < 1e-9);
+  assert.equal(entities.at(-1).streamState, 'roaming');
   assert.equal(globals.ContinuousCombatStage.nextEmissionAt, 3);
+  advanceContinuousCombatArena({ globals, entities: heroes, seconds: 0 });
+  assert.ok(heroes.every(hero => Number.isFinite(hero.footY)), 'first arena tick completes finite world feet from the same fresh-entry fixture');
+  assert.equal(heroes.reduce((sum, hero) => sum + hero.footX, 0) / heroes.length, 1080);
+});
+
+test('production finalization preserves an already-positioned continuous party', () => {
+  const globals = {
+    ContinuousCombatStageLoop: 1,
+    ContinuousCombatStage: createContinuousCombatStageState(3),
+    time: 0,
+  };
+  const heroes = [
+    { kind: 'hero', uid: 1, footX: 880, footY: 250 },
+    { kind: 'hero', uid: 2, footX: 920, footY: 270 },
+  ];
+  assert.equal(finalizeContinuousCombatProduction(globals, heroes), true);
+  assert.deepEqual(heroes.map(hero => [hero.footX, hero.footY]), [[880, 250], [920, 270]]);
 });
 
 test('production traversal visits six sectors before wave clear advances the stage', () => {

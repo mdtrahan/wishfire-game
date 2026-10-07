@@ -3,7 +3,7 @@ export const COMBAT_ORIENTATION_RIGHT_WISE = 'right-wise';
 export const RIGHT_WISE_FORMATION_TRANSLATE_X = -40;
 export const COMBAT_ARENA_REFERENCE_WIDTH = 360;
 export const COMBAT_BATTLEFIELD_ZOOM = 0.5;
-export const COMBAT_ARENA_VISIBLE_SCREEN_WIDTHS = 4;
+export const COMBAT_ARENA_VISIBLE_SCREEN_WIDTHS = 3;
 export const HERO_BUFF_ICON_ROW_HEIGHT = 18;
 export const HERO_BUFF_ICON_ROW_GAP = 2;
 export const COMBAT_WORLD_SAFE_VIEWPORT_Y = Object.freeze({ top: 95, bottom: 478 });
@@ -24,6 +24,15 @@ export function deriveCombatWorldBounds(viewportWidth = COMBAT_ARENA_REFERENCE_W
   const visibleWorldWidth = Number.isFinite(width) && width > 0 && Number.isFinite(scale) && scale > 0 ? width / scale : COMBAT_ARENA_REFERENCE_WIDTH / COMBAT_BATTLEFIELD_ZOOM;
   const worldWidth = visibleWorldWidth * COMBAT_ARENA_VISIBLE_SCREEN_WIDTHS;
   return { minX: 0, maxX: worldWidth, heroMinX: 40, heroMaxX: worldWidth - 40, visibleWorldWidth, worldWidth, zoom: scale };
+}
+
+export function deriveCombatWorldStartFormation(heroCount = 4, viewportWidth = COMBAT_ARENA_REFERENCE_WIDTH, zoom = COMBAT_BATTLEFIELD_ZOOM) {
+  const count = Math.max(0, Math.floor(Number(heroCount) || 0));
+  const world = deriveCombatWorldBounds(viewportWidth, zoom);
+  const anchors = deriveCombatArenaBounds();
+  const halfSpreadX = (anchors.heroRightEdgeX - anchors.heroBackCenterX) * 0.8 / 2;
+  const x = Array.from({ length: count }, (_, index) => world.worldWidth / 2 + (index % 2 === 0 ? halfSpreadX : -halfSpreadX));
+  return { centerX: world.worldWidth / 2, halfSpreadX, worldWidth: world.worldWidth, heroX: x };
 }
 
 export function deriveCombatWorldVerticalBounds(viewportHeight = 640, zoom = COMBAT_BATTLEFIELD_ZOOM, {

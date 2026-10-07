@@ -1,6 +1,6 @@
 import { resetRealtimeSkillAttempt } from './realtimeSkillState.mjs';
 import { computeCombatPower } from './combatPower.mjs';
-import { deriveCombatArenaBounds, deriveCombatWorldBounds, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
+import { deriveCombatArenaBounds, deriveCombatWorldBounds, deriveCombatWorldStartFormation, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
 import { cleanseDebuffs } from './combatRules.mjs';
 import { saveHeroProgress } from './heroProgression.mjs';
 import { advanceContinuousCombatArena } from './arenaCombat.mjs';
@@ -231,12 +231,17 @@ export function finalizeContinuousCombatProduction(globals, entities = []) {
   globals.AstralFlowKoOrbPresentationPending = 0;
   globals.AstralFlowKoOrbPresentationActive = 0;
   const productionEnemies = (Array.isArray(entities) ? entities : []).filter(actor => actor?.kind === 'enemy');
+  const productionHeroes = (Array.isArray(entities) ? entities : []).filter(actor => actor?.kind === 'hero');
+  const startFormation = deriveCombatWorldStartFormation(productionHeroes.length);
   const packSize = Math.max(1, Math.ceil(productionEnemies.length / CONTINUOUS_COMBAT_PACKS_PER_WAVE));
   let enemyOrder = 0;
+  let heroOrder = 0;
   for (const actor of Array.isArray(entities) ? entities : []) {
     if (actor?.kind === 'hero') {
+      if (!Number.isFinite(Number(actor.footX))) actor.footX = startFormation.heroX[heroOrder];
       actor.flow = 0;
       actor.flowReady = false;
+      heroOrder += 1;
     } else if (actor?.kind === 'enemy') {
       const sectorIndex = Math.min(CONTINUOUS_COMBAT_PACKS_PER_WAVE - 1, Math.floor(enemyOrder / packSize));
       const entryOrder = enemyOrder % packSize;

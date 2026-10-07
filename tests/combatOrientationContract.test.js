@@ -22,19 +22,25 @@ test('combat orientation input is defensive and defaults left-wise', async () =>
   assert.equal(rules.readCombatOrientationFromSearch(''), 'left-wise');
 });
 
-test('combat camera presents four screens of world at half battlefield zoom', async () => {
+test('combat camera presents three screens of world at half battlefield zoom and centers fresh play in B', async () => {
   const rules = await loadRules();
   const bounds = rules.deriveCombatWorldBounds(360, 0.5);
   assert.equal(bounds.visibleWorldWidth, 720);
-  assert.equal(bounds.worldWidth, 2880);
+  assert.equal(bounds.worldWidth, 2160);
   const first = rules.createCombatCameraProjection({ viewportWidth: 360, worldWidth: bounds.worldWidth, zoom: 0.5, centerX: 0 });
   assert.equal(first.cameraX, 0);
   assert.equal(first.project(0, 272.5).x, 0);
-  const middle = rules.createCombatCameraProjection({ viewportWidth: 360, worldWidth: bounds.worldWidth, zoom: 0.5, centerX: 1440 });
-  assert.equal(middle.project(1440, 272.5).x, 180);
+  const start = rules.deriveCombatWorldStartFormation(4);
+  assert.equal(start.centerX, 1080);
+  assert.deepEqual(start.heroX, [1106.4, 1053.6, 1106.4, 1053.6]);
+  const middle = rules.createCombatCameraProjection({ viewportWidth: 360, worldWidth: bounds.worldWidth, zoom: 0.5, centerX: start.centerX });
+  assert.equal(middle.cameraX, 720);
+  assert.equal(middle.project(start.centerX, 272.5).x, 180);
+  assert.equal(middle.project(720, 272.5).x, 0);
+  assert.equal(middle.project(1440, 272.5).x, 360);
   assert.equal(middle.project(1440, 372.5).y, 322.5);
   const last = rules.createCombatCameraProjection({ viewportWidth: 360, worldWidth: bounds.worldWidth, zoom: 0.5, centerX: bounds.worldWidth });
-  assert.equal(last.cameraX, 2160);
+  assert.equal(last.cameraX, 1440);
   assert.equal(last.project(bounds.worldWidth, 272.5).x, 360);
 });
 
@@ -78,12 +84,12 @@ test('right-wise camera keeps hero footprints inside both world edges', async ()
   for (const x of [leftWiseFar, rightWiseNear]) assert.ok(x + heroRadiusPx <= 360);
 });
 
-test('wide world grid keeps numbered major lines inside the camera view while it pans', async () => {
+test('three-screen world grid keeps numbered major lines inside the camera view while it pans', async () => {
   const rules = await loadRules();
-  const grid = rules.deriveCombatReferenceGrid(2880, 640);
-  assert.equal(grid.centerX, 1440);
-  assert.equal(grid.vertical.at(-1).value, 2880);
-  const camera = rules.createCombatCameraProjection({ viewportWidth: 360, worldWidth: 2880, zoom: 0.5, centerX: 1000 });
+  const grid = rules.deriveCombatReferenceGrid(2160, 640);
+  assert.equal(grid.centerX, 1080);
+  assert.equal(grid.vertical.at(-1).value, 2160);
+  const camera = rules.createCombatCameraProjection({ viewportWidth: 360, worldWidth: 2160, zoom: 0.5, centerX: 1000 });
   const visibleMajorLabels = grid.vertical.filter(line => line.major)
     .map(line => ({ value: line.value, x: camera.project(line.value, 0).x }))
     .filter(line => line.x >= 0 && line.x <= 360);

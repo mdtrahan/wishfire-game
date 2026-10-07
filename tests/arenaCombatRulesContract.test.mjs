@@ -14,7 +14,7 @@ test('actor reach uses initialized feet and preserves delivery-specific range', 
 });
 
 test('arena advances both factions to contact with bounded semantic actor state', () => {
-  const hero = { uid: 1, kind: 'hero', hp: 100, maxHP: 100, attackType: 'melee' };
+  const hero = { uid: 1, kind: 'hero', hp: 100, maxHP: 100, attackType: 'melee', footX: 190, footY: 200 };
   const enemy = { uid: 2, kind: 'enemy', hp: 100, maxHP: 100, x: 290, y: 200, streamState: 'in_range', streamWalkSpeed: 40, streamDelivery: 'melee' };
   const entities = [hero, enemy];
   for (let index = 0; index < 70; index += 1) {
@@ -39,8 +39,8 @@ test('missing-feet party fallback tightens its authored horizontal spread by twe
   advanceContinuousCombatArena({ globals: {}, entities: heroes, seconds: 0 });
   const spread = Math.max(...heroes.map(hero => hero.footX)) - Math.min(...heroes.map(hero => hero.footX));
   const center = (Math.max(...heroes.map(hero => hero.footX)) + Math.min(...heroes.map(hero => hero.footX))) / 2;
-  assert.ok(Math.abs(spread - 52.8) < 1e-9, '66-unit startup offset is reduced to 52.8 around its original center');
-  assert.ok(Math.abs(center - 73) < 1e-9, 'the fallback formation center stays fixed');
+  assert.ok(Math.abs(spread - 52.8) < 1e-9, 'the tightened startup spread remains 52.8 units');
+  assert.ok(Math.abs(center - 1080) < 1e-9, 'fresh continuous combat starts in the center third');
 });
 
 test('straggler regroup begins at the tightened 144-unit squad leash', () => {
@@ -100,7 +100,7 @@ test('the squad detects one local pack together and leaves distant packs idle', 
   const enemies = [
     ...[0, 1, 2].map(index => ({ uid: 20 + index, kind: 'enemy', hp: 80, footX: 500 + index * 24, footY: 230 + index * 34, streamState: 'roaming', streamSectorIndex: 0 })),
     { uid: 30, kind: 'enemy', hp: 80, footX: 1440, footY: 272, streamState: 'roaming', streamSectorIndex: 1 },
-    { uid: 31, kind: 'enemy', hp: 80, footX: 2320, footY: 272, streamState: 'roaming', streamSectorIndex: 2 },
+    { uid: 31, kind: 'enemy', hp: 80, footX: 2080, footY: 272, streamState: 'roaming', streamSectorIndex: 2 },
   ];
   const remoteBefore = enemies.slice(3).map(enemy => enemy.footX);
   advanceContinuousCombatArena({ globals: { time: 1 }, entities: [...heroes, ...enemies], seconds: 0.1 });
@@ -271,7 +271,7 @@ test('target death sends the whole squad toward the next pack within world bound
     { uid: 30, kind: 'enemy', hp: 100, footX: 1440, footY: 272, streamState: 'roaming', streamSectorIndex: 1 },
   ];
   advanceContinuousCombatArena({ globals: { time: 2 }, entities: [...heroes, ...enemies], seconds: 1 });
-  assert.ok(heroes.every(hero => hero.footX > 40 && hero.footX < 1440), 'formation rear slots remain inside world bounds before the squad center advances');
+  assert.ok(heroes.every(hero => hero.footX > 40 && hero.footX < 2120), 'formation rear slots remain inside world bounds before the squad center advances');
   assert.ok(heroes.reduce((sum, hero) => sum + hero.footX / heroes.length, 0) > 560, 'the squad advances toward the next sector as a group');
   assert.ok(heroes.every(hero => hero.arenaTargetUID === 0));
   assert.equal(enemies[1].footX, 1440);
@@ -282,13 +282,13 @@ test('target death sends the whole squad toward the next pack within world bound
   assert.ok(heroes[0].footX > leftBeforeRegroup);
   assert.ok(heroes.every(hero => hero.arenaTargetUID === 0));
   for (const hero of heroes) {
-    hero.footX = 2835;
+    hero.footX = 2115;
     hero.arenaTargetUID = 30;
   }
-  enemies[1].footX = 2875;
+  enemies[1].footX = 2155;
   advanceContinuousCombatArena({ globals: { time: 3 }, entities: [...heroes, ...enemies], seconds: 2 });
-  assert.ok(heroes.every(hero => hero.footX <= 2840));
-  assert.ok(enemies[1].footX <= 2880);
+  assert.ok(heroes.every(hero => hero.footX <= 2120));
+  assert.ok(enemies[1].footX <= 2160);
 });
 
 test('enemy pursuit retains two-dimensional feet over repeated arena ticks', () => {

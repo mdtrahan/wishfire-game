@@ -1,5 +1,5 @@
 import { advanceActorToward, actorAttackReach, actorFootPoint, actorFootprintRadius, isActorTargetInRange } from '../../../src/core/arenaCombatRules.mjs';
-import { deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
+import { deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldStartFormation, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
 
 const isLiving = actor => actor && Number(actor.hp || 0) > 0;
 const distance = (actor, target) => {
@@ -130,11 +130,12 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
     bounds.bossMaxY = Math.min(worldYBounds.maxY, bossAnchorY + 32);
   }
   const minY = bounds.visibleTopY, maxY = bounds.visibleBottomY;
-  const fallbackCenterX = (bounds.heroBackCenterX + bounds.heroRightEdgeX) / 2;
-  const fallbackHalfSpreadX = (bounds.heroRightEdgeX - bounds.heroBackCenterX) * 0.8 / 2;
+  const startFormation = deriveCombatWorldStartFormation(heroes.length);
   heroes.forEach((hero, index) => {
     if (!Number.isFinite(Number(hero.footX))) {
-      hero.footX = index % 2 === 0 ? fallbackCenterX + fallbackHalfSpreadX : fallbackCenterX - fallbackHalfSpreadX;
+      hero.footX = startFormation.heroX[index];
+    }
+    if (!Number.isFinite(Number(hero.footY)) && !Number.isFinite(Number(hero.y))) {
       hero.footY = Number(anchors.heroYs[index] ?? (minY + maxY) / 2) + Number(anchors.heroH || 0) / 2;
     }
     hero.arenaEnabled = true;
