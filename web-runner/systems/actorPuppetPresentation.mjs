@@ -4,7 +4,14 @@ const ACTOR_KEYS = Object.freeze({ Fara: 'fara', Falie: 'fara', Gobloc: 'gobloc'
 const CLIP_STATES = new Set(['idle', 'walk', 'basic', 'cast', 'hurt', 'ko', 'spawn']);
 
 export function actorPuppetKey(actor) {
-  return ACTOR_KEYS[String(actor?.portraitName || actor?.baseHeroName || actor?.name || '').trim()] || null;
+  // Presentation aliases may be present on a roster entry even when they are
+  // not an actor key. Keep searching the runtime identity fields so that the
+  // canonical combat identity still reaches the pilot clip.
+  for (const value of [actor?.portraitName, actor?.baseHeroName, actor?.name]) {
+    const key = ACTOR_KEYS[String(value || '').trim()];
+    if (key) return key;
+  }
+  return null;
 }
 
 export function actorPuppetState(actor, now) {

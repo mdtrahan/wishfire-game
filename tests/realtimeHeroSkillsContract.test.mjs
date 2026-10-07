@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { HERO_DEFINITIONS } from '../web-runner/src/core/heroDefinitions.mjs';
 import { castRealtimeHeroSkill, realtimeBasicFollowups, realtimeCoverTarget, realtimeIncomingDamage, realtimeMagicBlocked, realtimeProvokeTarget, realtimeCombatStat, tickRealtimeHeroSkillZones, realtimeBasicInterval, cleanupRealtimeSkillActors } from '../web-runner/src/core/realtimeHeroSkills.mjs';
+import { selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
 import { resetRealtimeSkillAttempt, ensureSkillBattle } from '../web-runner/src/core/realtimeSkillState.mjs';
 import { previewSeededRng } from '../src/core/seededRngRules.mjs';
 import { calculateDamageFromJs } from '../src/core/calculateDamageRules.mjs';
@@ -71,6 +72,20 @@ test('Blight refresh replaces its tick schedule and ignores later arrivals',()=>
 });
 test('approaching foes cannot receive direct damage or zone ticks',()=>{
  const {ctx,g,enemies,cast}=combat();enemies[2].x=340;enemies[2].footX=340;cast('Runa','burn_sigil');g.time=16;tickRealtimeHeroSkillZones(ctx);assert.equal(enemies[2].hp,1000);
+});
+test('an authored area includes a secondary recipient beyond basic reach when its shape contains it',()=>{
+ const {g,heroes,enemies}=combat();
+ const source=heroes[0];source.footX=100;source.footY=200;source.attackType='melee';
+ enemies[0].footX=150;enemies[0].x=150;enemies[0].footY=200;enemies[0].y=200;
+ enemies[1].footX=210;enemies[1].x=210;enemies[1].footY=200;enemies[1].y=200;
+ enemies[2].footX=300;enemies[2].x=300;enemies[2].footY=200;enemies[2].y=200;
+ const target=selectRealtimeHeroSkillTarget({skill:skill('Falie','shield_slam'),hero:source,heroes,enemies,globals:g,effects:{},now:g.time,statReader:(a,s)=>a.stats?.[s]||0});
+ assert.deepEqual(target?.targetUIDs,[10,11]);
+});
+test('Burn Sigil continues from its placed zone after its caster moves away',()=>{
+ const {ctx,g,heroes,enemies,cast}=combat();assert.equal(cast('Runa','burn_sigil'),true);
+ heroes[2].footX=1000;heroes[2].x=1000;g.time=11;tickRealtimeHeroSkillZones(ctx);
+ assert.ok(enemies[0].hp<1000);
 });
 test('Fortune previews once, suppresses useless chosen stats, and advances RNG only on success',()=>{
  const {g,heroes,enemies,cast}=combat();enemies[0].combatRank='boss';

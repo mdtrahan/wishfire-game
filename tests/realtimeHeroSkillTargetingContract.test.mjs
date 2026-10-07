@@ -4,8 +4,8 @@ import { HERO_DEFINITIONS } from '../web-runner/src/core/heroDefinitions.mjs';
 import { enemiesInSkillShape, selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
 
 const skill = (hero, id) => HERO_DEFINITIONS[hero].actives.find(entry => entry.skillId === id);
-const hero = (uid, name, hp = 100, maxHP = 100) => ({ uid, kind: 'hero', baseHeroName: name, hp, maxHP, stats: { SPD: uid * 2 } });
-const enemy = (uid, x, y, hp = 100, extra = {}) => ({ uid, kind: 'enemy', x, y, hp, maxHP: 100, streamState: 'engaged', ...extra });
+const hero = (uid, name, hp = 100, maxHP = 100) => ({ uid, kind: 'hero', baseHeroName: name, hp, maxHP, x: 140, y: 200, footX: 140, footY: 200, attackType: ['Runa', 'Kojonn'].includes(name) ? 'magic' : 'melee', stats: { SPD: uid * 2 } });
+const enemy = (uid, x, y, hp = 100, extra = {}) => ({ uid, kind: 'enemy', x, y, footX: x, footY: y, hp, maxHP: 100, streamState: 'engaged', ...extra });
 const choose = (heroKey, id, actor, heroes, enemies, extra = {}) => selectRealtimeHeroSkillTarget({ skill: skill(heroKey, id), hero: actor, heroes, enemies, ...extra });
 
 test('area geometry uses enemy centers in circles, rectangles and puncture lines', () => {

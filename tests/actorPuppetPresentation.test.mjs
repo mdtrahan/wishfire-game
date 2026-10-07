@@ -7,6 +7,7 @@ const clip = Object.freeze({ frames: [{ frame: 0 }, { frame: 1 }], frameHoldMs: 
 test('puppet selection uses semantic actor state and leaves unsupported actors on static art', () => {
   assert.equal(actorPuppetKey({ portraitName: 'Fara' }), 'fara');
   assert.equal(actorPuppetKey({ name: 'Gobloc' }), 'gobloc');
+  assert.equal(actorPuppetKey({ portraitName: 'portrait_fara_alt', baseHeroName: 'Falie' }), 'fara');
   assert.equal(actorPuppetKey({ portraitName: 'Hondo' }), null);
   assert.equal(actorPuppetState({ hp: 3, locomotion: 'walk' }, 4), 'walk');
   assert.equal(actorPuppetState({ hp: 3, actionState: 'basic', actionStateUntil: 5 }, 4), 'basic');

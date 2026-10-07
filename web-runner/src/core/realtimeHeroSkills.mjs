@@ -8,6 +8,7 @@ const nowOf = g => Number(g.time || 0);
 const living = a => Number(a?.hp || 0)>0;
 const actor = (ctx,uid)=>ctx.state.entities.find(a=>Number(a.uid)===Number(uid));
 const point = a=>({x:Number(a?.footX ?? a?.x ?? 0),y:Number(a?.footY ?? a?.y ?? 0)});
+const targetableEnemy = target => living(target) && target?.streamState !== 'approaching';
 const effects = g=>g.RealtimeSkillEffects ||= {};
 export function realtimeEffect(g,uid,id) {
   const record=effects(g)[String(uid)]?.[id];
@@ -17,12 +18,12 @@ const grant = (g,source,target,id,seconds,extra={}) => {
   (effects(g)[String(target.uid)] ||= {})[id]={sourceUID:source.uid,appliedAt:nowOf(g),expiresAt:nowOf(g)+seconds,...extra};
 };
 const damage = (ctx,source,target,pct,mode)=>{
-  if(!isActorTargetInRange(source,target))return 0;
+  if(!living(source)||!targetableEnemy(target))return 0;
   const amount=ctx.callFunction('CalculateDamage',source.uid,target.uid,mode,pct);
   return ctx.callFunction('ApplyDamageToTarget',target.uid,amount,{sourceUID:source.uid,suppressPartySkillHitHooks:1,actionKind:'skill'}) || 0;
 };
 const rawDamage = (ctx,source,target,raw,mode)=>{
-  if(!isActorTargetInRange(source,target))return 0;
+  if(!living(source)||!targetableEnemy(target))return 0;
   return ctx.callFunction('ApplyRealtimeRawDamage',source.uid,target.uid,raw,mode) || 0;
 };
 const heal = (ctx,source,target,pct,revive=false)=>ctx.callFunction('HealRealtimeActor',source.uid,target.uid,pct,revive) || 0;
@@ -152,7 +153,7 @@ export function tickRealtimeHeroSkillZones(ctx) {
   for(const zone of g.RealtimeSkillZones || []) {
     const source=actor(ctx,zone.sourceUID);
     while(zone.nextTickAt<=Math.min(now,zone.expiresAt)) {
-      for(const target of enemiesInSkillShape(ctx.state.entities.filter(a=>a.kind==='enemy'),{kind:'circle',center:zone.point,radius:zone.radius},source))damage(ctx,source,target,zone.damagePct,'magic');
+      for(const target of enemiesInSkillShape(ctx.state.entities.filter(a=>a.kind==='enemy'),{kind:'circle',center:zone.point,radius:zone.radius}))damage(ctx,source,target,zone.damagePct,'magic');
       zone.nextTickAt+=1;
     }
   }

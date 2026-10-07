@@ -11,8 +11,8 @@ import { newHeroProgress,refreshHeroStats,awardHeroEXP,createHeroProgressStore,s
 import { effectiveStat } from '../web-runner/src/core/combatRules.mjs';
 import { calculateDamageFromJs } from '../src/core/calculateDamageRules.mjs';
 const skill=(key,id)=>HERO_DEFINITIONS[key].actives.find(a=>a.skillId===id);
-const hero=(uid,def=20)=>({uid,kind:'hero',hp:100,maxHP:100,x:100,y:200,stats:{ATK:100,DEF:def,MAG:100,RES:20,SPD:10}});
-const enemy=(uid,x=200,y=200,def=30,rank='ordinary')=>({uid,kind:'enemy',hp:100,maxHP:100,x,y,combatRank:rank,streamState:'engaged',stats:{ATK:100,DEF:def,RES:20}});
+const hero=(uid,def=20)=>({uid,kind:'hero',hp:100,maxHP:100,x:150,y:200,footX:150,footY:200,attackType:'magic',stats:{ATK:100,DEF:def,MAG:100,RES:20,SPD:10}});
+const enemy=(uid,x=200,y=200,def=30,rank='ordinary')=>({uid,kind:'enemy',hp:100,maxHP:100,x,y,footX:x,footY:y,combatRank:rank,streamState:'engaged',stats:{ATK:100,DEF:def,RES:20}});
 const select=(skill,heroes,enemies,globals={})=>selectRealtimeHeroSkillTarget({skill,hero:heroes.at(-1),heroes,enemies,globals,effects:globals.RealtimeSkillEffects,now:globals.time || 0});
 test('33 stable IDs have independent unlocks, complete descriptions and spaced integer cooldowns',()=>{
  const ids=[];for(const def of Object.values(HERO_DEFINITIONS)) {
@@ -51,7 +51,7 @@ test('Shrink compares current highest living-party DEF, excludes bosses, and ref
 test('best-area selection searches all anchors and prefers an eligible boss over a bigger cluster',()=>{
  const caster=hero(1),isolated=enemy(10,30,30),a=enemy(11,200,200),b=enemy(12,220,200);
  assert.equal(select(skill('Falie','shield_slam'),[caster],[isolated,a,b]).targetUID,11);
- const boss=enemy(13,280,400,30,'boss');assert.equal(select(skill('Falie','shield_slam'),[caster],[isolated,a,b,boss]).targetUID,13);
+ const boss=enemy(13,280,200,30,'boss');assert.equal(select(skill('Falie','shield_slam'),[caster],[isolated,a,b,boss]).targetUID,13);
  assert.equal(select(skill('Huun','overrun'),[caster],[boss]),null);boss.hp=49;assert.equal(select(skill('Huun','overrun'),[caster],[boss]).targetUID,13);
 });
 test('horizontal throw keeps hero Y, and cone boundaries include only the forward area',()=>{
