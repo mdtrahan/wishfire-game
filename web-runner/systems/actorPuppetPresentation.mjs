@@ -2,7 +2,7 @@ import { sampleActorClip } from './actorClipPlayback.mjs';
 import { combatActorVisualScale, shouldMirrorCombatActorSprite } from './combatActorSpritePresentation.mjs';
 
 const ACTOR_KEYS = Object.freeze({ Fara: 'fara', Falie: 'fara', Gobloc: 'gobloc' });
-const CLIP_STATES = new Set(['idle', 'walk', 'basic', 'cast', 'hurt', 'ko', 'spawn']);
+const CLIP_STATES = new Set(['idle', 'walk', 'basic', 'cast', 'hurt', 'spawn']);
 
 export function actorPuppetKey(actor) {
   // Presentation aliases may be present on a roster entry even when they are
@@ -68,7 +68,8 @@ export function createActorPuppetPresentation({ loadClip }) {
       const actorKey = actorPuppetKey(actor);
       if (!actorKey) { protect(); return null; }
       const state = actorPuppetState(actor, now);
-      const worldFacing = (actor?.actionStateUntil > now ? actor?.actionFacing : actor?.facing) === 'left' ? 'left' : 'right';
+      const activeAction = actor?.actionStateUntil > now && (actor?.actionState !== 'ko' || state === 'ko');
+      const worldFacing = (activeAction ? actor?.actionFacing : actor?.facing) === 'left' ? 'left' : 'right';
       const facing = actorScreenFacing(worldFacing, orientation);
       const key = `${actorKey}/${state}/${facing}`;
       // Runtime UIDs identify instances; simple preview callers share their actor key.

@@ -609,3 +609,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - 2026-10-02: Boss access belongs to the progression tier, while arming/active flags belong to an encounter. Keep tier access through retries and reload, clear it only on boss victory, and cancel obsolete enemy actions when switching encounters. Spending, timed construction and completion need distinct durable states; test expiry and ticket commits against failed saves. Level QA must reset receipt baselines and execution queues as well as labels so stored EXP or pending skills cannot replay.
 
 - 2026-10-02: The rendered UI lock caught inherited unscaled damage-number injections that a source-string check missed. Assert generated calls forward layoutScale and retain rendered compact/Retina proof.
+
+- Actor HP owns terminal presentation state. Recovery clears old action cues, while the presentation selector also rejects a stale KO cue and its facing for living actors. Async clip retention must preserve the current life state across death and revival.

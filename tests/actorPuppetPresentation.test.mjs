@@ -21,6 +21,27 @@ test('puppet clips face the projected target direction once per combat orientati
   assert.equal(actorScreenFacing('left', 'right-wise'), 'right');
 });
 
+test('positive HP ignores a stale KO cue and its facing without mutating actor clocks', async () => {
+  for (const locomotion of ['idle', 'walk']) {
+    for (const orientation of ['left-wise', 'right-wise']) {
+      const requests = [];
+      const presentation = createActorPuppetPresentation({ loadClip: async (...request) => { requests.push(request); return clip; } });
+      const actor = { uid: 1, name: 'Fara', hp: 10, facing: 'right', locomotion, locomotionStartedAt: 4,
+        actionState: 'ko', actionStateStartedAt: 1, actionStateUntil: 86401, actionFacing: 'left' };
+      const before = { ...actor };
+      assert.equal(actorPuppetState(actor, 4), locomotion);
+      assert.equal(presentation.frameFor(actor, 4, orientation), null);
+      await new Promise(resolve => setImmediate(resolve));
+      const ready = presentation.frameFor(actor, 4, orientation);
+      assert.equal(ready.state, locomotion);
+      assert.equal(ready.facing, orientation === 'left-wise' ? 'right' : 'left');
+      assert.deepEqual(requests, [['fara', locomotion, ready.facing]]);
+      assert.deepEqual(actor, before);
+      assert.equal(actorPuppetState({ ...actor, hp: 0 }, 4), 'ko');
+    }
+  }
+});
+
 test('puppet presentation aligns native markers without changing simulation timing', async () => {
   const basic = { hp: 10, actionState: 'basic', actionStateStartedAt: 10, actionImpactAt: 10.52, actionStateUntil: 10.72, facing: 'left' };
   assert.equal(actorClipAgeMs(basic, 'basic', clip, 10.52), 400);

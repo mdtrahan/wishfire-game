@@ -42,4 +42,8 @@ Final combined focused checks pass 14 (the 12 clip/presentation checks plus 2 se
 
 The first combined full-suite run reported 1,010 passes, seven failures and three skips. Every failure came from the lane’s missing esbuild dependency. Installing the exact existing lockfile with npm ci and restoring tracked node_modules metadata resolved all seven focused offline checks. full-suite-before-npm-ci.log preserves the first run; offline-focused.log records 7/7 passing checks, and full-suite.log records the final rerun. No package version or lockfile changed.
 
-The final full suite remains running at handoff. Its eventual result must be read from full-suite.log; this handoff does not claim a passing full suite.
+The final full-suite handoff produced no recorded summary or exit status. A later read-only process inspection found no identifiable test runner. Preserve full-suite.log as incomplete evidence; it does not certify a pass.
+
+## Positive-HP stale KO cue correction
+
+HP now owns KO selection. A living actor ignores a stale KO action cue and its facing, selects current idle/walk, and retains its simulation clocks unchanged. One regression checks both locomotion states and both orientations, including the actual requested clip and settled frame. The combined focused set passes 15 checks. The earlier fresh critique at439b6480 is retained as a failure receipt; independent recheck and a confirmed full-suite run remain pending.

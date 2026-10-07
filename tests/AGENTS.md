@@ -16,6 +16,7 @@
 - `fixtures/` owns deterministic CSV cases shared by JS and Rust/WASM tests.
 
 ## Local Contracts
+- Puppet selection tests keep KO owned by HP, reject stale KO facing for living actors, and preserve simulation clocks while asynchronous replacements cross death or revival.
 - `storageHygieneContract.test.mjs` protects the worktree-retirement guard and an apply fixture; a lane is eligible only when present, clean, merged, tied to a CLOSED Bead, and free of protected ignored files. Unknown evidence and dirty source must survive a refused apply.
 - Lamp rules protect durable spending, migration, unique assignment and previewed salvage. `npm run test:lamp-ui` starts an owned local server, checks four phone viewports and proves combat continues during comparison; screenshots and numeric evidence live under `test-results/lamp/`.
 - `elementalImpactVfxContract.test.mjs` protects lazy per-element frame loading, approved manifest cadence, skill mapping, target centering and the 52 logical-pixel impact size cap.
