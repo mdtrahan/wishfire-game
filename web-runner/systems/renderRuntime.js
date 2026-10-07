@@ -455,7 +455,7 @@ export function renderRuntime(deps) {
       )
       .replace(
         "drawCombatActorSprite(ctx, sprite, { drawX, drawY, width: enemyW, height: enemyH, pivotX: pos.x, orientation: activeCombatOrientation, actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) })",
-        "const puppet = actorPuppetPresentation?.frameFor(enemy, Number(g.time || 0));\n        const drawEnemySprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY: pos.y, height: enemyH }) : drawCombatActorSprite(ctx, sprite, { drawX, drawY, width: enemyW, height: enemyH, pivotX: pos.x, orientation: activeCombatOrientation, actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) });\n        drawEnemySprite();",
+        "const puppet = actorPuppetPresentation?.frameFor(enemy, Number(g.time || 0));\n        const drawEnemySprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY: pos.y, height: enemyH, actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }) : drawCombatActorSprite(ctx, sprite, { drawX, drawY, width: enemyW, height: enemyH, pivotX: pos.x, orientation: activeCombatOrientation, actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) });\n        drawEnemySprite();",
       )
       .replaceAll(
         "renderHitFlashOverlay(() => drawCombatActorSprite(ctx, sprite, { drawX, drawY, width: enemyW, height: enemyH, pivotX: pos.x, orientation: activeCombatOrientation, actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }),",
@@ -483,7 +483,7 @@ export function renderRuntime(deps) {
       )
       .replace(
         "drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation });",
-        "const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0));\n\t          const drawHeroSprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY, height: scaledH }) : drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation, ...sourceRect });\n\t          drawHeroSprite();",
+        "const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0));\n\t          const drawHeroSprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY, height: scaledH, actorUID: hero.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }) : drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation, ...sourceRect });\n\t          drawHeroSprite();",
       )
       .replace(
         "renderHitFlashOverlay(() => drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation }), getHitFlashTone(hero.uid));",

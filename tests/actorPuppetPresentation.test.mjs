@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { actorClipAgeMs, actorPuppetKey, actorPuppetState, createActorPuppetPresentation } from '../web-runner/systems/actorPuppetPresentation.mjs';
+import { actorClipAgeMs, actorPuppetKey, actorPuppetState, createActorPuppetPresentation, drawActorPuppetFrame } from '../web-runner/systems/actorPuppetPresentation.mjs';
 
 const clip = Object.freeze({ frames: [{ frame: 0 }, { frame: 1 }], frameHoldMs: [500, 500], durationMs: 1000, impactTimeMs: 400, releaseTimeMs: 500, loop: false, canvas: { width: 128, height: 128 }, footOrigin: { x: 64, y: 125 } });
 
@@ -38,4 +38,17 @@ test('active cues retain their facing snapshot until their simulation window end
   presentation.frameFor(actor, 2);
   await new Promise(resolve => setTimeout(resolve, 0));
   assert.equal(presentation.frameFor(actor, 2.1)?.facing, 'left');
+});
+
+test('puppet Shrink uses the shared visual scale and keeps its semantic foot fixed', () => {
+  const ctx = { drawImage() {} };
+  const presentation = { frame: {}, clip };
+  const active = drawActorPuppetFrame(ctx, presentation, { footX: 100, footY: 200, height: 100, actorUID: 10, effects: { 10: { shrink: { expiresAt: 5 } } }, now: 1 });
+  assert.equal(active.visualScale, 0.7);
+  assert.equal(active.height, 70);
+  assert.equal(active.drawY + active.height * (clip.footOrigin.y / clip.canvas.height), 200);
+  const expired = drawActorPuppetFrame(ctx, presentation, { footX: 100, footY: 200, height: 100, actorUID: 10, effects: { 10: { shrink: { expiresAt: 5 } } }, now: 5 });
+  assert.equal(expired.visualScale, 1);
+  assert.equal(expired.height, 100);
+  assert.equal(expired.drawY + expired.height * (clip.footOrigin.y / clip.canvas.height), 200);
 });

@@ -23,7 +23,10 @@ const damage = (ctx,source,target,pct,mode)=>{
   return ctx.callFunction('ApplyDamageToTarget',target.uid,amount,{sourceUID:source.uid,suppressPartySkillHitHooks:1,actionKind:'skill'}) || 0;
 };
 const rawDamage = (ctx,source,target,raw,mode)=>{
-  if(!living(source)||!targetableEnemy(target))return 0;
+  // Ongoing effects already committed their source eligibility at cast time.
+  // Their tick lifetime belongs to the effect record, including Blight's
+  // existing source-KO behavior.
+  if(!targetableEnemy(target))return 0;
   return ctx.callFunction('ApplyRealtimeRawDamage',source.uid,target.uid,raw,mode) || 0;
 };
 const heal = (ctx,source,target,pct,revive=false)=>ctx.callFunction('HealRealtimeActor',source.uid,target.uid,pct,revive) || 0;

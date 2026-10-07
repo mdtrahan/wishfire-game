@@ -7,6 +7,10 @@ export function shouldMirrorCombatActorSprite(orientation) {
   return normalizeCombatOrientation(orientation) === COMBAT_ORIENTATION_RIGHT_WISE;
 }
 
+export function combatActorVisualScale({ actorUID, effects, now = 0 } = {}) {
+  return Number(effects?.[String(actorUID)]?.shrink?.expiresAt) > now ? 0.7 : 1;
+}
+
 export function drawCombatActorSprite(ctx, image, {
   drawX,
   drawY,
@@ -21,7 +25,7 @@ export function drawCombatActorSprite(ctx, image, {
   actorUID, effects, now = 0,
 } = {}) {
   if (!ctx || !image) return null;
-  const shrink=Number(effects?.[String(actorUID)]?.shrink?.expiresAt)>now ? .7 : 1;
+  const shrink = combatActorVisualScale({ actorUID, effects, now });
   const x = Number(drawX)+(Number(width)*(1-shrink)/2);
   const y = Number(drawY)+Number(height)*(1-shrink);
   const w = Number(width)*shrink;

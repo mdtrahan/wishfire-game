@@ -1,4 +1,5 @@
 import { sampleActorClip } from './actorClipPlayback.mjs';
+import { combatActorVisualScale } from './combatActorSpritePresentation.mjs';
 
 const ACTOR_KEYS = Object.freeze({ Fara: 'fara', Falie: 'fara', Gobloc: 'gobloc' });
 const CLIP_STATES = new Set(['idle', 'walk', 'basic', 'cast', 'hurt', 'ko', 'spawn']);
@@ -61,13 +62,15 @@ export function createActorPuppetPresentation({ loadClip }) {
   };
 }
 
-export function drawActorPuppetFrame(ctx, presentation, { footX, footY, height } = {}) {
+export function drawActorPuppetFrame(ctx, presentation, { footX, footY, height, actorUID, effects, now = 0 } = {}) {
   const clip = presentation?.clip;
   if (!ctx || !presentation?.frame || !clip || !Number.isFinite(footX) || !Number.isFinite(footY) || !Number.isFinite(height) || height <= 0) return null;
-  const scale = height / clip.canvas.height;
+  const visualScale = combatActorVisualScale({ actorUID, effects, now });
+  const scaledHeight = height * visualScale;
+  const scale = scaledHeight / clip.canvas.height;
   const width = clip.canvas.width * scale;
   const drawX = footX - clip.footOrigin.x * scale;
   const drawY = footY - clip.footOrigin.y * scale;
-  ctx.drawImage(presentation.frame, drawX, drawY, width, height);
-  return { drawX, drawY, width, height };
+  ctx.drawImage(presentation.frame, drawX, drawY, width, scaledHeight);
+  return { drawX, drawY, width, height: scaledHeight, visualScale };
 }

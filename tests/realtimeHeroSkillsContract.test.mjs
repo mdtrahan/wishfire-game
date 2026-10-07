@@ -87,6 +87,11 @@ test('Burn Sigil continues from its placed zone after its caster moves away',()=
  heroes[2].footX=1000;heroes[2].x=1000;g.time=11;tickRealtimeHeroSkillZones(ctx);
  assert.ok(enemies[0].hp<1000);
 });
+test('an already-applied Blight keeps its authored ticks after the caster KOs',()=>{
+ const {ctx,g,heroes,enemies,cast}=combat();assert.equal(cast('Runa','faze'),true);
+ heroes[2].hp=0;g.time=11;tickRealtimeHeroSkillZones(ctx);
+ assert.equal(enemies[0].hp,999);
+});
 test('Fortune previews once, suppresses useless chosen stats, and advances RNG only on success',()=>{
  const {g,heroes,enemies,cast}=combat();enemies[0].combatRank='boss';
  const choice=['ATK','DEF','MAG','RES'][Math.floor(previewSeededRng(12,0)*4)];

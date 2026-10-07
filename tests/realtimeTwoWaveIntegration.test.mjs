@@ -114,8 +114,8 @@ function makeTickEnemies(ctx, actionEvents) {
   };
 }
 
-const makeHero = (uid, key, hp, maxHP) => ({ uid, kind: 'hero', x:80, y:180+(uid-1)*35, currentLevel:25, heroInstanceKey: `hero-${uid}`, baseHeroName: key, name: key, hp, maxHP, stats: { ...HERO_DEFINITIONS[key].baseStats }, attackType: key === 'Runa' || key === 'Kojonn' ? 'magic' : 'melee', heroDisplaySlot: uid - 1 });
-const makeEnemy = (uid, name, x, y, hp = 1_000_000, maxHP = 1_000_000, extra = {}) => ({ uid, kind: 'enemy', name, hp, maxHP, x, y, originX: x, originY: y, streamEngageX: x, streamState: 'engaged', enemyRole: 'fodder', ATK: 1, stats: { ATK: 1, MAG: 2, RES: 1 }, ...extra });
+const makeHero = (uid, key, hp, maxHP) => ({ uid, kind: 'hero', x:145, y:180+(uid-1)*35, footX:145, footY:180+(uid-1)*35, currentLevel:25, heroInstanceKey: `hero-${uid}`, baseHeroName: key, name: key, hp, maxHP, stats: { ...HERO_DEFINITIONS[key].baseStats }, attackType: key === 'Runa' || key === 'Kojonn' ? 'magic' : 'melee', heroDisplaySlot: uid - 1 });
+const makeEnemy = (uid, name, x, y, hp = 1_000_000, maxHP = 1_000_000, extra = {}) => ({ uid, kind: 'enemy', name, hp, maxHP, x, y, footX:x, footY:y, originX: x, originY: y, streamEngageX: x, streamState: 'engaged', enemyRole: 'fodder', ATK: 1, stats: { ATK: 1, MAG: 2, RES: 1 }, ...extra });
 
 function createTwoWaveFixture() {
   const heroes = [makeHero(1, 'Falie', 54, 100), makeHero(2, 'Huun', 38, 100), makeHero(3, 'Runa', 80, 100), makeHero(4, 'Kojonn', 80, 100)];
