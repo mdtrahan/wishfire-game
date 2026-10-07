@@ -16,7 +16,7 @@ test('committed ground cues follow recipients, preserve planted zones and expire
   ] };
   const draw = () => {
     const before = structuredClone(state), calls = [];
-    const ctx = Object.fromEntries(['save', 'restore', 'beginPath', 'ellipse', 'fill', 'stroke', 'moveTo', 'lineTo', 'setLineDash', 'fillText']
+    const ctx = Object.fromEntries(['save', 'restore', 'beginPath', 'closePath', 'ellipse', 'fill', 'stroke', 'moveTo', 'lineTo', 'setLineDash', 'fillText']
       .map(name => [name, (...args) => calls.push([name, ...args])]));
     renderRealtimeSkillGroundVfx(ctx, { state, layoutScale: .5,
       worldToCanvas: (x, y) => ({ x: (360 - x) * .5 + 10, y: y * .5 + 20 }) });

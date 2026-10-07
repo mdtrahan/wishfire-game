@@ -38,13 +38,25 @@ export function renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas, layout
       const source = actors.get(Number(effect.sourceUID)), origin = feet(source);
       if (id !== 'cover' || source === target || !origin) continue;
       const from = worldToCanvas(origin.x, origin.y, source.kind);
-      ctx.strokeStyle = 'rgba(193,149,61,0.45)'; ctx.setLineDash([3 * layoutScale, 4 * layoutScale]);
+      ctx.strokeStyle = 'rgba(193,149,61,0.75)'; ctx.lineWidth = 2 * layoutScale; ctx.setLineDash([3 * layoutScale, 4 * layoutScale]);
       ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(p.x, p.y); ctx.stroke(); ctx.setLineDash([]);
     }
-    active.forEach(([id], index) => {
-      const radius = (18 + index * 4) * layoutScale;
+    active.forEach(([id]) => {
+      const radius = (id === 'destiny' ? 22 : 18) * layoutScale;
+      ctx.lineWidth = Math.max(.75, 1.4 * layoutScale);
       ctx.strokeStyle = cues[id]; ctx.globalAlpha = .75;
-      ctx.beginPath(); ctx.ellipse(p.x, p.y, radius, (5 + index) * layoutScale, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath();
+      if (id === 'cover') {
+        ctx.moveTo(p.x - radius, p.y - 3 * layoutScale); ctx.lineTo(p.x + radius, p.y - 3 * layoutScale);
+        ctx.lineTo(p.x + radius, p.y + layoutScale); ctx.lineTo(p.x, p.y + 7 * layoutScale);
+        ctx.lineTo(p.x - radius, p.y + layoutScale); ctx.closePath();
+      } else ctx.ellipse(p.x, p.y, radius, (id === 'destiny' ? 6 : 5) * layoutScale, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      if (id === 'destiny') {
+        const x = p.x + radius + 4 * layoutScale;
+        ctx.beginPath(); ctx.moveTo(x - 3 * layoutScale, p.y); ctx.lineTo(x + 3 * layoutScale, p.y);
+        ctx.moveTo(x, p.y - 3 * layoutScale); ctx.lineTo(x, p.y + 3 * layoutScale); ctx.stroke();
+      }
       if (id === 'blight') {
         for (const direction of [-1, 1]) {
           const x = p.x + direction * radius;
