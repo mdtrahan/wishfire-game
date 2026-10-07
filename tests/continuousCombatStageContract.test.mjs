@@ -621,7 +621,7 @@ test('queryless production centers only the fresh continuous party in B and disa
   const globals = { EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 }, EnemySize: 40 };
   assert.equal(configureContinuousCombatProduction(globals, { productionPath: true }), true);
   assert.equal(globals.RealtimeHeroFocusTargetUID, 0);
-  const heroes = Array.from({ length: 4 }, (_, index) => ({ kind: 'hero', uid: index + 1, flow: 100, flowReady: true }));
+  const heroes = Array.from({ length: 4 }, (_, index) => ({ kind: 'hero', uid: index + 1, hp: 100, flow: 100, flowReady: true }));
   const entities = [
     ...heroes,
     { kind: 'enemy', uid: 2, hp: 20, slotIndex: 1 },
