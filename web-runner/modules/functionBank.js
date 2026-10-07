@@ -6098,6 +6098,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   if (appliedDamage > 0) {
     const now = Number(g.time || 0);
     t.actionState = afterHP <= 0 ? 'ko' : 'hurt';
+    t.actionFacing = t.facing;
     t.actionStateStartedAt = now;
     // Keep this save-safe. JSON turns Infinity into null, which would make a
     // restored KO actor look like it had no terminal pose.
@@ -10396,6 +10397,7 @@ export function StartRealtimeEnemyAction(ctx, enemyUID) {
     attackPattern: enemy.attackPattern,
   });
   enemy.actionState = String(enemy.streamDelivery || enemy.attackDelivery || '') === 'ranged' ? 'cast' : 'basic';
+  enemy.actionFacing = enemy.facing;
   enemy.actionStateStartedAt = Number(g.time || 0);
   enemy.actionImpactAt = Number(g.time || 0) + 0.52;
   enemy.actionStateUntil = Number(g.time || 0) + 0.72;

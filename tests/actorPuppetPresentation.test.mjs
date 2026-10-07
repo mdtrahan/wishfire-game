@@ -30,3 +30,11 @@ test('locomotion and KO age from the simulation clock while action facing remain
   const ko = { hp: 0, actionStateStartedAt: 5 };
   assert.ok(Math.abs(actorClipAgeMs(ko, 'ko', clip, 5.6) - 600) < 1e-6);
 });
+
+test('active cues retain their facing snapshot until their simulation window ends', async () => {
+  const presentation = createActorPuppetPresentation({ loadClip: async () => clip });
+  const actor = { hp: 10, portraitName: 'Fara', actionState: 'basic', actionStateStartedAt: 2, actionImpactAt: 2.52, actionStateUntil: 2.72, actionFacing: 'left', facing: 'right' };
+  presentation.frameFor(actor, 2);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(presentation.frameFor(actor, 2.1)?.facing, 'left');
+});
