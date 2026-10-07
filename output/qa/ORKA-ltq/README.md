@@ -1,6 +1,6 @@
 # Bounded puppet retention, ORKA-ltq
 
-Development base: KK4 `7b7c23e9`, including frozen T1M `e2961c0e`. Integration order remains T1M → KK4 → LTQ. This candidate has not been merged or certified Integration Ready.
+Development base synchronized to KK4 `5d674b0c`, including its `02ea058b` fixture correction and frozen T1M `e2961c0e`. Exact LTQ pre-sync source `d7573e9b8e85e419904a8b676f006b40e6974a49` remains under tag `wishfire-ORKA-ltq-pre-sync-d7573e9b`; the rebase preserved all LTQ changes without conflicts. Integration order remains T1M → KK4 → LTQ. This candidate has not been merged or certified Integration Ready.
 
 The loader admits at most 32 clip records and 25,165,824 logical decoded RGBA bytes, including reservations for started image loads. Native Map insertion order evicts unprotected settled clips. Current display and latest replacement keys remain protected by the production presentation bridge. Full capacity returns null for later render retry; no queue stores superseded requests. Frame failures settle all outstanding frame operations before releasing reservations. Failures and capacity denials remain recoverable.
 
@@ -31,3 +31,15 @@ The required hot-file gate passes34checks. Rendered UI-lock results are recorded
 A ready clip may remain visible during an ordinary live-state replacement, but its terminal KO state must match current actor HP. Crossing the KO/live boundary now returns null while protecting the previous ready key and current replacement. The focused deferred-load check covers both death and revival at the identical simulation time, then verifies ordinary idle-to-walk retention remains available. Stale request generation handling is unchanged.
 
 Caller inspection traced the assembled renderer fallback through drawCombatActorSprite. Its existing combat art crop has no KO-specific pose or transform; the cold-load death interval therefore uses standing static art until the correct KO clip arrives. Revival immediately stops painting the stale KO clip and uses living static art until its replacement arrives. No renderer or gameplay timing change was made in this revision; this static KO presentation limitation was reported to the coordinating owner.
+
+## Combined four-hero restoration proof
+
+After dependency synchronization, four-hero-restore.mjs enters normal combat, waits for the entry fade, freezes all four heroes at KO and defers Fara’s non-KO PNG requests. Releasing the existing pause allows the game’s ordinary continuous-defeat recovery to restore all four heroes to max HP. Test instrumentation in the served quest session records four real reset calls with absent old action cues and idle locomotion. No restore helper is directly called by this fixture. While non-KO PNGs remain held, the cached KO presentation returns null and no KO PNG draws occur for living Fara. Release installs idle; pause then preserves identical simulation time and PNG source. Ordinary QUESTS departure retires all slots, and Continue Battle reinstates four within the byte/record ceilings. The sole puppet hero remains Fara; the other heroes use current static art.
+
+four-hero-restore.json records the result, with four-ko.png, four-restored-pending.png and four-restored-final.png as captures. The disclosed fixture starts the KO cue two simulation seconds earlier, so Fara’s KO capture shows the completed lying pose at the same frozen foot anchor. The final restored capture was inspected. Coupled helper proof also uses the exact KK4 semantic-reset source at 5d674b0c through restore-boundary-proof.mjs.
+
+Final combined focused checks pass 14 (the 12 clip/presentation checks plus 2 semantic-state checks). Hot-file checks pass 34, and the rendered UI gate passes 120/120 plus 31 static checks. Full-suite results are retained in full-suite.log.
+
+The first combined full-suite run reported 1,010 passes, seven failures and three skips. Every failure came from the lane’s missing esbuild dependency. Installing the exact existing lockfile with npm ci and restoring tracked node_modules metadata resolved all seven focused offline checks. full-suite-before-npm-ci.log preserves the first run; offline-focused.log records 7/7 passing checks, and full-suite.log records the final rerun. No package version or lockfile changed.
+
+The final full suite remains running at handoff. Its eventual result must be read from full-suite.log; this handoff does not claim a passing full suite.

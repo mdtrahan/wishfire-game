@@ -1,0 +1,166 @@
+{
+  "viewport": {
+    "width": 405,
+    "height": 720,
+    "dpr": 1,
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 405,
+      "height": 720,
+      "backingWidth": 405,
+      "backingHeight": 720
+    }
+  },
+  "sourceDependency": "5d674b0c76d40305dc6c0317dbcf8e53606c3784",
+  "terminal": {
+    "now": 0.6911999999992551,
+    "koSources": [
+      "http://localhost:8132/web-runner/assets/puppets/fara/frames/defeated-right-011.png"
+    ],
+    "heroes": [
+      {
+        "uid": 1,
+        "hp": 0,
+        "cue": "ko",
+        "cueStartedAt": -1.308800000000745
+      },
+      {
+        "uid": 2,
+        "hp": 0,
+        "cue": "ko",
+        "cueStartedAt": -1.308800000000745
+      },
+      {
+        "uid": 3,
+        "hp": 0,
+        "cue": "ko",
+        "cueStartedAt": -1.308800000000745
+      },
+      {
+        "uid": 4,
+        "hp": 0,
+        "cue": "ko",
+        "cueStartedAt": -1.308800000000745
+      }
+    ],
+    "retention": {
+      "displayedActors": 4,
+      "maxDecodedBytes": 25165824,
+      "retainedBytes": 2949120,
+      "reservedBytes": 786432,
+      "entries": 4,
+      "pending": 1,
+      "evictions": 0
+    },
+    "koDraws": 1
+  },
+  "restored": {
+    "heroes": [
+      {
+        "uid": 1,
+        "hp": 75,
+        "maxHP": 75,
+        "cue": "idle"
+      },
+      {
+        "uid": 2,
+        "hp": 60,
+        "maxHP": 60,
+        "cue": "idle"
+      },
+      {
+        "uid": 3,
+        "hp": 60,
+        "maxHP": 60,
+        "cue": "idle"
+      },
+      {
+        "uid": 4,
+        "hp": 65,
+        "maxHP": 65,
+        "cue": "idle"
+      }
+    ],
+    "normalRestoreEvents": [
+      {
+        "uid": 1,
+        "hp": 75,
+        "cue": null,
+        "locomotion": "idle",
+        "now": 0.6921999999992551
+      },
+      {
+        "uid": 2,
+        "hp": 60,
+        "cue": null,
+        "locomotion": "idle",
+        "now": 0.6921999999992551
+      },
+      {
+        "uid": 3,
+        "hp": 60,
+        "cue": null,
+        "locomotion": "idle",
+        "now": 0.6921999999992551
+      },
+      {
+        "uid": 4,
+        "hp": 65,
+        "cue": null,
+        "locomotion": "idle",
+        "now": 0.6921999999992551
+      }
+    ],
+    "pendingPresentation": null,
+    "retention": {
+      "displayedActors": 4,
+      "maxDecodedBytes": 25165824,
+      "retainedBytes": 2949120,
+      "reservedBytes": 786432,
+      "entries": 4,
+      "pending": 1,
+      "evictions": 0
+    },
+    "incorrectKoDraws": []
+  },
+  "afterReady": {
+    "now": 0.72689999999851,
+    "state": "idle",
+    "src": "http://localhost:8132/web-runner/assets/puppets/fara/frames/idle-right-000.png",
+    "retention": {
+      "displayedActors": 4,
+      "maxDecodedBytes": 25165824,
+      "retainedBytes": 2949120,
+      "reservedBytes": 0,
+      "entries": 4,
+      "pending": 0,
+      "evictions": 0
+    }
+  },
+  "afterPause": {
+    "now": 0.72689999999851,
+    "state": "idle",
+    "src": "http://localhost:8132/web-runner/assets/puppets/fara/frames/idle-right-000.png"
+  },
+  "departed": {
+    "displayedActors": 0,
+    "maxDecodedBytes": 25165824,
+    "retainedBytes": 2949120,
+    "reservedBytes": 0,
+    "entries": 4,
+    "pending": 0,
+    "evictions": 0
+  },
+  "reentered": {
+    "displayedActors": 4,
+    "maxDecodedBytes": 25165824,
+    "retainedBytes": 2949120,
+    "reservedBytes": 0,
+    "entries": 4,
+    "pending": 0,
+    "evictions": 0
+  },
+  "errors": [],
+  "fixture": "QA freezes four heroes at KO and defers Fara non-KO PNG requests. Resuming the existing simulation performs ordinary continuous-defeat recovery; no direct restore helper call. Pause then uses QaScenarioPaused."
+}

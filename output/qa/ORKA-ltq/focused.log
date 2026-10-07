@@ -1,21 +1,23 @@
-✔ actor clips load once per explicit facing and sample only supplied time (3.111791ms)
-✔ the Fara/Gobloc pilot ships editable bones and complete transparent state clips (60.152917ms)
+✔ actor clips load once per explicit facing and sample only supplied time (2.575084ms)
+✔ the Fara/Gobloc pilot ships editable bones and complete transparent state clips (77.413167ms)
 {"rosterKeys":196,"transitions":1000,"logicalHighWaterBytes":25165824,"maxDecodedBytes":25165824,"retainedBytes":25165824,"reservedBytes":0,"entries":32,"pending":0,"evictions":1076}
-✔ roster stress bounds settled and in-flight clips, protects paint and retries failures (95.021209ms)
-✔ puppet selection uses semantic actor state and leaves unsupported actors on static art (1.241542ms)
-✔ puppet clips face the projected target direction once per combat orientation (0.129166ms)
-✔ puppet presentation aligns native markers without changing simulation timing (5.919958ms)
-✔ locomotion and KO age from the simulation clock while action facing remains committed (0.309958ms)
-✔ active cues retain their facing snapshot until their simulation window ends (2.642ms)
-✔ puppet Shrink uses the shared visual scale and keeps its semantic foot fixed (0.360333ms)
-✔ presentation protects displayed replacement, ignores stale loads and retires absent actors (4.114792ms)
-✔ render boundaries retire empty and unsupported scenes even at a paused clock (4.315334ms)
-✔ deferred replacements cannot hold a ready clip across KO or revival (1.166792ms)
-ℹ tests 12
+✔ roster stress bounds settled and in-flight clips, protects paint and retries failures (169.35ms)
+✔ restoring positive HP clears a terminal cue and starts fresh idle locomotion (1.488375ms)
+✔ restoring no HP cannot clear a KO presentation (0.124167ms)
+✔ puppet selection uses semantic actor state and leaves unsupported actors on static art (6.657792ms)
+✔ puppet clips face the projected target direction once per combat orientation (0.290375ms)
+✔ puppet presentation aligns native markers without changing simulation timing (6.664792ms)
+✔ locomotion and KO age from the simulation clock while action facing remains committed (0.38475ms)
+✔ active cues retain their facing snapshot until their simulation window ends (3.9465ms)
+✔ puppet Shrink uses the shared visual scale and keeps its semantic foot fixed (0.358917ms)
+✔ presentation protects displayed replacement, ignores stale loads and retires absent actors (4.839416ms)
+✔ render boundaries retire empty and unsupported scenes even at a paused clock (5.347666ms)
+✔ deferred replacements cannot hold a ready clip across KO or revival (1.186708ms)
+ℹ tests 14
 ℹ suites 0
-ℹ pass 12
+ℹ pass 14
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 327.968167
+ℹ duration_ms 446.660417
