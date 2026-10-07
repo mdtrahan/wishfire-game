@@ -8,6 +8,15 @@ import { previewSeededRng } from '../../../src/core/seededRngRules.mjs';
 // presentation consumers, but target geometry reads the semantic source.
 const point = actor => ({x:Number(actor?.footX ?? actor?.x ?? 0),y:Number(actor?.footY ?? actor?.y ?? 0)});
 const ratio = actor => Number(actor.hp)/Math.max(1,Number(actor.maxHP));
+export function filterContinuousEncounterEnemies(enemies = [], globals = {}) {
+  const stage = globals?.ContinuousCombatStage;
+  if (Number(globals?.ContinuousCombatStageLoop || 0) !== 1 || !Number.isFinite(Number(stage?.activeEncounterGroupId))) {
+    return (enemies || []).filter(a => alive(a) && a?.streamState !== 'approaching');
+  }
+  const groupId = Number(stage.activeEncounterGroupId);
+  return (enemies || []).filter(a => alive(a) && a?.streamState !== 'approaching'
+    && Number(a.streamSectorIndex ?? a.streamPackIndex ?? 0) === groupId);
+}
 export function enemiesInSkillShape(enemies, shape) {
   return (enemies || []).filter(a=>alive(a) && a?.streamState !== 'approaching').filter(enemy => {
     const center = shape.center || shape.from;
@@ -24,7 +33,7 @@ export function enemiesInSkillShape(enemies, shape) {
 }
 export function selectRealtimeHeroSkillTarget({skill,hero,heroes=[],enemies=[],effects={},zones=[],now=0,globals={},event=null,statReader}={}) {
   if (!skill || !alive(hero)) return null;
-  const livingHeroes = heroes.filter(alive), targetableEnemies = enemies.filter(a=>alive(a) && a?.streamState !== 'approaching'), inRange = targetableEnemies.filter(a=>isActorTargetInRange(hero, a));
+  const livingHeroes = heroes.filter(alive), targetableEnemies = filterContinuousEncounterEnemies(enemies, globals), inRange = targetableEnemies.filter(a=>isActorTargetInRange(hero, a));
   const read = statReader || ((actor,stat)=>realtimeCombatStat({...globals,time:now,RealtimeSkillEffects:effects},actor,stat));
   const rule = skill.targetRule;
   if (!rule) throw new Error(`Missing target rule: ${skill.skillId}`);
@@ -88,7 +97,7 @@ export function selectRealtimeHeroSkillTarget({skill,hero,heroes=[],enemies=[],e
       anchor=targetableEnemies[0]; targets=targetableEnemies.filter(eligible); break;
     case 'eventArea': case 'eventChain':
       if (!matches(hero)) return null;
-      anchor=enemies.find(a=>Number(a.uid)===Number(rule.kind==='eventArea'?event?.sourceUID:event?.targetUID));
+      anchor=targetableEnemies.find(a=>Number(a.uid)===Number(rule.kind==='eventArea'?event?.sourceUID:event?.targetUID));
       if (!anchor && rule.kind==='eventChain' && event?.point) anchor={uid:event.targetUID,...event.point};
       if (!anchor) return null;
       if (rule.kind==='eventArea') {

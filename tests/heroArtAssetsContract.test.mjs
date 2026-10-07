@@ -33,7 +33,7 @@ test('battlefield consumes each complete canonical hero sprite while enemy sprit
   assert.match(compiledBody, /renderHeightByUID\[hero\.uid\] = scaledH \/ layoutScale;/);
   assert.match(compiledBody, /const footAnchor = state\.globals\.HeroRestFeetPosByUID\?\.\[uid\] \|\| anchor;/);
   assert.match(compiledBody, /const barY = Math\.round\(footPos\.y - actorHeight - 10 \* layoutScale\);/);
-  assert.match(source, /drawCombatActorSprite\(ctx, sprite, \{ drawX, drawY, width: enemyW, height: enemyH, pivotX: pos\.x, orientation: activeCombatOrientation, actorUID: enemy\.uid, effects: g\.RealtimeSkillEffects, now: Number\(g\.time \|\| 0\) \}\)/);
+  assert.match(source, /drawCombatActorSprite\(ctx, sprite, \{ drawX, drawY, width: enemyW, height: enemyH, pivotX: pos\.x, orientation: activeCombatOrientation, facing: enemy\.facing, nativeFacing: 'left', actorUID: enemy\.uid, effects: g\.RealtimeSkillEffects, now: Number\(g\.time \|\| 0\) \}\)/);
   assert.deepEqual(resolveHeroArtSourceRect({ width: 100, height: 200 }, heroArtAsset('Fara').combat), {
     sourceX: 0, sourceY: 0, sourceWidth: 100, sourceHeight: 200,
   });

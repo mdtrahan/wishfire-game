@@ -27,7 +27,7 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
     'dev-panel-2-containment',
     'dev-panel-1-action-order',
     'battlefield-selectors-absent',
-    'automatic-focus-target-is-living',
+    'automatic-focus-matches-eligible-target',
     'realtime-basic-clocks-present',
     'hero-combat-card-ui-absent',
     'actor-health-bars-present',
@@ -56,6 +56,8 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
   assert.match(gate, /TickRealtimeHeroBasics/);
   assert.match(gate, /RealtimeHeroBasicClocks/);
   assert.match(gate, /RealtimeHeroFocusTargetUID/);
+  assert.match(gate, /eligibleInRangeEnemyUIDs/);
+  assert.match(gate, /resolveHeroAttackTarget/);
   assert.doesNotMatch(gate, /DynamicInitiativeAuthority|setupDynamicInitiative/);
   assert.doesNotMatch(gate, /AstralFlow|\bFLOW\b/);
   assert.match(gate, /ui-lock-report\.json/);
@@ -63,6 +65,24 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
   assert.match(gate, /--prove-rejection/);
   assert.match(gate, /UI_LOCK_REJECTION_PROOF_PASS/);
   assert.match(gate, /process\.exitCode = 1/);
+});
+
+test('UI lock accepts targetless roaming only without an in-range committed target', async () => {
+  const { evaluateCombatFocusInvariant } = await import('../tools/ui_presentation_lock_gate.mjs');
+  const hero = { kind: 'hero', hp: 100, attackType: 'physical', footX: 100, footY: 200 };
+  const remote = { kind: 'enemy', uid: 20, hp: 50, streamState: 'roaming', streamSectorIndex: 7, footX: 500, footY: 200 };
+  const roaming = evaluateCombatFocusInvariant({ focusTargetUID: 0, heroes: [hero], enemies: [remote], globals: { ContinuousCombatStageLoop: 1, ContinuousCombatStage: {} } });
+  assert.equal(roaming.pass, true);
+  assert.deepEqual(roaming.eligibleInRangeEnemyUIDs, []);
+
+  const committed = { ...remote, uid: 21, footX: 140, streamState: 'retreating', streamSectorIndex: 4 };
+  const stage = { ContinuousCombatStageLoop: 1, ContinuousCombatStage: { activeEncounterGroupId: 4 } };
+  const missingFocus = evaluateCombatFocusInvariant({ focusTargetUID: 0, heroes: [hero], enemies: [remote, committed], globals: stage });
+  assert.equal(missingFocus.expectedFocusTargetUID, 21);
+  assert.equal(missingFocus.pass, false, 'zero focus fails while a committed retreating threat is attackable');
+  const staleFocus = evaluateCombatFocusInvariant({ focusTargetUID: 20, heroes: [hero], enemies: [remote, committed], globals: stage });
+  assert.equal(staleFocus.pass, false, 'a noneligible stale target fails too');
+  assert.equal(evaluateCombatFocusInvariant({ focusTargetUID: 21, heroes: [hero], enemies: [remote, committed], globals: stage }).pass, true);
 });
 
 test('pre-commit routes staged UI-owner changes through the full UI lock', () => {

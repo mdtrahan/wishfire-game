@@ -38,6 +38,16 @@ test('combat camera presents four screens of world at half battlefield zoom', as
   assert.equal(last.project(bounds.worldWidth, 272.5).x, 360);
 });
 
+test('world-height bounds invert the half-scale camera only inside measured HUD-safe field', async () => {
+  const rules = await import('../src/core/combatOrientation.mjs');
+  const bounds = rules.deriveCombatWorldVerticalBounds();
+  assert.ok(Math.abs(bounds.minY - (-40.5)) < 1e-9);
+  assert.ok(Math.abs(bounds.maxY - 679.5) < 1e-9);
+  const projectY = worldY => 272.5 + (worldY - 272.5) * 0.5;
+  assert.equal(projectY(bounds.minY - 42), 95);
+  assert.equal(projectY(bounds.maxY + 4), 478);
+});
+
 test('four-times boss health bar stays above its ground-anchored head', () => {
   const renderer = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
   assert.match(renderer, /const barY = Math\.round\(\(pos\.y - \(enemy\.combatRank === 'boss' \? enemyH : enemyH \/ 2\)\) - \(10 \* layoutScale\)\)/);
@@ -354,8 +364,17 @@ test('right-wise actor sprites mirror about their oriented pivot while left-wise
     ['restore'],
   ]);
 
+  assert.equal(presentation.shouldMirrorCombatActorSprite('left-wise', 'left', 'right'), true, 'fallback turns a right-facing hero toward a leftward world target');
+  assert.equal(presentation.shouldMirrorCombatActorSprite('right-wise', 'left', 'right'), false, 'camera reflection already turns leftward world travel to screen right');
+  assert.equal(presentation.shouldMirrorCombatActorSprite('right-wise', 'right', 'right'), true, 'right-wise projection reverses a right-facing hero');
+  assert.equal(presentation.shouldMirrorCombatActorSprite('left-wise', 'left', 'left'), false, 'left-facing enemy art keeps native facing');
+  assert.equal(presentation.shouldMirrorCombatActorSprite('right-wise', 'left', 'left'), true, 'right-wise projection mirrors native left-facing enemy art');
+  assert.equal(presentation.shouldMirrorCombatActorSprite('right-wise', 'right', 'left'), false, 'right-wise projection presents rightward-facing enemy art without another flip');
+
   const render = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
   assert.match(render, /drawCombatActorSprite\(ctx, sprite/);
   assert.match(render, /drawCombatActorSprite\(ctx, img/);
+  assert.match(render, /facing: hero\.facing, nativeFacing: 'right'/);
+  assert.match(render, /facing: enemy\.facing, nativeFacing: 'left'/);
   assert.match(render, /\.replaceAll\(/);
 });

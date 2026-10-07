@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { actorFootprintRadius, isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
 import { advanceContinuousCombatArena } from '../web-runner/src/core/arenaCombat.mjs';
 import { activateContinuousCombatSpawnedEnemy, pushContinuousCombatEnemy } from '../web-runner/src/core/continuousCombatStage.mjs';
+import { deriveCombatWorldVerticalBounds } from '../src/core/combatOrientation.mjs';
 
 test('actor reach uses initialized feet and preserves delivery-specific range', () => {
   const melee = { kind: 'hero', hp: 10, footX: 100, footY: 200, attackType: 'melee', arenaEnabled: true };
@@ -87,6 +88,110 @@ test('the squad detects one local pack together and leaves distant packs idle', 
   assert.ok(enemies.slice(0, 3).every(enemy => ['in_range', 'engaged'].includes(enemy.streamState)));
   assert.deepEqual(enemies.slice(3).map(enemy => enemy.footX), remoteBefore);
   assert.deepEqual(enemies.slice(3).map(enemy => enemy.streamState), ['roaming', 'roaming']);
+});
+
+test('a wounded retreating encounter holds the whole squad until neutralized', () => {
+  const heroes = Array.from({ length: 4 }, (_, index) => ({ uid: index + 1, kind: 'hero', hp: 100, footX: 300 + index * 6, footY: 250 + index * 10 }));
+  const survivor = { uid: 20, kind: 'enemy', hp: 20, footX: 380, footY: 300, streamState: 'retreating', streamSectorIndex: 4 };
+  const nearerPack = { uid: 30, kind: 'enemy', hp: 100, footX: 300, footY: 330, streamState: 'roaming', streamSectorIndex: 5 };
+  const globals = { time: 2, ContinuousCombatStage: { activeEncounterGroupId: 4 } };
+  const before = heroes.map(hero => [hero.footX, hero.footY]);
+  advanceContinuousCombatArena({ globals, entities: [...heroes, survivor, nearerPack], seconds: 0.1 });
+  assert.ok(heroes.every(hero => hero.arenaTargetUID === survivor.uid));
+  assert.equal(globals.ContinuousCombatStage.activeEncounterGroupId, 4);
+  assert.deepEqual([nearerPack.footX, nearerPack.footY, nearerPack.streamState], [300, 330, 'roaming']);
+  assert.ok(heroes.some((hero, index) => Math.hypot(hero.footX - before[index][0], hero.footY - before[index][1]) > 0), 'party continues working the committed survivor');
+
+  survivor.hp = 0;
+  advanceContinuousCombatArena({ globals, entities: [...heroes, survivor, nearerPack], seconds: 0.1 });
+  assert.equal(globals.ContinuousCombatStage.activeEncounterGroupId, 5);
+  assert.ok(heroes.every(hero => hero.arenaTargetUID === nearerPack.uid));
+});
+
+test('six seeded packs occupy the full HUD-safe world height while each pack stays compact', () => {
+  const globals = { EnemySize: 40, EncounterSeed: 17, ContinuousCombatStage: { seed: 17 } };
+  const centers = [];
+  for (let sector = 0; sector < 6; sector += 1) {
+    const pack = [0, 1, 2].map(order => activateContinuousCombatSpawnedEnemy(globals, {
+      uid: sector * 3 + order + 1, kind: 'enemy', hp: 20, name: 'Gobloc', enemyRole: 'ordinary',
+    }, { lane: order, rank: 0, packIndex: 0, entryOrder: order, sectorIndex: sector }));
+    const ys = pack.map(enemy => enemy.footY);
+    assert.ok(Math.max(...ys) - Math.min(...ys) <= 20, 'each enemy pack remains a compact local group');
+    centers.push(ys.reduce((sum, y) => sum + y, 0) / ys.length);
+  }
+  assert.ok(Math.max(...centers) - Math.min(...centers) > 400, 'packs span the visible combat field rather than a hero-row band');
+  const safe = deriveCombatWorldVerticalBounds();
+  assert.ok(centers.every(y => y >= safe.minY + 20 && y <= safe.maxY - 20));
+  const replayCenters = [];
+  for (let sector = 0; sector < 6; sector += 1) {
+    const pack = [0, 1, 2].map(order => activateContinuousCombatSpawnedEnemy(globals, { uid: 100 + sector * 3 + order, kind: 'enemy', hp: 20, name: 'Skeleton', enemyRole: 'ordinary' }, { lane: order, rank: 0, packIndex: 0, entryOrder: order, sectorIndex: sector }));
+    replayCenters.push(pack.reduce((sum, enemy) => sum + enemy.footY / pack.length, 0));
+  }
+  assert.ok(centers.every((center, index) => Math.abs(center - replayCenters[index]) < 1e-9), 'the same seed reproduces pack vertical placement');
+});
+
+test('frontline roles follow diagonal target reversals while ranged supports stay behind', () => {
+  const heroes = [
+    { uid: 1, name: 'Fara', kind: 'hero', hp: 100, attackType: 'physical', footX: 1000, footY: 260 },
+    { uid: 2, name: 'Hondo', kind: 'hero', hp: 100, attackType: 'physical', footX: 990, footY: 280 },
+    { uid: 3, name: 'Runa', kind: 'hero', hp: 100, attackType: 'magic', footX: 980, footY: 260 },
+    { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: 970, footY: 280 },
+  ];
+  const first = { uid: 20, kind: 'enemy', hp: 50, footX: 1400, footY: 270, streamState: 'roaming', streamSectorIndex: 0 };
+  const second = { uid: 30, kind: 'enemy', hp: 50, footX: 600, footY: 430, streamState: 'roaming', streamSectorIndex: 1 };
+  const globals = { time: 0 };
+  const checkOrder = (target, sign) => {
+    for (let tick = 0; tick < 30; tick += 1) advanceContinuousCombatArena({ globals, entities: [...heroes, first, second], seconds: 0.1 });
+    const center = heroes.reduce((sum, hero) => ({ x: sum.x + hero.footX / 4, y: sum.y + hero.footY / 4 }), { x: 0, y: 0 });
+    const vector = { x: target.footX - center.x, y: target.footY - center.y };
+    const length = Math.hypot(vector.x, vector.y);
+    const progress = hero => ((hero.footX - center.x) * vector.x + (hero.footY - center.y) * vector.y) / length;
+    const frontline = (progress(heroes[0]) + progress(heroes[1])) / 2;
+    const support = (progress(heroes[2]) + progress(heroes[3])) / 2;
+    assert.ok(frontline > support + 12, `frontline leads target direction ${sign}`);
+    assert.equal(heroes[1].facing, sign.startsWith('right') ? 'right' : 'left', 'Hondo faces the actual horizontal travel/target direction');
+    assert.ok(Math.max(...heroes.map(hero => Math.hypot(hero.footX - center.x, hero.footY - center.y))) < 100, 'party stays cohesive through the turn');
+  };
+  checkOrder(first, 'right/up');
+  first.hp = 0;
+  checkOrder(second, 'left/down');
+  first.hp = 50;
+  second.hp = 0;
+  checkOrder(first, 'right/up again');
+});
+
+test('remaining ranged heroes can finish a local encounter and regroup without a tank', () => {
+  const heroes = [
+    { uid: 1, name: 'Fara', kind: 'hero', hp: 0, footX: 100, footY: 220 },
+    { uid: 2, name: 'Hondo', kind: 'hero', hp: 0, footX: 110, footY: 250 },
+    { uid: 3, name: 'Runa', kind: 'hero', hp: 100, attackType: 'magic', footX: 120, footY: 280 },
+    { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: 130, footY: 310 },
+  ];
+  const encounter = { uid: 20, kind: 'enemy', hp: 80, footX: 330, footY: 280, streamState: 'roaming', streamSectorIndex: 2 };
+  const next = { uid: 30, kind: 'enemy', hp: 80, footX: 1440, footY: 640, streamState: 'roaming', streamSectorIndex: 3 };
+  const globals = { time: 1, ContinuousCombatStage: {} };
+  for (let tick = 0; tick < 120; tick += 1) advanceContinuousCombatArena({ globals, entities: [...heroes, encounter, next], seconds: 0.1 });
+  assert.ok(heroes.slice(2).every(hero => hero.arenaTargetUID === encounter.uid || isActorTargetInRange(hero, encounter)), 'support-only party keeps working the current pack');
+  encounter.hp = 0;
+  for (let tick = 0; tick < 8; tick += 1) advanceContinuousCombatArena({ globals, entities: [...heroes, encounter, next], seconds: 0.1 });
+  assert.ok(heroes.slice(2).every(hero => hero.arenaTargetUID === 0 || hero.footX < next.footX), 'support-only party resumes roaming toward the next sector');
+});
+
+test('frontline ordering follows pure vertical approaches without injecting horizontal travel', () => {
+  const heroes = [
+    { uid: 1, name: 'Fara', kind: 'hero', hp: 100, attackType: 'physical', footX: 900, footY: 420 },
+    { uid: 2, name: 'Hondo', kind: 'hero', hp: 100, attackType: 'physical', footX: 920, footY: 410 },
+    { uid: 3, name: 'Runa', kind: 'hero', hp: 100, attackType: 'magic', footX: 900, footY: 400 },
+    { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: 920, footY: 390 },
+  ];
+  const target = { uid: 40, kind: 'enemy', hp: 50, footX: 910, footY: 90, streamState: 'roaming', streamSectorIndex: 7 };
+  const globals = { time: 0 };
+  for (let tick = 0; tick < 30; tick += 1) advanceContinuousCombatArena({ globals, entities: [...heroes, target], seconds: 0.1 });
+  assert.ok(heroes.every(hero => hero.footY < 420), 'zero horizontal delta stays vertical');
+  const centerY = heroes.reduce((sum, hero) => sum + hero.footY / heroes.length, 0);
+  const frontAdvance = (centerY - (heroes[0].footY + heroes[1].footY) / 2);
+  const supportAdvance = (centerY - (heroes[2].footY + heroes[3].footY) / 2);
+  assert.ok(frontAdvance > supportAdvance + 12, 'Fara and Hondo lead vertical travel too');
 });
 
 test('target death sends the whole squad toward the next pack within world bounds', () => {
@@ -184,4 +289,13 @@ test('spawned pack feet are clustered and source-relative displacement remains b
   assert.ok(pushContinuousCombatEnemy(enemy, 55, 0, source) > 0);
   assert.ok(enemy.footX > 180 && enemy.footY > 230);
   assert.ok(enemy.footX <= 290 && enemy.footY <= 375);
+});
+
+test('arena-enabled skill displacement stays in the expanded safe world height', () => {
+  const bounds = deriveCombatWorldVerticalBounds();
+  const enemy = { uid: 99, kind: 'enemy', hp: 100, streamState: 'engaged', arenaEnabled: true, footX: 500, footY: bounds.maxY - 2, x: 500, y: bounds.maxY - 2 };
+  const source = { uid: 1, kind: 'hero', hp: 100, footX: 500, footY: bounds.maxY - 100 };
+  assert.ok(pushContinuousCombatEnemy(enemy, 55, 0, source) > 0);
+  assert.ok(enemy.footY <= bounds.maxY);
+  assert.ok(enemy.footY > bounds.maxY - 10, 'push resolves against expanded arena bounds without returning to the legacy middle band');
 });

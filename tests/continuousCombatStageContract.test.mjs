@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createCombatCameraProjection, deriveCombatFormationAnchors, deriveCombatWorldBounds } from '../src/core/combatOrientation.mjs';
+import { createCombatCameraProjection, deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldVerticalBounds } from '../src/core/combatOrientation.mjs';
 import {
   CONTINUOUS_COMBAT_PACK_CP_STEP,
   CONTINUOUS_COMBAT_PACK_INTERVAL_SEC,
@@ -220,8 +220,8 @@ test('stream packs spawn across the four-screen world in deterministic sectors',
   assert.deepEqual(enemies.map(enemy => enemy.streamSectorIndex), [0, 1, 2]);
   assert.ok(enemies[0].x < enemies[1].x && enemies[1].x < enemies[2].x);
   assert.ok(enemies[2].x <= 2880);
-  const heroYs = deriveCombatFormationAnchors({ globals, heroCount: 4 }).heroYs;
-  assert.ok(enemies.every(enemy => enemy.y >= heroYs[0] && enemy.y <= heroYs.at(-1)));
+  const safeY = deriveCombatWorldVerticalBounds();
+  assert.ok(enemies.every(enemy => enemy.y >= safeY.minY + 32 && enemy.y <= safeY.maxY - 32));
   assert.ok(enemies.every(enemy => enemy.streamEngageX === enemy.x));
   assert.equal(enemies[0].streamWalkSpeed, Math.max(34, 40 * 0.9) * 0.7 * 0.9);
 });

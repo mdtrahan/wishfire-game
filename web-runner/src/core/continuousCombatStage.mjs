@@ -1,6 +1,6 @@
 import { resetRealtimeSkillAttempt } from './realtimeSkillState.mjs';
 import { computeCombatPower } from './combatPower.mjs';
-import { deriveCombatArenaBounds, deriveCombatFormationAnchors, deriveCombatWorldBounds } from '../../../src/core/combatOrientation.mjs';
+import { deriveCombatArenaBounds, deriveCombatWorldBounds, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
 import { cleanseDebuffs } from './combatRules.mjs';
 import { saveHeroProgress } from './heroProgression.mjs';
 import { advanceContinuousCombatArena } from './arenaCombat.mjs';
@@ -22,7 +22,7 @@ function regroupKnockedOutHeroes(heroes) {
   if (!living.length || !knockedOut.length) return;
 
   const world = deriveCombatWorldBounds();
-  const arena = deriveCombatArenaBounds();
+  const vertical = deriveCombatWorldVerticalBounds();
   const center = living.reduce((sum, hero) => {
     const point = actorFootPoint(hero);
     return { x: sum.x + point.x / living.length, y: sum.y + point.y / living.length };
@@ -35,7 +35,7 @@ function regroupKnockedOutHeroes(heroes) {
       for (const angle of angles) {
         const candidate = {
           x: Math.max(world.heroMinX, Math.min(world.heroMaxX, center.x + Math.cos(angle) * radius)),
-          y: Math.max(arena.visibleTopY, Math.min(arena.visibleBottomY, center.y + Math.sin(angle) * radius)),
+          y: Math.max(vertical.minY, Math.min(vertical.maxY, center.y + Math.sin(angle) * radius)),
         };
         const separated = placed.every(other => {
           const point = actorFootPoint(other);
@@ -98,18 +98,20 @@ export function configureContinuousCombatProduction(globals, { productionPath = 
   return true;
 }
 
-function streamGeometry(globals, { packIndex = 0, rank = 0, order = 0 } = {}) {
+function streamGeometry(globals, { packIndex = 0, rank = 0, order = 0, sectorIndex = packIndex } = {}) {
   const bounds = deriveCombatArenaBounds();
+  const vertical = deriveCombatWorldVerticalBounds();
   const enemySize = Math.max(20, Number(globals.EnemySize || 40));
-  const firstY = bounds.visibleTopY + enemySize / 2;
-  const lastY = bounds.visibleBottomY - enemySize / 2;
+  const firstY = vertical.minY + enemySize * 0.8;
+  const lastY = vertical.maxY - enemySize * 0.8;
   const stateSeed = Number(globals.ContinuousCombatStage?.seed || globals.EncounterSeed || 1) >>> 0;
-  const sequenceIndex = Math.max(Number(rank) * 3, Number(packIndex) * 3) + Number(order) + 1;
-  const heroYs = deriveCombatFormationAnchors({ globals, heroCount: 4 }).heroYs;
-  const laneIndex = (Math.floor(stateSeed % 4) + sequenceIndex) % 4;
+  const seedMix = (stateSeed ^ (Number(rank) * 2654435761) ^ (Number(packIndex) * 2246822519)) >>> 0;
+  const sectorCount = CONTINUOUS_COMBAT_PACKS_PER_WAVE;
+  const sectorOrder = (Math.floor(seedMix % sectorCount) + Math.max(0, Number(sectorIndex) || 0) * 5) % sectorCount;
+  const memberOffset = (Math.max(0, Math.floor(Number(order) || 0)) - 1) * Math.min(12, enemySize * 0.25);
   return {
     spawnX: 360 + enemySize * 1.5,
-    y: heroYs[laneIndex] ?? (firstY + lastY) / 2,
+    y: Math.max(firstY, Math.min(lastY, firstY + sectorOrder * ((lastY - firstY) / Math.max(1, sectorCount - 1)) + memberOffset)),
     walkSpeed: Math.max(34, enemySize * 0.9) * 0.7,
     enemySize,
     bounds,
@@ -141,8 +143,8 @@ function displacementDirection(enemy, source) {
 function boundedEnemyFoot(point, clampY = true, enemy = null) {
   if (enemy?.arenaEnabled) {
     const world = deriveCombatWorldBounds();
-    const bounds = deriveCombatArenaBounds();
-    return { x: Math.max(world.heroMinX, Math.min(world.heroMaxX, point.x)), y: clampY ? Math.max(bounds.visibleTopY, Math.min(bounds.visibleBottomY, point.y)) : point.y };
+    const bounds = deriveCombatWorldVerticalBounds();
+    return { x: Math.max(world.heroMinX, Math.min(world.heroMaxX, point.x)), y: Math.max(bounds.minY, Math.min(bounds.maxY, point.y)) };
   }
   const bounds = deriveCombatArenaBounds();
   return { x: Math.max(bounds.heroBackCenterX, Math.min(bounds.attackStartX, point.x)), y: clampY ? Math.max(bounds.visibleTopY, Math.min(bounds.visibleBottomY, point.y)) : point.y };
@@ -192,15 +194,15 @@ export function reverseContinuousCombatEnemy(enemy, now, durationSeconds = 1.25,
 export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1, rank = 0, packIndex = 0, entryOrder = lane, sectorIndex = null, bossX = BOSS_HOME.x } = {}) {
   if (!enemy) return null;
   const order = Math.max(0, Math.floor(Number(entryOrder || 0))) % 3;
-  const geometry = streamGeometry(globals, { packIndex, rank, order });
+  const sector = sectorIndex == null
+    ? Math.max(0, Math.min(CONTINUOUS_COMBAT_PACKS_PER_WAVE - 1, Number(packIndex || 0) % CONTINUOUS_COMBAT_PACKS_PER_WAVE))
+    : Math.max(0, Math.min(CONTINUOUS_COMBAT_PACKS_PER_WAVE - 1, Math.floor(Number(sectorIndex) || 0)));
+  const geometry = streamGeometry(globals, { packIndex, rank, order, sectorIndex: sector });
   const delivery = RANGED_ENEMY_NAMES.has(String(enemy.name || '').trim().toLowerCase()) ? 'ranged' : 'melee';
   const meleeLine = order % 2;
   const normalizedPackIndex = Math.max(0, Number(packIndex || 0));
   const boss = String(enemy.enemyRole || enemy.role || '').toLowerCase() === 'boss';
   const world = deriveCombatWorldBounds();
-  const sector = sectorIndex == null
-    ? Math.max(0, Math.min(CONTINUOUS_COMBAT_PACKS_PER_WAVE - 1, Number(packIndex || 0) % CONTINUOUS_COMBAT_PACKS_PER_WAVE))
-    : Math.max(0, Math.min(CONTINUOUS_COMBAT_PACKS_PER_WAVE - 1, Math.floor(Number(sectorIndex) || 0)));
   const sectorX = world.worldWidth * CONTINUOUS_COMBAT_SECTOR_RATIOS[sector] + (order - 1) * geometry.enemySize * 1.25;
   const engageX = boss ? bossX : sectorX;
   const homeY = boss ? BOSS_HOME.y : geometry.y;
@@ -498,6 +500,7 @@ function updateApproachingEnemies(globals, entities, now) {
       packIndex: Number(enemy.streamPackIndex || 0),
       rank: Number(enemy.streamRank || 0),
       order: Number(enemy.streamEntryOrder ?? enemy.streamLane ?? 0),
+      sectorIndex: Number(enemy.streamSectorIndex || 0) % CONTINUOUS_COMBAT_PACKS_PER_WAVE,
     });
     const action = globals.RealtimeEnemyActionsByUID?.[String(enemy.uid)]
       ?? globals.RealtimeEnemyActionsByUID?.[enemy.uid];

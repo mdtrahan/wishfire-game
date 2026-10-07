@@ -57,7 +57,7 @@ export function advanceActorToward(actor, target, { seconds = 0, speed = 0, now 
     actor.footX = source.x;
     actor.footY = source.y;
   }
-  actor.facing = destination.x >= source.x ? 'right' : 'left';
+  if (Math.abs(dx) > 1e-6) actor.facing = dx > 0 ? 'right' : 'left';
   actor.arenaEnabled = true;
   const nextLocomotion = moved > 0 ? 'walk' : 'idle';
   if (actor.locomotion !== nextLocomotion) actor.locomotionStartedAt = number(now);

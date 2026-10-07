@@ -4,8 +4,9 @@ import fs from 'node:fs';
 import { realtimeCooldownSeconds, scheduleRealtimeActions, selectRealtimeReadyActor } from '../web-runner/src/core/realtimeCooldown.mjs';
 import { isHeroBasicTargetInRange, resolveHeroAttackTarget } from '../src/core/heroAttackTargetingRules.mjs';
 import { resetCombatSessionConditions } from '../web-runner/systems/combatSessionReset.mjs';
+import { HERO_DEFINITIONS } from '../web-runner/src/core/heroDefinitions.mjs';
 import { heroDefinition, heroSkillUnlocked } from '../web-runner/src/core/heroDefinitions.mjs';
-import { selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
+import { filterContinuousEncounterEnemies, selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
 import { castRealtimeHeroSkill, realtimeBasicInterval, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
 
 const source = fs.readFileSync(new URL('../web-runner/modules/functionBank.js', import.meta.url), 'utf8');
@@ -18,7 +19,7 @@ function loadTickRealtimeHeroBasics() {
     'getGlobals', 'getEnemies', 'resolveHeroAttackTarget', 'isHeroBasicTargetInRange', 'getEntities',
     'GetEffectiveStat', 'realtimeCooldownSeconds', 'selectRealtimeReadyActor', 'scheduleRealtimeActions',
     'HeroAttackSingle', 'GetActorByUID', 'tickRealtimeHeroSkillZones', 'heroDefinition', 'heroSkillUnlocked',
-    'selectRealtimeHeroSkillTarget', 'castRealtimeHeroSkill', 'realtimeBasicInterval',
+    'selectRealtimeHeroSkillTarget', 'filterContinuousEncounterEnemies', 'castRealtimeHeroSkill', 'realtimeBasicInterval',
     'pushContinuousCombatEnemy', 'reverseContinuousCombatEnemy', 'teleportContinuousCombatEnemy',
     `${body}; return TickRealtimeHeroBasics;`,
   )(ctx => ctx.state.globals,
@@ -34,7 +35,7 @@ function loadTickRealtimeHeroBasics() {
       ctx.state.globals.PendingHeroHits.push({ at: ctx.state.globals.time + 0.52, heroUID, targetUID });
     },
     (ctx, uid) => ctx.state.entities.find(entity => Number(entity.uid) === Number(uid)) || null,
-    tickRealtimeHeroSkillZones, heroDefinition, heroSkillUnlocked, selectRealtimeHeroSkillTarget, castRealtimeHeroSkill, realtimeBasicInterval,
+    tickRealtimeHeroSkillZones, heroDefinition, heroSkillUnlocked, selectRealtimeHeroSkillTarget, filterContinuousEncounterEnemies, castRealtimeHeroSkill, realtimeBasicInterval,
     () => false, () => false, () => false,
   );
 }
@@ -90,6 +91,20 @@ test('colliding basics start on separate ticks and re-resolve the in-range targe
   globals.time += 1 / 60;
   assert.equal(tick(ctx), 1);
   assert.deepEqual(globals.PendingHeroHits.map(hit => [hit.heroUID, hit.targetUID]), [[1, 91], [2, 91]]);
+});
+
+test('live basics and conditional skills stay committed to a wounded retreating encounter', () => {
+  const committed = { uid: 90, kind: 'enemy', hp: 800, maxHP: 1000, x: 200, footX: 200, footY: 200, streamState: 'retreating', streamSectorIndex: 10 };
+  const nearerNextPack = { uid: 91, kind: 'enemy', hp: 1000, maxHP: 1000, x: 165, footX: 165, footY: 200, streamState: 'engaged', streamSectorIndex: 11 };
+  const { ctx, globals, actors, tick } = fixture({ time: 30, heroes: [1], readyAt: { 1: 30 }, enemies: [committed, nearerNextPack] });
+  Object.assign(actors[0], { baseHeroName: 'Huun', currentLevel: 100 });
+  globals.ContinuousCombatStage = { activeEncounterGroupId: 10 };
+  assert.deepEqual(filterContinuousEncounterEnemies([committed, nearerNextPack], globals).map(enemy => enemy.uid), [90]);
+  const ambush = HERO_DEFINITIONS.Huun.actives.find(skill => skill.skillId === 'ambush');
+  const skillSelection = selectRealtimeHeroSkillTarget({ skill: ambush, hero: actors[0], heroes: actors, enemies: [committed, nearerNextPack], globals, now: globals.time });
+  assert.equal(skillSelection?.targetUID, 90, 'conditional skill candidates remain in the committed sector');
+  assert.equal(tick(ctx), 1);
+  assert.equal(globals.PendingHeroHits[0].targetUID, 90, 'basic scheduler must not jump to a closer living pack');
 });
 
 test('no in-range target preserves an overdue attack for the next eligible target', () => {

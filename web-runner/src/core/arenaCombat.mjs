@@ -1,5 +1,5 @@
 import { advanceActorToward, actorFootPoint, actorFootprintRadius, isActorTargetInRange } from '../../../src/core/arenaCombatRules.mjs';
-import { deriveCombatFormationAnchors, deriveCombatWorldBounds } from '../../../src/core/combatOrientation.mjs';
+import { deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
 
 const isLiving = actor => actor && Number(actor.hp || 0) > 0;
 const distance = (actor, target) => {
@@ -104,7 +104,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   // Retreat is stage-owned displacement. Letting its direct steering run here
   // would pull an enemy back toward its target during Frost Reversal.
   const enemies = entities.filter(actor => actor?.kind === 'enemy' && isLiving(actor)
-    && ['roaming', 'in_range', 'engaged'].includes(actor.streamState));
+    && ['roaming', 'in_range', 'engaged', 'retreating'].includes(actor.streamState));
   const anchors = deriveCombatFormationAnchors({ globals, entities, heroCount: heroes.length });
   const worldBounds = deriveCombatWorldBounds();
   const stage = globals.ContinuousCombatStage;
@@ -112,12 +112,18 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   const boss = bossEncounter ? enemies.find(enemy => String(enemy.combatRank || enemy.enemyRole || enemy.role || '').toLowerCase() === 'boss') : null;
   const bossAnchorX = Number.isFinite(stage?.bossWorldX) ? Number(stage.bossWorldX) : Number(boss?.footX ?? boss?.x ?? 0);
   const bossRadius = boss ? actorFootprintRadius(boss) : 0;
-  const bounds = { ...anchors.arenaBounds, ...worldBounds };
+  const worldYBounds = deriveCombatWorldVerticalBounds();
+  const bounds = { ...anchors.arenaBounds, ...worldBounds, visibleTopY: worldYBounds.minY, visibleBottomY: worldYBounds.maxY };
   if (bossEncounter && boss) {
     bounds.heroMinX = Math.max(worldBounds.heroMinX, bossAnchorX - worldBounds.visibleWorldWidth * 0.75);
     bounds.heroMaxX = Math.min(worldBounds.heroMaxX, bossAnchorX - bossRadius - 18);
+    const bossAnchorY = Number.isFinite(stage?.bossWorldY) ? Number(stage.bossWorldY) : Number(boss.footY ?? boss.y ?? 290);
+    bounds.visibleTopY = Math.max(worldYBounds.minY, bossAnchorY - 180);
+    bounds.visibleBottomY = Math.min(worldYBounds.maxY, bossAnchorY + 180);
     bounds.bossMinX = bossAnchorX;
     bounds.bossMaxX = Math.min(worldBounds.heroMaxX - bossRadius, bossAnchorX + 32);
+    bounds.bossMinY = Math.max(worldYBounds.minY, bossAnchorY - 32);
+    bounds.bossMaxY = Math.min(worldYBounds.maxY, bossAnchorY + 32);
   }
   const minY = bounds.visibleTopY, maxY = bounds.visibleBottomY;
   heroes.forEach((hero, index) => {
@@ -141,33 +147,68 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
     group.push(enemy);
     groups.set(groupId, group);
   }
-  const groupCenter = group => group.reduce((sum, enemy) => sum + actorFootPoint(enemy).x, 0) / group.length;
-  const nearestGroup = [...groups.values()].sort((a, b) => Math.abs(groupCenter(a) - center) - Math.abs(groupCenter(b) - center))[0] || [];
-  const nearestGroupX = nearestGroup.length ? groupCenter(nearestGroup) : null;
-  const locallyDetected = !hasStragglers && nearestGroup.length && Math.abs(nearestGroupX - center) <= DETECTION_RADIUS;
+  const groupCenter = group => group.reduce((sum, enemy) => {
+    const foot = actorFootPoint(enemy);
+    return { x: sum.x + foot.x / group.length, y: sum.y + foot.y / group.length };
+  }, { x: 0, y: 0 });
+  const groupDistance = group => {
+    const point = groupCenter(group);
+    return Math.hypot(point.x - center, point.y - centerY);
+  };
+  const orderedGroups = [...groups.entries()].sort((a, b) => groupDistance(a[1]) - groupDistance(b[1]));
+  const activeStates = new Set(['in_range', 'engaged', 'retreating']);
+  const activeGroups = orderedGroups.filter(([, group]) => group.some(enemy => activeStates.has(enemy.streamState)));
+  const storedGroupId = Number(stage?.activeEncounterGroupId);
+  const storedGroup = activeGroups.find(([groupId]) => groupId === storedGroupId);
+  const committedGroup = storedGroup || activeGroups[0] || null;
+  const nearestEntry = orderedGroups[0] || null;
+  const nearestGroup = committedGroup?.[1] || nearestEntry?.[1] || [];
+  const nearestGroupId = committedGroup?.[0] ?? nearestEntry?.[0] ?? null;
+  const nearestGroupCenter = nearestGroup.length ? groupCenter(nearestGroup) : null;
+  const locallyDetected = !!committedGroup || (!hasStragglers && nearestEntry && groupDistance(nearestEntry[1]) <= DETECTION_RADIUS);
   const focusedEnemies = locallyDetected ? nearestGroup : [];
+  if (stage) {
+    if (locallyDetected && nearestGroupId != null) stage.activeEncounterGroupId = Number(nearestGroupId);
+    else delete stage.activeEncounterGroupId;
+  }
   const sharedTarget = focusedEnemies.length ? nearest({ footX: center, footY: centerY }, focusedEnemies) : null;
   const targetPoint = sharedTarget ? actorFootPoint(sharedTarget) : null;
-  const targetDirection = targetPoint ? Math.sign(targetPoint.x - center) || Math.sign((nearestGroupX ?? center) - center) || 1 : 0;
+  const travelPoint = targetPoint || nearestGroupCenter || { x: center + 1, y: centerY };
+  const travelDeltaX = travelPoint.x - center, travelDeltaY = travelPoint.y - centerY;
+  const travelLength = Math.hypot(travelDeltaX, travelDeltaY);
+  const directionX = travelLength > 1e-6 ? travelDeltaX / travelLength : 1;
+  const directionY = travelLength > 1e-6 ? travelDeltaY / travelLength : 0;
+  const targetDirection = Math.sign(directionX) || 1;
   for (const enemy of focusedEnemies) if (enemy.streamState === 'roaming') enemy.streamState = 'in_range';
   for (const [index, hero] of heroes.entries()) {
     const formation = heroFormationSlot(hero, index);
     const target = sharedTarget;
     if (target) {
       hero.arenaTargetUID = Number(target.uid || 0);
+      const alongOffset = formation.frontline ? 8 : -8;
       const contactTarget = {
         ...target,
-        footX: formation.frontline ? targetPoint.x + Math.sign(targetPoint.x - actorFootPoint(hero).x) * 8 : targetPoint.x,
-        footY: targetPoint.y + (formation.frontline ? 0 : formation.rowOffset),
+        footX: targetPoint.x + directionX * alongOffset - directionY * formation.rowOffset,
+        footY: targetPoint.y + directionY * alongOffset + directionX * formation.rowOffset,
       };
       advanceActorToward(hero, contactTarget, { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
       preserveActionState: Number(hero.actionStateUntil || 0) > Number(globals.time || 0) });
     } else {
-      const nextPackX = hasStragglers ? center : (nearestGroup.length ? nearestGroupX : clamp(center + 160, bounds.heroMinX, bounds.heroMaxX));
-      const searchX = hasStragglers ? center : (locallyDetected ? nextPackX : clamp(nextPackX - Math.sign(nextPackX - center) * 130, bounds.heroMinX, bounds.heroMaxX));
-      const searchDirection = Math.sign(searchX - center) || targetDirection || 1;
+    const nextPoint = hasStragglers ? { x: center, y: centerY }
+        : nearestGroupCenter || { x: clamp(center + 160, bounds.heroMinX, bounds.heroMaxX), y: centerY };
+      const deltaX = nextPoint.x - center, deltaY = nextPoint.y - centerY;
+      const deltaLength = Math.hypot(deltaX, deltaY) || 1;
+      const directionX = deltaLength > 1e-6 ? deltaX / deltaLength : targetDirection;
+      const directionY = deltaLength > 1e-6 ? deltaY / deltaLength : 0;
+      const approachDistance = hasStragglers || locallyDetected ? 0 : 130;
+      const approachX = nextPoint.x - directionX * approachDistance;
+      const approachY = nextPoint.y - directionY * approachDistance;
       const frontOffset = formation.frontline ? TRAVEL_FRONT_OFFSET : -TRAVEL_FRONT_OFFSET;
-      const searchTarget = { footX: searchX + searchDirection * frontOffset, footY: centerY + formation.rowOffset };
+      const sideOffset = formation.rowOffset;
+      const searchTarget = {
+        footX: clamp(approachX + directionX * frontOffset - directionY * sideOffset, bounds.heroMinX, bounds.heroMaxX),
+      footY: clamp(approachY + directionY * frontOffset + directionX * sideOffset, minY, maxY),
+      };
       hero.arenaTargetUID = 0;
       advanceActorToward(hero, searchTarget, { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
         preserveActionState: Number(hero.actionStateUntil || 0) > Number(globals.time || 0) });
@@ -175,14 +216,38 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   }
   let newlyEngaged = 0;
   for (const enemy of focusedEnemies) {
+    if (enemy.streamState === 'retreating') continue;
     const target = selectContinuousEnemyTarget({ enemy, heroes, globals });
     if (!target) { enemy.locomotion = 'idle'; if (Number(enemy.actionStateUntil || 0) <= Number(globals.time || 0)) enemy.actionState = 'idle'; continue; }
     const isBoss = bossEncounter && enemy === boss;
-    advanceActorToward(enemy, target, { seconds, speed: Math.max(34, Number(enemy.streamWalkSpeed || 40)), now: Number(globals.time || 0), minX: isBoss ? bounds.bossMinX : bounds.heroMinX, maxX: isBoss ? bounds.bossMaxX : bounds.maxX, minY, maxY,
+    advanceActorToward(enemy, target, { seconds, speed: Math.max(34, Number(enemy.streamWalkSpeed || 40)), now: Number(globals.time || 0), minX: isBoss ? bounds.bossMinX : bounds.heroMinX, maxX: isBoss ? bounds.bossMaxX : bounds.maxX, minY: isBoss ? bounds.bossMinY : minY, maxY: isBoss ? bounds.bossMaxY : maxY,
       preserveActionState: Number(enemy.actionStateUntil || 0) > Number(globals.time || 0) });
   }
   separateFootprints([...heroes, ...enemies], bounds);
+  if (travelLength > 1e-6 && !bossEncounter) {
+    const frontline = heroes.filter(hero => heroFormationSlot(hero, heroes.indexOf(hero)).frontline);
+    const supports = heroes.filter(hero => !heroFormationSlot(hero, heroes.indexOf(hero)).frontline);
+    if (frontline.length && supports.length) {
+      const progress = actor => {
+        const point = actorFootPoint(actor);
+        return (point.x - center) * directionX + (point.y - centerY) * directionY;
+      };
+      const frontlineProgress = frontline.reduce((sum, hero) => sum + progress(hero) / frontline.length, 0);
+      const supportProgress = supports.reduce((sum, hero) => sum + progress(hero) / supports.length, 0);
+      const excess = supportProgress - (frontlineProgress - 12);
+      const correction = Math.min(Math.max(0, excess), Math.max(0, Number(seconds) || 0) * SEARCH_SPEED);
+      if (correction > 0) {
+        for (const hero of supports) {
+          const point = actorFootPoint(hero);
+          hero.footX = hero.x = clamp(point.x - directionX * correction, bounds.heroMinX, bounds.heroMaxX);
+          hero.footY = hero.y = clamp(point.y - directionY * correction, minY, maxY);
+        }
+        separateFootprints([...heroes, ...enemies], bounds);
+      }
+    }
+  }
   for (const enemy of focusedEnemies) {
+    if (enemy.streamState === 'retreating') continue;
     const target = selectContinuousEnemyTarget({ enemy, heroes, globals });
     if (target && isActorTargetInRange(enemy, target)) {
       if (enemy.streamState !== 'engaged') newlyEngaged += 1;
