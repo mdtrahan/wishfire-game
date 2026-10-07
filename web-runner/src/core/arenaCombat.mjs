@@ -1,4 +1,4 @@
-import { advanceActorToward, actorFootPoint, actorFootprintRadius, isActorTargetInRange } from '../../../src/core/arenaCombatRules.mjs';
+import { advanceActorToward, actorAttackReach, actorFootPoint, actorFootprintRadius, isActorTargetInRange } from '../../../src/core/arenaCombatRules.mjs';
 import { deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
 
 const isLiving = actor => actor && Number(actor.hp || 0) > 0;
@@ -179,13 +179,48 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   const directionX = travelLength > 1e-6 ? travelDeltaX / travelLength : 1;
   const directionY = travelLength > 1e-6 ? travelDeltaY / travelLength : 0;
   const targetDirection = Math.sign(directionX) || 1;
+  const frontline = heroes.filter((hero, index) => heroFormationSlot(hero, index).frontline);
+  const supports = heroes.filter((hero, index) => !heroFormationSlot(hero, index).frontline);
+  const progress = actor => {
+    const point = actorFootPoint(actor);
+    return (point.x - center) * directionX + (point.y - centerY) * directionY;
+  };
+  const regrouping = !bossEncounter && frontline.length > 0 && supports.length > 0
+    && Math.min(...frontline.map(progress)) <= Math.max(...supports.map(progress)) + 8;
   for (const enemy of focusedEnemies) if (enemy.streamState === 'roaming') enemy.streamState = 'in_range';
   for (const [index, hero] of heroes.entries()) {
     const formation = heroFormationSlot(hero, index);
+    if (regrouping && !formation.frontline) {
+      const point = actorFootPoint(hero);
+      if (Math.hypot(point.x - center, point.y - centerY) > SQUAD_STRAGGLE_RADIUS) {
+        const regroupTarget = {
+          footX: center - directionX * 12 - directionY * formation.rowOffset,
+          footY: centerY - directionY * 12 + directionX * formation.rowOffset,
+        };
+        hero.arenaTargetUID = 0;
+        advanceActorToward(hero, regroupTarget, { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
+          preserveActionState: Number(hero.actionStateUntil || 0) > Number(globals.time || 0) });
+        continue;
+      }
+      // Let supports ease back a short step while either tank catches up.
+      // The reach compensation makes advanceActorToward move the actor by the
+      // intended 16 world units without changing its authored attack range.
+      const supportPoint = actorFootPoint(hero);
+      const retreatDistance = actorAttackReach(hero) + actorFootprintRadius({}) + 16;
+      const retreatTarget = {
+        footX: supportPoint.x - directionX * retreatDistance,
+        footY: supportPoint.y - directionY * retreatDistance,
+      };
+      hero.arenaTargetUID = Number(sharedTarget?.uid || 0);
+      advanceActorToward(hero, retreatTarget, { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
+        preserveActionState: Number(hero.actionStateUntil || 0) > Number(globals.time || 0) });
+      if (Math.abs(directionX) > 1e-6) hero.facing = directionX > 0 ? 'right' : 'left';
+      continue;
+    }
     const target = sharedTarget;
     if (target) {
       hero.arenaTargetUID = Number(target.uid || 0);
-      const alongOffset = formation.frontline ? 8 : -8;
+      const alongOffset = 8;
       const contactTarget = {
         ...target,
         footX: targetPoint.x + directionX * alongOffset - directionY * formation.rowOffset,
@@ -224,28 +259,6 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
       preserveActionState: Number(enemy.actionStateUntil || 0) > Number(globals.time || 0) });
   }
   separateFootprints([...heroes, ...enemies], bounds);
-  if (travelLength > 1e-6 && !bossEncounter) {
-    const frontline = heroes.filter(hero => heroFormationSlot(hero, heroes.indexOf(hero)).frontline);
-    const supports = heroes.filter(hero => !heroFormationSlot(hero, heroes.indexOf(hero)).frontline);
-    if (frontline.length && supports.length) {
-      const progress = actor => {
-        const point = actorFootPoint(actor);
-        return (point.x - center) * directionX + (point.y - centerY) * directionY;
-      };
-      const frontlineProgress = frontline.reduce((sum, hero) => sum + progress(hero) / frontline.length, 0);
-      const supportProgress = supports.reduce((sum, hero) => sum + progress(hero) / supports.length, 0);
-      const excess = supportProgress - (frontlineProgress - 12);
-      const correction = Math.min(Math.max(0, excess), Math.max(0, Number(seconds) || 0) * SEARCH_SPEED);
-      if (correction > 0) {
-        for (const hero of supports) {
-          const point = actorFootPoint(hero);
-          hero.footX = hero.x = clamp(point.x - directionX * correction, bounds.heroMinX, bounds.heroMaxX);
-          hero.footY = hero.y = clamp(point.y - directionY * correction, minY, maxY);
-        }
-        separateFootprints([...heroes, ...enemies], bounds);
-      }
-    }
-  }
   for (const enemy of focusedEnemies) {
     if (enemy.streamState === 'retreating') continue;
     const target = selectContinuousEnemyTarget({ enemy, heroes, globals });
