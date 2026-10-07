@@ -47,24 +47,46 @@ export function actorScreenFacing(worldFacing, orientation) {
 }
 
 export function createActorPuppetPresentation({ loadClip }) {
-  const resolved = new Map();
-  const requested = new Set();
+  const actors = new Map();
+  let frameNow;
+  const protect = () => loadClip.protect?.([...actors.values()].flatMap(slot => [slot.ready?.key, slot.key]).filter(Boolean));
   return {
     frameFor(actor, now, orientation) {
       const actorKey = actorPuppetKey(actor);
       if (!actorKey || !Number.isFinite(now)) return null;
+      if (frameNow !== now) {
+        for (const [id, slot] of actors) {
+          if (now < frameNow || slot.seen !== frameNow) actors.delete(id);
+        }
+        frameNow = now;
+      }
       const state = actorPuppetState(actor, now);
       const worldFacing = (actor?.actionStateUntil > now ? actor?.actionFacing : actor?.facing) === 'left' ? 'left' : 'right';
       const facing = actorScreenFacing(worldFacing, orientation);
       const key = `${actorKey}/${state}/${facing}`;
-      if (!requested.has(key)) {
-        requested.add(key);
-        Promise.resolve(loadClip(actorKey, state, facing)).then((clip) => { if (clip) resolved.set(key, clip); }).catch(() => {});
+      // Runtime UIDs identify instances; simple preview callers share their actor key.
+      const id = actor.uid ?? actor.UID ?? actorKey;
+      let slot = actors.get(id);
+      if (!slot) { slot = { seen: now }; actors.set(id, slot); }
+      slot.seen = now;
+      if (slot.key !== key) { slot.key = key; slot.pending = null; }
+      protect();
+      if (slot.ready?.key !== key && !slot.pending) {
+        const request = Promise.resolve().then(() => loadClip(actorKey, state, facing));
+        slot.pending = request;
+        request.then(clip => {
+          if (actors.get(id) !== slot || slot.key !== key || slot.pending !== request) return;
+          slot.pending = null;
+          if (clip) slot.ready = { key, clip, state, facing };
+          protect();
+        }).catch(() => { if (slot.pending === request) slot.pending = null; });
       }
-      const clip = resolved.get(key);
-      const frame = clip && sampleActorClip(clip, actorClipAgeMs(actor, state, clip, now));
-      return frame ? { frame, clip, state, facing } : null;
+      const ready = slot.ready;
+      const clip = ready?.clip;
+      const frame = ready?.facing === facing && clip && sampleActorClip(clip, actorClipAgeMs(actor, ready.state, clip, now));
+      return frame ? { frame, clip, state: ready.state, facing } : null;
     },
+    retention() { return { displayedActors: actors.size, ...loadClip.retention?.() }; },
   };
 }
 

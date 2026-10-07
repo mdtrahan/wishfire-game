@@ -62,3 +62,30 @@ test('puppet Shrink uses the shared visual scale and keeps its semantic foot fix
   assert.equal(expired.height, 100);
   assert.equal(expired.drawY + expired.height * (clip.footOrigin.y / clip.canvas.height), 200);
 });
+
+test('presentation protects displayed replacement, ignores stale loads and retires absent actors', async () => {
+  const pending = [];
+  let protectedKeys = [];
+  const load = (actor, state, facing) => new Promise(resolve => pending.push({ state, facing, resolve }));
+  load.protect = keys => { protectedKeys = keys; };
+  const presentation = createActorPuppetPresentation({ loadClip: load });
+  const actor = { uid: 1, portraitName: 'Fara', hp: 10, facing: 'right', locomotion: 'idle', locomotionStartedAt: 1 };
+  presentation.frameFor(actor, 1); await Promise.resolve();
+  pending[0].resolve(clip); await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(presentation.frameFor(actor, 1)?.state, 'idle');
+  actor.locomotion = 'walk'; presentation.frameFor(actor, 2); await Promise.resolve();
+  assert.ok(protectedKeys.includes('fara/idle/right'));
+  assert.ok(protectedKeys.includes('fara/walk/right'));
+  actor.actionState = 'hurt'; actor.actionStateUntil = 5; actor.actionStateStartedAt = 2;
+  presentation.frameFor(actor, 2); await Promise.resolve();
+  pending[1].resolve(clip); await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(presentation.frameFor(actor, 2)?.state, 'idle', 'old walking load cannot overwrite latest hurt');
+  pending[2].resolve(clip); await new Promise(resolve => setTimeout(resolve, 0));
+  const frozen = presentation.frameFor(actor, 2);
+  assert.equal(frozen.state, 'hurt');
+  assert.equal(presentation.frameFor(actor, 2).frame, frozen.frame);
+  const enemy = { uid: 2, name: 'Gobloc', hp: 1, facing: 'left' };
+  presentation.frameFor(enemy, 3); presentation.frameFor(enemy, 4);
+  assert.equal(presentation.retention().displayedActors, 1);
+  assert.ok(!protectedKeys.some(key => key.startsWith('fara/')));
+});

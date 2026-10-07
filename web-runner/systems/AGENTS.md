@@ -16,6 +16,7 @@
 - `devToolingControls.js` and runtime debug helpers own QA/dev surfaces.
 
 ## Local Contracts
+- Puppet PNG playback uses a 24MiB logical RGBA reservation/settled budget and at most 32 clip records. Displayed and latest replacement keys stay protected; capacity denial retries on later paint without an obsolete-state queue. Presentation slots expire after one absent simulation frame, and stale loads cannot replace current state. Physical decoder/GPU allocation follows browser ownership and is not certified by this logical budget.
 - Lamp equipment commits one v4 record before changing runtime Gold, exact rolls or loadouts. Preserve old save records on migration/error. Equip applies canonical stats without healing. The comparison keeps four portrait recipients and their changes above the candidate; inspection must leave combat advancing.
 - `combatAttackVfxPresentation.mjs` lazily requests elemental impact flipbooks by skill slug and centers their one-shot frame on the queued target point; keep the rendered canvas within 52 logical pixels at layout scale 1.
 - `combatSimulationTick.mjs` ages and expires damage text on simulation time; `renderRuntime.js` only spawns its DOM presentation. Damage text must clear so the continuous-stage boss gate can advance.

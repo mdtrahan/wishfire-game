@@ -51,3 +51,42 @@ test('the Fara/Gobloc pilot ships editable bones and complete transparent state 
     }
   }
 });
+
+test('roster stress bounds settled and in-flight clips, protects paint and retries failures', async () => {
+  const names = Array.from({ length: 14 }, (_, i) => `actor${i}`);
+  const states = ['idle', 'walk', 'basic', 'cast', 'hurt', 'ko', 'spawn'];
+  const actors = Object.fromEntries(names.map(actor => [actor, { clips: Object.fromEntries(states.map(state => [state, Object.fromEntries(['left', 'right'].map(facing => [facing, { frames: Array.from({ length: 12 }, (_, n) => `${actor}/${state}/${facing}_${n}.png`), frameHoldMs: Array(12).fill(80), loop: true, canvas: { width: 128, height: 128 }, footOrigin: { x: 64, y: 125 } }]))])) }]));
+  let release;
+  let blocked = false;
+  let fail = false;
+  const gate = () => new Promise(resolve => { release = resolve; });
+  let waiting;
+  const load = createActorClipLoader({ loadManifest: () => ({ actors }), loadImage: async name => { if (blocked) await waiting; if (fail) throw Error('transient'); return { name, naturalWidth: 128, naturalHeight: 128 }; }, frameUrl: name => name });
+  const pinned = await load(names[0], 'idle', 'right');
+  load.protect(['actor0/idle/right']);
+  let highWater = 0;
+  for (let i = 0; i < 1000; i++) {
+    const actor = names[i % 14];
+    const state = states[Math.floor(i / 14) % 7];
+    const facing = Math.floor(i / 98) % 2 ? 'left' : 'right';
+    assert.ok(await load(actor, state, facing));
+    highWater = Math.max(highWater, load.retention().retainedBytes);
+    assert.ok(load.retention().retainedBytes <= 24 * 1024 * 1024);
+    assert.ok(load.retention().entries <= 32);
+  }
+  assert.equal(await load('actor0', 'idle', 'right'), pinned);
+  assert.ok(load.retention().evictions > 0);
+  assert.equal(sampleActorClip(pinned, 120), sampleActorClip(pinned, 120), 'pause age stays supplied');
+  blocked = true; waiting = gate();
+  const pending = names.flatMap(actor => states.flatMap(state => ['left', 'right'].map(facing => load(actor, state, facing))));
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.ok(load.retention().pending <= 32);
+  assert.ok(load.retention().retainedBytes <= 24 * 1024 * 1024);
+  release(); blocked = false; await Promise.all(pending);
+  load.protect([]);
+  // Force a fresh key after eviction, then prove a failed image load is recoverable.
+  for (const actor of names) for (const state of states) await load(actor, state, 'left');
+  fail = true; assert.equal(await load('actor0', 'idle', 'right'), null);
+  fail = false; assert.ok(await load('actor0', 'idle', 'right'));
+  console.log(JSON.stringify({ rosterKeys: 196, transitions: 1000, logicalHighWaterBytes: highWater, ...load.retention() }));
+});
