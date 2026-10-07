@@ -5,11 +5,49 @@ import { cleanseDebuffs } from './combatRules.mjs';
 import { saveHeroProgress } from './heroProgression.mjs';
 import { advanceContinuousCombatArena } from './arenaCombat.mjs';
 import { resetActorPresentationAfterRestore } from './actorPresentationState.mjs';
+import { actorFootPoint, actorFootprintRadius } from '../../../src/core/arenaCombatRules.mjs';
 
 export const CONTINUOUS_COMBAT_PACK_INTERVAL_SEC = 3;
 export const CONTINUOUS_COMBAT_PACK_CP_STEP = 0.06;
 export const CONTINUOUS_COMBAT_WAVES_PER_STAGE = 4;
 export const CONTINUOUS_COMBAT_STAGES_PER_REGION = 10;
+
+function regroupKnockedOutHeroes(heroes) {
+  const living = heroes.filter(hero => Number(hero.hp || 0) > 0);
+  const knockedOut = heroes.filter(hero => Number(hero.hp || 0) <= 0);
+  if (!living.length || !knockedOut.length) return;
+
+  const world = deriveCombatWorldBounds();
+  const arena = deriveCombatArenaBounds();
+  const center = living.reduce((sum, hero) => {
+    const point = actorFootPoint(hero);
+    return { x: sum.x + point.x / living.length, y: sum.y + point.y / living.length };
+  }, { x: 0, y: 0 });
+  const placed = living.slice();
+  const angles = Array.from({ length: 16 }, (_, index) => (index / 16) * Math.PI * 2);
+  for (const hero of knockedOut) {
+    let position = null;
+    for (const radius of [40, 52, 64, 76, 88, 100]) {
+      for (const angle of angles) {
+        const candidate = {
+          x: Math.max(world.heroMinX, Math.min(world.heroMaxX, center.x + Math.cos(angle) * radius)),
+          y: Math.max(arena.visibleTopY, Math.min(arena.visibleBottomY, center.y + Math.sin(angle) * radius)),
+        };
+        const separated = placed.every(other => {
+          const point = actorFootPoint(other);
+          return Math.hypot(candidate.x - point.x, candidate.y - point.y)
+            >= actorFootprintRadius(hero) + actorFootprintRadius(other) + 4;
+        });
+        if (separated) { position = candidate; break; }
+      }
+      if (position) break;
+    }
+    if (!position) continue;
+    hero.footX = hero.x = position.x;
+    hero.footY = hero.y = position.y;
+    placed.push(hero);
+  }
+}
 
 // Four normal packs form one repeatable stage. The boss is a gate rather than
 // a fifth timed pack.
@@ -531,7 +569,9 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   if (!transition?.stage || !spawnContinuousCombatStage({ globals, entities, call, state: transition.state })) return false;
   if (transition.clearedBoss) {
     resetRealtimeSkillAttempt(globals,entities);
-    for (const hero of entities.filter(actor => actor?.kind === 'hero')) {
+    const heroes = entities.filter(actor => actor?.kind === 'hero');
+    regroupKnockedOutHeroes(heroes);
+    for (const hero of heroes) {
       hero.hp = Number(hero.maxHP || 0);
       hero.isAlive = hero.hp > 0;
       resetActorPresentationAfterRestore(hero, now);

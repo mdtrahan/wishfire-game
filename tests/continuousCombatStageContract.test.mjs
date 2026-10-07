@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { deriveCombatFormationAnchors } from '../src/core/combatOrientation.mjs';
+import { deriveCombatFormationAnchors, deriveCombatWorldBounds } from '../src/core/combatOrientation.mjs';
 import {
   CONTINUOUS_COMBAT_PACK_CP_STEP,
   CONTINUOUS_COMBAT_PACK_INTERVAL_SEC,
@@ -125,8 +125,8 @@ test('ordinary waves carry HP while a boss clear restores and cleanses the party
     { wave: 4, bossAvailable: true, bossArmed: true, bossActive: true },
   ]) {
     const heroes = [
-      { uid: 1, kind: 'hero', baseHeroName: 'Falie', hp: 13, maxHP: 50, isAlive: true, statuses: [{ statusEffect: 'dot' }, { statusEffect: 'atkUp' }], statusEffects: [{ statusEffect: 'blind' }, { statusEffect: 'barrier' }] },
-      { uid: 2, kind: 'hero', baseHeroName: 'Huun', hp: 0, maxHP: 40, isAlive: false, actionState: 'ko', actionFacing: 'left', actionStateStartedAt: 1, actionImpactAt: 1, actionStateUntil: 86401, statuses: [{ statusEffect: 'silence' }] },
+      { uid: 1, kind: 'hero', baseHeroName: 'Falie', hp: 13, maxHP: 50, isAlive: true, footX: 1800, footY: 275, statuses: [{ statusEffect: 'dot' }, { statusEffect: 'atkUp' }], statusEffects: [{ statusEffect: 'blind' }, { statusEffect: 'barrier' }] },
+      { uid: 2, kind: 'hero', baseHeroName: 'Huun', hp: 0, maxHP: 40, isAlive: false, footX: 420, footY: 205, actionState: 'ko', actionFacing: 'left', actionStateStartedAt: 1, actionImpactAt: 1, actionStateUntil: 86401, statuses: [{ statusEffect: 'silence' }] },
     ];
     const entities = [...heroes];
     const globals = {
@@ -149,6 +149,16 @@ test('ordinary waves carry HP while a boss clear restores and cleanses the party
     const clearedBoss = !!stage.bossActive;
     assert.deepEqual(heroes.map(hero => hero.hp), clearedBoss ? [60, 40] : [13, 0]);
     assert.deepEqual(heroes.map(hero => hero.isAlive), clearedBoss ? [true, true] : [true, false]);
+    if (clearedBoss) {
+      const world = deriveCombatWorldBounds();
+      assert.deepEqual([heroes[0].footX, heroes[0].footY], [1800, 275], 'living heroes keep their completed-fight positions');
+      assert.ok(Math.hypot(heroes[1].footX - heroes[0].footX, heroes[1].footY - heroes[0].footY) <= 110, 'a remote KO hero regroups beside the living squad');
+      assert.ok(heroes[1].footX >= world.heroMinX && heroes[1].footX <= world.heroMaxX);
+      assert.ok(heroes[1].footY >= 170 && heroes[1].footY <= 375);
+      assert.ok(Math.hypot(heroes[1].footX - heroes[0].footX, heroes[1].footY - heroes[0].footY) >= 40, 'regroup placement leaves physical separation');
+    } else {
+      assert.deepEqual([heroes[1].footX, heroes[1].footY], [420, 205], 'ordinary wave settlement leaves KO position unchanged');
+    }
     if (clearedBoss) {
       assert.equal(heroes[1].locomotion, 'idle');
       assert.equal(heroes[1].locomotionStartedAt, 10);
