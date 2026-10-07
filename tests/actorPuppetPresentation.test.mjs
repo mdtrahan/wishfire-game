@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { HERO_DEFINITIONS } from '../web-runner/src/core/heroDefinitions.mjs';
 import { actorClipAgeMs, actorPuppetKey, actorPuppetState, actorScreenFacing, createActorPuppetPresentation, drawActorPuppetFrame } from '../web-runner/systems/actorPuppetPresentation.mjs';
 
 const clip = Object.freeze({ frames: [{ frame: 0 }, { frame: 1 }], frameHoldMs: [500, 500], durationMs: 1000, impactTimeMs: 400, releaseTimeMs: 500, loop: false, canvas: { width: 128, height: 128 }, footOrigin: { x: 64, y: 125 } });
@@ -8,7 +10,13 @@ test('puppet selection uses semantic actor state and leaves unsupported actors o
   assert.equal(actorPuppetKey({ portraitName: 'Fara' }), 'fara');
   assert.equal(actorPuppetKey({ name: 'Gobloc' }), 'gobloc');
   assert.equal(actorPuppetKey({ portraitName: 'portrait_fara_alt', baseHeroName: 'Falie' }), 'fara');
-  assert.equal(actorPuppetKey({ portraitName: 'Hondo' }), null);
+  for (const hero of Object.values(HERO_DEFINITIONS)) {
+    assert.equal(actorPuppetKey({ portraitName: hero.name }), hero.name.toLowerCase());
+    assert.equal(actorPuppetKey({ portraitName: `skin_${hero.key}`, baseHeroName: hero.key }), hero.name.toLowerCase());
+  }
+  const enemyNames = JSON.parse(readFileSync(new URL('../web-runner/assets/enemies.json', import.meta.url), 'utf8')).data[0].slice(1).flat().filter(Boolean);
+  for (const name of enemyNames) assert.equal(actorPuppetKey({ name }), name.toLowerCase().replaceAll(' ', ''));
+  assert.equal(actorPuppetKey({ name: 'Unknown' }), null);
   assert.equal(actorPuppetState({ hp: 3, locomotion: 'walk' }, 4), 'walk');
   assert.equal(actorPuppetState({ hp: 3, actionState: 'basic', actionStateUntil: 5 }, 4), 'basic');
   assert.equal(actorPuppetState({ hp: 0, actionState: 'basic', actionStateUntil: 5 }, 4), 'ko');
@@ -129,10 +137,10 @@ test('render boundaries retire empty and unsupported scenes even at a paused clo
   release(clip); await new Promise(resolve => setTimeout(resolve, 0));
   presentation.beginFrame(); const frame = presentation.frameFor(actor, 2); presentation.endFrame();
   presentation.beginFrame(); assert.equal(presentation.frameFor(actor, 2).frame, frame.frame); presentation.endFrame();
-  presentation.beginFrame(); presentation.frameFor({ uid: 2, name: 'Hondo', hp: 1 }, 2); presentation.endFrame();
+  presentation.beginFrame(); presentation.frameFor({ uid: 2, name: 'Unknown', hp: 1 }, 2); presentation.endFrame();
   assert.equal(presentation.retention().displayedActors, 0);
   assert.deepEqual(pins, []);
-  presentation.beginFrame(); presentation.frameFor({ uid: 2, name: 'Hondo', hp: 1 }, 0); presentation.endFrame();
+  presentation.beginFrame(); presentation.frameFor({ uid: 2, name: 'Unknown', hp: 1 }, 0); presentation.endFrame();
   assert.equal(presentation.retention().displayedActors, 0);
 });
 
