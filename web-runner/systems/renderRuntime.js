@@ -13,6 +13,7 @@ import { combatVfxProfileForActor, queueCombatAttackImpactVfx, renderCombatAttac
 import { drawCombatBossControl } from './renderCombatBossControl.mjs';
 import { drawCombatHealthBar } from './combatHealthBarPresentation.mjs';
 import { drawActorPuppetFrame } from './actorPuppetPresentation.mjs';
+import { renderRealtimeSkillGroundVfx } from './realtimeSkillGroundPresentation.mjs';
 import { isActorTargetInRange } from '../../src/core/heroAttackTargetingRules.mjs';
 import {
   computeCombatDamageFontSize,
@@ -125,6 +126,7 @@ effectiveBody = effectiveBody.replace(
   "    renderHealBlooms('front');",
   "    actorPaintQueue.sort((a, b) => Number(a.footY || 0) - Number(b.footY || 0) || Number(a.uid || 0) - Number(b.uid || 0));\n    for (const entry of actorPaintQueue) entry.paint();\n    for (const paint of actorFrontOverlayQueue) paint();\n\n    renderHealBlooms('front');",
 );
+effectiveBody = effectiveBody.replace('    actorPaintQueue.sort(', '    renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale });\n    actorPaintQueue.sort(');
   return effectiveBody;
 }
 
@@ -147,6 +149,7 @@ export function renderRuntime(deps) {
   deps.drawCombatBossControl = drawCombatBossControl;
   deps.drawCombatHealthBar = drawCombatHealthBar;
   deps.drawActorPuppetFrame = drawActorPuppetFrame;
+  deps.renderRealtimeSkillGroundVfx = renderRealtimeSkillGroundVfx;
   deps.isActorTargetInRange = isActorTargetInRange;
   deps.computeCombatDamageFontSize = computeCombatDamageFontSize;
   deps.computeViewportFontSize = computeViewportFontSize;
