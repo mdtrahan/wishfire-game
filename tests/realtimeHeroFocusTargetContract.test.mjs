@@ -73,9 +73,8 @@ test('realtime basics launch visible travel immediately and redraw before a redi
 test('continuous enemies acquire living heroes after spatial contact', () => {
   const source = readFileSync(new URL('../web-runner/modules/functionBank.js', import.meta.url), 'utf8');
   const picker = source.slice(source.indexOf('function pickEnemyTargetHero('), source.indexOf('function applyRunaMagicResist('));
-  assert.match(picker, /const heroes = getHeroes\(ctx\)\.filter/);
-  assert.match(picker, /enemy\?\.streamState === 'engaged' && enemy\.arenaInReach !== false/);
-  assert.match(picker, /heroes,\s*rng:/);
+  assert.match(picker, /enemy\?\.streamState !== 'engaged' \|\| enemy\.arenaInReach === false/);
+  assert.match(picker, /selectContinuousEnemyTarget\(\{[\s\S]*heroes: getHeroes\(ctx\),[\s\S]*requireInReach: true/);
   const action = source.slice(source.indexOf('export function StartEnemyAction('), source.indexOf('export function SpawnDamageText('));
   assert.match(action, /const target = pickEnemyTargetHero\(ctx, enemyUID\);\s*if \(!target\) return;/);
 });

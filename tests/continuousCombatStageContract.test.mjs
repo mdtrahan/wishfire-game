@@ -569,14 +569,13 @@ test('runtime source targets in-range walkers while keeping them out of the enem
   assert.doesNotMatch(stage, /runCombatStep\('ProcessTurn'\)/);
 });
 
-test('engaged enemies can target any living hero regardless of the rendered foot position', async () => {
+test('engaged enemies select only a living hero inside their actor-relative reach', async () => {
   const { readFileSync } = await import('node:fs');
-  for (const path of ['../web-runner/modules/functionBank.js', '../Scripts/functionBank.js']) {
-    const source = readFileSync(new URL(path, import.meta.url), 'utf8');
-    const targeter = source.slice(source.indexOf('function pickEnemyTargetHero('), source.indexOf('function applyRunaMagicResist('));
-    assert.match(targeter, /enemy\?\.streamState === 'engaged'/);
-    assert.doesNotMatch(targeter, /HeroRestBasePosByUID|visibleBottomY/);
-  }
+  const source = readFileSync(new URL('../web-runner/modules/functionBank.js', import.meta.url), 'utf8');
+  const targeter = source.slice(source.indexOf('function pickEnemyTargetHero('), source.indexOf('function applyRunaMagicResist('));
+  assert.match(targeter, /enemy\?\.streamState !== 'engaged' \|\| enemy\.arenaInReach === false/);
+  assert.match(targeter, /selectContinuousEnemyTarget\(\{[\s\S]*requireInReach: true/);
+  assert.doesNotMatch(targeter, /HeroRestBasePosByUID|visibleBottomY/);
 });
 
 test('continuous scheduler rejects a stale hero claim before selecting an engaged enemy', async () => {
