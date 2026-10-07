@@ -7,7 +7,7 @@ export { realtimeCombatStat } from './realtimeSkillState.mjs';
 const nowOf = g => Number(g.time || 0);
 const living = a => Number(a?.hp || 0)>0;
 const actor = (ctx,uid)=>ctx.state.entities.find(a=>Number(a.uid)===Number(uid));
-const point = a=>({x:Number(a?.x || 0),y:Number(a?.y || 0)});
+const point = a=>({x:Number(a?.footX ?? a?.x ?? 0),y:Number(a?.footY ?? a?.y ?? 0)});
 const effects = g=>g.RealtimeSkillEffects ||= {};
 export function realtimeEffect(g,uid,id) {
   const record=effects(g)[String(uid)]?.[id];
@@ -54,6 +54,7 @@ export function castRealtimeHeroSkill(ctx,heroUID,skill,selection,displacement={
     statReader:(a,stat)=>ctx.callFunction('GetEffectiveStat',a,stat)});
   if(!fresh)return false;
   source.actionState='cast';
+  source.actionFacing=source.facing;
   source.actionStateStartedAt=now;
   source.actionImpactAt=now;
   source.actionStateUntil=now+0.42;
@@ -151,7 +152,7 @@ export function tickRealtimeHeroSkillZones(ctx) {
   for(const zone of g.RealtimeSkillZones || []) {
     const source=actor(ctx,zone.sourceUID);
     while(zone.nextTickAt<=Math.min(now,zone.expiresAt)) {
-      for(const target of enemiesInSkillShape(ctx.state.entities.filter(a=>a.kind==='enemy'),{kind:'circle',center:zone.point,radius:zone.radius}))damage(ctx,source,target,zone.damagePct,'magic');
+      for(const target of enemiesInSkillShape(ctx.state.entities.filter(a=>a.kind==='enemy'),{kind:'circle',center:zone.point,radius:zone.radius},source))damage(ctx,source,target,zone.damagePct,'magic');
       zone.nextTickAt+=1;
     }
   }

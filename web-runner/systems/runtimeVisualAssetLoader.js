@@ -6,6 +6,7 @@ import {
 } from '../state/heroScreenConfig.js';
 import { heroArtPath } from '../state/heroArtAssets.mjs';
 import { getEmbeddedJson } from './runtimeAssetUrl.mjs';
+import { createActorClipLoader } from './actorClipPlayback.mjs';
 
 export function createElementalImpactFrameLoader({ loadManifest, loadImage, frameUrl }) {
   let manifestPromise = null;
@@ -49,6 +50,18 @@ export async function loadRuntimeVisualAssets({
   resolveRuntimeImageUrl,
 }) {
   const loadImage = (url) => loadRuntimeImage(url, { resolveRuntimeImageUrl });
+  const loadActorPuppetClip = createActorClipLoader({
+    loadManifest: async () => {
+      const url = assetUrl('puppets/manifest.json');
+      const embedded = getEmbeddedJson(url);
+      if (embedded) return embedded;
+      if (typeof fetch !== 'function') return null;
+      const response = await fetch(typeof resolveRuntimeImageUrl === 'function' ? resolveRuntimeImageUrl(url) : url);
+      return response.ok ? response.json() : null;
+    },
+    loadImage,
+    frameUrl: (name) => assetUrl(`puppets/${name}`),
+  });
   const images = {};
   const elementalImpactFrames = {};
   const loadElementalImpactFrames = createElementalImpactFrameLoader({
@@ -315,5 +328,6 @@ export async function loadRuntimeVisualAssets({
     loadedCount,
     failedImages,
     deferredVisualsPromise,
+    loadActorPuppetClip,
   };
 }

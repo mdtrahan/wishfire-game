@@ -1,0 +1,32 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { actorClipAgeMs, actorPuppetKey, actorPuppetState, createActorPuppetPresentation } from '../web-runner/systems/actorPuppetPresentation.mjs';
+
+const clip = Object.freeze({ frames: [{ frame: 0 }, { frame: 1 }], frameHoldMs: [500, 500], durationMs: 1000, impactTimeMs: 400, releaseTimeMs: 500, loop: false, canvas: { width: 128, height: 128 }, footOrigin: { x: 64, y: 125 } });
+
+test('puppet selection uses semantic actor state and leaves unsupported actors on static art', () => {
+  assert.equal(actorPuppetKey({ portraitName: 'Fara' }), 'fara');
+  assert.equal(actorPuppetKey({ name: 'Gobloc' }), 'gobloc');
+  assert.equal(actorPuppetKey({ portraitName: 'Hondo' }), null);
+  assert.equal(actorPuppetState({ hp: 3, locomotion: 'walk' }, 4), 'walk');
+  assert.equal(actorPuppetState({ hp: 3, actionState: 'basic', actionStateUntil: 5 }, 4), 'basic');
+  assert.equal(actorPuppetState({ hp: 0, actionState: 'basic', actionStateUntil: 5 }, 4), 'ko');
+});
+
+test('puppet presentation aligns native markers without changing simulation timing', async () => {
+  const basic = { hp: 10, actionState: 'basic', actionStateStartedAt: 10, actionImpactAt: 10.52, actionStateUntil: 10.72, facing: 'left' };
+  assert.equal(actorClipAgeMs(basic, 'basic', clip, 10.52), 400);
+  assert.equal(actorClipAgeMs({ ...basic, actionState: 'cast', actionImpactAt: 10 }, 'cast', clip, 10), 500);
+  const presentation = createActorPuppetPresentation({ loadClip: async () => clip });
+  assert.equal(presentation.frameFor({ ...basic, portraitName: 'Fara' }, 10), null);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(presentation.frameFor({ ...basic, portraitName: 'Fara' }, 10.52)?.state, 'basic');
+});
+
+test('locomotion and KO age from the simulation clock while action facing remains committed', () => {
+  const walk = { hp: 10, locomotion: 'walk', locomotionStartedAt: 4 };
+  assert.equal(actorClipAgeMs(walk, 'walk', clip, 4), 0);
+  assert.ok(Math.abs(actorClipAgeMs(walk, 'walk', clip, 4.6) - 600) < 1e-6);
+  const ko = { hp: 0, actionStateStartedAt: 5 };
+  assert.ok(Math.abs(actorClipAgeMs(ko, 'ko', clip, 5.6) - 600) < 1e-6);
+});

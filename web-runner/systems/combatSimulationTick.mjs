@@ -2,7 +2,7 @@ import {
   combatVfxProfileForActor as defaultCombatVfxProfileForActor,
   queueCombatAttackImpactVfx as defaultQueueCombatAttackImpactVfx,
 } from './combatAttackVfxPresentation.mjs';
-import { isActorTargetInRange } from '../../src/core/heroAttackTargetingRules.mjs';
+import { isActorRanged, isActorTargetInRange } from '../../src/core/heroAttackTargetingRules.mjs';
 
 export function processPendingHeroHits({
   state,
@@ -89,7 +89,7 @@ export function processPendingHeroHits({
         const impactSource = hit.allowSourceKO && Number(sourceEntity?.hp || 0) <= 0
           ? { ...sourceEntity, hp: 1 }
           : sourceEntity;
-        if (hit.realtimeBasic && Number(state.globals.ContinuousCombatStageLoop || 0) === 1 && !isHeroBasicTargetInRange(targetEntity, impactSource)) targetEntity = null;
+        if (hit.realtimeBasic && Number(state.globals.ContinuousCombatStageLoop || 0) === 1 && !isActorRanged(impactSource) && !isHeroBasicTargetInRange(targetEntity, impactSource)) targetEntity = null;
         if ((!targetEntity || Number(targetEntity.hp || 0) <= 0) && hit.retargetOnDeath) {
           const livingEnemies = (state.entities || []).filter((entity) => entity && entity.kind === 'enemy' && Number(entity.hp || 0) > 0 && (Number(state.globals.ContinuousCombatStageLoop || 0) !== 1 || isHeroBasicTargetInRange(entity, impactSource)));
           const replacement = livingEnemies[0] || null;

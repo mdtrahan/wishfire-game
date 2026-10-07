@@ -62,14 +62,14 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   for (const hero of heroes) {
     const target = stableNearest(hero, enemies);
     if (!target) { hero.locomotion = 'idle'; if (Number(hero.actionStateUntil || 0) <= Number(globals.time || 0)) hero.actionState = 'idle'; continue; }
-    advanceActorToward(hero, target, { seconds, speed: 78, minX: bounds.heroBackCenterX, maxX: bounds.attackStartX, minY, maxY,
+    advanceActorToward(hero, target, { seconds, speed: 78, now: Number(globals.time || 0), minX: bounds.heroBackCenterX, maxX: bounds.attackStartX, minY, maxY,
       preserveActionState: Number(hero.actionStateUntil || 0) > Number(globals.time || 0) });
   }
   let newlyEngaged = 0;
   for (const enemy of enemies) {
     const target = stableNearest(enemy, heroes);
     if (!target) { enemy.locomotion = 'idle'; if (Number(enemy.actionStateUntil || 0) <= Number(globals.time || 0)) enemy.actionState = 'idle'; continue; }
-    advanceActorToward(enemy, target, { seconds, speed: Math.max(34, Number(enemy.streamWalkSpeed || 40)), minX: bounds.heroBackCenterX, maxX: bounds.attackStartX, minY, maxY,
+    advanceActorToward(enemy, target, { seconds, speed: Math.max(34, Number(enemy.streamWalkSpeed || 40)), now: Number(globals.time || 0), minX: bounds.heroBackCenterX, maxX: bounds.attackStartX, minY, maxY,
       preserveActionState: Number(enemy.actionStateUntil || 0) > Number(globals.time || 0) });
   }
   if (!heroes.length) return newlyEngaged;

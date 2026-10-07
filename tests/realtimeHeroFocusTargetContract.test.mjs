@@ -9,13 +9,15 @@ test('a basic attack acquires and retargets only enemies already inside the firi
     { uid: 2, hp: 10, x: 289, streamState: 'in_range' },
     { uid: 3, hp: 10, x: 280, streamState: 'engaged' },
   ];
-  const pick = focusUID => resolveHeroAttackTarget({ enemies, focusUID, inRange: isHeroBasicTargetInRange });
+  const hero = { kind: 'hero', hp: 10, footX: 230, footY: 0, attackType: 'magic' };
+  const pick = focusUID => resolveHeroAttackTarget({ enemies, focusUID, inRange: enemy => isHeroBasicTargetInRange(enemy, hero) });
   assert.equal(pick(1), enemies[1]);
   enemies[1].hp = 0;
   assert.equal(pick(2), enemies[2]);
   enemies[2].hp = 0;
   assert.equal(pick(3), null);
   enemies[0].x = 289;
+  enemies[0].footX = 289;
   enemies[0].streamState = 'in_range';
   assert.equal(pick(3), enemies[0]);
 });
@@ -63,7 +65,7 @@ test('realtime basics launch visible travel immediately and redraw before a redi
   const simulationTick = readFileSync(new URL('../web-runner/systems/combatSimulationTick.mjs', import.meta.url), 'utf8');
   assert.match(simulationTick, /const sourceEntity = callFunctionWithContext\(fnContext, 'GetActorByUID', hit\.heroUID \|\| hit\.sourceUID\)/);
   assert.match(simulationTick, /const impactSource = hit\.allowSourceKO && Number\(sourceEntity\?\.hp \|\| 0\) <= 0/);
-  assert.match(simulationTick, /hit\.realtimeBasic && Number\(state\.globals\.ContinuousCombatStageLoop \|\| 0\) === 1 && !isHeroBasicTargetInRange\(targetEntity, impactSource\)/);
+  assert.match(simulationTick, /hit\.realtimeBasic && Number\(state\.globals\.ContinuousCombatStageLoop \|\| 0\) === 1 && !isActorRanged\(impactSource\) && !isHeroBasicTargetInRange\(targetEntity, impactSource\)/);
   assert.match(simulationTick, /Number\(state\.globals\.ContinuousCombatStageLoop \|\| 0\) !== 1 \|\| isHeroBasicTargetInRange\(entity, impactSource\)/);
   assert.match(simulationTick, /targetEntity = replacement;\s*if \(hit\.realtimeBasic\) \{\s*hit\.at = now \+ 0\.52;\s*continue;/);
 });

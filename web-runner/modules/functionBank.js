@@ -7435,6 +7435,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID, realtimeBasic = false)
   if (realtimeBasic && actor) {
     const actionNow = Number(getGlobals(ctx).time || 0);
     actor.actionState = actor.attackType === 'magic' ? 'cast' : 'basic';
+    actor.actionFacing = actor.facing;
     actor.actionStateStartedAt = actionNow;
     actor.actionImpactAt = actionNow + 0.52;
     // The impact remains at 520ms. The final 200ms is presentation recovery,

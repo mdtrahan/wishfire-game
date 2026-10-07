@@ -13,10 +13,13 @@ export function actorFootPoint(actor) {
 }
 
 export function actorAttackReach(actor) {
-  const ranged = actor?.kind === 'enemy'
+  return isActorRanged(actor) ? 146 : 46;
+}
+
+export function isActorRanged(actor) {
+  return actor?.kind === 'enemy'
     ? String(actor?.streamDelivery || '').toLowerCase() === 'ranged'
     : String(actor?.attackType || '').toLowerCase() === 'magic';
-  return ranged ? 146 : 46;
 }
 
 export function actorFootprintRadius(actor) {
@@ -26,12 +29,11 @@ export function actorFootprintRadius(actor) {
 export function isActorTargetInRange(actor, target) {
   if (!actor || !target || number(actor.hp) <= 0 || number(target.hp) <= 0) return false;
   if (target.streamState === 'approaching') return false;
-  if (!actor.arenaEnabled) return finite(target.x) && number(target.x) >= 0 && number(target.x) <= 290;
   const source = actorFootPoint(actor), destination = actorFootPoint(target);
   return Math.hypot(destination.x - source.x, destination.y - source.y) <= actorAttackReach(actor) + actorFootprintRadius(target);
 }
 
-export function advanceActorToward(actor, target, { seconds = 0, speed = 0, minX = 0, maxX = 360, minY = 0, maxY = 640, preserveActionState = false } = {}) {
+export function advanceActorToward(actor, target, { seconds = 0, speed = 0, now = 0, minX = 0, maxX = 360, minY = 0, maxY = 640, preserveActionState = false } = {}) {
   const source = actorFootPoint(actor), destination = actorFootPoint(target);
   const reach = actorAttackReach(actor) + actorFootprintRadius(target);
   const dx = destination.x - source.x, dy = destination.y - source.y;
@@ -49,7 +51,9 @@ export function advanceActorToward(actor, target, { seconds = 0, speed = 0, minX
   }
   actor.facing = destination.x >= source.x ? 'right' : 'left';
   actor.arenaEnabled = true;
-  actor.locomotion = moved > 0 ? 'walk' : 'idle';
+  const nextLocomotion = moved > 0 ? 'walk' : 'idle';
+  if (actor.locomotion !== nextLocomotion) actor.locomotionStartedAt = number(now);
+  actor.locomotion = nextLocomotion;
   if (!preserveActionState) actor.actionState = actor.locomotion;
   return moved;
 }

@@ -9,8 +9,8 @@ import { calculateDamageFromJs } from '../src/core/calculateDamageRules.mjs';
 import { renderCombatAttackVfx } from '../web-runner/systems/combatAttackVfxPresentation.mjs';
 const skill=(key,id)=>HERO_DEFINITIONS[key].actives.find(a=>a.skillId===id);
 function combat() {
- const heroes=Object.keys(HERO_DEFINITIONS).map((key,index)=>({uid:index+1,kind:'hero',baseHeroName:key,name:key,currentLevel:100,hp:30,maxHP:100,x:120,y:200,stats:{ATK:100,DEF:20,MAG:100,RES:10,SPD:10},equipmentStats:{ATK:4}}));
- const enemies=[0,1,2].map(i=>({uid:10+i,kind:'enemy',hp:1000,maxHP:1000,x:200+i*20,y:200+i*10,streamEngageX:200,streamState:'engaged',combatRank:'ordinary',attackType:'magic',stats:{ATK:100,DEF:30,RES:0,MAG:101,SPD:5}}));
+ const heroes=Object.keys(HERO_DEFINITIONS).map((key,index)=>({uid:index+1,kind:'hero',baseHeroName:key,name:key,currentLevel:100,hp:30,maxHP:100,x:155,y:200,footX:155,footY:200,stats:{ATK:100,DEF:20,MAG:100,RES:10,SPD:10},equipmentStats:{ATK:4}}));
+ const enemies=[0,1,2].map(i=>({uid:10+i,kind:'enemy',hp:1000,maxHP:1000,x:190+i*10,y:200+i*10,footX:190+i*10,footY:200+i*10,streamEngageX:200,streamState:'engaged',combatRank:'ordinary',attackType:'magic',stats:{ATK:100,DEF:30,RES:0,MAG:101,SPD:5}}));
  const g={time:10,ContinuousCombatStageLoop:1,RuntimeRandomSeed:12,RuntimeRandomDraws:0};
  g.RuntimeRandom=()=>previewSeededRng(g.RuntimeRandomSeed,g.RuntimeRandomDraws++);
  const state={globals:g,entities:[...heroes,...enemies]},ctx={state,callFunction(name,...args){
@@ -70,7 +70,7 @@ test('Blight refresh replaces its tick schedule and ignores later arrivals',()=>
  const later={...enemies[0],uid:99,hp:1000};ctx.state.entities.push(later);cast('Runa','faze');g.time=14;tickRealtimeHeroSkillZones(ctx);assert.equal(enemies[0].hp,996);assert.equal(later.hp,997);
 });
 test('approaching foes cannot receive direct damage or zone ticks',()=>{
- const {ctx,g,enemies,cast}=combat();enemies[2].x=340;cast('Runa','burn_sigil');g.time=16;tickRealtimeHeroSkillZones(ctx);assert.equal(enemies[2].hp,1000);
+ const {ctx,g,enemies,cast}=combat();enemies[2].x=340;enemies[2].footX=340;cast('Runa','burn_sigil');g.time=16;tickRealtimeHeroSkillZones(ctx);assert.equal(enemies[2].hp,1000);
 });
 test('Fortune previews once, suppresses useless chosen stats, and advances RNG only on success',()=>{
  const {g,heroes,enemies,cast}=combat();enemies[0].combatRank='boss';

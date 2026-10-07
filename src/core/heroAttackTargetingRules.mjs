@@ -1,17 +1,14 @@
-import { COMBAT_ARENA_BOUNDS } from './combatOrientation.mjs';
-import { isActorTargetInRange } from './arenaCombatRules.mjs';
+import { isActorRanged, isActorTargetInRange } from './arenaCombatRules.mjs';
 
 function number(value) {
   return Number.isFinite(Number(value)) ? Number(value) : 0;
 }
 
-export function isHeroBasicTargetInRange(enemy, attackStartX = COMBAT_ARENA_BOUNDS.attackStartX) {
-  if (attackStartX && typeof attackStartX === 'object') return isActorTargetInRange(attackStartX, enemy);
-  return !!enemy && number(enemy.hp) > 0 && enemy.x != null && enemy.streamState !== 'approaching'
-    && Number.isFinite(Number(enemy.x)) && Number(enemy.x) >= 0 && Number(enemy.x) <= attackStartX;
+export function isHeroBasicTargetInRange(enemy, hero) {
+  return !!hero && isActorTargetInRange(hero, enemy);
 }
 
-export { isActorTargetInRange };
+export { isActorRanged, isActorTargetInRange };
 
 export function resolveHeroAttackTarget({ enemies = [], focusUID = null, randomPick = null, inRange = null } = {}) {
   const living = Array.isArray(enemies)

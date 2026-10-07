@@ -40,9 +40,13 @@ function loadTickRealtimeHeroBasics() {
 }
 
 function fixture({ time = 0, heroes = [1], readyAt = null, enemies = [] } = {}) {
-  const actors = heroes.map(uid => ({ uid, kind: 'hero', hp: 50, SPD: 8, stats: { SPD: 8 } }));
+  const actors = heroes.map(uid => ({ uid, kind: 'hero', hp: 50, SPD: 8, footX: 160, footY: 200, stats: { SPD: 8 } }));
   const globals = { ContinuousCombatStageLoop: 1, GamePhase: 'RUNTIME', time, PendingHeroHits: [] };
   if (readyAt) globals.RealtimeHeroBasicReadyAt = { ...readyAt };
+  for (const enemy of enemies) {
+    if (!Number.isFinite(Number(enemy.footX))) enemy.footX = enemy.x;
+    if (!Number.isFinite(Number(enemy.footY))) enemy.footY = enemy.y ?? 200;
+  }
   const ctx = { state: { globals, entities: [...actors, ...enemies] } };
   return { ctx, globals, actors, tick: loadTickRealtimeHeroBasics() };
 }
@@ -52,11 +56,12 @@ test('first engagement seeds SPD interval and UID phase through TickRealtimeHero
   assert.equal(tick(ctx), 0);
   assert.deepEqual(globals.RealtimeHeroBasicReadyAt, {});
 
-  ctx.state.entities.push({ uid: 90, kind: 'enemy', hp: 100, x: 400, streamState: 'approaching' });
+  ctx.state.entities.push({ uid: 90, kind: 'enemy', hp: 100, x: 400, y: 200, footX: 400, footY: 200, streamState: 'approaching' });
   assert.equal(tick(ctx), 0);
   assert.deepEqual(globals.RealtimeHeroBasicReadyAt, {});
 
   ctx.state.entities[2].x = 200;
+  ctx.state.entities[2].footX = 200;
   ctx.state.entities[2].streamState = 'in_range';
   const seeded = selectRealtimeReadyActor({ actors: actors.map(hero => ({ ...hero, type: 0, speed: 8 })), now: 9, selectionEnabled: false }).readyAt;
   assert.equal(tick(ctx), 0);
@@ -74,7 +79,7 @@ test('first engagement seeds SPD interval and UID phase through TickRealtimeHero
 
 test('colliding basics start on separate ticks and re-resolve the in-range target', () => {
   const targetA = { uid: 90, kind: 'enemy', hp: 20, x: 200, streamState: 'in_range' };
-  const targetB = { uid: 91, kind: 'enemy', hp: 20, x: 250, streamState: 'in_range' };
+  const targetB = { uid: 91, kind: 'enemy', hp: 20, x: 210, streamState: 'in_range' };
   const { ctx, globals, tick } = fixture({ time: 20, heroes: [1, 2], readyAt: { 1: 20, 2: 20 }, enemies: [targetA, targetB] });
   assert.equal(tick(ctx), 1);
   assert.deepEqual(globals.PendingHeroHits.map(hit => hit.heroUID), [1]);
@@ -93,6 +98,7 @@ test('no in-range target preserves an overdue attack for the next eligible targe
   assert.equal(tick(ctx), 0);
   assert.equal(globals.RealtimeHeroBasicReadyAt['1'], 5);
   outOfRange.x = 200;
+  outOfRange.footX = 200;
   assert.equal(tick(ctx), 1);
   assert.equal(globals.PendingHeroHits[0].targetUID, 90);
   assert.ok(globals.RealtimeHeroBasicReadyAt['1'] > 5);
@@ -119,6 +125,7 @@ test('scheduled basic dispatch validates range again and restores dueAt when its
   const action = globals.RealtimeHeroBasicScheduledActions['2'];
   assert.ok(action);
   target.x = 500;
+  target.footX = 500;
   globals.time += 1 / 60;
   assert.equal(tick(ctx), 0);
   assert.equal(globals.RealtimeHeroBasicScheduledActions['2'], undefined);

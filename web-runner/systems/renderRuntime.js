@@ -12,6 +12,7 @@ import { heroArtAsset, resolveHeroArtSourceRect } from '../state/heroArtAssets.m
 import { combatVfxProfileForActor, queueCombatAttackImpactVfx, renderCombatAttackVfx } from './combatAttackVfxPresentation.mjs';
 import { drawCombatBossControl } from './renderCombatBossControl.mjs';
 import { drawCombatHealthBar } from './combatHealthBarPresentation.mjs';
+import { drawActorPuppetFrame } from './actorPuppetPresentation.mjs';
 import { isActorTargetInRange } from '../../src/core/heroAttackTargetingRules.mjs';
 import {
   computeCombatDamageFontSize,
@@ -110,6 +111,7 @@ export function renderRuntime(deps) {
   deps.renderCombatAttackVfx = renderCombatAttackVfx;
   deps.drawCombatBossControl = drawCombatBossControl;
   deps.drawCombatHealthBar = drawCombatHealthBar;
+  deps.drawActorPuppetFrame = drawActorPuppetFrame;
   deps.isActorTargetInRange = isActorTargetInRange;
   deps.computeCombatDamageFontSize = computeCombatDamageFontSize;
   deps.computeViewportFontSize = computeViewportFontSize;
@@ -451,6 +453,14 @@ export function renderRuntime(deps) {
         "ctx.drawImage(sprite, drawX, drawY, enemyW, enemyH)",
         "drawCombatActorSprite(ctx, sprite, { drawX, drawY, width: enemyW, height: enemyH, pivotX: pos.x, orientation: activeCombatOrientation, actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) })",
       )
+      .replace(
+        "drawCombatActorSprite(ctx, sprite, { drawX, drawY, width: enemyW, height: enemyH, pivotX: pos.x, orientation: activeCombatOrientation, actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) })",
+        "const puppet = actorPuppetPresentation?.frameFor(enemy, Number(g.time || 0));\n        const drawEnemySprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY: pos.y, height: enemyH }) : drawCombatActorSprite(ctx, sprite, { drawX, drawY, width: enemyW, height: enemyH, pivotX: pos.x, orientation: activeCombatOrientation, actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) });\n        drawEnemySprite();",
+      )
+      .replaceAll(
+        "renderHitFlashOverlay(() => drawCombatActorSprite(ctx, sprite, { drawX, drawY, width: enemyW, height: enemyH, pivotX: pos.x, orientation: activeCombatOrientation, actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }),",
+        "renderHitFlashOverlay(drawEnemySprite,",
+      )
       .replaceAll(
         "ctx.drawImage(img, drawX, drawY, scaledW, scaledH)",
         "drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation })",
@@ -473,7 +483,7 @@ export function renderRuntime(deps) {
       )
       .replace(
         "drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation });",
-        "const drawHeroSprite = () => drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation, ...sourceRect });\n\t          drawHeroSprite();",
+        "const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0));\n\t          const drawHeroSprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY, height: scaledH }) : drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation, ...sourceRect });\n\t          drawHeroSprite();",
       )
       .replace(
         "renderHitFlashOverlay(() => drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation }), getHitFlashTone(hero.uid));",

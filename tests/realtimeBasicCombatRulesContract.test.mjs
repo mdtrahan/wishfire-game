@@ -34,9 +34,9 @@ function loadHeroAttackSingle() {
   );
 }
 
-function fixture({ heroStatuses = [], enemyStatuses = [], heroHP = 100, enemyHP = 100, damage = 20, random = 0.1 } = {}) {
-  const hero = { uid: 1, kind: 'hero', name: 'Falie', hp: heroHP, maxHP: 100, currentLevel: 1, statuses: heroStatuses, attackType: 'melee' };
-  const enemy = { uid: 2, kind: 'enemy', name: 'Gobloc', hp: enemyHP, maxHP: 100, statuses: enemyStatuses, x: 100, y: 100, expValue: 7, goldValue: 4 };
+function fixture({ heroStatuses = [], enemyStatuses = [], heroHP = 100, enemyHP = 100, damage = 20, random = 0.1, attackType = 'melee' } = {}) {
+  const hero = { uid: 1, kind: 'hero', name: 'Falie', hp: heroHP, maxHP: 100, currentLevel: 1, statuses: heroStatuses, attackType, footX: 60, footY: 100 };
+  const enemy = { uid: 2, kind: 'enemy', name: 'Gobloc', hp: enemyHP, maxHP: 100, statuses: enemyStatuses, x: 100, y: 100, footX: 100, footY: 100, expValue: 7, goldValue: 4 };
   const hit = { at: 5, heroUID: 1, targetUID: 2, dmg: damage, finalDmg: damage, msg: 'Falie hit Gobloc for 20!', realtimeBasic: 1, combatRulesBasic: 1, retargetOnDeath: 1, attackVfxKind: 'melee_crescent' };
   const globals = {
     time: 5,
@@ -137,13 +137,23 @@ test('an already launched basic still resolves when its hero is KO at projectile
   assert.equal(enemy.hp, 87);
 });
 
-test('a launched basic loses its hit and impact VFX when its target crosses outside the line', () => {
+test('a launched melee basic loses its hit and impact VFX when its target crosses outside reach', () => {
   const { state, enemy, calls, run } = fixture({ damage: 13 });
   enemy.x = 340;
+  enemy.footX = 340;
   run(target => target === enemy && target.x <= 290);
   assert.equal(enemy.hp, 100);
   assert.equal(state.globals.PendingHeroHits?.length || 0, 0);
   assert.equal(calls.filter(([name]) => name === 'impactVfx').length, 0);
+});
+
+test('a launched ranged basic resolves against its captured target after that target leaves reach', () => {
+  const { enemy, calls, run } = fixture({ damage: 13, attackType: 'magic' });
+  enemy.x = 340;
+  enemy.footX = 340;
+  run(() => false);
+  assert.equal(enemy.hp, 87);
+  assert.equal(calls.filter(([name]) => name === 'impactVfx').length, 1);
 });
 
 test('a dead or out-of-range captured target waits for an eligible retarget before resolving', () => {

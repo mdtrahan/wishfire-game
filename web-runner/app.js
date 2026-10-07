@@ -83,6 +83,7 @@ import * as gemVisuals from './systems/gemVisuals.js';
 import * as renderCombatRuntime from './systems/renderCombatRuntime.js';
 import * as renderOverlays from './systems/renderOverlays.js';
 import * as renderRuntime from './systems/renderRuntime.js';
+import { createActorPuppetPresentation } from './systems/actorPuppetPresentation.mjs';
 import { createCombatSimulationTicker, shouldFreezeCombatSimulation } from './systems/combatSimulationTick.mjs';
 import {
   getEmbeddedJson,
@@ -1672,6 +1673,7 @@ async function main(){
   let heroBackArrowImage = null;
   let heroNextArrowImage = null;
   let closeWinOvalImage = null;
+  let actorPuppetPresentation = null;
   const calculateGridBounds = (layoutInstances) => {
     const placeholders = (layoutInstances || []).filter(inst => inst && inst.type === 'grid_placeholder' && inst.world);
     if (!placeholders.length) {
@@ -1827,6 +1829,7 @@ async function main(){
         closeWinOvalImage,
       } = visualAssets);
       const { loadedCount, failedImages } = visualAssets;
+      actorPuppetPresentation = createActorPuppetPresentation({ loadClip: visualAssets.loadActorPuppetClip });
       console.log(`[LOAD] Core assets loaded: ${loadedCount}/${Object.keys(types).length} base sprites`);
       if(failedImages.length > 0) {
         console.log(`[LOAD] Failed images (first 5):`, failedImages.slice(0, 5).map(f => `${f.type}(${f.path})`).join(', '));
@@ -2571,6 +2574,7 @@ async function main(){
       getHitFlashTone,
       deriveDamageFloatFrameOffset,
       createPartyRegenTickSimulationPacket,
+      actorPuppetPresentation,
     };
     if (activeLayoutId === 'combat') {
       callFunctionWithContext(fnContext, 'CommitPendingEnemyDeaths');
