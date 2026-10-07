@@ -30,7 +30,14 @@
 - Browser visual QA for visible asset or layout changes.
 
 ## Child DOX Index
-- None.
+- `puppets/chimerilass/AGENTS.md` - actor source geometry, identity and native motion contracts.
+- `puppets/highgobloc/AGENTS.md` - actor source geometry, identity and native motion contracts.
+- `puppets/lizardo/AGENTS.md` - actor source geometry, identity and native motion contracts.
+- `puppets/marid/AGENTS.md` - actor source geometry, identity and native motion contracts.
+- `puppets/orc/AGENTS.md` - actor source geometry, identity and native motion contracts.
+- `puppets/runa/AGENTS.md` - actor source geometry, identity and native motion contracts.
+- `puppets/skeleton/AGENTS.md` - actor source geometry, identity and native motion contracts.
+- `puppets/troll/AGENTS.md` - actor source geometry, identity and native motion contracts.
 
 - `narrative/chapter-1-map.png` is a terrain-only 360x640 background. `chapter-town-token.png` is a separate transparent token; chapterMapPresentation.mjs owns overlay positions and labels.
 
