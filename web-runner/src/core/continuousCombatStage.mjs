@@ -1,6 +1,6 @@
 import { resetRealtimeSkillAttempt } from './realtimeSkillState.mjs';
 import { computeCombatPower } from './combatPower.mjs';
-import { deriveCombatArenaBounds, deriveCombatFormationAnchors } from '../../../src/core/combatOrientation.mjs';
+import { deriveCombatArenaBounds, deriveCombatFormationAnchors, deriveCombatWorldBounds } from '../../../src/core/combatOrientation.mjs';
 import { cleanseDebuffs } from './combatRules.mjs';
 import { saveHeroProgress } from './heroProgression.mjs';
 import { advanceContinuousCombatArena } from './arenaCombat.mjs';
@@ -47,7 +47,7 @@ export function configureContinuousCombatProduction(globals, { productionPath = 
   globals.ContinuousCombatStageLoop = enabled ? 1 : 0;
   if (!enabled) return false;
   globals.EncounterPolicy = 'fodder_only';
-  globals.EncounterMaxSlots = 5;
+  globals.EncounterMaxSlots = 9;
   globals.ContinuousCombatStageComplete = 0;
   globals.RealtimeHeroFocusTargetUID = 0;
   const checkpoint = globals.HeroProgress?.continuousStage;
@@ -73,7 +73,6 @@ function streamGeometry(globals, { packIndex = 0, rank = 0, order = 0 } = {}) {
   };
 }
 
-const PACK_ENTRY_DELAY_SEC = Object.freeze([0, 0.4, 0.92, 1.48, 2.12]);
 const PACK_WALK_SPEED_SCALE = Object.freeze([1, 0.9, 1.12, 0.82, 1.17]);
 const RANGED_ENEMY_NAMES = new Set(['marid', 'djinn', 'chimerilass']);
 const BOSS_HOME = Object.freeze({ x: 290, y: 290 });
@@ -142,34 +141,74 @@ export function reverseContinuousCombatEnemy(enemy, now, durationSeconds = 1.25,
   return true;
 }
 
-function rangedHomeX(bounds, packIndex, order) {
-  const slot = (packIndex * 3 + order) % 5;
-  return bounds.rangedMinX + (slot + 1) * ((bounds.rangedMaxX - bounds.rangedMinX) / 6);
-}
-
-export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1, rank = 0, packIndex = 0, entryOrder = lane } = {}) {
+export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1, rank = 0, packIndex = 0, entryOrder = lane, sectorIndex = null, bossX = BOSS_HOME.x } = {}) {
   if (!enemy) return null;
-  const order = Math.max(0, Math.floor(Number(entryOrder || 0))) % PACK_ENTRY_DELAY_SEC.length;
+  const order = Math.max(0, Math.floor(Number(entryOrder || 0))) % 3;
   const geometry = streamGeometry(globals, { packIndex, rank, order });
   const delivery = RANGED_ENEMY_NAMES.has(String(enemy.name || '').trim().toLowerCase()) ? 'ranged' : 'melee';
   const meleeLine = order % 2;
   const normalizedPackIndex = Math.max(0, Number(packIndex || 0));
   const boss = String(enemy.enemyRole || enemy.role || '').toLowerCase() === 'boss';
-  const engageX = boss ? BOSS_HOME.x : delivery === 'melee'
-    ? geometry.bounds.meleeLeftEdgeX + (order >= 4 ? geometry.enemySize / 2 : 0)
-    : rangedHomeX(geometry.bounds, normalizedPackIndex, order);
+  const world = deriveCombatWorldBounds();
+  const sector = sectorIndex == null ? Math.max(0, Math.min(2, Number(packIndex || 0) % 3)) : Math.max(0, Math.min(2, Math.floor(Number(sectorIndex) || 0)));
+  const sectorX = world.worldWidth * [0.19, 0.5, 0.81][sector] + (order - 1) * geometry.enemySize * 1.25;
+  const engageX = boss ? bossX : sectorX;
   const homeY = boss ? BOSS_HOME.y : geometry.y;
   Object.assign(enemy, {
     combatRank: ['boss','subboss'].includes(String(enemy.enemyRole || enemy.role || '').toLowerCase()) ? String(enemy.enemyRole || enemy.role).toLowerCase() : 'ordinary',
-    streamState: 'approaching', streamLane: lane, streamRank: rank, streamPackIndex: packIndex, streamEntryOrder: order,
+    streamState: 'roaming', streamLane: lane, streamRank: rank, streamPackIndex: packIndex, streamSectorIndex: sector + Number(packIndex || 0) * 3, streamEntryOrder: order,
     streamDelivery: delivery, streamMeleeLine: meleeLine,
     actionState: 'spawn', actionFacing: 'left', actionStateStartedAt: Number(globals.time || 0), actionStateUntil: Number(globals.time || 0) + 0.35,
     streamEngageX: engageX, streamWalkSpeed: geometry.walkSpeed * PACK_WALK_SPEED_SCALE[order],
-    streamStartAt: Number(globals.time || 0) + PACK_ENTRY_DELAY_SEC[order],
-    x: geometry.spawnX, y: homeY, originX: engageX, originY: homeY,
-    footX: geometry.spawnX, footY: homeY, facing: 'left', locomotion: 'idle', arenaEnabled: true,
+    streamStartAt: Number(globals.time || 0),
+    x: engageX, y: homeY, originX: engageX, originY: homeY,
+    footX: engageX, footY: homeY, facing: 'left', locomotion: 'idle', arenaEnabled: true,
   });
   return enemy;
+}
+
+function reconcileUnassignedContinuousEnemies(globals, entities, heroes) {
+  const stage = globals.ContinuousCombatStage;
+  const world = deriveCombatWorldBounds();
+  const sectors = [0.19, 0.5, 0.81];
+  const squadX = heroes.length
+    ? heroes.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? 0), 0) / heroes.length
+    : 0;
+  const groups = new Map();
+  for (const enemy of entities.filter(actor => actor?.kind === 'enemy' && Number(actor.hp || 0) > 0 && Number.isInteger(Number(actor.streamSectorIndex)))) {
+    const groupId = Number(enemy.streamSectorIndex);
+    const group = groups.get(groupId) || [];
+    group.push(enemy);
+    groups.set(groupId, group);
+  }
+  const groupX = group => group.reduce((sum, actor) => sum + Number(actor.footX ?? actor.x ?? 0), 0) / group.length;
+  const unassigned = entities.filter(actor => actor?.kind === 'enemy' && Number(actor.hp || 0) > 0
+    && !['roaming', 'approaching', 'in_range', 'engaged', 'retreating'].includes(actor.streamState));
+  for (const enemy of unassigned) {
+    const nearestGroup = [...groups.entries()].sort((a, b) => Math.abs(groupX(a[1]) - squadX) - Math.abs(groupX(b[1]) - squadX))[0];
+    const sectorIndex = nearestGroup
+      ? Number(nearestGroup[0]) % 3
+      : sectors.reduce((best, ratio, index) => Math.abs(world.worldWidth * ratio - squadX) < Math.abs(world.worldWidth * sectors[best] - squadX) ? index : best, 0);
+    const packIndex = nearestGroup ? Math.floor(Number(nearestGroup[0]) / 3) : Math.max(0, Math.floor(Number(stage?.transitions || 0)));
+    const groupId = sectorIndex + packIndex * 3;
+    const group = groups.get(groupId) || [];
+    const entryOrder = group.length % 3;
+    const bossX = clampWorldX(squadX + 260, world.worldWidth);
+    activateContinuousCombatSpawnedEnemy(globals, enemy, {
+      lane: Number(enemy.slotIndex ?? entryOrder),
+      rank: 0,
+      packIndex,
+      entryOrder,
+      sectorIndex,
+      bossX,
+    });
+    groups.set(groupId, [...group, enemy]);
+  }
+  return unassigned.length;
+}
+
+function clampWorldX(value, worldWidth) {
+  return Math.max(40, Math.min(Number(worldWidth) - 40, Number(value) || 0));
 }
 
 export function finalizeContinuousCombatProduction(globals, entities = []) {
@@ -189,7 +228,8 @@ export function finalizeContinuousCombatProduction(globals, entities = []) {
       actor.flow = 0;
       actor.flowReady = false;
     } else if (actor?.kind === 'enemy') {
-      activateContinuousCombatSpawnedEnemy(globals, actor, { lane: Number(actor.slotIndex ?? 1), rank: 0, packIndex: 0, entryOrder: enemyOrder++ });
+      const sectorIndex = enemyOrder % 3;
+      activateContinuousCombatSpawnedEnemy(globals, actor, { lane: Number(actor.slotIndex ?? 1), rank: 0, packIndex: 0, entryOrder: sectorIndex, sectorIndex });
     }
   }
   if (globals.ContinuousCombatStage) {
@@ -332,8 +372,8 @@ function expandWaveRows(stage, byName, catalogRows) {
   const maxCP = Math.max(...catalogCP);
   const averageCP = pool.reduce((sum, row) => sum + computeCombatPower(row), 0) / pool.length;
   const strength = maxCP > minCP ? (averageCP - minCP) / (maxCP - minCP) : 0.5;
-  const size = strength <= 0.2 ? 5 : strength >= 0.6 ? 3 : 4;
-  return Array.from({ length: size }, (_, index) => pool[index % pool.length]);
+  const packSize = strength <= 0.2 ? 3 : 2;
+  return Array.from({ length: packSize * 3 }, (_, index) => pool[index % pool.length]);
 }
 
 export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase = 0 } = {}) {
@@ -350,14 +390,15 @@ export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase
   const progressionScale = 1 + stageOrdinal * 0.08 + waveStep * 0.04;
   const linearTarget = totalCP(baselineRows) * progressionScale * (stage.kind === 'boss' ? 1.35 : 1);
   const packScale = selectedRows.length ? findPackScale(selectedRows, linearTarget) : 1;
-  const lanes = selectedRows.length === 1 ? [1] : [1, 0, 2, 0, 2];
+  const packSize = stage.kind === 'boss' ? 1 : selectedRows.length / 3;
   return selectedRows.map((row, index) => ({
     row: scaleContinuousCombatRow(row, packScale),
     slotIndex: Number(slotBase || 0) + index,
-    lane: lanes[index] ?? 1,
+    lane: index % packSize,
     rank: Math.floor(Number(slotBase || 0) / 3),
     packIndex: Number(stageState?.transitions || 0),
     entryOrder: index,
+    sectorIndex: stage.kind === 'boss' ? 1 : Math.floor(index / packSize),
   })).filter(entry => entry.row?.name && Number.isInteger(entry.slotIndex));
 }
 
@@ -375,7 +416,9 @@ function spawnContinuousCombatStage({ globals, entities, call, state }) {
   for (const entry of plan) {
     const stage = getContinuousCombatStage(state);
     const enemy = call('SpawnEnemy', { ...entry.row, enemyRole: stage?.kind === 'boss' ? 'boss' : String(entry.row.enemyRole || entry.row.role || 'fodder') }, entry.slotIndex);
-    activateContinuousCombatSpawnedEnemy(globals, enemy, entry);
+    const livingHeroes = entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
+    const bossX = livingHeroes.length ? livingHeroes.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? 0), 0) / livingHeroes.length + 260 : BOSS_HOME.x;
+    activateContinuousCombatSpawnedEnemy(globals, enemy, { ...entry, bossX, entryOrder: entry.entryOrder % 3 });
   }
   call('UpdateEnemyHPUI');
   return true;
@@ -499,6 +542,8 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   const stageState = globals.ContinuousCombatStage;
   if (!stageState) return false;
   const now = Number(globals.time || 0);
+  const heroes = entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
+  reconcileUnassignedContinuousEnemies(globals, entities, heroes);
   const newlyAvailable = updateApproachingEnemies(globals, entities, now);
   const newlyEngaged = advanceContinuousCombatArena({ globals, entities, seconds: Math.max(0, Math.min(0.1, now - Number(stageState.lastArenaUpdatedAt ?? now))) });
   stageState.lastArenaUpdatedAt = now;

@@ -1,5 +1,8 @@
 import { updateHpTextRollState } from '../src/core/hpTextRollAnimation.mjs';
 import {
+  COMBAT_BATTLEFIELD_ZOOM,
+  createCombatCameraProjection,
+  deriveCombatWorldBounds,
   createCombatFormationProjection,
   createCombatOrientationGeometry,
   deriveCombatReferenceGrid,
@@ -98,6 +101,22 @@ effectiveBody = effectiveBody.replace(
   '          const xWorld = baseX + (hero ? (offsets[hero.uid] || 0) : 0);\n          posByIndex[entry.displaySlot] = { x: baseX, y: yWorld };\n          if (hero && Number(hero.uid || 0) > 0) {\n            restBaseByUID[hero.uid] = { x: baseX, y: yWorld };\n            restFeetByUID[hero.uid] = { x: baseX, y: yWorld + hWorld * 1.55 / 2 };\n          }\n          const pos = projectCombatActorWorldToCanvas(xWorld, yWorld, \'hero\');\n          const standingPos = projectCombatActorWorldToCanvas(baseX, yWorld, \'hero\');\n          if (hero) combatOrientationGeometryActors.push({ uid: hero.uid, name: hero.name, kind: hero.kind, slot: entry.displaySlot, canonicalX: baseX, y: yWorld, canvasX: standingPos.x, canvasY: standingPos.y });',
   "          const actorFootX = Number(hero?.footX);\n          const actorFootY = Number(hero?.footY);\n          const actorYWorld = Number.isFinite(actorFootY) ? actorFootY - hWorld * 1.55 / 2 : yWorld;\n          const worldX = Number.isFinite(actorFootX) ? actorFootX : baseX;\n          const xWorld = worldX + (hero ? (offsets[hero.uid] || 0) : 0);\n          posByIndex[entry.displaySlot] = { x: worldX, y: actorYWorld };\n          if (hero && Number(hero.uid || 0) > 0) {\n            restBaseByUID[hero.uid] = { x: worldX, y: actorYWorld };\n            restFeetByUID[hero.uid] = { x: worldX, y: actorYWorld + hWorld * 1.55 / 2 };\n          }\n          const pos = projectCombatActorWorldToCanvas(xWorld, actorYWorld, 'hero');\n          const standingPos = projectCombatActorWorldToCanvas(worldX, actorYWorld, 'hero');\n          if (hero) combatOrientationGeometryActors.push({ uid: hero.uid, name: hero.name, kind: hero.kind, slot: entry.displaySlot, canonicalX: worldX, y: actorYWorld, canvasX: standingPos.x, canvasY: standingPos.y });"
 );
+effectiveBody = effectiveBody
+  .replace(
+    'const combatFormationProjection = createCombatFormationProjection({ orientation: activeCombatOrientation, layoutW, ...combatFormationAnchors });\n    const projectCombatActorWorldToCanvas = (x, y, actorKind = \'\') => { const point = combatFormationProjection.project(x, y, actorKind); return worldToCanvas(point.x, point.y); };',
+    'const combatWorldBounds = deriveCombatWorldBounds(layoutW, COMBAT_BATTLEFIELD_ZOOM);\n    const livingHeroesForCamera = state.entities.filter(actor => actor?.kind === \'hero\' && Number(actor.hp || 0) > 0);\n    const squadCenterX = livingHeroesForCamera.length ? livingHeroesForCamera.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? layoutW / 2), 0) / livingHeroesForCamera.length : layoutW / 2;\n    const combatCameraProjection = createCombatCameraProjection({ viewportWidth: layoutW, worldWidth: combatWorldBounds.worldWidth, zoom: COMBAT_BATTLEFIELD_ZOOM, centerX: squadCenterX, orientation: activeCombatOrientation });\n    const projectCombatActorWorldToCanvas = (x, y, actorKind = \'\') => { const point = combatCameraProjection.project(x, y, actorKind); return worldToCanvas(point.x, point.y); };',
+  )
+  .replace('const grid = deriveCombatReferenceGrid(layoutW, layoutH);', 'const grid = deriveCombatReferenceGrid(combatWorldBounds.worldWidth, layoutH);')
+  .replace('const point = vertical ? worldToCanvas(line.value, 0) : worldToCanvas(0, line.value);', 'const point = vertical ? projectCombatActorWorldToCanvas(line.value, 0) : projectCombatActorWorldToCanvas(0, line.value);')
+  .replace('const center = worldToCanvas(grid.centerX, 0);', 'const center = projectCombatActorWorldToCanvas(grid.centerX, 0);')
+  .replace('const point = worldToCanvas(line.value, 0);\n        ctx.fillText(String(line.value)', 'const point = projectCombatActorWorldToCanvas(line.value, 0);\n        if (point.x < topLeft.x || point.x > bottomRight.x) return;\n        ctx.fillText(String(line.value)')
+  .replace('const point = worldToCanvas(0, line.value);\n        ctx.fillText(String(line.value)', 'const point = projectCombatActorWorldToCanvas(0, line.value);\n        ctx.fillText(String(line.value)')
+  .replace('renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layoutScale });', 'renderCombatAttackVfx(ctx, { state, images, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: layoutScale * COMBAT_BATTLEFIELD_ZOOM });')
+  .replace('renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale });', 'renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: layoutScale * COMBAT_BATTLEFIELD_ZOOM });')
+  .replaceAll('const enemyH = (g.EnemySize || 40) * layoutScale;', 'const enemyH = (g.EnemySize || 40) * layoutScale * COMBAT_BATTLEFIELD_ZOOM;')
+  .replaceAll('const scaledW = w * heroScale * 1.55;', 'const scaledW = w * heroScale * 1.55 * COMBAT_BATTLEFIELD_ZOOM;')
+  .replaceAll('const scaledH = h * heroScale * 1.55;', 'const scaledH = h * heroScale * 1.55 * COMBAT_BATTLEFIELD_ZOOM;')
+  .replaceAll('const footY = pos.y + h / 2;', 'const footY = pos.y + h * COMBAT_BATTLEFIELD_ZOOM / 2;');
 removeBetween('    const beginIconPresentation = (target, key) => {', '    const rouletteTargetFrame');
 effectiveBody = effectiveBody.replace(
   '    // Render enemies (use Enemy_Sprite animations)',
@@ -133,6 +152,9 @@ effectiveBody = effectiveBody.replace('    actorPaintQueue.sort(', '    renderRe
 let renderImpl = null;
 
 export function renderRuntime(deps) {
+  deps.COMBAT_BATTLEFIELD_ZOOM = COMBAT_BATTLEFIELD_ZOOM;
+  deps.createCombatCameraProjection = createCombatCameraProjection;
+  deps.deriveCombatWorldBounds = deriveCombatWorldBounds;
   deps.updateHpTextRollState = updateHpTextRollState;
   deps.createCombatFormationProjection = createCombatFormationProjection;
   deps.createCombatOrientationGeometry = createCombatOrientationGeometry;
@@ -316,9 +338,9 @@ export function renderRuntime(deps) {
       const anchor = state.globals.HeroRestBasePosByUID?.[uid];
       if (!anchor) continue;
       const offsetX = Number(state.globals.HeroLungeOffsetByUID?.[uid] || 0);
-      const pos = worldToCanvas(Number(anchor.x || 0) + offsetX, Number(anchor.y || 0));
+      const pos = projectCombatActorWorldToCanvas(Number(anchor.x || 0) + offsetX, Number(anchor.y || 0), 'hero');
       const footAnchor = state.globals.HeroRestFeetPosByUID?.[uid] || anchor;
-      const footPos = worldToCanvas(Number(footAnchor.x || 0) + offsetX, Number(footAnchor.y || 0));
+      const footPos = projectCombatActorWorldToCanvas(Number(footAnchor.x || 0) + offsetX, Number(footAnchor.y || 0), 'hero');
       const actorHeight = Math.max(28, Number(state.globals.HeroRenderHeightByUID?.[uid] || 40)) * layoutScale;
       const actorWidth = Math.max(20, Number(state.globals.HeroRenderWidthByUID?.[uid] || 32)) * layoutScale;
       const barKey = \`hero-\${uid}\`;
@@ -377,7 +399,7 @@ export function renderRuntime(deps) {
       )
       .replace(
         "const footY = pos.y + h / 2;",
-        "const footY = pos.y + h * 1.55 / 2;",
+        "const footY = pos.y + h * 1.55 * COMBAT_BATTLEFIELD_ZOOM / 2;",
       )
       .replace(
         "const scaledH = h * heroScale * 1.55;",

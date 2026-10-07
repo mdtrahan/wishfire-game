@@ -22,6 +22,22 @@ test('combat orientation input is defensive and defaults left-wise', async () =>
   assert.equal(rules.readCombatOrientationFromSearch(''), 'left-wise');
 });
 
+test('combat camera presents four screens of world at half battlefield zoom', async () => {
+  const rules = await loadRules();
+  const bounds = rules.deriveCombatWorldBounds(360, 0.5);
+  assert.equal(bounds.visibleWorldWidth, 720);
+  assert.equal(bounds.worldWidth, 2880);
+  const first = rules.createCombatCameraProjection({ viewportWidth: 360, worldWidth: bounds.worldWidth, zoom: 0.5, centerX: 0 });
+  assert.equal(first.cameraX, 0);
+  assert.equal(first.project(0, 272.5).x, 0);
+  const middle = rules.createCombatCameraProjection({ viewportWidth: 360, worldWidth: bounds.worldWidth, zoom: 0.5, centerX: 1440 });
+  assert.equal(middle.project(1440, 272.5).x, 180);
+  assert.equal(middle.project(1440, 372.5).y, 322.5);
+  const last = rules.createCombatCameraProjection({ viewportWidth: 360, worldWidth: bounds.worldWidth, zoom: 0.5, centerX: bounds.worldWidth });
+  assert.equal(last.cameraX, 2160);
+  assert.equal(last.project(bounds.worldWidth, 272.5).x, 360);
+});
+
 test('right-wise geometry reflects X while preserving shared Y homes', async () => {
   const rules = await loadRules();
   const layoutW = 960;
@@ -131,9 +147,9 @@ test('runtime-shaped hero anchors reserve a status-icon row above HP bars', asyn
   assert.equal(shiftedEnemyYs[2] - shiftedEnemyYs[1], anchors.enemyYs[2] - anchors.enemyYs[1]);
   assert.equal(shiftedEnemyYs[1], anchors.enemyYs[1]);
   const renderer = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
-  assert.match(renderer, /const footY = pos\.y \+ h \* 1\.55 \/ 2/);
+  assert.match(renderer, /const footY = pos\.y \+ h \* 1\.55 \* COMBAT_BATTLEFIELD_ZOOM \/ 2/);
   assert.match(renderer, /restFeetByUID\[hero\.uid\] = \{ x: baseX, y: yWorld \+ hWorld \* 1\.55 \/ 2 \}/);
-  assert.match(renderer, /i % 2 === 0\\n\s+\? combatFormationAnchors\.arenaBounds\.heroRightEdgeX[\s\S]{0,160}: combatFormationAnchors\.arenaBounds\.heroBackCenterX/);
+  assert.match(renderer, /createCombatCameraProjection\(\{ viewportWidth: layoutW, worldWidth: combatWorldBounds\.worldWidth, zoom: COMBAT_BATTLEFIELD_ZOOM, centerX: squadCenterX, orientation: activeCombatOrientation \}\)/);
 });
 
 test('combat reference grid covers the logical canvas in ten-pixel increments', async () => {
@@ -219,14 +235,16 @@ test('runtime projects actor visuals, hit regions, and action anchors without mu
 
   assert.match(app, /CombatOrientation = readCombatOrientationFromSearch\(window\.location\.search\)/);
   assert.match(app, /function combatActorWorldToCanvas/);
-  assert.match(app, /createCombatFormationProjection/);
-  assert.match(app, /deriveCombatFormationAnchors/);
+  assert.match(app, /createCombatCameraProjection/);
+  assert.match(app, /deriveCombatWorldBounds/);
   assert.match(app, /const pos = combatActorWorldToCanvas\(x, y, 'enemy'\)/);
   assert.doesNotMatch(app, /prepareAstralFlowKoOrbPresentation/);
   assert.match(app, /orientCombatWorldOffsetX\(Number\(d\.floatVectorX/);
 
   assert.match(render, /spawnPendingDamageNumbers\(projectCombatDamageWorldToCanvas, layoutScale\)/);
   assert.match(render, /projectCombatActorWorldToCanvas\(xWorld, yWorld, 'hero'\)/);
+  assert.match(render, /projectCombatActorWorldToCanvas\(Number\(anchor\.x \|\| 0\) \+ offsetX, Number\(anchor\.y \|\| 0\), 'hero'\)/);
+  assert.match(render, /projectCombatActorWorldToCanvas\(Number\(footAnchor\.x \|\| 0\) \+ offsetX, Number\(footAnchor\.y \|\| 0\), 'hero'\)/);
   assert.match(render, /projectCombatActorWorldToCanvas\(wardWorldX, wardWorldY, 'hero'\)/);
   assert.match(render, /projectCombatActorWorldToCanvas\(Number\(pulse\.sourceX[^\n]*'hero'/);
   assert.match(render, /projectCombatActorWorldToCanvas\(Number\(pulse\.targetX[^\n]*'enemy'/);

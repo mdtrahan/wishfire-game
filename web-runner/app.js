@@ -59,8 +59,9 @@ import {
 import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
 import { deriveDamageFloatFrameOffset } from '../src/core/damageFloatVector.mjs';
 import {
-  createCombatFormationProjection,
-  deriveCombatFormationAnchors,
+  COMBAT_BATTLEFIELD_ZOOM,
+  createCombatCameraProjection,
+  deriveCombatWorldBounds,
   orientCombatWorldOffsetX,
   readCombatOrientationFromSearch,
 } from '../src/core/combatOrientation.mjs';
@@ -2116,16 +2117,10 @@ async function main(){
   }
 
   function combatActorWorldToCanvas(wx, wy, actorKind = '') {
-    const anchors = deriveCombatFormationAnchors({
-      globals: state.globals,
-      entities: state.entities,
-      heroCount: getCombatPartyRenderRoster().length,
-    });
-    const projection = createCombatFormationProjection({
-      orientation: state.globals.CombatOrientation,
-      layoutW,
-      ...anchors,
-    });
+    const heroes = state.entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
+    const centerX = heroes.length ? heroes.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? layoutW / 2), 0) / heroes.length : layoutW / 2;
+    const world = deriveCombatWorldBounds(layoutW, COMBAT_BATTLEFIELD_ZOOM);
+    const projection = createCombatCameraProjection({ viewportWidth: layoutW, worldWidth: world.worldWidth, zoom: COMBAT_BATTLEFIELD_ZOOM, centerX, orientation: state.globals.CombatOrientation });
     const point = projection.project(wx, wy, actorKind);
     return worldToCanvas(point.x, point.y);
   }
@@ -3035,7 +3030,7 @@ function getStoryCardLiveLineState() {
       const enemyOrig = enemySpriteImages[String(enemy.name || '').toLowerCase()];
       const origW = enemyOrig ? enemyOrig.width : 1;
       const origH = enemyOrig ? enemyOrig.height : 1;
-      const enemyH = (g.EnemySize || 40) * layoutScale;
+      const enemyH = (g.EnemySize || 40) * layoutScale * COMBAT_BATTLEFIELD_ZOOM;
       const enemyW = enemyH * (origW / origH);
       const pos = combatActorWorldToCanvas(x, y, 'enemy');
       if (mx >= pos.x - enemyW / 2 && mx <= pos.x + enemyW / 2 &&

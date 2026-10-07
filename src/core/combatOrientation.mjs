@@ -2,6 +2,8 @@ export const COMBAT_ORIENTATION_LEFT_WISE = 'left-wise';
 export const COMBAT_ORIENTATION_RIGHT_WISE = 'right-wise';
 export const RIGHT_WISE_FORMATION_TRANSLATE_X = -40;
 export const COMBAT_ARENA_REFERENCE_WIDTH = 360;
+export const COMBAT_BATTLEFIELD_ZOOM = 0.5;
+export const COMBAT_ARENA_VISIBLE_SCREEN_WIDTHS = 4;
 export const HERO_BUFF_ICON_ROW_HEIGHT = 18;
 export const HERO_BUFF_ICON_ROW_GAP = 2;
 export const COMBAT_ARENA_BOUNDS = Object.freeze({
@@ -14,6 +16,36 @@ export const COMBAT_ARENA_BOUNDS = Object.freeze({
   visibleTopY: 170,
   visibleBottomY: 375,
 });
+
+export function deriveCombatWorldBounds(viewportWidth = COMBAT_ARENA_REFERENCE_WIDTH, zoom = COMBAT_BATTLEFIELD_ZOOM) {
+  const width = Number(viewportWidth);
+  const scale = Number(zoom);
+  const visibleWorldWidth = Number.isFinite(width) && width > 0 && Number.isFinite(scale) && scale > 0 ? width / scale : COMBAT_ARENA_REFERENCE_WIDTH / COMBAT_BATTLEFIELD_ZOOM;
+  const worldWidth = visibleWorldWidth * COMBAT_ARENA_VISIBLE_SCREEN_WIDTHS;
+  return { minX: 0, maxX: worldWidth, heroMinX: 40, heroMaxX: worldWidth - 40, visibleWorldWidth, worldWidth, zoom: scale };
+}
+
+export function createCombatCameraProjection({ viewportWidth = COMBAT_ARENA_REFERENCE_WIDTH, worldWidth, zoom = COMBAT_BATTLEFIELD_ZOOM, centerX = 0, orientation = COMBAT_ORIENTATION_LEFT_WISE } = {}) {
+  const bounds = deriveCombatWorldBounds(viewportWidth, zoom);
+  const visibleWorldWidth = bounds.visibleWorldWidth;
+  const width = Number.isFinite(Number(worldWidth)) && Number(worldWidth) > 0 ? Number(worldWidth) : bounds.worldWidth;
+  const center = Number.isFinite(Number(centerX)) ? Number(centerX) : 0;
+  const orientedCenter = orientCombatWorldX(center, width, orientation)
+    + (normalizeCombatOrientation(orientation) === COMBAT_ORIENTATION_RIGHT_WISE ? RIGHT_WISE_FORMATION_TRANSLATE_X : 0);
+  const cameraX = Math.max(0, Math.min(width - visibleWorldWidth, orientedCenter - visibleWorldWidth / 2));
+  const yCenter = (COMBAT_ARENA_BOUNDS.visibleTopY + COMBAT_ARENA_BOUNDS.visibleBottomY) / 2;
+  return {
+    cameraX,
+    worldWidth: width,
+    visibleWorldWidth,
+    zoom: bounds.zoom,
+    project(x, y) {
+      const worldX = orientCombatWorldX(Number(x), width, orientation);
+      const orientedX = worldX + (normalizeCombatOrientation(orientation) === COMBAT_ORIENTATION_RIGHT_WISE ? RIGHT_WISE_FORMATION_TRANSLATE_X : 0);
+      return { x: (orientedX - cameraX) * bounds.zoom, y: yCenter + (Number(y) - yCenter) * bounds.zoom };
+    },
+  };
+}
 
 export function deriveCombatArenaBounds(layoutW = COMBAT_ARENA_REFERENCE_WIDTH) {
   const width = Number(layoutW);

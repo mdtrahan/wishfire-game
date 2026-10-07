@@ -1,5 +1,5 @@
 import { advanceActorToward, actorFootPoint, actorFootprintRadius, isActorTargetInRange } from '../../../src/core/arenaCombatRules.mjs';
-import { deriveCombatFormationAnchors } from '../../../src/core/combatOrientation.mjs';
+import { deriveCombatFormationAnchors, deriveCombatWorldBounds } from '../../../src/core/combatOrientation.mjs';
 
 const isLiving = actor => actor && Number(actor.hp || 0) > 0;
 const distance = (actor, target) => {
@@ -43,6 +43,10 @@ export function selectContinuousEnemyTarget({ enemy = null, heroes = [], globals
   return stableNearest(enemy, candidates);
 }
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const DETECTION_RADIUS = 460;
+const SQUAD_STRAGGLE_RADIUS = 180;
+const SEARCH_SPEED = 78;
+const SQUAD_OFFSETS = Object.freeze([[-24, -22], [24, -22], [-24, 22], [24, 22]]);
 function separateFootprints(actors, bounds) {
   const ordered = actors.slice().sort((a, b) => Number(a.uid || 0) - Number(b.uid || 0));
   // Several passes settle a compact crowd after one separation changes a
@@ -56,9 +60,9 @@ function separateFootprints(actors, bounds) {
     const dx = currentDistance > 0.001 ? (b.x - a.x) / currentDistance : 0;
     const dy = currentDistance > 0.001 ? (b.y - a.y) / currentDistance : (Number(first.uid || 0) <= Number(second.uid || 0) ? -1 : 1);
     const push = (minDistance - currentDistance) / 2;
-    first.footX = clamp(a.x - dx * push, bounds.heroBackCenterX, bounds.attackStartX);
+    first.footX = clamp(a.x - dx * push, bounds.heroMinX, first.kind === 'hero' ? bounds.heroMaxX : bounds.maxX);
     first.footY = clamp(a.y - dy * push, bounds.visibleTopY, bounds.visibleBottomY);
-    second.footX = clamp(b.x + dx * push, bounds.heroBackCenterX, bounds.attackStartX);
+    second.footX = clamp(b.x + dx * push, bounds.heroMinX, second.kind === 'hero' ? bounds.heroMaxX : bounds.maxX);
     second.footY = clamp(b.y + dy * push, bounds.visibleTopY, bounds.visibleBottomY);
     for (const actor of [first, second]) { actor.x = actor.footX; actor.y = actor.footY; }
   }
@@ -69,9 +73,9 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   // Retreat is stage-owned displacement. Letting its direct steering run here
   // would pull an enemy back toward its target during Frost Reversal.
   const enemies = entities.filter(actor => actor?.kind === 'enemy' && isLiving(actor)
-    && ['in_range', 'engaged'].includes(actor.streamState));
+    && ['roaming', 'in_range', 'engaged'].includes(actor.streamState));
   const anchors = deriveCombatFormationAnchors({ globals, entities, heroCount: heroes.length });
-  const bounds = anchors.arenaBounds;
+  const bounds = { ...anchors.arenaBounds, ...deriveCombatWorldBounds() };
   const minY = bounds.visibleTopY, maxY = bounds.visibleBottomY;
   heroes.forEach((hero, index) => {
     if (!Number.isFinite(Number(hero.footX))) {
@@ -83,22 +87,49 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   for (const enemy of enemies) {
     if (!Number.isFinite(Number(enemy.footX))) { enemy.footX = Number(enemy.x || bounds.attackStartX); enemy.footY = Number(enemy.y || (minY + maxY) / 2); }
   }
-  for (const hero of heroes) {
-    const target = stableNearest(hero, enemies);
-    if (!target) { hero.locomotion = 'idle'; if (Number(hero.actionStateUntil || 0) <= Number(globals.time || 0)) hero.actionState = 'idle'; continue; }
-    advanceActorToward(hero, target, { seconds, speed: 78, now: Number(globals.time || 0), minX: bounds.heroBackCenterX, maxX: bounds.attackStartX, minY, maxY,
+  if (!heroes.length) return 0;
+  const center = heroes.reduce((sum, hero) => sum + actorFootPoint(hero).x, 0) / heroes.length;
+  const centerY = heroes.reduce((sum, hero) => sum + actorFootPoint(hero).y, 0) / heroes.length;
+  const hasStragglers = heroes.some(hero => Math.hypot(actorFootPoint(hero).x - center, actorFootPoint(hero).y - centerY) > SQUAD_STRAGGLE_RADIUS);
+  const groups = new Map();
+  for (const enemy of enemies) {
+    const groupId = Number(enemy.streamSectorIndex ?? enemy.streamPackIndex ?? 0);
+    const group = groups.get(groupId) || [];
+    group.push(enemy);
+    groups.set(groupId, group);
+  }
+  const groupCenter = group => group.reduce((sum, enemy) => sum + actorFootPoint(enemy).x, 0) / group.length;
+  const nearestGroup = [...groups.values()].sort((a, b) => Math.abs(groupCenter(a) - center) - Math.abs(groupCenter(b) - center))[0] || [];
+  const nearestGroupX = nearestGroup.length ? groupCenter(nearestGroup) : null;
+  const locallyDetected = !hasStragglers && nearestGroup.length && Math.abs(nearestGroupX - center) <= DETECTION_RADIUS;
+  const focusedEnemies = locallyDetected ? nearestGroup : [];
+  const sharedTarget = focusedEnemies.length ? nearest({ footX: center, footY: centerY }, focusedEnemies) : null;
+  for (const enemy of focusedEnemies) if (enemy.streamState === 'roaming') enemy.streamState = 'in_range';
+  for (const [index, hero] of heroes.entries()) {
+    const [offsetX, offsetY] = SQUAD_OFFSETS[index % SQUAD_OFFSETS.length];
+    const target = sharedTarget;
+    if (target) {
+      hero.arenaTargetUID = Number(target.uid || 0);
+      advanceActorToward(hero, target, { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
       preserveActionState: Number(hero.actionStateUntil || 0) > Number(globals.time || 0) });
+    } else {
+      const nextPackX = hasStragglers ? center : (nearestGroup.length ? nearestGroupX : clamp(center + 160, bounds.heroMinX, bounds.heroMaxX));
+      const searchX = hasStragglers ? center : (locallyDetected ? nextPackX : clamp(nextPackX - Math.sign(nextPackX - center) * 130, bounds.heroMinX, bounds.heroMaxX));
+      const searchTarget = { footX: searchX + offsetX, footY: centerY + offsetY };
+      hero.arenaTargetUID = 0;
+      advanceActorToward(hero, searchTarget, { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
+        preserveActionState: Number(hero.actionStateUntil || 0) > Number(globals.time || 0) });
+    }
   }
   let newlyEngaged = 0;
-  for (const enemy of enemies) {
+  for (const enemy of focusedEnemies) {
     const target = selectContinuousEnemyTarget({ enemy, heroes, globals });
     if (!target) { enemy.locomotion = 'idle'; if (Number(enemy.actionStateUntil || 0) <= Number(globals.time || 0)) enemy.actionState = 'idle'; continue; }
-    advanceActorToward(enemy, target, { seconds, speed: Math.max(34, Number(enemy.streamWalkSpeed || 40)), now: Number(globals.time || 0), minX: bounds.heroBackCenterX, maxX: bounds.attackStartX, minY, maxY,
+    advanceActorToward(enemy, target, { seconds, speed: Math.max(34, Number(enemy.streamWalkSpeed || 40)), now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.maxX, minY, maxY,
       preserveActionState: Number(enemy.actionStateUntil || 0) > Number(globals.time || 0) });
   }
-  if (!heroes.length) return newlyEngaged;
   separateFootprints([...heroes, ...enemies], bounds);
-  for (const enemy of enemies) {
+  for (const enemy of focusedEnemies) {
     const target = selectContinuousEnemyTarget({ enemy, heroes, globals });
     if (target && isActorTargetInRange(enemy, target)) {
       if (enemy.streamState !== 'engaged') newlyEngaged += 1;

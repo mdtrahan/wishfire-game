@@ -50,6 +50,49 @@ test('four heroes retain stable targets and separate crowded footprints', () => 
   }
 });
 
+test('the squad detects one local pack together and leaves distant packs idle', () => {
+  const heroes = Array.from({ length: 4 }, (_, index) => ({
+    uid: index + 1, kind: 'hero', hp: 100, attackType: 'melee', footX: 60 + index * 8, footY: 220 + index * 38,
+  }));
+  const enemies = [
+    ...[0, 1, 2].map(index => ({ uid: 20 + index, kind: 'enemy', hp: 80, footX: 500 + index * 24, footY: 230 + index * 34, streamState: 'roaming', streamSectorIndex: 0 })),
+    { uid: 30, kind: 'enemy', hp: 80, footX: 1440, footY: 272, streamState: 'roaming', streamSectorIndex: 1 },
+    { uid: 31, kind: 'enemy', hp: 80, footX: 2320, footY: 272, streamState: 'roaming', streamSectorIndex: 2 },
+  ];
+  const remoteBefore = enemies.slice(3).map(enemy => enemy.footX);
+  advanceContinuousCombatArena({ globals: { time: 1 }, entities: [...heroes, ...enemies], seconds: 0.1 });
+  assert.ok(heroes.every(hero => Number(hero.arenaTargetUID) >= 20 && Number(hero.arenaTargetUID) <= 22));
+  assert.ok(enemies.slice(0, 3).every(enemy => ['in_range', 'engaged'].includes(enemy.streamState)));
+  assert.deepEqual(enemies.slice(3).map(enemy => enemy.footX), remoteBefore);
+  assert.deepEqual(enemies.slice(3).map(enemy => enemy.streamState), ['roaming', 'roaming']);
+});
+
+test('target death sends the whole squad toward the next pack within world bounds', () => {
+  const heroes = Array.from({ length: 4 }, (_, index) => ({ uid: index + 1, kind: 'hero', hp: 100, footX: 560 + index * 6, footY: 240 + index * 18 }));
+  const enemies = [
+    { uid: 20, kind: 'enemy', hp: 0, footX: 560, footY: 272, streamState: 'engaged', streamSectorIndex: 0 },
+    { uid: 30, kind: 'enemy', hp: 100, footX: 1440, footY: 272, streamState: 'roaming', streamSectorIndex: 1 },
+  ];
+  advanceContinuousCombatArena({ globals: { time: 2 }, entities: [...heroes, ...enemies], seconds: 1 });
+  assert.ok(heroes.every(hero => hero.footX > 560 && hero.footX < 1440));
+  assert.ok(heroes.every(hero => hero.arenaTargetUID === 0));
+  assert.equal(enemies[1].footX, 1440);
+  heroes[3].footX = 950;
+  const leftBeforeRegroup = heroes[0].footX;
+  advanceContinuousCombatArena({ globals: { time: 2.5 }, entities: [...heroes, ...enemies], seconds: 1 });
+  assert.ok(heroes[3].footX < 950);
+  assert.ok(heroes[0].footX > leftBeforeRegroup);
+  assert.ok(heroes.every(hero => hero.arenaTargetUID === 0));
+  for (const hero of heroes) {
+    hero.footX = 2835;
+    hero.arenaTargetUID = 30;
+  }
+  enemies[1].footX = 2875;
+  advanceContinuousCombatArena({ globals: { time: 3 }, entities: [...heroes, ...enemies], seconds: 2 });
+  assert.ok(heroes.every(hero => hero.footX <= 2840));
+  assert.ok(enemies[1].footX <= 2880);
+});
+
 test('enemy pursuit retains two-dimensional feet over repeated arena ticks', () => {
   const hero = { uid: 1, kind: 'hero', hp: 100, attackType: 'melee', footX: 106, footY: 340, arenaEnabled: true };
   const enemy = { uid: 10, kind: 'enemy', hp: 100, footX: 260, footY: 90, x: 260, y: 90, originX: 290, originY: 80, streamState: 'in_range', streamWalkSpeed: 40, attackType: 'melee' };
@@ -71,11 +114,13 @@ test('a live Provoke redirects arena pursuit before an enemy can start another c
   assert.equal(enemy.streamState, 'in_range');
 });
 
-test('spawn feet are staggered and source-relative displacement remains bounded', () => {
+test('spawned pack feet are clustered and source-relative displacement remains bounded', () => {
   const globals = { time: 0, EnemySize: 40, EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 } };
-  const spawned = Array.from({ length: 5 }, (_, index) => activateContinuousCombatSpawnedEnemy(globals, { uid: 20 + index, kind: 'enemy', hp: 100, name: 'Gobloc' }, { entryOrder: index }));
-  assert.equal(new Set(spawned.map(enemy => enemy.footX)).size, 1);
-  assert.equal(new Set(spawned.map(enemy => enemy.footY)).size, 4);
+  const spawned = Array.from({ length: 3 }, (_, index) => activateContinuousCombatSpawnedEnemy(globals, { uid: 20 + index, kind: 'enemy', hp: 100, name: 'Gobloc' }, { entryOrder: index, packIndex: 0, sectorIndex: 0 }));
+  assert.equal(new Set(spawned.map(enemy => enemy.streamSectorIndex)).size, 1);
+  assert.ok(Math.max(...spawned.map(enemy => enemy.footX)) - Math.min(...spawned.map(enemy => enemy.footX)) <= 100);
+  assert.equal(new Set(spawned.map(enemy => enemy.footY)).size, 3);
+  assert.ok(spawned.every(enemy => enemy.streamState === 'roaming'));
   assert.ok(spawned.every(enemy => enemy.actionState === 'spawn' && Number.isFinite(enemy.footY)));
   const enemy = { uid: 99, kind: 'enemy', hp: 100, streamState: 'engaged', footX: 180, footY: 230, x: 180, y: 230 };
   const source = { uid: 1, kind: 'hero', hp: 100, footX: 150, footY: 200 };
