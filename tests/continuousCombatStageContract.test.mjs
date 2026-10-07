@@ -32,6 +32,9 @@ test('continuous combat ignores retired enemy-slot refill holds in both runtime 
   for (const path of ['../web-runner/modules/functionBank.js', '../Scripts/functionBank.js']) {
     const source = readFileSync(new URL(path, import.meta.url), 'utf8');
     assert.match(source, /if \(Number\(g\.ContinuousCombatStageLoop \|\| 0\) === 1\) return getEnemyRosterStability\(\{ entities: getEntities\(ctx\) \}\);/);
+    assert.match(source, /if \(!g\.QuestFiniteEncounter && !continuousStageActive && scheduleRespawn\) scheduleEnemyRespawnWindow\(ctx, slotIndex, respawnDelay\);/);
+    assert.match(source, /if \(!g\.QuestFiniteEncounter && !continuousStageActive\) markEnemyRespawnPending\(ctx, slotIndex\);/);
+    assert.match(source, /if \(Number\(g\.ContinuousCombatStageLoop \|\| 0\) === 1\) \{ g\.PendingEnemyRespawnTimerActive = 0; g\.PendingEnemyRespawnSlots = \[\]; return; \}/);
   }
 });
 
@@ -207,21 +210,6 @@ test('stream packs spawn across the four-screen world in deterministic sectors',
   assert.ok(enemies.every(enemy => enemy.y >= heroYs[0] && enemy.y <= heroYs.at(-1)));
   assert.ok(enemies.every(enemy => enemy.streamEngageX === enemy.x));
   assert.equal(enemies[0].streamWalkSpeed, Math.max(34, 40 * 0.9) * 0.7 * 0.9);
-});
-
-test('continuous stage reconciles legacy respawns into the world before they can render at slot coordinates', () => {
-  const stage = { ...createContinuousCombatStageState(5), nextEmissionAt: 99, lastArenaUpdatedAt: 0.9 };
-  const globals = {
-    ContinuousCombatStageLoop: 1, ContinuousCombatStage: stage, GamePhase: 'RUNTIME',
-    BattleStartActive: 0, time: 1, EnemySize: 40, EnemyData: rows, PendingDeaths: {},
-  };
-  const hero = { uid: 1, kind: 'hero', hp: 100, maxHP: 100, footX: 90, footY: 270 };
-  const legacyRespawn = { uid: 12, kind: 'enemy', hp: 20, maxHP: 20, slotIndex: 1, x: 170, y: 240 };
-  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities: [hero, legacyRespawn], presentationBarrier: { lanes: {} }, call() {} }), false);
-  assert.equal(legacyRespawn.streamState, 'in_range');
-  assert.ok(legacyRespawn.streamSectorIndex >= 0);
-  assert.ok(legacyRespawn.footX > 360);
-  assert.equal(legacyRespawn.arenaEnabled, true);
 });
 
 test('Shield Slam and Return Gate move right within the attack boundary', () => {

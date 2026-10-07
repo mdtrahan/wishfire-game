@@ -167,50 +167,6 @@ export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1,
   return enemy;
 }
 
-function reconcileUnassignedContinuousEnemies(globals, entities, heroes) {
-  const stage = globals.ContinuousCombatStage;
-  const world = deriveCombatWorldBounds();
-  const sectors = [0.19, 0.5, 0.81];
-  const squadX = heroes.length
-    ? heroes.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? 0), 0) / heroes.length
-    : 0;
-  const groups = new Map();
-  for (const enemy of entities.filter(actor => actor?.kind === 'enemy' && Number(actor.hp || 0) > 0 && Number.isInteger(Number(actor.streamSectorIndex)))) {
-    const groupId = Number(enemy.streamSectorIndex);
-    const group = groups.get(groupId) || [];
-    group.push(enemy);
-    groups.set(groupId, group);
-  }
-  const groupX = group => group.reduce((sum, actor) => sum + Number(actor.footX ?? actor.x ?? 0), 0) / group.length;
-  const unassigned = entities.filter(actor => actor?.kind === 'enemy' && Number(actor.hp || 0) > 0
-    && !['roaming', 'approaching', 'in_range', 'engaged', 'retreating'].includes(actor.streamState));
-  for (const enemy of unassigned) {
-    const nearestGroup = [...groups.entries()].sort((a, b) => Math.abs(groupX(a[1]) - squadX) - Math.abs(groupX(b[1]) - squadX))[0];
-    const sectorIndex = nearestGroup
-      ? Number(nearestGroup[0]) % 3
-      : sectors.reduce((best, ratio, index) => Math.abs(world.worldWidth * ratio - squadX) < Math.abs(world.worldWidth * sectors[best] - squadX) ? index : best, 0);
-    const packIndex = nearestGroup ? Math.floor(Number(nearestGroup[0]) / 3) : Math.max(0, Math.floor(Number(stage?.transitions || 0)));
-    const groupId = sectorIndex + packIndex * 3;
-    const group = groups.get(groupId) || [];
-    const entryOrder = group.length % 3;
-    const bossX = clampWorldX(squadX + 260, world.worldWidth);
-    activateContinuousCombatSpawnedEnemy(globals, enemy, {
-      lane: Number(enemy.slotIndex ?? entryOrder),
-      rank: 0,
-      packIndex,
-      entryOrder,
-      sectorIndex,
-      bossX,
-    });
-    groups.set(groupId, [...group, enemy]);
-  }
-  return unassigned.length;
-}
-
-function clampWorldX(value, worldWidth) {
-  return Math.max(40, Math.min(Number(worldWidth) - 40, Number(value) || 0));
-}
-
 export function finalizeContinuousCombatProduction(globals, entities = []) {
   if (Number(globals.ContinuousCombatStageLoop || 0) !== 1) return false;
   const now = Number(globals.time || 0);
@@ -542,8 +498,6 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   const stageState = globals.ContinuousCombatStage;
   if (!stageState) return false;
   const now = Number(globals.time || 0);
-  const heroes = entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
-  reconcileUnassignedContinuousEnemies(globals, entities, heroes);
   const newlyAvailable = updateApproachingEnemies(globals, entities, now);
   const newlyEngaged = advanceContinuousCombatArena({ globals, entities, seconds: Math.max(0, Math.min(0.1, now - Number(stageState.lastArenaUpdatedAt ?? now))) });
   stageState.lastArenaUpdatedAt = now;

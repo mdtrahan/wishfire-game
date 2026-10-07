@@ -38,6 +38,22 @@ test('combat camera presents four screens of world at half battlefield zoom', as
   assert.equal(last.project(bounds.worldWidth, 272.5).x, 360);
 });
 
+test('wide world grid keeps numbered major lines inside the camera view while it pans', async () => {
+  const rules = await loadRules();
+  const grid = rules.deriveCombatReferenceGrid(2880, 640);
+  assert.equal(grid.centerX, 1440);
+  assert.equal(grid.vertical.at(-1).value, 2880);
+  const camera = rules.createCombatCameraProjection({ viewportWidth: 360, worldWidth: 2880, zoom: 0.5, centerX: 1000 });
+  const visibleMajorLabels = grid.vertical.filter(line => line.major)
+    .map(line => ({ value: line.value, x: camera.project(line.value, 0).x }))
+    .filter(line => line.x >= 0 && line.x <= 360);
+  assert.ok(visibleMajorLabels.length > 0);
+  assert.ok(visibleMajorLabels.some(line => line.value > 350));
+  const renderer = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
+  assert.match(renderer, /grid\.vertical\.filter\(line => line\.major && line\.value < combatWorldBounds\.worldWidth\)/);
+  assert.match(renderer, /const point = vertical \? projectCombatActorWorldToCanvas\(line\.value, 0\)/);
+});
+
 test('right-wise geometry reflects X while preserving shared Y homes', async () => {
   const rules = await loadRules();
   const layoutW = 960;

@@ -24,6 +24,7 @@
 - Continuous enemy actions use independent UID clocks and action states. They share the legacy action-state builder, while `StartEnemyAction` and `ProcessTurn` remain the story/QA path; continuous actions do not use the global `ActionInProgress` lane. Revalidate target at impact and leave readiness available when no eligible target remains.
 - Ordinary continuous `HeroAttackSingle` packets keep launch-computed `finalDmg`, then resolve through `heroCommands` and `combatRules` at impact. The resolver preserves on-hit hooks, counter/KO effects, and committed projectiles after source KO; Split, Incinerate, Chain Strike, and Arcane Pulse keep their existing effect-specific queues.
 - Continuous hero basics share one in-range enemy focus UID until that enemy dies, then choose the first living in-range enemy in encounter order. Engaged enemies acquire only heroes inside the combat group; area-skill target sets remain effect-owned.
+- Continuous stage owns roaming-pack spawn and settlement. The legacy death-window respawn owner must not refill slots while `ContinuousCombatStageLoop` is active; ordinary factory spawns and noncontinuous encounter respawns keep their existing paths.
 - Native wards, Cover, Reprisal, Rally and weakness are actor-owned combat effects; card-session records cannot activate them.
 - HERO_SINGLE keeps a valid owner-matched manual enemy selection; its automatic fallback delegates to the shared role-targeting rule.
 - Supergem behavior is limited to native board actions. Retired card selection and offer state must fail closed.
