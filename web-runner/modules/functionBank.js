@@ -58,6 +58,9 @@ import { selectRealtimeHeroSkillTarget } from '../src/core/realtimeHeroTargeting
 import { castRealtimeHeroSkill, tickRealtimeHeroSkillZones, realtimeBasicInterval, realtimeCombatStat,realtimeBasicDamageMultiplier,cleanupRealtimeSkillActors, realtimeProvokeTarget, realtimeCoverTarget, realtimeIncomingDamage, realtimeMagicBlocked, realtimeRetaliation } from './heroCommands.mjs';
 import { heroDefinition, heroSkillUnlocked } from '../src/core/heroDefinitions.mjs';
 import { pushContinuousCombatEnemy, reverseContinuousCombatEnemy, teleportContinuousCombatEnemy } from '../src/core/continuousCombatStage.mjs';
+import { selectContinuousEnemyTarget } from '../src/core/arenaCombat.mjs';
+import { isActorTargetInRange } from '../../src/core/arenaCombatRules.mjs';
+import { LUNGE_ANTICIPATION_SEC, LUNGE_FORWARD_SEC } from '../systems/animationMath.js';
 
 import { sanitizeInitiativeQueue, shouldAutoCorrectImproperRepeat } from '../src/core/initiativeGuards.mjs';
 import {
@@ -5744,7 +5747,9 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode, attackMultipl
 // Explicit raw skill budgets bypass another potency or critical roll, then mitigate once.
 export function ApplyRealtimeRawDamage(ctx,sourceUID,targetUID,rawAmount,mode='magic') {
   const g=getGlobals(ctx),source=GetActorByUID(ctx,sourceUID),target=GetActorByUID(ctx,targetUID);
-  if(!source || !target || !isHeroBasicTargetInRange(target,source))return 0;
+  // Raw packets are already committed skill effects. Their recipient and
+  // lifetime are owned by the effect record, rather than basic-attack reach.
+  if(!target)return 0;
   const magic=mode==='magic';
   const decision=resolveCalculateDamageFromJs({power:Math.max(0,Number(rawAmount || 0)),resist:GetEffectiveStat(ctx,target,magic?'RES':'DEF'),matchingResistancePct:GetBaseStat(ctx,target,magic?'magicDamageResistancePct':'physicalDamageResistancePct'),generalResistancePct:GetBaseStat(ctx,target,'damageResistancePct'),critRoll01:1});
   const amp=source?realtimeBasicDamageMultiplier(g,source):1;
@@ -6419,9 +6424,17 @@ function resolveRunaMagicResistCompat(payload) {
 function pickEnemyTargetHero(ctx, enemyUID = 0) {
   const g = getGlobals(ctx);
   const enemy = GetActorByUID(ctx, enemyUID);
+  if (Number(g.ContinuousCombatStageLoop || 0) === 1) {
+    if (enemy?.streamState !== 'engaged' || enemy.arenaInReach === false) return null;
+    return selectContinuousEnemyTarget({
+      enemy,
+      heroes: getHeroes(ctx),
+      globals: g,
+      requireInReach: true,
+    });
+  }
   const heroes = getHeroes(ctx).filter(hero => {
-    if (Number(g.ContinuousCombatStageLoop || 0) !== 1) return true;
-    return enemy?.streamState === 'engaged' && enemy.arenaInReach !== false;
+    return true;
   });
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
   const result = resolveEnemyTargetHero({
@@ -6438,14 +6451,20 @@ function pickEnemyTargetHero(ctx, enemyUID = 0) {
 }
 
 export function ResolveEnemyActionTarget(ctx, enemyUID, preferredTargetUID = 0) {
+  const g = getGlobals(ctx);
   const enemy = GetActorByUID(ctx, enemyUID);
   const preferred = GetActorByUID(ctx, preferredTargetUID);
-  if (Number(getGlobals(ctx).ContinuousCombatStageLoop || 0) !== 1) {
+  if (Number(g.ContinuousCombatStageLoop || 0) !== 1) {
     return preferred?.kind === 'hero' && Number(preferred.hp || 0) > 0 ? preferred : null;
   }
-  const enemyInRange = enemy?.streamState === 'engaged' && enemy.arenaInReach !== false;
-  if (enemyInRange && preferred?.kind === 'hero' && Number(preferred.hp || 0) > 0) return realtimeProvokeTarget(ctx, enemy, preferred);
-  return pickEnemyTargetHero(ctx, enemyUID);
+  if (enemy?.streamState !== 'engaged' || enemy.arenaInReach === false) return null;
+  return selectContinuousEnemyTarget({
+    enemy,
+    heroes: getHeroes(ctx),
+    globals: g,
+    preferredTarget: preferred?.kind === 'hero' && Number(preferred.hp || 0) > 0 && isActorTargetInRange(enemy, preferred) ? preferred : null,
+    requireInReach: true,
+  });
 }
 
 function applyRunaMagicResist(ctx, enemyUID, targetHeroUID, incomingDamage, skillId = 'Enemy_MAG_Single') {
@@ -7321,19 +7340,17 @@ export function TickRealtimeEnemyActions(ctx) {
   const g = getGlobals(ctx);
   if (Number(g.ContinuousCombatStageLoop || 0) !== 1 || g.GamePhase !== 'RUNTIME' || g.BattleStartActive || g.NativeBattleEnded) return 0;
   const now = Number(g.time || 0);
-  const actors = getEntities(ctx).filter(enemy => enemy?.kind === 'enemy'
-    && Number(enemy.hp || 0) > 0
-    && enemy.streamState === 'engaged'
+  const livingEnemies = getEntities(ctx).filter(enemy => enemy?.kind === 'enemy' && Number(enemy.hp || 0) > 0);
+  const actors = livingEnemies.filter(enemy => enemy.streamState === 'engaged'
     && enemy.arenaInReach !== false);
-  const liveUIDs = new Set(actors.map(enemy => String(enemy.uid)));
+  const liveUIDs = new Set(livingEnemies.map(enemy => String(enemy.uid)));
   const readyAt = g.RealtimeEnemyActionReadyAt ||= {};
   const active = g.RealtimeEnemyActionsByUID ||= {};
   for (const uid of Object.keys(readyAt)) {
     if (!liveUIDs.has(uid) && !active[uid]) delete readyAt[uid];
   }
   for (const uid of Object.keys(active)) {
-    if (!liveUIDs.has(uid)) continue;
-    if (!active[uid]?.active) delete active[uid];
+    if (!liveUIDs.has(uid) || !active[uid]?.active) delete active[uid];
   }
   const due = [];
   for (const enemy of actors) {
@@ -10398,9 +10415,10 @@ export function StartRealtimeEnemyAction(ctx, enemyUID) {
   });
   enemy.actionState = String(enemy.streamDelivery || enemy.attackDelivery || '') === 'ranged' ? 'cast' : 'basic';
   enemy.actionFacing = enemy.facing;
-  enemy.actionStateStartedAt = Number(g.time || 0);
-  enemy.actionImpactAt = Number(g.time || 0) + 0.52;
-  enemy.actionStateUntil = Number(g.time || 0) + 0.72;
+  const actionStartedAt = Number(g.time || 0);
+  enemy.actionStateStartedAt = actionStartedAt;
+  enemy.actionImpactAt = actionStartedAt + LUNGE_ANTICIPATION_SEC + LUNGE_FORWARD_SEC;
+  enemy.actionStateUntil = enemy.actionImpactAt + 0.2;
   return createEnemyActionState(ctx, enemyUID, target, {
     continuousCombat: true,
     cooldownSeconds,

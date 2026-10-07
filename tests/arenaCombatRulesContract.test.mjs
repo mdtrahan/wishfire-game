@@ -50,6 +50,27 @@ test('four heroes retain stable targets and separate crowded footprints', () => 
   }
 });
 
+test('enemy pursuit retains two-dimensional feet over repeated arena ticks', () => {
+  const hero = { uid: 1, kind: 'hero', hp: 100, attackType: 'melee', footX: 106, footY: 340, arenaEnabled: true };
+  const enemy = { uid: 10, kind: 'enemy', hp: 100, footX: 260, footY: 90, x: 260, y: 90, originX: 290, originY: 80, streamState: 'in_range', streamWalkSpeed: 40, attackType: 'melee' };
+  const entities = [hero, enemy];
+  for (let index = 0; index < 12; index += 1) advanceContinuousCombatArena({ globals: { time: index / 10, EnemySize: 40 }, entities, seconds: 0.1 });
+  assert.ok(enemy.footY > 90, 'enemy pursues the vertically offset hero');
+  assert.equal(enemy.y, enemy.footY, 'render mirror retains semantic foot Y');
+  assert.notEqual(enemy.footX, enemy.originX, 'arena motion does not restore the stream entry origin');
+});
+
+test('a live Provoke redirects arena pursuit before an enemy can start another contact attack', () => {
+  const nearby = { uid: 1, kind: 'hero', hp: 100, attackType: 'melee', footX: 180, footY: 200, arenaEnabled: true };
+  const provoker = { uid: 2, kind: 'hero', hp: 100, attackType: 'melee', footX: 106, footY: 340, arenaEnabled: true };
+  const enemy = { uid: 10, kind: 'enemy', hp: 100, footX: 230, footY: 200, streamState: 'engaged', arenaInReach: true, streamDelivery: 'melee' };
+  const globals = { time: 1, EnemySize: 40, RealtimeSkillEffects: { 10: { provoke: { sourceUID: 2, expiresAt: 5 } } } };
+  advanceContinuousCombatArena({ globals, entities: [nearby, provoker, enemy], seconds: 0.1 });
+  assert.equal(enemy.arenaTargetUID, 2);
+  assert.equal(enemy.arenaInReach, false);
+  assert.equal(enemy.streamState, 'in_range');
+});
+
 test('spawn feet are staggered and source-relative displacement remains bounded', () => {
   const globals = { time: 0, EnemySize: 40, EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 } };
   const spawned = Array.from({ length: 5 }, (_, index) => activateContinuousCombatSpawnedEnemy(globals, { uid: 20 + index, kind: 'enemy', hp: 100, name: 'Gobloc' }, { entryOrder: index }));

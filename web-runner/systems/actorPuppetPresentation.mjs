@@ -1,5 +1,5 @@
 import { sampleActorClip } from './actorClipPlayback.mjs';
-import { combatActorVisualScale } from './combatActorSpritePresentation.mjs';
+import { combatActorVisualScale, shouldMirrorCombatActorSprite } from './combatActorSpritePresentation.mjs';
 
 const ACTOR_KEYS = Object.freeze({ Fara: 'fara', Falie: 'fara', Gobloc: 'gobloc' });
 const CLIP_STATES = new Set(['idle', 'walk', 'basic', 'cast', 'hurt', 'ko', 'spawn']);
@@ -41,15 +41,21 @@ export function actorClipAgeMs(actor, state, clip, now) {
   return elapsed * marker / impactDuration;
 }
 
+export function actorScreenFacing(worldFacing, orientation) {
+  const facing = worldFacing === 'left' ? 'left' : 'right';
+  return shouldMirrorCombatActorSprite(orientation) ? (facing === 'left' ? 'right' : 'left') : facing;
+}
+
 export function createActorPuppetPresentation({ loadClip }) {
   const resolved = new Map();
   const requested = new Set();
   return {
-    frameFor(actor, now) {
+    frameFor(actor, now, orientation) {
       const actorKey = actorPuppetKey(actor);
       if (!actorKey || !Number.isFinite(now)) return null;
       const state = actorPuppetState(actor, now);
-      const facing = (actor?.actionStateUntil > now ? actor?.actionFacing : actor?.facing) === 'left' ? 'left' : 'right';
+      const worldFacing = (actor?.actionStateUntil > now ? actor?.actionFacing : actor?.facing) === 'left' ? 'left' : 'right';
+      const facing = actorScreenFacing(worldFacing, orientation);
       const key = `${actorKey}/${state}/${facing}`;
       if (!requested.has(key)) {
         requested.add(key);

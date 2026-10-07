@@ -9,6 +9,8 @@ import { realtimeCooldownSeconds, scheduleRealtimeActions, selectRealtimeReadyAc
 import { selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
 import { castRealtimeHeroSkill, realtimeBasicInterval, realtimeProvokeTarget, realtimeRetaliation, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
 import { pickEnemyTargetHeroFromRoster } from '../web-runner/src/core/enemyTargetingRules.mjs';
+import { selectContinuousEnemyTarget } from '../web-runner/src/core/arenaCombat.mjs';
+import { isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
 import { armContinuousCombatBoss, createContinuousCombatStageState, maybeAdvanceContinuousCombatStage } from '../web-runner/src/core/continuousCombatStage.mjs';
 import { advanceEnemyActionSimulation, createCombatSimulationTicker, processPendingHeroHits, shouldFreezeCombatSimulation } from '../web-runner/systems/combatSimulationTick.mjs';
 import { recordEnemyDefeatReward, settleContinuousCombatRewards, settleDefeat } from '../web-runner/modules/heroCommands.mjs';
@@ -69,16 +71,16 @@ function makeTickEnemies(ctx, actionEvents) {
     return action;
   };
   const start = loadBankFunction('export function StartRealtimeEnemyAction(ctx, enemyUID) {', '\nexport function StartEnemyAction(',
-    ['getGlobals', 'GetActorByUID', 'pickEnemyTargetHero', 'realtimeCooldownSeconds', 'createEnemyActionState'],
+    ['getGlobals', 'GetActorByUID', 'pickEnemyTargetHero', 'realtimeCooldownSeconds', 'createEnemyActionState', 'LUNGE_ANTICIPATION_SEC', 'LUNGE_FORWARD_SEC'],
     [c => c.state.globals, (c, uid) => c.state.entities.find(actor => Number(actor.uid) === Number(uid)) || null,
-      pick, realtimeCooldownSeconds, createAction]);
+      pick, realtimeCooldownSeconds, createAction, .14, .75]);
   const tick = loadBankFunction('export function TickRealtimeEnemyActions(ctx) {', '\nfunction HeroAttackSplit(',
     ['getGlobals', 'getEntities', 'pickEnemyTargetHero', 'StartRealtimeEnemyAction'],
     [c => c.state.globals, c => c.state.entities, pick, start]);
   const resolveTarget = loadBankFunction('export function ResolveEnemyActionTarget(ctx, enemyUID, preferredTargetUID = 0) {', '\nfunction applyRunaMagicResist(',
-    ['getGlobals', 'GetActorByUID', 'pickEnemyTargetHero', 'realtimeProvokeTarget'],
+    ['getGlobals', 'GetActorByUID', 'getHeroes', 'selectContinuousEnemyTarget', 'isActorTargetInRange'],
     [c => c.state.globals, (c, uid) => c.state.entities.find(actor => Number(actor.uid) === Number(uid)) || null,
-      pick, realtimeProvokeTarget]);
+      c => c.state.entities.filter(actor => actor.kind === 'hero' && actor.hp > 0), selectContinuousEnemyTarget, isActorTargetInRange]);
   return (now, dt) => {
     const g = ctx.state.globals;
     g.RealtimeEnemyActionReadyAtBefore = { ...(g.RealtimeEnemyActionReadyAt || {}) };
@@ -115,10 +117,10 @@ function makeTickEnemies(ctx, actionEvents) {
 }
 
 const makeHero = (uid, key, hp, maxHP) => ({ uid, kind: 'hero', x:145, y:180+(uid-1)*35, footX:145, footY:180+(uid-1)*35, currentLevel:25, heroInstanceKey: `hero-${uid}`, baseHeroName: key, name: key, hp, maxHP, stats: { ...HERO_DEFINITIONS[key].baseStats }, attackType: key === 'Runa' || key === 'Kojonn' ? 'magic' : 'melee', heroDisplaySlot: uid - 1 });
-const makeEnemy = (uid, name, x, y, hp = 1_000_000, maxHP = 1_000_000, extra = {}) => ({ uid, kind: 'enemy', name, hp, maxHP, x, y, footX:x, footY:y, originX: x, originY: y, streamEngageX: x, streamState: 'engaged', enemyRole: 'fodder', ATK: 1, stats: { ATK: 1, MAG: 2, RES: 1 }, ...extra });
+const makeEnemy = (uid, name, x, y, hp = 1_000_000, maxHP = 1_000_000, extra = {}) => ({ uid, kind: 'enemy', name, hp, maxHP, x, y, footX:x, footY:y, originX: x, originY: y, streamEngageX: x, streamState: 'engaged', arenaTargetUID: 1, enemyRole: 'fodder', ATK: 1, stats: { ATK: 1, MAG: 2, RES: 1 }, ...extra });
 
 function createTwoWaveFixture() {
-  const heroes = [makeHero(1, 'Falie', 54, 100), makeHero(2, 'Huun', 38, 100), makeHero(3, 'Runa', 80, 100), makeHero(4, 'Kojonn', 80, 100)];
+  const heroes = [makeHero(1, 'Falie', 44, 100), makeHero(2, 'Huun', 38, 100), makeHero(3, 'Runa', 80, 100), makeHero(4, 'Kojonn', 80, 100)];
   const waveOne = [makeEnemy(20, 'Gobloc', 190, 180, 300_000, 1_000_000), makeEnemy(21, 'Djinn', 205, 195, 1_000_000, 1_000_000, { attackType: 'magic', streamDelivery: 'ranged' })];
   const globals = {
     time: 0, ContinuousCombatStageLoop: 1, GamePhase: 'RUNTIME', RuntimeRandomSeed:1, RuntimeRandomDraws:0,

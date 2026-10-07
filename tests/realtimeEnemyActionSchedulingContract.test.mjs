@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { advanceEnemyActionSimulation } from '../web-runner/systems/combatSimulationTick.mjs';
 import { pickEnemyTargetHeroFromRoster } from '../web-runner/src/core/enemyTargetingRules.mjs';
+import { selectContinuousEnemyTarget } from '../web-runner/src/core/arenaCombat.mjs';
+import { isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
 import { activateContinuousCombatSpawnedEnemy } from '../web-runner/src/core/continuousCombatStage.mjs';
 import { realtimeCooldownSeconds } from '../web-runner/src/core/realtimeCooldown.mjs';
 import { realtimeProvokeTarget } from '../web-runner/src/core/realtimeHeroSkills.mjs';
@@ -35,15 +37,24 @@ function loadResolveEnemyActionTarget() {
   const start = functionBank.indexOf('export function ResolveEnemyActionTarget(ctx, enemyUID, preferredTargetUID = 0) {');
   const end = functionBank.indexOf('\nfunction applyRunaMagicResist(', start);
   const body = functionBank.slice(start, end).replace('export function', 'function');
-  return new Function('getGlobals', 'GetActorByUID', 'pickEnemyTargetHero', 'realtimeProvokeTarget', `${body}; return ResolveEnemyActionTarget;`)(
+  return new Function('getGlobals', 'GetActorByUID', 'getHeroes', 'selectContinuousEnemyTarget', 'isActorTargetInRange', `${body}; return ResolveEnemyActionTarget;`)(
     ctx => ctx.state.globals,
     (ctx, uid) => ctx.state.entities.find(actor => actor.uid === uid) || null,
-    (ctx, enemyUID) => {
-      const enemy = ctx.state.entities.find(actor => actor.kind === 'enemy' && actor.uid === enemyUID);
-      const heroes = ctx.state.entities.filter(actor => actor.kind === 'hero' && actor.hp > 0);
-      return pickEnemyTargetHeroFromRoster({ enemy, heroes }).target;
-    },
-    realtimeProvokeTarget,
+    ctx => ctx.state.entities.filter(actor => actor.kind === 'hero' && actor.hp > 0),
+    selectContinuousEnemyTarget,
+    isActorTargetInRange,
+  );
+}
+
+function loadPickEnemyTargetHero() {
+  const start = functionBank.indexOf('function pickEnemyTargetHero(ctx, enemyUID = 0) {');
+  const end = functionBank.indexOf('\nexport function ResolveEnemyActionTarget(', start);
+  const body = functionBank.slice(start, end);
+  return new Function('getGlobals', 'GetActorByUID', 'getHeroes', 'selectContinuousEnemyTarget', `${body}; return pickEnemyTargetHero;`)(
+    ctx => ctx.state.globals,
+    (ctx, uid) => ctx.state.entities.find(actor => actor.uid === uid) || null,
+    ctx => ctx.state.entities.filter(actor => actor.kind === 'hero' && actor.hp > 0),
+    selectContinuousEnemyTarget,
   );
 }
 
@@ -51,23 +62,23 @@ function loadStartRealtimeEnemyAction() {
   const start = functionBank.indexOf('export function StartRealtimeEnemyAction(ctx, enemyUID) {');
   const end = functionBank.indexOf('\nexport function StartEnemyAction(', start);
   const body = functionBank.slice(start, end).replace('export function', 'function');
-  return new Function('getGlobals', 'GetActorByUID', 'pickEnemyTargetHero', 'realtimeCooldownSeconds', 'createEnemyActionState', `${body}; return StartRealtimeEnemyAction;`)(
+  return new Function('getGlobals', 'GetActorByUID', 'pickEnemyTargetHero', 'realtimeCooldownSeconds', 'createEnemyActionState', 'LUNGE_ANTICIPATION_SEC', 'LUNGE_FORWARD_SEC', `${body}; return StartRealtimeEnemyAction;`)(
     ctx => ctx.state.globals,
     (ctx, uid) => ctx.state.entities.find(actor => actor.uid === uid) || null,
     () => ({ uid: 1, kind: 'hero', hp: 10 }),
     realtimeCooldownSeconds,
-    (_ctx, uid, target, options) => ({ uid, target, options }),
+    (_ctx, uid, target, options) => ({ uid, target, options }), 0.14, 0.75,
   );
 }
 
 function actionFixture() {
   const heroes = [
-    { uid: 1, kind: 'hero', hp: 10, maxHP: 10 },
-    { uid: 2, kind: 'hero', hp: 10, maxHP: 10 },
+    { uid: 1, kind: 'hero', hp: 10, maxHP: 10, footX: 160, footY: 100 },
+    { uid: 2, kind: 'hero', hp: 10, maxHP: 10, footX: 150, footY: 110 },
   ];
   const enemies = [
-    { uid: 20, kind: 'enemy', hp: 30, x: 210, originX: 210, originY: 100, streamState: 'engaged', streamEngageX: 210, cooldownSeconds: 1.6 },
-    { uid: 21, kind: 'enemy', hp: 30, x: 250, originX: 250, originY: 140, streamState: 'engaged', streamEngageX: 250, cooldownSeconds: 5 },
+    { uid: 20, kind: 'enemy', hp: 30, x: 210, footX: 210, footY: 100, originX: 210, originY: 100, streamState: 'engaged', arenaInReach: true, streamEngageX: 210, cooldownSeconds: 1.6 },
+    { uid: 21, kind: 'enemy', hp: 30, x: 250, footX: 250, footY: 140, originX: 250, originY: 140, streamState: 'engaged', arenaInReach: true, streamEngageX: 250, cooldownSeconds: 5 },
   ];
   const state = { globals: { ContinuousCombatStageLoop: 1, GamePhase: 'RUNTIME', time: 1, RealtimeEnemyActionReadyAt: {}, RealtimeEnemyActionsByUID: {} }, entities: [...heroes, ...enemies] };
   const ctx = { state };
@@ -101,6 +112,35 @@ test('impact target resolution preserves a live story target and picks the first
   assert.equal(resolveTarget(ctx, 20, 2), null);
 });
 
+test('continuous picker and impact resolver use only heroes inside this enemy delivery reach', () => {
+  const pick = loadPickEnemyTargetHero();
+  const resolve = loadResolveEnemyActionTarget();
+  const farHero = { uid: 1, kind: 'hero', hp: 10, footX: 106, footY: 340 };
+  const contactHero = { uid: 2, kind: 'hero', hp: 10, footX: 180, footY: 200 };
+  const enemy = { uid: 20, kind: 'enemy', hp: 30, footX: 230, footY: 200, streamState: 'engaged', arenaInReach: true, streamDelivery: 'melee' };
+  const ctx = { state: { globals: { ContinuousCombatStageLoop: 1, time: 1 }, entities: [farHero, contactHero, enemy] } };
+  assert.equal(pick(ctx, 20).uid, 2);
+  assert.equal(resolve(ctx, 20, 1).uid, 2, 'a displaced melee target cannot be struck through the nearer hero');
+});
+
+test('a displaced living enemy retains its cooldown deadline until it re-enters contact', () => {
+  const { state, ctx, heroes, enemies, tick } = actionFixture();
+  const enemy = enemies[0];
+  state.entities = [...heroes, enemy];
+  enemy.streamState = 'in_range';
+  state.globals.RealtimeEnemyActionReadyAt = { [enemy.uid]: 5 };
+  state.globals.time = 1;
+  assert.equal(tick(ctx), 0);
+  assert.equal(state.globals.RealtimeEnemyActionReadyAt[enemy.uid], 5);
+  enemy.streamState = 'engaged';
+  state.globals.time = 2;
+  assert.equal(tick(ctx), 0);
+  assert.equal(state.globals.RealtimeEnemyActionReadyAt[enemy.uid], 5);
+  state.globals.time = 5;
+  assert.equal(tick(ctx), 1);
+  assert.equal(state.globals.RealtimeEnemyActionsByUID[enemy.uid].startedAt, 5);
+});
+
 test('spawned melee, ranged, and boss actors keep their authored realtime intervals', () => {
   const globals = { time: 0, EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 }, EnemySize: 40 };
   const melee = activateContinuousCombatSpawnedEnemy(globals, { uid: 30, kind: 'enemy', name: 'Gobloc', enemyRole: 'fodder', hp: 10 }, { entryOrder: 0 });
@@ -117,6 +157,8 @@ test('spawned melee, ranged, and boss actors keep their authored realtime interv
     const result = start({ state: { globals: { time: 0 }, entities: [enemy] } }, enemy.uid);
     assert.equal(result.options.cooldownSeconds, interval(enemy));
     assert.equal(result.options.continuousCombat, true);
+    assert.equal(enemy.actionImpactAt, 0.89);
+    assert.equal(enemy.actionStateUntil, 1.09);
   }
 });
 
@@ -172,6 +214,31 @@ test('enemy impacts overlap and a later impact retargets after its captured hero
   assert.deepEqual(calls, [[20, 1], [21, 2]]);
   assert.equal(state.globals.RealtimeEnemyActionsByUID['20'].actionApplied, true);
   assert.equal(state.globals.RealtimeEnemyActionsByUID['21'].actionApplied, true);
+});
+
+test('continuous enemy cue reaches its marker when the state machine applies HP damage without restoring arena feet', () => {
+  const hero = { uid: 1, kind: 'hero', hp: 10, maxHP: 10, footX: 106, footY: 320 };
+  const enemy = { uid: 20, kind: 'enemy', hp: 30, footX: 190, footY: 250, x: 190, y: 250, originX: 290, originY: 80, actionState: 'basic', actionStateStartedAt: 1, actionImpactAt: 1.89, actionStateUntil: 2.09 };
+  const state = { globals: { time: 1, ContinuousCombatStageLoop: 1, RealtimeEnemyActionsByUID: { 20: { uid: 20, active: true, state: 'ADVANCE', timer: 0, actionApplied: false, targetUID: 1, skillId: 'Enemy_ATK_Single', startedAt: 1, nextReadyAt: 2.6, cooldownSeconds: 1.6 } }, RealtimeEnemyActionReadyAt: { 20: 2.6 } }, entities: [hero, enemy] };
+  const advance = (dt, now) => {
+    state.globals.time = now;
+    advanceEnemyActionSimulation({
+      state, gameState: { healBlooms: [] }, dt, layoutW: 400,
+      animationMath: { LUNGE_ANTICIPATION_SEC: 0.14, LUNGE_FORWARD_SEC: 0.75, LUNGE_HOLD_SEC: 0.1, LUNGE_RETREAT_SEC: 0.1, LUNGE_FORWARD_DIST_PX: 30, easeLungeForward: t => t },
+      fnContext: {}, callFunctionWithContext: (_ctx, name, ...args) => {
+        if (name === 'ResolveEnemyActionTarget') return hero;
+        if (name === 'ApplyEnemySkill') { hero.hp -= 1; return 1; }
+        return null;
+      },
+      applyTurnGateGlobals() {}, applyTurnGateIntent() {}, createEnemyTurnIdleRecovery() {}, combatVfxProfileForActor: () => ({ delivery: 'melee', impact: 'physical' }), queueCombatAttackImpactVfx() {},
+    });
+  };
+  advance(0.14, 1.14);
+  assert.equal(hero.hp, 10);
+  advance(0.75, 1.89);
+  assert.equal(hero.hp, 9);
+  assert.equal(enemy.actionImpactAt, 1.89);
+  assert.deepEqual([enemy.x, enemy.y, enemy.footX, enemy.footY], [190, 250, 190, 250]);
 });
 
 test('a missing impact target consumes no attack cooldown and remains ready', () => {

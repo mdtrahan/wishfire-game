@@ -29,6 +29,14 @@ const removeBetween = (start, end) => {
   if (endAt < 0) throw new Error(`[RENDER_EXTRACTION] missing end: ${end}`);
   effectiveBody = effectiveBody.slice(0, startAt) + effectiveBody.slice(endAt);
 };
+const replaceBetween = (start, end, replacement) => {
+  const startAt = effectiveBody.indexOf(start);
+  if (startAt < 0) throw new Error(`[RENDER_EXTRACTION] missing replace start: ${start}`);
+  const endAt = effectiveBody.indexOf(end, startAt + start.length);
+  if (endAt < 0) throw new Error(`[RENDER_EXTRACTION] missing replace end: ${end}`);
+  const original = effectiveBody.slice(startAt, endAt);
+  effectiveBody = effectiveBody.slice(0, startAt) + replacement(original) + effectiveBody.slice(endAt);
+};
 const removeBlock = (marker, searchFrom = 0) => {
   const startAt = effectiveBody.indexOf(marker, searchFrom);
   if (startAt < 0) throw new Error(`[RENDER_EXTRACTION] missing block: ${marker}`);
@@ -90,6 +98,33 @@ effectiveBody = effectiveBody.replace(
   "          const actorFootX = Number(hero?.footX);\n          const actorFootY = Number(hero?.footY);\n          const actorYWorld = Number.isFinite(actorFootY) ? actorFootY - hWorld * 1.55 / 2 : yWorld;\n          const worldX = Number.isFinite(actorFootX) ? actorFootX : baseX;\n          const xWorld = worldX + (hero ? (offsets[hero.uid] || 0) : 0);\n          posByIndex[entry.displaySlot] = { x: worldX, y: actorYWorld };\n          if (hero && Number(hero.uid || 0) > 0) {\n            restBaseByUID[hero.uid] = { x: worldX, y: actorYWorld };\n            restFeetByUID[hero.uid] = { x: worldX, y: actorYWorld + hWorld * 1.55 / 2 };\n          }\n          const pos = projectCombatActorWorldToCanvas(xWorld, actorYWorld, 'hero');\n          const standingPos = projectCombatActorWorldToCanvas(worldX, actorYWorld, 'hero');\n          if (hero) combatOrientationGeometryActors.push({ uid: hero.uid, name: hero.name, kind: hero.kind, slot: entry.displaySlot, canonicalX: worldX, y: actorYWorld, canvasX: standingPos.x, canvasY: standingPos.y });"
 );
 removeBetween('    const beginIconPresentation = (target, key) => {', '    const rouletteTargetFrame');
+effectiveBody = effectiveBody.replace(
+  '    // Render enemies (use Enemy_Sprite animations)',
+  '    const actorPaintQueue = [];\n    const actorFrontOverlayQueue = [];\n\n    // Render enemies (use Enemy_Sprite animations)',
+);
+replaceBetween(
+  '        if (sprite) {',
+  '\n        // Queue enemy HP bars',
+  body => `        const paintEnemyActor = () => {${body}\n        };\n        actorPaintQueue.push({ footY: Number(pos.y), uid: Number(enemy.uid || 0), paint: paintEnemyActor });\n`,
+);
+effectiveBody = effectiveBody.replace(
+  '        drawCombatHealthBar(ctx, { x: barX, y: barY, width: drawBarW, height: drawBarH, fillWidth: drawFillW, trailWidth: drawYellowW, team: \'enemy\' });',
+  '        actorFrontOverlayQueue.push(() => drawCombatHealthBar(ctx, { x: barX, y: barY, width: drawBarW, height: drawBarH, fillWidth: drawFillW, trailWidth: drawYellowW, team: \'enemy\' }));',
+);
+replaceBetween(
+  '          const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0), activeCombatOrientation);',
+  '\n          if (hero && wardBarrierImage) {',
+  body => `          const paintHeroActor = () => {${body}\n          };\n          actorPaintQueue.push({ footY: Number(footY), uid: Number(hero?.uid || 0), paint: paintHeroActor });\n`,
+);
+replaceBetween(
+  '          if (hero && wardBarrierImage) {',
+  '\n\n        }\n        presentationPatches.HeroPortraitPosByIndex',
+  body => `          const paintHeroFrontOverlay = () => {${body.replace('continue;', 'return;')}\n          };\n          actorFrontOverlayQueue.push(paintHeroFrontOverlay);`,
+);
+effectiveBody = effectiveBody.replace(
+  "    renderHealBlooms('front');",
+  "    actorPaintQueue.sort((a, b) => Number(a.footY || 0) - Number(b.footY || 0) || Number(a.uid || 0) - Number(b.uid || 0));\n    for (const entry of actorPaintQueue) entry.paint();\n    for (const paint of actorFrontOverlayQueue) paint();\n\n    renderHealBlooms('front');",
+);
   return effectiveBody;
 }
 
@@ -455,7 +490,7 @@ export function renderRuntime(deps) {
       )
       .replace(
         "drawCombatActorSprite(ctx, sprite, { drawX, drawY, width: enemyW, height: enemyH, pivotX: pos.x, orientation: activeCombatOrientation, actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) })",
-        "const puppet = actorPuppetPresentation?.frameFor(enemy, Number(g.time || 0));\n        const drawEnemySprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY: pos.y, height: enemyH, actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }) : drawCombatActorSprite(ctx, sprite, { drawX, drawY, width: enemyW, height: enemyH, pivotX: pos.x, orientation: activeCombatOrientation, actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) });\n        drawEnemySprite();",
+        "const puppet = actorPuppetPresentation?.frameFor(enemy, Number(g.time || 0), activeCombatOrientation);\n        const drawEnemySprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY: pos.y, height: enemyH, actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }) : drawCombatActorSprite(ctx, sprite, { drawX, drawY, width: enemyW, height: enemyH, pivotX: pos.x, orientation: activeCombatOrientation, actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) });\n        drawEnemySprite();",
       )
       .replaceAll(
         "renderHitFlashOverlay(() => drawCombatActorSprite(ctx, sprite, { drawX, drawY, width: enemyW, height: enemyH, pivotX: pos.x, orientation: activeCombatOrientation, actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }),",
@@ -483,7 +518,7 @@ export function renderRuntime(deps) {
       )
       .replace(
         "drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation });",
-        "const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0));\n\t          const drawHeroSprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY, height: scaledH, actorUID: hero.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }) : drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation, ...sourceRect });\n\t          drawHeroSprite();",
+        "const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0), activeCombatOrientation);\n\t          const drawHeroSprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY, height: scaledH, actorUID: hero.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }) : drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation, ...sourceRect });\n\t          drawHeroSprite();",
       )
       .replace(
         "renderHitFlashOverlay(() => drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation }), getHitFlashTone(hero.uid));",

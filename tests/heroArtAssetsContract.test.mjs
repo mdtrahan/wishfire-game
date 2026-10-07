@@ -26,7 +26,7 @@ test('battlefield consumes each complete canonical hero sprite while enemy sprit
   assert.match(source, /const heroArt = heroArtAsset\(entry\.portraitName\);/);
   assert.match(source, /const img = heroPortraitImages\[heroArt\?\.key \|\| entry\.portraitName\];/);
   assert.match(source, /resolveHeroArtSourceRect\(img, heroArt\.combat\)/);
-  assert.match(source, /drawHeroSprite = \(\) => drawCombatActorSprite\(ctx, img, \{[\s\S]*\.\.\.sourceRect/);
+  assert.match(source, /drawHeroSprite = \(\) => puppet \? drawActorPuppetFrame\([\s\S]*: drawCombatActorSprite\(ctx, img, \{[\s\S]*\.\.\.sourceRect/);
   assert.match(source, /const scaledW = w \* heroScale \* 1\.55;[\s\S]*const scaledH = h \* heroScale \* 1\.55;/);
   assert.match(compiledBody, /restBaseByUID\[hero\.uid\] = \{ x: baseX, y: yWorld \};/);
   assert.match(compiledBody, /restFeetByUID\[hero\.uid\] = \{ x: baseX, y: yWorld \+ hWorld \* 1\.55 \/ 2 \};/);

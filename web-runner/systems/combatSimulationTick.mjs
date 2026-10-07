@@ -956,9 +956,8 @@ export function advanceEnemyActionSimulation({
         const lungeDur = animationMath.LUNGE_FORWARD_SEC;
         const impactHold = animationMath.LUNGE_HOLD_SEC;
         const retreatDur = animationMath.LUNGE_RETREAT_SEC;
-        if (enemy.originX == null) enemy.originX = enemy.x ?? 0;
-        if (enemy.originY == null) enemy.originY = enemy.y ?? 0;
-        enemy.y = enemy.originY;
+        if (!continuousCombat && enemy.originX == null) enemy.originX = enemy.x ?? 0;
+        if (!continuousCombat && enemy.originY == null) enemy.originY = enemy.y ?? 0;
         const enemyVfxProfile = combatVfxProfileForActor(enemy);
         const enemyUsesRangedMagic = !!enemyAction.stationary || String(enemyAction.skillId || '').startsWith('Enemy_Heal_') || enemyVfxProfile.delivery !== 'melee';
         const enemyPresentationComplete = () => {
@@ -994,7 +993,7 @@ export function advanceEnemyActionSimulation({
           const e = easeInCubic(t);
           const from = enemy.originX;
           const to = enemyAction.anticipationX ?? enemy.originX;
-          enemy.x = enemyUsesRangedMagic ? enemy.originX : from + (to - from) * e;
+          if (!continuousCombat) enemy.x = enemyUsesRangedMagic ? enemy.originX : from + (to - from) * e;
           enemyAction.visualProgress = 0;
           if (t >= 1) {
             enemyAction.state = 'LUNGE';
@@ -1006,7 +1005,7 @@ export function advanceEnemyActionSimulation({
           const e = animationMath.easeLungeForward(t);
           const from = enemyAction.anticipationX ?? enemy.originX;
           const to = enemyAction.forwardX ?? enemy.originX;
-          enemy.x = enemyUsesRangedMagic ? enemy.originX : from + (to - from) * e;
+          if (!continuousCombat) enemy.x = enemyUsesRangedMagic ? enemy.originX : from + (to - from) * e;
           enemyAction.visualProgress = t;
           if (!enemyAction.actionApplied && t >= 1) {
             const impactTarget = continuousCombat
@@ -1031,7 +1030,7 @@ export function advanceEnemyActionSimulation({
           }
         } else if (enemyAction.state === 'HIT') {
           enemyAction.timer += dt;
-          enemy.x = enemyUsesRangedMagic ? enemy.originX : enemyAction.forwardX ?? enemy.originX;
+          if (!continuousCombat) enemy.x = enemyUsesRangedMagic ? enemy.originX : enemyAction.forwardX ?? enemy.originX;
           enemyAction.visualProgress = 1;
           if (enemyAction.timer >= impactHold && enemyPresentationComplete()) {
             enemyAction.state = 'RETREAT';
@@ -1043,17 +1042,19 @@ export function advanceEnemyActionSimulation({
           const e = easeInOutCubic(t);
           const from = enemyAction.forwardX ?? enemy.originX;
           const to = enemy.originX;
-          enemy.x = enemyUsesRangedMagic ? enemy.originX : from + (to - from) * e;
+          if (!continuousCombat) enemy.x = enemyUsesRangedMagic ? enemy.originX : from + (to - from) * e;
           enemyAction.visualProgress = Math.max(0, 1 - t);
           if (t >= 1) {
-            enemy.x = enemy.originX;
+            if (!continuousCombat) enemy.x = enemy.originX;
             enemyAction.state = 'DONE';
           }
         }
         if (enemyAction.state === 'DONE') {
           enemyAction.active = false;
-          enemy.x = enemy.originX ?? enemy.x;
-          enemy.y = enemy.originY ?? enemy.y;
+          if (!continuousCombat) {
+            enemy.x = enemy.originX ?? enemy.x;
+            enemy.y = enemy.originY ?? enemy.y;
+          }
           completeEnemyTurn(enemyAction, 0.35);
         }
       }

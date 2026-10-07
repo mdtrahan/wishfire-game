@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { actorClipAgeMs, actorPuppetKey, actorPuppetState, createActorPuppetPresentation, drawActorPuppetFrame } from '../web-runner/systems/actorPuppetPresentation.mjs';
+import { actorClipAgeMs, actorPuppetKey, actorPuppetState, actorScreenFacing, createActorPuppetPresentation, drawActorPuppetFrame } from '../web-runner/systems/actorPuppetPresentation.mjs';
 
 const clip = Object.freeze({ frames: [{ frame: 0 }, { frame: 1 }], frameHoldMs: [500, 500], durationMs: 1000, impactTimeMs: 400, releaseTimeMs: 500, loop: false, canvas: { width: 128, height: 128 }, footOrigin: { x: 64, y: 125 } });
 
@@ -12,6 +12,13 @@ test('puppet selection uses semantic actor state and leaves unsupported actors o
   assert.equal(actorPuppetState({ hp: 3, locomotion: 'walk' }, 4), 'walk');
   assert.equal(actorPuppetState({ hp: 3, actionState: 'basic', actionStateUntil: 5 }, 4), 'basic');
   assert.equal(actorPuppetState({ hp: 0, actionState: 'basic', actionStateUntil: 5 }, 4), 'ko');
+});
+
+test('puppet clips face the projected target direction once per combat orientation', () => {
+  assert.equal(actorScreenFacing('right', 'left-wise'), 'right');
+  assert.equal(actorScreenFacing('left', 'left-wise'), 'left');
+  assert.equal(actorScreenFacing('right', 'right-wise'), 'left');
+  assert.equal(actorScreenFacing('left', 'right-wise'), 'right');
 });
 
 test('puppet presentation aligns native markers without changing simulation timing', async () => {
@@ -38,6 +45,9 @@ test('active cues retain their facing snapshot until their simulation window end
   presentation.frameFor(actor, 2);
   await new Promise(resolve => setTimeout(resolve, 0));
   assert.equal(presentation.frameFor(actor, 2.1)?.facing, 'left');
+  assert.equal(presentation.frameFor(actor, 2.1, 'right-wise'), null);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(presentation.frameFor(actor, 2.1, 'right-wise')?.facing, 'right');
 });
 
 test('puppet Shrink uses the shared visual scale and keeps its semantic foot fixed', () => {

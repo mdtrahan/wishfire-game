@@ -134,3 +134,13 @@ test('renderer contains no enemy action advancement or enemy damage application'
   assert.doesNotMatch(body, /state\.globals\.time \+= dt/);
   assert.doesNotThrow(() => new Function('scope', 'dtOverride', `with (scope) {\n${body}\n}`));
 });
+
+test('assembled renderer paints every moving actor by semantic foot depth before health overlays', () => {
+  const body = effectiveRendererBody();
+  assert.match(body, /const actorPaintQueue = \[\];[\s\S]*const actorFrontOverlayQueue = \[\];/);
+  assert.match(body, /actorPaintQueue\.push\(\{ footY: Number\(pos\.y\), uid: Number\(enemy\.uid/);
+  assert.match(body, /actorPaintQueue\.push\(\{ footY: Number\(footY\), uid: Number\(hero\?\.uid/);
+  const paintAt = body.indexOf('actorPaintQueue.sort(');
+  const heroHealthAt = body.indexOf('// Hero health lives with the battlefield actor');
+  assert.ok(paintAt >= 0 && heroHealthAt > paintAt, 'sprites paint in one ascending foot-Y pass before front health/status layers');
+});

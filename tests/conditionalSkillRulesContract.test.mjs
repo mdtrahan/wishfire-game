@@ -89,10 +89,12 @@ test('the UID heal adapter clamps, rejects ordinary KO healing, and revives the 
  const heal=adapter('HealRealtimeActor','\nfunction absorbPartyTempHPShield',{GetActorByUID:(ctx,uid)=>ctx.state.entities.find(a=>a.uid===uid),emitResolvedHealEvent:(ctx,source,target,before)=>{events++;return target.hp-before;},UpdateHeroHPUI:()=>{}});
  assert.equal(heal(ctx,2,1,20),5);a.hp=0;assert.equal(heal(ctx,2,1,20),0);assert.equal(heal(ctx,2,1,30,true),30);assert.equal(ctx.state.entities[0],a);assert.equal(events,2);
 });
-test('raw magic adapters mitigate independently once and never reroll critical damage',()=>{
+test('raw magic adapters mitigate independently once, never reroll critical damage, and retain committed effect range',()=>{
  const source=hero(1),target=enemy(10);target.stats.RES=20;const g={time:0},ctx={state:{globals:g,entities:[source,target]}};
- const apply=adapter('ApplyRealtimeRawDamage','\nexport function HealRealtimeActor',{getGlobals:ctx=>ctx.state.globals,GetActorByUID:(ctx,uid)=>ctx.state.entities.find(a=>a.uid===uid),isHeroBasicTargetInRange:a=>a.hp>0&&a.x<=290,resolveCalculateDamageFromJs:calculateDamageFromJs,GetEffectiveStat:(ctx,a,stat)=>realtimeCombatStat(ctx.state.globals,a,stat),GetBaseStat:(ctx,a,stat)=>a.stats[stat]||0,realtimeBasicDamageMultiplier:()=>1,ApplyDamageToTarget:(ctx,uid,amount)=>{target.hp-=amount;return amount;}});
+ const apply=adapter('ApplyRealtimeRawDamage','\nexport function HealRealtimeActor',{getGlobals:ctx=>ctx.state.globals,GetActorByUID:(ctx,uid)=>ctx.state.entities.find(a=>a.uid===uid),resolveCalculateDamageFromJs:calculateDamageFromJs,GetEffectiveStat:(ctx,a,stat)=>realtimeCombatStat(ctx.state.globals,a,stat),GetBaseStat:(ctx,a,stat)=>a.stats[stat]||0,realtimeBasicDamageMultiplier:()=>1,ApplyDamageToTarget:(ctx,uid,amount)=>{target.hp-=amount;return amount;}});
  assert.equal(apply(ctx,1,10,66,'magic'),46);assert.equal(apply(ctx,1,10,1,'magic'),0);
+ target.hp=100;source.hp=0;source.footX=1000;source.x=1000;assert.equal(apply(ctx,1,10,66,'magic'),46);
+ target.hp=100;ctx.state.entities.splice(0,1);assert.equal(apply(ctx,1,10,66,'magic'),46);
 });
 
 test('Shrink draws once at 70% size, keeps the feet fixed and restores the original sprite after expiry',async()=>{

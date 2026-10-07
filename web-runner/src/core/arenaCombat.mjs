@@ -18,6 +18,30 @@ const stableNearest = (actor, candidates) => {
   actor.arenaTargetUID = Number(chosen?.uid || 0);
   return chosen;
 };
+function activeProvokeTarget(enemy, heroes, globals) {
+  const effect = globals?.RealtimeSkillEffects?.[String(enemy?.uid)]?.provoke;
+  if (!effect || Number(effect.expiresAt || 0) <= Number(globals?.time || 0)) return null;
+  return heroes.find(hero => Number(hero.uid || 0) === Number(effect.sourceUID || 0)) || null;
+}
+
+// The arena and the enemy action scheduler must agree about which hero an
+// enemy intends to fight. Provoke takes priority while active; the stable
+// nearest selection preserves target hysteresis for every other enemy.
+export function selectContinuousEnemyTarget({ enemy = null, heroes = [], globals = {}, preferredTarget = null, requireInReach = false } = {}) {
+  const candidates = heroes.filter(isLiving)
+    .filter(hero => !requireInReach || isActorTargetInRange(enemy, hero));
+  if (!candidates.length) return null;
+  const provoker = activeProvokeTarget(enemy, candidates, globals);
+  if (provoker) {
+    enemy.arenaTargetUID = Number(provoker.uid || 0);
+    return provoker;
+  }
+  if (preferredTarget && candidates.some(hero => Number(hero.uid || 0) === Number(preferredTarget.uid || 0))) {
+    enemy.arenaTargetUID = Number(preferredTarget.uid || 0);
+    return preferredTarget;
+  }
+  return stableNearest(enemy, candidates);
+}
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 function separateFootprints(actors, bounds) {
   const ordered = actors.slice().sort((a, b) => Number(a.uid || 0) - Number(b.uid || 0));
@@ -67,7 +91,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   }
   let newlyEngaged = 0;
   for (const enemy of enemies) {
-    const target = stableNearest(enemy, heroes);
+    const target = selectContinuousEnemyTarget({ enemy, heroes, globals });
     if (!target) { enemy.locomotion = 'idle'; if (Number(enemy.actionStateUntil || 0) <= Number(globals.time || 0)) enemy.actionState = 'idle'; continue; }
     advanceActorToward(enemy, target, { seconds, speed: Math.max(34, Number(enemy.streamWalkSpeed || 40)), now: Number(globals.time || 0), minX: bounds.heroBackCenterX, maxX: bounds.attackStartX, minY, maxY,
       preserveActionState: Number(enemy.actionStateUntil || 0) > Number(globals.time || 0) });
@@ -75,7 +99,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   if (!heroes.length) return newlyEngaged;
   separateFootprints([...heroes, ...enemies], bounds);
   for (const enemy of enemies) {
-    const target = stableNearest(enemy, heroes);
+    const target = selectContinuousEnemyTarget({ enemy, heroes, globals });
     if (target && isActorTargetInRange(enemy, target)) {
       if (enemy.streamState !== 'engaged') newlyEngaged += 1;
       enemy.streamState = 'engaged';
