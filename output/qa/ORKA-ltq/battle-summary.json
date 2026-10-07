@@ -1,27 +1,26 @@
 {
-  "responses": 94,
-  "draws": 2354,
+  "responses": 115,
+  "draws": 2832,
   "drawStates": [
-    "spawn-left",
-    "idle-right",
-    "idle-left",
-    "walk-right",
-    "walk-left",
-    "hit-left",
     "attack-left",
-    "cast-right",
-    "attack-right"
+    "attack-right",
+    "hit-left",
+    "idle-left",
+    "idle-right",
+    "spawn-left",
+    "walk-left",
+    "walk-right"
   ],
   "errors": [],
-  "logicalHighWaterBytes": 6094848,
+  "logicalHighWaterBytes": 7471104,
   "retention": {
     "maxDecodedBytes": 25165824,
-    "retainedBytes": 6094848,
+    "retainedBytes": 7471104,
     "reservedBytes": 0,
-    "entries": 9,
+    "entries": 11,
     "pending": 0,
     "evictions": 0
   },
-  "baselineRSSBytes": 1182564352,
-  "peakRSSBytes": 1254375424
+  "baselineRSSBytes": 1042087936,
+  "peakRSSBytes": 1087651840
 }

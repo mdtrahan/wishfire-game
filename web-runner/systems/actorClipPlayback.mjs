@@ -53,7 +53,7 @@ export function createActorClipLoader({ loadManifest, loadImage, frameUrl, maxDe
       retainedBytes += bytes;
       const results = await Promise.allSettled(entry.frames.map(name => Promise.resolve().then(() => loadImage(frameUrl(name)))));
       const frames = results.map(result => result.status === 'fulfilled' ? result.value : null);
-      if (frames.some(frame => !frame || ((frame.naturalWidth || frame.width) && (frame.naturalWidth || frame.width) !== canvas.width) || ((frame.naturalHeight || frame.height) && (frame.naturalHeight || frame.height) !== canvas.height))) return null;
+      if (frames.some(frame => !frame || (frame.naturalWidth ?? frame.width) !== canvas.width || (frame.naturalHeight ?? frame.height) !== canvas.height)) return null;
       return { frames, frameHoldMs: [...holds], durationMs, impactTimeMs: entry.impactTimeMs, releaseTimeMs: entry.releaseTimeMs, loop: entry.loop === true, canvas: { ...canvas }, footOrigin: { ...footOrigin } };
     })().catch(() => null);
     record.promise = request.then(clip => {

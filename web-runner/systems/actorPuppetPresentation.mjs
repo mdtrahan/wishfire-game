@@ -49,23 +49,31 @@ export function actorScreenFacing(worldFacing, orientation) {
 export function createActorPuppetPresentation({ loadClip }) {
   const actors = new Map();
   let frameNow;
+  const painted = new Set();
   const protect = () => loadClip.protect?.([...actors.values()].flatMap(slot => [slot.ready?.key, slot.key]).filter(Boolean));
   return {
+    beginFrame() { painted.clear(); },
+    endFrame() {
+      for (const id of actors.keys()) if (!painted.has(id)) actors.delete(id);
+      protect();
+    },
     frameFor(actor, now, orientation) {
-      const actorKey = actorPuppetKey(actor);
-      if (!actorKey || !Number.isFinite(now)) return null;
+      if (!Number.isFinite(now)) return null;
       if (frameNow !== now) {
         for (const [id, slot] of actors) {
           if (now < frameNow || slot.seen !== frameNow) actors.delete(id);
         }
         frameNow = now;
       }
+      const actorKey = actorPuppetKey(actor);
+      if (!actorKey) { protect(); return null; }
       const state = actorPuppetState(actor, now);
       const worldFacing = (actor?.actionStateUntil > now ? actor?.actionFacing : actor?.facing) === 'left' ? 'left' : 'right';
       const facing = actorScreenFacing(worldFacing, orientation);
       const key = `${actorKey}/${state}/${facing}`;
       // Runtime UIDs identify instances; simple preview callers share their actor key.
       const id = actor.uid ?? actor.UID ?? actorKey;
+      painted.add(id);
       let slot = actors.get(id);
       if (!slot) { slot = { seen: now }; actors.set(id, slot); }
       slot.seen = now;

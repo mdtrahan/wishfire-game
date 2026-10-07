@@ -89,3 +89,28 @@ test('presentation protects displayed replacement, ignores stale loads and retir
   assert.equal(presentation.retention().displayedActors, 1);
   assert.ok(!protectedKeys.some(key => key.startsWith('fara/')));
 });
+
+test('render boundaries retire empty and unsupported scenes even at a paused clock', async () => {
+  let release;
+  let pins = [];
+  const load = () => new Promise(resolve => { release = resolve; });
+  load.protect = keys => { pins = keys; };
+  const presentation = createActorPuppetPresentation({ loadClip: load });
+  const actor = { uid: 1, name: 'Fara', hp: 1, facing: 'right' };
+  presentation.beginFrame(); presentation.frameFor(actor, 2); presentation.endFrame();
+  await Promise.resolve();
+  presentation.beginFrame(); presentation.endFrame();
+  assert.equal(presentation.retention().displayedActors, 0);
+  assert.deepEqual(pins, []);
+  release(clip); await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(presentation.retention().displayedActors, 0, 'retired pending completion cannot re-pin');
+  presentation.beginFrame(); presentation.frameFor(actor, 2); presentation.endFrame(); await Promise.resolve();
+  release(clip); await new Promise(resolve => setTimeout(resolve, 0));
+  presentation.beginFrame(); const frame = presentation.frameFor(actor, 2); presentation.endFrame();
+  presentation.beginFrame(); assert.equal(presentation.frameFor(actor, 2).frame, frame.frame); presentation.endFrame();
+  presentation.beginFrame(); presentation.frameFor({ uid: 2, name: 'Hondo', hp: 1 }, 2); presentation.endFrame();
+  assert.equal(presentation.retention().displayedActors, 0);
+  assert.deepEqual(pins, []);
+  presentation.beginFrame(); presentation.frameFor({ uid: 2, name: 'Hondo', hp: 1 }, 0); presentation.endFrame();
+  assert.equal(presentation.retention().displayedActors, 0);
+});

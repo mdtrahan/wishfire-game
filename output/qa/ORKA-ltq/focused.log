@@ -1,19 +1,20 @@
-✔ actor clips load once per explicit facing and sample only supplied time (1.020583ms)
-✔ the Fara/Gobloc pilot ships editable bones and complete transparent state clips (13.349458ms)
+✔ actor clips load once per explicit facing and sample only supplied time (94.766333ms)
+✔ the Fara/Gobloc pilot ships editable bones and complete transparent state clips (297.942916ms)
 {"rosterKeys":196,"transitions":1000,"logicalHighWaterBytes":25165824,"maxDecodedBytes":25165824,"retainedBytes":25165824,"reservedBytes":0,"entries":32,"pending":0,"evictions":1076}
-✔ roster stress bounds settled and in-flight clips, protects paint and retries failures (41.013666ms)
-✔ puppet selection uses semantic actor state and leaves unsupported actors on static art (0.618875ms)
-✔ puppet clips face the projected target direction once per combat orientation (0.073ms)
-✔ puppet presentation aligns native markers without changing simulation timing (2.11975ms)
-✔ locomotion and KO age from the simulation clock while action facing remains committed (0.449625ms)
-✔ active cues retain their facing snapshot until their simulation window ends (1.898667ms)
-✔ puppet Shrink uses the shared visual scale and keeps its semantic foot fixed (0.199041ms)
-✔ presentation protects displayed replacement, ignores stale loads and retires absent actors (4.483833ms)
-ℹ tests 10
+✔ roster stress bounds settled and in-flight clips, protects paint and retries failures (1206.920375ms)
+✔ puppet selection uses semantic actor state and leaves unsupported actors on static art (141.112375ms)
+✔ puppet clips face the projected target direction once per combat orientation (0.547167ms)
+✔ puppet presentation aligns native markers without changing simulation timing (21.8845ms)
+✔ locomotion and KO age from the simulation clock while action facing remains committed (1.19575ms)
+✔ active cues retain their facing snapshot until their simulation window ends (9.685416ms)
+✔ puppet Shrink uses the shared visual scale and keeps its semantic foot fixed (0.665708ms)
+✔ presentation protects displayed replacement, ignores stale loads and retires absent actors (70.577458ms)
+✔ render boundaries retire empty and unsupported scenes even at a paused clock (100.812125ms)
+ℹ tests 11
 ℹ suites 0
-ℹ pass 10
+ℹ pass 11
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 140.944583
+ℹ duration_ms 4056.031667

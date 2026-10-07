@@ -7,7 +7,7 @@ test('actor clips load once per explicit facing and sample only supplied time', 
   const entry = { frames: ['fara/right/idle_001.png', 'fara/right/idle_002.png'], frameHoldMs: [100, 200], impactTimeMs: 100, loop: true, canvas: { width: 192, height: 192 }, footOrigin: { x: 96, y: 176 } };
   let manifests = 0;
   const images = [];
-  const load = createActorClipLoader({ loadManifest: () => { manifests++; return { actors: { fara: { clips: { idle: { right: entry }, defeated: { right: { ...entry, loop: false } }, bad: { right: { ...entry, frameHoldMs: [0, 1] } } } } } }; }, loadImage: async name => { images.push(name); return { name }; }, frameUrl: name => name });
+  const load = createActorClipLoader({ loadManifest: () => { manifests++; return { actors: { fara: { clips: { idle: { right: entry }, defeated: { right: { ...entry, loop: false } }, bad: { right: { ...entry, frameHoldMs: [0, 1] } } } } } }; }, loadImage: async name => { images.push(name); return { name, width: 192, height: 192 }; }, frameUrl: name => name });
   assert.equal(manifests, 0);
   const [a, b] = await Promise.all([load('fara', 'idle', 'right'), load('fara', 'idle', 'right')]);
   assert.equal(a, b);

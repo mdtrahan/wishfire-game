@@ -579,5 +579,10 @@ export function renderRuntime(deps) {
     const effectiveBody = assembleCombatRenderBody(body);
     renderImpl = new Function('scope', 'dtOverride', 'with (scope) {\n' + effectiveBody + '\n}');
   }
-  return renderImpl(deps, deps.dtOverride);
+  deps.actorPuppetPresentation?.beginFrame();
+  try {
+    return renderImpl(deps, deps.dtOverride);
+  } finally {
+    deps.actorPuppetPresentation?.endFrame();
+  }
 }
