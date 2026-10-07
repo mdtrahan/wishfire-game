@@ -2,9 +2,9 @@
 
 ## Combat
 
-Fara, Hondo, Runa and Kaja hold their positions while enemies approach from the right. Each living hero fires a basic attack and uses unlocked active skills automatically when their cooldowns are ready and the skill has a useful target. Heroes and enemies act on their own clocks. Combat has no turns, action slots, gem matching, SP or FLOW.
+Fara, Hondo, Runa and Kaja move through a compact arena as enemies enter from the right. Each living hero runs to melee contact or stops at ranged reach, then fires basics and unlocked active skills automatically when their cooldowns are ready and the skill has a useful target. Enemies close to their own delivery reach. Heroes and enemies act on their own clocks. Combat has no turns, action slots, gem matching, SP or FLOW.
 
-Ordinary hero attacks focus the first living enemy in range until it falls or leaves range. Area skills use their own targeting rules. Enemies attack the first living hero in range unless a skill redirects or covers that attack. An attack with no eligible target waits ready.
+Ordinary hero attacks retain a living focus while that enemy remains within the hero’s current reach. Area skills use their own targeting rules from the caster’s current position. Enemies attack a living hero after spatial contact unless a skill redirects or covers that attack. An attack with no eligible target waits ready.
 
 Enemy packs arrive during each wave. Four waves earn Boss access. Pressing Boss immediately replaces the current enemies with that boss. Heroes keep their HP between ordinary waves. Defeating a boss restores the whole party to full HP, revives KO heroes and clears their debuffs before the next stage. If the party falls, it recovers and restarts at wave 1 of the current stage. Earned Boss access survives defeat and reload; the player can retry whenever they choose. Boss victory clears access for the next stage. Defeat costs no resource.
 

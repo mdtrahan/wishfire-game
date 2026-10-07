@@ -3,7 +3,7 @@ import {actionCapacity} from '../src/core/actionSelection.mjs';
 import {settleBattleEXP} from '../src/core/heroProgression.mjs';
 import {heroDefinition,PROGRESSION} from '../src/core/heroDefinitions.mjs';
 import {realtimeBasicFollowups} from '../src/core/realtimeHeroSkills.mjs';
-import {isHeroBasicTargetInRange} from '../../src/core/heroAttackTargetingRules.mjs';
+import {isActorTargetInRange} from '../../src/core/heroAttackTargetingRules.mjs';
 export {castRealtimeHeroSkill,tickRealtimeHeroSkillZones,realtimeBasicInterval,realtimeCombatStat,realtimeBasicDamageMultiplier,cleanupRealtimeSkillActors,realtimeProvokeTarget,realtimeCoverTarget,realtimeIncomingDamage,realtimeMagicBlocked,realtimeRetaliation} from '../src/core/realtimeHeroSkills.mjs';
 import {getHeroFlowState,getHeroSkillOptions,recordFlowThreshold,resolveRoleFlowAward} from '../src/core/personalFlow.mjs';
 import {applyStatus,legalSkill,validTargets,resolveSkill,turnStart,turnEnd} from '../src/core/combatRules.mjs';
@@ -156,7 +156,8 @@ export function resolveRealtimeBasicImpact(ctx,hit={}){
  const sourceUID=Number(hit.heroUID||hit.sourceUID||0),targetUID=Number(hit.targetUID||0);
  const source=ctx.state.entities.find(actor=>actor?.kind==='hero'&&Number(actor.uid||0)===sourceUID);
  const target=ctx.state.entities.find(actor=>actor?.kind==='enemy'&&Number(actor.uid||0)===targetUID);
- if(!source||!target||Number(target.hp||0)<=0||Number(ctx.state.globals.ContinuousCombatStageLoop||0)===1&&!isHeroBasicTargetInRange(target))return {resolved:false,damage:0,targetUID};
+ const rangeSource=hit.allowSourceKO&&Number(source?.hp||0)<=0?{...source,hp:1}:source;
+ if(!source||!target||Number(target.hp||0)<=0||Number(ctx.state.globals.ContinuousCombatStageLoop||0)===1&&!isActorTargetInRange(rangeSource,target))return {resolved:false,damage:0,targetUID};
  const events=[],rules=rulesContext(ctx,events),mode=String(hit.heroType||source.attackType||'melee');
  const baseDamage=Math.max(0,Number(hit.finalDmg??hit.dmg)||0);
  const boostedDamage=baseDamage;

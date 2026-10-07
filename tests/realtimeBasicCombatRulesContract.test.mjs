@@ -87,6 +87,10 @@ test('HeroAttackSingle marks only the ordinary realtime basic packet for rules r
   assert.equal(globals.PendingHeroHits[0].combatRulesBasic, 1);
   assert.equal(globals.PendingHeroHits[0].finalDmg, 23);
   assert.equal(globals.PendingHeroHits[0].effectType, undefined);
+  assert.equal(hero.actionState, 'basic');
+  assert.equal(hero.actionStateStartedAt, 3);
+  assert.equal(hero.actionImpactAt, 3.52);
+  assert.ok(Math.abs(hero.actionStateUntil - 3.72) < 1e-9, 'the post-impact recovery is presentation-only');
 });
 
 test('basic impact applies the launch-computed numeric damage and keeps impact VFX timing', () => {
@@ -126,7 +130,8 @@ test('basic impact uses the rules counter reaction and records KO rewards throug
 });
 
 test('an already launched basic still resolves when its hero is KO at projectile impact', () => {
-  const { hero, enemy, run } = fixture({ damage: 13 });
+  const { hero, enemy, hit, run } = fixture({ damage: 13 });
+  hit.allowSourceKO = 1;
   hero.hp = 0;
   run();
   assert.equal(enemy.hp, 87);

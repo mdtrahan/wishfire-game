@@ -3,6 +3,7 @@ import { computeCombatPower } from './combatPower.mjs';
 import { deriveCombatArenaBounds, deriveCombatFormationAnchors } from '../../../src/core/combatOrientation.mjs';
 import { cleanseDebuffs } from './combatRules.mjs';
 import { saveHeroProgress } from './heroProgression.mjs';
+import { advanceContinuousCombatArena } from './arenaCombat.mjs';
 
 export const CONTINUOUS_COMBAT_PACK_INTERVAL_SEC = 3;
 export const CONTINUOUS_COMBAT_PACK_CP_STEP = 0.06;
@@ -85,40 +86,57 @@ function isDisplaceableStreamEnemy(enemy) {
     && Number.isFinite(Number(enemy.x));
 }
 
-function moveStreamEnemyRight(enemy, distance, maxDistance, minimumDistance = 0) {
+function enemyFoot(enemy) {
+  return { x: Number.isFinite(Number(enemy?.footX)) ? Number(enemy.footX) : Number(enemy?.x || 0), y: Number.isFinite(Number(enemy?.footY)) ? Number(enemy.footY) : Number(enemy?.y || 0) };
+}
+function writeEnemyFoot(enemy, point) { enemy.footX = point.x; enemy.footY = point.y; enemy.x = point.x; enemy.y = point.y; }
+function displacementDirection(enemy, source) {
+  const target = enemyFoot(enemy), origin = source ? enemyFoot(source) : { x: target.x - 1, y: target.y };
+  const dx = target.x - origin.x, dy = target.y - origin.y, length = Math.hypot(dx, dy);
+  return length > 0.001 ? { x: dx / length, y: dy / length } : { x: 1, y: 0 };
+}
+function boundedEnemyFoot(point, clampY = true) {
+  const bounds = deriveCombatArenaBounds();
+  return { x: Math.max(bounds.heroBackCenterX, Math.min(bounds.attackStartX, point.x)), y: clampY ? Math.max(bounds.visibleTopY, Math.min(bounds.visibleBottomY, point.y)) : point.y };
+}
+function moveStreamEnemyAway(enemy, distance, maxDistance, minimumDistance = 0, source = null) {
   if (!isDisplaceableStreamEnemy(enemy)) return 0;
-  const attackStartX = deriveCombatArenaBounds().attackStartX;
-  const currentX = Number(enemy.x);
-  const room = Math.max(0, attackStartX - currentX);
-  const moved = Math.min(Math.max(0, Number(distance) || 0), maxDistance, room);
+  const current = source ? enemyFoot(enemy) : { x: Number(enemy.x || 0), y: Number(enemy.y || 0) }, direction = source ? displacementDirection(enemy, source) : { x: 1, y: 0 };
+  const requested = Math.min(Math.max(0, Number(distance) || 0), maxDistance);
+  const next = boundedEnemyFoot({ x: current.x + direction.x * requested, y: current.y + direction.y * requested }, !!source || Number(enemy.y || 0) >= deriveCombatArenaBounds().visibleTopY);
+  const moved = Math.hypot(next.x - current.x, next.y - current.y);
   if (moved < minimumDistance) return 0;
-  const nextX = currentX + moved;
-  enemy.streamEngageX = Number(enemy.streamEngageX ?? enemy.originX ?? currentX);
-  enemy.x = nextX;
-  enemy.streamPendingDisplacementDelta = Number(enemy.streamPendingDisplacementDelta || 0) + moved;
+  enemy.streamEngageX = Number(enemy.streamEngageX ?? enemy.originX ?? current.x);
+  writeEnemyFoot(enemy, next);
+  const pending = enemy.streamPendingDisplacement || { x: 0, y: 0 };
+  enemy.streamPendingDisplacement = { x: Number(pending.x || 0) + next.x - current.x, y: Number(pending.y || 0) + next.y - current.y };
+  enemy.streamPendingDisplacementDelta = Number(enemy.streamPendingDisplacement.x || 0);
   delete enemy.streamRetreatStartedAt;
   delete enemy.streamRetreatRemaining;
-  delete enemy.streamRetreatEngageX;
+  delete enemy.streamRetreatAnchor;
+  delete enemy.streamRetreatDirection;
   enemy.streamState = 'in_range';
+  enemy.arenaInReach = false;
   return moved;
 }
 
-export function pushContinuousCombatEnemy(enemy, distance = MAX_SHIELD_SLAM_PUSH, _now = 0) {
-  return moveStreamEnemyRight(enemy, distance, MAX_SHIELD_SLAM_PUSH);
+export function pushContinuousCombatEnemy(enemy, distance = MAX_SHIELD_SLAM_PUSH, _now = 0, source = null) {
+  return moveStreamEnemyAway(enemy, distance, MAX_SHIELD_SLAM_PUSH, 0, source);
 }
 
-export function teleportContinuousCombatEnemy(enemy, distance = MAX_RETURN_GATE_DISTANCE, _now = 0) {
-  return moveStreamEnemyRight(enemy, distance, MAX_RETURN_GATE_DISTANCE, MIN_RETURN_GATE_DISTANCE);
+export function teleportContinuousCombatEnemy(enemy, distance = MAX_RETURN_GATE_DISTANCE, _now = 0, source = null) {
+  return moveStreamEnemyAway(enemy, distance, MAX_RETURN_GATE_DISTANCE, MIN_RETURN_GATE_DISTANCE, source);
 }
 
-export function reverseContinuousCombatEnemy(enemy, now, durationSeconds = 1.25) {
+export function reverseContinuousCombatEnemy(enemy, now, durationSeconds = 1.25, source = null) {
   if (!isDisplaceableStreamEnemy(enemy) || enemy.streamState === 'retreating') return false;
   const start = Number(now);
   const duration = Number(durationSeconds);
   if (!Number.isFinite(start) || !Number.isFinite(duration) || duration <= 0) return false;
   enemy.streamRetreatStartedAt = start;
   enemy.streamRetreatRemaining = duration;
-  enemy.streamRetreatEngageX = Number(enemy.streamEngageX ?? enemy.originX ?? enemy.x);
+  enemy.streamRetreatAnchor = enemyFoot(enemy);
+  enemy.streamRetreatDirection = displacementDirection(enemy, source);
   enemy.streamState = 'retreating';
   return true;
 }
@@ -144,9 +162,11 @@ export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1,
     combatRank: ['boss','subboss'].includes(String(enemy.enemyRole || enemy.role || '').toLowerCase()) ? String(enemy.enemyRole || enemy.role).toLowerCase() : 'ordinary',
     streamState: 'approaching', streamLane: lane, streamRank: rank, streamPackIndex: packIndex, streamEntryOrder: order,
     streamDelivery: delivery, streamMeleeLine: meleeLine,
+    actionState: 'spawn', actionStateStartedAt: Number(globals.time || 0), actionStateUntil: Number(globals.time || 0) + 0.35,
     streamEngageX: engageX, streamWalkSpeed: geometry.walkSpeed * PACK_WALK_SPEED_SCALE[order],
     streamStartAt: Number(globals.time || 0) + PACK_ENTRY_DELAY_SEC[order],
     x: geometry.spawnX, y: homeY, originX: engageX, originY: homeY,
+    footX: geometry.spawnX, footY: homeY, facing: 'left', locomotion: 'idle', arenaEnabled: true,
   });
   return enemy;
 }
@@ -381,8 +401,10 @@ function updateApproachingEnemies(globals, entities, now) {
   const dt = Math.max(0, Math.min(0.1, now - prior));
   if (state) state.lastUpdatedAt = now;
   let becameAvailable = 0;
+  const hasLivingHeroes = (entities || []).some(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
   for (const enemy of entities || []) {
-    if (enemy?.kind !== 'enemy' || Number(enemy.hp || 0) <= 0 || !['approaching', 'in_range', 'retreating'].includes(enemy.streamState)) continue;
+    if (enemy?.kind !== 'enemy' || Number(enemy.hp || 0) <= 0 || !['approaching', 'retreating'].includes(enemy.streamState)
+      && (hasLivingHeroes || !['in_range', 'engaged'].includes(enemy.streamState))) continue;
     if (now < Number(enemy.streamStartAt || 0)) continue;
     const geometry = streamGeometry(globals, {
       packIndex: Number(enemy.streamPackIndex || 0),
@@ -391,53 +413,71 @@ function updateApproachingEnemies(globals, entities, now) {
     });
     const action = globals.RealtimeEnemyActionsByUID?.[String(enemy.uid)]
       ?? globals.RealtimeEnemyActionsByUID?.[enemy.uid];
-    const pendingDisplacement = Number(enemy.streamPendingDisplacementDelta || 0);
+    const pendingDisplacement = enemy.streamPendingDisplacement || { x: Number(enemy.streamPendingDisplacementDelta || 0), y: 0 };
     if (action?.active) {
-      if (pendingDisplacement) {
-        enemy.originX = Number(enemy.originX ?? enemy.streamEngageX ?? enemy.x) + pendingDisplacement;
-        if (action.forwardX != null && Number.isFinite(Number(action.forwardX))) action.forwardX = Number(action.forwardX) + pendingDisplacement;
-        if (action.anticipationX != null && Number.isFinite(Number(action.anticipationX))) action.anticipationX = Number(action.anticipationX) + pendingDisplacement;
-        enemy.x = enemy.originX;
+      if (pendingDisplacement.x || pendingDisplacement.y) {
+        enemy.originX = Number(enemy.originX ?? enemy.streamEngageX ?? enemy.x) + Number(pendingDisplacement.x || 0);
+        enemy.originY = Number(enemy.originY ?? enemy.y ?? 0) + Number(pendingDisplacement.y || 0);
+        if (action.forwardX != null && Number.isFinite(Number(action.forwardX))) action.forwardX = Number(action.forwardX) + Number(pendingDisplacement.x || 0);
+        if (action.anticipationX != null && Number.isFinite(Number(action.anticipationX))) action.anticipationX = Number(action.anticipationX) + Number(pendingDisplacement.x || 0);
+        writeEnemyFoot(enemy, { x: enemy.originX, y: enemy.originY });
+        delete enemy.streamPendingDisplacement;
         delete enemy.streamPendingDisplacementDelta;
       }
       continue;
     }
-    if (pendingDisplacement) delete enemy.streamPendingDisplacementDelta;
+    if (pendingDisplacement.x || pendingDisplacement.y) { delete enemy.streamPendingDisplacement; delete enemy.streamPendingDisplacementDelta; }
     if (enemy.streamState === 'retreating') {
       const retreatStart = Number(enemy.streamRetreatStartedAt ?? now);
       const retreatRemaining = Math.max(0, Number(enemy.streamRetreatRemaining || 0));
-      const retreatEngageX = Number(enemy.streamRetreatEngageX ?? enemy.streamEngageX ?? enemy.originX ?? enemy.x);
+      const retreatAnchor = enemy.streamRetreatAnchor || enemyFoot(enemy);
+      const retreatDirection = enemy.streamRetreatDirection || { x: 1, y: 0 };
+      const currentFoot = enemyFoot(enemy);
       const availableDt = Math.max(0, Math.min(dt, now - retreatStart));
       const retreatDuration = Math.min(availableDt, retreatRemaining);
-      const retreatX = Math.min(geometry.bounds.attackStartX, Number(enemy.x || 0) + Number(enemy.streamWalkSpeed || 40) * retreatDuration);
-      enemy.x = retreatX;
-      enemy.y = Number(enemy.originY ?? enemy.y ?? 0);
+      const retreatFoot = boundedEnemyFoot({ x: currentFoot.x + retreatDirection.x * Number(enemy.streamWalkSpeed || 40) * retreatDuration, y: currentFoot.y + retreatDirection.y * Number(enemy.streamWalkSpeed || 40) * retreatDuration });
+      writeEnemyFoot(enemy, retreatFoot);
       enemy.streamRetreatRemaining = Math.max(0, retreatRemaining - retreatDuration);
       if (enemy.streamRetreatRemaining > 1e-9) continue;
       const returnDuration = Math.max(0, availableDt - retreatDuration);
-      const returnX = Math.max(retreatEngageX, retreatX - Number(enemy.streamWalkSpeed || 40) * returnDuration);
-      enemy.x = returnX;
+      const dx = retreatAnchor.x - retreatFoot.x, dy = retreatAnchor.y - retreatFoot.y, returnLength = Math.hypot(dx, dy);
+      const returnStep = Math.min(returnLength, Number(enemy.streamWalkSpeed || 40) * returnDuration);
+      const returnFoot = returnLength > 0.001 ? { x: retreatFoot.x + dx / returnLength * returnStep, y: retreatFoot.y + dy / returnLength * returnStep } : retreatAnchor;
+      writeEnemyFoot(enemy, returnFoot);
       delete enemy.streamRetreatStartedAt;
       delete enemy.streamRetreatRemaining;
-      delete enemy.streamRetreatEngageX;
-      enemy.streamState = returnX <= retreatEngageX ? 'engaged' : 'in_range';
+      delete enemy.streamRetreatAnchor;
+      delete enemy.streamRetreatDirection;
+      enemy.streamState = Math.hypot(returnFoot.x - retreatAnchor.x, returnFoot.y - retreatAnchor.y) <= 1e-9 ? 'engaged' : 'in_range';
       if (enemy.streamState === 'engaged') becameAvailable += 1;
       continue;
     }
-    const engageX = Number(enemy.streamEngageX || enemy.originX || enemy.x || 0);
-    enemy.streamEngageX = engageX;
-    enemy.originX = engageX;
-    enemy.x = Math.max(engageX, Number(enemy.x || 0) - Number(enemy.streamWalkSpeed || 40) * dt);
+    if (!hasLivingHeroes) {
+      const engageX = Number(enemy.streamEngageX || enemy.originX || enemy.x || 0);
+      enemy.streamEngageX = engageX;
+      enemy.originX = engageX;
+      enemy.x = Math.max(engageX, Number(enemy.x || 0) - Number(enemy.streamWalkSpeed || 40) * dt);
+      enemy.y = Number(enemy.originY ?? enemy.y ?? 0);
+      if (enemy.streamState === 'approaching' && enemy.x <= geometry.bounds.attackStartX) {
+        enemy.streamState = 'in_range';
+        becameAvailable += 1;
+      }
+      if (enemy.x > engageX) continue;
+      enemy.x = engageX;
+      enemy.originX = engageX;
+      enemy.streamState = 'engaged';
+      becameAvailable += 1;
+      continue;
+    }
+    const entryBoundary = Number(geometry.bounds.attackStartX);
+    enemy.x = Math.max(entryBoundary, Number(enemy.x || 0) - Number(enemy.streamWalkSpeed || 40) * dt);
+    enemy.footX = enemy.x;
+    enemy.footY = Number(enemy.originY ?? enemy.y ?? 0);
     enemy.y = Number(enemy.originY ?? enemy.y ?? 0);
-    if (enemy.streamState === 'approaching' && enemy.x <= geometry.bounds.attackStartX) {
+    if (enemy.streamState === 'approaching' && enemy.x <= entryBoundary) {
       enemy.streamState = 'in_range';
       becameAvailable += 1;
     }
-    if (enemy.x > engageX) continue;
-    enemy.x = engageX;
-    enemy.originX = engageX;
-    enemy.streamState = 'engaged';
-    becameAvailable += 1;
   }
   if (state?.awaitingPackArrival) {
     const packStillApproaching = (entities || []).some(enemy => enemy?.kind === 'enemy'
@@ -458,9 +498,11 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   const stageState = globals.ContinuousCombatStage;
   if (!stageState) return false;
   const now = Number(globals.time || 0);
-  const newlyEngaged = updateApproachingEnemies(globals, entities, now);
+  const newlyAvailable = updateApproachingEnemies(globals, entities, now);
+  const newlyEngaged = advanceContinuousCombatArena({ globals, entities, seconds: Math.max(0, Math.min(0.1, now - Number(stageState.lastArenaUpdatedAt ?? now))) });
+  stageState.lastArenaUpdatedAt = now;
   if (globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) call('TickRealtimeHeroBasics');
-  if ((newlyEngaged > 0 || entities?.some(enemy => enemy?.kind === 'enemy' && Number(enemy.hp || 0) > 0 && enemy.streamState === 'engaged'))
+  if ((newlyAvailable > 0 || newlyEngaged > 0 || entities?.some(enemy => enemy?.kind === 'enemy' && Number(enemy.hp || 0) > 0 && enemy.streamState === 'engaged'))
     && globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) {
     globals.NativeBattleEnded = false;
     call('TickRealtimeEnemyActions');

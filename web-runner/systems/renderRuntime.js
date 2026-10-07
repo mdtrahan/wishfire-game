@@ -12,7 +12,7 @@ import { heroArtAsset, resolveHeroArtSourceRect } from '../state/heroArtAssets.m
 import { combatVfxProfileForActor, queueCombatAttackImpactVfx, renderCombatAttackVfx } from './combatAttackVfxPresentation.mjs';
 import { drawCombatBossControl } from './renderCombatBossControl.mjs';
 import { drawCombatHealthBar } from './combatHealthBarPresentation.mjs';
-import { isHeroBasicTargetInRange } from '../../src/core/heroAttackTargetingRules.mjs';
+import { isActorTargetInRange } from '../../src/core/heroAttackTargetingRules.mjs';
 import {
   computeCombatDamageFontSize,
   computeViewportFontSize,
@@ -84,6 +84,10 @@ effectiveBody = effectiveBody.replace(
   '    const popTypeNow = state.globals.BuffIconPopType;',
   '    gameState.buffIconSlotsByFrame = buffSlotByFrame;\n    gameState.buffIconPresentationCenter = { x: layoutOffsetX + (layoutW * layoutScale) / 2, y: layoutOffsetY + (layoutH * layoutScale) / 2 - 40 };\n    const popTypeNow = state.globals.BuffIconPopType;'
 );
+effectiveBody = effectiveBody.replace(
+  '          const xWorld = baseX + (hero ? (offsets[hero.uid] || 0) : 0);\n          posByIndex[entry.displaySlot] = { x: baseX, y: yWorld };\n          if (hero && Number(hero.uid || 0) > 0) {\n            restBaseByUID[hero.uid] = { x: baseX, y: yWorld };\n            restFeetByUID[hero.uid] = { x: baseX, y: yWorld + hWorld * 1.55 / 2 };\n          }\n          const pos = projectCombatActorWorldToCanvas(xWorld, yWorld, \'hero\');\n          const standingPos = projectCombatActorWorldToCanvas(baseX, yWorld, \'hero\');\n          if (hero) combatOrientationGeometryActors.push({ uid: hero.uid, name: hero.name, kind: hero.kind, slot: entry.displaySlot, canonicalX: baseX, y: yWorld, canvasX: standingPos.x, canvasY: standingPos.y });',
+  "          const actorFootX = Number(hero?.footX);\n          const actorFootY = Number(hero?.footY);\n          const actorYWorld = Number.isFinite(actorFootY) ? actorFootY - hWorld * 1.55 / 2 : yWorld;\n          const worldX = Number.isFinite(actorFootX) ? actorFootX : baseX;\n          const xWorld = worldX + (hero ? (offsets[hero.uid] || 0) : 0);\n          posByIndex[entry.displaySlot] = { x: worldX, y: actorYWorld };\n          if (hero && Number(hero.uid || 0) > 0) {\n            restBaseByUID[hero.uid] = { x: worldX, y: actorYWorld };\n            restFeetByUID[hero.uid] = { x: worldX, y: actorYWorld + hWorld * 1.55 / 2 };\n          }\n          const pos = projectCombatActorWorldToCanvas(xWorld, actorYWorld, 'hero');\n          const standingPos = projectCombatActorWorldToCanvas(worldX, actorYWorld, 'hero');\n          if (hero) combatOrientationGeometryActors.push({ uid: hero.uid, name: hero.name, kind: hero.kind, slot: entry.displaySlot, canonicalX: worldX, y: actorYWorld, canvasX: standingPos.x, canvasY: standingPos.y });"
+);
 removeBetween('    const beginIconPresentation = (target, key) => {', '    const rouletteTargetFrame');
   return effectiveBody;
 }
@@ -106,7 +110,7 @@ export function renderRuntime(deps) {
   deps.renderCombatAttackVfx = renderCombatAttackVfx;
   deps.drawCombatBossControl = drawCombatBossControl;
   deps.drawCombatHealthBar = drawCombatHealthBar;
-  deps.isHeroBasicTargetInRange = isHeroBasicTargetInRange;
+  deps.isActorTargetInRange = isActorTargetInRange;
   deps.computeCombatDamageFontSize = computeCombatDamageFontSize;
   deps.computeViewportFontSize = computeViewportFontSize;
   deps.fitCanvasText = fitCanvasText;
@@ -139,11 +143,11 @@ export function renderRuntime(deps) {
       )
       .replace(
         "        let targetEntity = callFunctionWithContext(fnContext, 'GetActorByUID', hit.targetUID);",
-        "        let targetEntity = callFunctionWithContext(fnContext, 'GetActorByUID', hit.targetUID);\n        if (hit.retargetOnDeath && Number(state.globals.ContinuousCombatStageLoop || 0) === 1 && !isHeroBasicTargetInRange(targetEntity)) targetEntity = null;",
+        "        let targetEntity = callFunctionWithContext(fnContext, 'GetActorByUID', hit.targetUID);\n        const sourceEntity = callFunctionWithContext(fnContext, 'GetActorByUID', hit.heroUID || hit.sourceUID);\n        if (hit.retargetOnDeath && Number(state.globals.ContinuousCombatStageLoop || 0) === 1 && !isActorTargetInRange(sourceEntity, targetEntity)) targetEntity = null;",
       )
       .replace(
         "const livingEnemies = (state.entities || []).filter((entity) => entity && entity.kind === 'enemy' && Number(entity.hp || 0) > 0);",
-        "const livingEnemies = (state.entities || []).filter((entity) => entity && entity.kind === 'enemy' && Number(entity.hp || 0) > 0 && (Number(state.globals.ContinuousCombatStageLoop || 0) !== 1 || isHeroBasicTargetInRange(entity)));",
+        "const livingEnemies = (state.entities || []).filter((entity) => entity && entity.kind === 'enemy' && Number(entity.hp || 0) > 0 && (Number(state.globals.ContinuousCombatStageLoop || 0) !== 1 || isActorTargetInRange(sourceEntity, entity)));",
       )
       .replace(
         "    // draw HUD overlay (game state)\n    drawHUD();",

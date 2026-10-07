@@ -38,6 +38,7 @@ for(const [key,definition] of Object.entries(HERO_DEFINITIONS))for(const entry o
  assert.equal(cast(key,entry.skillId,event),true);
  assert.equal(g.LastRealtimeHeroSkill.skillId,entry.skillId);
  assert.ok(g.CombatImpactRequests.length>0);
+ assert.equal(heroes.find(a=>a.baseHeroName===key).actionImpactAt,10,'instant skills release at cast time');
  assert.equal(heroes[0].currentLevel,100);assert.deepEqual(heroes[0].equipmentStats,{ATK:4});
 });
 test('party support VFX resolves ally positions',()=>{

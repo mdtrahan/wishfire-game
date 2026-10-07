@@ -2,7 +2,7 @@ import {
   combatVfxProfileForActor as defaultCombatVfxProfileForActor,
   queueCombatAttackImpactVfx as defaultQueueCombatAttackImpactVfx,
 } from './combatAttackVfxPresentation.mjs';
-import { isHeroBasicTargetInRange as isHeroBasicTargetInRangeForState } from '../../src/core/heroAttackTargetingRules.mjs';
+import { isActorTargetInRange } from '../../src/core/heroAttackTargetingRules.mjs';
 
 export function processPendingHeroHits({
   state,
@@ -10,7 +10,7 @@ export function processPendingHeroHits({
   callFunctionWithContext,
   animationMath,
   queueImpactVfx = defaultQueueCombatAttackImpactVfx,
-  isHeroBasicTargetInRange = (entity) => isHeroBasicTargetInRangeForState(entity),
+  isHeroBasicTargetInRange = (entity, source) => isActorTargetInRange(source, entity),
 }) {
   const visualControlPatches = {};
 // Apply delayed hero hits after lunge/impact timing
@@ -83,9 +83,15 @@ export function processPendingHeroHits({
           continue;
         }
         let targetEntity = callFunctionWithContext(fnContext, 'GetActorByUID', hit.targetUID);
-        if (hit.realtimeBasic && Number(state.globals.ContinuousCombatStageLoop || 0) === 1 && !isHeroBasicTargetInRange(targetEntity)) targetEntity = null;
+        const sourceEntity = callFunctionWithContext(fnContext, 'GetActorByUID', hit.heroUID || hit.sourceUID);
+        // A committed realtime projectile retains its launch right after its
+        // hero is KO. Range still uses the last authoritative foot position.
+        const impactSource = hit.allowSourceKO && Number(sourceEntity?.hp || 0) <= 0
+          ? { ...sourceEntity, hp: 1 }
+          : sourceEntity;
+        if (hit.realtimeBasic && Number(state.globals.ContinuousCombatStageLoop || 0) === 1 && !isHeroBasicTargetInRange(targetEntity, impactSource)) targetEntity = null;
         if ((!targetEntity || Number(targetEntity.hp || 0) <= 0) && hit.retargetOnDeath) {
-          const livingEnemies = (state.entities || []).filter((entity) => entity && entity.kind === 'enemy' && Number(entity.hp || 0) > 0 && (Number(state.globals.ContinuousCombatStageLoop || 0) !== 1 || isHeroBasicTargetInRange(entity)));
+          const livingEnemies = (state.entities || []).filter((entity) => entity && entity.kind === 'enemy' && Number(entity.hp || 0) > 0 && (Number(state.globals.ContinuousCombatStageLoop || 0) !== 1 || isHeroBasicTargetInRange(entity, impactSource)));
           const replacement = livingEnemies[0] || null;
           if (replacement) {
             const batchId = Number(hit.followUpBatchId || 0);
