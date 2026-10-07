@@ -69,7 +69,9 @@ test('app heal path plays a ten-frame green swirl with Faze-style front motes', 
   assert.match(renderSrc, /drawY \+ drawSize \* 0\.7, drawWidth, drawSize \* 0\.3/);
   assert.match(renderSrc, /HeroRestFeetPosByUID\?\.\[targetUID\]/);
   assert.match(renderSrc, /const enemyFeet = targetActor\?\.kind === 'enemy'/);
-  assert.match(renderSrc, /targetActor\.originY \?\? targetActor\.y \?\? 0\) \+ Math\.max\(24, Number\(state\.globals\.EnemySize \|\| 40\)\) \/ 2/);
+  assert.match(renderSrc, /targetActor\.footX \?\? targetActor\.x \?\? targetActor\.originX/);
+  assert.match(renderSrc, /targetActor\.footY \?\? targetActor\.y \?\? targetActor\.originY/);
+  assert.match(renderSrc, /projectCombatActorWorldToCanvas\(Number\(targetFeet\.x \|\| 0\), Number\(targetFeet\.y \|\| 0\), targetActor\?\.kind \|\| 'hero'\)/);
   assert.match(renderSrc, /const targetFeet = restFeet \|\| enemyFeet;/);
   assert.match(renderSrc, /HeroRenderHeightByUID\?\.\[targetUID\]/);
   assert.match(renderSrc, /HeroRenderWidthByUID\?\.\[targetUID\]/);

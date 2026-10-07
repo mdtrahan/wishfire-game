@@ -365,7 +365,7 @@ export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase
 }
 
 function spawnContinuousCombatStage({ globals, entities, call, state }) {
-  const slotBase = Number(state.spawnSerial || 0);
+  const slotBase = 0;
   const plan = buildContinuousCombatSpawnPlan(globals.EnemyData, state, { slotBase });
   if (!plan.length) return false;
   globals.ContinuousCombatStage = {
@@ -373,7 +373,7 @@ function spawnContinuousCombatStage({ globals, entities, call, state }) {
     nextEmissionAt: Number(globals.time || 0) + CONTINUOUS_COMBAT_PACK_INTERVAL_SEC,
     awaitingPackArrival: false,
     lastUpdatedAt: Number(globals.time || 0),
-    spawnSerial: slotBase + plan.length,
+    spawnSerial: plan.length,
   };
   for (const entry of plan) {
     const stage = getContinuousCombatStage(state);

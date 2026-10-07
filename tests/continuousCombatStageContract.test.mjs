@@ -584,15 +584,19 @@ test('production traversal visits all three sectors before wave clear advances t
   const globals = {
     ContinuousCombatStageLoop: 1, ContinuousCombatStage: createContinuousCombatStageState(7),
     GamePhase: 'RUNTIME', BattleStartActive: 0, time: 0, EnemySize: 40, EnemyData: rows,
-    EnemySlots: [1, 2, 3, 4, 5, 6], PendingDeaths: {}, EnemyDeathVisualHoldByUID: {},
+    EnemySlots: [1, 2, 3, 4, 5, 6], EnemyIDs: [20, 21, 22, 23, 24, 25], PendingDeaths: {}, EnemyDeathVisualHoldByUID: {},
     ProgressionBattle: { outcome: 'active', settled: false },
   };
   assert.equal(finalizeContinuousCombatProduction(globals, entities), true);
   const discovered = new Set();
+  const spawnSlotArguments = [];
   let nextUid = 100;
   const call = (name, data, slotIndex) => {
     if (name !== 'SpawnEnemy') return null;
     const enemy = { uid: nextUid++, kind: 'enemy', hp: data.HP, maxHP: data.HP, name: data.name, enemyRole: data.enemyRole, slotIndex };
+    spawnSlotArguments.push(slotIndex);
+    globals.EnemyIDs[slotIndex] = enemy.uid;
+    globals.EnemySlots[slotIndex] = enemy.uid + 1;
     entities.push(enemy);
     return enemy;
   };
@@ -610,6 +614,37 @@ test('production traversal visits all three sectors before wave clear advances t
   assert.equal(globals.ContinuousCombatStage.wave, 2);
   assert.ok(globals.time >= CONTINUOUS_COMBAT_PACK_INTERVAL_SEC);
   assert.ok(entities.some(enemy => enemy.kind === 'enemy' && enemy.hp > 0 && enemy.streamState === 'roaming'), 'next wave remains remote and dormant after the clear');
+
+  for (const expectedWave of [2, 3, 4]) {
+    const activeWave = entities.filter(enemy => enemy.kind === 'enemy' && enemy.hp > 0);
+    const sectorCounts = new Map();
+    for (const enemy of activeWave) {
+      const count = sectorCounts.get(enemy.streamSectorIndex) || 0;
+      sectorCounts.set(enemy.streamSectorIndex, count + 1);
+    }
+    assert.equal(activeWave.length === 6 || activeWave.length === 9, true);
+    assert.equal(sectorCounts.size, 3);
+    assert.ok([...sectorCounts.values()].every(count => count === 2 || count === 3));
+    assert.ok(activeWave.every(enemy => enemy.slotIndex >= 0 && enemy.slotIndex < 9));
+    activeWave.forEach(enemy => { enemy.hp = 0; globals.EnemyIDs[enemy.slotIndex] = 0; globals.EnemySlots[enemy.slotIndex] = 0; });
+    const priorSpawnCount = spawnSlotArguments.length;
+    globals.time = globals.ContinuousCombatStage.nextEmissionAt;
+    assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} }), true);
+    const emitted = spawnSlotArguments.slice(priorSpawnCount);
+    assert.ok(emitted.length === 6 || emitted.length === 9);
+    assert.deepEqual(emitted, emitted.map((_, slotIndex) => slotIndex), 'each new wave reuses its fixed slot range');
+    assert.ok(emitted.every(slotIndex => slotIndex >= 0 && slotIndex < 9));
+    assert.ok(globals.EnemySlots.length <= 9);
+    if (expectedWave < 4) assert.equal(globals.ContinuousCombatStage.wave, expectedWave + 1);
+  }
+  assert.equal(globals.ContinuousCombatStage.wave, 1);
+  assert.equal(globals.ContinuousCombatStage.bossAvailable, true);
+  const beforeBossSlots = spawnSlotArguments.length;
+  assert.equal(armContinuousCombatBoss(globals, entities, call), true);
+  assert.equal(globals.ContinuousCombatStage.bossActive, true);
+  assert.deepEqual(spawnSlotArguments.slice(beforeBossSlots), [0]);
+  assert.deepEqual(entities.filter(enemy => enemy.kind === 'enemy').map(enemy => [enemy.name, enemy.slotIndex]), [['Troll', 0]]);
+  assert.ok(globals.EnemySlots.length <= 9);
 });
 
 test('runtime source targets in-range walkers while keeping them out of the enemy scheduler', async () => {

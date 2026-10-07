@@ -363,7 +363,7 @@ const renderEnemyMagic = (ctx, { state, images, worldToCanvas, layoutScale }) =>
   drawVerticalReveal(ctx, image, groundedTarget, progress, width, pulse * 1.28 * hitFade, direction);
 };
 
-export function renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layoutScale = 1 }) {
+export function renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layoutScale = 1, viewportLeft, viewportRight }) {
   const g = state.globals || {};
   const now = Number(g.time || 0);
   const impactRequests = Array.isArray(g.CombatImpactRequests) ? g.CombatImpactRequests : [];
@@ -406,25 +406,27 @@ export function renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layou
     if (!sourcePoint) continue;
     if (!projectiles.some(visual => visual.hit === hit && visual.impactAt === impactAt)) {
       projectiles.push({ hit, kind, targetUID: hit.targetUID, impactAt, lead,
-        from: worldToCanvas(sourcePoint.x, sourcePoint.y), to: worldToCanvas(targetPoint.x, targetPoint.y) });
+        fromWorld: { x: sourcePoint.x, y: sourcePoint.y }, toWorld: { x: targetPoint.x, y: targetPoint.y } });
     }
   }
 
-  const left = worldToCanvas(0, 0).x;
-  const right = worldToCanvas(360, 0).x;
+  const left = Number.isFinite(Number(viewportLeft)) ? Number(viewportLeft) : worldToCanvas(0, 0).x;
+  const right = Number.isFinite(Number(viewportRight)) ? Number(viewportRight) : worldToCanvas(360, 0).x;
   g.CombatProjectileVisuals = projectiles.filter(visual => {
     const target = (state.entities || []).find(entity => Number(entity?.uid || 0) === Number(visual.targetUID || 0));
     if (!visual.hit.projectileLanded && (!pending.includes(visual.hit) || Number(visual.hit.at) !== visual.impactAt
       || Number(visual.hit.targetUID) !== Number(visual.targetUID) || !target || Number(target.hp || 0) <= 0)) visual.missed = true;
     const progress = (now - (visual.impactAt - visual.lead)) / visual.lead;
     const width = Math.max(28, (visual.kind === 'melee_crescent' ? 34 : visual.kind === 'kaja_orb' ? 50 : 46) * layoutScale);
-    const dx = visual.to.x - visual.from.x;
+    const from = worldToCanvas(visual.fromWorld.x, visual.fromWorld.y);
+    const to = worldToCanvas(visual.toWorld.x, visual.toWorld.y);
+    const dx = to.x - from.x;
     const edge = dx >= 0 ? right + (right - left) * 0.05 : left - (right - left) * 0.05;
     const drawnDx = dx - Math.sign(dx) * width * 0.38;
-    const exitProgress = drawnDx ? (edge - visual.from.x) / drawnDx : 1;
+    const exitProgress = drawnDx ? (edge - from.x) / drawnDx : 1;
     if (progress < 0) return !visual.missed;
     if (visual.hit.projectileLanded || progress >= (visual.missed ? exitProgress : 1)) return false;
-    drawTravel(ctx, projectileAsset(images, visual.kind), visual.from, visual.to, progress, width);
+    drawTravel(ctx, projectileAsset(images, visual.kind), from, to, progress, width);
     return true;
   });
 

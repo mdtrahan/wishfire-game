@@ -112,7 +112,7 @@ effectiveBody = effectiveBody
   .replace('const center = worldToCanvas(grid.centerX, 0);', 'const center = projectCombatActorWorldToCanvas(grid.centerX, 0);')
   .replace('const point = worldToCanvas(line.value, 0);\n        ctx.fillText(String(line.value)', 'const point = projectCombatActorWorldToCanvas(line.value, 0);\n        if (point.x < topLeft.x || point.x > bottomRight.x) return;\n        ctx.fillText(String(line.value)')
   .replace('const point = worldToCanvas(0, line.value);\n        ctx.fillText(String(line.value)', 'const point = projectCombatActorWorldToCanvas(0, line.value);\n        ctx.fillText(String(line.value)')
-  .replace('renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layoutScale });', 'renderCombatAttackVfx(ctx, { state, images, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: layoutScale * COMBAT_BATTLEFIELD_ZOOM });')
+  .replace('renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layoutScale });', 'renderCombatAttackVfx(ctx, { state, images, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: layoutScale * COMBAT_BATTLEFIELD_ZOOM, viewportLeft: layoutOffsetX, viewportRight: layoutOffsetX + layoutW * layoutScale });')
   .replace('renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale });', 'renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: layoutScale * COMBAT_BATTLEFIELD_ZOOM });')
   .replaceAll('const enemyH = (g.EnemySize || 40) * layoutScale;', 'const enemyH = (g.EnemySize || 40) * layoutScale * COMBAT_BATTLEFIELD_ZOOM;')
   .replaceAll('const scaledW = w * heroScale * 1.55;', 'const scaledW = w * heroScale * 1.55 * COMBAT_BATTLEFIELD_ZOOM;')

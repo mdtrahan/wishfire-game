@@ -510,6 +510,7 @@ test('launched projectiles keep their heading and missed shots leave five percen
     set globalAlpha(value) {},
   };
   const target = { uid: 2, kind: 'enemy', hp: 10, x: 250, y: 150, originX: 190, originY: 90 };
+  let cameraOffset = 0;
   const state = {
     globals: {
       time: 0.74,
@@ -522,7 +523,9 @@ test('launched projectiles keep their heading and missed shots leave five percen
   const render = () => renderCombatAttackVfx(ctx, {
     state,
     images: { CombatRunaBolt: { width: 64, height: 32 } },
-    worldToCanvas: (x, y) => ({ x, y }),
+    worldToCanvas: (x, y) => ({ x: x - cameraOffset, y }),
+    viewportLeft: 0,
+    viewportRight: 360,
     layoutScale: 1,
   });
   render();
@@ -532,6 +535,12 @@ test('launched projectiles keep their heading and missed shots leave five percen
   target.y = 180;
   render();
   assert.deepEqual(translations.at(-1), [firstX, firstY]);
+  cameraOffset = 200;
+  render();
+  assert.ok(translations.at(-1)[0] < firstX - 100, 'cached world endpoints follow a panning camera');
+  assert.deepEqual(state.globals.CombatProjectileVisuals[0].fromWorld, { x: 60, y: 150 });
+  assert.deepEqual(state.globals.CombatProjectileVisuals[0].toWorld, { x: 250, y: 150 });
+  cameraOffset = 0;
   state.entities.pop();
   state.globals.PendingHeroHits = [];
   state.globals.time = 1.12;

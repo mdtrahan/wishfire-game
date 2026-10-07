@@ -245,7 +245,7 @@ test('two-wave fixture records real hero scheduler actions, active skills, basic
   assert.ok(actionLog.some(event => event.castAt >= 25 && event.targetUID === 22), 'the later wave joins live combat while the earlier wave survives');
 });
 
-test('stage and recovery seams keep wave overlap, boss availability, paused clocks and defeat rewards deterministic', () => {
+test('stage and recovery seams require full-wave clear, preserve boss availability, paused clocks and defeat rewards', () => {
   const stage = createContinuousCombatStageState(17);
   const a = makeEnemy(30, 'Gobloc', 190, 180), b = makeEnemy(31, 'Skeleton', 195, 190);
   const globals = { time: 3, ContinuousCombatStageLoop: 1, GamePhase: 'RUNTIME', ContinuousCombatStage: { ...stage, nextEmissionAt: 3 },
@@ -253,9 +253,15 @@ test('stage and recovery seams keep wave overlap, boss availability, paused cloc
   const spawned = [];
   const entities = [a, b];
   const spawn = (name, slot) => { const enemy = makeEnemy(slot + 200, name, 220, 180); spawned.push(enemy); entities.push(enemy); return enemy; };
-  maybeAdvanceContinuousCombatStage({ globals, entities, call(name, ...args) { if (name === 'SpawnEnemy') return spawn(args[0].name, args[1]); return true; } });
+  const stageCall = (name, ...args) => { if (name === 'SpawnEnemy') return spawn(args[0].name, args[1]); return true; };
+  maybeAdvanceContinuousCombatStage({ globals, entities, call: stageCall });
+  assert.equal(globals.ContinuousCombatStage.wave, 1, 'surviving enemies block a timed wave transition');
+  assert.equal(spawned.length, 0);
+  a.hp = 0; b.hp = 0;
+  maybeAdvanceContinuousCombatStage({ globals, entities, call: stageCall });
   assert.equal(globals.ContinuousCombatStage.wave, 2);
-  assert.ok(entities.includes(a) && entities.includes(b) && spawned.length > 0, 'wave two overlaps surviving wave-one enemies');
+  assert.ok(entities.includes(a) && entities.includes(b) && spawned.length > 0, 'the next wave spawns after the field clears');
+  assert.ok(entities.filter(enemy => enemy.kind === 'enemy' && enemy.hp > 0).every(enemy => enemy.streamState === 'roaming'));
   const pendingImpact = { at: 12.5, targetUID: 880 };
   const pausedTarget = { uid: 880, kind: 'enemy', hp: 100, x: 200, y: 180 };
   const pausedState = { globals: { time: 12, DevToolingPaused: 1, PendingHeroHits: [pendingImpact] }, entities: [...entities, pausedTarget] };
