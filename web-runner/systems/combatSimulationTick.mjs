@@ -294,12 +294,14 @@ export function createCombatSimulationTicker() {
 
 export function shouldFreezeCombatSimulation(state, gameState = {}) {
   const globals = state?.globals || {};
+  const bossTransition = globals.ContinuousCombatStage;
   return !!(
     globals.DevToolingPaused ||
     globals.QaScenarioPaused ||
     globals.QaFixtureHoldTurn ||
     gameState?.storyEntry?.combatPaused ||
-    gameState?.storyEntry?.phase === 'defeat'
+    gameState?.storyEntry?.phase === 'defeat' ||
+    (bossTransition?.bossActive === true && Number(bossTransition.bossTransitionEndsAtMs || 0) > Date.now())
   );
 }
 

@@ -90,6 +90,27 @@ test('paused combat ticker leaves state untouched and resumes without wall-time 
   assert.equal(state.globals.time, 12.001);
 });
 
+test('boss entry wipe freezes combat scheduling without mutating the user orientation preference', () => {
+  const originalNow = Date.now;
+  try {
+    Date.now = () => 1000;
+    const state = { globals: { CombatOrientation: 'right-wise', ContinuousCombatStage: {
+      bossActive: true, bossTransitionStartedAtMs: 900, bossTransitionEndsAtMs: 1200,
+    } }, entities: [] };
+    assert.equal(shouldFreezeCombatSimulation(state), true);
+    const body = effectiveRendererBody();
+    assert.match(body, /bossPresentationActive[\s\S]*activeCombatOrientation = bossPresentationActive \? 'left-wise'/);
+    assert.match(body, /cameraCenterX = bossPresentationActive[\s\S]*bossCameraCenterX/);
+    assert.match(body, /combatRank === 'boss' \? 4/);
+    assert.match(body, /bossTransitionEndsAtMs[\s\S]*curtainWidth/);
+    Date.now = () => 1201;
+    assert.equal(shouldFreezeCombatSimulation(state), false);
+    assert.equal(state.globals.CombatOrientation, 'right-wise');
+  } finally {
+    Date.now = originalNow;
+  }
+});
+
 test('damage text expires on the simulation clock and stays frozen while paused', () => {
   const ticker = createCombatSimulationTicker();
   const text = { phase: 2, age: 0.4495, fadeSec: 0.45 };

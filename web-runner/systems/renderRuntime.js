@@ -103,8 +103,12 @@ effectiveBody = effectiveBody.replace(
 );
 effectiveBody = effectiveBody
   .replace(
+    'const activeCombatOrientation = normalizeCombatOrientation(state.globals.CombatOrientation);',
+    "const bossPresentationActive = state.globals.ContinuousCombatStage?.bossActive === true;\n    const activeCombatOrientation = bossPresentationActive ? 'left-wise' : normalizeCombatOrientation(state.globals.CombatOrientation);",
+  )
+  .replace(
     'const combatFormationProjection = createCombatFormationProjection({ orientation: activeCombatOrientation, layoutW, ...combatFormationAnchors });\n    const projectCombatActorWorldToCanvas = (x, y, actorKind = \'\') => { const point = combatFormationProjection.project(x, y, actorKind); return worldToCanvas(point.x, point.y); };',
-    'const combatWorldVfxScale = layoutScale * COMBAT_BATTLEFIELD_ZOOM;\n    const combatWorldBounds = deriveCombatWorldBounds(layoutW, COMBAT_BATTLEFIELD_ZOOM);\n    const livingHeroesForCamera = state.entities.filter(actor => actor?.kind === \'hero\' && Number(actor.hp || 0) > 0);\n    const squadCenterX = livingHeroesForCamera.length ? livingHeroesForCamera.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? layoutW / 2), 0) / livingHeroesForCamera.length : layoutW / 2;\n    const combatCameraProjection = createCombatCameraProjection({ viewportWidth: layoutW, worldWidth: combatWorldBounds.worldWidth, zoom: COMBAT_BATTLEFIELD_ZOOM, centerX: squadCenterX, orientation: activeCombatOrientation });\n    const projectCombatActorWorldToCanvas = (x, y, actorKind = \'\') => { const point = combatCameraProjection.project(x, y, actorKind); return worldToCanvas(point.x, point.y); };',
+    'const combatWorldVfxScale = layoutScale * COMBAT_BATTLEFIELD_ZOOM;\n    const combatWorldBounds = deriveCombatWorldBounds(layoutW, COMBAT_BATTLEFIELD_ZOOM);\n    const livingHeroesForCamera = state.entities.filter(actor => actor?.kind === \'hero\' && Number(actor.hp || 0) > 0);\n    const squadCenterX = livingHeroesForCamera.length ? livingHeroesForCamera.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? layoutW / 2), 0) / livingHeroesForCamera.length : layoutW / 2;\n    const cameraCenterX = bossPresentationActive ? Number(state.globals.ContinuousCombatStage?.bossCameraCenterX ?? squadCenterX) : squadCenterX;\n    const combatCameraProjection = createCombatCameraProjection({ viewportWidth: layoutW, worldWidth: combatWorldBounds.worldWidth, zoom: COMBAT_BATTLEFIELD_ZOOM, centerX: cameraCenterX, orientation: activeCombatOrientation });\n    const projectCombatActorWorldToCanvas = (x, y, actorKind = \'\') => { const point = combatCameraProjection.project(x, y, actorKind); return worldToCanvas(point.x, point.y); };',
   )
   .replace('const grid = deriveCombatReferenceGrid(layoutW, layoutH);', 'const grid = deriveCombatReferenceGrid(combatWorldBounds.worldWidth, layoutH);')
   .replace('grid.vertical.filter(line => line.major && line.value < layoutW).forEach(line => {', 'grid.vertical.filter(line => line.major && line.value < combatWorldBounds.worldWidth).forEach(line => {')
@@ -115,9 +119,14 @@ effectiveBody = effectiveBody
   .replace('renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layoutScale });', 'renderCombatAttackVfx(ctx, { state, images, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: combatWorldVfxScale, viewportLeft: layoutOffsetX, viewportRight: layoutOffsetX + layoutW * layoutScale });')
   .replace('renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale });', 'renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: combatWorldVfxScale });')
   .replaceAll('const enemyH = (g.EnemySize || 40) * layoutScale;', 'const enemyH = (g.EnemySize || 40) * layoutScale * COMBAT_BATTLEFIELD_ZOOM;')
+  .replaceAll('const drawY = pos.y - enemyH / 2;', "const drawY = pos.y - (enemy.combatRank === 'boss' ? enemyH : enemyH / 2);")
   .replaceAll('const scaledW = w * heroScale * 1.55;', 'const scaledW = w * heroScale * 1.55 * COMBAT_BATTLEFIELD_ZOOM;')
   .replaceAll('const scaledH = h * heroScale * 1.55;', 'const scaledH = h * heroScale * 1.55 * COMBAT_BATTLEFIELD_ZOOM;')
   .replaceAll('const footY = pos.y + h / 2;', 'const footY = pos.y + h * COMBAT_BATTLEFIELD_ZOOM / 2;');
+effectiveBody = effectiveBody.replace(
+  "const enemyH = (g.EnemySize || 40) * layoutScale * COMBAT_BATTLEFIELD_ZOOM;\n        const enemyW = enemyH * (origW / origH);\n        const pos = projectCombatActorWorldToCanvas(x, y, 'enemy');\n        const sprite = enemySpriteImages[String(enemy.name || '').toLowerCase()];",
+  "const enemyH = (g.EnemySize || 40) * layoutScale * COMBAT_BATTLEFIELD_ZOOM * (enemy.combatRank === 'boss' ? 4 : 1);\n        const enemyW = enemyH * (origW / origH);\n        const pos = projectCombatActorWorldToCanvas(x, y, 'enemy');\n        const sprite = enemySpriteImages[String(enemy.name || '').toLowerCase()];",
+);
 removeBetween('    const beginIconPresentation = (target, key) => {', '    const rouletteTargetFrame');
 effectiveBody = effectiveBody.replace(
   '    // Render enemies (use Enemy_Sprite animations)',
@@ -214,7 +223,7 @@ export function renderRuntime(deps) {
       )
       .replace(
         "    // draw HUD overlay (game state)\n    drawHUD();",
-        "    drawCombatBossControl(ctx, { state, images, worldToCanvas });\n\n    // draw HUD overlay (game state)\n    drawHUD();",
+        "    drawCombatBossControl(ctx, { state, images, worldToCanvas });\n\n    // draw HUD overlay (game state)\n    drawHUD();\n    const bossWipe = state.globals.ContinuousCombatStage;\n    if (bossWipe?.bossActive === true && Number(bossWipe.bossTransitionEndsAtMs || 0) > Date.now()) {\n      const start = Number(bossWipe.bossTransitionStartedAtMs || 0);\n      const end = Number(bossWipe.bossTransitionEndsAtMs || start);\n      const progress = Math.max(0, Math.min(1, (Date.now() - start) / Math.max(1, end - start)));\n      const curtainWidth = layoutW * layoutScale * (1 - progress) / 2;\n      ctx.save();\n      ctx.fillStyle = '#05060a';\n      ctx.fillRect(layoutOffsetX, layoutOffsetY, curtainWidth, layoutH * layoutScale);\n      ctx.fillRect(layoutOffsetX + layoutW * layoutScale - curtainWidth, layoutOffsetY, curtainWidth, layoutH * layoutScale);\n      ctx.restore();\n    }",
       )
       .replace(
         "if (state.globals.DevToolingPaused) {",

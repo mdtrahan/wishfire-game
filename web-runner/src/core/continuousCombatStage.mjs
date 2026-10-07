@@ -11,6 +11,10 @@ export const CONTINUOUS_COMBAT_PACK_INTERVAL_SEC = 3;
 export const CONTINUOUS_COMBAT_PACK_CP_STEP = 0.06;
 export const CONTINUOUS_COMBAT_WAVES_PER_STAGE = 4;
 export const CONTINUOUS_COMBAT_STAGES_PER_REGION = 10;
+export const CONTINUOUS_COMBAT_PACKS_PER_WAVE = 6;
+export const CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX = CONTINUOUS_COMBAT_PACKS_PER_WAVE * 3;
+export const CONTINUOUS_COMBAT_SECTOR_RATIOS = Object.freeze([0.12, 0.27, 0.42, 0.57, 0.72, 0.87]);
+export const CONTINUOUS_COMBAT_BOSS_ENTRY_WIPE_MS = 440;
 
 function regroupKnockedOutHeroes(heroes) {
   const living = heroes.filter(hero => Number(hero.hp || 0) > 0);
@@ -85,7 +89,7 @@ export function configureContinuousCombatProduction(globals, { productionPath = 
   globals.ContinuousCombatStageLoop = enabled ? 1 : 0;
   if (!enabled) return false;
   globals.EncounterPolicy = 'fodder_only';
-  globals.EncounterMaxSlots = 9;
+  globals.EncounterMaxSlots = CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX;
   globals.ContinuousCombatStageComplete = 0;
   globals.RealtimeHeroFocusTargetUID = 0;
   const checkpoint = globals.HeroProgress?.continuousStage;
@@ -193,13 +197,15 @@ export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1,
   const normalizedPackIndex = Math.max(0, Number(packIndex || 0));
   const boss = String(enemy.enemyRole || enemy.role || '').toLowerCase() === 'boss';
   const world = deriveCombatWorldBounds();
-  const sector = sectorIndex == null ? Math.max(0, Math.min(2, Number(packIndex || 0) % 3)) : Math.max(0, Math.min(2, Math.floor(Number(sectorIndex) || 0)));
-  const sectorX = world.worldWidth * [0.19, 0.5, 0.81][sector] + (order - 1) * geometry.enemySize * 1.25;
+  const sector = sectorIndex == null
+    ? Math.max(0, Math.min(CONTINUOUS_COMBAT_PACKS_PER_WAVE - 1, Number(packIndex || 0) % CONTINUOUS_COMBAT_PACKS_PER_WAVE))
+    : Math.max(0, Math.min(CONTINUOUS_COMBAT_PACKS_PER_WAVE - 1, Math.floor(Number(sectorIndex) || 0)));
+  const sectorX = world.worldWidth * CONTINUOUS_COMBAT_SECTOR_RATIOS[sector] + (order - 1) * geometry.enemySize * 1.25;
   const engageX = boss ? bossX : sectorX;
   const homeY = boss ? BOSS_HOME.y : geometry.y;
   Object.assign(enemy, {
     combatRank: ['boss','subboss'].includes(String(enemy.enemyRole || enemy.role || '').toLowerCase()) ? String(enemy.enemyRole || enemy.role).toLowerCase() : 'ordinary',
-    streamState: 'roaming', streamLane: lane, streamRank: rank, streamPackIndex: packIndex, streamSectorIndex: sector + Number(packIndex || 0) * 3, streamEntryOrder: order,
+    streamState: 'roaming', streamLane: lane, streamRank: rank, streamPackIndex: packIndex, streamSectorIndex: sector + Number(packIndex || 0) * CONTINUOUS_COMBAT_PACKS_PER_WAVE, streamEntryOrder: order,
     streamDelivery: delivery, streamMeleeLine: meleeLine,
     actionState: 'spawn', actionFacing: 'left', actionStateStartedAt: Number(globals.time || 0), actionStateUntil: Number(globals.time || 0) + 0.35,
     streamEngageX: engageX, streamWalkSpeed: geometry.walkSpeed * PACK_WALK_SPEED_SCALE[order],
@@ -221,14 +227,17 @@ export function finalizeContinuousCombatProduction(globals, entities = []) {
   globals.AstralFlowKoOrbQueue = [];
   globals.AstralFlowKoOrbPresentationPending = 0;
   globals.AstralFlowKoOrbPresentationActive = 0;
+  const productionEnemies = (Array.isArray(entities) ? entities : []).filter(actor => actor?.kind === 'enemy');
+  const packSize = Math.max(1, Math.ceil(productionEnemies.length / CONTINUOUS_COMBAT_PACKS_PER_WAVE));
   let enemyOrder = 0;
   for (const actor of Array.isArray(entities) ? entities : []) {
     if (actor?.kind === 'hero') {
       actor.flow = 0;
       actor.flowReady = false;
     } else if (actor?.kind === 'enemy') {
-      const sectorIndex = enemyOrder % 3;
-      activateContinuousCombatSpawnedEnemy(globals, actor, { lane: Number(actor.slotIndex ?? 1), rank: 0, packIndex: 0, entryOrder: sectorIndex, sectorIndex });
+      const sectorIndex = Math.min(CONTINUOUS_COMBAT_PACKS_PER_WAVE - 1, Math.floor(enemyOrder / packSize));
+      const entryOrder = enemyOrder % packSize;
+      activateContinuousCombatSpawnedEnemy(globals, actor, { lane: Number(actor.slotIndex ?? 1), rank: 0, packIndex: 0, entryOrder, sectorIndex });
       enemyOrder += 1;
     }
   }
@@ -275,6 +284,9 @@ export function advanceContinuousCombatStage(stageState) {
       bossAvailable: false,
       bossArmed: false,
       bossActive: false,
+      bossCameraCenterX: null,
+      bossTransitionStartedAtMs: null,
+      bossTransitionEndsAtMs: null,
       transitions,
       clearedBosses: Number(stageState?.clearedBosses || 0) + 1,
     };
@@ -287,10 +299,33 @@ export function advanceContinuousCombatStage(stageState) {
   return { done: false, stage: getContinuousCombatStage(state), state };
 }
 
-export function armContinuousCombatBoss(globals, entities, call) {
+export function armContinuousCombatBoss(globals, entities, call, { wallNowMs = Date.now(), transitionDurationMs = CONTINUOUS_COMBAT_BOSS_ENTRY_WIPE_MS } = {}) {
   const state = globals?.ContinuousCombatStage;
   if (!state || !state.bossAvailable || state.bossActive) return false;
-  const next = { ...state, bossArmed: true, bossActive: true, transitions: Number(state.transitions || 0) + 1 };
+  const livingHeroes = entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
+  let squadCenterX = livingHeroes.length
+    ? livingHeroes.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? 0), 0) / livingHeroes.length
+    : BOSS_HOME.x - 130;
+  if (livingHeroes.length) {
+    const world = deriveCombatWorldBounds();
+    const safeCenterX = Math.max(world.heroMinX + 320, Math.min(world.heroMaxX - 320, squadCenterX));
+    const shiftX = safeCenterX - squadCenterX;
+    if (shiftX) for (const hero of livingHeroes) {
+      const nextX = Math.max(world.heroMinX, Math.min(world.heroMaxX, Number(hero.footX ?? hero.x ?? safeCenterX) + shiftX));
+      hero.footX = hero.x = nextX;
+    }
+    squadCenterX = safeCenterX;
+  }
+  const startedAtMs = Number(wallNowMs);
+  const next = {
+    ...state,
+    bossArmed: true,
+    bossActive: true,
+    bossCameraCenterX: squadCenterX + 130,
+    bossTransitionStartedAtMs: startedAtMs,
+    bossTransitionEndsAtMs: startedAtMs + Math.max(0, Number(transitionDurationMs) || 0),
+    transitions: Number(state.transitions || 0) + 1,
+  };
   if (!buildContinuousCombatSpawnPlan(globals.EnemyData, next).length) return false;
   call('SettleContinuousCombatRewards');
   // Abandon the fodder encounter, including its queued hits, without awarding kills.
@@ -322,6 +357,9 @@ export function resetContinuousCombatAfterDefeat(globals) {
     bossAvailable: !!state.bossAvailable || !!state.bossActive,
     bossArmed: false,
     bossActive: false,
+    bossCameraCenterX: null,
+    bossTransitionStartedAtMs: null,
+    bossTransitionEndsAtMs: null,
     transitions: Number(state.transitions || 0) + 1,
     nextEmissionAt: Number(globals.time || 0) + CONTINUOUS_COMBAT_PACK_INTERVAL_SEC,
     awaitingPackArrival: false,
@@ -373,7 +411,7 @@ function expandWaveRows(stage, byName, catalogRows) {
   const averageCP = pool.reduce((sum, row) => sum + computeCombatPower(row), 0) / pool.length;
   const strength = maxCP > minCP ? (averageCP - minCP) / (maxCP - minCP) : 0.5;
   const packSize = strength <= 0.2 ? 3 : 2;
-  return Array.from({ length: packSize * 3 }, (_, index) => pool[index % pool.length]);
+  return Array.from({ length: packSize * CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, index) => pool[index % pool.length]);
 }
 
 export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase = 0 } = {}) {
@@ -390,14 +428,14 @@ export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase
   const progressionScale = 1 + stageOrdinal * 0.08 + waveStep * 0.04;
   const linearTarget = totalCP(baselineRows) * progressionScale * (stage.kind === 'boss' ? 1.35 : 1);
   const packScale = selectedRows.length ? findPackScale(selectedRows, linearTarget) : 1;
-  const packSize = stage.kind === 'boss' ? 1 : selectedRows.length / 3;
+  const packSize = stage.kind === 'boss' ? 1 : selectedRows.length / CONTINUOUS_COMBAT_PACKS_PER_WAVE;
   return selectedRows.map((row, index) => ({
     row: scaleContinuousCombatRow(row, packScale),
     slotIndex: Number(slotBase || 0) + index,
     lane: index % packSize,
-    rank: Math.floor(Number(slotBase || 0) / 3),
+    rank: Math.floor(Number(slotBase || 0) / CONTINUOUS_COMBAT_PACKS_PER_WAVE),
     packIndex: Number(stageState?.transitions || 0),
-    entryOrder: index,
+    entryOrder: index % packSize,
     sectorIndex: stage.kind === 'boss' ? 1 : Math.floor(index / packSize),
   })).filter(entry => entry.row?.name && Number.isInteger(entry.slotIndex));
 }
@@ -418,7 +456,7 @@ function spawnContinuousCombatStage({ globals, entities, call, state }) {
     const enemy = call('SpawnEnemy', { ...entry.row, enemyRole: stage?.kind === 'boss' ? 'boss' : String(entry.row.enemyRole || entry.row.role || 'fodder') }, entry.slotIndex);
     const livingHeroes = entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
     const bossX = livingHeroes.length ? livingHeroes.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? 0), 0) / livingHeroes.length + 260 : BOSS_HOME.x;
-    activateContinuousCombatSpawnedEnemy(globals, enemy, { ...entry, bossX, entryOrder: entry.entryOrder % 3 });
+    activateContinuousCombatSpawnedEnemy(globals, enemy, { ...entry, bossX, entryOrder: entry.entryOrder });
   }
   call('UpdateEnemyHPUI');
   return true;
@@ -531,6 +569,7 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   if (globals.DevToolingPaused || globals.QaScenarioPaused || globals.QaFixtureHoldTurn) return false;
   const stageState = globals.ContinuousCombatStage;
   if (!stageState) return false;
+  if (stageState.bossActive && Number(stageState.bossTransitionEndsAtMs || 0) > Date.now()) return false;
   const now = Number(globals.time || 0);
   const newlyAvailable = updateApproachingEnemies(globals, entities, now);
   const newlyEngaged = advanceContinuousCombatArena({ globals, entities, seconds: Math.max(0, Math.min(0.1, now - Number(stageState.lastArenaUpdatedAt ?? now))) });

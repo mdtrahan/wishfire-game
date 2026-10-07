@@ -20,6 +20,8 @@ test('combat boss button is centered on the game grid for drawing and pointer in
   assert.match(control, /controlState\.toUpperCase\(\)/);
   assert.match(pointer, /import \{ combatBossControlRect \} from '\.\/renderCombatBossControl\.mjs'/);
   assert.match(pointer, /onBossButtonClick\(\)/);
+  assert.match(pointer, /bossStage\?\.bossActive === true[\s\S]*bossTransitionEndsAtMs[\s\S]*return \{ handled: true/,
+    'pointer actions are consumed throughout the fixed-camera entry wipe');
   const { combatBossControlRect } = await import(pathToFileURL(path.join(root, 'web-runner/systems/renderCombatBossControl.mjs')));
   const rect = combatBossControlRect((x, y) => ({ x: x * 1.5 + 10, y: y * 1.5 + 4 }));
   assert.deepEqual(rect, { x: 255, y: 54, w: 50, h: 50 });

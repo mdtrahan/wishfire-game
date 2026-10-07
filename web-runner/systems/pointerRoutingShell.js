@@ -102,8 +102,16 @@ export function createPointerRoutingShell({
       ? layoutState.getActiveLayoutId()
       : null;
 
+    const bossStage = state?.globals?.ContinuousCombatStage;
+    if (activeLayoutId === 'combat' && bossStage?.bossActive === true && Number(bossStage.bossTransitionEndsAtMs || 0) > Date.now()) {
+      return { handled: true, mx, my, rect };
+    }
+
     if (activeLayoutId === 'combat' && isPointInRect(mx, my, combatBossControlRect(worldToCanvas))) {
-      if (onBossButtonClick()) drawFrame();
+      if (onBossButtonClick()) {
+        gameState.healBlooms = [];
+        drawFrame();
+      }
       return { handled: true, mx, my, rect };
     }
 

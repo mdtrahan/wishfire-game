@@ -190,7 +190,8 @@ test('runtime-shaped hero anchors reserve a status-icon row above HP bars', asyn
   const renderer = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
   assert.match(renderer, /const footY = pos\.y \+ h \* 1\.55 \* COMBAT_BATTLEFIELD_ZOOM \/ 2/);
   assert.match(renderer, /restFeetByUID\[hero\.uid\] = \{ x: baseX, y: yWorld \+ hWorld \* 1\.55 \/ 2 \}/);
-  assert.match(renderer, /createCombatCameraProjection\(\{ viewportWidth: layoutW, worldWidth: combatWorldBounds\.worldWidth, zoom: COMBAT_BATTLEFIELD_ZOOM, centerX: squadCenterX, orientation: activeCombatOrientation \}\)/);
+  assert.match(renderer, /const cameraCenterX = bossPresentationActive \? Number\(state\.globals\.ContinuousCombatStage\?\.bossCameraCenterX \?\? squadCenterX\) : squadCenterX/);
+  assert.match(renderer, /createCombatCameraProjection\(\{ viewportWidth: layoutW, worldWidth: combatWorldBounds\.worldWidth, zoom: COMBAT_BATTLEFIELD_ZOOM, centerX: cameraCenterX, orientation: activeCombatOrientation \}\)/);
 });
 
 test('combat reference grid covers the logical canvas in ten-pixel increments', async () => {

@@ -61,10 +61,10 @@ test('continuous defeat is free, preserves the earned boss gate and restarts wav
  assert.equal(state.entities[0].hp,42);
  assert.equal(state.entities[0].locomotion,'idle');assert.equal(state.entities[0].actionState,undefined);assert.equal(state.entities[0].actionStateUntil,undefined);
  const retryEnemies=state.entities.filter(actor=>actor.kind==='enemy');
- assert.ok(retryEnemies.length===6||retryEnemies.length===9);
+ assert.ok(retryEnemies.length===12||retryEnemies.length===18, 'six local packs retain two or three actors each');
  assert.ok(retryEnemies.every(actor=>actor.streamState==='roaming'));
  const retryPacks=new Map();for(const enemy of retryEnemies){const pack=retryPacks.get(enemy.streamSectorIndex)||[];pack.push(enemy);retryPacks.set(enemy.streamSectorIndex,pack);}
- assert.equal(retryPacks.size,3);
+ assert.equal(retryPacks.size,6);
  assert.ok([...retryPacks.values()].every(pack=>pack.length===2||pack.length===3));
  assert.ok(calls.includes('SettleContinuousCombatRewards'));
  assert.equal(calls.includes('ProcessTurn'),false);

@@ -50,6 +50,28 @@ test('four heroes retain stable targets and separate crowded footprints', () => 
   }
 });
 
+test('Fara and Hondo lead while Runa and Kaja keep ranged support spacing in either travel direction', () => {
+  for (const enemyX of [650, 80]) {
+    const direction = enemyX > 300 ? 1 : -1;
+    const heroStartX = enemyX > 300 ? 120 : 320;
+    const heroes = [
+      { uid: 1, name: 'Fara', kind: 'hero', hp: 100, attackType: 'physical', footX: heroStartX, footY: 240 },
+      { uid: 2, name: 'Hondo', kind: 'hero', hp: 100, attackType: 'physical', footX: heroStartX, footY: 280 },
+      { uid: 3, name: 'Runa', kind: 'hero', hp: 100, attackType: 'magic', footX: heroStartX - direction * 10, footY: 240 },
+      { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: heroStartX - direction * 10, footY: 280 },
+    ];
+    const enemy = { uid: 20, name: 'Gobloc', kind: 'enemy', hp: 1000, streamState: 'in_range', streamWalkSpeed: 34, streamDelivery: 'melee', footX: enemyX, footY: 260 };
+    const entities = [...heroes, enemy];
+    for (let tick = 0; tick < 180; tick += 1) advanceContinuousCombatArena({ globals: { time: tick / 10 }, entities, seconds: 0.1 });
+    const frontX = (heroes[0].footX + heroes[1].footX) / 2;
+    const rearX = (heroes[2].footX + heroes[3].footX) / 2;
+    assert.ok((frontX - rearX) * direction > 24, `front heroes should lead toward ${direction}`);
+    assert.ok(heroes.every(hero => isActorTargetInRange(hero, enemy)), 'front melee and rear ranged heroes retain authored reach');
+    const xs = heroes.map(hero => hero.footX);
+    assert.ok(Math.max(...xs) - Math.min(...xs) < 150, 'four actors remain a compact band');
+  }
+});
+
 test('the squad detects one local pack together and leaves distant packs idle', () => {
   const heroes = Array.from({ length: 4 }, (_, index) => ({
     uid: index + 1, kind: 'hero', hp: 100, attackType: 'melee', footX: 60 + index * 8, footY: 220 + index * 38,

@@ -46,7 +46,21 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const DETECTION_RADIUS = 460;
 const SQUAD_STRAGGLE_RADIUS = 180;
 const SEARCH_SPEED = 78;
-const SQUAD_OFFSETS = Object.freeze([[-24, -22], [24, -22], [-24, 22], [24, 22]]);
+const TRAVEL_FRONT_OFFSET = 28;
+const FORMATION_ROW_GAP = 10;
+const FRONTLINE_HERO_NAMES = new Set(['fara', 'falie', 'hondo', 'huun']);
+function heroFormationSlot(hero, index) {
+  const name = String(hero?.baseHeroName || hero?.name || '').trim().toLowerCase();
+  const slot = name === 'fara' || name === 'falie' ? 0
+    : name === 'hondo' || name === 'huun' ? 1
+      : name === 'runa' ? 2
+        : name === 'kaja' || name === 'kojonn' ? 3
+          : index;
+  return {
+    frontline: FRONTLINE_HERO_NAMES.has(name) || (!name && index < 2),
+    rowOffset: slot % 2 === 0 ? -FORMATION_ROW_GAP : FORMATION_ROW_GAP,
+  };
+}
 function separateFootprints(actors, bounds) {
   const ordered = actors.slice().sort((a, b) => Number(a.uid || 0) - Number(b.uid || 0));
   // Several passes settle a compact crowd after one separation changes a
@@ -104,18 +118,27 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   const locallyDetected = !hasStragglers && nearestGroup.length && Math.abs(nearestGroupX - center) <= DETECTION_RADIUS;
   const focusedEnemies = locallyDetected ? nearestGroup : [];
   const sharedTarget = focusedEnemies.length ? nearest({ footX: center, footY: centerY }, focusedEnemies) : null;
+  const targetPoint = sharedTarget ? actorFootPoint(sharedTarget) : null;
+  const targetDirection = targetPoint ? Math.sign(targetPoint.x - center) || Math.sign((nearestGroupX ?? center) - center) || 1 : 0;
   for (const enemy of focusedEnemies) if (enemy.streamState === 'roaming') enemy.streamState = 'in_range';
   for (const [index, hero] of heroes.entries()) {
-    const [offsetX, offsetY] = SQUAD_OFFSETS[index % SQUAD_OFFSETS.length];
+    const formation = heroFormationSlot(hero, index);
     const target = sharedTarget;
     if (target) {
       hero.arenaTargetUID = Number(target.uid || 0);
-      advanceActorToward(hero, target, { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
+      const contactTarget = {
+        ...target,
+        footX: formation.frontline ? targetPoint.x + Math.sign(targetPoint.x - actorFootPoint(hero).x) * 8 : targetPoint.x,
+        footY: targetPoint.y + (formation.frontline ? 0 : formation.rowOffset),
+      };
+      advanceActorToward(hero, contactTarget, { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
       preserveActionState: Number(hero.actionStateUntil || 0) > Number(globals.time || 0) });
     } else {
       const nextPackX = hasStragglers ? center : (nearestGroup.length ? nearestGroupX : clamp(center + 160, bounds.heroMinX, bounds.heroMaxX));
       const searchX = hasStragglers ? center : (locallyDetected ? nextPackX : clamp(nextPackX - Math.sign(nextPackX - center) * 130, bounds.heroMinX, bounds.heroMaxX));
-      const searchTarget = { footX: searchX + offsetX, footY: centerY + offsetY };
+      const searchDirection = Math.sign(searchX - center) || targetDirection || 1;
+      const frontOffset = formation.frontline ? TRAVEL_FRONT_OFFSET : -TRAVEL_FRONT_OFFSET;
+      const searchTarget = { footX: searchX + searchDirection * frontOffset, footY: centerY + formation.rowOffset };
       hero.arenaTargetUID = 0;
       advanceActorToward(hero, searchTarget, { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
         preserveActionState: Number(hero.actionStateUntil || 0) > Number(globals.time || 0) });

@@ -502,7 +502,7 @@ test('enemy damage wiring queues a typed hero impact after the shipping skill ca
   assert.match(simulation, /enemyUsesRangedMagic \? enemy\.originX/);
 });
 
-test('launched projectiles keep their heading and missed shots leave five percent beyond the canvas', () => {
+test('launched projectiles keep their world heading and missed shots finish on their bounded launch path', () => {
   const translations = [];
   const ctx = {
     save() {}, restore() {}, rotate() {}, drawImage() {},
@@ -545,16 +545,31 @@ test('launched projectiles keep their heading and missed shots leave five percen
   state.globals.PendingHeroHits = [];
   state.globals.time = 1.12;
   render();
-  assert.ok(translations.at(-1)[0] > 250);
-  assert.equal(translations.at(-1)[1], firstY);
-  assert.equal(state.globals.CombatProjectileVisuals.length, 1);
-  state.globals.time = 1.42;
-  render();
-  assert.ok(translations.at(-1)[0] > 360);
-  assert.equal(state.globals.CombatProjectileVisuals.length, 1);
-  state.globals.time = 1.48;
-  render();
   assert.equal(state.globals.CombatProjectileVisuals.length, 0);
+});
+
+test('long projectiles stop within one visible world width and fade before removal', () => {
+  for (const orientation of ['left-wise', 'right-wise']) {
+    const alphas = [], translations = [];
+    const ctx = { save() {}, restore() {}, rotate() {}, drawImage() {}, translate(x, y) { translations.push([x, y]); }, set globalAlpha(value) { alphas.push(value); } };
+    const hit = { at: 2, heroUID: 1, targetUID: 2, attackVfxKind: 'runa_bolt' };
+    const state = { globals: { time: 1.5, HeroRestBasePosByUID: { 1: { x: 20, y: 100 } }, PendingHeroHits: [hit] },
+      entities: [{ uid: 1, kind: 'hero', hp: 10 }, { uid: 2, kind: 'enemy', hp: 10, x: 2000, y: 100 }] };
+    const worldToCanvas = (x, y) => ({ x: orientation === 'right-wise' ? 360 - x * 0.5 : x * 0.5, y });
+    const render = () => renderCombatAttackVfx(ctx, { state, images: { CombatRunaBolt: {} }, worldToCanvas, viewportLeft: 0, viewportRight: 360 });
+    render();
+    const visual = state.globals.CombatProjectileVisuals[0];
+    assert.equal(Math.abs(visual.toWorld.x - visual.fromWorld.x), 720, '0.5 zoom makes one viewport 720 world units');
+    const launchScreenX = worldToCanvas(visual.fromWorld.x, visual.fromWorld.y).x;
+    state.globals.time = 1.94;
+    render();
+    assert.ok(alphas.at(-1) < 1 && alphas.at(-1) > 0, 'the travel sprite fades before reaching its removal time');
+    assert.ok(Math.abs(translations.at(-1)[0] - launchScreenX) <= 360, `${orientation} travel stays inside its one-screen budget`);
+    state.globals.time = 2;
+    render();
+    assert.equal(state.globals.CombatProjectileVisuals.length, 0);
+    assert.equal(hit.projectileLanded, undefined, 'presentation lifetime does not rewrite the gameplay hit');
+  }
 });
 
 test('a landed projectile clears at impact', () => {
