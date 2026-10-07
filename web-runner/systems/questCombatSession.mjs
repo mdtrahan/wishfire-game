@@ -1,11 +1,14 @@
 import { activateContinuousCombatSpawnedEnemy, buildContinuousCombatSpawnPlan, resetContinuousCombatAfterDefeat } from '../src/core/continuousCombatStage.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
+import { resetActorPresentationAfterRestore } from '../src/core/actorPresentationState.mjs';
 
 // Session lifecycle only. Damage, initiative and skill rules remain runtime-owned.
 export function restoreHeroesToFullHP({ state, call }) {
+  const now = Number(state.globals?.time || 0);
   for (const hero of state.entities.filter(e => e?.kind === 'hero')) {
     hero.hp = hero.maxHP;
     hero.isAlive = true;
+    resetActorPresentationAfterRestore(hero, now);
     if (state.globals.PendingDeaths) delete state.globals.PendingDeaths[hero.uid];
   }
   call('UpdateHeroHPUI');

@@ -7,6 +7,7 @@ import { COMBAT_MODIFIER_LIMITS,projectCombatStat,modifierCanImprove,resolveBasi
 import { previewSeededRng } from '../src/core/seededRngRules.mjs';
 import { selectRealtimeHeroSkillTarget,enemiesInSkillShape } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
 import { ensureSkillBattle,resetRealtimeSkillAttempt,realtimeCombatStat } from '../web-runner/src/core/realtimeSkillState.mjs';
+import { resetActorPresentationAfterRestore } from '../web-runner/src/core/actorPresentationState.mjs';
 import { newHeroProgress,refreshHeroStats,awardHeroEXP,createHeroProgressStore,saveHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
 import { effectiveStat } from '../web-runner/src/core/combatRules.mjs';
 import { calculateDamageFromJs } from '../src/core/calculateDamageRules.mjs';
@@ -85,9 +86,9 @@ test('level and gear refresh reproject from a clean baseline; saves contain no F
 const runtime=fs.readFileSync(new URL('../web-runner/modules/functionBank.js',import.meta.url),'utf8');
 function adapter(name,end,bindings){const start=runtime.indexOf(`export function ${name}(`),body=runtime.slice(start,runtime.indexOf(end,start)).replace('export function','function');return new Function(...Object.keys(bindings),`${body};return ${name};`)(...Object.values(bindings));}
 test('the UID heal adapter clamps, rejects ordinary KO healing, and revives the same instance',()=>{
- const a=hero(1),source=hero(2),ctx={state:{entities:[a,source]}};a.hp=95;let events=0;
- const heal=adapter('HealRealtimeActor','\nfunction absorbPartyTempHPShield',{GetActorByUID:(ctx,uid)=>ctx.state.entities.find(a=>a.uid===uid),emitResolvedHealEvent:(ctx,source,target,before)=>{events++;return target.hp-before;},UpdateHeroHPUI:()=>{}});
- assert.equal(heal(ctx,2,1,20),5);a.hp=0;assert.equal(heal(ctx,2,1,20),0);assert.equal(heal(ctx,2,1,30,true),30);assert.equal(ctx.state.entities[0],a);assert.equal(events,2);
+ const a=hero(1),source=hero(2),ctx={state:{globals:{time:0},entities:[a,source]}};a.hp=95;let events=0;
+ const heal=adapter('HealRealtimeActor','\nfunction absorbPartyTempHPShield',{getGlobals:ctx=>ctx.state.globals,GetActorByUID:(ctx,uid)=>ctx.state.entities.find(a=>a.uid===uid),emitResolvedHealEvent:(ctx,source,target,before)=>{events++;return target.hp-before;},UpdateHeroHPUI:()=>{},resetActorPresentationAfterRestore});
+ assert.equal(heal(ctx,2,1,20),5);a.hp=0;a.actionState='ko';a.actionFacing='left';a.actionStateUntil=86400;ctx.state.globals.time=8;assert.equal(heal(ctx,2,1,30,true),30);assert.equal(ctx.state.entities[0],a);assert.equal(a.locomotion,'idle');assert.equal(a.locomotionStartedAt,8);assert.equal(a.actionState,undefined);assert.equal(a.actionStateUntil,undefined);assert.equal(events,2);
 });
 test('raw magic adapters mitigate independently once, never reroll critical damage, and retain committed effect range',()=>{
  const source=hero(1),target=enemy(10);target.stats.RES=20;const g={time:0},ctx={state:{globals:g,entities:[source,target]}};

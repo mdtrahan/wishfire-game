@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 test('resurrection retains enemy progress, buffs and skills while reviving every hero', async () => {
  const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
- const state={entities:[{uid:1,kind:'hero',hp:0,maxHP:42,isAlive:false,buffs:{ward:3},skills:['faze']},{uid:2,kind:'hero',hp:0,maxHP:35,isAlive:false},{uid:3,kind:'enemy',hp:7,maxHP:50}],globals:{Player_Energy:-1,Player_maxEnergy:150,PendingDeaths:{1:true,3:true},Skills:{faze:true},HeroBuffs:{ward:3}}};
+ const state={entities:[{uid:1,kind:'hero',hp:0,maxHP:42,isAlive:false,actionState:'ko',actionFacing:'left',actionStateUntil:86400,buffs:{ward:3},skills:['faze']},{uid:2,kind:'hero',hp:0,maxHP:35,isAlive:false},{uid:3,kind:'enemy',hp:7,maxHP:50}],globals:{time:10,Player_Energy:-1,Player_maxEnergy:150,PendingDeaths:{1:true,3:true},Skills:{faze:true},HeroBuffs:{ward:3}}};
  const gameState={combatFailExitRequested:true};const calls=[];
  const session=createQuestCombatSession({state,gameState,call:n=>calls.push(n),sync(){}});
  session.prepare();assert.equal(session.isCleared(),false);
@@ -11,6 +11,7 @@ test('resurrection retains enemy progress, buffs and skills while reviving every
  assert.deepEqual(state.entities.map(e=>e.hp),[42,35,7]);
  assert.deepEqual(state.entities[0].buffs,{ward:3});assert.deepEqual(state.entities[0].skills,['faze']);
  assert.deepEqual(state.globals.PendingDeaths,{3:true});
+ assert.equal(state.entities[0].locomotion,'idle');assert.equal(state.entities[0].locomotionStartedAt,10);assert.equal(state.entities[0].actionState,undefined);assert.equal(state.entities[0].actionStateUntil,undefined);
  assert.deepEqual(state.globals.Skills,{faze:true});assert.deepEqual(state.globals.HeroBuffs,{ward:3});
  assert.equal(gameState.combatFailExitRequested,false);
  assert.ok(calls.includes('UpdateHeroHPUI'));
@@ -40,7 +41,7 @@ test('endless sessions never surface a finite-victory completion path', async ()
 test('continuous defeat is free, preserves the earned boss gate and restarts wave one at full health', async () => {
  const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
  const enemyRows=['Gobloc','Skeleton'].map((name,index)=>({name,HP:20+index*2,ATK:2,DEF:2,MAG:1,RES:1,SPD:8,CombatPower:20+index}));
- const state={entities:[{uid:1,kind:'hero',heroInstanceKey:'Hondo',hp:0,maxHP:42,isAlive:false},{uid:9,kind:'enemy',hp:30,maxHP:30}],globals:{
+ const state={entities:[{uid:1,kind:'hero',heroInstanceKey:'Hondo',hp:0,maxHP:42,isAlive:false,actionState:'ko',actionFacing:'left',actionStateUntil:86400},{uid:9,kind:'enemy',hp:30,maxHP:30}],globals:{
   ContinuousCombatStageLoop:1,ContinuousCombatStage:{seed:1,region:2,stage:3,wave:4,bossAvailable:true,bossArmed:true,bossActive:true,transitions:8,clearedBosses:12,nextEmissionAt:0,lastUpdatedAt:0,spawnSerial:9},
   EnemyData:enemyRows,EnemySlots:[9],PendingDeaths:{1:true,9:true},EnemyDeathVisualHoldByUID:{9:true},time:5,ProgressionBattle:{id:'run',participants:['Hondo'],defeated:{},settled:false},
  }};
@@ -58,6 +59,7 @@ test('continuous defeat is free, preserves the earned boss gate and restarts wav
  assert.equal(state.globals.ContinuousCombatStage.bossAvailable,true);
  assert.equal(state.globals.ContinuousCombatStage.bossArmed,false);
  assert.equal(state.entities[0].hp,42);
+ assert.equal(state.entities[0].locomotion,'idle');assert.equal(state.entities[0].actionState,undefined);assert.equal(state.entities[0].actionStateUntil,undefined);
  assert.ok(state.entities.slice(1).every(actor=>actor.kind==='enemy'&&actor.streamState==='approaching'));
  assert.ok(calls.includes('SettleContinuousCombatRewards'));
  assert.equal(calls.includes('ProcessTurn'),false);

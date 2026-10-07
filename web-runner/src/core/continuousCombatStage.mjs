@@ -4,6 +4,7 @@ import { deriveCombatArenaBounds, deriveCombatFormationAnchors } from '../../../
 import { cleanseDebuffs } from './combatRules.mjs';
 import { saveHeroProgress } from './heroProgression.mjs';
 import { advanceContinuousCombatArena } from './arenaCombat.mjs';
+import { resetActorPresentationAfterRestore } from './actorPresentationState.mjs';
 
 export const CONTINUOUS_COMBAT_PACK_INTERVAL_SEC = 3;
 export const CONTINUOUS_COMBAT_PACK_CP_STEP = 0.06;
@@ -538,6 +539,7 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
     for (const hero of entities.filter(actor => actor?.kind === 'hero')) {
       hero.hp = Number(hero.maxHP || 0);
       hero.isAlive = hero.hp > 0;
+      resetActorPresentationAfterRestore(hero, now);
       cleanseDebuffs(hero);
       if (globals.HeroProgress) saveHeroProgress(hero, globals.HeroProgress);
     }

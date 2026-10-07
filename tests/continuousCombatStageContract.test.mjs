@@ -118,7 +118,7 @@ test('ordinary waves carry HP while a boss clear restores and cleanses the party
   ]) {
     const heroes = [
       { uid: 1, kind: 'hero', baseHeroName: 'Falie', hp: 13, maxHP: 50, isAlive: true, statuses: [{ statusEffect: 'dot' }, { statusEffect: 'atkUp' }], statusEffects: [{ statusEffect: 'blind' }, { statusEffect: 'barrier' }] },
-      { uid: 2, kind: 'hero', baseHeroName: 'Huun', hp: 0, maxHP: 40, isAlive: false, statuses: [{ statusEffect: 'silence' }] },
+      { uid: 2, kind: 'hero', baseHeroName: 'Huun', hp: 0, maxHP: 40, isAlive: false, actionState: 'ko', actionFacing: 'left', actionStateStartedAt: 1, actionImpactAt: 1, actionStateUntil: 86401, statuses: [{ statusEffect: 'silence' }] },
     ];
     const entities = [...heroes];
     const globals = {
@@ -141,6 +141,11 @@ test('ordinary waves carry HP while a boss clear restores and cleanses the party
     const clearedBoss = !!stage.bossActive;
     assert.deepEqual(heroes.map(hero => hero.hp), clearedBoss ? [60, 40] : [13, 0]);
     assert.deepEqual(heroes.map(hero => hero.isAlive), clearedBoss ? [true, true] : [true, false]);
+    if (clearedBoss) {
+      assert.equal(heroes[1].locomotion, 'idle');
+      assert.equal(heroes[1].locomotionStartedAt, 10);
+      for (const key of ['actionState', 'actionFacing', 'actionStateStartedAt', 'actionImpactAt', 'actionStateUntil']) assert.equal(heroes[1][key], undefined);
+    }
     assert.deepEqual(heroes.map(hero => hero.statuses.map(status => status.statusEffect)),
       clearedBoss ? [['atkUp'], []] : [['dot', 'atkUp'], ['silence']]);
     assert.deepEqual(heroes[0].statusEffects.map(status => status.statusEffect), clearedBoss ? ['barrier'] : ['blind', 'barrier']);

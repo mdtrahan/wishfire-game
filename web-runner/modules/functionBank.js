@@ -58,6 +58,7 @@ import { selectRealtimeHeroSkillTarget } from '../src/core/realtimeHeroTargeting
 import { castRealtimeHeroSkill, tickRealtimeHeroSkillZones, realtimeBasicInterval, realtimeCombatStat,realtimeBasicDamageMultiplier,cleanupRealtimeSkillActors, realtimeProvokeTarget, realtimeCoverTarget, realtimeIncomingDamage, realtimeMagicBlocked, realtimeRetaliation } from './heroCommands.mjs';
 import { heroDefinition, heroSkillUnlocked } from '../src/core/heroDefinitions.mjs';
 import { pushContinuousCombatEnemy, reverseContinuousCombatEnemy, teleportContinuousCombatEnemy } from '../src/core/continuousCombatStage.mjs';
+import { resetActorPresentationAfterRestore } from '../src/core/actorPresentationState.mjs';
 import { selectContinuousEnemyTarget } from '../src/core/arenaCombat.mjs';
 import { isActorTargetInRange } from '../../src/core/arenaCombatRules.mjs';
 import { LUNGE_ANTICIPATION_SEC, LUNGE_FORWARD_SEC } from '../systems/animationMath.js';
@@ -5762,7 +5763,7 @@ export function HealRealtimeActor(ctx,sourceUID,targetUID,pct,revive=false) {
   const before=Number(target.hp || 0),amount=Math.floor(Number(target.maxHP || 0)*Number(pct)/100);
   target.hp=Math.min(Number(target.maxHP || 0),before+amount);
   target.isAlive=target.hp>0;
-  if(revive && target.isAlive) {delete target.ko;delete target.isKO;target.statuses=[];}
+  if(revive && target.isAlive) {delete target.ko;delete target.isKO;target.statuses=[];resetActorPresentationAfterRestore(target,Number(getGlobals(ctx).time || 0));}
   const healed=emitResolvedHealEvent(ctx,source || {uid:sourceUID},target,before,{allowRevive:revive});
   if(target.hp>before)UpdateHeroHPUI(ctx);
   return healed;
