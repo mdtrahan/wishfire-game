@@ -17,12 +17,15 @@ import { drawCombatProgressHud } from './renderCombatBossControl.mjs';
 import { drawCombatHealthBar } from './combatHealthBarPresentation.mjs';
 import { drawActorPuppetFrame } from './actorPuppetPresentation.mjs';
 import { renderRealtimeSkillGroundVfx } from './realtimeSkillGroundPresentation.mjs';
+import { createEnemyActivationFade } from './enemyActivationFadePresentation.mjs';
 import { isActorTargetInRange } from '../../src/core/heroAttackTargetingRules.mjs';
 import {
   computeCombatDamageFontSize,
   computeViewportFontSize,
   fitCanvasText,
 } from './combatPresentationScale.mjs';
+
+const enemyActivationFadeAlpha = createEnemyActivationFade();
 
 export function assembleCombatRenderBody(body) {
 let effectiveBody = body;
@@ -146,25 +149,50 @@ replaceBetween(
     const enemyDrawBody = body.replace(puppetDeclaration, '');
     return `        const puppet = sprite ? actorPuppetPresentation?.frameFor(enemy, Number(g.time || 0), activeCombatOrientation) : null;
         const enemyFootY = puppet ? Number(pos.y) : Number(drawY + enemyH);
-        const paintEnemyActor = () => {${enemyDrawBody}\n        };
+        const enemyFadeAlpha = getEnemyActivationFadeAlpha(enemy, Number(g.time || 0));
+        const paintEnemyActor = () => {
+          ctx.save();
+          ctx.globalAlpha *= enemyFadeAlpha;
+          ${enemyDrawBody}\n          ctx.restore();
+        };
         actorPaintQueue.push({ footY: enemyFootY, uid: Number(enemy.uid || 0), paint: paintEnemyActor });\n`;
   },
 );
 effectiveBody = replaceRequired(
   effectiveBody,
   'barQueue.push({ enemy, pos, enemyH, origH, enemyW });',
-  'barQueue.push({ enemy, pos, enemyH, origH, enemyW, enemyFootY });',
+  'barQueue.push({ enemy, pos, enemyH, origH, enemyW, enemyFootY, enemyFadeAlpha });',
   'enemy bar queue write',
 );
 effectiveBody = replaceRequired(
   effectiveBody,
   'const { enemy, pos, enemyH, origH, enemyW } = entry;',
-  'const { enemy, pos, enemyH, origH, enemyW, enemyFootY } = entry;',
+  'const { enemy, pos, enemyH, origH, enemyW, enemyFootY, enemyFadeAlpha } = entry;',
   'enemy bar queue read',
 );
-effectiveBody = effectiveBody.replace(
+effectiveBody = replaceRequired(
+  effectiveBody,
+  "ctx.globalAlpha = tone === 'purple' ? 0.5 : (tone === 'blue' ? 0.42 : 0.3);",
+  "ctx.globalAlpha *= tone === 'purple' ? 0.5 : (tone === 'blue' ? 0.42 : 0.3);",
+  'nested hit-flash alpha',
+);
+effectiveBody = replaceRequired(
+  effectiveBody,
+  'ctx.globalAlpha = Math.max(0, Math.min(0.9, alpha));',
+  'ctx.globalAlpha *= Math.max(0, Math.min(0.9, alpha));',
+  'nested blight shimmer alpha',
+);
+effectiveBody = replaceRequired(
+  effectiveBody,
+  'ctx.globalAlpha = 0.35;',
+  'ctx.globalAlpha *= 0.35;',
+  'nested fallback blight alpha',
+);
+effectiveBody = replaceRequired(
+  effectiveBody,
   '        drawCombatHealthBar(ctx, { x: barX, y: barY, width: drawBarW, height: drawBarH, fillWidth: drawFillW, trailWidth: drawYellowW, team: \'enemy\' });',
-  '        addActorPaint(enemy.uid, () => drawCombatHealthBar(ctx, { x: barX, y: barY, width: drawBarW, height: drawBarH, fillWidth: drawFillW, trailWidth: drawYellowW, team: \'enemy\' }));',
+  '        addActorPaint(enemy.uid, () => { ctx.save(); ctx.globalAlpha *= enemyFadeAlpha; drawCombatHealthBar(ctx, { x: barX, y: barY, width: drawBarW, height: drawBarH, fillWidth: drawFillW, trailWidth: drawYellowW, team: \'enemy\' }); ctx.restore(); });',
+  'enemy health bar fade',
 );
 effectiveBody = replaceRequired(
   effectiveBody,
@@ -220,6 +248,7 @@ export function renderRuntime(deps) {
   deps.drawCombatHealthBar = drawCombatHealthBar;
   deps.drawActorPuppetFrame = drawActorPuppetFrame;
   deps.renderRealtimeSkillGroundVfx = renderRealtimeSkillGroundVfx;
+  deps.getEnemyActivationFadeAlpha = enemyActivationFadeAlpha;
   deps.isActorTargetInRange = isActorTargetInRange;
   deps.computeCombatDamageFontSize = computeCombatDamageFontSize;
   deps.computeViewportFontSize = computeViewportFontSize;
