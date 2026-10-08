@@ -35,6 +35,8 @@ test('combat progress HUD shows the current chapter and four-wave progress', asy
   const notchBottom = calls.find(([name, x]) => name === 'lineTo' && x === notchX);
   assert.equal(notchBottom[2] - notchTop[2], 11.25, 'notch height grows from 5 to 7.5 logical pixels');
   assert.ok(calls.some(([name, key, value]) => name === 'set' && key === 'lineWidth' && value === 4.5), 'notch width grows from 2 to 3 logical pixels');
+  const notchColors = () => calls.filter(([name, key, value]) => name === 'set' && key === 'strokeStyle' && ['#55d4be', '#243237'].includes(value)).map(([, , value]) => value);
+  assert.deepEqual(notchColors(), ['#55d4be', '#55d4be', '#243237']);
   assert.equal(result.completedWaves, 2);
   assert.equal(result.bossReady, false);
   assert.equal(calls.filter(([name]) => name === 'fillRect').length, 1);
@@ -49,12 +51,18 @@ test('combat progress HUD shows the current chapter and four-wave progress', asy
     const markerX = markerImage[2] + markerImage[4] / 2;
     const scale = bossHud.w / 105;
     assert.equal(bossHud.completedWaves, 4);
+    assert.deepEqual(notchColors(), ['#55d4be', '#55d4be', '#55d4be']);
     assert.ok(bossHead[1] - markerX >= 16 * scale + 2 * scale - 0.01, 'full-progress heads remain visible with a scaled gap');
   };
   assertBossMarkerSeparated();
   state.globals.ContinuousCombatStage.bossAvailable = false;
   state.globals.ContinuousCombatStage.bossActive = true;
   assertBossMarkerSeparated();
+  state.globals.ContinuousCombatStage.bossActive = false;
+  state.globals.ContinuousCombatStage.wave = 1;
+  calls.length = 0;
+  control.drawCombatProgressHud(ctx, { state, images: {}, worldToCanvas });
+  assert.deepEqual(notchColors(), ['#243237', '#243237', '#243237']);
 });
 
 test('actor HP bars follow their owners in the shared depth-sorted paint queue', () => {

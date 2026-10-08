@@ -93,15 +93,15 @@ export function drawCombatProgressHud(ctx, { state, images, worldToCanvas } = {}
   ctx.lineWidth = Math.max(1, scale);
   ctx.strokeStyle = '#f6ecd0';
   ctx.stroke();
-  ctx.beginPath();
+  ctx.lineWidth = Math.max(2, 2 * scale) * 1.5;
   for (let notch = 1; notch < 4; notch += 1) {
     const x = trackX + trackWidth * notch / 4;
+    ctx.beginPath();
     ctx.moveTo(x, trackY - railRadius * 1.5);
     ctx.lineTo(x, trackY + railRadius * 1.5);
+    ctx.strokeStyle = completed >= notch ? '#55d4be' : '#243237';
+    ctx.stroke();
   }
-  ctx.lineWidth = Math.max(2, 2 * scale) * 1.5;
-  ctx.strokeStyle = '#243237';
-  ctx.stroke();
 
   const markerX = Math.min(trackX + trackWidth * (completed / 4), bossX - headSize - 2 * scale);
   const markerY = trackY;
