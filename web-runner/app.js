@@ -125,7 +125,6 @@ import {
   generateEncounterSeed,
 } from './systems/combatSessionInitializer.js';
 import {
-  armContinuousCombatBoss,
   configureContinuousCombatProduction,
   finalizeContinuousCombatProduction,
   maybeAdvanceContinuousCombatStage,
@@ -3093,7 +3092,6 @@ function getStoryCardLiveLineState() {
     deriveEncounterRequestFromMapState,
     getHeroScreenRoster,
     normalizeHeroSelectionIndex,
-    onBossButtonClick: () => armContinuousCombatBoss(state.globals, state.entities, (...args) => callFunctionWithContext(fnContext, ...args)),
   });
 
   // pointer handler for nav menu and overlay (more responsive than click)
@@ -3253,11 +3251,13 @@ function getStoryCardLiveLineState() {
       call: (name, ...args) => callFunctionWithContext(fnContext, name, ...args),
     });
     if (checkMainRuntimeCombatOutcome()) {
+      heroProgressStorage.persistHeroProgressIfDirty({ stateGlobals: state.globals, callFunctionWithContext, fnContext });
       drawFrame();
       requestAnimationFrame(tick);
       return;
     }
     if (continuousStageAdvanced) {
+      heroProgressStorage.persistHeroProgressIfDirty({ stateGlobals: state.globals, callFunctionWithContext, fnContext });
       drawFrame();
       requestAnimationFrame(tick);
       return;

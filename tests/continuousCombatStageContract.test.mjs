@@ -45,6 +45,7 @@ test('continuous combat ignores retired enemy-slot refill holds in both runtime 
 test('continuous stage simulation makes no movement, emission or action claim while paused', () => {
   for (const pauseKey of ['DevToolingPaused', 'QaScenarioPaused', 'QaFixtureHoldTurn']) {
     const stage = createContinuousCombatStageState(91);
+    stage.bossAvailable = true;
     stage.nextEmissionAt = 0;
     const enemy = { uid: 8, kind: 'enemy', hp: 10, streamState: 'approaching', streamPackIndex: 0, x: 650, y: 290, streamEngageX: 300, streamWalkSpeed: 100, streamStartAt: 0 };
     const globals = { ContinuousCombatStageLoop: 1, ContinuousCombatStage: stage, GamePhase: 'RUNTIME', time: 20, [pauseKey]: 1 };
@@ -195,7 +196,7 @@ test('the fourth wave waits for its normal interval before looping', () => {
   assert.equal(globals.ContinuousCombatStage.wave, 1);
 });
 
-test('boss access survives defeat and retries immediately without normal kills', () => {
+test('boss defeat clears readiness and requires the four-wave loop before another entry', () => {
   const globals = { time: 12, EnemyData: rows, ContinuousCombatStage: createContinuousCombatStageState(42, { region: 2, stage: 4 }) };
   const entities=[{uid:1,kind:'hero',hp:40,maxHP:75}];
   const call=(name,row)=>{if(name==='SpawnEnemy'){const e={uid:2,kind:'enemy',hp:row.HP};entities.push(e);return e;}};
@@ -203,14 +204,79 @@ test('boss access survives defeat and retries immediately without normal kills',
   globals.ContinuousCombatStage.bossAvailable = true;
   assert.equal(armContinuousCombatBoss(globals,entities,call), true);
   assert.equal(globals.ContinuousCombatStage.bossArmed, true);
+  entities.splice(0, entities.length, ...entities.filter(actor => actor.kind === 'hero'));
   assert.equal(resetContinuousCombatAfterDefeat(globals), true);
   assert.equal(globals.ContinuousCombatStage.region, 2);
   assert.equal(globals.ContinuousCombatStage.stage, 4);
   assert.equal(globals.ContinuousCombatStage.wave, 1);
-  assert.equal(globals.ContinuousCombatStage.bossAvailable, true);
+  assert.equal(globals.ContinuousCombatStage.bossAvailable, false);
   assert.equal(globals.ContinuousCombatStage.bossArmed, false);
-  assert.equal(armContinuousCombatBoss(globals,entities,call),true);
-  assert.equal(entities.filter(a=>a.kind==='enemy').length,1);
+  assert.equal(armContinuousCombatBoss(globals,entities,call),false);
+  assert.equal(entities.filter(a=>a.kind==='enemy').length,0);
+});
+
+test('fourth cleared wave enters the boss once through the existing wipe without spawning wave-one fodder', () => {
+  const globals = {
+    ContinuousCombatStageLoop: 1,
+    ContinuousCombatStage: { ...createContinuousCombatStageState(42), wave: 4, nextEmissionAt: 0 },
+    GamePhase: 'RUNTIME', BattleStartActive: 0, time: 12,
+    EnemyData: rows, EnemySize: 40, EnemySlots: [], PendingDeaths: {}, EnemyDeathVisualHoldByUID: {},
+  };
+  const hero = { uid: 1, kind: 'hero', hp: 40, maxHP: 75, footX: 200, footY: 290 };
+  const entities = [hero];
+  const spawned = [];
+  const call = (name, row, slotIndex) => {
+    if (name === 'SpawnEnemy') {
+      spawned.push(row.enemyRole);
+      const enemy = { uid: 2, kind: 'enemy', name: row.name, enemyRole: row.enemyRole, hp: row.HP, slotIndex };
+      entities.push(enemy);
+      return enemy;
+    }
+  };
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), true);
+  assert.deepEqual(spawned, ['boss']);
+  assert.equal(globals.ContinuousCombatStage.wave, 1);
+  assert.equal(globals.ContinuousCombatStage.bossActive, true);
+  assert.equal(globals.ContinuousCombatStage.bossAvailable, true);
+  assert.equal(globals.ContinuousCombatStage.bossTransitionEndsAtMs - globals.ContinuousCombatStage.bossTransitionStartedAtMs, 440);
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), false);
+  assert.deepEqual(spawned, ['boss']);
+});
+
+test('restored readiness auto-enters once and clears queued fodder actions', () => {
+  const globals = {
+    HeroProgress: { continuousStage: { region: 2, stage: 4, wave: 1, bossAvailable: true, clearedBosses: 3 } },
+    GamePhase: 'RUNTIME', BattleStartActive: 0, time: 12, EnemyData: rows, EnemySize: 40,
+    EnemySlots: [2], PendingDeaths: {}, EnemyDeathVisualHoldByUID: {},
+    RealtimeEnemyActionsByUID: { 2: { active: true } }, RealtimeEnemyActionReadyAt: { 2: 20 },
+    PendingHeroHits: [{ targetUID: 2 }], RealtimeHeroBasicScheduledActions: { 1: { targetUID: 2 } },
+  };
+  assert.equal(configureContinuousCombatProduction(globals, { productionPath: true }), true);
+  assert.equal(globals.ContinuousCombatStage.region, 2);
+  assert.equal(globals.ContinuousCombatStage.stage, 4);
+  assert.equal(globals.ContinuousCombatStage.bossActive, false);
+  const entities = [
+    { uid: 1, kind: 'hero', hp: 40, footX: 200, footY: 290 },
+    { uid: 2, kind: 'enemy', hp: 10, name: 'Gobloc' },
+  ];
+  const spawned = [];
+  const call = (name, row, slotIndex) => {
+    if (name === 'SpawnEnemy') {
+      spawned.push(row.enemyRole);
+      const enemy = { uid: 3, kind: 'enemy', name: row.name, enemyRole: row.enemyRole, hp: row.HP, slotIndex };
+      entities.push(enemy);
+      return enemy;
+    }
+  };
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), true);
+  assert.deepEqual(spawned, ['boss']);
+  assert.deepEqual(entities.filter(actor => actor.kind === 'enemy').map(actor => actor.enemyRole), ['boss']);
+  assert.deepEqual(globals.PendingHeroHits, []);
+  assert.deepEqual(globals.RealtimeHeroBasicScheduledActions, {});
+  assert.deepEqual(globals.RealtimeEnemyActionsByUID, {});
+  assert.deepEqual(globals.RealtimeEnemyActionReadyAt, {});
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), false);
+  assert.deepEqual(spawned, ['boss']);
 });
 
 test('stream packs distribute deterministically across A, B, and C in the three-screen world', () => {
@@ -708,7 +774,12 @@ test('production traversal visits six sectors before wave clear advances the sta
     globals.time = globals.ContinuousCombatStage.nextEmissionAt;
     assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} }), true);
     const emitted = spawnSlotArguments.slice(priorSpawnCount);
-    assert.ok(emitted.length === 12 || emitted.length === 18);
+    if (expectedWave === 4) {
+      assert.deepEqual(emitted, [0], 'the fourth clear enters the boss without another fodder wave');
+      assert.equal(globals.ContinuousCombatStage.bossActive, true);
+    } else {
+      assert.ok(emitted.length === 12 || emitted.length === 18);
+    }
     assert.deepEqual(emitted, emitted.map((_, slotIndex) => slotIndex), 'each new wave reuses its fixed slot range');
     assert.ok(emitted.every(slotIndex => slotIndex >= 0 && slotIndex < CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX));
     assert.ok(globals.EnemySlots.length <= CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX);
@@ -716,10 +787,7 @@ test('production traversal visits six sectors before wave clear advances the sta
   }
   assert.equal(globals.ContinuousCombatStage.wave, 1);
   assert.equal(globals.ContinuousCombatStage.bossAvailable, true);
-  const beforeBossSlots = spawnSlotArguments.length;
-  assert.equal(armContinuousCombatBoss(globals, entities, call), true);
   assert.equal(globals.ContinuousCombatStage.bossActive, true);
-  assert.deepEqual(spawnSlotArguments.slice(beforeBossSlots), [0]);
   assert.deepEqual(entities.filter(enemy => enemy.kind === 'enemy').map(enemy => [enemy.name, enemy.slotIndex]), [['Troll', 0]]);
   assert.ok(globals.EnemySlots.length <= CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX);
 });

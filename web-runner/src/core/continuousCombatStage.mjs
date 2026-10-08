@@ -364,7 +364,7 @@ export function resetContinuousCombatAfterDefeat(globals) {
   globals.ContinuousCombatStage = {
     ...state,
     wave: 1,
-    bossAvailable: !!state.bossAvailable || !!state.bossActive,
+    bossAvailable: false,
     bossArmed: false,
     bossActive: false,
     bossCameraCenterX: null,
@@ -587,6 +587,9 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   const stageState = globals.ContinuousCombatStage;
   if (!stageState) return false;
   if (stageState.bossActive && Number(stageState.bossTransitionEndsAtMs || 0) > Date.now()) return false;
+  if (stageState.bossAvailable && !stageState.bossActive && globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) {
+    return armContinuousCombatBoss(globals, entities, call);
+  }
   const now = Number(globals.time || 0);
   const newlyAvailable = updateApproachingEnemies(globals, entities, now);
   const newlyEngaged = advanceContinuousCombatArena({ globals, entities, seconds: Math.max(0, Math.min(0.1, now - Number(stageState.lastArenaUpdatedAt ?? now))) });
@@ -615,14 +618,19 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
     transition = advanceContinuousCombatStage(stageState);
   } else if (Number(stageState.wave || 1) >= CONTINUOUS_COMBAT_WAVES_PER_STAGE) {
     if (!clear || !timerReady) return false;
-    call('SettleContinuousCombatRewards');
     transition = advanceContinuousCombatStage(stageState);
   } else {
     if (!clear || !timerReady) return false;
     transition = advanceContinuousCombatStage(stageState);
   }
 
-  if (!transition?.stage || !spawnContinuousCombatStage({ globals, entities, call, state: transition.state })) return false;
+  const enteringBoss = !!transition?.state?.bossAvailable;
+  if (!transition?.stage) return false;
+  if (enteringBoss) {
+    globals.ContinuousCombatStage = transition.state;
+    if (!armContinuousCombatBoss(globals, entities, call)) return false;
+    transition = { ...transition, stage: getContinuousCombatStage(globals.ContinuousCombatStage) };
+  } else if (!spawnContinuousCombatStage({ globals, entities, call, state: transition.state })) return false;
   if (transition.clearedBoss) {
     resetRealtimeSkillAttempt(globals,entities);
     const heroes = entities.filter(actor => actor?.kind === 'hero');

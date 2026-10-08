@@ -16,6 +16,7 @@
 - `fixtures/` owns deterministic CSV cases shared by JS and Rust/WASM tests.
 
 ## Local Contracts
+- Boss progress proof executes the production tick: four full waves enter once and save readiness before the wipe; defeat persists wave 1 with readiness false. HP depth checks execute assembled enemy/bar queue statements for loaded puppets and fallback sprites. Keep chapter/rail centering and notch geometry measured independently.
 - Ground-skill presentation checks preserve planted zone point/radius across caster movement, recipient foot projection, source/target KO eligibility, exact expiry, paused-frame equality and zero simulation mutation.
 - Puppet selection tests route actual hero definitions and enemy catalog names to their source IDs, keep KO owned by HP, reject stale KO facing for living actors, and preserve simulation clocks while asynchronous replacements cross death or revival.
 - `storageHygieneContract.test.mjs` protects the worktree-retirement guard and an apply fixture; a lane is eligible only when present, clean, merged, tied to a CLOSED Bead, and free of protected ignored files. Unknown evidence and dirty source must survive a refused apply.

@@ -34,4 +34,4 @@
 ## Child DOX Index
 - None.
 
-- Progression correction: Boss access survives defeat/reload until victory; lamp upgrades require four paid stages followed by seven-hour construction. Hero actives use canonical level gates, currently 1/5/10/15/25 as a configurable default.
+- Progression correction: Four completed waves automatically enter a boss; defeat resets the same stage to wave 1 and empty progress, while reload preserves earned progress; lamp upgrades require four paid stages followed by seven-hour construction. Hero actives use canonical level gates, currently 1/5/10/15/25 as a configurable default.

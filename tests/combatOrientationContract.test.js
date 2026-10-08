@@ -54,9 +54,11 @@ test('world-height bounds invert the half-scale camera only inside measured HUD-
   assert.equal(projectY(bounds.maxY + 4), 478);
 });
 
-test('four-times boss health bar stays above its ground-anchored head', () => {
+test('enemy health bars follow puppet feet and fallback sprite bounds', () => {
   const renderer = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
-  assert.match(renderer, /const barY = Math\.round\(\(pos\.y - \(enemy\.combatRank === 'boss' \? enemyH : enemyH \/ 2\)\) - \(10 \* layoutScale\)\)/);
+  assert.match(renderer, /const enemyFootY = puppet \? Number\(pos\.y\) : Number\(drawY \+ enemyH\)/);
+  assert.match(renderer, /const barY = Math\.round\(enemyFootY \+ \(4 \* layoutScale\)\)/);
+  assert.match(renderer, /const drawY = pos\.y - \(enemy\.combatRank === 'boss' \? enemyH : enemyH \/ 2\)/);
 });
 
 test('right-wise camera keeps hero footprints inside both world edges', async () => {

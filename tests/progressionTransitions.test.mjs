@@ -1,16 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
 import {HERO_DEFINITIONS,heroSkillUnlocked} from '../web-runner/src/core/heroDefinitions.mjs';
 import {attachHeroProgress,createHeroProgressStore,setHeroProgressLevel,awardHeroEXP} from '../web-runner/src/core/heroProgression.mjs';
 import {createLampEconomy,validateLampEconomy,LAMP_CONFIG,purchaseLampStage,upgradeLamp,speedUpLampUpgrade} from '../web-runner/src/core/lampGear.mjs';
 import {createEquipmentStorage,EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
 import {castRealtimeHeroSkill,realtimeRetaliation} from '../web-runner/src/core/realtimeHeroSkills.mjs';
-import {configureContinuousCombatProduction} from '../web-runner/src/core/continuousCombatStage.mjs';
+import {configureContinuousCombatProduction,maybeAdvanceContinuousCombatStage,resetContinuousCombatAfterDefeat} from '../web-runner/src/core/continuousCombatStage.mjs';
 import {resetCombatSessionConditions} from '../web-runner/systems/combatSessionReset.mjs';
 
 const progressSource=readFileSync(new URL('../web-runner/systems/heroProgressStorage.js',import.meta.url),'utf8');
+const appSource=readFileSync(new URL('../web-runner/app.js',import.meta.url),'utf8');
 const HERO_PROGRESS_SAVE_KEY='orka.hero_progress.v2';
+const createPersistHeroProgressIfDirty=window=>new Function('window',`${progressSource.replace(/^import .*\n/gm,'').replace(/export /g,'')};return persistHeroProgressIfDirty;`)(window);
 function loadControls(){
  const source=readFileSync(new URL('../web-runner/systems/devToolingControls.js',import.meta.url),'utf8').replace(/^import .*\n/gm,'').replace(/export /g,'');
  return new Function('attachHeroProgress','createHeroProgressStore','setHeroProgressLevel','validateLampEconomy','EQUIPMENT_SAVE_KEY','HERO_PROGRESS_SAVE_KEY','resetCombatSessionConditions',source+';return {applyDeveloperLevel,resetDeveloperGame};')(attachHeroProgress,createHeroProgressStore,setHeroProgressLevel,validateLampEconomy,EQUIPMENT_SAVE_KEY,HERO_PROGRESS_SAVE_KEY,resetCombatSessionConditions);
@@ -107,4 +110,74 @@ test('boss availability and current tier restore from the existing progression s
  assert.equal(persist({stateGlobals:g}),true);const restored=createHeroProgressStore(JSON.parse(values.get(HERO_PROGRESS_SAVE_KEY)));
  const next={HeroProgress:restored};configureContinuousCombatProduction(next,{productionPath:true});
  assert.equal(next.ContinuousCombatStage.region,3);assert.equal(next.ContinuousCombatStage.stage,7);assert.equal(next.ContinuousCombatStage.wave,1);assert.equal(next.ContinuousCombatStage.bossAvailable,true);assert.equal(next.ContinuousCombatStage.bossArmed,false);assert.equal(next.ContinuousCombatStage.bossActive,false);
+ next.time=14;assert.equal(resetContinuousCombatAfterDefeat(next),true);assert.equal(next.ContinuousCombatStage.bossAvailable,false);
+ assert.equal(persist({stateGlobals:next}),true);const afterDefeat=createHeroProgressStore(JSON.parse(values.get(HERO_PROGRESS_SAVE_KEY)));
+ assert.deepEqual(afterDefeat.continuousStage,{region:3,stage:7,wave:1,bossAvailable:false,clearedBosses:26});
+});
+
+test('the app tick persists boss readiness before its stage early return and defeat reset before its outcome early return',()=>{
+ const tickStart=appSource.indexOf('function tick(){',appSource.indexOf('let frameCount = 0;'));
+ const tickEnd=appSource.indexOf('\n  tick();',tickStart);
+ assert.ok(tickStart>=0&&tickEnd>tickStart,'extracts the production app tick function');
+ const tickSource=appSource.slice(tickStart,tickEnd);
+ const savedValues=new Map();
+ const persistHeroProgressIfDirty=createPersistHeroProgressIfDirty({localStorage:{setItem:(key,value)=>savedValues.set(key,value)}});
+ const rows=['Gobloc','Skeleton','High Gobloc','Lizardo','Orc','High Orc','Chimerilass','Djinn','Troll'].map((name,index)=>({name,HP:20+index*5,ATK:2+index,DEF:2,MAG:1,RES:1,SPD:8}));
+ let nextUID=10;
+ const makeCall=(state)=> (name,row,slotIndex)=>{
+  if(name==='SpawnEnemy'){
+   const enemy={uid:nextUID++,kind:'enemy',name:row.name,enemyRole:row.enemyRole,hp:row.HP,maxHP:row.HP,slotIndex};
+   state.entities.push(enemy);return enemy;
+  }
+  return null;
+ };
+ const runTick=(state,gameState,checkOutcome)=>{
+  const context=vm.createContext({
+   state,gameState,document:{hidden:false},performance:{now:()=>100},requestAnimationFrame(){},
+   combatSimulationTicker:{reset(){},tick(){}},lastFrameTime:0,ensureDevToolingConfig:()=>({open:false}),
+   layoutState:{getActiveLayoutId:()=> 'combat'},shouldFreezeCombatSimulation:()=>false,drawFrame(){},
+   fnContext:{},callFunctionWithContext:(ctx,name,...args)=>makeCall(state)(name,...args),
+   maybeAdvanceContinuousCombatStage,getPresentationTurnBarrier:()=>({lanes:{}}),checkMainRuntimeCombatOutcome:checkOutcome,
+   questCombat:{isCleared:()=>false},storyEntry:{victory(){}},heroProgressStorage:{persistHeroProgressIfDirty},
+   animationMath:{},layoutW:0,applyTurnGateGlobals(){},applyTurnGateIntent(){},createEnemyTurnIdleRecovery(){},
+   getCellWorldPos(){},randomGemFrame(){},setGemArray(){},countCellCoverage(){},recordTask011RefillWriteEvent(){},
+   createEnemyTurnGateBaseline:{},createRefillCompleteGate:{},runtimeDebugLogging:{},assertBoardIntegrity(){},getGemGateSnapshot(){},
+   getYellowSequenceCompletionIntent:{},traceTask015YellowAnimation(){},traceTask015YellowWrite(){},YELLOW_CASINO_SETTLE_SEC:0,
+   YELLOW_CASINO_SETTLE_BOUNCE_AMP:0,YELLOW_COLOR:0,startGemMergeFx(){},getGoldLabelTargetWorld(){},
+  });
+  return vm.runInContext(`(()=>{let frameCount=0;${tickSource};return tick;})()`,context)();
+ };
+ const globals={
+  HeroProgress:createHeroProgressStore(),ContinuousCombatStageLoop:1,
+  ContinuousCombatStage:{seed:7,region:1,stage:1,wave:4,bossAvailable:false,bossArmed:false,bossActive:false,clearedBosses:0,transitions:3,nextEmissionAt:3,lastUpdatedAt:3,lastArenaUpdatedAt:3},
+  GamePhase:'RUNTIME',BattleStartActive:0,time:3,EnemyData:rows,EnemySize:40,EnemySlots:[],PendingDeaths:{},EnemyDeathVisualHoldByUID:{},
+  RealtimeEnemyActionsByUID:{},RealtimeEnemyActionReadyAt:{},PendingHeroHits:[],RealtimeHeroBasicScheduledActions:{},
+ };
+ const state={globals,entities:[{uid:1,kind:'hero',hp:100,maxHP:100,footX:200,footY:290}]};
+ const gameState={storyEntry:{phase:'combat',combatPaused:false}};
+ runTick(state,gameState,()=>false);
+ let checkpoint=JSON.parse(savedValues.get(HERO_PROGRESS_SAVE_KEY)).continuousStage;
+ assert.equal(checkpoint.bossAvailable,true,'wave-four stage early return saves the earned readiness');
+ assert.equal(checkpoint.wave,1);
+
+ const restored=createHeroProgressStore(JSON.parse(savedValues.get(HERO_PROGRESS_SAVE_KEY)));
+ const reloadedGlobals={HeroProgress:restored,GamePhase:'RUNTIME',BattleStartActive:0,time:4,EnemyData:rows,EnemySize:40,EnemySlots:[],PendingDeaths:{},EnemyDeathVisualHoldByUID:{}};
+ configureContinuousCombatProduction(reloadedGlobals,{productionPath:true});
+ const reloadedState={globals:reloadedGlobals,entities:[{uid:1,kind:'hero',hp:100,maxHP:100,footX:200,footY:290}]};
+ const reloadedGameState={storyEntry:{phase:'combat',combatPaused:false}};
+ runTick(reloadedState,reloadedGameState,()=>false);
+ assert.equal(reloadedGlobals.ContinuousCombatStage.bossActive,true,'restored readiness enters the boss on its first runtime tick');
+ assert.equal(reloadedState.entities.filter(actor=>actor.kind==='enemy'&&actor.enemyRole==='boss').length,1);
+ runTick(reloadedState,reloadedGameState,()=>false);
+ assert.equal(reloadedState.entities.filter(actor=>actor.kind==='enemy'&&actor.enemyRole==='boss').length,1,'the following tick does not duplicate boss entry');
+ reloadedGlobals.ContinuousCombatStage.bossTransitionEndsAtMs=0;
+ runTick(reloadedState,reloadedGameState,()=>{
+  reloadedState.entities=reloadedState.entities.filter(actor=>actor.kind==='hero');
+  resetContinuousCombatAfterDefeat(reloadedGlobals);
+  reloadedGameState.storyEntry.phase='defeat';
+  return true;
+ });
+ checkpoint=JSON.parse(savedValues.get(HERO_PROGRESS_SAVE_KEY)).continuousStage;
+ assert.equal(checkpoint.bossAvailable,false,'outcome early return persists the post-defeat checkpoint');
+ assert.equal(checkpoint.wave,1);
 });

@@ -6,7 +6,7 @@ Fara, Hondo, Runa and Kaja move through a compact arena as enemies enter from th
 
 Ordinary hero attacks retain a living focus while that enemy remains within the hero’s current reach. Area skills use their own targeting rules from the caster’s current position. Enemies attack a living hero after spatial contact unless a skill redirects or covers that attack. An attack with no eligible target waits ready.
 
-Enemy packs arrive during each wave. Four waves earn Boss access. Pressing Boss immediately replaces the current enemies with that boss. Heroes keep their HP between ordinary waves. Defeating a boss restores the whole party to full HP, revives KO heroes and clears their debuffs before the next stage. If the party falls, it recovers and restarts at wave 1 of the current stage. Earned Boss access survives defeat and reload; the player can retry whenever they choose. Boss victory clears access for the next stage. Defeat costs no resource.
+The notched adventure bar shows four completed-wave segments and the active chapter/stage. Clearing the fourth wave automatically enters the boss fight through a screen wipe. Heroes keep their HP between ordinary waves and on boss entry. Defeating a boss restores the whole party to full HP, revives KO heroes and clears their debuffs before the next stage. If the party falls, it recovers at wave 1 of the same stage with an empty bar; four more waves earn another attempt. Reload preserves earned progress, including readiness for automatic boss entry. Boss victory resets progress for the next stage. Defeat costs no resource.
 
 ## Heroes
 

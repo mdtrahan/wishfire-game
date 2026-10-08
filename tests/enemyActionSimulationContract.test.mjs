@@ -135,12 +135,54 @@ test('renderer contains no enemy action advancement or enemy damage application'
   assert.doesNotThrow(() => new Function('scope', 'dtOverride', `with (scope) {\n${body}\n}`));
 });
 
-test('assembled renderer paints every moving actor by semantic foot depth before health overlays', () => {
+test('assembled renderer paints each actor with its health bar in the shared foot-depth queue', () => {
   const body = effectiveRendererBody();
   assert.match(body, /const actorPaintQueue = \[\];[\s\S]*const actorFrontOverlayQueue = \[\];/);
-  assert.match(body, /actorPaintQueue\.push\(\{ footY: Number\(pos\.y\), uid: Number\(enemy\.uid/);
+  assert.match(body, /const enemyFootY = puppet \? Number\(pos\.y\) : Number\(drawY \+ enemyH\)/);
+  assert.match(body, /actorPaintQueue\.push\(\{ footY: enemyFootY, uid: Number\(enemy\.uid/);
   assert.match(body, /actorPaintQueue\.push\(\{ footY: Number\(footY\), uid: Number\(hero\?\.uid/);
+  assert.match(body, /addActorPaint\(enemy\.uid, \(\) => drawCombatHealthBar/);
+  assert.match(body, /addActorPaint\(uid, \(\) => drawCombatHealthBar/);
+  assert.doesNotMatch(body, /actorFrontOverlayQueue\.push\(\(\) => drawCombatHealthBar/);
   const paintAt = body.indexOf('actorPaintQueue.sort(');
   const heroHealthAt = body.indexOf('// Hero health lives with the battlefield actor');
-  assert.ok(paintAt >= 0 && heroHealthAt > paintAt, 'sprites paint in one ascending foot-Y pass before front health/status layers');
+  assert.ok(heroHealthAt >= 0 && paintAt > heroHealthAt, 'health bar callbacks attach before the shared ascending foot-Y actor pass');
+});
+
+test('assembled enemy queue carries loaded-puppet and fallback foot anchors into bar placement', () => {
+  const body = effectiveRendererBody();
+  const get = (pattern, label) => {
+    const match = body.match(pattern);
+    assert.ok(match, `assembled renderer retains ${label}`);
+    return match[0];
+  };
+  const enemyFoot = get(/const enemyFootY = puppet \? Number\(pos\.y\) : Number\(drawY \+ enemyH\);/, 'enemy foot selection');
+  const actorPush = get(/actorPaintQueue\.push\(\{ footY: enemyFootY, uid: Number\(enemy\.uid \|\| 0\), paint: paintEnemyActor \}\);/, 'actor queue insertion');
+  const barPush = get(/barQueue\.push\(\{ enemy, pos, enemyH, origH, enemyW, enemyFootY \}\);/, 'bar queue insertion');
+  const barRead = get(/const \{ enemy, pos, enemyH, origH, enemyW, enemyFootY \} = entry;/, 'bar queue read');
+  const barDrawY = get(/const barY = Math\.round\(enemyFootY \+ \(4 \* layoutScale\)\);/, 'bar foot offset');
+  const run = new Function('puppet', 'posY', 'drawY', 'height', `
+    const actorPaintQueue = [];
+    const barQueue = [];
+    const paintEnemyActor = () => {};
+    const enemy = { uid: 7 };
+    const pos = { y: posY };
+    const enemyH = height;
+    const origH = height;
+    const enemyW = height;
+    const layoutScale = 1;
+    ${enemyFoot}
+    ${actorPush}
+    ${barPush}
+    const result = [];
+    for (const entry of barQueue) {
+      ${barRead}
+      ${barDrawY}
+      result.push({ actorFootY: actorPaintQueue[0].footY, barY });
+    }
+    return result[0];
+  `);
+  assert.deepEqual(run({ frame: {} }, 100, 40, 60), { actorFootY: 100, barY: 104 });
+  assert.deepEqual(run(null, 100, 70, 60), { actorFootY: 130, barY: 134 });
+  assert.deepEqual(run(null, 100, 40, 60), { actorFootY: 100, barY: 104 });
 });

@@ -69,7 +69,8 @@ test('combat status stays on battlefield actors', () => {
   const render = fs.readFileSync(path.join(root, 'web-runner/systems/renderRuntime.js'), 'utf8');
   assert.doesNotMatch(app, /heroCommandUI|hero-commands/);
   assert.match(render, /HeroRestBasePosByUID[\s\S]*const hpRatio = Number\(hero\.maxHP/);
-  assert.match(render, /const barY = Math\.round\(footPos\.y - actorHeight - 10 \* layoutScale\);/);
+  assert.match(render, /const barY = Math\.round\(footPos\.y \+ 4 \* layoutScale\);/);
+  assert.match(render, /addActorPaint\(uid, \(\) => drawCombatHealthBar/);
   const bodyStart = render.indexOf('const body = ') + 'const body = '.length;
   const bodyEnd = render.indexOf(';\n    const effectiveBody = assembleCombatRenderBody(body);', bodyStart);
   const authoredBody = vm.runInNewContext(render.slice(bodyStart, bodyEnd));

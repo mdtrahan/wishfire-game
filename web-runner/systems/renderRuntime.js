@@ -13,7 +13,7 @@ import {
 import { drawCombatActorSprite } from './combatActorSpritePresentation.mjs';
 import { heroArtAsset, resolveHeroArtSourceRect } from '../state/heroArtAssets.mjs';
 import { combatVfxProfileForActor, queueCombatAttackImpactVfx, renderCombatAttackVfx } from './combatAttackVfxPresentation.mjs';
-import { drawCombatBossControl } from './renderCombatBossControl.mjs';
+import { drawCombatProgressHud } from './renderCombatBossControl.mjs';
 import { drawCombatHealthBar } from './combatHealthBarPresentation.mjs';
 import { drawActorPuppetFrame } from './actorPuppetPresentation.mjs';
 import { renderRealtimeSkillGroundVfx } from './realtimeSkillGroundPresentation.mjs';
@@ -40,6 +40,11 @@ const replaceBetween = (start, end, replacement) => {
   if (endAt < 0) throw new Error(`[RENDER_EXTRACTION] missing replace end: ${end}`);
   const original = effectiveBody.slice(startAt, endAt);
   effectiveBody = effectiveBody.slice(0, startAt) + replacement(original) + effectiveBody.slice(endAt);
+};
+const replaceRequired = (source, search, replacement, label) => {
+  const first = source.indexOf(search);
+  if (first < 0 || first !== source.lastIndexOf(search)) throw new Error(`[RENDER_EXTRACTION] expected one ${label} anchor`);
+  return source.slice(0, first) + replacement + source.slice(first + search.length);
 };
 const removeBlock = (marker, searchFrom = 0) => {
   const startAt = effectiveBody.indexOf(marker, searchFrom);
@@ -130,20 +135,42 @@ effectiveBody = effectiveBody.replace(
 removeBetween('    const beginIconPresentation = (target, key) => {', '    const rouletteTargetFrame');
 effectiveBody = effectiveBody.replace(
   '    // Render enemies (use Enemy_Sprite animations)',
-  '    const actorPaintQueue = [];\n    const actorFrontOverlayQueue = [];\n\n    // Render enemies (use Enemy_Sprite animations)',
+  '    const actorPaintQueue = [];\n    const actorFrontOverlayQueue = [];\n    const addActorPaint = (uid, paint) => { const actor = actorPaintQueue.find(entry => Number(entry.uid || 0) === Number(uid || 0)); if (!actor) return; const drawActor = actor.paint; actor.paint = () => { drawActor(); paint(); }; };\n\n    // Render enemies (use Enemy_Sprite animations)',
 );
 replaceBetween(
   '        if (sprite) {',
   '\n        // Queue enemy HP bars',
-  body => `        const paintEnemyActor = () => {${body}\n        };\n        actorPaintQueue.push({ footY: Number(pos.y), uid: Number(enemy.uid || 0), paint: paintEnemyActor });\n`,
+  body => {
+    const puppetDeclaration = 'const puppet = actorPuppetPresentation?.frameFor(enemy, Number(g.time || 0), activeCombatOrientation);';
+    if (!body.includes(puppetDeclaration)) throw new Error('[RENDER_EXTRACTION] missing enemy puppet anchor');
+    const enemyDrawBody = body.replace(puppetDeclaration, '');
+    return `        const puppet = sprite ? actorPuppetPresentation?.frameFor(enemy, Number(g.time || 0), activeCombatOrientation) : null;
+        const enemyFootY = puppet ? Number(pos.y) : Number(drawY + enemyH);
+        const paintEnemyActor = () => {${enemyDrawBody}\n        };
+        actorPaintQueue.push({ footY: enemyFootY, uid: Number(enemy.uid || 0), paint: paintEnemyActor });\n`;
+  },
+);
+effectiveBody = replaceRequired(
+  effectiveBody,
+  'barQueue.push({ enemy, pos, enemyH, origH, enemyW });',
+  'barQueue.push({ enemy, pos, enemyH, origH, enemyW, enemyFootY });',
+  'enemy bar queue write',
+);
+effectiveBody = replaceRequired(
+  effectiveBody,
+  'const { enemy, pos, enemyH, origH, enemyW } = entry;',
+  'const { enemy, pos, enemyH, origH, enemyW, enemyFootY } = entry;',
+  'enemy bar queue read',
 );
 effectiveBody = effectiveBody.replace(
   '        drawCombatHealthBar(ctx, { x: barX, y: barY, width: drawBarW, height: drawBarH, fillWidth: drawFillW, trailWidth: drawYellowW, team: \'enemy\' });',
-  '        actorFrontOverlayQueue.push(() => drawCombatHealthBar(ctx, { x: barX, y: barY, width: drawBarW, height: drawBarH, fillWidth: drawFillW, trailWidth: drawYellowW, team: \'enemy\' }));',
+  '        addActorPaint(enemy.uid, () => drawCombatHealthBar(ctx, { x: barX, y: barY, width: drawBarW, height: drawBarH, fillWidth: drawFillW, trailWidth: drawYellowW, team: \'enemy\' }));',
 );
-effectiveBody = effectiveBody.replace(
+effectiveBody = replaceRequired(
+  effectiveBody,
   '        const barY = Math.round((pos.y - enemyH / 2) - (10 * layoutScale));',
-  "        const barY = Math.round((pos.y - (enemy.combatRank === 'boss' ? enemyH : enemyH / 2)) - (10 * layoutScale));",
+  '        const barY = Math.round(enemyFootY + (4 * layoutScale));',
+  'enemy bar position',
 );
 replaceBetween(
   '          const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0), activeCombatOrientation);',
@@ -157,7 +184,7 @@ replaceBetween(
 );
 effectiveBody = effectiveBody.replace(
   "    renderHealBlooms('front');",
-  "    actorPaintQueue.sort((a, b) => Number(a.footY || 0) - Number(b.footY || 0) || Number(a.uid || 0) - Number(b.uid || 0));\n    for (const entry of actorPaintQueue) entry.paint();\n    for (const paint of actorFrontOverlayQueue) paint();\n\n    renderHealBlooms('front');",
+  '',
 );
 effectiveBody = effectiveBody.replace('    actorPaintQueue.sort(', '    renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: combatWorldVfxScale });\n    actorPaintQueue.sort(');
   return effectiveBody;
@@ -182,7 +209,7 @@ export function renderRuntime(deps) {
   deps.combatVfxProfileForActor = combatVfxProfileForActor;
   deps.queueCombatAttackImpactVfx = queueCombatAttackImpactVfx;
   deps.renderCombatAttackVfx = renderCombatAttackVfx;
-  deps.drawCombatBossControl = drawCombatBossControl;
+  deps.drawCombatProgressHud = drawCombatProgressHud;
   deps.drawCombatHealthBar = drawCombatHealthBar;
   deps.drawActorPuppetFrame = drawActorPuppetFrame;
   deps.renderRealtimeSkillGroundVfx = renderRealtimeSkillGroundVfx;
@@ -227,7 +254,7 @@ export function renderRuntime(deps) {
       )
       .replace(
         "    // draw HUD overlay (game state)\n    drawHUD();",
-        "    drawCombatBossControl(ctx, { state, images, worldToCanvas });\n\n    // draw HUD overlay (game state)\n    drawHUD();\n    const bossWipe = state.globals.ContinuousCombatStage;\n    if (bossWipe?.bossActive === true && Number(bossWipe.bossTransitionEndsAtMs || 0) > Date.now()) {\n      const start = Number(bossWipe.bossTransitionStartedAtMs || 0);\n      const end = Number(bossWipe.bossTransitionEndsAtMs || start);\n      const progress = Math.max(0, Math.min(1, (Date.now() - start) / Math.max(1, end - start)));\n      const curtainWidth = layoutW * layoutScale * (1 - progress) / 2;\n      ctx.save();\n      ctx.fillStyle = '#05060a';\n      ctx.fillRect(layoutOffsetX, layoutOffsetY, curtainWidth, layoutH * layoutScale);\n      ctx.fillRect(layoutOffsetX + layoutW * layoutScale - curtainWidth, layoutOffsetY, curtainWidth, layoutH * layoutScale);\n      ctx.restore();\n    }",
+        "    drawCombatProgressHud(ctx, { state, images, worldToCanvas });\n\n    // draw HUD overlay (game state)\n    drawHUD();\n    const bossWipe = state.globals.ContinuousCombatStage;\n    if (bossWipe?.bossActive === true && Number(bossWipe.bossTransitionEndsAtMs || 0) > Date.now()) {\n      const start = Number(bossWipe.bossTransitionStartedAtMs || 0);\n      const end = Number(bossWipe.bossTransitionEndsAtMs || start);\n      const progress = Math.max(0, Math.min(1, (Date.now() - start) / Math.max(1, end - start)));\n      const curtainWidth = layoutW * layoutScale * (1 - progress) / 2;\n      ctx.save();\n      ctx.fillStyle = '#05060a';\n      ctx.fillRect(layoutOffsetX, layoutOffsetY, curtainWidth, layoutH * layoutScale);\n      ctx.fillRect(layoutOffsetX + layoutW * layoutScale - curtainWidth, layoutOffsetY, curtainWidth, layoutH * layoutScale);\n      ctx.restore();\n    }",
       )
       .replace(
         "if (state.globals.DevToolingPaused) {",
@@ -359,7 +386,6 @@ export function renderRuntime(deps) {
       const pos = projectCombatActorWorldToCanvas(Number(anchor.x || 0) + offsetX, Number(anchor.y || 0), 'hero');
       const footAnchor = state.globals.HeroRestFeetPosByUID?.[uid] || anchor;
       const footPos = projectCombatActorWorldToCanvas(Number(footAnchor.x || 0) + offsetX, Number(footAnchor.y || 0), 'hero');
-      const actorHeight = Math.max(28, Number(state.globals.HeroRenderHeightByUID?.[uid] || 40)) * layoutScale;
       const actorWidth = Math.max(20, Number(state.globals.HeroRenderWidthByUID?.[uid] || 32)) * layoutScale;
       const barKey = \`hero-\${uid}\`;
       const baseW = Math.max(20, Math.min(48, actorWidth * 0.78));
@@ -375,8 +401,8 @@ export function renderRuntime(deps) {
       barState.fillW = Math.max(targetW, barState.fillW - 180 * dt);
       barState.yellowW = Math.max(targetW, barState.yellowW - 90 * dt);
       const barX = Math.round(pos.x - baseW / 2);
-      const barY = Math.round(footPos.y - actorHeight - 10 * layoutScale);
-      drawCombatHealthBar(ctx, { x: barX, y: barY, width: baseW, height: baseH, fillWidth: barState.fillW, trailWidth: barState.yellowW, team: 'hero' });
+      const barY = Math.round(footPos.y + 4 * layoutScale);
+      addActorPaint(uid, () => drawCombatHealthBar(ctx, { x: barX, y: barY, width: baseW, height: baseH, fillWidth: barState.fillW, trailWidth: barState.yellowW, team: 'hero' }));
       const buffs = Object.entries(state.globals.RealtimeSkillEffects?.[uid] || {})
         .filter(([, entry]) => Number(entry?.expiresAt || 0) > Number(state.globals.time || 0))
         .slice(0, 5);
@@ -388,8 +414,9 @@ export function renderRuntime(deps) {
       const iconSize = Math.max(9, 10 * layoutScale);
       const iconGap = Math.max(1, 2 * layoutScale);
       const iconsWidth = buffs.length * iconSize + Math.max(0, buffs.length - 1) * iconGap;
-      ctx.save();
-      buffs.forEach(([id, entry], index) => {
+      actorFrontOverlayQueue.push(() => {
+        ctx.save();
+        buffs.forEach(([id, entry], index) => {
         const x = Math.round(pos.x - iconsWidth / 2 + index * (iconSize + iconGap));
         const y = Math.round(barY - iconSize - 3 * layoutScale);
         const [label, color] = buffStyle[id] || [id[0]?.toUpperCase() || '?', '#9e92c7'];
@@ -400,9 +427,15 @@ export function renderRuntime(deps) {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(id === 'fortunes_blessing' ? String(entry.stat || label).slice(0, 1) : label, x + iconSize / 2, y + iconSize / 2);
+        });
+        ctx.restore();
       });
-      ctx.restore();
     }
+
+    actorPaintQueue.sort((a, b) => Number(a.footY || 0) - Number(b.footY || 0) || Number(a.uid || 0) - Number(b.uid || 0));
+    for (const entry of actorPaintQueue) entry.paint();
+    for (const paint of actorFrontOverlayQueue) paint();
+    renderHealBlooms('front');
 
     // Render hero damage/heal text above hero sprites
     renderDamageTexts(d => d.targetKind === 'hero');`,

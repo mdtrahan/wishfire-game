@@ -11,7 +11,7 @@ import { castRealtimeHeroSkill, realtimeBasicInterval, realtimeProvokeTarget, re
 import { pickEnemyTargetHeroFromRoster } from '../web-runner/src/core/enemyTargetingRules.mjs';
 import { selectContinuousEnemyTarget } from '../web-runner/src/core/arenaCombat.mjs';
 import { isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
-import { armContinuousCombatBoss, createContinuousCombatStageState, maybeAdvanceContinuousCombatStage } from '../web-runner/src/core/continuousCombatStage.mjs';
+import { createContinuousCombatStageState, maybeAdvanceContinuousCombatStage } from '../web-runner/src/core/continuousCombatStage.mjs';
 import { advanceEnemyActionSimulation, createCombatSimulationTicker, processPendingHeroHits, shouldFreezeCombatSimulation } from '../web-runner/systems/combatSimulationTick.mjs';
 import { recordEnemyDefeatReward, settleContinuousCombatRewards, settleDefeat } from '../web-runner/modules/heroCommands.mjs';
 import { createHeroProgressStore, newHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
@@ -245,7 +245,7 @@ test('two-wave fixture records real hero scheduler actions, active skills, basic
   assert.ok(actionLog.some(event => event.castAt >= 25 && event.targetUID === 22), 'the later wave joins live combat while the earlier wave survives');
 });
 
-test('stage and recovery seams require full-wave clear, preserve boss availability, paused clocks and defeat rewards', () => {
+test('stage and recovery seams require full-wave clear, auto-enter the boss, preserve paused clocks and defeat rewards', () => {
   const stage = createContinuousCombatStageState(17);
   const a = makeEnemy(30, 'Gobloc', 190, 180), b = makeEnemy(31, 'Skeleton', 195, 190);
   const globals = { time: 3, ContinuousCombatStageLoop: 1, GamePhase: 'RUNTIME', ContinuousCombatStage: { ...stage, nextEmissionAt: 3 },
@@ -281,16 +281,16 @@ test('stage and recovery seams require full-wave clear, preserve boss availabili
   const gateGlobals = { time: 4, ContinuousCombatStageLoop: 1, GamePhase: 'RUNTIME', ContinuousCombatStage: gate,
     EnemySlots: [], EnemyData: globals.EnemyData, EnemyDeathVisualHoldByUID: {} };
   const gateEntities = [];
-  const gateCall = (name, ...args) => name === 'SpawnEnemy' ? makeEnemy(500 + args[1], args[0].name, 240, 180) : true;
+  const bossSpawned = [];
+  const gateCall = (name, ...args) => {
+    if(name!=='SpawnEnemy')return true;
+    const enemy=makeEnemy(500+args[1],args[0].name,240,180,1_000_000,1_000_000,{enemyRole:args[0].enemyRole});
+    bossSpawned.push(enemy);gateEntities.push(enemy);return enemy;
+  };
   maybeAdvanceContinuousCombatStage({ globals: gateGlobals, entities: gateEntities, call: gateCall });
   assert.equal(gateGlobals.ContinuousCombatStage.bossAvailable, true);
-  const bossSpawned = [];
-  assert.equal(armContinuousCombatBoss(gateGlobals,gateEntities,(name,...args)=>{
-    if(name==='SpawnEnemy'){const enemy=makeEnemy(600+args[1],args[0].name,240,180,1_000_000,1_000_000,{enemyRole:args[0].enemyRole});bossSpawned.push(enemy);gateEntities.push(enemy);return enemy;}
-    return true;
-  }),true);
   assert.equal(gateGlobals.ContinuousCombatStage.bossActive, true);
-  assert.ok(bossSpawned.some(enemy => enemy.enemyRole === 'boss'), 'boss click immediately replaces farming with the boss');
+  assert.ok(bossSpawned.some(enemy => enemy.enemyRole === 'boss'), 'the fourth clear immediately replaces farming with the boss');
 
   const hero = Object.assign(newHeroProgress('Falie', 'hero-1'), { uid: 1, kind: 'hero', heroDisplaySlot: 0 });
   const heroes = [hero];

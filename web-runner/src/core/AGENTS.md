@@ -90,7 +90,7 @@
 
 - Lamp guidance stores validated optional v5 bits for actual storage/comparison/preview actions. They are monotonic receipts with no currency, EXP, gear or tier effect; existing earned draw/equip/dismantle/tier records own the other milestones.
 
-- The current tier owns boss availability across farming, defeat and reload. A Boss click cancels fodder and its queued hits immediately; only boss victory clears availability and advances the tier. Never carry bossArmed into the next tier.
+- Four cleared waves set boss readiness and enter the boss automatically through the existing 440ms wipe, with no intervening fodder wave. A restored readiness checkpoint enters once on the first unpaused runtime tick. Boss defeat resets wave one and readiness, requiring four waves before retry; victory clears readiness and advances the tier. Boss entry cancels queued fodder actions immediately. Never carry bossArmed into the next tier.
 - Canonical hero levels cap at100. Existing five-skill kits declare unlock levels1/5/10/15/25; scheduler eligibility, direct casts, reactive retaliation and menu disclosure read those definitions. Preserve earned EXP and gear; defaults are configurable tuning.
 - Lamp v5 accepts optional upgradeEndsAt and speedUpTickets. The fourth paid stage records a7-hour deadline; only expiry grants the next level. Five-minute tickets reduce that same deadline and SPD UP ALL spends only the amount needed. Partial stages and already-earned levels remain intact.
 

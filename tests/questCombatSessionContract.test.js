@@ -38,7 +38,7 @@ test('endless sessions never surface a finite-victory completion path', async ()
  assert.doesNotMatch(src,/battle-results|showResults|Continue/);
 });
 
-test('continuous defeat is free, preserves the earned boss gate and restarts wave one at full health', async () => {
+test('continuous defeat is free, clears boss readiness and restarts wave one at full health', async () => {
  const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
  const enemyRows=['Gobloc','Skeleton'].map((name,index)=>({name,HP:20+index*2,ATK:2,DEF:2,MAG:1,RES:1,SPD:8,CombatPower:20+index}));
  const state={entities:[{uid:1,kind:'hero',heroInstanceKey:'Hondo',hp:0,maxHP:42,isAlive:false,actionState:'ko',actionFacing:'left',actionStateUntil:86400},{uid:9,kind:'enemy',hp:30,maxHP:30}],globals:{
@@ -56,7 +56,7 @@ test('continuous defeat is free, preserves the earned boss gate and restarts wav
  assert.equal(state.globals.ContinuousCombatStage.region,2);
  assert.equal(state.globals.ContinuousCombatStage.stage,3);
  assert.equal(state.globals.ContinuousCombatStage.wave,1);
- assert.equal(state.globals.ContinuousCombatStage.bossAvailable,true);
+ assert.equal(state.globals.ContinuousCombatStage.bossAvailable,false);
  assert.equal(state.globals.ContinuousCombatStage.bossArmed,false);
  assert.equal(state.entities[0].hp,42);
  assert.equal(state.entities[0].locomotion,'idle');assert.equal(state.entities[0].actionState,undefined);assert.equal(state.entities[0].actionStateUntil,undefined);

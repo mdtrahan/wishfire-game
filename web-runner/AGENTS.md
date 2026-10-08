@@ -23,6 +23,8 @@
 - Production and developer QA variants enter the same realtime combat loop. The app routes defeat checks through the Rust-owned outcome resolver after scheduled combat work, freezes clocks while paused or backgrounded, and never dispatches turn advancement.
 - Do not store durable gameplay rules in render modules, asset JSON, or `app.js` when a module/core owner exists.
 
+- The combat progress HUD replaces manual Boss input. Three internal notches represent four full waves; chapter/stage reads authoritative stage state. The shared stage owner enters bosses automatically, and defeat resets progress before retry.
+
 ## Work Guidance
 - Before editing, read the child AGENTS.md for the touched subfolder.
 - Treat `app.js`, `modules/functionBank.js`, `systems/renderRuntime.js`, and `systems/simulationCoreShadow.js` as hot files.
