@@ -186,6 +186,13 @@ effectiveBody = effectiveBody.replace(
   "    renderHealBlooms('front');",
   '',
 );
+effectiveBody = replaceRequired(
+  effectiveBody,
+  'const ampShowsBadge = ampActive && ampProjection?.showBadge !== false;',
+  '',
+  'hero amp badge condition',
+);
+removeBlock('if (ampShowsBadge) {');
 effectiveBody = effectiveBody.replace('    actorPaintQueue.sort(', '    renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: combatWorldVfxScale });\n    actorPaintQueue.sort(');
   return effectiveBody;
 }
@@ -403,33 +410,6 @@ export function renderRuntime(deps) {
       const barX = Math.round(pos.x - baseW / 2);
       const barY = Math.round(footPos.y + 4 * layoutScale);
       addActorPaint(uid, () => drawCombatHealthBar(ctx, { x: barX, y: barY, width: baseW, height: baseH, fillWidth: barState.fillW, trailWidth: barState.yellowW, team: 'hero' }));
-      const buffs = Object.entries(state.globals.RealtimeSkillEffects?.[uid] || {})
-        .filter(([, entry]) => Number(entry?.expiresAt || 0) > Number(state.globals.time || 0))
-        .slice(0, 5);
-      const buffStyle = {
-        cover: ['C', '#4f9ce8'], brace: ['B', '#6794bc'], wishgrant: ['W', '#dcb64b'],
-        quickload: ['Q', '#eac445'], split_feed: ['S', '#71bc88'], patchwork: ['P', '#d27ea8'],
-        fortunes_blessing: ['F', '#e2b861'],
-      };
-      const iconSize = Math.max(9, 10 * layoutScale);
-      const iconGap = Math.max(1, 2 * layoutScale);
-      const iconsWidth = buffs.length * iconSize + Math.max(0, buffs.length - 1) * iconGap;
-      actorFrontOverlayQueue.push(() => {
-        ctx.save();
-        buffs.forEach(([id, entry], index) => {
-        const x = Math.round(pos.x - iconsWidth / 2 + index * (iconSize + iconGap));
-        const y = Math.round(barY - iconSize - 3 * layoutScale);
-        const [label, color] = buffStyle[id] || [id[0]?.toUpperCase() || '?', '#9e92c7'];
-        ctx.fillStyle = color;
-        ctx.fillRect(x, y, iconSize, iconSize);
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold ' + Math.max(6, Math.floor(7 * layoutScale)) + 'px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(id === 'fortunes_blessing' ? String(entry.stat || label).slice(0, 1) : label, x + iconSize / 2, y + iconSize / 2);
-        });
-        ctx.restore();
-      });
     }
 
     actorPaintQueue.sort((a, b) => Number(a.footY || 0) - Number(b.footY || 0) || Number(a.uid || 0) - Number(b.uid || 0));

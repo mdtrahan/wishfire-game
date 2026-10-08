@@ -23,6 +23,11 @@ test('battlefield consumes each complete canonical hero sprite while enemy sprit
   const bodyStart = source.indexOf('    const body = [');
   const bodyEnd = source.indexOf('    const effectiveBody = assembleCombatRenderBody(body);', bodyStart);
   const compiledBody = vm.runInNewContext(`(function(){${source.slice(bodyStart, bodyEnd)};return body;})()`);
+  const helperStart = source.indexOf('export function assembleCombatRenderBody(body) {');
+  const helperEnd = source.indexOf('\nlet renderImpl = null;', helperStart);
+  const assemble = new Function(`${source.slice(helperStart, helperEnd).replace('export function', 'function')};return assembleCombatRenderBody;`)();
+  const assembledBody = assemble(compiledBody);
+  assert.doesNotThrow(() => new Function('scope', 'dtOverride', `with (scope) { ${assembledBody} }`));
   assert.match(source, /const heroArt = heroArtAsset\(entry\.portraitName\);/);
   assert.match(source, /const img = heroPortraitImages\[heroArt\?\.key \|\| entry\.portraitName\];/);
   assert.match(source, /resolveHeroArtSourceRect\(img, heroArt\.combat\)/);
@@ -34,6 +39,11 @@ test('battlefield consumes each complete canonical hero sprite while enemy sprit
   assert.match(compiledBody, /const footAnchor = state\.globals\.HeroRestFeetPosByUID\?\.\[uid\] \|\| anchor;/);
   assert.match(compiledBody, /const barY = Math\.round\(footPos\.y \+ 4 \* layoutScale\);/);
   assert.match(compiledBody, /addActorPaint\(uid, \(\) => drawCombatHealthBar/);
+  assert.doesNotMatch(assembledBody, /buffStyle|RealtimeSkillEffects\?\.\[uid\]/);
+  assert.doesNotMatch(assembledBody, /ampShowsBadge|badgeBottomY/);
+  assert.match(assembledBody, /drawCombatHealthBar\(ctx, \{ x: barX, y: barY,[^}]*team: 'hero' \}\)/);
+  assert.match(assembledBody, /drawImage\(wardBarrierImage/);
+  assert.match(assembledBody, /renderHeroRegenShimmer\(drawX, drawY, scaledW, scaledH, hero\.uid\)/);
   assert.match(source, /drawCombatActorSprite\(ctx, sprite, \{ drawX, drawY, width: enemyW, height: enemyH, pivotX: pos\.x, orientation: activeCombatOrientation, facing: enemy\.facing, nativeFacing: 'left', actorUID: enemy\.uid, effects: g\.RealtimeSkillEffects, now: Number\(g\.time \|\| 0\) \}\)/);
   assert.deepEqual(resolveHeroArtSourceRect({ width: 100, height: 200 }, heroArtAsset('Fara').combat), {
     sourceX: 0, sourceY: 0, sourceWidth: 100, sourceHeight: 200,
