@@ -30,6 +30,8 @@
 - Browser visual QA for visible asset or layout changes.
 
 ## Child DOX Index
+- `puppets/hondo/AGENTS.md` - shared pilot rig and character-painted source.
+- `puppets/kaja/AGENTS.md` - shared pilot rig and character-painted source.
 - `puppets/chimerilass/AGENTS.md` - actor source geometry, identity and native motion contracts.
 - `puppets/highgobloc/AGENTS.md` - actor source geometry, identity and native motion contracts.
 - `puppets/lizardo/AGENTS.md` - actor source geometry, identity and native motion contracts.
@@ -104,3 +106,5 @@
 
 - `puppets/` holds independently accepted layered actor sources and Synfig-authored clips. Adopt each roster entry only after its source and seven-state motion gates pass; final assembled acceptance remains separate. Keep rejected/native QA recovery in task checkpoints instead of the active asset tree. Preserve original static hero/enemy sprites. Native bone sources export transparent PNG frames; runtime metadata owns presentation cadence and foot origins only. Opposite facing uses documented mirrored source until authored coverage replaces it.
 - Puppet action clips must read at their battlefield size through anticipation, a target-directed strike or outward release, and recovery. Hurt requires a distinct recoil silhouette. Judge motion independently from neutral source coverage.
+
+- Hondo and Kaja share Fara's fifteen-bone rig and fourteen paint slots. Character repainting stays within this common chibi silhouette; retain joints, pivots and motion channels. Canonical source and exported states remain presentation-only.

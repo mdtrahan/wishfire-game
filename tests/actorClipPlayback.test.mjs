@@ -90,3 +90,29 @@ test('roster stress bounds settled and in-flight clips, protects paint and retri
   fail = false; assert.ok(await load('actor0', 'idle', 'right'));
   console.log(JSON.stringify({ rosterKeys: 196, transitions: 1000, logicalHighWaterBytes: highWater, ...load.retention() }));
 });
+
+test('Hondo and Kaja reuse the Fara skeleton and motion channels across every state', () => {
+  const base = new URL('../web-runner/assets/puppets/', import.meta.url);
+  const manifest = JSON.parse(fs.readFileSync(new URL('manifest.json', base), 'utf8'));
+  const normalize = source => {
+    const ids = new Map();
+    return source.replace(/[A-F0-9]{32}/g, id => {
+      if (!ids.has(id)) ids.set(id, `bone${ids.size}`);
+      return ids.get(id);
+    }).replace(/<name>(?:fara|hondo|kaja) ([^<]+)<\/name>/, '<name>actor $1</name>')
+      .replace(/(<param name="filename">\s*<string>)[^<]+(<\/string>)/g, '$1paint.png$2');
+  };
+  for (const actor of ['hondo', 'kaja']) {
+    assert.ok(manifest.actors[actor], `${actor} is adopted`);
+    for (const [state, facings] of Object.entries(manifest.actors.fara.clips)) {
+      for (const [facing, reference] of Object.entries(facings)) {
+        const clip = manifest.actors[actor].clips[state][facing];
+        const source = fs.readFileSync(new URL(clip.source, base), 'utf8');
+        assert.equal(normalize(source), normalize(fs.readFileSync(new URL(reference.source, base), 'utf8')), `${actor}/${state}/${facing} shares the rig and motion`);
+        assert.deepEqual(clip.frameHoldMs, reference.frameHoldMs);
+        assert.deepEqual(clip.footOrigin, reference.footOrigin);
+        for (const frame of clip.frames) assert.ok(fs.existsSync(new URL(frame, base)), frame);
+      }
+    }
+  }
+});

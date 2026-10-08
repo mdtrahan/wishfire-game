@@ -5362,6 +5362,1078 @@
           }
         }
       }
+    },
+    "hondo": {
+      "sourceFacing": "right",
+      "oppositeFacing": "mirrored-source; asymmetric costume reverses sides",
+      "clips": {
+        "idle": {
+          "left": {
+            "source": "hondo/source/idle-left.sif",
+            "frames": [
+              "hondo/frames/idle-left-000.png",
+              "hondo/frames/idle-left-001.png",
+              "hondo/frames/idle-left-002.png",
+              "hondo/frames/idle-left-003.png",
+              "hondo/frames/idle-left-004.png",
+              "hondo/frames/idle-left-005.png",
+              "hondo/frames/idle-left-006.png",
+              "hondo/frames/idle-left-007.png",
+              "hondo/frames/idle-left-008.png",
+              "hondo/frames/idle-left-009.png",
+              "hondo/frames/idle-left-010.png",
+              "hondo/frames/idle-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "hondo/source/idle-right.sif",
+            "frames": [
+              "hondo/frames/idle-right-000.png",
+              "hondo/frames/idle-right-001.png",
+              "hondo/frames/idle-right-002.png",
+              "hondo/frames/idle-right-003.png",
+              "hondo/frames/idle-right-004.png",
+              "hondo/frames/idle-right-005.png",
+              "hondo/frames/idle-right-006.png",
+              "hondo/frames/idle-right-007.png",
+              "hondo/frames/idle-right-008.png",
+              "hondo/frames/idle-right-009.png",
+              "hondo/frames/idle-right-010.png",
+              "hondo/frames/idle-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "walk": {
+          "left": {
+            "source": "hondo/source/walk-left.sif",
+            "frames": [
+              "hondo/frames/walk-left-000.png",
+              "hondo/frames/walk-left-001.png",
+              "hondo/frames/walk-left-002.png",
+              "hondo/frames/walk-left-003.png",
+              "hondo/frames/walk-left-004.png",
+              "hondo/frames/walk-left-005.png",
+              "hondo/frames/walk-left-006.png",
+              "hondo/frames/walk-left-007.png",
+              "hondo/frames/walk-left-008.png",
+              "hondo/frames/walk-left-009.png",
+              "hondo/frames/walk-left-010.png",
+              "hondo/frames/walk-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "hondo/source/walk-right.sif",
+            "frames": [
+              "hondo/frames/walk-right-000.png",
+              "hondo/frames/walk-right-001.png",
+              "hondo/frames/walk-right-002.png",
+              "hondo/frames/walk-right-003.png",
+              "hondo/frames/walk-right-004.png",
+              "hondo/frames/walk-right-005.png",
+              "hondo/frames/walk-right-006.png",
+              "hondo/frames/walk-right-007.png",
+              "hondo/frames/walk-right-008.png",
+              "hondo/frames/walk-right-009.png",
+              "hondo/frames/walk-right-010.png",
+              "hondo/frames/walk-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "basic": {
+          "left": {
+            "source": "hondo/source/attack-left.sif",
+            "frames": [
+              "hondo/frames/attack-left-000.png",
+              "hondo/frames/attack-left-001.png",
+              "hondo/frames/attack-left-002.png",
+              "hondo/frames/attack-left-003.png",
+              "hondo/frames/attack-left-004.png",
+              "hondo/frames/attack-left-005.png",
+              "hondo/frames/attack-left-006.png",
+              "hondo/frames/attack-left-007.png",
+              "hondo/frames/attack-left-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "impactTimeMs": 416.6666666666667,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "hondo/source/attack-right.sif",
+            "frames": [
+              "hondo/frames/attack-right-000.png",
+              "hondo/frames/attack-right-001.png",
+              "hondo/frames/attack-right-002.png",
+              "hondo/frames/attack-right-003.png",
+              "hondo/frames/attack-right-004.png",
+              "hondo/frames/attack-right-005.png",
+              "hondo/frames/attack-right-006.png",
+              "hondo/frames/attack-right-007.png",
+              "hondo/frames/attack-right-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "impactTimeMs": 416.6666666666667,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "cast": {
+          "left": {
+            "source": "hondo/source/cast-left.sif",
+            "frames": [
+              "hondo/frames/cast-left-000.png",
+              "hondo/frames/cast-left-001.png",
+              "hondo/frames/cast-left-002.png",
+              "hondo/frames/cast-left-003.png",
+              "hondo/frames/cast-left-004.png",
+              "hondo/frames/cast-left-005.png",
+              "hondo/frames/cast-left-006.png",
+              "hondo/frames/cast-left-007.png",
+              "hondo/frames/cast-left-008.png",
+              "hondo/frames/cast-left-009.png",
+              "hondo/frames/cast-left-010.png",
+              "hondo/frames/cast-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "releaseTimeMs": 500,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "hondo/source/cast-right.sif",
+            "frames": [
+              "hondo/frames/cast-right-000.png",
+              "hondo/frames/cast-right-001.png",
+              "hondo/frames/cast-right-002.png",
+              "hondo/frames/cast-right-003.png",
+              "hondo/frames/cast-right-004.png",
+              "hondo/frames/cast-right-005.png",
+              "hondo/frames/cast-right-006.png",
+              "hondo/frames/cast-right-007.png",
+              "hondo/frames/cast-right-008.png",
+              "hondo/frames/cast-right-009.png",
+              "hondo/frames/cast-right-010.png",
+              "hondo/frames/cast-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "releaseTimeMs": 500,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "hurt": {
+          "left": {
+            "source": "hondo/source/hit-left.sif",
+            "frames": [
+              "hondo/frames/hit-left-000.png",
+              "hondo/frames/hit-left-001.png",
+              "hondo/frames/hit-left-002.png",
+              "hondo/frames/hit-left-003.png",
+              "hondo/frames/hit-left-004.png",
+              "hondo/frames/hit-left-005.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "hondo/source/hit-right.sif",
+            "frames": [
+              "hondo/frames/hit-right-000.png",
+              "hondo/frames/hit-right-001.png",
+              "hondo/frames/hit-right-002.png",
+              "hondo/frames/hit-right-003.png",
+              "hondo/frames/hit-right-004.png",
+              "hondo/frames/hit-right-005.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "ko": {
+          "left": {
+            "source": "hondo/source/defeated-left.sif",
+            "frames": [
+              "hondo/frames/defeated-left-000.png",
+              "hondo/frames/defeated-left-001.png",
+              "hondo/frames/defeated-left-002.png",
+              "hondo/frames/defeated-left-003.png",
+              "hondo/frames/defeated-left-004.png",
+              "hondo/frames/defeated-left-005.png",
+              "hondo/frames/defeated-left-006.png",
+              "hondo/frames/defeated-left-007.png",
+              "hondo/frames/defeated-left-008.png",
+              "hondo/frames/defeated-left-009.png",
+              "hondo/frames/defeated-left-010.png",
+              "hondo/frames/defeated-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "hondo/source/defeated-right.sif",
+            "frames": [
+              "hondo/frames/defeated-right-000.png",
+              "hondo/frames/defeated-right-001.png",
+              "hondo/frames/defeated-right-002.png",
+              "hondo/frames/defeated-right-003.png",
+              "hondo/frames/defeated-right-004.png",
+              "hondo/frames/defeated-right-005.png",
+              "hondo/frames/defeated-right-006.png",
+              "hondo/frames/defeated-right-007.png",
+              "hondo/frames/defeated-right-008.png",
+              "hondo/frames/defeated-right-009.png",
+              "hondo/frames/defeated-right-010.png",
+              "hondo/frames/defeated-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "spawn": {
+          "left": {
+            "source": "hondo/source/spawn-left.sif",
+            "frames": [
+              "hondo/frames/spawn-left-000.png",
+              "hondo/frames/spawn-left-001.png",
+              "hondo/frames/spawn-left-002.png",
+              "hondo/frames/spawn-left-003.png",
+              "hondo/frames/spawn-left-004.png",
+              "hondo/frames/spawn-left-005.png",
+              "hondo/frames/spawn-left-006.png",
+              "hondo/frames/spawn-left-007.png",
+              "hondo/frames/spawn-left-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "hondo/source/spawn-right.sif",
+            "frames": [
+              "hondo/frames/spawn-right-000.png",
+              "hondo/frames/spawn-right-001.png",
+              "hondo/frames/spawn-right-002.png",
+              "hondo/frames/spawn-right-003.png",
+              "hondo/frames/spawn-right-004.png",
+              "hondo/frames/spawn-right-005.png",
+              "hondo/frames/spawn-right-006.png",
+              "hondo/frames/spawn-right-007.png",
+              "hondo/frames/spawn-right-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        }
+      }
+    },
+    "kaja": {
+      "sourceFacing": "right",
+      "oppositeFacing": "mirrored-source; asymmetric costume reverses sides",
+      "clips": {
+        "idle": {
+          "left": {
+            "source": "kaja/source/idle-left.sif",
+            "frames": [
+              "kaja/frames/idle-left-000.png",
+              "kaja/frames/idle-left-001.png",
+              "kaja/frames/idle-left-002.png",
+              "kaja/frames/idle-left-003.png",
+              "kaja/frames/idle-left-004.png",
+              "kaja/frames/idle-left-005.png",
+              "kaja/frames/idle-left-006.png",
+              "kaja/frames/idle-left-007.png",
+              "kaja/frames/idle-left-008.png",
+              "kaja/frames/idle-left-009.png",
+              "kaja/frames/idle-left-010.png",
+              "kaja/frames/idle-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "kaja/source/idle-right.sif",
+            "frames": [
+              "kaja/frames/idle-right-000.png",
+              "kaja/frames/idle-right-001.png",
+              "kaja/frames/idle-right-002.png",
+              "kaja/frames/idle-right-003.png",
+              "kaja/frames/idle-right-004.png",
+              "kaja/frames/idle-right-005.png",
+              "kaja/frames/idle-right-006.png",
+              "kaja/frames/idle-right-007.png",
+              "kaja/frames/idle-right-008.png",
+              "kaja/frames/idle-right-009.png",
+              "kaja/frames/idle-right-010.png",
+              "kaja/frames/idle-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "walk": {
+          "left": {
+            "source": "kaja/source/walk-left.sif",
+            "frames": [
+              "kaja/frames/walk-left-000.png",
+              "kaja/frames/walk-left-001.png",
+              "kaja/frames/walk-left-002.png",
+              "kaja/frames/walk-left-003.png",
+              "kaja/frames/walk-left-004.png",
+              "kaja/frames/walk-left-005.png",
+              "kaja/frames/walk-left-006.png",
+              "kaja/frames/walk-left-007.png",
+              "kaja/frames/walk-left-008.png",
+              "kaja/frames/walk-left-009.png",
+              "kaja/frames/walk-left-010.png",
+              "kaja/frames/walk-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "kaja/source/walk-right.sif",
+            "frames": [
+              "kaja/frames/walk-right-000.png",
+              "kaja/frames/walk-right-001.png",
+              "kaja/frames/walk-right-002.png",
+              "kaja/frames/walk-right-003.png",
+              "kaja/frames/walk-right-004.png",
+              "kaja/frames/walk-right-005.png",
+              "kaja/frames/walk-right-006.png",
+              "kaja/frames/walk-right-007.png",
+              "kaja/frames/walk-right-008.png",
+              "kaja/frames/walk-right-009.png",
+              "kaja/frames/walk-right-010.png",
+              "kaja/frames/walk-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "basic": {
+          "left": {
+            "source": "kaja/source/attack-left.sif",
+            "frames": [
+              "kaja/frames/attack-left-000.png",
+              "kaja/frames/attack-left-001.png",
+              "kaja/frames/attack-left-002.png",
+              "kaja/frames/attack-left-003.png",
+              "kaja/frames/attack-left-004.png",
+              "kaja/frames/attack-left-005.png",
+              "kaja/frames/attack-left-006.png",
+              "kaja/frames/attack-left-007.png",
+              "kaja/frames/attack-left-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "impactTimeMs": 416.6666666666667,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "kaja/source/attack-right.sif",
+            "frames": [
+              "kaja/frames/attack-right-000.png",
+              "kaja/frames/attack-right-001.png",
+              "kaja/frames/attack-right-002.png",
+              "kaja/frames/attack-right-003.png",
+              "kaja/frames/attack-right-004.png",
+              "kaja/frames/attack-right-005.png",
+              "kaja/frames/attack-right-006.png",
+              "kaja/frames/attack-right-007.png",
+              "kaja/frames/attack-right-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "impactTimeMs": 416.6666666666667,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "cast": {
+          "left": {
+            "source": "kaja/source/cast-left.sif",
+            "frames": [
+              "kaja/frames/cast-left-000.png",
+              "kaja/frames/cast-left-001.png",
+              "kaja/frames/cast-left-002.png",
+              "kaja/frames/cast-left-003.png",
+              "kaja/frames/cast-left-004.png",
+              "kaja/frames/cast-left-005.png",
+              "kaja/frames/cast-left-006.png",
+              "kaja/frames/cast-left-007.png",
+              "kaja/frames/cast-left-008.png",
+              "kaja/frames/cast-left-009.png",
+              "kaja/frames/cast-left-010.png",
+              "kaja/frames/cast-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "releaseTimeMs": 500,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "kaja/source/cast-right.sif",
+            "frames": [
+              "kaja/frames/cast-right-000.png",
+              "kaja/frames/cast-right-001.png",
+              "kaja/frames/cast-right-002.png",
+              "kaja/frames/cast-right-003.png",
+              "kaja/frames/cast-right-004.png",
+              "kaja/frames/cast-right-005.png",
+              "kaja/frames/cast-right-006.png",
+              "kaja/frames/cast-right-007.png",
+              "kaja/frames/cast-right-008.png",
+              "kaja/frames/cast-right-009.png",
+              "kaja/frames/cast-right-010.png",
+              "kaja/frames/cast-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "releaseTimeMs": 500,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "hurt": {
+          "left": {
+            "source": "kaja/source/hit-left.sif",
+            "frames": [
+              "kaja/frames/hit-left-000.png",
+              "kaja/frames/hit-left-001.png",
+              "kaja/frames/hit-left-002.png",
+              "kaja/frames/hit-left-003.png",
+              "kaja/frames/hit-left-004.png",
+              "kaja/frames/hit-left-005.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "kaja/source/hit-right.sif",
+            "frames": [
+              "kaja/frames/hit-right-000.png",
+              "kaja/frames/hit-right-001.png",
+              "kaja/frames/hit-right-002.png",
+              "kaja/frames/hit-right-003.png",
+              "kaja/frames/hit-right-004.png",
+              "kaja/frames/hit-right-005.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "ko": {
+          "left": {
+            "source": "kaja/source/defeated-left.sif",
+            "frames": [
+              "kaja/frames/defeated-left-000.png",
+              "kaja/frames/defeated-left-001.png",
+              "kaja/frames/defeated-left-002.png",
+              "kaja/frames/defeated-left-003.png",
+              "kaja/frames/defeated-left-004.png",
+              "kaja/frames/defeated-left-005.png",
+              "kaja/frames/defeated-left-006.png",
+              "kaja/frames/defeated-left-007.png",
+              "kaja/frames/defeated-left-008.png",
+              "kaja/frames/defeated-left-009.png",
+              "kaja/frames/defeated-left-010.png",
+              "kaja/frames/defeated-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "kaja/source/defeated-right.sif",
+            "frames": [
+              "kaja/frames/defeated-right-000.png",
+              "kaja/frames/defeated-right-001.png",
+              "kaja/frames/defeated-right-002.png",
+              "kaja/frames/defeated-right-003.png",
+              "kaja/frames/defeated-right-004.png",
+              "kaja/frames/defeated-right-005.png",
+              "kaja/frames/defeated-right-006.png",
+              "kaja/frames/defeated-right-007.png",
+              "kaja/frames/defeated-right-008.png",
+              "kaja/frames/defeated-right-009.png",
+              "kaja/frames/defeated-right-010.png",
+              "kaja/frames/defeated-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "spawn": {
+          "left": {
+            "source": "kaja/source/spawn-left.sif",
+            "frames": [
+              "kaja/frames/spawn-left-000.png",
+              "kaja/frames/spawn-left-001.png",
+              "kaja/frames/spawn-left-002.png",
+              "kaja/frames/spawn-left-003.png",
+              "kaja/frames/spawn-left-004.png",
+              "kaja/frames/spawn-left-005.png",
+              "kaja/frames/spawn-left-006.png",
+              "kaja/frames/spawn-left-007.png",
+              "kaja/frames/spawn-left-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "kaja/source/spawn-right.sif",
+            "frames": [
+              "kaja/frames/spawn-right-000.png",
+              "kaja/frames/spawn-right-001.png",
+              "kaja/frames/spawn-right-002.png",
+              "kaja/frames/spawn-right-003.png",
+              "kaja/frames/spawn-right-004.png",
+              "kaja/frames/spawn-right-005.png",
+              "kaja/frames/spawn-right-006.png",
+              "kaja/frames/spawn-right-007.png",
+              "kaja/frames/spawn-right-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        }
+      }
     }
   }
 }
