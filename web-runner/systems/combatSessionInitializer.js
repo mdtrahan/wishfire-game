@@ -399,6 +399,11 @@ export function createCombatSessionInitializer({
         : generateEncounterSeedFn();
       state.globals.EncounterSeed = encounterSeed;
       state.globals.EncounterSeedExplicit = 0;
+      if (Number(state.globals.ContinuousCombatStageLoop || 0) === 1 && state.globals.ContinuousCombatStage) {
+        // The selected encounter seed also owns pack-count randomness. Explicit QA seeds
+        // remain authoritative because encounterSeed already preserves that request.
+        state.globals.ContinuousCombatStage.seed = (Number(encounterSeed) >>> 0) || 1;
+      }
       installCombatRuntimeRandom(deriveCombatRuntimeRngSeed(encounterSeed), 'initEntities');
       const startingPartyCP = computeEncounterTotalCP(heroes.map(hero => ({ combatPower: computeCombatPower(hero) })));
       const continuousPartyCP = getContinuousCombatPartyCP(heroes);

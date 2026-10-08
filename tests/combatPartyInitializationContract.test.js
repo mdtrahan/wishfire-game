@@ -40,7 +40,9 @@ function productionPartyMembers() {
   return runtime.buildConfiguredCombatPartyMembers(slots).heroMembers;
 }
 
-async function initialize(heroMembers, escortMember = null, withEnemy = false, { continuousStage = null, enemyRows = null } = {}) {
+async function initialize(heroMembers, escortMember = null, withEnemy = false, {
+  continuousStage = null, enemyRows = null, encounterSeed = 0, encounterSeedExplicit = false, generatedEncounterSeed = 123,
+} = {}) {
   const { resetCombatSessionConditions } = await import(pathToFileURL(path.join(systems, 'combatSessionReset.mjs')));
   const filename = path.join(systems, 'combatSessionInitializer.js');
   const source = fs.readFileSync(filename, 'utf8')
@@ -57,7 +59,10 @@ async function initialize(heroMembers, escortMember = null, withEnemy = false, {
     runtimeDebugLogging: { startupDebugLog() {} },
   };
   vm.runInNewContext(source + '\nmodule.exports = { createCombatSessionInitializer };', context, { filename });
-  const state = { globals: continuousStage ? { ContinuousCombatStageLoop: 1, ContinuousCombatStage: continuousStage, EncounterMaxSlots: 36 } : {}, entities: [] };
+  const state = { globals: continuousStage ? {
+    ContinuousCombatStageLoop: 1, ContinuousCombatStage: continuousStage, EncounterMaxSlots: 36,
+    EncounterSeed: encounterSeed, EncounterSeedExplicit: encounterSeedExplicit ? 1 : 0,
+  } : {}, entities: [] };
   const gameState = {};
   const calls = [];
   const init = context.module.exports.createCombatSessionInitializer({
@@ -79,7 +84,7 @@ async function initialize(heroMembers, escortMember = null, withEnemy = false, {
     computeCombatPower: require('../web-runner/src/core/combatPower.mjs').computeCombatPower,
     createSeededRng: () => () => 0,
     resetBootstrapRngSession() {},
-    generateEncounterSeed: () => 123,
+    generateEncounterSeed: () => generatedEncounterSeed,
     deriveCombatRuntimeRngSeed: seed => seed,
     installCombatRuntimeRandom() {},
     getConfiguredHeroSlots: () => heroMembers.map(hero => hero?.instanceName || ''),
@@ -93,11 +98,14 @@ async function initialize(heroMembers, escortMember = null, withEnemy = false, {
 }
 
 test('fresh continuous initializer pads weak packs and finalize preserves each planned sector', async () => {
-  const { createContinuousCombatStageState, finalizeContinuousCombatProduction } = await import('../web-runner/src/core/continuousCombatStage.mjs');
+  const { buildContinuousCombatSpawnPlan, createContinuousCombatStageState, finalizeContinuousCombatProduction, getContinuousCombatPartyCP } = await import('../web-runner/src/core/continuousCombatStage.mjs');
   const rows=['Gobloc','Skeleton'].map(name=>({name,HP:1,ATK:1,DEF:1,MAG:1,RES:1,SPD:1}));
   const {state}=await initialize(productionPartyMembers(),null,false,{continuousStage:createContinuousCombatStageState(31),enemyRows:rows});
   const initialEnemies=state.entities.filter(actor=>actor.kind==='enemy');
+  assert.equal(state.globals.ContinuousCombatStage.seed, 123, 'fresh stage padding follows the seed selected after beforeInit configured the stage');
   assert.ok(initialEnemies.length>12&&initialEnemies.length<=36);
+  const expectedPlan=buildContinuousCombatSpawnPlan(state.globals.EnemyData,state.globals.ContinuousCombatStage,{partyCP:getContinuousCombatPartyCP(state.entities)});
+  assert.equal(JSON.stringify(initialEnemies.map(actor=>[actor.continuousStageSectorIndex,actor.continuousStageEntryOrder,actor.continuousStageSectorSize])),JSON.stringify(expectedPlan.map(entry=>[entry.sectorIndex,entry.entryOrder,entry.sectorSize])),'the fresh seed is applied before the initializer builds the spawn plan');
   assert.ok(initialEnemies.every(actor=>Number.isInteger(actor.continuousStageSectorIndex)),'initializer keeps the spawn plan sector on each created actor');
   assert.equal(finalizeContinuousCombatProduction(state.globals,state.entities),true);
   const sectors=new Map();
@@ -109,6 +117,19 @@ test('fresh continuous initializer pads weak packs and finalize preserves each p
   assert.equal(sectors.size,6);
   assert.ok([...sectors.values()].every(pack=>pack.length>=3&&pack.length<=6));
   for(const pack of sectors.values())assert.deepEqual(pack.map(enemy=>enemy.streamEntryOrder).sort((a,b)=>a-b),Array.from({length:pack.length},(_,index)=>index));
+});
+
+test('continuous initializer applies an explicit QA encounter seed to pack-count randomness', async () => {
+  const { buildContinuousCombatSpawnPlan, createContinuousCombatStageState, getContinuousCombatPartyCP } = await import('../web-runner/src/core/continuousCombatStage.mjs');
+  const rows=['Gobloc','Skeleton'].map(name=>({name,HP:1,ATK:1,DEF:1,MAG:1,RES:1,SPD:1}));
+  const {state}=await initialize(productionPartyMembers(),null,false,{
+    continuousStage:createContinuousCombatStageState(31),enemyRows:rows,encounterSeed:77,encounterSeedExplicit:true,generatedEncounterSeed:123,
+  });
+  assert.equal(state.globals.EncounterSeed,77,'an explicit QA seed bypasses fresh seed generation');
+  assert.equal(state.globals.ContinuousCombatStage.seed,77,'pack-count randomness uses that same explicit QA seed');
+  const expectedPlan=buildContinuousCombatSpawnPlan(state.globals.EnemyData,state.globals.ContinuousCombatStage,{partyCP:getContinuousCombatPartyCP(state.entities)});
+  const plannedActors=state.entities.filter(actor=>actor.kind==='enemy');
+  assert.equal(JSON.stringify(plannedActors.map(actor=>[actor.continuousStageSectorIndex,actor.continuousStageEntryOrder,actor.continuousStageSectorSize])),JSON.stringify(expectedPlan.map(entry=>[entry.sectorIndex,entry.entryOrder,entry.sectorSize])));
 });
 
 for (let count = 1; count <= 6; count += 1) {
