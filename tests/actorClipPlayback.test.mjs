@@ -116,3 +116,66 @@ test('Hondo and Kaja reuse the Fara skeleton and motion channels across every st
     }
   }
 });
+
+test('nonzero basic and cast torso channels lean forward at sixty percent in both facings', () => {
+  const base = new URL('../web-runner/assets/puppets/', import.meta.url);
+  const manifest = JSON.parse(fs.readFileSync(new URL('manifest.json', base), 'utf8'));
+  const changed = {
+    fara: { sourceFacing: 'right', peaks: { basic: 18, cast: 8 }, curves: { basic: [0, 10.8, 4.8, 1.8, 0], cast: [0, 4.8, 3.6, 1.8, 0] } },
+    gobloc: { sourceFacing: 'left', peaks: { basic: 18, cast: 8 }, curves: { basic: [0, -10.8, -4.8, -1.8, 0], cast: [0, -4.8, -3.6, -1.8, 0] } },
+    runa: { sourceFacing: 'right', peaks: { basic: 12, cast: 5 }, curves: { basic: [0, 7.2, 4.2, 1.8, 0], cast: [0, 3, 3, 1.8, 0] } },
+    lizardo: { sourceFacing: 'left', peaks: { basic: 12, cast: 5 }, curves: { basic: [0, -7.2, -4.2, -1.8, 0], cast: [0, -3, -3, -1.8, 0] } },
+    hondo: { sourceFacing: 'right', peaks: { basic: 18, cast: 8 }, curves: { basic: [0, 10.8, 4.8, 1.8, 0], cast: [0, 4.8, 3.6, 1.8, 0] } },
+    kaja: { sourceFacing: 'right', peaks: { basic: 18, cast: 8 }, curves: { basic: [0, 10.8, 4.8, 1.8, 0], cast: [0, 4.8, 3.6, 1.8, 0] } },
+  };
+  const torsoTrack = source => {
+    const marker = source.indexOf('<string>torso</string>');
+    assert.notEqual(marker, -1, 'torso bone exists');
+    const start = source.lastIndexOf('<bone type="bone_object"', marker);
+    const end = source.indexOf('</bone>', marker) + '</bone>'.length;
+    const bone = source.slice(start, end);
+    const angle = bone.match(/<angle>\s*<animated type="angle">([\s\S]*?)<\/animated>\s*<\/angle>/);
+    assert.ok(angle, 'torso angle track exists');
+    return [...angle[1].matchAll(/<waypoint time="([^"]+)"[^>]*>[\s\S]*?<angle value="([^"]+)"\s*\/>/g)]
+      .map(([, time, value]) => ({ time, value: Number(value) }));
+  };
+  const originXTrack = (source, name) => {
+    const marker = source.indexOf(`<string>${name}</string>`);
+    assert.notEqual(marker, -1, `${name} bone exists`);
+    const start = source.lastIndexOf('<bone type="bone_object"', marker);
+    const end = source.indexOf('</bone>', marker) + '</bone>'.length;
+    const bone = source.slice(start, end);
+    const origin = bone.match(/<origin>\s*<animated type="vector">([\s\S]*?)<\/animated>\s*<\/origin>/);
+    if (!origin) return null;
+    return [...origin[1].matchAll(/<waypoint time="([^"]+)"[^>]*>[\s\S]*?<x>([^<]+)<\/x>/g)]
+      .map(([, time, value]) => ({ time, value: Number(value) }));
+  };
+
+  for (const [actor, actorData] of Object.entries(manifest.actors)) {
+    const facingTracks = { basic: {}, cast: {} };
+    for (const state of ['basic', 'cast']) {
+      for (const facing of ['left', 'right']) {
+        const clip = actorData.clips[state][facing];
+        const source = fs.readFileSync(new URL(clip.source, base), 'utf8');
+        const track = torsoTrack(source);
+        facingTracks[state][facing] = track;
+        for (const file of clip.frames) assert.ok(fs.existsSync(new URL(file, base)), file);
+        if (changed[actor]) {
+          assert.deepEqual(track.map(key => key.value), changed[actor].curves[state], `${actor}/${state}/${facing}`);
+          assert.equal(actorData.sourceFacing, changed[actor].sourceFacing);
+          const peak = Math.max(...track.map(key => Math.abs(key.value)));
+          assert.ok(Math.abs(peak / changed[actor].peaks[state] - 0.6) < 1e-9, `${actor}/${state} amplitude`);
+          const forward = actorData.sourceFacing === 'right' ? 1 : -1;
+          const torsoX = originXTrack(source, 'torso');
+          assert.ok(torsoX && (torsoX[1].value - torsoX[0].value) * forward > 0, `${actor}/${state}/${facing} torso anticipation moves toward target`);
+          const headX = originXTrack(source, 'head');
+          if (headX?.some(key => key.value !== headX[0].value)) assert.ok((headX[1].value - headX[0].value) * forward > 0, `${actor}/${state}/${facing} head anticipation stays connected to torso`);
+        } else {
+          assert.ok(track.every(key => key.value === 0), `${actor}/${state}/${facing} keeps its zero torso channel`);
+        }
+      }
+      assert.deepEqual(facingTracks[state].left.map(key => key.time), facingTracks[state].right.map(key => key.time), `${actor}/${state} key timing is unchanged by facing`);
+      assert.deepEqual(facingTracks[state].left.map(key => key.value), facingTracks[state].right.map(key => key.value), `${actor}/${state} source orientations share the same authored channel`);
+    }
+  }
+});

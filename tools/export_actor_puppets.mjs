@@ -42,14 +42,14 @@ for(const actor of selectedActors||['fara','gobloc']) {
      if(name.startsWith('upper_arm')) motion=(isLead?[0,-90,65,40,0]:[0,40,10,12,0]).map(a=>a*sign);
      if(name.startsWith('forearm')) motion=(isLead?[0,0,25,15,0]:[0,-85,-50,-25,0]).map(a=>a*sign);
      if(name.startsWith('upper_arm')){dx=[0,-sign*(isLead?48:10),0,0,0];dy=[0,-16,0,0,0];}
-     if(name==='torso'){motion=[0,sign*18,-sign*8,-sign*3,0];dx=[0,-sign*10,sign*8,sign*4,0];dy=[0,-16,0,0,0];}
-     if(name==='head'){motion=[0,sign*25,-sign*8,-sign*3,0];dx=[0,-sign*17,sign*12,sign*5,0];dy=[0,-25,0,0,0];}
+     if(name==='torso'){motion=[0,sign*10.8,sign*4.8,sign*1.8,0];dx=[0,sign*6,sign*4.8,sign*2.4,0];dy=[0,-16,0,0,0];}
+     if(name==='head'){motion=[0,sign*15,sign*4.8,sign*1.8,0];dx=[0,sign*10.2,sign*7.2,sign*3,0];dy=[0,-25,0,0,0];}
     }
     if(state==='cast'){
      if(name.startsWith('upper_arm')) motion=(isLead?[0,-35,112,90,0]:[0,30,-110,-90,0]).map(a=>a*sign);
      if(name.startsWith('forearm')) motion=(isLead?[0,-90,-15,0,0]:[0,55,0,5,0]).map(a=>a*sign);
-     if(name==='torso'){motion=[0,sign*8,-sign*6,-sign*3,0];dx=[0,-sign*3,sign*5,sign*2,0];dy=[0,-5,4,0,0];}
-     if(name==='head'){motion=[0,sign*8,-sign*6,-sign*2,0];dx=[0,-sign*4,sign*7,sign*2,0];dy=[0,-5,4,0,0];}
+     if(name==='torso'){motion=[0,sign*4.8,sign*3.6,sign*1.8,0];dx=[0,sign*1.8,sign*3,sign*1.2,0];dy=[0,-5,4,0,0];}
+     if(name==='head'){motion=[0,sign*4.8,sign*3.6,sign*1.2,0];dx=[0,sign*2.4,sign*4.2,sign*1.2,0];dy=[0,-5,4,0,0];}
     }
     if(state==='hit'){
      if(name.startsWith('upper_arm')) motion=(isLead?[0,-20,-30,-15,0]:[0,-80,-60,-20,0]).map(a=>a*sign);

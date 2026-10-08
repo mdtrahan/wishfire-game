@@ -71,19 +71,19 @@
 </waypoint>
 <waypoint time="0.25s" before="linear" after="linear">
 <vector>
-<x>-4</x>
+<x>2.4</x>
 <y>5</y>
 </vector>
 </waypoint>
 <waypoint time="0.5s" before="linear" after="linear">
 <vector>
-<x>7</x>
+<x>4.2</x>
 <y>14</y>
 </vector>
 </waypoint>
 <waypoint time="0.75s" before="linear" after="linear">
 <vector>
-<x>2</x>
+<x>1.2</x>
 <y>10</y>
 </vector>
 </waypoint>
@@ -101,13 +101,13 @@
 <angle value="0"/>
 </waypoint>
 <waypoint time="0.25s" before="linear" after="linear">
-<angle value="8"/>
+<angle value="4.8"/>
 </waypoint>
 <waypoint time="0.5s" before="linear" after="linear">
-<angle value="-6"/>
+<angle value="3.6"/>
 </waypoint>
 <waypoint time="0.75s" before="linear" after="linear">
-<angle value="-2"/>
+<angle value="1.2"/>
 </waypoint>
 <waypoint time="1s" before="linear" after="linear">
 <angle value="0"/>
@@ -229,19 +229,19 @@
 </waypoint>
 <waypoint time="0.25s" before="linear" after="linear">
 <vector>
-<x>-3</x>
+<x>1.8</x>
 <y>15</y>
 </vector>
 </waypoint>
 <waypoint time="0.5s" before="linear" after="linear">
 <vector>
-<x>5</x>
+<x>3</x>
 <y>24</y>
 </vector>
 </waypoint>
 <waypoint time="0.75s" before="linear" after="linear">
 <vector>
-<x>2</x>
+<x>1.2</x>
 <y>20</y>
 </vector>
 </waypoint>
@@ -259,13 +259,13 @@
 <angle value="0"/>
 </waypoint>
 <waypoint time="0.25s" before="linear" after="linear">
-<angle value="8"/>
+<angle value="4.8"/>
 </waypoint>
 <waypoint time="0.5s" before="linear" after="linear">
-<angle value="-6"/>
+<angle value="3.6"/>
 </waypoint>
 <waypoint time="0.75s" before="linear" after="linear">
-<angle value="-3"/>
+<angle value="1.8"/>
 </waypoint>
 <waypoint time="1s" before="linear" after="linear">
 <angle value="0"/>
