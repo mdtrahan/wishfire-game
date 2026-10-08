@@ -210,18 +210,20 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   dialog.scrollTop=dialogScroll;
 
  }
+ let bossFallbackVisible=false,bossFallbackReservePx=0;
  function position(){
   const r=canvas.getBoundingClientRect(),s=r.width/360;Object.assign(strip.style,{left:r.left+'px',top:(r.top+488*s)+'px',width:r.width+'px',height:92*s+'px',fontSize:11*s+'px'});
   if(rewardBanner)Object.assign(rewardBanner.style,{left:r.left+'px',top:(r.top+r.height*.38)+'px',width:r.width+'px',fontSize:Math.max(12,18*s)+'px'});
   Object.assign(modal.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'});
+  modal.style.setProperty('--boss-fallback-reserve',bossFallbackVisible?`${bossFallbackReservePx}px`:'0px');
  }
  return{
-  draw({layoutId='combat',phase='combat'}={}){init();position();const visible=['combat','storyMock','idleFarmLayout'].includes(layoutId)&&phase==='combat';strip.hidden=!visible;render();updateHelper();
+  draw({layoutId='combat',phase='combat',bossFallbackVisible:showBossFallback=false,bossFallbackReservePx:reservePx=0}={}){init();bossFallbackVisible=showBossFallback===true;bossFallbackReservePx=Math.max(0,Number(reservePx)||0);modal.dataset.bossFallback=String(bossFallbackVisible);position();const visible=['combat','storyMock','idleFarmLayout'].includes(layoutId)&&phase==='combat';strip.hidden=!visible;render();updateHelper();
    const data=economy.data,t=economy.time();
    if(visible&&!open&&!opening&&!document.hidden&&!isPaused()&&!busy&&data?.lamp.autoEnabled&&t-lastAutoCheck>=1000){lastAutoCheck=t;if(t-data.lamp.lastActivationAt>=LAMP_CONFIG.autoIntervalMs&&lampStoredCount(data)<lampCapacity(data))void action(async()=>{await reveal(()=>economy.tickAuto(context()));});}
   },
   open:openCollection,
   close(){if(modal)close();},
-  state(){return{open,selectedItem,selectedHero,busy,sequence:economy.data?.lamp.sequence,pending:economy.data?.lamp.pending.length,auto:economy.data?.lamp.autoEnabled};},
+  state(){return{open,selectedItem,selectedHero,busy,opening,settling:feedbacks.size>0,canLeave:!busy&&!opening&&!feedbacks.size&&!closeRequested,sequence:economy.data?.lamp.sequence,pending:economy.data?.lamp.pending.length,auto:economy.data?.lamp.autoEnabled};},
  };
 }

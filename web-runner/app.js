@@ -111,6 +111,7 @@ import {
 import { initializeStoryCardPresentationLayout } from './systems/storyCardPresentation.js';
 import { registerRuntimeLayouts } from './systems/runtimeLayoutRegistry.js';
 import { renderExistingNavigation } from './systems/renderExistingNavigation.mjs';
+import { updateBossSummonFallback } from './systems/renderCombatBossControl.mjs';
 import { createQuestLadderUI } from './systems/questLadderUI.mjs';
 import { createQuestCombatSession, restoreHeroesToFullHP } from './systems/questCombatSession.mjs';
 import { createCombatEntryTransition } from './systems/combatEntryTransition.mjs';
@@ -1940,7 +1941,7 @@ async function main(){
   const equipmentProgress = createEquipmentStorage({ globals: state.globals, getActors: () => state.entities, storage: window.localStorage, persistProgress: () => heroProgressStorage.persistHeroProgressIfDirty({stateGlobals: state.globals}) });
   const lampEquipment = createLampEquipmentUI({canvas, economy: equipmentProgress, globals: state.globals, eventBus, isPaused: () => gameState.storyEntry.combatPaused || !!state.globals.DevToolingPaused});
   const qaPauseSnapshotEnabled = new URLSearchParams(window.location.search).get('questQA') === '1';
-  const storyEntry = createStoryEntryFlow({ gameState, layoutState, isReady: () => freshCombatBootstrapped, getEnemies: () => enemyRows, prepareEncounter: questCombat.prepare, resurrect: questCombat.resurrect, closeTransientSurface: () => lampEquipment.close(), recordQaPauseSnapshot: qaPauseSnapshotEnabled ? stage => gameState.publishQaPauseSnapshot?.(stage) : undefined, energyGlobals: state.globals, enterCombat: createCombatEntryTransition(canvas, { onComplete: () => releaseCombatStartToScheduler(state.globals) }), onCombatEnd: () => devToolingRuntime.clearCombatSessionOverrides(), onCombatQuit: () => { devToolingRuntime.clearCombatSessionOverrides(); resetCombatRuntimeForFreshSession('quest-navigation-quit', { clearSessionSettlement: true }); }, isCombatPauseEligible: () => state.globals.NativeBattleEnded !== true && state.globals.ProgressionBattle?.outcome !== 'victory' && state.globals.ProgressionBattle?.outcome !== 'defeat' });
+  const storyEntry = createStoryEntryFlow({ gameState, layoutState, isReady: () => freshCombatBootstrapped, getEnemies: () => enemyRows, prepareEncounter: questCombat.prepare, resurrect: questCombat.resurrect, closeTransientSurface: () => lampEquipment.close(), canCloseTransientSurface: () => lampEquipment.state().canLeave, recordQaPauseSnapshot: qaPauseSnapshotEnabled ? stage => gameState.publishQaPauseSnapshot?.(stage) : undefined, energyGlobals: state.globals, enterCombat: createCombatEntryTransition(canvas, { onComplete: () => releaseCombatStartToScheduler(state.globals) }), onCombatEnd: () => devToolingRuntime.clearCombatSessionOverrides(), onCombatQuit: () => { devToolingRuntime.clearCombatSessionOverrides(); resetCombatRuntimeForFreshSession('quest-navigation-quit', { clearSessionSettlement: true }); }, isCombatPauseEligible: () => state.globals.NativeBattleEnded !== true && state.globals.ProgressionBattle?.outcome !== 'victory' && state.globals.ProgressionBattle?.outcome !== 'defeat' });
   const questUI = createQuestLadderUI({ canvas, gameState, layoutState, flow: storyEntry, getGold: () => state.globals.goldTotal || 0 });
   registerRuntimeLayouts(layoutState, {
     storyEntry,
@@ -2457,9 +2458,29 @@ async function main(){
     const activeLayoutId = layoutState.getActiveLayoutId();
     renderHeroScreen.hideHeroScreen();
     if (freshCombatBootstrapped && !state.globals.HeroProgressStorageError) equipmentProgress.sync().then(() => heroProgressStorage.confirmGoldSettlements({ stateGlobals: state.globals })).catch(() => {});
-    lampEquipment.draw({layoutId: activeLayoutId, phase: gameState.storyEntry.phase});
     storyEntry.update();
     questUI.update();
+    const lampState = lampEquipment.state();
+    const devModalOpen = ensureDevToolingConfig().open;
+    const bossFallback = updateBossSummonFallback({
+      canvas,
+      state,
+      layoutId: activeLayoutId,
+      phase: gameState.storyEntry.phase,
+      overlayOpen: lampState.open,
+      canLeave: lampState.canLeave && !gameState.storyEntry.pending,
+      suppress: devModalOpen,
+      onSummonBoss: () => {
+        const stage = state.globals.ContinuousCombatStage;
+        if (stage?.bossAvailable !== true && stage?.bossActive !== true) return false;
+        return storyEntry.resumeBossActivity();
+      },
+      redraw: () => drawFrame(),
+    });
+    gameState.CombatBossFallbackVisible = bossFallback.visible;
+    const fallbackCanvasRect = canvas.getBoundingClientRect();
+    const fallbackReservePx = bossFallback.rect ? bossFallback.rect.y - fallbackCanvasRect.top + bossFallback.rect.height + 8 * bossFallback.rect.scale : 0;
+    lampEquipment.draw({layoutId: activeLayoutId, phase: gameState.storyEntry.phase, bossFallbackVisible: bossFallback.visible, bossFallbackReservePx: fallbackReservePx});
     const runtimeScope = {
       dtOverride,
       state,

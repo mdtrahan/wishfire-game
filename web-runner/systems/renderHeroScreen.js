@@ -35,7 +35,7 @@ export function renderHeroScreen({equipmentProgress,canvas,gameState,fnContext,h
    #hero-details progress{width:100%;accent-color:#e4b354} #hero-details details{margin:.5em 0} #hero-details summary{cursor:pointer;padding:.5em 0} #hero-details dl{display:grid;grid-template-columns:repeat(3,1fr);gap:.5em;margin:.5em 0} #hero-details dd{margin:0} #hero-details article{border-top:1px solid #718198;padding:.7em 0}
   `;document.head.append(style);content=document.createElement('div');host.append(content);document.body.append(host);
  }
- host.hidden=false;const rect=canvas.getBoundingClientRect();Object.assign(host.style,{left:`${rect.left}px`,top:`${rect.top}px`,width:`${rect.width}px`,height:`${rect.height}px`,padding:`${14*rect.width/360}px ${14*rect.width/360}px ${66*rect.width/360}px`,fontSize:`${14*rect.width/360}px`});
+ host.hidden=false;const rect=canvas.getBoundingClientRect();const layoutScale=rect.width/360;const topInset=(g.CombatBossFallbackVisible?96:14)*layoutScale;Object.assign(host.style,{left:`${rect.left}px`,top:`${rect.top}px`,width:`${rect.width}px`,height:`${rect.height}px`,padding:`${topInset}px ${14*layoutScale}px ${66*layoutScale}px`,fontSize:`${14*layoutScale}px`});
  host.dataset.tab=currentTab;
  const key=JSON.stringify([index,currentTab,hero.currentLevel,hero.currentEXP,hero.hp,hero.stats,roster.map(h=>h.currentLevel),g.Equipment]);
  if(key!==lastKey){lastKey=key;const focused=content.contains(document.activeElement)?document.activeElement:null;const focusLabel=focused?.getAttribute('aria-label')||focused?.textContent;content.replaceChildren();

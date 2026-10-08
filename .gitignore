@@ -30,6 +30,7 @@ web-runner/runtime-fingerprint.js
 
 # Local checkpoints and runtime release output
 /output/ORKA-aoq-checkpoint/
+/output/qa/ORKA-dwa/
 /dist/
 /dist-offline/
 

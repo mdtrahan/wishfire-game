@@ -12,7 +12,7 @@ export function buildSyntheticQuestStages(enemies) {
     }));
 }
 
-export function createStoryEntryFlow({ gameState, layoutState, isReady, content = WISHFIRE_WARP_CROSSING_CONTENT, resurrect = () => {}, prepareEncounter = () => {}, getEnemies = () => [], onCombatEnd = () => {}, onCombatQuit = onCombatEnd, isCombatPauseEligible = () => true, closeTransientSurface = () => {}, recordQaPauseSnapshot = () => {}, energyGlobals = { Player_Energy: 200 }, enterCombat = change => change() }) {
+export function createStoryEntryFlow({ gameState, layoutState, isReady, content = WISHFIRE_WARP_CROSSING_CONTENT, resurrect = () => {}, prepareEncounter = () => {}, getEnemies = () => [], onCombatEnd = () => {}, onCombatQuit = onCombatEnd, isCombatPauseEligible = () => true, closeTransientSurface = () => {}, canCloseTransientSurface = () => true, recordQaPauseSnapshot = () => {}, energyGlobals = { Player_Energy: 200 }, enterCombat = change => change() }) {
   const scene = content.scenes[0];
   const handoff = scene.steps.findIndex(step => step.id === scene.combatHandoffStepId);
   if (handoff < 0) throw new Error('Opening scene requires an authored combat handoff step');
@@ -23,6 +23,7 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
   ];
   const entry = gameState.storyEntry = { phase: 'map', pending: false, error: null, combatUnlocked: false, activeCard: null, modal: null, combatPaused: false, cards,
     progress: { get energy() { return energyGlobals.Player_Energy; }, set energy(value) { energyGlobals.Player_Energy = value; }, resources: 150, completed: [], revealed: 1 }, content: cards[0].content };
+  let bossResumePending = false;
   const contains = (point, rect) => point && rect && point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h;
   async function go(target, reason, payload = {}) {
     if (entry.pending) return false;
@@ -202,6 +203,26 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
       entry.combatPaused = false;
       recordQaPauseSnapshot('resume');
       return true;
+    },
+    async resumeBossActivity() {
+      if (!isReady() || entry.pending || bossResumePending || ['opening', 'defeat'].includes(entry.phase) || !canCloseTransientSurface()) return false;
+      const previous = { phase: entry.phase, modal: entry.modal, combatPaused: entry.combatPaused };
+      bossResumePending = true;
+      try {
+        closeTransientSurface();
+        const changed = await go('combat', 'boss-fallback-return');
+        if (!changed) {
+          Object.assign(entry, previous);
+          return false;
+        }
+        entry.phase = 'combat';
+        entry.modal = null;
+        entry.combatPaused = false;
+        recordQaPauseSnapshot('resume');
+        return true;
+      } finally {
+        bossResumePending = false;
+      }
     },
     quitPausedCombat() {
       if (entry.phase !== 'combat-paused' || entry.modal !== 'combat-pause' || entry.pending) return false;
