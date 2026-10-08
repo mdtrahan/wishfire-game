@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createCombatCameraProjection, deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldVerticalBounds } from '../src/core/combatOrientation.mjs';
 import { advanceContinuousCombatArena, deriveContinuousCombatRecoveryHuddle } from '../web-runner/src/core/arenaCombat.mjs';
 import { computeCombatPower } from '../web-runner/src/core/combatPower.mjs';
+import { derivePresentationTurnBarrier } from '../web-runner/src/core/turnGateController.mjs';
 import {
   CONTINUOUS_COMBAT_PACK_CP_STEP,
   CONTINUOUS_COMBAT_PACK_INTERVAL_SEC,
@@ -16,6 +17,7 @@ import {
   buildContinuousCombatSpawnPlan,
   configureContinuousCombatProduction,
   createContinuousCombatStageState,
+  deriveContinuousCombatWavePackProgress,
   finalizeContinuousCombatProduction,
   getContinuousCombatPartyCP,
   maybeAdvanceContinuousCombatStage,
@@ -134,6 +136,122 @@ test('the runtime stage owner does not summon after the first recovered wave', (
   }
   assert.equal(globals.ContinuousCombatStage.bossActive, true, 'the earned boss enters after wave four clears');
   assert.ok(entities.some(actor => actor.kind === 'enemy' && (actor.combatRank === 'boss' || actor.enemyRole === 'boss')));
+});
+
+test('cleared packs move the current-wave HUD while production waits for all packs and presentation to settle', async () => {
+  const { drawCombatProgressHud } = await import('../web-runner/systems/renderCombatBossControl.mjs');
+  const stage = { ...createContinuousCombatStageState(42), wave: 2, transitions: 2, nextEmissionAt: 0, lastUpdatedAt: 10, lastArenaUpdatedAt: 10 };
+  const plan = buildContinuousCombatSpawnPlan(rows, stage, { partyCP: 100000 });
+  stage.spawnSerial = plan.length;
+  const packSizes = Array.from({ length: CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, sector) => plan.filter(entry => entry.sectorIndex === sector).length);
+  assert.ok(new Set(packSizes).size > 1, 'fixture includes different sector sizes from seeded CP extras');
+  let nextUID = 10;
+  const entities = [{ uid: 1, kind: 'hero', hp: 100, maxHP: 100 }];
+  const enemyBySector = new Map();
+  for (const entry of plan) {
+    const enemy = { uid: nextUID++, kind: 'enemy', hp: 20, maxHP: 20, name: entry.row.name, enemyRole: 'fodder', slotIndex: entry.slotIndex };
+    activateContinuousCombatSpawnedEnemy({}, enemy, entry);
+    entities.push(enemy);
+    const pack = enemyBySector.get(entry.sectorIndex) || [];
+    pack.push(enemy);
+    enemyBySector.set(entry.sectorIndex, pack);
+  }
+  const globals = {
+    ContinuousCombatStageLoop: 1, ContinuousCombatStage: stage, GamePhase: 'RUNTIME', BattleStartActive: 0,
+    EnemyData: rows, EnemySize: 40, EnemySlots: [], PendingDeaths: {}, EnemyDeathVisualHoldByUID: {},
+    PendingHeroHits: [], RealtimeEnemyActionsByUID: {}, RealtimeEnemyActionReadyAt: {}, RealtimeHeroBasicScheduledActions: {},
+    CombatImpactRequests: [], CombatImpactVisuals: [], ChainStrikeVisuals: [], ArcanePulseVisuals: [], DamageTexts: [],
+    ActionInProgress: 0, time: 10,
+  };
+  const calls = [];
+  const ctx = new Proxy({}, {
+    get: (_target, key) => (...args) => calls.push([key, ...args]),
+    set: (_target, key, value) => { calls.push(['set', key, value]); return true; },
+  });
+  const notchColors = () => calls.filter(([name, key, value]) => name === 'set' && key === 'strokeStyle' && ['#55d4be', '#243237'].includes(value)).map(([, , value]) => value);
+  const draw = () => drawCombatProgressHud(ctx, { state: { globals, entities }, worldToCanvas: (x, y) => ({ x, y }) });
+  const initialHud = draw();
+  assert.equal(initialHud.completedWaves, 1);
+  assert.equal(initialHud.waveProgress, 0);
+  const initialFillWidth = calls.find(([name]) => name === 'fillRect')?.[3] || 0;
+
+  const oneMemberOfPack = enemyBySector.get(0)[0];
+  oneMemberOfPack.hp = 0;
+  assert.equal(deriveContinuousCombatWavePackProgress(stage, entities).fraction, 0, 'a sector remains incomplete while any pack member survives');
+  calls.length = 0;
+  assert.equal(draw().waveProgress, 0);
+
+  for (const sector of [0, 3]) for (const enemy of enemyBySector.get(sector)) enemy.hp = 0;
+  const progress = deriveContinuousCombatWavePackProgress(stage, entities);
+  assert.deepEqual(progress, { clearedPacks: 2, packsPerWave: 6, fraction: 2 / 6 });
+  calls.length = 0;
+  const partialHud = draw();
+  assert.equal(partialHud.completedWaves, 1, 'the established full-wave counter remains integral');
+  assert.equal(partialHud.waveProgress, 2 / 6);
+  assert.equal(partialHud.progressPosition, 1 + 2 / 6);
+  const partialFillWidth = calls.find(([name]) => name === 'fillRect')?.[3] || 0;
+  assert.ok(partialFillWidth > initialFillWidth, 'the rail visibly advances inside the active wave segment');
+  assert.deepEqual(notchColors(), ['#55d4be', '#243237', '#243237']);
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: derivePresentationTurnBarrier({ globals }), call() {} }), false);
+  assert.equal(stage.wave, 2, 'living members in other sectors keep the actual wave gate locked');
+
+  for (const enemy of entities.filter(actor => actor.kind === 'enemy')) enemy.hp = 0;
+  const heldDeath = entities.find(actor => actor.kind === 'enemy');
+  globals.EnemyDeathVisualHoldByUID[String(heldDeath.uid)] = true;
+  globals.CombatImpactVisuals.push({ uid: 'settling' });
+  calls.length = 0;
+  const heldWaveHud = draw();
+  assert.equal(heldWaveHud.progressPosition, 2, 'all six pack defeats can fill the wave segment while their presentation settles');
+  assert.deepEqual(notchColors(), ['#55d4be', '#55d4be', '#243237'], 'a notch at the filled position uses the teal completed color');
+  assert.equal(derivePresentationTurnBarrier({ globals }).lanes.combatEffects, true);
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: derivePresentationTurnBarrier({ globals }), call() {} }), false);
+  assert.equal(stage.wave, 2);
+  delete globals.EnemyDeathVisualHoldByUID[String(heldDeath.uid)];
+  globals.CombatImpactVisuals = [];
+  let spawnedUID = 100;
+  const call = (name, row, slotIndex) => {
+    if (name !== 'SpawnEnemy') return;
+    const enemy = { uid: spawnedUID++, kind: 'enemy', name: row.name, enemyRole: row.enemyRole, hp: row.HP, maxHP: row.HP, slotIndex };
+    entities.push(enemy);
+    return enemy;
+  };
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: derivePresentationTurnBarrier({ globals }), call }), true);
+  assert.equal(globals.ContinuousCombatStage.wave, 3);
+  assert.equal(deriveContinuousCombatWavePackProgress(globals.ContinuousCombatStage, entities).fraction, 0, 'new-wave spawns reset transient pack progress');
+
+  const savedGlobals = {
+    EncounterSeed: 88,
+    HeroProgress: { continuousStage: { region: 2, stage: 4, wave: 3, bossAvailable: false, clearedBosses: 13 } },
+  };
+  configureContinuousCombatProduction(savedGlobals, { productionPath: true });
+  const savedWaveEntities = Array.from({ length: 18 }, (_, index) => ({ uid: index + 1, kind: 'enemy', name: rows[index % rows.length].name, hp: 20, maxHP: 20 }));
+  assert.equal(finalizeContinuousCombatProduction(savedGlobals, savedWaveEntities), true);
+  assert.equal(savedGlobals.ContinuousCombatStage.wave, 3, 'reload restores the saved wave number');
+  assert.equal(savedGlobals.ContinuousCombatStage.transitions, 0, 'legacy checkpoints without a transition counter remain valid');
+  for (const enemy of savedWaveEntities.filter(actor => actor.streamSectorIndex % CONTINUOUS_COMBAT_PACKS_PER_WAVE === 1 || actor.streamSectorIndex % CONTINUOUS_COMBAT_PACKS_PER_WAVE === 4)) enemy.hp = 0;
+  assert.equal(deriveContinuousCombatWavePackProgress(savedGlobals.ContinuousCombatStage, savedWaveEntities).clearedPacks, 2);
+
+  const retryGlobals = { ContinuousCombatStageLoop: 1, time: 14, EnemyData: rows, ContinuousCombatStage: { ...stage, bossAvailable: true } };
+  assert.equal(resetContinuousCombatAfterDefeat(retryGlobals, { preserveBossAccess: true }), true);
+  const retryPlan = buildContinuousCombatSpawnPlan(rows, retryGlobals.ContinuousCombatStage, { partyCP: 100000 });
+  retryGlobals.ContinuousCombatStage.spawnSerial = retryPlan.length;
+  const retryEnemies = retryPlan.map((entry, index) => {
+    const enemy = { uid: 200 + index, kind: 'enemy', hp: 20, maxHP: 20, name: entry.row.name, enemyRole: 'fodder', slotIndex: entry.slotIndex };
+    activateContinuousCombatSpawnedEnemy(retryGlobals, enemy, entry);
+    return enemy;
+  });
+  assert.equal(retryGlobals.ContinuousCombatStage.wave, 1);
+  assert.equal(retryGlobals.ContinuousCombatStage.bossAvailable, true);
+  assert.equal(retryGlobals.ContinuousCombatStage.bossEntryDeferredUntilWaveFour, true);
+  assert.equal(deriveContinuousCombatWavePackProgress(retryGlobals.ContinuousCombatStage, retryEnemies).fraction, 0, 'defeat recovery starts a fresh transient wave fill');
+
+  const legacyReady = { ...createContinuousCombatStageState(89), wave: 1, bossAvailable: true, spawnSerial: 0 };
+  const legacyReadyHud = drawCombatProgressHud(ctx, { state: { globals: { ContinuousCombatStage: legacyReady }, entities: [] }, worldToCanvas: (x, y) => ({ x, y }) });
+  assert.equal(legacyReadyHud.completedWaves, 4, 'older saved boss-ready flags retain the full ready meter');
+  assert.equal(legacyReadyHud.waveProgress, 0);
+
+  const uninitialized = { ...createContinuousCombatStageState(88), wave: 2, transitions: 2, spawnSerial: 0 };
+  assert.deepEqual(deriveContinuousCombatWavePackProgress(uninitialized, []), { clearedPacks: 0, packsPerWave: 6, fraction: 0 });
 });
 
 test('only underpowered ordinary sectors draw one seeded plus-one-to-three count and preserve base rows', () => {

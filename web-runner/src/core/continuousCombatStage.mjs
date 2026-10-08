@@ -68,6 +68,27 @@ export function getContinuousCombatPartyCP(entities) {
     .reduce((total, hero) => total + computeCombatPower(hero), 0);
 }
 
+export function deriveContinuousCombatWavePackProgress(stageState, entities = []) {
+  const packsPerWave = CONTINUOUS_COMBAT_PACKS_PER_WAVE;
+  if (!stageState || Number(stageState.spawnSerial || 0) <= 0 || stageState.bossActive) {
+    return { clearedPacks: 0, packsPerWave, fraction: 0 };
+  }
+  const currentPackIndex = Math.max(0, Math.floor(Number(stageState.transitions) || 0));
+  const livingPacks = new Set();
+  for (const actor of Array.isArray(entities) ? entities : []) {
+    if (actor?.kind !== 'enemy' || Number(actor.hp || 0) <= 0) continue;
+    const packIndex = Number(actor.streamPackIndex);
+    const streamSectorIndex = Number(actor.streamSectorIndex);
+    if (!Number.isInteger(packIndex) || packIndex !== currentPackIndex || !Number.isInteger(streamSectorIndex)
+      || streamSectorIndex < 0 || Math.floor(streamSectorIndex / packsPerWave) !== packIndex) {
+      return { clearedPacks: 0, packsPerWave, fraction: 0 };
+    }
+    livingPacks.add(((streamSectorIndex % packsPerWave) + packsPerWave) % packsPerWave);
+  }
+  const clearedPacks = Math.max(0, packsPerWave - livingPacks.size);
+  return { clearedPacks, packsPerWave, fraction: clearedPacks / packsPerWave };
+}
+
 function streamGeometry(globals, { packIndex = 0, rank = 0, order = 0, sectorIndex = packIndex } = {}) {
   const bounds = deriveCombatArenaBounds();
   const vertical = deriveCombatWorldVerticalBounds();
