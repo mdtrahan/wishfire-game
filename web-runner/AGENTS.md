@@ -20,7 +20,7 @@
 - JavaScript owns browser integration: Canvas rendering, input, menus, overlays, audio, save/load wrappers, deployment, and presentation timing.
 - Rust SimulationCore owns deterministic simulation rule families that have owner markers and fixture contracts.
 - Browser runtime code may apply returned state and render presentation events; it must not recompute Rust-owned outcomes.
-- Production and developer QA variants enter the same realtime combat loop. The app routes defeat checks through the Rust-owned outcome resolver after scheduled combat work, freezes clocks while paused or backgrounded, and never dispatches turn advancement.
+- Production and developer QA variants enter the same realtime combat loop. Finite/story defeat checks remain Rust-owned after scheduled work; ordinary continuous roaming interrupts the current scheduler at the first hero KO and routes the attempt to session recovery. Paused/background frames freeze combat time, and combat never dispatches turn advancement.
 - Do not store durable gameplay rules in render modules, asset JSON, or `app.js` when a module/core owner exists.
 
 - The combat progress HUD replaces manual Boss input. Three internal notches represent four full waves; chapter/stage reads authoritative stage state. The shared stage owner enters bosses automatically, and defeat resets progress before retry.

@@ -113,7 +113,7 @@ import { registerRuntimeLayouts } from './systems/runtimeLayoutRegistry.js';
 import { renderExistingNavigation } from './systems/renderExistingNavigation.mjs';
 import { updateBossSummonFallback } from './systems/renderCombatBossControl.mjs';
 import { createQuestLadderUI } from './systems/questLadderUI.mjs';
-import { createQuestCombatSession, restoreHeroesToFullHP } from './systems/questCombatSession.mjs';
+import { createQuestCombatSession, recoverContinuousOrdinaryDefeatIfNeeded, restoreHeroesToFullHP } from './systems/questCombatSession.mjs';
 import { createCombatEntryTransition } from './systems/combatEntryTransition.mjs';
 import { releaseCombatStartToScheduler } from './systems/combatSessionReset.mjs';
 import { createStoryEntryFlow } from './systems/storyEntryFlow.mjs';
@@ -1941,7 +1941,7 @@ async function main(){
   const equipmentProgress = createEquipmentStorage({ globals: state.globals, getActors: () => state.entities, storage: window.localStorage, persistProgress: () => heroProgressStorage.persistHeroProgressIfDirty({stateGlobals: state.globals}) });
   const lampEquipment = createLampEquipmentUI({canvas, economy: equipmentProgress, globals: state.globals, eventBus, isPaused: () => gameState.storyEntry.combatPaused || !!state.globals.DevToolingPaused});
   const qaPauseSnapshotEnabled = new URLSearchParams(window.location.search).get('questQA') === '1';
-  const storyEntry = createStoryEntryFlow({ gameState, layoutState, isReady: () => freshCombatBootstrapped, getEnemies: () => enemyRows, prepareEncounter: questCombat.prepare, resurrect: questCombat.resurrect, closeTransientSurface: () => lampEquipment.close(), canCloseTransientSurface: () => lampEquipment.state().canLeave, recordQaPauseSnapshot: qaPauseSnapshotEnabled ? stage => gameState.publishQaPauseSnapshot?.(stage) : undefined, energyGlobals: state.globals, enterCombat: createCombatEntryTransition(canvas, { onComplete: () => releaseCombatStartToScheduler(state.globals) }), onCombatEnd: () => devToolingRuntime.clearCombatSessionOverrides(), onCombatQuit: () => { devToolingRuntime.clearCombatSessionOverrides(); resetCombatRuntimeForFreshSession('quest-navigation-quit', { clearSessionSettlement: true }); }, isCombatPauseEligible: () => state.globals.NativeBattleEnded !== true && state.globals.ProgressionBattle?.outcome !== 'victory' && state.globals.ProgressionBattle?.outcome !== 'defeat' });
+  const storyEntry = createStoryEntryFlow({ gameState, layoutState, isReady: () => freshCombatBootstrapped, getEnemies: () => enemyRows, prepareEncounter: questCombat.prepare, resurrect: questCombat.resurrect, closeTransientSurface: () => lampEquipment.close(), canCloseTransientSurface: () => lampEquipment.state().canLeave, recordQaPauseSnapshot: qaPauseSnapshotEnabled ? stage => gameState.publishQaPauseSnapshot?.(stage) : undefined, onBossActivityResumed: () => { if (state.globals.ContinuousCombatStage?.bossAvailable) state.globals.ContinuousCombatStage.bossEntryDeferredUntilWaveFour = false; }, energyGlobals: state.globals, enterCombat: createCombatEntryTransition(canvas, { onComplete: () => releaseCombatStartToScheduler(state.globals) }), onCombatEnd: () => devToolingRuntime.clearCombatSessionOverrides(), onCombatQuit: () => { devToolingRuntime.clearCombatSessionOverrides(); resetCombatRuntimeForFreshSession('quest-navigation-quit', { clearSessionSettlement: true }); }, isCombatPauseEligible: () => state.globals.NativeBattleEnded !== true && state.globals.ProgressionBattle?.outcome !== 'victory' && state.globals.ProgressionBattle?.outcome !== 'defeat' });
   const questUI = createQuestLadderUI({ canvas, gameState, layoutState, flow: storyEntry, getGold: () => state.globals.goldTotal || 0 });
   registerRuntimeLayouts(layoutState, {
     storyEntry,
@@ -3261,6 +3261,12 @@ function getStoryCardLiveLineState() {
       YELLOW_CASINO_SETTLE_SEC, YELLOW_CASINO_SETTLE_BOUNCE_AMP, YELLOW_COLOR,
       startGemMergeFx, getGoldLabelTargetWorld,
     });
+    if (recoverContinuousOrdinaryDefeatIfNeeded({ state, session: questCombat })) {
+      heroProgressStorage.persistHeroProgressIfDirty({ stateGlobals: state.globals, callFunctionWithContext, fnContext });
+      drawFrame();
+      requestAnimationFrame(tick);
+      return;
+    }
     const enemyLineClearPressureActive = false;
     const continuousStageAdvanced = maybeAdvanceContinuousCombatStage({
       globals: state.globals,

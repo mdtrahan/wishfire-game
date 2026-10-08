@@ -46,7 +46,7 @@ test('continuous defeat is free, clears boss readiness and restarts wave one at 
   ...Array.from({length:3},(_,index)=>({uid:index+2,kind:'hero',hp:40,maxHP:40,ATK:900,DEF:900,MAG:900,RES:900,SPD:900})),
   {uid:9,kind:'enemy',hp:30,maxHP:30}],globals:{
   ContinuousCombatStageLoop:1,ContinuousCombatStage:{seed:1,region:2,stage:3,wave:4,bossAvailable:true,bossArmed:true,bossActive:true,transitions:8,clearedBosses:12,nextEmissionAt:0,lastUpdatedAt:0,spawnSerial:9},
-  EnemyData:enemyRows,EnemySlots:[9],PendingDeaths:{1:true,9:true},EnemyDeathVisualHoldByUID:{9:true},time:5,ProgressionBattle:{id:'run',participants:['Hondo'],defeated:{},settled:false},
+  EnemyData:enemyRows,EnemySlots:[9],PendingHeroHits:[{targetUID:1,at:0,sourceUID:9}],PendingDeaths:{1:true,9:true},EnemyDeathVisualHoldByUID:{9:true},time:5,ProgressionBattle:{id:'run',participants:['Hondo'],defeated:{},settled:false},
  }};
  const gameState={combatFailExitRequested:true};const calls=[];
  const call=(name,data,slotIndex)=>{
@@ -62,7 +62,12 @@ test('continuous defeat is free, clears boss readiness and restarts wave one at 
  assert.equal(state.globals.ContinuousCombatStage.bossAvailable,false);
  assert.equal(state.globals.ContinuousCombatStage.bossArmed,false);
  assert.equal(state.entities[0].hp,42);
+ assert.equal(state.globals.PendingHeroHits.length,0,'queued enemy projectiles are discarded before revival');
  assert.equal(state.entities[0].locomotion,'idle');assert.equal(state.entities[0].actionState,undefined);assert.equal(state.entities[0].actionStateUntil,undefined);
+ const recoveredHeroes=state.entities.filter(actor=>actor.kind==='hero');
+ assert.equal(new Set(recoveredHeroes.map(hero=>hero.recoveryFadeStartedAt)).size,1,'the squad shares one reveal start');
+ assert.ok(recoveredHeroes.every(hero=>Number.isFinite(hero.footX)&&Number.isFinite(hero.footY)&&hero.x===hero.footX&&hero.y===hero.footY));
+ assert.ok(Math.max(...recoveredHeroes.map(hero=>hero.footX))-Math.min(...recoveredHeroes.map(hero=>hero.footX))<60,'heroes return to the compact authored huddle');
  const retryEnemies=state.entities.filter(actor=>actor.kind==='enemy');
  assert.ok(retryEnemies.length>12&&retryEnemies.length<=36, 'underpowered local packs receive up to three extra actors each');
  assert.ok(retryEnemies.every(actor=>actor.streamState==='roaming'));
@@ -75,6 +80,30 @@ test('continuous defeat is free, clears boss readiness and restarts wave one at 
  assert.equal(calls.includes('RebuildTurnOrderPreserveCurrent'),false);
  assert.equal(state.globals.QuestFiniteEncounter,1, 'continuous recovery must keep legacy slot refills disabled');
  assert.equal(gameState.combatFailExitRequested,false);
+});
+
+test('ordinary recovery keeps earned boss access deferred while wave-one farming resumes', async () => {
+ const {createQuestCombatSession,recoverContinuousOrdinaryDefeatIfNeeded}=await import('../web-runner/systems/questCombatSession.mjs');
+ const state={entities:[{uid:1,kind:'hero',heroIndex:0,hp:0,maxHP:42,isAlive:false,statuses:[{statusEffect:'dot',duration:4}],x:190,y:330,footX:190,footY:330}],globals:{
+  ContinuousCombatStageLoop:1,ContinuousCombatStage:{seed:4,region:1,stage:2,wave:4,bossAvailable:true,bossArmed:false,bossActive:false,transitions:3,clearedBosses:2,nextEmissionAt:0,lastUpdatedAt:0,spawnSerial:0},
+  EnemyData:[{name:'Gobloc',HP:20,ATK:2,DEF:2,MAG:1,RES:1,SPD:8,CombatPower:20}],time:8,
+ }};
+ let settlements=0;
+ const call=(name,data,slotIndex)=>{if(name==='SettleContinuousCombatRewards')settlements++;if(name==='SpawnEnemy'){state.entities.push({uid:10+slotIndex,kind:'enemy',name:data.name,hp:data.HP,maxHP:data.HP,slotIndex,streamState:'roaming'});return state.entities.at(-1);}return null;};
+ const session=createQuestCombatSession({state,gameState:{},call,sync(){}});
+ assert.equal(recoverContinuousOrdinaryDefeatIfNeeded({state,session}),true);
+ assert.equal(recoverContinuousOrdinaryDefeatIfNeeded({state,session}),false);
+ assert.equal(settlements,1,'the KO latch settles and recovers only once');
+ const stage=state.globals.ContinuousCombatStage;
+ assert.equal(stage.wave,1);
+ assert.equal(stage.bossAvailable,true);
+ assert.equal(stage.bossArmed,false);
+ assert.equal(stage.bossActive,false);
+ assert.equal(stage.bossEntryDeferredUntilWaveFour,true);
+ const hero=state.entities.find(actor=>actor.kind==='hero');
+ assert.equal(hero.hp,42);
+ assert.equal(hero.statuses.length,0);
+ assert.equal(hero.recoveryFadeStartedAt,8);
 });
 
 test('new battle clears combat conditions and retired Flow state while retaining gold and progression', async () => {

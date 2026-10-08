@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { advanceEnemyActionSimulation, createCombatSimulationTicker } from '../web-runner/systems/combatSimulationTick.mjs';
-import { createEnemyActivationFade } from '../web-runner/systems/enemyActivationFadePresentation.mjs';
+import { createEnemyActivationFade, paintWithActivationAlpha } from '../web-runner/systems/enemyActivationFadePresentation.mjs';
 
 const rendererSource = fs.readFileSync(new URL('../web-runner/systems/renderRuntime.js', import.meta.url), 'utf8');
 
@@ -144,11 +144,27 @@ test('assembled renderer paints each actor with its health bar in the shared foo
   assert.match(body, /const paintEnemyActor = \(\) => \{\s*ctx\.save\(\);\s*ctx\.globalAlpha \*= enemyFadeAlpha;[\s\S]*?ctx\.restore\(\);\s*\};/);
   assert.match(body, /actorPaintQueue\.push\(\{ footY: Number\(footY\), uid: Number\(hero\?\.uid/);
   assert.match(body, /addActorPaint\(enemy\.uid, \(\) => \{ ctx\.save\(\); ctx\.globalAlpha \*= enemyFadeAlpha; drawCombatHealthBar/);
-  assert.match(body, /addActorPaint\(uid, \(\) => drawCombatHealthBar/);
+  assert.match(body, /const paintHeroActor = \(\) => paintWithActivationAlpha\(ctx, heroSpriteFadeAlpha/);
+  assert.match(body, /addActorPaint\(uid, \(\) => paintWithActivationAlpha\(ctx, heroBarFadeAlpha/);
   assert.doesNotMatch(body, /actorFrontOverlayQueue\.push\(\(\) => drawCombatHealthBar/);
   const paintAt = body.indexOf('actorPaintQueue.sort(');
   const heroHealthAt = body.indexOf('// Hero health lives with the battlefield actor');
   assert.ok(heroHealthAt >= 0 && paintAt > heroHealthAt, 'health bar callbacks attach before the shared ascending foot-Y actor pass');
+});
+
+test('hero recovery fade multiplies both queued sprite and HP-bar opacity', () => {
+  const fadeAlpha = createEnemyActivationFade();
+  const hero = { uid: 2, kind: 'hero', recoveryFadeStartedAt: 8 };
+  const ctx = { globalAlpha: 0.6, stack: [], save() { this.stack.push(this.globalAlpha); }, restore() { this.globalAlpha = this.stack.pop(); } };
+  const observed = [];
+  const alpha = fadeAlpha(hero, 8.175);
+  const body = () => observed.push(ctx.globalAlpha);
+  paintWithActivationAlpha(ctx, alpha, body);
+  paintWithActivationAlpha(ctx, alpha, body);
+  assert.ok(observed.every(alpha => Math.abs(alpha - 0.3) < 1e-10));
+  assert.equal(ctx.globalAlpha, 0.6, 'both actor and bar painters restore the parent canvas alpha');
+  assert.match(effectiveRendererBody(), /paintWithActivationAlpha\(ctx, heroSpriteFadeAlpha/);
+  assert.match(effectiveRendererBody(), /paintWithActivationAlpha\(ctx, heroBarFadeAlpha/);
 });
 
 test('assembled enemy queue carries loaded-puppet and fallback foot anchors into bar placement', () => {

@@ -29,6 +29,23 @@ test('fallback replaces the rail only for an interrupted ready or active boss an
   assert.ok(letterboxed.y > 18 && letterboxed.y < 22, 'the fallback follows the centered 360x640 reference frame');
 });
 
+test('an explicit fallback return releases deferred earned access only after combat resumes', async () => {
+  const state = bossState({ bossEntryDeferredUntilWaveFour: true });
+  let transitionResult = false;
+  let activeLayout = 'heroLayout';
+  const flow = createStoryEntryFlow({
+    gameState: {}, isReady: () => true,
+    layoutState: { getActiveLayoutId: () => activeLayout, requestLayoutChange(target) { activeLayout = transitionResult ? target : activeLayout; return Promise.resolve(transitionResult); } },
+    onBossActivityResumed: () => { state.globals.ContinuousCombatStage.bossEntryDeferredUntilWaveFour = false; },
+  });
+  assert.equal(await flow.resumeBossActivity(), false);
+  assert.equal(state.globals.ContinuousCombatStage.bossEntryDeferredUntilWaveFour, true);
+  transitionResult = true;
+  assert.equal(await flow.resumeBossActivity(), true);
+  assert.equal(state.globals.ContinuousCombatStage.bossEntryDeferredUntilWaveFour, false);
+  assert.equal(state.globals.ContinuousCombatStage.bossAvailable, true);
+});
+
 test('fallback button gates unsafe transactions and resumes the same combat snapshot once', async () => {
   let activeLayout = 'heroLayout';
   let canLeave = false;

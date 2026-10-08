@@ -61,14 +61,20 @@ test('combat progress HUD shows the current chapter and four-wave progress', asy
   state.globals.ContinuousCombatStage.bossActive = false;
   state.globals.ContinuousCombatStage.wave = 1;
   calls.length = 0;
-  control.drawCombatProgressHud(ctx, { state, images: {}, worldToCanvas });
+  const deferredHud = control.drawCombatProgressHud(ctx, { state, images: {}, worldToCanvas });
+  assert.equal(deferredHud.completedWaves, 0, 'the four-wave refill remains visible while saved access is deferred');
+  assert.deepEqual(notchColors(), ['#243237', '#243237', '#243237']);
+  state.globals.ContinuousCombatStage.bossAvailable = true;
+  state.globals.ContinuousCombatStage.bossEntryDeferredUntilWaveFour = true;
+  calls.length = 0;
+  assert.equal(control.drawCombatProgressHud(ctx, { state, images: {}, worldToCanvas }).completedWaves, 0);
   assert.deepEqual(notchColors(), ['#243237', '#243237', '#243237']);
 });
 
 test('actor HP bars follow their owners in the shared depth-sorted paint queue', () => {
   const renderer = fs.readFileSync(path.join(root, 'web-runner/systems/renderRuntime.js'), 'utf8');
-  assert.match(renderer, /addActorPaint\(enemy\.uid, \(\) => drawCombatHealthBar/);
-  assert.match(renderer, /addActorPaint\(uid, \(\) => drawCombatHealthBar/);
+  assert.match(renderer, /addActorPaint\(enemy\.uid, \(\) => \{ ctx\.save\(\); ctx\.globalAlpha \*= enemyFadeAlpha; drawCombatHealthBar\(ctx, \{ x: barX, y: barY, width: drawBarW, height: drawBarH, fillWidth: drawFillW, trailWidth: drawYellowW, team: \\?'enemy\\?' \}\); ctx\.restore\(\); \}\)/);
+  assert.match(renderer, /addActorPaint\(uid, \(\) => paintWithActivationAlpha\(ctx, heroBarFadeAlpha, \(\) => drawCombatHealthBar\(ctx, \{ x: barX, y: barY, width: baseW, height: baseH, fillWidth: barState\.fillW, trailWidth: barState\.yellowW, team: \\?'hero\\?' \}\)\)\)/);
   assert.match(renderer, /const enemyFootY = puppet \? Number\(pos\.y\) : Number\(drawY \+ enemyH\)/);
   assert.match(renderer, /actorPaintQueue\.push\(\{ footY: enemyFootY/);
   assert.match(renderer, /const barY = Math\.round\(enemyFootY \+ \(4 \* layoutScale\)\)/);

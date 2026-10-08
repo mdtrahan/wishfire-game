@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createCombatCameraProjection, deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldVerticalBounds } from '../src/core/combatOrientation.mjs';
-import { advanceContinuousCombatArena } from '../web-runner/src/core/arenaCombat.mjs';
+import { advanceContinuousCombatArena, deriveContinuousCombatRecoveryHuddle } from '../web-runner/src/core/arenaCombat.mjs';
 import { computeCombatPower } from '../web-runner/src/core/combatPower.mjs';
 import {
   CONTINUOUS_COMBAT_PACK_CP_STEP,
@@ -85,6 +85,55 @@ test('normal wave plans start with six evenly spaced base packs of two or three 
   assert.ok(totals[1] < totals[2]);
   assert.ok(totals[1] / totals[0] < 1 + CONTINUOUS_COMBAT_PACK_CP_STEP * 2);
   assert.ok(totals[2] / totals[1] < 1 + CONTINUOUS_COMBAT_PACK_CP_STEP * 2);
+});
+
+test('earned boss access stays deferred through four recovery waves, then uses normal automatic entry', () => {
+  const globals = { ContinuousCombatStageLoop: 1, GamePhase: 'MENU', time: 1, EnemyData: rows, ContinuousCombatStage: {
+    ...createContinuousCombatStageState(42), wave: 1, bossAvailable: true, bossArmed: false, bossActive: false,
+    bossEntryDeferredUntilWaveFour: true, nextEmissionAt: 99,
+  }};
+  const calls = [];
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities: [{ uid: 1, kind: 'hero', hp: 20 }], call: name => calls.push(name) }), false);
+  assert.equal(globals.ContinuousCombatStage.bossActive, false);
+  assert.equal(globals.ContinuousCombatStage.bossAvailable, true);
+  assert.deepEqual(calls, []);
+
+  let state = globals.ContinuousCombatStage;
+  for (const wave of [1, 2, 3]) state = advanceContinuousCombatStage(state).state;
+  assert.equal(state.wave, 4);
+  const ready = advanceContinuousCombatStage(state).state;
+  assert.equal(ready.wave, 1);
+  assert.equal(ready.bossAvailable, true);
+  assert.equal(ready.bossEntryDeferredUntilWaveFour, false);
+});
+
+test('the runtime stage owner does not summon after the first recovered wave', () => {
+  const globals = {
+    ContinuousCombatStageLoop: 1, GamePhase: 'RUNTIME', BattleStartActive: 0, time: 0,
+    EnemyData: rows, EnemySize: 40, EnemySlots: [], PendingDeaths: {}, EnemyDeathVisualHoldByUID: {},
+    ContinuousCombatStage: { ...createContinuousCombatStageState(52), wave: 1, bossAvailable: true, bossArmed: false, bossActive: false, bossEntryDeferredUntilWaveFour: true, nextEmissionAt: 0 },
+  };
+  const entities = [{ uid: 1, kind: 'hero', hp: 40, maxHP: 40, footX: 180, footY: 280 }];
+  let nextUID = 10;
+  const call = (name, row, slotIndex) => {
+    if (name === 'SettleContinuousCombatRewards') return;
+    if (name !== 'SpawnEnemy') return;
+    const enemy = { uid: nextUID++, kind: 'enemy', name: row.name, enemyRole: row.enemyRole || row.role, combatRank: row.combatRank, hp: row.HP, maxHP: row.HP, slotIndex };
+    entities.push(enemy);
+    globals.EnemySlots.push(enemy.uid);
+    return enemy;
+  };
+  for (let clearedWave = 1; clearedWave <= 4; clearedWave += 1) {
+    if (clearedWave > 1) for (const enemy of entities.filter(actor => actor.kind === 'enemy')) enemy.hp = 0;
+    globals.time = Math.max(globals.time, Number(globals.ContinuousCombatStage.nextEmissionAt || 0));
+    assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), true, `cleared recovery wave ${clearedWave} advances`);
+    if (clearedWave < 4) {
+      assert.equal(globals.ContinuousCombatStage.bossActive, false, `wave ${clearedWave} does not summon the boss`);
+      assert.equal(globals.ContinuousCombatStage.wave, clearedWave + 1);
+    }
+  }
+  assert.equal(globals.ContinuousCombatStage.bossActive, true, 'the earned boss enters after wave four clears');
+  assert.ok(entities.some(actor => actor.kind === 'enemy' && (actor.combatRank === 'boss' || actor.enemyRole === 'boss')));
 });
 
 test('only underpowered ordinary sectors draw one seeded plus-one-to-three count and preserve base rows', () => {
@@ -236,19 +285,18 @@ test('ordinary waves carry HP while a boss clear restores and cleanses the party
     assert.deepEqual(heroes.map(hero => hero.hp), clearedBoss ? [60, 40] : [13, 0]);
     assert.deepEqual(heroes.map(hero => hero.isAlive), clearedBoss ? [true, true] : [true, false]);
     if (clearedBoss) {
-      const world = deriveCombatWorldBounds();
-      assert.deepEqual([heroes[0].footX, heroes[0].footY], [1800, 275], 'living heroes keep their completed-fight positions');
-      assert.ok(Math.hypot(heroes[1].footX - heroes[0].footX, heroes[1].footY - heroes[0].footY) <= 110, 'a remote KO hero regroups beside the living squad');
-      assert.ok(heroes[1].footX >= world.heroMinX && heroes[1].footX <= world.heroMaxX);
-      assert.ok(heroes[1].footY >= 170 && heroes[1].footY <= 375);
-      assert.ok(Math.hypot(heroes[1].footX - heroes[0].footX, heroes[1].footY - heroes[0].footY) >= 40, 'regroup placement leaves physical separation');
+      const huddle = deriveContinuousCombatRecoveryHuddle(heroes);
+      assert.deepEqual(heroes.map(hero => [hero.footX, hero.footY]), huddle.map(({ x, y }) => [x, y]), 'the revived party snaps to role-based huddle coordinates');
+      assert.ok(heroes.every(hero => hero.recoveryFadeStartedAt === 10), 'all revived heroes share one fade start');
     } else {
       assert.deepEqual([heroes[1].footX, heroes[1].footY], [420, 205], 'ordinary wave settlement leaves KO position unchanged');
     }
     if (clearedBoss) {
-      assert.equal(heroes[1].locomotion, 'idle');
-      assert.equal(heroes[1].locomotionStartedAt, 10);
-      for (const key of ['actionState', 'actionFacing', 'actionStateStartedAt', 'actionImpactAt', 'actionStateUntil']) assert.equal(heroes[1][key], undefined);
+      for (const hero of heroes) {
+        assert.equal(hero.locomotion, 'idle');
+        assert.equal(hero.locomotionStartedAt, 10);
+        for (const key of ['actionState', 'actionFacing', 'actionStateStartedAt', 'actionImpactAt', 'actionStateUntil']) assert.equal(hero[key], undefined);
+      }
     }
     assert.deepEqual(heroes.map(hero => hero.statuses.map(status => status.statusEffect)),
       clearedBoss ? [['atkUp'], []] : [['dot', 'atkUp'], ['silence']]);

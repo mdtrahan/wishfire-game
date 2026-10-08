@@ -1,6 +1,9 @@
 import { activateContinuousCombatSpawnedEnemy, buildContinuousCombatSpawnPlan, getContinuousCombatPartyCP, resetContinuousCombatAfterDefeat } from '../src/core/continuousCombatStage.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import { resetActorPresentationAfterRestore } from '../src/core/actorPresentationState.mjs';
+import { placeContinuousCombatHeroesInRecoveryHuddle } from '../src/core/arenaCombat.mjs';
+import { cleanseDebuffs } from '../src/core/combatRules.mjs';
+import { hasContinuousOrdinaryHeroKO } from './combatSimulationTick.mjs';
 
 // Session lifecycle only. Damage, initiative and skill rules remain runtime-owned.
 export function restoreHeroesToFullHP({ state, call }) {
@@ -14,13 +17,18 @@ export function restoreHeroesToFullHP({ state, call }) {
   call('UpdateHeroHPUI');
 }
 
+export function recoverContinuousOrdinaryDefeatIfNeeded({ state, session } = {}) {
+  if (!hasContinuousOrdinaryHeroKO(state)) return false;
+  return session?.recoverContinuousDefeat?.({ preserveBossAccess: true }) || false;
+}
+
 export function createQuestCombatSession({ state, gameState, call, sync }) {
   return {
     // Player sessions replenish the existing enemy slots. Authored finite
     // encounters remain available to QA through their explicit setup hooks.
     prepare() { state.globals.QuestFiniteEncounter = 0; },
     isCleared() { return false; },
-    recoverContinuousDefeat() {
+    recoverContinuousDefeat({ preserveBossAccess = false } = {}) {
       if (Number(state.globals.ContinuousCombatStageLoop || 0) !== 1) return false;
       call('SettleContinuousCombatRewards');
       resetCombatSessionConditions(state.globals, gameState, state.entities);
@@ -28,8 +36,11 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
       state.globals.EnemySlots = [];
       state.globals.EnemyDeathVisualHoldByUID = {};
       state.globals.PendingDeaths = {};
-      resetContinuousCombatAfterDefeat(state.globals);
+      resetContinuousCombatAfterDefeat(state.globals, { preserveBossAccess });
       restoreHeroesToFullHP({ state, call });
+      const heroes = state.entities.filter(actor => actor?.kind === 'hero');
+      for (const hero of heroes) cleanseDebuffs(hero);
+      placeContinuousCombatHeroesInRecoveryHuddle({ globals: state.globals, heroes, now: Number(state.globals.time || 0) });
       const stageState = state.globals.ContinuousCombatStage;
       const plan = buildContinuousCombatSpawnPlan(state.globals.EnemyData, stageState, { slotBase: 0, partyCP: getContinuousCombatPartyCP(state.entities) });
       stageState.spawnSerial = plan.length;

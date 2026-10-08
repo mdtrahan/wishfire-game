@@ -1,5 +1,6 @@
 import { advanceActorToward, actorAttackReach, actorFootPoint, actorFootprintRadius, isActorTargetInRange } from '../../../src/core/arenaCombatRules.mjs';
 import { deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldStartFormation, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
+import { resetActorPresentationAfterRestore } from './actorPresentationState.mjs';
 
 const isLiving = actor => actor && Number(actor.hp || 0) > 0;
 const distance = (actor, target) => {
@@ -64,6 +65,43 @@ function heroFormationSlot(hero, index) {
     frontline: FRONTLINE_HERO_NAMES.has(name) || (!name && index < 2),
     rowOffset: slot % 2 === 0 ? -FORMATION_ROW_GAP : FORMATION_ROW_GAP,
   };
+}
+
+export function deriveContinuousCombatRecoveryHuddle(heroes = []) {
+  const formation = deriveCombatWorldStartFormation(heroes.length);
+  const vertical = deriveCombatWorldVerticalBounds();
+  const centerY = (vertical.minY + vertical.maxY) / 2;
+  return heroes.map((hero, index) => {
+    const slot = heroFormationSlot(hero, index);
+    const rowSide = Math.sign(slot.rowOffset) || (index % 2 === 0 ? -1 : 1);
+    return {
+      hero,
+      x: formation.centerX + (slot.frontline ? TRAVEL_FRONT_OFFSET : -TRAVEL_FRONT_OFFSET),
+      y: centerY + rowSide * (actorFootprintRadius(hero) + 2),
+    };
+  });
+}
+
+export function placeContinuousCombatHeroesInRecoveryHuddle({ globals = {}, heroes = [], now = 0 } = {}) {
+  Object.assign(globals, {
+    HeroLungeOffsetByUID: {}, HeroRestBasePosByUID: {}, HeroRestFeetPosByUID: {}, HeroIconPosByIndex: [],
+    RealtimeHeroBasicScheduledActions: {}, RealtimeHeroFocusTargetUID: 0,
+  });
+  for (const { hero, x, y } of deriveContinuousCombatRecoveryHuddle(heroes)) {
+    hero.x = hero.footX = x;
+    hero.y = hero.footY = y;
+    hero.arenaEnabled = true;
+    hero.arenaTargetUID = 0;
+    hero.facing = 'right';
+    delete hero.originX;
+    delete hero.originY;
+    delete hero.targetX;
+    delete hero.targetY;
+    delete hero.arenaDirectionX;
+    delete hero.arenaDirectionY;
+    hero.recoveryFadeStartedAt = Number(now || 0);
+    resetActorPresentationAfterRestore(hero, now);
+  }
 }
 function separateFootprints(actors, bounds) {
   const actorXBounds = actor => actor?.kind === 'hero'

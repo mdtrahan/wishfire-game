@@ -3,6 +3,15 @@ import {
   queueCombatAttackImpactVfx as defaultQueueCombatAttackImpactVfx,
 } from './combatAttackVfxPresentation.mjs';
 import { isActorRanged, isActorTargetInRange } from '../../src/core/heroAttackTargetingRules.mjs';
+import { isActorRecoveryRevealActive } from '../src/core/actorPresentationState.mjs';
+
+export function hasContinuousOrdinaryHeroKO(state) {
+  const globals = state?.globals || {};
+  const stage = globals.ContinuousCombatStage;
+  return Number(globals.ContinuousCombatStageLoop || 0) === 1
+    && !stage?.bossActive
+    && (state?.entities || []).some(actor => actor?.kind === 'hero' && Number(actor.hp || 0) <= 0);
+}
 
 export function processPendingHeroHits({
   state,
@@ -20,6 +29,7 @@ export function processPendingHeroHits({
       visualControlPatches.DoubleAttackLungeStarted = state.globals.DoubleAttackLungeStarted || {};
       const doubleAttackBatchAnchors = state.globals.DoubleAttackBatchAnchors || (visualControlPatches.DoubleAttackBatchAnchors = {});
       for (let i = pending.length - 1; i >= 0; i--) {
+        if (hasContinuousOrdinaryHeroKO(state)) break;
         const hit = pending[i];
         if (!hit) { pending.splice(i, 1); continue; }
         const followUpBatchId = Number(hit.followUpBatchId || 0);
@@ -242,12 +252,17 @@ export function createCombatSimulationTicker() {
         lastNowMs = null;
         return 0;
       }
+      if (hasContinuousOrdinaryHeroKO(state)) {
+        lastNowMs = null;
+        return 0;
+      }
       const current = Number(nowMs);
       const now = Number.isFinite(current) ? current : 0;
       const base = lastNowMs == null ? 0.001 : Math.min(0.05, Math.max(0.001, (now - lastNowMs) / 1000));
       lastNowMs = now;
       const dt = base * Math.max(0.25, Number(state.globals.DevCombatSpeedMultiplier || 1));
       state.globals.time = Number(state.globals.time || 0) + dt;
+      if ((state.entities || []).some(actor => actor?.kind === 'hero' && isActorRecoveryRevealActive(actor, state.globals.time))) return dt;
       const damageTexts = state.globals.DamageTexts || [];
       for (let i = damageTexts.length - 1; i >= 0; i--) {
         const text = damageTexts[i];
@@ -264,6 +279,10 @@ export function createCombatSimulationTicker() {
       state.globals.TextAnimating = damageTexts.length > 0 || state.globals.time < Number(state.globals.TextAnimEndAt || 0) ? 1 : 0;
       advanceBattleStartSimulation({ state, runCombatStep });
       processPendingHeroHits({ state, fnContext, callFunctionWithContext, animationMath });
+      if (hasContinuousOrdinaryHeroKO(state)) {
+        lastNowMs = null;
+        return dt;
+      }
       advanceEnemyActionSimulation({
         state,
         gameState,
@@ -278,6 +297,10 @@ export function createCombatSimulationTicker() {
         combatVfxProfileForActor,
         queueCombatAttackImpactVfx,
       });
+      if (hasContinuousOrdinaryHeroKO(state)) {
+        lastNowMs = null;
+        return dt;
+      }
       advanceHeroActionSimulation({ state, gameState, dt, layoutW, animationMath, applyTurnGateGlobals });
       advanceYellowCasinoSimulation({ state, gameState, runtimeDebugLogging, traceTask015YellowAnimation, traceTask015YellowWrite, getCellWorldPos, countCellCoverage, recordTask011RefillWriteEvent, setGemArray, YELLOW_CASINO_SETTLE_SEC, YELLOW_CASINO_SETTLE_BOUNCE_AMP, YELLOW_COLOR, startGemMergeFx, getGoldLabelTargetWorld, applyTurnGateIntent, getYellowSequenceCompletionIntent, assertBoardIntegrity });
       advanceRefillBounceSimulation({
@@ -925,6 +948,7 @@ export function advanceEnemyActionSimulation({
   const actions = continuousCombat
     ? Object.entries(actionMap).sort(([a], [b]) => Number(a) - Number(b)).map(([, action]) => action)
     : [state.globals.EnemyAction];
+  if (hasContinuousOrdinaryHeroKO(state)) return;
   const completeEnemyTurn = (enemyAction, releaseDelay = 0.05) => {
     if (continuousCombat) {
       const key = String(Number(enemyAction?.uid || 0));
@@ -1061,5 +1085,6 @@ export function advanceEnemyActionSimulation({
         }
       }
     }
+    if (hasContinuousOrdinaryHeroKO(state)) break;
   }
 }

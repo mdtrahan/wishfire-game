@@ -12,7 +12,7 @@ export function buildSyntheticQuestStages(enemies) {
     }));
 }
 
-export function createStoryEntryFlow({ gameState, layoutState, isReady, content = WISHFIRE_WARP_CROSSING_CONTENT, resurrect = () => {}, prepareEncounter = () => {}, getEnemies = () => [], onCombatEnd = () => {}, onCombatQuit = onCombatEnd, isCombatPauseEligible = () => true, closeTransientSurface = () => {}, canCloseTransientSurface = () => true, recordQaPauseSnapshot = () => {}, energyGlobals = { Player_Energy: 200 }, enterCombat = change => change() }) {
+export function createStoryEntryFlow({ gameState, layoutState, isReady, content = WISHFIRE_WARP_CROSSING_CONTENT, resurrect = () => {}, prepareEncounter = () => {}, getEnemies = () => [], onCombatEnd = () => {}, onCombatQuit = onCombatEnd, isCombatPauseEligible = () => true, closeTransientSurface = () => {}, canCloseTransientSurface = () => true, recordQaPauseSnapshot = () => {}, onBossActivityResumed = () => {}, energyGlobals = { Player_Energy: 200 }, enterCombat = change => change() }) {
   const scene = content.scenes[0];
   const handoff = scene.steps.findIndex(step => step.id === scene.combatHandoffStepId);
   if (handoff < 0) throw new Error('Opening scene requires an authored combat handoff step');
@@ -219,6 +219,7 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
         entry.modal = null;
         entry.combatPaused = false;
         recordQaPauseSnapshot('resume');
+        onBossActivityResumed();
         return true;
       } finally {
         bossResumePending = false;

@@ -17,7 +17,7 @@ import { drawCombatProgressHud } from './renderCombatBossControl.mjs';
 import { drawCombatHealthBar } from './combatHealthBarPresentation.mjs';
 import { drawActorPuppetFrame } from './actorPuppetPresentation.mjs';
 import { renderRealtimeSkillGroundVfx } from './realtimeSkillGroundPresentation.mjs';
-import { createEnemyActivationFade } from './enemyActivationFadePresentation.mjs';
+import { createEnemyActivationFade, paintWithActivationAlpha } from './enemyActivationFadePresentation.mjs';
 import { isActorTargetInRange } from '../../src/core/heroAttackTargetingRules.mjs';
 import {
   computeCombatDamageFontSize,
@@ -203,12 +203,12 @@ effectiveBody = replaceRequired(
 replaceBetween(
   '          const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0), activeCombatOrientation);',
   '\n          if (hero && wardBarrierImage) {',
-  body => `          const paintHeroActor = () => {${body}\n          };\n          actorPaintQueue.push({ footY: Number(footY), uid: Number(hero?.uid || 0), paint: paintHeroActor });\n`,
+  body => `          const heroSpriteFadeAlpha = getEnemyActivationFadeAlpha(hero, Number(g.time || 0));\n          const paintHeroActor = () => paintWithActivationAlpha(ctx, heroSpriteFadeAlpha, () => { ${body}\n          });\n          actorPaintQueue.push({ footY: Number(footY), uid: Number(hero?.uid || 0), paint: paintHeroActor });\n`,
 );
 replaceBetween(
   '          if (hero && wardBarrierImage) {',
   '\n\n        }\n        presentationPatches.HeroPortraitPosByIndex',
-  body => `          const paintHeroFrontOverlay = () => {${body.replace('continue;', 'return;')}\n          };\n          actorFrontOverlayQueue.push(paintHeroFrontOverlay);`,
+  body => `          const heroOverlayFadeAlpha = getEnemyActivationFadeAlpha(hero, Number(g.time || 0));\n          const paintHeroFrontOverlay = () => paintWithActivationAlpha(ctx, heroOverlayFadeAlpha, () => { ${body.replace('continue;', 'return;')}\n          });\n          actorFrontOverlayQueue.push(paintHeroFrontOverlay);`,
 );
 effectiveBody = effectiveBody.replace(
   "    renderHealBlooms('front');",
@@ -249,6 +249,7 @@ export function renderRuntime(deps) {
   deps.drawActorPuppetFrame = drawActorPuppetFrame;
   deps.renderRealtimeSkillGroundVfx = renderRealtimeSkillGroundVfx;
   deps.getEnemyActivationFadeAlpha = enemyActivationFadeAlpha;
+  deps.paintWithActivationAlpha = paintWithActivationAlpha;
   deps.isActorTargetInRange = isActorTargetInRange;
   deps.computeCombatDamageFontSize = computeCombatDamageFontSize;
   deps.computeViewportFontSize = computeViewportFontSize;
@@ -438,7 +439,8 @@ export function renderRuntime(deps) {
       barState.yellowW = Math.max(targetW, barState.yellowW - 90 * dt);
       const barX = Math.round(pos.x - baseW / 2);
       const barY = Math.round(footPos.y + 4 * layoutScale);
-      addActorPaint(uid, () => drawCombatHealthBar(ctx, { x: barX, y: barY, width: baseW, height: baseH, fillWidth: barState.fillW, trailWidth: barState.yellowW, team: 'hero' }));
+      const heroBarFadeAlpha = getEnemyActivationFadeAlpha(hero, Number(state.globals.time || 0));
+      addActorPaint(uid, () => paintWithActivationAlpha(ctx, heroBarFadeAlpha, () => drawCombatHealthBar(ctx, { x: barX, y: barY, width: baseW, height: baseH, fillWidth: barState.fillW, trailWidth: barState.yellowW, team: 'hero' })));
     }
 
     actorPaintQueue.sort((a, b) => Number(a.footY || 0) - Number(b.footY || 0) || Number(a.uid || 0) - Number(b.uid || 0));

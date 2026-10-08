@@ -115,6 +115,22 @@ test('boss availability and current tier restore from the existing progression s
  assert.deepEqual(afterDefeat.continuousStage,{region:3,stage:7,wave:1,bossAvailable:false,clearedBosses:26});
 });
 
+test('ordinary recovery deferral roundtrips with earned boss access and does not auto-arm on reload',()=>{
+ const globals={HeroProgress:createHeroProgressStore(),ContinuousCombatStageLoop:1,ContinuousCombatStage:{region:2,stage:3,wave:1,bossAvailable:true,bossArmed:false,bossActive:false,bossEntryDeferredUntilWaveFour:true,clearedBosses:5}};
+ const values=new Map();const persist=createPersistHeroProgressIfDirty({localStorage:{setItem:(key,value)=>values.set(key,value)}});
+ assert.equal(persist({stateGlobals:globals}),true);
+ const restored=createHeroProgressStore(JSON.parse(values.get(HERO_PROGRESS_SAVE_KEY)));
+ assert.equal(restored.continuousStage.bossEntryDeferredUntilWaveFour,true);
+ const next={HeroProgress:restored,GamePhase:'RUNTIME',BattleStartActive:0,time:1,EnemyData:[],EnemySlots:[],PendingDeaths:{},EnemyDeathVisualHoldByUID:{}};
+ configureContinuousCombatProduction(next,{productionPath:true});
+ next.ContinuousCombatStage.nextEmissionAt=99;
+ const spawned=[];const call=(name,...args)=>{if(name==='SpawnEnemy')spawned.push(args);};
+ assert.equal(maybeAdvanceContinuousCombatStage({globals:next,entities:[{uid:1,kind:'hero',hp:40,maxHP:40}],presentationBarrier:{lanes:{}},call}),false);
+ assert.equal(next.ContinuousCombatStage.bossAvailable,true);
+ assert.equal(next.ContinuousCombatStage.bossActive,false);
+ assert.equal(spawned.length,0);
+});
+
 test('the app tick persists boss readiness before its stage early return and defeat reset before its outcome early return',()=>{
  const tickStart=appSource.indexOf('function tick(){',appSource.indexOf('let frameCount = 0;'));
  const tickEnd=appSource.indexOf('\n  tick();',tickStart);
@@ -137,7 +153,7 @@ test('the app tick persists boss readiness before its stage early return and def
    combatSimulationTicker:{reset(){},tick(){}},lastFrameTime:0,ensureDevToolingConfig:()=>({open:false}),
    layoutState:{getActiveLayoutId:()=> 'combat'},shouldFreezeCombatSimulation:()=>false,drawFrame(){},
    fnContext:{},callFunctionWithContext:(ctx,name,...args)=>makeCall(state)(name,...args),
-   maybeAdvanceContinuousCombatStage,getPresentationTurnBarrier:()=>({lanes:{}}),checkMainRuntimeCombatOutcome:checkOutcome,
+   maybeAdvanceContinuousCombatStage,getPresentationTurnBarrier:()=>({lanes:{}}),recoverContinuousOrdinaryDefeatIfNeeded:()=>false,checkMainRuntimeCombatOutcome:checkOutcome,
    questCombat:{isCleared:()=>false},storyEntry:{victory(){}},heroProgressStorage:{persistHeroProgressIfDirty},
    animationMath:{},layoutW:0,applyTurnGateGlobals(){},applyTurnGateIntent(){},createEnemyTurnIdleRecovery(){},
    getCellWorldPos(){},randomGemFrame(){},setGemArray(){},countCellCoverage(){},recordTask011RefillWriteEvent(){},

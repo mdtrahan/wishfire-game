@@ -23,7 +23,7 @@ export function persistHeroProgressIfDirty({stateGlobals:g}) {
   if (!g.HeroProgress || g.HeroProgressStorageError) return false;
   const stage = g.ContinuousCombatStage;
   if (Number(g.ContinuousCombatStageLoop) === 1 && stage) {
-    const checkpoint = { region: stage.region, stage: stage.stage, wave: stage.bossActive ? 1 : stage.wave, bossAvailable: !!stage.bossAvailable || !!stage.bossActive, clearedBosses: stage.clearedBosses };
+    const checkpoint = { region: stage.region, stage: stage.stage, wave: stage.bossActive ? 1 : stage.wave, bossAvailable: !!stage.bossAvailable || !!stage.bossActive, clearedBosses: stage.clearedBosses, ...(stage.bossEntryDeferredUntilWaveFour ? { bossEntryDeferredUntilWaveFour: true } : {}) };
     if (JSON.stringify(checkpoint) !== JSON.stringify(g.HeroProgress.continuousStage)) {
       g.HeroProgress.continuousStage = checkpoint;
       g.HeroProgressDirty = true;

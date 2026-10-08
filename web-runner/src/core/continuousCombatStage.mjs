@@ -3,10 +3,10 @@ import { computeCombatPower } from './combatPower.mjs';
 import { deriveCombatArenaBounds, deriveCombatWorldBounds, deriveCombatWorldStartFormation, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
 import { cleanseDebuffs } from './combatRules.mjs';
 import { saveHeroProgress } from './heroProgression.mjs';
-import { advanceContinuousCombatArena } from './arenaCombat.mjs';
-import { resetActorPresentationAfterRestore } from './actorPresentationState.mjs';
+import { advanceContinuousCombatArena, placeContinuousCombatHeroesInRecoveryHuddle } from './arenaCombat.mjs';
+import { isActorRecoveryRevealActive, resetActorPresentationAfterRestore } from './actorPresentationState.mjs';
 import { previewSeededRng } from '../../../src/core/seededRngRules.mjs';
-import { actorFootPoint, actorFootprintRadius } from '../../../src/core/arenaCombatRules.mjs';
+import { actorFootprintRadius } from '../../../src/core/arenaCombatRules.mjs';
 
 export const CONTINUOUS_COMBAT_PACK_INTERVAL_SEC = 3;
 export const CONTINUOUS_COMBAT_PACK_CP_STEP = 0.06;
@@ -16,43 +16,6 @@ export const CONTINUOUS_COMBAT_PACKS_PER_WAVE = 6;
 export const CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX = CONTINUOUS_COMBAT_PACKS_PER_WAVE * 6;
 export const CONTINUOUS_COMBAT_SECTOR_RATIOS = Object.freeze([0.12, 0.27, 0.42, 0.57, 0.72, 0.87]);
 export const CONTINUOUS_COMBAT_BOSS_ENTRY_WIPE_MS = 440;
-
-function regroupKnockedOutHeroes(heroes) {
-  const living = heroes.filter(hero => Number(hero.hp || 0) > 0);
-  const knockedOut = heroes.filter(hero => Number(hero.hp || 0) <= 0);
-  if (!living.length || !knockedOut.length) return;
-
-  const world = deriveCombatWorldBounds();
-  const vertical = deriveCombatWorldVerticalBounds();
-  const center = living.reduce((sum, hero) => {
-    const point = actorFootPoint(hero);
-    return { x: sum.x + point.x / living.length, y: sum.y + point.y / living.length };
-  }, { x: 0, y: 0 });
-  const placed = living.slice();
-  const angles = Array.from({ length: 16 }, (_, index) => (index / 16) * Math.PI * 2);
-  for (const hero of knockedOut) {
-    let position = null;
-    for (const radius of [40, 52, 64, 76, 88, 100]) {
-      for (const angle of angles) {
-        const candidate = {
-          x: Math.max(world.heroMinX, Math.min(world.heroMaxX, center.x + Math.cos(angle) * radius)),
-          y: Math.max(vertical.minY, Math.min(vertical.maxY, center.y + Math.sin(angle) * radius)),
-        };
-        const separated = placed.every(other => {
-          const point = actorFootPoint(other);
-          return Math.hypot(candidate.x - point.x, candidate.y - point.y)
-            >= actorFootprintRadius(hero) + actorFootprintRadius(other) + 4;
-        });
-        if (separated) { position = candidate; break; }
-      }
-      if (position) break;
-    }
-    if (!position) continue;
-    hero.footX = hero.x = position.x;
-    hero.footY = hero.y = position.y;
-    placed.push(hero);
-  }
-}
 
 // Four normal packs form one repeatable stage. The boss is a gate rather than
 // a fifth timed pack.
@@ -367,7 +330,7 @@ export function advanceContinuousCombatStage(stageState) {
   }
   const currentWave = Math.max(1, Math.min(CONTINUOUS_COMBAT_WAVES_PER_STAGE, Math.floor(Number(stageState?.wave) || 1)));
   const state = currentWave >= CONTINUOUS_COMBAT_WAVES_PER_STAGE
-    ? { ...stageState, wave: 1, bossAvailable: true, transitions }
+    ? { ...stageState, wave: 1, bossAvailable: true, bossEntryDeferredUntilWaveFour: false, transitions }
     : { ...stageState, wave: currentWave + 1, transitions };
   return { done: false, stage: getContinuousCombatStage(state), state };
 }
@@ -422,15 +385,16 @@ export function armContinuousCombatBoss(globals, entities, call, { wallNowMs = D
   return true;
 }
 
-export function resetContinuousCombatAfterDefeat(globals) {
+export function resetContinuousCombatAfterDefeat(globals, { preserveBossAccess = false } = {}) {
   const state = globals?.ContinuousCombatStage;
   if (!state) return false;
   globals.ContinuousCombatStage = {
     ...state,
     wave: 1,
-    bossAvailable: false,
+    bossAvailable: preserveBossAccess && !!state.bossAvailable,
     bossArmed: false,
     bossActive: false,
+    bossEntryDeferredUntilWaveFour: preserveBossAccess && !!state.bossAvailable,
     bossCameraCenterX: null,
     bossWorldX: null,
     bossTransitionStartedAtMs: null,
@@ -678,7 +642,8 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   const stageState = globals.ContinuousCombatStage;
   if (!stageState) return false;
   if (stageState.bossActive && Number(stageState.bossTransitionEndsAtMs || 0) > Date.now()) return false;
-  if (stageState.bossAvailable && !stageState.bossActive && globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) {
+  if ((entities || []).some(actor => actor?.kind === 'hero' && isActorRecoveryRevealActive(actor, globals.time || 0))) return false;
+  if (stageState.bossAvailable && !stageState.bossActive && !stageState.bossEntryDeferredUntilWaveFour && globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) {
     return armContinuousCombatBoss(globals, entities, call);
   }
   const now = Number(globals.time || 0);
@@ -715,7 +680,7 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
     transition = advanceContinuousCombatStage(stageState);
   }
 
-  const enteringBoss = !!transition?.state?.bossAvailable;
+  const enteringBoss = !!transition?.state?.bossAvailable && !transition?.state?.bossEntryDeferredUntilWaveFour;
   if (!transition?.stage) return false;
   if (enteringBoss) {
     globals.ContinuousCombatStage = transition.state;
@@ -725,14 +690,15 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   if (transition.clearedBoss) {
     resetRealtimeSkillAttempt(globals,entities);
     const heroes = entities.filter(actor => actor?.kind === 'hero');
-    regroupKnockedOutHeroes(heroes);
+    const revivedKoHero = heroes.some(hero => Number(hero.hp || 0) <= 0);
     for (const hero of heroes) {
       hero.hp = Number(hero.maxHP || 0);
       hero.isAlive = hero.hp > 0;
-      resetActorPresentationAfterRestore(hero, now);
+      if (!revivedKoHero) resetActorPresentationAfterRestore(hero, now);
       cleanseDebuffs(hero);
       if (globals.HeroProgress) saveHeroProgress(hero, globals.HeroProgress);
     }
+    if (revivedKoHero) placeContinuousCombatHeroesInRecoveryHuddle({ globals, heroes, now });
     if (globals.HeroProgress) globals.HeroProgressDirty = true;
     call('UpdateHeroHPUI');
   }

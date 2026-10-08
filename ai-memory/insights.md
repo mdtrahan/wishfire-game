@@ -613,3 +613,4 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Actor HP owns terminal presentation state. Recovery clears old action cues, while the presentation selector also rejects a stale KO cue and its facing for living actors. Async clip retention must preserve the current life state across death and revival.
 
 - When a wave expands into dispersed packs, normalize a single boss's CP budget to one local pack. A total-wave budget can multiply offense and defenses by pack count. Verify fixed boss movement bounds against ranged heroes' stop distances after frontline KO.
+- For first-KO interruption, guard every phase boundary inside the action batch and before the next scheduler phase. If recovery preserves an earned progression gate while deferring its action, persist that deferred intent and make every automatic-entry consumer honor it.
