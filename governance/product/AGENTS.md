@@ -13,13 +13,15 @@
 
 ## Local Contracts
 - The player guide changes only when the user asks for it to change.
-- The approved combat contract has four stationary heroes with independent basic attacks and five auto-active skills each. Actors act on independent cooldowns; effects use seconds. There are no playable turns, action slots, gem matches, SP or FLOW in supported combat. The root combat cleanup plan owns the approved skill tables during migration.
+- The approved combat contract has four heroes in a tight roaming formation with independent basic attacks and five auto-active skills each. Actors act on independent cooldowns; effects use seconds. There are no playable turns, action slots, gem matches, SP or FLOW in supported combat. The root combat cleanup plan owns the approved skill tables during migration.
 - Ordinary waves carry hero HP and KO state forward. Clearing a boss fully restores and revives the party, removes harmful statuses and keeps beneficial effects.
 - The player guide describes the approved player-facing combat. Runtime migration remains in progress. Historical hero-and-party skill documents retain paused content only.
 - Affinity is passive and progression-facing. It is not a combat meter or separate in-battle progression track.
 - Vault/relic passives remain a separate progression layer.
 - Preserve Falie, Huun, Runa and Kojonn as internal save keys while displaying Fara, Hondo, Runa and Kaja.
 - Kaja's five active skills target allies; his separate basic attack targets an enemy.
+
+- Ordinary pack count compares final scaled pack CP with full deployed party CP, including KO members. A weaker pack gains a single seeded +1/+2/+3 count adjustment at construction; equality, stronger packs and bosses keep their count.
 
 ## Work Guidance
 - For new skill beads, require canonical skill ID, owner, target and useful-trigger rules, cooldown and duration in seconds, effect, and focused runtime and Browser proof.

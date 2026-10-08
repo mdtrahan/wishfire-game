@@ -40,7 +40,7 @@ function productionPartyMembers() {
   return runtime.buildConfiguredCombatPartyMembers(slots).heroMembers;
 }
 
-async function initialize(heroMembers, escortMember = null, withEnemy = false) {
+async function initialize(heroMembers, escortMember = null, withEnemy = false, { continuousStage = null, enemyRows = null } = {}) {
   const { resetCombatSessionConditions } = await import(pathToFileURL(path.join(systems, 'combatSessionReset.mjs')));
   const filename = path.join(systems, 'combatSessionInitializer.js');
   const source = fs.readFileSync(filename, 'utf8')
@@ -51,11 +51,13 @@ async function initialize(heroMembers, escortMember = null, withEnemy = false) {
     module: { exports: {} }, resetCombatSessionConditions, crypto:require('node:crypto').webcrypto,
     ...require('../web-runner/src/core/heroProgression.mjs'),
     ...require('../web-runner/src/core/routineEnemyScaling.mjs'),
+    buildContinuousCombatSpawnPlan: require('../web-runner/src/core/continuousCombatStage.mjs').buildContinuousCombatSpawnPlan,
+    getContinuousCombatPartyCP: require('../web-runner/src/core/continuousCombatStage.mjs').getContinuousCombatPartyCP,
     DEV_TOOL_EMPTY_SLOT: '', DEV_TOOL_RANDOM_ENEMY_SLOT: '__RANDOM__',
     runtimeDebugLogging: { startupDebugLog() {} },
   };
   vm.runInNewContext(source + '\nmodule.exports = { createCombatSessionInitializer };', context, { filename });
-  const state = { globals: {}, entities: [] };
+  const state = { globals: continuousStage ? { ContinuousCombatStageLoop: 1, ContinuousCombatStage: continuousStage, EncounterMaxSlots: 36 } : {}, entities: [] };
   const gameState = {};
   const calls = [];
   const init = context.module.exports.createCombatSessionInitializer({
@@ -67,9 +69,11 @@ async function initialize(heroMembers, escortMember = null, withEnemy = false) {
         state.globals.PartyHP = heroes.reduce((total, hero) => total + hero.hp, 0);
         state.globals.PartyMaxHP = heroes.reduce((total, hero) => total + hero.maxHP, 0);
       }
-      if (name === 'SpawnEnemy') state.entities.push({
-        uid: state.globals.NextUID++, kind: 'enemy', name: args[0].name,
-      });
+      if (name === 'SpawnEnemy') {
+        const data=args[0];
+        const enemy={uid:state.globals.NextUID++,kind:'enemy',name:data.name,hp:data.HP,maxHP:data.HP,stats:{ATK:data.ATK,DEF:data.DEF,MAG:data.MAG,RES:data.RES,SPD:data.SPD},slotIndex:args[1]};
+        state.entities.push(enemy);return enemy;
+      }
     },
     assertCombatLayoutDev() {},
     computeCombatPower: require('../web-runner/src/core/combatPower.mjs').computeCombatPower,
@@ -84,9 +88,28 @@ async function initialize(heroMembers, escortMember = null, withEnemy = false) {
     getConfiguredEnemySlots: () => ['TestEnemy'],
     syncFromGlobals() { gameState.partyHP=Array(6).fill(0);gameState.partyMaxHP=Array(6).fill(0);for(const h of state.entities.filter(a=>a.kind==='hero')){gameState.partyHP[h.heroDisplaySlot]=h.hp;gameState.partyMaxHP[h.heroDisplaySlot]=h.maxHP;} },
   });
-  init(withEnemy ? [{ name: 'TestEnemy', HP: 25, ATK: 5, DEF: 2 }] : []);
+  init(enemyRows || (withEnemy ? [{ name: 'TestEnemy', HP: 25, ATK: 5, DEF: 2 }] : []));
   return { state, gameState, calls };
 }
+
+test('fresh continuous initializer pads weak packs and finalize preserves each planned sector', async () => {
+  const { createContinuousCombatStageState, finalizeContinuousCombatProduction } = await import('../web-runner/src/core/continuousCombatStage.mjs');
+  const rows=['Gobloc','Skeleton'].map(name=>({name,HP:1,ATK:1,DEF:1,MAG:1,RES:1,SPD:1}));
+  const {state}=await initialize(productionPartyMembers(),null,false,{continuousStage:createContinuousCombatStageState(31),enemyRows:rows});
+  const initialEnemies=state.entities.filter(actor=>actor.kind==='enemy');
+  assert.ok(initialEnemies.length>12&&initialEnemies.length<=36);
+  assert.ok(initialEnemies.every(actor=>Number.isInteger(actor.continuousStageSectorIndex)),'initializer keeps the spawn plan sector on each created actor');
+  assert.equal(finalizeContinuousCombatProduction(state.globals,state.entities),true);
+  const sectors=new Map();
+  for(const enemy of state.entities.filter(actor=>actor.kind==='enemy')) {
+    const sector=enemy.streamSectorIndex%6;
+    const pack=sectors.get(sector)||[];pack.push(enemy);sectors.set(sector,pack);
+    assert.equal(enemy.continuousStageSectorIndex,undefined,'initializer metadata is consumed by production finalization');
+  }
+  assert.equal(sectors.size,6);
+  assert.ok([...sectors.values()].every(pack=>pack.length>=3&&pack.length<=6));
+  for(const pack of sectors.values())assert.deepEqual(pack.map(enemy=>enemy.streamEntryOrder).sort((a,b)=>a-b),Array.from({length:pack.length},(_,index)=>index));
+});
 
 for (let count = 1; count <= 6; count += 1) {
   test(`initializer constructs every member of a ${count}-hero configured party`, async () => {

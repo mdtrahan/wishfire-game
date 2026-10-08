@@ -41,7 +41,10 @@ test('endless sessions never surface a finite-victory completion path', async ()
 test('continuous defeat is free, clears boss readiness and restarts wave one at full health', async () => {
  const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
  const enemyRows=['Gobloc','Skeleton'].map((name,index)=>({name,HP:20+index*2,ATK:2,DEF:2,MAG:1,RES:1,SPD:8,CombatPower:20+index}));
- const state={entities:[{uid:1,kind:'hero',heroInstanceKey:'Hondo',hp:0,maxHP:42,isAlive:false,actionState:'ko',actionFacing:'left',actionStateUntil:86400},{uid:9,kind:'enemy',hp:30,maxHP:30}],globals:{
+ const state={entities:[{uid:1,kind:'hero',heroInstanceKey:'Hondo',hp:0,maxHP:42,isAlive:false,actionState:'ko',actionFacing:'left',actionStateUntil:86400,
+  ATK:900,DEF:900,MAG:900,RES:900,SPD:900},
+  ...Array.from({length:3},(_,index)=>({uid:index+2,kind:'hero',hp:40,maxHP:40,ATK:900,DEF:900,MAG:900,RES:900,SPD:900})),
+  {uid:9,kind:'enemy',hp:30,maxHP:30}],globals:{
   ContinuousCombatStageLoop:1,ContinuousCombatStage:{seed:1,region:2,stage:3,wave:4,bossAvailable:true,bossArmed:true,bossActive:true,transitions:8,clearedBosses:12,nextEmissionAt:0,lastUpdatedAt:0,spawnSerial:9},
   EnemyData:enemyRows,EnemySlots:[9],PendingDeaths:{1:true,9:true},EnemyDeathVisualHoldByUID:{9:true},time:5,ProgressionBattle:{id:'run',participants:['Hondo'],defeated:{},settled:false},
  }};
@@ -61,11 +64,12 @@ test('continuous defeat is free, clears boss readiness and restarts wave one at 
  assert.equal(state.entities[0].hp,42);
  assert.equal(state.entities[0].locomotion,'idle');assert.equal(state.entities[0].actionState,undefined);assert.equal(state.entities[0].actionStateUntil,undefined);
  const retryEnemies=state.entities.filter(actor=>actor.kind==='enemy');
- assert.ok(retryEnemies.length===12||retryEnemies.length===18, 'six local packs retain two or three actors each');
+ assert.ok(retryEnemies.length>12&&retryEnemies.length<=36, 'underpowered local packs receive up to three extra actors each');
  assert.ok(retryEnemies.every(actor=>actor.streamState==='roaming'));
  const retryPacks=new Map();for(const enemy of retryEnemies){const pack=retryPacks.get(enemy.streamSectorIndex)||[];pack.push(enemy);retryPacks.set(enemy.streamSectorIndex,pack);}
  assert.equal(retryPacks.size,6);
- assert.ok([...retryPacks.values()].every(pack=>pack.length===2||pack.length===3));
+ assert.ok([...retryPacks.values()].every(pack=>pack.length>=3&&pack.length<=6));
+ for(const pack of retryPacks.values())assert.deepEqual(pack.map(enemy=>enemy.streamEntryOrder).sort((a,b)=>a-b),Array.from({length:pack.length},(_,index)=>index));
  assert.ok(calls.includes('SettleContinuousCombatRewards'));
  assert.equal(calls.includes('ProcessTurn'),false);
  assert.equal(calls.includes('RebuildTurnOrderPreserveCurrent'),false);

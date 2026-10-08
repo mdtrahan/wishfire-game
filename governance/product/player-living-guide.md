@@ -2,9 +2,11 @@
 
 ## Combat
 
-Fara, Hondo, Runa and Kaja move through a compact arena as enemies enter from the right. Each living hero runs to melee contact or stops at ranged reach, then fires basics and unlocked active skills automatically when their cooldowns are ready and the skill has a useful target. Enemies close to their own delivery reach. Heroes and enemies act on their own clocks. Combat has no turns, action slots, gem matching, SP or FLOW.
+Fara, Hondo, Runa and Kaja roam together through a three-screen arena to clear dispersed enemy packs. Fara and Hondo lead, with Runa and Kaja supporting from behind. Each living hero runs to melee contact or stops at ranged reach, then fires basics and unlocked active skills automatically when their cooldowns are ready and the skill has a useful target. Enemies close to their own delivery reach. Heroes and enemies act on their own clocks. Combat has no turns, action slots, gem matching, SP or FLOW.
 
 Ordinary hero attacks retain a living focus while that enemy remains within the hero’s current reach. Area skills use their own targeting rules from the caster’s current position. Enemies attack a living hero after spatial contact unless a skill redirects or covers that attack. An attack with no eligible target waits ready.
+
+When an ordinary pack's total CP is below the full deployed party's total CP, it receives one, two or three extra enemies from a single seeded random roll. Those enemies keep the pack's existing scaled strength. Bosses keep their single-enemy layout.
 
 The notched adventure bar shows four completed-wave segments and the active chapter/stage. Clearing the fourth wave automatically enters the boss fight through a screen wipe. Heroes keep their HP between ordinary waves and on boss entry. Defeating a boss restores the whole party to full HP, revives KO heroes and clears their debuffs before the next stage. If the party falls, it recovers at wave 1 of the same stage with an empty bar; four more waves earn another attempt. Reload preserves earned progress, including readiness for automatic boss entry. Boss victory resets progress for the next stage. Defeat costs no resource.
 

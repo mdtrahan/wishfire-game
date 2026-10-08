@@ -1,4 +1,4 @@
-import { activateContinuousCombatSpawnedEnemy, buildContinuousCombatSpawnPlan, resetContinuousCombatAfterDefeat } from '../src/core/continuousCombatStage.mjs';
+import { activateContinuousCombatSpawnedEnemy, buildContinuousCombatSpawnPlan, getContinuousCombatPartyCP, resetContinuousCombatAfterDefeat } from '../src/core/continuousCombatStage.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import { resetActorPresentationAfterRestore } from '../src/core/actorPresentationState.mjs';
 
@@ -31,7 +31,7 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
       resetContinuousCombatAfterDefeat(state.globals);
       restoreHeroesToFullHP({ state, call });
       const stageState = state.globals.ContinuousCombatStage;
-      const plan = buildContinuousCombatSpawnPlan(state.globals.EnemyData, stageState, { slotBase: 0 });
+      const plan = buildContinuousCombatSpawnPlan(state.globals.EnemyData, stageState, { slotBase: 0, partyCP: getContinuousCombatPartyCP(state.entities) });
       stageState.spawnSerial = plan.length;
       for (const entry of plan) {
         const enemy = call('SpawnEnemy', { ...entry.row, enemyRole: String(entry.row.enemyRole || entry.row.role || 'fodder') }, entry.slotIndex);

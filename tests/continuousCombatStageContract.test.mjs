@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createCombatCameraProjection, deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldVerticalBounds } from '../src/core/combatOrientation.mjs';
 import { advanceContinuousCombatArena } from '../web-runner/src/core/arenaCombat.mjs';
+import { computeCombatPower } from '../web-runner/src/core/combatPower.mjs';
 import {
   CONTINUOUS_COMBAT_PACK_CP_STEP,
   CONTINUOUS_COMBAT_PACK_INTERVAL_SEC,
@@ -16,6 +17,7 @@ import {
   configureContinuousCombatProduction,
   createContinuousCombatStageState,
   finalizeContinuousCombatProduction,
+  getContinuousCombatPartyCP,
   maybeAdvanceContinuousCombatStage,
   pushContinuousCombatEnemy,
   reverseContinuousCombatEnemy,
@@ -59,7 +61,7 @@ test('continuous stage simulation makes no movement, emission or action claim wh
   }
 });
 
-test('normal waves create six evenly spaced packs of two or three actors', () => {
+test('normal wave plans start with six evenly spaced base packs of two or three actors', () => {
   const start = createContinuousCombatStageState(42);
   const first = buildContinuousCombatSpawnPlan(rows, start);
   const secondState = advanceContinuousCombatStage(start).state;
@@ -73,7 +75,7 @@ test('normal waves create six evenly spaced packs of two or three actors', () =>
     const counts = Array.from({ length: CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, sector) => plan.filter(entry => entry.sectorIndex === sector).length);
     assert.ok(counts.every(count => count >= 2 && count <= 3));
   }
-  assert.equal(first.length, CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX === 18 ? 18 : 12);
+  assert.ok([12, 18].includes(first.length));
   assert.deepEqual(first.map(entry => entry.slotIndex), Array.from({ length: first.length }, (_, index) => index));
   assert.deepEqual(second.map(entry => entry.slotIndex), Array.from({ length: second.length }, (_, index) => first.length + index));
   assert.ok(second.some(entry => ['Gobloc', 'Skeleton'].includes(entry.row.name)));
@@ -83,6 +85,83 @@ test('normal waves create six evenly spaced packs of two or three actors', () =>
   assert.ok(totals[1] < totals[2]);
   assert.ok(totals[1] / totals[0] < 1 + CONTINUOUS_COMBAT_PACK_CP_STEP * 2);
   assert.ok(totals[2] / totals[1] < 1 + CONTINUOUS_COMBAT_PACK_CP_STEP * 2);
+});
+
+test('only underpowered ordinary sectors draw one seeded plus-one-to-three count and preserve base rows', () => {
+  const stage = { ...createContinuousCombatStageState(17), transitions: 9 };
+  const base = buildContinuousCombatSpawnPlan(rows, stage);
+  const cpBySector = Array.from({ length: CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, sector) =>
+    base.filter(entry => entry.sectorIndex === sector).reduce((sum, entry) => sum + computeCombatPower(entry.row), 0));
+  const minimumSectorCP = Math.min(...cpBySector);
+  assert.equal(buildContinuousCombatSpawnPlan(rows, stage, { partyCP: minimumSectorCP - 0.1 }).length, base.length, 'below-pack party CP adds none');
+  assert.equal(buildContinuousCombatSpawnPlan(rows, stage, { partyCP: minimumSectorCP }).length, base.length, 'equal and higher sectors add none');
+  assert.ok(buildContinuousCombatSpawnPlan(rows, stage, { partyCP: minimumSectorCP + 0.1 }).length > base.length, 'a strictly underpowered sector receives extras');
+
+  const observedExtraCounts = new Set();
+  for (let seed = 1; seed <= 80 && observedExtraCounts.size < 3; seed += 1) {
+    const seededStage = { ...stage, seed };
+    const plan = buildContinuousCombatSpawnPlan(rows, seededStage, { partyCP: Number.MAX_SAFE_INTEGER });
+    const repeated = buildContinuousCombatSpawnPlan(rows, seededStage, { partyCP: Number.MAX_SAFE_INTEGER });
+    assert.deepEqual(plan, repeated, 'stage seed and transition count fully determine pack padding');
+    const sectorRows = Array.from({ length: CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, sector) => plan.filter(entry => entry.sectorIndex === sector));
+    for (const pack of sectorRows) {
+      const extraCount = pack.length - base.filter(entry => entry.sectorIndex === pack[0].sectorIndex).length;
+      assert.ok(extraCount >= 1 && extraCount <= 3);
+      observedExtraCounts.add(extraCount);
+      assert.equal(pack.length, pack[0].sectorSize);
+      assert.deepEqual(pack.map(entry => entry.entryOrder), Array.from({ length: pack.length }, (_, index) => index));
+    }
+    assert.deepEqual(plan.map(entry => entry.slotIndex), Array.from({ length: plan.length }, (_, index) => index));
+    assert.equal(new Set(plan.map(entry => entry.slotIndex)).size, plan.length);
+    assert.equal(new Set(plan.map(entry => entry.sectorIndex)).size, 6);
+    for (const entry of base) {
+      const padded = plan.find(candidate => candidate.slotIndex === entry.slotIndex);
+      for (const key of ['HP', 'ATK', 'DEF', 'MAG', 'RES', 'SPD', 'CombatPower', 'streamCpScale']) assert.equal(padded.row[key], entry.row[key]);
+    }
+  }
+  assert.deepEqual([...observedExtraCounts].sort(), [1, 2, 3]);
+  assert.equal(CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX, 36);
+
+  const boss = { ...stage, wave: 4, bossAvailable: true, bossArmed: true, bossActive: true };
+  assert.deepEqual(buildContinuousCombatSpawnPlan(rows, boss, { partyCP: Number.MAX_SAFE_INTEGER }), buildContinuousCombatSpawnPlan(rows, boss), 'boss count and stats do not use pack padding');
+});
+
+test('deployed party CP includes KO heroes and uses the direct canonical actor sum', () => {
+  const heroes = [
+    { kind: 'hero', currentLevel: 25, maxHP: 280, stats: { ATK: 40, DEF: 30, MAG: 25, RES: 30, SPD: 10 } },
+    { kind: 'hero', currentLevel: 25, hp: 0, maxHP: 250, stats: { ATK: 35, DEF: 25, MAG: 40, RES: 35, SPD: 12 } },
+  ];
+  assert.equal(getContinuousCombatPartyCP(heroes), heroes.reduce((sum, hero) => sum + computeCombatPower(hero), 0));
+  assert.ok(getContinuousCombatPartyCP(heroes) > computeCombatPower(heroes[0]));
+});
+
+test('runtime wave emission pads each weak pack and arena commitment still selects one whole sector', () => {
+  const enemyRows=['Gobloc','Skeleton','High Gobloc','Lizardo','Orc','High Orc','Chimerilass','Djinn','Troll']
+    .map(name=>({name,HP:1,ATK:1,DEF:1,MAG:1,RES:1,SPD:1}));
+  const stage={...createContinuousCombatStageState(53),nextEmissionAt:0,lastUpdatedAt:5,lastArenaUpdatedAt:5};
+  const heroes=Array.from({length:4},(_,index)=>({uid:index+1,kind:'hero',hp:300,maxHP:300,currentLevel:50,stats:{ATK:100,DEF:100,MAG:100,RES:100,SPD:100},footX:180+index*4,footY:220+index*8}));
+  const entities=[...heroes];
+  const globals={ContinuousCombatStageLoop:1,ContinuousCombatStage:stage,GamePhase:'RUNTIME',BattleStartActive:0,time:5,EnemyData:enemyRows,EnemySize:40,EnemySlots:[],EnemyIDs:[],PendingDeaths:{},EnemyDeathVisualHoldByUID:{}};
+  const call=(name,row,slotIndex)=>{
+    if(name!=='SpawnEnemy')return null;
+    const enemy={uid:100+slotIndex,kind:'enemy',name:row.name,hp:row.HP,maxHP:row.HP,stats:{ATK:row.ATK,DEF:row.DEF,MAG:row.MAG,RES:row.RES,SPD:row.SPD},slotIndex};
+    entities.push(enemy);return enemy;
+  };
+  assert.equal(maybeAdvanceContinuousCombatStage({globals,entities,presentationBarrier:{lanes:{}},call}),true);
+  assert.equal(globals.ContinuousCombatStage.wave,2);
+  const packs=new Map();
+  for(const enemy of entities.filter(actor=>actor.kind==='enemy')) {
+    const packId=enemy.streamSectorIndex;
+    const pack=packs.get(packId)||[];pack.push(enemy);packs.set(packId,pack);
+  }
+  assert.equal(packs.size,6);
+  assert.ok([...packs.values()].every(pack=>pack.length>=3&&pack.length<=6));
+  const committedPack=[...packs.entries()][0];
+  for(const enemy of committedPack[1])enemy.streamState='in_range';
+  advanceContinuousCombatArena({globals,entities,seconds:0});
+  assert.equal(globals.ContinuousCombatStage.activeEncounterGroupId,committedPack[0]);
+  const committedUIDs=new Set(committedPack[1].map(enemy=>enemy.uid));
+  assert.ok(heroes.every(hero=>committedUIDs.has(hero.arenaTargetUID)),'hero targeting remains committed to every member of the selected sector pack');
 });
 
 test('stage-owned linear scaling raises later waves and makes the boss a group-level spike', () => {
@@ -765,9 +844,9 @@ test('production traversal visits six sectors before wave clear advances the sta
       const count = sectorCounts.get(enemy.streamSectorIndex) || 0;
       sectorCounts.set(enemy.streamSectorIndex, count + 1);
     }
-    assert.equal(activeWave.length === 12 || activeWave.length === 18, true);
+    assert.ok(activeWave.length >= 12 && activeWave.length <= CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX);
     assert.equal(sectorCounts.size, CONTINUOUS_COMBAT_PACKS_PER_WAVE);
-    assert.ok([...sectorCounts.values()].every(count => count === 2 || count === 3));
+    assert.ok([...sectorCounts.values()].every(count => count >= 2 && count <= 6));
     assert.ok(activeWave.every(enemy => enemy.slotIndex >= 0 && enemy.slotIndex < CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX));
     activeWave.forEach(enemy => { enemy.hp = 0; globals.EnemyIDs[enemy.slotIndex] = 0; globals.EnemySlots[enemy.slotIndex] = 0; });
     const priorSpawnCount = spawnSlotArguments.length;
@@ -778,7 +857,7 @@ test('production traversal visits six sectors before wave clear advances the sta
       assert.deepEqual(emitted, [0], 'the fourth clear enters the boss without another fodder wave');
       assert.equal(globals.ContinuousCombatStage.bossActive, true);
     } else {
-      assert.ok(emitted.length === 12 || emitted.length === 18);
+    assert.ok(emitted.length >= 12 && emitted.length <= CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX);
     }
     assert.deepEqual(emitted, emitted.map((_, slotIndex) => slotIndex), 'each new wave reuses its fixed slot range');
     assert.ok(emitted.every(slotIndex => slotIndex >= 0 && slotIndex < CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX));

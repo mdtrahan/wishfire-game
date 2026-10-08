@@ -1,7 +1,7 @@
 import {attachHeroProgress, createHeroProgressStore} from '../src/core/heroProgression.mjs';
 import { computeCombatPower as canonicalCombatPower } from '../src/core/combatPower.mjs';
 import { scaleRoutineEnemy } from '../src/core/routineEnemyScaling.mjs';
-import { buildContinuousCombatSpawnPlan } from '../src/core/continuousCombatStage.mjs';
+import { buildContinuousCombatSpawnPlan, getContinuousCombatPartyCP } from '../src/core/continuousCombatStage.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import {
   DEV_TOOL_EMPTY_SLOT,
@@ -401,6 +401,7 @@ export function createCombatSessionInitializer({
       state.globals.EncounterSeedExplicit = 0;
       installCombatRuntimeRandom(deriveCombatRuntimeRngSeed(encounterSeed), 'initEntities');
       const startingPartyCP = computeEncounterTotalCP(heroes.map(hero => ({ combatPower: computeCombatPower(hero) })));
+      const continuousPartyCP = getContinuousCombatPartyCP(heroes);
       const encounterRequest = {
         pool: mappedEnemyData,
         targetCP: Number(state.globals.EncounterTargetCP || (startingPartyCP * 0.30)),
@@ -422,7 +423,7 @@ export function createCombatSessionInitializer({
       let encounter = null;
       let spawnPlan = [];
       const authoredContinuousPlan = Number(state.globals.ContinuousCombatStageLoop || 0) === 1
-        ? buildContinuousCombatSpawnPlan(mappedEnemyData, state.globals.ContinuousCombatStage)
+        ? buildContinuousCombatSpawnPlan(mappedEnemyData, state.globals.ContinuousCombatStage, { partyCP: continuousPartyCP })
         : [];
       if (authoredContinuousPlan.length) {
         spawnPlan = authoredContinuousPlan;
@@ -493,7 +494,7 @@ export function createCombatSessionInitializer({
       for (let i = 0; i < spawnPlan.length; i += 1) {
         const pick = spawnPlan[i].row;
         const slotIndex = Number(spawnPlan[i].slotIndex || 0);
-        callFunctionWithContext(fnContext, 'SpawnEnemy', {
+        const spawned = callFunctionWithContext(fnContext, 'SpawnEnemy', {
           name: pick.name,
           HP: Number(pick.HP || 0),
           ATK: Number(pick.ATK || 0),
@@ -507,6 +508,14 @@ export function createCombatSessionInitializer({
           localeTags: Array.isArray(pick.localeTags) ? pick.localeTags : ['all'],
           CombatPower: resolveEnemyEncounterCombatPower(pick, computeCombatPower),
         }, slotIndex);
+        if (authoredContinuousPlan.length && spawned && Number.isInteger(spawnPlan[i].sectorIndex)) {
+          Object.assign(spawned, {
+            continuousStageSectorIndex: spawnPlan[i].sectorIndex,
+            continuousStageEntryOrder: spawnPlan[i].entryOrder,
+            continuousStageSectorSize: spawnPlan[i].sectorSize,
+            continuousStagePackIndex: spawnPlan[i].packIndex,
+          });
+        }
       }
       state.globals.InitialSpawn = 0;
     }

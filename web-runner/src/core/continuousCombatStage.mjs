@@ -5,6 +5,7 @@ import { cleanseDebuffs } from './combatRules.mjs';
 import { saveHeroProgress } from './heroProgression.mjs';
 import { advanceContinuousCombatArena } from './arenaCombat.mjs';
 import { resetActorPresentationAfterRestore } from './actorPresentationState.mjs';
+import { previewSeededRng } from '../../../src/core/seededRngRules.mjs';
 import { actorFootPoint, actorFootprintRadius } from '../../../src/core/arenaCombatRules.mjs';
 
 export const CONTINUOUS_COMBAT_PACK_INTERVAL_SEC = 3;
@@ -12,7 +13,7 @@ export const CONTINUOUS_COMBAT_PACK_CP_STEP = 0.06;
 export const CONTINUOUS_COMBAT_WAVES_PER_STAGE = 4;
 export const CONTINUOUS_COMBAT_STAGES_PER_REGION = 10;
 export const CONTINUOUS_COMBAT_PACKS_PER_WAVE = 6;
-export const CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX = CONTINUOUS_COMBAT_PACKS_PER_WAVE * 3;
+export const CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX = CONTINUOUS_COMBAT_PACKS_PER_WAVE * 6;
 export const CONTINUOUS_COMBAT_SECTOR_RATIOS = Object.freeze([0.12, 0.27, 0.42, 0.57, 0.72, 0.87]);
 export const CONTINUOUS_COMBAT_BOSS_ENTRY_WIPE_MS = 440;
 
@@ -96,6 +97,12 @@ export function configureContinuousCombatProduction(globals, { productionPath = 
   const checkpoint = globals.HeroProgress?.continuousStage;
   globals.ContinuousCombatStage = { ...createContinuousCombatStageState(globals.EncounterSeed || 1, checkpoint), ...checkpoint };
   return true;
+}
+
+export function getContinuousCombatPartyCP(entities) {
+  return (Array.isArray(entities) ? entities : [])
+    .filter(actor => actor?.kind === 'hero')
+    .reduce((total, hero) => total + computeCombatPower(hero), 0);
 }
 
 function streamGeometry(globals, { packIndex = 0, rank = 0, order = 0, sectorIndex = packIndex } = {}) {
@@ -191,9 +198,10 @@ export function reverseContinuousCombatEnemy(enemy, now, durationSeconds = 1.25,
   return true;
 }
 
-export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1, rank = 0, packIndex = 0, entryOrder = lane, sectorIndex = null, bossX = BOSS_HOME.x } = {}) {
+export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1, rank = 0, packIndex = 0, entryOrder = lane, sectorIndex = null, sectorSize = 3, bossX = BOSS_HOME.x } = {}) {
   if (!enemy) return null;
-  const order = Math.max(0, Math.floor(Number(entryOrder || 0))) % 3;
+  const order = Math.max(0, Math.floor(Number(entryOrder || 0)));
+  const normalizedSectorSize = Math.max(1, Math.floor(Number(sectorSize) || 3));
   const sector = sectorIndex == null
     ? Math.max(0, Math.min(CONTINUOUS_COMBAT_PACKS_PER_WAVE - 1, Number(packIndex || 0) % CONTINUOUS_COMBAT_PACKS_PER_WAVE))
     : Math.max(0, Math.min(CONTINUOUS_COMBAT_PACKS_PER_WAVE - 1, Math.floor(Number(sectorIndex) || 0)));
@@ -203,15 +211,16 @@ export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1,
   const normalizedPackIndex = Math.max(0, Number(packIndex || 0));
   const boss = String(enemy.enemyRole || enemy.role || '').toLowerCase() === 'boss';
   const world = deriveCombatWorldBounds();
-  const sectorX = world.worldWidth * CONTINUOUS_COMBAT_SECTOR_RATIOS[sector] + (order - 1) * geometry.enemySize * 1.25;
+  const orderOffset = normalizedSectorSize > 3 ? order - (normalizedSectorSize - 1) / 2 : order - 1;
+  const sectorX = world.worldWidth * CONTINUOUS_COMBAT_SECTOR_RATIOS[sector] + orderOffset * geometry.enemySize * 1.25;
   const engageX = boss ? bossX : sectorX;
   const homeY = boss ? BOSS_HOME.y : geometry.y;
   Object.assign(enemy, {
     combatRank: ['boss','subboss'].includes(String(enemy.enemyRole || enemy.role || '').toLowerCase()) ? String(enemy.enemyRole || enemy.role).toLowerCase() : 'ordinary',
     streamState: 'roaming', streamLane: lane, streamRank: rank, streamPackIndex: packIndex, streamSectorIndex: sector + Number(packIndex || 0) * CONTINUOUS_COMBAT_PACKS_PER_WAVE, streamEntryOrder: order,
-    streamDelivery: delivery, streamMeleeLine: meleeLine,
+    streamDelivery: delivery, streamMeleeLine: order % 2,
     actionState: 'spawn', actionFacing: 'left', actionStateStartedAt: Number(globals.time || 0), actionStateUntil: Number(globals.time || 0) + 0.35,
-    streamEngageX: engageX, streamWalkSpeed: geometry.walkSpeed * PACK_WALK_SPEED_SCALE[order],
+    streamEngageX: engageX, streamWalkSpeed: geometry.walkSpeed * PACK_WALK_SPEED_SCALE[order % PACK_WALK_SPEED_SCALE.length],
     streamStartAt: Number(globals.time || 0),
     x: engageX, y: homeY, originX: engageX, originY: homeY,
     footX: engageX, footY: homeY, facing: 'left', locomotion: 'idle', arenaEnabled: true,
@@ -243,9 +252,17 @@ export function finalizeContinuousCombatProduction(globals, entities = []) {
       actor.flowReady = false;
       heroOrder += 1;
     } else if (actor?.kind === 'enemy') {
-      const sectorIndex = Math.min(CONTINUOUS_COMBAT_PACKS_PER_WAVE - 1, Math.floor(enemyOrder / packSize));
-      const entryOrder = enemyOrder % packSize;
-      activateContinuousCombatSpawnedEnemy(globals, actor, { lane: Number(actor.slotIndex ?? 1), rank: 0, packIndex: 0, entryOrder, sectorIndex });
+      const explicitSector = actor.continuousStageSectorIndex;
+      const hasExplicitPlacement = Number.isInteger(explicitSector);
+      const sectorIndex = hasExplicitPlacement ? explicitSector : Math.min(CONTINUOUS_COMBAT_PACKS_PER_WAVE - 1, Math.floor(enemyOrder / packSize));
+      const entryOrder = hasExplicitPlacement ? actor.continuousStageEntryOrder : enemyOrder % packSize;
+      const sectorSize = hasExplicitPlacement ? actor.continuousStageSectorSize : packSize;
+      const packIndex = hasExplicitPlacement ? actor.continuousStagePackIndex : 0;
+      activateContinuousCombatSpawnedEnemy(globals, actor, { lane: Number(actor.slotIndex ?? 1), rank: 0, packIndex, entryOrder, sectorIndex, sectorSize });
+      delete actor.continuousStageSectorIndex;
+      delete actor.continuousStageEntryOrder;
+      delete actor.continuousStageSectorSize;
+      delete actor.continuousStagePackIndex;
       enemyOrder += 1;
     }
   }
@@ -425,7 +442,7 @@ function expandWaveRows(stage, byName, catalogRows) {
   return Array.from({ length: packSize * CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, index) => pool[index % pool.length]);
 }
 
-export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase = 0 } = {}) {
+export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase = 0, partyCP = 0 } = {}) {
   const stage = getContinuousCombatStage(stageState);
   const rows = Array.isArray(enemyRows) ? enemyRows : [];
   if (!stage || !rows.length) return [];
@@ -443,20 +460,47 @@ export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase
   const introductoryBoss = stage.kind === 'boss' && stageOrdinal === 0;
   const packScale = introductoryBoss ? 1 : selectedRows.length ? findPackScale(selectedRows, linearTarget) : 1;
   const packSize = stage.kind === 'boss' ? 1 : selectedRows.length / CONTINUOUS_COMBAT_PACKS_PER_WAVE;
-  return selectedRows.map((row, index) => ({
+  const entries = selectedRows.map((row, index) => ({
     row: scaleContinuousCombatRow(row, packScale),
-    slotIndex: Number(slotBase || 0) + index,
     lane: index % packSize,
     rank: Math.floor(Number(slotBase || 0) / CONTINUOUS_COMBAT_PACKS_PER_WAVE),
     packIndex: Number(stageState?.transitions || 0),
     entryOrder: index % packSize,
     sectorIndex: stage.kind === 'boss' ? 1 : Math.floor(index / packSize),
-  })).filter(entry => entry.row?.name && Number.isInteger(entry.slotIndex));
+  })).filter(entry => entry.row?.name);
+
+  const deployedPartyCP = Math.max(0, Number(partyCP) || 0);
+  if (stage.kind !== 'boss' && deployedPartyCP > 0) {
+    const countDrawBase = Math.max(0, Math.floor(Number(stageState?.transitions) || 0)) * CONTINUOUS_COMBAT_PACKS_PER_WAVE;
+    for (let sector = 0; sector < CONTINUOUS_COMBAT_PACKS_PER_WAVE; sector += 1) {
+      const pack = entries.filter(entry => entry.sectorIndex === sector);
+      if (!pack.length || totalCP(pack.map(entry => entry.row)) >= deployedPartyCP) continue;
+      const extraCount = 1 + Math.floor(previewSeededRng(stageState?.seed || 1, countDrawBase + sector) * 3);
+      for (let index = 0; index < extraCount; index += 1) {
+        const source = pack[index % pack.length];
+        entries.push({ ...source, row: { ...source.row }, entryOrder: pack.length + index });
+      }
+    }
+  }
+
+  const sectorSizes = new Map();
+  const sectorOrders = new Map();
+  for (const entry of entries) sectorSizes.set(entry.sectorIndex, (sectorSizes.get(entry.sectorIndex) || 0) + 1);
+  return entries.map((entry, index) => {
+    const entryOrder = sectorOrders.get(entry.sectorIndex) || 0;
+    sectorOrders.set(entry.sectorIndex, entryOrder + 1);
+    return {
+      ...entry,
+      slotIndex: Number(slotBase || 0) + index,
+      entryOrder,
+      sectorSize: sectorSizes.get(entry.sectorIndex),
+    };
+  }).filter(entry => Number.isInteger(entry.slotIndex));
 }
 
 function spawnContinuousCombatStage({ globals, entities, call, state }) {
   const slotBase = 0;
-  const plan = buildContinuousCombatSpawnPlan(globals.EnemyData, state, { slotBase });
+  const plan = buildContinuousCombatSpawnPlan(globals.EnemyData, state, { slotBase, partyCP: getContinuousCombatPartyCP(entities) });
   if (!plan.length) return false;
   globals.ContinuousCombatStage = {
     ...state,
