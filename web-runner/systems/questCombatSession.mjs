@@ -60,7 +60,13 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
       return true;
     },
     resurrect() {
+      const heroes = state.entities.filter(actor => actor?.kind === 'hero');
+      const needsContinuousHuddle = Number(state.globals.ContinuousCombatStageLoop || 0) === 1
+        && heroes.some(hero => Number(hero.hp || 0) <= 0);
       restoreHeroesToFullHP({ state, call });
+      if (needsContinuousHuddle) {
+        placeContinuousCombatHeroesInRecoveryHuddle({ globals: state.globals, heroes, now: Number(state.globals.time || 0) });
+      }
       state.globals.NativeBattleEnded = false;
       if (state.globals.ProgressionBattle) {
         state.globals.ProgressionBattle.outcome = 'active';

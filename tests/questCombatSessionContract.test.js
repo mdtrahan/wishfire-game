@@ -22,6 +22,27 @@ test('resurrection retains enemy progress, buffs and skills while reviving every
  state.globals.NativeBattleEnded=false;assert.equal(session.isCleared(),false);
 });
 
+test('continuous KO resurrection puts the restored squad in one huddle and starts one shared reveal', async () => {
+ const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
+ const {isActorRecoveryRevealActive}=await import('../web-runner/src/core/actorPresentationState.mjs');
+ const heroes=[
+  {uid:1,kind:'hero',heroInstanceKey:'Fara',hp:0,maxHP:42,isAlive:false,footX:-400,footY:999,originX:-500,targetX:1200,actionState:'ko'},
+  {uid:2,kind:'hero',heroInstanceKey:'Hondo',hp:8,maxHP:35,isAlive:true,footX:1600,footY:-200,originY:-300,targetY:-900,arenaDirectionX:-1,actionState:'attack'},
+ ];
+ const state={entities:heroes,globals:{time:12,ContinuousCombatStageLoop:1,PendingDeaths:{1:true},RealtimeHeroBasicScheduledActions:{1:{dueAt:99}}}};
+ const gameState={combatFailExitRequested:true};
+ const session=createQuestCombatSession({state,gameState,call(){},sync(){}});
+ session.resurrect();
+ assert.deepEqual(heroes.map(hero=>hero.hp),[42,35]);
+ assert.deepEqual(heroes.map(hero=>hero.recoveryFadeStartedAt),[12,12]);
+ assert.ok(heroes.every(hero=>isActorRecoveryRevealActive(hero,state.globals.time)));
+ assert.notDeepEqual(heroes.map(hero=>[hero.footX,hero.footY]),[[-400,999],[1600,-200]],'old offscreen positions are replaced with authored huddle slots');
+ assert.ok(heroes.every(hero=>hero.footX >= 0 && hero.footY >= 0 && hero.locomotion === 'idle'));
+ assert.ok(heroes.every(hero=>hero.originX === undefined && hero.originY === undefined && hero.targetX === undefined && hero.targetY === undefined && hero.arenaDirectionX === undefined));
+ assert.deepEqual(state.globals.RealtimeHeroBasicScheduledActions,{});
+ assert.equal(gameState.combatFailExitRequested,false);
+});
+
 test('endless sessions never surface a finite-victory completion path', async () => {
  const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
  const state={entities:[],globals:{QuestFiniteEncounter:1,NativeBattleEnded:true,ProgressionBattle:{id:'victory-auto',outcome:'victory'},SessionLevelUpSettlement:null,FlowOrbs:[]}};
