@@ -115,14 +115,57 @@ function streamGeometry(globals, { packIndex = 0, rank = 0, order = 0, sectorInd
   const seedMix = (stateSeed ^ (Number(rank) * 2654435761) ^ (Number(packIndex) * 2246822519)) >>> 0;
   const sectorCount = CONTINUOUS_COMBAT_PACKS_PER_WAVE;
   const sectorOrder = (Math.floor(seedMix % sectorCount) + Math.max(0, Number(sectorIndex) || 0) * 5) % sectorCount;
-  const memberOffset = (Math.max(0, Math.floor(Number(order) || 0)) - 1) * Math.min(12, enemySize * 0.25);
   return {
     spawnX: 360 + enemySize * 1.5,
-    y: Math.max(firstY, Math.min(lastY, firstY + sectorOrder * ((lastY - firstY) / Math.max(1, sectorCount - 1)) + memberOffset)),
+    y: Math.max(firstY, Math.min(lastY, firstY + sectorOrder * ((lastY - firstY) / Math.max(1, sectorCount - 1)))),
     walkSpeed: Math.max(34, enemySize * 0.9) * 0.7,
     enemySize,
     bounds,
+    vertical,
   };
+}
+
+function seededPackFoot(globals, { packIndex, rank, sector, order, sectorSize, centerX, centerY, geometry }) {
+  const normalizedOrder = Math.max(0, Math.floor(Number(order) || 0));
+  const memberCount = Math.max(1, Math.min(6, Math.floor(Number(sectorSize) || normalizedOrder + 1)));
+  const stateSeed = Number(globals.ContinuousCombatStage?.seed || globals.EncounterSeed || 1) >>> 0;
+  const packSeed = (stateSeed ^ Math.imul((Number(rank) || 0) + 1, 2654435761)
+    ^ Math.imul((Number(packIndex) || 0) + 1, 2246822519)
+    ^ Math.imul((Number(sector) || 0) + 1, 3266489917)) >>> 0;
+  const radius = Math.max(24, geometry.enemySize * 1.45);
+  const minSpacing = Math.max(22, Math.min(34, geometry.enemySize * 0.8));
+  const world = deriveCombatWorldBounds();
+  const xMin = Number(world.heroMinX) + actorFootprintRadius({ kind: 'enemy' });
+  const xMax = Number(world.heroMaxX) - actorFootprintRadius({ kind: 'enemy' });
+  const yInset = Math.max(actorFootprintRadius({ kind: 'enemy' }), geometry.enemySize * 0.8);
+  const yMin = geometry.vertical.minY + yInset;
+  const yMax = geometry.vertical.maxY - yInset;
+  const placed = [];
+  let draw = 0;
+  for (let member = 0; member < memberCount; member += 1) {
+    let best = null;
+    let bestClearance = -Infinity;
+    for (let attempt = 0; attempt < 512; attempt += 1) {
+      const rawX = previewSeededRng(packSeed, draw++);
+      const rawY = previewSeededRng(packSeed, draw++);
+      const dx = (rawX * 2 - 1) * radius;
+      const dy = (rawY * 2 - 1) * radius;
+      if (dx * dx + dy * dy > radius * radius) continue;
+      const candidate = {
+        x: centerX + dx,
+        y: centerY + dy,
+      };
+      if (candidate.x < xMin || candidate.x > xMax || candidate.y < yMin || candidate.y > yMax) continue;
+      const clearance = placed.length
+        ? Math.min(...placed.map(point => Math.hypot(candidate.x - point.x, candidate.y - point.y)))
+        : Infinity;
+      if (clearance > bestClearance) { best = candidate; bestClearance = clearance; }
+      if (clearance >= minSpacing) { best = candidate; break; }
+    }
+    if (!best) best = { x: Math.max(xMin, Math.min(xMax, centerX)), y: Math.max(yMin, Math.min(yMax, centerY)) };
+    placed.push(best);
+  }
+  return placed[normalizedOrder] || placed[placed.length - 1];
 }
 
 const PACK_WALK_SPEED_SCALE = Object.freeze([1, 0.9, 1.12, 0.82, 1.17]);
@@ -211,19 +254,23 @@ export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1,
   const normalizedPackIndex = Math.max(0, Number(packIndex || 0));
   const boss = String(enemy.enemyRole || enemy.role || '').toLowerCase() === 'boss';
   const world = deriveCombatWorldBounds();
-  const orderOffset = normalizedSectorSize > 3 ? order - (normalizedSectorSize - 1) / 2 : order - 1;
-  const sectorX = world.worldWidth * CONTINUOUS_COMBAT_SECTOR_RATIOS[sector] + orderOffset * geometry.enemySize * 1.25;
+  const sectorX = world.worldWidth * CONTINUOUS_COMBAT_SECTOR_RATIOS[sector];
   const engageX = boss ? bossX : sectorX;
-  const homeY = boss ? BOSS_HOME.y : geometry.y;
+  const packFoot = boss ? null : seededPackFoot(globals, {
+    packIndex, rank, sector, order, sectorSize: normalizedSectorSize,
+    centerX: sectorX, centerY: geometry.y, geometry,
+  });
+  const homeY = boss ? BOSS_HOME.y : packFoot.y;
+  const homeX = boss ? engageX : packFoot.x;
   Object.assign(enemy, {
     combatRank: ['boss','subboss'].includes(String(enemy.enemyRole || enemy.role || '').toLowerCase()) ? String(enemy.enemyRole || enemy.role).toLowerCase() : 'ordinary',
     streamState: 'roaming', streamLane: lane, streamRank: rank, streamPackIndex: packIndex, streamSectorIndex: sector + Number(packIndex || 0) * CONTINUOUS_COMBAT_PACKS_PER_WAVE, streamEntryOrder: order,
     streamDelivery: delivery, streamMeleeLine: order % 2,
     actionState: 'spawn', actionFacing: 'left', actionStateStartedAt: Number(globals.time || 0), actionStateUntil: Number(globals.time || 0) + 0.35,
-    streamEngageX: engageX, streamWalkSpeed: geometry.walkSpeed * PACK_WALK_SPEED_SCALE[order % PACK_WALK_SPEED_SCALE.length],
+    streamEngageX: homeX, streamWalkSpeed: geometry.walkSpeed * PACK_WALK_SPEED_SCALE[order % PACK_WALK_SPEED_SCALE.length],
     streamStartAt: Number(globals.time || 0),
-    x: engageX, y: homeY, originX: engageX, originY: homeY,
-    footX: engageX, footY: homeY, facing: 'left', locomotion: 'idle', arenaEnabled: true,
+    x: homeX, y: homeY, originX: homeX, originY: homeY,
+    footX: homeX, footY: homeY, facing: 'left', locomotion: 'idle', arenaEnabled: true,
   });
   return enemy;
 }

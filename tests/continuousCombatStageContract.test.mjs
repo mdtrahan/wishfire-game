@@ -595,7 +595,7 @@ test('melee and ranged packs preserve delivery tags inside the authored world', 
   assert.equal(highMagicMelee.streamDelivery, 'melee');
 });
 
-test('six packs span the world at the authored ratios with bounded local footprints', () => {
+test('six huddled packs keep their authored world anchors with bounded local footprints', () => {
   const globals = {
     time: 0,
     EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 },
@@ -612,11 +612,58 @@ test('six packs span the world at the authored ratios with bounded local footpri
   for (let sector = 0; sector < CONTINUOUS_COMBAT_PACKS_PER_WAVE; sector += 1) {
     const group = enemies.filter(enemy => enemy.streamSectorIndex === sector);
     assert.equal(group.length, 2);
-    const expectedCenter = world.worldWidth * CONTINUOUS_COMBAT_SECTOR_RATIOS[sector] - 25;
-    assert.ok(Math.abs(group.reduce((sum, enemy) => sum + enemy.x, 0) / group.length - expectedCenter) < 1e-9);
-    assert.ok(Math.max(...group.map(enemy => enemy.x)) - Math.min(...group.map(enemy => enemy.x)) <= 100);
+    const expectedAnchor = world.worldWidth * CONTINUOUS_COMBAT_SECTOR_RATIOS[sector];
+    assert.ok(Math.abs(group.reduce((sum, enemy) => sum + enemy.x, 0) / group.length - expectedAnchor) <= 58);
+    assert.ok(Math.max(...group.map(enemy => enemy.x)) - Math.min(...group.map(enemy => enemy.x)) <= 116);
   }
   assert.ok(enemies[0].x < enemies[3].x && enemies[3].x < enemies[6].x);
+});
+
+test('ordinary six-member packs form repeatable compact two-dimensional clouds inside arena bounds', () => {
+  const globals = {
+    EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 }, EnemySize: 40,
+    ContinuousCombatStage: createContinuousCombatStageState(3187),
+  };
+  const createPack = () => Array.from({ length: 6 }, (_, entryOrder) => activateContinuousCombatSpawnedEnemy(
+    globals, { kind: 'enemy', hp: 10 }, { packIndex: 2, rank: 1, sectorIndex: 3, entryOrder, sectorSize: 6 },
+  ));
+  const pack = createPack();
+  const repeated = createPack();
+  assert.deepEqual(pack.map(enemy => [enemy.footX, enemy.footY]), repeated.map(enemy => [enemy.footX, enemy.footY]));
+  const vertical = deriveCombatWorldVerticalBounds();
+  assert.ok(pack.every(enemy => enemy.x >= 0 && enemy.x <= 2160));
+  assert.ok(pack.every(enemy => enemy.y >= vertical.minY + 32 && enemy.y <= vertical.maxY - 32));
+  assert.ok(Math.max(...pack.map(enemy => enemy.x)) - Math.min(...pack.map(enemy => enemy.x)) <= 116);
+  assert.ok(Math.max(...pack.map(enemy => enemy.y)) - Math.min(...pack.map(enemy => enemy.y)) <= 116);
+  for (let left = 0; left < pack.length; left += 1) {
+    for (let right = left + 1; right < pack.length; right += 1) {
+      assert.ok(Math.hypot(pack[left].x - pack[right].x, pack[left].y - pack[right].y) >= 22);
+    }
+  }
+  const triangleArea = (a, b, c) => Math.abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) / 2;
+  const largestTriangle = Math.max(...pack.flatMap((a, i) => pack.slice(i + 1).flatMap((b, j) => pack.slice(i + j + 2).map(c => triangleArea(a, b, c)))));
+  assert.ok(largestTriangle > 200, 'the cluster occupies a real 2D area instead of forming a line or stair');
+  assert.ok(new Set(pack.map(enemy => `${enemy.x},${enemy.y}`)).size === pack.length);
+});
+
+test('two-to-six member clouds stay separated at the top and bottom sector anchors', () => {
+  const vertical = deriveCombatWorldVerticalBounds();
+  for (const sectorIndex of [0, 5]) {
+    for (let sectorSize = 2; sectorSize <= 6; sectorSize += 1) {
+      const globals = { EnemySize: 40, ContinuousCombatStage: createContinuousCombatStageState(44) };
+      const pack = Array.from({ length: sectorSize }, (_, entryOrder) => activateContinuousCombatSpawnedEnemy(
+        globals, { kind: 'enemy', hp: 10 }, { packIndex: 1, sectorIndex, entryOrder, sectorSize },
+      ));
+      assert.ok(pack.every(enemy => enemy.y >= vertical.minY + 32 && enemy.y <= vertical.maxY - 32));
+      assert.ok(Math.max(...pack.map(enemy => enemy.x)) - Math.min(...pack.map(enemy => enemy.x)) <= 116);
+      assert.ok(Math.max(...pack.map(enemy => enemy.y)) - Math.min(...pack.map(enemy => enemy.y)) <= 116);
+      for (let left = 0; left < pack.length; left += 1) {
+        for (let right = left + 1; right < pack.length; right += 1) {
+          assert.ok(Math.hypot(pack[left].x - pack[right].x, pack[left].y - pack[right].y) >= 22);
+        }
+      }
+    }
+  }
 });
 
 test('each wave clears before the next emission and retains the three-second minimum interval', () => {
@@ -768,16 +815,20 @@ test('queryless production centers only the fresh continuous party in B and disa
   assert.equal(configureContinuousCombatProduction(globals, { productionPath: true }), true);
   assert.equal(globals.RealtimeHeroFocusTargetUID, 0);
   const heroes = Array.from({ length: 4 }, (_, index) => ({ kind: 'hero', uid: index + 1, hp: 100, flow: 100, flowReady: true }));
-  const entities = [
-    ...heroes,
-    { kind: 'enemy', uid: 2, hp: 20, slotIndex: 1 },
-  ];
+  const enemies = Array.from({ length: 6 }, (_, entryOrder) => ({
+    kind: 'enemy', uid: 20 + entryOrder, hp: 20, slotIndex: entryOrder,
+    continuousStageSectorIndex: 2, continuousStageEntryOrder: entryOrder,
+    continuousStageSectorSize: 6, continuousStagePackIndex: 3,
+  }));
+  const entities = [...heroes, ...enemies];
   assert.equal(finalizeContinuousCombatProduction(globals, entities), true);
   assert.ok(heroes.every(hero => hero.flow === 0));
   assert.equal(heroes.reduce((sum, hero) => sum + hero.footX, 0) / heroes.length, 1080);
   assert.ok(heroes.every(hero => hero.footX >= 720 && hero.footX <= 1440));
   assert.ok(Math.abs(Math.max(...heroes.map(hero => hero.footX)) - Math.min(...heroes.map(hero => hero.footX)) - 52.8) < 1e-9);
-  assert.equal(entities.at(-1).streamState, 'roaming');
+  assert.ok(enemies.every(enemy => enemy.streamState === 'roaming'));
+  assert.ok(Math.max(...enemies.map(enemy => enemy.x)) - Math.min(...enemies.map(enemy => enemy.x)) <= 116,
+    'the production finalizer routes existing enemies through the shared clustered placement owner');
   assert.equal(globals.ContinuousCombatStage.nextEmissionAt, 3);
   advanceContinuousCombatArena({ globals, entities: heroes, seconds: 0 });
   assert.ok(heroes.every(hero => Number.isFinite(hero.footY)), 'first arena tick completes finite world feet from the same fresh-entry fixture');
