@@ -98,3 +98,6 @@
 
 - Seeded RNG preview stays byte-identical to the shared source mirror; preview must never advance the combat draw owner.
 - Continuous roaming owns pack spawns and settlement. Every wave clears before the next emission, with at least three seconds between emissions; the boss gate and existing reward/KO rules remain stage-owned. Arena displacement uses full world bounds for arena-enabled actors.
+
+- Boss CP uses one local pack's baseline (wave CP divided by pack count), then the existing boss premium and stage curve. Increasing dispersed pack count must not inflate one boss's damage or defenses.
+- The first region's first boss retains its catalog-tuned stats. This introductory encounter must not inherit CP-driven offense/defense amplification; later bosses retain the pack-normalized stage curve.

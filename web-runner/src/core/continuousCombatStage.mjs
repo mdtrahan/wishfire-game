@@ -437,8 +437,11 @@ export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase
     + Math.max(0, Number(stage.stage || 1) - 1);
   const waveStep = stage.kind === 'boss' ? CONTINUOUS_COMBAT_WAVES_PER_STAGE - 1 : Math.max(0, Number(stage.wave || 1) - 1);
   const progressionScale = 1 + stageOrdinal * 0.08 + waveStep * 0.04;
-  const linearTarget = totalCP(baselineRows) * progressionScale * (stage.kind === 'boss' ? 1.35 : 1);
-  const packScale = selectedRows.length ? findPackScale(selectedRows, linearTarget) : 1;
+  // A boss challenges one local pack's party, not all six dispersed packs at once.
+  const baselineCP = totalCP(baselineRows) / (stage.kind === 'boss' ? CONTINUOUS_COMBAT_PACKS_PER_WAVE : 1);
+  const linearTarget = baselineCP * progressionScale * (stage.kind === 'boss' ? 1.35 : 1);
+  const introductoryBoss = stage.kind === 'boss' && stageOrdinal === 0;
+  const packScale = introductoryBoss ? 1 : selectedRows.length ? findPackScale(selectedRows, linearTarget) : 1;
   const packSize = stage.kind === 'boss' ? 1 : selectedRows.length / CONTINUOUS_COMBAT_PACKS_PER_WAVE;
   return selectedRows.map((row, index) => ({
     row: scaleContinuousCombatRow(row, packScale),

@@ -13,7 +13,7 @@ export function actorFootPoint(actor) {
 }
 
 export function actorAttackReach(actor) {
-  return isActorRanged(actor) ? 146 : 46;
+  return Math.max(isActorRanged(actor) ? 146 : 46, 46 * actorFootprintRadius(actor) / 18);
 }
 
 export function isActorRanged(actor) {

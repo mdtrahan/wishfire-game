@@ -271,3 +271,22 @@ test('a missing impact target consumes no attack cooldown and remains ready', ()
   assert.equal(state.globals.RealtimeEnemyActionsByUID['20'], undefined);
   assert.equal(state.globals.RealtimeEnemyActionReadyAt['20'], state.globals.time);
 });
+
+
+test('boss action acquisition and captured impact retarget to rear supports after tank KO', () => {
+  const pick = loadPickEnemyTargetHero();
+  const resolve = loadResolveEnemyActionTarget();
+  const heroes = [
+    { uid: 1, name: 'Fara', kind: 'hero', hp: 0, footX: 180, footY: 290 },
+    { uid: 2, name: 'Hondo', kind: 'hero', hp: 0, footX: 180, footY: 320 },
+    { uid: 3, name: 'Runa', kind: 'hero', hp: 60, footX: 70, footY: 280 },
+    { uid: 4, name: 'Kaja', kind: 'hero', hp: 65, footX: 70, footY: 340 },
+  ];
+  const enemy = { uid: 20, kind: 'enemy', hp: 100, footX: 300, footY: 290, combatRank: 'boss', enemyRole: 'boss', streamDelivery: 'melee', streamState: 'engaged', arenaInReach: true };
+  const ctx = { state: { globals: { ContinuousCombatStageLoop: 1, time: 1 }, entities: [...heroes, enemy] } };
+  assert.equal(pick(ctx, 20).uid, 3);
+  assert.equal(resolve(ctx, 20, 3).uid, 3);
+  heroes[2].hp = 0;
+  assert.equal(pick(ctx, 20).uid, 4);
+  assert.equal(resolve(ctx, 20, 3).uid, 4);
+});

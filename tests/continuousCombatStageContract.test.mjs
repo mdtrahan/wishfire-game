@@ -94,7 +94,8 @@ test('stage-owned linear scaling raises later waves and makes the boss a group-l
   const total = plan => plan.reduce((sum, entry) => sum + entry.row.CombatPower, 0);
   assert.ok(total(latePlan) > total(earlyPlan) * 1.6);
   assert.equal(bossPlan.length, 1);
-  assert.ok(total(bossPlan) > total(latePlan));
+  assert.ok(total(bossPlan) > total(latePlan) / CONTINUOUS_COMBAT_PACKS_PER_WAVE);
+  assert.ok(total(bossPlan) < total(latePlan) / CONTINUOUS_COMBAT_PACKS_PER_WAVE * 1.6);
 });
 
 test('four normal waves unlock the boss gate and loop back to wave one', () => {
@@ -769,4 +770,26 @@ test('continuous scheduler rejects a stale hero claim before selecting an engage
     assert.match(scheduler, /state\.readyAt\?\.\[String\(current\.uid\)\] !== Number\.MAX_SAFE_INTEGER/);
     assert.match(scheduler, /state\.current = null/);
   }
+});
+
+
+test('the introductory boss stays damageable and gives the default frontline time to fight', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { scaleRoutineEnemy } = await import('../web-runner/src/core/routineEnemyScaling.mjs');
+  const { calculateDamageFromJs } = await import('../web-runner/src/core/calculateDamageRules.mjs');
+  const { HERO_DEFINITIONS } = await import('../web-runner/src/core/heroDefinitions.mjs');
+  const { realtimeCooldownSeconds } = await import('../web-runner/src/core/realtimeCooldown.mjs');
+  const data = JSON.parse(readFileSync(new URL('../web-runner/assets/enemies.json', import.meta.url))).data;
+  const catalog = data[0].slice(1).map((_, i) => Object.fromEntries(data.map(column => [column[0][0], column[i + 1][0]])))
+    .filter(row => row.name).map(row => scaleRoutineEnemy(row, 1));
+  const boss = buildContinuousCombatSpawnPlan(catalog, { region: 1, stage: 1, wave: 4, bossActive: true })[0].row;
+  assert.equal(boss.HP, 231);
+  assert.equal(boss.ATK, 20);
+  for (const [key, stat, resist] of [['Huun', 'ATK', 'DEF'], ['Runa', 'MAG', 'RES']]) {
+    assert.ok(calculateDamageFromJs({ power: HERO_DEFINITIONS[key].baseStats[stat], resist: boss[resist] }).damage > 0);
+  }
+  const tank = HERO_DEFINITIONS.Falie.baseStats;
+  const criticalHit = calculateDamageFromJs({ power: boss.ATK, resist: tank.DEF, critRoll01: 0 }).damage;
+  const survival = (Math.ceil(tank.HP / criticalHit) - 1) * realtimeCooldownSeconds({ ...boss, type: 1, enemyRole: 'boss', attackDelivery: 'melee' });
+  assert.ok(survival >= 10, `fresh Fara survives at least10seconds even if every hit crits: ${survival}`);
 });

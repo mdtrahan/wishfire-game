@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { actorFootprintRadius, isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
-import { advanceContinuousCombatArena } from '../web-runner/src/core/arenaCombat.mjs';
+import { advanceContinuousCombatArena, selectContinuousEnemyTarget } from '../web-runner/src/core/arenaCombat.mjs';
 import { activateContinuousCombatSpawnedEnemy, pushContinuousCombatEnemy } from '../web-runner/src/core/continuousCombatStage.mjs';
 import { deriveCombatWorldVerticalBounds } from '../src/core/combatOrientation.mjs';
 
@@ -369,4 +369,26 @@ test('arena-enabled skill displacement stays in the expanded safe world height',
   assert.ok(pushContinuousCombatEnemy(enemy, 55, 0, source) > 0);
   assert.ok(enemy.footY <= bounds.maxY);
   assert.ok(enemy.footY > bounds.maxY - 10, 'push resolves against expanded arena bounds without returning to the legacy middle band');
+});
+
+
+test('a fixed boss can acquire and revalidate both ranged supports after frontline KO', () => {
+  const boss = { uid: 20, name: 'Troll', kind: 'enemy', hp: 100, combatRank: 'boss', enemyRole: 'boss', streamDelivery: 'melee', footX: 1000, footY: 290, streamState: 'engaged' };
+  const heroes = [
+    { uid: 1, name: 'Fara', kind: 'hero', hp: 0, footX: 885, footY: 290 },
+    { uid: 2, name: 'Hondo', kind: 'hero', hp: 0, footX: 885, footY: 330 },
+    { uid: 3, name: 'Runa', kind: 'hero', hp: 60, attackType: 'magic', footX: 770, footY: 280 },
+    { uid: 4, name: 'Kaja', kind: 'hero', hp: 65, attackType: 'magic', footX: 770, footY: 340 },
+  ];
+  const globals = { time: 1, ContinuousCombatStage: { bossActive: true, bossWorldX: 1000, bossWorldY: 290 } };
+  advanceContinuousCombatArena({ globals, entities: [...heroes, boss], seconds: 1 / 60 });
+  assert.equal(boss.streamState, 'engaged');
+  assert.equal(boss.arenaInReach, true);
+  for (const support of heroes.slice(2)) {
+    assert.equal(isActorTargetInRange(boss, support), true);
+    assert.equal(selectContinuousEnemyTarget({ enemy: boss, heroes, globals, preferredTarget: support, requireInReach: true })?.uid, support.uid);
+  }
+  heroes[2].hp = 0;
+  assert.equal(selectContinuousEnemyTarget({ enemy: boss, heroes, globals, requireInReach: true })?.uid, 4);
+  assert.equal(isActorTargetInRange({ ...boss, combatRank: 'ordinary', enemyRole: 'fodder' }, heroes[3]), false);
 });
