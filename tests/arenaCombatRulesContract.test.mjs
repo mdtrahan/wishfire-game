@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { actorFootprintRadius, isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
-import { advanceContinuousCombatArena, selectContinuousEnemyTarget } from '../web-runner/src/core/arenaCombat.mjs';
+import { advanceContinuousCombatArena, deriveContinuousCombatRecoveryHuddle, selectContinuousEnemyTarget } from '../web-runner/src/core/arenaCombat.mjs';
 import { activateContinuousCombatSpawnedEnemy, pushContinuousCombatEnemy } from '../web-runner/src/core/continuousCombatStage.mjs';
 import { actorPuppetState } from '../web-runner/systems/actorPuppetPresentation.mjs';
 import { deriveCombatWorldVerticalBounds } from '../src/core/combatOrientation.mjs';
@@ -250,6 +250,8 @@ test('frontline roles follow diagonal target reversals while ranged supports sta
     const progress = hero => ((hero.footX - center.x) * vector.x + (hero.footY - center.y) * vector.y) / length;
     const frontline = heroes.slice(0, 2).map(progress);
     const support = heroes.slice(2).map(progress);
+    assert.ok(frontline[0] > frontline[1] + 1.5,
+      `Fara remains foremost with Hondo behind during ${sign}; ${frontline.map(value => value.toFixed(1))}`);
     assert.ok(Math.min(...frontline) > Math.max(...support) + 6.4,
       `each frontline hero leads each support along target direction ${sign}; ${frontline.map(value => value.toFixed(1))} vs ${support.map(value => value.toFixed(1))}`);
     assert.equal(heroes[1].facing, sign.startsWith('right') ? 'right' : 'left', 'Hondo faces the actual horizontal travel/target direction');
@@ -261,6 +263,53 @@ test('frontline roles follow diagonal target reversals while ranged supports sta
   first.hp = 50;
   second.hp = 0;
   checkOrder(first, 'right/up again', false);
+});
+
+test('Fara leads Hondo and the compact support row across all eight travel headings', () => {
+  for (let octant = 0; octant < 8; octant += 1) {
+    const angle = octant * Math.PI / 4;
+    const direction = { x: Math.cos(angle), y: Math.sin(angle) };
+    const perpendicular = { x: -direction.y, y: direction.x };
+    const position = (along, side) => ({
+      footX: 1080 + direction.x * along + perpendicular.x * side,
+      footY: 304 + direction.y * along + perpendicular.y * side,
+    });
+    const heroes = [
+      { uid: 1, baseHeroName: 'Falie', name: 'Fara', kind: 'hero', hp: 100, ...position(18, -8) },
+      { uid: 2, baseHeroName: 'Huun', name: 'Hondo', kind: 'hero', hp: 100, ...position(6, 8) },
+      { uid: 3, baseHeroName: 'Runa', name: 'Runa', kind: 'hero', hp: 100, ...position(-12, -8) },
+      { uid: 4, baseHeroName: 'Kojonn', name: 'Kaja', kind: 'hero', hp: 100, ...position(-12, 8) },
+    ];
+    const enemy = {
+      uid: 20, kind: 'enemy', hp: 100,
+      footX: 1080 + direction.x * 620,
+      footY: 304 + direction.y * 620,
+      streamState: 'roaming', streamSectorIndex: octant,
+    };
+    const globals = { time: 0 };
+    for (let tick = 0; tick < 8; tick += 1) {
+      advanceContinuousCombatArena({ globals, entities: [...heroes, enemy], seconds: 0.1 });
+    }
+    const center = heroes.reduce((sum, hero) => ({ x: sum.x + hero.footX / 4, y: sum.y + hero.footY / 4 }), { x: 0, y: 0 });
+    const progress = hero => (hero.footX - center.x) * direction.x + (hero.footY - center.y) * direction.y;
+    const fara = progress(heroes[0]), hondo = progress(heroes[1]);
+    const rear = heroes.slice(2).map(progress);
+    assert.ok(fara > hondo + 4, `octant ${octant}: Fara leads Hondo (${fara.toFixed(1)} vs ${hondo.toFixed(1)})`);
+    assert.ok(hondo > Math.max(...rear) + 4, `octant ${octant}: Hondo leads the rear row (${hondo.toFixed(1)} vs ${rear.map(value => value.toFixed(1))})`);
+  }
+});
+
+test('the legacy frontline formation remains when no living Fara is present', () => {
+  const heroes = [
+    { uid: 1, baseHeroName: 'Huun', name: 'Hondo', kind: 'hero', hp: 100 },
+    { uid: 2, baseHeroName: 'Runa', name: 'Runa', kind: 'hero', hp: 100 },
+    { uid: 3, baseHeroName: 'Kojonn', name: 'Kaja', kind: 'hero', hp: 100 },
+    { uid: 4, baseHeroName: 'Falie', name: 'Fara', kind: 'hero', hp: 0 },
+  ];
+  const huddle = deriveContinuousCombatRecoveryHuddle(heroes, 1);
+  assert.ok(huddle[0].x > huddle[1].x && huddle[0].x > huddle[2].x,
+    'Hondo remains the existing frontline lead when Fara is KO');
+  assert.equal(huddle[0].x, huddle[3].x, 'a KO Fara record does not activate the living-Fara formation');
 });
 
 test('remaining ranged heroes can finish a local encounter and regroup without a tank', () => {
@@ -300,8 +349,13 @@ test('rear supports retain authored reach while both tanks lead in close contact
     const progress = hero => ((hero.footX - center.x) * vector.x + (hero.footY - center.y) * vector.y) / length;
     assert.ok(Math.min(...heroes.slice(0, 2).map(progress)) > Math.max(...heroes.slice(2).map(progress)) + 6.4,
       'both frontline heroes lead both supports during the committed contact turn');
+    assert.ok(progress(heroes[0]) > progress(heroes[1]) + 1.5,
+      'Fara retains the foremost contact position while Hondo remains close enough to attack');
+    assert.ok(heroes.slice(0, 2).every(hero => isActorTargetInRange(hero, enemy)),
+      'both melee heroes stay within their authored attack reach at dense contact');
     assert.ok(heroes.slice(2).every(hero => isActorTargetInRange(hero, enemy)), 'rear ranged heroes remain inside their authored contact range');
-    assert.ok(heroes.every(hero => Math.hypot(hero.footX - center.x, hero.footY - center.y) < 80), 'all four remain inside the tightened cohort envelope during close-contact regrouping');
+    assert.ok(heroes.every(hero => Math.hypot(hero.footX - center.x, hero.footY - center.y) < 80),
+      `all four remain inside the tightened cohort envelope during close-contact regrouping (${heroes.map(hero => Math.hypot(hero.footX - center.x, hero.footY - center.y).toFixed(1))})`);
   };
   assertFormation(1);
   enemy.footX = 145;

@@ -64,9 +64,17 @@ const SUPPORT_STEP_BACK = 12.8;
 const INITIAL_ROAM_WALK_DISTANCE = 200;
 const INITIAL_ROAM_SEED_DRAW = 0x764;
 const CONTACT_INSET = 6.4;
+const FARA_TRAVEL_OFFSET = 16;
+const HONDO_TRAVEL_OFFSET = 4;
+const SUPPORT_TRAVEL_OFFSET = -10;
+const FARA_CONTACT_OFFSET = 8;
+const HONDO_CONTACT_OFFSET = 4;
 const FRONTLINE_HERO_NAMES = new Set(['fara', 'falie', 'hondo', 'huun']);
-function heroFormationSlot(hero, index) {
-  const name = String(hero?.baseHeroName || hero?.name || '').trim().toLowerCase();
+const heroName = hero => String(hero?.baseHeroName || hero?.name || '').trim().toLowerCase();
+const isFara = hero => ['fara', 'falie'].includes(heroName(hero));
+const isHondo = hero => ['hondo', 'huun'].includes(heroName(hero));
+function heroFormationSlot(hero, index, { faraLeads = false } = {}) {
+  const name = heroName(hero);
   const slot = name === 'fara' || name === 'falie' ? 0
     : name === 'hondo' || name === 'huun' ? 1
       : name === 'runa' ? 2
@@ -74,6 +82,15 @@ function heroFormationSlot(hero, index) {
           : index;
   return {
     frontline: FRONTLINE_HERO_NAMES.has(name) || (!name && index < 2),
+    hondo: isHondo(hero),
+    travelOffset: faraLeads && isFara(hero) ? FARA_TRAVEL_OFFSET
+      : faraLeads && isHondo(hero) ? HONDO_TRAVEL_OFFSET
+        : faraLeads
+          ? SUPPORT_TRAVEL_OFFSET
+      : FRONTLINE_HERO_NAMES.has(name) || (!name && index < 2) ? TRAVEL_FRONT_OFFSET : -TRAVEL_FRONT_OFFSET,
+    contactOffset: faraLeads && isFara(hero) ? FARA_CONTACT_OFFSET
+      : faraLeads && isHondo(hero) ? HONDO_CONTACT_OFFSET
+        : CONTACT_INSET,
     rowOffset: slot % 2 === 0 ? -FORMATION_ROW_GAP : FORMATION_ROW_GAP,
   };
 }
@@ -83,12 +100,13 @@ export function deriveContinuousCombatRecoveryHuddle(heroes = [], heading = 1) {
   const vertical = deriveCombatWorldVerticalBounds();
   const centerY = (vertical.minY + vertical.maxY) / 2;
   const direction = Number(heading) < 0 ? -1 : 1;
+  const faraLeads = heroes.some(hero => isLiving(hero) && isFara(hero));
   return heroes.map((hero, index) => {
-    const slot = heroFormationSlot(hero, index);
+    const slot = heroFormationSlot(hero, index, { faraLeads });
     const rowSide = Math.sign(slot.rowOffset) || (index % 2 === 0 ? -1 : 1);
     return {
       hero,
-      x: formation.centerX + direction * (slot.frontline ? TRAVEL_FRONT_OFFSET : -TRAVEL_FRONT_OFFSET),
+      x: formation.centerX + direction * slot.travelOffset,
       y: centerY + rowSide * (actorFootprintRadius(hero) + 2),
     };
   });
@@ -354,18 +372,28 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   const directionX = initialRoamActive ? Number(initialRoam.direction) : travelLength > 1e-6 ? travelDeltaX / travelLength : 1;
   const directionY = initialRoamActive ? 0 : travelLength > 1e-6 ? travelDeltaY / travelLength : 0;
   const targetDirection = Math.sign(directionX) || 1;
-  const frontline = heroes.filter((hero, index) => heroFormationSlot(hero, index).frontline);
-  const supports = heroes.filter((hero, index) => !heroFormationSlot(hero, index).frontline);
+  const faraLeads = heroes.some(isFara);
+  const formations = heroes.map((hero, index) => heroFormationSlot(hero, index, { faraLeads: faraLeads && !bossEncounter }));
+  const frontline = heroes.filter((hero, index) => formations[index].frontline);
+  const supports = heroes.filter((hero, index) => !formations[index].frontline);
   const progress = actor => {
     const point = actorFootPoint(actor);
     return (point.x - center) * directionX + (point.y - centerY) * directionY;
   };
   const regrouping = !bossEncounter && frontline.length > 0 && supports.length > 0
     && Math.min(...frontline.map(progress)) <= Math.max(...supports.map(progress)) + FRONTLINE_LEAD_GAP;
+  const fara = faraLeads ? heroes.find(isFara) : null;
+  const hondo = faraLeads ? heroes.find(isHondo) : null;
+  const faraRoom = fara ? Math.min(
+    directionX > 1e-6 ? (bounds.heroMaxX - actorFootPoint(fara).x) / directionX : directionX < -1e-6 ? (actorFootPoint(fara).x - bounds.heroMinX) / -directionX : Infinity,
+    directionY > 1e-6 ? (maxY - actorFootPoint(fara).y) / directionY : directionY < -1e-6 ? (actorFootPoint(fara).y - minY) / -directionY : Infinity,
+  ) : 0;
+  const hondoYielding = !bossEncounter && fara && faraRoom > FRONTLINE_LEAD_GAP && hondo && progress(fara) <= progress(hondo) + FRONTLINE_LEAD_GAP
+    && !(sharedTarget && isActorTargetInRange(hondo, sharedTarget));
   for (const enemy of focusedEnemies) if (enemy.streamState === 'roaming') enemy.streamState = 'in_range';
   for (const [index, hero] of heroes.entries()) {
-    const formation = heroFormationSlot(hero, index);
-    if (regrouping && !formation.frontline) {
+    const formation = formations[index];
+    if ((regrouping && !formation.frontline) || (hondoYielding && formation.hondo)) {
       const point = actorFootPoint(hero);
       if (Math.hypot(point.x - center, point.y - centerY) > SQUAD_STRAGGLE_RADIUS) {
         const regroupTarget = {
@@ -395,7 +423,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
     const target = initialRoamActive ? null : sharedTarget;
     if (target) {
       hero.arenaTargetUID = Number(target.uid || 0);
-      const alongOffset = CONTACT_INSET;
+      const alongOffset = formation.contactOffset;
       const contactTarget = {
         ...target,
         footX: targetPoint.x + directionX * alongOffset - directionY * formation.rowOffset,
@@ -414,7 +442,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
       const approachDistance = initialRoamActive || hasStragglers || locallyDetected ? 0 : 130;
       const approachX = nextPoint.x - directionX * approachDistance;
       const approachY = nextPoint.y - directionY * approachDistance;
-      const frontOffset = formation.frontline ? TRAVEL_FRONT_OFFSET : -TRAVEL_FRONT_OFFSET;
+      const frontOffset = formation.travelOffset;
       const sideOffset = formation.rowOffset;
       const searchTarget = {
         footX: clamp(approachX + directionX * frontOffset - directionY * sideOffset, bounds.heroMinX, bounds.heroMaxX),

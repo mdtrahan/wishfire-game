@@ -1490,6 +1490,9 @@ test('fresh production and full recovery choose a stable seeded opening heading 
     const positions = heroes.map(hero => hero.footX);
     assert.ok(heroes[0].footX * first.direction > heroes[2].footX * first.direction, 'Fara leads Runa');
     assert.ok(heroes[1].footX * first.direction > heroes[3].footX * first.direction, 'Hondo leads Kaja');
+    assert.ok(heroes[0].footX * first.direction > heroes[1].footX * first.direction
+      && heroes[1].footX * first.direction > Math.max(heroes[2].footX * first.direction, heroes[3].footX * first.direction),
+    'the fresh huddle places Fara foremost, Hondo behind her and Runa/Kaja in the rear row');
     const firstSnapshot = { ...first };
     assert.deepEqual(globals.ContinuousCombatInitialRoam, firstSnapshot, 'reading the attempt does not redraw its heading');
 
@@ -1514,6 +1517,9 @@ test('fresh production and full recovery choose a stable seeded opening heading 
   assert.equal(recovered.targetX, 1080 + recovered.direction * 200);
   assert.ok(heroes.every(hero => hero.footX >= 720 && hero.footX <= 1440 && hero.footY < 680),
     'recovery first relocates offscreen actors into the centered huddle');
+  assert.ok(heroes[0].footX * recovered.direction > heroes[1].footX * recovered.direction
+    && heroes[1].footX * recovered.direction > Math.max(heroes[2].footX * recovered.direction, heroes[3].footX * recovered.direction),
+  'recovery retains Fara foremost and Hondo directly behind through either seeded heading');
   globals.ContinuousCombatStageLoop = 1;
   const openingDirection = recovered.direction;
   let elapsed = 0;
