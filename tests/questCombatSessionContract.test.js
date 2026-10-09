@@ -183,23 +183,53 @@ test('surrender is a no-op outside an active continuous boss attempt', async () 
 
 test('ordinary KO captures cleared sectors before removing enemies and respawns only unfinished packs', async () => {
  const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
- const {buildContinuousCombatSpawnPlan,activateContinuousCombatSpawnedEnemy,deriveContinuousCombatWavePackProgress}=await import('../web-runner/src/core/continuousCombatStage.mjs');
+ const {buildContinuousCombatSpawnPlan,activateContinuousCombatSpawnedEnemy,deriveContinuousCombatWavePackProgress,getContinuousCombatPartyCP}=await import('../web-runner/src/core/continuousCombatStage.mjs');
  const rows=['High Orc','Chimerilass','Djinn'].map((name,index)=>({name,HP:20+index*2,ATK:2,DEF:2,MAG:1,RES:1,SPD:8,CombatPower:20+index}));
  const stage={seed:4,region:1,stage:2,wave:3,bossAvailable:false,bossArmed:false,bossActive:false,transitions:2,clearedBosses:2,clearedPackMask:0,spawnedPackMask:63,nextEmissionAt:0,lastUpdatedAt:0,spawnSerial:12};
- const globals={ContinuousCombatStageLoop:1,ContinuousCombatStage:stage,EnemyData:rows,EnemySlots:Array.from({length:12},(_,i)=>i),PendingDeaths:{},EnemyDeathVisualHoldByUID:{},time:8};
- const entities=[{uid:1,kind:'hero',hp:0,maxHP:42,isAlive:false}];
+ const globals={ContinuousCombatStageLoop:1,ContinuousCombatStage:stage,EnemyData:rows,EnemySlots:Array.from({length:12},(_,i)=>i),PendingDeaths:{},EnemyDeathVisualHoldByUID:{},Equipment:{lamp:{autoEnabled:true}},time:8};
+ const hero={uid:1,kind:'hero',hp:0,maxHP:42,isAlive:false,ATK:90,DEF:90,MAG:90,RES:90,SPD:90};
+ const entities=[hero];
  const plan=buildContinuousCombatSpawnPlan(rows,stage);stage.spawnSerial=plan.length;stage.spawnedPackMask=plan.reduce((mask,entry)=>mask|(1<<entry.sectorIndex),0);
  const enemies=plan.map((entry,index)=>{const enemy={uid:10+index,kind:'enemy',hp:entry.row.HP,maxHP:entry.row.HP,name:entry.row.name};activateContinuousCombatSpawnedEnemy(globals,enemy,entry);entities.push(enemy);return enemy;});
  for(const enemy of enemies)if([0,3].includes(enemy.streamSectorIndex%6))enemy.hp=0;
- const state={globals,entities};const session=createQuestCombatSession({state,gameState:{},call(name,data,slotIndex){if(name!=='SpawnEnemy')return null;const enemy={uid:100+slotIndex,kind:'enemy',name:data.name,hp:data.HP,maxHP:data.HP,slotIndex};state.entities.push(enemy);return enemy;},sync(){}});
+ const state={globals,entities};let nextUid=100;let rewardSettlements=0;
+ const session=createQuestCombatSession({state,gameState:{},call(name,data,slotIndex){if(name==='SettleContinuousCombatRewards'){rewardSettlements++;return;}if(name!=='SpawnEnemy')return null;const enemy={uid:nextUid++,kind:'enemy',name:data.name,hp:data.HP,maxHP:data.HP,slotIndex};state.entities.push(enemy);return enemy;},sync(){}});
+ const firstOldUIDs=new Set(state.entities.filter(actor=>actor.kind==='enemy').map(actor=>actor.uid));
+ globals.PendingDeaths={[[...firstOldUIDs][0]]:1};globals.EnemyDeathVisualHoldByUID={[[...firstOldUIDs][1]]:4};globals.PendingHeroHits=[{targetUID:[...firstOldUIDs][0]}];globals.RealtimeEnemyActionsByUID={[[...firstOldUIDs][0]]:{targetUID:1}};globals.SelectedEnemyUID=[...firstOldUIDs][0];
  assert.equal(session.recoverContinuousDefeat(),true);
  const recoveredStage=globals.ContinuousCombatStage;
  assert.equal(recoveredStage.wave,3,'KO recovery keeps the active wave');
  assert.equal(recoveredStage.bossSummonRequired,true,'a KO before readiness also requires a manual summon later in this stage');
  assert.equal(recoveredStage.clearedPackMask,(1<<0)|(1<<3),'clears are recorded before the old enemy array is discarded');
+ assert.equal(recoveredStage.transitions,3,'each recovery advances the existing deterministic generation serial once');
+ assert.equal(recoveredStage.region,1);assert.equal(recoveredStage.stage,2);assert.equal(recoveredStage.bossAvailable,false);assert.equal(globals.Equipment.lamp.autoEnabled,true);
  assert.equal(deriveContinuousCombatWavePackProgress(recoveredStage,state.entities).fraction,2/6);
  const recovered=state.entities.filter(actor=>actor.kind==='enemy');
  assert.deepEqual([...new Set(recovered.map(enemy=>enemy.streamSectorIndex%6))],[1,2,4,5]);
+ assert.ok(recovered.every(enemy=>!firstOldUIDs.has(enemy.uid)),'old enemy identities do not survive recovery');
+ assert.equal(Object.keys(globals.PendingDeaths).length,0);assert.equal(Object.keys(globals.EnemyDeathVisualHoldByUID).length,0);assert.deepEqual(globals.PendingHeroHits,[]);assert.equal(globals.RealtimeEnemyActionsByUID,undefined);assert.equal(globals.SelectedEnemyUID,0);
+ const expectedFirst=buildContinuousCombatSpawnPlan(rows,recoveredStage,{partyCP:getContinuousCombatPartyCP(state.entities),enemySize:40}).filter(entry=>!(recoveredStage.clearedPackMask&(1<<entry.sectorIndex)));
+ const shape=entries=>entries.map(entry=>`${(entry.streamSectorIndex ?? entry.sectorIndex)%6}:${entry.name ?? entry.row?.name}:${entry.footX}:${entry.footY}`).sort().join('|');
+ const expectedShape=entries=>entries.map(entry=>{const actor={uid:999,kind:'enemy',name:entry.row.name,enemyRole:'fodder'};activateContinuousCombatSpawnedEnemy(globals,actor,entry);return `${entry.sectorIndex}:${actor.name}:${actor.footX}:${actor.footY}`;}).sort().join('|');
+ assert.equal(shape(recovered),expectedShape(expectedFirst),'first recovery uses the current full-party CP for its seeded compensation plan');
+ assert.ok(expectedFirst.length>4*2,'the current party CP receives existing bonus enemies on weak packs');
+ const firstLoadout=shape(recovered);
+ hero.ATK=400;hero.DEF=400;hero.MAG=400;hero.RES=400;hero.SPD=400;
+ hero.hp=0;hero.isAlive=false;
+ assert.equal(session.recoverContinuousDefeat(),true,'a later KO can recover the same preserved partial wave again');
+ const rerolled=state.entities.filter(actor=>actor.kind==='enemy');
+ const secondLoadout=shape(rerolled);
+ const expectedSecond=buildContinuousCombatSpawnPlan(rows,globals.ContinuousCombatStage,{partyCP:getContinuousCombatPartyCP(state.entities),enemySize:40}).filter(entry=>!(globals.ContinuousCombatStage.clearedPackMask&(1<<entry.sectorIndex)));
+ assert.equal(shape(rerolled),expectedShape(expectedSecond),'next recovery recalculates compensation from the changed current party CP');
+ assert.notEqual(expectedSecond.length,expectedFirst.length,'the changed party CP changes the deterministic bonus plan');
+ assert.equal(globals.ContinuousCombatStage.transitions,4);
+ assert.equal(globals.ContinuousCombatStage.clearedPackMask,(1<<0)|(1<<3));
+ assert.equal(globals.ContinuousCombatStage.wave,3);assert.equal(globals.ContinuousCombatStage.region,1);assert.equal(globals.ContinuousCombatStage.stage,2);assert.equal(globals.ContinuousCombatStage.bossAvailable,false);assert.equal(globals.Equipment.lamp.autoEnabled,true);
+ assert.notEqual(secondLoadout,firstLoadout,'fresh recovery composition or placement differs from the previous attempt');
+ assert.notDeepEqual(rerolled.map(enemy=>enemy.name),recovered.map(enemy=>enemy.name),'authored enemy composition is rerolled, not merely repositioned');
+ assert.notDeepEqual(rerolled.map(enemy=>[enemy.footX,enemy.footY]),recovered.map(enemy=>[enemy.footX,enemy.footY]),'fresh pack and solo placements use the next deterministic generation');
+ assert.ok(rerolled.every(enemy=>!firstOldUIDs.has(enemy.uid)&&!recovered.some(old=>old.uid===enemy.uid)));
+ assert.equal(rewardSettlements,2,'each attempt settles once, without reusing prior actor UIDs');
 });
 
 test('new battle clears combat conditions and retired Flow state while retaining gold and progression', async () => {

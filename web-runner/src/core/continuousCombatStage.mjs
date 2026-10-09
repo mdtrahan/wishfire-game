@@ -567,6 +567,7 @@ export function resetContinuousCombatAfterDefeat(globals) {
   const clearedPackMask = bossAvailable ? 0 : recordedPackMask;
   globals.ContinuousCombatStage = {
     ...state,
+    transitions: Math.max(0, Math.floor(Number(state.transitions) || 0)) + 1,
     wave: bossAvailable ? 1 : state.wave,
     clearedPackMask,
     spawnedPackMask: 0,
@@ -620,7 +621,7 @@ function findPackScale(rows, targetCP) {
   return high;
 }
 
-function expandWaveRows(stage, byName, catalogRows) {
+function expandWaveRows(stage, byName, catalogRows, compositionSeed = null) {
   const pool = stage.enemyNames.map(name => byName.get(name)).filter(Boolean);
   if (stage.kind === 'boss' || !pool.length) return pool;
   const bossNames = new Set(CONTINUOUS_COMBAT_STAGES.filter(candidate => candidate.kind === 'boss').flatMap(candidate => candidate.enemyNames));
@@ -630,7 +631,9 @@ function expandWaveRows(stage, byName, catalogRows) {
   const averageCP = pool.reduce((sum, row) => sum + computeCombatPower(row), 0) / pool.length;
   const strength = maxCP > minCP ? (averageCP - minCP) / (maxCP - minCP) : 0.5;
   const packSize = strength <= 0.2 ? 3 : 2;
-  return Array.from({ length: packSize * CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, index) => pool[index % pool.length]);
+  if (compositionSeed == null) return Array.from({ length: packSize * CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, index) => pool[index % pool.length]);
+  const seed = Number(compositionSeed) >>> 0 || 1;
+  return Array.from({ length: packSize * CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, index) => pool[Math.floor(previewSeededRng(seed, index) * pool.length)]);
 }
 
 export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase = 0, partyCP = 0, enemySize = 40 } = {}) {
@@ -639,7 +642,10 @@ export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase
   const rows = Array.isArray(enemyRows) ? enemyRows : [];
   if (!stage || !rows.length) return [];
   const byName = new Map(rows.map(row => [String(row?.name || row?.EnemyName || '').trim(), row]));
-  const selectedRows = expandWaveRows(stage, byName, rows);
+  const compositionSeed = (Number(stageState?.seed || 1)
+    ^ Math.imul(Math.max(0, Math.floor(Number(stageState?.transitions) || 0)) + 1, 2654435761)
+    ^ Math.imul(Math.max(1, Math.floor(Number(stage.wave) || 1)), 2246822519)) >>> 0;
+  const selectedRows = expandWaveRows(stage, byName, rows, compositionSeed);
   const baselineRows = expandWaveRows(CONTINUOUS_COMBAT_STAGES[0], byName, rows);
   const totalCP = entries => entries.reduce((sum, row) => sum + computeCombatPower(row), 0);
   const stageOrdinal = (Math.max(1, Number(stage.region || 1)) - 1) * CONTINUOUS_COMBAT_STAGES_PER_REGION

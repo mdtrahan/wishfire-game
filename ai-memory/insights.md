@@ -632,3 +632,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - ORKA-xx0: Sibling gear views should reuse the existing `.lamp-level` badge markup and shared CSS to prevent style drift. Comparison arrows remain limited to views that compare candidates.
 
 - ORKA-764: Seed one opening roam heading from the stage seed and transient attempt index, anchored at the authored arena midpoint after huddle placement. Mirror tank-front formation to that heading and yield it on actual actor reach or an incoming impact, so prior offscreen feet and stale targets cannot reverse the first walk.
+
+- ORKA-5fr: Seed recovery composition from the advancing stage generation serial while preserving earned wave and pack state; copying the prior serial and seed reproduces the same loadout after every wipe.

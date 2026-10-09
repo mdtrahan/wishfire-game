@@ -517,12 +517,13 @@ test('only underpowered ordinary sectors draw one seeded plus-one-to-three count
   const observedExtraCounts = new Set();
   for (let seed = 1; seed <= 80 && observedExtraCounts.size < 3; seed += 1) {
     const seededStage = { ...stage, seed };
+    const seededBase = buildContinuousCombatSpawnPlan(rows, seededStage);
     const plan = buildContinuousCombatSpawnPlan(rows, seededStage, { partyCP: Number.MAX_SAFE_INTEGER });
     const repeated = buildContinuousCombatSpawnPlan(rows, seededStage, { partyCP: Number.MAX_SAFE_INTEGER });
     assert.deepEqual(plan, repeated, 'stage seed and transition count fully determine pack padding');
     const sectorRows = Array.from({ length: CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, sector) => plan.filter(entry => entry.sectorIndex === sector && !entry.isSolo));
     for (const pack of sectorRows) {
-      const extraCount = pack.length - base.filter(entry => entry.sectorIndex === pack[0].sectorIndex && !entry.isSolo).length;
+      const extraCount = pack.length - seededBase.filter(entry => entry.sectorIndex === pack[0].sectorIndex && !entry.isSolo).length;
       assert.ok(extraCount >= 1 && extraCount <= 3);
       observedExtraCounts.add(extraCount);
       assert.equal(pack.length, pack[0].sectorSize);
@@ -531,7 +532,7 @@ test('only underpowered ordinary sectors draw one seeded plus-one-to-three count
     assert.deepEqual(plan.map(entry => entry.slotIndex), Array.from({ length: plan.length }, (_, index) => index));
     assert.equal(new Set(plan.map(entry => entry.slotIndex)).size, plan.length);
     assert.equal(new Set(plan.map(entry => entry.sectorIndex)).size, 6);
-    for (const entry of base.filter(candidate => !candidate.isSolo)) {
+    for (const entry of seededBase.filter(candidate => !candidate.isSolo)) {
       const padded = plan.find(candidate => candidate.slotIndex === entry.slotIndex);
       for (const key of ['HP', 'ATK', 'DEF', 'MAG', 'RES', 'SPD', 'CombatPower', 'streamCpScale']) assert.equal(padded.row[key], entry.row[key]);
     }
@@ -541,6 +542,32 @@ test('only underpowered ordinary sectors draw one seeded plus-one-to-three count
 
   const boss = { ...stage, wave: 4, bossAvailable: true, bossArmed: true, bossActive: true };
   assert.deepEqual(buildContinuousCombatSpawnPlan(rows, boss, { partyCP: Number.MAX_SAFE_INTEGER }), buildContinuousCombatSpawnPlan(rows, boss), 'boss count and stats do not use pack padding');
+});
+
+test('each squad recovery advances one deterministic generation draw for composition and compensation', () => {
+  const globals={ContinuousCombatStage:{...createContinuousCombatStageState(712),wave:3,clearedPackMask:0,spawnedPackMask:63,spawnSerial:30},time:0};
+  const signatures=[];const extraCounts=new Set();
+  for(let recovery=0;recovery<16;recovery+=1){
+    const stage=globals.ContinuousCombatStage;
+    const base=buildContinuousCombatSpawnPlan(rows,stage);
+    const padded=buildContinuousCombatSpawnPlan(rows,stage,{partyCP:Number.MAX_SAFE_INTEGER});
+    assert.deepEqual(padded,buildContinuousCombatSpawnPlan(rows,stage,{partyCP:Number.MAX_SAFE_INTEGER}),'seed plus current transition replay the same generation draw');
+    signatures.push(padded.filter(entry=>!entry.isSolo).map(entry=>entry.row.name).join('|'));
+    for(let sector=0;sector<CONTINUOUS_COMBAT_PACKS_PER_WAVE;sector+=1){
+      const baseCount=base.filter(entry=>entry.sectorIndex===sector&&!entry.isSolo).length;
+      const actualCount=padded.filter(entry=>entry.sectorIndex===sector&&!entry.isSolo).length;
+      extraCounts.add(actualCount-baseCount);
+    }
+    assert.equal(resetContinuousCombatAfterDefeat(globals),true);
+    assert.equal(globals.ContinuousCombatStage.wave,3);
+    assert.equal(globals.ContinuousCombatStage.bossSummonRequired,true);
+    assert.equal(globals.ContinuousCombatStage.clearedPackMask,0);
+    assert.equal(globals.ContinuousCombatStage.transitions,recovery+1);
+  }
+  assert.ok(new Set(signatures).size>1,'each recovery changes the selected actor composition within the authored stage pool');
+  assert.deepEqual([...extraCounts].sort(),[1,2,3],'every recovery still uses the existing seeded one-to-three CP compensation');
+  const boss={...globals.ContinuousCombatStage,wave:4,bossAvailable:true,bossArmed:true,bossActive:true};
+  assert.equal(buildContinuousCombatSpawnPlan(rows,boss,{partyCP:Number.MAX_SAFE_INTEGER}).length,1,'boss layout remains a single authored enemy');
 });
 
 test('deployed party CP includes KO heroes and uses the direct canonical actor sum', () => {
