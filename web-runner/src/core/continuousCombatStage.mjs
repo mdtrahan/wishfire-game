@@ -658,7 +658,8 @@ export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase
 
   const remainingEntries = stage.kind === 'boss' ? entries : entries.filter(entry => !(normalizeContinuousCombatPackMask(stageState?.clearedPackMask) & (1 << entry.sectorIndex)));
   if (stage.kind !== 'boss' && remainingEntries.length) {
-    const soloSource = remainingEntries.reduce((weakest, entry) => !weakest || computeCombatPower(entry.row) < computeCombatPower(weakest.row) ? entry : weakest, null);
+    const soloRows = ['Gobloc', 'Skeleton'].map(name => byName.get(name)).filter(Boolean);
+    const soloTargetCP = Math.min(...remainingEntries.map(entry => computeCombatPower(entry.row))) * CONTINUOUS_COMBAT_SOLO_STAT_SCALE;
     const placementGlobals = { ContinuousCombatStage: stageState, EnemySize: enemySize, time: 0 };
     const placementSectorSizes = new Map();
     for (const entry of remainingEntries) placementSectorSizes.set(entry.sectorIndex, (placementSectorSizes.get(entry.sectorIndex) || 0) + 1);
@@ -671,15 +672,16 @@ export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase
       return { x: actor.footX, y: actor.footY };
     });
     const soloFeet = [];
-    for (let sector = 0; sector < CONTINUOUS_COMBAT_SOLOS_PER_WAVE; sector += 1) {
+    for (let sector = 0; soloRows.length && sector < CONTINUOUS_COMBAT_SOLOS_PER_WAVE; sector += 1) {
       if (normalizeContinuousCombatPackMask(stageState?.clearedPackMask) & (1 << sector)) continue;
+      const soloRow = soloRows[Math.floor(previewSeededRng(stageState?.seed || 1, Number(stageState?.transitions || 0) * CONTINUOUS_COMBAT_SOLOS_PER_WAVE + sector) * soloRows.length)];
       const foot = seededSoloFoot(stageState, sector, occupiedPackFeet, soloFeet, enemySize);
       soloFeet.push(foot);
       remainingEntries.push({
-        row: scaleContinuousCombatRow(soloSource.row, CONTINUOUS_COMBAT_SOLO_STAT_SCALE),
+        row: scaleContinuousCombatRow(soloRow, findPackScale([soloRow], soloTargetCP)),
         lane: 0,
-        rank: Number(soloSource.rank || 0) + 1,
-        packIndex: Number(soloSource.packIndex || 0),
+        rank: Number(remainingEntries[0].rank || 0) + 1,
+        packIndex: Number(remainingEntries[0].packIndex || 0),
         entryOrder: 0,
         sectorIndex: sector,
         isSolo: true,

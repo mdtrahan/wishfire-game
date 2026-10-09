@@ -99,6 +99,21 @@ test('normal wave plans keep six two-or-three-member packs and add one weak solo
   assert.ok(totals[2] / totals[1] < 1 + CONTINUOUS_COMBAT_PACK_CP_STEP * 2);
 });
 
+test('only low-tier Gobloc and Skeleton spawn as lone patrols in every ordinary wave', () => {
+  const observed = new Set();
+  for (let seed = 1; seed <= 16; seed += 1) for (let wave = 1; wave <= 4; wave += 1) {
+    const plan = buildContinuousCombatSpawnPlan(rows, { ...createContinuousCombatStageState(seed), wave, transitions: wave - 1 });
+    const solos = plan.filter(entry => entry.isSolo);
+    assert.equal(solos.length, 6);
+    for (const entry of solos) {
+      assert.ok(['Gobloc', 'Skeleton'].includes(entry.row.name));
+      observed.add(entry.row.name);
+      assert.ok(computeCombatPower(entry.row) < Math.min(...plan.filter(actor => !actor.isSolo).map(actor => computeCombatPower(actor.row))));
+    }
+  }
+  assert.deepEqual([...observed].sort(), ['Gobloc', 'Skeleton']);
+});
+
 test('seeded solos stay outside the recovery moat and separated from pack clouds across the arena', () => {
   const world = deriveCombatWorldBounds();
   const vertical = deriveCombatWorldVerticalBounds();
