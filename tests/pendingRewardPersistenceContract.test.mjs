@@ -7,6 +7,7 @@ import { recordEnemyDefeatReward, rulesContext, settleContinuousCombatRewards, s
 import { resolveSkill, turnStart } from '../web-runner/src/core/combatRules.mjs';
 import { PROGRESSION } from '../web-runner/src/core/heroDefinitions.mjs';
 import { createEquipmentStorage } from '../web-runner/systems/equipmentStorage.mjs';
+import { advanceContinuousCombatStage, createContinuousCombatStageState } from '../web-runner/src/core/continuousCombatStage.mjs';
 
 const storageSource = fs.readFileSync(new URL('../web-runner/systems/heroProgressStorage.js', import.meta.url), 'utf8')
   .replace(/^import .*;\n/, '')
@@ -66,6 +67,38 @@ test('pending kill rewards settle on reload before fresh session IDs can reuse e
   assert.equal(again.ProgressionBattle.id, 'third-session');
   assert.deepEqual({ ...again.ProgressionBattle.defeated }, {});
   assert.ok(values.has('orka.hero_progress.v2'));
+}));
+
+test('an abandoned active boss UID is removed before pending rewards restore while fodder rewards remain', () => withStorage(async values => {
+  const snapshot=createHeroProgressStore();
+  snapshot.continuousStage={region:1,stage:2,wave:1,bossAvailable:true,bossSummonRequired:true,clearedBosses:3,bossUID:90};
+  snapshot.pendingBattleRewards={id:'surrendered-boss-at-reload',participants:['Falie'],defeated:{90:900,91:25},defeatedGold:{90:9000,91:17}};
+  values.set('orka.hero_progress.v2',JSON.stringify(snapshot));
+  const globals={ProgressionBattle:{id:'new-runtime',participants:['Falie'],defeated:{},defeatedGold:{}},goldTotal:0,ContinuousCombatStageLoop:1,ContinuousCombatStage:{region:1,stage:2,wave:1,bossAvailable:true,bossSummonRequired:true,bossActive:false,clearedBosses:3}};
+  const hero={...newHeroProgress('Falie'),kind:'hero',uid:1};
+  restoreHeroProgressFromStorage({fnContext:{state:{globals,entities:[hero]}}});
+  assert.equal(globals.goldTotal,17,'fodder Gold settles while the abandoned boss Gold is discarded');
+  assert.ok(globals.HeroProgress.settledBattles.includes('surrendered-boss-at-reload'));
+  assert.equal(globals.HeroProgress.pendingBattleRewards,null);
+  assert.equal(globals.HeroProgress.continuousStage.bossUID,undefined,'the one-shot boss identity is retired after filtering');
+}));
+
+test('boss victory clears its UID before checkpoint so its legitimate reward still settles on reload', () => withStorage(async values => {
+  const active={...createContinuousCombatStageState(31,{region:2,stage:4}),bossAvailable:true,bossSummonRequired:true,bossArmed:true,bossActive:true,bossUID:90};
+  const victory=advanceContinuousCombatStage(active);
+  assert.equal(victory.state.bossActive,false);
+  assert.equal(victory.state.bossUID,null);
+  const globals={ContinuousCombatStageLoop:1,ContinuousCombatStage:victory.state,HeroProgress:createHeroProgressStore(),ProgressionBattle:{id:'witnessed-boss-victory',participants:['Falie'],defeated:{90:500},defeatedGold:{90:321},settled:false},goldTotal:0};
+  assert.equal(persistHeroProgressIfDirty({stateGlobals:globals}),true);
+  const saved=JSON.parse(values.get('orka.hero_progress.v2'));
+  assert.equal(saved.continuousStage.stage,5);
+  assert.equal(saved.continuousStage.bossUID,undefined);
+  assert.deepEqual(saved.pendingBattleRewards.defeated,{90:500});
+  assert.deepEqual(saved.pendingBattleRewards.defeatedGold,{90:321});
+  const reloaded={ProgressionBattle:{id:'new-runtime',participants:['Falie'],defeated:{},defeatedGold:{}},goldTotal:0,ContinuousCombatStageLoop:1,ContinuousCombatStage:{...victory.state}};
+  restoreHeroProgressFromStorage({fnContext:{state:{globals:reloaded,entities:[{...newHeroProgress('Falie'),kind:'hero',uid:1}]}}});
+  assert.equal(reloaded.goldTotal,321,'a witnessed boss reward remains eligible for settlement');
+  assert.ok(reloaded.HeroProgress.settledBattles.includes('witnessed-boss-victory'));
 }));
 
 test('a KO flushes its pending reward ledger before any animation-frame save', () => withStorage(async values => {

@@ -792,6 +792,7 @@ test('fourth cleared wave enters the boss once through the existing wipe without
   assert.equal(globals.ContinuousCombatStage.wave, 1);
   assert.equal(globals.ContinuousCombatStage.bossActive, true);
   assert.equal(globals.ContinuousCombatStage.bossAvailable, true);
+  assert.equal(globals.ContinuousCombatStage.bossUID, 2, 'the boss UID is retained by the active stage for surrender settlement');
   assert.equal(globals.ContinuousCombatStage.bossTransitionEndsAtMs - globals.ContinuousCombatStage.bossTransitionStartedAtMs, 440);
   assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), false);
   assert.deepEqual(spawned, ['boss']);

@@ -627,6 +627,7 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - ORKA-uun: If combat floors a stat to one, halving low-level DEF may leave effective damage unchanged. Soften generated solos through HP after their existing weak-CP scaling, then recompute CombatPower; place six-member clouds by their actual vertical bounds to prove the requested full-footprint gap.
 
 - Keep earned boss readiness separate from permission to enter. A stage-scoped manual-retry latch survives ordinary KO, boss defeat, save/reload and an active retry; ready stages continue fodder farming at 100% until explicit summon. Capture final-pack credit before the KO recovery filter, so a wave-four last-kill boundary latches readiness instead of auto-entering on recovery. Preserve the existing whole-party defeat rule during boss attempts; first-KO scheduler interruption applies only to ordinary roaming.
+- Boss wins require a witnessed active-combat clear. On menu departure or page hide, remove active-boss reward entries and queued hits before recovery settlement, then save the attempt as manual retry; ordinary menu pause remains intact.
 
 - ORKA-xx0: Sibling gear views should reuse the existing `.lamp-level` badge markup and shared CSS to prevent style drift. Comparison arrows remain limited to views that compare candidates.
 

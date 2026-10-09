@@ -115,6 +115,44 @@ test('manual boss retry state restores from the existing progression save and su
  assert.deepEqual(afterDefeat.continuousStage,{region:3,stage:7,wave:1,bossAvailable:true,bossSummonRequired:true,clearedBosses:26,clearedPackMask:0});
 });
 
+test('an unfinished active boss checkpoint reloads as a manual retry instead of a live boss',()=>{
+ const globals={HeroProgress:createHeroProgressStore(),ContinuousCombatStageLoop:1,ContinuousCombatStage:{region:2,stage:4,wave:1,bossAvailable:true,bossSummonRequired:false,bossArmed:true,bossActive:true,bossUID:90,clearedBosses:9}};
+ const values=new Map(),persist=createPersistHeroProgressIfDirty({localStorage:{setItem:(key,value)=>values.set(key,value)}});
+ assert.equal(persist({stateGlobals:globals}),true);
+ const restored=createHeroProgressStore(JSON.parse(values.get(HERO_PROGRESS_SAVE_KEY)));
+ assert.deepEqual(restored.continuousStage,{region:2,stage:4,wave:1,bossAvailable:true,bossSummonRequired:true,clearedBosses:9,bossUID:90,clearedPackMask:0});
+ const reloaded={HeroProgress:restored,EncounterSeed:73};configureContinuousCombatProduction(reloaded,{productionPath:true});
+ assert.equal(reloaded.ContinuousCombatStage.bossActive,false);
+ assert.equal(reloaded.ContinuousCombatStage.bossAvailable,true);
+ assert.equal(reloaded.ContinuousCombatStage.bossSummonRequired,true);
+});
+
+test('production visibility and pagehide handlers call surrender on the correct event targets',()=>{
+ const start=appSource.indexOf("document.addEventListener('visibilitychange'",appSource.indexOf('const combatSimulationTicker = createCombatSimulationTicker()'));
+ const end=appSource.indexOf('const buffIconFrames',start);
+ assert.ok(start>=0&&end>start,'finds production visibility and pagehide registrations');
+ const source=appSource.slice(start,end),documentHandlers={},windowHandlers={};let surrenders=0,resets=0;
+ const documentMock={hidden:false,addEventListener:(name,handler)=>{documentHandlers[name]=handler;}};
+ new Function('document','window','combatSimulationTicker','lastFrameTime','performance','surrenderBossForDeparture',source)(
+  documentMock,
+  {addEventListener:(name,handler)=>{windowHandlers[name]=handler;}},
+  {reset(){resets++;}},0,{now:()=>100},()=>{surrenders++;}
+ );
+ documentHandlers.visibilitychange();assert.equal(surrenders,0,'a visible tab keeps the current boss attempt');
+ documentMock.hidden=true;documentHandlers.visibilitychange();assert.equal(surrenders,1);
+ assert.equal(resets,2);
+ assert.equal(typeof windowHandlers.pagehide,'function');windowHandlers.pagehide();assert.equal(surrenders,2);
+});
+
+test('production combat layout surrenders before capturing the outgoing combat snapshot',()=>{
+ const layoutStart=appSource.indexOf('const combatLayout = {');
+ const start=appSource.indexOf('onExit({ to }) {',layoutStart),end=appSource.indexOf('\n    },\n  };',start);
+ assert.ok(layoutStart>=0&&start>layoutStart&&end>start,'finds combat layout onExit');
+ const member=appSource.slice(start,end+6),order=[];
+ const onExit=new Function('gameState','surrenderBossForDeparture','combatRuntimeGateway','validateCombatSnapshot',`return ({${member}}).onExit;`)({storyCardLayout:{}},()=>order.push('surrender'),{suspend(){order.push('suspend');return{snapshot:true};}},()=>order.push('validate'));
+ assert.deepEqual(onExit({to:'heroLayout'}),{snapshot:true});assert.deepEqual(order,['surrender','suspend','validate']);
+});
+
 test('legacy deferred boss checkpoints keep readiness and auto-enter once after reload',()=>{
  const globals={HeroProgress:createHeroProgressStore(),ContinuousCombatStageLoop:1,ContinuousCombatStage:{region:2,stage:3,wave:1,bossAvailable:true,bossArmed:false,bossActive:false,bossEntryDeferredUntilWaveFour:true,clearedBosses:5}};
  const values=new Map();const persist=createPersistHeroProgressIfDirty({localStorage:{setItem:(key,value)=>values.set(key,value)}});
@@ -239,10 +277,15 @@ test('the app tick persists boss readiness before its stage early return and def
  const reloadedState={globals:reloadedGlobals,entities:[{uid:1,kind:'hero',hp:100,maxHP:100,footX:200,footY:290}]};
  const reloadedGameState={storyEntry:{phase:'combat',combatPaused:false}};
  runTick(reloadedState,reloadedGameState,()=>false);
- assert.equal(reloadedGlobals.ContinuousCombatStage.bossActive,true,'restored readiness enters the boss on its first runtime tick');
- assert.equal(reloadedState.entities.filter(actor=>actor.kind==='enemy'&&actor.enemyRole==='boss').length,1);
+ assert.equal(reloadedGlobals.ContinuousCombatStage.bossActive,false,'a saved unfinished attempt returns to farming instead of resuming unseen');
+ assert.equal(reloadedGlobals.ContinuousCombatStage.bossSummonRequired,true);
+ assert.equal(reloadedState.entities.filter(actor=>actor.kind==='enemy'&&actor.enemyRole==='boss').length,0);
+ assert.ok(reloadedState.entities.some(actor=>actor.kind==='enemy'&&actor.enemyRole!=='boss'));
  runTick(reloadedState,reloadedGameState,()=>false);
- assert.equal(reloadedState.entities.filter(actor=>actor.kind==='enemy'&&actor.enemyRole==='boss').length,1,'the following tick does not duplicate boss entry');
+ assert.equal(reloadedGlobals.ContinuousCombatStage.bossActive,false,'farming does not auto-enter the surrendered boss');
+ assert.equal(summonContinuousCombatBoss(reloadedGlobals,reloadedState.entities,makeCall(reloadedState)),true,'the player can retry explicitly through the existing boss arm path');
+ assert.equal(reloadedGlobals.ContinuousCombatStage.bossActive,true);
+ assert.equal(reloadedState.entities.filter(actor=>actor.kind==='enemy'&&actor.enemyRole==='boss').length,1);
  reloadedGlobals.ContinuousCombatStage.bossTransitionEndsAtMs=0;
  runTick(reloadedState,reloadedGameState,()=>{
   reloadedState.entities=reloadedState.entities.filter(actor=>actor.kind==='hero');

@@ -127,6 +127,60 @@ test('ordinary recovery preserves a wave-four ready milestone and requires a man
  assert.equal(hero.recoveryFadeStartedAt,8);
 });
 
+test('surrendering an active boss clears queued victory work and returns to manual-retry farming', async () => {
+ const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
+ const {createHeroProgressStore}=await import('../web-runner/src/core/heroProgression.mjs');
+ const {settleContinuousCombatRewards}=await import('../web-runner/modules/heroCommands.mjs');
+ const progress=createHeroProgressStore();
+ const heroes=Object.entries(progress.heroes).map(([id,hero],index)=>({...hero,uid:index+1,kind:'hero',heroInstanceKey:id,hp:hero.maxHP,isAlive:true}));
+ const boss={uid:90,kind:'enemy',enemyRole:'boss',combatRank:'boss',name:'Troll',hp:0,maxHP:100,streamState:'engaged'};
+ const attempt={id:'boss-surrender',participants:heroes.map(hero=>hero.heroInstanceKey),defeated:{90:900,91:25},defeatedGold:{90:9000,91:17},outcome:'active'};
+ let ledgerAtSettlement=null;
+ const globals={
+  ContinuousCombatStageLoop:1,
+  ContinuousCombatStage:{seed:42,region:1,stage:2,wave:1,bossAvailable:true,bossSummonRequired:false,bossArmed:true,bossActive:true,bossUID:90,transitions:4,clearedBosses:3,clearedPackMask:0,spawnedPackMask:0,nextEmissionAt:0,lastUpdatedAt:10,spawnSerial:1},
+  Equipment:{lamp:{autoEnabled:true}},
+  EnemyData:[{name:'Gobloc',HP:100,ATK:2,DEF:2,MAG:1,RES:1,SPD:8,CombatPower:10000}],
+  EnemySlots:[],EnemyDeathVisualHoldByUID:{90:true},PendingDeaths:{90:true},
+  PendingHeroHits:[{targetUID:90}],CombatImpactRequests:[{targetUID:90}],RealtimeEnemyActionsByUID:{90:{active:true}},
+  NativeBattleEnded:true,ProgressionBattle:attempt,HeroProgress:progress,goldTotal:0,time:10,
+ };
+ const state={globals,entities:[...heroes]},gameState={};let settlements=0;
+ const call=(name,row,slotIndex)=>{
+  if(name==='SettleContinuousCombatRewards'){settlements++;ledgerAtSettlement={defeated:{...attempt.defeated},defeatedGold:{...attempt.defeatedGold}};return settleContinuousCombatRewards({state,callFunction(){}});}
+  if(name==='SpawnEnemy'){const actor={uid:100+slotIndex,kind:'enemy',name:row.name,hp:row.HP,maxHP:row.HP,enemyRole:row.enemyRole,slotIndex};state.entities.push(actor);return actor;}
+  return null;
+ };
+ const session=createQuestCombatSession({state,gameState,call,sync(){}});
+ assert.equal(session.surrenderBossAttempt(),true);
+ assert.equal(settlements,1);
+ assert.equal(globals.goldTotal,17,'earlier fodder rewards settle while the removed boss reward is discarded');
+ assert.equal(Object.hasOwn(ledgerAtSettlement.defeated,'90'),false);
+ assert.equal(Object.hasOwn(ledgerAtSettlement.defeatedGold,'90'),false);
+ assert.equal(ledgerAtSettlement.defeated['91'],25);assert.equal(ledgerAtSettlement.defeatedGold['91'],17);
+ assert.equal(globals.ContinuousCombatStage.bossUID,null);
+ assert.deepEqual(globals.PendingHeroHits,[]);
+ assert.deepEqual(globals.CombatImpactRequests,[]);
+ assert.equal(globals.RealtimeEnemyActionsByUID,undefined);
+ assert.equal(globals.NativeBattleEnded,false);
+ assert.equal(globals.ContinuousCombatStage.bossAvailable,true);
+ assert.equal(globals.ContinuousCombatStage.bossActive,false);
+ assert.equal(globals.ContinuousCombatStage.bossSummonRequired,true);
+ assert.equal(globals.ContinuousCombatStage.region,1);assert.equal(globals.ContinuousCombatStage.stage,2);assert.equal(globals.ContinuousCombatStage.clearedBosses,3,'surrender retains stage progress');
+ assert.equal(globals.Equipment.lamp.autoEnabled,true,'surrender leaves the separately saved Lamp Auto preference enabled');
+ assert.ok(heroes.every(hero=>hero.hp===hero.maxHP&&hero.isAlive));
+ assert.ok(state.entities.some(actor=>actor.kind==='enemy'&&actor.enemyRole!=='boss'),'ordinary farming resumes after surrender');
+ assert.equal(session.surrenderBossAttempt(),false,'duplicate menu or lifecycle exits cannot settle the attempt twice');
+});
+
+test('surrender is a no-op outside an active continuous boss attempt', async () => {
+ const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
+ const stage={region:1,stage:4,wave:2,bossAvailable:false,bossSummonRequired:false,bossActive:false,clearedBosses:7};
+ let settlements=0;const state={entities:[],globals:{ContinuousCombatStageLoop:1,ContinuousCombatStage:stage}};
+ const session=createQuestCombatSession({state,gameState:{},call(name){if(name==='SettleContinuousCombatRewards')settlements++;},sync(){}});
+ assert.equal(session.surrenderBossAttempt(),false);assert.deepEqual(stage,{region:1,stage:4,wave:2,bossAvailable:false,bossSummonRequired:false,bossActive:false,clearedBosses:7});assert.equal(settlements,0);
+});
+
 test('ordinary KO captures cleared sectors before removing enemies and respawns only unfinished packs', async () => {
  const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
  const {buildContinuousCombatSpawnPlan,activateContinuousCombatSpawnedEnemy,deriveContinuousCombatWavePackProgress}=await import('../web-runner/src/core/continuousCombatStage.mjs');

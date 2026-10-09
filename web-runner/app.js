@@ -1923,6 +1923,7 @@ async function main(){
     onActive() {},
     onExit({ to }) {
       gameState.storyCardLayout.initialized = false;
+      surrenderBossForDeparture();
       const snapshot = combatRuntimeGateway.suspend();
       const transitionLabel = to === 'idleFarmLayout' ? '1->2' : '1->x';
       validateCombatSnapshot(snapshot, 'onExit', transitionLabel);
@@ -1938,11 +1939,16 @@ async function main(){
   });
   combatRuntimeGateway.setLayoutState(layoutState);
   const questCombat = createQuestCombatSession({ state, gameState, call: (name, ...args) => callFunctionWithContext(fnContext, name, ...args), sync: syncFromGlobals });
+  const surrenderBossForDeparture = () => {
+    if (!questCombat.surrenderBossAttempt()) return false;
+    heroProgressStorage.persistHeroProgressIfDirty({stateGlobals: state.globals, callFunctionWithContext, fnContext});
+    return true;
+  };
   heroProgressStorage.restoreHeroProgressFromStorage({ fnContext });
   const equipmentProgress = createEquipmentStorage({ globals: state.globals, getActors: () => state.entities, storage: window.localStorage, persistProgress: () => heroProgressStorage.persistHeroProgressIfDirty({stateGlobals: state.globals}) });
-  const lampEquipment = createLampEquipmentUI({canvas, economy: equipmentProgress, globals: state.globals, eventBus, isPaused: () => gameState.storyEntry.combatPaused || !!state.globals.DevToolingPaused});
+  const lampEquipment = createLampEquipmentUI({canvas, economy: equipmentProgress, globals: state.globals, eventBus, isPaused: () => gameState.storyEntry.combatPaused || !!state.globals.DevToolingPaused, onBeforeOpen: surrenderBossForDeparture});
   const finishCombatEnd = async () => { await equipmentProgress.stopAuto(); devToolingRuntime.clearCombatSessionOverrides(); };
-  const finishCombatQuit = async () => { await equipmentProgress.stopAuto(); devToolingRuntime.clearCombatSessionOverrides(); resetCombatRuntimeForFreshSession('quest-navigation-quit', { clearSessionSettlement: true }); };
+  const finishCombatQuit = async () => { surrenderBossForDeparture(); await equipmentProgress.stopAuto(); devToolingRuntime.clearCombatSessionOverrides(); resetCombatRuntimeForFreshSession('quest-navigation-quit', { clearSessionSettlement: true }); };
   const qaPauseSnapshotEnabled = new URLSearchParams(window.location.search).get('questQA') === '1';
   const storyEntry = createStoryEntryFlow({ gameState, layoutState, isReady: () => freshCombatBootstrapped, getEnemies: () => enemyRows, prepareEncounter: questCombat.prepare, resurrect: questCombat.resurrect, closeTransientSurface: () => lampEquipment.close(), canCloseTransientSurface: () => lampEquipment.state().canLeave, recordQaPauseSnapshot: qaPauseSnapshotEnabled ? stage => gameState.publishQaPauseSnapshot?.(stage) : undefined, onBossActivityResumed: () => summonContinuousCombatBoss(state.globals, state.entities, (name, ...args) => callFunctionWithContext(fnContext, name, ...args)), energyGlobals: state.globals, enterCombat: createCombatEntryTransition(canvas, { onComplete: () => releaseCombatStartToScheduler(state.globals) }), onCombatEnd: finishCombatEnd, onCombatQuit: finishCombatQuit, isCombatPauseEligible: () => state.globals.NativeBattleEnded !== true && state.globals.ProgressionBattle?.outcome !== 'victory' && state.globals.ProgressionBattle?.outcome !== 'defeat' });
   const questUI = createQuestLadderUI({ canvas, gameState, layoutState, flow: storyEntry, getGold: () => state.globals.goldTotal || 0 });
@@ -2318,9 +2324,11 @@ async function main(){
   let lastFrameTime = performance.now();
   const combatSimulationTicker = createCombatSimulationTicker();
   document.addEventListener('visibilitychange', () => {
+    if (document.hidden) surrenderBossForDeparture();
     combatSimulationTicker.reset();
     lastFrameTime = performance.now();
   });
+  window.addEventListener('pagehide', () => { surrenderBossForDeparture(); });
   const buffIconFrames = { buffIcon1: 0, buffIcon2: 0, buffIcon3: 0, buffIcon4: 0 };
   let lastRenderDebugSignature = '';
   let rendered = [];
@@ -3218,6 +3226,7 @@ function getStoryCardLiveLineState() {
   function tick(){
     frameCount++;
     if (document.hidden) {
+      surrenderBossForDeparture();
       combatSimulationTicker.reset();
       lastFrameTime = performance.now();
       requestAnimationFrame(tick);
@@ -3230,11 +3239,13 @@ function getStoryCardLiveLineState() {
       return;
     }
     if (ensureDevToolingConfig().open) {
+      surrenderBossForDeparture();
       combatSimulationTicker.reset();
       requestAnimationFrame(tick);
       return;
     }
     if (gameState.storyEntry.combatPaused) {
+      surrenderBossForDeparture();
       combatSimulationTicker.reset();
       gameState.publishQaPauseSnapshot?.('paused');
       if (layoutState.getActiveLayoutId() !== 'combat') drawFrame();
@@ -3242,6 +3253,7 @@ function getStoryCardLiveLineState() {
       return;
     }
     if (layoutState.getActiveLayoutId() !== 'combat') {
+      surrenderBossForDeparture();
       combatSimulationTicker.reset();
       drawFrame();
       requestAnimationFrame(tick);

@@ -51,6 +51,7 @@ export function createContinuousCombatStageState(seed = 1, { region = 1, stage =
     bossSummonRequired: false,
     bossArmed: false,
     bossActive: false,
+    bossUID: null,
     bossWorldX: null,
     transitions: 0,
     clearedBosses: 0,
@@ -477,6 +478,7 @@ export function advanceContinuousCombatStage(stageState) {
       bossSummonRequired: false,
       bossArmed: false,
       bossActive: false,
+      bossUID: null,
       bossCameraCenterX: null,
       bossWorldX: null,
       bossTransitionStartedAtMs: null,
@@ -519,6 +521,7 @@ export function armContinuousCombatBoss(globals, entities, call, { wallNowMs = D
     bossCameraCenterX: squadCenterX + 130,
     bossTransitionStartedAtMs: startedAtMs,
     bossTransitionEndsAtMs: startedAtMs + Math.max(0, Number(transitionDurationMs) || 0),
+    bossUID: null,
     transitions: Number(state.transitions || 0) + 1,
   };
   if (!buildContinuousCombatSpawnPlan(globals.EnemyData, next).length) return false;
@@ -575,6 +578,7 @@ export function resetContinuousCombatAfterDefeat(globals) {
     bossWorldX: null,
     bossTransitionStartedAtMs: null,
     bossTransitionEndsAtMs: null,
+    bossUID: null,
     nextEmissionAt: Number(globals.time || 0) + (bossAvailable ? CONTINUOUS_COMBAT_PACK_INTERVAL_SEC : 0),
     awaitingPackArrival: false,
     lastUpdatedAt: Number(globals.time || 0),
@@ -736,6 +740,7 @@ function spawnContinuousCombatStage({ globals, entities, call, state }) {
     awaitingPackArrival: false,
     lastUpdatedAt: Number(globals.time || 0),
     spawnSerial: plan.length,
+    bossUID: null,
   };
   for (const entry of plan) {
     const stage = getContinuousCombatStage(state);
@@ -745,6 +750,7 @@ function spawnContinuousCombatStage({ globals, entities, call, state }) {
       ? Number(state.bossWorldX)
       : livingHeroes.length ? livingHeroes.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? 0), 0) / livingHeroes.length + 260 : BOSS_HOME.x;
     activateContinuousCombatSpawnedEnemy(globals, enemy, { ...entry, bossX, entryOrder: entry.entryOrder });
+    if (stage?.kind === 'boss' && Number.isSafeInteger(enemy?.uid) && enemy.uid > 0) globals.ContinuousCombatStage.bossUID = enemy.uid;
   }
   call('UpdateEnemyHPUI');
   return true;

@@ -4,7 +4,7 @@ import {HERO_ART_ASSETS,heroArtKey} from '../state/heroArtAssets.mjs';
 import {heroDefinition} from '../src/core/heroDefinitions.mjs';
 import {expToNextLevel} from '../src/core/heroProgression.mjs';
 
-export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=()=>false}){
+export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=()=>false,onBeforeOpen=()=>{}}){
  const gearBounds=[];
  let strip,modal,dialog,helper,lastInteraction=performance.now(),open=false,upgradeOpen=false,batch=false,selectedItem=null,selectedHero=null,reviewed=new Set(),busy=false,opening=false,closeRequested=false,pendingAction=Promise.resolve(),gearReady,feedbacks=new Set(),notice='',rewardBanner,lastRewardTimer,lastKey='',lastAutoCheck=0,lastFocus,previewIds=[],arrivalSequence,emissionId,emissionTimer;
  const fontMeasure=document.createElement('canvas').getContext('2d');
@@ -50,8 +50,8 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   eventBus?.on('lamp:open',()=>openCollection());
  }
  async function openCollection(id,upgrades=false){
-  init();if(opening)return;opening=true;
-  try{await pendingAction;await Promise.all([economy.sync(),gearReady]);if(!upgrades&&!lampStoredCount(economy.data))return close();resetHelper();lastFocus=document.activeElement;closeRequested=false;open=true;upgradeOpen=upgrades;batch=!id;reviewed=new Set();selectedItem=upgrades?null:id||sortedLampItems(economy.data)[0]?.instanceId||null;selectedHero=null;notice='';lastKey='';render();dialog.focus();const step=upgrades?'preview':'storage';if(!(economy.data.lamp.guide&LAMP_GUIDE[step]))await economy.markGuide(step);}
+  if(opening)return;opening=true;
+  try{onBeforeOpen();init();await pendingAction;await Promise.all([economy.sync(),gearReady]);if(!upgrades&&!lampStoredCount(economy.data))return close();resetHelper();lastFocus=document.activeElement;closeRequested=false;open=true;upgradeOpen=upgrades;batch=!id;reviewed=new Set();selectedItem=upgrades?null:id||sortedLampItems(economy.data)[0]?.instanceId||null;selectedHero=null;notice='';lastKey='';render();dialog.focus();const step=upgrades?'preview':'storage';if(!(economy.data.lamp.guide&LAMP_GUIDE[step]))await economy.markGuide(step);}
   catch(e){notice=e.message;lastKey='';render();}finally{opening=false;}
  }
  function close(){if(feedbacks.size){closeRequested=true;return;}closeRequested=false;resetHelper();open=false;modal.hidden=true;lastKey='';lastFocus?.focus?.();}

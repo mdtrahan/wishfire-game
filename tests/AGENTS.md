@@ -31,6 +31,7 @@
 - Paused-combat navigation checks must preserve the active card and snapshot through Continue, intercept Quests from any suspended screen, and clear the snapshot only on Quit without settlement or rewards.
 - Tests are often the clearest owner of regression-prone behavior. Read the relevant test before changing gameplay, rendering, persistence, or SimulationCore code.
 - The continuous stage contract distinguishes ordinary wave HP carryover from boss-clear full-party revival, cleanse and saved HP refresh.
+- Boss-surrender coverage exercises queued near-lethal work, reward-ledger removal before settlement, full recovery with readiness/manual retry preserved, active-attempt checkpoint normalization, non-boss no-op, and the production layout, Lamp, visibility and `window.pagehide` exit seams.; an already-removed boss actor must still be identified by its active-stage UID without discarding earlier fodder rewards.
 - Prefer focused deterministic tests over broad suite runs during development.
 - Static source assertions are allowed in this repo when they protect architecture boundaries, but avoid adding brittle source-shape checks when behavior can be tested directly.
 - Full `npm test` may include unrelated legacy/static failures; report focused validation scope honestly.

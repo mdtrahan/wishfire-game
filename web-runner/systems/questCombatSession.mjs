@@ -28,6 +28,27 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
     // encounters remain available to QA through their explicit setup hooks.
     prepare() { state.globals.QuestFiniteEncounter = 0; },
     isCleared() { return false; },
+    surrenderBossAttempt() {
+      const stage = state.globals.ContinuousCombatStage;
+      if (Number(state.globals.ContinuousCombatStageLoop || 0) !== 1 || stage?.bossActive !== true) return false;
+      const bossUIDs = new Set(state.entities.filter(actor => actor?.kind === 'enemy'
+        && String(actor.combatRank || actor.enemyRole || actor.role || '').toLowerCase() === 'boss')
+        .map(actor => String(actor.uid)));
+      if (Number.isSafeInteger(stage.bossUID) && stage.bossUID > 0) bossUIDs.add(String(stage.bossUID));
+      const battle = state.globals.ProgressionBattle;
+      let removedReward = false;
+      for (const uid of bossUIDs) {
+        if (battle?.defeated && Object.hasOwn(battle.defeated, uid)) { delete battle.defeated[uid]; removedReward = true; }
+        if (battle?.defeatedGold && Object.hasOwn(battle.defeatedGold, uid)) { delete battle.defeatedGold[uid]; removedReward = true; }
+      }
+      if (removedReward) battle.persistPendingRewards?.();
+      stage.bossUID = null;
+      // Abandon scheduled hits and actions before the recovery settlement can observe the boss.
+      resetCombatSessionConditions(state.globals, gameState, state.entities);
+      state.globals.NativeBattleEnded = false;
+      stage.bossSummonRequired = true;
+      return this.recoverContinuousDefeat();
+    },
     recoverContinuousDefeat() {
       if (Number(state.globals.ContinuousCombatStageLoop || 0) !== 1) return false;
       const stageBeforeRecovery = state.globals.ContinuousCombatStage;
