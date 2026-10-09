@@ -67,7 +67,7 @@
 .lamp-hero.lamp-portrait img{display:block;width:100%;height:100%;object-fit:cover;object-position:var(--portrait-position);border-radius:4px}
 .lamp-hero.lamp-portrait[aria-pressed=true]{border-color:#ffda55;box-shadow:0 0 5px 2px #ffc928;background:#1b2022}
 .lamp-cp-direction{position:absolute;right:-4px;bottom:-3px;width:clamp(16px,6cqw,25px);height:clamp(20px,7.8cqw,32px);background:currentColor;clip-path:polygon(50% 0,100% 45%,70% 45%,70% 100%,30% 100%,30% 45%,0 45%)}
-.lamp-queue .lamp-tile .lamp-review-arrow{position:absolute;z-index:1;top:4px;right:4px;width:clamp(10.35px,3.68cqw,23px);height:clamp(13.8px,4.6cqw,27.6px);filter:drop-shadow(0 1px 2px #071314) drop-shadow(0 0 1px #dffff0)}
+.lamp-queue .lamp-tile .lamp-review-arrow{position:absolute;z-index:1;top:4px;right:4px;width:clamp(10.35px,3.68cqw,23px);height:clamp(13.8px,4.6cqw,27.6px);filter:drop-shadow(1px 2px 0 #000)}
 .lamp-queue .lamp-tile .lamp-review-arrow .lamp-cp-direction{position:static;display:block;width:100%;height:100%}
 .lamp-cp-direction.up,.lamp-stat-arrow.up{color:#00dd9a}
 .lamp-cp-direction.down,.lamp-stat-arrow.down{color:#ff263e}
