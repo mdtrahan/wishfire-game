@@ -52,7 +52,7 @@
 
 - Lamp item stats occupy the full candidate width with fixed label tracks and left-aligned values. Keep six-digit values contained and preserve the enlarged comparison type across phone widths.
 
-- Pending gear tiles use rarity-colored backgrounds; the currently compared item alone carries a gold selection halo and aria-current. Five columns of square art with compact item-CP footers fill the equip frame; selection and arrivals preserve the two-to-two-and-a-half-row viewport. The separate dismantling view has three-and-a-half inert rows and shows resources only after confirmation.
+- Pending and discarded gear tiles use rarity-colored backgrounds; the currently compared item alone carries a gold selection halo and aria-current. Positive total-hero CP gain uses a contained green arrow on every eligible queued tile. Five columns of square art with compact item-CP footers fill the equip frame; selection and arrivals preserve the two-to-two-and-a-half-row viewport. The dismantling view keeps queued tiles inspectable and shows resources only after confirmation.
 
 - Hero Gear Upgrade idle guidance uses the Hondo-inspired blue pointer and cyan rings: 15 seconds since input points to Hondo (Huun), or Auto-Equip after portrait selection. Document pointer/click, key and wheel input dismisses and resets it. Hidden/busy surfaces, active reward banners and the completed strip tutorial suppress guidance; the overlay never intercepts input.
 

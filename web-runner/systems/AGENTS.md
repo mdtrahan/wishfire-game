@@ -141,7 +141,7 @@
 
 - Hero management uses HERO / GEAR / SKILLS with a persistent hero display and roster. Overview shows EXP and full stats through a disclosure control. Skills presents one basic attack and five active skills. Gear uses the canonical equipment economy and loadouts.
 
-- equipmentStorage.mjs owns the v5 lamp/equipment record and Web Lock transactions. Commit exact rolls, assignments, essence and cumulative EXP before projecting onto saved heroes and live actors. Each hero saves lampEXPClaimed to replay a missing grant once.
+- equipmentStorage.mjs owns the v5 lamp/equipment record and Web Lock transactions. Commit exact rolls, assignments, essence and cumulative EXP before projecting onto saved heroes and live actors. Each hero saves lampEXPClaimed to replay a missing grant once. Auto plans across all 12 hero Hat/Body/Boots slots in the same transaction, and dismantling rejects any queued positive total-hero-CP candidate before spending cache contents.
 - Historical pending enemy rewards persist beside HeroProgress until recovery settlement; new KOs record zero EXP/Gold. Persist a Gold settlement receipt before wallet sync, commit the receipt with Gold in equipmentStorage, then clear the HeroProgress outbox after wallet confirmation. The two localStorage records remain separate; receipt replay must stay idempotent across interrupted sync.
 - astralMarketUI.mjs replaces the collector at idleFarmLayout. Only the active screen reconstructs/draws offers; leaving checkpoints time without running a hidden simulation. Item inspection never pauses expiration. No collector update/claim path remains.
 
@@ -177,7 +177,7 @@
 - Immediate multi-target damage publishes timed `CombatImpactRequests`; the shared attack presentation consumes one request per resolved target.
 - Standalone combat VFX scenarios must clear any opening buff queue and enter through `StartRound` plus `ProcessTurn`; do not leave retired manual `PendingSkillID` fixtures holding the scheduler busy.
 
-- The item selector offers immediate Auto Equip through the same atomic transaction as manual equip; it greedily assigns the top four qualifying items with at most one per hero before permanently routing the remaining gear to Dismantle All.
+- The item selector offers immediate Auto Equip through the same atomic transaction as manual equip; all 12 hero Hat/Body/Boots slots are eligible, and unused or displaced gear remains inspectable and equipable from either cache queue until confirmed dismantling.
 
 - Gear artwork carries item level and rarity color, with no corner rarity letters. Full rarity names remain in item identity and accessible labels.
 
@@ -194,7 +194,7 @@
 
 - Lamp burp presentation clears its trigger at animation completion so unrelated review renders do not repeat emission. Manual and Auto share the same current-lamp tilt and gear pop tween.
 
-- Raw lamp emissions append every roll without CP filtering. lamp.recent preserves the last five emission snapshots independently of equip/collection routing. Equip review sorts descending lampGearCP, derived from the shared CP evaluator using gear stats at neutral level 1; item level already scales those stats. Auto scans all candidates with positive total hero CP gain in displayed item-CP order, selecting at most one per hero/four total. Recipient selection ranks actual hero CP gain. Ties use lowest max HP then party order. Manual equip permits lower-CP overrides. Auto completion or finishing review moves all remaining pending pieces permanently into lamp.discarded. Dismantle All has an inert item grid, no rescue/review/equip controls and no resource amount before confirmation. Confirmed conversion grants essence only and shows its receipt. Later raw arrivals remain separate from the confirmed pile. Capacity includes pending, discarded and historical aggregate credits; full storage stops Auto/EXP. Optional recent/discarded fields preserve supported older v5 saves.
+- Raw lamp emissions append every roll without CP filtering. lamp.recent preserves the last five emission snapshots independently of equip/collection routing. Equip review sorts descending lampGearCP, derived from the shared CP evaluator using gear stats at neutral level 1; item level already scales those stats. Auto compares every queued candidate against all four heroes' three matching slots and keeps strictly positive party improvements until no queued candidate adds CP. Equal gain favors lowest maxHP then party order. Manual equip permits lower-CP overrides from pending or discarded queues. Auto completion or finishing review moves remaining pending pieces into lamp.discarded, where they stay inspectable and equipable. Dismantle rejects queued positive-gain gear before spending; confirmed conversion grants essence only and shows its receipt. Later raw arrivals remain separate from the confirmed pile. Capacity includes pending, discarded and historical aggregate credits; full storage stops Auto/EXP. Optional recent/discarded fields preserve supported older v5 saves.
 
 - Gear review displays stats in HP, ATK, DEF, MAG, RES order. Candidate stats occupy three columns: HP/ATK/DEF followed by MAG/RES; presentation order does not change saved rolls.
 
@@ -238,7 +238,7 @@
 
 - The short HERO/SKILLS header keeps its portrait below the identity/CP text. Gear uses the larger equipment-stage portrait.
 
-- Lamp review uses canonical hero art and independent total-CP arrows, omitting numeric per-hero CP labels and the character stat table. Its three-column item card compares only the selected hero; unchanged values have no arrow. Only the five-column cache scrolls; the equip dialog fits the measured Canvas height. Preserve manual downgrade eligibility, saved receipts and existing Skip/Auto-to-dismantle transactions.
+- Lamp review uses canonical hero art and independent total-CP arrows, omitting numeric per-hero CP labels and the character stat table. Its three-column item card compares only the selected hero; unchanged values have no arrow. Every pending or discarded cache tile stays inspectable; the green marker uses shared positive total-hero CP gain, and discarded gear remains manually equipable. Disable dismantling while queued positive-gain gear remains. Only the five-column cache scrolls; the equip dialog fits the measured Canvas height. Preserve manual downgrade eligibility, saved receipts and Skip/Auto review flow.
 
 - Selected-stat numbers and arrows share one font-derived digit height across both rows, independent of the displayed numeral. Normalize digit ink into that height; keep arrows pointed in both Canvas and CSS.
 

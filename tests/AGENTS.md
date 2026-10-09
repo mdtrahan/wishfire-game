@@ -95,7 +95,7 @@
 
 - Lamp cache presentation checks five full-width square columns, a stable two-to-two-and-a-half-row scroll viewport, selected halo and preserved idle guidance across four phone widths.
 
-- Lamp regression proof checks descending item CP review, raw last-five emission order, manual lower-CP override, positive same-slot Auto gains with at most one item per hero, permanent loss of equip eligibility on entering dismantling, and finite storage/EXP capacity. Browser proof checks sorted equip tiles, inert dismantling tiles, absent pre-confirmation resource amounts and the committed essence receipt.
+- Lamp regression proof checks descending item CP review, raw last-five emission order, manual lower-CP override, positive same-slot Auto gains across all 12 slots, and finite storage/EXP capacity. Pending and discarded cache tiles stay inspectable; green arrows use shared positive total-hero CP gain, and discarded gear remains manually equipable. Dismantling rejects any queued positive-gain gear and hides resource amounts until confirmation.
 
 - Equip-close proof requires the modal to remain visible while its CP float plays, including the last Auto-Equip item; after automatic close no CP float may remain.
 
@@ -125,7 +125,7 @@
 
 - Four-phone rapid feedback proof uses a disclosed six-item fixture, alternates three receipts per hero, and samples12 animation frames for containment and pairwise overlap. Earned videos separately prove saved values and natural pacing.
 
-- Auto Equip regression freezes an ordinary 69-draw batch whose top standalone item-CP candidates have no total hero gain. It must reach later useful items, return positive saved CP receipts, keep one item per hero/four total and preserve EXP. Recipient ranking uses total hero gain before maxHP/party tie rules.
+- Auto Equip regression freezes the ordinary 69-draw candidate batch whose standalone CP leaders hide total-party tradeoffs. It compares all four heroes' three slots, permits multiple assignments per hero, preserves unique items and EXP, and leaves no positive queued candidate after convergence. Reverse cache order, a nonlinear slot revisit, exact +0.1 gain, failed save, and the 50-item capacity path keep the planner deterministic and bounded by the finite inventory state.
 
 - The four-phone lamp guard rejects ancestor clipping of smoke above the unchanged strip and verifies 80% disabled brightness with full brightness restored after cooldown.
 

@@ -2,9 +2,10 @@ import {RARITIES} from '../web-runner/src/core/equipment.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {LAMP_CONFIG,LAMP_CAPACITY_TIERS,generateLampItem,createLampEconomy,activateLamp,lampStoredCount,lampItemCPGain,lampGearCP,sortedLampItems,selectLampUpgrades,finishLampReview,lampStageCost,purchaseLampStage,upgradeLamp,completeLampUpgrade,validateLampEconomy,compareLampItem,selectAutoEquipHero,equipLampItem,dismantleLampItems,migrateLegacyEquipment,salvageValue} from '../web-runner/src/core/lampGear.mjs';
+import {LAMP_CONFIG,LAMP_CAPACITY_TIERS,generateLampItem,createLampEconomy,activateLamp,lampStoredCount,lampItemCPGain,lampGearCP,sortedLampItems,selectLampUpgrades,lampReviewCandidates,planLampAutoEquip,finishLampReview,lampStageCost,purchaseLampStage,upgradeLamp,completeLampUpgrade,validateLampEconomy,compareLampItem,selectAutoEquipHero,equipLampItem,dismantleLampItems,migrateLegacyEquipment,salvageValue,GEAR_ARCHETYPES} from '../web-runner/src/core/lampGear.mjs';
 import {createEquipmentStorage,EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
 import {createHeroProgressStore} from '../web-runner/src/core/heroProgression.mjs';
+import {computeCombatPower} from '../web-runner/src/core/combatPower.mjs';
 const preview=d=>[...d.lamp.pending,...(d.lamp.discarded||[]),'salvage:'+d.lamp.salvage.count+':'+d.lamp.salvage.gold];
 function fixture(initial={}){const values=new Map(Object.entries(initial));let fail=false,chain=Promise.resolve(),clock=1000;
  const storage={getItem:k=>values.get(k)??null,setItem(k,v){if(fail)throw Error('disk full');values.set(k,v);}};
@@ -61,6 +62,16 @@ test('seed and sequence reproduce exact gear; quality never rerolls on compariso
  for(let sequence=0;sequence<200;sequence++){const i=generateLampItem(42,sequence,9);assert.deepEqual(i,generateLampItem(42,sequence,9));assert.ok(['hat','body','boots'].includes(i.type));assert.deepEqual(Object.keys(i.stats),['ATK','DEF','MAG','RES','HP']);assert.ok(Object.values(i.stats).every(n=>n>=1));}
  assert.notDeepEqual(generateLampItem(42,1,0),generateLampItem(42,2,0));
 });
+test('new Epic and Legendary rolls clear same-ordinal lower-rarity stat ceilings for every slot',()=>{
+ const heroes=Object.values(createHeroProgressStore().heroes),scale=1,lowerQuality=1.42,epicQuality=1.7,weights={common:0,uncommon:0,rare:0,epic:100,legendary:0};
+ for(const type of ['hat','body','boots']){
+  let epic;for(let seed=0;seed<20000;seed++){const item=generateLampItem(seed,0,0,weights);if(item.type===type){epic=item;break;}}assert.ok(epic,`found Epic ${type}`);
+  const data=createLampEconomy(1);for(const hero of heroes){const id='rare:'+hero.heroInstanceKey,stats=Object.fromEntries(['ATK','DEF','MAG','RES','HP'].map(stat=>[stat,Math.ceil(Math.max(...GEAR_ARCHETYPES.filter(entry=>entry.type===type).map(entry=>entry.stats[stat]))*scale*lowerQuality*1.2)]));data.items.push({...GEAR_ARCHETYPES.find(entry=>entry.type===type),instanceId:id,rarity:'rare',level:1,sequence:0,ordinal:0,stats});data.loadouts[hero.heroInstanceKey]={[type]:id};}
+  let legendary;for(let seed=0;seed<20000;seed++){const item=generateLampItem(seed,0,0,{common:0,uncommon:0,rare:0,epic:0,legendary:100});if(item.type===type){legendary=item;break;}}assert.ok(legendary,`found Legendary ${type}`);
+  for(const stat of ['ATK','DEF','MAG','RES','HP']){const maxRare=Math.ceil(Math.max(...GEAR_ARCHETYPES.filter(entry=>entry.type===type).map(entry=>entry.stats[stat]))*scale*lowerQuality*1.2);assert.ok(epic.stats[stat]>maxRare,`${type} ${stat} Epic exceeds every lower rarity`);const maxEpic=Math.max(maxRare+1,...GEAR_ARCHETYPES.filter(entry=>entry.type===type).map(entry=>Math.ceil(entry.stats[stat]*scale*epicQuality*1.2)));assert.ok(legendary.stats[stat]>maxEpic,`${type} ${stat} Legendary exceeds the Epic envelope`);}
+  assert.ok(heroes.every(hero=>lampItemCPGain(data,epic,hero)>0),`${type} Epic improves every hero over worst-case lower-rarity gear`);
+ }
+});
 test('restart retains stored gear and EXP while Auto waits for a new player toggle',async()=>{
  const f=fixture();await f.store.sync();await f.store.generate({});
  for(const h of Object.values(f.globals.HeroProgress.heroes))h.currentLevel=5;
@@ -81,12 +92,13 @@ test('single item has different signed comparisons across four heroes and allows
  const d=createLampEconomy(1),candidate={...generateLampItem(1,0,0),instanceId:'new',type:'body',stats:{ATK:5,DEF:3,MAG:1,RES:1,HP:0}};d.items=[candidate];d.lamp.pending=['new'];
  for(const[id,stats]of Object.entries({Falie:{ATK:10,DEF:2,MAG:1,RES:1},Huun:{ATK:1,DEF:1,MAG:1,RES:1},Runa:{ATK:3,DEF:4,MAG:1,RES:1},Kojonn:{ATK:5,DEF:3,MAG:1,RES:1}})){const current={...candidate,instanceId:id,stats:{...stats,HP:0}};d.items.push(current);d.loadouts[id]={body:id};}
  assert.deepEqual(compareLampItem(d,candidate,'Falie').deltas,{ATK:-5,DEF:1,MAG:0,RES:0,HP:0});assert.equal(compareLampItem(d,candidate,'Huun').upgrade,true);assert.equal(compareLampItem(d,candidate,'Runa').upgrade,false);assert.equal(compareLampItem(d,candidate,'Kojonn').upgrade,false);
- equipLampItem(d,'Falie','new');assert.equal(d.loadouts.Falie.body,'new');assert.equal(d.lamp.salvage.count,0);assert.ok(d.items.some(i=>i.instanceId==='Falie'));assert.ok(d.lamp.discarded.includes('Falie'));assert.throws(()=>equipLampItem(d,'Huun','Falie'),/no longer/);assert.throws(()=>equipLampItem(d,'Huun','new'),/no longer/);validateLampEconomy(d);
+ equipLampItem(d,'Falie','new');assert.equal(d.loadouts.Falie.body,'new');assert.equal(d.lamp.salvage.count,0);assert.ok(d.items.some(i=>i.instanceId==='Falie'));assert.ok(d.lamp.discarded.includes('Falie'));equipLampItem(d,'Huun','Falie');assert.equal(d.loadouts.Huun.body,'Falie');assert.throws(()=>equipLampItem(d,'Huun','new'),/no longer/);validateLampEconomy(d);
 });
 test('confirmed dismantling consumes its displayed pieces and preserves later raw arrivals',()=>{
  const d=createLampEconomy(2);activateLamp(d,{},0);const id=d.lamp.pending[0];equipLampItem(d,'Falie',id);activateLamp(d,{},2000);finishLampReview(d);const expected=preview(d);activateLamp(d,{},4000);const arrival=d.lamp.pending[0];
- const result=dismantleLampItems(d,expected);assert.equal(result.count,1);assert.deepEqual(d.lamp.pending,[arrival]);assert.ok(d.items.some(i=>i.instanceId===id));assert.ok(d.items.some(i=>i.instanceId===arrival));validateLampEconomy(d);
- const before=JSON.stringify(d);assert.throws(()=>dismantleLampItems(d,expected),/changed/);assert.equal(JSON.stringify(d),before);
+ assert.throws(()=>dismantleLampItems(d,expected),/Current heroes are required/);
+ const result=dismantleLampItems(d,expected,[]);assert.equal(result.count,1);assert.deepEqual(d.lamp.pending,[arrival]);assert.ok(d.items.some(i=>i.instanceId===id));assert.ok(d.items.some(i=>i.instanceId===arrival));validateLampEconomy(d);
+ const before=JSON.stringify(d);assert.throws(()=>dismantleLampItems(d,expected,[]),/changed/);assert.equal(JSON.stringify(d),before);
 });
 test('salvage EXP is bounded per item',()=>{
  for(let n=0;n<1000;n++)assert.ok(salvageValue(generateLampItem(7,n,0))<=5);
@@ -150,6 +162,13 @@ test('Auto Equip chooses matching-slot total hero CP gain, then lowest current m
  assert.equal(selectAutoEquipHero(data,item,[]),null);
 });
 
+test('Auto rechecks prior slots after nonlinear CP changes and accepts an exact 0.1 gain',()=>{
+ const hero=createHeroProgressStore().heroes.Falie,data=createLampEconomy(1),current={instanceId:'cur',type:'hat',stats:{ATK:0,DEF:0,MAG:200,RES:0,HP:0}},hat={instanceId:'hat-up',type:'hat',stats:{ATK:0,DEF:200,MAG:0,RES:200,HP:2000}},body={instanceId:'body-up',type:'body',stats:{ATK:10,DEF:0,MAG:0,RES:0,HP:0}};
+ data.items=[current,hat,body];data.loadouts.Falie={hat:'cur'};data.lamp.pending=['body-up','hat-up'];assert.equal(lampItemCPGain(data,body,hero),0);assert.ok(lampItemCPGain(data,hat,hero)>0);
+ const plan=planLampAutoEquip(data,[hero]);assert.equal(plan.loadouts.Falie.hat,'hat-up');assert.equal(plan.loadouts.Falie.body,'body-up');
+ const tiny={...createLampEconomy(1),items:[{instanceId:'current',type:'body',stats:{ATK:38,DEF:55,MAG:33,RES:82,HP:78}},{instanceId:'tiny',type:'body',stats:{ATK:79,DEF:47,MAG:76,RES:23,HP:85}}],loadouts:{Falie:{body:'current'}}};tiny.lamp.pending=['tiny'];const gain=lampItemCPGain(tiny,tiny.items[1],hero);assert.equal(gain,0.1);assert.equal(lampReviewCandidates(tiny,[hero])[0].bestGain,0.1);assert.equal(planLampAutoEquip(tiny,[hero]).loadouts.Falie.body,'tiny');
+});
+
 test('four-stat saves migrate once without rerolling items or healing; equip reports actual permanent CP',async()=>{
  const old=createLampEconomy(42,1000);old.version=3;activateLamp(old,{},0);for(const i of old.items)delete i.stats.HP;
  const raw=JSON.stringify(old),f=fixture({'wishfire.equipment-economy.v3':raw});await f.store.sync();assert.equal(f.store.data.version,5);assert.equal(f.store.data.items[0].stats.HP,0);assert.equal(f.values.get('wishfire.equipment-economy.v3'),raw);assert.equal(f.store.data.gold,old.gold);
@@ -168,12 +187,13 @@ test('manual and Auto draws grant all four heroes EXP once; full cache stops Aut
  while(lampStoredCount(f.store.data)<LAMP_CONFIG.capacity){f.setClock(f.store.time()+5000);await f.store.tickAuto({});}
  assert.equal(f.store.data.lamp.autoEnabled,false);const exp=f.store.data.partyEXP;f.setClock(f.store.time()+5000);assert.equal(await f.store.tickAuto({}),null);assert.equal(f.store.data.partyEXP,exp);
  await assert.rejects(f.store.setAuto(true),/space/);await assert.rejects(f.store.generate({}),/full/);
- f.setFail(true);await assert.rejects(f.store.dismantle(preview(f.store.data)),/disk full/);assert.equal(f.store.data.partyEXP,exp);f.setFail(false);
- const heroes=structuredClone(f.globals.HeroProgress),essence=f.store.data.lamp.essence;const result=await f.store.dismantle(preview(f.store.data));assert.ok(result.essence>0);assert.equal(f.store.data.lamp.essence,essence+result.essence);assert.equal(f.store.data.partyEXP,exp);assert.deepEqual(f.globals.HeroProgress,heroes);assert.equal(f.store.data.lamp.autoEnabled,false);
+ await assert.rejects(f.store.dismantle(preview(f.store.data)),/Review positive-CP/);assert.equal(f.store.data.partyEXP,exp);await f.store.autoEquip();
+ assert.equal(f.store.data.partyEXP,exp);assert.equal(f.store.data.lamp.autoEnabled,false);assert.ok(lampStoredCount(f.store.data)>0);
 });
 
 test('dismantling essence buys saved capacity upgrades; upgrade never grants EXP or resumes Auto',async()=>{
- const f=fixture();await f.store.sync();await assert.rejects(f.store.purchaseStage(),/essence/);
+ const initial=createLampEconomy(42);for(const hero of Object.values(createHeroProgressStore().heroes))for(const type of ['hat','body','boots']){const base=GEAR_ARCHETYPES.find(entry=>entry.type===type),id='strong:'+hero.heroInstanceKey+':'+type;initial.items.push({...base,instanceId:id,rarity:'common',level:1,sequence:0,ordinal:0,stats:{ATK:10000,DEF:10000,MAG:10000,RES:10000,HP:10000}});(initial.loadouts[hero.heroInstanceKey]||={})[type]=id;}
+ const f=fixture({[EQUIPMENT_SAVE_KEY]:JSON.stringify(initial)});await f.store.sync();await assert.rejects(f.store.purchaseStage(),/essence/);
  for(let i=0;i<20;i++){f.setClock(f.store.time()+2000);await f.store.generate({});}await f.store.dismantle(preview(f.store.data));const exp=f.store.data.partyEXP;
  for(let stage=0;stage<4;stage++)await f.store.purchaseStage(0,stage);
  assert.equal(f.store.data.lamp.capacityTier,0);f.setClock(f.store.data.lamp.upgradeEndsAt);await f.store.sync();assert.equal(f.store.data.lamp.capacityTier,1);assert.equal(f.store.data.partyEXP,exp);assert.equal(f.store.data.lamp.autoEnabled,false);
@@ -185,7 +205,7 @@ test('Auto rejects weak gear while manual permits a deliberate lower-CP override
  const f=fixture();await f.store.sync();await f.store.generate({});const data=structuredClone(f.store.data),candidate=data.items[0];
  for(const hero of Object.values(f.globals.HeroProgress.heroes)){const current={...candidate,instanceId:'strong:'+hero.heroInstanceKey,stats:Object.fromEntries(Object.keys(candidate.stats).map(k=>[k,candidate.stats[k]+100]))};data.items.push(current);data.loadouts[hero.heroInstanceKey]={[candidate.type]:current.instanceId};}
  f.values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(data));await f.store.refresh();const result=await f.store.equip('Falie',candidate.instanceId);assert.ok(result.cpChange<0);
- const auto=await f.store.autoEquip();assert.deepEqual(auto,[]);
+ const auto=await f.store.autoEquip();assert.equal(auto.length,1);assert.ok(auto[0].cpChange>0);assert.equal(f.store.data.loadouts.Falie[candidate.type],'strong:Falie');
 });
 
 test('weaker gear stays visible through refresh until explicit resource conversion',async()=>{
@@ -194,7 +214,7 @@ test('weaker gear stays visible through refresh until explicit resource conversi
  f.values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(data));await f.store.refresh();
  assert.deepEqual(f.store.data.items,data.items);assert.deepEqual(f.store.data.lamp.pending,[candidate.instanceId]);assert.equal(f.store.data.lamp.essence,0);
  await f.store.refresh();assert.deepEqual(f.store.data.items,data.items);
- const exp=f.store.data.partyEXP,result=await f.store.dismantle(preview(f.store.data));assert.equal(result.count,1);assert.equal(f.store.data.lamp.essence,result.essence);assert.equal(f.store.data.partyEXP,exp);assert.equal(f.store.data.items.length,4);
+ const exp=f.store.data.partyEXP,saved=f.values.get(EQUIPMENT_SAVE_KEY);f.setFail(true);await assert.rejects(f.store.dismantle(preview(f.store.data)),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),saved);f.setFail(false);const result=await f.store.dismantle(preview(f.store.data));assert.equal(result.count,1);assert.equal(f.store.data.lamp.essence,result.essence);assert.equal(f.store.data.partyEXP,exp);assert.equal(f.store.data.items.length,4);
 });
 
 test('entirely weaker Auto emissions stop at capacity and cannot farm unlimited EXP',async()=>{
@@ -228,26 +248,32 @@ test('essence-funded lamp levels apply increasing rarity odds and preserve exist
  const data=createLampEconomy(42);activateLamp(data,{},0);const original=structuredClone(data.items);data.lamp.essence=20;for(let stage=0;stage<4;stage++)purchaseLampStage(data,0,stage,1000);completeLampUpgrade(data,data.lamp.upgradeEndsAt);assert.deepEqual(data.items,original);assert.equal(data.partyEXP,25);
 });
 
- test('replaced gear persists as inspectable dismantling stock and cannot be reassigned',async()=>{
+test('replaced gear persists as inspectable, manually equipable cache stock',async()=>{
  const f=fixture(),data=createLampEconomy(42),candidate={...generateLampItem(42,0,0),instanceId:'new'},old={...candidate,instanceId:'old',stats:Object.fromEntries(Object.entries(candidate.stats).map(([k,v])=>[k,Math.max(1,v-1)]))};
  data.items=[candidate,old];data.lamp.pending=['new'];data.loadouts.Falie={[old.type]:'old'};f.values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(data));await f.store.sync();
  await f.store.equip('Falie','new');assert.deepEqual(f.store.data.lamp.discarded,['old']);assert.deepEqual(f.store.data.items.find(i=>i.instanceId==='old'),old);assert.equal(f.store.data.lamp.essence,0);assert.equal(lampStoredCount(f.store.data),1);
- await f.store.refresh();assert.deepEqual(f.store.data.lamp.discarded,['old']);await assert.rejects(f.store.equip('Huun','old'),/no longer/);
- const saved=f.values.get(EQUIPMENT_SAVE_KEY),ids=preview(f.store.data);f.setFail(true);await assert.rejects(f.store.dismantle(ids),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),saved);f.setFail(false);
- const receipt=await f.store.dismantle(ids);assert.equal(receipt.count,1);assert.equal(f.store.data.lamp.essence,receipt.essence);assert.deepEqual(f.store.data.lamp.discarded,[]);assert.deepEqual(f.store.data.items.map(i=>i.instanceId),['new']);
- });
-
-test('review sorting leaves emission order intact and Auto equips at most one item per hero',async()=>{
- const f=fixture(),data=createLampEconomy(42);for(let n=0;n<8;n++)activateLamp(data,{region:n+1,stage:1},n*2000);
- const order=[...data.lamp.pending],recent=structuredClone(data.lamp.recent);assert.deepEqual(recent.map(i=>i.sequence),[3,4,5,6,7]);
- const sorted=sortedLampItems(data);assert.ok(sorted.every((i,n)=>!n||lampGearCP(sorted[n-1])>=lampGearCP(i)));assert.deepEqual(data.lamp.pending,order);
- f.values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(data));await f.store.sync();const picked=selectLampUpgrades(f.store.data,Object.values(f.globals.HeroProgress.heroes)).map(i=>i.instanceId),exp=f.store.data.partyEXP;
- const results=await f.store.autoEquip();assert.ok(results.length>0&&results.length<=4);assert.equal(new Set(results.map(r=>r.heroId)).size,results.length);assert.ok(results.every(r=>picked.includes(r.item.instanceId)&&r.cpChange>0));
- assert.deepEqual(f.store.data.lamp.pending,[]);assert.equal(f.store.data.lamp.discarded.length,8-results.length);assert.deepEqual(f.store.data.lamp.recent,recent);assert.equal(f.store.data.partyEXP,exp);validateLampEconomy(f.store.data);
- for(const id of f.store.data.lamp.discarded)await assert.rejects(f.store.equip('Falie',id),/no longer/);
+ await f.store.refresh();assert.deepEqual(f.store.data.lamp.discarded,['old']);const saved=f.values.get(EQUIPMENT_SAVE_KEY);f.setFail(true);await assert.rejects(f.store.equip('Huun','old'),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),saved);assert.deepEqual(f.store.data.lamp.discarded,['old']);f.setFail(false);
+ await f.store.equip('Huun','old');assert.equal(f.store.data.loadouts.Huun[old.type],'old');assert.deepEqual(f.store.data.lamp.discarded,[]);assert.equal(f.store.data.lamp.essence,0);assert.ok(f.store.data.items.some(i=>i.instanceId==='new'));validateLampEconomy(f.store.data);
 });
-test('entering dismantling permanently removes equip eligibility without converting resources',async()=>{
- const f=fixture();await f.store.sync();await f.store.generate({});const id=f.store.data.lamp.pending[0],before=structuredClone(f.store.data);await f.store.finishReview();assert.deepEqual(f.store.data.lamp.pending,[]);assert.deepEqual(f.store.data.lamp.discarded,[id]);assert.equal(f.store.data.lamp.essence,before.lamp.essence);assert.equal(f.store.data.partyEXP,before.partyEXP);await f.store.refresh();await assert.rejects(f.store.equip('Huun',id),/no longer/);assert.deepEqual(await f.store.autoEquip(),[]);
+
+test('Auto fills all twelve hero slots with unique gear while preserving emission order and unused cache',async()=>{
+ const f=fixture(),data=createLampEconomy(42),heroes=Object.values(f.globals.HeroProgress.heroes);
+ for(const hero of heroes)for(const type of ['hat','body','boots']){const base=GEAR_ARCHETYPES.find(entry=>entry.type===type),id='old:'+hero.heroInstanceKey+':'+type;data.items.push({...base,instanceId:id,rarity:'common',level:1,sequence:0,ordinal:0,stats:{ATK:1,DEF:1,MAG:1,RES:1,HP:1}});(data.loadouts[hero.heroInstanceKey]||={})[type]=id;}
+ for(let index=0;index<13;index++){const type=['hat','body','boots'][index%3],base=GEAR_ARCHETYPES.find(entry=>entry.type===type);data.items.push({...base,instanceId:'new:'+index,rarity:'common',level:1,sequence:index,ordinal:0,stats:{ATK:20,DEF:20,MAG:20,RES:20,HP:20}});data.lamp.pending.push('new:'+index);}
+ const order=[...data.lamp.pending],recent=structuredClone(data.lamp.recent),sorted=sortedLampItems(data);assert.ok(sorted.every((item,n)=>!n||lampGearCP(sorted[n-1])>=lampGearCP(item)));assert.deepEqual(data.lamp.pending,order);
+ f.values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(data));await f.store.sync();const exp=f.store.data.partyEXP,results=await f.store.autoEquip();
+ assert.ok(results.length>0&&results.length<=4);assert.equal(new Set(results.map(result=>result.heroId)).size,results.length);assert.equal(results.reduce((sum,result)=>sum+result.slots.length,0),12);assert.ok(results.every(result=>result.cpChange>0));
+ const equipped=Object.values(f.store.data.loadouts).flatMap(slots=>Object.values(slots));assert.equal(new Set(equipped).size,12);assert.ok(equipped.every(id=>id.startsWith('new:')));assert.deepEqual(f.store.data.lamp.pending,[]);assert.equal(f.store.data.lamp.discarded.length,13);assert.deepEqual(f.store.data.lamp.recent,recent);assert.equal(f.store.data.partyEXP,exp);assert.equal(f.store.data.items.length,25);validateLampEconomy(f.store.data);
+});
+test('Auto planner converges on the 50-item fully upgraded cache',()=>{
+ const data=createLampEconomy(42);data.lamp.capacityTier=3;for(let index=0;index<50;index++)activateLamp(data,{},index*2000);validateLampEconomy(data);
+ const heroes=Object.values(createHeroProgressStore().heroes),plan=planLampAutoEquip(data,heroes),projected={...data,loadouts:plan.loadouts,lamp:{...data.lamp,pending:plan.pending,discarded:plan.discarded}};
+ assert.ok(plan.changes.reduce((sum,change)=>sum+change.slots.length,0)<=12);const equipped=Object.values(plan.loadouts).flatMap(slots=>Object.values(slots));assert.equal(new Set(equipped).size,equipped.length);assert.equal(lampReviewCandidates(projected,heroes).filter(candidate=>candidate.bestGain>0).length,0);assert.equal(data.lamp.pending.length,50,'planning leaves the source cache untouched');
+});
+test('positive discarded gear remains reviewable and dismantling protects it',async()=>{
+ const f=fixture();await f.store.sync();await f.store.generate({});const id=f.store.data.lamp.pending[0],before=structuredClone(f.store.data);await f.store.finishReview();assert.deepEqual(f.store.data.lamp.pending,[]);assert.deepEqual(f.store.data.lamp.discarded,[id]);assert.equal(f.store.data.lamp.essence,before.lamp.essence);assert.equal(f.store.data.partyEXP,before.partyEXP);await f.store.refresh();
+ assert.equal(lampReviewCandidates(f.store.data,Object.values(f.globals.HeroProgress.heroes))[0].item.instanceId,id);const saved=f.values.get(EQUIPMENT_SAVE_KEY);await assert.rejects(f.store.dismantle(preview(f.store.data)),/Review positive-CP/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),saved);assert.deepEqual(f.store.data.lamp.discarded,[id]);
+ const results=await f.store.autoEquip();assert.ok(results.length>0);assert.ok(!f.store.data.lamp.discarded.includes(id));assert.ok(Object.values(f.store.data.loadouts).some(slots=>Object.values(slots).includes(id)));
 });
 
 
@@ -259,10 +285,13 @@ test('earned batch Auto Equip bypasses item-CP leaders that give no hero gain',a
  assert.deepEqual(selectLampUpgrades(data,heroes).map(i=>i.instanceId),eligible.map(i=>i.instanceId));
  const f=fixture({[EQUIPMENT_SAVE_KEY]:JSON.stringify(data)});f.globals.HeroProgress=structuredClone(captured.heroes);await f.store.sync();
  const exp=data.partyEXP,progress=heroes.map(h=>[h.currentLevel,h.currentEXP,h.lampEXPClaimed]);
+ const reverse=structuredClone(data);reverse.lamp.pending.reverse();assert.deepEqual(planLampAutoEquip(data,heroes).loadouts,planLampAutoEquip(reverse,heroes).loadouts);
+ const beforeFailure=JSON.stringify(f.store.data);f.setFail(true);await assert.rejects(f.store.autoEquip(),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),JSON.stringify(data));assert.equal(JSON.stringify(f.store.data),beforeFailure);f.setFail(false);
  const receipts=await f.store.autoEquip();assert.ok(receipts.length>0&&receipts.length<=4);
- assert.equal(new Set(receipts.map(r=>r.heroId)).size,receipts.length);
- for(const r of receipts){const item=data.items.find(i=>i.instanceId===r.item.instanceId),hero=heroes.find(h=>h.heroInstanceKey===r.heroId);assert.ok(item);assert.ok(r.cpChange>0);assert.equal(r.cpChange,lampItemCPGain(data,item,hero));assert.equal(f.store.data.loadouts[r.heroId][item.type],item.instanceId);}
- assert.equal(f.store.data.partyEXP,exp);assert.deepEqual(Object.values(f.globals.HeroProgress.heroes).slice(0,4).map(h=>[h.currentLevel,h.currentEXP,h.lampEXPClaimed]),progress);assert.equal(f.store.data.lamp.pending.length,0);
+ assert.equal(new Set(receipts.map(r=>r.heroId)).size,receipts.length);assert.ok(receipts.every(receipt=>receipt.slots.length>0&&receipt.items.length===receipt.slots.length));
+ for(const receipt of receipts){const hero=heroes.find(h=>h.heroInstanceKey===receipt.heroId);assert.equal(Math.round((receipt.cpAfter-receipt.cpBefore)*10)/10,receipt.cpChange);assert.ok(receipt.slots.every((slot,index)=>f.store.data.loadouts[receipt.heroId][slot]===receipt.items[index].instanceId));assert.ok(hero);}
+ const totalBefore=heroes.reduce((sum,hero)=>sum+computeCombatPower(hero),0),totalAfter=Object.values(f.globals.HeroProgress.heroes).slice(0,4).reduce((sum,hero)=>sum+computeCombatPower(hero),0);assert.ok(totalAfter>totalBefore);
+ assert.equal(f.store.data.partyEXP,exp);assert.deepEqual(Object.values(f.globals.HeroProgress.heroes).slice(0,4).map(h=>[h.currentLevel,h.currentEXP,h.lampEXPClaimed]),progress);assert.equal(f.store.data.lamp.pending.length,0);assert.ok(f.store.data.lamp.discarded.length>0);assert.ok(lampReviewCandidates(f.store.data,Object.values(f.globals.HeroProgress.heroes).slice(0,4)).every(candidate=>candidate.queue==='discarded'&&candidate.bestGain<=0));
 });
 
 test('long lamp curve uses exact four-installment costs and fractional rarity changes',()=>{
