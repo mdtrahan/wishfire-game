@@ -101,16 +101,16 @@ export function validateLampEconomy(data,version=5){
  if(l.recent!==undefined&&(!Array.isArray(l.recent)||l.recent.length>5||l.recent.some(i=>!i||typeof i.instanceId!=='string'||typeof i.name!=='string'||!RARITIES[i.rarity]||!Number.isInteger(i.art)||i.art<0||i.art>8||!Number.isSafeInteger(i.level)||i.level<1||i.level>LAMP_CONFIG.maxOrdinal+1)))bad();
  l.pending.forEach(assign);if(l.discarded!==undefined&&!Array.isArray(l.discarded))bad();(l.discarded||[]).forEach(assign);if(assigned.size!==ids.size)bad();return data;
 }
-export function migrateLampEconomy(old){validateLampEconomy(old,4);const next={...structuredClone(old),version:5,partyEXP:0};next.lamp.capacityTier=0;next.lamp.upgradeStage=0;next.lamp.essence=0;if(next.lamp.pending.length>=LAMP_CONFIG.capacity)next.lamp.autoEnabled=false;return validateLampEconomy(next);}
+export function migrateLampEconomy(old){validateLampEconomy(old,4);const next={...structuredClone(old),version:5,partyEXP:0};next.lamp.capacityTier=0;next.lamp.upgradeStage=0;next.lamp.essence=0;return validateLampEconomy(next);}
 export function lampAutoUnlocked(heroes){return heroes.length===4&&heroes.every(h=>h.currentLevel>=LAMP_CONFIG.autoUnlockLevel);}
 export function migrateFourStatLamp(old){
- validateLampEconomy(old,3);const next=structuredClone(old);next.version=5;next.partyEXP=0;next.lamp.capacityTier=0;next.lamp.upgradeStage=0;next.lamp.essence=0;if(next.lamp.pending.length>=LAMP_CONFIG.capacity)next.lamp.autoEnabled=false;
+ validateLampEconomy(old,3);const next=structuredClone(old);next.version=5;next.partyEXP=0;next.lamp.capacityTier=0;next.lamp.upgradeStage=0;next.lamp.essence=0;
  for(const item of next.items)item.stats.HP=0;
  return validateLampEconomy(next);
 }
 export function migrateDraftLamp(old){
  validateLampEconomy(old,2);
- const next=structuredClone(old);next.version=5;next.partyEXP=0;next.lamp.capacityTier=0;next.lamp.upgradeStage=0;next.lamp.essence=0;if(next.lamp.pending.length>=LAMP_CONFIG.capacity)next.lamp.autoEnabled=false;
+ const next=structuredClone(old);next.version=5;next.partyEXP=0;next.lamp.capacityTier=0;next.lamp.upgradeStage=0;next.lamp.essence=0;
  for(const i of next.items){
   const generated=Number.isInteger(i.sequence)&&Number.isInteger(i.ordinal)?generateLampItem(next.lamp.seed,i.sequence,i.ordinal):null;
   i.stats=Object.fromEntries(GEAR_STATS.map(k=>[k,i.stats[k]??(k==='HP'?0:generated?.stats[k]??0)]));
@@ -140,7 +140,7 @@ export function activateLamp(data,context,now){
  const l=data.lamp;if(lampStoredCount(data)>=lampCapacity(data))throw new Error('Collection full. Review your gear to make room.');
  if(lampCooldownRemaining(data,now)>0)throw new Error('The lamp is preparing its next emission.');
  l.highestOrdinal=Math.max(l.highestOrdinal,progressionOrdinal(context));const item=generateLampItem(l.seed,l.sequence,l.highestOrdinal,LAMP_CAPACITY_TIERS[l.capacityTier].rarityWeights);
- l.recent=[...(l.recent||[]),structuredClone(item)].slice(-5);data.partyEXP+=LAMP_CONFIG.drawEXP;l.sequence++;l.lastActivationAt=now;data.items.push(item);l.pending.push(item.instanceId);if(lampStoredCount(data)>=lampCapacity(data))l.autoEnabled=false;return item;
+ l.recent=[...(l.recent||[]),structuredClone(item)].slice(-5);data.partyEXP+=LAMP_CONFIG.drawEXP;l.sequence++;l.lastActivationAt=now;data.items.push(item);l.pending.push(item.instanceId);return item;
 }
 export function compareLampItem(data,item,heroId){
  const current=equipmentDefinition(data.items.find(i=>i.instanceId===data.loadouts[heroId]?.[item.type]));

@@ -24,6 +24,21 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
   const entry = gameState.storyEntry = { phase: 'map', pending: false, error: null, combatUnlocked: false, activeCard: null, modal: null, combatPaused: false, cards,
     progress: { get energy() { return energyGlobals.Player_Energy; }, set energy(value) { energyGlobals.Player_Energy = value; }, resources: 150, completed: [], revealed: 1 }, content: cards[0].content };
   let bossResumePending = false;
+  function finishCombatExit(callback, finish) {
+    let result;
+    try { result = callback(); }
+    catch (error) { entry.error = String(error?.message || error); return false; }
+    if (!result || typeof result.then !== 'function') { finish(); return true; }
+    entry.pending = true;
+    return Promise.resolve(result).then(() => {
+      entry.pending = false;
+      finish();
+      return true;
+    }, error => {
+      entry.error = String(error?.message || error);
+      return false;
+    }).finally(() => { entry.pending = false; });
+  }
   const contains = (point, rect) => point && rect && point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h;
   async function go(target, reason, payload = {}) {
     if (entry.pending) return false;
@@ -44,18 +59,21 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
   function complete() {
     const card = cards[entry.activeCard];
     if (!card) return;
-    if (card.combat) onCombatEnd();
-    if (!entry.progress.completed.includes(card.id)) {
-      entry.progress.completed.push(card.id);
-      entry.progress.resources += card.reward;
-      entry.progress.revealed = Math.max(entry.progress.revealed, Math.min(cards.length, entry.activeCard + 2));
-    }
-    entry.activeCard = null;
-    entry.combatUnlocked = false;
-    entry.combatPaused = false;
-    entry.phase = 'ladder';
-    entry.modal = null;
-    if (layoutState.getActiveLayoutId() !== 'storyMock') void go('storyMock', 'quest-card-complete');
+    const finish = () => {
+      if (!entry.progress.completed.includes(card.id)) {
+        entry.progress.completed.push(card.id);
+        entry.progress.resources += card.reward;
+        entry.progress.revealed = Math.max(entry.progress.revealed, Math.min(cards.length, entry.activeCard + 2));
+      }
+      entry.activeCard = null;
+      entry.combatUnlocked = false;
+      entry.combatPaused = false;
+      entry.phase = 'ladder';
+      entry.modal = null;
+      if (layoutState.getActiveLayoutId() !== 'storyMock') void go('storyMock', 'quest-card-complete');
+    };
+    if (card.combat) return finishCombatExit(onCombatEnd, finish);
+    finish();
   }
   function finishStory() {
     const card = cards[entry.activeCard];
@@ -174,7 +192,7 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
   entry.openPausedBattleGate = () => navigate('Quests');
   return { enter() {}, update, handlePointer, startCard, startCombat, startCombatForQA, requestSkip, confirmSkip, cancelSkip, navigate,
     allowedTransitions: () => entry.pending || entry.modal === 'combat-pause' || (!entry.modal && entry.phase !== 'opening') ? ['combat', 'town', 'heroLayout', 'chestsLayout', 'idleFarmLayout', 'mapLayout'] : [],
-    victory() { if (entry.phase === 'combat' && entry.activeCard !== null && !entry.pending) complete(); },
+    victory() { if (entry.phase === 'combat' && entry.activeCard !== null && !entry.pending) return complete(); return false; },
     defeat() {
       if (entry.phase !== 'combat' || entry.activeCard === null || entry.pending) return false;
       entry.phase = 'defeat';
@@ -230,17 +248,25 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
     },
     quitPausedCombat() {
       if (entry.phase !== 'combat-paused' || entry.modal !== 'combat-pause' || entry.pending) return false;
-      onCombatQuit();
-      if (typeof layoutState.clearSnapshot === 'function') layoutState.clearSnapshot('combat');
-      entry.phase = 'map';
-      entry.modal = null;
-      entry.combatPaused = false;
-      entry.activeCard = null;
-      entry.combatUnlocked = false;
-      entry.error = null;
-      return true;
+      return finishCombatExit(onCombatQuit, () => {
+        if (typeof layoutState.clearSnapshot === 'function') layoutState.clearSnapshot('combat');
+        entry.phase = 'map';
+        entry.modal = null;
+        entry.combatPaused = false;
+        entry.activeCard = null;
+        entry.combatUnlocked = false;
+        entry.error = null;
+      });
     },
-    quit() { if (entry.phase !== 'defeat' || entry.pending) return; onCombatEnd(); entry.phase = 'map'; entry.activeCard = null; entry.combatUnlocked = false; entry.error = null; },
+    quit() {
+      if (entry.phase !== 'defeat' || entry.pending) return false;
+      return finishCombatExit(onCombatEnd, () => {
+        entry.phase = 'map';
+        entry.activeCard = null;
+        entry.combatUnlocked = false;
+        entry.error = null;
+      });
+    },
     // Existing developer scenarios intentionally bypass presentation controls.
     skip() {
       if (!isReady() || entry.pending) return false;

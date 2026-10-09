@@ -574,6 +574,7 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - 2026-09-23: If continuous enemies stand idle while hero basics continue, inspect the stream's outer action gate and the scheduler's retained current actor together. Stale `IsPlayerBusy`/`DeferAdvance` flags can suppress every scheduler tick, and a hero left as current can block an enemy claim even after the outer gate opens.
 
 - Lamp Auto eligibility and recipient ranking use total hero replacement CP. Standalone item CP remains display order; evaluate every matching hero-slot among the twelve deployed slots, since leaders can offer no hero gain while later items do. Recheck eligibility under the save lock and after provisional assignments. Keep retained queued gear inspectable and prevent positive-gain leftovers from silent dismantling. Raw draws stay unfiltered, manual downgrades remain allowed, and all retained leftovers count toward capacity.
+- Treat Lamp Auto as saved player intent, separate from cache capacity: capacity pauses generation without clearing the preference, and clearing space resumes it. Disable Auto only through the explicit toggle or a battle-exit save that completes before encounter state is discarded; a failed save must leave the encounter available for retry.
 
 - Modal-owned equip feedback must finish before review advances or closes. Keep the transient float inside the modal and await its cleanup while inputs remain busy, so it cannot outlive its context over combat.
 

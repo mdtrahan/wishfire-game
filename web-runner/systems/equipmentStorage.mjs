@@ -43,7 +43,7 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=g
   if(globals.HeroProgressStorageError&&Object.keys(globals.PendingGoldSettlements||{}).length)throw new Error('Pending Gold needs a saved HeroProgress receipt.');
   if(!locks)throw new Error('This browser cannot safely save lamp changes.');
   return locks.request(EQUIPMENT_SAVE_KEY,async()=>{
-   const next=read(),receipts=new Set(next.settledGoldRewards);if(!record)next.lamp.autoEnabled=false;let delta=appliedGold===undefined?0:Number(globals.goldTotal)-appliedGold;
+   const next=read(),receipts=new Set(next.settledGoldRewards);let delta=appliedGold===undefined?0:Number(globals.goldTotal)-appliedGold;
    for(const[rawId,rawAmount]of Object.entries(globals.PendingGoldSettlements||{})){
     const id=String(rawId),amount=Math.max(0,Math.floor(Number(rawAmount)||0));
     if(receipts.has(id)){if(appliedGold!==undefined)delta-=amount;continue;}
@@ -68,7 +68,8 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=g
   sync(){if(loading)return loading;if(record&&Number(globals.goldTotal)===appliedGold&&!dirty&&!(record.lamp.upgradeEndsAt&&time()>=record.lamp.upgradeEndsAt)){apply(record);return Promise.resolve();}dirty=false;loading=transact().finally(()=>loading=null);return loading;},
   refresh(){dirty=true;return this.sync();},
   generate(context={}){return transact((next,t)=>activateLamp(next,context,t));},
-  setAuto(enabled){return transact(next=>{if(enabled&&lampStoredCount(next)>=lampCapacity(next))throw new Error('Clear collection space to resume Auto.');if(enabled&&!lampAutoUnlocked(Object.values(globals.HeroProgress?.heroes||{}).slice(0,4)))throw new Error('All four heroes must reach Lv. 5 to unlock Auto.');next.lamp.autoEnabled=!!enabled;});},
+  setAuto(enabled){return transact(next=>{if(enabled&&!lampAutoUnlocked(Object.values(globals.HeroProgress?.heroes||{}).slice(0,4)))throw new Error('All four heroes must reach Lv. 5 to unlock Auto.');next.lamp.autoEnabled=!!enabled;});},
+  async stopAuto(){await this.sync();if(!record?.lamp.autoEnabled)return false;await this.setAuto(false);return true;},
   tickAuto(context={}){return transact((next,t)=>{
    next.lamp.highestOrdinal=Math.max(next.lamp.highestOrdinal,progressionOrdinal(context));
    if(!lampAutoUnlocked(Object.values(globals.HeroProgress?.heroes||{}).slice(0,4))||!next.lamp.autoEnabled||t-next.lamp.lastActivationAt<LAMP_CONFIG.autoIntervalMs||lampStoredCount(next)>=lampCapacity(next))return null;

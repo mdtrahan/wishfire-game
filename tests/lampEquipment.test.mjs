@@ -2,8 +2,9 @@ import {RARITIES} from '../web-runner/src/core/equipment.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {LAMP_CONFIG,LAMP_CAPACITY_TIERS,generateLampItem,createLampEconomy,activateLamp,lampStoredCount,lampItemCPGain,lampGearCP,sortedLampItems,selectLampUpgrades,lampReviewCandidates,planLampAutoEquip,finishLampReview,lampStageCost,purchaseLampStage,upgradeLamp,completeLampUpgrade,validateLampEconomy,compareLampItem,selectAutoEquipHero,equipLampItem,dismantleLampItems,migrateLegacyEquipment,salvageValue,GEAR_ARCHETYPES} from '../web-runner/src/core/lampGear.mjs';
+import {LAMP_CONFIG,LAMP_CAPACITY_TIERS,generateLampItem,createLampEconomy,activateLamp,lampStoredCount,lampItemCPGain,lampGearCP,sortedLampItems,selectLampUpgrades,lampReviewCandidates,planLampAutoEquip,finishLampReview,lampStageCost,purchaseLampStage,upgradeLamp,completeLampUpgrade,validateLampEconomy,compareLampItem,selectAutoEquipHero,equipLampItem,dismantleLampItems,migrateLegacyEquipment,migrateLampEconomy,migrateFourStatLamp,migrateDraftLamp,salvageValue,GEAR_ARCHETYPES} from '../web-runner/src/core/lampGear.mjs';
 import {createEquipmentStorage,EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
+import {createStoryEntryFlow} from '../web-runner/systems/storyEntryFlow.mjs';
 import {createHeroProgressStore} from '../web-runner/src/core/heroProgression.mjs';
 import {computeCombatPower} from '../web-runner/src/core/combatPower.mjs';
 const preview=d=>[...d.lamp.pending,...(d.lamp.discarded||[]),'salvage:'+d.lamp.salvage.count+':'+d.lamp.salvage.gold];
@@ -72,16 +73,15 @@ test('new Epic and Legendary rolls clear same-ordinal lower-rarity stat ceilings
   assert.ok(heroes.every(hero=>lampItemCPGain(data,epic,hero)>0),`${type} Epic improves every hero over worst-case lower-rarity gear`);
  }
 });
-test('restart retains stored gear and EXP while Auto waits for a new player toggle',async()=>{
+test('restart retains stored gear, EXP, and enabled Auto preference',async()=>{
  const f=fixture();await f.store.sync();await f.store.generate({});
  for(const h of Object.values(f.globals.HeroProgress.heroes))h.currentLevel=5;
  await f.store.setAuto(true);const saved=structuredClone(f.store.data);
  const restart=createEquipmentStorage({globals:f.globals,storage:f.storage,locks:f.locks,now:()=>11000});
- await restart.sync();assert.equal(restart.data.lamp.autoEnabled,false);
+ await restart.sync();assert.equal(restart.data.lamp.autoEnabled,true);
  assert.deepEqual(restart.data.items,saved.items);assert.deepEqual(restart.data.lamp.pending,saved.lamp.pending);
- assert.equal(await restart.tickAuto({}),null);assert.equal(restart.data.partyEXP,saved.partyEXP);
- assert.equal(restart.data.lamp.sequence,saved.lamp.sequence);
- await restart.setAuto(true);assert.ok(await restart.tickAuto({}));assert.equal(restart.data.lamp.sequence,saved.lamp.sequence+1);
+ assert.ok(await restart.tickAuto({}));assert.equal(restart.data.partyEXP,saved.partyEXP+LAMP_CONFIG.drawEXP);
+ assert.equal(restart.data.lamp.sequence,saved.lamp.sequence+1);
 });
 test('map progression persists through lower-stage attempts; stock cap spends nothing',()=>{
  const d=createLampEconomy(42,1000);activateLamp(d,{region:3,stage:5},100);const first=d.items[0];activateLamp(d,{region:1,stage:1},2100);assert.equal(d.items[1].ordinal,first.ordinal);
@@ -176,7 +176,7 @@ test('four-stat saves migrate once without rerolling items or healing; equip rep
  const result=await f.store.equip('Falie',f.store.data.lamp.pending.at(-1));assert.ok(hero.maxHP>maxHP);assert.equal(hero.hp,hp);assert.equal(result.cpAfter,hero.combatPower);assert.equal(result.cpChange,Math.round((result.cpAfter-result.cpBefore)*10)/10);
 });
 
-test('manual and Auto draws grant all four heroes EXP once; full cache stops Auto and XP',async()=>{
+test('manual and Auto draws grant all four heroes EXP once; full cache pauses Auto without clearing it',async()=>{
  const f=fixture();await f.store.sync();await assert.rejects(f.store.setAuto(true),/level|Lv/);
  await f.store.generate({});assert.equal(f.store.data.partyEXP,25);assert.ok(Object.values(f.globals.HeroProgress.heroes).every(h=>h.currentEXP===25));
  await f.store.equip('Falie',f.store.data.lamp.pending[0]);assert.equal(f.store.data.partyEXP,25);
@@ -185,10 +185,24 @@ test('manual and Auto draws grant all four heroes EXP once; full cache stops Aut
  const saved=createHeroProgressStore(JSON.parse(JSON.stringify(recovered.HeroProgress)));const again={goldTotal:0,HeroProgress:saved};const second=createEquipmentStorage({globals:again,storage:f.storage,locks:f.locks});await second.sync();assert.ok(Object.values(again.HeroProgress.heroes).every(h=>h.currentEXP===25));
  for(const hero of Object.values(f.globals.HeroProgress.heroes))hero.currentLevel=5;await f.store.setAuto(true);
  while(lampStoredCount(f.store.data)<LAMP_CONFIG.capacity){f.setClock(f.store.time()+5000);await f.store.tickAuto({});}
- assert.equal(f.store.data.lamp.autoEnabled,false);const exp=f.store.data.partyEXP;f.setClock(f.store.time()+5000);assert.equal(await f.store.tickAuto({}),null);assert.equal(f.store.data.partyEXP,exp);
- await assert.rejects(f.store.setAuto(true),/space/);await assert.rejects(f.store.generate({}),/full/);
+ assert.equal(f.store.data.lamp.autoEnabled,true);const exp=f.store.data.partyEXP;f.setClock(f.store.time()+5000);assert.equal(await f.store.tickAuto({}),null);assert.equal(f.store.data.partyEXP,exp);
+ const restarted=createEquipmentStorage({globals:f.globals,storage:f.storage,locks:f.locks,reportError:()=>{}});await restarted.sync();assert.equal(restarted.data.lamp.autoEnabled,true,'first reload sync preserves the saved Auto preference at capacity');
+ await restarted.setAuto(true);assert.equal(restarted.data.lamp.autoEnabled,true);await assert.rejects(restarted.generate({}),/full/);
  await assert.rejects(f.store.dismantle(preview(f.store.data)),/Review positive-CP/);assert.equal(f.store.data.partyEXP,exp);await f.store.autoEquip();
- assert.equal(f.store.data.partyEXP,exp);assert.equal(f.store.data.lamp.autoEnabled,false);assert.ok(lampStoredCount(f.store.data)>0);
+ assert.equal(f.store.data.partyEXP,exp);assert.equal(f.store.data.lamp.autoEnabled,true);assert.ok(lampStoredCount(f.store.data)>0);
+});
+
+test('full-cache legacy migrations retain an enabled Auto preference',()=>{
+ const full=createLampEconomy(77);
+ for(let n=0;n<LAMP_CONFIG.capacity;n++)activateLamp(full,{},n*LAMP_CONFIG.minEmissionIntervalMs);
+ full.lamp.autoEnabled=true;
+ const versionFour=structuredClone(full);versionFour.version=4;delete versionFour.partyEXP;
+ const versionThree=structuredClone(versionFour);versionThree.version=3;for(const item of versionThree.items)delete item.stats.HP;
+ const versionTwo=structuredClone(versionFour);versionTwo.version=2;for(const item of versionTwo.items)item.stats={ATK:item.stats.ATK,DEF:item.stats.DEF,MAG:item.stats.MAG,RES:item.stats.RES,HP:item.stats.HP,SPD:0};
+ for(const migrated of [migrateLampEconomy(versionFour),migrateFourStatLamp(versionThree),migrateDraftLamp(versionTwo)]){
+  assert.equal(migrated.lamp.pending.length,LAMP_CONFIG.capacity);
+  assert.equal(migrated.lamp.autoEnabled,true);
+ }
 });
 
 test('dismantling essence buys saved capacity upgrades; upgrade never grants EXP or resumes Auto',async()=>{
@@ -217,14 +231,75 @@ test('weaker gear stays visible through refresh until explicit resource conversi
  const exp=f.store.data.partyEXP,saved=f.values.get(EQUIPMENT_SAVE_KEY);f.setFail(true);await assert.rejects(f.store.dismantle(preview(f.store.data)),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),saved);f.setFail(false);const result=await f.store.dismantle(preview(f.store.data));assert.equal(result.count,1);assert.equal(f.store.data.lamp.essence,result.essence);assert.equal(f.store.data.partyEXP,exp);assert.equal(f.store.data.items.length,4);
 });
 
-test('entirely weaker Auto emissions stop at capacity and cannot farm unlimited EXP',async()=>{
+test('full cache holds weaker Auto emissions without clearing Auto and resumes after Dismantle All',async()=>{
  const f=fixture(),data=createLampEconomy(42);
  for(const hero of Object.values(f.globals.HeroProgress.heroes)){hero.currentLevel=5;for(const type of ['hat','body','boots']){const owned={...generateLampItem(42,0,0),instanceId:hero.heroInstanceKey+':'+type,type,stats:{ATK:1000,DEF:1000,MAG:1000,RES:1000,HP:1000}};data.items.push(owned);(data.loadouts[hero.heroInstanceKey]||={})[type]=owned.instanceId;}}
  f.values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(data));await f.store.sync();await f.store.setAuto(true);
  for(let n=0;n<LAMP_CONFIG.capacity;n++){f.setClock(f.store.time()+5000);await f.store.tickAuto({});}
- assert.equal(f.store.data.lamp.pending.length,LAMP_CONFIG.capacity);assert.equal(f.store.data.items.length,12+LAMP_CONFIG.capacity);assert.equal(f.store.data.lamp.salvage.count,0);assert.equal(f.store.data.lamp.autoEnabled,false);const exp=f.store.data.partyEXP;
+ assert.equal(f.store.data.lamp.pending.length,LAMP_CONFIG.capacity);assert.equal(f.store.data.items.length,12+LAMP_CONFIG.capacity);assert.equal(f.store.data.lamp.salvage.count,0);assert.equal(f.store.data.lamp.autoEnabled,true);const exp=f.store.data.partyEXP;
  f.setClock(f.store.time()+5000);assert.equal(await f.store.tickAuto({}),null);assert.equal(f.store.data.partyEXP,exp);await assert.rejects(f.store.generate({}),/full/);
- await f.store.dismantle(preview(f.store.data));assert.equal(lampStoredCount(f.store.data),0);assert.equal(f.store.data.lamp.autoEnabled,false);
+ await f.store.dismantle(preview(f.store.data));assert.equal(lampStoredCount(f.store.data),0);assert.equal(f.store.data.lamp.autoEnabled,true);
+ f.setClock(f.store.time()+5000);const resumed=await f.store.tickAuto({});assert.ok(resumed);assert.equal(f.store.data.lamp.pending.length,1);assert.equal(f.store.data.lamp.autoEnabled,true);assert.equal(f.store.data.partyEXP,exp+LAMP_CONFIG.drawEXP);
+ await f.store.setAuto(false);assert.equal(f.store.data.lamp.autoEnabled,false,'only the explicit off action clears Auto');
+});
+
+test('lamp Auto survives KO recovery and is durably stopped only when combat is exited',async()=>{
+ const f=fixture();for(const hero of Object.values(f.globals.HeroProgress.heroes))hero.currentLevel=5;await f.store.sync();await f.store.setAuto(true);
+ const gameState={};let layout='combat';const layoutState={getActiveLayoutId:()=>layout,async requestLayoutChange(target){layout=target;return true;},clearSnapshot(){}};
+ const stopAuto=()=>f.store.stopAuto();
+ const flow=createStoryEntryFlow({gameState,layoutState,isReady:()=>true,getEnemies:()=>[],onCombatEnd:stopAuto,onCombatQuit:stopAuto,resurrect(){}});
+ Object.assign(gameState.storyEntry,{phase:'combat',activeCard:0,combatUnlocked:true});
+ assert.equal(flow.defeat(),true);await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(gameState.storyEntry.phase,'defeat');assert.equal(f.store.data.lamp.autoEnabled,true,'a hero wipe does not clear the saved preference');
+ assert.equal(await flow.continueCombat(),true);assert.equal(f.store.data.lamp.autoEnabled,true,'Continue resumes the same Auto preference');
+ flow.defeat();await new Promise(resolve=>setImmediate(resolve));
+ const quitting=flow.quit();assert.equal(gameState.storyEntry.pending,true,'the exit waits for the Auto-off transaction');assert.equal(await quitting,true);
+ assert.equal(f.store.data.lamp.autoEnabled,false);assert.equal(JSON.parse(f.values.get(EQUIPMENT_SAVE_KEY)).lamp.autoEnabled,false);
+
+ await f.store.setAuto(true);Object.assign(gameState.storyEntry,{phase:'combat-paused',modal:'combat-pause',combatPaused:true,activeCard:0,combatUnlocked:true});
+ assert.equal(await flow.quitPausedCombat(),true);assert.equal(f.store.data.lamp.autoEnabled,false,'paused-battle Quit also waits for the durable off transition');
+});
+
+test('actual ordinary KO recovery restores the full squad without clearing saved lamp Auto',async()=>{
+ const {createQuestCombatSession,recoverContinuousOrdinaryDefeatIfNeeded}=await import('../web-runner/systems/questCombatSession.mjs');
+ const f=fixture(),heroes=Object.values(f.globals.HeroProgress.heroes);
+ heroes.forEach((hero,index)=>Object.assign(hero,{kind:'hero',uid:index+1,maxHP:42,hp:index===0?0:24,isAlive:index!==0,currentLevel:5}));
+ f.globals.ContinuousCombatStageLoop=1;
+ f.globals.ContinuousCombatStage={seed:42,region:1,stage:1,wave:2,bossAvailable:false,bossArmed:false,bossActive:false,transitions:1,clearedBosses:0,clearedPackMask:0,spawnedPackMask:0,nextEmissionAt:0,lastUpdatedAt:0,spawnSerial:0};
+ f.globals.EnemyData=[];f.globals.time=20;
+ await f.store.sync();await f.store.setAuto(true);
+ const state={globals:f.globals,entities:heroes},gameState={};
+ const session=createQuestCombatSession({state,gameState,call(){},sync:()=>f.store.sync()});
+ assert.equal(recoverContinuousOrdinaryDefeatIfNeeded({state,session}),true,'the deployed hero KO reaches the ordinary recovery owner');
+ assert.deepEqual(heroes.map(hero=>hero.hp),[42,42,42,42]);
+ assert.ok(heroes.every(hero=>hero.isAlive));
+ assert.equal(f.store.data.lamp.autoEnabled,true);
+ await f.store.sync();
+ assert.equal(JSON.parse(f.values.get(EQUIPMENT_SAVE_KEY)).lamp.autoEnabled,true,'the ordinary recovery checkpoint retains enabled Auto');
+ const reloaded=createEquipmentStorage({globals:f.globals,storage:f.storage,locks:f.locks,reportError:()=>{}});
+ await reloaded.sync();assert.equal(reloaded.data.lamp.autoEnabled,true,'a reload after KO recovery restores the saved Auto preference');
+});
+
+test('failed battle-exit save keeps the encounter and enabled Auto intact',async()=>{
+ const f=fixture();for(const hero of Object.values(f.globals.HeroProgress.heroes))hero.currentLevel=5;await f.store.sync();await f.store.setAuto(true);
+ const gameState={};let layout='combat';const layoutState={getActiveLayoutId:()=>layout,async requestLayoutChange(target){layout=target;return true;},clearSnapshot(){}};
+ const flow=createStoryEntryFlow({gameState,layoutState,isReady:()=>true,getEnemies:()=>[],onCombatEnd:()=>f.store.stopAuto(),onCombatQuit:()=>f.store.stopAuto()});
+ Object.assign(gameState.storyEntry,{phase:'combat-paused',modal:'combat-pause',combatPaused:true,activeCard:0,combatUnlocked:true});
+ const saved=f.values.get(EQUIPMENT_SAVE_KEY);f.setFail(true);
+ assert.equal(await flow.quitPausedCombat(),false);assert.equal(gameState.storyEntry.phase,'combat-paused');assert.equal(gameState.storyEntry.modal,'combat-pause');
+ assert.equal(gameState.storyEntry.pending,false);assert.equal(f.store.data.lamp.autoEnabled,true);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),saved);
+ f.setFail(false);assert.equal(await flow.quitPausedCombat(),true);assert.equal(gameState.storyEntry.phase,'map');assert.equal(f.store.data.lamp.autoEnabled,false);
+});
+
+test('an in-flight emission commits before battle exit saves Auto off',async()=>{
+ const f=fixture();for(const hero of Object.values(f.globals.HeroProgress.heroes))hero.currentLevel=5;await f.store.sync();await f.store.setAuto(true);
+ const gameState={};let layout='combat';const layoutState={getActiveLayoutId:()=>layout,async requestLayoutChange(target){layout=target;return true;},clearSnapshot(){}};
+ const flow=createStoryEntryFlow({gameState,layoutState,isReady:()=>true,getEnemies:()=>[],onCombatEnd:()=>f.store.stopAuto()});
+ Object.assign(gameState.storyEntry,{phase:'combat',activeCard:0,combatUnlocked:true});
+ const emission=f.store.generate({}),exit=flow.victory();assert.equal(gameState.storyEntry.pending,true,'victory stays pending behind the in-flight save');
+ const [item,completed]=await Promise.all([emission,exit]);
+ assert.ok(item);assert.equal(completed,true);assert.equal(gameState.storyEntry.phase,'ladder');assert.equal(f.store.data.lamp.sequence,1);assert.equal(f.store.data.partyEXP,LAMP_CONFIG.drawEXP);
+ assert.equal(f.store.data.lamp.autoEnabled,false);const saved=JSON.parse(f.values.get(EQUIPMENT_SAVE_KEY));assert.equal(saved.lamp.sequence,1);assert.equal(saved.lamp.autoEnabled,false);
 });
 
 test('persisted two-second emission gate rejects spam, reload bypass and mixed manual/Auto draws',async()=>{
