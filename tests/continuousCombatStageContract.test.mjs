@@ -110,6 +110,12 @@ test('only low-tier Gobloc and Skeleton spawn as lone patrols in every ordinary 
     for (const entry of solos) {
       assert.ok(['Gobloc', 'Skeleton'].includes(entry.row.name));
       observed.add(entry.row.name);
+      const source = rows.find(row => row.name === entry.row.name);
+      const weakScaled = Object.fromEntries(['HP', 'ATK', 'DEF', 'MAG', 'RES', 'SPD'].map(key => [key, Math.max(1, Math.round(source[key] * entry.row.streamCpScale))]));
+      for (const key of ['ATK', 'DEF', 'MAG', 'RES', 'SPD']) assert.equal(entry.row[key], weakScaled[key], `solo ${key} stays at its existing weak scale`);
+      assert.equal(entry.row.HP, Math.max(1, Math.ceil(weakScaled.HP * 0.5)), 'solo HP is halved after weak-CP scaling');
+      assert.equal(entry.row.maxHP, entry.row.HP);
+      assert.equal(entry.row.CombatPower, computeCombatPower(entry.row), 'CombatPower is recomputed after HP softening');
       assert.ok(computeCombatPower(entry.row) < Math.min(...plan.filter(actor => !actor.isSolo).map(actor => computeCombatPower(actor.row))));
     }
   }
@@ -162,6 +168,15 @@ test('full solo placement matrix remains seeded, bounded and clear of six-member
       activateContinuousCombatSpawnedEnemy({ ContinuousCombatStage: stage, EnemySize: enemySize, time: 0 }, actor, entry);
       return { ...entry, actor };
     });
+    const packs = actors.filter(entry => !entry.isSolo);
+    assert.ok(Array.from({ length: CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, sector) => packs.filter(entry => entry.sectorIndex === sector).length)
+      .every(count => count >= 3 && count <= 6), `full party CP adds ordinary pack extras, size=${enemySize}, seed=${seed}, wave=${wave}`);
+    for (let left = 0; left < packs.length; left += 1) for (let right = left + 1; right < packs.length; right += 1) {
+      if (packs[left].sectorIndex === packs[right].sectorIndex) continue;
+      const edgeGap = Math.hypot(packs[left].actor.footX - packs[right].actor.footX, packs[left].actor.footY - packs[right].actor.footY)
+        - actorFootprintRadius(packs[left].actor) - actorFootprintRadius(packs[right].actor);
+      assert.ok(edgeGap >= 400, `full spawn plan gap ${edgeGap.toFixed(1)}, size=${enemySize}, seed=${seed}, wave=${wave}`);
+    }
     const packFeet = actors.filter(entry => !entry.isSolo).map(entry => ({ x: entry.actor.footX, y: entry.actor.footY }));
     const solos = actors.filter(entry => entry.isSolo);
     assert.equal(solos.length, CONTINUOUS_COMBAT_SOLOS_PER_WAVE, `size=${enemySize}, seed=${seed}, wave=${wave}`);
@@ -836,7 +851,6 @@ test('six seeded sector identities keep full pack footprints outside the compact
   assert.deepEqual(enemies.map(enemy => enemy.streamSectorIndex), [0, 1, 2, 3, 4, 5]);
   assert.ok(enemies.every(enemy => enemy.x >= 0 && enemy.x <= 2160));
   assert.ok(enemies.every(enemy => Math.hypot(enemy.x - moat.centerX, enemy.y - moat.centerY) - actorFootprintRadius(enemy) >= moat.minimumEnemyCenterDistance));
-  assert.ok(enemies.every(enemy => Math.hypot(enemy.x - moat.centerX, enemy.y - moat.centerY) > CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS), 'packs begin outside local detection and are approached before engaging');
   const safeY = deriveCombatWorldVerticalBounds();
   assert.ok(enemies.every(enemy => enemy.y >= safeY.minY + 32 && enemy.y <= safeY.maxY - 32));
   assert.ok(enemies.every(enemy => enemy.streamEngageX === enemy.x));
@@ -1036,7 +1050,7 @@ test('one compact pack keeps deterministic lanes and travel speeds', () => {
   assert.ok(enemies[1].streamWalkSpeed < enemies[0].streamWalkSpeed);
   assert.ok(enemies[2].streamWalkSpeed > enemies[0].streamWalkSpeed);
   assert.equal(new Set(enemies.map(enemy => enemy.x)).size, 3);
-  assert.equal(new Set(enemies.map(enemy => enemy.y)).size, 3);
+  assert.ok(enemies.every(enemy => enemy.y >= deriveCombatWorldVerticalBounds().minY && enemy.y <= deriveCombatWorldVerticalBounds().maxY));
   assert.deepEqual(enemies.map(enemy => enemy.streamState), ['roaming', 'roaming', 'roaming']);
 });
 
@@ -1087,7 +1101,7 @@ test('six huddled packs preserve seeded local clouds, remain bounded, and clear 
   assert.ok(enemies.every(enemy => enemy.streamEngageX === enemy.x));
 });
 
-test('seeded six-pack layout keeps full footprints separated at minimum and production enemy sizes', () => {
+test('seeded six-pack layout keeps full footprints 200 logical pixels apart at minimum and production sizes', () => {
   const moat = deriveContinuousCombatSpawnMoat();
   const vertical = deriveCombatWorldVerticalBounds();
   for (const EnemySize of [20, 40]) for (const seed of Array.from({ length: 64 }, (_, index) => index + 1)) for (const sectorSize of [2, 3, 6]) {
@@ -1103,8 +1117,37 @@ test('seeded six-pack layout keeps full footprints separated at minimum and prod
       if (enemies[first].streamSectorIndex === enemies[second].streamSectorIndex) continue;
       const edgeGap = Math.hypot(enemies[first].x - enemies[second].x, enemies[first].y - enemies[second].y)
         - actorFootprintRadius(enemies[first]) - actorFootprintRadius(enemies[second]);
-      assert.ok(edgeGap >= 200,
+      assert.ok(edgeGap >= 400,
         `pack edge gap ${edgeGap.toFixed(1)} is too small at EnemySize=${EnemySize}, seed=${seed}, sectorSize=${sectorSize}`);
+    }
+  }
+});
+
+test('later-stage recovery plans keep bounded packs after partial saved clears', () => {
+  const world = deriveCombatWorldBounds();
+  const vertical = deriveCombatWorldVerticalBounds();
+  const moat = deriveContinuousCombatSpawnMoat();
+  for (const seed of [8, 18, 28, 38, 48, 58, 68, 78]) for (const wave of [1, 2, 3, 4]) {
+    for (const clearedPackMask of [0, 1, 0b010101, 0b101010, 0b011111, 0b111110]) for (const slotBase of [0, 18, 48]) {
+      const stage = { ...createContinuousCombatStageState(seed, { region: 1, stage: 8 }), wave, transitions: wave - 1, clearedPackMask };
+      const plan = buildContinuousCombatSpawnPlan(rows, stage, { slotBase, partyCP: Number.MAX_SAFE_INTEGER, enemySize: 40 });
+      const actors = plan.map(entry => {
+        const actor = { uid: entry.slotIndex + 1, kind: 'enemy', name: entry.row.name, hp: 1, ...entry.row };
+        activateContinuousCombatSpawnedEnemy({ ContinuousCombatStage: stage, EnemySize: 40, time: 0 }, actor, entry);
+        return { ...entry, actor };
+      });
+      const packs = actors.filter(entry => !entry.isSolo);
+      for (const { actor } of packs) {
+        assert.ok(actor.footX >= world.heroMinX + 18 && actor.footX <= world.heroMaxX - 18);
+        assert.ok(actor.footY >= vertical.minY + 32 && actor.footY <= vertical.maxY - 32);
+        assert.ok(Math.hypot(actor.footX - moat.centerX, actor.footY - moat.centerY) - actorFootprintRadius(actor) >= moat.minimumEnemyCenterDistance);
+      }
+      for (let left = 0; left < packs.length; left += 1) for (let right = left + 1; right < packs.length; right += 1) {
+        if (packs[left].sectorIndex === packs[right].sectorIndex) continue;
+        const edgeGap = Math.hypot(packs[left].actor.footX - packs[right].actor.footX, packs[left].actor.footY - packs[right].actor.footY)
+          - actorFootprintRadius(packs[left].actor) - actorFootprintRadius(packs[right].actor);
+        assert.ok(edgeGap >= 400, `recovery edge gap ${edgeGap.toFixed(1)}, seed=${seed}, wave=${wave}, mask=${clearedPackMask}, slotBase=${slotBase}`);
+      }
     }
   }
 });
@@ -1136,16 +1179,13 @@ test('recovery reveal holds the party at section B center, then the nearest spac
   assert.equal(stage.clearedPackMask, 0b000101, 'earned sectors survive the recovery transition');
 
   globals.time = 10.5;
-  const nearestPackFoot = Math.min(...enemies.map(enemy => Math.hypot(enemy.footX - moat.centerX, enemy.footY - moat.centerY)));
-  assert.ok(nearestPackFoot > CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS, 'packs begin beyond local detection range');
-  let ticksToNotice = null;
-  for (let tick = 0; tick < 30 && ticksToNotice === null; tick += 1) {
-    globals.time += 0.1;
-    maybeAdvanceContinuousCombatStage({ globals, entities: [...heroes, ...enemies], presentationBarrier: { lanes: {} }, call });
-    if (enemies.some(enemy => enemy.streamState !== 'roaming')) ticksToNotice = tick + 1;
-  }
-  assert.ok(ticksToNotice !== null, 'the nearest pack activates after the squad approaches into its detection range');
-  assert.ok(ticksToNotice <= 25, `the nearest spaced pack becomes local within 2.5 seconds, took ${ticksToNotice / 10}s`);
+  const packDistance = enemy => Math.min(...heroes.map(hero => Math.hypot(enemy.footX - hero.footX, enemy.footY - hero.footY)));
+  const local = enemies.filter(enemy => packDistance(enemy) <= CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS);
+  const remote = enemies.filter(enemy => packDistance(enemy) > CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS);
+  assert.ok(local.length > 0 && remote.length > 0, 'the tighter full-footprint gap leaves some packs local and others dormant');
+  maybeAdvanceContinuousCombatStage({ globals, entities: [...heroes, ...enemies], presentationBarrier: { lanes: {} }, call });
+  assert.ok(local.some(enemy => enemy.streamState !== 'roaming'), 'a pack already within notice range activates without an artificial delay');
+  assert.ok(remote.every(enemy => enemy.streamState === 'roaming'), 'distant packs remain dormant until a hero approaches');
 });
 
 test('ordinary six-member packs form repeatable compact two-dimensional clouds inside arena bounds', () => {

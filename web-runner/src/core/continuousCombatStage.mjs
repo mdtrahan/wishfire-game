@@ -20,16 +20,10 @@ export const CONTINUOUS_COMBAT_SECTOR_RATIOS = Object.freeze([0.12, 0.27, 0.42, 
 const CONTINUOUS_COMBAT_SOLO_STAT_SCALE = 0.5;
 const CONTINUOUS_COMBAT_SOLO_PACK_CLEARANCE = 120;
 const CONTINUOUS_COMBAT_SOLO_CLEARANCE = 150;
-// Keep the four inner clouds beyond local notice at the huddle and leave the
-// outer-midpoint lanes open for the weaker solo patrols.
-const CONTINUOUS_COMBAT_PACK_LAYOUT = Object.freeze([
-  Object.freeze({ x: -0.352, y: 0 }),
-  Object.freeze({ x: -0.231, y: -0.347 }),
-  Object.freeze({ x: -0.231, y: 0.347 }),
-  Object.freeze({ x: 0.231, y: -0.347 }),
-  Object.freeze({ x: 0.231, y: 0.347 }),
-  Object.freeze({ x: 0.352, y: 0 }),
-]);
+const CONTINUOUS_COMBAT_PACK_BOUNDARY_INSET = 0.01;
+// Three columns keep the clouds spread across the arena. The top and bottom
+// rows use the available vertical bounds to maintain a full-footprint gap.
+const CONTINUOUS_COMBAT_PACK_COLUMNS = Object.freeze([-0.352, 0, 0.352]);
 export const CONTINUOUS_COMBAT_BOSS_ENTRY_WIPE_MS = 440;
 
 // Four normal packs form one repeatable stage. The boss is a gate rather than
@@ -172,6 +166,7 @@ function seededPackFoot(globals, { packIndex, rank, sector, order, sectorSize, c
     ^ Math.imul((Number(packIndex) || 0) + 1, 2246822519)
     ^ Math.imul((Number(sector) || 0) + 1, 3266489917)) >>> 0;
   const radius = Math.max(24, geometry.enemySize * 1.45);
+  const verticalRadius = Math.min(radius, 54);
   const minSpacing = Math.max(22, Math.min(34, geometry.enemySize * 0.8));
   const world = deriveCombatWorldBounds();
   const xMin = Number(world.heroMinX) + actorFootprintRadius({ kind: 'enemy' });
@@ -188,7 +183,7 @@ function seededPackFoot(globals, { packIndex, rank, sector, order, sectorSize, c
       const rawX = previewSeededRng(packSeed, draw++);
       const rawY = previewSeededRng(packSeed, draw++);
       const dx = (rawX * 2 - 1) * radius;
-      const dy = (rawY * 2 - 1) * radius;
+      const dy = (rawY * 2 - 1) * verticalRadius;
       if (dx * dx + dy * dy > radius * radius) continue;
       const candidate = {
         x: centerX + dx,
@@ -206,19 +201,26 @@ function seededPackFoot(globals, { packIndex, rank, sector, order, sectorSize, c
   }
   const moat = deriveContinuousCombatSpawnMoat();
   const packCenter = placed.reduce((sum, point) => ({ x: sum.x + point.x / placed.length, y: sum.y + point.y / placed.length }), { x: 0, y: 0 });
-  const packRadius = Math.max(...placed.map(point => Math.hypot(point.x - packCenter.x, point.y - packCenter.y) + actorFootprintRadius({ kind: 'enemy' })));
-  const layout = CONTINUOUS_COMBAT_PACK_LAYOUT[sector];
+  const packMinY = Math.min(...placed.map(point => point.y));
+  const packMaxY = Math.max(...placed.map(point => point.y));
+  const column = CONTINUOUS_COMBAT_PACK_COLUMNS[sector % CONTINUOUS_COMBAT_PACK_COLUMNS.length];
+  const row = Math.floor(sector / CONTINUOUS_COMBAT_PACK_COLUMNS.length);
   const targetCenter = {
-    x: moat.centerX + world.worldWidth * layout.x,
-    y: moat.centerY + (geometry.vertical.maxY - geometry.vertical.minY) * layout.y,
+    x: moat.centerX + world.worldWidth * column,
+    y: row === 0 ? yMin + CONTINUOUS_COMBAT_PACK_BOUNDARY_INSET : yMax - CONTINUOUS_COMBAT_PACK_BOUNDARY_INSET,
   };
-  const offset = { x: targetCenter.x - packCenter.x, y: targetCenter.y - packCenter.y };
+  const offset = {
+    x: targetCenter.x - packCenter.x,
+    y: row === 0 ? targetCenter.y - packMinY : targetCenter.y - packMaxY,
+  };
   const fits = placed.every(point => point.x + offset.x >= xMin && point.x + offset.x <= xMax
     && point.y + offset.y >= yMin && point.y + offset.y <= yMax);
-  if (!fits || Math.hypot(targetCenter.x - moat.centerX, targetCenter.y - moat.centerY) - packRadius < moat.minimumEnemyCenterDistance) {
+  const moved = placed.map(point => ({ x: point.x + offset.x, y: point.y + offset.y }));
+  const clearsMoat = moved.every(point => Math.hypot(point.x - moat.centerX, point.y - moat.centerY)
+    - actorFootprintRadius({ kind: 'enemy' }) >= moat.minimumEnemyCenterDistance);
+  if (!fits || !clearsMoat) {
     throw new RangeError('continuous combat pack layout cannot fit this authored cloud outside the recovery moat');
   }
-  const moved = placed.map(point => ({ x: point.x + offset.x, y: point.y + offset.y }));
   return moved[normalizedOrder] || moved[moved.length - 1];
 }
 
@@ -682,8 +684,12 @@ export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase
       const soloRow = soloRows[Math.floor(previewSeededRng(stageState?.seed || 1, Number(stageState?.transitions || 0) * CONTINUOUS_COMBAT_SOLOS_PER_WAVE + sector) * soloRows.length)];
       const foot = seededSoloFoot(stageState, sector, occupiedPackFeet, soloFeet, enemySize);
       soloFeet.push(foot);
+      const scaledSolo = scaleContinuousCombatRow(soloRow, findPackScale([soloRow], soloTargetCP));
+      scaledSolo.HP = Math.max(1, Math.ceil(scaledSolo.HP * 0.5));
+      scaledSolo.maxHP = scaledSolo.HP;
+      scaledSolo.CombatPower = computeCombatPower(scaledSolo);
       remainingEntries.push({
-        row: scaleContinuousCombatRow(soloRow, findPackScale([soloRow], soloTargetCP)),
+        row: scaledSolo,
         lane: 0,
         rank: Number(remainingEntries[0].rank || 0) + 1,
         packIndex: Number(remainingEntries[0].packIndex || 0),
