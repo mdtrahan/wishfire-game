@@ -36,4 +36,4 @@
 ## Child DOX Index
 - None.
 
-- Progression correction: Four completed waves automatically enter a boss; defeat resets the same stage to wave 1 and empty progress, while reload preserves earned progress; lamp upgrades require four paid stages followed by seven-hour construction. Hero actives use canonical level gates, currently 1/5/10/15/25 as a configurable default.
+- Progression correction: Four completed waves automatically enter a boss. Ordinary roaming KO recovery keeps the current wave and each earned pack clear through reload, then respawns only unfinished packs. Boss defeat keeps readiness at 100%, restores the full party, and retries after recovery pacing; it never refills the four-wave bar. Boss victory advances the stage and clears its progress. Lamp upgrades require four paid stages followed by seven-hour construction. Hero actives use canonical level gates, currently 1/5/10/15/25 as a configurable default.

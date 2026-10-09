@@ -132,7 +132,7 @@ export function drawCombatProgressHud(ctx, { state, images, worldToCanvas } = {}
   const trackEnd = bossX;
   const trackWidth = trackEnd - trackX;
   const headSize = 16 * scale;
-  const bossReady = progress.bossActive === true || (progress.bossAvailable === true && progress.bossEntryDeferredUntilWaveFour !== true);
+  const bossReady = progress.bossActive === true || progress.bossAvailable === true;
   const wave = Math.max(1, Math.min(4, Math.floor(Number(progress.wave) || 1)));
   const completed = bossReady ? 4 : wave - 1;
   const wavePacks = bossReady ? { fraction: 0 } : deriveContinuousCombatWavePackProgress(progress, state?.entities);

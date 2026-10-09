@@ -1,4 +1,4 @@
-import { activateContinuousCombatSpawnedEnemy, buildContinuousCombatSpawnPlan, getContinuousCombatPartyCP, resetContinuousCombatAfterDefeat } from '../src/core/continuousCombatStage.mjs';
+import { activateContinuousCombatSpawnedEnemy, buildContinuousCombatSpawnPlan, getContinuousCombatPartyCP, recordContinuousCombatWavePackProgress, resetContinuousCombatAfterDefeat } from '../src/core/continuousCombatStage.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import { resetActorPresentationAfterRestore } from '../src/core/actorPresentationState.mjs';
 import { placeContinuousCombatHeroesInRecoveryHuddle } from '../src/core/arenaCombat.mjs';
@@ -19,7 +19,7 @@ export function restoreHeroesToFullHP({ state, call }) {
 
 export function recoverContinuousOrdinaryDefeatIfNeeded({ state, session } = {}) {
   if (!hasContinuousOrdinaryHeroKO(state)) return false;
-  return session?.recoverContinuousDefeat?.({ preserveBossAccess: true }) || false;
+  return session?.recoverContinuousDefeat?.() || false;
 }
 
 export function createQuestCombatSession({ state, gameState, call, sync }) {
@@ -28,22 +28,25 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
     // encounters remain available to QA through their explicit setup hooks.
     prepare() { state.globals.QuestFiniteEncounter = 0; },
     isCleared() { return false; },
-    recoverContinuousDefeat({ preserveBossAccess = false } = {}) {
+    recoverContinuousDefeat() {
       if (Number(state.globals.ContinuousCombatStageLoop || 0) !== 1) return false;
+      const stageBeforeRecovery = state.globals.ContinuousCombatStage;
+      if (recordContinuousCombatWavePackProgress(stageBeforeRecovery, state.entities)) state.globals.HeroProgressDirty = true;
       call('SettleContinuousCombatRewards');
       resetCombatSessionConditions(state.globals, gameState, state.entities);
       state.entities = state.entities.filter(actor => actor?.kind === 'hero');
       state.globals.EnemySlots = [];
       state.globals.EnemyDeathVisualHoldByUID = {};
       state.globals.PendingDeaths = {};
-      resetContinuousCombatAfterDefeat(state.globals, { preserveBossAccess });
+      resetContinuousCombatAfterDefeat(state.globals);
       restoreHeroesToFullHP({ state, call });
       const heroes = state.entities.filter(actor => actor?.kind === 'hero');
       for (const hero of heroes) cleanseDebuffs(hero);
       placeContinuousCombatHeroesInRecoveryHuddle({ globals: state.globals, heroes, now: Number(state.globals.time || 0) });
       const stageState = state.globals.ContinuousCombatStage;
-      const plan = buildContinuousCombatSpawnPlan(state.globals.EnemyData, stageState, { slotBase: 0, partyCP: getContinuousCombatPartyCP(state.entities) });
+      const plan = stageState.bossAvailable ? [] : buildContinuousCombatSpawnPlan(state.globals.EnemyData, stageState, { slotBase: 0, partyCP: getContinuousCombatPartyCP(state.entities) });
       stageState.spawnSerial = plan.length;
+      stageState.spawnedPackMask = plan.reduce((mask, entry) => mask | (1 << entry.sectorIndex), 0);
       for (const entry of plan) {
         const enemy = call('SpawnEnemy', { ...entry.row, enemyRole: String(entry.row.enemyRole || entry.row.role || 'fodder') }, entry.slotIndex);
         activateContinuousCombatSpawnedEnemy(state.globals, enemy, entry);
@@ -61,6 +64,8 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
     },
     resurrect() {
       const heroes = state.entities.filter(actor => actor?.kind === 'hero');
+      const stage = state.globals.ContinuousCombatStage;
+      if (Number(state.globals.ContinuousCombatStageLoop || 0) === 1 && recordContinuousCombatWavePackProgress(stage, state.entities)) state.globals.HeroProgressDirty = true;
       const needsContinuousHuddle = Number(state.globals.ContinuousCombatStageLoop || 0) === 1
         && heroes.some(hero => Number(hero.hp || 0) <= 0);
       restoreHeroesToFullHP({ state, call });

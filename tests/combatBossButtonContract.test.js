@@ -62,13 +62,13 @@ test('combat progress HUD shows the current chapter and four-wave progress', asy
   state.globals.ContinuousCombatStage.wave = 1;
   calls.length = 0;
   const deferredHud = control.drawCombatProgressHud(ctx, { state, images: {}, worldToCanvas });
-  assert.equal(deferredHud.completedWaves, 0, 'the four-wave refill remains visible while saved access is deferred');
+  assert.equal(deferredHud.completedWaves, 0, 'cleared readiness refills the meter during an ordinary wave');
   assert.deepEqual(notchColors(), ['#243237', '#243237', '#243237']);
   state.globals.ContinuousCombatStage.bossAvailable = true;
   state.globals.ContinuousCombatStage.bossEntryDeferredUntilWaveFour = true;
   calls.length = 0;
-  assert.equal(control.drawCombatProgressHud(ctx, { state, images: {}, worldToCanvas }).completedWaves, 0);
-  assert.deepEqual(notchColors(), ['#243237', '#243237', '#243237']);
+  assert.equal(control.drawCombatProgressHud(ctx, { state, images: {}, worldToCanvas }).completedWaves, 4);
+  assert.deepEqual(notchColors(), ['#55d4be', '#55d4be', '#55d4be']);
 });
 
 test('actor HP bars follow their owners in the shared depth-sorted paint queue', () => {

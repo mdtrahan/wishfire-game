@@ -427,10 +427,11 @@ export function createCombatSessionInitializer({
       const hasManualEnemyLayout = configuredEnemySlots.some((value) => String(value || '').trim() !== DEV_TOOL_RANDOM_ENEMY_SLOT);
       let encounter = null;
       let spawnPlan = [];
-      const authoredContinuousPlan = Number(state.globals.ContinuousCombatStageLoop || 0) === 1
+      const continuousStageEncounter = Number(state.globals.ContinuousCombatStageLoop || 0) === 1;
+      const authoredContinuousPlan = continuousStageEncounter && !state.globals.ContinuousCombatStage?.bossAvailable
         ? buildContinuousCombatSpawnPlan(mappedEnemyData, state.globals.ContinuousCombatStage, { partyCP: continuousPartyCP })
         : [];
-      if (authoredContinuousPlan.length) {
+      if (continuousStageEncounter) {
         spawnPlan = authoredContinuousPlan;
         encounter = {
           selected: spawnPlan.map((entry) => entry.row),

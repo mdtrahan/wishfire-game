@@ -40,7 +40,7 @@ export function createHeroProgressStore(snapshot){
   if(pending&&typeof pending.id==='string'&&pending.id&&Array.isArray(pending.participants))store.pendingBattleRewards={id:pending.id,participants:pending.participants.filter(id=>typeof id==='string'),defeated:sanitizeRewardLedger(pending.defeated),defeatedGold:sanitizeRewardLedger(pending.defeatedGold)};
   store.pendingGoldSettlements=sanitizeRewardLedger(snapshot.pendingGoldSettlements);
   const stage=snapshot.continuousStage;
-  if(stage&&Number.isSafeInteger(stage.region)&&stage.region>=1&&Number.isInteger(stage.stage)&&stage.stage>=1&&stage.stage<=10&&Number.isInteger(stage.wave)&&stage.wave>=1&&stage.wave<=4&&typeof stage.bossAvailable==='boolean'&&Number.isSafeInteger(stage.clearedBosses)&&stage.clearedBosses>=0){store.continuousStage={region:stage.region,stage:stage.stage,wave:stage.wave,bossAvailable:stage.bossAvailable,clearedBosses:stage.clearedBosses};if(stage.bossEntryDeferredUntilWaveFour===true)store.continuousStage.bossEntryDeferredUntilWaveFour=true;}
+  if(stage&&Number.isSafeInteger(stage.region)&&stage.region>=1&&Number.isInteger(stage.stage)&&stage.stage>=1&&stage.stage<=10&&Number.isInteger(stage.wave)&&stage.wave>=1&&stage.wave<=4&&typeof stage.bossAvailable==='boolean'&&Number.isSafeInteger(stage.clearedBosses)&&stage.clearedBosses>=0){store.continuousStage={region:stage.region,stage:stage.stage,wave:stage.wave,bossAvailable:stage.bossAvailable,clearedBosses:stage.clearedBosses};if(Number.isSafeInteger(stage.clearedPackMask)&&stage.clearedPackMask>=0&&stage.clearedPackMask<=63)store.continuousStage.clearedPackMask=stage.clearedPackMask;}
  }
  for(const key of Object.keys(HERO_DEFINITIONS))if(!store.heroes[key])store.heroes[key]=newHeroProgress(key);
  return store;

@@ -119,6 +119,20 @@ test('fresh continuous initializer pads weak packs and finalize preserves each p
   for(const pack of sectors.values())assert.deepEqual(pack.map(enemy=>enemy.streamEntryOrder).sort((a,b)=>a-b),Array.from({length:pack.length},(_,index)=>index));
 });
 
+test('continuous initializer treats fully credited and boss-ready checkpoints as intentionally empty encounters', async () => {
+  const { createContinuousCombatStageState } = await import('../web-runner/src/core/continuousCombatStage.mjs');
+  const rows=['High Orc','Chimerilass','Djinn'].map(name=>({name,HP:30,ATK:4,DEF:2,MAG:1,RES:1,SPD:8}));
+  for (const stage of [
+    { ...createContinuousCombatStageState(8), wave: 3, clearedPackMask: 63 },
+    { ...createContinuousCombatStageState(8), wave: 1, bossAvailable: true, clearedPackMask: 63 },
+  ]) {
+    const { state, calls } = await initialize(productionPartyMembers(), null, false, { continuousStage: stage, enemyRows: rows });
+    assert.equal(state.entities.filter(actor => actor.kind === 'enemy').length, 0, 'reload must not fall through to generic or fodder encounter selection');
+    assert.deepEqual(Array.from(state.globals.EncounterSummary.reasonCodes), ['continuous_stage_authored']);
+    assert.equal(calls.includes('SpawnEnemy'), false);
+  }
+});
+
 test('continuous initializer applies an explicit QA encounter seed to pack-count randomness', async () => {
   const { buildContinuousCombatSpawnPlan, createContinuousCombatStageState, getContinuousCombatPartyCP } = await import('../web-runner/src/core/continuousCombatStage.mjs');
   const rows=['Gobloc','Skeleton'].map(name=>({name,HP:1,ATK:1,DEF:1,MAG:1,RES:1,SPD:1}));

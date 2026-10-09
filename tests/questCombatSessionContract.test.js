@@ -59,7 +59,7 @@ test('endless sessions never surface a finite-victory completion path', async ()
  assert.doesNotMatch(src,/battle-results|showResults|Continue/);
 });
 
-test('continuous defeat is free, clears boss readiness and restarts wave one at full health', async () => {
+test('boss defeat is free, retains the full ready milestone, and retries without fodder', async () => {
  const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
  const enemyRows=['Gobloc','Skeleton'].map((name,index)=>({name,HP:20+index*2,ATK:2,DEF:2,MAG:1,RES:1,SPD:8,CombatPower:20+index}));
  const state={entities:[{uid:1,kind:'hero',heroInstanceKey:'Hondo',hp:0,maxHP:42,isAlive:false,actionState:'ko',actionFacing:'left',actionStateUntil:86400,
@@ -80,7 +80,8 @@ test('continuous defeat is free, clears boss readiness and restarts wave one at 
  assert.equal(state.globals.ContinuousCombatStage.region,2);
  assert.equal(state.globals.ContinuousCombatStage.stage,3);
  assert.equal(state.globals.ContinuousCombatStage.wave,1);
- assert.equal(state.globals.ContinuousCombatStage.bossAvailable,false);
+ assert.equal(state.globals.ContinuousCombatStage.bossAvailable,true);
+ assert.equal(state.globals.ContinuousCombatStage.clearedPackMask,63);
  assert.equal(state.globals.ContinuousCombatStage.bossArmed,false);
  assert.equal(state.entities[0].hp,42);
  assert.equal(state.globals.PendingHeroHits.length,0,'queued enemy projectiles are discarded before revival');
@@ -89,13 +90,7 @@ test('continuous defeat is free, clears boss readiness and restarts wave one at 
  assert.equal(new Set(recoveredHeroes.map(hero=>hero.recoveryFadeStartedAt)).size,1,'the squad shares one reveal start');
  assert.ok(recoveredHeroes.every(hero=>Number.isFinite(hero.footX)&&Number.isFinite(hero.footY)&&hero.x===hero.footX&&hero.y===hero.footY));
  assert.ok(Math.max(...recoveredHeroes.map(hero=>hero.footX))-Math.min(...recoveredHeroes.map(hero=>hero.footX))<60,'heroes return to the compact authored huddle');
- const retryEnemies=state.entities.filter(actor=>actor.kind==='enemy');
- assert.ok(retryEnemies.length>12&&retryEnemies.length<=36, 'underpowered local packs receive up to three extra actors each');
- assert.ok(retryEnemies.every(actor=>actor.streamState==='roaming'));
- const retryPacks=new Map();for(const enemy of retryEnemies){const pack=retryPacks.get(enemy.streamSectorIndex)||[];pack.push(enemy);retryPacks.set(enemy.streamSectorIndex,pack);}
- assert.equal(retryPacks.size,6);
- assert.ok([...retryPacks.values()].every(pack=>pack.length>=3&&pack.length<=6));
- for(const pack of retryPacks.values())assert.deepEqual(pack.map(enemy=>enemy.streamEntryOrder).sort((a,b)=>a-b),Array.from({length:pack.length},(_,index)=>index));
+ assert.equal(state.entities.filter(actor=>actor.kind==='enemy').length,0,'boss retry does not restart ordinary waves');
  assert.ok(calls.includes('SettleContinuousCombatRewards'));
  assert.equal(calls.includes('ProcessTurn'),false);
  assert.equal(calls.includes('RebuildTurnOrderPreserveCurrent'),false);
@@ -103,7 +98,7 @@ test('continuous defeat is free, clears boss readiness and restarts wave one at 
  assert.equal(gameState.combatFailExitRequested,false);
 });
 
-test('ordinary recovery keeps earned boss access deferred while wave-one farming resumes', async () => {
+test('ordinary recovery preserves a wave-four ready milestone while boss retry waits for recovery pacing', async () => {
  const {createQuestCombatSession,recoverContinuousOrdinaryDefeatIfNeeded}=await import('../web-runner/systems/questCombatSession.mjs');
  const state={entities:[{uid:1,kind:'hero',heroIndex:0,hp:0,maxHP:42,isAlive:false,statuses:[{statusEffect:'dot',duration:4}],x:190,y:330,footX:190,footY:330}],globals:{
   ContinuousCombatStageLoop:1,ContinuousCombatStage:{seed:4,region:1,stage:2,wave:4,bossAvailable:true,bossArmed:false,bossActive:false,transitions:3,clearedBosses:2,nextEmissionAt:0,lastUpdatedAt:0,spawnSerial:0},
@@ -116,15 +111,38 @@ test('ordinary recovery keeps earned boss access deferred while wave-one farming
  assert.equal(recoverContinuousOrdinaryDefeatIfNeeded({state,session}),false);
  assert.equal(settlements,1,'the KO latch settles and recovers only once');
  const stage=state.globals.ContinuousCombatStage;
- assert.equal(stage.wave,1);
- assert.equal(stage.bossAvailable,true);
- assert.equal(stage.bossArmed,false);
- assert.equal(stage.bossActive,false);
- assert.equal(stage.bossEntryDeferredUntilWaveFour,true);
+ assert.equal(stage.wave,4);
+  assert.equal(stage.bossAvailable,true);
+  assert.equal(stage.bossArmed,false);
+  assert.equal(stage.bossActive,false);
+ assert.equal(stage.bossEntryDeferredUntilWaveFour,false);
+ assert.equal(stage.clearedPackMask,63);
+ assert.equal(stage.nextEmissionAt,11);
+ assert.equal(state.entities.filter(actor=>actor.kind==='enemy').length,0);
  const hero=state.entities.find(actor=>actor.kind==='hero');
  assert.equal(hero.hp,42);
  assert.equal(hero.statuses.length,0);
  assert.equal(hero.recoveryFadeStartedAt,8);
+});
+
+test('ordinary KO captures cleared sectors before removing enemies and respawns only unfinished packs', async () => {
+ const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
+ const {buildContinuousCombatSpawnPlan,activateContinuousCombatSpawnedEnemy,deriveContinuousCombatWavePackProgress}=await import('../web-runner/src/core/continuousCombatStage.mjs');
+ const rows=['High Orc','Chimerilass','Djinn'].map((name,index)=>({name,HP:20+index*2,ATK:2,DEF:2,MAG:1,RES:1,SPD:8,CombatPower:20+index}));
+ const stage={seed:4,region:1,stage:2,wave:3,bossAvailable:false,bossArmed:false,bossActive:false,transitions:2,clearedBosses:2,clearedPackMask:0,spawnedPackMask:63,nextEmissionAt:0,lastUpdatedAt:0,spawnSerial:12};
+ const globals={ContinuousCombatStageLoop:1,ContinuousCombatStage:stage,EnemyData:rows,EnemySlots:Array.from({length:12},(_,i)=>i),PendingDeaths:{},EnemyDeathVisualHoldByUID:{},time:8};
+ const entities=[{uid:1,kind:'hero',hp:0,maxHP:42,isAlive:false}];
+ const plan=buildContinuousCombatSpawnPlan(rows,stage);stage.spawnSerial=plan.length;stage.spawnedPackMask=plan.reduce((mask,entry)=>mask|(1<<entry.sectorIndex),0);
+ const enemies=plan.map((entry,index)=>{const enemy={uid:10+index,kind:'enemy',hp:entry.row.HP,maxHP:entry.row.HP,name:entry.row.name};activateContinuousCombatSpawnedEnemy(globals,enemy,entry);entities.push(enemy);return enemy;});
+ for(const enemy of enemies)if([0,3].includes(enemy.streamSectorIndex%6))enemy.hp=0;
+ const state={globals,entities};const session=createQuestCombatSession({state,gameState:{},call(name,data,slotIndex){if(name!=='SpawnEnemy')return null;const enemy={uid:100+slotIndex,kind:'enemy',name:data.name,hp:data.HP,maxHP:data.HP,slotIndex};state.entities.push(enemy);return enemy;},sync(){}});
+ assert.equal(session.recoverContinuousDefeat(),true);
+ const recoveredStage=globals.ContinuousCombatStage;
+ assert.equal(recoveredStage.wave,3,'KO recovery keeps the active wave');
+ assert.equal(recoveredStage.clearedPackMask,(1<<0)|(1<<3),'clears are recorded before the old enemy array is discarded');
+ assert.equal(deriveContinuousCombatWavePackProgress(recoveredStage,state.entities).fraction,2/6);
+ const recovered=state.entities.filter(actor=>actor.kind==='enemy');
+ assert.deepEqual([...new Set(recovered.map(enemy=>enemy.streamSectorIndex%6))],[1,2,4,5]);
 });
 
 test('new battle clears combat conditions and retired Flow state while retaining gold and progression', async () => {

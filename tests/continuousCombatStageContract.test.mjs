@@ -8,6 +8,7 @@ import {
   CONTINUOUS_COMBAT_PACK_CP_STEP,
   CONTINUOUS_COMBAT_PACK_INTERVAL_SEC,
   CONTINUOUS_COMBAT_PACKS_PER_WAVE,
+  CONTINUOUS_COMBAT_ALL_PACKS_MASK,
   CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX,
   CONTINUOUS_COMBAT_SECTOR_RATIOS,
   CONTINUOUS_COMBAT_STAGES,
@@ -24,6 +25,7 @@ import {
   pushContinuousCombatEnemy,
   reverseContinuousCombatEnemy,
   resetContinuousCombatAfterDefeat,
+  recordContinuousCombatWavePackProgress,
   scaleContinuousCombatPackRow,
   teleportContinuousCombatEnemy,
 } from '../web-runner/src/core/continuousCombatStage.mjs';
@@ -89,27 +91,7 @@ test('normal wave plans start with six evenly spaced base packs of two or three 
   assert.ok(totals[2] / totals[1] < 1 + CONTINUOUS_COMBAT_PACK_CP_STEP * 2);
 });
 
-test('earned boss access stays deferred through four recovery waves, then uses normal automatic entry', () => {
-  const globals = { ContinuousCombatStageLoop: 1, GamePhase: 'MENU', time: 1, EnemyData: rows, ContinuousCombatStage: {
-    ...createContinuousCombatStageState(42), wave: 1, bossAvailable: true, bossArmed: false, bossActive: false,
-    bossEntryDeferredUntilWaveFour: true, nextEmissionAt: 99,
-  }};
-  const calls = [];
-  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities: [{ uid: 1, kind: 'hero', hp: 20 }], call: name => calls.push(name) }), false);
-  assert.equal(globals.ContinuousCombatStage.bossActive, false);
-  assert.equal(globals.ContinuousCombatStage.bossAvailable, true);
-  assert.deepEqual(calls, []);
-
-  let state = globals.ContinuousCombatStage;
-  for (const wave of [1, 2, 3]) state = advanceContinuousCombatStage(state).state;
-  assert.equal(state.wave, 4);
-  const ready = advanceContinuousCombatStage(state).state;
-  assert.equal(ready.wave, 1);
-  assert.equal(ready.bossAvailable, true);
-  assert.equal(ready.bossEntryDeferredUntilWaveFour, false);
-});
-
-test('the runtime stage owner does not summon after the first recovered wave', () => {
+test('legacy four-wave refill state is ignored and saved boss access auto-enters once', () => {
   const globals = {
     ContinuousCombatStageLoop: 1, GamePhase: 'RUNTIME', BattleStartActive: 0, time: 0,
     EnemyData: rows, EnemySize: 40, EnemySlots: [], PendingDeaths: {}, EnemyDeathVisualHoldByUID: {},
@@ -125,17 +107,10 @@ test('the runtime stage owner does not summon after the first recovered wave', (
     globals.EnemySlots.push(enemy.uid);
     return enemy;
   };
-  for (let clearedWave = 1; clearedWave <= 4; clearedWave += 1) {
-    if (clearedWave > 1) for (const enemy of entities.filter(actor => actor.kind === 'enemy')) enemy.hp = 0;
-    globals.time = Math.max(globals.time, Number(globals.ContinuousCombatStage.nextEmissionAt || 0));
-    assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), true, `cleared recovery wave ${clearedWave} advances`);
-    if (clearedWave < 4) {
-      assert.equal(globals.ContinuousCombatStage.bossActive, false, `wave ${clearedWave} does not summon the boss`);
-      assert.equal(globals.ContinuousCombatStage.wave, clearedWave + 1);
-    }
-  }
-  assert.equal(globals.ContinuousCombatStage.bossActive, true, 'the earned boss enters after wave four clears');
-  assert.ok(entities.some(actor => actor.kind === 'enemy' && (actor.combatRank === 'boss' || actor.enemyRole === 'boss')));
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), true);
+  assert.equal(globals.ContinuousCombatStage.bossActive, true);
+  assert.equal(globals.ContinuousCombatStage.bossEntryDeferredUntilWaveFour, true, 'runtime ignores the retired field without requiring a save rewrite');
+  assert.equal(entities.filter(actor => actor.kind === 'enemy').length, 1, 'ready boss entry does not refill with fodder');
 });
 
 test('cleared packs move the current-wave HUD while production waits for all packs and presentation to settle', async () => {
@@ -143,6 +118,7 @@ test('cleared packs move the current-wave HUD while production waits for all pac
   const stage = { ...createContinuousCombatStageState(42), wave: 2, transitions: 2, nextEmissionAt: 0, lastUpdatedAt: 10, lastArenaUpdatedAt: 10 };
   const plan = buildContinuousCombatSpawnPlan(rows, stage, { partyCP: 100000 });
   stage.spawnSerial = plan.length;
+  stage.spawnedPackMask = plan.reduce((mask, entry) => mask | (1 << entry.sectorIndex), 0);
   const packSizes = Array.from({ length: CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, sector) => plan.filter(entry => entry.sectorIndex === sector).length);
   assert.ok(new Set(packSizes).size > 1, 'fixture includes different sector sizes from seeded CP extras');
   let nextUID = 10;
@@ -232,7 +208,7 @@ test('cleared packs move the current-wave HUD while production waits for all pac
   assert.equal(deriveContinuousCombatWavePackProgress(savedGlobals.ContinuousCombatStage, savedWaveEntities).clearedPacks, 2);
 
   const retryGlobals = { ContinuousCombatStageLoop: 1, time: 14, EnemyData: rows, ContinuousCombatStage: { ...stage, bossAvailable: true } };
-  assert.equal(resetContinuousCombatAfterDefeat(retryGlobals, { preserveBossAccess: true }), true);
+  assert.equal(resetContinuousCombatAfterDefeat(retryGlobals), true);
   const retryPlan = buildContinuousCombatSpawnPlan(rows, retryGlobals.ContinuousCombatStage, { partyCP: 100000 });
   retryGlobals.ContinuousCombatStage.spawnSerial = retryPlan.length;
   const retryEnemies = retryPlan.map((entry, index) => {
@@ -240,10 +216,10 @@ test('cleared packs move the current-wave HUD while production waits for all pac
     activateContinuousCombatSpawnedEnemy(retryGlobals, enemy, entry);
     return enemy;
   });
-  assert.equal(retryGlobals.ContinuousCombatStage.wave, 1);
+  assert.equal(retryGlobals.ContinuousCombatStage.wave, stage.wave);
   assert.equal(retryGlobals.ContinuousCombatStage.bossAvailable, true);
-  assert.equal(retryGlobals.ContinuousCombatStage.bossEntryDeferredUntilWaveFour, true);
-  assert.equal(deriveContinuousCombatWavePackProgress(retryGlobals.ContinuousCombatStage, retryEnemies).fraction, 0, 'defeat recovery starts a fresh transient wave fill');
+  assert.equal(retryGlobals.ContinuousCombatStage.bossEntryDeferredUntilWaveFour, false);
+  assert.equal(deriveContinuousCombatWavePackProgress(retryGlobals.ContinuousCombatStage, retryEnemies).fraction, 1, 'defeat recovery retains the full earned boss milestone');
 
   const legacyReady = { ...createContinuousCombatStageState(89), wave: 1, bossAvailable: true, spawnSerial: 0 };
   const legacyReadyHud = drawCombatProgressHud(ctx, { state: { globals: { ContinuousCombatStage: legacyReady }, entities: [] }, worldToCanvas: (x, y) => ({ x, y }) });
@@ -252,6 +228,59 @@ test('cleared packs move the current-wave HUD while production waits for all pac
 
   const uninitialized = { ...createContinuousCombatStageState(88), wave: 2, transitions: 2, spawnSerial: 0 };
   assert.deepEqual(deriveContinuousCombatWavePackProgress(uninitialized, []), { clearedPacks: 0, packsPerWave: 6, fraction: 0 });
+});
+
+test('current-wave pack credit is idempotent across KO recovery and unfinished-pack respawns', () => {
+  const stage = { ...createContinuousCombatStageState(61), wave: 3, transitions: 4 };
+  const plan = buildContinuousCombatSpawnPlan(rows, stage);
+  stage.spawnSerial = plan.length;
+  stage.spawnedPackMask = plan.reduce((mask, entry) => mask | (1 << entry.sectorIndex), 0);
+  const entities = plan.map((entry, index) => {
+    const enemy = { uid: index + 1, kind: 'enemy', hp: entry.row.HP, maxHP: entry.row.HP, name: entry.row.name };
+    activateContinuousCombatSpawnedEnemy({ ContinuousCombatStage: stage, time: 0 }, enemy, entry);
+    return enemy;
+  });
+  const bySector = new Map();
+  for (const enemy of entities) {
+    const sector = enemy.streamSectorIndex % CONTINUOUS_COMBAT_PACKS_PER_WAVE;
+    bySector.set(sector, [...(bySector.get(sector) || []), enemy]);
+  }
+  bySector.get(0)[0].hp = 0;
+  assert.equal(deriveContinuousCombatWavePackProgress(stage, entities).fraction, 0, 'one death inside a multi-member pack earns no sector credit');
+  for (const sector of [0, 4]) for (const enemy of bySector.get(sector)) enemy.hp = 0;
+  assert.equal(recordContinuousCombatWavePackProgress(stage, entities), true);
+  assert.equal(recordContinuousCombatWavePackProgress(stage, entities), false, 'recording the same clear twice changes no progress');
+  assert.equal(stage.clearedPackMask, (1 << 0) | (1 << 4));
+  assert.equal(deriveContinuousCombatWavePackProgress(stage, entities).fraction, 2 / 6);
+
+  const globals = { ContinuousCombatStage: stage, time: 9 };
+  resetContinuousCombatAfterDefeat(globals);
+  const retryStage = globals.ContinuousCombatStage;
+  const retryPlan = buildContinuousCombatSpawnPlan(rows, retryStage);
+  assert.deepEqual([...new Set(retryPlan.map(entry => entry.sectorIndex))], [1, 2, 3, 5], 'recovery respawns only unfinished sectors');
+  retryStage.spawnSerial = retryPlan.length;
+  retryStage.spawnedPackMask = retryPlan.reduce((mask, entry) => mask | (1 << entry.sectorIndex), 0);
+  const retryEnemies = retryPlan.map((entry, index) => {
+    const enemy = { uid: 100 + index, kind: 'enemy', hp: entry.row.HP, maxHP: entry.row.HP, name: entry.row.name };
+    activateContinuousCombatSpawnedEnemy(globals, enemy, entry);
+    return enemy;
+  });
+  assert.equal(deriveContinuousCombatWavePackProgress(retryStage, retryEnemies).fraction, 2 / 6, 'recovered wave keeps the earned fraction');
+  for (const enemy of retryEnemies) enemy.hp = 0;
+  recordContinuousCombatWavePackProgress(retryStage, retryEnemies);
+  assert.equal(retryStage.clearedPackMask, CONTINUOUS_COMBAT_ALL_PACKS_MASK, 'the remaining clear completes the same wave exactly once');
+  assert.equal(buildContinuousCombatSpawnPlan(rows, retryStage).length, 0, 'a fully credited wave has no fodder to respawn');
+});
+
+test('partial spawned-sector metadata limits progress capture to sectors that actually entered', () => {
+  const stage = { ...createContinuousCombatStageState(7), spawnSerial: 2, spawnedPackMask: 0b000101 };
+  const entities = [
+    { kind: 'enemy', hp: 0, streamPackIndex: 0, streamSectorIndex: 0 },
+    { kind: 'enemy', hp: 20, streamPackIndex: 0, streamSectorIndex: 2 },
+  ];
+  assert.equal(deriveContinuousCombatWavePackProgress(stage, entities).fraction, 1 / 6, 'only a dead sector in the actual spawn plan earns credit');
+  recordContinuousCombatWavePackProgress(stage, entities);
+  assert.equal(stage.clearedPackMask, 0b000001);
 });
 
 test('only underpowered ordinary sectors draw one seeded plus-one-to-three count and preserve base rows', () => {
@@ -441,8 +470,8 @@ test('the fourth wave waits for its normal interval before looping', () => {
   assert.equal(globals.ContinuousCombatStage.wave, 1);
 });
 
-test('boss defeat clears readiness and requires the four-wave loop before another entry', () => {
-  const globals = { time: 12, EnemyData: rows, ContinuousCombatStage: createContinuousCombatStageState(42, { region: 2, stage: 4 }) };
+test('boss defeat retains readiness and retries automatically after the recovery interval', () => {
+  const globals = { ContinuousCombatStageLoop: 1, time: 12, GamePhase: 'RUNTIME', BattleStartActive: 0, EnemyData: rows, EnemySlots: [], PendingDeaths: {}, EnemyDeathVisualHoldByUID: {}, ContinuousCombatStage: createContinuousCombatStageState(42, { region: 2, stage: 4 }) };
   const entities=[{uid:1,kind:'hero',hp:40,maxHP:75}];
   const call=(name,row)=>{if(name==='SpawnEnemy'){const e={uid:2,kind:'enemy',hp:row.HP};entities.push(e);return e;}};
   assert.equal(armContinuousCombatBoss(globals,entities,call), false);
@@ -454,10 +483,14 @@ test('boss defeat clears readiness and requires the four-wave loop before anothe
   assert.equal(globals.ContinuousCombatStage.region, 2);
   assert.equal(globals.ContinuousCombatStage.stage, 4);
   assert.equal(globals.ContinuousCombatStage.wave, 1);
-  assert.equal(globals.ContinuousCombatStage.bossAvailable, false);
+  assert.equal(globals.ContinuousCombatStage.bossAvailable, true);
+  assert.equal(deriveContinuousCombatWavePackProgress(globals.ContinuousCombatStage, entities).fraction, 1);
   assert.equal(globals.ContinuousCombatStage.bossArmed, false);
-  assert.equal(armContinuousCombatBoss(globals,entities,call),false);
-  assert.equal(entities.filter(a=>a.kind==='enemy').length,0);
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), false, 'boss retry observes the recovery interval');
+  globals.time = 15;
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), true);
+  assert.equal(globals.ContinuousCombatStage.bossActive, true);
+  assert.equal(entities.filter(a=>a.kind==='enemy').length,1,'the retry enters one boss encounter');
 });
 
 test('fourth cleared wave enters the boss once through the existing wipe without spawning wave-one fodder', () => {
