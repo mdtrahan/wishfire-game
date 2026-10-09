@@ -8,6 +8,13 @@ const distance = (actor, target) => {
   const origin = actorFootPoint(actor), destination = actorFootPoint(target);
   return Math.hypot(destination.x - origin.x, destination.y - origin.y);
 };
+function compensateActorTravelTarget(actor, target) {
+  const source = actorFootPoint(actor), dx = Number(target?.footX || 0) - source.x, dy = Number(target?.footY || 0) - source.y;
+  const length = Math.hypot(dx, dy);
+  if (length <= 1e-6) return target;
+  const reach = actorAttackReach(actor) + actorFootprintRadius({ kind: 'arena-waypoint' });
+  return { ...target, footX: Number(target.footX) + dx / length * reach, footY: Number(target.footY) + dy / length * reach };
+}
 const nearest = (actor, candidates) => candidates.slice().sort((a, b) => {
   const origin = actorFootPoint(actor), pa = actorFootPoint(a), pb = actorFootPoint(b);
   return Math.hypot(pa.x - origin.x, pa.y - origin.y) - Math.hypot(pb.x - origin.x, pb.y - origin.y)
@@ -54,6 +61,8 @@ const FORMATION_ROW_GAP = 8;
 const FRONTLINE_LEAD_GAP = 6.4;
 const REGROUP_BACK_OFFSET = 9.6;
 const SUPPORT_STEP_BACK = 12.8;
+const INITIAL_ROAM_WALK_DISTANCE = 200;
+const INITIAL_ROAM_SEED_DRAW = 0x764;
 const CONTACT_INSET = 6.4;
 const FRONTLINE_HERO_NAMES = new Set(['fara', 'falie', 'hondo', 'huun']);
 function heroFormationSlot(hero, index) {
@@ -69,19 +78,38 @@ function heroFormationSlot(hero, index) {
   };
 }
 
-export function deriveContinuousCombatRecoveryHuddle(heroes = []) {
+export function deriveContinuousCombatRecoveryHuddle(heroes = [], heading = 1) {
   const formation = deriveCombatWorldStartFormation(heroes.length);
   const vertical = deriveCombatWorldVerticalBounds();
   const centerY = (vertical.minY + vertical.maxY) / 2;
+  const direction = Number(heading) < 0 ? -1 : 1;
   return heroes.map((hero, index) => {
     const slot = heroFormationSlot(hero, index);
     const rowSide = Math.sign(slot.rowOffset) || (index % 2 === 0 ? -1 : 1);
     return {
       hero,
-      x: formation.centerX + (slot.frontline ? TRAVEL_FRONT_OFFSET : -TRAVEL_FRONT_OFFSET),
+      x: formation.centerX + direction * (slot.frontline ? TRAVEL_FRONT_OFFSET : -TRAVEL_FRONT_OFFSET),
       y: centerY + rowSide * (actorFootprintRadius(hero) + 2),
     };
   });
+}
+
+function setContinuousCombatInitialRoam({ globals = {}, attempt = 0 } = {}) {
+  const stageSeed = Number(globals.ContinuousCombatStage?.seed || globals.EncounterSeed || 1) >>> 0 || 1;
+  const roamAttempt = Math.max(0, Math.floor(Number(attempt) || 0));
+  const direction = previewSeededRng(stageSeed, INITIAL_ROAM_SEED_DRAW + roamAttempt) < 0.5 ? -1 : 1;
+  const world = deriveCombatWorldBounds();
+  const centerX = deriveCombatWorldStartFormation(0).centerX;
+  const targetX = clamp(centerX + direction * INITIAL_ROAM_WALK_DISTANCE, world.heroMinX, world.heroMaxX);
+  globals.ContinuousCombatRoamAttempt = roamAttempt;
+  globals.ContinuousCombatInitialRoam = {
+    direction,
+    originX: centerX,
+    targetX,
+    distance: Math.abs(targetX - centerX),
+    attempt: roamAttempt,
+  };
+  return direction;
 }
 
 export function deriveContinuousCombatSpawnMoat() {
@@ -99,12 +127,16 @@ export function placeContinuousCombatHeroesInRecoveryHuddle({ globals = {}, hero
     HeroLungeOffsetByUID: {}, HeroRestBasePosByUID: {}, HeroRestFeetPosByUID: {}, HeroIconPosByIndex: [],
     RealtimeHeroBasicScheduledActions: {}, RealtimeHeroFocusTargetUID: 0,
   });
-  for (const { hero, x, y } of deriveContinuousCombatRecoveryHuddle(heroes)) {
+  const attempt = Number.isSafeInteger(globals.ContinuousCombatRoamAttempt)
+    ? globals.ContinuousCombatRoamAttempt + 1
+    : 0;
+  const direction = setContinuousCombatInitialRoam({ globals, attempt });
+  for (const { hero, x, y } of deriveContinuousCombatRecoveryHuddle(heroes, direction)) {
     hero.x = hero.footX = x;
     hero.y = hero.footY = y;
     hero.arenaEnabled = true;
     hero.arenaTargetUID = 0;
-    hero.facing = 'right';
+    hero.facing = direction < 0 ? 'left' : 'right';
     delete hero.originX;
     delete hero.originY;
     delete hero.targetX;
@@ -198,6 +230,29 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   const centerY = heroes.reduce((sum, hero) => sum + actorFootPoint(hero).y, 0) / heroes.length;
   const now = Number(globals.time || 0);
   const recoveryReveal = heroes.some(hero => isActorRecoveryRevealActive(hero, now));
+  let initialRoam = globals.ContinuousCombatInitialRoam;
+  if (initialRoam && bossEncounter) {
+    delete globals.ContinuousCombatInitialRoam;
+    initialRoam = null;
+  }
+  if (initialRoam) {
+    const enemyActions = globals.RealtimeEnemyActionsByUID || {};
+    const enemyAttackInFlight = enemies.some(enemy => {
+      const action = enemyActions[String(Number(enemy.uid || 0))];
+      const targetsHero = heroes.some(hero => Number(hero.uid || 0) === Number(action?.targetUID || 0));
+      const hasHeroImpact = (globals.CombatImpactVisuals || []).some(impact => Number(impact?.ownerUID || 0) === Number(enemy.uid || 0)
+        && heroes.some(hero => Number(hero.uid || 0) === Number(impact?.targetUID || 0)));
+      return (!!action?.active && targetsHero) || hasHeroImpact;
+    });
+    const actorInAttackReach = enemies.some(enemy => heroes.some(hero =>
+      isActorTargetInRange(enemy, hero) || isActorTargetInRange(hero, enemy)));
+    const distanceWalked = Number(initialRoam.direction || 0) * (center - Number(initialRoam.originX || 0));
+    if (enemyAttackInFlight || actorInAttackReach || distanceWalked >= Number(initialRoam.distance || INITIAL_ROAM_WALK_DISTANCE) - 8) {
+      delete globals.ContinuousCombatInitialRoam;
+      initialRoam = null;
+    }
+  }
+  const initialRoamActive = !!initialRoam;
   if (!recoveryReveal) {
     const moat = deriveContinuousCombatSpawnMoat();
     const footprint = actorFootprintRadius({ kind: 'enemy' });
@@ -293,8 +348,8 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   const travelPoint = targetPoint || nearestGroupCenter || { x: center + 1, y: centerY };
   const travelDeltaX = travelPoint.x - center, travelDeltaY = travelPoint.y - centerY;
   const travelLength = Math.hypot(travelDeltaX, travelDeltaY);
-  const directionX = travelLength > 1e-6 ? travelDeltaX / travelLength : 1;
-  const directionY = travelLength > 1e-6 ? travelDeltaY / travelLength : 0;
+  const directionX = initialRoamActive ? Number(initialRoam.direction) : travelLength > 1e-6 ? travelDeltaX / travelLength : 1;
+  const directionY = initialRoamActive ? 0 : travelLength > 1e-6 ? travelDeltaY / travelLength : 0;
   const targetDirection = Math.sign(directionX) || 1;
   const frontline = heroes.filter((hero, index) => heroFormationSlot(hero, index).frontline);
   const supports = heroes.filter((hero, index) => !heroFormationSlot(hero, index).frontline);
@@ -334,7 +389,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
       if (Math.abs(directionX) > 1e-6) hero.facing = directionX > 0 ? 'right' : 'left';
       continue;
     }
-    const target = sharedTarget;
+    const target = initialRoamActive ? null : sharedTarget;
     if (target) {
       hero.arenaTargetUID = Number(target.uid || 0);
       const alongOffset = CONTACT_INSET;
@@ -347,12 +402,13 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
       preserveActionState: Number(hero.actionStateUntil || 0) > Number(globals.time || 0) });
     } else {
     const nextPoint = hasStragglers ? { x: center, y: centerY }
-        : nearestGroupCenter || { x: clamp(center + 160, bounds.heroMinX, bounds.heroMaxX), y: centerY };
+        : initialRoamActive ? { x: Number(initialRoam.targetX), y: centerY }
+          : nearestGroupCenter || { x: clamp(center + 160, bounds.heroMinX, bounds.heroMaxX), y: centerY };
       const deltaX = nextPoint.x - center, deltaY = nextPoint.y - centerY;
       const deltaLength = Math.hypot(deltaX, deltaY) || 1;
       const directionX = deltaLength > 1e-6 ? deltaX / deltaLength : targetDirection;
       const directionY = deltaLength > 1e-6 ? deltaY / deltaLength : 0;
-      const approachDistance = hasStragglers || locallyDetected ? 0 : 130;
+      const approachDistance = initialRoamActive || hasStragglers || locallyDetected ? 0 : 130;
       const approachX = nextPoint.x - directionX * approachDistance;
       const approachY = nextPoint.y - directionY * approachDistance;
       const frontOffset = formation.frontline ? TRAVEL_FRONT_OFFSET : -TRAVEL_FRONT_OFFSET;
@@ -361,8 +417,8 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
         footX: clamp(approachX + directionX * frontOffset - directionY * sideOffset, bounds.heroMinX, bounds.heroMaxX),
       footY: clamp(approachY + directionY * frontOffset + directionX * sideOffset, minY, maxY),
       };
-      hero.arenaTargetUID = 0;
-      advanceActorToward(hero, searchTarget, { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
+      hero.arenaTargetUID = Number(sharedTarget?.uid || 0);
+      advanceActorToward(hero, initialRoamActive ? compensateActorTravelTarget(hero, searchTarget) : searchTarget, { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
         preserveActionState: Number(hero.actionStateUntil || 0) > Number(globals.time || 0) });
     }
   }

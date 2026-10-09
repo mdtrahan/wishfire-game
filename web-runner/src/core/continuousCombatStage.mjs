@@ -429,6 +429,14 @@ export function finalizeContinuousCombatProduction(globals, entities = []) {
     globals.ContinuousCombatStage.spawnedPackMask = (entities || []).filter(actor => actor?.kind === 'enemy')
       .reduce((mask, actor) => Number.isInteger(actor.streamSectorIndex) ? mask | (1 << (actor.streamSectorIndex % CONTINUOUS_COMBAT_PACKS_PER_WAVE)) : mask, 0);
   }
+  const hasBossActor = productionEnemies.some(actor => String(actor.combatRank || actor.enemyRole || actor.role || '').toLowerCase() === 'boss');
+  if (globals.ContinuousCombatStage && !globals.ContinuousCombatStage.bossActive && !hasBossActor) {
+    globals.ContinuousCombatRoamAttempt = -1;
+    placeContinuousCombatHeroesInRecoveryHuddle({ globals, heroes: productionHeroes, now });
+  } else {
+    delete globals.ContinuousCombatInitialRoam;
+    delete globals.ContinuousCombatRoamAttempt;
+  }
   globals.NativeBattleEnded = false;
   if (globals.ProgressionBattle) {
     globals.ProgressionBattle.outcome = 'active';
