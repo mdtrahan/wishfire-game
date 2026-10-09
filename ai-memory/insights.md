@@ -620,3 +620,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Recovery placement needs both a world-center anchor and enemy-free travel clearance. Protect the whole seeded pack cloud from the spawn moat; keeping only its centroid outside still lets edge members trigger an immediate fight. Verify detection distance and visible travel after the shared recovery fade.
 
 - Party focus selects where heroes fight; it must not restrict enemy attack eligibility. Reconcile every nearby enemy against its own reach and living targets before scheduling, and test simultaneous multi-pack attackers through the real cooldown owner.
+
+- Keep earned boss readiness separate from permission to enter. A stage-scoped manual-retry latch survives ordinary KO, boss defeat, save/reload and an active retry; ready stages continue fodder farming at 100% until explicit summon. Capture final-pack credit before the KO recovery filter, so a wave-four last-kill boundary latches readiness instead of auto-entering on recovery. Preserve the existing whole-party defeat rule during boss attempts; first-KO scheduler interruption applies only to ordinary roaming.

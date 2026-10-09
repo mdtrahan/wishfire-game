@@ -481,8 +481,7 @@ async function captureCombat(page, viewport, artifactDir) {
   });
   await page.waitForFunction(() => {
     const globals = window.__codexGame.globals;
-    return Number(globals.RealtimeHeroFocusTargetUID || 0) > 0
-      && Object.keys(globals.RealtimeHeroBasicClocks || {}).length > 0;
+    return Object.keys(globals.RealtimeHeroBasicClocks || {}).length > 0;
   }, null, { timeout: 5000 });
   await resetTrace(page);
   await page.evaluate(() => window.__codexGame.stepFrames(2));

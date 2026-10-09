@@ -44,6 +44,7 @@ export function createContinuousCombatStageState(seed = 1, { region = 1, stage =
     clearedPackMask: 0,
     spawnedPackMask: 0,
     bossAvailable: false,
+    bossSummonRequired: false,
     bossArmed: false,
     bossActive: false,
     bossWorldX: null,
@@ -71,7 +72,6 @@ export function configureContinuousCombatProduction(globals, { productionPath = 
     clearedPackMask: normalizeContinuousCombatPackMask(checkpoint?.clearedPackMask),
     spawnedPackMask: 0,
     spawnSerial: 0,
-    bossEntryDeferredUntilWaveFour: false,
   };
   return true;
 }
@@ -475,6 +475,7 @@ export function advanceContinuousCombatStage(stageState) {
       clearedPackMask: 0,
       spawnedPackMask: 0,
       bossAvailable: false,
+      bossSummonRequired: false,
       bossArmed: false,
       bossActive: false,
       bossCameraCenterX: null,
@@ -543,20 +544,34 @@ export function armContinuousCombatBoss(globals, entities, call, { wallNowMs = D
   return true;
 }
 
+export function summonContinuousCombatBoss(globals, entities, call, options = {}) {
+  const state = globals?.ContinuousCombatStage;
+  if (!state?.bossAvailable || !state.bossSummonRequired || state.bossActive) return false;
+  const heroes = (entities || []).filter(actor => actor?.kind === 'hero');
+  const now = Number(globals.time || 0);
+  if (!heroes.length || heroes.some(hero => Number(hero.hp || 0) <= 0 || isActorRecoveryRevealActive(hero, now))) return false;
+  if (!armContinuousCombatBoss(globals, entities, call, options)) return false;
+  if (globals.HeroProgress) globals.HeroProgressDirty = true;
+  return true;
+}
+
 export function resetContinuousCombatAfterDefeat(globals) {
   const state = globals?.ContinuousCombatStage;
   if (!state) return false;
-  const bossAvailable = !!state.bossAvailable || !!state.bossActive;
-  const clearedPackMask = bossAvailable ? CONTINUOUS_COMBAT_ALL_PACKS_MASK : normalizeContinuousCombatPackMask(state.clearedPackMask);
+  const recordedPackMask = normalizeContinuousCombatPackMask(state.clearedPackMask);
+  const finalWaveClear = !state.bossActive && Number(state.wave || 1) >= CONTINUOUS_COMBAT_WAVES_PER_STAGE
+    && recordedPackMask === CONTINUOUS_COMBAT_ALL_PACKS_MASK;
+  const bossAvailable = !!state.bossAvailable || !!state.bossActive || finalWaveClear;
+  const clearedPackMask = bossAvailable ? 0 : recordedPackMask;
   globals.ContinuousCombatStage = {
     ...state,
-    wave: state.bossActive ? 1 : state.wave,
+    wave: bossAvailable ? 1 : state.wave,
     clearedPackMask,
     spawnedPackMask: 0,
     bossAvailable,
+    bossSummonRequired: true,
     bossArmed: false,
     bossActive: false,
-    bossEntryDeferredUntilWaveFour: false,
     bossCameraCenterX: null,
     bossWorldX: null,
     bossTransitionStartedAtMs: null,
@@ -565,6 +580,7 @@ export function resetContinuousCombatAfterDefeat(globals) {
     awaitingPackArrival: false,
     lastUpdatedAt: Number(globals.time || 0),
   };
+  if (globals.HeroProgress) globals.HeroProgressDirty = true;
   return true;
 }
 
@@ -615,7 +631,7 @@ function expandWaveRows(stage, byName, catalogRows) {
 }
 
 export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase = 0, partyCP = 0, enemySize = 40 } = {}) {
-  if (stageState?.bossAvailable && !stageState?.bossActive) return [];
+  if (stageState?.bossAvailable && !stageState?.bossActive && !stageState?.bossSummonRequired) return [];
   const stage = getContinuousCombatStage(stageState);
   const rows = Array.isArray(enemyRows) ? enemyRows : [];
   if (!stage || !rows.length) return [];
@@ -840,9 +856,10 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   const stageState = globals.ContinuousCombatStage;
   if (!stageState) return false;
   if (recordContinuousCombatWavePackProgress(stageState, entities)) globals.HeroProgressDirty = true;
+  if (!stageState.bossActive && (entities || []).some(actor => actor?.kind === 'hero' && Number(actor.hp || 0) <= 0)) return false;
   if (stageState.bossActive && Number(stageState.bossTransitionEndsAtMs || 0) > Date.now()) return false;
   if ((entities || []).some(actor => actor?.kind === 'hero' && isActorRecoveryRevealActive(actor, globals.time || 0))) return false;
-  if (stageState.bossAvailable && !stageState.bossActive
+  if (stageState.bossAvailable && !stageState.bossActive && !stageState.bossSummonRequired
     && Number(globals.time || 0) >= Number(stageState.nextEmissionAt || 0) && globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) {
     return armContinuousCombatBoss(globals, entities, call);
   }
@@ -856,6 +873,7 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
     globals.NativeBattleEnded = false;
     call('TickRealtimeEnemyActions');
   }
+  if (!stageState.bossActive && (entities || []).some(actor => actor?.kind === 'hero' && Number(actor.hp || 0) <= 0)) return false;
   if (globals.GamePhase !== 'RUNTIME' || globals.BattleStartActive) return false;
 
   const current = getContinuousCombatStage(stageState);
@@ -880,7 +898,7 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
     transition = advanceContinuousCombatStage(stageState);
   }
 
-  const enteringBoss = !!transition?.state?.bossAvailable;
+  const enteringBoss = !!transition?.state?.bossAvailable && !stageState.bossAvailable && !stageState.bossSummonRequired;
   if (!transition?.stage) return false;
   if (enteringBoss) {
     globals.ContinuousCombatStage = transition.state;

@@ -44,7 +44,7 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
       for (const hero of heroes) cleanseDebuffs(hero);
       placeContinuousCombatHeroesInRecoveryHuddle({ globals: state.globals, heroes, now: Number(state.globals.time || 0) });
       const stageState = state.globals.ContinuousCombatStage;
-      const plan = stageState.bossAvailable ? [] : buildContinuousCombatSpawnPlan(state.globals.EnemyData, stageState, { slotBase: 0, partyCP: getContinuousCombatPartyCP(state.entities), enemySize: Number(state.globals.EnemySize || 40) });
+      const plan = stageState.bossAvailable && !stageState.bossSummonRequired ? [] : buildContinuousCombatSpawnPlan(state.globals.EnemyData, stageState, { slotBase: 0, partyCP: getContinuousCombatPartyCP(state.entities), enemySize: Number(state.globals.EnemySize || 40) });
       stageState.spawnSerial = plan.length;
       stageState.spawnedPackMask = plan.reduce((mask, entry) => mask | (1 << entry.sectorIndex), 0);
       for (const entry of plan) {

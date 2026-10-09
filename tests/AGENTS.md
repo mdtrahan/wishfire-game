@@ -17,6 +17,7 @@
 
 ## Local Contracts
 - Boss progress proof executes the production tick: four full waves enter once and save readiness before the wipe; ordinary recovery preserves wave and sector-mask progress, boss defeat saves full readiness, and both survive reload without duplicate packs. HP depth checks execute assembled enemy/bar queue statements for loaded puppets and fallback sprites. Keep chapter/rail centering and notch geometry measured independently.
+- Manual retry proof keeps first clean boss entry automatic, latches every stage KO and boss defeat through checkpoint reload, loops ready fodder at 100%, blocks summon during KO/recovery reveal, and verifies explicit summon uses the existing arm path. Boss victory clears the retry latch; a single KO during the boss still follows the whole-party defeat rule.
 - Arena engagement proof advances the real arena owner and enemy scheduler together: all living actors in local sectors can enter independent melee/ranged actions in one tick, out-of-reach actors remain unscheduled, and remote roaming packs remain dormant.
 - `combatBossFallbackContract.test.mjs` protects ready/active interrupted visibility, compact top-band bounds, suppression of the rail, transaction-safe lamp closure, and one-time return to the existing combat snapshot.
 - Ground-skill presentation checks preserve planted zone point/radius across caster movement, recipient foot projection, source/target KO eligibility, exact expiry, paused-frame equality and zero simulation mutation.

@@ -85,6 +85,14 @@ test('UI lock accepts targetless roaming only without an in-range committed targ
   assert.equal(evaluateCombatFocusInvariant({ focusTargetUID: 21, heroes: [hero], enemies: [remote, committed], globals: stage }).pass, true);
 });
 
+test('UI lock startup waits for basic clocks without requiring an attack target', () => {
+  const gate = read('tools/ui_presentation_lock_gate.mjs');
+  const wait = gate.match(/await page\.waitForFunction\(\(\) => \{\s*const globals = window\.__codexGame\.globals;([\s\S]*?)\}, null, \{ timeout: 5000 \}\);/);
+  assert.ok(wait, 'missing realtime combat startup synchronization');
+  assert.match(wait[1], /RealtimeHeroBasicClocks/);
+  assert.doesNotMatch(wait[1], /RealtimeHeroFocusTargetUID/, 'targetless roaming is valid during startup');
+});
+
 test('pre-commit routes staged UI-owner changes through the full UI lock', () => {
   const hook = read('.beads/hooks/pre-commit');
 

@@ -16,7 +16,8 @@ export function bossFallbackPresentation({ state, layoutId, overlayOpen = false,
   const stage = state?.globals?.ContinuousCombatStage;
   const ready = stage?.bossAvailable === true || stage?.bossActive === true;
   const interrupted = layoutId !== 'combat' || overlayOpen;
-  const visible = ready && interrupted && !suppress && !['opening', 'defeat'].includes(phase);
+  const manualRetryInCombat = layoutId === 'combat' && stage?.bossSummonRequired === true && stage?.bossActive !== true;
+  const visible = ready && (interrupted || manualRetryInCombat) && !suppress && !['opening', 'defeat'].includes(phase);
   const region = Math.max(1, Number(stage?.region) || 1);
   const stageNumber = Math.max(1, Number(stage?.stage) || 1);
   return {

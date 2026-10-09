@@ -26,6 +26,7 @@ import {
   pushContinuousCombatEnemy,
   reverseContinuousCombatEnemy,
   resetContinuousCombatAfterDefeat,
+  summonContinuousCombatBoss,
   recordContinuousCombatWavePackProgress,
   scaleContinuousCombatPackRow,
   teleportContinuousCombatEnemy,
@@ -256,11 +257,11 @@ test('solo enemies patrol within a small safe radius, pause for recovery reveal 
   assert.ok(heroes.every(hero => hero.arenaTargetUID === targetSolo.uid), 'detected solos enter the existing local target and combat flow');
 });
 
-test('legacy four-wave refill state is ignored and saved boss access auto-enters once', () => {
+test('a latched ready stage keeps farming after wave clears until the player summons the boss', () => {
   const globals = {
     ContinuousCombatStageLoop: 1, GamePhase: 'RUNTIME', BattleStartActive: 0, time: 0,
     EnemyData: rows, EnemySize: 40, EnemySlots: [], PendingDeaths: {}, EnemyDeathVisualHoldByUID: {},
-    ContinuousCombatStage: { ...createContinuousCombatStageState(52), wave: 1, bossAvailable: true, bossArmed: false, bossActive: false, bossEntryDeferredUntilWaveFour: true, nextEmissionAt: 0 },
+    ContinuousCombatStage: { ...createContinuousCombatStageState(52), wave: 1, bossAvailable: true, bossSummonRequired: true, nextEmissionAt: 0 },
   };
   const entities = [{ uid: 1, kind: 'hero', hp: 40, maxHP: 40, footX: 180, footY: 280 }];
   let nextUID = 10;
@@ -272,10 +273,29 @@ test('legacy four-wave refill state is ignored and saved boss access auto-enters
     globals.EnemySlots.push(enemy.uid);
     return enemy;
   };
-  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), true);
-  assert.equal(globals.ContinuousCombatStage.bossActive, true);
-  assert.equal(globals.ContinuousCombatStage.bossEntryDeferredUntilWaveFour, true, 'runtime ignores the retired field without requiring a save rewrite');
-  assert.equal(entities.filter(actor => actor.kind === 'enemy').length, 1, 'ready boss entry does not refill with fodder');
+  for (const wave of [1, 2, 3, 4]) {
+    globals.ContinuousCombatStage.wave = wave;
+    globals.ContinuousCombatStage.nextEmissionAt = globals.time;
+    entities.splice(0, entities.length, entities.find(actor => actor.kind === 'hero'));
+    assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), true, `wave ${wave} clears into farming`);
+    assert.equal(globals.ContinuousCombatStage.bossActive, false);
+    assert.equal(globals.ContinuousCombatStage.bossAvailable, true);
+    assert.equal(globals.ContinuousCombatStage.bossSummonRequired, true);
+    assert.ok(entities.some(actor => actor.kind === 'enemy' && actor.enemyRole !== 'boss'), 'the next fodder wave keeps the player farming');
+  }
+  const hero = entities.find(actor => actor.kind === 'hero');
+  hero.hp = 0;
+  assert.equal(summonContinuousCombatBoss(globals, entities, call), false, 'manual summon cannot bypass a KO before the recovery owner runs');
+  hero.hp = hero.maxHP;
+  hero.recoveryFadeStartedAt = globals.time;
+  assert.equal(summonContinuousCombatBoss(globals, entities, call), false, 'manual summon waits until the shared recovery reveal ends');
+  delete hero.recoveryFadeStartedAt;
+  assert.equal(summonContinuousCombatBoss(globals, entities, call, { wallNowMs: 2000 }), true);
+  assert.equal(globals.ContinuousCombatStage.bossActive, true, 'the explicit action uses the regular boss arm/snapshot path');
+  assert.equal(globals.ContinuousCombatStage.bossSummonRequired, true, 'the stage latch survives the active attempt and reload checkpoint');
+  assert.deepEqual(entities.filter(actor => actor.kind === 'enemy').map(actor => actor.enemyRole), ['boss']);
+  const victory = advanceContinuousCombatStage(globals.ContinuousCombatStage);
+  assert.equal(victory.state.bossSummonRequired, false, 'boss victory clears the stage-scoped manual retry latch');
 });
 
 test('cleared packs move the current-wave HUD while production waits for all packs and presentation to settle', async () => {
@@ -390,9 +410,10 @@ test('cleared packs move the current-wave HUD while production waits for all pac
     activateContinuousCombatSpawnedEnemy(retryGlobals, enemy, entry);
     return enemy;
   });
-  assert.equal(retryGlobals.ContinuousCombatStage.wave, stage.wave);
+  assert.equal(retryGlobals.ContinuousCombatStage.wave, 1, 'ready-boss defeat restarts ordinary farming at wave one');
+  assert.equal(retryGlobals.ContinuousCombatStage.clearedPackMask, 0, 'ready-boss defeat starts a fresh farming wave');
   assert.equal(retryGlobals.ContinuousCombatStage.bossAvailable, true);
-  assert.equal(retryGlobals.ContinuousCombatStage.bossEntryDeferredUntilWaveFour, false);
+  assert.equal(retryGlobals.ContinuousCombatStage.bossSummonRequired, true);
   assert.equal(deriveContinuousCombatWavePackProgress(retryGlobals.ContinuousCombatStage, retryEnemies).fraction, 1, 'defeat recovery retains the full earned boss milestone');
 
   const legacyReady = { ...createContinuousCombatStageState(89), wave: 1, bossAvailable: true, spawnSerial: 0 };
@@ -590,11 +611,11 @@ test('boss victory advances the checkpoint and wraps stage ten into the next reg
 test('ordinary waves carry HP while a boss clear restores and cleanses the party', () => {
   for (const stage of [
     { wave: 4 },
-    { wave: 4, bossAvailable: true, bossArmed: true, bossActive: true },
+    { wave: 4, bossAvailable: true, bossSummonRequired: true, bossArmed: true, bossActive: true },
   ]) {
     const heroes = [
       { uid: 1, kind: 'hero', baseHeroName: 'Falie', hp: 13, maxHP: 50, isAlive: true, footX: 1800, footY: 275, statuses: [{ statusEffect: 'dot' }, { statusEffect: 'atkUp' }], statusEffects: [{ statusEffect: 'blind' }, { statusEffect: 'barrier' }] },
-      { uid: 2, kind: 'hero', baseHeroName: 'Huun', hp: 0, maxHP: 40, isAlive: false, footX: 420, footY: 205, actionState: 'ko', actionFacing: 'left', actionStateStartedAt: 1, actionImpactAt: 1, actionStateUntil: 86401, statuses: [{ statusEffect: 'silence' }] },
+      { uid: 2, kind: 'hero', baseHeroName: 'Huun', hp: stage.bossActive ? 0 : 10, maxHP: 40, isAlive: !stage.bossActive, footX: 420, footY: 205, actionState: stage.bossActive ? 'ko' : undefined, actionFacing: 'left', actionStateStartedAt: 1, actionImpactAt: 1, actionStateUntil: 86401, statuses: [{ statusEffect: 'silence' }] },
     ];
     const entities = [...heroes];
     const globals = {
@@ -615,8 +636,8 @@ test('ordinary waves carry HP while a boss clear restores and cleanses the party
     };
     assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), true);
     const clearedBoss = !!stage.bossActive;
-    assert.deepEqual(heroes.map(hero => hero.hp), clearedBoss ? [60, 40] : [13, 0]);
-    assert.deepEqual(heroes.map(hero => hero.isAlive), clearedBoss ? [true, true] : [true, false]);
+    assert.deepEqual(heroes.map(hero => hero.hp), clearedBoss ? [60, 40] : [13, 10]);
+    assert.deepEqual(heroes.map(hero => hero.isAlive), [true, true]);
     if (clearedBoss) {
       const huddle = deriveContinuousCombatRecoveryHuddle(heroes);
       assert.deepEqual(heroes.map(hero => [hero.footX, hero.footY]), huddle.map(({ x, y }) => [x, y]), 'the revived party snaps to role-based huddle coordinates');
@@ -625,6 +646,7 @@ test('ordinary waves carry HP while a boss clear restores and cleanses the party
       assert.deepEqual([heroes[1].footX, heroes[1].footY], [420, 205], 'ordinary wave settlement leaves KO position unchanged');
     }
     if (clearedBoss) {
+      assert.equal(globals.ContinuousCombatStage.bossSummonRequired, false, 'boss victory clears the retry latch for the new stage');
       for (const hero of heroes) {
         assert.equal(hero.locomotion, 'idle');
         assert.equal(hero.locomotionStartedAt, 10);
@@ -656,7 +678,7 @@ test('the fourth wave waits for its normal interval before looping', () => {
   assert.equal(globals.ContinuousCombatStage.wave, 1);
 });
 
-test('boss defeat retains readiness and retries automatically after the recovery interval', () => {
+test('boss defeat retains readiness and waits for explicit summon after recovery pacing', () => {
   const globals = { ContinuousCombatStageLoop: 1, time: 12, GamePhase: 'RUNTIME', BattleStartActive: 0, EnemyData: rows, EnemySlots: [], PendingDeaths: {}, EnemyDeathVisualHoldByUID: {}, ContinuousCombatStage: createContinuousCombatStageState(42, { region: 2, stage: 4 }) };
   const entities=[{uid:1,kind:'hero',hp:40,maxHP:75}];
   const call=(name,row)=>{if(name==='SpawnEnemy'){const e={uid:2,kind:'enemy',hp:row.HP};entities.push(e);return e;}};
@@ -670,13 +692,55 @@ test('boss defeat retains readiness and retries automatically after the recovery
   assert.equal(globals.ContinuousCombatStage.stage, 4);
   assert.equal(globals.ContinuousCombatStage.wave, 1);
   assert.equal(globals.ContinuousCombatStage.bossAvailable, true);
+  assert.equal(globals.ContinuousCombatStage.bossSummonRequired, true);
   assert.equal(deriveContinuousCombatWavePackProgress(globals.ContinuousCombatStage, entities).fraction, 1);
   assert.equal(globals.ContinuousCombatStage.bossArmed, false);
   assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), false, 'boss retry observes the recovery interval');
   globals.time = 15;
   assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), true);
+  assert.equal(globals.ContinuousCombatStage.bossActive, false);
+  assert.ok(entities.some(a=>a.kind==='enemy'&&a.enemyRole!=='boss'),'the retry resumes farming fodder');
+  assert.equal(summonContinuousCombatBoss(globals, entities, call), true, 'the explicit retry summons the boss');
   assert.equal(globals.ContinuousCombatStage.bossActive, true);
-  assert.equal(entities.filter(a=>a.kind==='enemy').length,1,'the retry enters one boss encounter');
+  assert.equal(globals.ContinuousCombatStage.bossSummonRequired, true);
+});
+
+test('a KO on wave-four last-kill boundary records readiness but never auto-enters', () => {
+  const stage = { ...createContinuousCombatStageState(73), wave: 4, spawnedPackMask: 63, spawnSerial: 1, nextEmissionAt: 0 };
+  const globals = { ContinuousCombatStageLoop: 1, time: 10, GamePhase: 'RUNTIME', BattleStartActive: 0, EnemyData: rows, EnemySlots: [], PendingDeaths: {}, EnemyDeathVisualHoldByUID: {}, ContinuousCombatStage: stage };
+  const entities = [{ uid: 1, kind: 'hero', hp: 100, maxHP: 100 }];
+  assert.equal(recordContinuousCombatWavePackProgress(stage, entities), true, 'the tick captures all six last-kill clears before recovery filters enemies');
+  assert.equal(stage.clearedPackMask, 63);
+  assert.equal(resetContinuousCombatAfterDefeat(globals), true);
+  assert.equal(globals.ContinuousCombatStage.bossAvailable, true);
+  assert.equal(globals.ContinuousCombatStage.bossSummonRequired, true);
+  let nextUID = 10;
+  const call = (name, row, slotIndex) => {
+    if (name !== 'SpawnEnemy') return;
+    const enemy = { uid: nextUID++, kind: 'enemy', name: row.name, enemyRole: row.enemyRole || row.role || 'fodder', hp: row.HP, maxHP: row.HP, slotIndex };
+    entities.push(enemy);
+    return enemy;
+  };
+  globals.time = 12;
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), false, 'the normal recovery interval still paces the farming restart');
+  globals.time = 13;
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), true);
+  assert.equal(globals.ContinuousCombatStage.bossActive, false);
+  assert.ok(entities.some(actor => actor.kind === 'enemy' && actor.enemyRole !== 'boss'), 'completed-approach recovery farms fodder instead of entering the boss');
+});
+
+test('an individual KO does not interrupt an active boss attempt', () => {
+  const globals = { ContinuousCombatStageLoop: 1, ContinuousCombatStage: { ...createContinuousCombatStageState(31), bossAvailable: true, bossSummonRequired: true, bossActive: true, bossTransitionEndsAtMs: 0, nextEmissionAt: 99 }, GamePhase: 'RUNTIME', BattleStartActive: 0, time: 5 };
+  const entities = [
+    { uid: 1, kind: 'hero', hp: 0, maxHP: 40 },
+    { uid: 2, kind: 'hero', hp: 40, maxHP: 40 },
+    { uid: 2, kind: 'hero', hp: 40, maxHP: 40, x: 200, y: 290, footX: 200, footY: 290 },
+    { uid: 3, kind: 'enemy', hp: 40, maxHP: 40, streamState: 'engaged', x: 220, y: 290, footX: 220, footY: 290, streamSectorIndex: 0, streamPackIndex: 0, streamEncounterGroupId: 1 },
+  ];
+  const calls = [];
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call: name => calls.push(name) }), false);
+  assert.ok(calls.includes('TickRealtimeEnemyActions'), 'boss actions continue under the existing whole-party defeat rule');
+  assert.equal(globals.ContinuousCombatStage.bossActive, true);
 });
 
 test('fourth cleared wave enters the boss once through the existing wipe without spawning wave-one fodder', () => {

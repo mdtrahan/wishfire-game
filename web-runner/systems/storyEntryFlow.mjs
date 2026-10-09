@@ -207,13 +207,16 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
     async resumeBossActivity() {
       if (!isReady() || entry.pending || bossResumePending || ['opening', 'defeat'].includes(entry.phase) || !canCloseTransientSurface()) return false;
       const previous = { phase: entry.phase, modal: entry.modal, combatPaused: entry.combatPaused };
+      const alreadyInCombat = layoutState.getActiveLayoutId() === 'combat';
       bossResumePending = true;
       try {
         closeTransientSurface();
-        const changed = await go('combat', 'boss-fallback-return');
-        if (!changed) {
-          Object.assign(entry, previous);
-          return false;
+        if (!alreadyInCombat) {
+          const changed = await go('combat', 'boss-fallback-return');
+          if (!changed) {
+            Object.assign(entry, previous);
+            return false;
+          }
         }
         entry.phase = 'combat';
         entry.modal = null;

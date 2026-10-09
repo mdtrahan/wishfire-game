@@ -428,7 +428,7 @@ export function createCombatSessionInitializer({
       let encounter = null;
       let spawnPlan = [];
       const continuousStageEncounter = Number(state.globals.ContinuousCombatStageLoop || 0) === 1;
-      const authoredContinuousPlan = continuousStageEncounter && !state.globals.ContinuousCombatStage?.bossAvailable
+      const authoredContinuousPlan = continuousStageEncounter && (!state.globals.ContinuousCombatStage?.bossAvailable || state.globals.ContinuousCombatStage?.bossSummonRequired)
         ? buildContinuousCombatSpawnPlan(mappedEnemyData, state.globals.ContinuousCombatStage, { partyCP: continuousPartyCP, enemySize: Number(state.globals.EnemySize || 40) })
         : [];
       if (continuousStageEncounter) {

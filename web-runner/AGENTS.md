@@ -23,7 +23,7 @@
 - Production and developer QA variants enter the same realtime combat loop. Finite/story defeat checks remain Rust-owned after scheduled work; ordinary continuous roaming interrupts the current scheduler at the first hero KO and routes the attempt to session recovery. Paused/background frames freeze combat time, and combat never dispatches turn advancement.
 - Do not store durable gameplay rules in render modules, asset JSON, or `app.js` when a module/core owner exists.
 
-- The combat progress HUD replaces manual Boss input. Three internal notches represent four full waves; chapter/stage reads authoritative stage state. The shared stage owner enters bosses automatically, and defeat resets progress before retry.
+- The combat HUD shows chapter progress and the ready/active boss control. Three internal notches represent four full waves; chapter/stage reads authoritative stage state. A clean first approach enters automatically. Any hero KO or boss defeat preserves earned progress and latches manual retry for that stage; once readiness is earned, fodder farming continues at 100% until summon. The latch survives reload and clears on boss victory.
 
 ## Work Guidance
 - Before editing, read the child AGENTS.md for the touched subfolder.
@@ -59,5 +59,7 @@
 - `web-runner/assets/AGENTS.md` - runtime data, images, fonts, gems, and WASM artifact.
 
 - Quest entry: map -> ladder -> authored sub-chapter. Navigation uses one shared charcoal/brass menu with a teal active glow across non-dialogue screens. The test-only questQA query exposes deterministic defeat/monster-clear controls for browser proof.
+
+- Progression recovery separates earned readiness from boss-entry authorization: clean first readiness enters automatically, while any stage KO or boss defeat latches manual retry until boss victory. The latch and full approach survive reload; ready farming waves continue until explicit Summon Boss.
 
 - Lamp progression: manual/Auto draws grant all four heroes saved EXP, with cumulative receipts and per-hero lampEXPClaimed replay. Enemy rewards grant zero new EXP/Gold. Auto requires all four Lv5, switches off at capacity, and requires explicit restart. Dismantling essence buys 20/30/40/50 capacity tiers; the combat-only strip carries item levels and a collection bubble above Auto.

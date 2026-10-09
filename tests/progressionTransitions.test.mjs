@@ -7,7 +7,7 @@ import {attachHeroProgress,createHeroProgressStore,setHeroProgressLevel,awardHer
 import {createLampEconomy,validateLampEconomy,LAMP_CONFIG,purchaseLampStage,upgradeLamp,speedUpLampUpgrade} from '../web-runner/src/core/lampGear.mjs';
 import {createEquipmentStorage,EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
 import {castRealtimeHeroSkill,realtimeRetaliation} from '../web-runner/src/core/realtimeHeroSkills.mjs';
-import {buildContinuousCombatSpawnPlan,configureContinuousCombatProduction,deriveContinuousCombatWavePackProgress,maybeAdvanceContinuousCombatStage,resetContinuousCombatAfterDefeat} from '../web-runner/src/core/continuousCombatStage.mjs';
+import {buildContinuousCombatSpawnPlan,configureContinuousCombatProduction,deriveContinuousCombatWavePackProgress,maybeAdvanceContinuousCombatStage,resetContinuousCombatAfterDefeat,summonContinuousCombatBoss} from '../web-runner/src/core/continuousCombatStage.mjs';
 import {resetCombatSessionConditions} from '../web-runner/systems/combatSessionReset.mjs';
 
 const progressSource=readFileSync(new URL('../web-runner/systems/heroProgressStorage.js',import.meta.url),'utf8');
@@ -103,16 +103,16 @@ test('RESET GAME preserves a recovery snapshot and unrelated origin data; failed
  const fresh=createHeroProgressStore();assert.ok(Object.values(fresh.heroes).every(h=>h.currentLevel===1&&h.currentEXP===0));
 });
 
-test('boss readiness and full progress restore from the existing progression save and survive defeat',()=>{
- const store=createHeroProgressStore();const g={HeroProgress:store,ContinuousCombatStageLoop:1,ContinuousCombatStage:{region:3,stage:7,wave:3,bossAvailable:true,bossActive:true,clearedBosses:26}};
+test('manual boss retry state restores from the existing progression save and survives defeat',()=>{
+ const store=createHeroProgressStore();const g={HeroProgress:store,ContinuousCombatStageLoop:1,ContinuousCombatStage:{region:3,stage:7,wave:3,bossAvailable:true,bossSummonRequired:true,bossActive:true,clearedBosses:26}};
  const values=new Map();const source=progressSource.replace(/^import .*\n/gm,'').replace(/export /g,'');
  const persist=new Function('window',source+';return persistHeroProgressIfDirty;')({localStorage:{setItem:(k,v)=>values.set(k,v)}});
  assert.equal(persist({stateGlobals:g}),true);const restored=createHeroProgressStore(JSON.parse(values.get(HERO_PROGRESS_SAVE_KEY)));
  const next={HeroProgress:restored};configureContinuousCombatProduction(next,{productionPath:true});
- assert.equal(next.ContinuousCombatStage.region,3);assert.equal(next.ContinuousCombatStage.stage,7);assert.equal(next.ContinuousCombatStage.wave,1);assert.equal(next.ContinuousCombatStage.bossAvailable,true);assert.equal(next.ContinuousCombatStage.bossArmed,false);assert.equal(next.ContinuousCombatStage.bossActive,false);
- next.time=14;assert.equal(resetContinuousCombatAfterDefeat(next),true);assert.equal(next.ContinuousCombatStage.bossAvailable,true);assert.equal(next.ContinuousCombatStage.clearedPackMask,63);
+ assert.equal(next.ContinuousCombatStage.region,3);assert.equal(next.ContinuousCombatStage.stage,7);assert.equal(next.ContinuousCombatStage.wave,1);assert.equal(next.ContinuousCombatStage.bossAvailable,true);assert.equal(next.ContinuousCombatStage.bossSummonRequired,true);assert.equal(next.ContinuousCombatStage.bossArmed,false);assert.equal(next.ContinuousCombatStage.bossActive,false);
+ next.time=14;assert.equal(resetContinuousCombatAfterDefeat(next),true);assert.equal(next.ContinuousCombatStage.bossAvailable,true);assert.equal(next.ContinuousCombatStage.bossSummonRequired,true);assert.equal(next.ContinuousCombatStage.clearedPackMask,0);
  assert.equal(persist({stateGlobals:next}),true);const afterDefeat=createHeroProgressStore(JSON.parse(values.get(HERO_PROGRESS_SAVE_KEY)));
- assert.deepEqual(afterDefeat.continuousStage,{region:3,stage:7,wave:1,bossAvailable:true,clearedBosses:26,clearedPackMask:63});
+ assert.deepEqual(afterDefeat.continuousStage,{region:3,stage:7,wave:1,bossAvailable:true,bossSummonRequired:true,clearedBosses:26,clearedPackMask:0});
 });
 
 test('legacy deferred boss checkpoints keep readiness and auto-enter once after reload',()=>{
@@ -121,6 +121,7 @@ test('legacy deferred boss checkpoints keep readiness and auto-enter once after 
  assert.equal(persist({stateGlobals:globals}),true);
  const restored=createHeroProgressStore(JSON.parse(values.get(HERO_PROGRESS_SAVE_KEY)));
  assert.equal(restored.continuousStage.bossEntryDeferredUntilWaveFour,undefined,'the retired four-wave refill flag is omitted from saves');
+ assert.equal(restored.continuousStage.bossSummonRequired,false,'older ready saves without a defeat latch retain first-entry automatic behavior');
  const next={HeroProgress:restored,GamePhase:'RUNTIME',BattleStartActive:0,time:1,EnemyData:[{name:'Troll',HP:40,ATK:4,DEF:3,MAG:1,RES:2,SPD:7,enemyRole:'boss'}],EnemySlots:[],PendingDeaths:{},EnemyDeathVisualHoldByUID:{}};
  configureContinuousCombatProduction(next,{productionPath:true});
  const spawned=[];const call=(name,...args)=>{if(name==='SpawnEnemy')spawned.push(args);};
@@ -164,6 +165,7 @@ test('ordinary KO recovery, save and reload keep the bar at 75 percent before th
  const values=new Map();const persist=createPersistHeroProgressIfDirty({localStorage:{setItem:(key,value)=>values.set(key,value)}});
  assert.equal(persist({stateGlobals:globals}),true);
  const restored=createHeroProgressStore(JSON.parse(values.get(HERO_PROGRESS_SAVE_KEY)));
+ assert.equal(restored.continuousStage.bossSummonRequired,true,'an ordinary KO latches the stage even before readiness');
  const next={HeroProgress:restored};configureContinuousCombatProduction(next,{productionPath:true});
  assert.equal(next.ContinuousCombatStage.wave,4);
  assert.equal(deriveContinuousCombatWavePackProgress(next.ContinuousCombatStage,[]).fraction,0);
@@ -250,15 +252,20 @@ test('the app tick persists boss readiness before its stage early return and def
  });
  checkpoint=JSON.parse(savedValues.get(HERO_PROGRESS_SAVE_KEY)).continuousStage;
  assert.equal(checkpoint.bossAvailable,true,'outcome early return preserves defeated-boss readiness');
+ assert.equal(checkpoint.bossSummonRequired,true,'the defeated-stage manual retry latch is saved before the outcome early return');
  assert.equal(checkpoint.wave,1);
- assert.equal(checkpoint.clearedPackMask,63);
+ assert.equal(checkpoint.clearedPackMask,0,'ready boss recovery starts wave-one farming while readiness keeps the bar full');
 
  const retryStore=createHeroProgressStore(JSON.parse(savedValues.get(HERO_PROGRESS_SAVE_KEY)));
  const retryGlobals={HeroProgress:retryStore,GamePhase:'RUNTIME',BattleStartActive:0,time:30,EnemyData:rows,EnemySlots:[],PendingDeaths:{},EnemyDeathVisualHoldByUID:{}};
  configureContinuousCombatProduction(retryGlobals,{productionPath:true});
  const retryEntities=[{uid:1,kind:'hero',hp:100,maxHP:100,footX:200,footY:290}];
  const retryCall=(name,row,slotIndex)=>{if(name!=='SpawnEnemy')return;const enemy={uid:100+slotIndex,kind:'enemy',name:row.name,enemyRole:row.enemyRole,hp:row.HP,maxHP:row.HP,slotIndex};retryEntities.push(enemy);return enemy;};
- assert.equal(maybeAdvanceContinuousCombatStage({globals:retryGlobals,entities:retryEntities,presentationBarrier:{lanes:{}},call:retryCall}),true,'a boss-loss checkpoint retries automatically after reload');
+ assert.equal(maybeAdvanceContinuousCombatStage({globals:retryGlobals,entities:retryEntities,presentationBarrier:{lanes:{}},call:retryCall}),true,'a boss-loss checkpoint resumes farming after reload');
+ assert.equal(retryGlobals.ContinuousCombatStage.bossActive,false);
+ assert.ok(retryEntities.some(actor=>actor.kind==='enemy'&&actor.enemyRole!=='boss'));
+ assert.equal(summonContinuousCombatBoss(retryGlobals,retryEntities,retryCall),true,'the player action summons through the existing boss arm path');
  assert.equal(retryGlobals.ContinuousCombatStage.bossActive,true);
+ assert.equal(retryGlobals.ContinuousCombatStage.bossSummonRequired,true);
  assert.equal(retryEntities.filter(actor=>actor.kind==='enemy'&&actor.enemyRole==='boss').length,1);
 });
