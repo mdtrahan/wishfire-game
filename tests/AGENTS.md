@@ -92,7 +92,7 @@
 
 - Lamp presentation verifies 15-second idle guidance, Hondo-to-Auto-Equip targeting and dismissal by ordinary document clicks using an offset monotonic clock, preserving live combat timing.
 
-- Lamp draws preserve the configured saved party EXP and timing. Essence is a bank, never a level calculation: each earned lamp level requires four explicitly purchased stages, then seven-hour construction and automatic completion. `capacityTier` is level minus one; optional v5 `upgradeStage` defaults to zero. Levels 1–100 interpolate the original initial/final rarity odds; capacities remain 20/30/40/50 at levels 1/2/3/4+. Future gear gains 0.5% linear stat scaling per map ordinal. Saved gear rolls, hero EXP and earned lamp levels remain intact.
+- Lamp draws preserve the configured saved party EXP and timing. Essence is a bank, never a level calculation: each earned lamp level requires four explicitly purchased stages, then seven-hour construction and automatic completion. `capacityTier` is level minus one; optional v5 `upgradeStage` defaults to zero. Levels 1–100 interpolate the original initial/final rarity odds; capacity grows as 20 + round(10 × (level − 1)^1.5), with paid costs starting at 400 Essence and growing 20% per level. Future gear gains 0.5% linear stat scaling per map ordinal. Saved gear rolls, hero EXP and earned lamp levels remain intact.
 
 - Lamp cache presentation checks five full-width square columns, a stable two-to-two-and-a-half-row scroll viewport, selected halo and preserved idle guidance across four phone widths.
 
@@ -154,3 +154,5 @@
 - Conditional-skill proof covers all 33 IDs, current-stat comparisons, recipient guards, modifier bounds, deterministic RNG preview, final expiry ticks, KO/revival identity, clean saved progression and real scheduler dispatch/refunds. Runtime VM fixtures must bind the actual imported realtime services when exercising changed seams.
 
 - `actorClipPlayback.test.mjs` compares Hondo/Kaja normalized native XML to Fara across all seven states and both facings, preserving cadence and foot origins while checking every frame exists. It also checks every loaded actor's basic/cast torso source in both facings, including the forward 0.6-amplitude curves and untouched zero/recoil channels.
+
+- Lamp curve tests enforce accelerating capacity across all 100 levels, increasing four-notch prices and unchanged seven-hour construction; rarity-first cache display must preserve CP-driven auto-equip and saved queues.

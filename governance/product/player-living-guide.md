@@ -33,4 +33,4 @@ Gold buys equipment from the shop. Purchased gear enters the shared inventory un
 
 Quests provide story and combat encounters. The HERO screen shows owned heroes and their progression. Vault and other navigation remain available where implemented.
 
-Lamp upgrades require four Essence purchases. The fourth starts seven hours of construction; the level completes automatically when that timer expires. SPD UP ALL spends available five-minute tickets to shorten construction. Banked Essence alone grants no lamp levels.
+The equip cache groups items by rarity, highest first, then CP within each rarity. Lamp storage starts at 20 slots and grows faster at higher levels. Lamp upgrades require four Essence purchases; each notch starts at 100 Essence and grows about 20% per lamp level. The fourth starts seven hours of construction; the level completes automatically when that timer expires. SPD UP ALL spends available five-minute tickets to shorten construction. Banked Essence alone grants no lamp levels.

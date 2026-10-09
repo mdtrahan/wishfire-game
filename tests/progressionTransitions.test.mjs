@@ -23,7 +23,7 @@ function fixture(){
  const storage={get length(){return values.size;},key:i=>[...values.keys()][i],getItem:k=>values.get(k)??null,setItem(k,v){if(fail)throw Error('disk full');values.set(k,v);},removeItem:k=>values.delete(k)};
  const locks={request:(key,fn)=>{const result=chain.then(fn);chain=result.catch(()=>{});return result;}};
  const globals={goldTotal:0,HeroProgress:createHeroProgressStore()};
- const data=createLampEconomy(42);data.lamp.essence=200;values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(data));
+ const data=createLampEconomy(42);data.lamp.essence=400;values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(data));
  const options={globals,storage,locks,now:()=>clock,reportError:()=>{}};
  return{globals,storage,locks,values,options,store:createEquipmentStorage(options),setClock:v=>clock=v,setFail:v=>fail=v};
 }
@@ -34,7 +34,7 @@ test('construction uses a seven-hour deadline, survives reload and automatically
  f.setClock(end-1);const reload=createEquipmentStorage(f.options);await reload.sync();assert.equal(reload.data.lamp.capacityTier,0);
  f.setClock(end);await reload.sync();assert.equal(reload.data.lamp.capacityTier,1);assert.equal(reload.data.lamp.upgradeEndsAt,0);
  const receipt=f.values.get(EQUIPMENT_SAVE_KEY);await reload.sync();assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),receipt);
- assert.equal(reload.data.lamp.essence,180);assert.equal(reload.data.partyEXP,0);
+ assert.equal(reload.data.lamp.essence,0);assert.equal(reload.data.partyEXP,0);
 });
 
 test('final essence purchase and its timer are atomic, and stale clicks cannot restart construction',async()=>{

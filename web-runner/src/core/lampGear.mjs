@@ -2,14 +2,14 @@ import {EQUIPMENT,RARITIES,EQUIPMENT_SLOTS,equipmentDefinition,equipmentStats,is
 import {refreshHeroStats} from './heroProgression.mjs';
 import {computeCombatPower} from './combatPower.mjs';
 
-export const LAMP_CONFIG=Object.freeze({capacity:20,drawEXP:25,minEmissionIntervalMs:2000,autoIntervalMs:5000,autoUnlockLevel:5,maxOrdinal:990,mapStatGrowth:.005,lampLevels:100,upgradeStages:4,upgradeCostGrowth:1.082,upgradeDurationMs:7*60*60*1000,speedUpTicketMs:5*60*1000});
+export const LAMP_CONFIG=Object.freeze({capacity:20,drawEXP:25,minEmissionIntervalMs:2000,autoIntervalMs:5000,autoUnlockLevel:5,maxOrdinal:990,mapStatGrowth:.005,lampLevels:100,upgradeStages:4,upgradeBaseCost:400,upgradeCostGrowth:1.2,upgradeDurationMs:7*60*60*1000,speedUpTicketMs:5*60*1000});
 export const LAMP_GUIDE=Object.freeze({storage:1,comparison:2,preview:4});
 export function markLampGuide(data,step){if(!Object.hasOwn(LAMP_GUIDE,step))throw new Error('Unknown lamp guide step.');if(step!=='preview'&&!lampStoredCount(data))throw new Error('Open stored equipment first.');if(step==='comparison'&&!data.lamp.pending.length)throw new Error('Choose pending equipment first.');return data.lamp.guide=(data.lamp.guide||0)|LAMP_GUIDE[step];}
 export const LAMP_CAPACITY_TIERS=Object.freeze(Array.from({length:LAMP_CONFIG.lampLevels},(_,n)=>{
  const p=n/(LAMP_CONFIG.lampLevels-1),round=v=>Math.round(v*1000)/1000;
  const rarityWeights={common:0,uncommon:round(25+10*p),rare:round(30*p),epic:round(14*p),legendary:round(p)};
  rarityWeights.common=round(100-rarityWeights.uncommon-rarityWeights.rare-rarityWeights.epic-rarityWeights.legendary);
- return Object.freeze({capacity:[20,30,40,50][Math.min(n,3)],cost:n===LAMP_CONFIG.lampLevels-1?null:Math.round(20*LAMP_CONFIG.upgradeCostGrowth**n),rarityWeights:Object.freeze(rarityWeights)});
+ return Object.freeze({capacity:LAMP_CONFIG.capacity+Math.round(10*n**1.5),cost:n===LAMP_CONFIG.lampLevels-1?null:Math.round(LAMP_CONFIG.upgradeBaseCost*LAMP_CONFIG.upgradeCostGrowth**n),rarityWeights:Object.freeze(rarityWeights)});
 }));
 export const lampCapacity=data=>LAMP_CAPACITY_TIERS[data.lamp.capacityTier||0].capacity;
 export function lampStageCost(data){const cost=LAMP_CAPACITY_TIERS[data.lamp.capacityTier].cost,stage=data.lamp.upgradeStage||0;return cost===null||stage===LAMP_CONFIG.upgradeStages?0:Math.floor(cost*(stage+1)/LAMP_CONFIG.upgradeStages)-Math.floor(cost*stage/LAMP_CONFIG.upgradeStages);}
@@ -154,7 +154,10 @@ export function lampItemCPGain(data,item,hero){
  return Math.round((computeCombatPower(after)-computeCombatPower(before))*10)/10;
 }
 export const lampGearCP=item=>item?computeCombatPower({stats:item.stats,level:1}):0;
-export function sortedLampItems(data,ids=data.lamp.pending){return ids.map(id=>data.items.find(i=>i.instanceId===id)).sort((a,b)=>lampGearCP(b)-lampGearCP(a)||(a.sequence??0)-(b.sequence??0)||a.instanceId.localeCompare(b.instanceId));}
+export function sortedLampItems(data,ids=data.lamp.pending){
+ const items=new Map(data.items.map(item=>[item.instanceId,item])),rarities=Object.keys(RARITIES);
+ return ids.map(id=>items.get(id)).sort((a,b)=>rarities.indexOf(b.rarity)-rarities.indexOf(a.rarity)||lampGearCP(b)-lampGearCP(a)||(a.sequence??0)-(b.sequence??0)||a.instanceId.localeCompare(b.instanceId));
+}
 export function lampReviewCandidates(data,heroes){
  const queues=new Map();for(const id of data.lamp.pending)queues.set(id,'pending');for(const id of data.lamp.discarded||[])queues.set(id,'discarded');
  return sortedLampItems(data,[...queues.keys()]).map(item=>{
