@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createCombatCameraProjection, deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldVerticalBounds } from '../src/core/combatOrientation.mjs';
+import { COMBAT_BATTLEFIELD_ZOOM, createCombatCameraProjection, deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldVerticalBounds } from '../src/core/combatOrientation.mjs';
+import { actorFootprintRadius } from '../src/core/arenaCombatRules.mjs';
 import { advanceContinuousCombatArena, CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS, deriveContinuousCombatRecoveryHuddle, deriveContinuousCombatSpawnMoat, placeContinuousCombatHeroesInRecoveryHuddle } from '../web-runner/src/core/arenaCombat.mjs';
 import { computeCombatPower } from '../web-runner/src/core/combatPower.mjs';
 import { derivePresentationTurnBarrier } from '../web-runner/src/core/turnGateController.mjs';
@@ -118,7 +119,7 @@ test('only low-tier Gobloc and Skeleton spawn as lone patrols in every ordinary 
 test('seeded solos stay outside the recovery moat and separated from pack clouds across the arena', () => {
   const world = deriveCombatWorldBounds();
   const vertical = deriveCombatWorldVerticalBounds();
-  const moat = deriveContinuousCombatSpawnMoat({ world });
+  const moat = deriveContinuousCombatSpawnMoat();
   const measuredSides = new Set();
   const measuredBands = new Set();
   for (const seed of [1, 17, 42, 91, 1234]) {
@@ -152,7 +153,7 @@ test('seeded solos stay outside the recovery moat and separated from pack clouds
 test('full solo placement matrix remains seeded, bounded and clear of six-member pack clouds', () => {
   const world = deriveCombatWorldBounds();
   const vertical = deriveCombatWorldVerticalBounds();
-  const moat = deriveContinuousCombatSpawnMoat({ world });
+  const moat = deriveContinuousCombatSpawnMoat();
   for (const enemySize of [20, 40]) for (let seed = 1; seed <= 64; seed += 1) for (let wave = 1; wave <= 4; wave += 1) {
     const stage = { ...createContinuousCombatStageState(seed), wave, transitions: wave - 1 };
     const plan = buildContinuousCombatSpawnPlan(rows, stage, { partyCP: Number.MAX_SAFE_INTEGER, enemySize });
@@ -181,7 +182,12 @@ test('melee and ranged solos both move toward a reachable waypoint within one pa
     const heroes = Array.from({ length: 4 }, (_, index) => ({ uid: index + 1, kind: 'hero', hp: 100, footX: 1080 + index, footY: 319.5 + index }));
     const solo = { uid: 100, kind: 'enemy', hp: 100, streamSolo: 1, streamState: 'roaming', streamDelivery, streamSoloAnchorX: 240, streamSoloAnchorY: 320, streamSoloPhase: 0, footX: 240, footY: 320 };
     const globals = { ContinuousCombatStage: createContinuousCombatStageState(17), time: 0 };
-    for (let step = 1; step <= 10; step += 1) {
+    heroes[0].recoveryFadeStartedAt = 0;
+    globals.time = 0.1;
+    advanceContinuousCombatArena({ globals, entities: [...heroes, solo], seconds: 0.1 });
+    assert.deepEqual([solo.footX, solo.footY], [240, 320], `${streamDelivery} patrol pauses during recovery reveal`);
+    delete heroes[0].recoveryFadeStartedAt;
+    for (let step = 2; step <= 10; step += 1) {
       globals.time = step * 0.1;
       advanceContinuousCombatArena({ globals, entities: [...heroes, solo], seconds: 0.1 });
     }
@@ -190,7 +196,7 @@ test('melee and ranged solos both move toward a reachable waypoint within one pa
   }
 });
 
-test('solo enemies patrol within a small safe radius, pause for recovery reveal and engage normally on detection', () => {
+test('solo enemies patrol within a small safe radius and engage normally on detection', () => {
   const stage = createContinuousCombatStageState(17);
   const plan = buildContinuousCombatSpawnPlan(rows, stage);
   const heroes = Array.from({ length: 4 }, (_, index) => ({ uid: index + 1, kind: 'hero', hp: 100, maxHP: 100, footX: 1080 + index, footY: 319.5 + index }));
@@ -199,16 +205,20 @@ test('solo enemies patrol within a small safe radius, pause for recovery reveal 
     activateContinuousCombatSpawnedEnemy({ ContinuousCombatStage: stage, EnemySize: 40, time: 0 }, enemy, entry);
     return enemy;
   });
+  for (const enemy of enemies.filter(actor => !actor.streamSolo)) {
+    const remoteX = enemy.footX < 1080 ? 350 : 1810;
+    enemy.footX = enemy.x = enemy.streamEngageX = remoteX;
+  }
+  for (const solo of enemies.filter(actor => actor.streamSolo)) {
+    const remoteX = solo.footX < 1080 ? 100 : 2060;
+    solo.footX = solo.x = solo.streamSoloAnchorX = solo.soloFootX = remoteX;
+    solo.streamState = 'roaming';
+    solo.arenaTargetUID = 0;
+  }
   const globals = { ContinuousCombatStage: stage, time: 2.2 };
   const solos = enemies.filter(enemy => enemy.streamSolo);
   solos[0].streamDelivery = 'melee';
   solos[1].streamDelivery = 'ranged';
-  const spawnFeet = new Map(solos.map(enemy => [enemy.uid, { x: enemy.footX, y: enemy.footY }]));
-  heroes[0].recoveryFadeStartedAt = 2;
-  advanceContinuousCombatArena({ globals, entities: [...heroes, ...enemies], seconds: 0.25 });
-  assert.ok(solos.every(enemy => enemy.footX === spawnFeet.get(enemy.uid).x && enemy.footY === spawnFeet.get(enemy.uid).y), 'recovery keeps enemies quiet while the squad reveal is active');
-  delete heroes[0].recoveryFadeStartedAt;
-
   const beforePatrol = new Map(solos.map(enemy => [enemy.uid, { x: enemy.footX, y: enemy.footY }]));
   for (let tick = 0; tick < 48; tick += 1) {
     globals.time = 2.5 + tick * 0.25;
@@ -807,7 +817,15 @@ test('restored readiness auto-enters once and clears queued fodder actions', () 
   assert.deepEqual(spawned, ['boss']);
 });
 
-test('six seeded sector identities keep compact clouds outside the recovery moat', () => {
+test('recovery moat projects to 150 logical pixels at the canonical battlefield zoom', () => {
+  const moat = deriveContinuousCombatSpawnMoat();
+  const camera = createCombatCameraProjection({ viewportWidth: 360, worldWidth: 2160, zoom: COMBAT_BATTLEFIELD_ZOOM, centerX: moat.centerX });
+  const left = camera.project(moat.centerX - moat.minimumEnemyCenterDistance, moat.centerY).x;
+  const right = camera.project(moat.centerX + moat.minimumEnemyCenterDistance, moat.centerY).x;
+  assert.equal(Math.abs(right - left), 150);
+});
+
+test('six seeded sector identities keep full pack footprints outside the compact recovery moat', () => {
   const globals = { EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 }, EnemySize: 40, ContinuousCombatStage: createContinuousCombatStageState(1) };
   const moat = deriveContinuousCombatSpawnMoat();
   const enemies = [0, 1, 2, 3, 4, 5].map(sectorIndex => activateContinuousCombatSpawnedEnemy(
@@ -816,8 +834,8 @@ test('six seeded sector identities keep compact clouds outside the recovery moat
   assert.deepEqual(enemies.map(enemy => enemy.streamState), Array(6).fill('roaming'));
   assert.deepEqual(enemies.map(enemy => enemy.streamSectorIndex), [0, 1, 2, 3, 4, 5]);
   assert.ok(enemies.every(enemy => enemy.x >= 0 && enemy.x <= 2160));
-  assert.ok(enemies.every(enemy => enemy.x < 720 || enemy.x > 1440), 'the midpoint section stays empty until the squad travels outward');
-  assert.ok(enemies.every(enemy => Math.hypot(enemy.x - moat.centerX, enemy.y - moat.centerY) - CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS >= 180));
+  assert.ok(enemies.every(enemy => Math.hypot(enemy.x - moat.centerX, enemy.y - moat.centerY) - actorFootprintRadius(enemy) >= moat.minimumEnemyCenterDistance));
+  assert.ok(enemies.some(enemy => Math.hypot(enemy.x - moat.centerX, enemy.y - moat.centerY) <= CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS), 'a seeded pack can begin within local detection range');
   const safeY = deriveCombatWorldVerticalBounds();
   assert.ok(enemies.every(enemy => enemy.y >= safeY.minY + 32 && enemy.y <= safeY.maxY - 32));
   assert.ok(enemies.every(enemy => enemy.streamEngageX === enemy.x));
@@ -1042,7 +1060,7 @@ test('melee and ranged packs preserve delivery tags inside the authored world', 
   assert.equal(highMagicMelee.streamDelivery, 'melee');
 });
 
-test('six huddled packs preserve seeded local clouds, remain bounded, and clear detection plus runway', () => {
+test('six huddled packs preserve seeded local clouds, remain bounded, and clear the compact moat', () => {
   const globals = {
     time: 0,
     EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 },
@@ -1063,7 +1081,7 @@ test('six huddled packs preserve seeded local clouds, remain bounded, and clear 
     assert.equal(group.length, 2);
     assert.ok(Math.max(...group.map(enemy => enemy.x)) - Math.min(...group.map(enemy => enemy.x)) <= 116);
     assert.ok(group.every(enemy => enemy.x >= world.heroMinX + 18 && enemy.x <= world.heroMaxX - 18));
-    assert.ok(group.every(enemy => Math.hypot(enemy.x - moat.centerX, enemy.y - moat.centerY) >= moat.minimumEnemyCenterDistance));
+    assert.ok(group.every(enemy => Math.hypot(enemy.x - moat.centerX, enemy.y - moat.centerY) - actorFootprintRadius(enemy) >= moat.minimumEnemyCenterDistance));
   }
   assert.ok(enemies.every(enemy => enemy.streamEngageX === enemy.x));
 });
@@ -1079,7 +1097,7 @@ test('moat translation keeps six-member sector clouds separated at minimum and p
     assert.ok(enemies.every(enemy => enemy.x >= 58 && enemy.x <= 2102));
     assert.ok(enemies.every(enemy => enemy.y >= vertical.minY + Math.max(18, EnemySize * 0.8)
       && enemy.y <= vertical.maxY - Math.max(18, EnemySize * 0.8)));
-    assert.ok(enemies.every(enemy => Math.hypot(enemy.x - moat.centerX, enemy.y - moat.centerY) >= moat.minimumEnemyCenterDistance));
+    assert.ok(enemies.every(enemy => Math.hypot(enemy.x - moat.centerX, enemy.y - moat.centerY) - actorFootprintRadius(enemy) >= moat.minimumEnemyCenterDistance));
     for (let first = 0; first < enemies.length; first += 1) for (let second = first + 1; second < enemies.length; second += 1) {
       if (enemies[first].streamSectorIndex === enemies[second].streamSectorIndex) continue;
       assert.ok(Math.hypot(enemies[first].x - enemies[second].x, enemies[first].y - enemies[second].y) >= 36,
@@ -1088,7 +1106,7 @@ test('moat translation keeps six-member sector clouds separated at minimum and p
   }
 });
 
-test('recovery reveal holds the party at section B center, then gives the pack a real travel runway', () => {
+test('recovery reveal holds the party at section B center, then nearby packs engage promptly', () => {
   const heroes = [
     { uid: 1, kind: 'hero', name: 'Fara', hp: 100, footX: 300, footY: 180 },
     { uid: 2, kind: 'hero', name: 'Hondo', hp: 100, footX: 320, footY: 200 },
@@ -1114,14 +1132,11 @@ test('recovery reveal holds the party at section B center, then gives the pack a
   assert.deepEqual(enemies.map(enemy => [enemy.footX, enemy.footY]), initialEnemies, 'remote packs stay parked during the reveal');
   assert.equal(stage.clearedPackMask, 0b000101, 'earned sectors survive the recovery transition');
 
-  let engaged = false;
-  for (let step = 0; step < 100 && !engaged; step += 1) {
-    globals.time = 10.5 + step * 0.1;
-    maybeAdvanceContinuousCombatStage({ globals, entities: [...heroes, ...enemies], presentationBarrier: { lanes: {} }, call });
-    engaged = enemies.some(enemy => enemy.streamState !== 'roaming');
-  }
-  assert.ok(heroes.some((hero, index) => hero.footX !== initialHeroes[index][0] || hero.footY !== initialHeroes[index][1]), 'the squad advances during the runway');
-  assert.ok(engaged, 'a pack becomes active after the squad travels into detection range');
+  globals.time = 10.5;
+  maybeAdvanceContinuousCombatStage({ globals, entities: [...heroes, ...enemies], presentationBarrier: { lanes: {} }, call });
+  assert.ok(enemies.some(enemy => enemy.streamState !== 'roaming'), 'a pack already within detection range becomes active after the reveal');
+  const nearestPackFoot = Math.min(...enemies.map(enemy => Math.hypot(enemy.footX - moat.centerX, enemy.footY - moat.centerY)));
+  assert.ok(nearestPackFoot < 300, `the nearest spawned pack is ${nearestPackFoot.toFixed(1)} world units from the huddle`);
 });
 
 test('ordinary six-member packs form repeatable compact two-dimensional clouds inside arena bounds', () => {
@@ -1306,7 +1321,7 @@ test('heroes leave remote roaming packs dormant until local detection', () => {
     EnemySize: 40, EnemyData: rows, EnemySlots: [2], PendingDeaths: {}, ActionInProgress: 0, IsPlayerBusy: 0,
   };
   const hero = { uid: 2, kind: 'hero', hp: 100, footX: 1080, footY: 319.5 };
-  const enemy = activateContinuousCombatSpawnedEnemy(globals, { uid: 1, kind: 'enemy', hp: 10 }, { lane: 1, entryOrder: 0, sectorIndex: 2 });
+  const enemy = activateContinuousCombatSpawnedEnemy(globals, { uid: 1, kind: 'enemy', hp: 10 }, { lane: 1, entryOrder: 0, sectorIndex: 0 });
   const farX = enemy.x;
   let resumed = 0;
   maybeAdvanceContinuousCombatStage({ globals, entities: [hero, enemy], presentationBarrier: { lanes: {} }, call(name) { if (name === 'TickRealtimeEnemyActions') resumed += 1; }, runCombatStep() {} });

@@ -197,13 +197,7 @@ function seededPackFoot(globals, { packIndex, rank, sector, order, sectorSize, c
   const moat = deriveContinuousCombatSpawnMoat();
   const packCenter = placed.reduce((sum, point) => ({ x: sum.x + point.x / placed.length, y: sum.y + point.y / placed.length }), { x: 0, y: 0 });
   const packRadius = Math.max(...placed.map(point => Math.hypot(point.x - packCenter.x, point.y - packCenter.y) + actorFootprintRadius({ kind: 'enemy' })));
-  // Preserve room between the original six sector clouds after the middle
-  // anchors move outside the recovery runway. Outer sectors act as buffers;
-  // the inner two on each side keep extra radial spacing.
-  const sectorSpacing = sector === 2 || sector === 4 ? 140 : 0;
-  const outerSectorRunway = sector === 0 || sector === CONTINUOUS_COMBAT_PACKS_PER_WAVE - 1 ? 980 : 0;
   const minimumCenterDistance = moat.minimumEnemyCenterDistance + packRadius;
-  const preferredCenterDistance = Math.max(minimumCenterDistance + sectorSpacing, outerSectorRunway);
   const centerDx = packCenter.x - moat.centerX;
   const centerDy = packCenter.y - moat.centerY;
   const currentDistance = Math.hypot(centerDx, centerDy);
@@ -226,8 +220,7 @@ function seededPackFoot(globals, { packIndex, rank, sector, order, sectorSize, c
     candidates.push({ x: moat.centerX - side * horizontalDistance - packCenter.x, y: 0 });
     return candidates.find(fits) || null;
   };
-  const offset = offsetForDistance(preferredCenterDistance)
-    || offsetForDistance(minimumCenterDistance);
+  const offset = offsetForDistance(minimumCenterDistance);
   if (!offset) throw new RangeError('continuous combat spawn moat cannot fit this authored pack inside world bounds');
   const moved = placed.map(point => ({ x: point.x + offset.x, y: point.y + offset.y }));
   return moved[normalizedOrder] || moved[moved.length - 1];
@@ -236,7 +229,7 @@ function seededPackFoot(globals, { packIndex, rank, sector, order, sectorSize, c
 function seededSoloFoot(stageState, sector, occupiedPackFeet, priorSoloFeet, enemySize = 40) {
   const world = deriveCombatWorldBounds();
   const vertical = deriveCombatWorldVerticalBounds();
-  const moat = deriveContinuousCombatSpawnMoat({ world });
+  const moat = deriveContinuousCombatSpawnMoat();
   const radius = actorFootprintRadius({ kind: 'enemy' });
   const side = sector < CONTINUOUS_COMBAT_PACKS_PER_WAVE / 2 ? -1 : 1;
   const xMin = side < 0 ? world.heroMinX + radius : moat.centerX + moat.minimumEnemyCenterDistance + radius;

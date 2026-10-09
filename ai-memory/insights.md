@@ -617,7 +617,7 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - For first-KO interruption, guard every phase boundary inside the action batch and before the next scheduler phase. Capture earned pack credit before recovery removes enemies; keep completed waves and boss readiness through squad recovery and reload. Only boss victory starts the next stage at zero progress.
 - When a progression rail looks stalled during a multi-pack wave, separate displayed counter granularity from the actual all-pack transition gate. Persist idempotent clear credit for the current wave, retry unfinished packs, and keep full-clear and presentation barriers intact.
 
-- Recovery placement needs both a world-center anchor and enemy-free travel clearance. Protect the whole seeded pack cloud from the spawn moat; keeping only its centroid outside still lets edge members trigger an immediate fight. Verify detection distance and visible travel after the shared recovery fade.
+- Recovery placement needs a world-center anchor and a compact screen-sized moat converted through canonical zoom. Protect every seeded pack footprint, not only its centroid, while avoiding added travel buffers that delay nearby encounters.
 
 - Party focus selects where heroes fight; it must not restrict enemy attack eligibility. Reconcile every nearby enemy against its own reach and living targets before scheduling, and test simultaneous multi-pack attackers through the real cooldown owner.
 

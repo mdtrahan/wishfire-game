@@ -1,5 +1,5 @@
 import { advanceActorToward, actorAttackReach, actorFootPoint, actorFootprintRadius, isActorTargetInRange } from '../../../src/core/arenaCombatRules.mjs';
-import { deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldStartFormation, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
+import { COMBAT_BATTLEFIELD_ZOOM, deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldStartFormation, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
 import { previewSeededRng } from '../../../src/core/seededRngRules.mjs';
 import { isActorRecoveryRevealActive, resetActorPresentationAfterRestore } from './actorPresentationState.mjs';
 
@@ -46,7 +46,7 @@ export function selectContinuousEnemyTarget({ enemy = null, heroes = [], globals
 }
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 export const CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS = 460;
-export const CONTINUOUS_COMBAT_SPAWN_RUNWAY_SCREEN_FRACTION = 0.25;
+const RECOVERY_MOAT_DIAMETER_SCREEN_PX = 150;
 const SQUAD_STRAGGLE_RADIUS = 144;
 const SEARCH_SPEED = 78;
 const TRAVEL_FRONT_OFFSET = 22.4;
@@ -85,16 +85,12 @@ export function deriveContinuousCombatRecoveryHuddle(heroes = []) {
 }
 
 export function deriveContinuousCombatSpawnMoat() {
-  const world = deriveCombatWorldBounds();
   const formation = deriveCombatWorldStartFormation(0);
   const vertical = deriveCombatWorldVerticalBounds();
   return {
     centerX: formation.centerX,
     centerY: (vertical.minY + vertical.maxY) / 2,
-    minimumEnemyCenterDistance: CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS
-      + world.visibleWorldWidth * CONTINUOUS_COMBAT_SPAWN_RUNWAY_SCREEN_FRACTION
-      + actorFootprintRadius({ kind: 'hero' })
-      + actorFootprintRadius({ kind: 'enemy' }),
+    minimumEnemyCenterDistance: RECOVERY_MOAT_DIAMETER_SCREEN_PX / (2 * COMBAT_BATTLEFIELD_ZOOM),
   };
 }
 
@@ -203,7 +199,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   const now = Number(globals.time || 0);
   const recoveryReveal = heroes.some(hero => isActorRecoveryRevealActive(hero, now));
   if (!recoveryReveal) {
-    const moat = deriveContinuousCombatSpawnMoat({ world: worldBounds });
+    const moat = deriveContinuousCombatSpawnMoat();
     const footprint = actorFootprintRadius({ kind: 'enemy' });
     for (const enemy of enemies) {
       if (!enemy.streamSolo || enemy.streamState !== 'roaming' || now < Number(enemy.actionStateUntil || 0)) continue;
