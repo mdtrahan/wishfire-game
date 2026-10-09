@@ -44,7 +44,8 @@ export function selectContinuousEnemyTarget({ enemy = null, heroes = [], globals
   return stableNearest(enemy, candidates);
 }
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-const DETECTION_RADIUS = 460;
+export const CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS = 460;
+export const CONTINUOUS_COMBAT_SPAWN_RUNWAY_SCREEN_FRACTION = 0.25;
 const SQUAD_STRAGGLE_RADIUS = 144;
 const SEARCH_SPEED = 78;
 const TRAVEL_FRONT_OFFSET = 22.4;
@@ -80,6 +81,20 @@ export function deriveContinuousCombatRecoveryHuddle(heroes = []) {
       y: centerY + rowSide * (actorFootprintRadius(hero) + 2),
     };
   });
+}
+
+export function deriveContinuousCombatSpawnMoat() {
+  const world = deriveCombatWorldBounds();
+  const formation = deriveCombatWorldStartFormation(0);
+  const vertical = deriveCombatWorldVerticalBounds();
+  return {
+    centerX: formation.centerX,
+    centerY: (vertical.minY + vertical.maxY) / 2,
+    minimumEnemyCenterDistance: CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS
+      + world.visibleWorldWidth * CONTINUOUS_COMBAT_SPAWN_RUNWAY_SCREEN_FRACTION
+      + actorFootprintRadius({ kind: 'hero' })
+      + actorFootprintRadius({ kind: 'enemy' }),
+  };
 }
 
 export function placeContinuousCombatHeroesInRecoveryHuddle({ globals = {}, heroes = [], now = 0 } = {}) {
@@ -210,7 +225,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   const nearestGroup = committedGroup?.[1] || nearestEntry?.[1] || [];
   const nearestGroupId = committedGroup?.[0] ?? nearestEntry?.[0] ?? null;
   const nearestGroupCenter = nearestGroup.length ? groupCenter(nearestGroup) : null;
-  const locallyDetected = !!committedGroup || (!hasStragglers && nearestEntry && groupDistance(nearestEntry[1]) <= DETECTION_RADIUS);
+  const locallyDetected = !!committedGroup || (!hasStragglers && nearestEntry && groupDistance(nearestEntry[1]) <= CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS);
   const focusedEnemies = locallyDetected ? nearestGroup : [];
   if (stage) {
     if (locallyDetected && nearestGroupId != null) stage.activeEncounterGroupId = Number(nearestGroupId);

@@ -3,7 +3,7 @@ import { computeCombatPower } from './combatPower.mjs';
 import { deriveCombatArenaBounds, deriveCombatWorldBounds, deriveCombatWorldStartFormation, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
 import { cleanseDebuffs } from './combatRules.mjs';
 import { saveHeroProgress } from './heroProgression.mjs';
-import { advanceContinuousCombatArena, placeContinuousCombatHeroesInRecoveryHuddle } from './arenaCombat.mjs';
+import { advanceContinuousCombatArena, deriveContinuousCombatSpawnMoat, placeContinuousCombatHeroesInRecoveryHuddle } from './arenaCombat.mjs';
 import { isActorRecoveryRevealActive, resetActorPresentationAfterRestore } from './actorPresentationState.mjs';
 import { previewSeededRng } from '../../../src/core/seededRngRules.mjs';
 import { actorFootprintRadius } from '../../../src/core/arenaCombatRules.mjs';
@@ -190,7 +190,43 @@ function seededPackFoot(globals, { packIndex, rank, sector, order, sectorSize, c
     if (!best) best = { x: Math.max(xMin, Math.min(xMax, centerX)), y: Math.max(yMin, Math.min(yMax, centerY)) };
     placed.push(best);
   }
-  return placed[normalizedOrder] || placed[placed.length - 1];
+  const moat = deriveContinuousCombatSpawnMoat();
+  const packCenter = placed.reduce((sum, point) => ({ x: sum.x + point.x / placed.length, y: sum.y + point.y / placed.length }), { x: 0, y: 0 });
+  const packRadius = Math.max(...placed.map(point => Math.hypot(point.x - packCenter.x, point.y - packCenter.y) + actorFootprintRadius({ kind: 'enemy' })));
+  // Preserve room between the original six sector clouds after the middle
+  // anchors move outside the recovery runway. Outer sectors act as buffers;
+  // the inner two on each side keep extra radial spacing.
+  const sectorSpacing = sector === 2 || sector === 4 ? 140 : 0;
+  const outerSectorRunway = sector === 0 || sector === CONTINUOUS_COMBAT_PACKS_PER_WAVE - 1 ? 980 : 0;
+  const minimumCenterDistance = moat.minimumEnemyCenterDistance + packRadius;
+  const preferredCenterDistance = Math.max(minimumCenterDistance + sectorSpacing, outerSectorRunway);
+  const centerDx = packCenter.x - moat.centerX;
+  const centerDy = packCenter.y - moat.centerY;
+  const currentDistance = Math.hypot(centerDx, centerDy);
+
+  const fits = candidateOffset => placed.every(point => point.x + candidateOffset.x >= xMin
+    && point.x + candidateOffset.x <= xMax
+    && point.y + candidateOffset.y >= yMin
+    && point.y + candidateOffset.y <= yMax);
+  const side = centerDx < 0 || (Math.abs(centerDx) <= 1e-6 && sector < CONTINUOUS_COMBAT_PACKS_PER_WAVE / 2) ? -1 : 1;
+  const offsetForDistance = targetDistance => {
+    if (currentDistance >= targetDistance) return { x: 0, y: 0 };
+    const candidates = [];
+    if (currentDistance > 1e-6) {
+      const radialScale = targetDistance / currentDistance;
+      candidates.push({ x: centerDx * (radialScale - 1), y: centerDy * (radialScale - 1) });
+    }
+    const verticalDistance = Math.abs(centerDy);
+    const horizontalDistance = Math.sqrt(Math.max(0, targetDistance ** 2 - verticalDistance ** 2));
+    candidates.push({ x: moat.centerX + side * horizontalDistance - packCenter.x, y: 0 });
+    candidates.push({ x: moat.centerX - side * horizontalDistance - packCenter.x, y: 0 });
+    return candidates.find(fits) || null;
+  };
+  const offset = offsetForDistance(preferredCenterDistance)
+    || offsetForDistance(minimumCenterDistance);
+  if (!offset) throw new RangeError('continuous combat spawn moat cannot fit this authored pack inside world bounds');
+  const moved = placed.map(point => ({ x: point.x + offset.x, y: point.y + offset.y }));
+  return moved[normalizedOrder] || moved[moved.length - 1];
 }
 
 const PACK_WALK_SPEED_SCALE = Object.freeze([1, 0.9, 1.12, 0.82, 1.17]);
