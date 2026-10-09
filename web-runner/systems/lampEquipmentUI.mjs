@@ -51,26 +51,26 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
  }
  async function openCollection(id,upgrades=false){
   if(opening)return;opening=true;
-  try{onBeforeOpen();init();await pendingAction;await Promise.all([economy.sync(),gearReady]);if(!upgrades&&!lampStoredCount(economy.data))return close();resetHelper();lastFocus=document.activeElement;closeRequested=false;open=true;upgradeOpen=upgrades;batch=!id;reviewed=new Set();selectedItem=upgrades?null:id||sortedLampItems(economy.data)[0]?.instanceId||null;selectedHero=null;notice='';lastKey='';render();dialog.focus();const step=upgrades?'preview':'storage';if(!(economy.data.lamp.guide&LAMP_GUIDE[step]))await economy.markGuide(step);}
+  try{onBeforeOpen();init();await pendingAction;await Promise.all([economy.sync(),gearReady]);if(!upgrades&&!lampStoredCount(economy.data))return close();resetHelper();lastFocus=document.activeElement;closeRequested=false;open=true;upgradeOpen=upgrades;batch=!id;reviewed=new Set();selectedItem=upgrades?null:id||selectLampUpgrades(economy.data,heroes())[0]?.instanceId||null;selectedHero=null;notice='';lastKey='';if(!upgrades&&!selectedItem&&economy.data.lamp.pending.length)await economy.finishReview();render();dialog.focus();const step=upgrades?'preview':'storage';if(!(economy.data.lamp.guide&LAMP_GUIDE[step]))await economy.markGuide(step);}
   catch(e){notice=e.message;lastKey='';render();}finally{opening=false;}
  }
  function close(){if(feedbacks.size){closeRequested=true;return;}closeRequested=false;resetHelper();open=false;modal.hidden=true;lastKey='';lastFocus?.focus?.();}
  function action(fn){if(busy)return;busy=true;lastKey='';render();return pendingAction=(async()=>{try{await fn();}catch(e){notice=e.message;}finally{busy=false;lastKey='';render();}})();}
- function nextItem(){selectedHero=null;selectedItem=sortedLampItems(economy.data).find(i=>!reviewed.has(i.instanceId))?.instanceId||null;}
+  function nextItem(){selectedHero=null;selectedItem=selectLampUpgrades(economy.data,heroes()).find(i=>!reviewed.has(i.instanceId))?.instanceId||null;}
  function onClick(e){
   const b=e.target.closest('button[data-action]');if(!b||busy)return;
   const kind=b.dataset.action,id=b.dataset.id;
   if(kind==='close')return close();
-  if(kind==='inspect')return openCollection(economy.data.lamp.pending.includes(id)?id:undefined);
+  if(kind==='inspect')return openCollection(id);
   if(kind==='collect')return openCollection();
   if(kind==='lamp-upgrades')return openCollection(null,true);
   if(kind==='hero'){closeRequested=false;selectedHero=id;lastKey='';render();if(!(economy.data.lamp.guide&LAMP_GUIDE.comparison))return void action(()=>economy.markGuide('comparison'));return;}
-  if(kind==='skip'){if(economy.data.lamp.discarded?.includes(selectedItem)){selectedItem=null;selectedHero=null;batch=false;lastKey='';return render();}reviewed.add(selectedItem);nextItem();batch=true;if(!selectedItem)return void action(async()=>{await economy.finishReview();});lastKey='';return render();}
+  if(kind==='skip'){if(economy.data.lamp.discarded?.includes(selectedItem)&&!batch){selectedItem=null;selectedHero=null;batch=false;lastKey='';return render();}reviewed.add(selectedItem);nextItem();batch=true;if(!selectedItem)return void action(()=>economy.finishReview());lastKey='';return render();}
   if(kind==='queue'&&(economy.data.lamp.pending.includes(id)||economy.data.lamp.discarded?.includes(id))){closeRequested=false;batch=economy.data.lamp.pending.includes(id);selectedItem=id;selectedHero=null;lastKey='';return render();}
   if(kind==='generate')return void action(async()=>{await reveal(()=>economy.generate(context()));});
   if(kind==='auto')return void action(async()=>{await economy.setAuto(!economy.data.lamp.autoEnabled);notice=economy.data.lamp.autoEnabled?'Auto is on. Inspect whenever you like.':'Auto is off.';});
   if(kind==='equip'&&selectedHero&&selectedItem)return void action(async()=>{dialog.scrollTop=0;const result=await economy.equip(selectedHero,selectedItem),name=heroDefinition(heroes().find(h=>h.heroInstanceKey===result.heroId)).name,anchor=dialog.querySelector('[data-action="hero"][data-id="'+result.heroId+'"]').getBoundingClientRect();notice='Equipped to '+name;showEquipFeedback(result,name,anchor);if(batch){nextItem();if(!selectedItem)await economy.finishReview();}else close();});
-  if(kind==='auto-equip')return void action(async()=>{dialog.scrollTop=0;const anchors=new Map(heroes().map(h=>[h.heroInstanceKey,dialog.querySelector('[data-action="hero"][data-id="'+h.heroInstanceKey+'"]').getBoundingClientRect()])),results=await economy.autoEquip();results.forEach(r=>showEquipFeedback(r,heroDefinition(heroes().find(h=>h.heroInstanceKey===r.heroId)).name,anchors.get(r.heroId)));selectedItem=null;selectedHero=null;notice='';});
+  if(kind==='auto-equip')return void action(async()=>{dialog.scrollTop=0;const anchors=selectedItem?new Map(heroes().map(h=>[h.heroInstanceKey,dialog.querySelector('[data-action="hero"][data-id="'+h.heroInstanceKey+'"]').getBoundingClientRect()])):new Map(),results=await economy.autoEquip();results.forEach(r=>{const anchor=anchors.get(r.heroId);if(anchor)showEquipFeedback(r,heroDefinition(heroes().find(h=>h.heroInstanceKey===r.heroId)).name,anchor);});selectedItem=null;selectedHero=null;notice=results.length?'Auto-Equipped gear.':'';});
   if(kind==='purchase-stage')return void action(async()=>{await economy.purchaseStage(Number(b.dataset.tier),Number(b.dataset.stage));notice=economy.data.lamp.upgradeEndsAt?'Upgrade construction started.':'Upgrade stage '+economy.data.lamp.upgradeStage+' of '+LAMP_CONFIG.upgradeStages+' purchased.';});
   if(kind==='upgrade')return void action(async()=>{await economy.upgrade(Number(b.dataset.tier));notice='Upgrade construction started.';});
   if(kind==='speed-up')return void action(async()=>{const used=await economy.speedUp(Number(b.dataset.tier));notice=used+' speed-up ticket'+(used===1?'':'s')+' spent.';});
@@ -170,14 +170,15 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
    body+='<div class="lamp-candidate" style="--rarity:'+RARITIES[candidate.rarity].color+'">'+atlas(candidate)+'<div><div class="lamp-quality-band"><small>'+RARITIES[candidate.rarity].label+' · '+EQUIPMENT_SLOTS[candidate.type]+' · Lv. '+candidate.level+'</small><h2>'+escape(candidate.name)+'</h2><p class="lamp-item-cp">CP '+lampGearCP(candidate)+'</p></div><dl class="lamp-item-stats">'+rows.filter(k=>Object.hasOwn(candidate.stats,k)).map(k=>{const delta=comparison?.deltas[k]||0;return '<div><dt>'+k+'</dt><dd data-delta="'+delta+'" aria-label="'+k+' '+candidate.stats[k]+(selectedHero?', '+(delta>0?'increase ':delta<0?'decrease ':'no change ')+Math.abs(delta):'')+'"><span class="lamp-stat-value"><canvas class="lamp-stat-paint" aria-hidden="true"></canvas><span class="lamp-stat-number" aria-hidden="true">'+candidate.stats[k]+'</span>'+(delta?'<span class="lamp-stat-arrow '+(delta>0?'up':'down')+'" aria-hidden="true"></span>':'')+'</span></dd></div>';}).join('')+'</dl></div></div>';
    body+='<div class="lamp-queue" aria-label="Equipment candidates">'+reviewCandidates.map(c=>tile(c.item,'queue',c)).join('')+'</div>';
    const queuedDiscarded=l.discarded?.includes(candidate.instanceId);
-   body+='<div class="lamp-actions"><button data-action="skip" '+(busy?'disabled':'')+'>'+(queuedDiscarded?'Back':'Skip')+'</button><button class="primary" data-action="equip" '+(!l.pending.includes(candidate.instanceId)&&!queuedDiscarded||!selectedHero||busy?'disabled':'')+'>Equip</button><button data-action="auto-equip" '+(busy||!selectLampUpgrades(data,roster).length?'disabled':'')+'>Auto-Equip</button></div>';
+   const nextUpgrade=selectLampUpgrades(data,roster).some(i=>i.instanceId!==candidate.instanceId&&!reviewed.has(i.instanceId));
+   body+='<div class="lamp-actions"><button data-action="skip" '+(busy?'disabled':'')+'>'+(queuedDiscarded&&!batch?'Back':nextUpgrade?'Skip':'Dismantle')+'</button><button class="primary" data-action="equip" '+(!l.pending.includes(candidate.instanceId)&&!queuedDiscarded||!selectedHero||busy?'disabled':'')+'>Equip</button><button data-action="auto-equip" '+(busy||!selectLampUpgrades(data,roster).length?'disabled':'')+'>Auto-Equip</button></div>';
   }else{
-   previewIds=[...(l.discarded||[]),'salvage:'+l.salvage.count+':'+l.salvage.gold];const salvageCount=(l.discarded?.length||0)+l.salvage.count;
+   previewIds=[...l.pending,...(l.discarded||[]),'salvage:'+l.salvage.count+':'+l.salvage.gold];const salvageCount=l.pending.length+(l.discarded?.length||0)+l.salvage.count;
    body+='<div class="lamp-salvage-hero"><h2>'+(salvageCount?salvageCount+' piece'+(salvageCount===1?'':'s'):'Ready for another wish')+'</h2></div>';
    if(salvageCount){
-    if(l.discarded?.length)body+='<div class="lamp-queue" aria-label="Dismantling collection">'+reviewCandidates.filter(c=>c.queue==='discarded').map(c=>tile(c.item,'queue',c)).join('')+'</div>';
+    if(reviewCandidates.length)body+='<div class="lamp-queue" aria-label="Dismantling collection">'+reviewCandidates.map(c=>tile(c.item,'queue',c)).join('')+'</div>';
     const eligible=reviewCandidates.some(c=>c.bestGain>0);
-    body+='<div class="lamp-actions"><button class="primary" data-action="dismantle" '+(busy||eligible?'disabled':'')+'>Dismantle All</button></div>'+(eligible?'<p class="lamp-modal-notice" role="status">Equip pieces marked with a green arrow before dismantling.</p>':'');
+    body+='<div class="lamp-actions">'+(eligible?'<button data-action="auto-equip" '+(busy?'disabled':'')+'>Auto-Equip</button>':'')+'<button class="primary" data-action="dismantle" '+(busy||eligible?'disabled':'')+'>Dismantle All</button></div>'+(eligible?'<p class="lamp-modal-notice" role="status">Equip pieces marked with a green arrow before dismantling.</p>':'');
    }
   }
   if(notice)body+='<p class="lamp-modal-notice" role="status">'+escape(notice)+'</p>';

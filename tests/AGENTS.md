@@ -132,7 +132,7 @@
 
 - The four-phone lamp guard rejects ancestor clipping of smoke above the unchanged strip and verifies 80% disabled brightness with full brightness restored after cooldown.
 
-- Compact lamp review checks current hero art, independent positive/zero/negative CP direction, selected-hero stat arrows/equality, absent rarity letters/table/navigation/link, rounded three-column card, two-to-two-and-a-half inventory rows and no master scroll. Await durable guide/Skip transactions before asserting enabled actions or dismantling contents.
+- Lamp review checks positive-upgrade-first entry, eligible-only Skip traversal, final Dismantle preview, all-gear manual inspection, protected Auto-Equip, and atomic queue retention on failed saves. Compact presentation still checks hero art, CP direction/arrows, card geometry, inventory rows and overflow; await durable guide/Skip transactions before asserting enabled actions or dismantling contents.
 
 - Lamp phone proof injects one isolated equipment-save failure, requires the saved record to remain byte-identical and no CP receipt, and verifies a readable contained notice without master overflow.
 

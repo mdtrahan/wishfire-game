@@ -229,6 +229,7 @@
 - The lamp helper extends the15-second idle threshold through draw, collection, Hondo comparison, equip, dismantle and free/affordable upgrade preview. Retarget disabled controls to useful enabled actions; hide during reward banners and after a completed upgrade loop outside review. Any input dismisses it. Guide receipts persist once through the existing locked equipment transaction.
 
 - Lamp recipient previews use lampItemCPGain for signed total hero CP changes. Direct portrait taps select the recipient, with stat arrows comparing its matching slot. Equality has no indicator and there are no Previous/Next controls. These UI reads do not repair canonical versus combat-instance ownership.
+- Lamp review starts and advances through rarity/CP-ranked positive total-hero CP upgrades. The dismantle preview retains every stored item for inspection and Auto-Equip, while explicit dismantling and the shared positive-upgrade guard remain authoritative.
 
 - Concurrent saved CP receipts use their measured wrapped heights and34px spacing for32px animation travel. Place each hero column in modal coordinates under its stationary portrait; keep ordinary rapid bursts within the visible modal.
 
