@@ -265,16 +265,17 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
     const point = groupCenter(group);
     return Math.hypot(point.x - center, point.y - centerY);
   };
+  const isWithinLocalDetectionRange = enemy => heroes.some(hero => distance(hero, enemy) <= CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS);
   const orderedGroups = [...groups.entries()].sort((a, b) => groupDistance(a[1]) - groupDistance(b[1]));
   const activeStates = new Set(['in_range', 'engaged', 'retreating']);
-  const activeGroups = orderedGroups.filter(([, group]) => group.some(enemy => activeStates.has(enemy.streamState)));
+  const localGroups = orderedGroups.filter(([, group]) => group.some(enemy =>
+    (bossEncounter && activeStates.has(enemy.streamState))
+      || selectContinuousEnemyTarget({ enemy, heroes, globals, requireInReach: true })
+      || isWithinLocalDetectionRange(enemy)));
+  const activeGroups = localGroups.filter(([, group]) => group.some(enemy => activeStates.has(enemy.streamState)));
   const storedGroupId = Number(stage?.activeEncounterGroupId);
   const storedGroup = activeGroups.find(([groupId]) => groupId === storedGroupId);
   const committedGroup = storedGroup || activeGroups[0] || null;
-  const localGroups = orderedGroups.filter(([, group]) => group.some(enemy =>
-    selectContinuousEnemyTarget({ enemy, heroes, globals, requireInReach: true })
-      || activeStates.has(enemy.streamState))
-    || groupDistance(group) <= CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS);
   const nearestEntry = localGroups[0] || orderedGroups[0] || null;
   const nearestGroup = committedGroup?.[1] || nearestEntry?.[1] || [];
   const nearestGroupId = committedGroup?.[0] ?? nearestEntry?.[0] ?? null;
@@ -368,7 +369,9 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   let newlyEngaged = 0;
   for (const enemy of focusedEnemies) {
     if (enemy.streamState === 'retreating') continue;
-    const target = selectContinuousEnemyTarget({ enemy, heroes, globals });
+    const inReachTarget = selectContinuousEnemyTarget({ enemy, heroes, globals, requireInReach: true });
+    if (!bossEncounter && !inReachTarget && !isWithinLocalDetectionRange(enemy)) continue;
+    const target = inReachTarget || selectContinuousEnemyTarget({ enemy, heroes, globals });
     if (!target) { enemy.locomotion = 'idle'; if (Number(enemy.actionStateUntil || 0) <= Number(globals.time || 0)) enemy.actionState = 'idle'; continue; }
     const isBoss = bossEncounter && enemy === boss;
     advanceActorToward(enemy, target, { seconds, speed: Math.max(34, Number(enemy.streamWalkSpeed || 40)), now: Number(globals.time || 0), minX: isBoss ? bounds.bossMinX : bounds.heroMinX, maxX: isBoss ? bounds.bossMaxX : bounds.maxX, minY: isBoss ? bounds.bossMinY : minY, maxY: isBoss ? bounds.bossMaxY : maxY,
@@ -378,6 +381,23 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   for (const enemy of enemies) {
     if (enemy.streamState === 'retreating') continue;
     const target = selectContinuousEnemyTarget({ enemy, heroes, globals, requireInReach: true });
+    if (!bossEncounter && !target && !isWithinLocalDetectionRange(enemy)) {
+      if (Number(enemy.actionStateUntil || 0) <= Number(globals.time || 0)) {
+        if (activeStates.has(enemy.streamState)) {
+          enemy.streamState = 'roaming';
+          enemy.arenaTargetUID = 0;
+          enemy.arenaInReach = false;
+          enemy.locomotion = 'idle';
+          enemy.actionState = 'idle';
+        } else if (!enemy.streamSolo) {
+          enemy.arenaTargetUID = 0;
+          enemy.arenaInReach = false;
+          enemy.locomotion = 'idle';
+          enemy.actionState = 'idle';
+        }
+      }
+      continue;
+    }
     if (target && isActorTargetInRange(enemy, target)) {
       if (enemy.streamState !== 'engaged') newlyEngaged += 1;
       enemy.streamState = 'engaged';

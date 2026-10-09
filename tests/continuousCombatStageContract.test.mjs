@@ -193,6 +193,7 @@ test('melee and ranged solos both move toward a reachable waypoint within one pa
     }
     assert.ok(solo.footX > 260 && solo.footX <= 270, `${streamDelivery} patrol makes progress within its first leg`);
     assert.equal(solo.streamState, 'roaming');
+    assert.equal(solo.locomotion, 'walk', `${streamDelivery} patrol keeps its movement clip while it is outside pack-detection range`);
   }
 });
 
@@ -835,7 +836,7 @@ test('six seeded sector identities keep full pack footprints outside the compact
   assert.deepEqual(enemies.map(enemy => enemy.streamSectorIndex), [0, 1, 2, 3, 4, 5]);
   assert.ok(enemies.every(enemy => enemy.x >= 0 && enemy.x <= 2160));
   assert.ok(enemies.every(enemy => Math.hypot(enemy.x - moat.centerX, enemy.y - moat.centerY) - actorFootprintRadius(enemy) >= moat.minimumEnemyCenterDistance));
-  assert.ok(enemies.some(enemy => Math.hypot(enemy.x - moat.centerX, enemy.y - moat.centerY) <= CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS), 'a seeded pack can begin within local detection range');
+  assert.ok(enemies.every(enemy => Math.hypot(enemy.x - moat.centerX, enemy.y - moat.centerY) > CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS), 'packs begin outside local detection and are approached before engaging');
   const safeY = deriveCombatWorldVerticalBounds();
   assert.ok(enemies.every(enemy => enemy.y >= safeY.minY + 32 && enemy.y <= safeY.maxY - 32));
   assert.ok(enemies.every(enemy => enemy.streamEngageX === enemy.x));
@@ -1086,10 +1087,10 @@ test('six huddled packs preserve seeded local clouds, remain bounded, and clear 
   assert.ok(enemies.every(enemy => enemy.streamEngageX === enemy.x));
 });
 
-test('moat translation keeps six-member sector clouds separated at minimum and production enemy sizes', () => {
+test('seeded six-pack layout keeps full footprints separated at minimum and production enemy sizes', () => {
   const moat = deriveContinuousCombatSpawnMoat();
   const vertical = deriveCombatWorldVerticalBounds();
-  for (const EnemySize of [20, 40]) for (const seed of [1, 17, 42, 3187]) for (const sectorSize of [2, 3, 6]) {
+  for (const EnemySize of [20, 40]) for (const seed of Array.from({ length: 64 }, (_, index) => index + 1)) for (const sectorSize of [2, 3, 6]) {
     const globals = { EnemySize, ContinuousCombatStage: createContinuousCombatStageState(seed) };
     const enemies = Array.from({ length: CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, sectorIndex) => Array.from({ length: sectorSize }, (_, entryOrder) =>
       activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', hp: 10 }, { packIndex: 0, sectorIndex, entryOrder, sectorSize }))).flat();
@@ -1100,13 +1101,15 @@ test('moat translation keeps six-member sector clouds separated at minimum and p
     assert.ok(enemies.every(enemy => Math.hypot(enemy.x - moat.centerX, enemy.y - moat.centerY) - actorFootprintRadius(enemy) >= moat.minimumEnemyCenterDistance));
     for (let first = 0; first < enemies.length; first += 1) for (let second = first + 1; second < enemies.length; second += 1) {
       if (enemies[first].streamSectorIndex === enemies[second].streamSectorIndex) continue;
-      assert.ok(Math.hypot(enemies[first].x - enemies[second].x, enemies[first].y - enemies[second].y) >= 36,
-        `sector clouds overlap at EnemySize=${EnemySize}, seed=${seed}, sectorSize=${sectorSize}`);
+      const edgeGap = Math.hypot(enemies[first].x - enemies[second].x, enemies[first].y - enemies[second].y)
+        - actorFootprintRadius(enemies[first]) - actorFootprintRadius(enemies[second]);
+      assert.ok(edgeGap >= 200,
+        `pack edge gap ${edgeGap.toFixed(1)} is too small at EnemySize=${EnemySize}, seed=${seed}, sectorSize=${sectorSize}`);
     }
   }
 });
 
-test('recovery reveal holds the party at section B center, then nearby packs engage promptly', () => {
+test('recovery reveal holds the party at section B center, then the nearest spaced pack engages', () => {
   const heroes = [
     { uid: 1, kind: 'hero', name: 'Fara', hp: 100, footX: 300, footY: 180 },
     { uid: 2, kind: 'hero', name: 'Hondo', hp: 100, footX: 320, footY: 200 },
@@ -1133,10 +1136,16 @@ test('recovery reveal holds the party at section B center, then nearby packs eng
   assert.equal(stage.clearedPackMask, 0b000101, 'earned sectors survive the recovery transition');
 
   globals.time = 10.5;
-  maybeAdvanceContinuousCombatStage({ globals, entities: [...heroes, ...enemies], presentationBarrier: { lanes: {} }, call });
-  assert.ok(enemies.some(enemy => enemy.streamState !== 'roaming'), 'a pack already within detection range becomes active after the reveal');
   const nearestPackFoot = Math.min(...enemies.map(enemy => Math.hypot(enemy.footX - moat.centerX, enemy.footY - moat.centerY)));
-  assert.ok(nearestPackFoot < 300, `the nearest spawned pack is ${nearestPackFoot.toFixed(1)} world units from the huddle`);
+  assert.ok(nearestPackFoot > CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS, 'packs begin beyond local detection range');
+  let ticksToNotice = null;
+  for (let tick = 0; tick < 30 && ticksToNotice === null; tick += 1) {
+    globals.time += 0.1;
+    maybeAdvanceContinuousCombatStage({ globals, entities: [...heroes, ...enemies], presentationBarrier: { lanes: {} }, call });
+    if (enemies.some(enemy => enemy.streamState !== 'roaming')) ticksToNotice = tick + 1;
+  }
+  assert.ok(ticksToNotice !== null, 'the nearest pack activates after the squad approaches into its detection range');
+  assert.ok(ticksToNotice <= 25, `the nearest spaced pack becomes local within 2.5 seconds, took ${ticksToNotice / 10}s`);
 });
 
 test('ordinary six-member packs form repeatable compact two-dimensional clouds inside arena bounds', () => {

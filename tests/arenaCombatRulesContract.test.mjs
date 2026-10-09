@@ -105,9 +105,32 @@ test('the squad detects one local pack together and leaves distant packs idle', 
   const remoteBefore = enemies.slice(3).map(enemy => enemy.footX);
   advanceContinuousCombatArena({ globals: { time: 1 }, entities: [...heroes, ...enemies], seconds: 0.1 });
   assert.ok(heroes.every(hero => Number(hero.arenaTargetUID) >= 20 && Number(hero.arenaTargetUID) <= 22));
-  assert.ok(enemies.slice(0, 3).every(enemy => ['in_range', 'engaged'].includes(enemy.streamState)));
+  assert.ok(enemies.slice(0, 3).some(enemy => ['in_range', 'engaged'].includes(enemy.streamState)));
+  assert.ok(enemies.slice(0, 3).filter(enemy => heroes.every(hero => Math.hypot(hero.footX - enemy.footX, hero.footY - enemy.footY) > 460))
+    .every(enemy => enemy.streamState === 'roaming'), 'members outside personal detection range stay dormant even when their pack is local');
   assert.deepEqual(enemies.slice(3).map(enemy => enemy.footX), remoteBefore);
   assert.deepEqual(enemies.slice(3).map(enemy => enemy.streamState), ['roaming', 'roaming']);
+});
+
+test('stale remote engagement cannot pull the squad or make a remote pack chase', () => {
+  const heroes = Array.from({ length: 4 }, (_, index) => ({
+    uid: index + 1, kind: 'hero', hp: 100, footX: 1000 + index * 8, footY: 280 + index * 14,
+  }));
+  const nearby = { uid: 20, kind: 'enemy', hp: 100, footX: 1320, footY: 300, streamState: 'roaming', streamEngagementGroupId: 20 };
+  const nearbyGroupmate = { uid: 21, kind: 'enemy', hp: 100, footX: 1600, footY: 300, streamState: 'engaged', streamEngagementGroupId: 20, locomotion: 'run' };
+  const staleRemote = { uid: 30, kind: 'enemy', hp: 100, footX: 1800, footY: 300, streamState: 'engaged', streamEngagementGroupId: 30, locomotion: 'run' };
+  const stage = { activeEncounterGroupId: 30 };
+  const globals = { time: 2, ContinuousCombatStage: stage };
+  const remoteFeet = [nearbyGroupmate.footX, staleRemote.footX];
+
+  advanceContinuousCombatArena({ globals, entities: [...heroes, nearby, nearbyGroupmate, staleRemote], seconds: 0.1 });
+
+  assert.ok(heroes.every(hero => hero.arenaTargetUID === nearby.uid), 'the new local pack takes focus ahead of the stale remote commitment');
+  assert.equal(stage.activeEncounterGroupId, nearby.streamEngagementGroupId);
+  assert.deepEqual([nearbyGroupmate.footX, staleRemote.footX], remoteFeet, 'remote members do not begin or continue pursuit');
+  assert.ok([nearbyGroupmate, staleRemote].every(enemy => enemy.streamState === 'roaming'
+    && enemy.arenaTargetUID === 0 && enemy.arenaInReach === false && enemy.locomotion === 'idle'), 'stale remote engagement returns to dormant roaming');
+  assert.notEqual(nearby.streamState, 'roaming', 'the physically local pack still engages');
 });
 
 test('a wounded retreating encounter holds the whole squad until neutralized', () => {

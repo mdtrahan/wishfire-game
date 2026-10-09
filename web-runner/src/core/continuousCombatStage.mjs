@@ -20,6 +20,16 @@ export const CONTINUOUS_COMBAT_SECTOR_RATIOS = Object.freeze([0.12, 0.27, 0.42, 
 const CONTINUOUS_COMBAT_SOLO_STAT_SCALE = 0.5;
 const CONTINUOUS_COMBAT_SOLO_PACK_CLEARANCE = 120;
 const CONTINUOUS_COMBAT_SOLO_CLEARANCE = 150;
+// Keep the four inner clouds beyond local notice at the huddle and leave the
+// outer-midpoint lanes open for the weaker solo patrols.
+const CONTINUOUS_COMBAT_PACK_LAYOUT = Object.freeze([
+  Object.freeze({ x: -0.352, y: 0 }),
+  Object.freeze({ x: -0.231, y: -0.347 }),
+  Object.freeze({ x: -0.231, y: 0.347 }),
+  Object.freeze({ x: 0.231, y: -0.347 }),
+  Object.freeze({ x: 0.231, y: 0.347 }),
+  Object.freeze({ x: 0.352, y: 0 }),
+]);
 export const CONTINUOUS_COMBAT_BOSS_ENTRY_WIPE_MS = 440;
 
 // Four normal packs form one repeatable stage. The boss is a gate rather than
@@ -197,31 +207,17 @@ function seededPackFoot(globals, { packIndex, rank, sector, order, sectorSize, c
   const moat = deriveContinuousCombatSpawnMoat();
   const packCenter = placed.reduce((sum, point) => ({ x: sum.x + point.x / placed.length, y: sum.y + point.y / placed.length }), { x: 0, y: 0 });
   const packRadius = Math.max(...placed.map(point => Math.hypot(point.x - packCenter.x, point.y - packCenter.y) + actorFootprintRadius({ kind: 'enemy' })));
-  const minimumCenterDistance = moat.minimumEnemyCenterDistance + packRadius;
-  const centerDx = packCenter.x - moat.centerX;
-  const centerDy = packCenter.y - moat.centerY;
-  const currentDistance = Math.hypot(centerDx, centerDy);
-
-  const fits = candidateOffset => placed.every(point => point.x + candidateOffset.x >= xMin
-    && point.x + candidateOffset.x <= xMax
-    && point.y + candidateOffset.y >= yMin
-    && point.y + candidateOffset.y <= yMax);
-  const side = centerDx < 0 || (Math.abs(centerDx) <= 1e-6 && sector < CONTINUOUS_COMBAT_PACKS_PER_WAVE / 2) ? -1 : 1;
-  const offsetForDistance = targetDistance => {
-    if (currentDistance >= targetDistance) return { x: 0, y: 0 };
-    const candidates = [];
-    if (currentDistance > 1e-6) {
-      const radialScale = targetDistance / currentDistance;
-      candidates.push({ x: centerDx * (radialScale - 1), y: centerDy * (radialScale - 1) });
-    }
-    const verticalDistance = Math.abs(centerDy);
-    const horizontalDistance = Math.sqrt(Math.max(0, targetDistance ** 2 - verticalDistance ** 2));
-    candidates.push({ x: moat.centerX + side * horizontalDistance - packCenter.x, y: 0 });
-    candidates.push({ x: moat.centerX - side * horizontalDistance - packCenter.x, y: 0 });
-    return candidates.find(fits) || null;
+  const layout = CONTINUOUS_COMBAT_PACK_LAYOUT[sector];
+  const targetCenter = {
+    x: moat.centerX + world.worldWidth * layout.x,
+    y: moat.centerY + (geometry.vertical.maxY - geometry.vertical.minY) * layout.y,
   };
-  const offset = offsetForDistance(minimumCenterDistance);
-  if (!offset) throw new RangeError('continuous combat spawn moat cannot fit this authored pack inside world bounds');
+  const offset = { x: targetCenter.x - packCenter.x, y: targetCenter.y - packCenter.y };
+  const fits = placed.every(point => point.x + offset.x >= xMin && point.x + offset.x <= xMax
+    && point.y + offset.y >= yMin && point.y + offset.y <= yMax);
+  if (!fits || Math.hypot(targetCenter.x - moat.centerX, targetCenter.y - moat.centerY) - packRadius < moat.minimumEnemyCenterDistance) {
+    throw new RangeError('continuous combat pack layout cannot fit this authored cloud outside the recovery moat');
+  }
   const moved = placed.map(point => ({ x: point.x + offset.x, y: point.y + offset.y }));
   return moved[normalizedOrder] || moved[moved.length - 1];
 }
