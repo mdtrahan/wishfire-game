@@ -17,7 +17,7 @@ export function renderHeroScreen({equipmentProgress,canvas,gameState,fnContext,h
  const index=((Number(gameState.selectedHero)||0)%roster.length+roster.length)%roster.length;
  if(activeHeroIndex!==index){activeHeroIndex=index;activeSkillIndex=0;activeSkillPage=0;}
  const saved=roster[index];
- const hero=fnContext.state.entities.find(actor=>actor.kind==='hero'&&actor.heroInstanceKey===saved.heroInstanceKey)||saved;
+ const hero=saved;
  const definition=heroDefinition(hero);
  if(!host){
   host=document.createElement('section');host.id='hero-details';host.setAttribute('aria-label','Hero details');

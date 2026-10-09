@@ -160,3 +160,5 @@
 - Lamp curve tests enforce accelerating capacity across all 100 levels, increasing four-notch prices and unchanged seven-hour construction; rarity-first cache display must preserve CP-driven auto-equip and saved queues.
 
 - `heroScreenUILayout.test.mjs` serves the production Hero renderer, shared gear CSS/atlas and navigation in isolated browser contexts. Check portrait/row/tab/footer geometry at reference, compact Retina and natural sizes, all canonical active skills through four-card pages, actual metadata and unlock gates, hero/tab selection, and byte-identical saved/in-memory progression and loadouts. Keep isolated fixture proof distinct from native full-app captures.
+
+- Hero CP refresh proof keeps stale combat actors beside updated canonical progression, checks next-render CP across heroes and all tabs, and verifies manual/Auto equip receipts match saved and live CP before resolving.

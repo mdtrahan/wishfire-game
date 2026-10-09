@@ -102,7 +102,7 @@ const fixtureModule=`
   const layoutState={getActiveLayoutId:()=> 'heroLayout'},eventBus={emit(){}};
   const render=()=>{renderHeroScreen({equipmentProgress:{data:equipment},canvas,gameState,fnContext,heroPortraitImages:portraits});const scale=canvas.getBoundingClientRect().width/360;renderExistingNavigation({canvas},{worldToCanvas:(x,y)=>({x:x*scale,y:y*scale}),layoutScale:scale,gameState,layoutState,eventBus});};
   const frame=()=>{render();window.heroQaFrame=requestAnimationFrame(frame);};render();window.heroQaFrame=requestAnimationFrame(frame);
-  window.heroQa={globals,gameState,equipment,render};
+  window.heroQa={globals,gameState,equipment,fnContext,render};
  };
 `;
 
@@ -240,6 +240,27 @@ test('hero redesign uses saved canonical data and stays contained across portrai
    assert.deepEqual(await page.evaluate(()=>window.heroQa.globals.HeroProgress),progress,'progression data stays unchanged in memory');
    assert.deepEqual(await page.evaluate(()=>window.heroQa.equipment),economy,'equipped items and loadouts stay unchanged in memory');
    assert.deepEqual(pageErrors,[],'renderer has no browser exceptions');
+   const cpRefresh=await page.evaluate(async()=>{
+    const {refreshHeroStats}=await import('/web-runner/src/core/heroProgression.mjs');
+    const {computeCombatPower}=await import('/web-runner/src/core/combatPower.mjs');
+    const qa=window.heroQa,heroes=Object.values(qa.globals.HeroProgress.heroes);
+    qa.fnContext.state.entities=heroes.map(hero=>({...structuredClone(hero),kind:'hero'}));
+    const results=[];
+    for(const [index,hero] of heroes.entries()){
+     qa.gameState.selectedHero=index;qa.render();
+     const before=computeCombatPower(hero);
+     hero.equipmentStats.HP=(hero.equipmentStats.HP||0)+80;
+     refreshHeroStats(hero);qa.render();
+     results.push({before,expected:'CP '+computeCombatPower(hero),visible:document.querySelector('.hero-name').textContent});
+    }
+    return results;
+   });
+   for(const result of cpRefresh){assert.ok(result.visible.includes(result.expected),'next render reads committed CP despite a stale combat actor');assert.notEqual(result.expected,'CP '+result.before,'fixture adds a measurable CP upgrade');}
+   for(const tab of ['Gear','Orb','Skills']){
+    await detail.getByRole('button',{name:tab,exact:true}).click();
+    await page.waitForFunction(tabName=>document.querySelector('#hero-details')?.dataset.tab===tabName,tab.toLowerCase());
+    assert.ok((await detail.locator('.hero-name').textContent()).includes(cpRefresh.at(-1).expected),`${tab} reads the same updated hero CP`);
+   }
    const filename=`${profile.name}.png`;await page.screenshot({path:path.join(artifactDir,filename),fullPage:true});
    report.push({fixture:'isolated production hero renderer and shared navigation modules',profile,geometry:initial,heroes:heroes.map(hero=>({id:hero.heroInstanceKey,level:hero.currentLevel,stats:hero.stats,hp:hero.maxHP,loadout:economy.loadouts[hero.heroInstanceKey]})),portraitGeometryByTab:tabPortraits,screenshots,finalScreenshot:filename,reachedSkillCount:reachedSkills.length,pass:true});
    await context.close();

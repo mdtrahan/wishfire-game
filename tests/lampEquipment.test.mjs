@@ -409,3 +409,13 @@ test('cache groups all rarity tiers before descending CP within each tier withou
  assert.equal(plan.loadouts[hero.heroInstanceKey][base.type],'common2','Auto Equip still chooses the strongest CP candidate despite its lower display rarity');
  assert.deepEqual(data,before);
 });
+
+ test('manual and automatic equip publish matching saved and live hero CP before resolving',async()=>{
+ const f=fixture(),actors=Object.values(f.globals.HeroProgress.heroes).map(hero=>({...structuredClone(hero),kind:'hero'}));
+ const store=createEquipmentStorage({globals:f.globals,getActors:()=>actors,storage:f.storage,locks:f.locks,now:()=>f.store.time(),seed:()=>42});
+ await store.sync();
+ const verify=()=>{for(const actor of actors){const hero=f.globals.HeroProgress.heroes[actor.heroInstanceKey];assert.equal(actor.combatPower,computeCombatPower(hero));assert.equal(hero.combatPower,computeCombatPower(hero));assert.deepEqual(actor.stats,hero.stats);assert.equal(actor.maxHP,hero.maxHP);}};
+ for(const hero of Object.values(f.globals.HeroProgress.heroes)){f.setClock(f.store.time()+2000);await store.generate();const receipt=await store.equip(hero.heroInstanceKey,store.data.lamp.pending[0]);verify();assert.equal(receipt.cpAfter,computeCombatPower(hero));}
+ for(let i=0;i<12;i++){f.setClock(f.store.time()+2000);await store.generate();}
+ const receipts=await store.autoEquip();assert.ok(receipts.length);verify();for(const receipt of receipts)assert.equal(receipt.cpAfter,computeCombatPower(f.globals.HeroProgress.heroes[receipt.heroId]));
+ });

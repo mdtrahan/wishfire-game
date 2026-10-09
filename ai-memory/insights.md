@@ -640,3 +640,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - ORKA-2c2: Keep Hero stage geometry fixed across tabs and reserve the icon row below the full-body art. Four-card skill pages overlap the final window for nine-skill kits, preserving every canonical ability. Saved progression heroes lack attackType, so presentation range reads canonical basic tags before using the shared reach owner; all-enemy effects report their target policy rather than a caster range cap.
 
 - ORKA-hdi: Resolve formation roles through canonical save names and display aliases. Establish Fara lead along actual travel heading, yield Hondo only outside attack reach with room for Fara to pass, and keep contact offsets within authored melee reach; world-edge yielding otherwise causes blocked locomotion.
+
+- ORKA-bnw: Menu CP must read the same canonical hero progression as equipment comparisons. Preferring a paused combat actor can conceal a committed upgrade until a later equipment sync; test the next render with an intentionally stale actor and verify manual/Auto receipts match saved and live CP.

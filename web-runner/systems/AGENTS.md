@@ -257,3 +257,5 @@
 
 - `actorClipPlayback.mjs` lazily loads explicit actor/state/facing PNG sequences and samples supplied simulation age. It never advances clocks or computes gameplay outcomes; unsupported facing/state returns null so integration can use its existing static art.
 - Camera-following projectile visuals retain world-space endpoints and reproject them each frame. Their visible travel is capped to one current viewport in world units and fades before removal; culling uses visible canvas bounds, not legacy arena coordinates. Boss mode uses a temporary left-heroes/right-boss camera and orientation while the saved roam orientation remains unchanged; the entry wipe freezes simulation and consumes pointer input until it ends.
+
+- Hero menus read canonical HeroProgress records for CP, stats and EXP. Combat actor snapshots may lag committed gear; they must not override owned progression in presentation. Equipment commits project the shared CP formula to saved and live heroes before their promise resolves.
