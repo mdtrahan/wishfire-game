@@ -634,4 +634,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - ORKA-764: Seed one opening roam heading from the stage seed and transient attempt index, anchored at the authored arena midpoint after huddle placement. Mirror tank-front formation to that heading and yield it on actual actor reach or an incoming impact, so prior offscreen feet and stale targets cannot reverse the first walk.
 
 - ORKA-5fr: Seed recovery composition from the advancing stage generation serial while preserving earned wave and pack state; copying the prior serial and seed reproduces the same loadout after every wipe.
+- ORKA-lvd: Reconcile arena locomotion from frame-start feet to post-separation feet. Collision-canceled pursuit must settle to idle without resetting its animation timestamp each tick; preserve active basic/cast/hurt windows and leave attack reach untouched.
 - ORKA-3qz: Drive automatic cache review from the shared positive total-hero CP selector; skip only those candidates, preserve pending/discarded inspection, and route the last candidate through the atomic review transaction before showing the protected dismantle preview.

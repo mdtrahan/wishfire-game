@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { actorFootprintRadius, isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
 import { advanceContinuousCombatArena, selectContinuousEnemyTarget } from '../web-runner/src/core/arenaCombat.mjs';
 import { activateContinuousCombatSpawnedEnemy, pushContinuousCombatEnemy } from '../web-runner/src/core/continuousCombatStage.mjs';
+import { actorPuppetState } from '../web-runner/systems/actorPuppetPresentation.mjs';
 import { deriveCombatWorldVerticalBounds } from '../src/core/combatOrientation.mjs';
 
 test('actor reach uses initialized feet and preserves delivery-specific range', () => {
@@ -69,6 +70,48 @@ test('four heroes retain stable targets and separate crowded footprints', () => 
     const a = entities[index], b = entities[other];
     assert.ok(Math.hypot(a.footX - b.footX, a.footY - b.footY) >= 35, `${a.uid}/${b.uid} footprints separate`);
   }
+});
+
+test('contact cancellation settles both tanks to idle without aging locomotion every frame', () => {
+  const heroes = ['Fara', 'Hondo'].map((name, index) => ({
+    uid: index + 1, name, kind: 'hero', hp: 100, attackType: 'physical', footX: 2120, footY: 280,
+    locomotion: 'idle', locomotionStartedAt: 3,
+  }));
+  const enemy = { uid: 10, kind: 'enemy', hp: 100, footX: 2200, footY: 280, streamState: 'in_range', streamDelivery: 'melee' };
+  const entities = [...heroes, enemy];
+  const globals = { time: 4 };
+  for (let tick = 0; tick < 8; tick += 1) {
+    advanceContinuousCombatArena({ globals, entities, seconds: 0.1 });
+    globals.time += 0.1;
+  }
+  assert.ok(heroes.every(hero => hero.locomotion === 'idle'), 'footprint separation cancels the blocked contact step');
+  const settledAt = heroes.map(hero => hero.locomotionStartedAt);
+  for (let tick = 0; tick < 8; tick += 1) {
+    advanceContinuousCombatArena({ globals, entities, seconds: 0.1 });
+    globals.time += 0.1;
+  }
+  assert.deepEqual(heroes.map(hero => hero.locomotionStartedAt), settledAt, 'stationary idle animation age continues across blocked frames');
+
+  heroes[1].actionState = 'basic';
+  heroes[1].actionStateUntil = globals.time + 1;
+  enemy.actionState = 'hurt';
+  enemy.actionStateUntil = globals.time + 1;
+  advanceContinuousCombatArena({ globals, entities, seconds: 0.1 });
+  assert.equal(heroes[1].actionState, 'basic');
+  assert.equal(actorPuppetState(heroes[1], globals.time), 'basic', 'the active basic retains its actual presentation clip');
+  assert.equal(enemy.actionState, 'hurt');
+  assert.equal(actorPuppetState(enemy, globals.time), 'hurt', 'the active hurt retains its actual presentation clip');
+  assert.ok(isActorTargetInRange(heroes[0], enemy), 'contact locomotion reconciliation leaves authored attack reach unchanged');
+
+  const mover = { uid: 20, kind: 'hero', hp: 100, attackType: 'physical', footX: 1800, footY: 260, locomotion: 'idle', locomotionStartedAt: 2 };
+  const distantEnemy = { uid: 21, kind: 'enemy', hp: 100, footX: 1950, footY: 260, streamState: 'in_range' };
+  const movingGlobals = { time: 10 };
+  advanceContinuousCombatArena({ globals: movingGlobals, entities: [mover, distantEnemy], seconds: 0.1 });
+  assert.equal(mover.locomotion, 'walk');
+  assert.equal(mover.locomotionStartedAt, 10, 'real movement starts the walk clip at its transition');
+  movingGlobals.time = 10.1;
+  advanceContinuousCombatArena({ globals: movingGlobals, entities: [mover, distantEnemy], seconds: 0.1 });
+  assert.equal(mover.locomotionStartedAt, 10, 'continued movement does not restart the walk clip');
 });
 
 test('Fara and Hondo lead while Runa and Kaja keep ranged support spacing in either travel direction', () => {

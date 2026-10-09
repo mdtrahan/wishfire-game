@@ -229,6 +229,9 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   const center = heroes.reduce((sum, hero) => sum + actorFootPoint(hero).x, 0) / heroes.length;
   const centerY = heroes.reduce((sum, hero) => sum + actorFootPoint(hero).y, 0) / heroes.length;
   const now = Number(globals.time || 0);
+  const motionStart = new Map([...heroes, ...enemies].map(actor => [actor, {
+    ...actorFootPoint(actor), locomotion: actor.locomotion, locomotionStartedAt: actor.locomotionStartedAt,
+  }]));
   const recoveryReveal = heroes.some(hero => isActorRecoveryRevealActive(hero, now));
   let initialRoam = globals.ContinuousCombatInitialRoam;
   if (initialRoam && bossEncounter) {
@@ -462,6 +465,13 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
       if (enemy.streamState === 'engaged') enemy.streamState = 'in_range';
       enemy.arenaInReach = false;
     }
+  }
+  for (const actor of [...heroes, ...enemies]) {
+    const start = motionStart.get(actor), point = actorFootPoint(actor);
+    const locomotion = Math.hypot(point.x - start.x, point.y - start.y) > 0.001 ? 'walk' : 'idle';
+    actor.locomotionStartedAt = locomotion === start.locomotion ? start.locomotionStartedAt : now;
+    actor.locomotion = locomotion;
+    if (Number(actor.actionStateUntil || 0) <= now) actor.actionState = locomotion;
   }
   return newlyEngaged;
 }
