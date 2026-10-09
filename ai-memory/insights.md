@@ -622,3 +622,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Party focus selects where heroes fight; it must not restrict enemy attack eligibility. Reconcile every nearby enemy against its own reach and living targets before scheduling, and test simultaneous multi-pack attackers through the real cooldown owner.
 
 - Keep earned boss readiness separate from permission to enter. A stage-scoped manual-retry latch survives ordinary KO, boss defeat, save/reload and an active retry; ready stages continue fodder farming at 100% until explicit summon. Capture final-pack credit before the KO recovery filter, so a wave-four last-kill boundary latches readiness instead of auto-entering on recovery. Preserve the existing whole-party defeat rule during boss attempts; first-KO scheduler interruption applies only to ordinary roaming.
+
+- ORKA-xx0: Sibling gear views should reuse the existing `.lamp-level` badge markup and shared CSS to prevent style drift. Comparison arrows remain limited to views that compare candidates.

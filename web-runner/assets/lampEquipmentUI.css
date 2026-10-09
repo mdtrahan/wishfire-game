@@ -138,7 +138,7 @@
 .lamp-lock{position:absolute;width:12px;height:10px;border-radius:2px;background:#fff1d1;left:50%;top:50%;transform:translate(-50%,-25%);box-shadow:0 0 3px #111}
 .lamp-lock:before{content:'';position:absolute;left:2px;top:-6px;width:8px;height:8px;border:2px solid #fff1d1;border-bottom:0;border-radius:7px 7px 0 0}
 .lamp-level{position:absolute;bottom:0;right:0;padding:0 2px;border-radius:3px;background:#1a1d23dd;color:#fff;font-size:10px;font-weight:900;line-height:1.2;text-shadow:0 1px #000;white-space:nowrap}
-.lamp-queue .lamp-level{font-size:clamp(8px,3.5cqw,13px)}
+.lamp-queue .lamp-level,.gear-slot .lamp-art .lamp-level{font-size:clamp(8px,3.5cqw,13px)}
 .lamp-candidate .lamp-level{font-size:12px}
 
 .lamp-party-exp{position:fixed;z-index:102;pointer-events:none;transform:translateX(-50%);font:800 14px system-ui;color:#b9f3db;text-shadow:0 2px 2px #000;padding:3px 8px;border-radius:8px;background:#18342cdd;animation:lamp-cp-rise 1.5s ease-out forwards}

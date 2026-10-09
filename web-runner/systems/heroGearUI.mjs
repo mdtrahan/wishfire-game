@@ -14,9 +14,9 @@ export function renderHeroGear({stage,pane,hero,economy}){
  for(const[index,[slot,label]]of Object.entries(EQUIPMENT_SLOTS).entries()){
   const id=data.loadouts[hero.heroInstanceKey]?.[slot],item=equipmentDefinition(data.items.find(i=>i.instanceId===id));
   const card=el('button',null,slots);card.type='button';card.className='gear-slot';card.dataset.slot=slot;card.style.gridColumn=1;card.style.gridRow=index+1;card.style.setProperty('--rarity',item?RARITIES[item.rarity].color:'#758597');
-  card.setAttribute('aria-label',`Inspect ${label}: ${item?item.name+', '+RARITIES[item.rarity].label+', level '+item.level:'Empty'}`);el('small',label+(item?' · Lv. '+item.level:''),card);
-  if(item){const art=el('span',null,card);art.className='lamp-art';art.style.setProperty('--col',item.art%3);art.style.setProperty('--row',Math.floor(item.art/3));art.setAttribute('aria-hidden','true');}
-  else el('span','Empty',card).className='gear-empty';
+  card.setAttribute('aria-label',`Inspect ${label}: ${item?item.name+', '+RARITIES[item.rarity].label+', level '+item.level:'Empty'}`);
+  if(item){const art=el('span',null,card);art.className='lamp-art';art.style.setProperty('--col',item.art%3);art.style.setProperty('--row',Math.floor(item.art/3));art.setAttribute('aria-hidden','true');el('span','Lv.'+item.level,art).className='lamp-level';}
+  else{el('small',label,card);el('span','Empty',card).className='gear-empty';}
   card.onclick=()=>inspect(slot,item);
   if(slot===selectedSlot)inspect(slot,item);
  }
