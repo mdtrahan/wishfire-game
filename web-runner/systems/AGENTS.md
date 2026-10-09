@@ -235,11 +235,11 @@
 
 - Hero Gear inspection displays the owned item level beside rarity. Read the existing item record; presentation must never reroll, rescale, reassign or mutate saved gear.
 
-- Hero equipment presentation shows six boxes around the centered full-body hero: Hat/Body/Boots on the left, two blank unassigned equipment boxes and a disabled future Orbs slot on the right and reserves the bottom navigation area. Cards inspect saved items without mutation; the power bar displays the greater of ATK or MAG, labeling MAG as MATK (ties show ATK). Gear is the landing view; skill descriptions belong only in SKILLS. Keep HERO/GEAR/SKILLS, numeric EXP and every supported roster record reachable.
+- Hero presentation keeps one centered full-body portrait size across Orb, Gear and Skills. Gear and Orb show a four-slot horizontal Hat/Body/Boots/disabled Orb row; Skills replaces that row with exactly four selectable active-skill icons. Pages expose every canonical active skill, with an overlapping final page when needed to keep four visible. The cream panel shows the selected skill's canonical target geometry or actor reach, cooldown, condition, unlock level and description; Basic Attack remains accessible there. Orb preserves level EXP and current stats while identifying Orb equipment as unavailable. Previous/next controls traverse every saved roster record, including duplicate hero instances; gear cards inspect saved items without mutation. The visible stat bar shows ATK, DEF and HP, and the footer remains reserved.
 
 - Hero is a primary shared-navigation destination. Its screen has no Back button; use the existing main navigation to switch destinations.
 
-- The short HERO/SKILLS header keeps its portrait below the identity/CP text. Gear uses the larger equipment-stage portrait.
+- Hero identity, portrait scale and equipment/skill stage geometry remain consistent across all three tabs.
 
 - Lamp review uses canonical hero art and independent total-CP arrows, omitting numeric per-hero CP labels and the character stat table. Its three-column item card compares only the selected hero; unchanged values have no arrow. Every pending or discarded cache tile stays inspectable; the green marker uses shared positive total-hero CP gain, and discarded gear remains manually equipable. Disable dismantling while queued positive-gain gear remains. Only the five-column cache scrolls; the equip dialog fits the measured Canvas height. Preserve manual downgrade eligibility, saved receipts and Skip/Auto review flow.
 

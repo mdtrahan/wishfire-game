@@ -145,5 +145,5 @@ test('hero skill progress config uses canonical ids and no placeholder slots', (
 
 test('hero screen uses the migrated canonical definitions', () => {
  const src=fs.readFileSync(path.join(__dirname,'../web-runner/systems/renderHeroScreen.js'),'utf8');
- assert.match(src,/heroDefinition/);assert.match(src,/g.HeroProgress.heroes/);
+ assert.match(src,/heroDefinition/);assert.match(src,/globals.HeroProgress.heroes/);
 });
