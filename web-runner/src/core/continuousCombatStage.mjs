@@ -13,9 +13,13 @@ export const CONTINUOUS_COMBAT_PACK_CP_STEP = 0.06;
 export const CONTINUOUS_COMBAT_WAVES_PER_STAGE = 4;
 export const CONTINUOUS_COMBAT_STAGES_PER_REGION = 10;
 export const CONTINUOUS_COMBAT_PACKS_PER_WAVE = 6;
+export const CONTINUOUS_COMBAT_SOLOS_PER_WAVE = 6;
 export const CONTINUOUS_COMBAT_ALL_PACKS_MASK = (1 << CONTINUOUS_COMBAT_PACKS_PER_WAVE) - 1;
-export const CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX = CONTINUOUS_COMBAT_PACKS_PER_WAVE * 6;
+export const CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX = CONTINUOUS_COMBAT_PACKS_PER_WAVE * 6 + CONTINUOUS_COMBAT_SOLOS_PER_WAVE;
 export const CONTINUOUS_COMBAT_SECTOR_RATIOS = Object.freeze([0.12, 0.27, 0.42, 0.57, 0.72, 0.87]);
+const CONTINUOUS_COMBAT_SOLO_STAT_SCALE = 0.5;
+const CONTINUOUS_COMBAT_SOLO_PACK_CLEARANCE = 120;
+const CONTINUOUS_COMBAT_SOLO_CLEARANCE = 150;
 export const CONTINUOUS_COMBAT_BOSS_ENTRY_WIPE_MS = 440;
 
 // Four normal packs form one repeatable stage. The boss is a gate rather than
@@ -229,6 +233,41 @@ function seededPackFoot(globals, { packIndex, rank, sector, order, sectorSize, c
   return moved[normalizedOrder] || moved[moved.length - 1];
 }
 
+function seededSoloFoot(stageState, sector, occupiedPackFeet, priorSoloFeet, enemySize = 40) {
+  const world = deriveCombatWorldBounds();
+  const vertical = deriveCombatWorldVerticalBounds();
+  const moat = deriveContinuousCombatSpawnMoat({ world });
+  const radius = actorFootprintRadius({ kind: 'enemy' });
+  const side = sector < CONTINUOUS_COMBAT_PACKS_PER_WAVE / 2 ? -1 : 1;
+  const xMin = side < 0 ? world.heroMinX + radius : moat.centerX + moat.minimumEnemyCenterDistance + radius;
+  const xMax = side < 0 ? moat.centerX - moat.minimumEnemyCenterDistance - radius : world.heroMaxX - radius;
+  const yMin = vertical.minY + Math.max(radius, enemySize * 0.8);
+  const yMax = vertical.maxY - Math.max(radius, enemySize * 0.8);
+  const bandHeight = (yMax - yMin) / (CONTINUOUS_COMBAT_PACKS_PER_WAVE / 2);
+  const band = sector % (CONTINUOUS_COMBAT_PACKS_PER_WAVE / 2);
+  const bandMin = yMin + band * bandHeight;
+  const bandMax = yMin + (band + 1) * bandHeight;
+  const seed = (Number(stageState?.seed || 1) ^ Math.imul(Number(stageState?.transitions || 0) + 1, 2246822519) ^ Math.imul(sector + 1, 3266489917)) >>> 0;
+  const valid = point => Math.hypot(point.x - moat.centerX, point.y - moat.centerY) >= moat.minimumEnemyCenterDistance + radius
+    && occupiedPackFeet.every(other => Math.hypot(point.x - other.x, point.y - other.y) >= CONTINUOUS_COMBAT_SOLO_PACK_CLEARANCE)
+    && priorSoloFeet.every(other => Math.hypot(point.x - other.x, point.y - other.y) >= CONTINUOUS_COMBAT_SOLO_CLEARANCE);
+  let best = null;
+  let bestClearance = -Infinity;
+  for (const [candidateYMin, candidateYMax] of [[bandMin, bandMax], [yMin, yMax]]) {
+    for (let draw = 0; draw < 2048; draw += 1) {
+      const point = {
+        x: xMin + previewSeededRng(seed, draw * 2) * (xMax - xMin),
+        y: candidateYMin + previewSeededRng(seed, draw * 2 + 1) * (candidateYMax - candidateYMin),
+      };
+      const clearance = Math.min(...occupiedPackFeet.concat(priorSoloFeet).map(other => Math.hypot(point.x - other.x, point.y - other.y)));
+      if (clearance > bestClearance && valid(point)) { best = point; bestClearance = clearance; }
+    }
+    if (best) break;
+  }
+  if (!best) throw new RangeError('continuous combat solo placement cannot fit outside the recovery moat and pack clouds');
+  return best;
+}
+
 const PACK_WALK_SPEED_SCALE = Object.freeze([1, 0.9, 1.12, 0.82, 1.17]);
 const RANGED_ENEMY_NAMES = new Set(['marid', 'djinn', 'chimerilass']);
 const BOSS_HOME = Object.freeze({ x: 290, y: 290 });
@@ -302,7 +341,7 @@ export function reverseContinuousCombatEnemy(enemy, now, durationSeconds = 1.25,
   return true;
 }
 
-export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1, rank = 0, packIndex = 0, entryOrder = lane, sectorIndex = null, sectorSize = 3, bossX = BOSS_HOME.x } = {}) {
+export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1, rank = 0, packIndex = 0, entryOrder = lane, sectorIndex = null, sectorSize = 3, bossX = BOSS_HOME.x, isSolo = false, soloFootX = null, soloFootY = null } = {}) {
   if (!enemy) return null;
   const order = Math.max(0, Math.floor(Number(entryOrder || 0)));
   const normalizedSectorSize = Math.max(1, Math.floor(Number(sectorSize) || 3));
@@ -317,15 +356,24 @@ export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1,
   const world = deriveCombatWorldBounds();
   const sectorX = world.worldWidth * CONTINUOUS_COMBAT_SECTOR_RATIOS[sector];
   const engageX = boss ? bossX : sectorX;
-  const packFoot = boss ? null : seededPackFoot(globals, {
-    packIndex, rank, sector, order, sectorSize: normalizedSectorSize,
+  const packFoot = boss ? null : isSolo && Number.isFinite(Number(soloFootX)) && Number.isFinite(Number(soloFootY))
+    ? { x: Number(soloFootX), y: Number(soloFootY) }
+    : seededPackFoot(globals, {
+    packIndex, rank, sector, order, sectorSize: isSolo ? 1 : normalizedSectorSize,
     centerX: sectorX, centerY: geometry.y, geometry,
   });
   const homeY = boss ? BOSS_HOME.y : packFoot.y;
   const homeX = boss ? engageX : packFoot.x;
   Object.assign(enemy, {
     combatRank: ['boss','subboss'].includes(String(enemy.enemyRole || enemy.role || '').toLowerCase()) ? String(enemy.enemyRole || enemy.role).toLowerCase() : 'ordinary',
-    streamState: 'roaming', streamLane: lane, streamRank: rank, streamPackIndex: packIndex, streamSectorIndex: sector + Number(packIndex || 0) * CONTINUOUS_COMBAT_PACKS_PER_WAVE, streamEntryOrder: order,
+    streamState: 'roaming', streamLane: lane, streamRank: rank, streamPackIndex: packIndex,
+    streamSectorIndex: sector + Number(packIndex || 0) * CONTINUOUS_COMBAT_PACKS_PER_WAVE,
+    streamEngagementGroupId: sector + Number(packIndex || 0) * CONTINUOUS_COMBAT_PACKS_PER_WAVE + (isSolo ? CONTINUOUS_COMBAT_PACKS_PER_WAVE : 0),
+    streamSolo: isSolo ? 1 : 0,
+    streamSoloAnchorX: isSolo ? homeX : undefined,
+    streamSoloAnchorY: isSolo ? homeY : undefined,
+    streamSoloPhase: isSolo ? previewSeededRng(Number(globals.ContinuousCombatStage?.seed || globals.EncounterSeed || 1) >>> 0, Number(globals.ContinuousCombatStage?.transitions || 0) * CONTINUOUS_COMBAT_PACKS_PER_WAVE + sector + 0x1000) * Math.PI * 2 : undefined,
+    streamEntryOrder: order,
     streamDelivery: delivery, streamMeleeLine: order % 2,
     actionState: 'spawn', actionFacing: 'left', actionStateStartedAt: Number(globals.time || 0), actionStateUntil: Number(globals.time || 0) + 0.35,
     streamEngageX: homeX, streamWalkSpeed: geometry.walkSpeed * PACK_WALK_SPEED_SCALE[order % PACK_WALK_SPEED_SCALE.length],
@@ -366,11 +414,19 @@ export function finalizeContinuousCombatProduction(globals, entities = []) {
       const entryOrder = hasExplicitPlacement ? actor.continuousStageEntryOrder : enemyOrder % packSize;
       const sectorSize = hasExplicitPlacement ? actor.continuousStageSectorSize : packSize;
       const packIndex = hasExplicitPlacement ? actor.continuousStagePackIndex : 0;
-      activateContinuousCombatSpawnedEnemy(globals, actor, { lane: Number(actor.slotIndex ?? 1), rank: 0, packIndex, entryOrder, sectorIndex, sectorSize });
+      const rank = hasExplicitPlacement ? Number(actor.continuousStageRank || 0) : 0;
+      const isSolo = hasExplicitPlacement && Number(actor.continuousStageSolo || 0) === 1;
+      const soloFootX = hasExplicitPlacement ? actor.continuousStageSoloFootX : null;
+      const soloFootY = hasExplicitPlacement ? actor.continuousStageSoloFootY : null;
+      activateContinuousCombatSpawnedEnemy(globals, actor, { lane: Number(actor.slotIndex ?? 1), rank, packIndex, entryOrder, sectorIndex, sectorSize, isSolo, soloFootX, soloFootY });
       delete actor.continuousStageSectorIndex;
       delete actor.continuousStageEntryOrder;
       delete actor.continuousStageSectorSize;
       delete actor.continuousStagePackIndex;
+      delete actor.continuousStageRank;
+      delete actor.continuousStageSolo;
+      delete actor.continuousStageSoloFootX;
+      delete actor.continuousStageSoloFootY;
       enemyOrder += 1;
     }
   }
@@ -558,7 +614,7 @@ function expandWaveRows(stage, byName, catalogRows) {
   return Array.from({ length: packSize * CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, index) => pool[index % pool.length]);
 }
 
-export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase = 0, partyCP = 0 } = {}) {
+export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase = 0, partyCP = 0, enemySize = 40 } = {}) {
   if (stageState?.bossAvailable && !stageState?.bossActive) return [];
   const stage = getContinuousCombatStage(stageState);
   const rows = Array.isArray(enemyRows) ? enemyRows : [];
@@ -601,24 +657,55 @@ export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase
   }
 
   const remainingEntries = stage.kind === 'boss' ? entries : entries.filter(entry => !(normalizeContinuousCombatPackMask(stageState?.clearedPackMask) & (1 << entry.sectorIndex)));
+  if (stage.kind !== 'boss' && remainingEntries.length) {
+    const soloSource = remainingEntries.reduce((weakest, entry) => !weakest || computeCombatPower(entry.row) < computeCombatPower(weakest.row) ? entry : weakest, null);
+    const placementGlobals = { ContinuousCombatStage: stageState, EnemySize: enemySize, time: 0 };
+    const placementSectorSizes = new Map();
+    for (const entry of remainingEntries) placementSectorSizes.set(entry.sectorIndex, (placementSectorSizes.get(entry.sectorIndex) || 0) + 1);
+    const placementSectorOrders = new Map();
+    const occupiedPackFeet = remainingEntries.map((entry, index) => {
+      const actor = { kind: 'enemy', uid: index + 1, name: entry.row.name, enemyRole: entry.row.enemyRole || entry.row.role, hp: 1, ...entry.row };
+      const entryOrder = placementSectorOrders.get(entry.sectorIndex) || 0;
+      placementSectorOrders.set(entry.sectorIndex, entryOrder + 1);
+      activateContinuousCombatSpawnedEnemy(placementGlobals, actor, { ...entry, entryOrder, sectorSize: placementSectorSizes.get(entry.sectorIndex) });
+      return { x: actor.footX, y: actor.footY };
+    });
+    const soloFeet = [];
+    for (let sector = 0; sector < CONTINUOUS_COMBAT_SOLOS_PER_WAVE; sector += 1) {
+      if (normalizeContinuousCombatPackMask(stageState?.clearedPackMask) & (1 << sector)) continue;
+      const foot = seededSoloFoot(stageState, sector, occupiedPackFeet, soloFeet, enemySize);
+      soloFeet.push(foot);
+      remainingEntries.push({
+        row: scaleContinuousCombatRow(soloSource.row, CONTINUOUS_COMBAT_SOLO_STAT_SCALE),
+        lane: 0,
+        rank: Number(soloSource.rank || 0) + 1,
+        packIndex: Number(soloSource.packIndex || 0),
+        entryOrder: 0,
+        sectorIndex: sector,
+        isSolo: true,
+        soloFootX: foot.x,
+        soloFootY: foot.y,
+      });
+    }
+  }
   const sectorSizes = new Map();
   const sectorOrders = new Map();
-  for (const entry of remainingEntries) sectorSizes.set(entry.sectorIndex, (sectorSizes.get(entry.sectorIndex) || 0) + 1);
+  for (const entry of remainingEntries) if (!entry.isSolo) sectorSizes.set(entry.sectorIndex, (sectorSizes.get(entry.sectorIndex) || 0) + 1);
   return remainingEntries.map((entry, index) => {
-    const entryOrder = sectorOrders.get(entry.sectorIndex) || 0;
-    sectorOrders.set(entry.sectorIndex, entryOrder + 1);
+    const entryOrder = entry.isSolo ? 0 : (sectorOrders.get(entry.sectorIndex) || 0);
+    if (!entry.isSolo) sectorOrders.set(entry.sectorIndex, entryOrder + 1);
     return {
       ...entry,
       slotIndex: Number(slotBase || 0) + index,
       entryOrder,
-      sectorSize: sectorSizes.get(entry.sectorIndex),
+      sectorSize: entry.isSolo ? 1 : sectorSizes.get(entry.sectorIndex),
     };
   }).filter(entry => Number.isInteger(entry.slotIndex));
 }
 
 function spawnContinuousCombatStage({ globals, entities, call, state }) {
   const slotBase = 0;
-  const plan = buildContinuousCombatSpawnPlan(globals.EnemyData, state, { slotBase, partyCP: getContinuousCombatPartyCP(entities) });
+  const plan = buildContinuousCombatSpawnPlan(globals.EnemyData, state, { slotBase, partyCP: getContinuousCombatPartyCP(entities), enemySize: Number(globals.EnemySize || 40) });
   if (!plan.length) return false;
   const spawnedPackMask = plan.reduce((mask, entry) => mask | (1 << entry.sectorIndex), 0);
   globals.ContinuousCombatStage = {

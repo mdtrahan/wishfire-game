@@ -429,7 +429,7 @@ export function createCombatSessionInitializer({
       let spawnPlan = [];
       const continuousStageEncounter = Number(state.globals.ContinuousCombatStageLoop || 0) === 1;
       const authoredContinuousPlan = continuousStageEncounter && !state.globals.ContinuousCombatStage?.bossAvailable
-        ? buildContinuousCombatSpawnPlan(mappedEnemyData, state.globals.ContinuousCombatStage, { partyCP: continuousPartyCP })
+        ? buildContinuousCombatSpawnPlan(mappedEnemyData, state.globals.ContinuousCombatStage, { partyCP: continuousPartyCP, enemySize: Number(state.globals.EnemySize || 40) })
         : [];
       if (continuousStageEncounter) {
         spawnPlan = authoredContinuousPlan;
@@ -520,6 +520,10 @@ export function createCombatSessionInitializer({
             continuousStageEntryOrder: spawnPlan[i].entryOrder,
             continuousStageSectorSize: spawnPlan[i].sectorSize,
             continuousStagePackIndex: spawnPlan[i].packIndex,
+            continuousStageRank: spawnPlan[i].rank,
+            continuousStageSolo: spawnPlan[i].isSolo ? 1 : 0,
+            continuousStageSoloFootX: spawnPlan[i].soloFootX,
+            continuousStageSoloFootY: spawnPlan[i].soloFootY,
           });
         }
       }

@@ -8,6 +8,7 @@ import {
   CONTINUOUS_COMBAT_PACK_CP_STEP,
   CONTINUOUS_COMBAT_PACK_INTERVAL_SEC,
   CONTINUOUS_COMBAT_PACKS_PER_WAVE,
+  CONTINUOUS_COMBAT_SOLOS_PER_WAVE,
   CONTINUOUS_COMBAT_ALL_PACKS_MASK,
   CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX,
   CONTINUOUS_COMBAT_SECTOR_RATIOS,
@@ -65,21 +66,28 @@ test('continuous stage simulation makes no movement, emission or action claim wh
   }
 });
 
-test('normal wave plans start with six evenly spaced base packs of two or three actors', () => {
+test('normal wave plans keep six two-or-three-member packs and add one weak solo per sector', () => {
   const start = createContinuousCombatStageState(42);
   const first = buildContinuousCombatSpawnPlan(rows, start);
   const secondState = advanceContinuousCombatStage(start).state;
   const second = buildContinuousCombatSpawnPlan(rows, secondState, { slotBase: first.length });
   const thirdState = advanceContinuousCombatStage(secondState).state;
   const third = buildContinuousCombatSpawnPlan(rows, thirdState, { slotBase: first.length + second.length });
-  assert.ok([12, 18].includes(first.length));
-  assert.ok([12, 18].includes(second.length));
-  assert.ok([12, 18].includes(third.length));
+  assert.ok([18, 24].includes(first.length));
+  assert.ok([18, 24].includes(second.length));
+  assert.ok([18, 24].includes(third.length));
   for (const plan of [first, second, third]) {
-    const counts = Array.from({ length: CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, sector) => plan.filter(entry => entry.sectorIndex === sector).length);
+    const solos = plan.filter(entry => entry.isSolo);
+    assert.equal(solos.length, CONTINUOUS_COMBAT_SOLOS_PER_WAVE);
+    assert.equal(new Set(solos.map(entry => entry.sectorIndex)).size, CONTINUOUS_COMBAT_SOLOS_PER_WAVE);
+    const counts = Array.from({ length: CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, sector) => plan.filter(entry => entry.sectorIndex === sector && !entry.isSolo).length);
     assert.ok(counts.every(count => count >= 2 && count <= 3));
+    for (const solo of solos) {
+      const packMinimum = Math.min(...plan.filter(entry => entry.sectorIndex === solo.sectorIndex && !entry.isSolo).map(entry => computeCombatPower(entry.row)));
+      assert.ok(computeCombatPower(solo.row) < packMinimum, 'solo stats are below the lightest regular pack member');
+    }
   }
-  assert.ok([12, 18].includes(first.length));
+  assert.ok([18, 24].includes(first.length));
   assert.deepEqual(first.map(entry => entry.slotIndex), Array.from({ length: first.length }, (_, index) => index));
   assert.deepEqual(second.map(entry => entry.slotIndex), Array.from({ length: second.length }, (_, index) => first.length + index));
   assert.ok(second.some(entry => ['Gobloc', 'Skeleton'].includes(entry.row.name)));
@@ -89,6 +97,148 @@ test('normal wave plans start with six evenly spaced base packs of two or three 
   assert.ok(totals[1] < totals[2]);
   assert.ok(totals[1] / totals[0] < 1 + CONTINUOUS_COMBAT_PACK_CP_STEP * 2);
   assert.ok(totals[2] / totals[1] < 1 + CONTINUOUS_COMBAT_PACK_CP_STEP * 2);
+});
+
+test('seeded solos stay outside the recovery moat and separated from pack clouds across the arena', () => {
+  const world = deriveCombatWorldBounds();
+  const vertical = deriveCombatWorldVerticalBounds();
+  const moat = deriveContinuousCombatSpawnMoat({ world });
+  const measuredSides = new Set();
+  const measuredBands = new Set();
+  for (const seed of [1, 17, 42, 91, 1234]) {
+    const stage = createContinuousCombatStageState(seed);
+    const plan = buildContinuousCombatSpawnPlan(rows, stage, { enemySize: 40 });
+    const actors = plan.map(entry => {
+      const actor = { uid: entry.slotIndex + 1, kind: 'enemy', name: entry.row.name, enemyRole: entry.row.enemyRole || entry.row.role, hp: 1, ...entry.row };
+      activateContinuousCombatSpawnedEnemy({ ContinuousCombatStage: stage, EnemySize: 40, time: 0 }, actor, entry);
+      return { ...entry, actor };
+    });
+    const solos = actors.filter(entry => entry.isSolo);
+    const packs = actors.filter(entry => !entry.isSolo);
+    assert.equal(solos.length, CONTINUOUS_COMBAT_SOLOS_PER_WAVE);
+    for (const solo of solos) {
+      const { footX: x, footY: y } = solo.actor;
+      assert.ok(x >= world.heroMinX && x <= world.heroMaxX);
+      assert.ok(y >= vertical.minY && y <= vertical.maxY);
+      assert.ok(Math.hypot(x - moat.centerX, y - moat.centerY) >= moat.minimumEnemyCenterDistance + 18);
+      const closestPackActor = Math.min(...packs.map(pack => Math.hypot(pack.actor.footX - x, pack.actor.footY - y)));
+      assert.ok(closestPackActor >= 120, `seed ${seed}, sector ${solo.sectorIndex}: solo has ${closestPackActor} world units of pack clearance`);
+      assert.equal(solo.actor.streamSectorIndex % CONTINUOUS_COMBAT_PACKS_PER_WAVE, solo.sectorIndex);
+      assert.notEqual(solo.actor.streamEngagementGroupId, packs.find(pack => pack.sectorIndex === solo.sectorIndex).actor.streamEngagementGroupId);
+      measuredSides.add(x < moat.centerX ? 'left' : 'right');
+      measuredBands.add(Math.floor((y - vertical.minY) / ((vertical.maxY - vertical.minY) / 3)));
+    }
+  }
+  assert.deepEqual([...measuredSides].sort(), ['left', 'right']);
+  assert.deepEqual([...measuredBands].sort(), [0, 1, 2]);
+});
+
+test('full solo placement matrix remains seeded, bounded and clear of six-member pack clouds', () => {
+  const world = deriveCombatWorldBounds();
+  const vertical = deriveCombatWorldVerticalBounds();
+  const moat = deriveContinuousCombatSpawnMoat({ world });
+  for (const enemySize of [20, 40]) for (let seed = 1; seed <= 64; seed += 1) for (let wave = 1; wave <= 4; wave += 1) {
+    const stage = { ...createContinuousCombatStageState(seed), wave, transitions: wave - 1 };
+    const plan = buildContinuousCombatSpawnPlan(rows, stage, { partyCP: Number.MAX_SAFE_INTEGER, enemySize });
+    const actors = plan.map(entry => {
+      const actor = { uid: entry.slotIndex + 1, kind: 'enemy', name: entry.row.name, enemyRole: entry.row.enemyRole || entry.row.role, hp: 1, ...entry.row };
+      activateContinuousCombatSpawnedEnemy({ ContinuousCombatStage: stage, EnemySize: enemySize, time: 0 }, actor, entry);
+      return { ...entry, actor };
+    });
+    const packFeet = actors.filter(entry => !entry.isSolo).map(entry => ({ x: entry.actor.footX, y: entry.actor.footY }));
+    const solos = actors.filter(entry => entry.isSolo);
+    assert.equal(solos.length, CONTINUOUS_COMBAT_SOLOS_PER_WAVE, `size=${enemySize}, seed=${seed}, wave=${wave}`);
+    for (const solo of solos) {
+      const point = { x: solo.actor.footX, y: solo.actor.footY };
+      assert.deepEqual(point, { x: solo.soloFootX, y: solo.soloFootY }, 'activation preserves the exact feet solved by the seeded planner');
+      assert.ok(point.x >= world.heroMinX && point.x <= world.heroMaxX, `x bounds size=${enemySize}, seed=${seed}, wave=${wave}`);
+      assert.ok(point.y >= vertical.minY && point.y <= vertical.maxY, `y bounds size=${enemySize}, seed=${seed}, wave=${wave}`);
+      assert.ok(Math.hypot(point.x - moat.centerX, point.y - moat.centerY) >= moat.minimumEnemyCenterDistance + 18);
+      const nearestPackFoot = Math.min(...packFeet.map(other => Math.hypot(point.x - other.x, point.y - other.y)));
+      assert.ok(nearestPackFoot >= 120, `pack clearance ${nearestPackFoot}, size=${enemySize}, seed=${seed}, wave=${wave}`);
+    }
+  }
+});
+
+test('melee and ranged solos both move toward a reachable waypoint within one patrol leg', () => {
+  for (const streamDelivery of ['melee', 'ranged']) {
+    const heroes = Array.from({ length: 4 }, (_, index) => ({ uid: index + 1, kind: 'hero', hp: 100, footX: 1080 + index, footY: 319.5 + index }));
+    const solo = { uid: 100, kind: 'enemy', hp: 100, streamSolo: 1, streamState: 'roaming', streamDelivery, streamSoloAnchorX: 240, streamSoloAnchorY: 320, streamSoloPhase: 0, footX: 240, footY: 320 };
+    const globals = { ContinuousCombatStage: createContinuousCombatStageState(17), time: 0 };
+    for (let step = 1; step <= 10; step += 1) {
+      globals.time = step * 0.1;
+      advanceContinuousCombatArena({ globals, entities: [...heroes, solo], seconds: 0.1 });
+    }
+    assert.ok(solo.footX > 260 && solo.footX <= 270, `${streamDelivery} patrol makes progress within its first leg`);
+    assert.equal(solo.streamState, 'roaming');
+  }
+});
+
+test('solo enemies patrol within a small safe radius, pause for recovery reveal and engage normally on detection', () => {
+  const stage = createContinuousCombatStageState(17);
+  const plan = buildContinuousCombatSpawnPlan(rows, stage);
+  const heroes = Array.from({ length: 4 }, (_, index) => ({ uid: index + 1, kind: 'hero', hp: 100, maxHP: 100, footX: 1080 + index, footY: 319.5 + index }));
+  const enemies = plan.map((entry, index) => {
+    const enemy = { uid: 100 + index, kind: 'enemy', name: entry.row.name, hp: entry.row.HP, maxHP: entry.row.HP, ...entry.row };
+    activateContinuousCombatSpawnedEnemy({ ContinuousCombatStage: stage, EnemySize: 40, time: 0 }, enemy, entry);
+    return enemy;
+  });
+  const globals = { ContinuousCombatStage: stage, time: 2.2 };
+  const solos = enemies.filter(enemy => enemy.streamSolo);
+  solos[0].streamDelivery = 'melee';
+  solos[1].streamDelivery = 'ranged';
+  const spawnFeet = new Map(solos.map(enemy => [enemy.uid, { x: enemy.footX, y: enemy.footY }]));
+  heroes[0].recoveryFadeStartedAt = 2;
+  advanceContinuousCombatArena({ globals, entities: [...heroes, ...enemies], seconds: 0.25 });
+  assert.ok(solos.every(enemy => enemy.footX === spawnFeet.get(enemy.uid).x && enemy.footY === spawnFeet.get(enemy.uid).y), 'recovery keeps enemies quiet while the squad reveal is active');
+  delete heroes[0].recoveryFadeStartedAt;
+
+  const beforePatrol = new Map(solos.map(enemy => [enemy.uid, { x: enemy.footX, y: enemy.footY }]));
+  for (let tick = 0; tick < 48; tick += 1) {
+    globals.time = 2.5 + tick * 0.25;
+    heroes.forEach((hero, index) => { hero.footX = 1080 + index; hero.footY = 319.5 + index; });
+    advanceContinuousCombatArena({ globals, entities: [...heroes, ...enemies], seconds: 0.25 });
+  }
+  assert.ok(solos.every(enemy => {
+    const prior = beforePatrol.get(enemy.uid);
+    const displacement = Math.hypot(enemy.footX - prior.x, enemy.footY - prior.y);
+    const anchorDistance = Math.hypot(enemy.footX - enemy.streamSoloAnchorX, enemy.footY - enemy.streamSoloAnchorY);
+    const closestActor = Math.min(...enemies.filter(other => other !== enemy).map(other => Math.hypot(other.footX - enemy.footX, other.footY - enemy.footY)));
+    return displacement >= 8 && anchorDistance <= 40 && closestActor >= 100 && enemy.streamState === 'roaming';
+  }), 'each solo wanders while remaining a distinct distant actor and outside the moat');
+  assert.ok(enemies.filter(enemy => !enemy.streamSolo).every(enemy => enemy.streamState === 'roaming' && enemy.locomotion === 'idle'), 'pack actors remain dormant while distant solos patrol');
+
+  const blockedSolo = solos.find(enemy => enemy.footX < 1000 && enemy.footY + 110 < deriveCombatWorldVerticalBounds().maxY);
+  assert.ok(blockedSolo);
+  const blocker = enemies.find(enemy => !enemy.streamSolo);
+  for (const enemy of enemies) if (enemy !== blockedSolo && enemy !== blocker) {
+    enemy.footX = enemy.x = blockedSolo.footX + 700;
+    enemy.footY = enemy.y = blockedSolo.footY;
+  }
+  blockedSolo.footX = blockedSolo.x = blockedSolo.streamSoloAnchorX;
+  blockedSolo.footY = blockedSolo.y = blockedSolo.streamSoloAnchorY;
+  blockedSolo.streamSoloPhase = 0;
+  blockedSolo.streamDelivery = 'ranged';
+  blocker.footX = blocker.x = blockedSolo.footX;
+  blocker.footY = blocker.y = blockedSolo.footY + 110;
+  const blockedPosition = { x: blockedSolo.footX, y: blockedSolo.footY };
+  heroes.forEach((hero, index) => { hero.footX = 1080 + index; hero.footY = 319.5 + index; });
+  globals.time = 3;
+  advanceContinuousCombatArena({ globals, entities: [...heroes, ...enemies], seconds: 1 });
+  assert.deepEqual([blockedSolo.footX, blockedSolo.footY], [blockedPosition.x, blockedPosition.y], 'a patrol step that would rejoin a pack is rejected');
+  assert.equal(blockedSolo.locomotion, 'idle', 'rejected movement does not leave a walk clip running in place');
+  assert.equal(blockedSolo.actionState, 'idle');
+
+  const targetSolo = solos[0];
+  for (const enemy of enemies) if (enemy !== targetSolo) {
+    enemy.footX = enemy.x = targetSolo.footX + 800;
+    enemy.footY = enemy.y = targetSolo.footY;
+  }
+  heroes.forEach((hero, index) => { hero.footX = targetSolo.footX + index; hero.footY = targetSolo.footY + index; });
+  globals.time += 0.25;
+  advanceContinuousCombatArena({ globals, entities: [...heroes, ...enemies], seconds: 0.25 });
+  assert.equal(targetSolo.streamState, 'engaged');
+  assert.ok(heroes.every(hero => hero.arenaTargetUID === targetSolo.uid), 'detected solos enter the existing local target and combat flow');
 });
 
 test('legacy four-wave refill state is ignored and saved boss access auto-enters once', () => {
@@ -119,8 +269,9 @@ test('cleared packs move the current-wave HUD while production waits for all pac
   const plan = buildContinuousCombatSpawnPlan(rows, stage, { partyCP: 100000 });
   stage.spawnSerial = plan.length;
   stage.spawnedPackMask = plan.reduce((mask, entry) => mask | (1 << entry.sectorIndex), 0);
-  const packSizes = Array.from({ length: CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, sector) => plan.filter(entry => entry.sectorIndex === sector).length);
+  const packSizes = Array.from({ length: CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, sector) => plan.filter(entry => entry.sectorIndex === sector && !entry.isSolo).length);
   assert.ok(new Set(packSizes).size > 1, 'fixture includes different sector sizes from seeded CP extras');
+  assert.equal(plan.filter(entry => entry.isSolo).length, CONTINUOUS_COMBAT_SOLOS_PER_WAVE);
   let nextUID = 10;
   const entities = [{ uid: 1, kind: 'hero', hp: 100, maxHP: 100 }];
   const enemyBySector = new Map();
@@ -151,11 +302,19 @@ test('cleared packs move the current-wave HUD while production waits for all pac
   assert.equal(initialHud.waveProgress, 0);
   const initialFillWidth = calls.find(([name]) => name === 'fillRect')?.[3] || 0;
 
+  const soloInSectorZero = enemyBySector.get(0).find(enemy => enemy.streamSolo);
+  soloInSectorZero.hp = 0;
+  assert.equal(deriveContinuousCombatWavePackProgress(stage, entities).fraction, 0, 'a lone-enemy kill does not clear its sector while the pack survives');
+  soloInSectorZero.hp = 20;
   const oneMemberOfPack = enemyBySector.get(0)[0];
   oneMemberOfPack.hp = 0;
   assert.equal(deriveContinuousCombatWavePackProgress(stage, entities).fraction, 0, 'a sector remains incomplete while any pack member survives');
   calls.length = 0;
   assert.equal(draw().waveProgress, 0);
+
+  for (const enemy of enemyBySector.get(0).filter(actor => !actor.streamSolo && actor !== oneMemberOfPack)) enemy.hp = 0;
+  assert.equal(deriveContinuousCombatWavePackProgress(stage, entities).fraction, 0, 'clearing every pack member still waits for that sector solo');
+  soloInSectorZero.hp = 0;
 
   for (const sector of [0, 3]) for (const enemy of enemyBySector.get(sector)) enemy.hp = 0;
   const progress = deriveContinuousCombatWavePackProgress(stage, entities);
@@ -287,7 +446,7 @@ test('only underpowered ordinary sectors draw one seeded plus-one-to-three count
   const stage = { ...createContinuousCombatStageState(17), transitions: 9 };
   const base = buildContinuousCombatSpawnPlan(rows, stage);
   const cpBySector = Array.from({ length: CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, sector) =>
-    base.filter(entry => entry.sectorIndex === sector).reduce((sum, entry) => sum + computeCombatPower(entry.row), 0));
+    base.filter(entry => entry.sectorIndex === sector && !entry.isSolo).reduce((sum, entry) => sum + computeCombatPower(entry.row), 0));
   const minimumSectorCP = Math.min(...cpBySector);
   assert.equal(buildContinuousCombatSpawnPlan(rows, stage, { partyCP: minimumSectorCP - 0.1 }).length, base.length, 'below-pack party CP adds none');
   assert.equal(buildContinuousCombatSpawnPlan(rows, stage, { partyCP: minimumSectorCP }).length, base.length, 'equal and higher sectors add none');
@@ -299,9 +458,9 @@ test('only underpowered ordinary sectors draw one seeded plus-one-to-three count
     const plan = buildContinuousCombatSpawnPlan(rows, seededStage, { partyCP: Number.MAX_SAFE_INTEGER });
     const repeated = buildContinuousCombatSpawnPlan(rows, seededStage, { partyCP: Number.MAX_SAFE_INTEGER });
     assert.deepEqual(plan, repeated, 'stage seed and transition count fully determine pack padding');
-    const sectorRows = Array.from({ length: CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, sector) => plan.filter(entry => entry.sectorIndex === sector));
+    const sectorRows = Array.from({ length: CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, sector) => plan.filter(entry => entry.sectorIndex === sector && !entry.isSolo));
     for (const pack of sectorRows) {
-      const extraCount = pack.length - base.filter(entry => entry.sectorIndex === pack[0].sectorIndex).length;
+      const extraCount = pack.length - base.filter(entry => entry.sectorIndex === pack[0].sectorIndex && !entry.isSolo).length;
       assert.ok(extraCount >= 1 && extraCount <= 3);
       observedExtraCounts.add(extraCount);
       assert.equal(pack.length, pack[0].sectorSize);
@@ -310,13 +469,13 @@ test('only underpowered ordinary sectors draw one seeded plus-one-to-three count
     assert.deepEqual(plan.map(entry => entry.slotIndex), Array.from({ length: plan.length }, (_, index) => index));
     assert.equal(new Set(plan.map(entry => entry.slotIndex)).size, plan.length);
     assert.equal(new Set(plan.map(entry => entry.sectorIndex)).size, 6);
-    for (const entry of base) {
+    for (const entry of base.filter(candidate => !candidate.isSolo)) {
       const padded = plan.find(candidate => candidate.slotIndex === entry.slotIndex);
       for (const key of ['HP', 'ATK', 'DEF', 'MAG', 'RES', 'SPD', 'CombatPower', 'streamCpScale']) assert.equal(padded.row[key], entry.row[key]);
     }
   }
   assert.deepEqual([...observedExtraCounts].sort(), [1, 2, 3]);
-  assert.equal(CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX, 36);
+  assert.equal(CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX, 42);
 
   const boss = { ...stage, wave: 4, bossAvailable: true, bossArmed: true, bossActive: true };
   assert.deepEqual(buildContinuousCombatSpawnPlan(rows, boss, { partyCP: Number.MAX_SAFE_INTEGER }), buildContinuousCombatSpawnPlan(rows, boss), 'boss count and stats do not use pack padding');
@@ -346,18 +505,30 @@ test('runtime wave emission pads weak packs while only detected sectors enter lo
   assert.equal(maybeAdvanceContinuousCombatStage({globals,entities,presentationBarrier:{lanes:{}},call}),true);
   assert.equal(globals.ContinuousCombatStage.wave,2);
   const packs=new Map();
+  const solos=[];
   for(const enemy of entities.filter(actor=>actor.kind==='enemy')) {
+    if(enemy.streamSolo){solos.push(enemy);continue;}
     const packId=enemy.streamSectorIndex;
     const pack=packs.get(packId)||[];pack.push(enemy);packs.set(packId,pack);
   }
   assert.equal(packs.size,6);
   assert.ok([...packs.values()].every(pack=>pack.length>=3&&pack.length<=6));
-  const committedPack=[...packs.entries()][0];
-  for(const enemy of committedPack[1])enemy.streamState='in_range';
+  assert.equal(solos.length,6);
+  for(const solo of solos)assert.notEqual(solo.streamEngagementGroupId,solo.streamSectorIndex,'solos share progress sectors but keep their own local encounter group');
+  const solo=solos.find(enemy=>enemy.streamSectorIndex%6===0);
+  const committedPack=[...packs.entries()].find(([sector])=>sector===solo.streamSectorIndex);
+  heroes.forEach((hero,index)=>{hero.footX=solo.footX+index;hero.footY=solo.footY+index;});
+  for(const enemy of entities.filter(actor=>actor.kind==='enemy'&&actor!==solo)) {
+    enemy.footX=solo.footX+800;
+    enemy.x=enemy.footX;
+    enemy.footY=solo.footY;
+    enemy.y=enemy.footY;
+  }
   advanceContinuousCombatArena({globals,entities,seconds:0});
-  assert.equal(globals.ContinuousCombatStage.activeEncounterGroupId,committedPack[0]);
-  const committedUIDs=new Set(committedPack[1].map(enemy=>enemy.uid));
-  assert.ok(heroes.every(hero=>committedUIDs.has(hero.arenaTargetUID)),'hero targeting remains committed to every member of the selected sector pack');
+  assert.equal(globals.ContinuousCombatStage.activeEncounterGroupId,solo.streamEngagementGroupId);
+  assert.ok(['in_range','engaged'].includes(solo.streamState));
+  assert.ok(committedPack[1].every(enemy=>enemy.streamState==='roaming'),'nearby solo engagement does not wake the remote pack that shares its progress sector');
+  assert.ok(heroes.every(hero=>hero.arenaTargetUID===solo.uid),'heroes target the local solo independently of its sector pack');
 });
 
 test('stage-owned linear scaling raises later waves and makes the boss a group-level spike', () => {
@@ -699,7 +870,7 @@ test('next dispersed wave follows the three-second emission interval', () => {
     return actor;
   }, runCombatStep() {} }), true);
   assert.equal(globals.ContinuousCombatStage.wave, transitions + 2);
-  assert.ok([12, 18].includes(spawned.length));
+  assert.ok([18, 24].includes(spawned.length));
   assert.deepEqual(new Set(spawned.map(actor => actor.streamSectorIndex)).size, CONTINUOUS_COMBAT_PACKS_PER_WAVE);
   }
 });
@@ -942,7 +1113,7 @@ test('each wave clears before the next emission and retains the three-second min
   assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: { flowOrbs: true } }, call, runCombatStep() {} }), false);
   survivor.hp = 0;
   assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: { flowOrbs: true } }, call, runCombatStep() {} }), true);
-  assert.ok([12, 18].includes(spawned.length));
+  assert.ok([18, 24].includes(spawned.length));
   assert.equal(new Set(spawned.map(enemy => enemy.streamSectorIndex)).size, CONTINUOUS_COMBAT_PACKS_PER_WAVE);
   assert.equal(globals.ContinuousCombatStage.wave, 2);
   assert.ok(entities.some(enemy => enemy.uid === survivor.uid));
@@ -1107,12 +1278,18 @@ test('production finalization preserves an already-positioned continuous party',
 test('production traversal visits six sectors before wave clear advances the stage', () => {
   const heroes = Array.from({ length: 4 }, (_, index) => ({ uid: index + 1, kind: 'hero', hp: 1000, maxHP: 1000, footX: 100 + index * 6, footY: 220 + index * 18 }));
   const initialPlan = buildContinuousCombatSpawnPlan(rows, createContinuousCombatStageState(7));
-  const enemies = initialPlan.map((entry, index) => ({ uid: 20 + index, kind: 'enemy', hp: 100, maxHP: 100, slotIndex: index }));
+  const enemies = initialPlan.map((entry, index) => ({
+    uid: 20 + index, kind: 'enemy', hp: 100, maxHP: 100, slotIndex: index,
+    continuousStageSectorIndex: entry.sectorIndex, continuousStageEntryOrder: entry.entryOrder,
+    continuousStageSectorSize: entry.sectorSize, continuousStagePackIndex: entry.packIndex,
+    continuousStageRank: entry.rank, continuousStageSolo: entry.isSolo ? 1 : 0,
+    continuousStageSoloFootX: entry.soloFootX, continuousStageSoloFootY: entry.soloFootY,
+  }));
   const entities = [...heroes, ...enemies];
   const globals = {
     ContinuousCombatStageLoop: 1, ContinuousCombatStage: createContinuousCombatStageState(7),
     GamePhase: 'RUNTIME', BattleStartActive: 0, time: 0, EnemySize: 40, EnemyData: rows,
-    EncounterMaxSlots: 9, EnemySlots: enemies.map(enemy => enemy.uid + 1), EnemyIDs: enemies.map(enemy => enemy.uid), PendingDeaths: {}, EnemyDeathVisualHoldByUID: {},
+    EncounterMaxSlots: CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX, EnemySlots: enemies.map(enemy => enemy.uid + 1), EnemyIDs: enemies.map(enemy => enemy.uid), PendingDeaths: {}, EnemyDeathVisualHoldByUID: {},
     ProgressionBattle: { outcome: 'active', settled: false },
   };
   assert.equal(finalizeContinuousCombatProduction(globals, entities), true);
@@ -1145,12 +1322,14 @@ test('production traversal visits six sectors before wave clear advances the sta
 
   for (const expectedWave of [2, 3, 4]) {
     const activeWave = entities.filter(enemy => enemy.kind === 'enemy' && enemy.hp > 0);
+    const packActors = activeWave.filter(enemy => !enemy.streamSolo);
     const sectorCounts = new Map();
-    for (const enemy of activeWave) {
+    for (const enemy of packActors) {
       const count = sectorCounts.get(enemy.streamSectorIndex) || 0;
       sectorCounts.set(enemy.streamSectorIndex, count + 1);
     }
-    assert.ok(activeWave.length >= 12 && activeWave.length <= CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX);
+    assert.ok(activeWave.length >= 18 && activeWave.length <= CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX);
+    assert.equal(activeWave.filter(enemy => enemy.streamSolo).length, CONTINUOUS_COMBAT_SOLOS_PER_WAVE);
     assert.equal(sectorCounts.size, CONTINUOUS_COMBAT_PACKS_PER_WAVE);
     assert.ok([...sectorCounts.values()].every(count => count >= 2 && count <= 6));
     assert.ok(activeWave.every(enemy => enemy.slotIndex >= 0 && enemy.slotIndex < CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX));
@@ -1163,7 +1342,9 @@ test('production traversal visits six sectors before wave clear advances the sta
       assert.deepEqual(emitted, [0], 'the fourth clear enters the boss without another fodder wave');
       assert.equal(globals.ContinuousCombatStage.bossActive, true);
     } else {
-    assert.ok(emitted.length >= 12 && emitted.length <= CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX);
+    assert.ok(emitted.length >= 18 && emitted.length <= CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX);
+    const emittedActors = entities.filter(enemy => enemy.kind === 'enemy' && enemy.hp > 0 && emitted.includes(enemy.slotIndex));
+    assert.equal(emittedActors.filter(enemy => enemy.streamSolo).length, CONTINUOUS_COMBAT_SOLOS_PER_WAVE);
     }
     assert.deepEqual(emitted, emitted.map((_, slotIndex) => slotIndex), 'each new wave reuses its fixed slot range');
     assert.ok(emitted.every(slotIndex => slotIndex >= 0 && slotIndex < CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX));

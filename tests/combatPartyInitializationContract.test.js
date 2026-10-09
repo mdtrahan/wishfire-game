@@ -60,7 +60,7 @@ async function initialize(heroMembers, escortMember = null, withEnemy = false, {
   };
   vm.runInNewContext(source + '\nmodule.exports = { createCombatSessionInitializer };', context, { filename });
   const state = { globals: continuousStage ? {
-    ContinuousCombatStageLoop: 1, ContinuousCombatStage: continuousStage, EncounterMaxSlots: 36,
+    ContinuousCombatStageLoop: 1, ContinuousCombatStage: continuousStage, EncounterMaxSlots: 42,
     EncounterSeed: encounterSeed, EncounterSeedExplicit: encounterSeedExplicit ? 1 : 0,
   } : {}, entities: [] };
   const gameState = {};
@@ -103,20 +103,27 @@ test('fresh continuous initializer pads weak packs and finalize preserves each p
   const {state}=await initialize(productionPartyMembers(),null,false,{continuousStage:createContinuousCombatStageState(31),enemyRows:rows});
   const initialEnemies=state.entities.filter(actor=>actor.kind==='enemy');
   assert.equal(state.globals.ContinuousCombatStage.seed, 123, 'fresh stage padding follows the seed selected after beforeInit configured the stage');
-  assert.ok(initialEnemies.length>12&&initialEnemies.length<=36);
-  const expectedPlan=buildContinuousCombatSpawnPlan(state.globals.EnemyData,state.globals.ContinuousCombatStage,{partyCP:getContinuousCombatPartyCP(state.entities)});
-  assert.equal(JSON.stringify(initialEnemies.map(actor=>[actor.continuousStageSectorIndex,actor.continuousStageEntryOrder,actor.continuousStageSectorSize])),JSON.stringify(expectedPlan.map(entry=>[entry.sectorIndex,entry.entryOrder,entry.sectorSize])),'the fresh seed is applied before the initializer builds the spawn plan');
+  assert.ok(initialEnemies.length>18&&initialEnemies.length<=42);
+  const expectedPlan=buildContinuousCombatSpawnPlan(state.globals.EnemyData,state.globals.ContinuousCombatStage,{partyCP:getContinuousCombatPartyCP(state.entities),enemySize:Number(state.globals.EnemySize||40)});
+  assert.equal(JSON.stringify(initialEnemies.map(actor=>[actor.continuousStageSectorIndex,actor.continuousStageEntryOrder,actor.continuousStageSectorSize,actor.continuousStageSolo,actor.continuousStageSoloFootX,actor.continuousStageSoloFootY])),JSON.stringify(expectedPlan.map(entry=>[entry.sectorIndex,entry.entryOrder,entry.sectorSize,entry.isSolo?1:0,entry.soloFootX,entry.soloFootY])),'the fresh seed owns pack count, solo identity and exact seeded solo feet');
   assert.ok(initialEnemies.every(actor=>Number.isInteger(actor.continuousStageSectorIndex)),'initializer keeps the spawn plan sector on each created actor');
   assert.equal(finalizeContinuousCombatProduction(state.globals,state.entities),true);
   const sectors=new Map();
+  const solos=[];
   for(const enemy of state.entities.filter(actor=>actor.kind==='enemy')) {
     const sector=enemy.streamSectorIndex%6;
+    if(enemy.streamSolo){solos.push(enemy);continue;}
     const pack=sectors.get(sector)||[];pack.push(enemy);sectors.set(sector,pack);
     assert.equal(enemy.continuousStageSectorIndex,undefined,'initializer metadata is consumed by production finalization');
   }
   assert.equal(sectors.size,6);
   assert.ok([...sectors.values()].every(pack=>pack.length>=3&&pack.length<=6));
   for(const pack of sectors.values())assert.deepEqual(pack.map(enemy=>enemy.streamEntryOrder).sort((a,b)=>a-b),Array.from({length:pack.length},(_,index)=>index));
+  assert.equal(solos.length,6);
+  assert.ok(solos.every(enemy=>{
+    const entry=expectedPlan.find(candidate=>candidate.slotIndex===enemy.slotIndex&&candidate.isSolo);
+    return entry&&enemy.footX===entry.soloFootX&&enemy.footY===entry.soloFootY;
+  }),'production finalization uses the same bounded solo feet solved by the seeded plan');
 });
 
 test('continuous initializer treats fully credited and boss-ready checkpoints as intentionally empty encounters', async () => {
@@ -141,7 +148,7 @@ test('continuous initializer applies an explicit QA encounter seed to pack-count
   });
   assert.equal(state.globals.EncounterSeed,77,'an explicit QA seed bypasses fresh seed generation');
   assert.equal(state.globals.ContinuousCombatStage.seed,77,'pack-count randomness uses that same explicit QA seed');
-  const expectedPlan=buildContinuousCombatSpawnPlan(state.globals.EnemyData,state.globals.ContinuousCombatStage,{partyCP:getContinuousCombatPartyCP(state.entities)});
+  const expectedPlan=buildContinuousCombatSpawnPlan(state.globals.EnemyData,state.globals.ContinuousCombatStage,{partyCP:getContinuousCombatPartyCP(state.entities),enemySize:Number(state.globals.EnemySize||40)});
   const plannedActors=state.entities.filter(actor=>actor.kind==='enemy');
   assert.equal(JSON.stringify(plannedActors.map(actor=>[actor.continuousStageSectorIndex,actor.continuousStageEntryOrder,actor.continuousStageSectorSize])),JSON.stringify(expectedPlan.map(entry=>[entry.sectorIndex,entry.entryOrder,entry.sectorSize])));
 });

@@ -2,7 +2,7 @@
 
 ## Combat
 
-Fara, Hondo, Runa and Kaja roam together through a three-screen arena to clear dispersed enemy packs. Fara and Hondo lead, with Runa and Kaja supporting from behind. Each living hero runs to melee contact or stops at ranged reach, then fires basics and unlocked active skills automatically when their cooldowns are ready and the skill has a useful target. Every nearby enemy joins from its own delivery range, so local packs can attack together while distant packs remain dormant. Heroes and enemies act on their own clocks. Combat has no turns, action slots, gem matching, SP or FLOW.
+Fara, Hondo, Runa and Kaja roam together through a three-screen arena to clear dispersed enemy packs. Fara and Hondo lead, with Runa and Kaja supporting from behind. Each living hero runs to melee contact or stops at ranged reach, then fires basics and unlocked active skills automatically when their cooldowns are ready and the skill has a useful target. Every nearby enemy joins from its own delivery range, so local packs can attack together while distant packs remain dormant. Each ordinary wave also places one weaker lone enemy in every sector; it wanders by itself until the party approaches and counts toward that sector's clear. Heroes and enemies act on their own clocks. Combat has no turns, action slots, gem matching, SP or FLOW.
 
 Ordinary hero attacks retain a living focus while that enemy remains within the hero’s current reach. Area skills use their own targeting rules from the caster’s current position. Enemies attack a living hero after spatial contact unless a skill redirects or covers that attack. An attack with no eligible target waits ready.
 

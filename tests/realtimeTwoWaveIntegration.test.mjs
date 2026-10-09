@@ -11,12 +11,28 @@ import { castRealtimeHeroSkill, realtimeBasicInterval, realtimeProvokeTarget, re
 import { pickEnemyTargetHeroFromRoster } from '../web-runner/src/core/enemyTargetingRules.mjs';
 import { selectContinuousEnemyTarget } from '../web-runner/src/core/arenaCombat.mjs';
 import { isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
-import { createContinuousCombatStageState, maybeAdvanceContinuousCombatStage } from '../web-runner/src/core/continuousCombatStage.mjs';
+import { activateContinuousCombatSpawnedEnemy, buildContinuousCombatSpawnPlan, createContinuousCombatStageState, maybeAdvanceContinuousCombatStage } from '../web-runner/src/core/continuousCombatStage.mjs';
 import { advanceEnemyActionSimulation, createCombatSimulationTicker, processPendingHeroHits, shouldFreezeCombatSimulation } from '../web-runner/systems/combatSimulationTick.mjs';
 import { recordEnemyDefeatReward, settleContinuousCombatRewards, settleDefeat } from '../web-runner/modules/heroCommands.mjs';
 import { createHeroProgressStore, newHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
 
 const bank = fs.readFileSync(new URL('../web-runner/modules/functionBank.js', import.meta.url), 'utf8');
+
+test('planned solo defeats enter the existing once-per-UID reward receipt', () => {
+  const rows = ['Gobloc', 'Skeleton', 'High Gobloc', 'Lizardo', 'High Orc', 'Chimerilass', 'Djinn', 'Orc', 'Troll']
+    .map((name, index) => ({ name, HP: 100 + index, ATK: 2 + index, DEF: 1, MAG: 1, RES: 1, SPD: 8 }));
+  const stage = createContinuousCombatStageState(37);
+  const soloEntry = buildContinuousCombatSpawnPlan(rows, stage).find(entry => entry.isSolo);
+  assert.ok(soloEntry);
+  const solo = makeEnemy(901, soloEntry.row.name, soloEntry.soloFootX, soloEntry.soloFootY, soloEntry.row.HP, soloEntry.row.HP, soloEntry.row);
+  activateContinuousCombatSpawnedEnemy({ ContinuousCombatStage: stage, EnemySize: 40, time: 0 }, solo, soloEntry);
+  assert.equal(solo.streamSolo, 1);
+  const receipt = { id: 'solo-kill', participants: ['hero-1'], defeated: {}, defeatedGold: {}, settled: false, outcome: 'active' };
+  assert.equal(recordEnemyDefeatReward(receipt, solo), true);
+  assert.equal(recordEnemyDefeatReward(receipt, solo), false, 'a repeated death callback for one solo UID cannot duplicate its receipt');
+  assert.deepEqual(Object.keys(receipt.defeated), ['901']);
+  assert.deepEqual(Object.keys(receipt.defeatedGold), ['901']);
+});
 
 function loadBankFunction(signature, nextSignature, args, values) {
   const start = bank.indexOf(signature);

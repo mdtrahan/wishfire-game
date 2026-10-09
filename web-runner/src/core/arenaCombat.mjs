@@ -1,6 +1,7 @@
 import { advanceActorToward, actorAttackReach, actorFootPoint, actorFootprintRadius, isActorTargetInRange } from '../../../src/core/arenaCombatRules.mjs';
 import { deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldStartFormation, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
-import { resetActorPresentationAfterRestore } from './actorPresentationState.mjs';
+import { previewSeededRng } from '../../../src/core/seededRngRules.mjs';
+import { isActorRecoveryRevealActive, resetActorPresentationAfterRestore } from './actorPresentationState.mjs';
 
 const isLiving = actor => actor && Number(actor.hp || 0) > 0;
 const distance = (actor, target) => {
@@ -199,10 +200,63 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   if (!heroes.length) return 0;
   const center = heroes.reduce((sum, hero) => sum + actorFootPoint(hero).x, 0) / heroes.length;
   const centerY = heroes.reduce((sum, hero) => sum + actorFootPoint(hero).y, 0) / heroes.length;
+  const now = Number(globals.time || 0);
+  const recoveryReveal = heroes.some(hero => isActorRecoveryRevealActive(hero, now));
+  if (!recoveryReveal) {
+    const moat = deriveContinuousCombatSpawnMoat({ world: worldBounds });
+    const footprint = actorFootprintRadius({ kind: 'enemy' });
+    for (const enemy of enemies) {
+      if (!enemy.streamSolo || enemy.streamState !== 'roaming' || now < Number(enemy.actionStateUntil || 0)) continue;
+      if (Math.hypot(actorFootPoint(enemy).x - center, actorFootPoint(enemy).y - centerY) <= CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS) continue;
+      const anchorX = Number(enemy.streamSoloAnchorX ?? enemy.footX);
+      const anchorY = Number(enemy.streamSoloAnchorY ?? enemy.footY);
+      const side = anchorX < moat.centerX ? -1 : 1;
+      const sideMinX = side < 0 ? worldBounds.heroMinX : moat.centerX + moat.minimumEnemyCenterDistance + footprint;
+      const sideMaxX = side < 0 ? moat.centerX - moat.minimumEnemyCenterDistance - footprint : worldBounds.heroMaxX;
+      const phase = Number(enemy.streamSoloPhase || 0);
+      const patrolLeg = Math.floor(Math.max(0, now) / 3);
+      const patrolAngle = phase + patrolLeg * Math.PI / 2;
+      const target = {
+        kind: 'solo-patrol-anchor',
+        hp: 1,
+        footX: clamp(anchorX + Math.cos(patrolAngle) * 30, sideMinX, sideMaxX),
+        footY: clamp(anchorY + Math.sin(patrolAngle) * 30, minY + footprint, maxY - footprint),
+      };
+      const before = actorFootPoint(enemy);
+      const dx = target.footX - before.x, dy = target.footY - before.y;
+      const targetDistance = Math.hypot(dx, dy);
+      const approachTarget = targetDistance > 1e-6 ? {
+        ...target,
+        footX: target.footX + dx / targetDistance * (actorAttackReach(enemy) + actorFootprintRadius(target)),
+        footY: target.footY + dy / targetDistance * (actorAttackReach(enemy) + actorFootprintRadius(target)),
+      } : target;
+      advanceActorToward(enemy, approachTarget, {
+        seconds,
+        speed: 24,
+        now,
+        minX: sideMinX,
+        maxX: sideMaxX,
+        minY: minY + footprint,
+        maxY: maxY - footprint,
+        preserveActionState: Number(enemy.actionStateUntil || 0) > now,
+      });
+      const next = actorFootPoint(enemy);
+      const exceedsPatrolRadius = Math.hypot(next.x - anchorX, next.y - anchorY) > 40;
+      const rejoinsAnotherEnemy = enemies.some(other => other !== enemy
+        && Math.hypot(actorFootPoint(other).x - next.x, actorFootPoint(other).y - next.y) < 100);
+      if (exceedsPatrolRadius || rejoinsAnotherEnemy) {
+        enemy.footX = enemy.x = before.x;
+        enemy.footY = enemy.y = before.y;
+        enemy.locomotion = 'idle';
+        enemy.locomotionStartedAt = now;
+        enemy.actionState = 'idle';
+      }
+    }
+  }
   const hasStragglers = heroes.some(hero => Math.hypot(actorFootPoint(hero).x - center, actorFootPoint(hero).y - centerY) > SQUAD_STRAGGLE_RADIUS);
   const groups = new Map();
   for (const enemy of enemies) {
-    const groupId = Number(enemy.streamSectorIndex ?? enemy.streamPackIndex ?? 0);
+    const groupId = Number(enemy.streamEngagementGroupId ?? enemy.streamSectorIndex ?? enemy.streamPackIndex ?? 0);
     const group = groups.get(groupId) || [];
     group.push(enemy);
     groups.set(groupId, group);
