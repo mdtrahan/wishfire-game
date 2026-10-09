@@ -221,12 +221,18 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   const storedGroupId = Number(stage?.activeEncounterGroupId);
   const storedGroup = activeGroups.find(([groupId]) => groupId === storedGroupId);
   const committedGroup = storedGroup || activeGroups[0] || null;
-  const nearestEntry = orderedGroups[0] || null;
+  const localGroups = orderedGroups.filter(([, group]) => group.some(enemy =>
+    selectContinuousEnemyTarget({ enemy, heroes, globals, requireInReach: true })
+      || activeStates.has(enemy.streamState))
+    || groupDistance(group) <= CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS);
+  const nearestEntry = localGroups[0] || orderedGroups[0] || null;
   const nearestGroup = committedGroup?.[1] || nearestEntry?.[1] || [];
   const nearestGroupId = committedGroup?.[0] ?? nearestEntry?.[0] ?? null;
   const nearestGroupCenter = nearestGroup.length ? groupCenter(nearestGroup) : null;
-  const locallyDetected = !!committedGroup || (!hasStragglers && nearestEntry && groupDistance(nearestEntry[1]) <= CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS);
-  const focusedEnemies = locallyDetected ? nearestGroup : [];
+  const locallyDetected = localGroups.length > 0;
+  // Heroes commit to every nearby threat before roaming onward. Enemy attack
+  // eligibility is resolved separately below, per actor and delivery range.
+  const focusedEnemies = localGroups.flatMap(([, group]) => group);
   if (stage) {
     if (locallyDetected && nearestGroupId != null) stage.activeEncounterGroupId = Number(nearestGroupId);
     else delete stage.activeEncounterGroupId;
@@ -319,15 +325,15 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
       preserveActionState: Number(enemy.actionStateUntil || 0) > Number(globals.time || 0) });
   }
   separateFootprints([...heroes, ...enemies], bounds);
-  for (const enemy of focusedEnemies) {
+  for (const enemy of enemies) {
     if (enemy.streamState === 'retreating') continue;
-    const target = selectContinuousEnemyTarget({ enemy, heroes, globals });
+    const target = selectContinuousEnemyTarget({ enemy, heroes, globals, requireInReach: true });
     if (target && isActorTargetInRange(enemy, target)) {
       if (enemy.streamState !== 'engaged') newlyEngaged += 1;
       enemy.streamState = 'engaged';
       enemy.arenaInReach = true;
     } else {
-      enemy.streamState = 'in_range';
+      if (enemy.streamState === 'engaged') enemy.streamState = 'in_range';
       enemy.arenaInReach = false;
     }
   }

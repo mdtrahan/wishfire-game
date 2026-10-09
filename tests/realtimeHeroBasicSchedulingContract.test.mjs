@@ -93,18 +93,25 @@ test('colliding basics start on separate ticks and re-resolve the in-range targe
   assert.deepEqual(globals.PendingHeroHits.map(hit => [hit.heroUID, hit.targetUID]), [[1, 91], [2, 91]]);
 });
 
-test('live basics and conditional skills stay committed to a wounded retreating encounter', () => {
+test('hero basics and conditional skills can target every active local sector while remote roaming stays dormant', () => {
   const committed = { uid: 90, kind: 'enemy', hp: 800, maxHP: 1000, x: 200, footX: 200, footY: 200, streamState: 'retreating', streamSectorIndex: 10 };
   const nearerNextPack = { uid: 91, kind: 'enemy', hp: 1000, maxHP: 1000, x: 165, footX: 165, footY: 200, streamState: 'engaged', streamSectorIndex: 11 };
-  const { ctx, globals, actors, tick } = fixture({ time: 30, heroes: [1], readyAt: { 1: 30 }, enemies: [committed, nearerNextPack] });
+  const remotePack = { uid: 92, kind: 'enemy', hp: 1000, maxHP: 1000, x: 1300, footX: 1300, footY: 600, streamState: 'roaming', streamSectorIndex: 12 };
+  const preActivation = { uid: 93, kind: 'enemy', hp: 1000, x: 160, footX: 160, footY: 200, streamState: 'roaming', streamSectorIndex: 13 };
+  const { ctx, globals, actors, tick } = fixture({ time: 30, heroes: [1], readyAt: { 1: 30 }, enemies: [committed, nearerNextPack, remotePack, preActivation] });
   Object.assign(actors[0], { baseHeroName: 'Huun', currentLevel: 100 });
   globals.ContinuousCombatStage = { activeEncounterGroupId: 10 };
-  assert.deepEqual(filterContinuousEncounterEnemies([committed, nearerNextPack], globals).map(enemy => enemy.uid), [90]);
+  const localTargets = filterContinuousEncounterEnemies([committed, nearerNextPack, remotePack, preActivation], globals, actors);
+  assert.deepEqual(localTargets.map(enemy => enemy.uid), [90, 91, 93]);
+  assert.equal(resolveHeroAttackTarget({ enemies: localTargets, focusUID: 90, inRange: enemy => isHeroBasicTargetInRange(actors[0], enemy) })?.uid, 90,
+    'a living in-reach focus remains sticky across sector identity');
+  assert.equal(resolveHeroAttackTarget({ enemies: localTargets, focusUID: 93, inRange: enemy => isHeroBasicTargetInRange(actors[0], enemy) })?.uid, 93,
+    'a roaming actor already inside hero reach is a valid target before arena state catches up');
   const ambush = HERO_DEFINITIONS.Huun.actives.find(skill => skill.skillId === 'ambush');
   const skillSelection = selectRealtimeHeroSkillTarget({ skill: ambush, hero: actors[0], heroes: actors, enemies: [committed, nearerNextPack], globals, now: globals.time });
-  assert.equal(skillSelection?.targetUID, 90, 'conditional skill candidates remain in the committed sector');
+  assert.equal(skillSelection?.targetUID, 90, 'the authored skill ordering still chooses the lower-health local target');
   assert.equal(tick(ctx), 1);
-  assert.equal(globals.PendingHeroHits[0].targetUID, 90, 'basic scheduler must not jump to a closer living pack');
+  assert.equal(globals.PendingHeroHits[0].targetUID, 90, 'the retained living focus remains stable while other local sectors are eligible');
 });
 
 test('no in-range target preserves an overdue attack for the next eligible target', () => {

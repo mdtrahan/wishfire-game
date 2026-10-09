@@ -8,14 +8,12 @@ import { previewSeededRng } from '../../../src/core/seededRngRules.mjs';
 // presentation consumers, but target geometry reads the semantic source.
 const point = actor => ({x:Number(actor?.footX ?? actor?.x ?? 0),y:Number(actor?.footY ?? actor?.y ?? 0)});
 const ratio = actor => Number(actor.hp)/Math.max(1,Number(actor.maxHP));
-export function filterContinuousEncounterEnemies(enemies = [], globals = {}) {
-  const stage = globals?.ContinuousCombatStage;
-  if (Number(globals?.ContinuousCombatStageLoop || 0) !== 1 || !Number.isFinite(Number(stage?.activeEncounterGroupId))) {
-    return (enemies || []).filter(a => alive(a) && a?.streamState !== 'approaching');
-  }
-  const groupId = Number(stage.activeEncounterGroupId);
-  return (enemies || []).filter(a => alive(a) && a?.streamState !== 'approaching'
-    && Number(a.streamSectorIndex ?? a.streamPackIndex ?? 0) === groupId);
+export function filterContinuousEncounterEnemies(enemies = [], globals = {}, heroes = []) {
+  const targetable = (enemies || []).filter(actor => alive(actor) && actor?.streamState !== 'approaching');
+  if (Number(globals?.ContinuousCombatStageLoop || 0) !== 1) return targetable;
+  return targetable.filter(actor => ['in_range', 'engaged', 'retreating'].includes(actor.streamState)
+    || actor.arenaInReach === true
+    || heroes.some(hero => alive(hero) && isActorTargetInRange(hero, actor)));
 }
 export function enemiesInSkillShape(enemies, shape) {
   return (enemies || []).filter(a=>alive(a) && a?.streamState !== 'approaching').filter(enemy => {
@@ -33,7 +31,7 @@ export function enemiesInSkillShape(enemies, shape) {
 }
 export function selectRealtimeHeroSkillTarget({skill,hero,heroes=[],enemies=[],effects={},zones=[],now=0,globals={},event=null,statReader}={}) {
   if (!skill || !alive(hero)) return null;
-  const livingHeroes = heroes.filter(alive), targetableEnemies = filterContinuousEncounterEnemies(enemies, globals), inRange = targetableEnemies.filter(a=>isActorTargetInRange(hero, a));
+  const livingHeroes = heroes.filter(alive), targetableEnemies = filterContinuousEncounterEnemies(enemies, globals, heroes), inRange = targetableEnemies.filter(a=>isActorTargetInRange(hero, a));
   const read = statReader || ((actor,stat)=>realtimeCombatStat({...globals,time:now,RealtimeSkillEffects:effects},actor,stat));
   const rule = skill.targetRule;
   if (!rule) throw new Error(`Missing target rule: ${skill.skillId}`);

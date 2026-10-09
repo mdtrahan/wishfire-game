@@ -7204,9 +7204,9 @@ export function TickRealtimeHeroBasics(ctx) {
   const g = getGlobals(ctx);
   if (Number(g.ContinuousCombatStageLoop || 0) !== 1 || g.GamePhase !== 'RUNTIME' || g.BattleStartActive || g.NativeBattleEnded) return 0;
   tickRealtimeHeroSkillZones(ctx);
-  const enemies = filterContinuousEncounterEnemies(getEnemies(ctx), g);
   const heroes = getEntities(ctx).filter(hero => hero?.kind === 'hero' && Number(hero.hp || 0) > 0)
     .map(hero => ({ ...hero, type: 0, speed: GetEffectiveStat(ctx, hero, 'SPD') }));
+  const enemies = filterContinuousEncounterEnemies(getEnemies(ctx), g, heroes);
   const focusTarget = resolveHeroAttackTarget({ enemies, focusUID: Number(g.RealtimeHeroFocusTargetUID || 0), inRange: enemy => heroes.some(hero => isHeroBasicTargetInRange(enemy, hero)) });
   g.RealtimeHeroFocusTargetUID = Number(focusTarget?.uid || 0);
   for (const hit of g.PendingHeroHits || []) {

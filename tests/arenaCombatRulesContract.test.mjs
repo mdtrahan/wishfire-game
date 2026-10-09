@@ -117,9 +117,9 @@ test('a wounded retreating encounter holds the whole squad until neutralized', (
   const globals = { time: 2, ContinuousCombatStage: { activeEncounterGroupId: 4 } };
   const before = heroes.map(hero => [hero.footX, hero.footY]);
   advanceContinuousCombatArena({ globals, entities: [...heroes, survivor, nearerPack], seconds: 0.1 });
-  assert.ok(heroes.every(hero => hero.arenaTargetUID === survivor.uid));
+  assert.ok(heroes.every(hero => [survivor.uid, nearerPack.uid].includes(hero.arenaTargetUID)), 'the party may work every local threat while retaining the retreating survivor');
   assert.equal(globals.ContinuousCombatStage.activeEncounterGroupId, 4);
-  assert.deepEqual([nearerPack.footX, nearerPack.footY, nearerPack.streamState], [300, 330, 'roaming']);
+  assert.equal(nearerPack.streamState, 'engaged', 'a second nearby sector is no longer held dormant by the first local commitment');
   assert.ok(heroes.some((hero, index) => Math.hypot(hero.footX - before[index][0], hero.footY - before[index][1]) > 0), 'party continues working the committed survivor');
 
   survivor.hp = 0;
@@ -336,15 +336,41 @@ test('boss combat keeps the four-times body to the right of the party and preser
   }
 });
 
-test('a live Provoke redirects arena pursuit before an enemy can start another contact attack', () => {
+test('enemy contact uses an in-reach target when a Provoke source is outside delivery range', () => {
   const nearby = { uid: 1, kind: 'hero', hp: 100, attackType: 'melee', footX: 180, footY: 200, arenaEnabled: true };
   const provoker = { uid: 2, kind: 'hero', hp: 100, attackType: 'melee', footX: 106, footY: 340, arenaEnabled: true };
   const enemy = { uid: 10, kind: 'enemy', hp: 100, footX: 230, footY: 200, streamState: 'engaged', arenaInReach: true, streamDelivery: 'melee' };
   const globals = { time: 1, EnemySize: 40, RealtimeSkillEffects: { 10: { provoke: { sourceUID: 2, expiresAt: 5 } } } };
   advanceContinuousCombatArena({ globals, entities: [nearby, provoker, enemy], seconds: 0.1 });
-  assert.equal(enemy.arenaTargetUID, 2);
-  assert.equal(enemy.arenaInReach, false);
-  assert.equal(enemy.streamState, 'in_range');
+  assert.equal(enemy.arenaTargetUID, nearby.uid);
+  assert.equal(enemy.arenaInReach, true);
+  assert.equal(enemy.streamState, 'engaged');
+});
+
+test('all in-reach enemies across local sectors engage without a pack-count cap', () => {
+  const heroes = Array.from({ length: 4 }, (_, index) => ({
+    uid: index + 1, kind: 'hero', hp: 100, attackType: index > 1 ? 'magic' : 'melee',
+    footX: 1080 + (index % 2 ? 18 : -18), footY: 319.5 + (index < 2 ? -14 : 14),
+  }));
+  const enemies = Array.from({ length: 15 }, (_, index) => {
+    const ranged = index % 3 !== 0;
+    const radius = ranged ? 118 : 48;
+    const angle = (Math.PI * 2 * index) / 15;
+    return {
+      uid: 100 + index, kind: 'enemy', hp: 80, streamState: 'roaming',
+      streamDelivery: ranged ? 'ranged' : 'melee', streamSectorIndex: Math.floor(index / 3),
+      footX: 1080 + Math.cos(angle) * radius,
+      footY: 319.5 + Math.sin(angle) * radius,
+    };
+  });
+  const beyondReach = { uid: 200, kind: 'enemy', hp: 80, streamState: 'roaming', streamDelivery: 'melee', streamSectorIndex: 5, footX: 1080 + 250, footY: 319.5 };
+  const globals = { time: 1, ContinuousCombatStage: {} };
+  advanceContinuousCombatArena({ globals, entities: [...heroes, ...enemies, beyondReach], seconds: 0 });
+  const engaged = enemies.filter(enemy => enemy.streamState === 'engaged' && enemy.arenaInReach === true);
+  assert.equal(engaged.length, enemies.length, 'all fifteen in-range actors across five sectors can engage in the same arena tick');
+  assert.equal(new Set(engaged.map(enemy => enemy.streamSectorIndex)).size, 5);
+  assert.equal(beyondReach.streamState, 'in_range');
+  assert.equal(beyondReach.arenaInReach, false, 'actor-relative reach still gates enemy actions');
 });
 
 test('spawned pack feet are clustered and source-relative displacement remains bounded', () => {

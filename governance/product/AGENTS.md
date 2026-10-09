@@ -20,6 +20,7 @@
 - Vault/relic passives remain a separate progression layer.
 - Preserve Falie, Huun, Runa and Kojonn as internal save keys while displaying Fara, Hondo, Runa and Kaja.
 - Kaja's five active skills target allies; his separate basic attack targets an enemy.
+- Every nearby enemy can engage a living hero within its delivery range across pack boundaries; party focus never caps simultaneous attackers. Heroes clear all local threats before roaming onward.
 
 - Ordinary pack count compares final scaled pack CP with full deployed party CP, including KO members. A weaker pack gains a single seeded +1/+2/+3 count adjustment at construction; equality, stronger packs and bosses keep their count.
 

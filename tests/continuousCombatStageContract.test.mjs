@@ -331,7 +331,7 @@ test('deployed party CP includes KO heroes and uses the direct canonical actor s
   assert.ok(getContinuousCombatPartyCP(heroes) > computeCombatPower(heroes[0]));
 });
 
-test('runtime wave emission pads each weak pack and arena commitment still selects one whole sector', () => {
+test('runtime wave emission pads weak packs while only detected sectors enter local commitment', () => {
   const enemyRows=['Gobloc','Skeleton','High Gobloc','Lizardo','Orc','High Orc','Chimerilass','Djinn','Troll']
     .map(name=>({name,HP:1,ATK:1,DEF:1,MAG:1,RES:1,SPD:1}));
   const stage={...createContinuousCombatStageState(53),nextEmissionAt:0,lastUpdatedAt:5,lastArenaUpdatedAt:5};

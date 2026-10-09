@@ -618,3 +618,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - When a progression rail looks stalled during a multi-pack wave, separate displayed counter granularity from the actual all-pack transition gate. Persist idempotent clear credit for the current wave, retry unfinished packs, and keep full-clear and presentation barriers intact.
 
 - Recovery placement needs both a world-center anchor and enemy-free travel clearance. Protect the whole seeded pack cloud from the spawn moat; keeping only its centroid outside still lets edge members trigger an immediate fight. Verify detection distance and visible travel after the shared recovery fade.
+
+- Party focus selects where heroes fight; it must not restrict enemy attack eligibility. Reconcile every nearby enemy against its own reach and living targets before scheduling, and test simultaneous multi-pack attackers through the real cooldown owner.
