@@ -24,4 +24,4 @@ Entering, leaving and repeating combat, including disposable copies, must keep s
 
 Record this note, resolve the pending branch's separate integration regressions, validate and merge that game work, then implement ORKA-5af.3 from the resulting main. The inherited ownership defect does not itself block that merge. Check ownership before assessing balance tuning; retain the current EXP curve, lamp cadence and authored combat values during this repair.
 
-Checkpoint: the earlier ORKA-5af.3 planning and diagnostic commits are already on main. `codex/ORKA-bnw-cp-refresh` at `4338182d` remains unmerged with 76 additional commits and separate validation blockers. Full recovery is retained in the private cloud-preparation checkpoint. Runtime and player saves remain unchanged by this note.
+Integration checkpoint: the committed current game stack and this follow-up are on local main at `bd3c81d7`. Resume ORKA-5af.3 from that main; see the [integration report](../../../goals/current-stack-integration-report.md). Full recovery remains in the private cloud-preparation checkpoint. This merge did not implement the ownership repair or rewrite player saves.
