@@ -13,13 +13,16 @@
 
 ## Local Contracts
 - The player guide changes only when the user asks for it to change.
-- The approved combat contract has four stationary heroes with independent basic attacks and five auto-active skills each. Actors act on independent cooldowns; effects use seconds. There are no playable turns, action slots, gem matches, SP or FLOW in supported combat. The root combat cleanup plan owns the approved skill tables during migration.
+- The approved combat contract has four heroes in a tight roaming formation with independent basic attacks and five auto-active skills each. Actors act on independent cooldowns; effects use seconds. There are no playable turns, action slots, gem matches, SP or FLOW in supported combat. The root combat cleanup plan owns the approved skill tables during migration.
 - Ordinary waves carry hero HP and KO state forward. Clearing a boss fully restores and revives the party, removes harmful statuses and keeps beneficial effects.
 - The player guide describes the approved player-facing combat. Runtime migration remains in progress. Historical hero-and-party skill documents retain paused content only.
 - Affinity is passive and progression-facing. It is not a combat meter or separate in-battle progression track.
 - Vault/relic passives remain a separate progression layer.
 - Preserve Falie, Huun, Runa and Kojonn as internal save keys while displaying Fara, Hondo, Runa and Kaja.
 - Kaja's five active skills target allies; his separate basic attack targets an enemy.
+- Every nearby enemy can engage a living hero within its delivery range across pack boundaries; party focus never caps simultaneous attackers. Heroes clear all local threats before roaming onward.
+
+- Ordinary pack count compares final scaled pack CP with full deployed party CP, including KO members. A weaker pack gains a single seeded +1/+2/+3 count adjustment at construction; equality, stronger packs and bosses keep their count.
 
 ## Work Guidance
 - For new skill beads, require canonical skill ID, owner, target and useful-trigger rules, cooldown and duration in seconds, effect, and focused runtime and Browser proof.
@@ -34,4 +37,6 @@
 ## Child DOX Index
 - None.
 
-- Progression correction: Boss access survives defeat/reload until victory; lamp upgrades require four paid stages followed by seven-hour construction. Hero actives use canonical level gates, currently 1/5/10/15/25 as a configurable default.
+- Progression correction: A clean approach through four completed waves automatically enters a boss. Each ordinary wave also has six seeded low-CP Gobloc/Skeleton solo enemies, one per sector; they wander alone until detected, count toward the sector's saved clear mask, and use a separate runtime encounter group from the pack. After existing weak-CP scaling, each solo has half HP, rounded up with a minimum of one, then recomputes CombatPower while retaining its other weak-CP stats. Ordinary roaming KO recovery keeps the current wave and each earned pack clear through reload, then respawns only unfinished packs. The squad returns at section B midpoint; ordinary pack footprints stay at least 200 logical pixels apart and outside the 150-logical-pixel-diameter recovery moat. Groups notice the squad within 460 world units (230 logical pixels) or their own attack reach; stale active state cannot keep remote groups committed. Any stage KO and boss defeat preserve readiness and latch manual boss retry for that stage, including across reload and active attempts. Ready stages keep looping fodder waves at 100% until explicit Summon Boss; boss victory advances the stage and clears the latch. Lamp upgrades require four paid stages followed by seven-hour construction. Hero actives use canonical level gates, currently 1/5/10/15/25 as a configurable default.
+
+- Lamp storage accelerates with level; four paid notches start at 100 Essence each and grow geometrically by 20% per level before seven-hour construction. Cache display orders rarity first, CP within rarity; Auto Equip retains its independent positive-CP comparison. Lamp Auto stays enabled through full storage and resumes after space is cleared; only explicit Auto-off or battle exit disables it.

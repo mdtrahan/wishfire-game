@@ -7,6 +7,7 @@
 - `serve_web.js` serves the browser runner and writes `web-runner/runtime-fingerprint.js`.
 - `balance_harness.js` is the canonical batch game automation path.
 - `ui_presentation_lock_gate.mjs` is the canonical fail-closed rendered presentation gate for approved responsive UI seams.
+- UI-lock startup waits for realtime basic clocks, then its automatic-focus check uses the shared encounter filter and basic-target selector. Focus may be zero only when no living hero can reach a living eligible enemy in the committed encounter; nonzero focus must match the canonical selector.
 - Playwright doctor, launch matrix, and Chrome CDP helpers diagnose browser startup/control issues.
 - Rust build helper generates the browser WASM artifact.
 - `build_offline_release.mjs` reuses hosted runtime staging, embeds startup JSON, the optional elemental impact manifest, and SimulationCore WASM, and emits the portable file:// artifact with relative frame assets; it must leave the Netlify release path unchanged.
@@ -61,3 +62,7 @@
 - Results presentation lock measures 80% canvas width/height, center alignment, full-canvas shade bounds and rgba black0.4 across every viewport profile.
 
 - The UI lock now drives an exact displayed shop offer through Gold purchase and Hero Gear equip at every profile, checking four tracks, containment, canonical ownership and stat effects. Test wallets are arranged only in isolated browser contexts.
+
+- `export_actor_puppets.mjs` rebuilds editable Synfig pilot sources by default; `--render` exports existing SIF files without overwriting manual edits. Keep native bones in authoring sources and simulation authority outside clip metadata. Attack/cast torso and companion head keys lean toward the target at the reduced amplitude; verify pivot direction in native renders before changing angle signs.
+
+- Hondo and Kaja reuse the Fara pilot layout and motion curves with character-painted slots. `PUPPET_ACTOR=hondo,kaja` regenerates only those actors and preserves other manifest entries; source metadata supplies facing and relative paint paths.

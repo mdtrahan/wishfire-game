@@ -7,12 +7,13 @@ import { COMBAT_MODIFIER_LIMITS,projectCombatStat,modifierCanImprove,resolveBasi
 import { previewSeededRng } from '../src/core/seededRngRules.mjs';
 import { selectRealtimeHeroSkillTarget,enemiesInSkillShape } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
 import { ensureSkillBattle,resetRealtimeSkillAttempt,realtimeCombatStat } from '../web-runner/src/core/realtimeSkillState.mjs';
+import { resetActorPresentationAfterRestore } from '../web-runner/src/core/actorPresentationState.mjs';
 import { newHeroProgress,refreshHeroStats,awardHeroEXP,createHeroProgressStore,saveHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
 import { effectiveStat } from '../web-runner/src/core/combatRules.mjs';
 import { calculateDamageFromJs } from '../src/core/calculateDamageRules.mjs';
 const skill=(key,id)=>HERO_DEFINITIONS[key].actives.find(a=>a.skillId===id);
-const hero=(uid,def=20)=>({uid,kind:'hero',hp:100,maxHP:100,x:100,y:200,stats:{ATK:100,DEF:def,MAG:100,RES:20,SPD:10}});
-const enemy=(uid,x=200,y=200,def=30,rank='ordinary')=>({uid,kind:'enemy',hp:100,maxHP:100,x,y,combatRank:rank,streamState:'engaged',stats:{ATK:100,DEF:def,RES:20}});
+const hero=(uid,def=20)=>({uid,kind:'hero',hp:100,maxHP:100,x:150,y:200,footX:150,footY:200,attackType:'magic',stats:{ATK:100,DEF:def,MAG:100,RES:20,SPD:10}});
+const enemy=(uid,x=200,y=200,def=30,rank='ordinary')=>({uid,kind:'enemy',hp:100,maxHP:100,x,y,footX:x,footY:y,combatRank:rank,streamState:'engaged',stats:{ATK:100,DEF:def,RES:20}});
 const select=(skill,heroes,enemies,globals={})=>selectRealtimeHeroSkillTarget({skill,hero:heroes.at(-1),heroes,enemies,globals,effects:globals.RealtimeSkillEffects,now:globals.time || 0});
 test('33 stable IDs have independent unlocks, complete descriptions and spaced integer cooldowns',()=>{
  const ids=[];for(const def of Object.values(HERO_DEFINITIONS)) {
@@ -51,7 +52,7 @@ test('Shrink compares current highest living-party DEF, excludes bosses, and ref
 test('best-area selection searches all anchors and prefers an eligible boss over a bigger cluster',()=>{
  const caster=hero(1),isolated=enemy(10,30,30),a=enemy(11,200,200),b=enemy(12,220,200);
  assert.equal(select(skill('Falie','shield_slam'),[caster],[isolated,a,b]).targetUID,11);
- const boss=enemy(13,280,400,30,'boss');assert.equal(select(skill('Falie','shield_slam'),[caster],[isolated,a,b,boss]).targetUID,13);
+ const boss=enemy(13,280,200,30,'boss');assert.equal(select(skill('Falie','shield_slam'),[caster],[isolated,a,b,boss]).targetUID,13);
  assert.equal(select(skill('Huun','overrun'),[caster],[boss]),null);boss.hp=49;assert.equal(select(skill('Huun','overrun'),[caster],[boss]).targetUID,13);
 });
 test('horizontal throw keeps hero Y, and cone boundaries include only the forward area',()=>{
@@ -85,14 +86,16 @@ test('level and gear refresh reproject from a clean baseline; saves contain no F
 const runtime=fs.readFileSync(new URL('../web-runner/modules/functionBank.js',import.meta.url),'utf8');
 function adapter(name,end,bindings){const start=runtime.indexOf(`export function ${name}(`),body=runtime.slice(start,runtime.indexOf(end,start)).replace('export function','function');return new Function(...Object.keys(bindings),`${body};return ${name};`)(...Object.values(bindings));}
 test('the UID heal adapter clamps, rejects ordinary KO healing, and revives the same instance',()=>{
- const a=hero(1),source=hero(2),ctx={state:{entities:[a,source]}};a.hp=95;let events=0;
- const heal=adapter('HealRealtimeActor','\nfunction absorbPartyTempHPShield',{GetActorByUID:(ctx,uid)=>ctx.state.entities.find(a=>a.uid===uid),emitResolvedHealEvent:(ctx,source,target,before)=>{events++;return target.hp-before;},UpdateHeroHPUI:()=>{}});
- assert.equal(heal(ctx,2,1,20),5);a.hp=0;assert.equal(heal(ctx,2,1,20),0);assert.equal(heal(ctx,2,1,30,true),30);assert.equal(ctx.state.entities[0],a);assert.equal(events,2);
+ const a=hero(1),source=hero(2),ctx={state:{globals:{time:0},entities:[a,source]}};a.hp=95;let events=0;
+ const heal=adapter('HealRealtimeActor','\nfunction absorbPartyTempHPShield',{getGlobals:ctx=>ctx.state.globals,GetActorByUID:(ctx,uid)=>ctx.state.entities.find(a=>a.uid===uid),emitResolvedHealEvent:(ctx,source,target,before)=>{events++;return target.hp-before;},UpdateHeroHPUI:()=>{},resetActorPresentationAfterRestore});
+ assert.equal(heal(ctx,2,1,20),5);a.hp=0;a.actionState='ko';a.actionFacing='left';a.actionStateUntil=86400;ctx.state.globals.time=8;assert.equal(heal(ctx,2,1,30,true),30);assert.equal(ctx.state.entities[0],a);assert.equal(a.locomotion,'idle');assert.equal(a.locomotionStartedAt,8);assert.equal(a.actionState,undefined);assert.equal(a.actionStateUntil,undefined);assert.equal(events,2);
 });
-test('raw magic adapters mitigate independently once and never reroll critical damage',()=>{
+test('raw magic adapters mitigate independently once, never reroll critical damage, and retain committed effect range',()=>{
  const source=hero(1),target=enemy(10);target.stats.RES=20;const g={time:0},ctx={state:{globals:g,entities:[source,target]}};
- const apply=adapter('ApplyRealtimeRawDamage','\nexport function HealRealtimeActor',{getGlobals:ctx=>ctx.state.globals,GetActorByUID:(ctx,uid)=>ctx.state.entities.find(a=>a.uid===uid),isHeroBasicTargetInRange:a=>a.hp>0&&a.x<=290,resolveCalculateDamageFromJs:calculateDamageFromJs,GetEffectiveStat:(ctx,a,stat)=>realtimeCombatStat(ctx.state.globals,a,stat),GetBaseStat:(ctx,a,stat)=>a.stats[stat]||0,realtimeBasicDamageMultiplier:()=>1,ApplyDamageToTarget:(ctx,uid,amount)=>{target.hp-=amount;return amount;}});
+ const apply=adapter('ApplyRealtimeRawDamage','\nexport function HealRealtimeActor',{getGlobals:ctx=>ctx.state.globals,GetActorByUID:(ctx,uid)=>ctx.state.entities.find(a=>a.uid===uid),resolveCalculateDamageFromJs:calculateDamageFromJs,GetEffectiveStat:(ctx,a,stat)=>realtimeCombatStat(ctx.state.globals,a,stat),GetBaseStat:(ctx,a,stat)=>a.stats[stat]||0,realtimeBasicDamageMultiplier:()=>1,ApplyDamageToTarget:(ctx,uid,amount)=>{target.hp-=amount;return amount;}});
  assert.equal(apply(ctx,1,10,66,'magic'),46);assert.equal(apply(ctx,1,10,1,'magic'),0);
+ target.hp=100;source.hp=0;source.footX=1000;source.x=1000;assert.equal(apply(ctx,1,10,66,'magic'),46);
+ target.hp=100;ctx.state.entities.splice(0,1);assert.equal(apply(ctx,1,10,66,'magic'),46);
 });
 
 test('Shrink draws once at 70% size, keeps the feet fixed and restores the original sprite after expiry',async()=>{

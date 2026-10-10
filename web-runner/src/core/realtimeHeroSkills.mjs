@@ -1,13 +1,14 @@
 import { heroDefinition, heroKey, heroSkillUnlocked } from './heroDefinitions.mjs';
 import { enemiesInSkillShape, selectRealtimeHeroSkillTarget } from './realtimeHeroTargeting.mjs';
-import { isHeroBasicTargetInRange } from '../../../src/core/heroAttackTargetingRules.mjs';
+import { isActorTargetInRange } from '../../../src/core/heroAttackTargetingRules.mjs';
 import { activeCombatEffect, incomingReduction, resolveBasicInterval, projectCombatStat } from '../../../src/core/combatModifierRules.mjs';
 import { ensureSkillBattle, realtimeCombatStat, actorCombatModifiers, skillModifiers } from './realtimeSkillState.mjs';
 export { realtimeCombatStat } from './realtimeSkillState.mjs';
 const nowOf = g => Number(g.time || 0);
 const living = a => Number(a?.hp || 0)>0;
 const actor = (ctx,uid)=>ctx.state.entities.find(a=>Number(a.uid)===Number(uid));
-const point = a=>({x:Number(a?.x || 0),y:Number(a?.y || 0)});
+const point = a=>({x:Number(a?.footX ?? a?.x ?? 0),y:Number(a?.footY ?? a?.y ?? 0)});
+const targetableEnemy = target => living(target) && target?.streamState !== 'approaching';
 const effects = g=>g.RealtimeSkillEffects ||= {};
 export function realtimeEffect(g,uid,id) {
   const record=effects(g)[String(uid)]?.[id];
@@ -17,12 +18,15 @@ const grant = (g,source,target,id,seconds,extra={}) => {
   (effects(g)[String(target.uid)] ||= {})[id]={sourceUID:source.uid,appliedAt:nowOf(g),expiresAt:nowOf(g)+seconds,...extra};
 };
 const damage = (ctx,source,target,pct,mode)=>{
-  if(!isHeroBasicTargetInRange(target))return 0;
+  if(!living(source)||!targetableEnemy(target))return 0;
   const amount=ctx.callFunction('CalculateDamage',source.uid,target.uid,mode,pct);
   return ctx.callFunction('ApplyDamageToTarget',target.uid,amount,{sourceUID:source.uid,suppressPartySkillHitHooks:1,actionKind:'skill'}) || 0;
 };
 const rawDamage = (ctx,source,target,raw,mode)=>{
-  if(!isHeroBasicTargetInRange(target))return 0;
+  // Ongoing effects already committed their source eligibility at cast time.
+  // Their tick lifetime belongs to the effect record, including Blight's
+  // existing source-KO behavior.
+  if(!targetableEnemy(target))return 0;
   return ctx.callFunction('ApplyRealtimeRawDamage',source.uid,target.uid,raw,mode) || 0;
 };
 const heal = (ctx,source,target,pct,revive=false)=>ctx.callFunction('HealRealtimeActor',source.uid,target.uid,pct,revive) || 0;
@@ -53,6 +57,11 @@ export function castRealtimeHeroSkill(ctx,heroUID,skill,selection,displacement={
   const fresh=selectRealtimeHeroSkillTarget({skill,hero:source,heroes:ctx.state.entities.filter(a=>a.kind==='hero'),enemies:ctx.state.entities.filter(a=>a.kind==='enemy'),globals:g,effects:effects(g),zones:g.RealtimeSkillZones,now,event:selection.event,
     statReader:(a,stat)=>ctx.callFunction('GetEffectiveStat',a,stat)});
   if(!fresh)return false;
+  source.actionState='cast';
+  source.actionFacing=source.facing;
+  source.actionStateStartedAt=now;
+  source.actionImpactAt=now;
+  source.actionStateUntil=now+0.42;
   const targets=fresh.targetUIDs.map(uid=>actor(ctx,uid)).filter(Boolean), target=actor(ctx,fresh.targetUID);
   const spec=skill.effectSpec, mode=heroKey(source)==='Runa'?'magic':'melee';
   let feedback='';
@@ -61,8 +70,8 @@ export function castRealtimeHeroSkill(ctx,heroUID,skill,selection,displacement={
       for(const victim of targets) {
         damage(ctx,source,victim,spec.damagePct,mode);
         if(!living(victim))continue;
-        if(spec.kind==='damagePush' && victim.combatRank!=='boss')displacement.push?.(victim,skill.pushDistance,now);
-        if(spec.kind==='damageRetreat' && victim.combatRank!=='boss')displacement.reverse?.(victim,now,skill.durationSeconds);
+        if(spec.kind==='damagePush' && victim.combatRank!=='boss')displacement.push?.(victim,skill.pushDistance,now,source);
+        if(spec.kind==='damageRetreat' && victim.combatRank!=='boss')displacement.reverse?.(victim,now,skill.durationSeconds,source);
         if(spec.kind==='damageProvoke')grant(g,source,victim,'provoke',skill.durationSeconds);
         if(spec.kind==='damageDelay') {
           const clocks=g.RealtimeEnemyActionReadyAt ||= {}, key=String(victim.uid);
@@ -119,7 +128,7 @@ export function castRealtimeHeroSkill(ctx,heroUID,skill,selection,displacement={
     case 'regen': case 'blight':
       for(const victim of targets)grant(g,source,victim,spec.kind==='blight'?'blight':skill.skillId,skill.durationSeconds,{nextTickAt:now+spec.intervalSeconds,ticksRemaining:spec.ticks,data:{...spec}}); break;
     case 'teleport':
-      if(!displacement.teleport?.(target,skill.teleportDistance,now))return false; break;
+      if(!displacement.teleport?.(target,skill.teleportDistance,now,source))return false; break;
     case 'zone':
       (g.RealtimeSkillZones ||= []).push({kind:skill.skillId,sourceUID:source.uid,point:fresh.point,radius:skill.radius,appliedAt:now,expiresAt:now+skill.durationSeconds,nextTickAt:now+1,damagePct:spec.damagePct}); break;
     default: throw new Error(`Unknown skill effect: ${spec.kind}`);

@@ -3,14 +3,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { HERO_DEFINITIONS } from '../web-runner/src/core/heroDefinitions.mjs';
 import { castRealtimeHeroSkill, realtimeBasicFollowups, realtimeCoverTarget, realtimeIncomingDamage, realtimeMagicBlocked, realtimeProvokeTarget, realtimeCombatStat, tickRealtimeHeroSkillZones, realtimeBasicInterval, cleanupRealtimeSkillActors } from '../web-runner/src/core/realtimeHeroSkills.mjs';
+import { selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
 import { resetRealtimeSkillAttempt, ensureSkillBattle } from '../web-runner/src/core/realtimeSkillState.mjs';
 import { previewSeededRng } from '../src/core/seededRngRules.mjs';
 import { calculateDamageFromJs } from '../src/core/calculateDamageRules.mjs';
 import { renderCombatAttackVfx } from '../web-runner/systems/combatAttackVfxPresentation.mjs';
 const skill=(key,id)=>HERO_DEFINITIONS[key].actives.find(a=>a.skillId===id);
 function combat() {
- const heroes=Object.keys(HERO_DEFINITIONS).map((key,index)=>({uid:index+1,kind:'hero',baseHeroName:key,name:key,currentLevel:100,hp:30,maxHP:100,x:120,y:200,stats:{ATK:100,DEF:20,MAG:100,RES:10,SPD:10},equipmentStats:{ATK:4}}));
- const enemies=[0,1,2].map(i=>({uid:10+i,kind:'enemy',hp:1000,maxHP:1000,x:200+i*20,y:200+i*10,streamEngageX:200,streamState:'engaged',combatRank:'ordinary',attackType:'magic',stats:{ATK:100,DEF:30,RES:0,MAG:101,SPD:5}}));
+ const heroes=Object.keys(HERO_DEFINITIONS).map((key,index)=>({uid:index+1,kind:'hero',baseHeroName:key,name:key,currentLevel:100,hp:30,maxHP:100,x:155,y:200,footX:155,footY:200,stats:{ATK:100,DEF:20,MAG:100,RES:10,SPD:10},equipmentStats:{ATK:4}}));
+ const enemies=[0,1,2].map(i=>({uid:10+i,kind:'enemy',hp:1000,maxHP:1000,x:190+i*10,y:200+i*10,footX:190+i*10,footY:200+i*10,streamEngageX:200,streamState:'engaged',combatRank:'ordinary',attackType:'magic',stats:{ATK:100,DEF:30,RES:0,MAG:101,SPD:5}}));
  const g={time:10,ContinuousCombatStageLoop:1,RuntimeRandomSeed:12,RuntimeRandomDraws:0};
  g.RuntimeRandom=()=>previewSeededRng(g.RuntimeRandomSeed,g.RuntimeRandomDraws++);
  const state={globals:g,entities:[...heroes,...enemies]},ctx={state,callFunction(name,...args){
@@ -38,6 +39,7 @@ for(const [key,definition] of Object.entries(HERO_DEFINITIONS))for(const entry o
  assert.equal(cast(key,entry.skillId,event),true);
  assert.equal(g.LastRealtimeHeroSkill.skillId,entry.skillId);
  assert.ok(g.CombatImpactRequests.length>0);
+ assert.equal(heroes.find(a=>a.baseHeroName===key).actionImpactAt,10,'instant skills release at cast time');
  assert.equal(heroes[0].currentLevel,100);assert.deepEqual(heroes[0].equipmentStats,{ATK:4});
 });
 test('party support VFX resolves ally positions',()=>{
@@ -69,7 +71,26 @@ test('Blight refresh replaces its tick schedule and ignores later arrivals',()=>
  const later={...enemies[0],uid:99,hp:1000};ctx.state.entities.push(later);cast('Runa','faze');g.time=14;tickRealtimeHeroSkillZones(ctx);assert.equal(enemies[0].hp,996);assert.equal(later.hp,997);
 });
 test('approaching foes cannot receive direct damage or zone ticks',()=>{
- const {ctx,g,enemies,cast}=combat();enemies[2].x=340;cast('Runa','burn_sigil');g.time=16;tickRealtimeHeroSkillZones(ctx);assert.equal(enemies[2].hp,1000);
+ const {ctx,g,enemies,cast}=combat();enemies[2].x=340;enemies[2].footX=340;cast('Runa','burn_sigil');g.time=16;tickRealtimeHeroSkillZones(ctx);assert.equal(enemies[2].hp,1000);
+});
+test('an authored area includes a secondary recipient beyond basic reach when its shape contains it',()=>{
+ const {g,heroes,enemies}=combat();
+ const source=heroes[0];source.footX=100;source.footY=200;source.attackType='melee';
+ enemies[0].footX=150;enemies[0].x=150;enemies[0].footY=200;enemies[0].y=200;
+ enemies[1].footX=210;enemies[1].x=210;enemies[1].footY=200;enemies[1].y=200;
+ enemies[2].footX=300;enemies[2].x=300;enemies[2].footY=200;enemies[2].y=200;
+ const target=selectRealtimeHeroSkillTarget({skill:skill('Falie','shield_slam'),hero:source,heroes,enemies,globals:g,effects:{},now:g.time,statReader:(a,s)=>a.stats?.[s]||0});
+ assert.deepEqual(target?.targetUIDs,[10,11]);
+});
+test('Burn Sigil continues from its placed zone after its caster moves away',()=>{
+ const {ctx,g,heroes,enemies,cast}=combat();assert.equal(cast('Runa','burn_sigil'),true);
+ heroes[2].footX=1000;heroes[2].x=1000;g.time=11;tickRealtimeHeroSkillZones(ctx);
+ assert.ok(enemies[0].hp<1000);
+});
+test('an already-applied Blight keeps its authored ticks after the caster KOs',()=>{
+ const {ctx,g,heroes,enemies,cast}=combat();assert.equal(cast('Runa','faze'),true);
+ heroes[2].hp=0;g.time=11;tickRealtimeHeroSkillZones(ctx);
+ assert.equal(enemies[0].hp,999);
 });
 test('Fortune previews once, suppresses useless chosen stats, and advances RNG only on success',()=>{
  const {g,heroes,enemies,cast}=combat();enemies[0].combatRank='boss';

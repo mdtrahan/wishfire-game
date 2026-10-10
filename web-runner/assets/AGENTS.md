@@ -11,6 +11,7 @@
 
 ## Local Contracts
 - `images/lamp/ART.md` records original gear/device atlas hashes and grid order. Rarity is conveyed separately through white/green/blue/purple/gold frames/glow. Collector cells are unused; only the shared lamp appears in acquisition UI.
+- The `.lamp-level` badge is shared by lamp equipment and equipped hero gear art; keep its lower-right placement and legibility sizing consistent across both.
 - `narrative/characters/` contains the existing Hondo, Fara, Kaja, and Runa scene sprites. Content character IDs resolve these filenames through the narrative renderer; the opening uses the existing solo/pair shot contract.
 - Do not hand-edit `simulation_core.wasm`; rebuild it with `npm run rust:build-wasm`.
 - Treat `layouts.json` as large structured data from the retired Construct surface. Use JSON-aware edits and keep gameplay rules in code/product docs.
@@ -30,7 +31,16 @@
 - Browser visual QA for visible asset or layout changes.
 
 ## Child DOX Index
-- None.
+- `puppets/hondo/AGENTS.md` - shared pilot rig and character-painted source.
+- `puppets/kaja/AGENTS.md` - shared pilot rig and character-painted source.
+- `puppets/chimerilass/AGENTS.md` - actor source geometry, identity and native motion contracts.
+- `puppets/highgobloc/AGENTS.md` - actor source geometry, identity and native motion contracts.
+- `puppets/lizardo/AGENTS.md` - actor source geometry, identity and native motion contracts.
+- `puppets/marid/AGENTS.md` - actor source geometry, identity and native motion contracts.
+- `puppets/orc/AGENTS.md` - actor source geometry, identity and native motion contracts.
+- `puppets/runa/AGENTS.md` - actor source geometry, identity and native motion contracts.
+- `puppets/skeleton/AGENTS.md` - actor source geometry, identity and native motion contracts.
+- `puppets/troll/AGENTS.md` - actor source geometry, identity and native motion contracts.
 
 - `narrative/chapter-1-map.png` is a terrain-only 360x640 background. `chapter-town-token.png` is a separate transparent token; chapterMapPresentation.mjs owns overlay positions and labels.
 
@@ -43,7 +53,7 @@
 
 - Lamp item stats occupy the full candidate width with fixed label tracks and left-aligned values. Keep six-digit values contained and preserve the enlarged comparison type across phone widths.
 
-- Pending gear tiles use rarity-colored backgrounds; the currently compared item alone carries a gold selection halo and aria-current. Five columns of square art with compact item-CP footers fill the equip frame; selection and arrivals preserve the two-to-two-and-a-half-row viewport. The separate dismantling view has three-and-a-half inert rows and shows resources only after confirmation.
+- Pending and discarded gear tiles use rarity-colored backgrounds; the currently compared item alone carries a gold selection halo and aria-current. Positive total-hero CP gain uses a contained green arrow on every eligible queued tile, with a solid black offset shadow and no pale glow. Five columns of square art with compact item-CP footers fill the equip frame; selection and arrivals preserve the two-to-two-and-a-half-row viewport. The dismantling view keeps queued tiles inspectable and shows resources only after confirmation.
 
 - Hero Gear Upgrade idle guidance uses the Hondo-inspired blue pointer and cyan rings: 15 seconds since input points to Hondo (Huun), or Auto-Equip after portrait selection. Document pointer/click, key and wheel input dismisses and resets it. Hidden/busy surfaces, active reward banners and the completed strip tutorial suppress guidance; the overlay never intercepts input.
 
@@ -92,5 +102,12 @@
 - Selected equip-cache artwork undulates from100% to94% and back over1.6 seconds, centered inside its fixed tile. The gold outer halo uses4.92px blur/2.46px spread,23% above the prior4px/2px; reduced motion retains this static halo.
 
 - Lamp odds keep equal numeric weight across Current/Next and reserve 40% of table width for quality names; three-decimal percentages must fit each cell on compact phones. The odds viewport may scroll vertically while purchase controls remain visible.
+- When the shared boss fallback is visible over an open lamp modal, `#lamp-overlay` reserves the measured fallback bottom plus gutter above `#lamp-dialog`, including centered letterbox offset; the dialog remains scrollable within the reduced space, and lamp close remains gated by in-flight receipts.
 
 - Construction replaces the stage/flame card with a centered tabular countdown. SPD UP ALL uses the blue alternate button state below it; zero tickets disables it. Keep the card and countdown centered at compact and reference widths.
+
+- `puppets/` holds independently accepted layered actor sources and Synfig-authored clips. Adopt each roster entry only after its source and seven-state motion gates pass; final assembled acceptance remains separate. Keep rejected/native QA recovery in task checkpoints instead of the active asset tree. Preserve original static hero/enemy sprites. Native bone sources export transparent PNG frames; runtime metadata owns presentation cadence and foot origins only. Opposite facing uses documented mirrored source until authored coverage replaces it.
+- Puppet action clips must read at their battlefield size through anticipation, a target-directed strike or outward release, and recovery. Hurt requires a distinct recoil silhouette. Judge motion independently from neutral source coverage.
+- Nonzero basic/cast torso anticipation channels lean toward the target in the actor's authored facing at 60% of the prior angular amplitude. Keep facing cadence, foot origins, impact/release markers and identity art fixed; zero torso channels stay zero, while hurt and KO recoil remain independently authored.
+
+- Hondo and Kaja share Fara's fifteen-bone rig and fourteen paint slots. Character repainting stays within this common chibi silhouette; retain joints, pivots and motion channels. Canonical source and exported states remain presentation-only.

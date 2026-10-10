@@ -1,0 +1,469 @@
+{
+  "actor": "lizardo",
+  "atlas": "parts-left-v1.png",
+  "facing": "left",
+  "status": "neutral-reviewed-by-builder; independent-review-pending",
+  "parts": {
+    "head": {
+      "atlas": "parts-left-v1.png",
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 318,
+        "height": 307
+      },
+      "trimmed": true,
+      "pivot": {
+        "x": 151.5,
+        "y": 242.52
+      },
+      "composition": {
+        "x": 121,
+        "y": 132,
+        "w": 124,
+        "h": 108,
+        "pivot": 0.86,
+        "parent": "torso"
+      },
+      "sourceDimensions": {
+        "width": 303,
+        "height": 282
+      },
+      "isolation": {
+        "reason": "74px detached neighbor-cell strip at atlas crop right edge; winning anatomy and dominant silhouette preserved",
+        "minForegroundArea": 200
+      }
+    },
+    "torso": {
+      "atlas": "parts-left-v1.png",
+      "crop": {
+        "x": 318,
+        "y": 45,
+        "width": 260,
+        "height": 302
+      },
+      "trimmed": true,
+      "pivot": {
+        "x": 130,
+        "y": 32.879999999999995
+      },
+      "composition": {
+        "x": 128,
+        "y": 132,
+        "w": 83,
+        "h": 75,
+        "parent": "body"
+      },
+      "sourceDimensions": {
+        "width": 260,
+        "height": 274
+      }
+    },
+    "pelvis": {
+      "atlas": "parts-left-v1.png",
+      "crop": {
+        "x": 575,
+        "y": 107,
+        "width": 270,
+        "height": 252
+      },
+      "trimmed": true,
+      "pivot": {
+        "x": 135,
+        "y": 29.64
+      },
+      "composition": {
+        "x": 128,
+        "y": 178,
+        "w": 83,
+        "h": 49,
+        "parent": "body"
+      },
+      "sourceDimensions": {
+        "width": 270,
+        "height": 247
+      }
+    },
+    "coat_back": {
+      "atlas": "parts-left-v1.png",
+      "crop": {
+        "x": 847,
+        "y": 77,
+        "width": 270,
+        "height": 293
+      },
+      "trimmed": true,
+      "pivot": {
+        "x": 135,
+        "y": 35.16
+      },
+      "composition": {
+        "x": 130,
+        "y": 145,
+        "w": 103,
+        "h": 103,
+        "parent": "body"
+      },
+      "sourceDimensions": {
+        "width": 270,
+        "height": 293
+      }
+    },
+    "upper_arm_far": {
+      "atlas": "parts-left-v1.png",
+      "crop": {
+        "x": 0,
+        "y": 359,
+        "width": 279,
+        "height": 263
+      },
+      "trimmed": true,
+      "pivot": {
+        "x": 106.5,
+        "y": 28.2
+      },
+      "composition": {
+        "x": 91,
+        "y": 140,
+        "w": 29,
+        "h": 36,
+        "parent": "torso"
+      },
+      "sourceDimensions": {
+        "width": 213,
+        "height": 235
+      }
+    },
+    "upper_arm_near": {
+      "atlas": "parts-left-v1.png",
+      "crop": {
+        "x": 280,
+        "y": 359,
+        "width": 278,
+        "height": 263
+      },
+      "trimmed": true,
+      "pivot": {
+        "x": 112,
+        "y": 30.36
+      },
+      "composition": {
+        "x": 165,
+        "y": 140,
+        "w": 29,
+        "h": 36,
+        "parent": "torso"
+      },
+      "sourceDimensions": {
+        "width": 224,
+        "height": 253
+      }
+    },
+    "forearm_far": {
+      "atlas": "parts-left-v1.png",
+      "crop": {
+        "x": 558,
+        "y": 359,
+        "width": 279,
+        "height": 263
+      },
+      "trimmed": true,
+      "pivot": {
+        "x": 130,
+        "y": 31.32
+      },
+      "composition": {
+        "x": 91,
+        "y": 164,
+        "w": 29,
+        "h": 35,
+        "parent": "upper_arm_far"
+      },
+      "sourceDimensions": {
+        "width": 260,
+        "height": 261
+      }
+    },
+    "forearm_near": {
+      "atlas": "parts-left-v1.png",
+      "crop": {
+        "x": 837,
+        "y": 359,
+        "width": 280,
+        "height": 263
+      },
+      "trimmed": true,
+      "pivot": {
+        "x": 109,
+        "y": 30.959999999999997
+      },
+      "composition": {
+        "x": 165,
+        "y": 164,
+        "w": 29,
+        "h": 35,
+        "parent": "upper_arm_near"
+      },
+      "sourceDimensions": {
+        "width": 218,
+        "height": 258
+      }
+    },
+    "hand_far": {
+      "atlas": "parts-left-v1.png",
+      "crop": {
+        "x": 0,
+        "y": 627,
+        "width": 279,
+        "height": 264
+      },
+      "trimmed": true,
+      "pivot": {
+        "x": 126,
+        "y": 30.72
+      },
+      "composition": {
+        "x": 92,
+        "y": 185,
+        "w": 31,
+        "h": 39,
+        "parent": "forearm_far"
+      },
+      "sourceDimensions": {
+        "width": 252,
+        "height": 256
+      }
+    },
+    "hand_near": {
+      "atlas": "parts-left-v1.png",
+      "crop": {
+        "x": 280,
+        "y": 627,
+        "width": 278,
+        "height": 264
+      },
+      "trimmed": true,
+      "pivot": {
+        "x": 138,
+        "y": 30.599999999999998
+      },
+      "composition": {
+        "x": 166,
+        "y": 185,
+        "w": 31,
+        "h": 39,
+        "parent": "forearm_near"
+      },
+      "sourceDimensions": {
+        "width": 276,
+        "height": 255
+      }
+    },
+    "thigh_far": {
+      "atlas": "parts-left-v1.png",
+      "crop": {
+        "x": 558,
+        "y": 627,
+        "width": 279,
+        "height": 264
+      },
+      "trimmed": true,
+      "pivot": {
+        "x": 138,
+        "y": 30.84
+      },
+      "composition": {
+        "x": 109,
+        "y": 197,
+        "w": 35,
+        "h": 39,
+        "parent": "body"
+      },
+      "sourceDimensions": {
+        "width": 276,
+        "height": 257
+      }
+    },
+    "thigh_near": {
+      "atlas": "parts-left-v1.png",
+      "crop": {
+        "x": 837,
+        "y": 627,
+        "width": 280,
+        "height": 264
+      },
+      "trimmed": true,
+      "pivot": {
+        "x": 125,
+        "y": 31.08
+      },
+      "composition": {
+        "x": 148,
+        "y": 197,
+        "w": 35,
+        "h": 39,
+        "parent": "body"
+      },
+      "sourceDimensions": {
+        "width": 250,
+        "height": 259
+      }
+    },
+    "shin_far": {
+      "atlas": "parts-left-v1.png",
+      "crop": {
+        "x": 0,
+        "y": 892,
+        "width": 279,
+        "height": 263
+      },
+      "trimmed": true,
+      "pivot": {
+        "x": 121,
+        "y": 31.56
+      },
+      "composition": {
+        "x": 110,
+        "y": 220,
+        "w": 27,
+        "h": 27,
+        "parent": "thigh_far"
+      },
+      "sourceDimensions": {
+        "width": 242,
+        "height": 263
+      }
+    },
+    "shin_near": {
+      "atlas": "parts-left-v1.png",
+      "crop": {
+        "x": 280,
+        "y": 892,
+        "width": 278,
+        "height": 263
+      },
+      "trimmed": true,
+      "pivot": {
+        "x": 133,
+        "y": 31.32
+      },
+      "composition": {
+        "x": 148,
+        "y": 220,
+        "w": 27,
+        "h": 27,
+        "parent": "thigh_near"
+      },
+      "sourceDimensions": {
+        "width": 266,
+        "height": 261
+      }
+    },
+    "foot_far": {
+      "atlas": "parts-left-v1.png",
+      "crop": {
+        "x": 558,
+        "y": 892,
+        "width": 279,
+        "height": 263
+      },
+      "trimmed": true,
+      "pivot": {
+        "x": 127.5,
+        "y": 127
+      },
+      "composition": {
+        "x": 110,
+        "y": 238,
+        "w": 43,
+        "h": 22,
+        "pivot": 0.5,
+        "parent": "shin_far"
+      },
+      "sourceDimensions": {
+        "width": 255,
+        "height": 254
+      }
+    },
+    "foot_near": {
+      "atlas": "parts-left-v1.png",
+      "crop": {
+        "x": 837,
+        "y": 892,
+        "width": 280,
+        "height": 263
+      },
+      "trimmed": true,
+      "pivot": {
+        "x": 129,
+        "y": 124.5
+      },
+      "composition": {
+        "x": 148,
+        "y": 238,
+        "w": 43,
+        "h": 22,
+        "pivot": 0.5,
+        "parent": "shin_near"
+      },
+      "sourceDimensions": {
+        "width": 258,
+        "height": 249
+      }
+    },
+    "tail_base": {
+      "atlas": "parts-left-v1.png",
+      "crop": {
+        "x": 0,
+        "y": 1160,
+        "width": 315,
+        "height": 230
+      },
+      "trimmed": true,
+      "pivot": {
+        "x": 23.44,
+        "y": 114.5
+      },
+      "composition": {
+        "x": 149,
+        "y": 186,
+        "w": 62,
+        "h": 27,
+        "pivot": 0.5,
+        "pivotX": 0.08,
+        "parent": "body"
+      },
+      "sourceDimensions": {
+        "width": 293,
+        "height": 229
+      }
+    },
+    "tail_tip": {
+      "atlas": "parts-left-v1.png",
+      "crop": {
+        "x": 320,
+        "y": 1160,
+        "width": 310,
+        "height": 230
+      },
+      "trimmed": true,
+      "pivot": {
+        "x": 34.8,
+        "y": 107.5
+      },
+      "composition": {
+        "x": 201,
+        "y": 186,
+        "w": 44,
+        "h": 20,
+        "pivot": 0.5,
+        "pivotX": 0.12,
+        "parent": "tail_base"
+      },
+      "sourceDimensions": {
+        "width": 290,
+        "height": 215
+      }
+    }
+  }
+}

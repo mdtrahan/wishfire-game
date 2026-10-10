@@ -1,5 +1,5 @@
 import {equipmentStats} from '../src/core/equipment.mjs';
-import {markLampGuide,createLampEconomy,validateLampEconomy,lampItemCPGain,selectAutoEquipHero,selectLampUpgrades,finishLampReview,lampStoredCount,migrateLegacyEquipment,migrateDraftLamp,migrateFourStatLamp,migrateLampEconomy,lampAutoUnlocked,lampCapacity,purchaseLampStage,upgradeLamp,completeLampUpgrade,speedUpLampUpgrade,activateLamp,equipLampItem,dismantleLampItems,LAMP_CONFIG,progressionOrdinal} from '../src/core/lampGear.mjs';
+import {markLampGuide,createLampEconomy,validateLampEconomy,lampItemCPGain,planLampAutoEquip,finishLampReview,lampStoredCount,migrateLegacyEquipment,migrateDraftLamp,migrateFourStatLamp,migrateLampEconomy,lampAutoUnlocked,lampCapacity,purchaseLampStage,upgradeLamp,completeLampUpgrade,speedUpLampUpgrade,activateLamp,equipLampItem,dismantleLampItems,LAMP_CONFIG,progressionOrdinal} from '../src/core/lampGear.mjs';
 import {refreshHeroStats,awardHeroEXP} from '../src/core/heroProgression.mjs';
 import {computeCombatPower} from '../src/core/combatPower.mjs';
 export const EQUIPMENT_SAVE_KEY='wishfire.equipment-economy.v5';
@@ -43,7 +43,7 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=g
   if(globals.HeroProgressStorageError&&Object.keys(globals.PendingGoldSettlements||{}).length)throw new Error('Pending Gold needs a saved HeroProgress receipt.');
   if(!locks)throw new Error('This browser cannot safely save lamp changes.');
   return locks.request(EQUIPMENT_SAVE_KEY,async()=>{
-   const next=read(),receipts=new Set(next.settledGoldRewards);if(!record)next.lamp.autoEnabled=false;let delta=appliedGold===undefined?0:Number(globals.goldTotal)-appliedGold;
+   const next=read(),receipts=new Set(next.settledGoldRewards);let delta=appliedGold===undefined?0:Number(globals.goldTotal)-appliedGold;
    for(const[rawId,rawAmount]of Object.entries(globals.PendingGoldSettlements||{})){
     const id=String(rawId),amount=Math.max(0,Math.floor(Number(rawAmount)||0));
     if(receipts.has(id)){if(appliedGold!==undefined)delta-=amount;continue;}
@@ -68,19 +68,28 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=g
   sync(){if(loading)return loading;if(record&&Number(globals.goldTotal)===appliedGold&&!dirty&&!(record.lamp.upgradeEndsAt&&time()>=record.lamp.upgradeEndsAt)){apply(record);return Promise.resolve();}dirty=false;loading=transact().finally(()=>loading=null);return loading;},
   refresh(){dirty=true;return this.sync();},
   generate(context={}){return transact((next,t)=>activateLamp(next,context,t));},
-  setAuto(enabled){return transact(next=>{if(enabled&&lampStoredCount(next)>=lampCapacity(next))throw new Error('Clear collection space to resume Auto.');if(enabled&&!lampAutoUnlocked(Object.values(globals.HeroProgress?.heroes||{}).slice(0,4)))throw new Error('All four heroes must reach Lv. 5 to unlock Auto.');next.lamp.autoEnabled=!!enabled;});},
+  setAuto(enabled){return transact(next=>{if(enabled&&!lampAutoUnlocked(Object.values(globals.HeroProgress?.heroes||{}).slice(0,4)))throw new Error('All four heroes must reach Lv. 5 to unlock Auto.');next.lamp.autoEnabled=!!enabled;});},
+  async stopAuto(){await this.sync();if(!record?.lamp.autoEnabled)return false;await this.setAuto(false);return true;},
   tickAuto(context={}){return transact((next,t)=>{
    next.lamp.highestOrdinal=Math.max(next.lamp.highestOrdinal,progressionOrdinal(context));
    if(!lampAutoUnlocked(Object.values(globals.HeroProgress?.heroes||{}).slice(0,4))||!next.lamp.autoEnabled||t-next.lamp.lastActivationAt<LAMP_CONFIG.autoIntervalMs||lampStoredCount(next)>=lampCapacity(next))return null;
    return activateLamp(next,context,t);
   });},
   equip(heroId,id){if(!globals.HeroProgress?.heroes?.[heroId])return Promise.reject(new Error('Hero is not owned'));return transact(next=>commitEquip(next,heroId,id));},
-  autoEquip(){return transact(next=>{const heroes=Object.values(globals.HeroProgress?.heroes||{}).slice(0,4),used=new Set(),results=[];for(const candidate of selectLampUpgrades(next,heroes)){const heroId=selectAutoEquipHero(next,candidate,heroes.filter(h=>!used.has(h.heroInstanceKey)));if(heroId){results.push(commitEquip(next,heroId,candidate.instanceId));used.add(heroId);}}finishLampReview(next);return results;});},
+  autoEquip(){return transact(next=>{
+   const heroes=Object.values(globals.HeroProgress?.heroes||{}).slice(0,4),planned=planLampAutoEquip(next,heroes),before=new Map();
+   for(const change of planned.changes){const hero=heroes.find(h=>h.heroInstanceKey===change.heroId),stats=equipmentStats(next.items,next.loadouts[change.heroId]);before.set(change.heroId,computeCombatPower(refreshHeroStats({...hero,equipmentStats:stats})));}
+   next.loadouts=planned.loadouts;next.lamp.pending=planned.pending;next.lamp.discarded=planned.discarded;finishLampReview(next);
+   return planned.changes.map(change=>{
+    const hero=heroes.find(h=>h.heroInstanceKey===change.heroId),after=computeCombatPower(refreshHeroStats({...hero,equipmentStats:equipmentStats(next.items,next.loadouts[change.heroId])})),cpBefore=before.get(change.heroId);
+    return{items:change.items,slots:change.slots,heroId:change.heroId,cpBefore,cpAfter:after,cpChange:Math.round((after-cpBefore)*10)/10};
+   });
+  });},
   finishReview(){return transact(next=>finishLampReview(next));},
   markGuide(step){return transact(next=>markLampGuide(next,step));},
   purchaseStage(expectedTier=record?.lamp.capacityTier,expectedStage=record?.lamp.upgradeStage||0){return transact((next,t)=>purchaseLampStage(next,expectedTier,expectedStage,t));},
   upgrade(expectedTier=record?.lamp.capacityTier){return transact((next,t)=>upgradeLamp(next,expectedTier,t));},
   speedUp(expectedTier=record?.lamp.capacityTier){return transact((next,t)=>speedUpLampUpgrade(next,expectedTier,t));},
-  dismantle(ids){return transact(next=>dismantleLampItems(next,ids));},
+  dismantle(ids){return transact(next=>dismantleLampItems(next,ids,Object.values(globals.HeroProgress?.heroes||{}).slice(0,4)));},
  };
 }

@@ -22,6 +22,86 @@ test('combat orientation input is defensive and defaults left-wise', async () =>
   assert.equal(rules.readCombatOrientationFromSearch(''), 'left-wise');
 });
 
+test('combat camera presents three screens of world at half battlefield zoom and centers fresh play in B', async () => {
+  const rules = await loadRules();
+  const bounds = rules.deriveCombatWorldBounds(360, 0.5);
+  assert.equal(bounds.visibleWorldWidth, 720);
+  assert.equal(bounds.worldWidth, 2160);
+  const first = rules.createCombatCameraProjection({ viewportWidth: 360, worldWidth: bounds.worldWidth, zoom: 0.5, centerX: 0 });
+  assert.equal(first.cameraX, 0);
+  assert.equal(first.project(0, 272.5).x, 0);
+  const start = rules.deriveCombatWorldStartFormation(4);
+  assert.equal(start.centerX, 1080);
+  assert.deepEqual(start.heroX, [1106.4, 1053.6, 1106.4, 1053.6]);
+  const middle = rules.createCombatCameraProjection({ viewportWidth: 360, worldWidth: bounds.worldWidth, zoom: 0.5, centerX: start.centerX });
+  assert.equal(middle.cameraX, 720);
+  assert.equal(middle.project(start.centerX, 272.5).x, 180);
+  assert.equal(middle.project(720, 272.5).x, 0);
+  assert.equal(middle.project(1440, 272.5).x, 360);
+  assert.equal(middle.project(1440, 372.5).y, 322.5);
+  const last = rules.createCombatCameraProjection({ viewportWidth: 360, worldWidth: bounds.worldWidth, zoom: 0.5, centerX: bounds.worldWidth });
+  assert.equal(last.cameraX, 1440);
+  assert.equal(last.project(bounds.worldWidth, 272.5).x, 360);
+});
+
+test('world-height bounds invert the half-scale camera only inside measured HUD-safe field', async () => {
+  const rules = await import('../src/core/combatOrientation.mjs');
+  const bounds = rules.deriveCombatWorldVerticalBounds();
+  assert.ok(Math.abs(bounds.minY - (-40.5)) < 1e-9);
+  assert.ok(Math.abs(bounds.maxY - 679.5) < 1e-9);
+  const projectY = worldY => 272.5 + (worldY - 272.5) * 0.5;
+  assert.equal(projectY(bounds.minY - 42), 95);
+  assert.equal(projectY(bounds.maxY + 4), 478);
+});
+
+test('enemy health bars follow puppet feet and fallback sprite bounds', () => {
+  const renderer = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
+  assert.match(renderer, /const enemyFootY = puppet \? Number\(pos\.y\) : Number\(drawY \+ enemyH\)/);
+  assert.match(renderer, /const barY = Math\.round\(enemyFootY \+ \(4 \* layoutScale\)\)/);
+  assert.match(renderer, /const drawY = pos\.y - \(enemy\.combatRank === 'boss' \? enemyH : enemyH \/ 2\)/);
+});
+
+test('right-wise camera keeps hero footprints inside both world edges', async () => {
+  const rules = await loadRules();
+  const arenaRules = await import(pathToFileURL(path.join(root, 'src', 'core', 'arenaCombatRules.mjs')).href);
+  const bounds = rules.deriveCombatWorldBounds(360, 0.5);
+  const heroRadiusPx = arenaRules.actorFootprintRadius({ kind: 'hero' }) * 0.5;
+  const camera = (orientation, centerX) => rules.createCombatCameraProjection({
+    viewportWidth: 360,
+    worldWidth: bounds.worldWidth,
+    zoom: 0.5,
+    centerX,
+    orientation,
+  });
+  const leftWiseNear = camera('left-wise', bounds.heroMinX).project(bounds.heroMinX, 272.5).x;
+  const rightWiseFar = camera('right-wise', bounds.heroMaxX).project(bounds.heroMaxX, 272.5).x;
+  const leftWiseFar = camera('left-wise', bounds.heroMaxX).project(bounds.heroMaxX, 272.5).x;
+  const rightWiseNear = camera('right-wise', bounds.heroMinX).project(bounds.heroMinX, 272.5).x;
+
+  assert.equal(leftWiseNear, bounds.heroMinX * bounds.zoom);
+  assert.equal(rightWiseFar, leftWiseNear);
+  assert.equal(leftWiseFar, 360 - leftWiseNear);
+  assert.equal(rightWiseNear, leftWiseFar);
+  for (const x of [leftWiseNear, rightWiseFar]) assert.ok(x >= heroRadiusPx);
+  for (const x of [leftWiseFar, rightWiseNear]) assert.ok(x + heroRadiusPx <= 360);
+});
+
+test('three-screen world grid keeps numbered major lines inside the camera view while it pans', async () => {
+  const rules = await loadRules();
+  const grid = rules.deriveCombatReferenceGrid(2160, 640);
+  assert.equal(grid.centerX, 1080);
+  assert.equal(grid.vertical.at(-1).value, 2160);
+  const camera = rules.createCombatCameraProjection({ viewportWidth: 360, worldWidth: 2160, zoom: 0.5, centerX: 1000 });
+  const visibleMajorLabels = grid.vertical.filter(line => line.major)
+    .map(line => ({ value: line.value, x: camera.project(line.value, 0).x }))
+    .filter(line => line.x >= 0 && line.x <= 360);
+  assert.ok(visibleMajorLabels.length > 0);
+  assert.ok(visibleMajorLabels.some(line => line.value > 350));
+  const renderer = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
+  assert.match(renderer, /grid\.vertical\.filter\(line => line\.major && line\.value < combatWorldBounds\.worldWidth\)/);
+  assert.match(renderer, /const point = vertical \? projectCombatActorWorldToCanvas\(line\.value, 0\)/);
+});
+
 test('right-wise geometry reflects X while preserving shared Y homes', async () => {
   const rules = await loadRules();
   const layoutW = 960;
@@ -131,9 +211,10 @@ test('runtime-shaped hero anchors reserve a status-icon row above HP bars', asyn
   assert.equal(shiftedEnemyYs[2] - shiftedEnemyYs[1], anchors.enemyYs[2] - anchors.enemyYs[1]);
   assert.equal(shiftedEnemyYs[1], anchors.enemyYs[1]);
   const renderer = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
-  assert.match(renderer, /const footY = pos\.y \+ h \* 1\.55 \/ 2/);
+  assert.match(renderer, /const footY = pos\.y \+ h \* 1\.55 \* COMBAT_BATTLEFIELD_ZOOM \/ 2/);
   assert.match(renderer, /restFeetByUID\[hero\.uid\] = \{ x: baseX, y: yWorld \+ hWorld \* 1\.55 \/ 2 \}/);
-  assert.match(renderer, /i % 2 === 0\\n\s+\? combatFormationAnchors\.arenaBounds\.heroRightEdgeX[\s\S]{0,160}: combatFormationAnchors\.arenaBounds\.heroBackCenterX/);
+  assert.match(renderer, /const cameraCenterX = bossPresentationActive \? Number\(state\.globals\.ContinuousCombatStage\?\.bossCameraCenterX \?\? squadCenterX\) : squadCenterX/);
+  assert.match(renderer, /createCombatCameraProjection\(\{ viewportWidth: layoutW, worldWidth: combatWorldBounds\.worldWidth, zoom: COMBAT_BATTLEFIELD_ZOOM, centerX: cameraCenterX, orientation: activeCombatOrientation \}\)/);
 });
 
 test('combat reference grid covers the logical canvas in ten-pixel increments', async () => {
@@ -219,17 +300,23 @@ test('runtime projects actor visuals, hit regions, and action anchors without mu
 
   assert.match(app, /CombatOrientation = readCombatOrientationFromSearch\(window\.location\.search\)/);
   assert.match(app, /function combatActorWorldToCanvas/);
-  assert.match(app, /createCombatFormationProjection/);
-  assert.match(app, /deriveCombatFormationAnchors/);
+  assert.match(app, /createCombatCameraProjection/);
+  assert.match(app, /deriveCombatWorldBounds/);
   assert.match(app, /const pos = combatActorWorldToCanvas\(x, y, 'enemy'\)/);
   assert.doesNotMatch(app, /prepareAstralFlowKoOrbPresentation/);
   assert.match(app, /orientCombatWorldOffsetX\(Number\(d\.floatVectorX/);
 
   assert.match(render, /spawnPendingDamageNumbers\(projectCombatDamageWorldToCanvas, layoutScale\)/);
   assert.match(render, /projectCombatActorWorldToCanvas\(xWorld, yWorld, 'hero'\)/);
+  assert.match(render, /projectCombatActorWorldToCanvas\(Number\(anchor\.x \|\| 0\) \+ offsetX, Number\(anchor\.y \|\| 0\), 'hero'\)/);
+  assert.match(render, /projectCombatActorWorldToCanvas\(Number\(footAnchor\.x \|\| 0\) \+ offsetX, Number\(footAnchor\.y \|\| 0\), 'hero'\)/);
   assert.match(render, /projectCombatActorWorldToCanvas\(wardWorldX, wardWorldY, 'hero'\)/);
   assert.match(render, /projectCombatActorWorldToCanvas\(Number\(pulse\.sourceX[^\n]*'hero'/);
   assert.match(render, /projectCombatActorWorldToCanvas\(Number\(pulse\.targetX[^\n]*'enemy'/);
+  assert.match(render, /targetActor\.footX \?\? targetActor\.x \?\? targetActor\.originX/);
+  assert.match(render, /targetActor\.footY \?\? targetActor\.y \?\? targetActor\.originY/);
+  assert.match(render, /projectCombatActorWorldToCanvas\(Number\(targetFeet\.x[^\n]*targetActor\?\.kind/);
+  assert.match(render, /viewportLeft: layoutOffsetX, viewportRight: layoutOffsetX \+ layoutW \* layoutScale/);
   assert.match(render, /projectCombatActorWorldToCanvas\(x, y, 'enemy'\)/);
   assert.match(render, /CombatOrientationGeometry = createCombatOrientationGeometry\([^\n]*\.\.\.combatFormationAnchors/);
   assert.match(hooks, /combatOrientation:/);
@@ -285,8 +372,17 @@ test('right-wise actor sprites mirror about their oriented pivot while left-wise
     ['restore'],
   ]);
 
+  assert.equal(presentation.shouldMirrorCombatActorSprite('left-wise', 'left', 'right'), true, 'fallback turns a right-facing hero toward a leftward world target');
+  assert.equal(presentation.shouldMirrorCombatActorSprite('right-wise', 'left', 'right'), false, 'camera reflection already turns leftward world travel to screen right');
+  assert.equal(presentation.shouldMirrorCombatActorSprite('right-wise', 'right', 'right'), true, 'right-wise projection reverses a right-facing hero');
+  assert.equal(presentation.shouldMirrorCombatActorSprite('left-wise', 'left', 'left'), false, 'left-facing enemy art keeps native facing');
+  assert.equal(presentation.shouldMirrorCombatActorSprite('right-wise', 'left', 'left'), true, 'right-wise projection mirrors native left-facing enemy art');
+  assert.equal(presentation.shouldMirrorCombatActorSprite('right-wise', 'right', 'left'), false, 'right-wise projection presents rightward-facing enemy art without another flip');
+
   const render = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
   assert.match(render, /drawCombatActorSprite\(ctx, sprite/);
   assert.match(render, /drawCombatActorSprite\(ctx, img/);
+  assert.match(render, /facing: hero\.facing, nativeFacing: 'right'/);
+  assert.match(render, /facing: enemy\.facing, nativeFacing: 'left'/);
   assert.match(render, /\.replaceAll\(/);
 });

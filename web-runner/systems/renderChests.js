@@ -14,9 +14,11 @@ export function renderChests(ctx, gameState, dims) {
   roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
   const close = renderSystem.getHeroStyleCloseRect(viewWidth, viewHeight, heroLayoutSpec);
   renderSystem.drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
-  const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
-  roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#efe3c4', '#b89f6f');
-  ctx.fillStyle = palette.ink; ctx.font = '700 11px Arial'; ctx.textAlign = 'center'; ctx.fillText('Back To Combat', combatBack.x + combatBack.w / 2, combatBack.y + 18);
+  const combatBack = gameState.CombatBossFallbackVisible ? null : { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
+  if (combatBack) {
+    roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#efe3c4', '#b89f6f');
+    ctx.fillStyle = palette.ink; ctx.font = '700 11px Arial'; ctx.textAlign = 'center'; ctx.fillText('Back To Combat', combatBack.x + combatBack.w / 2, combatBack.y + 18);
+  }
   ctx.textAlign = 'left'; ctx.fillStyle = palette.ink; ctx.font = '700 18px Arial'; ctx.fillText('Vault', panel.x + 14, panel.y + 58);
   ctx.fillStyle = palette.muted; ctx.font = '500 11px Arial'; ctx.fillText('Tier tabs and dopamine-progress reward shell.', panel.x + 14, panel.y + 76);
 

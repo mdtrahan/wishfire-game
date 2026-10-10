@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { advanceBattleStartSimulation, advanceHeroActionSimulation, advanceBuffSequenceSimulation, advanceGemMergeFxSimulation, advanceRefillBounceSimulation, advanceYellowCasinoSimulation, createCombatSimulationTicker, processPendingHeroHits, shouldFreezeCombatSimulation } from '../web-runner/systems/combatSimulationTick.mjs';
+import { advanceBattleStartSimulation, advanceEnemyActionSimulation, advanceHeroActionSimulation, advanceBuffSequenceSimulation, advanceGemMergeFxSimulation, advanceRefillBounceSimulation, advanceYellowCasinoSimulation, createCombatSimulationTicker, hasContinuousOrdinaryHeroKO, processPendingHeroHits, shouldFreezeCombatSimulation } from '../web-runner/systems/combatSimulationTick.mjs';
 
 const rendererSource = fs.readFileSync(new URL('../web-runner/systems/renderRuntime.js', import.meta.url), 'utf8');
 const appSource = fs.readFileSync(new URL('../web-runner/app.js', import.meta.url), 'utf8');
@@ -13,6 +13,53 @@ test('combat loop advances simulation before the stage scheduler', () => {
   const simAt = body.indexOf('combatSimulationTicker.tick(');
   const stageAt = body.indexOf('maybeAdvanceContinuousCombatStage(');
   assert.ok(simAt >= 0 && stageAt > simAt);
+});
+
+test('continuous ordinary combat halts queued hits and enemy actions at the first hero KO', () => {
+  const heroes = [{ uid: 1, kind: 'hero', hp: 1, maxHP: 20, isAlive: true }];
+  const action = (uid, targetUID) => ({ uid, active: true, state: 'LUNGE', timer: 0.09, forwardX: 100, anticipationX: 90, targetUID, skillId: 'Enemy_ATK_Single', cooldownSeconds: 1 });
+  const state = { entities: [...heroes, { uid: 10, kind: 'enemy', hp: 5 }, { uid: 11, kind: 'enemy', hp: 5 }], globals: {
+    ContinuousCombatStageLoop: 1, ContinuousCombatStage: { bossActive: false }, time: 2,
+    RealtimeEnemyActionsByUID: { 10: action(10, 1), 11: action(11, 1) }, RealtimeEnemyActionReadyAt: {},
+  }};
+  const hits = [];
+  const call = (_ctx, name, ...args) => {
+    if (name === 'ResolveEnemyActionTarget') return heroes[0];
+    if (name === 'ApplyEnemySkill') { hits.push(args[0]); heroes[0].hp = 0; heroes[0].isAlive = false; }
+  };
+  advanceEnemyActionSimulation({ state, gameState: {}, dt: 0.02, layoutW: 360, animationMath: {
+    LUNGE_ANTICIPATION_SEC: 0.1, LUNGE_FORWARD_SEC: 0.1, LUNGE_HOLD_SEC: 0.1, LUNGE_RETREAT_SEC: 0.1,
+    easeLungeForward: value => value,
+  }, fnContext: {}, callFunctionWithContext: call, applyTurnGateGlobals() {}, applyTurnGateIntent() {}, createEnemyTurnIdleRecovery() {}, queueCombatAttackImpactVfx() {} });
+  assert.deepEqual(hits, [10]);
+  assert.equal(hasContinuousOrdinaryHeroKO(state), true);
+  assert.equal(state.globals.RealtimeEnemyActionsByUID[11].state, 'LUNGE');
+
+  const queued = { hit: true };
+  state.globals.PendingHeroHits = [queued];
+  processPendingHeroHits({ state, fnContext: {}, callFunctionWithContext: call, animationMath: {} });
+  assert.deepEqual(state.globals.PendingHeroHits, [queued], 'the next tick leaves stale projectiles for recovery to clear');
+});
+
+test('an active boss remains outside the ordinary any-KO recovery rule', () => {
+  assert.equal(hasContinuousOrdinaryHeroKO({ globals: { ContinuousCombatStageLoop: 1, ContinuousCombatStage: { bossActive: true } }, entities: [{ kind: 'hero', hp: 0 }] }), false);
+});
+
+test('recovery reveal advances the combat clock while holding movement, clips and queued hits for 350 ms', () => {
+  const hero = { uid: 1, kind: 'hero', hp: 20, maxHP: 20, x: 120, footX: 120, y: 270, footY: 270, locomotion: 'idle', recoveryFadeStartedAt: 4 };
+  const enemyAction = { uid: 9, active: true, state: 'LUNGE', timer: 0.1 };
+  const staleHit = { targetUID: 1, at: 0, sourceUID: 9 };
+  const state = { entities: [hero], globals: { time: 4, ContinuousCombatStageLoop: 1, ContinuousCombatStage: { bossActive: false }, PendingHeroHits: [staleHit], RealtimeEnemyActionsByUID: { 9: enemyAction } } };
+  const calls = [];
+  const ticker = createCombatSimulationTicker();
+  ticker.tick({ state, gameState: {}, nowMs: 100, fnContext: {}, callFunctionWithContext: (...args) => calls.push(args) });
+  ticker.tick({ state, gameState: {}, nowMs: 150, fnContext: {}, callFunctionWithContext: (...args) => calls.push(args) });
+  ticker.tick({ state, gameState: {}, nowMs: 200, fnContext: {}, callFunctionWithContext: (...args) => calls.push(args) });
+  assert.ok(state.globals.time > 4, 'active combat time continues through the reveal');
+  assert.deepEqual([hero.x, hero.footX, hero.y, hero.footY, hero.locomotion], [120, 120, 270, 270, 'idle']);
+  assert.equal(enemyAction.state, 'LUNGE');
+  assert.deepEqual(state.globals.PendingHeroHits, [staleHit]);
+  assert.deepEqual(calls, []);
 });
 
 function effectiveRendererBody(source = rendererSource) {
@@ -88,6 +135,27 @@ test('paused combat ticker leaves state untouched and resumes without wall-time 
   const firstResumedDt = ticker.tick({ state, gameState, nowMs: 60_000 });
   assert.equal(firstResumedDt, 0.001);
   assert.equal(state.globals.time, 12.001);
+});
+
+test('boss entry wipe freezes combat scheduling without mutating the user orientation preference', () => {
+  const originalNow = Date.now;
+  try {
+    Date.now = () => 1000;
+    const state = { globals: { CombatOrientation: 'right-wise', ContinuousCombatStage: {
+      bossActive: true, bossTransitionStartedAtMs: 900, bossTransitionEndsAtMs: 1200,
+    } }, entities: [] };
+    assert.equal(shouldFreezeCombatSimulation(state), true);
+    const body = effectiveRendererBody();
+    assert.match(body, /bossPresentationActive[\s\S]*activeCombatOrientation = bossPresentationActive \? 'left-wise'/);
+    assert.match(body, /cameraCenterX = bossPresentationActive[\s\S]*bossCameraCenterX/);
+    assert.match(body, /combatRank === 'boss' \? 4/);
+    assert.match(body, /bossTransitionEndsAtMs[\s\S]*curtainWidth/);
+    Date.now = () => 1201;
+    assert.equal(shouldFreezeCombatSimulation(state), false);
+    assert.equal(state.globals.CombatOrientation, 'right-wise');
+  } finally {
+    Date.now = originalNow;
+  }
 });
 
 test('damage text expires on the simulation clock and stays frozen while paused', () => {

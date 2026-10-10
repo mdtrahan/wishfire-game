@@ -1,0 +1,47 @@
+{
+  "departed": {
+    "layout": "storyMock",
+    "retention": {
+      "displayedActors": 0,
+      "maxDecodedBytes": 25165824,
+      "retainedBytes": 7471104,
+      "reservedBytes": 0,
+      "entries": 11,
+      "pending": 0,
+      "evictions": 0
+    }
+  },
+  "restored": {
+    "layout": "combat",
+    "retention": {
+      "displayedActors": 4,
+      "maxDecodedBytes": 25165824,
+      "retainedBytes": 7864320,
+      "reservedBytes": 0,
+      "entries": 12,
+      "pending": 0,
+      "evictions": 0
+    }
+  },
+  "pauseBefore": {
+    "now": 14.808199999999244,
+    "src": "http://localhost:8132/web-runner/assets/puppets/fara/frames/idle-right-008.png",
+    "state": "idle"
+  },
+  "pauseAfter": {
+    "now": 14.808199999999244,
+    "src": "http://localhost:8132/web-runner/assets/puppets/fara/frames/idle-right-008.png",
+    "state": "idle",
+    "retention": {
+      "displayedActors": 4,
+      "maxDecodedBytes": 25165824,
+      "retainedBytes": 7864320,
+      "reservedBytes": 0,
+      "entries": 12,
+      "pending": 0,
+      "evictions": 0
+    }
+  },
+  "errors": [],
+  "fixture": "Only pause uses the existing QaScenarioPaused fixture; departure/restore click ordinary navigation and Continue Battle."
+}

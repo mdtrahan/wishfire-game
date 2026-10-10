@@ -20,8 +20,10 @@
 - JavaScript owns browser integration: Canvas rendering, input, menus, overlays, audio, save/load wrappers, deployment, and presentation timing.
 - Rust SimulationCore owns deterministic simulation rule families that have owner markers and fixture contracts.
 - Browser runtime code may apply returned state and render presentation events; it must not recompute Rust-owned outcomes.
-- Production and developer QA variants enter the same realtime combat loop. The app routes defeat checks through the Rust-owned outcome resolver after scheduled combat work, freezes clocks while paused or backgrounded, and never dispatches turn advancement.
+- Production and developer QA variants enter the same realtime combat loop. Finite/story defeat checks remain Rust-owned after scheduled work; ordinary continuous roaming interrupts the current scheduler at the first hero KO and routes the attempt to session recovery. Paused/background frames freeze combat time, and combat never dispatches turn advancement.
 - Do not store durable gameplay rules in render modules, asset JSON, or `app.js` when a module/core owner exists.
+
+- The combat HUD shows chapter progress and the ready/active boss control. Three internal notches represent four full waves; chapter/stage reads authoritative stage state. A clean first approach enters automatically. Any hero KO or boss defeat preserves earned progress and latches manual retry for that stage; once readiness is earned, fodder farming continues at 100% until summon. The latch survives reload and clears on boss victory.
 
 ## Work Guidance
 - Before editing, read the child AGENTS.md for the touched subfolder.
@@ -58,4 +60,6 @@
 
 - Quest entry: map -> ladder -> authored sub-chapter. Navigation uses one shared charcoal/brass menu with a teal active glow across non-dialogue screens. The test-only questQA query exposes deterministic defeat/monster-clear controls for browser proof.
 
-- Lamp progression: manual/Auto draws grant all four heroes saved EXP, with cumulative receipts and per-hero lampEXPClaimed replay. Enemy rewards grant zero new EXP/Gold. Auto requires all four Lv5, switches off at capacity, and requires explicit restart. Dismantling essence buys 20/30/40/50 capacity tiers; the combat-only strip carries item levels and a collection bubble above Auto.
+- Progression recovery separates earned readiness from boss-entry authorization: clean first readiness enters automatically, while any stage KO or boss defeat latches manual retry until boss victory. The latch and full approach survive reload; ready farming waves continue until explicit Summon Boss.
+
+- Lamp progression: manual/Auto draws grant all four heroes saved EXP, with cumulative receipts and per-hero lampEXPClaimed replay. Enemy rewards grant zero new EXP/Gold. Auto requires all four Lv5; a full cache pauses draws while preserving Auto, and clearing space resumes it. Only explicit Auto-off or exiting combat clears the preference. Dismantling essence buys 20/30/40/50 capacity tiers; the combat-only strip carries item levels and a collection bubble above Auto.

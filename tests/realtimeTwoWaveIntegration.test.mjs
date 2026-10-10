@@ -6,15 +6,33 @@ import fs from 'node:fs';
 import { HERO_DEFINITIONS, heroSkillUnlocked } from '../web-runner/src/core/heroDefinitions.mjs';
 import { isHeroBasicTargetInRange, resolveHeroAttackTarget } from '../src/core/heroAttackTargetingRules.mjs';
 import { realtimeCooldownSeconds, scheduleRealtimeActions, selectRealtimeReadyActor } from '../web-runner/src/core/realtimeCooldown.mjs';
-import { selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
+import { filterContinuousEncounterEnemies, selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
 import { castRealtimeHeroSkill, realtimeBasicInterval, realtimeProvokeTarget, realtimeRetaliation, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
 import { pickEnemyTargetHeroFromRoster } from '../web-runner/src/core/enemyTargetingRules.mjs';
-import { armContinuousCombatBoss, createContinuousCombatStageState, maybeAdvanceContinuousCombatStage } from '../web-runner/src/core/continuousCombatStage.mjs';
+import { selectContinuousEnemyTarget } from '../web-runner/src/core/arenaCombat.mjs';
+import { isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
+import { activateContinuousCombatSpawnedEnemy, buildContinuousCombatSpawnPlan, createContinuousCombatStageState, maybeAdvanceContinuousCombatStage } from '../web-runner/src/core/continuousCombatStage.mjs';
 import { advanceEnemyActionSimulation, createCombatSimulationTicker, processPendingHeroHits, shouldFreezeCombatSimulation } from '../web-runner/systems/combatSimulationTick.mjs';
 import { recordEnemyDefeatReward, settleContinuousCombatRewards, settleDefeat } from '../web-runner/modules/heroCommands.mjs';
 import { createHeroProgressStore, newHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
 
 const bank = fs.readFileSync(new URL('../web-runner/modules/functionBank.js', import.meta.url), 'utf8');
+
+test('planned solo defeats enter the existing once-per-UID reward receipt', () => {
+  const rows = ['Gobloc', 'Skeleton', 'High Gobloc', 'Lizardo', 'High Orc', 'Chimerilass', 'Djinn', 'Orc', 'Troll']
+    .map((name, index) => ({ name, HP: 100 + index, ATK: 2 + index, DEF: 1, MAG: 1, RES: 1, SPD: 8 }));
+  const stage = createContinuousCombatStageState(37);
+  const soloEntry = buildContinuousCombatSpawnPlan(rows, stage).find(entry => entry.isSolo);
+  assert.ok(soloEntry);
+  const solo = makeEnemy(901, soloEntry.row.name, soloEntry.soloFootX, soloEntry.soloFootY, soloEntry.row.HP, soloEntry.row.HP, soloEntry.row);
+  activateContinuousCombatSpawnedEnemy({ ContinuousCombatStage: stage, EnemySize: 40, time: 0 }, solo, soloEntry);
+  assert.equal(solo.streamSolo, 1);
+  const receipt = { id: 'solo-kill', participants: ['hero-1'], defeated: {}, defeatedGold: {}, settled: false, outcome: 'active' };
+  assert.equal(recordEnemyDefeatReward(receipt, solo), true);
+  assert.equal(recordEnemyDefeatReward(receipt, solo), false, 'a repeated death callback for one solo UID cannot duplicate its receipt');
+  assert.deepEqual(Object.keys(receipt.defeated), ['901']);
+  assert.deepEqual(Object.keys(receipt.defeatedGold), ['901']);
+});
 
 function loadBankFunction(signature, nextSignature, args, values) {
   const start = bank.indexOf(signature);
@@ -29,7 +47,7 @@ function makeTickBasics(ctx) {
   return loadBankFunction('export function TickRealtimeHeroBasics(ctx) {', '\nexport function TickRealtimeEnemyActions(', [
     'getGlobals', 'getEnemies', 'resolveHeroAttackTarget', 'isHeroBasicTargetInRange', 'getEntities', 'GetEffectiveStat',
     'realtimeCooldownSeconds', 'selectRealtimeReadyActor', 'scheduleRealtimeActions', 'HeroAttackSingle', 'GetActorByUID',
-    'tickRealtimeHeroSkillZones', 'heroDefinition', 'heroSkillUnlocked', 'selectRealtimeHeroSkillTarget', 'castRealtimeHeroSkill',
+    'tickRealtimeHeroSkillZones', 'heroDefinition', 'heroSkillUnlocked', 'selectRealtimeHeroSkillTarget', 'filterContinuousEncounterEnemies', 'castRealtimeHeroSkill',
     'realtimeBasicInterval', 'pushContinuousCombatEnemy', 'reverseContinuousCombatEnemy', 'teleportContinuousCombatEnemy',
   ], [
     c => c.state.globals,
@@ -39,7 +57,7 @@ function makeTickBasics(ctx) {
     realtimeCooldownSeconds, selectRealtimeReadyActor, scheduleRealtimeActions,
     (c, heroUID, targetUID) => (c.state.globals.PendingHeroHits ||= []).push({ at: c.state.globals.time + 0.52, heroUID, targetUID, dmg: 1, finalDmg: 1, heroType: 'melee', combatRulesBasic: 1, realtimeBasic: 1, retargetOnDeath: 1 }),
     (c, uid) => c.state.entities.find(e => Number(e.uid) === Number(uid)) || null,
-    tickRealtimeHeroSkillZones, actor => HERO_DEFINITIONS[actor.baseHeroName], heroSkillUnlocked, selectRealtimeHeroSkillTarget,
+    tickRealtimeHeroSkillZones, actor => HERO_DEFINITIONS[actor.baseHeroName], heroSkillUnlocked, selectRealtimeHeroSkillTarget, filterContinuousEncounterEnemies,
     castRealtimeHeroSkill, realtimeBasicInterval, () => 0, () => 0, (_target,distance) => distance,
   ]);
 }
@@ -69,16 +87,16 @@ function makeTickEnemies(ctx, actionEvents) {
     return action;
   };
   const start = loadBankFunction('export function StartRealtimeEnemyAction(ctx, enemyUID) {', '\nexport function StartEnemyAction(',
-    ['getGlobals', 'GetActorByUID', 'pickEnemyTargetHero', 'realtimeCooldownSeconds', 'createEnemyActionState'],
+    ['getGlobals', 'GetActorByUID', 'pickEnemyTargetHero', 'realtimeCooldownSeconds', 'createEnemyActionState', 'LUNGE_ANTICIPATION_SEC', 'LUNGE_FORWARD_SEC'],
     [c => c.state.globals, (c, uid) => c.state.entities.find(actor => Number(actor.uid) === Number(uid)) || null,
-      pick, realtimeCooldownSeconds, createAction]);
+      pick, realtimeCooldownSeconds, createAction, .14, .75]);
   const tick = loadBankFunction('export function TickRealtimeEnemyActions(ctx) {', '\nfunction HeroAttackSplit(',
     ['getGlobals', 'getEntities', 'pickEnemyTargetHero', 'StartRealtimeEnemyAction'],
     [c => c.state.globals, c => c.state.entities, pick, start]);
   const resolveTarget = loadBankFunction('export function ResolveEnemyActionTarget(ctx, enemyUID, preferredTargetUID = 0) {', '\nfunction applyRunaMagicResist(',
-    ['getGlobals', 'GetActorByUID', 'pickEnemyTargetHero', 'realtimeProvokeTarget'],
+    ['getGlobals', 'GetActorByUID', 'getHeroes', 'selectContinuousEnemyTarget', 'isActorTargetInRange'],
     [c => c.state.globals, (c, uid) => c.state.entities.find(actor => Number(actor.uid) === Number(uid)) || null,
-      pick, realtimeProvokeTarget]);
+      c => c.state.entities.filter(actor => actor.kind === 'hero' && actor.hp > 0), selectContinuousEnemyTarget, isActorTargetInRange]);
   return (now, dt) => {
     const g = ctx.state.globals;
     g.RealtimeEnemyActionReadyAtBefore = { ...(g.RealtimeEnemyActionReadyAt || {}) };
@@ -114,11 +132,11 @@ function makeTickEnemies(ctx, actionEvents) {
   };
 }
 
-const makeHero = (uid, key, hp, maxHP) => ({ uid, kind: 'hero', x:80, y:180+(uid-1)*35, currentLevel:25, heroInstanceKey: `hero-${uid}`, baseHeroName: key, name: key, hp, maxHP, stats: { ...HERO_DEFINITIONS[key].baseStats }, attackType: key === 'Runa' || key === 'Kojonn' ? 'magic' : 'melee', heroDisplaySlot: uid - 1 });
-const makeEnemy = (uid, name, x, y, hp = 1_000_000, maxHP = 1_000_000, extra = {}) => ({ uid, kind: 'enemy', name, hp, maxHP, x, y, originX: x, originY: y, streamEngageX: x, streamState: 'engaged', enemyRole: 'fodder', ATK: 1, stats: { ATK: 1, MAG: 2, RES: 1 }, ...extra });
+const makeHero = (uid, key, hp, maxHP) => ({ uid, kind: 'hero', x:145, y:180+(uid-1)*35, footX:145, footY:180+(uid-1)*35, currentLevel:25, heroInstanceKey: `hero-${uid}`, baseHeroName: key, name: key, hp, maxHP, stats: { ...HERO_DEFINITIONS[key].baseStats }, attackType: key === 'Runa' || key === 'Kojonn' ? 'magic' : 'melee', heroDisplaySlot: uid - 1 });
+const makeEnemy = (uid, name, x, y, hp = 1_000_000, maxHP = 1_000_000, extra = {}) => ({ uid, kind: 'enemy', name, hp, maxHP, x, y, footX:x, footY:y, originX: x, originY: y, streamEngageX: x, streamState: 'engaged', arenaTargetUID: 1, enemyRole: 'fodder', ATK: 1, stats: { ATK: 1, MAG: 2, RES: 1 }, ...extra });
 
 function createTwoWaveFixture() {
-  const heroes = [makeHero(1, 'Falie', 54, 100), makeHero(2, 'Huun', 38, 100), makeHero(3, 'Runa', 80, 100), makeHero(4, 'Kojonn', 80, 100)];
+  const heroes = [makeHero(1, 'Falie', 44, 100), makeHero(2, 'Huun', 38, 100), makeHero(3, 'Runa', 80, 100), makeHero(4, 'Kojonn', 80, 100)];
   const waveOne = [makeEnemy(20, 'Gobloc', 190, 180, 300_000, 1_000_000), makeEnemy(21, 'Djinn', 205, 195, 1_000_000, 1_000_000, { attackType: 'magic', streamDelivery: 'ranged' })];
   const globals = {
     time: 0, ContinuousCombatStageLoop: 1, GamePhase: 'RUNTIME', RuntimeRandomSeed:1, RuntimeRandomDraws:0,
@@ -243,7 +261,7 @@ test('two-wave fixture records real hero scheduler actions, active skills, basic
   assert.ok(actionLog.some(event => event.castAt >= 25 && event.targetUID === 22), 'the later wave joins live combat while the earlier wave survives');
 });
 
-test('stage and recovery seams keep wave overlap, boss availability, paused clocks and defeat rewards deterministic', () => {
+test('stage and recovery seams require full-wave clear, auto-enter the boss, preserve paused clocks and defeat rewards', () => {
   const stage = createContinuousCombatStageState(17);
   const a = makeEnemy(30, 'Gobloc', 190, 180), b = makeEnemy(31, 'Skeleton', 195, 190);
   const globals = { time: 3, ContinuousCombatStageLoop: 1, GamePhase: 'RUNTIME', ContinuousCombatStage: { ...stage, nextEmissionAt: 3 },
@@ -251,9 +269,15 @@ test('stage and recovery seams keep wave overlap, boss availability, paused cloc
   const spawned = [];
   const entities = [a, b];
   const spawn = (name, slot) => { const enemy = makeEnemy(slot + 200, name, 220, 180); spawned.push(enemy); entities.push(enemy); return enemy; };
-  maybeAdvanceContinuousCombatStage({ globals, entities, call(name, ...args) { if (name === 'SpawnEnemy') return spawn(args[0].name, args[1]); return true; } });
+  const stageCall = (name, ...args) => { if (name === 'SpawnEnemy') return spawn(args[0].name, args[1]); return true; };
+  maybeAdvanceContinuousCombatStage({ globals, entities, call: stageCall });
+  assert.equal(globals.ContinuousCombatStage.wave, 1, 'surviving enemies block a timed wave transition');
+  assert.equal(spawned.length, 0);
+  a.hp = 0; b.hp = 0;
+  maybeAdvanceContinuousCombatStage({ globals, entities, call: stageCall });
   assert.equal(globals.ContinuousCombatStage.wave, 2);
-  assert.ok(entities.includes(a) && entities.includes(b) && spawned.length > 0, 'wave two overlaps surviving wave-one enemies');
+  assert.ok(entities.includes(a) && entities.includes(b) && spawned.length > 0, 'the next wave spawns after the field clears');
+  assert.ok(entities.filter(enemy => enemy.kind === 'enemy' && enemy.hp > 0).every(enemy => enemy.streamState === 'roaming'));
   const pendingImpact = { at: 12.5, targetUID: 880 };
   const pausedTarget = { uid: 880, kind: 'enemy', hp: 100, x: 200, y: 180 };
   const pausedState = { globals: { time: 12, DevToolingPaused: 1, PendingHeroHits: [pendingImpact] }, entities: [...entities, pausedTarget] };
@@ -273,16 +297,16 @@ test('stage and recovery seams keep wave overlap, boss availability, paused cloc
   const gateGlobals = { time: 4, ContinuousCombatStageLoop: 1, GamePhase: 'RUNTIME', ContinuousCombatStage: gate,
     EnemySlots: [], EnemyData: globals.EnemyData, EnemyDeathVisualHoldByUID: {} };
   const gateEntities = [];
-  const gateCall = (name, ...args) => name === 'SpawnEnemy' ? makeEnemy(500 + args[1], args[0].name, 240, 180) : true;
+  const bossSpawned = [];
+  const gateCall = (name, ...args) => {
+    if(name!=='SpawnEnemy')return true;
+    const enemy=makeEnemy(500+args[1],args[0].name,240,180,1_000_000,1_000_000,{enemyRole:args[0].enemyRole});
+    bossSpawned.push(enemy);gateEntities.push(enemy);return enemy;
+  };
   maybeAdvanceContinuousCombatStage({ globals: gateGlobals, entities: gateEntities, call: gateCall });
   assert.equal(gateGlobals.ContinuousCombatStage.bossAvailable, true);
-  const bossSpawned = [];
-  assert.equal(armContinuousCombatBoss(gateGlobals,gateEntities,(name,...args)=>{
-    if(name==='SpawnEnemy'){const enemy=makeEnemy(600+args[1],args[0].name,240,180,1_000_000,1_000_000,{enemyRole:args[0].enemyRole});bossSpawned.push(enemy);gateEntities.push(enemy);return enemy;}
-    return true;
-  }),true);
   assert.equal(gateGlobals.ContinuousCombatStage.bossActive, true);
-  assert.ok(bossSpawned.some(enemy => enemy.enemyRole === 'boss'), 'boss click immediately replaces farming with the boss');
+  assert.ok(bossSpawned.some(enemy => enemy.enemyRole === 'boss'), 'the fourth clear immediately replaces farming with the boss');
 
   const hero = Object.assign(newHeroProgress('Falie', 'hero-1'), { uid: 1, kind: 'hero', heroDisplaySlot: 0 });
   const heroes = [hero];

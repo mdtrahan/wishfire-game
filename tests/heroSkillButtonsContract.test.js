@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 
 test('hero screen reads every authored active skill', () => {
  const source=fs.readFileSync(path.join(__dirname,'../web-runner/systems/renderHeroScreen.js'),'utf8');
- assert.match(source,/heroDefinition/);assert.match(source,/d.actives/);assert.match(source,/heroSkillUnlocked\(hero,ability\)/);assert.match(source,/ability.unlockLevel/);assert.match(source,/ability.conditionLabel/);assert.match(source,/ability.cooldownSeconds/);
+ assert.match(source,/heroDefinition/);assert.match(source,/definition.actives/);assert.match(source,/heroSkillUnlocked\(hero,ability\)/);assert.match(source,/ability.unlockLevel/);assert.match(source,/ability.conditionLabel/);assert.match(source,/ability.cooldownSeconds/);
  assert.doesNotMatch(source,/d.passives|d.special/);
 });
 

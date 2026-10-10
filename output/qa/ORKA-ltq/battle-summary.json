@@ -1,0 +1,26 @@
+{
+  "responses": 115,
+  "draws": 2832,
+  "drawStates": [
+    "attack-left",
+    "attack-right",
+    "hit-left",
+    "idle-left",
+    "idle-right",
+    "spawn-left",
+    "walk-left",
+    "walk-right"
+  ],
+  "errors": [],
+  "logicalHighWaterBytes": 7471104,
+  "retention": {
+    "maxDecodedBytes": 25165824,
+    "retainedBytes": 7471104,
+    "reservedBytes": 0,
+    "entries": 11,
+    "pending": 0,
+    "evictions": 0
+  },
+  "baselineRSSBytes": 1042087936,
+  "peakRSSBytes": 1087651840
+}

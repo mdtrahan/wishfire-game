@@ -136,9 +136,9 @@ test('shared navigation and quest modal use the existing explicit control seams'
   assert.match(ladder, /combat-quit/);
   assert.match(ladder, /button\('Quit Battle','combat-quit'\)[\s\S]*button\('Continue Battle','combat-continue'/);
   const app = read('web-runner/app.js');
-  assert.match(app, /if \(gameState\.storyEntry\.combatPaused\) \{\s*combatSimulationTicker\.reset\(\);\s*(?:gameState\.publishQaPauseSnapshot\?\.\('paused'\);\s*)?if \(layoutState\.getActiveLayoutId\(\) !== 'combat'\) drawFrame\(\);\s*requestAnimationFrame\(tick\);\s*return;/,
+  assert.match(app, /if \(gameState\.storyEntry\.combatPaused\) \{\s*surrenderBossForDeparture\(\);\s*combatSimulationTicker\.reset\(\);\s*(?:gameState\.publishQaPauseSnapshot\?\.\('paused'\);\s*)?if \(layoutState\.getActiveLayoutId\(\) !== 'combat'\) drawFrame\(\);\s*requestAnimationFrame\(tick\);\s*return;/,
     'the animation tick must freeze simulation while a combat session is paused');
-  assert.match(app, /if \(layoutState\.getActiveLayoutId\(\) !== 'combat'\) \{\s*combatSimulationTicker\.reset\(\);\s*drawFrame\(\);\s*requestAnimationFrame\(tick\);/);
+  assert.match(app, /if \(layoutState\.getActiveLayoutId\(\) !== 'combat'\) \{\s*surrenderBossForDeparture\(\);\s*combatSimulationTicker\.reset\(\);\s*drawFrame\(\);\s*requestAnimationFrame\(tick\);/);
   const pointerRouter = read('web-runner/systems/pointerRoutingShell.js');
   assert.match(pointerRouter, /typeof entry\?\.openPausedBattleGate === 'function'/,
     'secondary close buttons must delegate to the shared paused-battle route');

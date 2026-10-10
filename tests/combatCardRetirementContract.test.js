@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -68,8 +69,17 @@ test('combat status stays on battlefield actors', () => {
   const render = fs.readFileSync(path.join(root, 'web-runner/systems/renderRuntime.js'), 'utf8');
   assert.doesNotMatch(app, /heroCommandUI|hero-commands/);
   assert.match(render, /HeroRestBasePosByUID[\s\S]*const hpRatio = Number\(hero\.maxHP/);
-  assert.match(render, /const barY = Math\.round\(footPos\.y - actorHeight - 10 \* layoutScale\);/);
-  assert.equal((render.match(/drawCombatHealthBar\(ctx, \{/g) || []).length, 2);
+  assert.match(render, /const barY = Math\.round\(footPos\.y \+ 4 \* layoutScale\);/);
+  assert.match(render, /addActorPaint\(uid, \(\) => paintWithActivationAlpha\(ctx, heroBarFadeAlpha, \(\) => drawCombatHealthBar/);
+  const bodyStart = render.indexOf('const body = ') + 'const body = '.length;
+  const bodyEnd = render.indexOf(';\n    const effectiveBody = assembleCombatRenderBody(body);', bodyStart);
+  const authoredBody = vm.runInNewContext(render.slice(bodyStart, bodyEnd));
+  assert.equal((authoredBody.match(/drawCombatHealthBar\(ctx, \{/g) || []).length, 2);
+  const helperStart = render.indexOf('export function assembleCombatRenderBody(body) {');
+  const helperEnd = render.indexOf('\n}\n\nlet renderImpl', helperStart) + 2;
+  const helper = render.slice(helperStart, helperEnd).replace('export function', 'function');
+  const assembledBody = new Function(`${helper}; return assembleCombatRenderBody;`)()(authoredBody);
+  assert.equal((assembledBody.match(/drawCombatHealthBar\(ctx, \{/g) || []).length, 2);
   const bars = fs.readFileSync(path.join(root, 'web-runner/systems/combatHealthBarPresentation.mjs'), 'utf8');
   assert.match(bars, /ctx\.fillStyle = '#292E34';/);
 });

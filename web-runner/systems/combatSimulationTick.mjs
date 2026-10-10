@@ -2,7 +2,16 @@ import {
   combatVfxProfileForActor as defaultCombatVfxProfileForActor,
   queueCombatAttackImpactVfx as defaultQueueCombatAttackImpactVfx,
 } from './combatAttackVfxPresentation.mjs';
-import { isHeroBasicTargetInRange as isHeroBasicTargetInRangeForState } from '../../src/core/heroAttackTargetingRules.mjs';
+import { isActorRanged, isActorTargetInRange } from '../../src/core/heroAttackTargetingRules.mjs';
+import { isActorRecoveryRevealActive } from '../src/core/actorPresentationState.mjs';
+
+export function hasContinuousOrdinaryHeroKO(state) {
+  const globals = state?.globals || {};
+  const stage = globals.ContinuousCombatStage;
+  return Number(globals.ContinuousCombatStageLoop || 0) === 1
+    && !stage?.bossActive
+    && (state?.entities || []).some(actor => actor?.kind === 'hero' && Number(actor.hp || 0) <= 0);
+}
 
 export function processPendingHeroHits({
   state,
@@ -10,7 +19,7 @@ export function processPendingHeroHits({
   callFunctionWithContext,
   animationMath,
   queueImpactVfx = defaultQueueCombatAttackImpactVfx,
-  isHeroBasicTargetInRange = (entity) => isHeroBasicTargetInRangeForState(entity),
+  isHeroBasicTargetInRange = (entity, source) => isActorTargetInRange(source, entity),
 }) {
   const visualControlPatches = {};
 // Apply delayed hero hits after lunge/impact timing
@@ -20,6 +29,7 @@ export function processPendingHeroHits({
       visualControlPatches.DoubleAttackLungeStarted = state.globals.DoubleAttackLungeStarted || {};
       const doubleAttackBatchAnchors = state.globals.DoubleAttackBatchAnchors || (visualControlPatches.DoubleAttackBatchAnchors = {});
       for (let i = pending.length - 1; i >= 0; i--) {
+        if (hasContinuousOrdinaryHeroKO(state)) break;
         const hit = pending[i];
         if (!hit) { pending.splice(i, 1); continue; }
         const followUpBatchId = Number(hit.followUpBatchId || 0);
@@ -83,9 +93,15 @@ export function processPendingHeroHits({
           continue;
         }
         let targetEntity = callFunctionWithContext(fnContext, 'GetActorByUID', hit.targetUID);
-        if (hit.realtimeBasic && Number(state.globals.ContinuousCombatStageLoop || 0) === 1 && !isHeroBasicTargetInRange(targetEntity)) targetEntity = null;
+        const sourceEntity = callFunctionWithContext(fnContext, 'GetActorByUID', hit.heroUID || hit.sourceUID);
+        // A committed realtime projectile retains its launch right after its
+        // hero is KO. Range still uses the last authoritative foot position.
+        const impactSource = hit.allowSourceKO && Number(sourceEntity?.hp || 0) <= 0
+          ? { ...sourceEntity, hp: 1 }
+          : sourceEntity;
+        if (hit.realtimeBasic && Number(state.globals.ContinuousCombatStageLoop || 0) === 1 && !isActorRanged(impactSource) && !isHeroBasicTargetInRange(targetEntity, impactSource)) targetEntity = null;
         if ((!targetEntity || Number(targetEntity.hp || 0) <= 0) && hit.retargetOnDeath) {
-          const livingEnemies = (state.entities || []).filter((entity) => entity && entity.kind === 'enemy' && Number(entity.hp || 0) > 0 && (Number(state.globals.ContinuousCombatStageLoop || 0) !== 1 || isHeroBasicTargetInRange(entity)));
+          const livingEnemies = (state.entities || []).filter((entity) => entity && entity.kind === 'enemy' && Number(entity.hp || 0) > 0 && (Number(state.globals.ContinuousCombatStageLoop || 0) !== 1 || isHeroBasicTargetInRange(entity, impactSource)));
           const replacement = livingEnemies[0] || null;
           if (replacement) {
             const batchId = Number(hit.followUpBatchId || 0);
@@ -236,12 +252,17 @@ export function createCombatSimulationTicker() {
         lastNowMs = null;
         return 0;
       }
+      if (hasContinuousOrdinaryHeroKO(state)) {
+        lastNowMs = null;
+        return 0;
+      }
       const current = Number(nowMs);
       const now = Number.isFinite(current) ? current : 0;
       const base = lastNowMs == null ? 0.001 : Math.min(0.05, Math.max(0.001, (now - lastNowMs) / 1000));
       lastNowMs = now;
       const dt = base * Math.max(0.25, Number(state.globals.DevCombatSpeedMultiplier || 1));
       state.globals.time = Number(state.globals.time || 0) + dt;
+      if ((state.entities || []).some(actor => actor?.kind === 'hero' && isActorRecoveryRevealActive(actor, state.globals.time))) return dt;
       const damageTexts = state.globals.DamageTexts || [];
       for (let i = damageTexts.length - 1; i >= 0; i--) {
         const text = damageTexts[i];
@@ -258,6 +279,10 @@ export function createCombatSimulationTicker() {
       state.globals.TextAnimating = damageTexts.length > 0 || state.globals.time < Number(state.globals.TextAnimEndAt || 0) ? 1 : 0;
       advanceBattleStartSimulation({ state, runCombatStep });
       processPendingHeroHits({ state, fnContext, callFunctionWithContext, animationMath });
+      if (hasContinuousOrdinaryHeroKO(state)) {
+        lastNowMs = null;
+        return dt;
+      }
       advanceEnemyActionSimulation({
         state,
         gameState,
@@ -272,6 +297,10 @@ export function createCombatSimulationTicker() {
         combatVfxProfileForActor,
         queueCombatAttackImpactVfx,
       });
+      if (hasContinuousOrdinaryHeroKO(state)) {
+        lastNowMs = null;
+        return dt;
+      }
       advanceHeroActionSimulation({ state, gameState, dt, layoutW, animationMath, applyTurnGateGlobals });
       advanceYellowCasinoSimulation({ state, gameState, runtimeDebugLogging, traceTask015YellowAnimation, traceTask015YellowWrite, getCellWorldPos, countCellCoverage, recordTask011RefillWriteEvent, setGemArray, YELLOW_CASINO_SETTLE_SEC, YELLOW_CASINO_SETTLE_BOUNCE_AMP, YELLOW_COLOR, startGemMergeFx, getGoldLabelTargetWorld, applyTurnGateIntent, getYellowSequenceCompletionIntent, assertBoardIntegrity });
       advanceRefillBounceSimulation({
@@ -288,12 +317,14 @@ export function createCombatSimulationTicker() {
 
 export function shouldFreezeCombatSimulation(state, gameState = {}) {
   const globals = state?.globals || {};
+  const bossTransition = globals.ContinuousCombatStage;
   return !!(
     globals.DevToolingPaused ||
     globals.QaScenarioPaused ||
     globals.QaFixtureHoldTurn ||
     gameState?.storyEntry?.combatPaused ||
-    gameState?.storyEntry?.phase === 'defeat'
+    gameState?.storyEntry?.phase === 'defeat' ||
+    (bossTransition?.bossActive === true && Number(bossTransition.bossTransitionEndsAtMs || 0) > Date.now())
   );
 }
 
@@ -917,6 +948,7 @@ export function advanceEnemyActionSimulation({
   const actions = continuousCombat
     ? Object.entries(actionMap).sort(([a], [b]) => Number(a) - Number(b)).map(([, action]) => action)
     : [state.globals.EnemyAction];
+  if (hasContinuousOrdinaryHeroKO(state)) return;
   const completeEnemyTurn = (enemyAction, releaseDelay = 0.05) => {
     if (continuousCombat) {
       const key = String(Number(enemyAction?.uid || 0));
@@ -950,9 +982,8 @@ export function advanceEnemyActionSimulation({
         const lungeDur = animationMath.LUNGE_FORWARD_SEC;
         const impactHold = animationMath.LUNGE_HOLD_SEC;
         const retreatDur = animationMath.LUNGE_RETREAT_SEC;
-        if (enemy.originX == null) enemy.originX = enemy.x ?? 0;
-        if (enemy.originY == null) enemy.originY = enemy.y ?? 0;
-        enemy.y = enemy.originY;
+        if (!continuousCombat && enemy.originX == null) enemy.originX = enemy.x ?? 0;
+        if (!continuousCombat && enemy.originY == null) enemy.originY = enemy.y ?? 0;
         const enemyVfxProfile = combatVfxProfileForActor(enemy);
         const enemyUsesRangedMagic = !!enemyAction.stationary || String(enemyAction.skillId || '').startsWith('Enemy_Heal_') || enemyVfxProfile.delivery !== 'melee';
         const enemyPresentationComplete = () => {
@@ -988,7 +1019,7 @@ export function advanceEnemyActionSimulation({
           const e = easeInCubic(t);
           const from = enemy.originX;
           const to = enemyAction.anticipationX ?? enemy.originX;
-          enemy.x = enemyUsesRangedMagic ? enemy.originX : from + (to - from) * e;
+          if (!continuousCombat) enemy.x = enemyUsesRangedMagic ? enemy.originX : from + (to - from) * e;
           enemyAction.visualProgress = 0;
           if (t >= 1) {
             enemyAction.state = 'LUNGE';
@@ -1000,7 +1031,7 @@ export function advanceEnemyActionSimulation({
           const e = animationMath.easeLungeForward(t);
           const from = enemyAction.anticipationX ?? enemy.originX;
           const to = enemyAction.forwardX ?? enemy.originX;
-          enemy.x = enemyUsesRangedMagic ? enemy.originX : from + (to - from) * e;
+          if (!continuousCombat) enemy.x = enemyUsesRangedMagic ? enemy.originX : from + (to - from) * e;
           enemyAction.visualProgress = t;
           if (!enemyAction.actionApplied && t >= 1) {
             const impactTarget = continuousCombat
@@ -1025,7 +1056,7 @@ export function advanceEnemyActionSimulation({
           }
         } else if (enemyAction.state === 'HIT') {
           enemyAction.timer += dt;
-          enemy.x = enemyUsesRangedMagic ? enemy.originX : enemyAction.forwardX ?? enemy.originX;
+          if (!continuousCombat) enemy.x = enemyUsesRangedMagic ? enemy.originX : enemyAction.forwardX ?? enemy.originX;
           enemyAction.visualProgress = 1;
           if (enemyAction.timer >= impactHold && enemyPresentationComplete()) {
             enemyAction.state = 'RETREAT';
@@ -1037,20 +1068,23 @@ export function advanceEnemyActionSimulation({
           const e = easeInOutCubic(t);
           const from = enemyAction.forwardX ?? enemy.originX;
           const to = enemy.originX;
-          enemy.x = enemyUsesRangedMagic ? enemy.originX : from + (to - from) * e;
+          if (!continuousCombat) enemy.x = enemyUsesRangedMagic ? enemy.originX : from + (to - from) * e;
           enemyAction.visualProgress = Math.max(0, 1 - t);
           if (t >= 1) {
-            enemy.x = enemy.originX;
+            if (!continuousCombat) enemy.x = enemy.originX;
             enemyAction.state = 'DONE';
           }
         }
         if (enemyAction.state === 'DONE') {
           enemyAction.active = false;
-          enemy.x = enemy.originX ?? enemy.x;
-          enemy.y = enemy.originY ?? enemy.y;
+          if (!continuousCombat) {
+            enemy.x = enemy.originX ?? enemy.x;
+            enemy.y = enemy.originY ?? enemy.y;
+          }
           completeEnemyTurn(enemyAction, 0.35);
         }
       }
     }
+    if (hasContinuousOrdinaryHeroKO(state)) break;
   }
 }

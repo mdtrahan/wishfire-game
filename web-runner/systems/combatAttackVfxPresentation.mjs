@@ -184,14 +184,14 @@ export function queueCombatAttackImpactVfx(state, hit, target, now) {
   g.CombatImpactVisuals = impacts;
 }
 
-const drawTravel = (ctx, image, from, to, progress, width) => {
+const drawTravel = (ctx, image, from, to, progress, width, opacity = 1) => {
   if (!image || !from || !to) return;
   const x = from.x + (to.x - from.x) * progress;
   const y = from.y + (to.y - from.y) * progress;
   const angle = Math.atan2(to.y - from.y, to.x - from.x);
   const frontOffset = width * 0.38 * progress;
   ctx.save();
-  ctx.globalAlpha = Math.min(1, Math.sin(Math.min(1, progress * 1.35) * Math.PI * 0.5) * 1.15);
+  ctx.globalAlpha = opacity * Math.min(1, Math.sin(Math.min(1, progress * 1.35) * Math.PI * 0.5) * 1.15);
   ctx.translate(x - Math.cos(angle) * frontOffset, y - Math.sin(angle) * frontOffset);
   ctx.rotate(angle);
   ctx.drawImage(image, -width * 0.62, -width * 0.33, width, width * 0.66);
@@ -363,7 +363,7 @@ const renderEnemyMagic = (ctx, { state, images, worldToCanvas, layoutScale }) =>
   drawVerticalReveal(ctx, image, groundedTarget, progress, width, pulse * 1.28 * hitFade, direction);
 };
 
-export function renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layoutScale = 1 }) {
+export function renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layoutScale = 1, viewportLeft, viewportRight }) {
   const g = state.globals || {};
   const now = Number(g.time || 0);
   const impactRequests = Array.isArray(g.CombatImpactRequests) ? g.CombatImpactRequests : [];
@@ -406,25 +406,39 @@ export function renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layou
     if (!sourcePoint) continue;
     if (!projectiles.some(visual => visual.hit === hit && visual.impactAt === impactAt)) {
       projectiles.push({ hit, kind, targetUID: hit.targetUID, impactAt, lead,
-        from: worldToCanvas(sourcePoint.x, sourcePoint.y), to: worldToCanvas(targetPoint.x, targetPoint.y) });
+        fromWorld: { x: sourcePoint.x, y: sourcePoint.y }, toWorld: { x: targetPoint.x, y: targetPoint.y } });
     }
   }
 
-  const left = worldToCanvas(0, 0).x;
-  const right = worldToCanvas(360, 0).x;
+  const left = Number.isFinite(Number(viewportLeft)) ? Number(viewportLeft) : worldToCanvas(0, 0).x;
+  const right = Number.isFinite(Number(viewportRight)) ? Number(viewportRight) : worldToCanvas(360, 0).x;
+  const visibleWorldWidth = (() => {
+    const sample = worldToCanvas(1, 0).x - worldToCanvas(0, 0).x;
+    return Math.max(1, Math.abs(right - left) / Math.max(0.0001, Math.abs(sample)));
+  })();
   g.CombatProjectileVisuals = projectiles.filter(visual => {
     const target = (state.entities || []).find(entity => Number(entity?.uid || 0) === Number(visual.targetUID || 0));
     if (!visual.hit.projectileLanded && (!pending.includes(visual.hit) || Number(visual.hit.at) !== visual.impactAt
       || Number(visual.hit.targetUID) !== Number(visual.targetUID) || !target || Number(target.hp || 0) <= 0)) visual.missed = true;
     const progress = (now - (visual.impactAt - visual.lead)) / visual.lead;
     const width = Math.max(28, (visual.kind === 'melee_crescent' ? 34 : visual.kind === 'kaja_orb' ? 50 : 46) * layoutScale);
-    const dx = visual.to.x - visual.from.x;
-    const edge = dx >= 0 ? right + (right - left) * 0.05 : left - (right - left) * 0.05;
-    const drawnDx = dx - Math.sign(dx) * width * 0.38;
-    const exitProgress = drawnDx ? (edge - visual.from.x) / drawnDx : 1;
+    const from = worldToCanvas(visual.fromWorld.x, visual.fromWorld.y);
+    const worldDx = visual.toWorld.x - visual.fromWorld.x;
+    const worldDy = visual.toWorld.y - visual.fromWorld.y;
+    const worldDistance = Math.hypot(worldDx, worldDy);
+    if (!Number.isFinite(Number(visual.maxTravelWorld)) || Number(visual.maxTravelWorld) <= 0) {
+      visual.maxTravelWorld = visibleWorldWidth;
+      if (worldDistance > visibleWorldWidth) {
+        const ratio = visibleWorldWidth / worldDistance;
+        visual.toWorld = { x: visual.fromWorld.x + worldDx * ratio, y: visual.fromWorld.y + worldDy * ratio };
+      }
+    }
+    const to = worldToCanvas(visual.toWorld.x, visual.toWorld.y);
     if (progress < 0) return !visual.missed;
-    if (visual.hit.projectileLanded || progress >= (visual.missed ? exitProgress : 1)) return false;
-    drawTravel(ctx, projectileAsset(images, visual.kind), visual.from, visual.to, progress, width);
+    if (visual.hit.projectileLanded || progress >= 1) return false;
+    const fadeStart = 0.82;
+    const fade = progress <= fadeStart ? 1 : Math.max(0, (1 - progress) / (1 - fadeStart));
+    drawTravel(ctx, projectileAsset(images, visual.kind), from, to, progress, width, fade);
     return true;
   });
 

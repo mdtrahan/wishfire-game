@@ -1,0 +1,37 @@
+[
+  {
+    "check": "same archetype, protected display, capacity denial, stale completion",
+    "status": "PASS",
+    "retention": {
+      "maxDecodedBytes": 64,
+      "retainedBytes": 64,
+      "reservedBytes": 0,
+      "entries": 2,
+      "pending": 0,
+      "evictions": 0
+    }
+  },
+  {
+    "check": "last pilot retirement",
+    "status": "PASS",
+    "displayedActorsAfterTwoAbsentFrames": 0
+  },
+  {
+    "check": "clock reset with unsupported roster",
+    "status": "PASS",
+    "displayedActorsAfterReset": 0
+  },
+  {
+    "check": "partial failure drains and subsequent retry recovers",
+    "status": "PASS"
+  },
+  {
+    "check": "actual dimensions mismatch rejects/releases",
+    "status": "PASS"
+  },
+  {
+    "check": "zero actual dimensions rejected",
+    "status": "PASS",
+    "scope": "injected image provider; native successful PNG onload yields nonzero intrinsic dimensions"
+  }
+]

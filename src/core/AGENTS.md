@@ -17,8 +17,10 @@
 - Damage packets carry attack percentage plus matching and general resistance percentages. The shared base rule subtracts applicable defense, permits zero damage, applies resistance, then preserves crit and final modifier order; keep the browser copy and Rust/WASM export in parity.
 - `heroAttackTargetingRules.mjs` owns the continuous party's persistent first-living focus inside the current X attack range and the legacy random HERO_SINGLE fallback. Manual target ownership remains in functionBank.
 - CJS mirrors such as `simulationCorePacket.cjs`, `gameStateEnvelopeRules.cjs`, and `combatRuntimeGateway.cjs` must stay aligned with their intended test/runtime consumers.
-- `combatOrientation.mjs` owns presentation-only left/right normalization and formation projection. Right-wise reflects then translates both formations `-40` logical X; heroes keep Y while enemies receive one derived block-Y offset aligning team formation midpoints. Derive that enemy offset from the fixed slot grid, never the currently living roster, so death and refill cannot move survivors. Do not put orientation in SimulationCore packets or mutate canonical actor coordinates.
-- `deriveCombatFormationAnchors` reserves an 18-unit hero buff-icon row plus a 2-unit gap above HP bars. The four-slot hero sprite band spans Y 190-395, and continuous enemy lanes follow those hero anchors.
+- `combatOrientation.mjs` owns presentation-only left/right normalization, static formation projection, and wide-world camera projection. Right-wise static formation geometry reflects then translates both formations `-40` logical X; the wide-world camera reflects without that offset so the hero's 40-unit world-edge margin remains visible. Heroes keep Y while enemies receive one derived block-Y offset aligning team formation midpoints. Derive that enemy offset from the fixed slot grid, never the currently living roster, so death and refill cannot move survivors. Do not put orientation in SimulationCore packets or mutate canonical actor coordinates.
+- `arenaCombatRules.mjs` scales the boss footprint with its 4x linear sprite size and adds that boss body radius to boss-origin contact reach; ordinary actors retain foot-to-target reach.
+- `advanceActorToward` keeps logical facing aligned with nonzero world-space horizontal travel. Browser fallback presentation applies that facing relative to each actor's native sprite direction and the camera reflection.
+- `deriveCombatFormationAnchors` reserves an 18-unit hero buff-icon row plus a 2-unit gap above HP bars. `deriveCombatWorldVerticalBounds` separately maps the camera's HUD-safe viewport interval back into world feet bounds; continuous pack centers span that interval rather than following the static four-slot hero anchors.
 
 ## Work Guidance
 - Add fixture rows for deterministic behavior with meaningful edge cases.
@@ -41,3 +43,5 @@
 - Presentation barriers ignore retired combat-card flags. Animation, pending-hit and refill barriers remain enforced.
 
 - Conditional combat predicates and modifier limits are shared pure rules. HP thresholds are fractions; comparison groups use current projected stats. Repeated stat changes resolve the strongest increase and strongest decrease against a clean baseline. Seeded RNG previews never consume a draw.
+
+- Boss reach scales the melee envelope with the four-times footprint so supports at their ranged stop position remain eligible after frontline KO. Ordinary actor ranges and nearest/Provoke priority remain unchanged.

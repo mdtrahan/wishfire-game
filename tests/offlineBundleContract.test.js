@@ -8,7 +8,7 @@ const test = require('node:test');
 
 const root = path.join(__dirname, '..');
 const output = path.join(root, 'dist-offline');
-const runtimeData = ['layouts.json', 'objectTypes.json', 'enemies.json', 'elemental-impact/manifest.json'];
+const runtimeData = ['layouts.json', 'objectTypes.json', 'enemies.json', 'elemental-impact/manifest.json', 'puppets/manifest.json'];
 
 function listFiles(directory, prefix = '') {
   const entries = fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name));
@@ -63,7 +63,7 @@ test('offline artifact retains relative presentation assets and omits JSON/WASM 
 
   const embeddedNames = new Set([...runtimeData, 'simulation_core.wasm']);
   const stagedAssets = listFiles(path.join(root, 'dist', 'web-runner', 'assets'))
-    .filter((file) => !embeddedNames.has(file))
+    .filter((file) => !embeddedNames.has(file) && !/\.(json|wasm)$/i.test(file))
     .sort();
   const offlineAssets = listFiles(path.join(output, 'assets')).sort();
   assert.deepEqual(offlineAssets, stagedAssets, 'offline bundle must retain every non-embedded staged asset');

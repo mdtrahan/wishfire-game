@@ -6,21 +6,81 @@ const { pathToFileURL } = require('node:url');
 
 const root = path.join(__dirname, '..');
 
-test('combat boss button is centered on the game grid for drawing and pointer input', async () => {
-  const loader = fs.readFileSync(path.join(root, 'web-runner/systems/runtimeVisualAssetLoader.js'), 'utf8');
+test('combat progress HUD shows the current chapter and four-wave progress', async () => {
   const renderer = fs.readFileSync(path.join(root, 'web-runner/systems/renderRuntime.js'), 'utf8');
-  const control = fs.readFileSync(path.join(root, 'web-runner/systems/renderCombatBossControl.mjs'), 'utf8');
-  const pointer = fs.readFileSync(path.join(root, 'web-runner/systems/pointerRoutingShell.js'), 'utf8');
-  assert.match(loader, /images\.CombatBossButton = await loadImage\(assetUrl\('images\/boss_button\.png'\)\)/);
-  assert.match(renderer, /drawCombatBossControl\(ctx, \{ state, images, worldToCanvas \}\)/);
-  assert.match(control, /centerX: 180, centerY: 50, w: 50, h: 50/);
-  assert.match(control, /controlState === 'locked'\) return null/);
-  assert.doesNotMatch(control, /shadowBlur/);
-  assert.match(control, /'READY'/);
-  assert.match(control, /controlState\.toUpperCase\(\)/);
-  assert.match(pointer, /import \{ combatBossControlRect \} from '\.\/renderCombatBossControl\.mjs'/);
-  assert.match(pointer, /onBossButtonClick\(\)/);
-  const { combatBossControlRect } = await import(pathToFileURL(path.join(root, 'web-runner/systems/renderCombatBossControl.mjs')));
-  const rect = combatBossControlRect((x, y) => ({ x: x * 1.5 + 10, y: y * 1.5 + 4 }));
-  assert.deepEqual(rect, { x: 255, y: 54, w: 50, h: 50 });
+  const loader = fs.readFileSync(path.join(root, 'web-runner/systems/runtimeVisualAssetLoader.js'), 'utf8');
+  const control = await import(pathToFileURL(path.join(root, 'web-runner/systems/renderCombatBossControl.mjs')));
+  assert.match(renderer, /drawCombatProgressHud\(ctx, \{ state, images, worldToCanvas \}\)/);
+  assert.match(loader, /images\.CombatProgressHondoHead = await loadImage\(assetUrl\('puppets\/hondo\/source\/head\.png'\)\)/);
+  assert.doesNotMatch(control.drawCombatProgressHud.toString(), /HERO_HEAD|sourceX|sourceY/);
+  assert.match(control.drawCombatProgressHud.toString(), /ctx\.textAlign = 'center'/);
+  assert.match(control.drawCombatProgressHud.toString(), /11 \* scale/);
+  assert.match(control.drawCombatProgressHud.toString(), /16 \* scale/);
+  assert.match(control.drawCombatProgressHud.toString(), /Chapter/);
+
+  const calls = [];
+  const ctx = new Proxy({}, { get: (_target, key) => (...args) => calls.push([key, ...args]), set: (_target, key, value) => { calls.push(['set', key, value]); return true; } });
+  const worldToCanvas = (x, y) => ({ x: x * 1.5 + 10, y: y * 1.5 + 4 });
+  const state = { globals: { ContinuousCombatStage: { region: 4, stage: 22, wave: 3 } } };
+  const rect = control.combatProgressHudRect(worldToCanvas);
+  assert.deepEqual(rect, { x: 201.25, y: 10, w: 157.5, h: 60 });
+  assert.equal(rect.x + rect.w / 2, worldToCanvas(180, 0).x);
+  const result = control.drawCombatProgressHud(ctx, { state, images: { CombatProgressHondoHead: { width: 367, height: 391 } }, worldToCanvas });
+  assert.equal(result.label, 'Chapter 4-22');
+  assert.equal(result.railCenterX, result.labelX);
+  assert.equal(result.railCenterX, worldToCanvas(180, 0).x);
+  assert.equal(calls.find(([name, text]) => name === 'strokeText' && text === result.label)[2], worldToCanvas(180, 0).x);
+  const notchX = worldToCanvas(138.5 + 83 / 4, 0).x;
+  const notchTop = calls.find(([name, x]) => name === 'moveTo' && x === notchX);
+  const notchBottom = calls.find(([name, x]) => name === 'lineTo' && x === notchX);
+  assert.equal(notchBottom[2] - notchTop[2], 11.25, 'notch height grows from 5 to 7.5 logical pixels');
+  assert.ok(calls.some(([name, key, value]) => name === 'set' && key === 'lineWidth' && value === 4.5), 'notch width grows from 2 to 3 logical pixels');
+  const notchColors = () => calls.filter(([name, key, value]) => name === 'set' && key === 'strokeStyle' && ['#55d4be', '#243237'].includes(value)).map(([, , value]) => value);
+  assert.deepEqual(notchColors(), ['#55d4be', '#55d4be', '#243237']);
+  assert.equal(result.completedWaves, 2);
+  assert.equal(result.bossReady, false);
+  assert.equal(calls.filter(([name]) => name === 'fillRect').length, 1);
+  assert.equal(calls.filter(([name]) => name === 'drawImage').length, 1);
+
+  state.globals.ContinuousCombatStage.bossAvailable = true;
+  const assertBossMarkerSeparated = () => {
+    calls.length = 0;
+    const bossHud = control.drawCombatProgressHud(ctx, { state, images: { CombatProgressHondoHead: { width: 367, height: 391 } }, worldToCanvas });
+    const markerImage = calls.find(([name]) => name === 'drawImage');
+    const bossHead = calls.find(([name]) => name === 'translate');
+    const markerX = markerImage[2] + markerImage[4] / 2;
+    const scale = bossHud.w / 105;
+    assert.equal(bossHud.completedWaves, 4);
+    assert.deepEqual(notchColors(), ['#55d4be', '#55d4be', '#55d4be']);
+    assert.ok(bossHead[1] - markerX >= 16 * scale + 2 * scale - 0.01, 'full-progress heads remain visible with a scaled gap');
+  };
+  assertBossMarkerSeparated();
+  state.globals.ContinuousCombatStage.bossAvailable = false;
+  state.globals.ContinuousCombatStage.bossActive = true;
+  assertBossMarkerSeparated();
+  state.globals.ContinuousCombatStage.bossActive = false;
+  state.globals.ContinuousCombatStage.wave = 1;
+  calls.length = 0;
+  const deferredHud = control.drawCombatProgressHud(ctx, { state, images: {}, worldToCanvas });
+  assert.equal(deferredHud.completedWaves, 0, 'cleared readiness refills the meter during an ordinary wave');
+  assert.deepEqual(notchColors(), ['#243237', '#243237', '#243237']);
+  state.globals.ContinuousCombatStage.bossAvailable = true;
+  state.globals.ContinuousCombatStage.bossSummonRequired = true;
+  calls.length = 0;
+  assert.equal(control.drawCombatProgressHud(ctx, { state, images: {}, worldToCanvas }).completedWaves, 4);
+  assert.deepEqual(notchColors(), ['#55d4be', '#55d4be', '#55d4be']);
+});
+
+test('actor HP bars follow their owners in the shared depth-sorted paint queue', () => {
+  const renderer = fs.readFileSync(path.join(root, 'web-runner/systems/renderRuntime.js'), 'utf8');
+  assert.match(renderer, /addActorPaint\(enemy\.uid, \(\) => \{ ctx\.save\(\); ctx\.globalAlpha \*= enemyFadeAlpha; drawCombatHealthBar\(ctx, \{ x: barX, y: barY, width: drawBarW, height: drawBarH, fillWidth: drawFillW, trailWidth: drawYellowW, team: \\?'enemy\\?' \}\); ctx\.restore\(\); \}\)/);
+  assert.match(renderer, /addActorPaint\(uid, \(\) => paintWithActivationAlpha\(ctx, heroBarFadeAlpha, \(\) => drawCombatHealthBar\(ctx, \{ x: barX, y: barY, width: baseW, height: baseH, fillWidth: barState\.fillW, trailWidth: barState\.yellowW, team: \\?'hero\\?' \}\)\)\)/);
+  assert.match(renderer, /const enemyFootY = puppet \? Number\(pos\.y\) : Number\(drawY \+ enemyH\)/);
+  assert.match(renderer, /actorPaintQueue\.push\(\{ footY: enemyFootY/);
+  assert.match(renderer, /const barY = Math\.round\(enemyFootY \+ \(4 \* layoutScale\)\)/);
+  assert.match(renderer, /footY: pos\.y, height: enemyH/);
+  assert.match(renderer, /const drawY = pos\.y - \(enemy\.combatRank === 'boss' \? enemyH : enemyH \/ 2\)/);
+  assert.match(renderer, /footPos\.y \+ 4 \* layoutScale/);
+  assert.match(renderer, /for \(const entry of actorPaintQueue\) entry\.paint\(\);[\s\S]*for \(const paint of actorFrontOverlayQueue\) paint\(\);/);
+  assert.doesNotMatch(renderer, /actorFrontOverlayQueue\.push\(\(\) => drawCombatHealthBar/);
 });

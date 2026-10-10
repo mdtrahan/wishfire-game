@@ -23,7 +23,7 @@ export function persistHeroProgressIfDirty({stateGlobals:g}) {
   if (!g.HeroProgress || g.HeroProgressStorageError) return false;
   const stage = g.ContinuousCombatStage;
   if (Number(g.ContinuousCombatStageLoop) === 1 && stage) {
-    const checkpoint = { region: stage.region, stage: stage.stage, wave: stage.bossActive ? 1 : stage.wave, bossAvailable: !!stage.bossAvailable || !!stage.bossActive, clearedBosses: stage.clearedBosses };
+    const checkpoint = { region: stage.region, stage: stage.stage, wave: stage.bossActive ? 1 : stage.wave, bossAvailable: !!stage.bossAvailable || !!stage.bossActive, bossSummonRequired: stage.bossSummonRequired === true || stage.bossActive === true, clearedBosses: stage.clearedBosses, bossUID: stage.bossActive && Number.isSafeInteger(stage.bossUID) && stage.bossUID > 0 ? stage.bossUID : undefined, clearedPackMask: Number.isSafeInteger(stage.clearedPackMask) && stage.clearedPackMask >= 0 && stage.clearedPackMask <= 63 ? stage.clearedPackMask : 0 };
     if (JSON.stringify(checkpoint) !== JSON.stringify(g.HeroProgress.continuousStage)) {
       g.HeroProgress.continuousStage = checkpoint;
       g.HeroProgressDirty = true;
@@ -109,6 +109,14 @@ function restorePendingGoldSettlements(g) {
 }
 
 function restorePendingBattleRewards(g, actors) {
+  const stage = g.HeroProgress?.continuousStage;
+  const bossUID = stage?.bossUID;
+  if (Number.isSafeInteger(bossUID) && bossUID > 0) {
+    const active = g.HeroProgress.pendingBattleRewards;
+    if (active) { delete active.defeated?.[String(bossUID)]; delete active.defeatedGold?.[String(bossUID)]; }
+    delete stage.bossUID;
+    g.HeroProgressDirty = true;
+  }
   const pending = g.HeroProgress?.pendingBattleRewards;
   if (!pending) return false;
   if (g.HeroProgress.settledBattles?.includes(pending.id)) {

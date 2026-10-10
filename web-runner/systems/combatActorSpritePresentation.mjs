@@ -3,8 +3,16 @@ import {
   normalizeCombatOrientation,
 } from '../../src/core/combatOrientation.mjs';
 
-export function shouldMirrorCombatActorSprite(orientation) {
-  return normalizeCombatOrientation(orientation) === COMBAT_ORIENTATION_RIGHT_WISE;
+export function shouldMirrorCombatActorSprite(orientation, facing = null, nativeFacing = null) {
+  const rightWise = normalizeCombatOrientation(orientation) === COMBAT_ORIENTATION_RIGHT_WISE;
+  const worldFacing = facing === 'left' || facing === 'right' ? facing : null;
+  const imageFacing = nativeFacing === 'left' || nativeFacing === 'right' ? nativeFacing : null;
+  if (worldFacing && imageFacing) return (worldFacing !== imageFacing) !== rightWise;
+  return rightWise;
+}
+
+export function combatActorVisualScale({ actorUID, effects, now = 0 } = {}) {
+  return Number(effects?.[String(actorUID)]?.shrink?.expiresAt) > now ? 0.7 : 1;
 }
 
 export function drawCombatActorSprite(ctx, image, {
@@ -19,9 +27,10 @@ export function drawCombatActorSprite(ctx, image, {
   sourceWidth,
   sourceHeight,
   actorUID, effects, now = 0,
+  facing, nativeFacing,
 } = {}) {
   if (!ctx || !image) return null;
-  const shrink=Number(effects?.[String(actorUID)]?.shrink?.expiresAt)>now ? .7 : 1;
+  const shrink = combatActorVisualScale({ actorUID, effects, now });
   const x = Number(drawX)+(Number(width)*(1-shrink)/2);
   const y = Number(drawY)+Number(height)*(1-shrink);
   const w = Number(width)*shrink;
@@ -35,7 +44,7 @@ export function drawCombatActorSprite(ctx, image, {
     else ctx.drawImage(image, x, y, w, h);
   };
 
-  const mirrored = shouldMirrorCombatActorSprite(orientation);
+  const mirrored = shouldMirrorCombatActorSprite(orientation, facing, nativeFacing);
   if (mirrored) {
     ctx.save();
     ctx.translate(pivot, 0);

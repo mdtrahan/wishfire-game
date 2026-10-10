@@ -27,6 +27,8 @@
 @keyframes lamp-burp{0%,100%{transform:rotate(0)}30%{transform:rotate(-12deg)}60%{transform:rotate(8deg)}80%{transform:rotate(-3deg)}}
 @keyframes lamp-reveal{from{transform:translateY(20px)}65%{transform:translateY(-8px)}to{transform:translateY(0)}}
 #lamp-overlay{position:fixed;z-index:10001;display:grid;place-items:center;padding:8px;background:#0d1114b8;container-type:inline-size;font:14px/1.4 system-ui,sans-serif;color:#fff0d6;isolation:isolate}
+#lamp-overlay[data-boss-fallback=true]{padding-top:calc(8px + var(--boss-fallback-reserve,0px))}
+#lamp-overlay[data-boss-fallback=true] #lamp-dialog[data-view=equip]{overflow-y:auto}
 #lamp-dialog{width:100%;max-width:560px;max-height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;border:2px solid #c7a35c;border-radius:12px;background:linear-gradient(#3c3d3e,#202426);box-shadow:0 8px 24px #000a;padding:0 10px 10px;scrollbar-width:thin;scrollbar-color:#ad8b52 #282827;outline:none}
 .lamp-modal-header{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;background:#363535;border-bottom:1px solid #8a7047;color:#efce8a;font-size:14px;font-weight:900;letter-spacing:.06em;margin:0 -10px;padding-left:10px}
 .lamp-modal-header button{font-size:24px;min-width:44px;min-height:40px;border:0;background:transparent}
@@ -65,6 +67,8 @@
 .lamp-hero.lamp-portrait img{display:block;width:100%;height:100%;object-fit:cover;object-position:var(--portrait-position);border-radius:4px}
 .lamp-hero.lamp-portrait[aria-pressed=true]{border-color:#ffda55;box-shadow:0 0 5px 2px #ffc928;background:#1b2022}
 .lamp-cp-direction{position:absolute;right:-4px;bottom:-3px;width:clamp(16px,6cqw,25px);height:clamp(20px,7.8cqw,32px);background:currentColor;clip-path:polygon(50% 0,100% 45%,70% 45%,70% 100%,30% 100%,30% 45%,0 45%)}
+.lamp-queue .lamp-tile .lamp-review-arrow{position:absolute;z-index:1;top:4px;right:4px;width:clamp(10.35px,3.68cqw,23px);height:clamp(13.8px,4.6cqw,27.6px);filter:drop-shadow(1px 2px 0 #000)}
+.lamp-queue .lamp-tile .lamp-review-arrow .lamp-cp-direction{position:static;display:block;width:100%;height:100%}
 .lamp-cp-direction.up,.lamp-stat-arrow.up{color:#00dd9a}
 .lamp-cp-direction.down,.lamp-stat-arrow.down{color:#ff263e}
 .lamp-cp-direction.down{rotate:180deg}
@@ -134,7 +138,7 @@
 .lamp-lock{position:absolute;width:12px;height:10px;border-radius:2px;background:#fff1d1;left:50%;top:50%;transform:translate(-50%,-25%);box-shadow:0 0 3px #111}
 .lamp-lock:before{content:'';position:absolute;left:2px;top:-6px;width:8px;height:8px;border:2px solid #fff1d1;border-bottom:0;border-radius:7px 7px 0 0}
 .lamp-level{position:absolute;bottom:0;right:0;padding:0 2px;border-radius:3px;background:#1a1d23dd;color:#fff;font-size:10px;font-weight:900;line-height:1.2;text-shadow:0 1px #000;white-space:nowrap}
-.lamp-queue .lamp-level{font-size:clamp(8px,3.5cqw,13px)}
+.lamp-queue .lamp-level,.gear-slot .lamp-art .lamp-level{font-size:clamp(8px,3.5cqw,13px)}
 .lamp-candidate .lamp-level{font-size:12px}
 
 .lamp-party-exp{position:fixed;z-index:102;pointer-events:none;transform:translateX(-50%);font:800 14px system-ui;color:#b9f3db;text-shadow:0 2px 2px #000;padding:3px 8px;border-radius:8px;background:#18342cdd;animation:lamp-cp-rise 1.5s ease-out forwards}
