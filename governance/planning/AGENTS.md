@@ -33,7 +33,7 @@
 
 - Wishfire progression keeps the owner-selected current EXP curve and manual2s/Auto5s cadence; sheet02 records the declined numeric trial. Combat/gear/hero-panel source agreement requires live deployed-actor evidence, including canonical versus instance identity.
 
-- Hero ownership repairs require explicit saved-progress and loadout conflict rules before migration; verify deployed actor and panel agreement while preserving unique gear across independent instances.
+- `wishfire-progression-adaptations/hero-owner-decision.md` records the repair to resume after integration: permanent progression/loadouts have one stable hero owner; combat actors are disposable and cannot create saved heroes. Save reconciliation requires earned-state preservation, unique item ownership and interrupted-write recovery.
 
 - Reference progression evidence distinguishes combat stage from claimed task gates; a plus-looking skill control can stay task-locked. Use actual video frames for timestamps and preserve raw hashes when large recordings remain outside Git checkpoints.
 
