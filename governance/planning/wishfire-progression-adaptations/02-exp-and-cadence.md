@@ -1,12 +1,14 @@
 # 02 — EXP costs and lamp cadence
 
-**Goal:** Trial an engaged first session that reaches party Lv5 in roughly 22–30 minutes.
+Status: the numeric trial below was declined. Current implementation retains the owner-selected tuning: 25 EXP per stored draw, a two-second manual minimum, five-second Auto cadence and ceil(100×level^1.5) costs. Verified against candidate `4338182d`.
+
+**Historical trial goal:** Reach party Lv5 in roughly 22–30 minutes.
 
 ## Owner decision
 
 Owner reply: **Keep current tuning**. Retain the existing ceil(100×level^1.5) EXP curve,25 EXP per stored draw, two-second saved minimum and five-second Auto cadence. The proposed eight-second/150-draw trial and1500 later-cost floor are declined. Their numeric criteria have an explicit owner exception; normal-play progression, overflow, capacity and timing evidence still apply. The22–30-minute trial target remains historical proposal context. Battle EXP policy is a separate pending choice.
 
-## Proposed trial
+## Declined trial
 
 Award 25 EXP to each hero per successfully stored draw. Use one shared eight-second interval for manual and Auto draws; the first draw can happen immediately. Clicking repeatedly cannot queue rewards or bypass the cooldown.
 

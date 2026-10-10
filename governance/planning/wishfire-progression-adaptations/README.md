@@ -50,4 +50,4 @@ The earlier [hero progression plan](../../../.worktrees/wt-ORKA-0ln-lamp/governa
 
 Owner chose “Keep current tuning”: retain the existing EXP curve and manual2s/Auto5s cadence. Sheet02’s eight-second/150-draw trial and1500 floor are declined; normal progression proof remains required. Other pending owner decisions remain explicit in the acceptance matrix.
 
-The verified primary-hero ownership defect and proposed save-preserving repair are tracked in [hero-owner-decision.md](hero-owner-decision.md); owner selection precedes runtime migration.
+The [primary-hero ownership defect](hero-owner-decision.md) still reproduces on candidate `4338182d`: canonical Fara owns the equipped stats while her `falie#1` combat actor receives none. The repair remains open under ORKA-5af.3; its save-owner/migration choice precedes runtime changes. Current Hero-screen CP presentation and Fara formation work do not resolve this ownership seam.

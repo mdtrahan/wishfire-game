@@ -1,6 +1,8 @@
 # Hero ownership repair decision — ORKA-5af.3
 
-Status: proposed; no runtime/persistence changes in this lane. Owner selection is required by sheet01 existing-save treatment and the Implementation Gate persistence/data-model escalation.
+Status: open implementation defect under ORKA-5af.3. The save-preserving repair remains a proposal. Owner selection is required by sheet01 existing-save treatment and the Implementation Gate persistence/data-model escalation.
+
+Reverified on current candidate `4338182d`: buildConfiguredCombatPartyMembers still creates primary `falie#1` identities; attachHeroProgress retains a separate progression record; equipmentStorage.apply selects gear by each exact heroInstanceKey. A production-function fixture generated seed-42 gear and equipped canonical Falie. Her equipmentStats became ATK4/DEF3/MAG1/RES1/HP11 while the deployed `falie#1` actor retained an empty equipmentStats object. The defect is current, so this planning issue remains relevant. Hero-screen CP refresh and formation-lead changes cover different consumers.
 
 ## Verified cause
 

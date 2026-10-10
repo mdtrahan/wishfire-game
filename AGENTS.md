@@ -57,6 +57,7 @@ After startup, execution policy is governed by:
 
 ## Worktree Discipline
 - Follow `governance/execution/integration.md` for lane creation, branch disposition, merge, cleanup, and deletion rules.
+- `goals/chatgpt-cloud-migration-plan.md` owns cloud preparation; its checkpoint report records local preservation and integration blockers. Cloud cutover requires separate owner approval.
 - Keep one implementation bead per bead-scoped branch/worktree; include the bead id in branch and worktree names.
 - Never merge without validation, current Integration Ready evidence, and a rollback checkpoint.
 - QA PASS certifies feature quality only; Integration Ready certifies merge readiness against current `main`.
