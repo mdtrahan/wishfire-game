@@ -24,3 +24,16 @@ if (checkout === authoritative) {
   writeFileSync(redirect, `${join(authoritative, '.beads')}\n`, { flag: 'wx' });
   console.log(`Beads redirects to ${authoritative}/.beads`);
 }
+
+if (checkout !== authoritative) {
+  const excluded = ['.beads/backup', 'output'];
+  const dirty = git('status', '--porcelain=v1', '--untracked-files=no', '--', ...excluded);
+  if (dirty) throw new Error('Refusing sparse exclusions over modified tracked output/backup files; preserve them first.');
+  const sparseFile = git('rev-parse', '--git-path', 'info/sparse-checkout');
+  const previous = existsSync(sparseFile) ? readFileSync(sparseFile, 'utf8') : '/*\n';
+  const patterns = [...new Set([...previous.trim().split('\n'), ...excluded.map(path => `!/${path}/`)])];
+  execFileSync('git', ['sparse-checkout', 'set', '--no-cone', '--stdin'], {
+    input: patterns.join('\n') + '\n', stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  console.log('Worktree excludes tracked output and authoritative Beads backup copies.');
+}
