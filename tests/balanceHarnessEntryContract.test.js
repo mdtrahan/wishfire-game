@@ -9,7 +9,7 @@ const assert = require('node:assert/strict');
 const harnessPath = path.join(__dirname, '..', 'tools', 'balance_harness.js');
 const source = fs.readFileSync(harnessPath, 'utf8');
 const hookSource = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js'), 'utf8');
-const { START_WORLD_POINT, aggregateSessions, applyPostRecoveryWaveClear, buildConfig, isRealtimeCombatReadyState, loadHeroFixture, loadLampFixture, observeRecoveryTransition, observedOrdinaryWaveClear, sourceFingerprint, writeHeroFixture, writeLampFixture } = require(harnessPath);
+const { START_WORLD_POINT, aggregateSessions, applyPostRecoveryWaveClear, buildConfig, isRealtimeCombatReadyState, loadHeroFixture, loadLampFixture, observeRecoveryTransition, observedOrdinaryWaveClear, sourceFingerprint, writeHeroFixture, writeLampFixture, writeOutputs } = require(harnessPath);
 
 test('source fingerprint changes when an untracked capture module changes', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'orka-balance-fingerprint-'));
@@ -316,12 +316,12 @@ test('balance harness counts completed continuous stages from stage transitions,
   assert.match(source, /endReason === 'max_waves'/);
 });
 
-test('casualty variation measures the first hero lost in each session', () => {
+test('casualty variation uses ordered KO evidence before sampled roster order', () => {
   const aggregate = aggregateSessions({ maxWaves: 5 }, [
-    { seed: 1, enemiesDefeated: 2, wavesCompleted: 1, bossesCleared: 0, defeatRecoveries: 3, simulationSecondsSurvived: 20, heroCasualties: ['Runa', 'Falie'], firstKoSide: 'enemy', endReason: 'party_defeated', deadlockCount: 0 },
+    { seed: 1, enemiesDefeated: 2, wavesCompleted: 1, bossesCleared: 0, defeatRecoveries: 3, simulationSecondsSurvived: 20, heroCasualties: ['Runa', 'Falie'], firstHeroCasualty: 'Falie', firstKoSide: 'enemy', endReason: 'party_defeated', deadlockCount: 0 },
     { seed: 2, enemiesDefeated: 2, wavesCompleted: 0, bossesCleared: 0, defeatRecoveries: 2, simulationSecondsSurvived: 21, heroCasualties: ['Huun', 'Falie'], firstKoSide: 'hero', endReason: 'party_defeated', deadlockCount: 0 },
   ]);
-  assert.deepEqual(aggregate.firstHeroCasualtyDistribution, { Runa: 1, Huun: 1 });
+  assert.deepEqual(aggregate.firstHeroCasualtyDistribution, { Falie: 1, Huun: 1 });
   assert.equal(aggregate.averageSimulationSecondsSurvived, 20.5);
   assert.equal(aggregate.acceptance.everySeedCompletesTarget, false);
   assert.equal(aggregate.totalDefeatRecoveries, 5);
@@ -330,4 +330,31 @@ test('casualty variation measures the first hero lost in each session', () => {
   assert.deepEqual(aggregate.coverage.separateFixturesRequired, ['boss_trials', 'recovery_trials']);
   assert.equal(aggregate.totalDefeatRecoveries, 5);
   assert.equal(aggregate.medianDefeatRecoveries, 2.5);
+});
+
+test('sampled casualties do not invent first-KO order when event evidence is incomplete', () => {
+  const aggregate = aggregateSessions({ maxWaves: 1 }, [
+    { seed: 1, enemiesDefeated: 0, wavesCompleted: 0, bossesCleared: 0, defeatRecoveries: 0, simulationSecondsSurvived: 1, heroCasualties: ['Falie', 'Huun'], firstHeroCasualty: null, firstKoSide: 'unobserved', endReason: 'timeout', deadlockCount: 0 },
+  ]);
+  assert.deepEqual(aggregate.firstHeroCasualtyDistribution, {});
+  assert.deepEqual(aggregate.casualtyDistribution, { Falie: 1, Huun: 1 });
+});
+
+test('CSV writes ordered first hero casualty separately from roster-order casualties', () => {
+  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'orka-balance-casualty-'));
+  try {
+    const sessions = [
+      { sessionId: 1, seed: 1, heroCasualties: ['Falie', 'Huun'], firstHeroCasualty: 'Huun' },
+      { sessionId: 2, seed: 2, heroCasualties: ['Falie'], firstHeroCasualty: null },
+    ];
+    const { csvPath } = writeOutputs({ outputDir }, sessions, {});
+    const [header, first, second] = fs.readFileSync(csvPath, 'utf8').trim().split('\n').map((line) => line.split(','));
+    const firstHeroColumn = header.indexOf('first_hero_casualty');
+    assert.ok(firstHeroColumn > header.indexOf('first_ko_time'));
+    assert.equal(first[firstHeroColumn], 'Huun');
+    assert.equal(second[firstHeroColumn], '');
+    assert.equal(first[header.indexOf('hero_casualties')], 'Falie|Huun');
+  } finally {
+    fs.rmSync(outputDir, { recursive: true, force: true });
+  }
 });

@@ -1,5 +1,5 @@
 # Tests DOX
-- `balanceTelemetryContract.test.mjs` protects opt-in capture and bounded event retention; `balanceHarnessEntryContract.test.js` protects exact-event use alongside sampled HP.
+- `balanceTelemetryContract.test.mjs` protects opt-in capture and bounded event retention; `balanceHarnessEntryContract.test.js` protects exact-event use alongside sampled HP, including ordered first-hero casualty aggregation and CSV output.
 - `questCombatSessionContract.test.js` also proves recovery events record each hero's restored HP without attributing it to a healer.
 - `storageBudgetContract.test.mjs` proves oversized payload/tree/runtime rejection and staged generated-output refusal. Worktree linking tests prove output/backup exclusion, preservation of source and refusal over dirty tracked excluded paths.
 

@@ -537,6 +537,7 @@ async function runSession(page, config, sessionId) {
   const recoveryByIndex = new Map();
   const recoveryAttempts = [];
   let lastHeroKo = null;
+  let firstOrderedHeroCasualty = null;
   let lastCombatEventId = snapshot.combatEventSeq;
   const startCombatEventId = lastCombatEventId;
   let missingCombatEvents = 0;
@@ -738,6 +739,7 @@ async function runSession(page, config, sessionId) {
         incomingDamageEvents.push({ targetUID: event.targetUID, target: tracked.name, amount: event.amount, hpBefore: event.hpBefore, hpAfter: event.hpAfter, targetHpFraction: Number((event.amount / tracked.maxHp).toFixed(4)), sourceUID: event.sourceUID, damageType: event.damageType, wave: Number(snapshot.continuousProgression?.wave || 0) });
         if (event.hpAfter <= 0) {
           if (!firstKo) firstKo = { side: 'hero', uid: event.targetUID, time: Number(Math.max(0, event.time - startSimulationTime).toFixed(3)) };
+          if (!firstOrderedHeroCasualty) firstOrderedHeroCasualty = tracked.name;
           if (tracked.firstKoTime == null) tracked.firstKoTime = Number(Math.max(0, event.time - startSimulationTime).toFixed(3));
           lastHeroKo = { uid: tracked.uid, name: tracked.name, time: Number(Math.max(0, event.time - startSimulationTime).toFixed(3)) };
           if (!heroCasualties.has(event.targetUID)) heroCasualties.set(event.targetUID, tracked.name);
@@ -815,6 +817,7 @@ async function runSession(page, config, sessionId) {
     simulationSecondsSurvived: Number(Math.max(0, snapshot.time - startSimulationTime).toFixed(3)),
     firstKoSide: firstKo?.side || (defeatedEnemyUIDs.size || heroCasualties.size ? 'unobserved' : 'none'),
     firstKoTime: firstKo?.time ?? null,
+    firstHeroCasualty: firstOrderedHeroCasualty ?? (lastCombatEventId === startCombatEventId ? heroCasualties.values().next().value ?? null : null),
     heroCasualties: [...heroCasualties.values()],
     livingHeroes: snapshot.heroes.filter((hero) => hero.hp > 0).length,
     deadlockCount,
@@ -858,7 +861,7 @@ function aggregateSessions(config, sessions) {
   const endReasons = {};
   for (const session of sessions) {
     for (const hero of session.heroCasualties) casualtyDistribution[hero] = Number(casualtyDistribution[hero] || 0) + 1;
-    const firstHeroCasualty = session.heroCasualties[0];
+    const firstHeroCasualty = session.firstHeroCasualty === undefined ? session.heroCasualties[0] : session.firstHeroCasualty;
     if (firstHeroCasualty) firstHeroCasualtyDistribution[firstHeroCasualty] = Number(firstHeroCasualtyDistribution[firstHeroCasualty] || 0) + 1;
     firstKoSides[session.firstKoSide] = Number(firstKoSides[session.firstKoSide] || 0) + 1;
     endReasons[session.endReason] = Number(endReasons[session.endReason] || 0) + 1;
@@ -903,8 +906,8 @@ function writeOutputs(config, sessions, aggregate) {
   const run = { source: config.source, harnessSource: config.harnessSource, serveRoot: config.serveRoot, seedStart: config.seedStart, lampSeed: config.lampSeed, lampFixture: config.lampFixture || null, heroFixture: config.heroFixture || null, heroSlots: config.heroSlots, sessions: config.sessions, maxWaves: config.maxWaves, maxBossClears: config.maxBossClears, autoEquip: config.autoEquip, captureFrames: config.captureFrames, statePollMs: config.statePollMs, sessionTimeoutMs: config.sessionTimeoutMs, deadlockTimeoutMs: config.deadlockTimeoutMs, viewport: config.viewport };
   fs.writeFileSync(jsonPath, `${JSON.stringify({ run, aggregate, sessions }, null, 2)}\n`, 'utf8');
   fs.writeFileSync(csvPath, toCsv([
-    ['session_id', 'seed', 'enemies_defeated', 'waves_completed', 'bosses_cleared', 'defeat_recoveries', 'simulation_seconds_survived', 'first_ko_side', 'first_ko_time', 'hero_casualties', 'deadlock_count', 'end_reason', 'continuous_progression_start', 'continuous_progression_end'],
-    ...sessions.map((session) => [session.sessionId, session.seed, session.enemiesDefeated, session.wavesCompleted, session.bossesCleared, session.defeatRecoveries, session.simulationSecondsSurvived, session.firstKoSide, session.firstKoTime, session.heroCasualties.join('|'), session.deadlockCount, session.endReason, JSON.stringify(session.continuousProgressionStart), JSON.stringify(session.continuousProgressionEnd)]),
+    ['session_id', 'seed', 'enemies_defeated', 'waves_completed', 'bosses_cleared', 'defeat_recoveries', 'simulation_seconds_survived', 'first_ko_side', 'first_ko_time', 'first_hero_casualty', 'hero_casualties', 'deadlock_count', 'end_reason', 'continuous_progression_start', 'continuous_progression_end'],
+    ...sessions.map((session) => [session.sessionId, session.seed, session.enemiesDefeated, session.wavesCompleted, session.bossesCleared, session.defeatRecoveries, session.simulationSecondsSurvived, session.firstKoSide, session.firstKoTime, session.firstHeroCasualty ?? '', session.heroCasualties.join('|'), session.deadlockCount, session.endReason, JSON.stringify(session.continuousProgressionStart), JSON.stringify(session.continuousProgressionEnd)]),
   ]), 'utf8');
   return { jsonPath, csvPath };
 }
@@ -1006,5 +1009,6 @@ if (require.main === module) {
     recoveryProgressionView,
     writeHeroFixture,
     writeLampFixture,
+    writeOutputs,
   };
 }
