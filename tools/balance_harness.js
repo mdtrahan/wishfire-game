@@ -5,6 +5,7 @@ const http = require('node:http');
 const net = require('node:net');
 const { spawn, execFileSync } = require('node:child_process');
 const { createHash } = require('node:crypto');
+const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright');
 const { classifyPlaywrightFailure, readBool } = require('./playwright_support');
 
@@ -292,8 +293,18 @@ async function readBalanceSnapshot(page, afterEventId = 0) {
       encounterSummary: state.encounterSummary || null,
       loadouts: state.loadouts || {},
       lampSequence: Number(state.lamp?.sequence || 0),
+      lampSeed: Number(globals.Equipment?.lamp?.seed ?? state.lamp?.seed ?? 0),
       lampPendingIds: (state.lamp?.pending || []).map(String),
-      heroes: state.heroes.map((hero) => ({ uid: Number(hero.uid || 0), name: String(hero.name || ''), x: Number(hero.x || 0), y: Number(hero.y || 0), footX: Number(actors.get(Number(hero.uid || 0))?.footX ?? hero.x ?? 0), arenaTargetUID: Number(actors.get(Number(hero.uid || 0))?.arenaTargetUID || 0), hp: Number(hero.hp || 0), maxHp: Number(hero.maxHp || 0), currentLevel: Number(hero.currentLevel || 1), combatPower: Number(hero.combatPower || 0), attackType: String(hero.attackType || ''), stats: { ...(hero.stats || {}) }, recoveryRevealActive: !!hero.recoveryRevealActive })),
+      heroes: state.heroes.map((hero) => {
+        const uid = Number(hero.uid || 0), actor = actors.get(uid);
+        return { uid, name: String(hero.name || ''), x: Number(hero.x || 0), y: Number(hero.y || 0),
+          footX: Number(actor?.footX ?? hero.x ?? 0), arenaTargetUID: Number(actor?.arenaTargetUID || 0),
+          hp: Number(hero.hp || 0), maxHp: Number(hero.maxHp || 0),
+          currentLevel: Number(actor?.currentLevel ?? hero.currentLevel ?? 1),
+          combatPower: Number(actor?.combatPower ?? hero.combatPower ?? 0),
+          attackType: String(actor?.attackType || hero.attackType || ''),
+          stats: { ...(actor?.stats || hero.stats || {}) }, recoveryRevealActive: !!hero.recoveryRevealActive };
+      }),
       enemies: state.enemies.map((enemy) => ({ uid: Number(enemy.uid || 0), name: String(enemy.name || ''), slot: Number(enemy.slot || 0), x: Number(enemy.x || 0), y: Number(enemy.y || 0), streamState: String(enemy.streamState || ''), streamEngageX: Number(enemy.streamEngageX || 0), arenaTargetUID: Number(actors.get(Number(enemy.uid || 0))?.arenaTargetUID || 0), arenaInReach: !!actors.get(Number(enemy.uid || 0))?.arenaInReach, hp: Number(enemy.hp || 0), maxHp: Number(enemy.maxHp || 0) })),
       damageEvents: (state.damageEvents || []).map((event) => ({ id: Number(event.id || 0), targetUID: Number(event.targetUID || 0), sourceUID: Number(event.sourceUID || 0), hpBefore: Number(event.hpBefore || 0), hpAfter: Number(event.hpAfter || 0), amount: Number(event.amount || 0) })),
       combatEventSeq: Number(globals.BalanceCombatEventSeq || 0),
@@ -369,13 +380,42 @@ function equippedSlotCount(loadouts = {}) {
   return Object.values(loadouts).reduce((count, slots) => count + Object.values(slots || {}).filter(Boolean).length, 0);
 }
 
+async function loadLampFixture(config) {
+  if (config.lampSeed === null && !config.lampFixture) return null;
+  const lampModule = pathToFileURL(path.join(config.serveRoot, 'web-runner/src/core/lampGear.mjs')).href;
+  const conveyorModule = pathToFileURL(path.join(config.serveRoot, 'web-runner/src/core/lampConveyor.mjs')).href;
+  const [{ createLampEconomy }, { validateConveyorState }] = await Promise.all([import(lampModule), import(conveyorModule)]);
+  const raw = config.lampFixture
+    ? fs.readFileSync(config.lampFixture)
+    : Buffer.from(JSON.stringify(createLampEconomy(config.lampSeed)));
+  const save = raw.toString('utf8');
+  const fixture = JSON.parse(save);
+  validateConveyorState(fixture);
+  return { save, sha256: createHash('sha256').update(raw).digest('hex'), seed: fixture.lamp.seed };
+}
+
+function writeLampFixture(file, save) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, save, 'utf8');
+  return { path: file, sha256: createHash('sha256').update(Buffer.from(save, 'utf8')).digest('hex') };
+}
+
 async function runSession(page, config, sessionId) {
   const seed = config.seedStart + sessionId - 1;
+  const lampFixture = await loadLampFixture(config);
+  if (lampFixture) {
+    await page.addInitScript(({ value }) => {
+      if (sessionStorage.getItem('__balanceLampFixture') === '1') return;
+      localStorage.setItem('wishfire.equipment-economy.v5', value);
+      sessionStorage.setItem('__balanceLampFixture', '1');
+    }, { value: lampFixture.save });
+  }
   await page.goto(`${config.origin}/web-runner/index.html`, { waitUntil: 'domcontentloaded' });
   await page.setViewportSize(config.viewport);
   await enterRealtimeCombat(page, config, seed);
 
   let snapshot = await readBalanceSnapshot(page);
+  if (lampFixture && snapshot.lampSeed !== lampFixture.seed) throw new Error('Lamp fixture was not loaded');
   const startSimulationTime = snapshot.time;
   const heroMetrics = snapshot.heroes.map((hero) => ({ uid: hero.uid, name: hero.name, currentLevel: hero.currentLevel, combatPower: hero.combatPower, attackType: hero.attackType, stats: hero.stats, startHp: hero.hp, minSampledHp: hero.hp, minEventHp: hero.hp, endHp: hero.hp, sampledHpLoss: 0, largestSampleWindowHpLoss: 0, sampledRecovery: 0, physicalIncomingDamage: 0, magicIncomingDamage: 0, unknownIncomingDamage: 0, effectiveHealing: 0, healingBySourceUID: {}, firstKoTime: null, lastHp: hero.hp, startMaxHp: hero.maxHp, maxHp: hero.maxHp }));
   const defeatedEnemyUIDs = new Set();
@@ -398,7 +438,7 @@ async function runSession(page, config, sessionId) {
   const startDefeatRecoveries = Number(snapshot.continuousProgression?.defeatRecoveries || 0);
   const snapshotAtStart = snapshot.continuousProgression;
   const openingRoam = { start: snapshot.initialRoam, release: null };
-  const startingEquipment = { slots: equippedSlotCount(snapshot.loadouts), lampSequence: snapshot.lampSequence, loadouts: snapshot.loadouts };
+  const startingEquipment = { slots: equippedSlotCount(snapshot.loadouts), lampSeed: snapshot.lampSeed, lampSequence: snapshot.lampSequence, loadouts: snapshot.loadouts };
   const equipmentActions = { collect: 0, auto_equip: 0, close: 0 };
   const captures = {};
   async function capture(label) {
@@ -608,6 +648,12 @@ async function runSession(page, config, sessionId) {
     activeBossAttempt.outcome = endReason === 'timeout' ? 'harness_timeout' : endReason;
     bossAttemptRecords.push(activeBossAttempt);
   }
+  let savedLampFixture = null;
+  if (config.saveLampFixture) {
+    const save = await page.evaluate(() => localStorage.getItem('wishfire.equipment-economy.v5'));
+    if (!save) throw new Error('Lamp save was unavailable for fixture export');
+    savedLampFixture = writeLampFixture(config.saveLampFixture, save);
+  }
   return {
     sessionId,
     seed,
@@ -616,7 +662,7 @@ async function runSession(page, config, sessionId) {
     openingRoam,
     continuousProgressionStart: snapshotAtStart,
     continuousProgressionEnd: snapshot.continuousProgression,
-    equipment: { scenario: config.autoEquip ? 'collect_auto_equip' : 'observe_only', start: startingEquipment, end: { slots: equippedSlotCount(snapshot.loadouts), lampSequence: snapshot.lampSequence, loadouts: snapshot.loadouts }, actions: equipmentActions },
+    equipment: { scenario: config.autoEquip ? 'collect_auto_equip' : 'observe_only', fixture: lampFixture ? { source: config.lampFixture || 'seeded_new_save', sha256: lampFixture.sha256 } : null, savedFixture: savedLampFixture, start: startingEquipment, end: { slots: equippedSlotCount(snapshot.loadouts), lampSeed: snapshot.lampSeed, lampSequence: snapshot.lampSequence, loadouts: snapshot.loadouts }, actions: equipmentActions },
     captures,
     finalArena: ['deadlock', 'timeout'].includes(endReason) ? { heroes: snapshot.heroes.map(hero => ({ uid: hero.uid, name: hero.name, x: hero.x, y: hero.y, hp: hero.hp, arenaTargetUID: hero.arenaTargetUID })), enemies: snapshot.enemies.map(enemy => ({ uid: enemy.uid, name: enemy.name, x: enemy.x, y: enemy.y, hp: enemy.hp, slot: enemy.slot, streamState: enemy.streamState, streamEngageX: enemy.streamEngageX, arenaTargetUID: enemy.arenaTargetUID, arenaInReach: enemy.arenaInReach })), initialRoam: snapshot.initialRoam, readiness: snapshot.readiness } : null,
     bossAttempts: { summonClicks: bossSummonClicks, activeTransitions: bossActiveTransitions, highestHpObserved: highestBossHp, lowestHpObserved: lowestBossHp, records: bossAttemptRecords, gameTimer: 'unavailable' },
@@ -711,7 +757,7 @@ function writeOutputs(config, sessions, aggregate) {
   fs.mkdirSync(config.outputDir, { recursive: true });
   const jsonPath = path.join(config.outputDir, 'balance_metrics.json');
   const csvPath = path.join(config.outputDir, 'session_results.csv');
-  const run = { source: config.source, harnessSource: config.harnessSource, serveRoot: config.serveRoot, seedStart: config.seedStart, sessions: config.sessions, maxWaves: config.maxWaves, maxBossClears: config.maxBossClears, autoEquip: config.autoEquip, captureFrames: config.captureFrames, statePollMs: config.statePollMs, sessionTimeoutMs: config.sessionTimeoutMs, deadlockTimeoutMs: config.deadlockTimeoutMs, viewport: config.viewport };
+  const run = { source: config.source, harnessSource: config.harnessSource, serveRoot: config.serveRoot, seedStart: config.seedStart, lampSeed: config.lampSeed, lampFixture: config.lampFixture || null, sessions: config.sessions, maxWaves: config.maxWaves, maxBossClears: config.maxBossClears, autoEquip: config.autoEquip, captureFrames: config.captureFrames, statePollMs: config.statePollMs, sessionTimeoutMs: config.sessionTimeoutMs, deadlockTimeoutMs: config.deadlockTimeoutMs, viewport: config.viewport };
   fs.writeFileSync(jsonPath, `${JSON.stringify({ run, aggregate, sessions }, null, 2)}\n`, 'utf8');
   fs.writeFileSync(csvPath, toCsv([
     ['session_id', 'seed', 'enemies_defeated', 'waves_completed', 'bosses_cleared', 'defeat_recoveries', 'simulation_seconds_survived', 'first_ko_side', 'first_ko_time', 'hero_casualties', 'deadlock_count', 'end_reason', 'continuous_progression_start', 'continuous_progression_end'],
@@ -722,11 +768,22 @@ function writeOutputs(config, sessions, aggregate) {
 
 function buildConfig(argSource = parseArgs(process.argv.slice(2)), env = process.env) {
   const args = Array.isArray(argSource) ? parseArgs(argSource) : (argSource || {});
+  const sessions = clampInt(args.sessions || env.BALANCE_SESSION_COUNT, 1, DEFAULTS.sessions);
+  const lampSeedInput = args.lampSeed ?? env.BALANCE_LAMP_SEED;
+  const lampSeed = lampSeedInput == null || lampSeedInput === '' ? null : Number(lampSeedInput);
+  if (lampSeed !== null && (!Number.isInteger(lampSeed) || lampSeed < 0 || lampSeed > 0xffffffff)) throw new Error('lampSeed must be a uint32');
+  const lampFixture = readText(args.lampFixture ?? env.BALANCE_LAMP_FIXTURE);
+  const saveLampFixture = readText(args.saveLampFixture ?? env.BALANCE_SAVE_LAMP_FIXTURE);
+  if (lampSeed !== null && lampFixture) throw new Error('Choose lampSeed or lampFixture');
+  if (saveLampFixture && sessions !== 1) throw new Error('saveLampFixture requires one session');
   return {
-    sessions: clampInt(args.sessions || env.BALANCE_SESSION_COUNT, 1, DEFAULTS.sessions),
+    sessions,
     maxWaves: clampInt(args.maxWaves || env.BALANCE_MAX_WAVES, 1, DEFAULTS.maxWaves),
     maxBossClears: clampInt(args.maxBossClears ?? env.BALANCE_MAX_BOSS_CLEARS, 0, DEFAULTS.maxBossClears),
     seedStart: clampInt(args.seedStart || env.BALANCE_SEED_START, 1, 0xC0DE0001),
+    lampSeed,
+    lampFixture: lampFixture ? path.resolve(lampFixture) : '',
+    saveLampFixture: saveLampFixture ? path.resolve(saveLampFixture) : '',
     serveRoot: path.resolve(args.serveRoot || env.BALANCE_SERVE_ROOT || REPO_ROOT),
     serverHost: env.BALANCE_SERVER_HOST || DEFAULTS.serverHost,
     serverPort: clampInt(args.port || env.BALANCE_SERVER_PORT, 1, DEFAULTS.serverPort),
@@ -787,8 +844,10 @@ if (require.main === module) {
     buildConfig,
     closeAttachedBrowserViaCDP,
     isRealtimeCombatReadyState,
+    loadLampFixture,
     parseArgs,
     sourceFingerprint,
     observedOrdinaryWaveClear,
+    writeLampFixture,
   };
 }

@@ -2,13 +2,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { execFileSync } = require('node:child_process');
+const { createHash } = require('node:crypto');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const harnessPath = path.join(__dirname, '..', 'tools', 'balance_harness.js');
 const source = fs.readFileSync(harnessPath, 'utf8');
 const hookSource = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js'), 'utf8');
-const { START_WORLD_POINT, aggregateSessions, isRealtimeCombatReadyState, observedOrdinaryWaveClear, sourceFingerprint } = require(harnessPath);
+const { START_WORLD_POINT, aggregateSessions, buildConfig, isRealtimeCombatReadyState, loadLampFixture, observedOrdinaryWaveClear, sourceFingerprint, writeLampFixture } = require(harnessPath);
 
 test('source fingerprint changes when an untracked capture module changes', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'orka-balance-fingerprint-'));
@@ -52,6 +53,51 @@ test('optional progression scenario uses visible lamp collection and auto-equip 
   assert.match(source, /#wishfire-lamp button\[data-action="collect"\]/);
   assert.match(source, /button\[data-action="auto-equip"\]/);
   assert.match(source, /equipment: \{ scenario: config\.autoEquip \? 'collect_auto_equip' : 'observe_only'/);
+});
+
+test('fixed lamp seed fixture uses the game save constructor and reports the loaded seed', async () => {
+  assert.equal(buildConfig({ lampSeed: '4242' }, {}).lampSeed, 4242);
+  assert.equal(buildConfig({}, {}).lampSeed, null);
+  assert.throws(() => buildConfig({ lampSeed: '-1' }, {}), /lampSeed must be a uint32/);
+  assert.throws(() => buildConfig({ lampSeed: '1.5' }, {}), /lampSeed must be a uint32/);
+  assert.throws(() => buildConfig({ lampSeed: '42', lampFixture: '/tmp/gear.json' }, {}), /Choose lampSeed or lampFixture/);
+  assert.throws(() => buildConfig({ sessions: '2', saveLampFixture: '/tmp/gear.json' }, {}), /saveLampFixture requires one session/);
+  assert.match(source, /createLampEconomy\(config\.lampSeed\)/);
+  assert.match(source, /validateConveyorState\(fixture\)/);
+  assert.match(source, /page\.addInitScript/);
+  assert.ok(source.indexOf('page.addInitScript') < source.indexOf('await page.goto'));
+  assert.match(source, /snapshot\.lampSeed !== lampFixture\.seed/);
+  assert.match(source, /lampSeed: snapshot\.lampSeed/);
+  assert.match(source, /stats: \{ \.\.\.\(actor\?\.stats \|\| hero\.stats \|\| \{\}\) \}/);
+  assert.match(source, /savedLampFixture = writeLampFixture\(config\.saveLampFixture, save\)/);
+  const { createLampEconomy } = await import('../web-runner/src/core/lampGear.mjs');
+  const { validateConveyorState } = await import('../web-runner/src/core/lampConveyor.mjs');
+  assert.doesNotThrow(() => validateConveyorState(createLampEconomy(4242)));
+});
+
+test('lamp fixture import and export preserve raw bytes, loadout, and reject corrupt saves', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'orka-lamp-fixture-'));
+  try {
+    const { createLampEconomy } = await import('../web-runner/src/core/lampGear.mjs');
+    const fixture = createLampEconomy(4242);
+    const raw = `${JSON.stringify(fixture, null, 2)}\n`;
+    const file = path.join(root, 'gear.json');
+    const exported = writeLampFixture(file, raw);
+    const actualSha = createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+    assert.equal(exported.sha256, actualSha);
+    const loaded = await loadLampFixture({ serveRoot: path.join(__dirname, '..'), lampSeed: null, lampFixture: file });
+    assert.equal(loaded.save, raw);
+    assert.equal(loaded.sha256, actualSha);
+    assert.equal(loaded.seed, 4242);
+    assert.deepEqual(JSON.parse(loaded.save).loadouts, fixture.loadouts);
+    assert.equal(await loadLampFixture({ serveRoot: path.join(__dirname, '..'), lampSeed: null, lampFixture: '' }), null);
+    fs.writeFileSync(file, '{bad json');
+    await assert.rejects(loadLampFixture({ serveRoot: path.join(__dirname, '..'), lampSeed: null, lampFixture: file }), SyntaxError);
+    fs.writeFileSync(file, '{}');
+    await assert.rejects(loadLampFixture({ serveRoot: path.join(__dirname, '..'), lampSeed: null, lampFixture: file }));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('boss target uses the visible manual Summon Boss control after a recovery', () => {
