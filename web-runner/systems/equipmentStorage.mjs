@@ -1,5 +1,5 @@
 import {equipmentStats} from '../src/core/equipment.mjs';
-import {markLampGuide,createLampEconomy,validateLampEconomy,lampItemCPGain,planLampAutoEquip,finishLampReview,lampStoredCount,migrateLegacyEquipment,migrateDraftLamp,migrateFourStatLamp,migrateLampEconomy,lampAutoUnlocked,lampCapacity,purchaseLampStage,upgradeLamp,completeLampUpgrade,speedUpLampUpgrade,activateLamp,equipLampItem,dismantleLampItems,LAMP_CONFIG,progressionOrdinal} from '../src/core/lampGear.mjs';
+import {markLampGuide,createLampEconomy,validateLampEconomy,lampItemCPGain,planLampAutoEquip,lampStoredCount,migrateLegacyEquipment,migrateDraftLamp,migrateFourStatLamp,migrateLampEconomy,lampAutoUnlocked,lampCapacity,purchaseLampStage,upgradeLamp,completeLampUpgrade,speedUpLampUpgrade,activateLamp,equipLampItem,dismantleLampItems,LAMP_CONFIG,progressionOrdinal} from '../src/core/lampGear.mjs';
 import {refreshHeroStats,awardHeroEXP} from '../src/core/heroProgression.mjs';
 import {computeCombatPower} from '../src/core/combatPower.mjs';
 export const EQUIPMENT_SAVE_KEY='wishfire.equipment-economy.v5';
@@ -77,15 +77,13 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=g
   });},
   equip(heroId,id){if(!globals.HeroProgress?.heroes?.[heroId])return Promise.reject(new Error('Hero is not owned'));return transact(next=>commitEquip(next,heroId,id));},
   autoEquip(){return transact(next=>{
-   const heroes=Object.values(globals.HeroProgress?.heroes||{}).slice(0,4),planned=planLampAutoEquip(next,heroes),before=new Map();
-   for(const change of planned.changes){const hero=heroes.find(h=>h.heroInstanceKey===change.heroId),stats=equipmentStats(next.items,next.loadouts[change.heroId]);before.set(change.heroId,computeCombatPower(refreshHeroStats({...hero,equipmentStats:stats})));}
-   next.loadouts=planned.loadouts;next.lamp.pending=planned.pending;next.lamp.discarded=planned.discarded;finishLampReview(next);
+   const heroes=Object.values(globals.HeroProgress?.heroes||{}).slice(0,4),before=new Map(heroes.map(hero=>[hero.heroInstanceKey,computeCombatPower(refreshHeroStats({...hero,equipmentStats:equipmentStats(next.items,next.loadouts[hero.heroInstanceKey])}))])),planned=planLampAutoEquip(next,heroes);
+   next.items=planned.items;next.loadouts=planned.loadouts;next.lamp.pending=planned.pending;next.lamp.discarded=planned.discarded;
    return planned.changes.map(change=>{
     const hero=heroes.find(h=>h.heroInstanceKey===change.heroId),after=computeCombatPower(refreshHeroStats({...hero,equipmentStats:equipmentStats(next.items,next.loadouts[change.heroId])})),cpBefore=before.get(change.heroId);
-    return{items:change.items,slots:change.slots,heroId:change.heroId,cpBefore,cpAfter:after,cpChange:Math.round((after-cpBefore)*10)/10};
+    return{items:change.items,processedItems:change.processedItems,slots:change.slots,heroId:change.heroId,cpBefore,cpAfter:after,cpChange:Math.round((after-cpBefore)*10)/10};
    });
   });},
-  finishReview(){return transact(next=>finishLampReview(next));},
   markGuide(step){return transact(next=>markLampGuide(next,step));},
   purchaseStage(expectedTier=record?.lamp.capacityTier,expectedStage=record?.lamp.upgradeStage||0){return transact((next,t)=>purchaseLampStage(next,expectedTier,expectedStage,t));},
   upgrade(expectedTier=record?.lamp.capacityTier){return transact((next,t)=>upgradeLamp(next,expectedTier,t));},

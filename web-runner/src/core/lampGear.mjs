@@ -146,6 +146,10 @@ export function compareLampItem(data,item,heroId){
  const current=equipmentDefinition(data.items.find(i=>i.instanceId===data.loadouts[heroId]?.[item.type]));
  return{heroId,current,upgrade:isEquipmentUpgrade(item,current),deltas:Object.fromEntries(GEAR_STATS.map(k=>[k,(item.stats[k]||0)-(current?.stats[k]||0)]))};
 }
+function lampHeroCP(data,hero){
+ const loadout=data.loadouts[hero.heroInstanceKey]||{};
+ return computeCombatPower(refreshHeroStats({...hero,equipmentStats:equipmentStats(data.items,loadout)}));
+}
 export function lampItemCPGain(data,item,hero){
  const loadout=data.loadouts[hero.heroInstanceKey]||{};
  const before=refreshHeroStats({...hero,equipmentStats:equipmentStats(data.items,loadout)});
@@ -162,53 +166,45 @@ export function lampReviewCandidates(data,heroes){
  const queues=new Map();for(const id of data.lamp.pending)queues.set(id,'pending');for(const id of data.lamp.discarded||[])queues.set(id,'discarded');
  return sortedLampItems(data,[...queues.keys()]).map(item=>{
   const gains=heroes.map(hero=>({heroId:hero.heroInstanceKey,cpGain:lampItemCPGain(data,item,hero)}));
-  const best=gains.reduce((current,gain)=>gain.cpGain>current.cpGain?gain:current,{heroId:null,cpGain:0});
+  const bestHeroId=selectAutoEquipHero(data,item,heroes),best=gains.find(gain=>gain.heroId===bestHeroId)||{heroId:null,cpGain:0};
   return{item,queue:queues.get(item.instanceId),gains,bestGain:best.cpGain,bestHeroId:best.heroId};
  });
 }
 export function selectLampUpgrades(data,heroes){return lampReviewCandidates(data,heroes).filter(candidate=>candidate.bestGain>0).map(candidate=>candidate.item);}
 export function selectAutoEquipHero(data,item,heroes){
- let best=null,bestGain=0,bestMaxHP=Infinity;
+ let best=null,bestSlotCP=Infinity,bestHeroCP=Infinity;
  for(const hero of heroes){
-  const gain=lampItemCPGain(data,item,hero),maxHP=hero.maxHP??refreshHeroStats({...hero,equipmentStats:equipmentStats(data.items,data.loadouts[hero.heroInstanceKey])}).maxHP;
-  if(gain>0&&(gain>bestGain||(gain===bestGain&&maxHP<bestMaxHP))){best=hero.heroInstanceKey;bestGain=gain;bestMaxHP=maxHP;}
+  if(lampItemCPGain(data,item,hero)<=0)continue;
+  const currentId=data.loadouts[hero.heroInstanceKey]?.[item.type],slotCP=lampGearCP(data.items.find(entry=>entry.instanceId===currentId)),heroCP=lampHeroCP(data,hero);
+  if(slotCP<bestSlotCP||(slotCP===bestSlotCP&&heroCP<bestHeroCP)){best=hero.heroInstanceKey;bestSlotCP=slotCP;bestHeroCP=heroCP;}
  }
  return best;
 }
-export function finishLampReview(data){(data.lamp.discarded||=[]).push(...data.lamp.pending);data.lamp.pending=[];return data.lamp.discarded.length;}
 export function equipLampItem(data,heroId,id){
  const pending=data.lamp.pending.includes(id),discarded=(data.lamp.discarded||[]).includes(id);
  if(!pending&&!discarded)throw new Error('This result is no longer available.');
  const item=data.items.find(i=>i.instanceId===id);if(!item)throw new Error('Item missing.');
- const slots=data.loadouts[heroId]||={};const previous=slots[item.type];if(previous)(data.lamp.discarded||=[]).push(previous);
+ const slots=data.loadouts[heroId]||={};const previous=slots[item.type];if(previous)data.items=data.items.filter(entry=>entry.instanceId!==previous);
  slots[item.type]=id;data.lamp.pending=data.lamp.pending.filter(x=>x!==id);data.lamp.discarded=(data.lamp.discarded||[]).filter(x=>x!==id);return item;
 }
 export function planLampAutoEquip(data,heroes){
  const working=structuredClone(data);
- const maxHP=hero=>hero.maxHP??refreshHeroStats({...hero,equipmentStats:equipmentStats(working.items,working.loadouts[hero.heroInstanceKey])}).maxHP;
- while(true){
-  let best=null;
-  for(const candidate of lampReviewCandidates(working,heroes)){
-   for(const hero of heroes){
-    const gain=lampItemCPGain(working,candidate.item,hero);if(gain<=0)continue;
-    const hp=maxHP(hero);
-    if(!best||gain>best.gain||(gain===best.gain&&hp<best.maxHP))best={heroId:hero.heroInstanceKey,itemId:candidate.item.instanceId,gain,maxHP:hp};
-   }
-  }
-  if(!best)break;
-  equipLampItem(working,best.heroId,best.itemId);
+ const queued=sortedLampItems(working,[...working.lamp.pending,...(working.lamp.discarded||[])]),before=new Map(heroes.map(hero=>[hero.heroInstanceKey,lampHeroCP(data,hero)])),changed=new Map();
+ for(const item of queued){
+  const heroId=selectAutoEquipHero(working,item,heroes);if(!heroId)continue;
+  equipLampItem(working,heroId,item.instanceId);
+  const change=changed.get(heroId)||{heroId,slots:[],itemsBySlot:new Map(),processedItems:[]};
+  if(!change.itemsBySlot.has(item.type))change.slots.push(item.type);
+  change.itemsBySlot.set(item.type,item);change.processedItems.push(item);changed.set(heroId,change);
  }
- const changes=[];
- for(const hero of heroes){
-  const heroId=hero.heroInstanceKey,before=data.loadouts[heroId]||{},after=working.loadouts[heroId]||{};
-  const slots=['hat','body','boots'].filter(slot=>before[slot]!==after[slot]);
-  if(slots.length)changes.push({heroId,slots,items:slots.map(slot=>working.items.find(item=>item.instanceId===after[slot]))});
- }
- return{loadouts:working.loadouts,pending:working.lamp.pending,discarded:working.lamp.discarded,changes};
+ const changes=heroes.filter(hero=>changed.has(hero.heroInstanceKey)).map(hero=>{
+  const heroId=hero.heroInstanceKey,change=changed.get(heroId),cpBefore=before.get(heroId),cpAfter=lampHeroCP(working,hero);
+  return{heroId,slots:change.slots,items:change.slots.map(slot=>change.itemsBySlot.get(slot)),processedItems:change.processedItems,cpBefore,cpAfter,cpChange:Math.round((cpAfter-cpBefore)*10)/10};
+ });
+ return{items:working.items,loadouts:working.loadouts,pending:working.lamp.pending,discarded:working.lamp.discarded,changes};
 }
 export function dismantleLampItems(data,expectedIds,heroes){
  if(!Array.isArray(heroes))throw new Error('Current heroes are required before dismantling.');
- if(lampReviewCandidates(data,heroes).some(candidate=>candidate.bestGain>0))throw new Error('Review positive-CP equipment before dismantling.');
  const ids=[...data.lamp.pending.filter(id=>expectedIds.includes(id)),...(data.lamp.discarded||[]),'salvage:'+data.lamp.salvage.count+':'+data.lamp.salvage.gold];
  if(ids.length!==expectedIds.length||ids.some(id=>!expectedIds.includes(id)))throw new Error('Collection changed. Review the updated dismantling return.');
  const stored=ids.slice(0,-1);const count=stored.length+data.lamp.salvage.count;const total=stored.reduce((sum,id)=>sum+salvageValue(data.items.find(i=>i.instanceId===id)),0)+data.lamp.salvage.gold;

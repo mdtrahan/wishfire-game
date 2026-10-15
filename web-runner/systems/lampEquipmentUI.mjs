@@ -6,7 +6,7 @@ import {expToNextLevel} from '../src/core/heroProgression.mjs';
 
 export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=()=>false,onBeforeOpen=()=>{}}){
  const gearBounds=[];
- let strip,modal,dialog,helper,lastInteraction=performance.now(),open=false,upgradeOpen=false,batch=false,selectedItem=null,selectedHero=null,reviewed=new Set(),busy=false,opening=false,closeRequested=false,pendingAction=Promise.resolve(),gearReady,feedbacks=new Set(),notice='',rewardBanner,lastRewardTimer,lastKey='',lastAutoCheck=0,lastFocus,previewIds=[],arrivalSequence,emissionId,emissionTimer;
+ let strip,modal,dialog,helper,lastInteraction=performance.now(),open=false,upgradeOpen=false,batch=false,selectedItem=null,selectedHero=null,reviewed=new Set(),busy=false,opening=false,closeRequested=false,autoTransitionAfterFeedback=false,pendingAction=Promise.resolve(),gearReady,feedbacks=new Set(),notice='',rewardBanner,lastRewardTimer,lastKey='',lastAutoCheck=0,lastFocus,previewIds=[],arrivalSequence,emissionId,emissionTimer;
  const fontMeasure=document.createElement('canvas').getContext('2d');
  const heroes=()=>Object.values(globals.HeroProgress?.heroes||{}).slice(0,4);
  const partyProgress=()=>{const hero=heroes().sort((a,b)=>a.currentLevel-b.currentLevel||a.currentEXP-b.currentEXP)[0];return{level:hero?.currentLevel||1,exp:hero?.currentEXP||0,max:hero?.EXPToNextLevel??expToNextLevel(1)};};
@@ -51,10 +51,10 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
  }
  async function openCollection(id,upgrades=false){
   if(opening)return;opening=true;
-  try{onBeforeOpen();init();await pendingAction;await Promise.all([economy.sync(),gearReady]);if(!upgrades&&!lampStoredCount(economy.data))return close();resetHelper();lastFocus=document.activeElement;closeRequested=false;open=true;upgradeOpen=upgrades;batch=!id;reviewed=new Set();selectedItem=upgrades?null:id||selectLampUpgrades(economy.data,heroes())[0]?.instanceId||null;selectedHero=null;notice='';lastKey='';if(!upgrades&&!selectedItem&&economy.data.lamp.pending.length)await economy.finishReview();render();dialog.focus();const step=upgrades?'preview':'storage';if(!(economy.data.lamp.guide&LAMP_GUIDE[step]))await economy.markGuide(step);}
+  try{onBeforeOpen();init();await pendingAction;await Promise.all([economy.sync(),gearReady]);if(!upgrades&&!lampStoredCount(economy.data))return close();resetHelper();lastFocus=document.activeElement;closeRequested=false;autoTransitionAfterFeedback=false;open=true;upgradeOpen=upgrades;batch=!id;reviewed=new Set();selectedItem=upgrades?null:id||selectLampUpgrades(economy.data,heroes())[0]?.instanceId||null;selectedHero=null;notice='';lastKey='';render();dialog.focus();const step=upgrades?'preview':'storage';if(!(economy.data.lamp.guide&LAMP_GUIDE[step]))await economy.markGuide(step);}
   catch(e){notice=e.message;lastKey='';render();}finally{opening=false;}
  }
- function close(){if(feedbacks.size){closeRequested=true;return;}closeRequested=false;resetHelper();open=false;modal.hidden=true;lastKey='';lastFocus?.focus?.();}
+ function close(){if(feedbacks.size){closeRequested=true;return;}closeRequested=false;autoTransitionAfterFeedback=false;resetHelper();open=false;modal.hidden=true;lastKey='';lastFocus?.focus?.();}
  function action(fn){if(busy)return;busy=true;lastKey='';render();return pendingAction=(async()=>{try{await fn();}catch(e){notice=e.message;}finally{busy=false;lastKey='';render();}})();}
   function nextItem(){selectedHero=null;selectedItem=selectLampUpgrades(economy.data,heroes()).find(i=>!reviewed.has(i.instanceId))?.instanceId||null;}
  function onClick(e){
@@ -65,12 +65,15 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   if(kind==='collect')return openCollection();
   if(kind==='lamp-upgrades')return openCollection(null,true);
   if(kind==='hero'){closeRequested=false;selectedHero=id;lastKey='';render();if(!(economy.data.lamp.guide&LAMP_GUIDE.comparison))return void action(()=>economy.markGuide('comparison'));return;}
-  if(kind==='skip'){if(economy.data.lamp.discarded?.includes(selectedItem)&&!batch){selectedItem=null;selectedHero=null;batch=false;lastKey='';return render();}reviewed.add(selectedItem);nextItem();batch=true;if(!selectedItem)return void action(()=>economy.finishReview());lastKey='';return render();}
+  if(kind==='skip'){if(economy.data.lamp.discarded?.includes(selectedItem)&&!batch){selectedItem=null;selectedHero=null;batch=false;lastKey='';return render();}reviewed.add(selectedItem);nextItem();batch=true;if(!selectedItem){batch=false;reviewed.clear();}lastKey='';return render();}
   if(kind==='queue'&&(economy.data.lamp.pending.includes(id)||economy.data.lamp.discarded?.includes(id))){closeRequested=false;batch=economy.data.lamp.pending.includes(id);selectedItem=id;selectedHero=null;lastKey='';return render();}
   if(kind==='generate')return void action(async()=>{await reveal(()=>economy.generate(context()));});
   if(kind==='auto')return void action(async()=>{await economy.setAuto(!economy.data.lamp.autoEnabled);notice=economy.data.lamp.autoEnabled?'Auto is on. Inspect whenever you like.':'Auto is off.';});
-  if(kind==='equip'&&selectedHero&&selectedItem)return void action(async()=>{dialog.scrollTop=0;const result=await economy.equip(selectedHero,selectedItem),name=heroDefinition(heroes().find(h=>h.heroInstanceKey===result.heroId)).name,anchor=dialog.querySelector('[data-action="hero"][data-id="'+result.heroId+'"]').getBoundingClientRect();notice='Equipped to '+name;showEquipFeedback(result,name,anchor);if(batch){nextItem();if(!selectedItem)await economy.finishReview();}else close();});
-  if(kind==='auto-equip')return void action(async()=>{dialog.scrollTop=0;const anchors=selectedItem?new Map(heroes().map(h=>[h.heroInstanceKey,dialog.querySelector('[data-action="hero"][data-id="'+h.heroInstanceKey+'"]').getBoundingClientRect()])):new Map(),results=await economy.autoEquip();results.forEach(r=>{const anchor=anchors.get(r.heroId);if(anchor)showEquipFeedback(r,heroDefinition(heroes().find(h=>h.heroInstanceKey===r.heroId)).name,anchor);});selectedItem=null;selectedHero=null;notice=results.length?'Auto-Equipped gear.':'';});
+  if(kind==='equip'&&selectedHero&&selectedItem)return void action(async()=>{dialog.scrollTop=0;const result=await economy.equip(selectedHero,selectedItem),name=heroDefinition(heroes().find(h=>h.heroInstanceKey===result.heroId)).name,anchor=dialog.querySelector('[data-action="hero"][data-id="'+result.heroId+'"]').getBoundingClientRect();notice='Equipped to '+name;selectedItem=null;selectedHero=null;batch=false;reviewed.clear();autoTransitionAfterFeedback=false;showEquipFeedback(result,name,anchor);});
+  if(kind==='auto-equip'){
+   if(!selectedItem){selectedItem=selectLampUpgrades(economy.data,heroes())[0]?.instanceId||null;selectedHero=null;lastKey='';render();}
+   return void action(async()=>{dialog.scrollTop=0;const anchors=selectedItem?new Map(heroes().map(h=>[h.heroInstanceKey,dialog.querySelector('[data-action="hero"][data-id="'+h.heroInstanceKey+'"]').getBoundingClientRect()])):new Map(),results=await economy.autoEquip();results.forEach(r=>{const anchor=anchors.get(r.heroId);if(anchor)showEquipFeedback(r,heroDefinition(heroes().find(h=>h.heroInstanceKey===r.heroId)).name,anchor);});selectedItem=null;selectedHero=null;batch=false;reviewed.clear();autoTransitionAfterFeedback=feedbacks.size>0;notice=results.length?'Auto-Equipped gear.':'';});
+  }
   if(kind==='purchase-stage')return void action(async()=>{await economy.purchaseStage(Number(b.dataset.tier),Number(b.dataset.stage));notice=economy.data.lamp.upgradeEndsAt?'Upgrade construction started.':'Upgrade stage '+economy.data.lamp.upgradeStage+' of '+LAMP_CONFIG.upgradeStages+' purchased.';});
   if(kind==='upgrade')return void action(async()=>{await economy.upgrade(Number(b.dataset.tier));notice='Upgrade construction started.';});
   if(kind==='speed-up')return void action(async()=>{const used=await economy.speedUp(Number(b.dataset.tier));notice=used+' speed-up ticket'+(used===1?'':'s')+' spent.';});
@@ -115,16 +118,17 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   feedback.style.width=Math.min(anchor.width,48)+'px';
   const bounds=modal.getBoundingClientRect();feedback.style.left=(anchor.x+anchor.width/2-bounds.left)+'px';
   feedback.textContent='CP '+(result.cpChange>0?'+':'')+result.cpChange;
-  feedback.setAttribute('aria-label',name+' '+feedback.textContent);
+  const formatCP=value=>new Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:1}).format(value);
+  feedback.setAttribute('aria-label',name+', CP '+formatCP(result.cpBefore)+' to '+formatCP(result.cpAfter)+', '+feedback.textContent);
   feedbacks.add(feedback);modal.append(feedback);
   const column=[...feedbacks].filter(n=>n.dataset.hero===result.heroId),gap=34;
   const height=column.reduce((sum,n)=>sum+n.offsetHeight,0)+gap*(column.length-1);
   let top=Math.max(bounds.top+24,Math.min(anchor.y,bounds.bottom-height-10));
   for(const node of column){node.style.top=(top-bounds.top)+'px';top+=node.offsetHeight+gap;}
-  setTimeout(()=>{feedback.remove();feedbacks.delete(feedback);lastKey='';if(closeRequested)close();else render();},1800);
+  setTimeout(()=>{feedback.remove();feedbacks.delete(feedback);lastKey='';if(!feedbacks.size){autoTransitionAfterFeedback=false;if(closeRequested)close();else render();}else render();},1800);
  }
  function render(){
-  if(!strip||feedbacks.size&&open&&(!selectedItem||closeRequested))return;const data=economy.data;if(!data){strip.innerHTML='<div class="lamp-status">'+escape(globals.LampStorageError||'Preparing the lamp…')+'</div>';return;}
+  if(!strip||feedbacks.size&&open&&(autoTransitionAfterFeedback||closeRequested))return;const data=economy.data;if(!data){strip.innerHTML='<div class="lamp-status">'+escape(globals.LampStorageError||'Preparing the lamp…')+'</div>';return;}
   const l=data.lamp,roster=heroes(),reviewCandidates=lampReviewCandidates(data,roster),cooling=lampCooldownRemaining(data,economy.time())>0;
   const remaining=l.upgradeEndsAt?Math.max(0,Math.ceil((l.upgradeEndsAt-economy.time())/1000)):0;
   arrivalSequence??=l.sequence;
@@ -177,8 +181,8 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
    body+='<div class="lamp-salvage-hero"><h2>'+(salvageCount?salvageCount+' piece'+(salvageCount===1?'':'s'):'Ready for another wish')+'</h2></div>';
    if(salvageCount){
     if(reviewCandidates.length)body+='<div class="lamp-queue" aria-label="Dismantling collection">'+reviewCandidates.map(c=>tile(c.item,'queue',c)).join('')+'</div>';
-    const eligible=reviewCandidates.some(c=>c.bestGain>0);
-    body+='<div class="lamp-actions">'+(eligible?'<button data-action="auto-equip" '+(busy?'disabled':'')+'>Auto-Equip</button>':'')+'<button class="primary" data-action="dismantle" '+(busy||eligible?'disabled':'')+'>Dismantle All</button></div>'+(eligible?'<p class="lamp-modal-notice" role="status">Equip pieces marked with a green arrow before dismantling.</p>':'');
+   const eligible=reviewCandidates.some(c=>c.bestGain>0);
+   body+='<div class="lamp-actions">'+(eligible?'<button data-action="auto-equip" '+(busy?'disabled':'')+'>Auto-Equip</button>':'')+'<button class="primary" data-action="dismantle" '+(busy?'disabled':'')+'>Dismantle All</button></div>';
    }
   }
   if(notice)body+='<p class="lamp-modal-notice" role="status">'+escape(notice)+'</p>';

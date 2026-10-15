@@ -100,9 +100,9 @@
 
 - Lamp cache presentation checks five full-width square columns, a stable two-to-two-and-a-half-row scroll viewport, selected halo and preserved idle guidance across four phone widths.
 
-- Lamp regression proof checks descending item CP review, raw last-five emission order, manual lower-CP override, positive same-slot Auto gains across all 12 slots, and finite storage/EXP capacity. Pending and discarded cache tiles stay inspectable; green arrows use shared positive total-hero CP gain, and discarded gear remains manually equipable. Dismantling rejects any queued positive-gain gear and hides resource amounts until confirmation.
+- Lamp regression proof checks descending item CP review, raw last-five emission order, manual lower-CP override with the screen kept open, sequential positive same-slot Auto gains, matching-slot/total-CP/party-order tie breaks, and finite storage/EXP capacity. Cache tiles stay inspectable; portrait arrows use positive total-hero CP gain. Explicit Dismantle accepts positive gear, and replacements are destroyed without Essence.
 
-- Equip-close proof requires the modal to remain visible while its CP float plays, including the last Auto-Equip item; after automatic close no CP float may remain.
+- Equip proof requires Manual Equip to leave the modal open. Auto Equip reports final before/after CP after applying its whole sorted pass, keeps the modal visible through the last float, then moves to Dismantle. A requested close waits until every modal-owned float ends.
 
 - Every successful lamp emission shares a saved two-second minimum interval. The core rejects early calls before rolling or granting EXP; UI disables/re-enables the lamp from that saved cooldown. Auto keeps its five-second cadence. Reloads, concurrent clicks and switching manual/Auto cannot reset the gate.
 

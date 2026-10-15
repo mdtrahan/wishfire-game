@@ -229,7 +229,7 @@
 - The lamp helper extends the15-second idle threshold through draw, collection, Hondo comparison, equip, dismantle and free/affordable upgrade preview. Retarget disabled controls to useful enabled actions; hide during reward banners and after a completed upgrade loop outside review. Any input dismisses it. Guide receipts persist once through the existing locked equipment transaction.
 
 - Lamp recipient previews use lampItemCPGain for signed total hero CP changes. Direct portrait taps select the recipient, with stat arrows comparing its matching slot. Equality has no indicator and there are no Previous/Next controls. These UI reads do not repair canonical versus combat-instance ownership.
-- Lamp review starts and advances through rarity/CP-ranked positive total-hero CP upgrades. The dismantle preview retains every stored item for inspection and Auto-Equip, while explicit dismantling and the shared positive-upgrade guard remain authoritative.
+- Lamp review advances through rarity/CP-ranked positive total-hero CP upgrades. Skip changes only the review cursor. Manual Equip applies immediately and leaves the screen open. Explicit Dismantle converts every remaining cache item, including positive upgrades; replacing equipped gear destroys the old item without Essence.
 
 - Concurrent saved CP receipts use their measured wrapped heights and34px spacing for32px animation travel. Place each hero column in modal coordinates under its stationary portrait; keep ordinary rapid bursts within the visible modal.
 
@@ -241,7 +241,7 @@
 
 - Hero identity, portrait scale and equipment/skill stage geometry remain consistent across all three tabs.
 
-- Lamp review uses canonical hero art and independent total-CP arrows, omitting numeric per-hero CP labels and the character stat table. Its three-column item card compares only the selected hero; unchanged values have no arrow. Every pending or discarded cache tile stays inspectable; the green marker uses shared positive total-hero CP gain, and discarded gear remains manually equipable. Disable dismantling while queued positive-gain gear remains. Only the five-column cache scrolls; the equip dialog fits the measured Canvas height. Preserve manual downgrade eligibility, saved receipts and Skip/Auto review flow.
+- Lamp review uses canonical hero art and independent total-CP arrows, omitting numeric per-hero CP labels and the character stat table. Its three-column item card compares only the selected hero; unchanged values have no arrow. Every cached tile stays inspectable; portrait arrows reflect whether available gear can raise that hero's total CP. Keep Dismantle enabled for the player's explicit choice, including while upgrades remain. Only the five-column cache scrolls; the equip dialog fits the measured Canvas height. Preserve manual lower-CP eligibility, saved receipts, sequential Auto assignment and the Skip/Auto review flow.
 
 - Selected-stat numbers and arrows share one font-derived digit height across both rows, independent of the displayed numeral. Normalize digit ink into that height; keep arrows pointed in both Canvas and CSS.
 
