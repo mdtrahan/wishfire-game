@@ -1,0 +1,19 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "ApplyDamageToTarget",
+        "__MODULE__"
+      ],
+      "staged_blob": "11bdaa42898321625dce8f8472a47e05139d39e2"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "ApplyDamageToTarget",
+        "__MODULE__"
+      ],
+      "staged_blob": "8141fe26a3e53ad56728e31df7fae09202303787"
+    }
+  },
+  "issue_id": "ORKA-7l9"
+}

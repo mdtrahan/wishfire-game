@@ -1,0 +1,165 @@
+{
+  "changed_functions": {
+    "Scripts/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "Scripts/functionBank.js": [
+      "ApplyDamageToTarget",
+      "__MODULE__"
+    ],
+    "output/orka-7l9-gauntlet-progress.md": [
+      "__MODULE__"
+    ],
+    "tests/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "tests/balanceHarnessEntryContract.test.js": [
+      "__MODULE__"
+    ],
+    "tests/balanceTelemetryContract.test.mjs": [
+      "__MODULE__"
+    ],
+    "tests/baseDamageDurabilityContract.test.mjs": [
+      "__MODULE__"
+    ],
+    "tests/continuousCombatStageContract.test.mjs": [
+      "call",
+      "__MODULE__"
+    ],
+    "tests/questCombatSessionContract.test.js": [
+      "call",
+      "__MODULE__"
+    ],
+    "tools/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "tools/balance_harness.js": [
+      "sourceFingerprint",
+      "detectPreferredBrowserExecutable",
+      "isRealtimeCombatReadyState",
+      "progressSignature",
+      "observedOrdinaryWaveClear",
+      "visible",
+      "equippedSlotCount",
+      "aggregateSessions",
+      "writeOutputs",
+      "buildConfig",
+      "__MODULE__"
+    ],
+    "web-runner/modules/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/modules/functionBank.js": [
+      "ApplyDamageToTarget",
+      "__MODULE__"
+    ],
+    "web-runner/modules/heroCommands.mjs": [
+      "emitResolvedHealEvent",
+      "heroPresentationPosition",
+      "__MODULE__"
+    ],
+    "web-runner/src/core/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/src/core/arenaCombat.mjs": [
+      "hasHeroImpact"
+    ],
+    "web-runner/src/core/balanceTelemetry.mjs": [
+      "recordBalanceCombatEvent"
+    ],
+    "web-runner/src/core/combatRules.mjs": [
+      "resolveSkill"
+    ],
+    "web-runner/src/core/continuousCombatStage.mjs": [
+      "CONTINUOUS_COMBAT_ALL_PACKS_MASK",
+      "createContinuousCombatStageState",
+      "advanceContinuousCombatStage",
+      "resetContinuousCombatAfterDefeat",
+      "boundOrdinaryWaveHP",
+      "stageOrdinal",
+      "__MODULE__"
+    ],
+    "web-runner/src/core/routineEnemyScaling.mjs": [
+      "capContinuousHostileHit",
+      "__MODULE__"
+    ],
+    "web-runner/systems/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/systems/devBrowserTestHooks.js": [
+      "registerDevBrowserTestHooks",
+      "__MODULE__"
+    ],
+    "web-runner/systems/questCombatSession.mjs": [
+      "restoreHeroesToFullHP",
+      "createQuestCombatSession",
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "Scripts/functionBank.js",
+      "web-runner/modules/functionBank.js"
+    ],
+    "staged_file_count": 23,
+    "staged_line_count": 730,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    "Scripts/AGENTS.md",
+    "Scripts/functionBank.js",
+    "output/orka-7l9-gauntlet-progress.md",
+    "tests/AGENTS.md",
+    "tests/balanceHarnessEntryContract.test.js",
+    "tests/balanceTelemetryContract.test.mjs",
+    "tests/baseDamageDurabilityContract.test.mjs",
+    "tests/continuousCombatStageContract.test.mjs",
+    "tests/questCombatSessionContract.test.js",
+    "tools/AGENTS.md",
+    "tools/balance_harness.js",
+    "web-runner/modules/AGENTS.md",
+    "web-runner/modules/functionBank.js",
+    "web-runner/modules/heroCommands.mjs",
+    "web-runner/src/core/AGENTS.md",
+    "web-runner/src/core/arenaCombat.mjs",
+    "web-runner/src/core/balanceTelemetry.mjs",
+    "web-runner/src/core/combatRules.mjs",
+    "web-runner/src/core/continuousCombatStage.mjs",
+    "web-runner/src/core/routineEnemyScaling.mjs",
+    "web-runner/systems/AGENTS.md",
+    "web-runner/systems/devBrowserTestHooks.js",
+    "web-runner/systems/questCombatSession.mjs"
+  ],
+  "issue_id": "ORKA-7l9",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    "Scripts/AGENTS.md": "e94cba0a79ac3c02447e59fd161397ed2de9cd3b",
+    "Scripts/functionBank.js": "11bdaa42898321625dce8f8472a47e05139d39e2",
+    "output/orka-7l9-gauntlet-progress.md": "c34d23c07482361bccaaa3c0f2d0e94b21f2d35c",
+    "tests/AGENTS.md": "9ef12d36241c4f088037cc2d0f8dbffc3a70f53b",
+    "tests/balanceHarnessEntryContract.test.js": "88035df3a538802383df10f6ee9b749625c8f850",
+    "tests/balanceTelemetryContract.test.mjs": "17dfa019d288db9d1719a8819149ced027a3512b",
+    "tests/baseDamageDurabilityContract.test.mjs": "ce61c53fb1b6a2dc761e1a5e70bd96db58da8e3b",
+    "tests/continuousCombatStageContract.test.mjs": "f5af88f148980f0c7617874fd86e82ec2a565459",
+    "tests/questCombatSessionContract.test.js": "4ecdbb245af833f45fba6b3253b7918bdb23d956",
+    "tools/AGENTS.md": "8ffd33793e60fa45aab8e509484f0ce0e70ec2b0",
+    "tools/balance_harness.js": "bc129de18339d1ed5b2f401bc5d4cb74ce610380",
+    "web-runner/modules/AGENTS.md": "d7bc3cac303f911b744e5ca1c385bd27bc0a013e",
+    "web-runner/modules/functionBank.js": "8141fe26a3e53ad56728e31df7fae09202303787",
+    "web-runner/modules/heroCommands.mjs": "10a63d834197046cc9c00405a78a0677b89993ac",
+    "web-runner/src/core/AGENTS.md": "a6a971955acbd7d36a592da6b90dbf88c60435d8",
+    "web-runner/src/core/arenaCombat.mjs": "300f33d3593956d49305b3865a11e5b25861d5aa",
+    "web-runner/src/core/balanceTelemetry.mjs": "2c8cc2ada1bc35fc8ac9528f09c8820a0e840609",
+    "web-runner/src/core/combatRules.mjs": "01b29549b12fd925de6e9ae39169ee0c862b17af",
+    "web-runner/src/core/continuousCombatStage.mjs": "84fcbf2d9fa634b6950e4878ef1a91b37ebcaaf0",
+    "web-runner/src/core/routineEnemyScaling.mjs": "1a873315e5783dd0e0ba3b823798f9f2964aa6c0",
+    "web-runner/systems/AGENTS.md": "8643390459e0acbfa390d3864facc41269cc9030",
+    "web-runner/systems/devBrowserTestHooks.js": "3b51885f91cdb64495cf17b25f70e80dd34c7e69",
+    "web-runner/systems/questCombatSession.mjs": "711f28b46914457848507b9d50d142e9281aa811"
+  }
+}
