@@ -34,6 +34,16 @@
 - Tooling should not mutate runtime gameplay state except through explicit test/harness interfaces.
 - The balance harness enters through the current Canvas START hit target, fixes the encounter seed, and drives native autoplay. It writes completed metrics before bounded cleanup and force-closes only browser/server processes it owns.
 
+- The balance harness creates one fresh browser context per seed, reports stage clears, boss clears, defeat recoveries, sampled hero HP, ordered KO and exact opt-in damage/healing events, and progression endpoints. It keeps incomplete wave targets, event gaps, and unknown mechanical types explicit; `--captureFrames true` saves real rendered combat and recovery frames, with a runtime reveal-state gate for the recovery frame.
+- Opening-roam reports retain the first observed start and the pre-recovery release point; a missing start or release remains unknown instead of becoming a successful-stall claim.
+- `--serveRoot` permits an unchanged SHA checkout as the game source while the harness runs from this lane. Reports pin both game and harness fingerprints. On older builds without the wave-clear or recovery counters, observed stage transitions are a limited fallback; ambiguous changes stay explicit, and missing recovery/ordered-event telemetry stays unknown.
+- On deadlock or timeout, preserve the final rendered frame, actor coordinates and enemy stream state so movement stalls can be distinguished from unavailable enemies.
+- Session output includes each starting hero's level, combat stats, attack type and CP plus starting/ending equipment loadouts for strength-matched comparisons.
+- Boss attempt records distinguish clear, KO recovery and harness timeout, preserving last observed HP. The current runtime has no observed boss game timer, so harness timeout must never be reported as a game timer loss.
+- Defeat recovery is a normal route through continuous stages. Balance acceptance gates earned wave completion and deadlocks; recovery count remains a diagnostic and separate recovery fixture surface.
+- The optional `--autoEquip true` scenario clicks the visible Collect and Auto-Equip lamp controls during combat and records initial/final equipped slots and lamp emissions. Reports without that flag observe fresh unbuffed play; do not present them as geared player outcomes.
+- `--maxBossClears 1` targets a boss victory instead of ordinary-wave count. After a recovery latches manual retry, the harness uses the visible Summon Boss control; a boss trial must record its own clearance and completion.
+
 ## Work Guidance
 - Keep command output bounded and failure messages classifiable.
 - For browser automation failures, distinguish browser startup/attach failure from game behavior failure.

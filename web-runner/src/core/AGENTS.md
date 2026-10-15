@@ -10,6 +10,9 @@
 - Browser-specific copies of shared rule modules when the runtime cannot import the root `src/core/` file directly.
 
 ## Local Contracts
+- `ContinuousCombatStage.ordinaryWaveClears` and `.defeatRecoveries` are ephemeral balance-harness measurements; checkpoint serialization must omit them.
+- `balanceTelemetry.mjs` keeps opt-in combat event IDs ordered and bounded; the harness detects gaps before trusting totals.
+- The first stage's four ordinary waves use fodder and routine enemy rows. Hard and elite rows must not enter a stage labeled fodder. Ordinary HP ceilings scale with stage depth; hostile per-hit ceilings use the source tier and target max HP after modifiers.
 - `lampGear.mjs` owns seeded Hat/Body/Boots generation and pure collection transactions. Every generated piece has ATK/DEF/MAG/RES/HP, never SPD; highest generation tier persists across retries. New Epic rolls floor each stat above the same-slot lower-rarity ceiling at that ordinal, and Legendary rolls floor above Epic; saved rolls remain unchanged. `lampReviewCandidates` is the shared pending/discarded eligibility and CP-preview seam. Auto evaluates all four heroes' three slots, uses each item at most once, and keeps strictly positive total-hero CP improvements until no queued assignment can improve the party. Manual equip may choose discarded gear. Dismantle requires the current heroes and rejects positive queued gear before conversion.
 - Narrative content owns localized dialogue, camera-shot references, and the opening combat handoff marker. `narrativeRuntime.mjs` owns deterministic scene progression; browser timing, input, and combat routing stay in systems. Preserve dialogue after the handoff until an authored combat-completion route is integrated.
 - Most rule modules should be pure and deterministic: no DOM, Canvas, localStorage, network, or deployment behavior.
@@ -69,6 +72,7 @@
 - Narrative quest cards remain outside the combat core. Resolved healing reports only its actual HP delta to presentation.
 
 - Production uses independent hero basics, active skill cooldowns, and enemy action clocks.
+- The seeded opening walk releases normal pursuit when the party center reaches its waypoint within the leading hero's formation offset and existing arrival tolerance. Distant roaming packs must not leave the squad stuck in opening travel.
 - Queryless production emits staggered fodder packs from off-stage on a shallow stage-owned linear CP ramp. Hero level does not scale enemies. The next cadence starts when a pack reaches its engagement boundary; survivors may overlap later packs, while bosses wait for a clear field.
 - Combat presentation consumes simulation events; it does not grant actor readiness or advance the combat clock.
 - A fresh session enters with the restored party and deterministic actor cooldown state. Defeat recovery remains owned by the encounter session.

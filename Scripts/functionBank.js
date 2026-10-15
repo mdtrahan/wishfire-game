@@ -1,6 +1,7 @@
 import { partyTrainingCombatStat } from '../web-runner/src/core/realtimeSkillState.mjs';
 import { realtimeBasicDamageMultiplier } from '../web-runner/src/core/realtimeHeroSkills.mjs';
 import { effectiveStat } from '../web-runner/src/core/combatRules.mjs';
+import { recordBalanceCombatEvent } from '../web-runner/src/core/balanceTelemetry.mjs';
 import { executeHeroCommand, resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat, settleContinuousCombatRewards, emitResolvedHealEvent } from '../web-runner/modules/heroCommands.mjs';
 import { state } from './state.js';
 import { MONSTER_KEYS, MONSTER_LOOT_TABLE, TOKEN, EMPTY } from './monsterLootTableEventTokens.js';
@@ -5981,6 +5982,15 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   }
   const afterHP = Number(t.hp ?? 0);
   const appliedDamage = Math.max(0, beforeHP - afterHP);
+  if (t.kind === 'hero' && appliedDamage > 0) recordBalanceCombatEvent(g, {
+    type: 'damage', sourceUID: Number(source?.uid || 0), targetUID: Number(uid || 0),
+    damageType: opts.damageType === 'physical' || opts.damageType === 'magic' ? opts.damageType : opts.magic ? 'magic' : 'unknown',
+    amount: appliedDamage, hpBefore: beforeHP, hpAfter: afterHP,
+  });
+  if (t.kind === 'enemy' && appliedDamage > 0 && afterHP <= 0) recordBalanceCombatEvent(g, {
+    type: 'enemy_ko', sourceUID: Number(source?.uid || 0), targetUID: Number(uid || 0),
+    amount: appliedDamage, hpBefore: beforeHP, hpAfter: afterHP,
+  });
   if (chainStrikeIIHit) recordAstralFlowChainStrikeIIHit(g, { targetUID: Number(uid || 0), preHP: beforeHP, postHP: afterHP, damage: appliedDamage, coefficient: Number(chainStrikeIIHit.chainStrikeDamagePct || 396), primary: Number(chainStrikeIIHit.chainStrikeIIPrimary || 0) === 1 });
   g.LastDamageSourceUID = source?.uid || g.LastDamageSourceUID;
 

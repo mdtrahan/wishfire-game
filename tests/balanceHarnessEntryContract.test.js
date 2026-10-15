@@ -1,11 +1,34 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const os = require('node:os');
+const { execFileSync } = require('node:child_process');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const harnessPath = path.join(__dirname, '..', 'tools', 'balance_harness.js');
 const source = fs.readFileSync(harnessPath, 'utf8');
-const { START_WORLD_POINT, aggregateSessions, isRealtimeCombatReadyState } = require(harnessPath);
+const hookSource = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js'), 'utf8');
+const { START_WORLD_POINT, aggregateSessions, isRealtimeCombatReadyState, observedOrdinaryWaveClear, sourceFingerprint } = require(harnessPath);
+
+test('source fingerprint changes when an untracked capture module changes', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'orka-balance-fingerprint-'));
+  try {
+    execFileSync('git', ['init', '-q'], { cwd: root });
+    fs.writeFileSync(path.join(root, 'tracked.txt'), 'baseline');
+    execFileSync('git', ['add', 'tracked.txt'], { cwd: root });
+    execFileSync('git', ['-c', 'user.name=Balance Test', '-c', 'user.email=balance@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'baseline'], { cwd: root });
+    const baseline = sourceFingerprint(root);
+    fs.writeFileSync(path.join(root, 'capture.mjs'), 'one');
+    const first = sourceFingerprint(root);
+    fs.writeFileSync(path.join(root, 'capture.mjs'), 'two');
+    const second = sourceFingerprint(root);
+    assert.notEqual(first.patchSha256, baseline.patchSha256);
+    assert.notEqual(second.patchSha256, first.patchSha256);
+    assert.deepEqual(first.untracked.map(entry => entry.path), ['capture.mjs']);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test('balance harness enters through Canvas START and observes automatic realtime combat', () => {
   assert.deepEqual(START_WORLD_POINT, { x: 184.5, y: 427 });
@@ -14,6 +37,52 @@ test('balance harness enters through Canvas START and observes automatic realtim
   assert.doesNotMatch(source, /runDevAutoplayUntilDepleted|stopDevAutoplay/);
   assert.doesNotMatch(source, /TurnSerial|turnType|turnUID|turnOrder|astralFlowWallet|pendingSkillId/);
   assert.doesNotMatch(source, /buildCandidateMatches|pickThree|maybeClearSelectedGems|canPickGems|180, 320/);
+});
+
+test('balance harness creates and closes an isolated browser context for each seed', () => {
+  assert.match(source, /async createIsolatedPage\(\)/);
+  assert.match(source, /const context = await browser\.newContext\(\{ viewport: config\.viewport \}\)/);
+  assert.match(source, /await isolated\.close\(\)/);
+  assert.doesNotMatch(source, /localStorage\.clear\(\)/);
+});
+
+test('optional progression scenario uses visible lamp collection and auto-equip controls', () => {
+  assert.match(source, /async function useAvailableLampEquipment\(page, allowCollect\)/);
+  assert.match(source, /pendingKey !== lastEquipmentReviewKey/);
+  assert.match(source, /#wishfire-lamp button\[data-action="collect"\]/);
+  assert.match(source, /button\[data-action="auto-equip"\]/);
+  assert.match(source, /equipment: \{ scenario: config\.autoEquip \? 'collect_auto_equip' : 'observe_only'/);
+});
+
+test('boss target uses the visible manual Summon Boss control after a recovery', () => {
+  assert.match(source, /async function summonReadyBoss\(page\)/);
+  assert.match(source, /#combat-boss-fallback button/);
+  assert.match(source, /config\.maxBossClears > 0 \? completedBosses >= config\.maxBossClears/);
+  assert.match(source, /bossAttemptRecords\.push\(activeBossAttempt\)/);
+  assert.match(source, /outcome = Number\(snapshot\.continuousProgression\?\.clearedBosses/);
+  assert.match(source, /gameTimer: 'unavailable'/);
+});
+
+test('optional frame capture records real combat, recovery, and boss states', () => {
+  assert.match(source, /await page\.screenshot\(\{ path: file \}\)/);
+  assert.match(source, /#lamp-overlay:not\(\[hidden\]\)/);
+  assert.match(source, /await capture\('combat_start'\)/);
+  assert.match(source, /await capture\('post_recovery'\)/);
+  assert.match(source, /snapshot\.heroes\.some\(hero => hero\.recoveryRevealActive\)\) await capture\('recovery_reveal'\)/);
+  assert.match(hookSource, /recoveryRevealActive: isActorRecoveryRevealActive\(e, state\.globals\.time\)/);
+  assert.match(source, /await capture\('boss_active'\)/);
+  assert.match(source, /await capture\('after_boss_clear'\)/);
+  assert.match(source, /await capture\(`final_\$\{endReason\}`\)/);
+  assert.match(source, /captureFrames: readBool\(args\.captureFrames/);
+});
+
+test('opening roam report retains its starting state and observed release before recovery', () => {
+  assert.match(source, /const openingRoam = \{ start: snapshot\.initialRoam, release: null \}/);
+  assert.match(source, /!snapshot\.initialRoam/);
+  assert.match(source, /snapshot\.continuousProgression\?\.defeatRecoveries \|\| 0\) === startDefeatRecoveries/);
+  assert.match(source, /openingRoam\.release = \{/);
+  assert.match(source, /distanceWalked: Number\(openingRoam\.start\.direction \|\| 0\)/);
+  assert.match(source, /openingRoam,\n/);
 });
 
 test('balance harness waits for active realtime combat with a living party and target', () => {
@@ -36,12 +105,89 @@ test('balance harness writes its completed summary before managed cleanup', () =
   assert.match(source, /browserServer\.kill\(\)/);
 });
 
+test('balance harness records exact damage and healing events alongside sampled HP', () => {
+  assert.match(source, /startHp: hero\.hp, minSampledHp: hero\.hp, minEventHp: hero\.hp, endHp: hero\.hp/);
+  assert.match(source, /sampledHpLoss: 0, largestSampleWindowHpLoss: 0, sampledRecovery: 0, physicalIncomingDamage: 0, magicIncomingDamage: 0/);
+  assert.match(source, /tracked\.sampledHpLoss \+= Math\.max\(0, tracked\.lastHp - hero\.hp\)/);
+  assert.match(source, /tracked\.sampledRecovery \+= Math\.max\(0, hero\.hp - tracked\.lastHp\)/);
+  assert.match(source, /globals\.BalanceCombatEvents \|\| \[\]/);
+  assert.match(source, /let lastCombatEventId = snapshot\.combatEventSeq/);
+  assert.match(source, /tracked\.effectiveHealing \+= event\.amount/);
+  assert.match(source, /tracked\[damageKey\] \+= event\.amount/);
+  assert.match(source, /missingCombatEvents/);
+  assert.match(source, /heroes: heroMetrics\.map\(\(\{ lastHp, \.\.\.hero \}\) => hero\)/);
+  assert.match(source, /recordedHeroDamageEvents/);
+  assert.match(source, /maximumAppliedDamage: incomingDamageEvents\.reduce/);
+  assert.match(source, /snapshot\.combatEvents/);
+  assert.match(source, /recoveryRecords\.push\(record\)/);
+  assert.match(hookSource, /zIndex: Number\(d\.zIndex \|\| 0\)/);
+  assert.match(hookSource, /targetUID: Number\(d\.targetUID \|\| 0\)/);
+  assert.match(hookSource, /sourceUID: Number\(d\.sourceUID \|\| 0\)/);
+});
+
+test('first KO follows ordered applied damage events across heroes and enemies', () => {
+  const browserBank = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'modules', 'functionBank.js'), 'utf8');
+  const scriptBank = fs.readFileSync(path.join(__dirname, '..', 'Scripts', 'functionBank.js'), 'utf8');
+  for (const bank of [browserBank, scriptBank]) {
+    assert.match(bank, /type: 'enemy_ko', sourceUID: Number\(source\?\.uid \|\| 0\), targetUID: Number\(uid \|\| 0\)/);
+  }
+  assert.match(source, /if \(event\.type === 'enemy_ko'\)/);
+  assert.match(source, /if \(!firstKo\) firstKo = \{ side: 'hero', uid: event\.targetUID/);
+  assert.doesNotMatch(source, /firstKo = \{ side: event\.side/);
+});
+
+test('unchanged builds count observed wave transitions without treating defeat reset as a clear', () => {
+  const before = { region: 1, stage: 1, wave: 1, stageTransitions: 0, bossActive: false, bossAvailable: false };
+  assert.equal(observedOrdinaryWaveClear(before, { ...before, wave: 2, stageTransitions: 1 }), 1);
+  assert.equal(observedOrdinaryWaveClear({ ...before, wave: 4, stageTransitions: 3 }, { ...before, wave: 1, stageTransitions: 4, bossAvailable: true, bossSummonRequired: false }), 1);
+  assert.equal(observedOrdinaryWaveClear({ ...before, wave: 4, stageTransitions: 3 }, { ...before, wave: 1, stageTransitions: 4, bossAvailable: true, bossSummonRequired: true }), null);
+  assert.equal(observedOrdinaryWaveClear(before, { ...before, stageTransitions: 1 }), 0);
+  assert.equal(observedOrdinaryWaveClear(before, { ...before, wave: 3, stageTransitions: 2 }), null);
+});
+
+test('legacy reports keep missing recovery telemetry unknown', () => {
+  const aggregate = aggregateSessions({ maxWaves: 4, maxBossClears: 0 }, [
+    { seed: 1, enemiesDefeated: 1, wavesCompleted: 1, bossesCleared: 0, defeatRecoveries: null, simulationSecondsSurvived: 10, heroCasualties: [], firstKoSide: 'unobserved', endReason: 'timeout', deadlockCount: 0 },
+  ]);
+  assert.equal(aggregate.totalDefeatRecoveries, null);
+  assert.equal(aggregate.medianDefeatRecoveries, null);
+  assert.equal(aggregate.firstKoSides.unobserved, 1);
+});
+
+test('balance harness counts completed continuous stages from stage transitions, not enemy counts', () => {
+  assert.match(source, /continuousProgression: state\.continuousProgression \? \{ \.\.\.state\.continuousProgression,/);
+  assert.match(source, /const startOrdinaryWaveClears = Number\(snapshot\.continuousProgression\?\.ordinaryWaveClears \|\| 0\)/);
+  assert.match(source, /completedOrdinaryWaves = Math\.max\(0, Number\(snapshot\.continuousProgression\?\.ordinaryWaveClears \|\| 0\) - startOrdinaryWaveClears\)/);
+  assert.doesNotMatch(source, /defeatedEnemyUIDs\.size \/ config\.enemiesPerWave/);
+  assert.match(source, /if \(Date\.now\(\) - startedAt >= config\.sessionTimeoutMs && endReason === 'max_waves'/);
+  assert.doesNotMatch(source, /defeatLimit/);
+  assert.match(source, /continuousProgressionStart: snapshotAtStart/);
+  assert.match(source, /continuousProgressionEnd: snapshot\.continuousProgression/);
+  assert.match(hookSource, /clearedPackMask: Number\(state\.globals\.ContinuousCombatStage\.clearedPackMask \|\| 0\)/);
+  assert.match(hookSource, /spawnedPackMask: Number\(state\.globals\.ContinuousCombatStage\.spawnedPackMask \|\| 0\)/);
+  assert.match(hookSource, /transitions: Number\(state\.globals\.ContinuousCombatStage\.transitions \|\| 0\)/);
+  assert.match(hookSource, /defeatRecoveries: Number\(state\.globals\.ContinuousCombatStage\.defeatRecoveries \|\| 0\)/);
+  assert.match(source, /defeatRecoveries: snapshot\.continuousProgression\?\.defeatRecoveries == null \? null : Number\(snapshot\.continuousProgression\.defeatRecoveries\) - startDefeatRecoveries/);
+  assert.match(source, /everySeedCompletesTarget: sessions\.length > 0 && sessions\.every/);
+  assert.doesNotMatch(source, /noDefeatRecoveries:/);
+  assert.match(source, /'waves_completed', 'bosses_cleared', 'defeat_recoveries'/);
+  assert.match(source, /'continuous_progression_start', 'continuous_progression_end'/);
+  assert.doesNotMatch(source, /enemiesPerWave|BALANCE_ENEMIES_PER_WAVE/);
+  assert.match(source, /endReason === 'max_waves'/);
+});
+
 test('casualty variation measures the first hero lost in each session', () => {
-  const aggregate = aggregateSessions({ maxWaves: 5, enemiesPerWave: 3 }, [
-    { seed: 1, enemiesDefeated: 2, simulationSecondsSurvived: 20, heroCasualties: ['Runa', 'Falie'], firstKoSide: 'enemy', endReason: 'party_defeated', deadlockCount: 0 },
-    { seed: 2, enemiesDefeated: 2, simulationSecondsSurvived: 21, heroCasualties: ['Huun', 'Falie'], firstKoSide: 'hero', endReason: 'party_defeated', deadlockCount: 0 },
+  const aggregate = aggregateSessions({ maxWaves: 5 }, [
+    { seed: 1, enemiesDefeated: 2, wavesCompleted: 1, bossesCleared: 0, defeatRecoveries: 3, simulationSecondsSurvived: 20, heroCasualties: ['Runa', 'Falie'], firstKoSide: 'enemy', endReason: 'party_defeated', deadlockCount: 0 },
+    { seed: 2, enemiesDefeated: 2, wavesCompleted: 0, bossesCleared: 0, defeatRecoveries: 2, simulationSecondsSurvived: 21, heroCasualties: ['Huun', 'Falie'], firstKoSide: 'hero', endReason: 'party_defeated', deadlockCount: 0 },
   ]);
   assert.deepEqual(aggregate.firstHeroCasualtyDistribution, { Runa: 1, Huun: 1 });
   assert.equal(aggregate.averageSimulationSecondsSurvived, 20.5);
-  assert.equal(aggregate.acceptance.variedHeroCasualties, true);
+  assert.equal(aggregate.acceptance.everySeedCompletesTarget, false);
+  assert.equal(aggregate.totalDefeatRecoveries, 5);
+  assert.equal(aggregate.coverage.bossClearObserved, false);
+  assert.equal(aggregate.coverage.defeatRecoveryObserved, true);
+  assert.deepEqual(aggregate.coverage.separateFixturesRequired, ['boss_trials', 'recovery_trials']);
+  assert.equal(aggregate.totalDefeatRecoveries, 5);
+  assert.equal(aggregate.medianDefeatRecoveries, 2.5);
 });

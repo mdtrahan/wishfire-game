@@ -15,6 +15,8 @@
 - `state.globals` is the live runtime envelope. New fields need a clear owner, reset/init behavior, tests, and debug/proof visibility when user-facing.
 - `Scripts/functionBank.js` mirrors selected high-risk functions. Do not drift mirrored functions without a test and explicit bead scope.
 - `CalculateDamage` uses each hero's primary ATK or MAG regardless of attack delivery, enemy offense by delivery type, and target DEF or RES by delivery type. Forward skill percentage and target resistance fields through both Rust owner and single-hit shadow packets.
+- Continuous enemy-to-hero native hits apply the source tier's maximum fraction of target max HP at the shared role-action damage seam, after modifiers. Ordinary fodder and routine hits cap at 5%; hard at 8%, elite at 12%, boss at 18%. Other combat modes retain their existing damage path.
+- Opt-in `DevBalanceCapture` records applied hero HP damage and enemy KOs in order at `ApplyDamageToTarget`, plus effective hero healing at `emitResolvedHealEvent`; ordinary gameplay leaves this capture off.
 - Combat uses speed-based interleaved initiative for normal combat. Do not force strict `Heroes -> Enemies -> Heroes` team phases unless a future bead explicitly changes that product decision.
 - A completed native hero action owns its deferred scheduler handoff through `ProcessTurn`. If presentation release exposes another living hero first, reconcile from `ActionOwnerUID` before advancing; retain enemy-roster holds and terminal settlement guards. If the resulting scheduler UID has no live entity, advance before native turn setup.
 - A late enemy-death removal must retain or create that deferred handoff; clearing the defeated actor after FLOW delivery cannot leave `IsPlayerBusy` without `DeferAdvance`.

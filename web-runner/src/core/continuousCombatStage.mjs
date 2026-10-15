@@ -7,9 +7,11 @@ import { advanceContinuousCombatArena, deriveContinuousCombatSpawnMoat, placeCon
 import { isActorRecoveryRevealActive, resetActorPresentationAfterRestore } from './actorPresentationState.mjs';
 import { previewSeededRng } from '../../../src/core/seededRngRules.mjs';
 import { actorFootprintRadius } from '../../../src/core/arenaCombatRules.mjs';
+import { enemyCombatTier } from './routineEnemyScaling.mjs';
 
 export const CONTINUOUS_COMBAT_PACK_INTERVAL_SEC = 3;
 export const CONTINUOUS_COMBAT_PACK_CP_STEP = 0.06;
+const ORDINARY_LEVEL_ONE_HP_CEILING = Object.freeze({ fodder: 28, routine: 45, hard: 55, elite: 70 });
 export const CONTINUOUS_COMBAT_WAVES_PER_STAGE = 4;
 export const CONTINUOUS_COMBAT_STAGES_PER_REGION = 10;
 export const CONTINUOUS_COMBAT_PACKS_PER_WAVE = 6;
@@ -31,8 +33,8 @@ export const CONTINUOUS_COMBAT_BOSS_ENTRY_WIPE_MS = 440;
 export const CONTINUOUS_COMBAT_STAGES = Object.freeze([
   Object.freeze({ wave: 1, kind: 'fodder', enemyNames: Object.freeze(['Gobloc', 'Skeleton']) }),
   Object.freeze({ wave: 2, kind: 'fodder', enemyNames: Object.freeze(['Gobloc', 'High Gobloc', 'Skeleton', 'Lizardo']) }),
-  Object.freeze({ wave: 3, kind: 'fodder', enemyNames: Object.freeze(['High Orc', 'Chimerilass', 'Djinn']) }),
-  Object.freeze({ wave: 4, kind: 'fodder', enemyNames: Object.freeze(['Orc', 'High Orc', 'Chimerilass', 'Djinn']) }),
+  Object.freeze({ wave: 3, kind: 'fodder', enemyNames: Object.freeze(['High Gobloc', 'Lizardo', 'Orc']) }),
+  Object.freeze({ wave: 4, kind: 'fodder', enemyNames: Object.freeze(['Gobloc', 'High Gobloc', 'Lizardo', 'Orc']) }),
   Object.freeze({ wave: 0, kind: 'boss', enemyNames: Object.freeze(['Troll']), waitForClear: true }),
 ]);
 
@@ -54,6 +56,9 @@ export function createContinuousCombatStageState(seed = 1, { region = 1, stage =
     bossUID: null,
     bossWorldX: null,
     transitions: 0,
+    // Runtime measurement counters; checkpoint serialization intentionally omits them.
+    ordinaryWaveClears: 0,
+    defeatRecoveries: 0,
     clearedBosses: 0,
     nextEmissionAt: 0,
     awaitingPackArrival: false,
@@ -489,9 +494,10 @@ export function advanceContinuousCombatStage(stageState) {
     return { done: false, stage: getContinuousCombatStage(state), state, clearedBoss: current?.id || '' };
   }
   const currentWave = Math.max(1, Math.min(CONTINUOUS_COMBAT_WAVES_PER_STAGE, Math.floor(Number(stageState?.wave) || 1)));
+  const ordinaryWaveClears = Math.max(0, Math.floor(Number(stageState?.ordinaryWaveClears) || 0)) + 1;
   const state = currentWave >= CONTINUOUS_COMBAT_WAVES_PER_STAGE
-    ? { ...stageState, wave: 1, clearedPackMask: 0, spawnedPackMask: 0, bossAvailable: true, transitions }
-    : { ...stageState, wave: currentWave + 1, clearedPackMask: 0, spawnedPackMask: 0, transitions };
+    ? { ...stageState, wave: 1, clearedPackMask: 0, spawnedPackMask: 0, bossAvailable: true, transitions, ordinaryWaveClears }
+    : { ...stageState, wave: currentWave + 1, clearedPackMask: 0, spawnedPackMask: 0, transitions, ordinaryWaveClears };
   return { done: false, stage: getContinuousCombatStage(state), state };
 }
 
@@ -568,6 +574,7 @@ export function resetContinuousCombatAfterDefeat(globals) {
   globals.ContinuousCombatStage = {
     ...state,
     transitions: Math.max(0, Math.floor(Number(state.transitions) || 0)) + 1,
+    defeatRecoveries: Math.max(0, Math.floor(Number(state.defeatRecoveries) || 0)) + 1,
     wave: bossAvailable ? 1 : state.wave,
     clearedPackMask,
     spawnedPackMask: 0,
@@ -603,6 +610,13 @@ function scaleContinuousCombatRow(row, scale) {
   scaled.CombatPower = computeCombatPower(scaled);
   scaled.streamCpScale = scale;
   return scaled;
+}
+
+function boundOrdinaryWaveHP(row, progressionScale) {
+  const ceiling = ORDINARY_LEVEL_ONE_HP_CEILING[enemyCombatTier(row)];
+  if (!ceiling) return row;
+  const hp = Math.min(row.HP, Math.max(1, Math.round(ceiling * progressionScale)));
+  return { ...row, HP: hp, maxHP: hp, CombatPower: computeCombatPower({ ...row, HP: hp, maxHP: hp }) };
 }
 
 export function scaleContinuousCombatPackRow(row, cpStep = 0) {
@@ -659,7 +673,7 @@ export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase
   const packScale = introductoryBoss ? 1 : selectedRows.length ? findPackScale(selectedRows, linearTarget) : 1;
   const packSize = stage.kind === 'boss' ? 1 : selectedRows.length / CONTINUOUS_COMBAT_PACKS_PER_WAVE;
   const entries = selectedRows.map((row, index) => ({
-    row: scaleContinuousCombatRow(row, packScale),
+    row: stage.kind === 'boss' ? scaleContinuousCombatRow(row, packScale) : boundOrdinaryWaveHP(scaleContinuousCombatRow(row, packScale), progressionScale),
     lane: index % packSize,
     rank: Math.floor(Number(slotBase || 0) / CONTINUOUS_COMBAT_PACKS_PER_WAVE),
     packIndex: Number(stageState?.transitions || 0),

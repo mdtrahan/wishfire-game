@@ -3,6 +3,8 @@ import {actionCapacity} from '../src/core/actionSelection.mjs';
 import {settleBattleEXP} from '../src/core/heroProgression.mjs';
 import {heroDefinition,PROGRESSION} from '../src/core/heroDefinitions.mjs';
 import {realtimeBasicFollowups} from '../src/core/realtimeHeroSkills.mjs';
+import {capContinuousHostileHit} from '../src/core/routineEnemyScaling.mjs';
+import {recordBalanceCombatEvent} from '../src/core/balanceTelemetry.mjs';
 import {isActorRanged,isActorTargetInRange} from '../../src/core/heroAttackTargetingRules.mjs';
 export {castRealtimeHeroSkill,tickRealtimeHeroSkillZones,realtimeBasicInterval,realtimeCombatStat,realtimeBasicDamageMultiplier,cleanupRealtimeSkillActors,realtimeProvokeTarget,realtimeCoverTarget,realtimeIncomingDamage,realtimeMagicBlocked,realtimeRetaliation} from '../src/core/realtimeHeroSkills.mjs';
 import {getHeroFlowState,getHeroSkillOptions,recordFlowThreshold,resolveRoleFlowAward} from '../src/core/personalFlow.mjs';
@@ -32,6 +34,7 @@ export function emitResolvedHealEvent(ctx, source, target, beforeHP, { allowRevi
  const delta=Math.max(0,after-before);
  if(!target||delta<=0||(!allowRevive&&before<=0)||!['hero','enemy'].includes(String(target.kind||'')))return 0;
  const g=ctx.state.globals,slot=Number(target.heroDisplaySlot??target.heroIndex??-1);
+ if(target.kind==='hero')recordBalanceCombatEvent(g,{type:'heal',sourceUID:Number(source?.uid||0),targetUID:Number(target.uid||0),amount:delta,hpBefore:before,hpAfter:after});
  const rest=target.kind==='hero'?(g.HeroRestFeetPosByUID?.[Number(target.uid||0)]||g.HeroRestBasePosByUID?.[Number(target.uid||0)]):null;
  const portraits=target.kind==='hero'?(g.HeroPortraitPosByIndex||g.HeroIconPosByIndex):null;
  const portrait=Array.isArray(portraits)&&slot>=0?portraits[slot]:null;
@@ -81,7 +84,7 @@ export function rulesContext(ctx,roleEvents=null){
  };
  return {actors:ctx.state.entities,state:g,flowRandom:()=>typeof g.FlowRandom==='function'?g.FlowRandom():Math.random(),random:()=>typeof g.RuntimeRandom==='function'?g.RuntimeRandom():Math.random(),
  calculateDamage:(a,t,mode,multiplierPct=100)=>ctx.callFunction('CalculateDamage',a.uid,t.uid,mode,multiplierPct),
- applyDamage:(a,t,amount,origin)=>{const before=t.hp;ctx.callFunction('ApplyDamageToTarget',t.uid,amount,{sourceUID:a.uid,nativeResolved:true,suppressPartySkillHitHooks:1,...origin});return before-t.hp;},
+ applyDamage:(a,t,amount,origin)=>{const before=t.hp;const continuousHostile=a.kind==='enemy'&&t.kind==='hero'&&Number(g.ContinuousCombatStageLoop||0)===1;const row=continuousHostile?(g.EnemyData||[]).find(candidate=>String(candidate.name||'')===String(a.name||''))||{}:null;const applied=continuousHostile?capContinuousHostileHit(amount,t.maxHP,row):amount;ctx.callFunction('ApplyDamageToTarget',t.uid,applied,{sourceUID:a.uid,nativeResolved:true,suppressPartySkillHitHooks:1,...origin});return before-t.hp;},
  onHeal:(source,target,delta,meta={})=>{if(delta>0)emitResolvedHealEvent(ctx,source,target,Math.max(0,Number(target?.hp||0)-Number(delta||0)),{allowRevive:true,presentation:meta.healPresentation==='minor'||meta.statusEffect==='hot'?'minor':['heal','revive'].includes(meta.effectType)?'major':'minor'});},
  onDamage:(source,target,delta,meta={})=>{if(roleEvents&&delta>0)roleEvents.push({type:'damage',sourceUID:Number(source?.uid||0),sourceKind:source?.kind,targetUID:Number(target?.uid||0),targetKind:target?.kind,delta:Number(delta||0),targetWasLiving:meta.targetWasLiving!==false});},
  onStatus:(source,target,effect,meta={})=>{if(roleEvents&&!meta.refreshed&&source?.kind==='hero')roleEvents.push({type:'status',sourceUID:Number(source.uid||0),targetUID:Number(target?.uid||0)});},

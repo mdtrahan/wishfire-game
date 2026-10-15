@@ -1,5 +1,14 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+test('full-party recovery emits per-hero restored HP without treating it as skill healing', async () => {
+ const {restoreHeroesToFullHP}=await import('../web-runner/systems/questCombatSession.mjs');
+ const state={entities:[{uid:1,kind:'hero',hp:0,maxHP:42,isAlive:false},{uid:2,kind:'hero',hp:20,maxHP:30,isAlive:true}],globals:{time:10,DevBalanceCapture:true,ContinuousCombatStage:{defeatRecoveries:2},PendingDeaths:{1:true}}};
+ restoreHeroesToFullHP({state,call(){},reason:'continuous_defeat'});
+ assert.deepEqual(state.globals.BalanceCombatEvents.map(({type,reason,recoveryIndex,targetUID,sourceUID,amount,hpBefore,hpAfter})=>({type,reason,recoveryIndex,targetUID,sourceUID,amount,hpBefore,hpAfter})),[
+  {type:'recovery',reason:'continuous_defeat',recoveryIndex:2,targetUID:1,sourceUID:0,amount:42,hpBefore:0,hpAfter:42},
+  {type:'recovery',reason:'continuous_defeat',recoveryIndex:2,targetUID:2,sourceUID:0,amount:10,hpBefore:20,hpAfter:30},
+ ]);
+});
 test('resurrection retains enemy progress, buffs and skills while reviving every hero', async () => {
  const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
  const state={entities:[{uid:1,kind:'hero',hp:0,maxHP:42,isAlive:false,actionState:'ko',actionFacing:'left',actionStateUntil:86400,buffs:{ward:3},skills:['faze']},{uid:2,kind:'hero',hp:0,maxHP:35,isAlive:false},{uid:3,kind:'enemy',hp:7,maxHP:50}],globals:{time:10,Player_Energy:-1,Player_maxEnergy:150,PendingDeaths:{1:true,3:true},Skills:{faze:true},HeroBuffs:{ward:3}}};
@@ -184,7 +193,7 @@ test('surrender is a no-op outside an active continuous boss attempt', async () 
 test('ordinary KO captures cleared sectors before removing enemies and respawns only unfinished packs', async () => {
  const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
  const {buildContinuousCombatSpawnPlan,activateContinuousCombatSpawnedEnemy,deriveContinuousCombatWavePackProgress,getContinuousCombatPartyCP}=await import('../web-runner/src/core/continuousCombatStage.mjs');
- const rows=['High Orc','Chimerilass','Djinn'].map((name,index)=>({name,HP:20+index*2,ATK:2,DEF:2,MAG:1,RES:1,SPD:8,CombatPower:20+index}));
+ const rows=['High Gobloc','Lizardo','Orc'].map((name,index)=>({name,HP:20+index*2,ATK:2,DEF:2,MAG:1,RES:1,SPD:8,CombatPower:20+index}));
  const stage={seed:4,region:1,stage:2,wave:3,bossAvailable:false,bossArmed:false,bossActive:false,transitions:2,clearedBosses:2,clearedPackMask:0,spawnedPackMask:63,nextEmissionAt:0,lastUpdatedAt:0,spawnSerial:12};
  const globals={ContinuousCombatStageLoop:1,ContinuousCombatStage:stage,EnemyData:rows,EnemySlots:Array.from({length:12},(_,i)=>i),PendingDeaths:{},EnemyDeathVisualHoldByUID:{},Equipment:{lamp:{autoEnabled:true}},time:8};
  const hero={uid:1,kind:'hero',hp:0,maxHP:42,isAlive:false,ATK:90,DEF:90,MAG:90,RES:90,SPD:90};

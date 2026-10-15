@@ -4,12 +4,15 @@ import { resetActorPresentationAfterRestore } from '../src/core/actorPresentatio
 import { placeContinuousCombatHeroesInRecoveryHuddle } from '../src/core/arenaCombat.mjs';
 import { cleanseDebuffs } from '../src/core/combatRules.mjs';
 import { hasContinuousOrdinaryHeroKO } from './combatSimulationTick.mjs';
+import { recordBalanceCombatEvent } from '../src/core/balanceTelemetry.mjs';
 
 // Session lifecycle only. Damage, initiative and skill rules remain runtime-owned.
-export function restoreHeroesToFullHP({ state, call }) {
+export function restoreHeroesToFullHP({ state, call, reason = 'manual' }) {
   const now = Number(state.globals?.time || 0);
   for (const hero of state.entities.filter(e => e?.kind === 'hero')) {
+    const hpBefore = Number(hero.hp || 0);
     hero.hp = hero.maxHP;
+    recordBalanceCombatEvent(state.globals, { type: 'recovery', reason, recoveryIndex: Number(state.globals.ContinuousCombatStage?.defeatRecoveries || 0), targetUID: Number(hero.uid || 0), sourceUID: 0, amount: Math.max(0, Number(hero.hp || 0) - hpBefore), hpBefore, hpAfter: Number(hero.hp || 0) });
     hero.isAlive = true;
     resetActorPresentationAfterRestore(hero, now);
     if (state.globals.PendingDeaths) delete state.globals.PendingDeaths[hero.uid];
@@ -60,7 +63,7 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
       state.globals.EnemyDeathVisualHoldByUID = {};
       state.globals.PendingDeaths = {};
       resetContinuousCombatAfterDefeat(state.globals);
-      restoreHeroesToFullHP({ state, call });
+      restoreHeroesToFullHP({ state, call, reason: 'continuous_defeat' });
       const heroes = state.entities.filter(actor => actor?.kind === 'hero');
       for (const hero of heroes) cleanseDebuffs(hero);
       placeContinuousCombatHeroesInRecoveryHuddle({ globals: state.globals, heroes, now: Number(state.globals.time || 0) });
@@ -89,7 +92,7 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
       if (Number(state.globals.ContinuousCombatStageLoop || 0) === 1 && recordContinuousCombatWavePackProgress(stage, state.entities)) state.globals.HeroProgressDirty = true;
       const needsContinuousHuddle = Number(state.globals.ContinuousCombatStageLoop || 0) === 1
         && heroes.some(hero => Number(hero.hp || 0) <= 0);
-      restoreHeroesToFullHP({ state, call });
+      restoreHeroesToFullHP({ state, call, reason: 'resurrect' });
       if (needsContinuousHuddle) {
         placeContinuousCombatHeroesInRecoveryHuddle({ globals: state.globals, heroes, now: Number(state.globals.time || 0) });
       }

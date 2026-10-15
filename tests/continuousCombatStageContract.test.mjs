@@ -36,6 +36,32 @@ import {
 const rows = ['Gobloc', 'Skeleton', 'High Gobloc', 'Lizardo', 'Orc', 'High Orc', 'Chimerilass', 'Djinn', 'Troll']
   .map((name, index) => ({ name, HP: 20 + index * 5, ATK: 2 + index, DEF: 2, MAG: 1, RES: 1, SPD: 8 }));
 
+test('opening ordinary waves use fodder and routine enemies before the boss gate', () => {
+  const openingNames = new Set(['Gobloc', 'Skeleton', 'High Gobloc', 'Lizardo', 'Orc']);
+  for (const stage of CONTINUOUS_COMBAT_STAGES.filter(candidate => candidate.wave > 0)) {
+    assert.equal(stage.kind, 'fodder');
+    assert.ok(stage.enemyNames.every(name => openingNames.has(name)), `wave ${stage.wave} contains a hard or elite enemy`);
+  }
+});
+
+test('ordinary wave clear serial advances once per clear and excludes boss and recovery transitions', () => {
+  let state = createContinuousCombatStageState(5);
+  assert.equal(state.ordinaryWaveClears, 0);
+  assert.equal(state.defeatRecoveries, 0);
+  for (let clear = 1; clear <= 4; clear += 1) {
+    state = advanceContinuousCombatStage({ ...state, wave: clear }).state;
+    assert.equal(state.ordinaryWaveClears, clear);
+  }
+  assert.equal(state.bossAvailable, true);
+  const afterBoss = advanceContinuousCombatStage({ ...state, bossActive: true }).state;
+  assert.equal(afterBoss.ordinaryWaveClears, 4);
+  const recovery = { ContinuousCombatStage: { ...afterBoss, bossActive: false }, time: 0 };
+  assert.equal(resetContinuousCombatAfterDefeat(recovery), true);
+  assert.equal(recovery.ContinuousCombatStage.ordinaryWaveClears, 4);
+  assert.equal(recovery.ContinuousCombatStage.defeatRecoveries, 1);
+  assert.equal(advanceContinuousCombatStage({ ...recovery.ContinuousCombatStage, wave: 1 }).state.ordinaryWaveClears, 5);
+});
+
 test('continuous combat ignores retired enemy-slot refill holds in both runtime banks', async () => {
   const { readFileSync } = await import('node:fs');
   const { getEnemyRosterStability } = await import('../web-runner/src/core/enemyRosterStability.mjs');
@@ -1530,7 +1556,7 @@ test('fresh production and full recovery choose a stable seeded opening heading 
   }
   const recoveredCenter = heroes.reduce((sum, hero) => sum + hero.footX, 0) / heroes.length;
   assert.ok(elapsed < 5, 'the opening walk completes on a bounded simulation clock');
-  assert.ok((recoveredCenter - 1080) * openingDirection >= 192, 'the full squad reaches the seeded opening waypoint');
+  assert.ok((recoveredCenter - 1080) * openingDirection >= 176, 'the full squad reaches the seeded opening waypoint within formation tolerance');
 
   const bossGlobals = { ContinuousCombatStageLoop: 1, ContinuousCombatStage: { ...createContinuousCombatStageState(13), bossActive: true }, time: 0 };
   const bossHeroes = [
@@ -1542,6 +1568,23 @@ test('fresh production and full recovery choose a stable seeded opening heading 
   finalizeContinuousCombatProduction(bossGlobals, [...bossHeroes, bossActor]);
   assert.equal(bossGlobals.ContinuousCombatInitialRoam, undefined);
   assert.deepEqual(bossHeroes.map(hero => [hero.footX, hero.footY]), bossPositions, 'boss presentation keeps its fixed authored layout');
+});
+
+test('opening roam releases pursuit when the formation reaches its waypoint', () => {
+  for (const direction of [-1, 1]) {
+    const globals = {
+      ContinuousCombatStageLoop: 1,
+      ContinuousCombatStage: createContinuousCombatStageState(1),
+      time: 1,
+      ContinuousCombatInitialRoam: { direction, originX: 1080, targetX: 1080 + direction * 200, distance: 200 },
+    };
+    const heroes = [16, 4, -10, -10].map((offset, index) => ({
+      uid: index + 1, kind: 'hero', baseHeroName: ['Fara', 'Hondo', 'Runa', 'Kaja'][index],
+      hp: 100, footX: 1080 + direction * (184 + offset), footY: 319.5,
+    }));
+    advanceContinuousCombatArena({ globals, entities: heroes, seconds: 0.1 });
+    assert.equal(globals.ContinuousCombatInitialRoam, undefined, 'formation offset cannot hold pursuit disabled');
+  }
 });
 
 test('opening roam yields to actual attack reach and a lingering incoming impact', () => {

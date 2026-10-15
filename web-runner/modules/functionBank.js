@@ -1,5 +1,6 @@
 import { partyTrainingCombatStat } from '../src/core/realtimeSkillState.mjs';
 import { effectiveStat } from '../src/core/combatRules.mjs';
+import { recordBalanceCombatEvent } from '../src/core/balanceTelemetry.mjs';
 import { executeHeroCommand, resolveNativeCommandStep, resolveRealtimeBasicImpact, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat, settleContinuousCombatRewards, emitResolvedHealEvent, recordEnemyDefeatReward } from './heroCommands.mjs';
 import { state } from './state.js';
 import { MONSTER_KEYS, MONSTER_LOOT_TABLE, TOKEN, EMPTY } from './monsterLootTableEventTokens.js';
@@ -6104,6 +6105,15 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   cleanupRealtimeSkillActors(ctx);
   const afterHP = Number(t.hp ?? 0);
   const appliedDamage = Math.max(0, beforeHP - afterHP);
+  if (t.kind === 'hero' && appliedDamage > 0) recordBalanceCombatEvent(g, {
+    type: 'damage', sourceUID: Number(source?.uid || 0), targetUID: Number(uid || 0),
+    damageType: opts.damageType === 'physical' || opts.damageType === 'magic' ? opts.damageType : opts.magic ? 'magic' : 'unknown',
+    amount: appliedDamage, hpBefore: beforeHP, hpAfter: afterHP,
+  });
+  if (t.kind === 'enemy' && appliedDamage > 0 && afterHP <= 0) recordBalanceCombatEvent(g, {
+    type: 'enemy_ko', sourceUID: Number(source?.uid || 0), targetUID: Number(uid || 0),
+    amount: appliedDamage, hpBefore: beforeHP, hpAfter: afterHP,
+  });
   if (appliedDamage > 0) {
     const now = Number(g.time || 0);
     t.actionState = afterHP <= 0 ? 'ko' : 'hurt';

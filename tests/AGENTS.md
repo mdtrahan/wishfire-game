@@ -1,4 +1,6 @@
 # Tests DOX
+- `balanceTelemetryContract.test.mjs` protects opt-in capture and bounded event retention; `balanceHarnessEntryContract.test.js` protects exact-event use alongside sampled HP.
+- `questCombatSessionContract.test.js` also proves recovery events record each hero's restored HP without attributing it to a healer.
 - `storageBudgetContract.test.mjs` proves oversized payload/tree/runtime rejection and staged generated-output refusal. Worktree linking tests prove output/backup exclusion, preservation of source and refusal over dirty tracked excluded paths.
 
 - `storageHygieneContract.test.mjs` must cover default detached and unmerged refusal, the opt-in historical path's ancestry and local guards, and opt-in superseded-ancestor refusal for missing successor ancestry, non-CLOSED Beads, dirty source, Dolt, or protected evidence.
@@ -33,6 +35,7 @@
 - Paused-combat navigation checks must preserve the active card and snapshot through Continue, intercept Quests from any suspended screen, and clear the snapshot only on Quit without settlement or rewards.
 - Tests are often the clearest owner of regression-prone behavior. Read the relevant test before changing gameplay, rendering, persistence, or SimulationCore code.
 - The continuous stage contract distinguishes ordinary wave HP carryover from boss-clear full-party revival, cleanse and saved HP refresh.
+- Balance harness contracts must count earned ordinary clears and boss clears from stage transitions, treat defeat recovery as a tracked route, and distinguish observe-only runs from visible lamp collection and auto-equip scenarios.
 - Boss-surrender coverage exercises queued near-lethal work, reward-ledger removal before settlement, full recovery with readiness/manual retry preserved, active-attempt checkpoint normalization, non-boss no-op, and the production layout, Lamp, visibility and `window.pagehide` exit seams.; an already-removed boss actor must still be identified by its active-stage UID without discarding earlier fodder rewards.
 - Prefer focused deterministic tests over broad suite runs during development.
 - Static source assertions are allowed in this repo when they protect architecture boundaries, but avoid adding brittle source-shape checks when behavior can be tested directly.
