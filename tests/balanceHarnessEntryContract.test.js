@@ -70,7 +70,7 @@ test('optional four-slot party fixture is applied and checked before combat', ()
 test('lamp fixture rejects stale display-name loadouts for active instance keys', () => {
   const stale = { heroes: [{ name: 'Falie', instanceKey: 'falie#1' }], loadouts: { Falie: { body: 'lamp:4242:0' } } };
   assert.throws(() => assertActiveLoadoutKeys(stale), /Stale lamp loadout key for active Falie: expected falie#1/);
-  assert.doesNotThrow(() => assertActiveLoadoutKeys({ ...stale, loadouts: { ...stale.loadouts, 'falie#1': { body: 'lamp:4242:0' } } }));
+  assert.doesNotThrow(() => assertActiveLoadoutKeys({ ...stale, loadouts: { ...stale.loadouts, 'falie#1': { body: 'lamp:4242:3' } } }));
   assert.doesNotThrow(() => assertActiveLoadoutKeys({ heroes: [{ name: 'Falie', instanceKey: 'falie#1' }], loadouts: { Runa: { body: 'lamp:4242:2' } } }));
   assert.match(source, /if \(config\.lampFixture\) assertActiveLoadoutKeys\(snapshot\)/);
 });
