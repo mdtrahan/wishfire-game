@@ -3,6 +3,13 @@ const rules=require('../web-runner/src/core/combatRules.mjs');
 function actor(uid,kind='hero',mode='Warrior'){return {uid,kind,hp:100,maxHP:100,sp:50,spMax:100,flow:0,flowMode:mode,stats:{SPD:10,MAG:10},statuses:[]};}
 function context(actors){return {actors,state:{statusOrder:0},random:()=>.2,flowRandom:()=>0,calculateDamage:()=>10,applyDamage:(s,t,n)=>{const b=t.hp;t.hp=Math.max(0,b-n);return b-t.hp;},isOver:()=>!actors.some(a=>a.kind==='enemy'&&a.hp>0)};}
 const strike={targetType:'enemy',tags:['physical'],effects:[{effectType:'damage',hits:8}]};
+test('listed skill potency reaches base damage before defensive modifiers',()=>{
+ const h=actor(1),e=actor(2,'enemy'),c=context([h,e]);
+ const calls=[];c.calculateDamage=(_source,_target,mode,multiplierPct)=>{calls.push([mode,multiplierPct]);return 12;};
+ rules.resolveSkill(c,h,{targetType:'enemy',tags:['magic'],effects:[{effectType:'damage',potency:1.5}]},[e.uid]);
+ assert.deepEqual(calls,[['magic',150]]);
+ assert.equal(e.hp,88);
+});
 test('damage emits capped orbs; special cannot directly refill caster',()=>{const h=actor(1),e=actor(2,'enemy'),c=context([h,e]);rules.resolveSkill(c,h,strike,[2]);assert.equal(h.flow,0);e.hp=100;rules.resolveSkill(c,h,{...strike,isFlowSpecial:true},[2]);assert.equal(h.flow,0);});
 test('lethal hostile hit emits Stoic and Comrade orbs without direct charge',()=>{const h=actor(1,'hero','Stoic'),a=actor(2,'hero','Comrade'),e=actor(3,'enemy');h.hp=5;const c=context([h,a,e]);rules.resolveSkill(c,e,strike,[1]);assert.equal(h.flow,0);assert.equal(a.flow,0);assert.equal((c.state.FlowOrbs||[]).length,0);assert.equal(h.hp,0);});
 test('status refresh retains stronger magnitude, duration ends on affected turn',()=>{const h=actor(1,'hero','Tactician'),e=actor(2,'enemy'),c=context([h,e]);rules.applyStatus(c,h,e,{statusEffect:'spdDown',magnitude:.4,duration:2});assert.equal(h.flow,0);rules.turnEnd(e);rules.applyStatus(c,h,e,{statusEffect:'spdDown',magnitude:.2,duration:2});assert.equal(h.flow,0);assert.equal(e.statuses[0].magnitude,.4);rules.applyStatus(c,h,e,{statusEffect:'spdDown',magnitude:.2,duration:2});assert.equal(h.flow,0);});
@@ -15,11 +22,11 @@ test('single-target skills reject target sets; group skills retain surviving sto
 test('special ancestry excludes caster FLOW through a counter reaction',()=>{const h=actor(1,'hero','Stoic'),e=actor(2,'enemy'),c=context([h,e]);e.statuses=[{statusEffect:'counter',magnitude:1}];rules.resolveSkill(c,h,{...strike,isFlowSpecial:true,effects:[{effectType:'damage'}]},[2]);assert.equal(h.hp,90);assert.equal(h.flow,0);});
 test('Healer credits actual immediate restoration once including revival; pure HoT grants none',()=>{const h=actor(1,'hero','Healer'),a=actor(2),e=actor(3,'enemy'),c=context([h,a,e]);a.hp=0;rules.resolveSkill(c,h,{targetType:'deadAlly',effects:[{effectType:'revive',amount:10},{effectType:'heal',amount:10}]},[2]);assert.equal(a.hp,20);assert.equal(h.flow,0);rules.resolveSkill(c,h,{targetType:'ally',effects:[{effectType:'status',statusEffect:'hot',snapshotPotency:10,duration:2}]},[2]);assert.equal(h.flow,0);});
 test('newest Provoke controls single attacks while AoE bypasses it',()=>{const h=actor(1),a=actor(2),e=actor(3,'enemy'),c=context([h,a,e]);rules.applyStatus(c,h,h,{statusEffect:'provoke',duration:3});rules.applyStatus(c,a,a,{statusEffect:'provoke',duration:3});rules.resolveSkill(c,e,{...strike,effects:[{effectType:'damage'}]},[1]);assert.equal(a.hp,90);assert.equal(h.hp,100);rules.resolveSkill(c,e,{...strike,targetType:'allEnemies',effects:[{effectType:'damage'}]},[1,2]);assert.equal(h.hp,90);assert.equal(a.hp,80);});
-test('all four complete authored kits execute through the canonical resolver',()=>{
+test('all four realtime kits expose one basic and eight or nine conditional skills',()=>{
  const {HERO_DEFINITIONS}=require('../web-runner/src/core/heroDefinitions.mjs');
- for(const d of Object.values(HERO_DEFINITIONS)) for(const skill of [d.basic,...d.actives,d.special]){
-  const h={...actor(1,'hero',d.flowMode),name:d.key,currentLevel:50},ally=actor(2),e=actor(3,'enemy');
-  const c=context([h,ally,e]);const ids=rules.targetCandidates(c.actors,h,skill).map(a=>a.uid);
-  assert.equal(rules.resolveSkill(c,h,skill,['allEnemies','allAllies'].includes(skill.targetType)?ids:ids.slice(0,1)),true,d.name+': '+skill.displayName);
+ for(const d of Object.values(HERO_DEFINITIONS)){
+  assert.ok(d.basic?.skillId, d.name);
+  assert.equal(d.actives.length, d.key==='Kojonn'?9:8, d.name);
+  assert.equal(new Set(d.actives.map(skill=>skill.skillId)).size, d.actives.length, d.name);
  }
 });

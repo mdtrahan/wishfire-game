@@ -42,11 +42,8 @@
   - final diff verification needs direct file context
 
 ## Codex-Orka Index Routing
-- Current full index observed during ORKA-ygz6 diagnosis: `local/Codex-Orka-904e2bad`.
-- Treat `local/Codex-Orka-c326b16a` as stale unless it is revalidated.
-- If `repo: "Codex-Orka"` is ambiguous, run `get_repo_health` against each candidate and choose the index with current file/symbol counts.
-- For an extra freshness check, inspect `web-runner/app.js` with `get_dependency_graph`. A current index should show the modern runtime module graph, including systems such as `renderRuntime`, `partyStatOsd`, `combatSessionInitializer`, `devToolingRuntime`, `superGemRuntime`, and `simulationCoreShadow`.
-- Do not fall back to broad full-file reads after an ambiguity error. Resolve the index first, then continue with focused retrieval.
+- Use an index only when its source path is the current main checkout or the explicitly selected active worktree, and its recorded commit matches the checkout.
+- If the source path or commit cannot be verified, use focused local source reads. Remove or rebuild stale indexes outside the repository.
 
 ## Project Policy
 - `jcodemunch-mcp` is a tooling aid, not a gameplay/runtime dependency.
@@ -56,7 +53,7 @@
 
 ## Local MCP Config
 - A copy-ready example config is stored in:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/jcodemunch-mcp.example.json`
+  - `governance/execution/jcodemunch-mcp.example.json`
 
 ## Launch Pattern
 - Upstream-supported stdio launch:

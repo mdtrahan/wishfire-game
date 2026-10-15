@@ -40,7 +40,9 @@ function productionPartyMembers() {
   return runtime.buildConfiguredCombatPartyMembers(slots).heroMembers;
 }
 
-async function initialize(heroMembers, escortMember = null, withEnemy = false) {
+async function initialize(heroMembers, escortMember = null, withEnemy = false, {
+  continuousStage = null, enemyRows = null, encounterSeed = 0, encounterSeedExplicit = false, generatedEncounterSeed = 123,
+} = {}) {
   const { resetCombatSessionConditions } = await import(pathToFileURL(path.join(systems, 'combatSessionReset.mjs')));
   const filename = path.join(systems, 'combatSessionInitializer.js');
   const source = fs.readFileSync(filename, 'utf8')
@@ -50,14 +52,17 @@ async function initialize(heroMembers, escortMember = null, withEnemy = false) {
   const context = {
     module: { exports: {} }, resetCombatSessionConditions, crypto:require('node:crypto').webcrypto,
     ...require('../web-runner/src/core/heroProgression.mjs'),
-    ...require('../web-runner/src/core/personalFlow.mjs'),
-    ...require('../web-runner/src/core/sessionLevelUpQueue.mjs'),
     ...require('../web-runner/src/core/routineEnemyScaling.mjs'),
+    buildContinuousCombatSpawnPlan: require('../web-runner/src/core/continuousCombatStage.mjs').buildContinuousCombatSpawnPlan,
+    getContinuousCombatPartyCP: require('../web-runner/src/core/continuousCombatStage.mjs').getContinuousCombatPartyCP,
     DEV_TOOL_EMPTY_SLOT: '', DEV_TOOL_RANDOM_ENEMY_SLOT: '__RANDOM__',
     runtimeDebugLogging: { startupDebugLog() {} },
   };
   vm.runInNewContext(source + '\nmodule.exports = { createCombatSessionInitializer };', context, { filename });
-  const state = { globals: {}, entities: [] };
+  const state = { globals: continuousStage ? {
+    ContinuousCombatStageLoop: 1, ContinuousCombatStage: continuousStage, EncounterMaxSlots: 42,
+    EncounterSeed: encounterSeed, EncounterSeedExplicit: encounterSeedExplicit ? 1 : 0,
+  } : {}, entities: [] };
   const gameState = {};
   const calls = [];
   const init = context.module.exports.createCombatSessionInitializer({
@@ -69,15 +74,17 @@ async function initialize(heroMembers, escortMember = null, withEnemy = false) {
         state.globals.PartyHP = heroes.reduce((total, hero) => total + hero.hp, 0);
         state.globals.PartyMaxHP = heroes.reduce((total, hero) => total + hero.maxHP, 0);
       }
-      if (name === 'SpawnEnemy') state.entities.push({
-        uid: state.globals.NextUID++, kind: 'enemy', name: args[0].name,
-      });
+      if (name === 'SpawnEnemy') {
+        const data=args[0];
+        const enemy={uid:state.globals.NextUID++,kind:'enemy',name:data.name,hp:data.HP,maxHP:data.HP,stats:{ATK:data.ATK,DEF:data.DEF,MAG:data.MAG,RES:data.RES,SPD:data.SPD},slotIndex:args[1]};
+        state.entities.push(enemy);return enemy;
+      }
     },
     assertCombatLayoutDev() {},
     computeCombatPower: require('../web-runner/src/core/combatPower.mjs').computeCombatPower,
     createSeededRng: () => () => 0,
     resetBootstrapRngSession() {},
-    generateEncounterSeed: () => 123,
+    generateEncounterSeed: () => generatedEncounterSeed,
     deriveCombatRuntimeRngSeed: seed => seed,
     installCombatRuntimeRandom() {},
     getConfiguredHeroSlots: () => heroMembers.map(hero => hero?.instanceName || ''),
@@ -86,9 +93,65 @@ async function initialize(heroMembers, escortMember = null, withEnemy = false) {
     getConfiguredEnemySlots: () => ['TestEnemy'],
     syncFromGlobals() { gameState.partyHP=Array(6).fill(0);gameState.partyMaxHP=Array(6).fill(0);for(const h of state.entities.filter(a=>a.kind==='hero')){gameState.partyHP[h.heroDisplaySlot]=h.hp;gameState.partyMaxHP[h.heroDisplaySlot]=h.maxHP;} },
   });
-  init(withEnemy ? [{ name: 'TestEnemy', HP: 25, ATK: 5, DEF: 2 }] : []);
+  init(enemyRows || (withEnemy ? [{ name: 'TestEnemy', HP: 25, ATK: 5, DEF: 2 }] : []));
   return { state, gameState, calls };
 }
+
+test('fresh continuous initializer pads weak packs and finalize preserves each planned sector', async () => {
+  const { buildContinuousCombatSpawnPlan, createContinuousCombatStageState, finalizeContinuousCombatProduction, getContinuousCombatPartyCP } = await import('../web-runner/src/core/continuousCombatStage.mjs');
+  const rows=['Gobloc','Skeleton'].map(name=>({name,HP:1,ATK:1,DEF:1,MAG:1,RES:1,SPD:1}));
+  const {state}=await initialize(productionPartyMembers(),null,false,{continuousStage:createContinuousCombatStageState(31),enemyRows:rows});
+  const initialEnemies=state.entities.filter(actor=>actor.kind==='enemy');
+  assert.equal(state.globals.ContinuousCombatStage.seed, 123, 'fresh stage padding follows the seed selected after beforeInit configured the stage');
+  assert.ok(initialEnemies.length>18&&initialEnemies.length<=42);
+  const expectedPlan=buildContinuousCombatSpawnPlan(state.globals.EnemyData,state.globals.ContinuousCombatStage,{partyCP:getContinuousCombatPartyCP(state.entities),enemySize:Number(state.globals.EnemySize||40)});
+  assert.equal(JSON.stringify(initialEnemies.map(actor=>[actor.continuousStageSectorIndex,actor.continuousStageEntryOrder,actor.continuousStageSectorSize,actor.continuousStageSolo,actor.continuousStageSoloFootX,actor.continuousStageSoloFootY])),JSON.stringify(expectedPlan.map(entry=>[entry.sectorIndex,entry.entryOrder,entry.sectorSize,entry.isSolo?1:0,entry.soloFootX,entry.soloFootY])),'the fresh seed owns pack count, solo identity and exact seeded solo feet');
+  assert.ok(initialEnemies.every(actor=>Number.isInteger(actor.continuousStageSectorIndex)),'initializer keeps the spawn plan sector on each created actor');
+  assert.equal(finalizeContinuousCombatProduction(state.globals,state.entities),true);
+  const sectors=new Map();
+  const solos=[];
+  for(const enemy of state.entities.filter(actor=>actor.kind==='enemy')) {
+    const sector=enemy.streamSectorIndex%6;
+    if(enemy.streamSolo){solos.push(enemy);continue;}
+    const pack=sectors.get(sector)||[];pack.push(enemy);sectors.set(sector,pack);
+    assert.equal(enemy.continuousStageSectorIndex,undefined,'initializer metadata is consumed by production finalization');
+  }
+  assert.equal(sectors.size,6);
+  assert.ok([...sectors.values()].every(pack=>pack.length>=3&&pack.length<=6));
+  for(const pack of sectors.values())assert.deepEqual(pack.map(enemy=>enemy.streamEntryOrder).sort((a,b)=>a-b),Array.from({length:pack.length},(_,index)=>index));
+  assert.equal(solos.length,6);
+  assert.ok(solos.every(enemy=>{
+    const entry=expectedPlan.find(candidate=>candidate.slotIndex===enemy.slotIndex&&candidate.isSolo);
+    return entry&&enemy.footX===entry.soloFootX&&enemy.footY===entry.soloFootY;
+  }),'production finalization uses the same bounded solo feet solved by the seeded plan');
+});
+
+test('continuous initializer treats fully credited and boss-ready checkpoints as intentionally empty encounters', async () => {
+  const { createContinuousCombatStageState } = await import('../web-runner/src/core/continuousCombatStage.mjs');
+  const rows=['High Orc','Chimerilass','Djinn'].map(name=>({name,HP:30,ATK:4,DEF:2,MAG:1,RES:1,SPD:8}));
+  for (const stage of [
+    { ...createContinuousCombatStageState(8), wave: 3, clearedPackMask: 63 },
+    { ...createContinuousCombatStageState(8), wave: 1, bossAvailable: true, clearedPackMask: 63 },
+  ]) {
+    const { state, calls } = await initialize(productionPartyMembers(), null, false, { continuousStage: stage, enemyRows: rows });
+    assert.equal(state.entities.filter(actor => actor.kind === 'enemy').length, 0, 'reload must not fall through to generic or fodder encounter selection');
+    assert.deepEqual(Array.from(state.globals.EncounterSummary.reasonCodes), ['continuous_stage_authored']);
+    assert.equal(calls.includes('SpawnEnemy'), false);
+  }
+});
+
+test('continuous initializer applies an explicit QA encounter seed to pack-count randomness', async () => {
+  const { buildContinuousCombatSpawnPlan, createContinuousCombatStageState, getContinuousCombatPartyCP } = await import('../web-runner/src/core/continuousCombatStage.mjs');
+  const rows=['Gobloc','Skeleton'].map(name=>({name,HP:1,ATK:1,DEF:1,MAG:1,RES:1,SPD:1}));
+  const {state}=await initialize(productionPartyMembers(),null,false,{
+    continuousStage:createContinuousCombatStageState(31),enemyRows:rows,encounterSeed:77,encounterSeedExplicit:true,generatedEncounterSeed:123,
+  });
+  assert.equal(state.globals.EncounterSeed,77,'an explicit QA seed bypasses fresh seed generation');
+  assert.equal(state.globals.ContinuousCombatStage.seed,77,'pack-count randomness uses that same explicit QA seed');
+  const expectedPlan=buildContinuousCombatSpawnPlan(state.globals.EnemyData,state.globals.ContinuousCombatStage,{partyCP:getContinuousCombatPartyCP(state.entities),enemySize:Number(state.globals.EnemySize||40)});
+  const plannedActors=state.entities.filter(actor=>actor.kind==='enemy');
+  assert.equal(JSON.stringify(plannedActors.map(actor=>[actor.continuousStageSectorIndex,actor.continuousStageEntryOrder,actor.continuousStageSectorSize])),JSON.stringify(expectedPlan.map(entry=>[entry.sectorIndex,entry.entryOrder,entry.sectorSize])));
+});
 
 for (let count = 1; count <= 6; count += 1) {
   test(`initializer constructs every member of a ${count}-hero configured party`, async () => {
@@ -118,55 +181,19 @@ for (let count = 1; count <= 6; count += 1) {
   });
 }
 
-test('fresh combat initialization creates one explicit neutral party opening entry', async () => {
-  const { state } = await initialize([member(0), member(1), member(2), member(3)]);
-  assert.deepEqual(JSON.parse(JSON.stringify(state.globals.SessionLevelUpQueue)), {
-    version: 1, status: 'active', paused: false, currentIndex: 0,
-    entries: [{
-      heroId: '__party_session__', heroUID: 0, earnedLevel: 0, earnedLevelIndex: 0,
-      source: 'opening_party', participantHeroIds: ['owned-0', 'owned-1', 'owned-2', 'owned-3'],
-    }],
-  });
-});
-
-test('production starting party maps canonical identities and awards Comrade only to Kaja on a real enemy basic hit', async () => {
+test('production starting party maps canonical identities', async () => {
   const { state } = await initialize(productionPartyMembers());
-  const commands = require('../web-runner/modules/heroCommands.mjs');
   const definitions = require('../web-runner/src/core/heroDefinitions.mjs');
   const mapping = state.entities.map((hero, index) => {
     const definition = definitions.heroDefinition(hero);
-    return [index, hero.uid, hero.name, definition.name, definition.role, definition.key, definition.flowMode];
+    return [index, hero.uid, hero.name, definition.name, definition.role, definition.key];
   });
   assert.deepEqual(JSON.parse(JSON.stringify(mapping)), [
-    [0, 1, 'Falie', 'Fara', 'Tank', 'Falie', 'Stoic'],
-    [1, 2, 'Huun', 'Hondo', 'DPS / Fighter', 'Huun', 'Warrior'],
-    [2, 3, 'Runa', 'Runa', 'Controller', 'Runa', 'Tactician'],
-    [3, 4, 'Kojonn', 'Kaja', 'Support / Guardian', 'Kojonn', 'Comrade'],
+    [0, 1, 'Falie', 'Fara', 'Tank', 'Falie'],
+    [1, 2, 'Huun', 'Hondo', 'Damage', 'Huun'],
+    [2, 3, 'Runa', 'Runa', 'Mage', 'Runa'],
+    [3, 4, 'Kojonn', 'Kaja', 'Support', 'Kojonn'],
   ]);
-  const [fara, hondo, , kaja] = state.entities;
-  hondo.flowMode = 'Comrade';
-  kaja.flowMode = 'Warrior';
-  const enemy = { uid: 19, kind: 'enemy', name: 'High Gobloc', hp: 50, maxHP: 50, stats: { ATK: 1 }, statuses: [] };
-  state.entities.push(enemy);
-  const ctx = { state, callFunction(name, ...args) {
-    if (name === 'CalculateDamage') return 2;
-    if (name === 'ApplyDamageToTarget') {
-      const target = state.entities.find(actor => Number(actor.uid) === Number(args[0]));
-      const applied = Math.min(Number(target.hp || 0), Number(args[1] || 0));
-      target.hp -= applied;
-      return applied;
-    }
-    if (name === 'GetEnemyRosterStability') return { stable: true };
-    if (name === 'SpawnDamageText' || name === 'UpdateHeroHPUI') return true;
-    return 0;
-  } };
-  assert.equal(commands.resolveIncomingNativeHit(ctx, enemy, fara, 2), true);
-  assert.equal(hondo.flow, 0);
-  assert.equal(kaja.flow, 10);
-  kaja.flow = 0;
-  assert.equal(commands.resolveIncomingNativeHit(ctx, enemy, kaja, 2), true);
-  assert.equal(hondo.flow, 0);
-  assert.equal(kaja.flow, 0);
 });
 
 test('sparse formation slots retain their indexes and exclude slots beyond six', async () => {

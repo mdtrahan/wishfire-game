@@ -51,6 +51,8 @@ test('StartEnemyAction routes action packet through Rust-owned resolver', () => 
     assert.match(src, /__ORKA_START_ENEMY_ACTION_OWNER__/);
     assert.match(src, /g\.LastStartEnemyActionOwner/);
     assert.match(src, /decision\.targetUID/);
-    assert.match(src, /g\.EnemyAction = \{/);
+    assert.match(src, /function createEnemyActionState\(/);
+    assert.match(src, /return createEnemyActionState\(ctx, enemyUID, target, \{ source: 'functionBank\.StartEnemyAction' \}\)/);
+    assert.match(src, /g\.EnemyAction = action/);
   }
 });

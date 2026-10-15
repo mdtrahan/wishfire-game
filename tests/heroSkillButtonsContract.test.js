@@ -3,10 +3,10 @@ const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-test('hero screen reads canonical kits with level locks and no skill upgrade control', () => {
+test('hero screen reads every authored active skill', () => {
  const source=fs.readFileSync(path.join(__dirname,'../web-runner/systems/renderHeroScreen.js'),'utf8');
- assert.match(source,/heroDefinition/);assert.match(source,/d.passives/);assert.match(source,/d.actives/);assert.match(source,/d.special/);
- assert.match(source,/ability.unlockLevel/);assert.doesNotMatch(source,/AttemptHeroSkillUpgrade|heroSkillPoints/);
+ assert.match(source,/heroDefinition/);assert.match(source,/definition.actives/);assert.match(source,/heroSkillUnlocked\(hero,ability\)/);assert.match(source,/ability.unlockLevel/);assert.match(source,/ability.conditionLabel/);assert.match(source,/ability.cooldownSeconds/);
+ assert.doesNotMatch(source,/d.passives|d.special/);
 });
 
 test('hero skill downgrade function exists in both runtime and scripts function banks', () => {

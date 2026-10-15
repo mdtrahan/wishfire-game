@@ -20,6 +20,9 @@ function readFixtureCases() {
       heroAoe,
       chainActive,
       chainMultiplier,
+      attackMultiplierPct,
+      matchingResistancePct,
+      generalResistancePct,
       targetHp,
       shield,
       expectedDamage,
@@ -36,6 +39,9 @@ function readFixtureCases() {
       heroAoe: Number(heroAoe),
       chainActive: Number(chainActive),
       chainMultiplier: Number(chainMultiplier),
+      attackMultiplierPct: Number(attackMultiplierPct),
+      matchingResistancePct: Number(matchingResistancePct),
+      generalResistancePct: Number(generalResistancePct),
       targetHp: Number(targetHp),
       shield: Number(shield),
       expectedDamage: Number(expectedDamage),
@@ -46,11 +52,10 @@ function readFixtureCases() {
 }
 
 function computeSingleHitDamage(testCase) {
-  const roll = 0.9 + (Number(testCase.roll01) * 0.2);
   const sourceIsHero = Number(testCase.sourceIsHero) === 1;
-  const rawDamage = Math.ceil((2 + (Math.max(0, testCase.power) * .48)) * (20 / (20 + Math.max(0, testCase.resist))) * roll);
-  const baseDamage = Math.max(1, rawDamage);
-  let damage = Math.max(1, Math.ceil(Number(testCase.critRoll01) < .01 ? baseDamage * 1.25 : baseDamage));
+  const rawDamage = Math.max(0, testCase.power - testCase.resist) * testCase.attackMultiplierPct / 100;
+  const baseDamage = Math.ceil(rawDamage * (1 - testCase.matchingResistancePct / 100) * (1 - testCase.generalResistancePct / 100));
+  let damage = Math.ceil(Number(testCase.critRoll01) < .01 ? baseDamage * 1.25 : baseDamage);
   if (sourceIsHero && Number(testCase.chainActive) === 1) {
     damage = Math.ceil(damage * (Number(testCase.chainMultiplier) || 1));
   }
@@ -105,6 +110,9 @@ test('static simulation core wasm matches single-hit resolution fixtures', async
       testCase.heroAoe,
       testCase.chainActive,
       testCase.chainMultiplier,
+      testCase.attackMultiplierPct,
+      testCase.matchingResistancePct,
+      testCase.generalResistancePct,
     );
     const rustApplied = exports.single_hit_applied_damage_shadow(
       testCase.targetHp,

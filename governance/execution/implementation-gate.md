@@ -22,7 +22,7 @@ Before editing any non-minor file:
 6. Confirm a bead-scoped branch/worktree unless the action is minor-exempt.
 7. Mark implementation beads `in_progress` before editing.
 
-Stop under the Escalation section if repo state, ownership, requirements, or scope is unclear.
+Use the Escalation section to pause affected actions when repo state, ownership, requirements, or scope remains unclear after inspection. Continue independent authorized work.
 
 ## Minor Exemption
 Minor actions may stay in the active workspace:
@@ -49,18 +49,22 @@ Minor exemption does not apply when touching runtime code, hot files, package/bu
 
 ## Containment
 - Stay inside the repo root.
-- Confirm clean git status before editing, commit, merge, or cleanup.
+- Before editing, inspect git status and confirm touched paths are clean or explicitly owned by the active lane; preserve unrelated dirty paths.
+- Before committing, verify the staged diff contains only authorized scoped work.
+- Keep the clean integration checkout and clean merged-worktree gates for merge and cleanup.
 - Prefer live `bd` state over `.beads/` files.
 - Do not write outside the repo without approval.
 
 ## Escalation
-Stop and ask when:
+For the conditions below, pause the affected action and inspect available evidence first. Require explicit approval for consequential changes and an owner decision for unresolved conflicts or ownership. Check existing approval for the exact action and scope before asking again. Continue independent authorized work while an affected action is paused.
+
+Escalate when:
 
 - requirements conflict
 - scope is unclear
 - architecture impact is significant
 - persistence, deployment, schema, or data-model behavior changes
-- repo state is unexpected
+- unexpected repo state affects the intended action and remains unexplained after inspection
 - worktree ownership is unclear
 - dirty paths overlap another lane
 - live Beads state and Git state disagree in a way that affects execution

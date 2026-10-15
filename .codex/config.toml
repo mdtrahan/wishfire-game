@@ -1,0 +1,2 @@
+[plugins."ecc@ecc".mcp_servers."chrome-devtools"]
+enabled = false

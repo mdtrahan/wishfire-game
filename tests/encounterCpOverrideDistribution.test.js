@@ -121,6 +121,12 @@ test('canonical EncounterCP derives fresh-start encounter appearances without au
   const { computeCombatPower:canonicalCombatPower } = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'combatPower.mjs')).href);
   const { HERO_DEFINITIONS } = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'heroDefinitions.mjs')).href);
   const { levelStats } = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'heroProgression.mjs')).href);
+  const authoredSkeleton = rows.find(row => row.name === 'Skeleton');
+  assert.deepEqual(
+    Object.fromEntries(['HP', 'ATK', 'DEF', 'MAG', 'RES', 'SPD'].map(key => [key, scaleRoutineEnemy(authoredSkeleton, 1)[key]])),
+    Object.fromEntries(['HP', 'ATK', 'DEF', 'MAG', 'RES', 'SPD'].map(key => [key, key === 'HP' ? 49 : authoredSkeleton[key]])),
+    'level-one fodder gains durability while retaining its authored combat stats',
+  );
   const productionRows = rows.map((rawRow) => {
     const row = scaleRoutineEnemy(rawRow, 1);
     return { ...row, CombatPower:helpers.resolveEnemyEncounterCombatPower(row) };

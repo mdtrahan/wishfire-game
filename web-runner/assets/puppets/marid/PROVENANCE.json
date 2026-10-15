@@ -1,0 +1,33 @@
+{
+  "actor": "marid",
+  "bead": "ORKA-ah1",
+  "baseCommit": "670236ab",
+  "recipeCommit": "2ad525f6",
+  "creativeTool": "built-in image_gen",
+  "transparentBackground": true,
+  "nativeRenderer": "/opt/homebrew/bin/synfig 1.5.5 (installed 1.5.5_4)",
+  "referenceHashes": {
+    "web-runner/assets/images/enemy_sprite-marid-000.png": "7cfcd406ee52b3315fba989c655224e4cf6b24e5550599416663fcb8341dfb0c",
+    "web-runner/assets/images/Fara.png": "9cf39376dacb0913153c0d0a78518eedb2ce40744301a6e33bb510f301369f0e",
+    "web-runner/assets/images/lamp/genie-pointer.png": "7040e2a38c56bf7285bad2661c33e530beb233397bd87fa8eea85d0a7493776d"
+  },
+  "generationOutputs": [
+    "exec-e23cd0dc-8f8f-44ad-b334-685e4066dfde.png",
+    "exec-34dbbeac-aec4-4eba-a2c7-91b5a2d9707c.png"
+  ],
+  "identity": "Broad dark indigo biped, large spiked head, pointed ears and red eyes, bare muscular torso, gold collar and wrist details, maroon waistband, ivory baggy trousers and pointed dark feet.",
+  "paintingBrief": "Polished chibi anime/cel shading matching current Fara and blue genie hand. Transparent separated 4x4 atlas: head, complete torso, pelvis/belt, hanging waist cloth, far upper arm, far forearm, far hand, near upper arm, near forearm, near hand, far thigh, far shin/foot, near thigh, near shin/foot; Djinn final cells orb and cord, Marid final cells empty. Complete hidden shoulder/elbow/wrist/hip/knee anatomy and costume paint. No weapons or smoke body.",
+  "correctionBrief": "Preserve all cells; correct torso to smooth complete shoulder caps without attached arm cuffs/socket ends; remove duplicate head necklace, preserving full blue neck.",
+  "mechanicalProcessing": "rectangular crop and alpha trim via ImageMagick; parented native bone transformations; native rendering; Lanczos downsampling and neutral/contact layouts",
+  "rejectedMaster": "source/parts-left-v1.png",
+  "selectedMaster": "source/parts-left-v2.png",
+  "visualStatus": "builder-inspected static source; fresh critic pending",
+  "motionStatus": "not authored or certified",
+  "sourceRevision2": {
+    "basedOn": "96eb4f0f8ecca0de5c2918a5073a567047f52d17",
+    "freshCritic": "qa/rejected-source-r1/critic-verdict.md",
+    "repair": "Near upper-arm and pelvis rectangular crops exclude neighboring cells. Torso and pelvis extraction additionally isolate disconnected foreign atlas paint: threshold 10% alpha identifies separate foreground components, then a 3px dilation preserves original antialiased edges under the isolation mask. Torso foreign component 2 and pelvis foreign components 2/3 are removed; all retained RGBA paint comes from the preserved v2 master. No creative painting is added.",
+    "newCreativePaint": false,
+    "status": "revised source frozen; fresh second critique pending"
+  }
+}

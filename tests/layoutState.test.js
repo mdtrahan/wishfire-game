@@ -251,7 +251,7 @@ test('queued layout requests preserve FIFO order', async () => {
   assert.deepEqual(changedSequence, ['base->intro', 'intro->combat', 'combat->shop']);
 });
 
-test('core layouts allow AstralFlow transition to astralOverlay and back to combat', async () => {
+test('core layouts reject the retired AstralFlow route and preserve the Gold shop route', async () => {
   resetLayoutStateSingletonForTests();
 
   const eventBus = createEventBus();
@@ -275,11 +275,14 @@ test('core layouts allow AstralFlow transition to astralOverlay and back to comb
   await layoutState.activateInitialLayout('combat');
   assert.equal(layoutState.getActiveLayoutId(), 'combat');
 
-  const toAstral = await layoutState.requestLayoutChange('astralOverlay', 'nav-astral-flow');
-  assert.equal(toAstral, true);
-  assert.equal(layoutState.getActiveLayoutId(), 'astralOverlay');
+  await assert.rejects(layoutState.requestLayoutChange('astralOverlay', 'nav-astral-flow'), /Unknown target layout/);
+  assert.equal(layoutState.getActiveLayoutId(), 'combat');
 
-  const backToCombat = await layoutState.requestLayoutChange('combat', 'overlay-close');
+  const toGoldShop = await layoutState.requestLayoutChange('shop', 'nav-shop');
+  assert.equal(toGoldShop, true);
+  assert.equal(layoutState.getActiveLayoutId(), 'shop');
+
+  const backToCombat = await layoutState.requestLayoutChange('combat', 'shop-close');
   assert.equal(backToCombat, true);
   assert.equal(layoutState.getActiveLayoutId(), 'combat');
 });

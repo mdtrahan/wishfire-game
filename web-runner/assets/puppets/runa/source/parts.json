@@ -1,0 +1,1201 @@
+{
+  "actor": "runa",
+  "originalVisible": true,
+  "scale": 0.178,
+  "originalFoot": {
+    "x": 650,
+    "y": 1225
+  },
+  "isolationPlan": {
+    "method": "original RGBA pixel partition; no repaint",
+    "polygons": {
+      "upper_arm_far": [
+        [
+          463,
+          625
+        ],
+        [
+          478,
+          601
+        ],
+        [
+          504,
+          584
+        ],
+        [
+          531,
+          596
+        ],
+        [
+          547,
+          638
+        ],
+        [
+          529,
+          665
+        ],
+        [
+          510,
+          672
+        ],
+        [
+          453,
+          649
+        ]
+      ],
+      "upper_arm_near": [
+        [
+          733,
+          610
+        ],
+        [
+          747,
+          625
+        ],
+        [
+          749,
+          647
+        ],
+        [
+          757,
+          661
+        ],
+        [
+          740,
+          671
+        ],
+        [
+          724,
+          640
+        ]
+      ],
+      "forearm_far": [
+        [
+          451,
+          650
+        ],
+        [
+          510,
+          670
+        ],
+        [
+          520,
+          700
+        ],
+        [
+          508,
+          767
+        ],
+        [
+          518,
+          861
+        ],
+        [
+          480,
+          882
+        ],
+        [
+          406,
+          875
+        ],
+        [
+          385,
+          850
+        ],
+        [
+          350,
+          817
+        ],
+        [
+          354,
+          790
+        ],
+        [
+          391,
+          740
+        ],
+        [
+          426,
+          694
+        ]
+      ],
+      "forearm_near": [
+        [
+          740,
+          668
+        ],
+        [
+          770,
+          657
+        ],
+        [
+          797,
+          715
+        ],
+        [
+          854,
+          816
+        ],
+        [
+          832,
+          855
+        ],
+        [
+          813,
+          880
+        ],
+        [
+          765,
+          880
+        ],
+        [
+          740,
+          841
+        ],
+        [
+          729,
+          794
+        ],
+        [
+          725,
+          720
+        ]
+      ],
+      "hand_far": [
+        [
+          405,
+          844
+        ],
+        [
+          475,
+          844
+        ],
+        [
+          482,
+          888
+        ],
+        [
+          467,
+          929
+        ],
+        [
+          411,
+          932
+        ],
+        [
+          398,
+          895
+        ]
+      ],
+      "hand_near": [
+        [
+          769,
+          839
+        ],
+        [
+          815,
+          835
+        ],
+        [
+          827,
+          882
+        ],
+        [
+          806,
+          930
+        ],
+        [
+          780,
+          930
+        ],
+        [
+          761,
+          887
+        ]
+      ],
+      "thigh_far": [
+        [
+          478,
+          1066
+        ],
+        [
+          569,
+          1074
+        ],
+        [
+          566,
+          1116
+        ],
+        [
+          481,
+          1118
+        ]
+      ],
+      "thigh_near": [
+        [
+          678,
+          1072
+        ],
+        [
+          773,
+          1062
+        ],
+        [
+          773,
+          1118
+        ],
+        [
+          690,
+          1118
+        ]
+      ],
+      "shin_boot_far": [
+        [
+          481,
+          1110
+        ],
+        [
+          564,
+          1110
+        ],
+        [
+          564,
+          1240
+        ],
+        [
+          459,
+          1240
+        ],
+        [
+          459,
+          1173
+        ]
+      ],
+      "shin_boot_near": [
+        [
+          690,
+          1110
+        ],
+        [
+          773,
+          1110
+        ],
+        [
+          814,
+          1180
+        ],
+        [
+          814,
+          1240
+        ],
+        [
+          679,
+          1240
+        ]
+      ],
+      "hood_far": [
+        [
+          298,
+          554
+        ],
+        [
+          425,
+          536
+        ],
+        [
+          482,
+          578
+        ],
+        [
+          462,
+          618
+        ],
+        [
+          442,
+          650
+        ],
+        [
+          418,
+          696
+        ],
+        [
+          384,
+          742
+        ],
+        [
+          399,
+          793
+        ],
+        [
+          420,
+          839
+        ],
+        [
+          379,
+          854
+        ],
+        [
+          340,
+          812
+        ],
+        [
+          329,
+          744
+        ],
+        [
+          345,
+          682
+        ],
+        [
+          353,
+          636
+        ],
+        [
+          298,
+          595
+        ]
+      ],
+      "hood_near": [
+        [
+          756,
+          494
+        ],
+        [
+          829,
+          472
+        ],
+        [
+          843,
+          604
+        ],
+        [
+          805,
+          641
+        ],
+        [
+          758,
+          660
+        ],
+        [
+          750,
+          622
+        ]
+      ]
+    },
+    "priority": [
+      "hand_far",
+      "hand_near",
+      "forearm_far",
+      "forearm_near",
+      "upper_arm_far",
+      "upper_arm_near",
+      "thigh_far",
+      "thigh_near",
+      "shin_boot_far",
+      "shin_boot_near",
+      "hood_far",
+      "hood_near"
+    ],
+    "sourceDimensions": {
+      "width": 1254,
+      "height": 1254
+    },
+    "cuts": {
+      "headEnd": 650,
+      "torsoEnd": 744,
+      "pelvisEnd": 838,
+      "bootStart": 1110,
+      "thighStart": 1070,
+      "left": 575,
+      "right": 685,
+      "leftBoot": 620,
+      "rightBoot": 685
+    },
+    "owners": {
+      "hood_far": "head",
+      "hood_near": "head"
+    },
+    "blueHands": true
+  },
+  "coverageSources": [
+    {
+      "image": "hidden-skin.png",
+      "atlas": "parts-hidden-joints-v5.png",
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      }
+    },
+    {
+      "image": "hidden-blue.png",
+      "atlas": "parts-hidden-joints-v5.png",
+      "crop": {
+        "x": 512,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      }
+    },
+    {
+      "image": "hidden-white.png",
+      "atlas": "parts-hidden-joints-v5.png",
+      "crop": {
+        "x": 0,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      }
+    },
+    {
+      "image": "hidden-navy.png",
+      "atlas": "parts-hidden-joints-v5.png",
+      "crop": {
+        "x": 512,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      }
+    },
+    {
+      "image": "hidden-purple.png",
+      "atlas": "parts-hidden-joints-v5.png",
+      "crop": {
+        "x": 0,
+        "y": 1024,
+        "width": 512,
+        "height": 512
+      }
+    },
+    {
+      "image": "hidden-boot.png",
+      "atlas": "parts-hidden-joints-v5.png",
+      "crop": {
+        "x": 512,
+        "y": 1024,
+        "width": 512,
+        "height": 512
+      }
+    }
+  ],
+  "atlas": "parts-original-reference-v4.png",
+  "facing": "right",
+  "status": "neutral-reviewed-by-builder; independent-review-pending",
+  "parts": {
+    "head": {
+      "atlas": "parts-original-reference-v4.png",
+      "crop": {
+        "x": 33,
+        "y": 57,
+        "width": 1159,
+        "height": 800
+      },
+      "isolation": {
+        "method": "original RGBA pixel partition; no repaint"
+      },
+      "sourceDimensions": {
+        "width": 1159,
+        "height": 800
+      },
+      "originalPivot": {
+        "x": 625,
+        "y": 620
+      },
+      "composition": {
+        "x": 123.55,
+        "y": 142.31,
+        "w": 206.302,
+        "h": 142.4,
+        "pivotX": 0.5107851596203624,
+        "pivot": 0.70375,
+        "parent": "torso"
+      },
+      "pivot": {
+        "x": 592,
+        "y": 563
+      },
+      "coverage": {
+        "image": "hidden-white.png",
+        "width": 9,
+        "height": 28,
+        "offsetX": -42,
+        "offsetY": -20
+      }
+    },
+    "torso": {
+      "atlas": "parts-original-reference-v4.png",
+      "crop": {
+        "x": 41,
+        "y": 650,
+        "width": 1177,
+        "height": 94
+      },
+      "isolation": {
+        "method": "original RGBA pixel partition; no repaint"
+      },
+      "sourceDimensions": {
+        "width": 1177,
+        "height": 94
+      },
+      "originalPivot": {
+        "x": 627,
+        "y": 744
+      },
+      "composition": {
+        "x": 123.906,
+        "y": 164.382,
+        "w": 209.506,
+        "h": 16.732,
+        "pivotX": 0.49787595581988103,
+        "pivot": 1,
+        "parent": "body"
+      },
+      "pivot": {
+        "x": 586,
+        "y": 94
+      },
+      "coverage": {
+        "image": "hidden-costume-upper.png",
+        "width": 38,
+        "height": 28,
+        "offsetX": 0,
+        "offsetY": 12
+      }
+    },
+    "pelvis": {
+      "atlas": "parts-original-reference-v4.png",
+      "crop": {
+        "x": 49,
+        "y": 744,
+        "width": 1105,
+        "height": 94
+      },
+      "isolation": {
+        "method": "original RGBA pixel partition; no repaint"
+      },
+      "sourceDimensions": {
+        "width": 1105,
+        "height": 94
+      },
+      "originalPivot": {
+        "x": 628,
+        "y": 766
+      },
+      "composition": {
+        "x": 124.084,
+        "y": 168.298,
+        "w": 196.69,
+        "h": 16.732,
+        "pivotX": 0.5239819004524887,
+        "pivot": 0.23404255319148937,
+        "parent": "body"
+      },
+      "pivot": {
+        "x": 579,
+        "y": 22
+      },
+      "coverage": {
+        "image": "hidden-purple.png",
+        "width": 10,
+        "height": 10,
+        "offsetY": -2
+      }
+    },
+    "upper_arm_far": {
+      "atlas": "parts-original-reference-v4.png",
+      "crop": {
+        "x": 453,
+        "y": 585,
+        "width": 94,
+        "height": 87
+      },
+      "isolation": {
+        "method": "original RGBA pixel partition; no repaint"
+      },
+      "sourceDimensions": {
+        "width": 94,
+        "height": 87
+      },
+      "originalPivot": {
+        "x": 519,
+        "y": 597
+      },
+      "composition": {
+        "x": 104.682,
+        "y": 138.216,
+        "w": 16.732,
+        "h": 15.485999999999999,
+        "pivotX": 0.7021276595744681,
+        "pivot": 0.13793103448275862,
+        "parent": "torso"
+      },
+      "pivot": {
+        "x": 66,
+        "y": 12
+      },
+      "coverage": {
+        "image": "hidden-skin.png",
+        "width": 11,
+        "height": 15,
+        "offsetX": 0,
+        "offsetY": -5
+      }
+    },
+    "upper_arm_near": {
+      "atlas": "parts-original-reference-v4.png",
+      "crop": {
+        "x": 724,
+        "y": 611,
+        "width": 33,
+        "height": 59
+      },
+      "isolation": {
+        "method": "original RGBA pixel partition; no repaint"
+      },
+      "sourceDimensions": {
+        "width": 33,
+        "height": 59
+      },
+      "originalPivot": {
+        "x": 736,
+        "y": 626
+      },
+      "composition": {
+        "x": 143.308,
+        "y": 143.378,
+        "w": 5.874,
+        "h": 10.501999999999999,
+        "pivotX": 0.36363636363636365,
+        "pivot": 0.2542372881355932,
+        "parent": "torso"
+      },
+      "pivot": {
+        "x": 12,
+        "y": 15
+      },
+      "coverage": {
+        "image": "hidden-skin.png",
+        "width": 11,
+        "height": 15,
+        "offsetX": 0,
+        "offsetY": -5
+      }
+    },
+    "forearm_far": {
+      "atlas": "parts-original-reference-v4.png",
+      "crop": {
+        "x": 345,
+        "y": 651,
+        "width": 175,
+        "height": 232
+      },
+      "isolation": {
+        "method": "original RGBA pixel partition; no repaint"
+      },
+      "sourceDimensions": {
+        "width": 175,
+        "height": 232
+      },
+      "originalPivot": {
+        "x": 482,
+        "y": 656
+      },
+      "composition": {
+        "x": 98.096,
+        "y": 148.71800000000002,
+        "w": 31.15,
+        "h": 41.296,
+        "pivotX": 0.7828571428571428,
+        "pivot": 0.021551724137931036,
+        "parent": "upper_arm_far"
+      },
+      "pivot": {
+        "x": 137,
+        "y": 5
+      },
+      "coverage": {
+        "image": "hidden-white.png",
+        "width": 11,
+        "height": 16,
+        "offsetX": 0,
+        "offsetY": -4
+      }
+    },
+    "forearm_near": {
+      "atlas": "parts-original-reference-v4.png",
+      "crop": {
+        "x": 725,
+        "y": 658,
+        "width": 130,
+        "height": 225
+      },
+      "isolation": {
+        "method": "original RGBA pixel partition; no repaint"
+      },
+      "sourceDimensions": {
+        "width": 130,
+        "height": 225
+      },
+      "originalPivot": {
+        "x": 745,
+        "y": 675
+      },
+      "composition": {
+        "x": 144.91,
+        "y": 152.10000000000002,
+        "w": 23.14,
+        "h": 40.05,
+        "pivotX": 0.15384615384615385,
+        "pivot": 0.07555555555555556,
+        "parent": "upper_arm_near"
+      },
+      "pivot": {
+        "x": 20,
+        "y": 17
+      },
+      "coverage": {
+        "image": "hidden-white.png",
+        "width": 11,
+        "height": 16,
+        "offsetX": 0,
+        "offsetY": -4
+      }
+    },
+    "hand_far": {
+      "atlas": "parts-original-reference-v4.png",
+      "crop": {
+        "x": 406,
+        "y": 844,
+        "width": 76,
+        "height": 88
+      },
+      "isolation": {
+        "method": "original RGBA pixel partition; no repaint"
+      },
+      "sourceDimensions": {
+        "width": 76,
+        "height": 88
+      },
+      "originalPivot": {
+        "x": 445,
+        "y": 850
+      },
+      "composition": {
+        "x": 91.51,
+        "y": 183.25,
+        "w": 13.527999999999999,
+        "h": 15.664,
+        "pivotX": 0.5131578947368421,
+        "pivot": 0.06818181818181818,
+        "parent": "forearm_far"
+      },
+      "pivot": {
+        "x": 39,
+        "y": 6
+      },
+      "coverage": {
+        "image": "hidden-blue.png",
+        "width": 5,
+        "height": 9,
+        "offsetY": 0
+      }
+    },
+    "hand_near": {
+      "atlas": "parts-original-reference-v4.png",
+      "crop": {
+        "x": 765,
+        "y": 836,
+        "width": 58,
+        "height": 90
+      },
+      "isolation": {
+        "method": "original RGBA pixel partition; no repaint"
+      },
+      "sourceDimensions": {
+        "width": 58,
+        "height": 90
+      },
+      "originalPivot": {
+        "x": 793,
+        "y": 840
+      },
+      "composition": {
+        "x": 153.454,
+        "y": 181.47,
+        "w": 10.324,
+        "h": 16.02,
+        "pivotX": 0.4827586206896552,
+        "pivot": 0.044444444444444446,
+        "parent": "forearm_near"
+      },
+      "pivot": {
+        "x": 28,
+        "y": 4
+      },
+      "coverage": {
+        "image": "hidden-blue.png",
+        "width": 5,
+        "height": 9,
+        "offsetY": 0
+      }
+    },
+    "thigh_far": {
+      "atlas": "parts-original-reference-v4.png",
+      "crop": {
+        "x": 479,
+        "y": 1067,
+        "width": 90,
+        "height": 51
+      },
+      "isolation": {
+        "method": "original RGBA pixel partition; no repaint"
+      },
+      "sourceDimensions": {
+        "width": 90,
+        "height": 51
+      },
+      "originalPivot": {
+        "x": 527,
+        "y": 870
+      },
+      "composition": {
+        "x": 106.106,
+        "y": 186.81,
+        "w": 16.02,
+        "h": 9.078,
+        "pivotX": 0.5333333333333333,
+        "pivot": -3.8627450980392157,
+        "parent": "body"
+      },
+      "pivot": {
+        "x": 48,
+        "y": -197
+      },
+      "coverage": {
+        "image": "hidden-navy.png",
+        "width": 10,
+        "height": 15,
+        "offsetY": -4
+      }
+    },
+    "thigh_near": {
+      "atlas": "parts-original-reference-v4.png",
+      "crop": {
+        "x": 678,
+        "y": 1063,
+        "width": 95,
+        "height": 55
+      },
+      "isolation": {
+        "method": "original RGBA pixel partition; no repaint"
+      },
+      "sourceDimensions": {
+        "width": 95,
+        "height": 55
+      },
+      "originalPivot": {
+        "x": 727,
+        "y": 870
+      },
+      "composition": {
+        "x": 141.706,
+        "y": 186.81,
+        "w": 16.91,
+        "h": 9.79,
+        "pivotX": 0.5157894736842106,
+        "pivot": -3.5090909090909093,
+        "parent": "body"
+      },
+      "pivot": {
+        "x": 49.00000000000001,
+        "y": -193
+      },
+      "coverage": {
+        "image": "hidden-navy.png",
+        "width": 10,
+        "height": 15,
+        "offsetY": -4
+      }
+    },
+    "shin_boot_far": {
+      "atlas": "parts-original-reference-v4.png",
+      "crop": {
+        "x": 467,
+        "y": 1117,
+        "width": 94,
+        "height": 108
+      },
+      "isolation": {
+        "method": "original RGBA pixel partition; no repaint"
+      },
+      "sourceDimensions": {
+        "width": 94,
+        "height": 108
+      },
+      "originalPivot": {
+        "x": 529,
+        "y": 1120
+      },
+      "composition": {
+        "x": 106.462,
+        "y": 231.31,
+        "w": 16.732,
+        "h": 19.224,
+        "pivotX": 0.6595744680851063,
+        "pivot": 0.027777777777777776,
+        "parent": "thigh_far"
+      },
+      "pivot": {
+        "x": 61.99999999999999,
+        "y": 3
+      },
+      "coverage": {
+        "image": "hidden-navy.png",
+        "width": 8,
+        "height": 11,
+        "offsetY": 0
+      }
+    },
+    "shin_boot_near": {
+      "atlas": "parts-original-reference-v4.png",
+      "crop": {
+        "x": 682,
+        "y": 1118,
+        "width": 132,
+        "height": 104
+      },
+      "isolation": {
+        "method": "original RGBA pixel partition; no repaint"
+      },
+      "sourceDimensions": {
+        "width": 132,
+        "height": 104
+      },
+      "originalPivot": {
+        "x": 747,
+        "y": 1120
+      },
+      "composition": {
+        "x": 145.266,
+        "y": 231.31,
+        "w": 23.496,
+        "h": 18.512,
+        "pivotX": 0.49242424242424243,
+        "pivot": 0.019230769230769232,
+        "parent": "thigh_near"
+      },
+      "pivot": {
+        "x": 65,
+        "y": 2
+      },
+      "coverage": {
+        "image": "hidden-navy.png",
+        "width": 8,
+        "height": 11,
+        "offsetY": 0
+      }
+    },
+    "robe_left": {
+      "atlas": "parts-original-reference-v4.png",
+      "crop": {
+        "x": 0,
+        "y": 838,
+        "width": 575,
+        "height": 416
+      },
+      "isolation": {
+        "method": "original RGBA pixel partition; no repaint"
+      },
+      "sourceDimensions": {
+        "width": 575,
+        "height": 416
+      },
+      "originalPivot": {
+        "x": 532,
+        "y": 819
+      },
+      "composition": {
+        "x": 106.99600000000001,
+        "y": 177.73200000000003,
+        "w": 102.35,
+        "h": 74.048,
+        "pivotX": 0.9252173913043479,
+        "pivot": -0.04567307692307692,
+        "parent": "pelvis"
+      },
+      "pivot": {
+        "x": 532,
+        "y": -19
+      },
+      "coverage": {
+        "image": "hidden-purple.png",
+        "width": 10,
+        "height": 10,
+        "offsetY": -2
+      }
+    },
+    "robe_right": {
+      "atlas": "parts-original-reference-v4.png",
+      "crop": {
+        "x": 686,
+        "y": 838,
+        "width": 516,
+        "height": 392
+      },
+      "isolation": {
+        "method": "original RGBA pixel partition; no repaint"
+      },
+      "sourceDimensions": {
+        "width": 516,
+        "height": 392
+      },
+      "originalPivot": {
+        "x": 739,
+        "y": 819
+      },
+      "composition": {
+        "x": 143.84199999999998,
+        "y": 177.73200000000003,
+        "w": 91.848,
+        "h": 69.776,
+        "pivotX": 0.10271317829457365,
+        "pivot": -0.04846938775510204,
+        "parent": "pelvis"
+      },
+      "pivot": {
+        "x": 53,
+        "y": -19
+      },
+      "coverage": {
+        "image": "hidden-purple.png",
+        "width": 10,
+        "height": 10,
+        "offsetY": -2
+      }
+    },
+    "robe_front": {
+      "atlas": "parts-original-reference-v4.png",
+      "crop": {
+        "x": 575,
+        "y": 838,
+        "width": 111,
+        "height": 368
+      },
+      "isolation": {
+        "method": "original RGBA pixel partition; no repaint"
+      },
+      "sourceDimensions": {
+        "width": 111,
+        "height": 368
+      },
+      "originalPivot": {
+        "x": 634,
+        "y": 825
+      },
+      "composition": {
+        "x": 125.152,
+        "y": 178.8,
+        "w": 19.758,
+        "h": 65.50399999999999,
+        "pivotX": 0.5315315315315315,
+        "pivot": -0.035326086956521736,
+        "parent": "pelvis"
+      },
+      "pivot": {
+        "x": 59,
+        "y": -12.999999999999998
+      },
+      "coverage": {
+        "image": "hidden-purple.png",
+        "width": 10,
+        "height": 10,
+        "offsetY": -2
+      }
+    },
+    "outfit_underlay": {
+      "atlas": "parts-hidden-purple-material-v12.png",
+      "crop": {
+        "x": 20,
+        "y": 55,
+        "width": 100,
+        "height": 210
+      },
+      "paintedOnly": true,
+      "sourceDimensions": {
+        "width": 534,
+        "height": 388
+      },
+      "composition": {
+        "x": 128,
+        "y": 202,
+        "w": 95,
+        "h": 69,
+        "pivotX": 0.5,
+        "pivot": 0.5,
+        "parent": "pelvis"
+      },
+      "pivot": {
+        "x": 267,
+        "y": 194
+      },
+      "maskOriginal": {
+        "atlas": "parts-original-reference-v4.png",
+        "crop": {
+          "x": 383,
+          "y": 762,
+          "width": 534,
+          "height": 388
+        },
+        "polygon": [
+          [
+            533,
+            744
+          ],
+          [
+            720,
+            744
+          ],
+          [
+            765,
+            828
+          ],
+          [
+            833,
+            930
+          ],
+          [
+            870,
+            1068
+          ],
+          [
+            782,
+            1115
+          ],
+          [
+            475,
+            1115
+          ],
+          [
+            338,
+            1068
+          ],
+          [
+            445,
+            934
+          ],
+          [
+            490,
+            838
+          ]
+        ],
+        "excludeParts": [
+          "thigh_far",
+          "thigh_near",
+          "shin_boot_far",
+          "shin_boot_near"
+        ]
+      }
+    }
+  }
+}

@@ -39,15 +39,13 @@ test('mirrored functionBank high-risk functions remain in parity across runtime 
     'computeCombatPowerFromStats',
     'ApplyScaledCrit',
     'CalculateDamage',
-    'ResolveGemAction',
     'ExecuteEnemyJobSkill',
     'StartEnemyAction',
-    'StartHeroLunge',
     'SpawnDamageText',
     'ResolvePendingEnemyDeaths',
-    'EnemyTurn',
-    'HeroTurn',
     'PickEnemySkill',
+    'commitEnemyDeathRemoval',
+    'finalizeEnemyRespawnWindow',
   ];
 
   for (const name of mirroredFunctions) {

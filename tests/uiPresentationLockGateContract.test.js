@@ -26,34 +26,24 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
     'dev-panel-1-action-scale',
     'dev-panel-2-containment',
     'dev-panel-1-action-order',
-    'hero-selector-scale',
-    'target-selector-scale',
-    'global-attack-absent',
-    'hero-command-containment',
-    'hero-command-column-order',
-    'hero-command-scale',
-    'hero-command-two-row-layout',
-    'hero-command-hp-af-readouts',
-    'hero-command-active-highlight',
+    'battlefield-selectors-absent',
+    'automatic-focus-matches-eligible-target',
+    'realtime-basic-clocks-present',
+    'hero-combat-card-ui-absent',
+    'actor-health-bars-present',
     'gem-board-backdrop-absent',
-    'hero-command-native-input',
-    'hero-editor-containment',
     'damage-text-scale',
     'damage-text-density',
     'pooled-health-bar-absent',
     'shared-astral-bar-absent',
-    'personal-af-meters',
-    'party-card-draw-controls-absent',
-    'hero-command-personal-af',
-    'hero-command-paid-sequence',
+    'personal-af-ui-absent',
     'legacy-backdrop-absent',
   ]) {
     assert.match(gate, new RegExp(requiredEvidence), `missing ${requiredEvidence} invariant`);
   }
-  assert.match(gate, /\.readout\.hp/);
-  assert.match(gate, /\.readout\.af/);
-  assert.match(gate, /data-hp-bar/);
-  assert.match(gate, /data-af-bar/);
+  assert.match(gate, /heroCardHostPresent/);
+  assert.match(gate, /actorHealthBars/);
+  assert.match(gate, /fillStyle\.toLowerCase\(\) === '#292e34'/);
 
   assert.match(gate, /\{ name: 'compact', width: 216, height: 384, dpr: 1 \}/);
   assert.match(gate, /\{ name: 'reference', width: 360, height: 640, dpr: 1 \}/);
@@ -63,12 +53,44 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
   assert.match(gate, /CanvasRenderingContext2D\.prototype\.drawImage/);
   assert.match(gate, /CanvasRenderingContext2D\.prototype\.fillText/);
   assert.match(gate, /CanvasRenderingContext2D\.prototype\.fillRect/);
-  assert.match(gate, /setupDynamicInitiativeAuthorityScenario/);
+  assert.match(gate, /TickRealtimeHeroBasics/);
+  assert.match(gate, /RealtimeHeroBasicClocks/);
+  assert.match(gate, /RealtimeHeroFocusTargetUID/);
+  assert.match(gate, /eligibleInRangeEnemyUIDs/);
+  assert.match(gate, /resolveHeroAttackTarget/);
+  assert.doesNotMatch(gate, /DynamicInitiativeAuthority|setupDynamicInitiative/);
+  assert.doesNotMatch(gate, /AstralFlow|\bFLOW\b/);
   assert.match(gate, /ui-lock-report\.json/);
   assert.match(gate, /page\.screenshot/);
   assert.match(gate, /--prove-rejection/);
   assert.match(gate, /UI_LOCK_REJECTION_PROOF_PASS/);
   assert.match(gate, /process\.exitCode = 1/);
+});
+
+test('UI lock accepts targetless roaming only without an in-range committed target', async () => {
+  const { evaluateCombatFocusInvariant } = await import('../tools/ui_presentation_lock_gate.mjs');
+  const hero = { kind: 'hero', hp: 100, attackType: 'physical', footX: 100, footY: 200 };
+  const remote = { kind: 'enemy', uid: 20, hp: 50, streamState: 'roaming', streamSectorIndex: 7, footX: 500, footY: 200 };
+  const roaming = evaluateCombatFocusInvariant({ focusTargetUID: 0, heroes: [hero], enemies: [remote], globals: { ContinuousCombatStageLoop: 1, ContinuousCombatStage: {} } });
+  assert.equal(roaming.pass, true);
+  assert.deepEqual(roaming.eligibleInRangeEnemyUIDs, []);
+
+  const committed = { ...remote, uid: 21, footX: 140, streamState: 'retreating', streamSectorIndex: 4 };
+  const stage = { ContinuousCombatStageLoop: 1, ContinuousCombatStage: { activeEncounterGroupId: 4 } };
+  const missingFocus = evaluateCombatFocusInvariant({ focusTargetUID: 0, heroes: [hero], enemies: [remote, committed], globals: stage });
+  assert.equal(missingFocus.expectedFocusTargetUID, 21);
+  assert.equal(missingFocus.pass, false, 'zero focus fails while a committed retreating threat is attackable');
+  const staleFocus = evaluateCombatFocusInvariant({ focusTargetUID: 20, heroes: [hero], enemies: [remote, committed], globals: stage });
+  assert.equal(staleFocus.pass, false, 'a noneligible stale target fails too');
+  assert.equal(evaluateCombatFocusInvariant({ focusTargetUID: 21, heroes: [hero], enemies: [remote, committed], globals: stage }).pass, true);
+});
+
+test('UI lock startup waits for basic clocks without requiring an attack target', () => {
+  const gate = read('tools/ui_presentation_lock_gate.mjs');
+  const wait = gate.match(/await page\.waitForFunction\(\(\) => \{\s*const globals = window\.__codexGame\.globals;([\s\S]*?)\}, null, \{ timeout: 5000 \}\);/);
+  assert.ok(wait, 'missing realtime combat startup synchronization');
+  assert.match(wait[1], /RealtimeHeroBasicClocks/);
+  assert.doesNotMatch(wait[1], /RealtimeHeroFocusTargetUID/, 'targetless roaming is valid during startup');
 });
 
 test('pre-commit routes staged UI-owner changes through the full UI lock', () => {
@@ -78,11 +100,9 @@ test('pre-commit routes staged UI-owner changes through the full UI lock', () =>
   assert.match(hook, /git diff --cached --name-only --diff-filter=ACMRD/);
   assert.match(hook, /npm run test:ui-lock/);
   assert.match(hook, /web-runner\/systems\/renderRuntime\.js/);
-  assert.ok(hook.includes('web-runner/systems/heroCommandUI\\.mjs'));
   assert.match(hook, /web-runner\/systems\/devToolingRuntime\.js/);
   assert.match(hook, /web-runner\/systems\/combatPresentationScale\.mjs/);
   assert.match(hook, /web-runner\/systems\/appShellViewport\.js/);
-  assert.match(hook, /web-runner\/systems\/renderSkillDraughtOverlay\.js/);
   assert.match(hook, /web-runner\/app\.js/);
   assert.match(hook, /web-runner\/systems\/surfaceRenderRouter\.js/);
   assert.match(hook, /web-runner\/systems\/pointerRoutingShell\.js/);

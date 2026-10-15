@@ -17,21 +17,11 @@ export const ENEMY_TARGET_MODE_CODES = Object.freeze({
   none: 0,
   uniform: 1,
   identity_preference: 2,
+  stable_order: 3,
 });
 
 function liveHeroes(heroes) {
   return (Array.isArray(heroes) ? heroes : []).filter((h) => h && Number(h.hp ?? 0) > 0);
-}
-
-function readRandomUnit(rng) {
-  const raw = Number((typeof rng === 'function' ? rng() : Math.random()) ?? 0);
-  return Number.isFinite(raw) && raw >= 0 && raw < 1 ? raw : Math.random();
-}
-
-function randomIndexFromUnit(unit, size) {
-  if (!(size > 0)) return 0;
-  const value = Number.isFinite(Number(unit)) && unit >= 0 && unit < 1 ? Number(unit) : 0;
-  return Math.max(0, Math.min(size - 1, Math.floor(value * size)));
 }
 
 export function normalizeEnemyTargetPreference(enemy = null) {
@@ -67,33 +57,8 @@ export function enemyTargetModeFromCode(code = 0) {
     .find(([, value]) => value === normalized)?.[0] || 'none';
 }
 
-function hpRatio(hero) {
-  const hp = Math.max(0, Number(hero?.hp ?? 0));
-  const maxHP = Math.max(1, Number(hero?.maxHP ?? hp ?? 1));
-  return hp / maxHP;
-}
-
 function statValue(hero, stat) {
   return Number(hero?.stats?.[stat] ?? hero?.[stat] ?? 0);
-}
-
-function pickPreferredHero(heroes, preference) {
-  if (preference === 'low_hp') {
-    return heroes.slice().sort((a, b) => hpRatio(a) - hpRatio(b) || Number(a.uid || 0) - Number(b.uid || 0))[0] || null;
-  }
-  if (preference === 'highest_atk') {
-    return heroes.slice().sort((a, b) => statValue(b, 'ATK') - statValue(a, 'ATK') || Number(a.uid || 0) - Number(b.uid || 0))[0] || null;
-  }
-  if (preference === 'frontline') {
-    return heroes.slice().sort((a, b) => Number(a.slotIndex ?? a.displaySlot ?? 0) - Number(b.slotIndex ?? b.displaySlot ?? 0))[0] || null;
-  }
-  if (preference === 'healer') {
-    return heroes.find((h) => {
-      const role = String(h?.role ?? h?.heroRole ?? h?.classRole ?? '').toLowerCase();
-      return role.includes('heal') || role.includes('support');
-    }) || null;
-  }
-  return null;
 }
 
 function heroRoleCode(hero = null) {
@@ -113,7 +78,7 @@ function normalizeHeroForOwner(hero = null, order = 0) {
   };
 }
 
-export function pickEnemyTargetHeroFromRoster({ enemy = null, heroes = [], rng = Math.random } = {}) {
+export function pickEnemyTargetHeroFromRoster({ enemy = null, heroes = [] } = {}) {
   const candidates = liveHeroes(heroes);
   if (!candidates.length) {
     return {
@@ -127,33 +92,16 @@ export function pickEnemyTargetHeroFromRoster({ enemy = null, heroes = [], rng =
     };
   }
 
-  const preference = normalizeEnemyTargetPreference(enemy);
-  const preferred = preference ? pickPreferredHero(candidates, preference) : null;
-  if (preferred) {
-    return {
-      target: preferred,
-      trace: {
-        enemyUID: Number(enemy?.uid || 0),
-        mode: 'identity_preference',
-        preference,
-        targetUID: Number(preferred.uid || 0),
-        heroCount: candidates.length,
-      },
-    };
-  }
-
-  const rollUnit = readRandomUnit(rng);
-  const roll = randomIndexFromUnit(rollUnit, candidates.length);
-  const target = candidates[roll] || candidates[0] || null;
+  const target = candidates[0] || null;
   return {
     target,
     trace: {
       enemyUID: Number(enemy?.uid || 0),
-      mode: 'uniform',
+      mode: 'stable_order',
       targetUID: Number(target?.uid || 0),
       heroCount: candidates.length,
-      roll,
-      rollUnit,
+      roll: 0,
+      rollUnit: 0,
     },
   };
 }
@@ -161,15 +109,14 @@ export function pickEnemyTargetHeroFromRoster({ enemy = null, heroes = [], rng =
 export function enemyTargetSelectionFromJs({ enemy = null, heroes = [], rng = Math.random } = {}) {
   const result = pickEnemyTargetHeroFromRoster({ enemy, heroes, rng });
   const trace = result.trace || {};
-  const preference = normalizeEnemyTargetPreference(enemy);
   return {
     owner: 'fallback',
     target: result.target || null,
     targetUID: Number(result.target?.uid || 0),
     mode: String(trace.mode || 'none'),
     modeCode: enemyTargetModeCodeFromId(trace.mode || 'none'),
-    preference,
-    preferenceCode: enemyTargetPreferenceCodeFromId(preference),
+    preference: '',
+    preferenceCode: ENEMY_TARGET_PREFERENCE_CODES.none,
     heroCount: Number(trace.heroCount || 0),
     rollIndex: Number(trace.roll || 0),
     rollUnit: Number(trace.rollUnit || 0),

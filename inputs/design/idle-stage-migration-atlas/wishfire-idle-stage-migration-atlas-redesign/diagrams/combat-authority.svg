@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="440" viewBox="0 0 800 440" role="img" aria-labelledby="combat-authority-title combat-authority-desc">
+<title id="combat-authority-title">Combat authority and readable cadence</title>
+<desc id="combat-authority-desc">Simulation resolves truth through four owners; presentation exposes one timed package.</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#17232D"/></marker></defs>
+<rect width="800" height="440" fill="#F7F2E8"/>
+<text x="28" y="30" font-family="Arial, sans-serif" font-size="18" font-weight="700" text-anchor="start" fill="#17232D">Combat authority and readable cadence</text>
+<text x="28" y="52" font-family="Arial, sans-serif" font-size="10" font-weight="400" text-anchor="start" fill="#58646D">Simulation resolves truth through four owners; presentation exposes one timed package.</text>
+<path d="M205,96.0 L225,96.0" stroke="#17232D" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+<path d="M390,96.0 L410,96.0" stroke="#17232D" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+<path d="M575,96.0 L595,96.0" stroke="#17232D" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+<rect x="40" y="55" width="165" height="82" fill="#FCFAF5" stroke="#00A8B5" stroke-width="3"/><rect x="40" y="55" width="8" height="82" fill="#00A8B5"/><text x="58" y="82" font-family="Arial, sans-serif" font-size="13" font-weight="700" text-anchor="start" fill="#17232D">STAGE CLOCK</text><text x="58" y="104" font-family="Arial, sans-serif" font-size="10" font-weight="400" text-anchor="start" fill="#58646D">Fixed-step simulation. Wave and boss state.</text>
+<rect x="225" y="55" width="165" height="82" fill="#FCFAF5" stroke="#7357B3" stroke-width="3"/><rect x="225" y="55" width="8" height="82" fill="#7357B3"/><text x="243" y="82" font-family="Arial, sans-serif" font-size="13" font-weight="700" text-anchor="start" fill="#17232D">ACTOR CADENCE</text><text x="243" y="104" font-family="Arial, sans-serif" font-size="10" font-weight="400" text-anchor="start" fill="#58646D">Attack interval, skill cooldown, targeting.</text>
+<rect x="410" y="55" width="165" height="82" fill="#FCFAF5" stroke="#DE7A3E" stroke-width="3"/><rect x="410" y="55" width="8" height="82" fill="#DE7A3E"/><text x="428" y="82" font-family="Arial, sans-serif" font-size="13" font-weight="700" text-anchor="start" fill="#17232D">RESOLUTION</text><text x="428" y="104" font-family="Arial, sans-serif" font-size="10" font-weight="400" text-anchor="start" fill="#58646D">Damage, heal, death, rewards, next spawn.</text>
+<rect x="595" y="55" width="165" height="82" fill="#FCFAF5" stroke="#2E8B68" stroke-width="3"/><rect x="595" y="55" width="8" height="82" fill="#2E8B68"/><text x="613" y="82" font-family="Arial, sans-serif" font-size="13" font-weight="700" text-anchor="start" fill="#17232D">PRESENTATION QUEUE</text><text x="613" y="104" font-family="Arial, sans-serif" font-size="10" font-weight="400" text-anchor="start" fill="#58646D">Impact, number, bar, removal. One readable package.</text>
+<text x="60" y="263" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="start" fill="#00A8B5">EXAMPLE: 1.2 SECOND HERO CADENCE</text>
+<path d="M60,300 L740,300" stroke="#17232D" stroke-width="2" fill="none"/>
+<circle cx="60.0" cy="300" r="6" fill="#FCFAF5" stroke="#17232D" stroke-width="2"/>
+<text x="60.0" y="280" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#17232D">READY</text>
+<text x="60.0" y="325" font-family="Arial, sans-serif" font-size="9" font-weight="400" text-anchor="middle" fill="#58646D">0.00s</text>
+<circle cx="105.33333333333334" cy="300" r="6" fill="#FCFAF5" stroke="#17232D" stroke-width="2"/>
+<text x="105.33333333333334" y="280" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#17232D">STRIKE</text>
+<text x="105.33333333333334" y="325" font-family="Arial, sans-serif" font-size="9" font-weight="400" text-anchor="middle" fill="#58646D">0.08s</text>
+<circle cx="173.33333333333334" cy="300" r="6" fill="#FCFAF5" stroke="#17232D" stroke-width="2"/>
+<text x="173.33333333333334" y="280" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#17232D">IMPACT</text>
+<text x="173.33333333333334" y="325" font-family="Arial, sans-serif" font-size="9" font-weight="400" text-anchor="middle" fill="#58646D">0.20s</text>
+<circle cx="275.33333333333337" cy="300" r="6" fill="#FCFAF5" stroke="#17232D" stroke-width="2"/>
+<text x="275.33333333333337" y="280" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#17232D">NUMBER</text>
+<text x="275.33333333333337" y="325" font-family="Arial, sans-serif" font-size="9" font-weight="400" text-anchor="middle" fill="#58646D">0.38s</text>
+<circle cx="371.6666666666667" cy="300" r="6" fill="#FCFAF5" stroke="#17232D" stroke-width="2"/>
+<text x="371.6666666666667" y="280" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#17232D">BAR</text>
+<text x="371.6666666666667" y="325" font-family="Arial, sans-serif" font-size="9" font-weight="400" text-anchor="middle" fill="#58646D">0.55s</text>
+<circle cx="468.0" cy="300" r="6" fill="#FCFAF5" stroke="#17232D" stroke-width="2"/>
+<text x="468.0" y="280" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#17232D">DEATH</text>
+<text x="468.0" y="325" font-family="Arial, sans-serif" font-size="9" font-weight="400" text-anchor="middle" fill="#58646D">0.72s</text>
+<circle cx="740.0" cy="300" r="6" fill="#FCFAF5" stroke="#17232D" stroke-width="2"/>
+<text x="740.0" y="280" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#17232D">READY</text>
+<text x="740.0" y="325" font-family="Arial, sans-serif" font-size="9" font-weight="400" text-anchor="middle" fill="#58646D">1.20s</text>
+</svg>

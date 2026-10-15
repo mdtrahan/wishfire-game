@@ -9,13 +9,14 @@
 - One implementation bead gets one bead-scoped branch/worktree unless a minor exemption applies.
 - Include the bead id in branch and worktree names.
 - Create or select the bead, create the branch/worktree, then mark the bead `in_progress`.
+- After Codex creates a worktree, run `npm run beads:link-worktree` there before using `bd`. Native `bd worktree create` adds the same ignored redirect. Both use the authoritative root `.beads` database and its single native backup; lane-local Dolt state blocks linking.
 - Never mix multiple implementation beads in one worktree.
 - Do not block new bead work solely because many bead worktrees exist; assess ownership, overlap, and repo-state risk directly.
 - Make periodic commits for historical safety when work is long-lived.
 - Preserve unrelated dirty files; do not stage, reset, clean, or remove them.
 
 ## Branch Disposition Gate
-Every branch, worktree, or PR found during audit must receive an explicit owner-facing disposition. Do not leave branches in an ambiguous "maybe merge later" state.
+During branch, release, or integration audits, every in-scope branch, worktree, or PR must receive an explicit owner-facing disposition. Do not leave branches in an ambiguous "maybe merge later" state.
 
 Allowed dispositions:
 - `backlog` - preserve idea, not active now
@@ -104,13 +105,17 @@ Report conflict class separately from state: `none`, `Metadata Conflict`, `Mecha
 ## Merge And Cleanup
 - Only Integration Ready beads may be merged.
 - Use `$bead-worktree-lifecycle` for QA PASS cleanup, safe merge, worktree removal, and merged branch deletion.
+- At closeout, run `npm run storage:audit`. A CLOSED Bead with a clean worktree whose commit is on `main` is a retirement candidate; remove its worktree through the approved lifecycle after reviewing ignored evidence. Its branch may remain.
+- `.beads/backup/` is ignored and belongs only to the authoritative Beads checkout. Historical backup snapshots remain in Git history; do not copy the live backup into worktrees or treat it as disposable lane output. Verify a restore before changing the authoritative backup.
+- `npm run storage:clean -- --worktree <absolute-path>` prints a guarded dry run; add `--apply` only for an explicitly approved lane. Dirty, unmerged, OPEN/unknown, missing, main, and worktrees with protected ignored files are protected. Detached worktrees require the opt-in `--historical-detached` flag plus exact HEAD ancestry on main and no lane-local Dolt state; without it, they remain protected. The opt-in `--superseded-by <registered-successor-path>` mode requires a CLOSED clean branch, exact HEAD ancestry in the live successor, and no protected local material or Dolt state. Patch equivalence cannot qualify. Branches remain.
+- Historical checkout retirement uses explicit `--historical` on one registered path. A clean checkout may be retired when its HEAD remains reachable through a local branch or tag, no live work depends on the checkout, and no Dolt or protected local data remains. Merge, patch equivalence, and Bead status are not retirement prerequisites in this mode; unknown local material still blocks. Keep every historical ref.
 - Never merge without validation, current Integration Ready evidence, and a rollback checkpoint.
-- Never remove a worktree unless it is clean and its branch has been merged.
+- Never remove a dirty worktree. An unmerged historical branch may lose its working copy only through the guarded historical mode while its Git ref remains.
 - Never delete a branch unless its tip is reachable from `main`.
 - After merge, verify the feature exists on `main`, branch containment, clean repo state, smoke tests, and workflow metadata or audit record.
 
 ## Repository Audits
-Every repository audit must identify branches that are QA PASS, not Integration Ready, and drifting from current `main`. Report these separately as `Integration Drift`.
+For branch, release, and integration audits, identify branches that are QA PASS, not Integration Ready, and drifting from current `main`. Report these separately as `Integration Drift`. Other audits use these checks only when integration state affects their scope.
 
 Audit buckets: `Ready to Merge`, `Metadata Conflicts`, `Mechanical Conflicts`, `Semantic Conflicts`, `Needs Bug Fixes`, `Active Development`, `Already Integrated`, `Unknown`.
 

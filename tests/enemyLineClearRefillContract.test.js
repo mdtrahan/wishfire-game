@@ -43,24 +43,6 @@ test('enemy board locks do not mark line-clear refill pressure in both runtime m
 
 
 
-test('app starts normal refill before deferred turn advance resolves', () => {
-  const src = read('web-runner/app.js');
-  const refillReadyBlock = src.match(/const refillReady =([\s\S]*?);/);
-
-  assert.ok(refillReadyBlock, 'missing refillReady gate');
-  assert.doesNotMatch(
-    refillReadyBlock[0],
-    /!state\.globals\.DeferAdvance/,
-    'empty board slots should refill before DeferAdvance resolves'
-  );
-  assert.match(
-    src,
-    /if \(deferredAdvanceState\.refillPending\) \{\s*\/\/ Refill must complete before advancing to the next actor\.\s*startRefillBounce\(\);/s
-  );
-});
-
-
-
 test('app startRefillBounce queues missing cells after a line-clear style gem removal', () => {
   const src = read('web-runner/app.js');
   const setGemArraySrc = extractFunctionSource(src, 'setGemArray');
@@ -131,26 +113,23 @@ test('app startRefillBounce queues missing cells after a line-clear style gem re
   assert.equal(sandbox.state.globals.BoardFillActive, 1);
 });
 
-test('refill bounce fills every queued empty cell before waiting for settle', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
-
-  assert.doesNotMatch(
-    src,
-    /refill\.current = \{\\n\s*doneAt: nowTime \+ bounceDur\s*\\n\s*\};\\n\s*break;/,
-    'refill must not leave later queued cells visibly empty while waiting for the first settle'
-  );
-  assert.ok(
-    src.includes(
-      [
-        '          refill.current = {',
-        '            doneAt: Math.max(Number(refill.current?.doneAt || 0), nowTime + bounceDur),',
-        '          };',
-        '          refill.index += 1;',
-        '          continue;',
-      ].join('\\n')
-    ),
-    'refill should create every queued gem in the same pass, then settle once'
-  );
+test('refill bounce fills every queued empty cell before waiting for settle', async () => {
+  const { advanceRefillBounceSimulation } = await import('../web-runner/systems/combatSimulationTick.mjs');
+  const state = { globals: { time: 5, TurnPhase: 0, GamePhase: 'RUNTIME', BoardFillActive: 1, ActionInProgress: 0 }, entities: [] };
+  const gameState = {
+    grid: [[0, 0, 0]], gems: [], nextGemUID: 1,
+    refillBounce: { active: true, index: 0, current: null, queue: [{ cellC: 0, cellR: 0 }, { cellC: 0, cellR: 1 }, { cellC: 0, cellR: 2 }], speedScale: 1 },
+  };
+  const deps = {
+    state, gameState, getCellWorldPos: () => ({ x: 0, y: 0, w: 1, h: 1 }), randomGemFrame: () => 0,
+    createEnemyTurnGateBaseline: {}, createRefillCompleteGate: {}, applyTurnGateIntent() {},
+  };
+  advanceRefillBounceSimulation(deps);
+  assert.equal(gameState.gems.length, 3, 'all queued cells should fill in one simulation pass');
+  assert.equal(gameState.refillBounce.active, true, 'refill remains active until the shared bounce settle time');
+  state.globals.time = 5.48;
+  advanceRefillBounceSimulation(deps);
+  assert.equal(gameState.refillBounce.active, false, 'refill settles after the final bounce duration');
 });
 
 test('existing Djinn/Marid incomplete-board fallback contract is still present', () => {

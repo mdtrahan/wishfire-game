@@ -3,7 +3,7 @@
 ## Repository Philosophy
 - Beads represent work.
 - Git transports work.
-- Main represents the game.
+- Main represents the current game. Historical recovery belongs outside ordinary repository search and indexing.
 - Branches are temporary.
 
 Primary branch: `main`; legacy Construct 3 artifacts are retired.
@@ -34,12 +34,11 @@ Validate
 Integration Ready
 
 ## Startup
-1. Run `pwd`.
-2. Read `ai-memory/context.md`.
-3. Ensure a compatible `bd` resolves.
-4. Run `bd ready`.
-5. Verify `bd list`.
-6. Run `bd show <id>` once a bead is selected or assigned.
+1. Run `pwd` and read the applicable `AGENTS.md` chain.
+2. Classify the task under the Implementation Gate before task-specific startup checks.
+3. Read `ai-memory/context.md` when project context is relevant.
+4. When implementation, scope, ownership, or lifecycle work depends on Beads, ensure a compatible `bd` resolves, run `bd ready` and `bd list`, then `bd show <id>` once selected or assigned.
+5. Minor-exempt review or policy wording may proceed without Beads startup when scope and ownership are independently clear. Runtime work retains the full Beads gate.
 
 Shell notes: prefix commands with `rtk` when available; keep output bounded and targeted.
 
@@ -58,6 +57,8 @@ After startup, execution policy is governed by:
 
 ## Worktree Discipline
 - Follow `governance/execution/integration.md` for lane creation, branch disposition, merge, cleanup, and deletion rules.
+- `goals/chatgpt-cloud-migration-plan.md` owns cloud preparation; `goals/current-stack-integration-report.md` records the merged local stack and deferred hero repair. Cloud cutover requires separate owner approval.
+- Cloud pilots use disposable snapshots with pinned source hashes. Live Beads retains its existing owner until tracker migration is verified; `goals/cloud-combat-pilot-report.md` records the isolated combat trial.
 - Keep one implementation bead per bead-scoped branch/worktree; include the bead id in branch and worktree names.
 - Never merge without validation, current Integration Ready evidence, and a rollback checkpoint.
 - QA PASS certifies feature quality only; Integration Ready certifies merge readiness against current `main`.
@@ -76,17 +77,21 @@ Support ├── `agents/` (retired)
 
 ## Implementation Rules
 - Edit the minimum necessary files; avoid unrelated refactors; resolve conflicts locally.
-- Stop on unexpected tracked changes unless authorized; keep one ownership lane per bead unless authorized.
+- Inspect unexpected tracked changes; preserve unrelated dirt and edit only clean or explicitly owned paths. Pause affected edits if ownership remains unclear. Keep one ownership lane per bead unless authorized.
 - Prefer deterministic shared logic in `src/` or Rust-owned SimulationCore seams over new browser-shell logic.
 - Keep `web-runner/app.js` orchestration-only; detailed ownership rules live in `governance/execution/implementation-gate.md`.
 - Use `governance/execution/validation.md` for focused proof and `governance/execution/integration.md` for merge readiness.
+- Lamp presentation owners run `test:lamp-ui` through the commit hook; four-phone checks enforce helper and overlay containment.
 
 ## Escalation
 - Follow the Escalation section in `governance/execution/implementation-gate.md`.
 - Do not write outside the repo without approval.
 
 ## Combat Migration Specification
-- `COMBAT_MIGRATION_PLAN.md` owns the active hero-kit, EXP/progression, SP/FLOW and combat-resolution design. Keep confirmed owner decisions, tuning proposals and delivered runtime state distinct; `MIGRATION_CHECKPOINT.md` records superseded decisions and implementation receipts.
+- `LAMP_EQUIPMENT_MVP.md` owns the approved lamp replacement; `goals/wishfire-lamp-progression.md` separates delivered paid progression from proposed quality tiers and pacing assumptions.
+- `COMBAT_ENGINE_CLEANUP_PLAN.md` owns the realtime foundation. Approved conditional-skill definitions and their progression supersede its earlier five-active kit contract. `COMBAT_MIGRATION_PLAN.md` retains the earlier hero-command contract as history; SP/FLOW, hidden Pals and playable turns are retired.
+- `governance/planning/conditional-skill-catalog.md` owns the 33 conditional skill definitions and effect guards; `COMBAT_MIGRATION_PLAN.md` links this current kit contract.
+
 
 ## Child DOX Index
 - `Scripts/AGENTS.md` - Construct-style runtime mirror and high-risk function parity.

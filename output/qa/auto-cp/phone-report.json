@@ -1,0 +1,113 @@
+{
+  "fixture": "Captured earned batch replayed by storage staging; zero-gain variant explicitly arranged. No pacing claim.",
+  "report": [
+    {
+      "width": 360,
+      "height": 640,
+      "dpr": 1,
+      "floats": [
+        {
+          "hero": "Runa",
+          "change": 0.3
+        },
+        {
+          "hero": "Falie",
+          "change": 9.9
+        },
+        {
+          "hero": "Huun",
+          "change": 1.4
+        },
+        {
+          "hero": "Kojonn",
+          "change": 6.6
+        }
+      ],
+      "partyEXP": 1725,
+      "leftovers": 27,
+      "errors": []
+    },
+    {
+      "width": 216,
+      "height": 384,
+      "dpr": 2,
+      "floats": [
+        {
+          "hero": "Runa",
+          "change": 0.3
+        },
+        {
+          "hero": "Falie",
+          "change": 9.9
+        },
+        {
+          "hero": "Huun",
+          "change": 1.4
+        },
+        {
+          "hero": "Kojonn",
+          "change": 6.6
+        }
+      ],
+      "partyEXP": 1725,
+      "leftovers": 27,
+      "errors": []
+    },
+    {
+      "width": 233,
+      "height": 452,
+      "dpr": 2,
+      "floats": [
+        {
+          "hero": "Runa",
+          "change": 0.3
+        },
+        {
+          "hero": "Falie",
+          "change": 9.9
+        },
+        {
+          "hero": "Huun",
+          "change": 1.4
+        },
+        {
+          "hero": "Kojonn",
+          "change": 6.6
+        }
+      ],
+      "partyEXP": 1725,
+      "leftovers": 27,
+      "errors": []
+    },
+    {
+      "width": 316,
+      "height": 452,
+      "dpr": 2,
+      "floats": [
+        {
+          "hero": "Runa",
+          "change": 0.3
+        },
+        {
+          "hero": "Falie",
+          "change": 9.9
+        },
+        {
+          "hero": "Huun",
+          "change": 1.4
+        },
+        {
+          "hero": "Kojonn",
+          "change": 6.6
+        }
+      ],
+      "partyEXP": 1725,
+      "leftovers": 27,
+      "errors": []
+    },
+    {
+      "fixture": "Arranged high owned gear plus one weak pending piece; no eligible gain",
+      "autoDisabled": true
+    }
+  ]
+}

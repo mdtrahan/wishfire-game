@@ -1,0 +1,44 @@
+Lamp save failed Error: The lamp is preparing its next emission.
+    at activateLamp (file:///Users/Mace/Codex-Orka/.worktrees/wt-ORKA-5af.7-auto-cp/web-runner/src/core/lampGear.mjs:94:45)
+    at file:///Users/Mace/Codex-Orka/.worktrees/wt-ORKA-5af.7-auto-cp/web-runner/systems/equipmentStorage.mjs:69:50
+    at file:///Users/Mace/Codex-Orka/.worktrees/wt-ORKA-5af.7-auto-cp/web-runner/systems/equipmentStorage.mjs:52:42
+✔ guide actions persist once without awarding resources or changing earned progression (2.92325ms)
+✔ a confirmed lamp tier spends once under concurrent requests and survives failed writes and reload (0.588208ms)
+✔ seed and sequence reproduce exact gear; quality never rerolls on comparison (1.464292ms)
+✔ restart retains stored gear and EXP while Auto waits for a new player toggle (0.395666ms)
+✔ map progression persists through lower-stage attempts; stock cap spends nothing (0.166ms)
+✔ single item has different signed comparisons across four heroes and allows tradeoffs (0.210042ms)
+✔ confirmed dismantling consumes its displayed pieces and preserves later raw arrivals (0.167375ms)
+✔ salvage EXP is bounded per item (2.681667ms)
+✔ free generation and reload preserve rolls, pending items and assignment (0.473041ms)
+✔ failed durable writes never spend, display a rolled item, or mutate runtime stats (0.365584ms)
+✔ concurrent Auto calls produce one item per interval and no background catch-up burst (0.610583ms)
+✔ same item cannot be equipped twice under concurrent clicks (0.253459ms)
+✔ equipping raises canonical stats but cannot heal or revive (0.296542ms)
+✔ legacy migration preserves Gold and supported equipped stats; surplus salvages once (0.284667ms)
+✔ malformed legacy and v2 saves are preserved rather than reset (0.107459ms)
+✔ pending Gold receipt replay remains idempotent across equipment reload (0.114209ms)
+✔ corrupt ownership, duplicate assignments and unsupported stats fail validation (0.09475ms)
+✔ native victories cannot grant idle Gold or hero EXP (4.497333ms)
+✔ draft saves keep identity, Gold and assigned gear while dropping retired SPD stats (0.194417ms)
+✔ Auto Equip chooses matching-slot total hero CP gain, then lowest current max HP, then party order (0.288291ms)
+✔ four-stat saves migrate once without rerolling items or healing; equip reports actual permanent CP (0.22825ms)
+✔ manual and Auto draws grant all four heroes EXP once; full cache stops Auto and XP (1.648834ms)
+✔ dismantling essence buys saved capacity upgrades; upgrade never grants EXP or resumes Auto (2.607916ms)
+✔ Auto rejects weak gear while manual permits a deliberate lower-CP override (0.304833ms)
+✔ weaker gear stays visible through refresh until explicit resource conversion (0.363625ms)
+✔ entirely weaker Auto emissions stop at capacity and cannot farm unlimited EXP (1.876542ms)
+✔ persisted two-second emission gate rejects spam, reload bypass and mixed manual/Auto draws (1.258333ms)
+✔ essence-funded lamp levels apply increasing rarity odds and preserve existing rolls (13.400458ms)
+✔ replaced gear persists as inspectable dismantling stock and cannot be reassigned (0.397417ms)
+✔ review sorting leaves emission order intact and Auto equips at most one item per hero (0.715666ms)
+✔ entering dismantling permanently removes equip eligibility without converting resources (0.1575ms)
+✔ earned batch Auto Equip bypasses item-CP leaders that give no hero gain (2.525959ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 110.82275

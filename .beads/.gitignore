@@ -2,7 +2,13 @@
 dolt/
 dolt-access.lock
 
+# Native Beads backup lives only in the authoritative checkout.
+backup/
+
 # Runtime files
+dolt-server.log
+dolt-server.lock
+dolt-config.log
 bd.sock
 bd.sock.startlock
 sync-state.json

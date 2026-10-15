@@ -29,6 +29,16 @@ web-runner/runtime-fingerprint.js
 .serena/
 
 # Local checkpoints and runtime release output
+/output/checkpoints/
+/output/qa/
+/output/storage-repair/
+/work/
 /output/ORKA-aoq-checkpoint/
+/output/qa/ORKA-dwa/
 /dist/
 /dist-offline/
+
+# Historical and generated context kept outside current main
+/docs/archive/
+/governance/audit/quarantine/
+/governance/execution/dev-directives/archive/

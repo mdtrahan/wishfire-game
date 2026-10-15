@@ -503,11 +503,7 @@ function hasHeroTurnEntryExports(exports) {
   return typeof exports?.hero_turn_entry_turn_phase_shadow === 'function'
     && typeof exports?.hero_turn_entry_hide_hero_selector_shadow === 'function'
     && typeof exports?.hero_turn_entry_accept_hero_uid_shadow === 'function'
-    && typeof exports?.hero_turn_entry_current_hero_uid_after_shadow === 'function'
-    && typeof exports?.hero_turn_entry_should_reset_astral_flow_shadow === 'function'
-    && typeof exports?.hero_turn_entry_amp_points_after_shadow === 'function'
-    && typeof exports?.hero_turn_entry_amp_ready_after_shadow === 'function'
-    && typeof exports?.hero_turn_entry_clear_pinned_action_shadow === 'function';
+    && typeof exports?.hero_turn_entry_current_hero_uid_after_shadow === 'function';
 }
 
 function hasEnemyTargetExports(exports) {
@@ -548,7 +544,7 @@ function hasGemActionExports(exports) {
     && typeof exports?.gem_action_blue_wallet_after_shadow === 'function'
     && typeof exports?.gem_action_blue_amp_points_after_shadow === 'function'
     && typeof exports?.gem_action_blue_amp_ready_after_shadow === 'function'
-    && typeof exports?.gem_action_blue_open_draught_shadow === 'function'
+    && typeof exports?.gem_action_blue_amp_ready_triggered_shadow === 'function'
     && typeof exports?.gem_action_action_lock_until_shadow === 'function'
     && typeof exports?.gem_action_purple_energy_amount_shadow === 'function';
 }
@@ -564,7 +560,6 @@ function hasRequiredExports(exports) {
     && hasPartyDamageExports(exports)
     && hasPartyRegenTickExports(exports)
     && hasPartyRegenLifecycleExports(exports)
-    && hasTurnSummaryExports(exports)
     && hasEnemyDotPacketExports(exports)
     && hasEnemyDotTickExports(exports)
     && hasEnemyDotLifecycleExports(exports)
@@ -574,18 +569,11 @@ function hasRequiredExports(exports) {
     && hasEffectiveStatExports(exports)
     && hasCombatOutcomeExports(exports)
     && hasCombatSnapshotExports(exports)
-    && hasTurnActorEligibilityExports(exports)
-    && hasTurnPhaseAssignmentExports(exports)
     && hasEnemySkillChoiceExports(exports)
     && hasEnemyJobSkillExports(exports)
     && hasStartEnemyActionExports(exports)
-    && hasEnemyTurnFlowExports(exports)
-    && hasHeroTurnEntryExports(exports)
     && hasEnemyTargetExports(exports)
-    && hasRunaMagicResistExports(exports)
-    && hasTurnOrderGroupExports(exports)
-    && hasRoundPointerAdvanceExports(exports)
-    && hasGemActionExports(exports);
+    && hasRunaMagicResistExports(exports);
 }
 
 async function instantiateWasm(wasmUrl) {
@@ -1001,20 +989,10 @@ function runHeroTurnEntryOwnerStartupCheck(shadow) {
     source: 'simulationCore.startup.heroTurnEntryOwner',
     heroUID: 101,
     currentHeroUIDBefore: 77,
-    skillDraughtOpen: 0,
-    astralFlowAmpPoints: 18,
-    astralFlowAmpMax: 18,
-    astralFlowAmpReady: 1,
-    time: 15,
-    combatActionPinnedUntil: 14,
     jsTurnPhase: 0,
     jsHideHeroSelector: 0,
     jsAcceptHeroUID: 1,
     jsCurrentHeroUIDAfter: 101,
-    jsShouldResetAstralFlowAmp: 1,
-    jsAstralFlowAmpPointsAfter: 0,
-    jsAstralFlowAmpReadyAfter: 0,
-    jsClearCombatActionPinned: 1,
   });
 }
 
@@ -1031,9 +1009,9 @@ function runEnemyTargetOwnerStartupCheck(shadow) {
       { uid: 33, hp: 30, maxHP: 30, atk: 8, slot: 2, roleCode: 1 },
       { uid: 44, hp: 40, maxHP: 40, atk: 3, slot: 3, roleCode: 0 },
     ],
-    jsTargetUID: 44,
-    jsModeCode: 1,
-    jsRollIndex: 3,
+    jsTargetUID: 11,
+    jsModeCode: 3,
+    jsRollIndex: 0,
   });
 }
 
@@ -1098,7 +1076,6 @@ function runGemActionOwnerStartupCheck(shadow) {
     consumedCount: 5,
     astralFlowWallet: 7,
     astralFlowAmpPoints: 16,
-    astralFlowAmpMax: 18,
     astralFlowAmpReady: 0,
     time: 10,
     actionLockUntil: 0,
@@ -1115,7 +1092,7 @@ function runGemActionOwnerStartupCheck(shadow) {
     jsBlueWalletAfter: 12,
     jsBlueAmpPointsAfter: 18,
     jsBlueAmpReadyAfter: 1,
-    jsBlueOpenDraught: 1,
+    jsBlueAmpReadyTriggered: 1,
     jsActionLockUntil: 10.32,
     jsPurpleEnergyAmount: 12,
   });
@@ -1144,8 +1121,6 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_PARTY_DAMAGE_OWNER__ = createSimulationCorePartyDamageResolution;
     window.__ORKA_PARTY_REGEN_LIFECYCLE_OWNER__ = createSimulationCorePartyRegenLifecycleResolution;
     window.__ORKA_PARTY_REGEN_TICK_OWNER__ = createSimulationCorePartyRegenTickResolution;
-    window.__ORKA_TURN_SUMMARY_SHADOW__ = shadowTurnSummary;
-    window.__ORKA_TURN_SUMMARY_OWNER__ = createSimulationCoreTurnSummaryResolution;
     window.__ORKA_ENEMY_DOT_PACKET_OWNER__ = createSimulationCoreEnemyDotPacketResolution;
     window.__ORKA_ENEMY_DOT_TICK_SHADOW__ = shadowEnemyDotTick;
     window.__ORKA_ENEMY_DOT_TICK_OWNER__ = createSimulationCoreEnemyDotTickResolution;
@@ -1155,18 +1130,11 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_ENEMY_DEBUFF_SLOT_OWNER__ = createSimulationCoreEnemyDebuffSlotTransition;
     window.__ORKA_EFFECTIVE_STAT_OWNER__ = createSimulationCoreEffectiveStatResolution;
     window.__ORKA_COMBAT_OUTCOME_OWNER__ = createSimulationCoreCombatOutcomeResolution;
-    window.__ORKA_TURN_ACTOR_ELIGIBILITY_OWNER__ = createSimulationCoreTurnActorEligibilityResolution;
-    window.__ORKA_TURN_PHASE_ASSIGNMENT_OWNER__ = createSimulationCoreTurnPhaseAssignmentResolution;
     window.__ORKA_ENEMY_SKILL_CHOICE_OWNER__ = createSimulationCoreEnemySkillChoiceResolution;
     window.__ORKA_ENEMY_JOB_SKILL_OWNER__ = createSimulationCoreEnemyJobSkillResolution;
     window.__ORKA_START_ENEMY_ACTION_OWNER__ = createSimulationCoreStartEnemyActionResolution;
-    window.__ORKA_ENEMY_TURN_FLOW_OWNER__ = createSimulationCoreEnemyTurnFlowResolution;
-    window.__ORKA_HERO_TURN_ENTRY_OWNER__ = createSimulationCoreHeroTurnEntryResolution;
     window.__ORKA_ENEMY_TARGET_OWNER__ = createSimulationCoreEnemyTargetResolution;
     window.__ORKA_RUNA_MAGIC_RESIST_OWNER__ = createSimulationCoreRunaMagicResistResolution;
-    window.__ORKA_TURN_ORDER_GROUP_OWNER__ = createSimulationCoreTurnOrderGroupProjection;
-    window.__ORKA_ROUND_POINTER_ADVANCE_OWNER__ = createSimulationCoreRoundPointerAdvanceResolution;
-    window.__ORKA_GEM_ACTION_OWNER__ = createSimulationCoreGemActionResolution;
     window.__ORKA_SEEDED_RNG_SHADOW__ = shadowSeededRng;
     window.__ORKA_SEEDED_RNG_OWNER__ = createSimulationCoreSeededRng;
   }
@@ -1189,7 +1157,6 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
         runPartyDamageOwnerStartupCheck(shadow);
         runPartyRegenLifecycleOwnerStartupCheck(shadow);
         runPartyRegenTickOwnerStartupCheck(shadow);
-        runTurnSummaryOwnerStartupCheck(shadow);
         runEnemyDotPacketOwnerStartupCheck(shadow);
         runEnemyDotTickOwnerStartupCheck(shadow);
         runEnemyDotLifecycleOwnerStartupCheck(shadow);
@@ -1198,18 +1165,11 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
         runEnemyDebuffSlotOwnerStartupCheck(shadow);
         runEffectiveStatOwnerStartupCheck(shadow);
         runCombatOutcomeOwnerStartupCheck(shadow);
-        runTurnActorEligibilityOwnerStartupCheck(shadow);
-        runTurnPhaseAssignmentOwnerStartupCheck(shadow);
         runEnemySkillChoiceOwnerStartupCheck(shadow);
         runEnemyJobSkillOwnerStartupCheck(shadow);
         runStartEnemyActionOwnerStartupCheck(shadow);
-        runEnemyTurnFlowOwnerStartupCheck(shadow);
-        runHeroTurnEntryOwnerStartupCheck(shadow);
         runEnemyTargetOwnerStartupCheck(shadow);
         runRunaMagicResistOwnerStartupCheck(shadow);
-        runTurnOrderGroupOwnerStartupCheck(shadow);
-        runRoundPointerAdvanceOwnerStartupCheck(shadow);
-        runGemActionOwnerStartupCheck(shadow);
       }
       updateShadowDomMarker(shadow);
       return shadow;
@@ -1930,20 +1890,10 @@ export function createSimulationCoreHeroTurnEntryResolution({
   source = 'unknown',
   heroUID = 0,
   currentHeroUIDBefore = 0,
-  skillDraughtOpen = 0,
-  astralFlowAmpPoints = 0,
-  astralFlowAmpMax = 18,
-  astralFlowAmpReady = 0,
-  time = 0,
-  combatActionPinnedUntil = 0,
   jsTurnPhase = 0,
   jsHideHeroSelector = 0,
   jsAcceptHeroUID = 0,
   jsCurrentHeroUIDAfter = 0,
-  jsShouldResetAstralFlowAmp = 0,
-  jsAstralFlowAmpPointsAfter = 0,
-  jsAstralFlowAmpReadyAfter = 0,
-  jsClearCombatActionPinned = 0,
 } = {}, {
   exportsOverride = null,
 } = {}) {
@@ -1952,104 +1902,35 @@ export function createSimulationCoreHeroTurnEntryResolution({
     source,
     heroUID: Math.max(0, Math.trunc(Number(heroUID || 0))),
     currentHeroUIDBefore: Math.max(0, Math.trunc(Number(currentHeroUIDBefore || 0))),
-    skillDraughtOpen: Number(skillDraughtOpen || 0) ? 1 : 0,
-    astralFlowAmpPoints: Math.max(0, Number(astralFlowAmpPoints || 0)),
-    astralFlowAmpMax: Math.max(1, Number(astralFlowAmpMax || 18)),
-    astralFlowAmpReady: Number(astralFlowAmpReady || 0) ? 1 : 0,
-    time: Number(time || 0),
-    combatActionPinnedUntil: Number(combatActionPinnedUntil || 0),
     jsTurnPhase: Math.trunc(Number(jsTurnPhase || 0)),
     jsHideHeroSelector: Number(jsHideHeroSelector || 0) ? 1 : 0,
     jsAcceptHeroUID: Number(jsAcceptHeroUID || 0) ? 1 : 0,
     jsCurrentHeroUIDAfter: Math.max(0, Math.trunc(Number(jsCurrentHeroUIDAfter || 0))),
-    jsShouldResetAstralFlowAmp: Number(jsShouldResetAstralFlowAmp || 0) ? 1 : 0,
-    jsAstralFlowAmpPointsAfter: Math.max(0, Number(jsAstralFlowAmpPointsAfter || 0)),
-    jsAstralFlowAmpReadyAfter: Number(jsAstralFlowAmpReadyAfter || 0) ? 1 : 0,
-    jsClearCombatActionPinned: Number(jsClearCombatActionPinned || 0) ? 1 : 0,
   };
   const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
-  if (!hasHeroTurnEntryExports(exports)) {
-    shadow.heroTurnEntryOwnerChecks = Number(shadow.heroTurnEntryOwnerChecks || 0) + 1;
-    shadow.lastHeroTurnEntryOwnerCheck = {
-      ...normalized,
-      owner: 'fallback',
-      turnPhase: normalized.jsTurnPhase,
-      hideHeroSelector: normalized.jsHideHeroSelector,
-      acceptHeroUID: normalized.jsAcceptHeroUID,
-      currentHeroUIDAfter: normalized.jsCurrentHeroUIDAfter,
-      shouldResetAstralFlowAmp: normalized.jsShouldResetAstralFlowAmp,
-      astralFlowAmpPointsAfter: normalized.jsAstralFlowAmpPointsAfter,
-      astralFlowAmpReadyAfter: normalized.jsAstralFlowAmpReadyAfter,
-      clearCombatActionPinned: normalized.jsClearCombatActionPinned,
-    };
-    updateShadowDomMarker(shadow);
-    return {
-      owner: 'fallback',
-      turnPhase: normalized.jsTurnPhase,
-      hideHeroSelector: normalized.jsHideHeroSelector,
-      acceptHeroUID: normalized.jsAcceptHeroUID,
-      currentHeroUIDAfter: normalized.jsCurrentHeroUIDAfter,
-      shouldResetAstralFlowAmp: normalized.jsShouldResetAstralFlowAmp,
-      astralFlowAmpPointsAfter: normalized.jsAstralFlowAmpPointsAfter,
-      astralFlowAmpReadyAfter: normalized.jsAstralFlowAmpReadyAfter,
-      clearCombatActionPinned: normalized.jsClearCombatActionPinned,
-    };
-  }
-
-  const shouldReset = Number(exports.hero_turn_entry_should_reset_astral_flow_shadow(
-    normalized.skillDraughtOpen,
-    normalized.astralFlowAmpReady,
-    normalized.astralFlowAmpPoints,
-    normalized.astralFlowAmpMax,
-    normalized.time,
-    normalized.combatActionPinnedUntil,
-  ));
-  const result = {
-    owner: 'rust',
-    turnPhase: Number(exports.hero_turn_entry_turn_phase_shadow()),
-    hideHeroSelector: Number(exports.hero_turn_entry_hide_hero_selector_shadow()),
-    acceptHeroUID: Number(exports.hero_turn_entry_accept_hero_uid_shadow(normalized.heroUID)),
-    currentHeroUIDAfter: Number(exports.hero_turn_entry_current_hero_uid_after_shadow(
-      normalized.heroUID,
-      normalized.currentHeroUIDBefore,
-    )),
-    shouldResetAstralFlowAmp: shouldReset,
-    astralFlowAmpPointsAfter: Number(exports.hero_turn_entry_amp_points_after_shadow(
-      normalized.skillDraughtOpen,
-      normalized.astralFlowAmpReady,
-      normalized.astralFlowAmpPoints,
-      normalized.astralFlowAmpMax,
-      normalized.time,
-      normalized.combatActionPinnedUntil,
-    )),
-    astralFlowAmpReadyAfter: Number(exports.hero_turn_entry_amp_ready_after_shadow(
-      normalized.skillDraughtOpen,
-      normalized.astralFlowAmpReady,
-      normalized.astralFlowAmpPoints,
-      normalized.astralFlowAmpMax,
-      normalized.time,
-      normalized.combatActionPinnedUntil,
-    )),
-    clearCombatActionPinned: Number(exports.hero_turn_entry_clear_pinned_action_shadow(shouldReset)),
-  };
+  const result = hasHeroTurnEntryExports(exports)
+    ? {
+        owner: 'rust',
+        turnPhase: Number(exports.hero_turn_entry_turn_phase_shadow()),
+        hideHeroSelector: Number(exports.hero_turn_entry_hide_hero_selector_shadow()),
+        acceptHeroUID: Number(exports.hero_turn_entry_accept_hero_uid_shadow(normalized.heroUID)),
+        currentHeroUIDAfter: Number(exports.hero_turn_entry_current_hero_uid_after_shadow(normalized.heroUID, normalized.currentHeroUIDBefore)),
+      }
+    : {
+        owner: 'fallback',
+        turnPhase: normalized.jsTurnPhase,
+        hideHeroSelector: normalized.jsHideHeroSelector,
+        acceptHeroUID: normalized.jsAcceptHeroUID,
+        currentHeroUIDAfter: normalized.jsCurrentHeroUIDAfter,
+      };
   shadow.heroTurnEntryOwnerChecks = Number(shadow.heroTurnEntryOwnerChecks || 0) + 1;
-  shadow.lastHeroTurnEntryOwnerCheck = {
-    ...normalized,
-    ...result,
-  };
-  if (
-    !exportsOverride
-    && (
-      result.turnPhase !== normalized.jsTurnPhase
-      || result.hideHeroSelector !== normalized.jsHideHeroSelector
-      || result.acceptHeroUID !== normalized.jsAcceptHeroUID
-      || result.currentHeroUIDAfter !== normalized.jsCurrentHeroUIDAfter
-      || result.shouldResetAstralFlowAmp !== normalized.jsShouldResetAstralFlowAmp
-      || Math.abs(result.astralFlowAmpPointsAfter - normalized.jsAstralFlowAmpPointsAfter) > 0.000001
-      || result.astralFlowAmpReadyAfter !== normalized.jsAstralFlowAmpReadyAfter
-      || result.clearCombatActionPinned !== normalized.jsClearCombatActionPinned
-    )
-  ) {
+  shadow.lastHeroTurnEntryOwnerCheck = { ...normalized, ...result };
+  if (!exportsOverride && (
+    result.turnPhase !== normalized.jsTurnPhase
+    || result.hideHeroSelector !== normalized.jsHideHeroSelector
+    || result.acceptHeroUID !== normalized.jsAcceptHeroUID
+    || result.currentHeroUIDAfter !== normalized.jsCurrentHeroUIDAfter
+  )) {
     shadow.mismatches.push(shadow.lastHeroTurnEntryOwnerCheck);
     if (shadow.mismatches.length > 20) shadow.mismatches.shift();
     console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastHeroTurnEntryOwnerCheck);
@@ -2422,7 +2303,7 @@ export function createSimulationCoreGemActionResolution({
   jsBlueWalletAfter = 0,
   jsBlueAmpPointsAfter = 0,
   jsBlueAmpReadyAfter = 0,
-  jsBlueOpenDraught = 0,
+  jsBlueAmpReadyTriggered = 0,
   jsActionLockUntil = 0,
   jsPurpleEnergyAmount = 0,
 } = {}, {
@@ -2452,7 +2333,7 @@ export function createSimulationCoreGemActionResolution({
     jsBlueWalletAfter: Number(jsBlueWalletAfter || 0),
     jsBlueAmpPointsAfter: Number(jsBlueAmpPointsAfter || 0),
     jsBlueAmpReadyAfter: Number(jsBlueAmpReadyAfter || 0) ? 1 : 0,
-    jsBlueOpenDraught: Number(jsBlueOpenDraught || 0) ? 1 : 0,
+    jsBlueAmpReadyTriggered: Number(jsBlueAmpReadyTriggered || 0) ? 1 : 0,
     jsActionLockUntil: Number(jsActionLockUntil || 0),
     jsPurpleEnergyAmount: Number(jsPurpleEnergyAmount || 0),
   };
@@ -2473,7 +2354,7 @@ export function createSimulationCoreGemActionResolution({
       blueWalletAfter: normalized.jsBlueWalletAfter,
       blueAmpPointsAfter: normalized.jsBlueAmpPointsAfter,
       blueAmpReadyAfter: normalized.jsBlueAmpReadyAfter,
-      blueOpenDraught: normalized.jsBlueOpenDraught,
+      blueAmpReadyTriggered: normalized.jsBlueAmpReadyTriggered,
       actionLockUntil: normalized.jsActionLockUntil,
       purpleEnergyAmount: normalized.jsPurpleEnergyAmount,
     };
@@ -2491,14 +2372,14 @@ export function createSimulationCoreGemActionResolution({
       blueWalletAfter: normalized.jsBlueWalletAfter,
       blueAmpPointsAfter: normalized.jsBlueAmpPointsAfter,
       blueAmpReadyAfter: normalized.jsBlueAmpReadyAfter,
-      blueOpenDraught: normalized.jsBlueOpenDraught,
+      blueAmpReadyTriggered: normalized.jsBlueAmpReadyTriggered,
       actionLockUntil: normalized.jsActionLockUntil,
       purpleEnergyAmount: normalized.jsPurpleEnergyAmount,
     };
   }
 
   const routeCode = Number(exports.gem_action_route_code_shadow(normalized.gemColor));
-  const blueOpenDraught = Number(exports.gem_action_blue_open_draught_shadow(
+  const blueAmpReadyTriggered = Number(exports.gem_action_blue_amp_ready_triggered_shadow(
     normalized.consumedCount,
     normalized.astralFlowAmpPoints,
     normalized.astralFlowAmpMax,
@@ -2530,13 +2411,13 @@ export function createSimulationCoreGemActionResolution({
       normalized.astralFlowAmpMax,
       normalized.astralFlowAmpReady,
     )),
-    blueOpenDraught,
+    blueAmpReadyTriggered,
     actionLockUntil: Number(exports.gem_action_action_lock_until_shadow(
       routeCode,
       normalized.actionLockUntil,
       normalized.time,
       normalized.textAnimEndAt,
-      blueOpenDraught,
+      blueAmpReadyTriggered,
     )),
     purpleEnergyAmount: Number(exports.gem_action_purple_energy_amount_shadow(normalized.purpleRoll01)),
   };
@@ -2560,7 +2441,7 @@ export function createSimulationCoreGemActionResolution({
       || result.blueWalletAfter !== normalized.jsBlueWalletAfter
       || result.blueAmpPointsAfter !== normalized.jsBlueAmpPointsAfter
       || result.blueAmpReadyAfter !== normalized.jsBlueAmpReadyAfter
-      || result.blueOpenDraught !== normalized.jsBlueOpenDraught
+      || result.blueAmpReadyTriggered !== normalized.jsBlueAmpReadyTriggered
       || Math.abs(result.actionLockUntil - normalized.jsActionLockUntil) > 0.000001
       || result.purpleEnergyAmount !== normalized.jsPurpleEnergyAmount
     )
@@ -2813,6 +2694,9 @@ export function createSimulationCoreCalculateDamageResolution({
   heroAoe = 0,
   chainActive = 0,
   chainMultiplier = 1,
+  attackMultiplierPct = 100,
+  matchingResistancePct = 0,
+  generalResistancePct = 0,
   jsDamage = 0,
 } = {}, { exportsOverride = null } = {}) {
   const shadow = getShadowState();
@@ -2826,6 +2710,9 @@ export function createSimulationCoreCalculateDamageResolution({
     heroAoe: Number(heroAoe || 0) === 1 ? 1 : 0,
     chainActive: Number(chainActive || 0) === 1 ? 1 : 0,
     chainMultiplier: Number(chainMultiplier || 1),
+    attackMultiplierPct: Number(attackMultiplierPct ?? 100),
+    matchingResistancePct: Number(matchingResistancePct || 0),
+    generalResistancePct: Number(generalResistancePct || 0),
     jsDamage: Number(jsDamage || 0),
   };
   const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
@@ -2849,6 +2736,9 @@ export function createSimulationCoreCalculateDamageResolution({
     normalized.heroAoe,
     normalized.chainActive,
     normalized.chainMultiplier,
+    normalized.attackMultiplierPct,
+    normalized.matchingResistancePct,
+    normalized.generalResistancePct,
   ));
   shadow.calculateDamageOwnerChecks = Number(shadow.calculateDamageOwnerChecks || 0) + 1;
   shadow.lastCalculateDamageOwnerCheck = {
@@ -3284,6 +3174,9 @@ export function createSimulationCoreSingleHitResolution({
   heroAoe = 0,
   chainActive = 0,
   chainMultiplier = 1,
+  attackMultiplierPct = 100,
+  matchingResistancePct = 0,
+  generalResistancePct = 0,
   targetHp = 0,
   shield = 0,
   jsDamage = 0,
@@ -3301,6 +3194,9 @@ export function createSimulationCoreSingleHitResolution({
     heroAoe: Number(heroAoe || 0),
     chainActive: Number(chainActive || 0),
     chainMultiplier: Number(chainMultiplier || 1),
+    attackMultiplierPct: Number(attackMultiplierPct ?? 100),
+    matchingResistancePct: Number(matchingResistancePct || 0),
+    generalResistancePct: Number(generalResistancePct || 0),
     targetHp: Number(targetHp || 0),
     shield: Number(shield || 0),
     jsDamage: Number(jsDamage || 0),
@@ -3335,6 +3231,9 @@ export function createSimulationCoreSingleHitResolution({
     normalized.heroAoe,
     normalized.chainActive,
     normalized.chainMultiplier,
+    normalized.attackMultiplierPct,
+    normalized.matchingResistancePct,
+    normalized.generalResistancePct,
   ));
   const rustAppliedDamage = Number(exports.single_hit_applied_damage_shadow(
     normalized.targetHp,
@@ -3931,6 +3830,9 @@ export function shadowSingleHitResolution({
   heroAoe = 0,
   chainActive = 0,
   chainMultiplier = 1,
+  attackMultiplierPct = 100,
+  matchingResistancePct = 0,
+  generalResistancePct = 0,
   targetHp = 0,
   shield = 0,
   jsDamage = 0,
@@ -3949,6 +3851,9 @@ export function shadowSingleHitResolution({
     Number(heroAoe || 0),
     Number(chainActive || 0),
     Number(chainMultiplier || 1),
+    Number(attackMultiplierPct ?? 100),
+    Number(matchingResistancePct || 0),
+    Number(generalResistancePct || 0),
   ));
   const rustAppliedDamage = Number(shadow.exports.single_hit_applied_damage_shadow(
     Number(targetHp || 0),

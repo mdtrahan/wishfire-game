@@ -132,7 +132,7 @@ test('enemy action RNG pockets no longer call direct Math.random in deterministi
       sourceSlice(src, 'function applyRunaMagicResist', 'const ENEMY_DEBUFF_STATS'),
       sourceSlice(src, 'export function Enemy_Heal_Ally', 'export function PickNextEnemyID'),
       sourceSlice(src, 'function buildWaveRespawnPlan', 'function ensurePendingEnemyRespawnSlots'),
-      sourceSlice(src, 'export function ResolveEnemyAction', 'export function ExecuteEnemySkill'),
+      sourceSlice(src, 'export function ResolveEnemyAction(ctx, enemyUID)', 'export function ExecuteEnemySkill'),
       sourceSlice(src, 'export function PickEnemySkill', 'export function GetEnemySkillAssignmentMap'),
       sourceSlice(src, 'function lockRandomGemLine', 'function executeEnemyBoardPressureSkill'),
     ];

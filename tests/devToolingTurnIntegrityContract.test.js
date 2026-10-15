@@ -22,7 +22,7 @@ function extractFunctionSource(src, signature) {
   assert.fail(`expected ${signature} to close`);
 }
 
-test('dev tooling refresh uses the shared combat turn refresh baseline and invalidates stale pause snapshots', () => {
+test('dev tooling refresh uses the shared transient reset while pause preserves scheduler state', () => {
   const appSrc = read('web-runner/app.js');
   const src = read('web-runner/systems/devToolingRuntime.js');
 
@@ -31,11 +31,11 @@ test('dev tooling refresh uses the shared combat turn refresh baseline and inval
   assert.match(src, /function resetCombatRuntimeForFreshSession\(reason = 'combat-refresh', options = \{\}\)/);
   assert.match(src, /applyTurnGateGlobals\(createCombatTurnRefreshBaseline\(state\.globals, \{/);
   assert.match(src, /clearDevToolingPauseSnapshot\(\);[\s\S]*state\.globals\.DevToolingPaused = \(ensureDevToolingConfig\(\)\.open \|\| isDev2DiagnosticsOpen\(\)\) \? 1 : 0;/);
-  assert.match(src, /CombatSessionId: Number\(state\.globals\.CombatSessionId \|\| 0\),/);
-  assert.match(src, /TurnSerial: Number\(state\.globals\.TurnSerial \|\| 0\),/);
-  assert.match(src, /const sameCombatSession =[\s\S]*CombatSessionId/s);
-  assert.match(src, /const sameTurnSerial =[\s\S]*TurnSerial/s);
-  assert.match(src, /if \(sameCombatSession && sameTurnSerial\) \{\s*applyTurnGateGlobals\(devToolingPauseSnapshot\);/s);
+  const pauseBlock = extractFunctionSource(src, 'function pauseGameplayForDevTooling(');
+  const resumeBlock = extractFunctionSource(src, 'function resumeGameplayFromDevTooling(');
+  assert.match(pauseBlock, /devToolingPauseSnapshot = \{\};/);
+  assert.doesNotMatch(pauseBlock + resumeBlock, /TurnSerial|CanPickGems|applyTurnGateGlobals/);
+  assert.doesNotMatch(src, /restorePlayableHeroInputAfterDevToolingResume/);
   assert.match(src, /if \(closeModal\) closeDevToolingModal\(\{ restorePauseSnapshot: appliedSessionChange !== 'combat_refresh' \}\);/);
 
   const refreshBlock = extractFunctionSource(appSrc, 'async function refreshCombatSessionFromDevTooling({ forceCombat = false, resetGame = false } = {})');

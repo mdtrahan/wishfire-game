@@ -207,7 +207,7 @@ async function acquireBrowserSession(config) {
 
 async function waitForGameHooks(page, config) {
   await page.waitForFunction(
-    () => typeof window.render_game_to_text === 'function' && typeof window.__codexGame?.runDevAutoplayUntilDepleted === 'function',
+    () => typeof window.render_game_to_text === 'function' && typeof window.__codexGame?.setEncounterRequest === 'function' && typeof window.__codexGame?.applyDevToolingConfig === 'function',
     null,
     { timeout: config.readyTimeoutMs },
   );
@@ -217,7 +217,7 @@ async function readRuntimeState(page) {
   return page.evaluate(() => JSON.parse(window.render_game_to_text()));
 }
 
-function isAutoplayReadyState(state) {
+function isRealtimeCombatReadyState(state) {
   return state?.flags?.layoutId === 'combat'
     && state?.quest?.phase === 'combat'
     && Array.isArray(state?.heroes)
@@ -236,7 +236,7 @@ async function clickCanvasWorld(page, point) {
   );
 }
 
-async function enterCurrentAutoplayCombat(page, config, seed) {
+async function enterRealtimeCombat(page, config, seed) {
   await waitForGameHooks(page, config);
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text())?.flags?.layout0Ready === true, null, { timeout: config.readyTimeoutMs });
   await page.evaluate((encounterSeed) => {
@@ -252,8 +252,7 @@ async function enterCurrentAutoplayCombat(page, config, seed) {
       && state?.enemies?.some((enemy) => Number(enemy?.hp || 0) > 0);
   }, null, { timeout: config.readyTimeoutMs + config.sessionTimeoutMs });
   const state = await readRuntimeState(page);
-  if (!isAutoplayReadyState(state)) throw new Error(`Combat did not reach autoplay readiness: ${JSON.stringify(state)}`);
-  await page.evaluate(() => { void window.__codexGame.runDevAutoplayUntilDepleted(); });
+  if (!isRealtimeCombatReadyState(state)) throw new Error(`Combat did not reach realtime combat readiness: ${JSON.stringify(state)}`);
   return state;
 }
 
@@ -265,17 +264,15 @@ async function readBalanceSnapshot(page) {
       layout: String(state.flags?.layoutId || ''),
       questPhase: String(state.quest?.phase || ''),
       time: Number(state.time || 0),
-      turnSerial: Number(globals.TurnSerial || 0),
-      turnUID: Number(state.turn?.uid || 0),
-      turnType: Number(state.turn?.type || 0),
       heroes: state.heroes.map((hero) => ({ uid: Number(hero.uid || 0), name: String(hero.name || ''), hp: Number(hero.hp || 0), maxHp: Number(hero.maxHp || 0) })),
       enemies: state.enemies.map((enemy) => ({ uid: Number(enemy.uid || 0), name: String(enemy.name || ''), slot: Number(enemy.slot || 0), hp: Number(enemy.hp || 0), maxHp: Number(enemy.maxHp || 0) })),
-      autoplay: state.devTools?.autoplay || {},
+      readiness: {
+        heroBasics: Object.entries(globals.RealtimeHeroBasicClocks || {}).sort(([a], [b]) => Number(a) - Number(b)).map(([uid, clock]) => [Number(uid), Math.max(0, Number((clock?.basicReadyAt ?? 0) - Number(globals.time || 0)).toFixed(2))]),
+        enemies: Object.entries(globals.RealtimeEnemyActionReadyAt || {}).sort(([a], [b]) => Number(a) - Number(b)).map(([uid, readyAt]) => [Number(uid), Math.max(0, Number((readyAt - Number(globals.time || 0)).toFixed(2)))]),
+        activeEnemies: Object.entries(globals.RealtimeEnemyActionsByUID || {}).sort(([a], [b]) => Number(a) - Number(b)).map(([uid, action]) => [Number(uid), String(action?.state || '')]),
+      },
       nativeBattleEnded: !!globals.NativeBattleEnded,
       pendingRespawns: Array.isArray(globals.PendingEnemyRespawnSlots) ? [...globals.PendingEnemyRespawnSlots] : [],
-      pendingSkillId: String(globals.PendingSkillID || ''),
-      busy: Number(globals.IsPlayerBusy || 0),
-      actionInProgress: Number(globals.ActionInProgress || 0),
     };
   });
 }
@@ -284,14 +281,10 @@ function progressSignature(snapshot) {
   return JSON.stringify({
     layout: snapshot.layout,
     phase: snapshot.questPhase,
-    turn: snapshot.turnSerial,
     heroHp: snapshot.heroes.map((hero) => [hero.uid, hero.hp]),
     enemyHp: snapshot.enemies.map((enemy) => [enemy.uid, enemy.hp]),
     respawns: snapshot.pendingRespawns,
-    skill: snapshot.pendingSkillId,
-    busy: snapshot.busy,
-    action: snapshot.actionInProgress,
-    autoplay: snapshot.autoplay.matchesPlayed,
+    readiness: snapshot.readiness,
   });
 }
 
@@ -300,10 +293,10 @@ async function runSession(page, config, sessionId) {
   await page.goto(`${config.origin}/web-runner/index.html`, { waitUntil: 'domcontentloaded' });
   await page.setViewportSize(config.viewport);
   await page.evaluate(() => { try { localStorage.clear(); } catch {} });
-  await enterCurrentAutoplayCombat(page, config, seed);
+  await enterRealtimeCombat(page, config, seed);
 
   let snapshot = await readBalanceSnapshot(page);
-  const startTurnSerial = snapshot.turnSerial;
+  const startSimulationTime = snapshot.time;
   const initialHeroes = snapshot.heroes.map((hero) => ({ uid: hero.uid, name: hero.name }));
   const defeatedEnemyUIDs = new Set();
   const heroCasualties = new Map();
@@ -340,13 +333,11 @@ async function runSession(page, config, sessionId) {
       }
     }
     if (!firstKo && koEvents.length) {
-      const preferredSide = snapshot.turnType === 0 ? 'enemy' : 'hero';
-      const event = koEvents.find((candidate) => candidate.side === preferredSide) || koEvents[0];
-      firstKo = { side: event.side, uid: event.uid, turn: snapshot.turnSerial - startTurnSerial, time: Number(snapshot.time.toFixed(3)) };
+      const event = koEvents[0];
+      firstKo = { side: event.side, uid: event.uid, time: Number(Math.max(0, snapshot.time - startSimulationTime).toFixed(3)) };
     }
 
     if (defeatedEnemyUIDs.size >= defeatLimit) {
-      await page.evaluate(() => window.__codexGame.stopDevAutoplay());
       endReason = 'max_waves';
       break;
     }
@@ -362,23 +353,20 @@ async function runSession(page, config, sessionId) {
     } else if (Date.now() - lastProgressAt >= config.deadlockTimeoutMs) {
       deadlockCount += 1;
       endReason = 'deadlock';
-      await page.evaluate(() => window.__codexGame.stopDevAutoplay());
       break;
     }
   }
 
   if (Date.now() - startedAt >= config.sessionTimeoutMs && endReason === 'max_waves' && defeatedEnemyUIDs.size < defeatLimit) {
     endReason = 'timeout';
-    await page.evaluate(() => window.__codexGame.stopDevAutoplay());
   }
   return {
     sessionId,
     seed,
     enemiesDefeated: defeatedEnemyUIDs.size,
     wavesCompleted: Number((defeatedEnemyUIDs.size / config.enemiesPerWave).toFixed(2)),
-    turnsSurvived: Math.max(0, snapshot.turnSerial - startTurnSerial),
+    simulationSecondsSurvived: Number(Math.max(0, snapshot.time - startSimulationTime).toFixed(3)),
     firstKoSide: firstKo?.side || 'none',
-    firstKoTurn: firstKo?.turn ?? null,
     firstKoTime: firstKo?.time ?? null,
     heroCasualties: [...heroCasualties.values()],
     livingHeroes: snapshot.heroes.filter((hero) => hero.hp > 0).length,
@@ -390,7 +378,7 @@ async function runSession(page, config, sessionId) {
 
 function aggregateSessions(config, sessions) {
   const defeats = sessions.map((session) => session.enemiesDefeated);
-  const turns = sessions.map((session) => session.turnsSurvived);
+  const durations = sessions.map((session) => session.simulationSecondsSurvived);
   const casualtyDistribution = {};
   const firstHeroCasualtyDistribution = {};
   const firstKoSides = {};
@@ -408,8 +396,8 @@ function aggregateSessions(config, sessions) {
     averageEnemiesDefeated: Number((defeats.reduce((sum, value) => sum + value, 0) / Math.max(1, defeats.length)).toFixed(2)),
     medianEnemiesDefeated: Number(median(defeats).toFixed(2)),
     minimumEnemiesDefeated: defeats.length ? Math.min(...defeats) : 0,
-    averageTurnsSurvived: Number((turns.reduce((sum, value) => sum + value, 0) / Math.max(1, turns.length)).toFixed(2)),
-    medianTurnsSurvived: Number(median(turns).toFixed(2)),
+    averageSimulationSecondsSurvived: Number((durations.reduce((sum, value) => sum + value, 0) / Math.max(1, durations.length)).toFixed(2)),
+    medianSimulationSecondsSurvived: Number(median(durations).toFixed(2)),
     partyDefeats: sessions.filter((session) => session.endReason === 'party_defeated').length,
     deadlockCount: sessions.reduce((sum, session) => sum + session.deadlockCount, 0),
     casualtyDistribution,
@@ -433,8 +421,8 @@ function writeOutputs(config, sessions, aggregate) {
   const csvPath = path.join(config.outputDir, 'session_results.csv');
   fs.writeFileSync(jsonPath, `${JSON.stringify({ aggregate, sessions }, null, 2)}\n`, 'utf8');
   fs.writeFileSync(csvPath, toCsv([
-    ['session_id', 'seed', 'enemies_defeated', 'turns_survived', 'first_ko_side', 'first_ko_turn', 'first_ko_time', 'hero_casualties', 'deadlock_count', 'end_reason'],
-    ...sessions.map((session) => [session.sessionId, session.seed, session.enemiesDefeated, session.turnsSurvived, session.firstKoSide, session.firstKoTurn, session.firstKoTime, session.heroCasualties.join('|'), session.deadlockCount, session.endReason]),
+    ['session_id', 'seed', 'enemies_defeated', 'simulation_seconds_survived', 'first_ko_side', 'first_ko_time', 'hero_casualties', 'deadlock_count', 'end_reason'],
+    ...sessions.map((session) => [session.sessionId, session.seed, session.enemiesDefeated, session.simulationSecondsSurvived, session.firstKoSide, session.firstKoTime, session.heroCasualties.join('|'), session.deadlockCount, session.endReason]),
   ]), 'utf8');
   return { jsonPath, csvPath };
 }
@@ -495,7 +483,7 @@ if (require.main === module) {
     acquireBrowserSession,
     buildConfig,
     closeAttachedBrowserViaCDP,
-    isAutoplayReadyState,
+    isRealtimeCombatReadyState,
     parseArgs,
   };
 }

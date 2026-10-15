@@ -33,6 +33,7 @@
 - Enemy board-pressure effects that run during autoplay should preserve board cardinality unless the turn/refill gates explicitly own the resulting empty cells. Prefer visible lock/disable state for temporary denial effects, and make autoplay skip disabled gems instead of trying to select through them.
 - Speed-based initiative must validate the live current-turn source, not just the displayed speed order. Dynamic authority/progress predictions are shadows unless they agree with the fixed-speed next actor; first handoff proof should include Skeleton 22 -> Huun 20.
 - Runtime asset cleanup must separate startup-critical visuals from background visuals. Production code should not request Figma/MCP/design-tool assets, and galleries, alternate enemies, buff frames, or debug/helper icons should not block the game-ready gate unless the current player path needs them.
+- For puppet torso motion, angle signs depend on each rig pivot. Verify forward lean from neutral-relative collar and hip landmarks in isolated native renders, then confirm the connected full-body motion in both facings.
 - EXP settlement must derive each visible fill from the awarded amount and the pre-award threshold. When a reward crosses a level, keep one bar, fill it to the threshold, reset it briefly, and carry the exact remainder before opening a queued choice. A zero-reward settlement still needs to fade and release the victory boundary.
 
 ## 2026-03-07 Regression Note
@@ -565,3 +566,81 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Validate required build tools before touching release output. Assemble into a sibling candidate directory and replace the last playable artifact only after the bundle and manifest are complete.
 - A missing-dependency regression check must seed the existing artifact, force the dependency failure, and prove the prior files survive.
 - 2026-09-18: Opening-session cards that execute an immediate AF special must not also persist the similarly named session-buff family. Chain Strike II is one attack; storing `mirage_chain` made later random hero basics look like a hidden toggle with silent expiry.
+- 2026-09-21: Continuous combat must separate target eligibility from enemy action eligibility. Pre-arm each hero's own cooldown while enemies approach, allow hero targeting at the shared range line, admit enemies to their scheduler only at home, and read moving targets from current coordinates rather than their future home anchors.
+- 2026-09-21: A shared action owner makes cooldown combat look turn based even when readiness uses wall time. Tick regular hero basics independently of the skill presentation lock, keep enemy scheduling separate, and mark basic packets so delivery art can remain without contact splashes.
+- 2026-09-22: In four-turret continuous combat, compare enemy travel-to-home against the party's time-to-kill, not only the attack cooldown. A slow walker can die before it is eligible to attack; stationary melee basics also need a visible delivery cue once lunges and contact splashes are gone. Use the spawned enemy's authored delivery range for its cooldown band.
+- 2026-09-23: In a repeating DPS-gate session, preserve hero HP and KO state across wave loops and boss clears. Restore the party only in the defeat recovery owner, which resets to wave one of the current stage; otherwise each clear silently erases the attrition that makes upgrades observable.
+- 2026-09-23: In streamed combat, start the next-pack timer when the last entrant becomes targetable, not when it reaches its final attack position. A slow walker can otherwise create a long empty break. Enemy targeting should use the living hero roster after the enemy engages; rendered sprite feet can fall outside the formation's standing-center bounds and silently remove valid targets.
+- 2026-09-23: If continuous enemies stand idle while hero basics continue, inspect the stream's outer action gate and the scheduler's retained current actor together. Stale `IsPlayerBusy`/`DeferAdvance` flags can suppress every scheduler tick, and a hero left as current can block an enemy claim even after the outer gate opens.
+
+- Lamp Auto eligibility and recipient ranking use total hero replacement CP. Standalone item CP remains display order; evaluate every matching hero-slot among the twelve deployed slots, since leaders can offer no hero gain while later items do. Recheck eligibility under the save lock and after provisional assignments. Keep retained queued gear inspectable and prevent positive-gain leftovers from silent dismantling. Raw draws stay unfiltered, manual downgrades remain allowed, and all retained leftovers count toward capacity.
+- Treat Lamp Auto as saved player intent, separate from cache capacity: capacity pauses generation without clearing the preference, and clearing space resumes it. Disable Auto only through the explicit toggle or a battle-exit save that completes before encounter state is discarded; a failed save must leave the encounter available for retry.
+
+- Modal-owned equip feedback must finish before review advances or closes. Keep the transient float inside the modal and await its cleanup while inputs remain busy, so it cannot outlive its context over combat.
+
+- 2026-09-30: Test transient arrival strips separately from restored inventory. Use the persisted completed-emission counter as a session baseline and account for zero-based item sequence; verify the first manual result visibly appears. Automatic production must require current-session player intent.
+
+- Historical emission snapshots are presentation inputs, not inventory ownership. Filter transient arrival art by live pending/discarded IDs so settled items cannot survive an empty-cache transition.
+
+- Reference-led strip QA must compare both X and Y painted edges at a common uniform scale. Matching height alone leaves horizontal drift undetected. Flex text can override an aspect-ratio badge's width; measure the resulting circle and its visible text separately.
+
+- Scope feedback holds to their final transition. A global render freeze plus awaiting animation inside the save/action lock blocks unrelated selections and makes cache updates look delayed. Review entry should settle in-flight acquisition and pause background generation before presenting a complete inventory.
+
+- Progression proof must record the player-visible level and EXP-meter rollover, not only a downstream unlock or saved state. Label party EXP separately from device-upgrade resources, and include current EXP in render invalidation.
+
+- Lamp edge guidance: measure the animated decorative image/rings against the viewport before changing target controls. Flip the hand inward and bound ring diameter at the shared helper owner; guard every target at compact and reference sizes.
+
+- Lamp smoke belongs to the supplied image positioned above the strip. Keep the strip overflow visible; apply readiness darkening to the image through the shared disabled button so manual and Auto emission use the same cue.
+
+- 2026-10-01: Compact equipment review can keep identity and actions fixed while a flex inventory absorbs the height limit. Show independent total-hero CP direction and selected-hero slot-stat direction; equal values carry no indicator. Remove retired comparison chrome instead of reserving blank rows.
+
+- 2026-10-01: Apparent arrow cropping can come from a polygon’s two apex vertices. Inspect the rendered silhouette and ancestor bounds; use one apex in both CSS and Canvas and guard both directions with pixel samples.
+
+- 2026-10-01: Tight per-numeral raster crops vary in height even at one font size. Derive the shared number/arrow height from the font’s full digit range and normalize each crop into it; test both rows with differing values.
+
+- 2026-10-01: Removing redundant rarity initials must preserve the color channel. Bind the candidate identity band and inventory tile to the same existing rarity variable and check the full palette.
+
+- 2026-10-01: Separate auto-sized label tracks misalign HP/MAG even when outer cells align. Share row tracks with native subgrid and reserve flexible value columns across the card. Center the whole allocated grid; max-content-only centering crowds current values and leaves no space for their growth.
+
+- 2026-10-01: Centering a sprite cell does not center its visible artwork when atlas padding varies. Normalize visible alpha bounds once at the shared atlas renderer; keep labels outside that normalization and retain the original source asset.
+
+- Lamp progression: an adjacent party-EXP meter read as lamp level. Display earned lamp level and a durable purchased-stage ledger; currency balances are affordability data. Guard tier and stage before each saved purchase, and require the completed ledger for manual promotion.
+
+- 2026-10-02: Sprite atlas centering cannot certify the rendered tween endpoint. Measure original alpha bounds with the actual sprite offset and final animation matrix in the array. Gate shared manual/Auto reveal on artwork readiness so fallback frames never start an earned arrival; translate artwork independently of fixed badges.
+
+- 2026-10-02: Boss access belongs to the progression tier, while arming/active flags belong to an encounter. Keep tier access through retries and reload, clear it only on boss victory, and cancel obsolete enemy actions when switching encounters. Spending, timed construction and completion need distinct durable states; test expiry and ticket commits against failed saves. Level QA must reset receipt baselines and execution queues as well as labels so stored EXP or pending skills cannot replay.
+
+- 2026-10-02: The rendered UI lock caught inherited unscaled damage-number injections that a source-string check missed. Assert generated calls forward layoutScale and retain rendered compact/Retina proof.
+
+- Actor HP owns terminal presentation state. Recovery clears old action cues, while the presentation selector also rejects a stale KO cue and its facing for living actors. Async clip retention must preserve the current life state across death and revival.
+
+- When a wave expands into dispersed packs, normalize a single boss's CP budget to one local pack. A total-wave budget can multiply offense and defenses by pack count. Verify fixed boss movement bounds against ranged heroes' stop distances after frontline KO.
+- For first-KO interruption, guard every phase boundary inside the action batch and before the next scheduler phase. Capture earned pack credit before recovery removes enemies; keep completed waves and boss readiness through squad recovery and reload. Only boss victory starts the next stage at zero progress.
+- When a progression rail looks stalled during a multi-pack wave, separate displayed counter granularity from the actual all-pack transition gate. Persist idempotent clear credit for the current wave, retry unfinished packs, and keep full-clear and presentation barriers intact.
+
+- Recovery placement needs a world-center anchor and a compact screen-sized moat converted through canonical zoom. Protect every seeded pack footprint, not only its centroid, while avoiding added travel buffers that delay nearby encounters.
+
+- Party focus selects where heroes fight; it must not restrict enemy attack eligibility. Reconcile every nearby enemy against its own reach and living targets before scheduling, and test simultaneous multi-pack attackers through the real cooldown owner.
+
+- ORKA-cgx: Derive pack locality from physical distance to a living hero or that enemy's attack reach; stale engaged/in-range state cannot keep a remote group committed. Space distinct seeded clouds by full-footprint edge gap, since independently moving each cloud outside a central moat can collapse sector centers together. Test remote stale engagement beside a fresh local pack and measure cross-pack gaps across seeds and authored sizes.
+
+- ORKA-uun: If combat floors a stat to one, halving low-level DEF may leave effective damage unchanged. Soften generated solos through HP after their existing weak-CP scaling, then recompute CombatPower; place six-member clouds by their actual vertical bounds to prove the requested full-footprint gap.
+
+- Keep earned boss readiness separate from permission to enter. A stage-scoped manual-retry latch survives ordinary KO, boss defeat, save/reload and an active retry; ready stages continue fodder farming at 100% until explicit summon. Capture final-pack credit before the KO recovery filter, so a wave-four last-kill boundary latches readiness instead of auto-entering on recovery. Preserve the existing whole-party defeat rule during boss attempts; first-KO scheduler interruption applies only to ordinary roaming.
+- Boss wins require a witnessed active-combat clear. On menu departure or page hide, remove active-boss reward entries and queued hits before recovery settlement, then save the attempt as manual retry; ordinary menu pause remains intact.
+
+- ORKA-xx0: Sibling gear views should reuse the existing `.lamp-level` badge markup and shared CSS to prevent style drift. Comparison arrows remain limited to views that compare candidates.
+
+- ORKA-764: Seed one opening roam heading from the stage seed and transient attempt index, anchored at the authored arena midpoint after huddle placement. Mirror tank-front formation to that heading and yield it on actual actor reach or an incoming impact, so prior offscreen feet and stale targets cannot reverse the first walk.
+
+- ORKA-5fr: Seed recovery composition from the advancing stage generation serial while preserving earned wave and pack state; copying the prior serial and seed reproduces the same loadout after every wipe.
+- ORKA-lvd: Reconcile arena locomotion from frame-start feet to post-separation feet. Collision-canceled pursuit must settle to idle without resetting its animation timestamp each tick; preserve active basic/cast/hurt windows and leave attack reach untouched.
+- ORKA-3qz: Drive automatic cache review from the shared positive total-hero CP selector; skip only those candidates, preserve pending/discarded inspection, and route the last candidate through the atomic review transaction before showing the protected dismantle preview.
+
+- ORKA-2c2: Keep Hero stage geometry fixed across tabs and reserve the icon row below the full-body art. Four-card skill pages overlap the final window for nine-skill kits, preserving every canonical ability. Saved progression heroes lack attackType, so presentation range reads canonical basic tags before using the shared reach owner; all-enemy effects report their target policy rather than a caster range cap.
+
+- ORKA-hdi: Resolve formation roles through canonical save names and display aliases. Establish Fara lead along actual travel heading, yield Hondo only outside attack reach with room for Fara to pass, and keep contact offsets within authored melee reach; world-edge yielding otherwise causes blocked locomotion.
+
+- ORKA-bnw: Menu CP must read the same canonical hero progression as equipment comparisons. Preferring a paused combat actor can conceal a committed upgrade until a later equipment sync; test the next render with an intentionally stale actor and verify manual/Auto receipts match saved and live CP.
+
+- A live Bead does not prove current source identity. Verify origin, main ancestry and active Bag renderer before editing or serving. Exported snapshots can reuse Bead IDs while having unrelated histories; migrate only requested features and their dependencies into project main. Port Equip fixes into the conveyor owner rather than restoring a legacy strip.

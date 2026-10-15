@@ -34,8 +34,8 @@ export function createQuestLadderUI({ canvas, gameState, layoutState, flow, getG
     else if (action === 'skip') flow.confirmSkip();
     else if (action === 'continue') void flow.continueCombat();
     else if (action === 'combat-continue') void flow.continuePausedCombat();
-    else if (action === 'combat-quit') flow.quitPausedCombat();
-    else if (action === 'quit') flow.quit();
+    else if (action === 'combat-quit') void flow.quitPausedCombat();
+    else if (action === 'quit') void flow.quit();
     update();
   });
   function update() {

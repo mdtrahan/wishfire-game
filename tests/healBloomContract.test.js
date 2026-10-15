@@ -69,7 +69,9 @@ test('app heal path plays a ten-frame green swirl with Faze-style front motes', 
   assert.match(renderSrc, /drawY \+ drawSize \* 0\.7, drawWidth, drawSize \* 0\.3/);
   assert.match(renderSrc, /HeroRestFeetPosByUID\?\.\[targetUID\]/);
   assert.match(renderSrc, /const enemyFeet = targetActor\?\.kind === 'enemy'/);
-  assert.match(renderSrc, /targetActor\.originY \?\? targetActor\.y \?\? 0\) \+ Math\.max\(24, Number\(state\.globals\.EnemySize \|\| 40\)\) \/ 2/);
+  assert.match(renderSrc, /targetActor\.footX \?\? targetActor\.x \?\? targetActor\.originX/);
+  assert.match(renderSrc, /targetActor\.footY \?\? targetActor\.y \?\? targetActor\.originY/);
+  assert.match(renderSrc, /projectCombatActorWorldToCanvas\(Number\(targetFeet\.x \|\| 0\), Number\(targetFeet\.y \|\| 0\), targetActor\?\.kind \|\| 'hero'\)/);
   assert.match(renderSrc, /const targetFeet = restFeet \|\| enemyFeet;/);
   assert.match(renderSrc, /HeroRenderHeightByUID\?\.\[targetUID\]/);
   assert.match(renderSrc, /HeroRenderWidthByUID\?\.\[targetUID\]/);
@@ -82,24 +84,17 @@ test('app heal path plays a ten-frame green swirl with Faze-style front motes', 
   assert.match(renderSrc, /\.filter\(particle => particle && Number\(particle\.opacity \|\| 0\) > 0\.02\)\.slice\(0, 7\)/);
   assert.match(renderSrc, /if \(layer === 'front'\) \{/);
   assert.match(renderSrc, /ctx\.fillStyle = '#B9FFD0';/);
-  assert.match(renderSrc, /Number\(particle\.x \|\| 0\) \* 0\.8 \* layoutScale/);
-  assert.match(renderSrc, /`if \(images\.CombatHealMotes && stage\.progress > 0\.34\) \{\n\s*const moteT[\s\S]*const width = Math\.max\(34, 46 \* layoutScale\);/);
-  assert.match(renderSrc, /"const width = Math\.max\(54, 72 \* layoutScale\);",[\s\S]*"const width = Math\.max\(38, 48 \* layoutScale\);"/);
+  assert.match(renderSrc, /Number\(particle\.x \|\| 0\) \* 0\.8 \* combatWorldVfxScale/);
+  assert.match(renderSrc, /`if \(images\.CombatHealMotes && stage\.progress > 0\.34\) \{\n\s*const moteT[\s\S]*const width = Math\.max\(34 \* combatWorldVfxScale, 46 \* combatWorldVfxScale\);/);
+  assert.match(renderSrc, /"const width = Math\.max\(54, 72 \* layoutScale\);",[\s\S]*"const width = Math\.max\(38 \* combatWorldVfxScale, 48 \* combatWorldVfxScale\);"/);
+  assert.match(renderSrc, /const combatWorldVfxScale = layoutScale \* COMBAT_BATTLEFIELD_ZOOM;/);
+  assert.match(renderSrc, /renderRealtimeSkillGroundVfx\(ctx, \{ state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: combatWorldVfxScale \}\);/);
   assert.match(renderSrc, /const bloomStage = \(bloom\) => \{/);
   assert.doesNotMatch(renderSrc, /images\.CombatHealBloom/);
   assert.doesNotMatch(renderSrc, /ctx\.fillRect\(-arm \/ 2, -length \/ 2, arm, length\);/);
   assert.match(renderSrc, /renderHealBlooms\('back'\);[\s\S]*\/\/ Render hero portraits/);
   assert.match(renderSrc, /renderHealBlooms\('front'\);[\s\S]*\/\/ Render hero damage\/heal text/);
   assert.match(renderSrc, /HeroRestFeetPosByUID/);
-  const hooksSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js'), 'utf8');
-  assert.match(hooksSrc, /setupHealBloomScenario/);
-  assert.match(hooksSrc, /replayHealBloomScenario/);
-  assert.match(hooksSrc, /captureHealBloomFrames/);
-  assert.match(hooksSrc, /canvas\.toDataURL\('image\/webp', 0\.8\)/);
-  assert.match(hooksSrc, /window\.requestAnimationFrame\(onFrame\)/);
-  assert.match(hooksSrc, /sawActive && activeCount === 0/);
-  assert.match(hooksSrc, /Live QA heal replay: every browser frame/);
-  assert.match(hooksSrc, /scenario === 'heal-bloom'/);
 });
 
 test('party regen uses a persistent hero shimmer instead of a tint overlay', () => {

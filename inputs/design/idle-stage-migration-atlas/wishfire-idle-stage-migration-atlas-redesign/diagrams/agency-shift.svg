@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="440" viewBox="0 0 800 440" role="img" aria-labelledby="agency-shift-title agency-shift-desc">
+<title id="agency-shift-title">Agency moves from turns to buildcraft</title>
+<desc id="agency-shift-desc">Five repeated combat choices become five durable preparation choices.</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#17232D"/></marker></defs>
+<rect width="800" height="440" fill="#F7F2E8"/>
+<text x="28" y="30" font-family="Arial, sans-serif" font-size="18" font-weight="700" text-anchor="start" fill="#17232D">Agency moves from turns to buildcraft</text>
+<text x="28" y="52" font-family="Arial, sans-serif" font-size="10" font-weight="400" text-anchor="start" fill="#58646D">Five repeated combat choices become five durable preparation choices.</text>
+<text x="65" y="92" font-family="Arial, sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#C45262">CURRENT TURN MODEL</text>
+<text x="455" y="92" font-family="Arial, sans-serif" font-size="12" font-weight="700" text-anchor="start" fill="#2E8B68">TARGET IDLE-STAGE MODEL</text>
+<path d="M390,105 L410,105" stroke="#7357B3" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+<circle cx="79" cy="125" r="13" fill="#C45262"/>
+<text x="79" y="129" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#FCFAF5">1</text>
+<text x="103" y="130" font-family="Arial, sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#17232D">Choose the acting hero</text>
+<circle cx="79" cy="180" r="13" fill="#C45262"/>
+<text x="79" y="184" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#FCFAF5">2</text>
+<text x="103" y="185" font-family="Arial, sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#17232D">Choose attack / heal / card</text>
+<circle cx="79" cy="235" r="13" fill="#C45262"/>
+<text x="79" y="239" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#FCFAF5">3</text>
+<text x="103" y="240" font-family="Arial, sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#17232D">Wait through a serialized action</text>
+<circle cx="79" cy="290" r="13" fill="#C45262"/>
+<text x="79" y="294" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#FCFAF5">4</text>
+<text x="103" y="295" font-family="Arial, sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#17232D">Repeat each actor turn</text>
+<circle cx="79" cy="345" r="13" fill="#C45262"/>
+<text x="79" y="349" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#FCFAF5">5</text>
+<text x="103" y="350" font-family="Arial, sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#17232D">Resolve session offer interruptions</text>
+<circle cx="469" cy="125" r="13" fill="#2E8B68"/>
+<text x="469" y="129" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#FCFAF5">1</text>
+<text x="493" y="130" font-family="Arial, sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#17232D">Set three active skills per hero</text>
+<circle cx="469" cy="180" r="13" fill="#2E8B68"/>
+<text x="469" y="184" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#FCFAF5">2</text>
+<text x="493" y="185" font-family="Arial, sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#17232D">Set target and ultimate priorities</text>
+<circle cx="469" cy="235" r="13" fill="#2E8B68"/>
+<text x="469" y="239" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#FCFAF5">3</text>
+<text x="493" y="240" font-family="Arial, sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#17232D">Equip, sell, and level gear</text>
+<circle cx="469" cy="290" r="13" fill="#2E8B68"/>
+<text x="469" y="294" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#FCFAF5">4</text>
+<text x="493" y="295" font-family="Arial, sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#17232D">Choose companions and one relic</text>
+<circle cx="469" cy="345" r="13" fill="#2E8B68"/>
+<text x="469" y="349" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#FCFAF5">5</text>
+<text x="493" y="350" font-family="Arial, sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#17232D">Trigger boss attempts and claims</text>
+</svg>

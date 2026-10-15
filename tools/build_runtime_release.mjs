@@ -10,7 +10,7 @@ const commit = git('rev-parse', 'HEAD');
 const allowedExtensions = new Set(['.html', '.js', '.mjs', '.json', '.css', '.wasm', '.png', '.jpg', '.jpeg', '.webp', '.svg', '.woff', '.woff2', '.ttf', '.otf', '.mp3', '.ogg', '.wav']);
 const files = git('ls-files', '-z', '--', 'web-runner', 'src').split('\0').filter(file =>
   file && allowedExtensions.has(path.extname(file)) && !file.endsWith('/prompts.json'));
-if (!files.includes('web-runner/app.js') || !files.includes('web-runner/assets/images/navigation/flow.png')) throw new Error('Release requires tracked runtime and navigation assets');
+if (!files.includes('web-runner/app.js')) throw new Error('Release requires tracked runtime');
 fs.rmSync(output, { recursive: true, force: true });
 for (const file of files) {
   fs.mkdirSync(path.dirname(path.join(output, file)), { recursive: true });

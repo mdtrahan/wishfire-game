@@ -50,29 +50,29 @@ test('shipped WASM matches startup and live calculate-damage shadow packets', as
       appliedDamage: shadow.lastSingleHitOwnerCheck.appliedDamage,
       afterHp: shadow.lastSingleHitOwnerCheck.afterHp,
     },
-    { source: 'simulationCore.startup.singleHitOwner', damage: 7, appliedDamage: 7, afterHp: 33 },
+    { source: 'simulationCore.startup.singleHitOwner', damage: 6, appliedDamage: 6, afterHp: 34 },
     );
     assert.deepEqual(
     {
       source: shadow.lastCalculateDamageOwnerCheck.source,
       damage: shadow.lastCalculateDamageOwnerCheck.damage,
     },
-    { source: 'simulationCore.startup.calculateDamageOwner', damage: 11 },
+    { source: 'simulationCore.startup.calculateDamageOwner', damage: 20 },
     );
 
     const live = shadowModule.createSimulationCoreCalculateDamageResolution({
-    source: 'test.live.calculateDamage',
-    power: 18,
-    resist: 12,
-    roll01: 0.5,
-    critRoll01: 0.9,
-    sourceIsHero: 1,
-    heroAoe: 0,
-    chainActive: 0,
-    chainMultiplier: 1,
-    jsDamage: 7,
+      source: 'test.live.calculateDamage',
+      power: 18,
+      resist: 12,
+      roll01: 0.5,
+      critRoll01: 0.9,
+      sourceIsHero: 1,
+      heroAoe: 0,
+      chainActive: 0,
+      chainMultiplier: 1,
+      jsDamage: 6,
     });
-    assert.deepEqual(live, { owner: 'rust', damage: 7 });
+    assert.deepEqual(live, { owner: 'rust', damage: 6 });
     assert.deepEqual(shadow.mismatches, []);
   } finally {
     restore();

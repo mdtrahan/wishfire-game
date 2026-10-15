@@ -1,4 +1,4 @@
 interface:
   display_name: "Debug JavaScript"
-  short_description: "Diagnose and fix JavaScript bugs"
-  default_prompt: "Diagnose JavaScript failures and provide minimal, correct fixes."
+  short_description: "Investigate and fix JavaScript failures"
+  default_prompt: "Use $debug-javascript to investigate this failure, apply the requested fix, and verify the affected behavior."

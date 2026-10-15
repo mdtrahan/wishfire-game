@@ -1,0 +1,28 @@
+{
+  "responses": 115,
+  "draws": 2832,
+  "drawStates": [
+    "spawn-left",
+    "idle-right",
+    "idle-left",
+    "walk-right",
+    "walk-left",
+    "hit-left",
+    "attack-left",
+    "attack-right"
+  ],
+  "errors": [],
+  "logicalHighWaterBytes": 7471104,
+  "retention": {
+    "maxDecodedBytes": 25165824,
+    "retainedBytes": 7471104,
+    "reservedBytes": 0,
+    "entries": 11,
+    "pending": 0,
+    "evictions": 0
+  },
+  "baselineRSSBytes": 1042087936,
+  "peakRSSBytes": 1087651840
+}
+{"presentation":{"displayedActors":0,"maxDecodedBytes":25165824,"retainedBytes":7471104,"reservedBytes":0,"entries":11,"pending":0,"evictions":0},"buttons":["DEV2","Close","Quit Battle","Continue Battle","Close","Apply","Apply & Refresh","Restart","RESET GAME","LV 1","LV 5","LV 25","LV 100","DEV","0","AUTO","0 / 41Lamp","DAILY","HERO","QUESTS"]}
+{"departed":{"layout":"storyMock","retention":{"displayedActors":0,"maxDecodedBytes":25165824,"retainedBytes":7471104,"reservedBytes":0,"entries":11,"pending":0,"evictions":0}},"restored":{"layout":"combat","retention":{"displayedActors":4,"maxDecodedBytes":25165824,"retainedBytes":7864320,"reservedBytes":0,"entries":12,"pending":0,"evictions":0}},"pauseBefore":{"now":14.808199999999244,"src":"http://localhost:8132/web-runner/assets/puppets/fara/frames/idle-right-008.png","state":"idle"},"pauseAfter":{"now":14.808199999999244,"src":"http://localhost:8132/web-runner/assets/puppets/fara/frames/idle-right-008.png","state":"idle","retention":{"displayedActors":4,"maxDecodedBytes":25165824,"retainedBytes":7864320,"reservedBytes":0,"entries":12,"pending":0,"evictions":0}},"errors":[],"fixture":"Only pause uses the existing QaScenarioPaused fixture; departure/restore click ordinary navigation and Continue Battle."}

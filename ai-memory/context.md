@@ -1,16 +1,5 @@
-# Project Context (stable)
+# Project Context
 
-## Project
-- HTML5 game repo.
-- Primary goal: ship features incrementally without losing decisions across sessions.
+Codex-Orka is an HTML5 game. Current `main`, the applicable `AGENTS.md` chain, current product docs, and live Beads state define the working context. Select an active worktree explicitly when working in a lane.
 
-## Working rules
-- Single-task focus: one todo item per Codex run.
-- Prefer minimal changes over refactors unless the todo explicitly requests it.
-
-## Output expectations
-- When coding: edit the minimum files needed.
-- When uncertain: write a TODO item instead of guessing.
-
-## Definitions
-- "Checkpoint" = todo updated + insights appended (dated) + list of files touched.
+Historical plans, archived instructions, generated reports, and recovery bundles are outside ordinary development retrieval. Do not use an old local index without checking its source path and commit.

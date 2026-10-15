@@ -72,6 +72,7 @@ function routeCardGalleryLayout({
 export function createPointerRoutingShell({
   canvas,
   getDpr,
+  worldToCanvas,
   state,
   gameState,
   uiState,
@@ -97,6 +98,11 @@ export function createPointerRoutingShell({
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
       ? layoutState.getActiveLayoutId()
       : null;
+
+    const bossStage = state?.globals?.ContinuousCombatStage;
+    if (activeLayoutId === 'combat' && bossStage?.bossActive === true && Number(bossStage.bossTransitionEndsAtMs || 0) > Date.now()) {
+      return { handled: true, mx, my, rect };
+    }
 
     const navHit = (gameState.sharedNavHitZones || []).find(zone => isPointInRect(mx, my, zone));
     if (navHit) {

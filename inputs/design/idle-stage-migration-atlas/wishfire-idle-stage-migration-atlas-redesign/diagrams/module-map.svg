@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="440" viewBox="0 0 800 440" role="img" aria-labelledby="module-map-title module-map-desc">
+<title id="module-map-title">One owner for each rule</title>
+<desc id="module-map-desc">Deterministic content and rules feed stage authority; presentation may lag without changing truth.</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#17232D"/></marker></defs>
+<rect width="800" height="440" fill="#F7F2E8"/>
+<text x="28" y="30" font-family="Arial, sans-serif" font-size="18" font-weight="700" text-anchor="start" fill="#17232D">One owner for each rule</text>
+<text x="28" y="52" font-family="Arial, sans-serif" font-size="10" font-weight="400" text-anchor="start" fill="#58646D">Deterministic content and rules feed stage authority; presentation may lag without changing truth.</text>
+<rect x="90" y="78" width="620" height="42" fill="#FCFAF5" stroke="#00A8B5" stroke-width="2"/>
+<text x="106" y="104" font-family="Arial, sans-serif" font-size="11" font-weight="700" text-anchor="start" fill="#17232D">CONTENT</text>
+<text x="255" y="104" font-family="Arial, sans-serif" font-size="10" font-weight="400" text-anchor="start" fill="#58646D">heroes, enemies, stages, drops / existing data + new tables</text>
+<rect x="100" y="125" width="600" height="42" fill="#FCFAF5" stroke="#7357B3" stroke-width="2"/>
+<text x="116" y="151" font-family="Arial, sans-serif" font-size="11" font-weight="700" text-anchor="start" fill="#17232D">RULES</text>
+<text x="265" y="151" font-family="Arial, sans-serif" font-size="10" font-weight="400" text-anchor="start" fill="#58646D">cadence, targeting, damage, loot / shared deterministic core</text>
+<rect x="110" y="172" width="580" height="42" fill="#FCFAF5" stroke="#B98522" stroke-width="2"/>
+<text x="126" y="198" font-family="Arial, sans-serif" font-size="11" font-weight="700" text-anchor="start" fill="#17232D">SESSION</text>
+<text x="275" y="198" font-family="Arial, sans-serif" font-size="10" font-weight="400" text-anchor="start" fill="#58646D">wave state, boss gate, claims / new stage authority</text>
+<rect x="120" y="219" width="560" height="42" fill="#FCFAF5" stroke="#2E8B68" stroke-width="2"/>
+<text x="136" y="245" font-family="Arial, sans-serif" font-size="11" font-weight="700" text-anchor="start" fill="#17232D">PRESENTATION</text>
+<text x="285" y="245" font-family="Arial, sans-serif" font-size="10" font-weight="400" text-anchor="start" fill="#58646D">sprites, VFX, numbers, UI / adapt current queue</text>
+<rect x="130" y="266" width="540" height="42" fill="#FCFAF5" stroke="#C45262" stroke-width="2"/>
+<text x="146" y="292" font-family="Arial, sans-serif" font-size="11" font-weight="700" text-anchor="start" fill="#17232D">PERSISTENCE</text>
+<text x="295" y="292" font-family="Arial, sans-serif" font-size="10" font-weight="400" text-anchor="start" fill="#58646D">save, inventory, receipts / extend storage; add ledger</text>
+</svg>

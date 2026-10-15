@@ -66,3 +66,13 @@ The lane is preserved for review. This report does not certify integration again
 ## Hero management revision (in progress)
 
 The existing hero screen now uses HERO / GEAR / SKILLS, a persistent portrait and roster, concise level milestones, and expandable full stats. Active, passive and FLOW categories remain canonical. The owner subsequently authorized a placeholder equipment catalog. Gear now manages the same persisted inventory purchased through Astral Flow. See EQUIPMENT_MIGRATION_REPORT.md for scope and validation. Enemy-death FLOW remains authoritative.
+
+## Progression correction, 2026-10-02 (ORKA-5af.18)
+
+Boss access now belongs to its current tier, survives defeat/reload and immediately replaces fodder when pressed. Victory clears access before the next tier. Four paid lamp stages start seven-hour construction; the saved deadline completes automatically, with five-minute ticket spending available through SPD UP ALL. Existing earned progress and EXP tuning remain intact.
+
+The unchanged twenty active skills now use canonical level gates. The configurable default is 1/5/10/15/25; it remains a tuning default pending an owner milestone choice. The DEV modal supplies real LV 1/5/25/100 presets and a recoverable namespace-only RESET GAME. Native player progress was preserved.
+
+Validation: 126 focused tests pass, including all twenty unlocked skill implementations, boss retries/restoration, construction transactions, ticket spending, canonical preset stats and reset recovery. The existing four-phone lamp guard also exercises the real developer controls and SKILLS disclosure in isolated saves. Evidence lives in `test-results/progression/REVIEW.md` and `test-results/lamp/report.json`. Current lane remains unmerged; formal human QA and Integration Ready are separate gates.
+
+The required rendered UI lock exposed inherited damage-number injections that omitted their existing scale argument. That wiring now forwards layoutScale; the source check also rejects unscaled injections. Parent checkpoint 8ef6ac7 reproduces the original failure.

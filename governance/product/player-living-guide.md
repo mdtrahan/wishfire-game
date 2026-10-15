@@ -2,45 +2,35 @@
 
 ## Combat
 
-SPEED determines whose turn comes next. Tap an enemy in the arena to select it, then open a hero's card and choose a skill. Each selection fills an action slot and reserves its SP. The hero acts automatically when all slots are filled. Press ACT to use fewer actions. Removing a queued skill restores its slot and reserved SP.
+Fara, Hondo, Runa and Kaja roam together through a three-screen arena to clear six spaced enemy packs. Seeded pack clouds stay loose, with at least 200 logical pixels between their full footprints; weaker lone Goblocs and Skeletons wander through the gaps. After their existing weak-CP scaling, lone enemies have half HP, rounded up to at least one, and keep their other scaled stats. At fresh entry and after full-squad recovery, the party forms at the arena midpoint and makes a seeded short walk to the left or right, with Fara and Hondo leading and Runa and Kaja behind. An enemy entering anyone's actual attack reach, or an incoming enemy attack already in flight, hands movement to normal combat. Each living hero runs to melee contact or stops at ranged reach, then fires basics and unlocked active skills automatically when their cooldowns are ready and the skill has a useful target. Nearby enemies notice the squad within about 230 logical pixels or when they can reach a hero; remote packs stay dormant until the party approaches. Every nearby enemy joins from its own delivery range, so local groups can attack together without a count cap. Each ordinary wave also places one weaker lone enemy in every sector; it wanders by itself until the party approaches and counts toward that sector's clear. Heroes and enemies act on their own clocks. Combat has no turns, action slots, gem matching, SP or FLOW.
 
-Each queued skill keeps the target chosen for it. Group skills affect their defined group. A basic Attack uses the whole turn by itself. A full FLOW special also takes the whole turn.
+Ordinary hero attacks retain a living focus while that enemy remains within the hero’s current reach. Area skills use their own targeting rules from the caster’s current position. Enemies attack a living hero after spatial contact unless a skill redirects or covers that attack. An attack with no eligible target waits ready.
 
-Groups may contain one through six heroes. Each hero has their own HP, SP, level and FLOW. A KO'd hero cannot act until revived. Empty formation slots do not need replacement heroes.
+When an ordinary pack's total CP is below the full deployed party's total CP, it receives one, two or three extra enemies from a single seeded random roll. Those enemies keep the pack's existing scaled strength. Bosses keep their single-enemy layout.
 
-## Current Heroes
+The notched adventure bar shows four wave segments and the active chapter/stage. Each of the six packs cleared in a wave advances the bar within that wave's segment. Clearing the fourth wave on a clean approach automatically enters the boss fight through a screen wipe. Heroes keep their HP between ordinary waves and on boss entry. Defeating a boss restores the whole party to full HP, revives KO heroes and clears their debuffs before the next stage. During ordinary roaming, the first deployed hero to reach zero HP ends the attempt. The full squad revives, clears debuffs and returns at the midpoint of the arena in its authored huddle with a shared brief fade. Recovery keeps the same stage, wave and earned cleared packs; unfinished packs return with a fresh seeded loadout and the current party’s CP compensation is recalculated. A ready-stage defeat resumes farming at wave one while keeping the bar at 100%. Reload keeps earned progress, so each pack counts once. The recovery moat remains centered on the huddle while packs stay spread across the rest of the arena. Any hero KO or boss defeat latches manual retry for that stage. Before readiness, partial progress stays partial; once the four-wave approach is earned, the bar stays at 100% while the party farms until the player presses Summon Boss. The ready control appears in combat and in the menu return surface. Boss attempts retain the latch through reload. A boss must be defeated while the battle remains active; leaving for another screen, hiding the page or reloading surrenders the attempt, clears queued victory work and resumes farming with the manual Summon Boss control. Boss fights retain the existing whole-party defeat rule. Boss victory advances to the next stage and clears the latch. Defeat costs no resource.
 
-| Hero | Role |
+## Heroes
+
+Each hero has individual HP, stats, level, EXP and equipment. Heroes begin at level 1 with zero EXP. Basic attacks and the first active are available at level 1; the remaining actives unlock at levels 5, 10, 15 and 25 under the current configurable milestone schedule. Levels and gear increase their power.
+
+| Hero | What they do |
 | --- | --- |
-| Fara | Tank |
-| Hondo | Fighter |
-| Runa | Controller |
-| Kaja | Support |
+| Fara | Absorbs pressure, covers allies, provokes attackers and pushes groups away with Shield Slam. |
+| Hondo | Exploits vulnerable enemies with precise hits, piercing throws and area sweeps. |
+| Runa | Shapes enemy space with magic circles, forced retreat and Return Gate teleportation. |
+| Kaja | Fires a separate basic magic attack and gives allies damage, speed, splash, healing and a short random-stat blessing. His five active skills target allies. |
 
-Every hero has seven active skills, six passives and one unique FLOW special. Abilities unlock as that hero levels. The hero screen shows current stats, costs, effects and future unlocks.
+Each skill waits when its target or trigger would have no useful effect. Effects and cooldowns count seconds of active combat. Pausing or backgrounding the game freezes combat until play resumes.
 
-## Resources
+## Progression and Gold
 
-**HP** belongs to each hero. Healing restores the affected hero's missing HP. KO heroes retain their FLOW.
+Defeated enemies grant Gold and EXP once. Participating heroes receive the full EXP value even if they finish KO'd; unused heroes receive none. Newly acquired heroes start at level 1 with zero EXP. Level-ups raise stats. Living heroes gain the increase in maximum HP without a full heal, and KO heroes stay at zero HP. The current level cap is 99.
 
-**SP** pays for active skills. Heroes begin encounters with full SP and recover five SP at the start of their own living turn. Only executed actions spend SP. Unexecuted actions are refunded if their targets become invalid, their actor is KO'd or victory ends combat.
+Gold buys equipment from the shop. Purchased gear enters the shared inventory under Hero → Gear. A hero can equip a Weapon, Head, Armor, Boots and two Accessories; their stats affect that hero in combat. Shop offers expire in real time and are reconstructed when you return.
 
-**FLOW** begins at zero in every encounter. Defeated enemies release FLOW orbs. They spill onto the ground, bounce, then fly to randomly assigned living heroes. Each orb grants 10 FLOW on arrival. Attacks and role events do not award orbs. When full, that hero can use their special. The red meter is labeled FLOW; the blue meter shows SP. Party-card draws are paused.
+## Places
 
-**Energy and Gold** belong to the wider quest economy. They do not set the number of skills a hero can queue.
+Quests provide story and combat encounters. The HERO screen shows owned heroes and their progression. Vault and other navigation remain available where implemented.
 
-## Progression
-
-Victory grants each participating hero the full EXP value of the defeated enemies, including heroes who finish KO'd. Unused heroes receive none. Newly acquired heroes start at level 1 with zero EXP.
-
-Level-ups increase stats and unlock abilities. Living heroes gain the increase in maximum HP without receiving a full heal. KO heroes stay at zero HP. The current level cap is 50. Victory results show earned EXP, level changes and unlocks.
-
-## Navigation
-
-Quests provide story and combat encounters. The HERO screen shows each owned hero's canonical progression and combat kit. Vault and other existing navigation remain available where implemented.
-
-The gem puzzle and shared Astral Flow milestones are retired. The roguelite party-card feature is paused. Current engineering rules are in [the combat migration plan](../../COMBAT_MIGRATION_PLAN.md).
-
-## Equipment and Astral Flow shop
-
-Victorious battles award configurable Gold per defeated enemy. Astral Flow is a four-track equipment shop using Gold; its previous idle collector is retired. Offers expire in real time while away and are reconstructed on return. Purchases enter the shared inventory under Hero → Gear. Equip Weapon, Head, Armor, Boots and two Accessories; their stats feed the canonical combat hero. Hero management exposes CP, SP and named AF traits while combat FLOW retains enemy-death orb charging. Placeholder equipment and prices remain centrally configurable.
+The equip cache groups items by rarity, highest first, then CP within each rarity. Lamp storage starts at 20 slots and grows faster at higher levels. Lamp upgrades require four Essence purchases; each notch starts at 100 Essence and grows about 20% per lamp level. The fourth starts seven hours of construction; the level completes automatically when that timer expires. SPD UP ALL spends available five-minute tickets to shorten construction. Banked Essence alone grants no lamp levels. Lamp Auto keeps its saved ON state while the cache is full, resumes after Dismantle All frees space, and turns off when you explicitly toggle it off or exit battle.

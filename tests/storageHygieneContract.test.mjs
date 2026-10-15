@@ -1,0 +1,310 @@
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { beadId, parseWorktrees, retirementReason } from '../tools/storage_hygiene.mjs';
+
+test('worktree inventory preserves branch and detached state', () => {
+  const entries = parseWorktrees('worktree /repo\nHEAD abc\nbranch refs/heads/bead/ORKA-123-name\n\nworktree /detached\nHEAD def\ndetached\n');
+  assert.equal(entries.length, 2);
+  assert.equal(beadId(entries[0].branch), 'ORKA-123');
+  assert.equal(entries[1].detached, true);
+  assert.equal(beadId('refs/heads/bead/ORKA-ymk.2-name'), 'ORKA-ymk.2');
+});
+
+test('retirement requires a present, clean, merged, CLOSED Bead worktree', () => {
+  const eligible = { path: '/repo/.worktrees/lane', root: '/repo', exists: true,
+    branch: 'refs/heads/bead/ORKA-123-name', beadId: 'ORKA-123',
+    dirty: false, merged: true, beadStatus: 'closed' };
+  assert.equal(retirementReason(eligible), null);
+  for (const [change, reason] of [
+    [{ dirty: true }, 'dirty worktree'],
+    [{ merged: false }, 'unmerged commit'],
+    [{ beadStatus: 'open' }, 'open Bead status'],
+    [{ beadStatus: undefined }, 'unknown Bead status'],
+    [{ beadId: undefined }, 'unknown Bead identity'],
+    [{ detached: true, branch: undefined }, 'detached worktree'],
+    [{ branch: 'refs/heads/main' }, 'main worktree'],
+    [{ path: '/repo' }, 'main worktree'],
+    [{ exists: false }, 'missing or unreadable worktree'],
+    [{ prunable: true }, 'missing or unreadable worktree'],
+    [{ error: 'unreadable' }, 'missing or unreadable worktree'],
+    [{ ignored: ['test-results/ui-lock/'] }, 'protected ignored files present (test-results/ui-lock/)'],
+    [{ ignored: ['node_modules/'] }, null],
+    [{ ignored: ['tools/__pycache__/'] }, null],
+    [{ ignored: ['.beads/.local_version', '.beads/last-touched', '.beads/redirect', 'web-runner/runtime-fingerprint.js'] }, null],
+    [{ ignored: ['.beads/dolt/.dolt/noms/journal.idx'] }, 'protected ignored files present (.beads/dolt/.dolt/noms/journal.idx)'],
+    [{ ignored: ['test-results/ui-lock/run/report.json'] }, 'protected ignored files present (test-results/ui-lock/run/report.json)'],
+    [{ ignored: ['node_modules/custom', 'output/unique.png'] }, 'protected ignored files present (output/unique.png)'],
+  ]) assert.equal(retirementReason({ ...eligible, ...change }), reason);
+});
+
+test('apply requires an exact registered worktree', () => {
+  const tool = fileURLToPath(new URL('../tools/storage_hygiene.mjs', import.meta.url));
+  const result = spawnSync(process.execPath, [tool, 'clean', '--apply'], { encoding: 'utf8' });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /specify one exact registered absolute path/);
+});
+
+test('cleanup refuses unknown evidence and dirty files, then removes only allowlisted artifacts', () => {
+  const temp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'orka-storage-')));
+  const lane = path.join(temp, 'lane');
+  const tool = fileURLToPath(new URL('../tools/storage_hygiene.mjs', import.meta.url));
+  const bd = path.join(temp, 'bd-stub');
+  const git = (...args) => {
+    const result = spawnSync('git', args, { cwd: temp, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+  };
+  const clean = (status = 'closed', apply = true) => spawnSync(process.execPath,
+    [tool, 'clean', '--worktree', lane, ...(apply ? ['--apply'] : [])],
+    { cwd: temp, encoding: 'utf8', env: { ...process.env, BD_BIN: bd, BD_STATUS: status } });
+  try {
+    git('init', '-b', 'main');
+    fs.writeFileSync(path.join(temp, '.gitignore'), 'dist/\nnode_modules/\n.beads/.local_version\n.beads/redirect\n.beads/dolt/\ntest-results/\nweb-runner/runtime-fingerprint.js\n');
+    fs.mkdirSync(path.join(temp, 'node_modules'));
+    fs.writeFileSync(path.join(temp, 'node_modules/.package-lock.json'), '{}');
+    git('add', '.gitignore');
+    git('add', '-f', 'node_modules/.package-lock.json');
+    git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'fixture');
+    git('worktree', 'add', '-b', 'bead/ORKA-123-clean', lane, 'main');
+    fs.writeFileSync(bd, '#!/bin/sh\nprintf "[{\\"id\\":\\"ORKA-123\\",\\"status\\":\\"%s\\"}]\\n" "$BD_STATUS"\n', { mode: 0o755 });
+    for (const file of ['dist/cache.bin', 'node_modules/cache.bin', '.beads/.local_version', '.beads/redirect', 'web-runner/runtime-fingerprint.js', '.beads/dolt/unique']) {
+      fs.mkdirSync(path.dirname(path.join(lane, file)), { recursive: true });
+      fs.writeFileSync(path.join(lane, file), file);
+    }
+    assert.match(clean().stderr, /protected ignored files present/);
+    assert.equal(fs.existsSync(path.join(lane, '.beads/dolt/unique')), true);
+    fs.rmSync(path.join(lane, '.beads/dolt'), { recursive: true });
+    fs.mkdirSync(path.join(lane, 'test-results/ui-lock/run'), { recursive: true });
+    fs.writeFileSync(path.join(lane, 'test-results/ui-lock/run/report.json'), '{}');
+    assert.match(clean().stderr, /protected ignored files present/);
+    assert.equal(fs.existsSync(path.join(lane, 'test-results/ui-lock/run/report.json')), true);
+    fs.rmSync(path.join(lane, 'test-results'), { recursive: true });
+    fs.writeFileSync(path.join(lane, 'unique-source.txt'), 'keep');
+    assert.match(clean().stderr, /dirty worktree/);
+    fs.rmSync(path.join(lane, 'unique-source.txt'));
+    assert.match(clean('open').stderr, /open Bead status/);
+    assert.match(clean('unknown').stderr, /unknown Bead status/);
+    assert.match(clean('closed', false).stdout, /Regeneratable ignored paths to discard: 5/);
+    const result = clean();
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(fs.existsSync(lane), false);
+    assert.equal(spawnSync('git', ['show', 'main:node_modules/.package-lock.json'], { cwd: temp, encoding: 'utf8' }).stdout, '{}');
+    assert.equal(spawnSync('git', ['branch', '--list', 'bead/ORKA-123-clean'], { cwd: temp, encoding: 'utf8' }).stdout.trim().length > 0, true);
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
+});
+
+test('historical detached mode retires only a clean ancestor with allowlisted local files', () => {
+  const temp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'orka-detached-')));
+  const lane = path.join(temp, 'snapshot');
+  const other = path.join(temp, 'branch-lane');
+  const stale = path.join(temp, 'unique-commit');
+  const tool = fileURLToPath(new URL('../tools/storage_hygiene.mjs', import.meta.url));
+  const git = (...args) => {
+    const result = spawnSync('git', args, { cwd: temp, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+  };
+  const clean = (target, flags = ['--historical-detached', '--apply']) =>
+    spawnSync(process.execPath, [tool, 'clean', '--worktree', target, ...flags], { cwd: temp, encoding: 'utf8' });
+  const refused = (target, reason, flags) => {
+    const result = clean(target, flags);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, reason);
+    assert.equal(fs.existsSync(target), true);
+  };
+  try {
+    git('init', '-b', 'main');
+    fs.writeFileSync(path.join(temp, '.gitignore'), '.beads/.local_version\n.beads/dolt/\n.beads/unknown\ntest-results/\n');
+    git('add', '.gitignore');
+    git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'fixture');
+    git('worktree', 'add', '--detach', lane, 'main');
+    git('worktree', 'add', '-b', 'bead/ORKA-123-other', other, 'main');
+    refused(lane, /detached worktree/, ['--apply']);
+    refused(temp, /main worktree/);
+    refused(other, /not a detached worktree/);
+    assert.match(clean(path.join(temp, 'unregistered')).stderr, /unregistered worktree/);
+    assert.match(clean(lane, ['--historical-detached', '--worktree', other]).stderr, /specify one exact registered absolute path/);
+
+    fs.appendFileSync(path.join(lane, '.gitignore'), '# changed\n');
+    refused(lane, /dirty worktree/);
+    git('-C', lane, 'restore', '.gitignore');
+    fs.writeFileSync(path.join(lane, 'unique-source.txt'), 'keep');
+    refused(lane, /dirty worktree/);
+    fs.rmSync(path.join(lane, 'unique-source.txt'));
+    fs.mkdirSync(path.join(lane, '.beads'), { recursive: true });
+    fs.writeFileSync(path.join(lane, '.beads/unknown'), 'keep');
+    refused(lane, /protected ignored files present/);
+    fs.rmSync(path.join(lane, '.beads/unknown'));
+    fs.mkdirSync(path.join(lane, 'test-results/ui-lock'), { recursive: true });
+    fs.writeFileSync(path.join(lane, 'test-results/ui-lock/proof.json'), '{}');
+    refused(lane, /protected ignored files present/);
+    fs.rmSync(path.join(lane, 'test-results'), { recursive: true });
+    fs.mkdirSync(path.join(lane, '.beads/dolt'), { recursive: true });
+    refused(lane, /lane-local Dolt state/);
+    fs.rmdirSync(path.join(lane, '.beads/dolt'));
+
+    fs.writeFileSync(path.join(lane, '.beads/.local_version'), 'runtime');
+    assert.match(clean(lane, ['--historical-detached']).stdout, /DRY RUN:.*detached with HEAD on main/);
+    const removed = clean(lane);
+    assert.equal(removed.status, 0, removed.stderr);
+    assert.equal(fs.existsSync(lane), false);
+
+    git('worktree', 'add', '--detach', stale, 'main');
+    fs.writeFileSync(path.join(stale, 'unique-commit.txt'), 'not on main');
+    git('-C', stale, 'add', 'unique-commit.txt');
+    git('-C', stale, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'unique');
+    refused(stale, /unmerged commit/);
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
+});
+
+test('superseded ancestor mode requires a CLOSED clean lane and exact registered successor ancestry', () => {
+  const temp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'orka-ancestor-')));
+  const lane = path.join(temp, 'ancestor');
+  const successor = path.join(temp, 'successor');
+  const unrelated = path.join(temp, 'unrelated');
+  const tool = fileURLToPath(new URL('../tools/storage_hygiene.mjs', import.meta.url));
+  const bd = path.join(temp, 'bd-stub');
+  const git = (...args) => {
+    const result = spawnSync('git', args, { cwd: temp, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+  };
+  const clean = (target = lane, next = successor, flags = []) => spawnSync(process.execPath,
+    [tool, 'clean', '--worktree', target, '--superseded-by', next, ...flags],
+    { cwd: temp, encoding: 'utf8', env: { ...process.env, BD_BIN: bd } });
+  const refused = (pattern, target = lane, next = successor, flags = []) => {
+    const result = clean(target, next, flags);
+    assert.equal(result.status, 2, result.stdout + result.stderr);
+    assert.match(result.stderr, pattern);
+    assert.equal(fs.existsSync(lane), true);
+  };
+  try {
+    git('init', '-b', 'main');
+    fs.writeFileSync(path.join(temp, '.gitignore'), '.beads/.local_version\n.beads/dolt/\n.beads/unknown\ntest-results/\n');
+    git('add', '.gitignore');
+    git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'base');
+    git('worktree', 'add', '-b', 'bead/ORKA-123-ancestor', lane, 'main');
+    fs.writeFileSync(path.join(lane, 'feature.txt'), 'ancestor');
+    git('-C', lane, 'add', 'feature.txt');
+    git('-C', lane, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'ancestor');
+    git('worktree', 'add', '-b', 'bead/ORKA-456-successor', successor, 'bead/ORKA-123-ancestor');
+    git('worktree', 'add', '-b', 'bead/ORKA-789-unrelated', unrelated, 'main');
+    fs.writeFileSync(path.join(unrelated, 'feature.txt'), 'ancestor');
+    git('-C', unrelated, 'add', 'feature.txt');
+    git('-C', unrelated, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'same patch, different commit');
+    fs.writeFileSync(bd, '#!/bin/sh\nprintf "[{\\"id\\":\\"ORKA-123\\",\\"status\\":\\"%s\\"}]\\n" "$BD_STATUS"\n', { mode: 0o755 });
+    const status = value => { process.env.BD_STATUS = value; };
+    status('closed');
+    const defaultMode = spawnSync(process.execPath, [tool, 'clean', '--worktree', lane, '--apply'],
+      { cwd: temp, encoding: 'utf8', env: { ...process.env, BD_BIN: bd, BD_STATUS: 'closed' } });
+    assert.equal(defaultMode.status, 2);
+    assert.match(defaultMode.stderr, /unmerged commit/);
+    refused(/unregistered worktree/, path.join(temp, 'absent'), successor, ['--apply']);
+    refused(/separate registered present worktree/, lane, lane, ['--apply']);
+    refused(/separate registered present worktree/, lane, path.join(temp, 'absent'), ['--apply']);
+    refused(/main worktree/, temp, successor, ['--apply']);
+    refused(/target HEAD is not an ancestor/, lane, unrelated, ['--apply']);
+    status('open'); refused(/open Bead status/, lane, successor, ['--apply']);
+    status('unknown'); refused(/unknown Bead status/, lane, successor, ['--apply']);
+    status('closed');
+    fs.appendFileSync(path.join(lane, 'feature.txt'), 'dirty');
+    refused(/dirty worktree/, lane, successor, ['--apply']);
+    git('-C', lane, 'restore', 'feature.txt');
+    fs.writeFileSync(path.join(lane, 'unique.txt'), 'keep');
+    refused(/dirty worktree/, lane, successor, ['--apply']);
+    fs.rmSync(path.join(lane, 'unique.txt'));
+    fs.mkdirSync(path.join(lane, '.beads'), { recursive: true });
+    fs.writeFileSync(path.join(lane, '.beads/unknown'), 'keep');
+    refused(/protected ignored files present/, lane, successor, ['--apply']);
+    fs.rmSync(path.join(lane, '.beads/unknown'));
+    fs.mkdirSync(path.join(lane, 'test-results'), { recursive: true });
+    fs.writeFileSync(path.join(lane, 'test-results/proof.json'), '{}');
+    refused(/protected ignored files present/, lane, successor, ['--apply']);
+    fs.rmSync(path.join(lane, 'test-results'), { recursive: true });
+    fs.mkdirSync(path.join(lane, '.beads/dolt'), { recursive: true });
+    refused(/lane-local Dolt state/, lane, successor, ['--apply']);
+    fs.rmdirSync(path.join(lane, '.beads/dolt'));
+    fs.writeFileSync(path.join(lane, '.beads/.local_version'), 'runtime');
+    assert.match(clean().stdout, /DRY RUN:.*HEAD on registered successor/);
+    const removed = clean(lane, successor, ['--apply']);
+    assert.equal(removed.status, 0, removed.stderr);
+    assert.equal(fs.existsSync(lane), false);
+    assert.match(spawnSync('git', ['branch', '--list', 'bead/ORKA-123-ancestor'], { cwd: temp, encoding: 'utf8' }).stdout, /ORKA-123/);
+  } finally {
+    delete process.env.BD_STATUS;
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
+});
+
+test('historical mode retires only clean checkouts whose HEAD stays reachable by a local ref', () => {
+  const temp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'orka-historical-')));
+  const lane = path.join(temp, 'old-branch');
+  const snapshot = path.join(temp, 'snapshot');
+  const tool = fileURLToPath(new URL('../tools/storage_hygiene.mjs', import.meta.url));
+  const git = (...args) => {
+    const result = spawnSync('git', args, { cwd: temp, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+  };
+  const clean = (target, flags = []) => spawnSync(process.execPath,
+    [tool, 'clean', '--worktree', target, '--historical', ...flags], { cwd: temp, encoding: 'utf8' });
+  const refused = (target, pattern, flags = ['--apply']) => {
+    const result = clean(target, flags);
+    assert.equal(result.status, 2, result.stdout + result.stderr);
+    assert.match(result.stderr, pattern);
+    assert.equal(fs.existsSync(target), true);
+  };
+  try {
+    git('init', '-b', 'main');
+    fs.writeFileSync(path.join(temp, '.gitignore'), '.beads/.local_version\n.beads/dolt/\ntest-results/\n');
+    git('add', '.gitignore');
+    git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'base');
+    git('worktree', 'add', '-b', 'history/old-direction', lane, 'main');
+    fs.writeFileSync(path.join(lane, 'feature.txt'), 'historical source');
+    git('-C', lane, 'add', 'feature.txt');
+    git('-C', lane, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'unmerged work');
+    const original = spawnSync(process.execPath, [tool, 'clean', '--worktree', lane], { cwd: temp, encoding: 'utf8' });
+    assert.match(original.stderr, /unmerged commit/);
+    refused(temp, /main worktree/);
+    refused(lane, /specify one exact registered absolute path/, ['--worktree', snapshot]);
+    assert.match(clean(path.join(temp, 'missing')).stderr, /unregistered worktree/);
+    fs.appendFileSync(path.join(lane, 'feature.txt'), 'dirty');
+    refused(lane, /dirty worktree/);
+    git('-C', lane, 'restore', 'feature.txt');
+    fs.writeFileSync(path.join(lane, 'unique.txt'), 'keep');
+    refused(lane, /dirty worktree/);
+    fs.rmSync(path.join(lane, 'unique.txt'));
+    fs.mkdirSync(path.join(lane, 'test-results'), { recursive: true });
+    fs.writeFileSync(path.join(lane, 'test-results/proof.json'), '{}');
+    refused(lane, /protected ignored files present/);
+    fs.rmSync(path.join(lane, 'test-results'), { recursive: true });
+    fs.mkdirSync(path.join(lane, '.beads/dolt'), { recursive: true });
+    refused(lane, /lane-local Dolt state/);
+    fs.rmdirSync(path.join(lane, '.beads/dolt'));
+    fs.writeFileSync(path.join(lane, '.beads/.local_version'), 'runtime');
+    assert.match(clean(lane).stdout, /historical with HEAD held by a local ref/);
+    assert.equal(clean(lane, ['--apply']).status, 0);
+    assert.equal(fs.existsSync(lane), false);
+    assert.match(spawnSync('git', ['branch', '--list', 'history/old-direction'], { cwd: temp, encoding: 'utf8' }).stdout, /history\/old-direction/);
+
+    git('worktree', 'add', '--detach', snapshot, 'main');
+    fs.writeFileSync(path.join(snapshot, 'snapshot.txt'), 'unique commit');
+    git('-C', snapshot, 'add', 'snapshot.txt');
+    git('-C', snapshot, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'unreferenced snapshot');
+    refused(snapshot, /HEAD lacks a durable local branch or tag/);
+    git('tag', 'history/snapshot', 'HEAD');
+    // The tag above points to main; the detached snapshot still lacks a ref.
+    refused(snapshot, /HEAD lacks a durable local branch or tag/);
+    git('tag', 'history/unique-snapshot', spawnSync('git', ['-C', snapshot, 'rev-parse', 'HEAD'], { cwd: temp, encoding: 'utf8' }).stdout.trim());
+    assert.match(clean(snapshot).stdout, /historical with HEAD held by a local ref/);
+    assert.equal(clean(snapshot, ['--apply']).status, 0);
+    assert.equal(fs.existsSync(snapshot), false);
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
+});

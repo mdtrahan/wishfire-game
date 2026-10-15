@@ -185,8 +185,8 @@ export function createDamageNumber({
       y: 0,
       rotation: 0,
       transformOrigin: 'center bottom',
-      scaleX: 1,
-      scaleY: 1,
+      scaleX: 0.4,
+      scaleY: 0.4,
       opacity: 1,
     });
 
@@ -203,7 +203,14 @@ export function createDamageNumber({
     tl.to(wrapper, {
       x: floatX,
       y: floatY,
-      duration: 0.8,
+      duration: 0.12,
+      ease: 'power2.out',
+    }, 0);
+
+    tl.to(numberText, {
+      scaleX: 1,
+      scaleY: 1,
+      duration: 0.12,
       ease: 'power2.out',
     }, 0);
 
@@ -211,7 +218,7 @@ export function createDamageNumber({
       x: floatX,
       y: floatY,
       opacity: 1,
-      duration: 0.484,
+      duration: 0.7,
       ease: 'none',
     });
 

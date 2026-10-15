@@ -6,42 +6,61 @@
 
 ## Ownership
 - `render*.js` files own Canvas/UI presentation for combat, HUD, map, overlays, and progression shells.
+- `heroGearUI.mjs` renders equipped gear levels with the shared lower-right `.lamp-level` badge inside the art; empty slots retain their slot label and filled slots omit the redundant top label.
 - `renderRuntime.js` owns a large partially purified runtime render path and remains high-risk.
+- `combatSimulationTick.mjs` owns the frozen-aware combat clock, queued hero impacts, independently scheduled hero/enemy actions, action presentation, status/effect timing, and reward settlement; renderers consume prepared state and presentation events.
 - `inputHandling.js` owns browser pointer/map input helpers.
 - `superGemRuntime.js` owns supergem board/effect runtime behavior.
 - `heroProgressStorage.js` owns versioned localStorage hero EXP/progression persistence.
 - `simulationCoreShadow.js` owns WASM loading, Rust owner markers, shadow checks, and mismatch diagnostics.
-- `runtimeAssetUrl.mjs` owns document-base asset resolution and embedded offline JSON/WASM payload lookup; hosted runtime loading remains the default path.
+- `runtimeAssetUrl.mjs` owns document-base asset resolution and embedded offline JSON/WASM payload lookup; hosted runtime loading remains the default path. Hero skill icons use this resolver so the classic offline bundle can open the current Skills screen.
 - `devToolingControls.js` and runtime debug helpers own QA/dev surfaces.
+- `renderCombatBossControl.mjs` owns the shared boss progress rail and interrupted-boss fallback surface. The fallback appears for a ready or active boss outside combat or under the gear modal, and for a stage-latched ready boss during combat. It suppresses the Canvas rail and sits in the top-center safe band above the modal scrim. Hero reserves matching top space while preserving its footer, Vault hides its overlapping Back To Combat control, and lamp modal CSS reserves the same band. The developer modal keeps its existing close path and suppresses the fallback until it closes. Returning through the existing combat layout preserves an active encounter snapshot; first-entry bosses arm automatically, while a latched retry waits for explicit summon through the shared boss arm path. The return action waits until lamp opening, draw/equip work, and feedback receipts can leave safely.
 
 ## Local Contracts
+- Puppet identity routing covers the four current hero display names and save keys plus all ten authored monster names; portrait aliases fall through to canonical identities. Keep clip selection independent of combat and save ownership.
+- Newly introduced combat actors and elements reveal through an appropriate transition; instant pop-in requires an explicit user request or approved prompt/goal. Enemy actors and their HP bars use one short alpha fade driven by active combat time, reset only at true activation.
+- `realtimeSkillGroundPresentation.mjs` draws committed Burn Sigil circles and active timed-effect foot cues before the shared actor paint queue. Use canonical actor feet and the current formation projection; rendering never changes effect records, clocks or mechanics. Cover links require a living source; committed Blight keeps its existing source-KO lifetime. Chibi heroes do not carry letter/square skill or status badges, or a multiplier badge; existing body, ground, projectile and impact VFX communicate these effects. Ground art adds one Cover source diamond per frame with links/shield outlines, Destiny healing marks and Blight thorn rings with stable effect-owned sizes, without duplicate status labels; paused combat time freezes their lifetime.
+- Puppet PNG playback uses a 24MiB logical RGBA reservation/settled budget and at most 32 clip records. Displayed and latest replacement keys stay protected; capacity denial retries on later paint without an obsolete-state queue. The shared renderer brackets every scene with beginFrame/endFrame, retiring unpainted slots even in empty scenes or at a paused clock. Standalone sampling also retires old slots as simulation time advances; stale loads cannot replace current state. HP owns KO selection; a positive-HP actor ignores a stale KO cue and its facing. A held ready clip must match the actor’s current KO/live state; use static fallback while a replacement crosses that boundary. Physical decoder/GPU allocation follows browser ownership and is not certified by this logical budget.
+- Lamp equipment commits one v4 record before changing runtime Gold, exact rolls or loadouts. Preserve old save records on migration/error. Equip applies canonical stats without healing. The comparison keeps four portrait recipients and their changes above the candidate; inspection must leave combat advancing.
+- `combatAttackVfxPresentation.mjs` lazily requests elemental impact flipbooks by skill slug and centers their one-shot frame on the queued target point; keep the rendered canvas within 52 logical pixels at layout scale 1.
+- `combatSimulationTick.mjs` ages and expires damage text on simulation time; `renderRuntime.js` only spawns its DOM presentation. Damage text must clear so the continuous-stage boss gate can advance.
 - Combat initialization consumes supplied hero members through slot 5, preserving sparse formation indexes and instance identity. Catalog size must not cap deployed members; escort and enemy UIDs follow the instantiated heroes. This initializer capacity does not expand the configuration UI or define new hero content.
 - Production mixed encounters draw only fodder/routine catalog tiers and remain within a 13–18% party-CP band so the party clears ordinary packs decisively; hard, elite and boss tiers require an explicit encounter policy.
+- Production, orientation, and developer QA entry use the authored continuous stage adapter: each ordinary wave preserves six pack-sector identities and adds one seeded solo in each sector; initial finalization, wave spawn, and recovery must pass the planned solo marker and solved feet unchanged. Four repeating fodder waves unlock each boss, an armed boss clear advances to the next stage, and stage ten advances the region. Heroes and each engaged enemy schedule independently; no entry variant dispatches turn initiative.
+- Pending hero hits in production may retarget after a death only to living enemies already inside the hero attack range; renderer fallback must agree with the shared focus rule.
+- Refill bounce, YellowCasino progression and payout, BlueBuff logical completion, buff-icon phase transitions, and gem-merge payout/gate release advance from simulation time without drawing. YellowCasino's ghost remains a presentation read in `renderBoard.js`.
+- Continuous combat is the automatic action owner. Finite/story defeat remains Rust-owned after scheduled work; ordinary roaming stops its current scheduler batch at the first deployed hero KO and routes to free full-party recovery. Recovery clears debuffs, uses the authored role huddle and one shared 350 ms reveal, preserves the current wave and its saved six-sector clear mask, and respawns only unfinished packs. Boss readiness stays at 100% through defeat and retries after recovery pacing; boss fights retain the existing whole-party defeat rule. Every paused/background/defeat frame resets the simulation timestamp and performs no simulation work; resume starts with a bounded first step.
+- An active continuous boss is witnessed only while combat stays active through the normal clear path. Leaving combat, opening the Lamp collection, pausing into another surface, hiding the document, or firing `pagehide` surrenders before snapshot capture or simulation suspension; remove the boss from pending reward settlement, clear queued combat work, recover the party, and retain readiness with the manual-summon latch. Keep the spawned numeric boss UID on the active stage and checkpoint it only while active; this identifies its pending reward if death already removed the actor. Clear it after surrender, stage advance or a new wave, and filter it before reload settlement while preserving fodder entries. Ordinary non-boss menu pause remains unchanged.
 - `storyEntryFlow.mjs` owns quest card flow. Confirmed Skip advances within the current card; embedded combat begins immediately. Defeat waits for Continue or Quit; Quit returns to Quests.
 - Active combat can leave through the shared navigation at a synchronous frame boundary. Layout snapshots preserve CTB, the current fan and pending target state; Quests uses the existing ladder modal for Continue Battle or Quit Battle, and only Quit clears the combat snapshot and resets a fresh session.
 - Narrative rendering preserves the existing two-sentence pages and solo/pair shots. Scene startup, Auto advancement, and layout changes belong to the controller/entry flow, outside `renderNarrativeScene.js`.
 - Combat actor orientation must project canonical left-wise anchors through `src/core/combatOrientation.mjs`; mirror actor-attached x offsets, never combat rules or canonical positions. Right-wise actor sprite pixels mirror about each oriented pivot so both teams face inward and asymmetric art remains visually reflected.
 - The dev-tool orientation control stages the next combat orientation and uses the existing fresh combat-refresh path when changed during combat; never flip a live combat frame in place.
-- Right-wise rendering consumes the shared formation projection: both teams use the same `-40` logical-X translation after reflection, heroes keep canonical Y, and enemy-attached visuals share the one block-Y midpoint-alignment offset. The offset is fixed from structural enemy slot anchors for the combat layout; do not recenter from living entities after death or refill.
+- Right-wise rendering consumes the shared formation projection: both teams use the same `-40` logical-X translation after reflection and preserve the shared canonical Y homes. Structural formation anchors do not recenter after death or refill.
+- The numbered combat grid, hero formation centers, and enemy actor centers share logical canvas coordinates. Derive hero feet from the rendered sprite half-height so effects keep their ground anchor.
+- Continuous combat projectiles travel linearly through contact. An enemy action completes and re-arms its cooldown after its own presentation clears, regardless of simultaneous hero basic effects.
 - Render modules may read state and draw presentation; they must not become owners of deterministic combat rules.
 - Hero rendering publishes each caster's resting sprite-base anchor before applying lunge offsets so attached effects such as Arcane Pulse remain planted.
 - Impact presentation uses the pale diffused glance ring for non-critical damage at or below 5% target max HP. Keep that ring at the target's rendered midpoint on Y while retaining the attacker-facing contact X. Stronger physical basics use the red-orange melee flare on the common contact line, 17% of actor size above that midpoint.
 - Impact rasters face into their target: enemy-target art uses the authored orientation and hero-target art mirrors on X. Common contact stays on the attack-facing side within 5% of the target's actor-size center, matching the Photoshop guide; projectile travel must not pull it toward the attacker. Ground effects stay behind targets. Eruptions, including Venom Sigil and enemy heal blooms, begin at the target's feet and remain in front through every frame. Slice contacts retain their authored completion offset.
+- Launched hero projectile visuals keep their first heading independent of pending-hit removal and target movement. A landed hit clears its projectile at impact; a missed shot travels until its drawn center passes five percent beyond the canvas edge.
 - Late combat overlays must resolve authored asset dimensions after `assetsLayout` loads, then apply the active layout scale through `combatPresentationScale.mjs`. DOM overlays use that same scale instead of fixed CSS dimensions.
 - Developer panels may scroll vertically at compact viewports. Their transformed shells must opt out of flex shrink and finish with 16px physical viewport gutters; every child keeps `scrollWidth <= clientWidth`.
 - Quest-QA controls are query-gated and use fixed side-gutter rails from measured Canvas bounds; when gutters are too narrow they use a contained scrollable two-column dock below the diagnostics z-order.
-- Quest-QA scenario controls enter the production Combat layout, start from one shared fresh-session reset, and remain behind the fixture turn hold plus dev-tooling pause until explicit QA resume. Presentation frames continue under that scheduler hold so live combat effects remain inspectable. Closing diagnostics preserves the scenario pause. Opening choices and AF specials keep their production selection callbacks. Enemy HP setup mutates only living enemies after the opening choice resolves and records its affected UIDs and HP changes.
+- Quest-QA scenario controls enter the production Combat layout, start from one shared fresh-session reset, and remain behind the fixture turn hold plus dev-tooling pause until explicit QA resume. Presentation frames continue under that scheduler hold so live combat effects remain inspectable. Closing diagnostics preserves the scenario pause. Enemy HP setup mutates only living enemies and records its affected UIDs and HP changes.
 - Dev Panel 1 keeps Close in the upper-right header. Its action-button row follows that header and precedes every settings field and dropdown while retaining compact-width wrapping.
 - Developer controls overlay the contained game stage; their presence must never reserve viewport width or shrink the Canvas.
 - Full-screen Canvas overlays use the 360x640 reference coordinate system and apply the active layout scale once to the whole overlay, including hit zones.
 - Combat Canvas text must derive its font size from the active layout scale through `combatPresentationScale.mjs` and fit its measured slot. Desktop font minimums must not override compact Canvas geometry.
-- Native hero cards use 5-unit HP fills and 4-unit personal FLOW fills. The shared Astral Flow HUD and pooled health bar are retired.
-- Combat must not draw the legacy `radiatorPanels.track` backdrop. The jagged arena-floor asset is the sole ground plane behind combat actors.
-- `renderRuntime.js` should shrink over time. Do not add broad new gameplay branches there when a focused render module or gameplay module can own the change.
+- Hero status presentation uses actor-owned HP and readiness state. The shared Astral Flow HUD and pooled health bar are retired.
+- `combatHealthBarPresentation.mjs` draws both actor HP bars as rounded dark-grey tracks with blue hero and orange enemy fills; keep the hero bar's existing width and height rule for both teams.
+- Combat draws neither the legacy `radiatorPanels.track` backdrop nor the `EnemyArea` texture. The `EnemyArea` layer position triggers one full-canvas logical reference grid behind combat actors.
+- `renderRuntime.js` should shrink over time. Draw calls may prepare buff-icon geometry for the ticker, but must not advance refill, buff completion, icon phases, merge payout, or turn dispatch. Do not add broad new gameplay branches there when a focused render module or gameplay module can own the change.
 - `heroProgressStorage.js` may use `window.localStorage`; SimulationCore packets and Rust-owned code must not.
 - `simulationCoreShadow.js` must expose stable owner markers for Rust-owned rule families and should surface mismatches as diagnostics, not silent fallbacks.
-- Supergem runtime must preserve the product split between hero-specific supergem behavior and skill-card behavior.
-- Input gates must respect `CanPickGems`, hero/enemy turn phase, pending skill draught, and presentation barriers.
+- Supergem runtime owns native board effects only. Production action selection uses actor readiness and cooldowns.
+- Input gates must respect `CanPickGems`, hero/enemy turn phase, and presentation barriers. Retired offer and card flags cannot block production.
 
 ## Work Guidance
 - For visual changes, identify whether the owner is a narrow `render*.js` module before touching `renderRuntime.js`.
@@ -68,7 +87,7 @@
 
 - Pending single-target attacks receive an actor-owned living default target before rendering, using the same target-intent capture as an enemy click. Preserve a valid player choice; replace dead/stale targets. ATK must accept the displayed default without an extra enemy tap.
 
-- Fresh encounter initialization clears Astral Flow charge and transient battle conditions through combatSessionReset.mjs. Continue bypasses initialization and preserves them. Gold and persistent progression are outside this reset. PartyHP_Bar supplies geometry only; the live HP renderer owns its sole visible fill.
+- Fresh encounter initialization clears transient battle conditions and pending realtime hero basic clocks through combatSessionReset.mjs. Production combat uses speed readiness and skill cooldowns. Gold and persistent progression are outside this reset. Hero and enemy HP bars render over their owning actors.
 
 - Gold is currency persisted by goldProgressStorage.mjs under wishfire.gold.v1. Fresh encounters and resurrection never reset it; balance changes, including spending, are saved locally.
 
@@ -82,7 +101,7 @@
 
 - Chapter, story and combat panels use fully opaque fills. Do not reuse the world map as chapter-panel artwork or apply translucent fills that visually merge the panel with terrain.
 
-- Combat-session completion, Quit, or return to Quests clears dev-tool overrides and invalidates pending autoplay work. Continue retains the same session. Reset staged settings and persisted dev config while preserving saved gold.
+- Combat-session completion, Quit, or return to Quests clears dev-tool overrides. Continue retains the same session. Reset staged settings and persisted dev config while preserving saved gold.
 
 - Resource Continue restores party HP while preserving energy, encounter progress, buffs and skills.
 
@@ -96,16 +115,20 @@
 
 - Combat initialization derives health totals from the initialized actors; it must not overwrite the total with full HP while actors remain injured. Party-damage owner wiring serializes six HP slots with actual member count.
 
-- heroCommandUI.mjs owns decorative hero status cards only. Cards show the cropped portrait, HP and personal AF, with a steady cyan highlight for the scheduled living actor. AF reads canonical personal FLOW and starts each combat at zero. Eligible role actions increase the actor's AF directly once per separately resolved action. Only an enemy KO emits the existing blue gem; it awards AF to its assigned living hero on arrival. Reaching 100 emits a deduped threshold signal that reconciles into the cached special-card queue before any further scheduler action. The retired command editor, native skill buttons, prepared queue controls, Auto, Reload and Menu entrypoints are absent from player presentation. Enemy and ally taps remain owned by the existing battlefield selectors while a targeted fan card is pending. The underlying heroCommands native resolver remains available to the fan and dev autoplay seams.
-- heroTurnCardFanUI.mjs presents the three drawn hero cards in a canvas-anchored overlay. Its callbacks use the function-bank fan lifecycle, preserve a cancelled draw for reopen, and interrupt on menu, modal, KO or battle settlement. Targeted cards hand off to the existing battlefield selectors through app integration; the fan owns no target controls. The overlay omits card Energy metadata from presentation. Selection keeps the three button nodes stable, cues the chosen card while the other two fall away, and clears that presentation on interruption without delaying the callback.
-- Personal FLOW currency rules belong to heroCommands.mjs and gameplay owners. The old shared meter and portrait milestones have no live HUD wiring. Hero lunges use display slots, so catalog identity does not collapse repeated or later formation positions.
+- Combat has no hero status-card strip. `renderRuntime.js` draws the full-body hero sprites at one shared arena scale and anchors each compact HP bar from the sprite feet so the gap remains correct when art dimensions change. Names, roles, levels and AF stay off the battlefield. Narrative quest cards remain separate.
+- Combat formation anchors remain in the 360x640 logical presentation frame, while the camera follows all living heroes through a bounded four-screen world at 0.5 battlefield zoom. Keep HUD geometry in layout space. Hero sprites stop at visible X 106; hero and enemy spawn/home sprites fit within visible Y 170-375. The highest hero HP bar begins below grid Y 150. Temporary action animation may leave that Y band.
+- The numbered floor grid follows the same world camera across all four screens. Keep 10-unit minor lines and 50-unit major labels visible in the current viewport as it pans.
+- World-sized ground skill cues and heal-bloom Canvas dimensions use the shared battlefield zoom scale once, while their centers use the world camera projection. Keep damage text and HUD geometry in their current presentation scales.
+- Continuous production assigns six deterministic sector identities, spreads seeded cloud footprints by at least 400 world units (200 logical pixels), and keeps every footprint outside the centered 150-logical-pixel recovery moat; the recovery huddle remains at the true midpoint of section B. Ordinary packs become local within 460 world units of a living hero or actor-specific attack reach. Stale `in_range` or `engaged` state cannot pull a remote group into local commitment, and packmates beyond notice range remain dormant until they approach. Heroes travel in compact frontline/rear roles, share nearby threats, regroup stragglers before choosing a farther pack, and pursue within world edges. Ordinary waves require full clear and the existing three-second minimum before the next emission; boss activation remains automatic after earned readiness. After existing weak-CP scaling, each lone wanderer has half HP, rounded up with a minimum of one, and its CombatPower is recomputed; its other stats retain their existing weak-CP values.
+- The compact combat progress HUD stays in the upper combat frame and shows Chapter region-stage through roam, boss entry wipe and boss combat. Its four notches mark completed waves; within a live wave, the rail advances once per cleared sector using the saved wave mask plus current actor pack identities. Boss availability or activity fills the meter, including legacy saves carrying the retired four-wave-refill flag. Reuse the loaded Hondo puppet source head for the moving marker.
+- Hero and enemy HP bars are drawn immediately after their owners from the shared foot-Y-sorted actor queue. Keep each bar below its owner's feet and preserve HP trail timing and fill behavior.
+- Cooldown and readiness rules belong to the deterministic combat owners. Hero lunges use display slots, so catalog identity does not collapse repeated or later formation positions.
 - Prepared commands belong to the combat session and member UIDs. Replacing actor objects while restoring the same session must preserve prepared selections; a new session or changed roster clears them.
-- Full-health recovery is owned by questCombatSession.mjs for both Town and Continue. Restore actual hero actors, then project HP through UpdateHeroHPUI; empty groups clear old totals. Continue alone retains its existing turn-restart sequence.
+- Full-health recovery is owned by questCombatSession.mjs for both Town and Continue. Restore actual hero actors, then project HP through UpdateHeroHPUI; empty groups clear old totals. Continue resumes the same encounter with its realtime cooldown/effect state. Only a continuous-combat KO revival relocates the whole party into the authored huddle and starts the shared reveal; finite/story recovery keeps its existing placement.
 
-- Hero-card AF fills are blue. Active combat never spends, regenerates, or gates actions on SP.
-- Quest-QA keeps an active-combat Kaja Destiny condition that reaches 100 AF through his natural Comrade trigger and records the bounded scheduler trace through the next hero actions.
+- Active production combat has no SP or FLOW resource gates or gauges. Skill readiness is cooldown-owned.
 
-- `renderHeroScreen.js` consumes canonical hero definitions and owned progression; skill ranks and independent skill-point upgrades are retired. Show all level locks, passives and personal AF.
+- `renderHeroScreen.js` consumes canonical hero definitions and owned progression; each hero presents a basic attack and five active skills without unlock/rank/passive categories.
 - `questCombatSession.mjs` presents settled progression before allowing the victory return. Queue settlement and EXP computation remain core/module-owned.
 - Player Start enters an endless combat session through `storyEntryFlow.mjs`; it sets `QuestFiniteEncounter` to zero and never inserts Quest Ladder stages or opening dialogue. QA may still reach retained story hooks explicitly.
 
@@ -113,18 +136,18 @@
 
 - renderFlowOrbs.mjs draws the shared 520ms gem flight using the actor projection. Collection belongs to the core update at impact; presentation never blocks CTB. Hero detail text describes enemy-death orbs and random distribution.
 
-- Qualifying resolved role actions increase the eligible hero's AF directly. Enemy KOs may emit the one blue AF gem, which assigns its arrival award to a living recipient; no other action emits that gem.
 
-- Enemy targeting triangles render only during hero turns and hide when combat ends. Keep SelectedEnemyUID intact across enemy turns so the next hero retains the player choice.
+- Battlefield actor and enemy selectors are retired. Keep `SelectedEnemyUID` and target ownership intact so cooldown actions retain valid targets without drawing a marker.
 
 - Victory results use 80% of the game canvas width and height, centered on that canvas. A separate canvas-sized black shade has 40% opacity; the native modal backdrop is transparent. ResizeObserver keeps panel/shade geometry current and cleanup removes both shade and observer.
 
-- Hero management uses HERO / GEAR / SKILLS with a persistent hero display and roster. Overview shows EXP and three upcoming unlocks; full stats use a disclosure control. Skills separates seven actives, six passives and the unique FLOW special. FLOW copy follows enemy-death orb rules. Gear uses the canonical equipment economy and loadouts.
+- Hero management uses HERO / GEAR / SKILLS with a persistent hero display and roster. Overview shows EXP and full stats through a disclosure control. Skills presents one basic attack and five active skills. Gear uses the canonical equipment economy and loadouts.
 
-- equipmentStorage.mjs owns the single persisted Gold/equipment/loadout/market record. Import the legacy Gold value once, serialize purchases/equips with Web Locks, and save before applying mutations to runtime state. Equipment bonuses are derived from owned item IDs and projected to saved heroes and live actors; removing equipment never heals or revives.
+- equipmentStorage.mjs owns the v5 lamp/equipment record and Web Lock transactions. Commit exact rolls, assignments, essence and cumulative EXP before projecting onto saved heroes and live actors. Each hero saves lampEXPClaimed to replay a missing grant once. Auto plans across all 12 hero Hat/Body/Boots slots in the same transaction, and dismantling rejects any queued positive total-hero-CP candidate before spending cache contents. Auto remains saved while the cache is full and pauses only its draws; explicit battle exit persists Auto-off before resetting the combat session.
+- Historical pending enemy rewards persist beside HeroProgress until recovery settlement; new KOs record zero EXP/Gold. Persist a Gold settlement receipt before wallet sync, commit the receipt with Gold in equipmentStorage, then clear the HeroProgress outbox after wallet confirmation. The two localStorage records remain separate; receipt replay must stay idempotent across interrupted sync.
 - astralMarketUI.mjs replaces the collector at idleFarmLayout. Only the active screen reconstructs/draws offers; leaving checkpoints time without running a hidden simulation. Item inspection never pauses expiration. No collector update/claim path remains.
 
-- Shop background uses an original pearly vertical-ribbon shader with rarity-color blooms following the timed item stream driven by the visible shop draw loop, capped to 360 pixels across and 30 FPS. Reduced motion freezes it; unavailable WebGL uses a static pearl gradient. resourceChrome.mjs shares the existing Quests wallet and curved SVG Back control with the shop; balances read canonical Gold and story-entry resources/energy.
+
 
 - Shop Back is left-aligned with its bottom five reference pixels above the purchase tray; keep inspection clear of its hit area.
 - Quests Back matches that lower screen position: its bottom is -3 reference pixels relative to the screen container ending 78 pixels above the game bottom. The shop presentation test compares both buttons' position and size.
@@ -142,11 +165,11 @@
 - Flow Shop preserves the Quests header anchors: banner (0,48,112,24), resources (122,48,230,24) in the 360x640 frame. The stream spans the full game canvas behind the header and purchase controls, with clipping only at the outer screen edges. Do not stack or redistribute the shared header to fit its title.
 
 - Background lights come from live offer progress and rarity data only, anchored at each card's upper edge. Vertical pearl folds carry travelling sheen and narrow iridescent edges; each fold refracts the quality-color wash into its own reflection. Wake color exists only above that edge and fades upward inside its lane. Drag pointer/ghost coordinates never feed shader uniforms or alter stream scheduling.
-- `combatAttackVfxPresentation.mjs` owns typed attack delivery and contact rasters for both factions. Basic enemy delivery follows `MAG > ATK`; Djinn, Marid, and Chimerilass receive unique magic sequences only inside that stat-classified path. Enemy damage joins the same impact queue after the applied-skill HP delta. Ranged attacks start from the caster's rendered resting base.
+- `combatAttackVfxPresentation.mjs` owns typed attack delivery and skill contact rasters for both factions. Regular hero and enemy basics suppress contact splashes; melee heroes travel with the individual G09 crescent and ranged attacks retain their delivery art. Named skills may enqueue contacts after their HP delta.
 - Approved impact assignments are semantic: Kaja uses G03 purple, Runa uses G03 blue, Spectral Orb uses G01 blue, Chain Strike uses G04 original, and Split uses G03 original. Preserve the reviewed source rasters and their intrinsic aspect ratios. The maximum animated painted width is 55 logical pixels at layout scale 1; calculate compliance from the alpha bounding box rather than the full canvas.
 - Hero and enemy weak contacts use the visible sprite midpoint. Common non-weak contacts share the tuned line 17% of actor size above it; do not reuse either contact line for eruptions, ground effects, or slice exceptions.
 - `output/qa/splash-candidates/guide/` and `guide-v2/` are cropped reference tiles and are forbidden as runtime assets. A guide ID may enter runtime only from its reviewed `individual-approved/gNN.png` master.
-- Lethal attack presentation keeps its defeated target visible until queued and active contact impacts clear. Astral Flow KO payout may begin only after `CombatImpactRequests` and `CombatImpactVisuals` are empty.
+- Lethal attack presentation keeps its defeated target visible until queued and active contact impacts clear. Combat outcome checks run after scheduled actions and impacts.
 - Action presentation stays with its actor until the last visible effect completes. Ranged and healing profiles remain on their stored slot-home anchors, while melee `HOLD` waits for the owner's pending hits, impacts, blooms, and `ActionLockUntil` before retreat and handoff. A hero action claimed during its heal keeps its timer at zero until the heal lock clears.
 - Named enemy skills override that basic profile: Scathe crackles on its target, Sweep emits its own crescent, Wipe washes the enemy group, and heal skills rely on resolved heal blooms instead of offensive imagery.
 - Shipping enemy magic AOE and Drain Buff use their own brushfire and inward-orb sequences rather than a generic caster profile. Spectral Orb reuses the drain-orb raster as its counter-clockwise rotating projectile, then resolves with its approved G01 blue contact.
@@ -155,3 +178,86 @@
 - Session behavior procs publish semantic visuals: Spectral Orb shares Arcane Pulse, Chain Strike shares its ribbon, Venom reveals a ground sigil upward, Glass Reprisal travels as a glass crescent with matching contact, and Dawn Chorus shares staged revival healing.
 - Immediate multi-target damage publishes timed `CombatImpactRequests`; the shared attack presentation consumes one request per resolved target.
 - Standalone combat VFX scenarios must clear any opening buff queue and enter through `StartRound` plus `ProcessTurn`; do not leave retired manual `PendingSkillID` fixtures holding the scheduler busy.
+
+- Manual Equip commits immediately and retains the screen for player choices. Auto processes the sorted cache sequentially and enters disposal after saved CP floats finish. Replaced gear never returns to the cache.
+
+- Gear artwork carries item level and rarity color, with no corner rarity letters. Full rarity names remain in item identity and accessible labels.
+
+
+- Pending gear fills five equal square columns across the review frame. Its scrolling viewport exposes two to two-and-a-half rows at each phone width; incoming rolls and recipient selection preserve frame height and scroll position.
+
+- Equip returns saved permanent CP before/after/change; only the CP value floats after successful persistence, anchored at the stationary recipient portrait, and reports positive, zero or negative values honestly. HP gear raises max HP without healing or reviving. v3 migrates to v5 with HP zero, preserving previous stat rolls and source records.
+
+- Pending gear tiles use rarity-colored backgrounds; the currently compared item alone carries a gold selection halo and aria-current. Selection preserves the fixed queue dimensions.
+
+- Hero Gear Upgrade idle guidance uses the Hondo-inspired blue pointer and cyan rings: 15 seconds since input points to Hondo (Huun), or Auto-Equip after portrait selection. Document pointer/click, key and wheel input dismisses and resets it. Hidden/closed/busy review suppresses guidance; the overlay never intercepts input.
+
+- Lamp draws preserve the configured saved party EXP and timing. Essence is a bank, never a level calculation: each earned lamp level requires four explicitly purchased stages, then seven-hour construction and automatic completion. `capacityTier` is level minus one; optional v5 `upgradeStage` defaults to zero. Levels 1–100 interpolate the original initial/final rarity odds; capacity grows as 20 + round(10 × (level − 1)^1.5), while total paid upgrade cost starts at 400 Essence and grows 20% per level. Future gear gains 0.5% linear stat scaling per map ordinal. Saved gear rolls, hero EXP and earned lamp levels remain intact.
+
+- Lamp burp presentation clears its trigger at animation completion so unrelated review renders do not repeat emission. Manual and Auto share the same current-lamp tilt and gear pop tween.
+
+- Raw lamp emissions append every roll without CP filtering. lamp.recent preserves the last five emission snapshots independently of equip/collection routing. Equip review sorts rarity descending, then descending lampGearCP within each rarity, derived from the shared CP evaluator using gear stats at neutral level 1; item level already scales those stats. Auto compares every queued candidate against all four heroes' three matching slots and keeps strictly positive party improvements until no queued candidate adds CP. Equal gain favors lowest maxHP then party order. Manual equip permits lower-CP overrides from pending or discarded queues. Auto completion or finishing review moves remaining pending pieces into lamp.discarded, where they stay inspectable and equipable. Dismantle rejects queued positive-gain gear before spending; confirmed conversion grants essence only and shows its receipt. Later raw arrivals remain separate from the confirmed pile. Capacity includes pending, discarded and historical aggregate credits; full storage pauses Auto draws without clearing its saved preference. Optional recent/discarded fields preserve supported older v5 saves.
+
+- Gear review displays stats in HP, ATK, DEF, MAG, RES order. Candidate stats occupy three columns: HP/ATK/DEF followed by MAG/RES; presentation order does not change saved rolls.
+
+- Equip releases its save/action guard before the 1.8-second CP float finishes, allowing immediate recipient and item selection. Only the final review transition or modal close waits for all active floats; feedback stays inside the modal.
+
+- Every successful lamp emission shares a saved two-second minimum interval. The core rejects early calls before rolling or granting EXP; UI disables/re-enables the lamp from that saved cooldown. Auto keeps its five-second cadence. Reloads, concurrent clicks and switching manual/Auto cannot reset the gate.
+
+- Dismantling grants Essence only. Gear emissions grant no new EXP; COT Hero tickets fund individual level-ups.
+
+- Confirmed dismantling closes review and shows the saved Essence receipt for two seconds. COT claims show Reward Obtained for 1.5 seconds. Both receipts emit the approved VFX and close automatically.
+
+- Empty lamp storage opens no review/dismantling modal. Finishing a review with no remaining pieces closes after CP feedback; lamp upgrades still open independently of storage count.
+
+- Equip and Auto restore the portrait row before measuring CP feedback anchors. Validate the equip → dismantle → passive reward → next equip sequence through player controls and recorded visual evidence before presentation handoff.
+
+- Game boot restores the saved cache, EXP, loadouts and Auto preference, including when the cache is full. Arrival positions display only emission sequences at or after the UI session baseline; gear sequence is zero-based while the saved lamp sequence counts completed emissions. Auto is available at capacity so the player can explicitly turn it off; only the battle-exit transaction clears it automatically.
+
+- Arrival illustrations display only session emissions still in pending or discarded storage. Equipped and confirmed-dismantled pieces disappear from the strip; a zero cache leaves all five positions empty. Historical emission snapshots remain saved independently.
+
+- Strip presentation uses supplied transparent lamp/puff rasters. Manual and Auto share one puff-before-bounce emission path. Larger five-position gear art retains quality glow and item level; AUTO is upper-left with on/off/locked pills. Controls and strip remain anchored to the existing 360×640 Canvas frame.
+
+- Emission puff holds at full opacity for roughly 585ms and fades by 900ms. Gear appears after roughly 650ms, grows from 65% through a 115% upward overshoot, then settles at 100% by 1.35s. Keep the emission class alive 1.45s for both manual and Auto; the saved two-second draw gate is unchanged.
+
+- CP receipt lifetime never holds the durable action lock or freezes ordinary recipient/item selection. Track concurrent receipt elements; only final review/close waits for all receipts, keeping feedback inside the modal. Collection entry awaits any in-flight transaction, storage sync and decoded shared gear atlas, then renders the full sorted cache together. Auto generation pauses while collection is opening/open and resumes afterward when enabled.
+
+- The strip disc displays the earned lamp level; its meter displays purchased stages out of four, or MAX. Party EXP appears only in its draw feedback. Bank changes and reloads never purchase stages or promote the lamp.
+
+- Upgrade preview shows current/next odds to three decimals, capacity, essence bank and next installment. Purchase carries the rendered tier and stage; locked storage rejects stale clicks before spending. Four saved purchases expose Lv.UP, which alone promotes the lamp and resets stages. Failed writes retain the bank, stage and level. Only the odds table may scroll on compact phones; purchase controls stay visible.
+
+- The lamp helper extends the15-second idle threshold through draw, collection, Hondo comparison, equip, dismantle and free/affordable upgrade preview. Retarget disabled controls to useful enabled actions; hide during reward banners and after a completed upgrade loop outside review. Any input dismisses it. Guide receipts persist once through the existing locked equipment transaction.
+
+- Lamp recipient previews use lampItemCPGain for signed total hero CP changes. Direct portrait taps select the recipient, with stat arrows comparing its matching slot. Equality has no indicator and there are no Previous/Next controls. These UI reads do not repair canonical versus combat-instance ownership.
+- Lamp review starts and advances through rarity/CP-ranked positive total-hero CP upgrades. The dismantle preview retains every stored item for inspection and Auto-Equip, while explicit dismantling and the shared positive-upgrade guard remain authoritative.
+
+- Concurrent saved CP receipts use their measured wrapped heights and34px spacing for32px animation travel. Place each hero column in modal coordinates under its stationary portrait; keep ordinary rapid bursts within the visible modal.
+
+- Hero Gear inspection displays the owned item level beside rarity. Read the existing item record; presentation must never reroll, rescale, reassign or mutate saved gear.
+
+- Hero presentation keeps one centered full-body portrait size across Orb, Gear and Skills. Gear and Orb show a four-slot horizontal Hat/Body/Boots/disabled Orb row; Skills replaces that row with exactly four selectable active-skill icons. Pages expose every canonical active skill, with an overlapping final page when needed to keep four visible. The cream panel shows the selected skill's canonical target geometry or actor reach, cooldown, condition, unlock level and description; Basic Attack remains accessible there. Orb preserves level EXP and current stats while identifying Orb equipment as unavailable. Previous/next controls traverse every saved roster record, including duplicate hero instances; gear cards inspect saved items without mutation. The visible stat bar shows ATK, DEF and HP, and the footer remains reserved.
+
+- Hero is a primary shared-navigation destination. Its screen has no Back button; use the existing main navigation to switch destinations.
+
+- Hero identity, portrait scale and equipment/skill stage geometry remain consistent across all three tabs.
+
+- Lamp review uses canonical hero art and independent total-CP arrows, omitting numeric per-hero CP labels and the character stat table. Its three-column item card compares only the selected hero; unchanged values have no arrow. Every pending or discarded cache tile stays inspectable; the green marker uses shared positive total-hero CP gain, and discarded gear remains manually equipable. Disable dismantling while queued positive-gain gear remains. Only the five-column cache scrolls; the equip dialog fits the measured Canvas height. Preserve manual downgrade eligibility, saved receipts and Skip/Auto review flow.
+
+- Selected-stat numbers and arrows share one font-derived digit height across both rows, independent of the displayed numeral. Normalize digit ink into that height; keep arrows pointed in both Canvas and CSS.
+
+- Lamp gear decodes original alpha bounds once. Cache/card artwork keeps its derived centered atlas. Arrivals paint the original raster through a sprite-only offset: every silhouette midpoint equals the tallest current arrival's midpoint, independently of fixed level badges. Manual and Auto reveal await preparation before spending/granting or starting the bounce; its final transform returns to zero.
+
+- Lamp storage completes expired construction atomically before applying any transaction and on sync, including reload/offline return. A failed save leaves level, tickets and deadline unchanged. The upgrade card replaces flames with a centered live countdown and a blue SPD UP ALL control below it.
+- Developer progression controls live only in the existing DEV modal. LV 1/5/25/100 saves canonical HeroProgress, refreshes deployed stats/HP and clears pending skills/effects; lampEXPClaimed starts at the current cumulative draw receipt so old EXP cannot replay. RESET GAME backs up this game's localStorage namespaces before clearing them and reloading the clean entry.
+- HeroProgress optionally persists the current continuous tier, wave and boss access; reload restores farming with access retained, never an armed/active boss encounter.
+
+- The generated render body must pass layoutScale into each injected DOM damage-number call; a scaled replacement elsewhere does not fix an unscaled injection.
+
+- Shrink scales only the enemy sprite to 70% around its existing center/feet; expiry restores its original size and never changes hitboxes or movement. Skill impact mappings share the authored realtime ID registry. Combat session reset restores clean temporary-HP baselines before creating the next encounter.
+
+- `actorClipPlayback.mjs` lazily loads explicit actor/state/facing PNG sequences and samples supplied simulation age. It never advances clocks or computes gameplay outcomes; unsupported facing/state returns null so integration can use its existing static art.
+- Camera-following projectile visuals retain world-space endpoints and reproject them each frame. Their visible travel is capped to one current viewport in world units and fades before removal; culling uses visible canvas bounds, not legacy arena coordinates. Boss mode uses a temporary left-heroes/right-boss camera and orientation while the saved roam orientation remains unchanged; the entry wipe freezes simulation and consumes pointer input until it ends.
+
+- Hero menus read canonical HeroProgress records for CP, stats and EXP. Combat actor snapshots may lag committed gear; they must not override owned progression in presentation. Equipment commits project the shared CP formula to saved and live heroes before their promise resolves.
+
+- Bag equipment presentation uses the approved conveyor, Bag art and wish-ring VFX. Manual Equip saves immediately and retains player control until explicit Done / Dismantle. Auto snapshots all hero CP, assigns sequentially, and enters disposal only after accurate saved before/after CP floats finish. Replacement destroys old gear without Essence. Explicit disposal converts missed upgrades in its snapshot, with later arrivals preserved. COT updates from committed individual events and requires a click to claim; its Reward Obtained receipt lasts 1.5 seconds, dismantle 2 seconds. Combat damage renders beneath modal layers.

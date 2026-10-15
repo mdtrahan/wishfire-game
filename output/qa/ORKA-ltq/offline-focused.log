@@ -1,0 +1,15 @@
+✔ offline artifact has one local classic entry and embedded data payloads (9.763541ms)
+✔ embedded JSON and WASM branches precede hosted fetch fallbacks (8.462042ms)
+✔ offline artifact retains relative presentation assets and omits JSON/WASM sidecars (26.628875ms)
+✔ offline resolver maps document assets and embedded payloads without network APIs (5.239583ms)
+✔ offline manifest hashes every generated file and records the exact source commit (138.463333ms)
+✔ missing or failed bundler preserves the last playable offline artifact (1835.43ms)
+✔ hosted release contract remains a separate module/data release (2.670583ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3626.094333

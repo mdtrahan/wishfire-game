@@ -1,0 +1,50 @@
+{
+  "runtimeBase": "8429b69da47b61fc589851dd6fff2eae75cf0fd5",
+  "change": "modal layer10001, pointer-transparent helper10002; DEV launchers10000",
+  "url": "http://localhost:8035/web-runner/index.html",
+  "video": "output/qa/comparison-close/rapid-close/rapid-close.webm",
+  "sha256": "28ff8dd40b48d93001b9d24163672e765f9e61008c7e4466ae2e59018586c68e",
+  "bytes": 2179642,
+  "durationSeconds": 21.04,
+  "size": [
+    360,
+    640
+  ],
+  "native": {
+    "viewport": [
+      1280,
+      720,
+      2
+    ],
+    "canvas": [
+      437.5,
+      0,
+      405,
+      720
+    ],
+    "backing": [
+      810,
+      1440
+    ],
+    "overlay": [
+      437.5,
+      0,
+      405,
+      720
+    ],
+    "dialog": [
+      445.5,
+      8,
+      389,
+      704
+    ],
+    "close": [
+      777.5,
+      10,
+      44,
+      40
+    ],
+    "closeHit": "close"
+  },
+  "scope": "Close pointer access and deferred closure PASS; rapid receipt/portrait assertions PASS; rapid same-hero float readability remains PARTIAL"
+}

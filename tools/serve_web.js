@@ -30,13 +30,6 @@ function safeGit(args, fallback = '') {
   }
 }
 
-function safeExec(bin, args, fallback = '') {
-  try {
-    return String(execFileSync(bin, args, { cwd: root, encoding: 'utf8' })).trim();
-  } catch {
-    return fallback;
-  }
-}
 
 function detectWorktreeName(gitDir, repoRoot) {
   if (!gitDir) return path.basename(repoRoot);
@@ -52,24 +45,7 @@ function detectWorktreeName(gitDir, repoRoot) {
 }
 
 function detectIssueId(branch) {
-  const fromBranch = String(branch || '').match(/(ORKA-[A-Za-z0-9]+(?:\.[0-9]+)?)/i);
-  if (fromBranch && fromBranch[1]) return fromBranch[1];
-  const rawList = safeExec('bd', ['list', '--json'], '');
-  if (rawList) {
-    try {
-      const issues = JSON.parse(rawList);
-      if (Array.isArray(issues)) {
-        const active = issues
-          .filter((i) => i && i.status === 'in_progress' && typeof i.id === 'string')
-          .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
-        if (active.length) return active[0].id;
-      }
-    } catch {}
-  }
-  const subjects = safeGit(['log', '-20', '--pretty=%s'], '');
-  const fromHistory = String(subjects).match(/(?:bd-)?(ORKA-[A-Za-z0-9]+(?:\.[0-9]+)?)/i);
-  if (fromHistory && fromHistory[1]) return fromHistory[1];
-  return 'ORKA-UNKNOWN';
+  return String(branch || '').match(/(ORKA-[A-Za-z0-9]+(?:\.[0-9]+)?)/i)?.[1] || null;
 }
 
 function detectContracts(repoRoot) {
@@ -106,6 +82,11 @@ function writeRuntimeFingerprint() {
     worktree,
     branch,
     issueId,
+    commit: safeGit(['rev-parse', 'HEAD']),
+    origin: safeGit(['remote', 'get-url', 'origin']),
+    sourceRoot: root,
+    sourceDirty: Boolean(safeGit(['status', '--porcelain', '--untracked-files=normal', '--', 'web-runner', 'src', 'Scripts'])),
+    presentation: fs.existsSync(path.join(root, 'web-runner/systems/lampConveyorPresentation.mjs')) && /equipment-bag\.png/.test(fs.readFileSync(path.join(root, 'web-runner/systems/lampConveyorPresentation.mjs'), 'utf8')) ? 'bag-conveyor' : 'legacy-lamp',
     contracts,
     generatedAt: new Date().toISOString(),
   };
@@ -115,7 +96,7 @@ function writeRuntimeFingerprint() {
   const outPath = path.join(root, 'web-runner', 'runtime-fingerprint.js');
   fs.writeFileSync(outPath, body, 'utf8');
   console.log(
-    `[FINGERPRINT] worktree=${worktree} branch=${branch} issue=${issueId} ORKA69R_READY=${contracts.ORKA69R_READY}`
+    `[FINGERPRINT] worktree=${worktree} branch=${branch} issue=${issueId || "none"} presentation=${payload.presentation} commit=${payload.commit.slice(0, 8)} ORKA69R_READY=${contracts.ORKA69R_READY}`
   );
 }
 

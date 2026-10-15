@@ -20,7 +20,10 @@
 - JavaScript owns browser integration: Canvas rendering, input, menus, overlays, audio, save/load wrappers, deployment, and presentation timing.
 - Rust SimulationCore owns deterministic simulation rule families that have owner markers and fixture contracts.
 - Browser runtime code may apply returned state and render presentation events; it must not recompute Rust-owned outcomes.
+- Production and developer QA variants enter the same realtime combat loop. Finite/story defeat checks remain Rust-owned after scheduled work; ordinary continuous roaming interrupts the current scheduler at the first hero KO and routes the attempt to session recovery. Paused/background frames freeze combat time, and combat never dispatches turn advancement.
 - Do not store durable gameplay rules in render modules, asset JSON, or `app.js` when a module/core owner exists.
+
+- The combat HUD shows chapter progress and the ready/active boss control. Three internal notches represent four full waves; chapter/stage reads authoritative stage state. A clean first approach enters automatically. Any hero KO or boss defeat preserves earned progress and latches manual retry for that stage; once readiness is earned, fodder farming continues at 100% until summon. The latch survives reload and clears on boss victory.
 
 ## Work Guidance
 - Before editing, read the child AGENTS.md for the touched subfolder.
@@ -56,3 +59,9 @@
 - `web-runner/assets/AGENTS.md` - runtime data, images, fonts, gems, and WASM artifact.
 
 - Quest entry: map -> ladder -> authored sub-chapter. Navigation uses one shared charcoal/brass menu with a teal active glow across non-dialogue screens. The test-only questQA query exposes deterministic defeat/monster-clear controls for browser proof.
+
+- Progression recovery separates earned readiness from boss-entry authorization: clean first readiness enters automatically, while any stage KO or boss defeat latches manual retry until boss victory. The latch and full approach survive reload; ready farming waves continue until explicit Summon Boss.
+
+- Bag progression uses continuous combat emissions and durable arrival collection, including a single held item when full. New gear grants zero EXP; Hero tickets from COT fund individual levels. Existing saved EXP remains intact. Essence funds four paid upgrade stages followed by seven-hour construction.
+
+- Canonical product source is mdtrahan/wishfire-game main. Current combat equipment presentation is the Bag conveyor (lampConveyorPresentation.mjs and equipment-bag.png). Before editing or QA, verify repository, commit and renderer; exported Cloud snapshots are historical sources. COT/resources remain combat-only; Growth opens the approved Training Ground without changing navigation backers.

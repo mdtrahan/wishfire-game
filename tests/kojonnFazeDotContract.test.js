@@ -7,13 +7,13 @@ function read(relPath) {
 }
 
 test('Kojonn Faze queues a recovered 3-turn Blight package from the extracted runtime', () => {
-  const renderRuntimeSrc = read('web-runner/systems/renderRuntime.js');
+  const simulationSrc = read('web-runner/systems/combatSimulationTick.mjs');
 
-  assert.match(renderRuntimeSrc, /const totalTicks = 3;/);
-  assert.match(renderRuntimeSrc, /cadence: 'turn',/);
-  assert.match(renderRuntimeSrc, /firesEveryTurns: 1,/);
-  assert.match(renderRuntimeSrc, /startAfterTurns: 1,/);
-  assert.match(renderRuntimeSrc, /logMessage: String\(hit\.msg \|\| ''\),/);
+  assert.match(simulationSrc, /const totalTicks = 3;/);
+  assert.match(simulationSrc, /cadence: 'turn',/);
+  assert.match(simulationSrc, /firesEveryTurns: 1,/);
+  assert.match(simulationSrc, /startAfterTurns: 1,/);
+  assert.match(simulationSrc, /logMessage: String\(hit\.msg \|\| ''\),/);
 });
 
 test('Kojonn Blight queue payload supports turn cadence and source-target reset in both mirrors', () => {
@@ -65,10 +65,12 @@ test('retired Blight has no enemy turn entrypoint in either mirror', () => {
   assert.doesNotMatch(appSrc, /processTurnCadenceEnemyDots\(\);/);
 });
 
-test('app phase handoff does not bypass ProcessTurn for enemy actions', () => {
+test('production app routes combat through realtime scheduling without turn handoff', () => {
   const appSrc = read('web-runner/app.js');
   assert.doesNotMatch(appSrc, /callFunctionWithContext\(fnContext, 'EnemyTurn'/);
-  assert.match(appSrc, /combatRuntimeGateway\.runCombatStep\(fnContext, 'ProcessTurn'\)/);
+  assert.doesNotMatch(appSrc, /runCombatStep\(fnContext, 'ProcessTurn'\)/);
+  assert.match(appSrc, /combatSimulationTicker\.tick\(\{/);
+  assert.match(appSrc, /maybeAdvanceContinuousCombatStage\(\{/);
 
   for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
     const src = read(relPath);

@@ -88,8 +88,7 @@ export function applyAstralFlowEnemyKoReward({
   const pointsAfter = shouldChargeMeter
     ? Math.min(ampMax, cleanRewardNumber(currentPoints + rewardPoints))
     : currentPoints;
-  const openDraught = shouldChargeMeter && pointsAfter >= ampMax ? 1 : 0;
-  const readyAfter = readyBefore || openDraught ? 1 : 0;
+  const readyAfter = readyBefore || (shouldChargeMeter && pointsAfter >= ampMax) ? 1 : 0;
   const walletAfter = cleanRewardNumber(Math.max(0, numberOr(astralFlowWallet, 0)) + rewardPoints);
 
   return {
@@ -99,6 +98,5 @@ export function applyAstralFlowEnemyKoReward({
     astralFlowWalletAfter: walletAfter,
     astralFlowAmpPointsAfter: pointsAfter,
     astralFlowAmpReadyAfter: readyAfter,
-    openDraught,
   };
 }

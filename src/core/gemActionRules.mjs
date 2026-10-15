@@ -94,8 +94,8 @@ export function gemActionFromJs({
   const blueWalletAfter = wallet + consumed;
   const shouldChargeAmp = consumed >= 3 && !ampReady;
   const blueAmpPointsAfter = shouldChargeAmp ? Math.min(ampMax, currentAmp + consumed) : currentAmp;
-  const blueOpenDraught = shouldChargeAmp && blueAmpPointsAfter >= ampMax ? 1 : 0;
-  const blueAmpReadyAfter = ampReady || blueOpenDraught ? 1 : 0;
+  const blueAmpReadyTriggered = shouldChargeAmp && blueAmpPointsAfter >= ampMax ? 1 : 0;
+  const blueAmpReadyAfter = ampReady || blueAmpReadyTriggered ? 1 : 0;
   const now = numberOr(time, 0);
   const currentLock = numberOr(actionLockUntil, 0);
   let resolvedActionLockUntil = currentLock;
@@ -127,10 +127,10 @@ export function gemActionFromJs({
     blueWalletAfter,
     blueAmpPointsAfter,
     blueAmpReadyAfter,
-    blueOpenDraught,
+    blueAmpReadyTriggered,
     blueBuffReset: routeCode === GEM_ACTION_BLUE_ASTRAL ? 1 : 0,
     logBlueChannel: routeCode === GEM_ACTION_BLUE_ASTRAL ? 1 : 0,
-    logAstralFlowGained: routeCode === GEM_ACTION_BLUE_ASTRAL && blueOpenDraught ? 1 : 0,
+    logAstralFlowGained: routeCode === GEM_ACTION_BLUE_ASTRAL && blueAmpReadyTriggered ? 1 : 0,
     purpleEnergyAmount: purpleEnergyAmountFromRoll(purpleRoll01),
     actionLockUntil: resolvedActionLockUntil,
     deferAdvance: routeCode === GEM_ACTION_BLUE_ASTRAL || routeCode === GEM_ACTION_PURPLE_ENERGY ? 1 : 0,
@@ -161,10 +161,10 @@ function ownerDecisionFromResult(result, jsDecision) {
     blueWalletAfter: numberOr(result?.blueWalletAfter, jsDecision.blueWalletAfter),
     blueAmpPointsAfter: numberOr(result?.blueAmpPointsAfter, jsDecision.blueAmpPointsAfter),
     blueAmpReadyAfter: Number(result?.blueAmpReadyAfter || 0) ? 1 : 0,
-    blueOpenDraught: Number(result?.blueOpenDraught || 0) ? 1 : 0,
+    blueAmpReadyTriggered: Number(result?.blueAmpReadyTriggered || 0) ? 1 : 0,
     blueBuffReset: routeCode === GEM_ACTION_BLUE_ASTRAL ? 1 : 0,
     logBlueChannel: routeCode === GEM_ACTION_BLUE_ASTRAL ? 1 : 0,
-    logAstralFlowGained: routeCode === GEM_ACTION_BLUE_ASTRAL && Number(result?.blueOpenDraught || 0) ? 1 : 0,
+    logAstralFlowGained: routeCode === GEM_ACTION_BLUE_ASTRAL && Number(result?.blueAmpReadyTriggered || 0) ? 1 : 0,
     purpleEnergyAmount: numberOr(result?.purpleEnergyAmount, jsDecision.purpleEnergyAmount),
     actionLockUntil: numberOr(result?.actionLockUntil, jsDecision.actionLockUntil),
     deferAdvance: routeCode === GEM_ACTION_BLUE_ASTRAL || routeCode === GEM_ACTION_PURPLE_ENERGY ? 1 : 0,
@@ -208,7 +208,7 @@ export function resolveGemAction({
         jsBlueWalletAfter: jsDecision.blueWalletAfter,
         jsBlueAmpPointsAfter: jsDecision.blueAmpPointsAfter,
         jsBlueAmpReadyAfter: jsDecision.blueAmpReadyAfter,
-        jsBlueOpenDraught: jsDecision.blueOpenDraught,
+        jsBlueAmpReadyTriggered: jsDecision.blueAmpReadyTriggered,
         jsActionLockUntil: jsDecision.actionLockUntil,
         jsPurpleEnergyAmount: jsDecision.purpleEnergyAmount,
       });

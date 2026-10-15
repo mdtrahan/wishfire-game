@@ -1,0 +1,19 @@
+<!doctype html><meta charset="utf-8"><title>Ordinary progression film review</title>
+<style>body{background:#142033;color:#eee;font:16px system-ui;margin:20px 20px 20px 380px}main{display:block}video{position:fixed;left:0;top:0;width:360px;height:640px;background:black}aside{width:250px;max-width:100%}input{width:130px}output{font-size:12px;overflow-wrap:anywhere}input,select,button{font:inherit;padding:8px;max-width:100%}output{display:block;margin:12px 0}p{line-height:1.5}</style>
+<h1>Ordinary 100-draw progression film</h1>
+<main><video preload="auto"></video><aside>
+<p>Recorded at 360×640 DPR1 using real inputs and current tuning. This movie precedes the six-box Hero presentation. Canonical/combat gear ownership remains failed.</p>
+<label>Film time in seconds <input type="number" id="seek" min="0" step="0.001" value="0"></label><button id="jump">Seek</button>
+<output id="status" aria-live="polite">Loading decoder…</output>
+<label>Recorded event <select id="chapters"><option value="0">Start</option></select></label>
+<p>Event time starts after page creation. Visible frames must establish any recording offset.</p>
+</aside></main>
+<script>
+const film=document.querySelector('video'),status=document.querySelector('#status'),seek=document.querySelector('#seek');
+const update=()=>status.textContent=JSON.stringify({duration:Number.isFinite(film.duration)?film.duration:null,time:film.currentTime,width:film.videoWidth,height:film.videoHeight,readyState:film.readyState,error:film.error?.message||null});
+fetch('full-storage-current-tuning.webm').then(r=>r.arrayBuffer()).then(bytes=>{film.src=URL.createObjectURL(new Blob([bytes],{type:'video/webm'}));}).catch(error=>status.textContent=error.message);
+for(const event of ['loadedmetadata','seeked','error','timeupdate'])film.addEventListener(event,update);
+document.querySelector('#jump').onclick=()=>{film.pause();film.currentTime=Number(seek.value);};
+const chapters=document.querySelector('#chapters');chapters.onchange=()=>{seek.value=chapters.value;document.querySelector('#jump').click();};
+fetch('events.json').then(r=>r.json()).then(d=>{for(const e of d.events.filter(e=>!['manual_action','manual_wait'].includes(e.kind))){const o=document.createElement('option');o.value=e.at;o.textContent=e.at+'s · '+e.label;chapters.append(o);}});
+</script>

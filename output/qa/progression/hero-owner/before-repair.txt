@@ -1,0 +1,53 @@
+{
+  "canonicalCPGain": 12,
+  "loadoutOwner": "Falie",
+  "actorInstance": "falie#1",
+  "actorStatsBefore": {
+    "ATK": 7,
+    "DEF": 12,
+    "MAG": 4,
+    "RES": 8,
+    "SPD": 8
+  },
+  "actorStatsAfter": {
+    "ATK": 7,
+    "DEF": 12,
+    "MAG": 4,
+    "RES": 8,
+    "SPD": 8
+  },
+  "canonicalEquipment": {
+    "ATK": 4,
+    "DEF": 3,
+    "MAG": 1,
+    "RES": 1,
+    "HP": 11
+  },
+  "actorEquipment": {}
+}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: canonical primary equipment must reach the intended live actor
++ actual - expected
+
++ {}
+- {
+-   ATK: 4,
+-   DEF: 3,
+-   HP: 11,
+-   MAG: 1,
+-   RES: 1
+- }
+
+    at file:///Users/Mace/Codex-Orka/.worktrees/wt-ORKA-5af.3-hero-owner/output/qa/progression/hero-owner/diagnose.mjs:13:8 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: {},
+  expected: { ATK: 4, DEF: 3, MAG: 1, RES: 1, HP: 11 },
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.0.0

@@ -51,7 +51,6 @@ test('dev tooling runtime owns modal/config while app keeps restart wiring', () 
   assert.doesNotMatch(appSrc, /Dev Tooling Modal/);
   assert.doesNotMatch(appSrc, /devToolingDom\.launcher\.addEventListener/);
   assert.match(runtimeSrc, /export function createDevToolingRuntime\(deps = \{\}\)/);
-  assert.match(runtimeSrc, /import \{ renderCombatTurnQaReadoutHtml \} from '\.\/combatTurnQaReadout\.mjs';/);
   assert.match(runtimeSrc, /const DEV_TOOL_HOTKEY_LABEL = 'Ctrl\+Shift\+P';/);
   assert.match(runtimeSrc, /let devToolingDom = null;/);
   assert.match(runtimeSrc, /function createDefaultDevToolingConfig\(\)/);
@@ -84,15 +83,13 @@ test('dev tooling runtime owns modal/config while app keeps restart wiring', () 
     closeButtonIndex < actionRowIndex && actionRowIndex < settingsGridIndex,
     'the action-button group must sit below Close and above every settings control',
   );
-  assert.match(runtimeSrc, /data-devtool-turn-order-qa-slot/);
-  assert.match(runtimeSrc, /function refreshCombatTurnQaReadout\(\)/);
-  assert.match(runtimeSrc, /renderCombatTurnQaReadoutHtml\(\{/);
+  assert.doesNotMatch(runtimeSrc, /turn-order-qa|refreshCombatTurnQaReadout|renderCombatTurnQaReadoutHtml/);
+  assert.doesNotMatch(runtimeSrc, /data-devtool-autoplay|setAutoplayHandler|DevAutoplay/);
   assert.match(src, /data-devtool-double-attack-hero/);
   assert.match(src, /devToolingDom\.apply\.addEventListener\('click', \(\) => applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ closeModal: true \}\)\);/);
   assert.match(src, /devToolingDom\.refresh\.addEventListener\('click', \(\) => applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ closeModal: false \}\)\);/);
   assert.match(src, /devToolingDom\.restart\.addEventListener\('click', async \(\) => devToolingControls\.handleRestartClick\(\{/);
-  assert.match(src, /devToolingDom\.autoplay\.addEventListener\('click', async \(\) => \{/);
-  assert.match(src, /closeDevToolingModal\(\{ restorePauseSnapshot: true \}\);/);
+  assert.doesNotMatch(src, /devToolingDom\.autoplay|data-devtool-autoplay|setAutoplayHandler/);
   assert.match(src, /function syncConfiguredDoubleAttackHarness\(cfg = ensureDevToolingConfig\(\)\)/);
   assert.match(src, /DevSpeedLinkFixture/);
   assert.match(src, /fastestEnemySpeed \* 2/);
@@ -156,66 +153,26 @@ test('editable dev tooling fields bypass gameplay keyboard shortcuts', () => {
     /if \(ensureDevToolingConfig\(\)\.open\) \{[\s\S]*if \(!isEditableDomTarget\(ev\.target\)\) \{[\s\S]*return;[\s\S]*\}\s*return;\s*\}/,
   );
   assert.doesNotMatch(keydownSrc, /handleGemMatch/);
-  assert.match(keydownSrc, /closest\?\.\('#hero-commands'\)\) return/);
+  assert.doesNotMatch(keydownSrc, /hero-commands/);
 });
 
-test('dev browser hooks expose an explicit dynamic initiative authority QA scenario', () => {
-  const devHooksPath = path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js');
-  const src = fs.readFileSync(devHooksPath, 'utf8');
-
-  assert.match(src, /setupDynamicInitiativeAuthorityScenario/);
-  assert.match(src, /DYNAMIC_INITIATIVE_AUTHORITY_EXPERIMENT_ID/);
-  assert.match(src, /DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP/);
-  assert.match(src, /DYNAMIC_INITIATIVE_AUTHORITY_PROOF_DAMAGE_STAT/);
-  assert.match(src, /DynamicInitiativeAuthorityEnabled\s*=\s*1/);
-  assert.match(src, /DynamicInitiativeAuthorityExperimentId\s*=\s*DYNAMIC_INITIATIVE_AUTHORITY_EXPERIMENT_ID/);
-  assert.match(src, /DynamicInitiativeAuthoritySeed\s*=\s*DYNAMIC_INITIATIVE_AUTHORITY_SEED/);
-  assert.match(src, /DynamicInitiativeAuthorityBattleId\s*=\s*DYNAMIC_INITIATIVE_AUTHORITY_BATTLE_ID/);
-  assert.match(src, /BattleStartClearedForSession\s*=\s*1/);
-  assert.match(src, /CanPickGems\s*=\s*true/);
-  assert.match(src, /const proofHeroSlots = \['Falie',\s*'Huun',\s*'Runa',\s*'Kojonn'\]/);
-  assert.match(src, /const proofEnemySlots = \['Skeleton',\s*'Gobloc',\s*'Troll'\]/);
-  assert.match(src, /heroSlots: proofHeroSlots/);
-  assert.match(src, /enemySlots: proofEnemySlots/);
-  assert.match(src, /boardGemColor:\s*1/);
-  assert.match(src, /actor\.hp = DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP/);
-  assert.match(src, /actor\.stats\.ATK = DYNAMIC_INITIATIVE_AUTHORITY_PROOF_DAMAGE_STAT/);
-  assert.match(src, /const authorityEnemies = state\.entities[\s\S]*\.filter\(\(entity\) => entity && entity\.kind === 'enemy'\)[\s\S]*\.sort\(/);
-  assert.match(src, /g\.EnemyIDs = \[/);
-  assert.match(src, /g\.EnemySlots = \[/);
-  assert.match(src, /g\.PendingEnemyRespawnSlots = \[0, 0, 0\];/);
-  assert.match(src, /g\.PendingEnemyRespawnTimerActive = 0;/);
-  assert.match(src, /scenario === 'dynamic-initiative-authority'/);
-  assert.match(src, /scenario === 'dynamic-initiative'/);
+test('dev hooks omit retired turn-order, initiative, and autoplay QA controls', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js'), 'utf8');
+  assert.doesNotMatch(src, /DynamicInitiativeAuthority|setupDynamicInitiative|DYNAMIC_INITIATIVE_AUTHORITY/);
+  assert.doesNotMatch(src, /runDevAutoplayUntilDepleted|stopDevAutoplay|getDevAutoplayState/);
 });
 
-test('dev tooling resume restores playable hero input when combat is idle', () => {
+test('dev tooling pause preserves realtime state and resumes without turn-input repair', () => {
   const filePath = path.join(__dirname, '..', 'web-runner', 'systems', 'devToolingRuntime.js');
   const src = fs.readFileSync(filePath, 'utf8');
+  const pauseSrc = extractFunctionSource(src, 'pauseGameplayForDevTooling');
   const resumeSrc = extractFunctionSource(src, 'resumeGameplayFromDevTooling');
-  const restoreSrc = extractFunctionSource(src, 'restorePlayableHeroInputAfterDevToolingResume');
-
-  assert.match(resumeSrc, /applyTurnGateGlobals\(devToolingPauseSnapshot\);[\s\S]*restorePlayableHeroInputAfterDevToolingResume\(\);/);
-  assert.match(restoreSrc, /state\.globals\.GamePhase === 'RUNTIME'/);
-  assert.match(restoreSrc, /callFunctionWithContext\(fnContext, 'GetCurrentType'\) === 0/);
-  assert.match(restoreSrc, /state\.globals\.TurnPhase === 0/);
-  assert.match(restoreSrc, /!\(gameState\.refillBounce && gameState\.refillBounce\.active\)/);
-  assert.match(restoreSrc, /!\(gameState\.yellowCasino && gameState\.yellowCasino\.active\)/);
-  assert.match(restoreSrc, /!hasEmptySlots\(\)/);
-  assert.match(restoreSrc, /getPresentationTurnBarrier\(\{[\s\S]*enemyLineClearPressureActive: !!state\.globals\.EnemyLineClearPressureActive,[\s\S]*\}\)/);
-  assert.match(restoreSrc, /heroInputBarrier\.canRestoreHeroInput/);
-  assert.match(restoreSrc, /getEnemyRosterStabilitySnapshot\(\)\.stable/);
-  assert.doesNotMatch(restoreSrc, /clearSelectionOnly\(\);/);
-  assert.match(restoreSrc, /gameState\.selectedGems = \[\];/);
-  assert.match(restoreSrc, /gameState\.selectionLocked = false;/);
-  assert.match(restoreSrc, /for \(const gem of \(gameState\.gems \|\| \[\]\)\) \{/);
-  assert.match(restoreSrc, /gem\.selected = false;/);
-  assert.match(restoreSrc, /gem\.Selected = 0;/);
-  assert.match(restoreSrc, /state\.globals\.TapIndex = 0;/);
-  assert.match(restoreSrc, /state\.globals\.CanPickGems = true;/);
-  assert.match(restoreSrc, /state\.globals\.IsPlayerBusy = 0;/);
-  assert.match(restoreSrc, /state\.globals\.DeferAdvance = 0;/);
-  assert.match(restoreSrc, /state\.globals\.BoardFillActive = 0;/);
+  assert.match(pauseSrc, /devToolingPauseSnapshot = \{\};/);
+  assert.match(pauseSrc, /state\.globals\.DevToolingPaused = 1;/);
+  assert.doesNotMatch(pauseSrc, /CanPickGems|IsPlayerBusy|DeferAdvance|TurnSerial|applyTurnGateGlobals/);
+  assert.match(resumeSrc, /state\.globals\.DevToolingPaused = 0;\s*clearDevToolingPauseSnapshot\(\);/);
+  assert.doesNotMatch(resumeSrc, /TurnSerial|CanPickGems|applyTurnGateGlobals|restorePlayableHeroInput/);
+  assert.doesNotMatch(src, /restorePlayableHeroInputAfterDevToolingResume/);
 });
 
 test('startup preload can prepare combat assets while story mock is active', () => {
@@ -262,10 +219,7 @@ test('debug gem diagnostics do not mutate timing samples unless explicitly reque
   const appSrc = fs.readFileSync(filePath, 'utf8');
   const runtimeSrc = fs.readFileSync(runtimePath, 'utf8');
 
-  assert.match(appSrc, /const GEM_INTERACTIVITY_DIAGNOSTIC_QUERY = \(\(\) => \{/);
-  assert.match(appSrc, /return params\.get\('gemdiag'\) === 'true';/);
-  assert.doesNotMatch(appSrc, /params\.has\('gemdiag'\)/);
-  assert.match(appSrc, /runtimeDebugLogging\.isGemDebugEnabled\(state\) && GEM_INTERACTIVITY_DIAGNOSTIC_QUERY/);
+  assert.doesNotMatch(appSrc, /GEM_INTERACTIVITY_DIAGNOSTIC_QUERY|runGemInteractivityDiagnostic|gemdiag/);
   assert.match(appSrc, /const boardIntegrityLog = ok \? console\.log : console\.error;/);
   assert.match(runtimeSrc, /state\.globals\.IsPlayerBusy === 0 &&\\n\s+!state\.globals\.DeferAdvance &&\\n\s+!state\.globals\.AdvanceAfterAction;/);
   assert.doesNotMatch(runtimeSrc, /GATE_STUCK_AFTER_REFILL[\s\S]*state\.globals\.CanPickGems = true;/);
@@ -273,7 +227,7 @@ test('debug gem diagnostics do not mutate timing samples unless explicitly reque
 });
 
 
-test('combat end clears staged dev overrides and autoplay while preserving gold', () => {
+test('combat end clears staged dev overrides while preserving gold', () => {
   const vm = require('node:vm');
   const src = fs.readFileSync(path.join(__dirname, '../web-runner/systems/devToolingRuntime.js'), 'utf8')
     .replace(/^import .*;$/gm, '')
@@ -287,7 +241,7 @@ test('combat end clears staged dev overrides and autoplay while preserving gold'
     normalizeCombatOrientation: () => 'rtl',
   });
   vm.runInContext(src, context);
-  const state = { globals: { goldTotal: 4321, DevAutoplayRunId: 7, DevAutoplayActive: 1,
+  const state = { globals: { goldTotal: 4321,
     DevToolingConfig: { combatSpeed: 4, boardGemColor: 1, goldAmount: 0 },
     DevForcedEnemyType: 'boss', DevToolingPaused: 1 }, entities: [] };
   const runtime = context.createDevToolingRuntime({ state, gameState: {},
@@ -298,8 +252,6 @@ test('combat end clears staged dev overrides and autoplay while preserving gold'
   const g = state.globals;
   assert.equal(g.goldTotal, 4321);
   assert.equal(g.DevToolingConfig.goldAmount, 4321);
-  assert.equal(g.DevAutoplayActive, 0);
-  assert.equal(g.DevAutoplayRunId, 8);
   assert.equal(g.DevCombatSpeedMultiplier, 1);
   assert.equal(g.DevForcedBoardColor, -1);
   assert.equal(g.DevForcedEnemyType, '');

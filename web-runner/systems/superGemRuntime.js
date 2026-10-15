@@ -60,37 +60,6 @@ function splitDamageAcrossHits(totalDamage, hitCount) {
   });
 }
 
-function queueArcanePulseAfterAttack({
-  state,
-  callFunctionWithContext,
-  fnContext,
-  actorUID,
-  targetUID,
-  applyAt,
-  heroName,
-}) {
-  const uid = Number(targetUID || 0);
-  if (!(uid > 0) || typeof callFunctionWithContext !== 'function') return false;
-  return !!callFunctionWithContext(fnContext, 'QueuePartyArcanePulse', {
-    heroUID: Number(actorUID || 0),
-    targetUID: uid,
-    applyAt: Number(applyAt || state?.globals?.time || 0),
-    actorName: String(heroName || getActorName(callFunctionWithContext, fnContext, actorUID)),
-  });
-}
-
-function resolveArcanePulseSuperGemTargetUID(state, enemies, selectedEnemyUID = 0) {
-  const preferredUID = Number(selectedEnemyUID || state?.globals?.SelectedEnemyUID || 0);
-  const preferred = Array.isArray(enemies)
-    ? enemies.find((enemy) => Number(enemy?.uid || 0) === preferredUID && Number(enemy?.hp || 0) > 0)
-    : null;
-  if (preferred) return Number(preferred.uid || 0);
-  const first = Array.isArray(enemies)
-    ? enemies.find((enemy) => enemy && Number(enemy.hp || 0) > 0)
-    : null;
-  return Number(first?.uid || 0);
-}
-
 function isActionHandoffDebugEnabled(state) {
   return !!(state?.globals?.DevTestMode === true || state?.globals?.DebugGemsMode === true);
 }
@@ -140,34 +109,14 @@ function beginQueuedHeroAction({
       actionInProgress: Number(state.globals.ActionInProgress || 0),
       actionActorUID: Number(state.globals.ActionActorUID || 0),
       heroActionActive: !!(state.globals.HeroAction && state.globals.HeroAction.active),
-      enemyActionActive: !!(state.globals.EnemyAction && state.globals.EnemyAction.active),
+      enemyActionActive: !!(state.globals.EnemyAction && state.globals.EnemyAction.active)
+        || Object.values(state.globals.RealtimeEnemyActionsByUID || {}).some(action => action?.active),
       actionLockUntil: Number(state.globals.ActionLockUntil || 0),
       time: Number(state.globals.time || 0),
     });
     return false;
   }
   return true;
-}
-
-function queueHeroAttackSkillBounds({
-  callFunctionWithContext,
-  fnContext,
-  actorUID,
-  targetUID,
-  originalDamage,
-  applyAt,
-  mode,
-  actorName,
-}) {
-  if (typeof callFunctionWithContext !== 'function') return false;
-  return !!callFunctionWithContext(fnContext, 'QueueHeroAttackSkillBounds', {
-    heroUID: actorUID,
-    targetUID,
-    originalDamage,
-    applyAt,
-    mode,
-    actorName,
-  });
 }
 
 function queueClusterSingleHits({
@@ -231,26 +180,7 @@ function queueClusterSingleHits({
       msg: buildNormalHitLog(heroName, targetName, shotDamage),
     };
     state.globals.PendingHeroHits.push(hit);
-    queueHeroAttackSkillBounds({
-      callFunctionWithContext,
-      fnContext,
-      actorUID,
-      targetUID,
-      originalDamage: shotDamage,
-      applyAt: hitApplyAt,
-      mode,
-      actorName: heroName,
-    });
   }
-  queueArcanePulseAfterAttack({
-    state,
-    callFunctionWithContext,
-    fnContext,
-    actorUID,
-    targetUID,
-    applyAt: applyAt + ((hitCount - 1) * SUPER_GEM_HIT_INTERVAL),
-    heroName,
-  });
   state.globals.ActionLockUntil = Math.max(
     Number(state.globals.ActionLockUntil || 0),
     applyAt + ((hitCount - 1) * SUPER_GEM_HIT_INTERVAL) + 0.26,
@@ -343,16 +273,6 @@ function queueHuunYellowGoldstrike({
       msg: buildHuunGoldstrikeLog(heroName, enemyName, roll, finalDmg, branch),
     };
     state.globals.PendingHeroHits.push(hit);
-    queueHeroAttackSkillBounds({
-      callFunctionWithContext,
-      fnContext,
-      actorUID,
-      targetUID: targetUIDForHit,
-      originalDamage: finalDmg,
-      applyAt,
-      mode: 'melee',
-      actorName: heroName,
-    });
   }
   state.globals.goldTotal = bankedGold + boardGold;
   state.globals.LastHuunYellowSuperGemGoldstrike = {
@@ -366,15 +286,6 @@ function queueHuunYellowGoldstrike({
   };
   const logTargetName = isJackpot ? 'all enemies' : String(targets[0]?.name || '?');
   callFunctionWithContext(fnContext, 'LogCombat', buildHuunGoldstrikeLog(heroName, logTargetName, roll, finalDmg, branch));
-  queueArcanePulseAfterAttack({
-    state,
-    callFunctionWithContext,
-    fnContext,
-    actorUID,
-    targetUID: resolveArcanePulseSuperGemTargetUID(state, enemies, selectedEnemyUID),
-    applyAt,
-    heroName,
-  });
   state.globals.ActionLockUntil = Math.max(
     Number(state.globals.ActionLockUntil || 0),
     applyAt + 0.42,
@@ -690,26 +601,7 @@ function queueClusterAoeHits({
   }
   for (const hit of queuedHits) {
     state.globals.PendingHeroHits.push(hit);
-    queueHeroAttackSkillBounds({
-      callFunctionWithContext,
-      fnContext,
-      actorUID,
-      targetUID: Number(hit.targetUID || 0),
-      originalDamage: Number(hit.finalDmg || hit.dmg || 0),
-      applyAt: Number(hit.at || applyAt),
-      mode,
-      actorName: heroName,
-    });
   }
-  queueArcanePulseAfterAttack({
-    state,
-    callFunctionWithContext,
-    fnContext,
-    actorUID,
-    targetUID: resolveArcanePulseSuperGemTargetUID(state, enemies),
-    applyAt: applyAt + ((hitCount - 1) * SUPER_GEM_HIT_INTERVAL),
-    heroName,
-  });
   state.globals.ActionLockUntil = Math.max(
     Number(state.globals.ActionLockUntil || 0),
     applyAt + ((hitCount - 1) * SUPER_GEM_HIT_INTERVAL) + 0.42,

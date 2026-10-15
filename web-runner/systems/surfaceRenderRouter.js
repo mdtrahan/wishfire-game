@@ -30,7 +30,7 @@ export function createSurfaceRenderRouter({
   getFreshCombatBootstrapped,
   getStartupFingerprintLabel,
   getHeroScreenDeps,
-  renderAstralMarket,
+  renderLamp,
   drawHUD,
 } = {}) {
   const getViewSize = () => {
@@ -109,7 +109,7 @@ export function createSurfaceRenderRouter({
         applyLayoutResult(gameState.petsLayout, renderPets.renderPets(ctx, gameState, sharedDims));
         return;
       case 'idleFarmLayout':
-        renderAstralMarket();
+        renderLamp();
         return;
       case 'evolutionLayout':
         applyLayoutResult(gameState.evolutionLayout, renderEvolution.renderEvolution(ctx, gameState, sharedDims));

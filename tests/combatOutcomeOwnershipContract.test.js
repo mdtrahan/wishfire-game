@@ -87,7 +87,7 @@ test('combat outcome resolver follows Rust owner when Rust and JS disagree', asy
   assert.deepEqual(JSON.parse(JSON.stringify(packet.simulationCoreResponse)), packet.simulationCoreResponse);
 });
 
-test('dev autoplay and main runtime stop checks route through Rust-owned combat outcome resolver', () => {
+test('main runtime stop checks route through Rust-owned combat outcome resolver', () => {
   const appSrc = fs.readFileSync(appPath, 'utf8');
 
   assert.match(appSrc, /createCombatOutcomeSimulationPacket/);
@@ -97,10 +97,8 @@ test('dev autoplay and main runtime stop checks route through Rust-owned combat 
   assert.match(appSrc, /combatRuntimeGateway\.applySimulationCoreResponse\(response\)/);
   assert.match(appSrc, /LastCombatOutcomePacket/);
   assert.match(appSrc, /function resolveMainRuntimeCombatOutcome/);
-  assert.match(appSrc, /app\.runDevAutoplayUntilDepleted/);
   assert.match(appSrc, /app\.mainRuntimeCombatOutcome/);
   assert.doesNotMatch(appSrc, /energy: Number\(energy/);
   assert.match(appSrc, /const outcome = resolveMainRuntimeCombatOutcome\(\{ energy, partyHp, livingHeroes \}\);/);
-  assert.match(appSrc, /lastReason: outcome\.reason/);
   assert.match(appSrc, /requestCombatFailureExit\(outcome\.reason\)/);
 });

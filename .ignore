@@ -1,0 +1,10 @@
+# Ordinary repository search and index scope: current checkout only.
+.worktrees/
+test-results/
+output/
+node_modules/
+rust/**/target/
+dist/
+dist-offline/
+.beads/backup/
+.beads/dolt/

@@ -203,6 +203,28 @@ test('KO heroes consume no shield on repeated hits and Destiny does not revive t
   }
 });
 
+test('both combat mirrors use actor offense, target defense, skill percentage, and resistances', () => {
+  for (const file of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
+    const mod = loadModule(path.join(__dirname, '..', file));
+    const ctx = makeCombatContext({ heroHp: 40, enemyAtk: 18, enemyMag: 30 });
+    const [hero, enemy] = ctx.state.entities;
+    hero.attackType = 'melee';
+    Object.assign(hero.stats, { ATK: 20, MAG: 2, DEF: 6, RES: 7, magicDamageResistancePct: 50, damageResistancePct: 20 });
+    Object.assign(enemy.stats, { DEF: 5, RES: 10, physicalDamageResistancePct: 25, magicDamageResistancePct: 50, damageResistancePct: 20 });
+    const hit = (...args) => withRandomSequence([0.5, 0.9], () => mod.CalculateDamage(ctx, ...args));
+    assert.equal(hit(hero.uid, enemy.uid, 'melee'), 9, file);
+    assert.equal(hit(hero.uid, enemy.uid, 'melee', 150), 14, file);
+    assert.equal(hit(hero.uid, enemy.uid, 'magic'), 4, `${file} hero uses primary ATK even on magic delivery`);
+    assert.equal(hit(enemy.uid, hero.uid, 'melee'), 10, file);
+    assert.equal(hit(enemy.uid, hero.uid, 'magic'), 10, file);
+    hero.attackType = 'magic';
+    Object.assign(hero.stats, { ATK: 2, MAG: 20 });
+    assert.equal(hit(hero.uid, enemy.uid, 'melee'), 9, `${file} magic-primary hero uses MATK even on melee delivery`);
+    enemy.stats.DEF = 25;
+    assert.equal(hit(hero.uid, enemy.uid, 'melee'), 0, `${file} zero floor`);
+  }
+});
+
 test('Town and Continue recover actual hero HP for groups through six without reviving empty capacity', async () => {
   const recovery = await import('../web-runner/systems/questCombatSession.mjs');
   const runtime = loadModule(path.join(__dirname, '../web-runner/modules/functionBank.js'));
@@ -247,7 +269,7 @@ test('Town and Continue recover actual hero HP for groups through six without re
       assert.equal(state.globals.AstralFlowAmpPoints, 7);
       assert.deepEqual(state.globals.Skills, { ward: true });
       assert.equal(calls.filter(name => name === 'UpdateHeroHPUI').length, 1);
-      assert.equal(calls.includes('ProcessTurn'), entry === 'continue');
+      assert.equal(calls.includes('ProcessTurn'), false);
     }
   }
 });

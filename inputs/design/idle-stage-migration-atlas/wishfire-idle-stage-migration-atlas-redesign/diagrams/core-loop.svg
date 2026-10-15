@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="440" viewBox="0 0 800 440" role="img" aria-labelledby="core-loop-title core-loop-desc">
+<title id="core-loop-title">The first closed product loop</title>
+<desc id="core-loop-desc">Six steps reinforce stage progress around the player&#x27;s build decisions.</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#17232D"/></marker></defs>
+<rect width="800" height="440" fill="#F7F2E8"/>
+<text x="28" y="30" font-family="Arial, sans-serif" font-size="18" font-weight="700" text-anchor="start" fill="#17232D">The first closed product loop</text>
+<text x="28" y="52" font-family="Arial, sans-serif" font-size="10" font-weight="400" text-anchor="start" fill="#58646D">Six steps reinforce stage progress around the player&#x27;s build decisions.</text>
+<path d="M452.1775813927783,65.39252713092608 L587.8224186072217,110.60747286907392" stroke="#17232D" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+<path d="M640.0,183.0 L640.0,257.0" stroke="#17232D" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+<path d="M587.8224186072217,329.3925271309261 L452.1775813927783,374.6074728690739" stroke="#17232D" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+<path d="M347.8224186072217,374.6074728690739 L212.17758139277825,329.3925271309261" stroke="#17232D" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+<path d="M160.0,257.0 L160.0,183.0" stroke="#17232D" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+<path d="M212.17758139277825,110.60747286907392 L347.8224186072217,65.39252713092608" stroke="#17232D" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+<circle cx="400" cy="48" r="54" fill="#FCFAF5" stroke="#C45262" stroke-width="4"/>
+<text x="400" y="43" font-family="Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#17232D">BOSS GATE</text>
+<text x="400" y="62" font-family="Arial, sans-serif" font-size="7.5" font-weight="400" text-anchor="middle" fill="#58646D">Beat the boss</text>
+<text x="400" y="74" font-family="Arial, sans-serif" font-size="7.5" font-weight="400" text-anchor="middle" fill="#58646D">to advance.</text>
+<circle cx="640" cy="128" r="54" fill="#FCFAF5" stroke="#B98522" stroke-width="4"/>
+<text x="640" y="123" font-family="Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#17232D">LAMP DROP</text>
+<text x="640" y="142" font-family="Arial, sans-serif" font-size="7.5" font-weight="400" text-anchor="middle" fill="#58646D">Stage rewards</text>
+<text x="640" y="154" font-family="Arial, sans-serif" font-size="7.5" font-weight="400" text-anchor="middle" fill="#58646D">produce lamps.</text>
+<circle cx="640" cy="312" r="54" fill="#FCFAF5" stroke="#7357B3" stroke-width="4"/>
+<text x="640" y="307" font-family="Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#17232D">ROLL GEAR</text>
+<text x="640" y="326" font-family="Arial, sans-serif" font-size="7.5" font-weight="400" text-anchor="middle" fill="#58646D">Reveal one item</text>
+<text x="640" y="338" font-family="Arial, sans-serif" font-size="7.5" font-weight="400" text-anchor="middle" fill="#58646D">and compare.</text>
+<circle cx="400" cy="392" r="54" fill="#FCFAF5" stroke="#2E8B68" stroke-width="4"/>
+<text x="400" y="387" font-family="Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#17232D">EQUIP / SELL</text>
+<text x="400" y="406" font-family="Arial, sans-serif" font-size="7.5" font-weight="400" text-anchor="middle" fill="#58646D">Power up or</text>
+<text x="400" y="418" font-family="Arial, sans-serif" font-size="7.5" font-weight="400" text-anchor="middle" fill="#58646D">convert to Gold.</text>
+<circle cx="160" cy="312" r="54" fill="#FCFAF5" stroke="#00A8B5" stroke-width="4"/>
+<text x="160" y="307" font-family="Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#17232D">GROW POWER</text>
+<text x="160" y="326" font-family="Arial, sans-serif" font-size="7.5" font-weight="400" text-anchor="middle" fill="#58646D">Gear, levels,</text>
+<text x="160" y="338" font-family="Arial, sans-serif" font-size="7.5" font-weight="400" text-anchor="middle" fill="#58646D">skills, companions.</text>
+<circle cx="160" cy="128" r="54" fill="#FCFAF5" stroke="#DE7A3E" stroke-width="4"/>
+<text x="160" y="123" font-family="Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#17232D">AUTO BATTLE</text>
+<text x="160" y="142" font-family="Arial, sans-serif" font-size="7.5" font-weight="400" text-anchor="middle" fill="#58646D">Heroes fight</text>
+<text x="160" y="154" font-family="Arial, sans-serif" font-size="7.5" font-weight="400" text-anchor="middle" fill="#58646D">waves continuously.</text>
+<circle cx="400" cy="220" r="90" fill="#17232D"/>
+<text x="400" y="176" font-family="Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle" fill="#FCFAF5">THE PLAYER’S JOB</text>
+<text x="400" y="198" font-family="Arial, sans-serif" font-size="7.5" font-weight="400" text-anchor="middle" fill="#FCFAF5">Tune the build, accept or sell gear, claim</text>
+<text x="400" y="220" font-family="Arial, sans-serif" font-size="7.5" font-weight="400" text-anchor="middle" fill="#FCFAF5">earned resources, choose a boss attempt, and</text>
+<text x="400" y="242" font-family="Arial, sans-serif" font-size="7.5" font-weight="400" text-anchor="middle" fill="#FCFAF5">improve automatic actions.</text>
+<text x="400" y="264" font-family="Arial, sans-serif" font-size="7.5" font-weight="700" text-anchor="middle" fill="#00A8B5">COMBAT NEVER WAITS</text>
+</svg>

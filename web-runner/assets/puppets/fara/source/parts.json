@@ -1,0 +1,289 @@
+{
+  "actor": "fara",
+  "atlas": "parts-right-v1.png",
+  "facing": "right",
+  "status": "neutral-reviewed-by-builder; independent-review-pending",
+  "parts": {
+    "head": {
+      "file": "head.png",
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 367,
+        "height": 391
+      },
+      "pivot": {
+        "x": 183.5,
+        "y": 336.26
+      },
+      "composition": {
+        "x": 128,
+        "y": 134,
+        "w": 110,
+        "h": 116,
+        "pivot": 0.86,
+        "parent": "body"
+      }
+    },
+    "hair_back": {
+      "file": "hair_back.png",
+      "crop": {
+        "x": 369,
+        "y": 0,
+        "width": 254,
+        "height": 391
+      },
+      "pivot": {
+        "x": 127,
+        "y": 46.92
+      },
+      "composition": {
+        "x": 120,
+        "y": 66,
+        "w": 93,
+        "h": 132,
+        "parent": "body"
+      }
+    },
+    "torso": {
+      "file": "torso.png",
+      "crop": {
+        "x": 628,
+        "y": 70,
+        "width": 320,
+        "height": 320
+      },
+      "pivot": {
+        "x": 160,
+        "y": 38.4
+      },
+      "composition": {
+        "x": 128,
+        "y": 124,
+        "w": 98,
+        "h": 87,
+        "parent": "body"
+      }
+    },
+    "pelvis": {
+      "file": "pelvis.png",
+      "crop": {
+        "x": 940,
+        "y": 100,
+        "width": 314,
+        "height": 294
+      },
+      "pivot": {
+        "x": 157,
+        "y": 35.28
+      },
+      "composition": {
+        "x": 128,
+        "y": 174,
+        "w": 89,
+        "h": 70,
+        "parent": "body"
+      }
+    },
+    "upper_arm_far": {
+      "file": "upper_arm_far.png",
+      "crop": {
+        "x": 50,
+        "y": 395,
+        "width": 210,
+        "height": 265
+      },
+      "pivot": {
+        "x": 105,
+        "y": 31.799999999999997
+      },
+      "composition": {
+        "x": 90,
+        "y": 132,
+        "w": 38,
+        "h": 48,
+        "parent": "body"
+      }
+    },
+    "forearm_far": {
+      "file": "forearm_far.png",
+      "crop": {
+        "x": 403,
+        "y": 401,
+        "width": 148,
+        "height": 258
+      },
+      "pivot": {
+        "x": 74,
+        "y": 30.959999999999997
+      },
+      "composition": {
+        "x": 89,
+        "y": 163,
+        "w": 25,
+        "h": 43,
+        "parent": "upper_arm_far"
+      }
+    },
+    "hand_far": {
+      "file": "hand_far.png",
+      "crop": {
+        "x": 720,
+        "y": 432,
+        "width": 144,
+        "height": 216
+      },
+      "pivot": {
+        "x": 72,
+        "y": 25.919999999999998
+      },
+      "composition": {
+        "x": 88,
+        "y": 188,
+        "w": 23,
+        "h": 33,
+        "parent": "forearm_far"
+      }
+    },
+    "upper_arm_near": {
+      "file": "upper_arm_near.png",
+      "crop": {
+        "x": 996,
+        "y": 398,
+        "width": 242,
+        "height": 262
+      },
+      "pivot": {
+        "x": 121,
+        "y": 31.439999999999998
+      },
+      "composition": {
+        "x": 169,
+        "y": 134,
+        "w": 38,
+        "h": 48,
+        "parent": "body"
+      }
+    },
+    "forearm_near": {
+      "file": "forearm_near.png",
+      "crop": {
+        "x": 74,
+        "y": 673,
+        "width": 190,
+        "height": 260
+      },
+      "pivot": {
+        "x": 95,
+        "y": 31.2
+      },
+      "composition": {
+        "x": 172,
+        "y": 165,
+        "w": 25,
+        "h": 43,
+        "parent": "upper_arm_near"
+      }
+    },
+    "hand_near": {
+      "file": "hand_near.png",
+      "crop": {
+        "x": 412,
+        "y": 681,
+        "width": 165,
+        "height": 253
+      },
+      "pivot": {
+        "x": 82.5,
+        "y": 30.36
+      },
+      "composition": {
+        "x": 174,
+        "y": 190,
+        "w": 23,
+        "h": 33,
+        "parent": "forearm_near"
+      }
+    },
+    "thigh_far": {
+      "file": "thigh_far.png",
+      "crop": {
+        "x": 682,
+        "y": 660,
+        "width": 214,
+        "height": 268
+      },
+      "pivot": {
+        "x": 107,
+        "y": 32.16
+      },
+      "composition": {
+        "x": 109,
+        "y": 190,
+        "w": 36,
+        "h": 42,
+        "parent": "body"
+      }
+    },
+    "shin_boot_far": {
+      "file": "shin_boot_far.png",
+      "crop": {
+        "x": 1004,
+        "y": 670,
+        "width": 225,
+        "height": 267
+      },
+      "pivot": {
+        "x": 112.5,
+        "y": 32.04
+      },
+      "composition": {
+        "x": 110,
+        "y": 214,
+        "w": 35,
+        "h": 41,
+        "parent": "thigh_far"
+      }
+    },
+    "thigh_near": {
+      "file": "thigh_near.png",
+      "crop": {
+        "x": 50,
+        "y": 938,
+        "width": 220,
+        "height": 295
+      },
+      "pivot": {
+        "x": 110,
+        "y": 35.4
+      },
+      "composition": {
+        "x": 148,
+        "y": 190,
+        "w": 36,
+        "h": 42,
+        "parent": "body"
+      }
+    },
+    "shin_boot_near": {
+      "file": "shin_boot_near.png",
+      "crop": {
+        "x": 405,
+        "y": 947,
+        "width": 192,
+        "height": 285
+      },
+      "pivot": {
+        "x": 96,
+        "y": 34.199999999999996
+      },
+      "composition": {
+        "x": 148,
+        "y": 214,
+        "w": 35,
+        "h": 41,
+        "parent": "thigh_near"
+      }
+    }
+  }
+}
