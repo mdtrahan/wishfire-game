@@ -350,6 +350,53 @@ function observedOrdinaryWaveClear(before, after) {
   return 0;
 }
 
+function recoveryProgressionView(progression) {
+  if (!progression) return null;
+  const bossAvailable = progression.bossAvailable == null ? null : !!progression.bossAvailable;
+  const bossSummonRequired = progression.bossSummonRequired == null ? null : !!progression.bossSummonRequired;
+  return {
+    region: progression.region ?? null,
+    stage: progression.stage ?? null,
+    wave: progression.wave ?? null,
+    clearedPackMask: progression.clearedPackMask ?? null,
+    bossReadiness: bossAvailable == null || bossSummonRequired == null ? null : { available: bossAvailable, summonRequired: bossSummonRequired, ready: bossAvailable },
+    counters: {
+      defeatRecoveries: Number.isSafeInteger(progression.defeatRecoveries) ? progression.defeatRecoveries : null,
+      ordinaryWaveClears: Number.isSafeInteger(progression.ordinaryWaveClears) ? progression.ordinaryWaveClears : null,
+      stageTransitions: Number.isSafeInteger(progression.stageTransitions) ? progression.stageTransitions : null,
+      clearedBosses: Number.isSafeInteger(progression.clearedBosses) ? progression.clearedBosses : null,
+    },
+  };
+}
+
+function recoveryCounterDelta(before, after) {
+  const left = recoveryProgressionView(before)?.counters;
+  const right = recoveryProgressionView(after)?.counters;
+  if (!left || !right || Object.values(left).some(value => value == null) || Object.values(right).some(value => value == null)) return null;
+  return Object.fromEntries(Object.keys(left).map((key) => [key, right[key] - left[key]]));
+}
+
+function observeRecoveryTransition(before, after) {
+  const counterDelta = recoveryCounterDelta(before, after);
+  if (!counterDelta || counterDelta.defeatRecoveries <= 0) return null;
+  const base = { before: recoveryProgressionView(before), after: recoveryProgressionView(after), counterDelta, recoveryEventId: null, firstEnemyKoAfterRecovery: { status: 'unknown_recovery_event_pending' }, laterOrdinaryWaveClear: { status: 'unknown_future_transition' } };
+  if (counterDelta.defeatRecoveries === 1) return { ...base, index: after.defeatRecoveries, transition: 'observed' };
+  return { ...base, indices: Array.from({ length: counterDelta.defeatRecoveries }, (_, offset) => before.defeatRecoveries + offset + 1), transition: 'unknown_poll_gap' };
+}
+
+function applyPostRecoveryWaveClear(attempts, existingAttemptCount, ordinaryWaveClearDelta, progression) {
+  const existingAttempts = attempts.slice(0, existingAttemptCount);
+  if (ordinaryWaveClearDelta === 1) {
+    for (const attempt of existingAttempts) if (attempt.transition === 'observed' && attempt.laterOrdinaryWaveClear.status === 'unknown_future_transition') {
+      attempt.laterOrdinaryWaveClear = { status: 'observed', after: recoveryProgressionView(progression) };
+    }
+  } else if (ordinaryWaveClearDelta == null || ordinaryWaveClearDelta > 1) {
+    for (const attempt of existingAttempts) if (attempt.laterOrdinaryWaveClear.status === 'unknown_future_transition') {
+      attempt.laterOrdinaryWaveClear = { status: 'unknown_poll_gap', observedDelta: ordinaryWaveClearDelta };
+    }
+  }
+}
+
 async function useAvailableLampEquipment(page, allowCollect) {
   return page.evaluate((collectAllowed) => {
     const visible = button => button && !button.disabled && button.getClientRects().length > 0;
@@ -488,6 +535,7 @@ async function runSession(page, config, sessionId) {
   const incomingDamageEvents = [];
   const recoveryRecords = [];
   const recoveryByIndex = new Map();
+  const recoveryAttempts = [];
   let lastHeroKo = null;
   let lastCombatEventId = snapshot.combatEventSeq;
   const startCombatEventId = lastCombatEventId;
@@ -560,14 +608,23 @@ async function runSession(page, config, sessionId) {
         distanceWalked: Number(openingRoam.start.direction || 0) * (centerX - Number(openingRoam.start.originX || 0)),
       };
     }
+    let ordinaryWaveClearDelta = null;
     if (exactWaveCounterAvailable) {
       completedOrdinaryWaves = Math.max(0, Number(snapshot.continuousProgression?.ordinaryWaveClears || 0) - startOrdinaryWaveClears);
+      const beforeClears = previousProgression?.ordinaryWaveClears;
+      const afterClears = snapshot.continuousProgression?.ordinaryWaveClears;
+      ordinaryWaveClearDelta = Number.isSafeInteger(beforeClears) && Number.isSafeInteger(afterClears) ? afterClears - beforeClears : null;
     } else {
       const clear = observedOrdinaryWaveClear(previousProgression, snapshot.continuousProgression);
       if (clear == null) ambiguousWaveTransitions += 1;
       else observedWaveClears += clear;
       completedOrdinaryWaves = observedWaveClears;
+      ordinaryWaveClearDelta = clear;
     }
+    const recoveryAttemptsBeforePoll = recoveryAttempts.length;
+    const recoveryTransition = observeRecoveryTransition(previousProgression, snapshot.continuousProgression);
+    if (recoveryTransition) recoveryAttempts.push(recoveryTransition);
+    applyPostRecoveryWaveClear(recoveryAttempts, recoveryAttemptsBeforePoll, ordinaryWaveClearDelta, snapshot.continuousProgression);
     previousProgression = snapshot.continuousProgression;
     completedBosses = Math.max(0, Number(snapshot.continuousProgression?.clearedBosses || 0) - startClearedBosses);
     const bossActive = !!snapshot.continuousProgression?.bossActive;
@@ -636,11 +693,19 @@ async function runSession(page, config, sessionId) {
     }
     for (const event of snapshot.combatEvents || []) {
       if (event.id <= lastCombatEventId) continue;
-      if (event.id > lastCombatEventId + 1) missingCombatEvents += event.id - lastCombatEventId - 1;
+      if (event.id > lastCombatEventId + 1) {
+        missingCombatEvents += event.id - lastCombatEventId - 1;
+        for (const attempt of recoveryAttempts) if (attempt.recoveryEventId != null && event.id > attempt.recoveryEventId && attempt.firstEnemyKoAfterRecovery.status === 'unknown_future_event') {
+          attempt.firstEnemyKoAfterRecovery = { status: 'unknown_event_gap' };
+        }
+      }
       lastCombatEventId = event.id;
       if (event.type === 'enemy_ko') {
         if (!firstKo) firstKo = { side: 'enemy', uid: event.targetUID, time: Number(Math.max(0, event.time - startSimulationTime).toFixed(3)) };
         defeatedEnemyUIDs.add(event.targetUID);
+        for (const attempt of recoveryAttempts) if (attempt.recoveryEventId != null && event.id > attempt.recoveryEventId && attempt.firstEnemyKoAfterRecovery.status === 'unknown_future_event') {
+          attempt.firstEnemyKoAfterRecovery = { status: 'observed', eventId: event.id, uid: event.targetUID, time: Number(Math.max(0, event.time - startSimulationTime).toFixed(3)) };
+        }
         continue;
       }
       const tracked = heroMetrics.find(hero => hero.uid === event.targetUID);
@@ -654,6 +719,11 @@ async function runSession(page, config, sessionId) {
           recoveryRecords.push(record);
         }
         record.heroes.push({ uid: tracked.uid, name: tracked.name, hpBefore: event.hpBefore, hpAfter: event.hpAfter, restoredHp: event.amount });
+        const attempt = recoveryAttempts.find((candidate) => candidate.index === event.recoveryIndex && candidate.recoveryEventId == null);
+        if (attempt) {
+          attempt.recoveryEventId = event.id;
+          attempt.firstEnemyKoAfterRecovery = { status: 'unknown_future_event' };
+        }
         continue;
       }
       if (!(event.amount > 0)) continue;
@@ -741,6 +811,7 @@ async function runSession(page, config, sessionId) {
     bossesCleared: Number(snapshot.continuousProgression?.clearedBosses || 0) - startClearedBosses,
     defeatRecoveries: snapshot.continuousProgression?.defeatRecoveries == null ? null : Number(snapshot.continuousProgression.defeatRecoveries) - startDefeatRecoveries,
     recoveryRecords,
+    recoveryAttempts,
     simulationSecondsSurvived: Number(Math.max(0, snapshot.time - startSimulationTime).toFixed(3)),
     firstKoSide: firstKo?.side || (defeatedEnemyUIDs.size || heroCasualties.size ? 'unobserved' : 'none'),
     firstKoTime: firstKo?.time ?? null,
@@ -927,9 +998,12 @@ if (require.main === module) {
     isRealtimeCombatReadyState,
     loadHeroFixture,
     loadLampFixture,
+    applyPostRecoveryWaveClear,
+    observeRecoveryTransition,
     parseArgs,
     sourceFingerprint,
     observedOrdinaryWaveClear,
+    recoveryProgressionView,
     writeHeroFixture,
     writeLampFixture,
   };

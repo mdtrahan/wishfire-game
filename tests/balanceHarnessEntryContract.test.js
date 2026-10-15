@@ -9,7 +9,7 @@ const assert = require('node:assert/strict');
 const harnessPath = path.join(__dirname, '..', 'tools', 'balance_harness.js');
 const source = fs.readFileSync(harnessPath, 'utf8');
 const hookSource = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js'), 'utf8');
-const { START_WORLD_POINT, aggregateSessions, buildConfig, isRealtimeCombatReadyState, loadHeroFixture, loadLampFixture, observedOrdinaryWaveClear, sourceFingerprint, writeHeroFixture, writeLampFixture } = require(harnessPath);
+const { START_WORLD_POINT, aggregateSessions, applyPostRecoveryWaveClear, buildConfig, isRealtimeCombatReadyState, loadHeroFixture, loadLampFixture, observeRecoveryTransition, observedOrdinaryWaveClear, sourceFingerprint, writeHeroFixture, writeLampFixture } = require(harnessPath);
 
 test('source fingerprint changes when an untracked capture module changes', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'orka-balance-fingerprint-'));
@@ -257,6 +257,41 @@ test('legacy reports keep missing recovery telemetry unknown', () => {
   assert.equal(aggregate.totalDefeatRecoveries, null);
   assert.equal(aggregate.medianDefeatRecoveries, null);
   assert.equal(aggregate.firstKoSides.unobserved, 1);
+});
+
+test('recovery attempts retain observed progression boundaries and refuse skipped polls', () => {
+  const before = { region: 2, stage: 5, wave: 3, clearedPackMask: 13, bossAvailable: false, bossSummonRequired: true, defeatRecoveries: 4, ordinaryWaveClears: 18, stageTransitions: 21, clearedBosses: 2 };
+  const after = { ...before, defeatRecoveries: 5 };
+  const observed = observeRecoveryTransition(before, after);
+  assert.equal(observed.transition, 'observed');
+  assert.equal(observed.index, 5);
+  assert.deepEqual(observed.before, { region: 2, stage: 5, wave: 3, clearedPackMask: 13, bossReadiness: { available: false, summonRequired: true, ready: false }, counters: { defeatRecoveries: 4, ordinaryWaveClears: 18, stageTransitions: 21, clearedBosses: 2 } });
+  assert.deepEqual(observed.counterDelta, { defeatRecoveries: 1, ordinaryWaveClears: 0, stageTransitions: 0, clearedBosses: 0 });
+  assert.equal(observeRecoveryTransition(before, { ...after, bossAvailable: true, bossSummonRequired: true }).after.bossReadiness.ready, true);
+  const skipped = observeRecoveryTransition(before, { ...after, defeatRecoveries: 7 });
+  assert.equal(skipped.transition, 'unknown_poll_gap');
+  assert.deepEqual(skipped.indices, [5, 6, 7]);
+  assert.equal(observeRecoveryTransition(before, { ...before, wave: 4 }), null);
+});
+
+test('same-poll clear never credits a recovery first observed in that poll', () => {
+  const before = { region: 2, stage: 5, wave: 3, clearedPackMask: 13, bossAvailable: false, bossSummonRequired: true, defeatRecoveries: 4, ordinaryWaveClears: 18, stageTransitions: 21, clearedBosses: 2 };
+  const recovery = observeRecoveryTransition(before, { ...before, defeatRecoveries: 5 });
+  const prior = { ...recovery, index: 4, laterOrdinaryWaveClear: { status: 'unknown_future_transition' } };
+  const attempts = [prior, recovery];
+  applyPostRecoveryWaveClear(attempts, 1, 1, { ...before, ordinaryWaveClears: 19 });
+  assert.equal(prior.laterOrdinaryWaveClear.status, 'observed');
+  assert.equal(recovery.laterOrdinaryWaveClear.status, 'unknown_future_transition');
+});
+
+test('recovery telemetry binds first post-recovery enemy KO and later clear only to ordered evidence', () => {
+  assert.match(source, /const recoveryTransition = observeRecoveryTransition\(previousProgression, snapshot\.continuousProgression\)/);
+  assert.match(source, /const recoveryAttemptsBeforePoll = recoveryAttempts\.length/);
+  assert.match(source, /applyPostRecoveryWaveClear\(recoveryAttempts, recoveryAttemptsBeforePoll/);
+  assert.match(source, /attempt\.firstEnemyKoAfterRecovery = \{ status: 'unknown_event_gap' \}/);
+  assert.match(source, /attempt\.firstEnemyKoAfterRecovery = \{ status: 'observed', eventId: event\.id/);
+  assert.match(source, /attempt\.laterOrdinaryWaveClear = \{ status: 'observed', after: recoveryProgressionView\(progression\) \}/);
+  assert.match(source, /recoveryAttempts,/);
 });
 
 test('balance harness counts completed continuous stages from stage transitions, not enemy counts', () => {
