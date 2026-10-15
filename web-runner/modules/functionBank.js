@@ -1,3 +1,4 @@
+import { partyTrainingCombatStat } from '../src/core/realtimeSkillState.mjs';
 import { effectiveStat } from '../src/core/combatRules.mjs';
 import { executeHeroCommand, resolveNativeCommandStep, resolveRealtimeBasicImpact, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat, settleContinuousCombatRewards, emitResolvedHealEvent, recordEnemyDefeatReward } from './heroCommands.mjs';
 import { state } from './state.js';
@@ -5016,8 +5017,9 @@ export function GetEffectiveStat(ctx, inst, stat) {
   });
 
   const ownedValue=owner ? owner.value : jsValue;
-  return Number(g.ContinuousCombatStageLoop || 0)===1 && ['ATK','DEF','MAG','RES','SPD'].includes(stat)
+  const combatValue = Number(g.ContinuousCombatStageLoop || 0)===1 && ['ATK','DEF','MAG','RES','SPD'].includes(stat)
     ? realtimeCombatStat(g,inst,stat,Number(inst.stats?.[stat] ?? inst[stat] ?? 0),Number(inst.stats?.[stat] ?? inst[stat] ?? 0)+(ownedValue-jsValue)) : Math.max(0,ownedValue);
+  return Number(g.ContinuousCombatStageLoop || 0)===1 || !g.PartyTrainingLevels ? combatValue : partyTrainingCombatStat(g, inst, stat, combatValue);
 }
 
 export function GetBaseStat(ctx, inst, stat) {

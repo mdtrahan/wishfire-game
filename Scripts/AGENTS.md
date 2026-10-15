@@ -41,3 +41,5 @@
 - Keep automatic `HeroTurn` target selection aligned with the browser mirror: draw a fresh living enemy per acting hero and record the result only after selection.
 
 - The mirrored CalculateDamage function retains Rust-owned baseline arithmetic and applies the same bounded realtime damage amplification as the browser owner; conditional selection and effect execution remain in the live browser/shared-core path.
+
+- Mirror permanent party Training projection in GetEffectiveStat; keep unrelated main combat behavior unchanged.

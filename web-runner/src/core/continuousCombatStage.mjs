@@ -939,3 +939,9 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   globals.NativeBattleEnded = false;
   return true;
 }
+
+export function continuousCombatWaveClearEventId(stageState) {
+  if (!stageState) return '';
+  const transitions = Math.max(0, Math.floor(Number(stageState.transitions) || 0));
+  return `clear:${stageState.region}-${stageState.stage}-${transitions}-${stageState.wave}-${stageState.bossActive ? 'boss' : 'wave'}`;
+}

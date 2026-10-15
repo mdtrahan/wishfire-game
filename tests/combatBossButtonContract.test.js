@@ -23,7 +23,7 @@ test('combat progress HUD shows the current chapter and four-wave progress', asy
   const worldToCanvas = (x, y) => ({ x: x * 1.5 + 10, y: y * 1.5 + 4 });
   const state = { globals: { ContinuousCombatStage: { region: 4, stage: 22, wave: 3 } } };
   const rect = control.combatProgressHudRect(worldToCanvas);
-  assert.deepEqual(rect, { x: 201.25, y: 10, w: 157.5, h: 60 });
+  assert.deepEqual(rect, { x: 201.25, y: 70, w: 157.5, h: 60 });
   assert.equal(rect.x + rect.w / 2, worldToCanvas(180, 0).x);
   const result = control.drawCombatProgressHud(ctx, { state, images: { CombatProgressHondoHead: { width: 367, height: 391 } }, worldToCanvas });
   assert.equal(result.label, 'Chapter 4-22');

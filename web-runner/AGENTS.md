@@ -62,4 +62,6 @@
 
 - Progression recovery separates earned readiness from boss-entry authorization: clean first readiness enters automatically, while any stage KO or boss defeat latches manual retry until boss victory. The latch and full approach survive reload; ready farming waves continue until explicit Summon Boss.
 
-- Lamp progression: manual/Auto draws grant all four heroes saved EXP, with cumulative receipts and per-hero lampEXPClaimed replay. Enemy rewards grant zero new EXP/Gold. Auto requires all four Lv5; a full cache pauses draws while preserving Auto, and clearing space resumes it. Only explicit Auto-off or exiting combat clears the preference. Dismantling essence buys 20/30/40/50 capacity tiers; the combat-only strip carries item levels and a collection bubble above Auto.
+- Bag progression uses continuous combat emissions and durable arrival collection, including a single held item when full. New gear grants zero EXP; Hero tickets from COT fund individual levels. Existing saved EXP remains intact. Essence funds four paid upgrade stages followed by seven-hour construction.
+
+- Canonical product source is mdtrahan/wishfire-game main. Current combat equipment presentation is the Bag conveyor (lampConveyorPresentation.mjs and equipment-bag.png). Before editing or QA, verify repository, commit and renderer; exported Cloud snapshots are historical sources. COT/resources remain combat-only; Growth opens the approved Training Ground without changing navigation backers.

@@ -642,3 +642,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - ORKA-hdi: Resolve formation roles through canonical save names and display aliases. Establish Fara lead along actual travel heading, yield Hondo only outside attack reach with room for Fara to pass, and keep contact offsets within authored melee reach; world-edge yielding otherwise causes blocked locomotion.
 
 - ORKA-bnw: Menu CP must read the same canonical hero progression as equipment comparisons. Preferring a paused combat actor can conceal a committed upgrade until a later equipment sync; test the next render with an intentionally stale actor and verify manual/Auto receipts match saved and live CP.
+
+- A live Bead does not prove current source identity. Verify origin, main ancestry and active Bag renderer before editing or serving. Exported snapshots can reuse Bead IDs while having unrelated histories; migrate only requested features and their dependencies into project main. Port Equip fixes into the conveyor owner rather than restoring a legacy strip.

@@ -3,20 +3,22 @@ import {runtimeAssetUrl} from './runtimeAssetUrl.mjs';
 import {computeCombatPower} from '../src/core/combatPower.mjs';
 import {heroDefinition,heroSkillUnlocked} from '../src/core/heroDefinitions.mjs';
 import {createHeroProgressStore} from '../src/core/heroProgression.mjs';
+import {heroTicketLevelCost} from '../src/core/combatProgressionRules.mjs';
 import {heroArtKey} from '../state/heroArtAssets.mjs';
 import {actorAttackReach} from '../../src/core/arenaCombatRules.mjs';
 
-let host,content,lastKey,currentTab='gear',activeSkillIndex=0,activeSkillPage=0,activeHeroIndex=-1;
+let host,content,lastKey,currentTab='gear',activeSkillIndex=0,activeSkillPage=0,activeHeroIndex=-1,ticketNotice='';
+const TICKET_QUADRANT={Fara:'0% 0%',Hondo:'100% 0%',Kaja:'0% 100%',Runa:'100% 100%'};
 
 export function hideHeroScreen(){if(host)host.hidden=true;}
 
-export function renderHeroScreen({equipmentProgress,canvas,gameState,fnContext,heroPortraitImages}){
+export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gameState,fnContext,heroPortraitImages}){
  const globals=fnContext.state.globals;
  globals.HeroProgress ||= createHeroProgressStore();
  const roster=Object.values(globals.HeroProgress.heroes);
  if(!roster.length)return {mode:'details',selectedSkillIndex:0,hitZones:{skillNodes:[]}};
  const index=((Number(gameState.selectedHero)||0)%roster.length+roster.length)%roster.length;
- if(activeHeroIndex!==index){activeHeroIndex=index;activeSkillIndex=0;activeSkillPage=0;}
+ if(activeHeroIndex!==index){activeHeroIndex=index;activeSkillIndex=0;activeSkillPage=0;ticketNotice='';}
  const saved=roster[index];
  const hero=saved;
  const definition=heroDefinition(hero);
@@ -55,12 +57,17 @@ export function renderHeroScreen({equipmentProgress,canvas,gameState,fnContext,h
    #hero-details .skill-pages{font-size:.85em} #hero-details .skill-pages button{min-height:1.8em;padding:.15em .5em;background:#e4e8ed;color:#243653;border-color:#9ba9bb}
    #hero-details .skill-pages button:disabled{opacity:.45;cursor:default}
    #hero-details .skill-meta{font-weight:650;color:#374b67}
+   #hero-details .hero-tickets{display:flex;align-items:center;gap:.5em;margin:.5em 0;padding:.45em;border:1px solid #b99c66;border-radius:.5em;background:#fff9eb}
+   #hero-details .hero-ticket-art{width:1.7em;height:1.7em;flex:none;background-image:url('assets/images/progression/hero-tickets.png');background-size:200% 133.333%;background-repeat:no-repeat}
+   #hero-details .hero-level-up{width:100%;font-weight:800}
+   #hero-details .hero-ticket-notice{min-height:1.2em;color:#36465c}
   `;document.head.append(style);content=document.createElement('div');host.append(content);document.body.append(host);
  }
  const rect=canvas.getBoundingClientRect(),scale=rect.width/360;
  Object.assign(host.style,{left:`${rect.left}px`,top:`${rect.top}px`,width:`${rect.width}px`,height:`${rect.height}px`,padding:`${(globals.CombatBossFallbackVisible?96:14)*scale}px ${14*scale}px ${66*scale}px`,fontSize:`${14*scale}px`});
  host.hidden=false;host.dataset.tab=currentTab;
- const key=JSON.stringify([index,currentTab,activeSkillIndex,activeSkillPage,hero.currentLevel,hero.currentEXP,hero.hp,hero.maxHP,hero.stats,roster.map(member=>member.currentLevel),globals.Equipment]);
+ const ticketBalance=combatProgression?.ticketCount(hero.heroInstanceKey)||0;
+ const key=JSON.stringify([index,currentTab,activeSkillIndex,activeSkillPage,hero.currentLevel,hero.currentEXP,hero.hp,hero.maxHP,hero.stats,roster.map(member=>member.currentLevel),globals.Equipment,ticketBalance,ticketNotice]);
  if(key!==lastKey){
   lastKey=key;
   const focused=content.contains(document.activeElement)?document.activeElement:null;
@@ -99,9 +106,20 @@ export function renderHeroScreen({equipmentProgress,canvas,gameState,fnContext,h
   const tabs=el('nav');tabs.className='tabs';tabs.setAttribute('aria-label','Hero management');
   for(const [id,label] of [['orb','Orb'],['gear','Gear'],['skills','Skills']]){const tab=button(tabs,label,()=>{currentTab=id;});tab.setAttribute('aria-pressed',String(currentTab===id));}
   if(currentTab==='orb'){
-   el('h2','Orb',pane);el('p','Orb equipment is unavailable.',pane);el('h2','Level progress',pane);
+   el('h2','Level progress',pane);
    const exp=el('progress',null,pane);exp.max=hero.EXPToNextLevel||1;exp.value=hero.currentLevel>=hero.maxLevel?1:hero.currentEXP;exp.setAttribute('aria-label','Level EXP');
    el('small',hero.currentLevel>=hero.maxLevel?'Maximum level':`${hero.currentEXP} / ${hero.EXPToNextLevel} EXP`,pane);
+   const ticketRow=el('div',null,pane);ticketRow.className='hero-tickets';
+   const ticketArt=el('span',null,ticketRow);ticketArt.className='hero-ticket-art';ticketArt.setAttribute('role','img');ticketArt.setAttribute('aria-label',`${definition.name} tickets`);ticketArt.style.backgroundPosition=TICKET_QUADRANT[definition.name]||'0% 0%';
+   const ticketCopy=el('span',`${ticketBalance} ${definition.name} tickets`,ticketRow);
+   const levelCost=heroTicketLevelCost(hero.currentLevel);
+   const levelUp=button(pane,hero.currentLevel>=hero.maxLevel?'Maximum level':`Level Up · ${levelCost} tickets`,()=>{
+    const result=combatProgression?.spendLevelUp(hero.heroInstanceKey)||{ok:false,reason:'unavailable'};
+    ticketNotice=result.ok?`${definition.name} reached level ${result.level}.`:result.reason==='insufficient_tickets'?`Need ${result.cost} ${definition.name} tickets.`:result.reason==='max_level'?'This hero is at the current level cap.':'Ticket spend could not be saved.';
+    lastKey='';
+   });
+   levelUp.className='hero-level-up';levelUp.disabled=hero.currentLevel>=hero.maxLevel||ticketBalance<levelCost||!combatProgression;
+   if(ticketNotice)el('small',ticketNotice,pane).className='hero-ticket-notice';
    const details=el('details',null,pane);el('summary','Current stats',details);const stats=el('dl',null,details);
    for(const [label,value] of Object.entries({HP:hero.maxHP,...hero.stats})){const cell=el('div',null,stats);el('dt',label==='MAG'?'MATK':label,cell);el('dd',String(value),cell);}
   }else if(currentTab==='skills'){

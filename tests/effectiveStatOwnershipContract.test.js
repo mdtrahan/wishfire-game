@@ -39,6 +39,7 @@ module.exports = {
   const calls = [];
   const context = {
     ...require('../web-runner/src/core/combatRules.mjs'),
+    ...require('../web-runner/src/core/realtimeSkillState.mjs'),
     ...require('../web-runner/modules/heroCommands.mjs'),
     console: {
       log() {},
@@ -206,5 +207,18 @@ test('effective stat follows Rust owner when Rust and JS disagree', () => {
     assert.equal(ctx.state.globals.LastEffectiveStatOwner.value, 5);
     assert.equal(ctx.state.globals.LastEffectiveStatPacket.owner, 'rust');
     assert.equal(ctx.state.globals.LastEffectiveStatPacket.actionType, 'combat.effectiveStat');
+  }
+});
+
+
+test('party Training projects permanent hero bonuses after owned stats without changing hero bases', () => {
+  for (const modulePath of [runtimeFunctionBankPath, scriptsFunctionBankPath]) {
+    const { mod } = loadFunctionBank(modulePath, () => ({ owner: 'rust', value: 100 }));
+    const ctx = makeContext(), [hero, enemy] = ctx.state.entities;
+    ctx.state.globals.PartyTrainingLevels = { ATK: 2 };
+    const original = JSON.stringify(hero.stats);
+    assert.equal(mod.GetEffectiveStat(ctx, hero, 'ATK'), 104);
+    assert.equal(mod.GetEffectiveStat(ctx, enemy, 'ATK'), 100);
+    assert.equal(JSON.stringify(hero.stats), original);
   }
 });

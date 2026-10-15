@@ -38,15 +38,12 @@ test('simulation core can be built as a static wasm asset', () => {
   assert.match(serveSrc, /'\.wasm':'application\/wasm'/);
 });
 
-test('serve runtime fingerprint prefers branch bead id before live Beads fallback', () => {
+test('serve fingerprint identifies the source without guessing ownership from Beads or history', () => {
   const serveSrc = fs.readFileSync(servePath, 'utf8');
-  const branchMatchIndex = serveSrc.indexOf("String(branch || '').match(/(ORKA-[A-Za-z0-9]+(?:\\.[0-9]+)?)/i)");
-  const liveBeadsIndex = serveSrc.indexOf("safeExec('bd', ['list', '--json'], '')");
-
-  assert.ok(branchMatchIndex >= 0, 'serve fingerprint should parse dotted bead ids from branch names');
-  assert.ok(liveBeadsIndex >= 0, 'serve fingerprint should retain live Beads fallback');
-  assert.ok(branchMatchIndex < liveBeadsIndex, 'branch bead id must win over unrelated in-progress beads');
-  assert.match(serveSrc, /fromHistory[\s\S]*ORKA-\[A-Za-z0-9\]\+\(\?:\\\.\[0-9\]\+\)\?/);
+  assert.ok(serveSrc.includes("String(branch || '').match("));
+  assert.doesNotMatch(serveSrc, /safeExec\('bd'|fromHistory/);
+  for (const field of ['commit:', 'origin:', 'sourceRoot:', 'sourceDirty:', 'presentation:']) assert.ok(serveSrc.includes(field), field);
+  assert.match(serveSrc, /bag-conveyor/);
 });
 
 test('static simulation core wasm exposes the canonical combat power shadow export', async () => {

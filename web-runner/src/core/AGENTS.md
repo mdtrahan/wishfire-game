@@ -78,15 +78,15 @@
 
 - isEquipmentUpgrade requires compatible item types, no lower stat and at least one higher stat; stat tradeoffs are not automatic upgrades. Empty compatible slots qualify.
 
-- Auto Equip compares positive total-hero CP changes for every queued item and matching hero slot; it can fill all 12 Hat/Body/Boots slots and replace a weaker manual choice. Re-evaluate after each assignment because CP depends on the full stat profile. Equal gains favor lowest current max HP then party order. Keep displaced and unused gear inspectable until explicit dismantling.
+- Auto-Equip processes rarity/CP-sorted items sequentially. For each positive-gain item choose lowest matching-slot CP, then lowest total hero CP, then party order; never plan combinations.
 
-- Lamp draws preserve the configured saved party EXP and timing. Essence is a bank, never a level calculation: each earned lamp level requires four explicitly purchased stages, then seven-hour construction and automatic completion. `capacityTier` is level minus one; optional v5 `upgradeStage` defaults to zero. Levels 1–100 interpolate the original initial/final rarity odds; capacity grows as 20 + round(10 × (level − 1)^1.5), while total paid upgrade cost starts at 400 Essence and grows 20% per level. Future gear gains 0.5% linear stat scaling per map ordinal. Saved gear rolls, hero EXP and earned lamp levels remain intact.
+- Bag draws grant zero new EXP and retain earned saved EXP. Essence buys four explicitly purchased stages before seven-hour construction; it never implies an earned level.
 
 - Raw lamp emissions append every roll without CP filtering. lamp.recent preserves the last five emission snapshots independently of equip/collection routing. Equip review sorts rarity descending, then descending lampGearCP within each rarity, derived from the shared CP evaluator using gear stats at neutral level 1; item level already scales those stats. Auto compares every queued candidate against all four heroes' three matching slots and keeps strictly positive party improvements until no queued candidate adds CP. Equal gain favors lowest maxHP then party order. Manual equip permits lower-CP overrides from pending or discarded queues. Auto completion or finishing review moves remaining pending pieces into lamp.discarded, where they stay inspectable and equipable. Dismantle rejects queued positive-gain gear before spending; confirmed conversion grants essence only and shows its receipt. Later raw arrivals remain separate from the confirmed pile. Capacity includes pending, discarded and historical aggregate credits; full storage pauses Auto draws without clearing its saved preference. Optional recent/discarded fields preserve supported older v5 saves.
 
 - Every successful lamp emission shares a saved two-second minimum interval. The core rejects early calls before rolling or granting EXP; UI disables/re-enables the lamp from that saved cooldown. Auto keeps its five-second cadence. Reloads, concurrent clicks and switching manual/Auto cannot reset the gate.
 
-- Dismantling grants essence only. It never changes cumulative party EXP, hero EXP/levels or emits an EXP float; resource previews and receipts show essence. Lamp emissions remain the EXP source.
+- Dismantling grants Essence only, including explicitly confirmed missed upgrades. Replaced gear is destroyed without Essence. COT Hero tickets fund individual level-ups.
 
 - Upgrade preview shows current/next odds to three decimals, capacity, essence bank and next installment. Purchase carries the rendered tier and stage; locked storage rejects stale clicks before spending. Four saved purchases expose Lv.UP, which alone promotes the lamp and resets stages. Failed writes retain the bank, stage and level. Only the odds table may scroll on compact phones; purchase controls stay visible.
 
@@ -103,3 +103,5 @@
 
 - Boss CP uses one local pack's baseline (wave CP divided by pack count), then the existing boss premium and stage curve. Increasing dispersed pack count must not inflate one boss's damage or defenses.
 - The first region's first boss retains its catalog-tuned stats. This introductory encounter must not inherit CP-driven offense/defense amplification; later bosses retain the pack-normalized stage curve.
+
+- Bag conveyor rules own emitted/collected gear and the full-cache held item. Auto-Equip processes the displayed rarity/CP order once, matching slots only: lowest equipped slot CP, then lowest current total hero CP, then H1–H4. Each assignment updates state before the next. Replaced equipped gear is destroyed without Essence. Explicit dismantle converts the reviewed snapshot, including missed upgrades; later arrivals survive. COT and party Training rules remain deterministic; buffs project at combat boundaries without rewriting individual base stats.

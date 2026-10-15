@@ -1,6 +1,6 @@
 import { deriveContinuousCombatWavePackProgress } from '../src/core/continuousCombatStage.mjs';
 
-const HUD = Object.freeze({ left: 127.5, top: 4, right: 232.5, bottom: 44 });
+const HUD = Object.freeze({ left: 127.5, top: 44, right: 232.5, bottom: 84 });
 const FALLBACK = Object.freeze({ width: 360, height: 82, top: 2 });
 let fallbackHost = null;
 let fallbackChapter = null;

@@ -7,7 +7,7 @@ import {attachHeroProgress,createHeroProgressStore,setHeroProgressLevel,awardHer
 import {createLampEconomy,validateLampEconomy,LAMP_CONFIG,purchaseLampStage,upgradeLamp,speedUpLampUpgrade} from '../web-runner/src/core/lampGear.mjs';
 import {createEquipmentStorage,EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
 import {castRealtimeHeroSkill,realtimeRetaliation} from '../web-runner/src/core/realtimeHeroSkills.mjs';
-import {buildContinuousCombatSpawnPlan,configureContinuousCombatProduction,deriveContinuousCombatWavePackProgress,maybeAdvanceContinuousCombatStage,resetContinuousCombatAfterDefeat,summonContinuousCombatBoss} from '../web-runner/src/core/continuousCombatStage.mjs';
+import {continuousCombatWaveClearEventId,buildContinuousCombatSpawnPlan,configureContinuousCombatProduction,deriveContinuousCombatWavePackProgress,maybeAdvanceContinuousCombatStage,resetContinuousCombatAfterDefeat,summonContinuousCombatBoss} from '../web-runner/src/core/continuousCombatStage.mjs';
 import {resetCombatSessionConditions} from '../web-runner/systems/combatSessionReset.mjs';
 
 const progressSource=readFileSync(new URL('../web-runner/systems/heroProgressStorage.js',import.meta.url),'utf8');
@@ -86,7 +86,7 @@ test('developer presets save real levels, stats, EXP and receipt baselines witho
   assert.deepEqual(state.globals.PendingHeroHits,[]);assert.deepEqual(state.globals.RealtimeSkillEffects,{});
   const saved=createHeroProgressStore(JSON.parse(f.values.get(HERO_PROGRESS_SAVE_KEY)));
   for(const actor of state.entities){
-   const h=saved.heroes[actor.heroInstanceKey];assert.equal(actor.currentLevel,level);assert.equal(h.currentLevel,level);assert.equal(h.currentEXP,0);assert.equal(h.lampEXPClaimed,25);assert.equal(h.maxLevel,100);
+   const h=saved.heroes[actor.heroInstanceKey];assert.equal(actor.currentLevel,level);assert.equal(h.currentLevel,level);assert.equal(h.currentEXP,0);assert.equal(h.lampEXPClaimed,0);assert.equal(h.maxLevel,100);
    assert.deepEqual(actor.stats,h.stats);assert.equal(actor.maxHP,h.maxHP);assert.equal(actor.EXPToNextLevel,h.EXPToNextLevel);
    assert.equal(HERO_DEFINITIONS[actor.baseHeroName].actives.filter(s=>heroSkillUnlocked(actor,s)).length,level===1?1:level===5?2:level===25?5:actor.baseHeroName==='Kojonn'?9:8);
   }
@@ -232,7 +232,8 @@ test('the app tick persists boss readiness before its stage early return and def
  };
  const runTick=(state,gameState,checkOutcome)=>{
   const context=vm.createContext({
-   state,gameState,document:{hidden:false},performance:{now:()=>100},requestAnimationFrame(){},
+   state,gameState,document:{hidden:false},performance:{now:()=>100},requestAnimationFrame(){},continuousCombatWaveClearEventId,
+   combatProgression:{recordCommittedEnemyDefeats(){},record(){}},
    combatSimulationTicker:{reset(){},tick(){}},lastFrameTime:0,ensureDevToolingConfig:()=>({open:false}),
    layoutState:{getActiveLayoutId:()=> 'combat'},shouldFreezeCombatSimulation:()=>false,drawFrame(){},
    fnContext:{},callFunctionWithContext:(ctx,name,...args)=>makeCall(state)(name,...args),

@@ -29,7 +29,7 @@ export function awardHeroEXP(hero,amount){
  const d=heroDefinition(hero);return {hero:d.name,exp,fromLevel:before.level,toLevel:hero.currentLevel,expBefore:before.exp,expAfter:Math.max(0,Number(hero.currentEXP||0)),expToNextBefore:before.expToNext,statsBefore:before.stats,statsAfter:{...hero.stats},maxHPBefore:before.hp,maxHPAfter:hero.maxHP};
 }
 export function createHeroProgressStore(snapshot){
- const store={version:HERO_PROGRESS_VERSION,heroes:{},settledBattles:[],pendingBattleRewards:null,pendingGoldSettlements:{}};
+ const store={version:HERO_PROGRESS_VERSION,heroes:{},settledBattles:[],pendingBattleRewards:null,pendingGoldSettlements:{},settledTicketSpends:[]};
  // Old skill-rank data is deliberately not imported into the replacement kits.
  if(snapshot?.version===HERO_PROGRESS_VERSION&&snapshot.heroes&&typeof snapshot.heroes==='object'){
   for(const [id,saved] of Object.entries(snapshot.heroes)){
@@ -39,6 +39,7 @@ export function createHeroProgressStore(snapshot){
   const pending=snapshot.pendingBattleRewards;
   if(pending&&typeof pending.id==='string'&&pending.id&&Array.isArray(pending.participants))store.pendingBattleRewards={id:pending.id,participants:pending.participants.filter(id=>typeof id==='string'),defeated:sanitizeRewardLedger(pending.defeated),defeatedGold:sanitizeRewardLedger(pending.defeatedGold)};
   store.pendingGoldSettlements=sanitizeRewardLedger(snapshot.pendingGoldSettlements);
+  store.settledTicketSpends=Array.isArray(snapshot.settledTicketSpends)?[...new Set(snapshot.settledTicketSpends.filter(id=>typeof id==='string'&&id.length<=180))].slice(-256):[];
   const stage=snapshot.continuousStage;
   if(stage&&Number.isSafeInteger(stage.region)&&stage.region>=1&&Number.isInteger(stage.stage)&&stage.stage>=1&&stage.stage<=10&&Number.isInteger(stage.wave)&&stage.wave>=1&&stage.wave<=4&&typeof stage.bossAvailable==='boolean'&&Number.isSafeInteger(stage.clearedBosses)&&stage.clearedBosses>=0){store.continuousStage={region:stage.region,stage:stage.stage,wave:stage.wave,bossAvailable:stage.bossAvailable,bossSummonRequired:stage.bossSummonRequired===true,clearedBosses:stage.clearedBosses};if(Number.isSafeInteger(stage.clearedPackMask)&&stage.clearedPackMask>=0&&stage.clearedPackMask<=63)store.continuousStage.clearedPackMask=stage.clearedPackMask;if(Number.isSafeInteger(stage.bossUID)&&stage.bossUID>0)store.continuousStage.bossUID=stage.bossUID;}
  }

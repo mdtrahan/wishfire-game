@@ -68,3 +68,5 @@
 - `export_actor_puppets.mjs` rebuilds editable Synfig pilot sources by default; `--render` exports existing SIF files without overwriting manual edits. Keep native bones in authoring sources and simulation authority outside clip metadata. Attack/cast torso and companion head keys lean toward the target at the reduced amplitude; verify pivot direction in native renders before changing angle signs.
 
 - Hondo and Kaja reuse the Fara pilot layout and motion curves with character-painted slots. `PUPPET_ACTOR=hondo,kaja` regenerates only those actors and preserves other manifest entries; source metadata supplies facing and relative paint paths.
+
+- Server fingerprints identify actual repository origin, commit, source root and Bag/legacy renderer. A Bead ID comes only from the branch; never infer ownership from the tracker queue or unrelated commit history.

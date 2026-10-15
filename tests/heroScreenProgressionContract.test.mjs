@@ -20,6 +20,9 @@ test('hero redesign preserves the full roster behind directional controls and ex
   assert.match(source, /Next hero/);
   assert.match(source, /\['orb','Orb'\].*\['gear','Gear'\].*\['skills','Skills'\]/);
   assert.match(source, /`DEF \$\{hero\.stats\.DEF\}`/);
-  assert.match(source, /Orb equipment is unavailable/);
+  assert.match(source, /hero-ticket-art/);
+  assert.match(source, /heroTicketLevelCost\(hero\.currentLevel\)/);
+  assert.match(source, /combatProgression\?\.spendLevelUp\(hero\.heroInstanceKey\)/);
+  assert.match(source, /Maximum level/);
   assert.doesNotMatch(source, /className='roster'/);
 });

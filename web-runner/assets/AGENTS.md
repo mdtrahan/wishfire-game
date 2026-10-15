@@ -111,3 +111,5 @@
 - Nonzero basic/cast torso anticipation channels lean toward the target in the actor's authored facing at 60% of the prior angular amplitude. Keep facing cadence, foot origins, impact/release markers and identity art fixed; zero torso channels stay zero, while hurt and KO recoil remain independently authored.
 
 - Hondo and Kaja share Fara's fifteen-bone rig and fourteen paint slots. Character repainting stays within this common chibi silhouette; retain joints, pivots and motion channels. Canonical source and exported states remain presentation-only.
+
+- Current combat strip uses images/lamp/equipment-bag.png. Progression resource/stat/ticket assets and Training Ground scene are approved raster art; resource consumers display the matching icon and yellow held / white required amounts. Preserve Bag wish-ring styling, center emission, randomized sizes and directions, and current bounce timing.

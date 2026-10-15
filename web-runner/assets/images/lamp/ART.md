@@ -1,6 +1,6 @@
 # Lamp art provenance
 
-Original image_gen illustrations referenced against the existing Wishfire character art. Runtime uses the lamp only; collector cells are unused.
+Original image_gen illustrations referenced against the existing Wishfire character art. The conveyor strip uses the owner turquoise bag only; lamp.png is deprecated in that strip and collector atlas cells are unused.
 
 Gear atlas: three columns (Guardian burgundy/brass, Scholar teal/ivory, Wayfarer moss/tan) by three rows (Hat, Body, Boots). Device atlas: two by two, with the runtime lamp in the upper-left cell. CSS selects original atlas cells without recoloring the illustrations.
 
@@ -37,3 +37,7 @@ Pointer SHA-256: `7040e2a38c56bf7285bad2661c33e530beb233397bd87fa8eea85d0a749377
 `equip-puff.png` is the unchanged transparent PNG supplied from the owner Desktop, SHA-256 `26d0b30b6926140efb1b288770c4dac8851dabfddeb1259ae7f23953ecb3a3e8`.
 
 Auto pills, the speech counter, level disc and essence progress bar are CSS, with real accessible text. No SVG assets.
+
+## Owner turquoise equipment bag (ORKA-2eo)
+
+`equipment-bag.png` isolates the bottom-right turquoise cloth/star bag from the owner-supplied four-bag image on transparent background, using imagegen without a redesign prompt. Generated source `exec-4d3a8676-17fa-4d5d-8e24-64b93cf494f5.png` remains outside tracked source. SHA-256 `17fb1b5bf19e00f17d5cb74f6fcd85da2931091f8ae5341d4c1b6076ee0a5a02`. Preserve aspect ratio, gem/rope/stars/tassels; no background cover or lamp substitution. The original lamp asset remains historical and must not render in the conveyor strip.

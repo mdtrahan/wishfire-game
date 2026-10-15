@@ -1,3 +1,4 @@
+import { partyTrainingCombatStat } from '../web-runner/src/core/realtimeSkillState.mjs';
 import { realtimeBasicDamageMultiplier } from '../web-runner/src/core/realtimeHeroSkills.mjs';
 import { effectiveStat } from '../web-runner/src/core/combatRules.mjs';
 import { executeHeroCommand, resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat, settleContinuousCombatRewards, emitResolvedHealEvent } from '../web-runner/modules/heroCommands.mjs';
@@ -4927,7 +4928,8 @@ export function GetEffectiveStat(ctx, inst, stat) {
     jsValue: Number(jsValue || 0),
   });
 
-  return owner ? owner.value : jsValue;
+  const value = owner ? owner.value : jsValue;
+  return g.PartyTrainingLevels ? partyTrainingCombatStat(g, inst, stat, value) : value;
 }
 
 export function GetBaseStat(ctx, inst, stat) {

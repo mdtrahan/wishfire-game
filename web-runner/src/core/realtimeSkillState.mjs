@@ -37,7 +37,21 @@ export function actorCombatModifiers(globals, actor) {
       if(status.statusEffect===stat.toLowerCase()+'Down')legacy.push({channel:stat,direction:'down',magnitude:status.magnitude});
     }
   }
+  if (actor?.kind === 'hero') {
+    for (const [trainingStat, combatStat] of [['ATK', 'ATK'], ['DEF', 'DEF'], ['MATK', 'MAG'], ['RES', 'RES']]) {
+      const base = rawCombatStat(actor, combatStat);
+      const levels = Math.max(0, Math.floor(Number(globals.PartyTrainingLevels?.[trainingStat]) || 0));
+      if (base > 0 && levels > 0) legacy.push({ channel: combatStat, direction: 'up', magnitude: Math.min(2, levels * 0.02) });
+    }
+  }
   return [...legacy,...combatModifiers(globals.RealtimeSkillEffects?.[String(actor.uid)],Number(globals.time || 0)),...battleModifiers(globals,actor)];
+}
+export function partyTrainingCombatStat(globals, actor, stat, value) {
+  if (actor?.kind !== 'hero' || !['ATK', 'DEF', 'MAG', 'RES'].includes(stat)) return Math.max(0, Number(value) || 0);
+  const trainingStat = stat === 'MAG' ? 'MATK' : stat;
+  const levels = Math.max(0, Math.floor(Number(globals.PartyTrainingLevels?.[trainingStat]) || 0));
+  if (!levels) return Math.max(0, Number(value) || 0);
+  return projectCombatStat(Math.max(0, Number(value) || 0), stat, [{ channel: stat, direction: 'up', magnitude: Math.min(2, levels * 0.02) }]);
 }
 export function realtimeCombatStat(globals, actor, stat, base = rawCombatStat(actor,stat), ownedValue = base) {
   const modifiers = actorCombatModifiers(globals,actor);

@@ -9,7 +9,7 @@ test('web-runner state defines Astral Flow destination outside app shell', () =>
   assert.match(src, /idleFarmLayout:\s*\{/);
 });
 
-test('web-runner routes the Lamp to immediate collection review', () => {
+test('web-runner uses Bag equipment review and routes Power Up to Growth', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
   const registrySrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'runtimeLayoutRegistry.js'), 'utf8');
   const surfaceRouterSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'surfaceRenderRouter.js'), 'utf8');
@@ -25,5 +25,5 @@ test('web-runner routes the Lamp to immediate collection review', () => {
   assert.doesNotMatch(src, /updateIdleFarmEmissions|claimIdleFarmRewards/);
   assert.match(devBrowserHookSrc, /lamp:/);
   assert.doesNotMatch(fs.readFileSync(path.join(__dirname, '..', 'web-runner/systems/renderExistingNavigation.mjs'), 'utf8'), /AstralFlow|\['FLOW'/);
-  assert.match(fs.readFileSync(path.join(__dirname, '..', 'web-runner/systems/renderExistingNavigation.mjs'), 'utf8'), /lamp:open/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'web-runner/systems/renderExistingNavigation.mjs'), 'utf8'), /growth:open/);
 });

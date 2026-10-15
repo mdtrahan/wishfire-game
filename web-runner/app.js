@@ -1,4 +1,6 @@
 import { createEquipmentStorage } from './systems/equipmentStorage.mjs';
+import { createCombatProgression } from './systems/combatProgression.mjs';
+import { createCombatProgressionUI, createTrainingGroundUI } from './systems/combatProgressionUI.mjs';
 import { createLampEquipmentUI } from './systems/lampEquipmentUI.mjs';
 import { state } from './modules/state.js';
 import { createContext, callFunctionWithContext } from './modules/functionRegistry.js';
@@ -127,6 +129,7 @@ import {
 } from './systems/combatSessionInitializer.js';
 import {
   configureContinuousCombatProduction,
+  continuousCombatWaveClearEventId,
   finalizeContinuousCombatProduction,
   maybeAdvanceContinuousCombatStage,
   summonContinuousCombatBoss,
@@ -354,7 +357,7 @@ function ensureDamageNumberLayer() {
   layer.style.top = '0px';
   layer.style.width = '0px';
   layer.style.height = '0px';
-  layer.style.zIndex = '50';
+  layer.style.zIndex = '15';
   document.body.appendChild(layer);
   damageNumberLayer = layer;
   return damageNumberLayer;
@@ -708,9 +711,10 @@ function normalizeHeroSelectionIndex() {
   return gameState.selectedHero;
 }
 
-function renderHeroScreenLayoutV2({ equipmentProgress, ctx, canvas, dpr, gameState, fnContext, closeWinOvalImage, heroPortraitImages, heroSkillSpriteSheetImage, heroSkillIconImages = [] }) {
+function renderHeroScreenLayoutV2({ equipmentProgress, combatProgression, ctx, canvas, dpr, gameState, fnContext, closeWinOvalImage, heroPortraitImages, heroSkillSpriteSheetImage, heroSkillIconImages = [] }) {
   const heroRenderResult = renderHeroScreen.renderHeroScreen({
     equipmentProgress,
+    combatProgression,
     ctx,
     canvas,
     dpr,
@@ -1945,13 +1949,20 @@ async function main(){
     return true;
   };
   heroProgressStorage.restoreHeroProgressFromStorage({ fnContext });
-  const equipmentProgress = createEquipmentStorage({ globals: state.globals, getActors: () => state.entities, storage: window.localStorage, persistProgress: () => heroProgressStorage.persistHeroProgressIfDirty({stateGlobals: state.globals}) });
+  let combatProgression;
+  const equipmentProgress = createEquipmentStorage({ globals: state.globals, getActors: () => state.entities, storage: window.localStorage, persistProgress: () => heroProgressStorage.persistHeroProgressIfDirty({stateGlobals: state.globals}), onGearCollected: result => combatProgression?.record({ id: `gear:${result.item.instanceId}`, type: 'gear_collect' }) });
+  combatProgression = createCombatProgression({ globals: state.globals, storage: window.localStorage, equipmentProgress, getHeroes: () => state.entities, persistHeroProgress: () => heroProgressStorage.persistHeroProgressIfDirty({stateGlobals: state.globals}), reportError: console.error });
+  combatProgression.reconcileTicketSpends();
+  const combatProgressionUI = createCombatProgressionUI({ canvas, onClaim: objectiveId => combatProgression.claimObjective(objectiveId) });
+  const trainingGroundUI = createTrainingGroundUI({ progression: combatProgression });
+  eventBus.on('growth:open', () => trainingGroundUI.open());
+  void combatProgression.sync();
   const lampEquipment = createLampEquipmentUI({canvas, economy: equipmentProgress, globals: state.globals, eventBus, isPaused: () => gameState.storyEntry.combatPaused || !!state.globals.DevToolingPaused, onBeforeOpen: surrenderBossForDeparture});
   const finishCombatEnd = async () => { await equipmentProgress.stopAuto(); devToolingRuntime.clearCombatSessionOverrides(); };
   const finishCombatQuit = async () => { surrenderBossForDeparture(); await equipmentProgress.stopAuto(); devToolingRuntime.clearCombatSessionOverrides(); resetCombatRuntimeForFreshSession('quest-navigation-quit', { clearSessionSettlement: true }); };
   const qaPauseSnapshotEnabled = new URLSearchParams(window.location.search).get('questQA') === '1';
   const storyEntry = createStoryEntryFlow({ gameState, layoutState, isReady: () => freshCombatBootstrapped, getEnemies: () => enemyRows, prepareEncounter: questCombat.prepare, resurrect: questCombat.resurrect, closeTransientSurface: () => lampEquipment.close(), canCloseTransientSurface: () => lampEquipment.state().canLeave, recordQaPauseSnapshot: qaPauseSnapshotEnabled ? stage => gameState.publishQaPauseSnapshot?.(stage) : undefined, onBossActivityResumed: () => summonContinuousCombatBoss(state.globals, state.entities, (name, ...args) => callFunctionWithContext(fnContext, name, ...args)), energyGlobals: state.globals, enterCombat: createCombatEntryTransition(canvas, { onComplete: () => releaseCombatStartToScheduler(state.globals) }), onCombatEnd: finishCombatEnd, onCombatQuit: finishCombatQuit, isCombatPauseEligible: () => state.globals.NativeBattleEnded !== true && state.globals.ProgressionBattle?.outcome !== 'victory' && state.globals.ProgressionBattle?.outcome !== 'defeat' });
-  const questUI = createQuestLadderUI({ canvas, gameState, layoutState, flow: storyEntry, getGold: () => state.globals.goldTotal || 0 });
+  const questUI = createQuestLadderUI({ canvas, gameState, layoutState, flow: storyEntry, getGold: () => state.globals.goldTotal || 0, getPuppetPresentation: () => actorPuppetPresentation });
   registerRuntimeLayouts(layoutState, {
     storyEntry,
     combatLayout,
@@ -2431,6 +2442,7 @@ async function main(){
     getHeroScreenDeps: () => ({
       fnContext,
       equipmentProgress,
+      combatProgression,
       closeWinOvalImage,
       heroPortraitImages,
       heroSkillSpriteSheetImage: null,
@@ -2603,10 +2615,18 @@ async function main(){
       actorPuppetPresentation,
     };
     if (activeLayoutId === 'combat') {
+      combatProgression.recordCommittedEnemyDefeats(state.globals.ProgressionBattle);
+      const pendingEnemyDeaths = Object.keys(state.globals.PendingDeaths || {}).filter(uid => state.entities.some(actor => actor?.kind === 'enemy' && String(actor.uid) === String(uid)));
       callFunctionWithContext(fnContext, 'CommitPendingEnemyDeaths');
+      if (!state.globals.ProgressionBattle?.id) for (const uid of pendingEnemyDeaths) {
+        if (Object.prototype.hasOwnProperty.call(state.globals.PendingDeaths || {}, uid)) continue;
+        const runId = String(state.globals.ContinuousCombatStageLastTransition?.to || 'combat');
+        combatProgression.record({ id: `enemy:${runId}:${uid}`, type: 'enemy_defeat' });
+      }
     }
     const result = renderRuntime.renderRuntime(runtimeScope);
     renderExistingNavigation(ctx, { worldToCanvas, layoutScale, gameState, layoutState, eventBus });
+    combatProgressionUI.update({ layoutId: activeLayoutId, phase: gameState.storyEntry.phase, scale: layoutScale, progression: combatProgression.state(), equipmentProgress: { essence: Number(state.globals.Equipment?.lamp?.essence || 0) } });
     if (result && result.overlayData) {
       state.globals.LastCombatOverlayData = result.overlayData;
     }
@@ -3283,6 +3303,8 @@ function getStoryCardLiveLineState() {
       return;
     }
     const enemyLineClearPressureActive = false;
+    const stageBefore = state.globals.ContinuousCombatStage;
+    const previousStageKey = continuousCombatWaveClearEventId(stageBefore);
     const continuousStageAdvanced = maybeAdvanceContinuousCombatStage({
       globals: state.globals,
       entities: state.entities,
@@ -3292,6 +3314,7 @@ function getStoryCardLiveLineState() {
       }),
       call: (name, ...args) => callFunctionWithContext(fnContext, name, ...args),
     });
+    if (continuousStageAdvanced && previousStageKey) combatProgression.record({ id: previousStageKey, type: 'wave_clear' });
     if (checkMainRuntimeCombatOutcome()) {
       heroProgressStorage.persistHeroProgressIfDirty({ stateGlobals: state.globals, callFunctionWithContext, fnContext });
       drawFrame();
@@ -3304,7 +3327,10 @@ function getStoryCardLiveLineState() {
       requestAnimationFrame(tick);
       return;
     }
-    if (gameState.storyEntry.phase === 'combat' && questCombat.isCleared()) void storyEntry.victory();
+    if (gameState.storyEntry.phase === 'combat' && questCombat.isCleared()) {
+      if (!state.globals.ContinuousCombatStage) combatProgression.record({ id: `clear:${state.globals.ProgressionBattle?.id || 'battle'}`, type: 'wave_clear' });
+      void storyEntry.victory();
+    }
     heroProgressStorage.persistHeroProgressIfDirty({ stateGlobals: state.globals, callFunctionWithContext, fnContext });
     drawFrame();
     requestAnimationFrame(tick);

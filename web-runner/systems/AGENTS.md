@@ -179,7 +179,7 @@
 - Immediate multi-target damage publishes timed `CombatImpactRequests`; the shared attack presentation consumes one request per resolved target.
 - Standalone combat VFX scenarios must clear any opening buff queue and enter through `StartRound` plus `ProcessTurn`; do not leave retired manual `PendingSkillID` fixtures holding the scheduler busy.
 
-- The item selector offers immediate Auto Equip through the same atomic transaction as manual equip; all 12 hero Hat/Body/Boots slots are eligible, and unused or displaced gear remains inspectable and equipable from either cache queue until confirmed dismantling.
+- Manual Equip commits immediately and retains the screen for player choices. Auto processes the sorted cache sequentially and enters disposal after saved CP floats finish. Replaced gear never returns to the cache.
 
 - Gear artwork carries item level and rarity color, with no corner rarity letters. Full rarity names remain in item identity and accessible labels.
 
@@ -204,9 +204,9 @@
 
 - Every successful lamp emission shares a saved two-second minimum interval. The core rejects early calls before rolling or granting EXP; UI disables/re-enables the lamp from that saved cooldown. Auto keeps its five-second cadence. Reloads, concurrent clicks and switching manual/Auto cannot reset the gate.
 
-- Dismantling grants essence only. It never changes cumulative party EXP, hero EXP/levels or emits an EXP float; only post-confirmation receipts show essence. Lamp emissions remain the EXP source.
+- Dismantling grants Essence only. Gear emissions grant no new EXP; COT Hero tickets fund individual level-ups.
 
-- Confirmed dismantling closes the item modal and shows a passive essence reward strip with one original orb and the saved awarded total. Hold three seconds, fade over 250ms, remove automatically. No Close/Continue control; pointer events pass through to combat. Failed saves never show rewards.
+- Confirmed dismantling closes review and shows the saved Essence receipt for two seconds. COT claims show Reward Obtained for 1.5 seconds. Both receipts emit the approved VFX and close automatically.
 
 - Empty lamp storage opens no review/dismantling modal. Finishing a review with no remaining pieces closes after CP feedback; lamp upgrades still open independently of storage count.
 
@@ -259,3 +259,5 @@
 - Camera-following projectile visuals retain world-space endpoints and reproject them each frame. Their visible travel is capped to one current viewport in world units and fades before removal; culling uses visible canvas bounds, not legacy arena coordinates. Boss mode uses a temporary left-heroes/right-boss camera and orientation while the saved roam orientation remains unchanged; the entry wipe freezes simulation and consumes pointer input until it ends.
 
 - Hero menus read canonical HeroProgress records for CP, stats and EXP. Combat actor snapshots may lag committed gear; they must not override owned progression in presentation. Equipment commits project the shared CP formula to saved and live heroes before their promise resolves.
+
+- Bag equipment presentation uses the approved conveyor, Bag art and wish-ring VFX. Manual Equip saves immediately and retains player control until explicit Done / Dismantle. Auto snapshots all hero CP, assigns sequentially, and enters disposal only after accurate saved before/after CP floats finish. Replacement destroys old gear without Essence. Explicit disposal converts missed upgrades in its snapshot, with later arrivals preserved. COT updates from committed individual events and requires a click to claim; its Reward Obtained receipt lasts 1.5 seconds, dismantle 2 seconds. Combat damage renders beneath modal layers.

@@ -138,7 +138,7 @@ test('hero redesign uses saved canonical data and stays contained across portrai
    const mainNav=page.locator('#game-meta-nav');
    assert.equal(await mainNav.locator('button').count(),5,'fixture renders the production shared navigation');
    assert.equal(await mainNav.locator('button[aria-current="page"]').innerText(),'HERO','hero is the active shared-navigation destination');
-   assert.equal(await mainNav.locator('button img').count(),4,'the four production navigation badges use decoded artwork');
+   assert.equal(await mainNav.locator('button img').count(),5,'the five production navigation badges use decoded artwork');
    assert.equal(await mainNav.locator('button img').evaluateAll(images=>images.every(image=>image.complete&&image.naturalWidth>0)),true,'shared navigation artwork is loaded');
    const heroes=Object.values(progress.heroes);
    assert.deepEqual(heroes.map(hero=>heroDefinition(hero).actives.length),[8,8,8,9],'the saved roster contains the complete eight- and nine-skill kits');

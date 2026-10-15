@@ -96,7 +96,7 @@
 
 - Lamp presentation verifies 15-second idle guidance, Hondo-to-Auto-Equip targeting and dismissal by ordinary document clicks using an offset monotonic clock, preserving live combat timing.
 
-- Lamp draws preserve the configured saved party EXP and timing. Essence is a bank, never a level calculation: each earned lamp level requires four explicitly purchased stages, then seven-hour construction and automatic completion. `capacityTier` is level minus one; optional v5 `upgradeStage` defaults to zero. Levels 1–100 interpolate the original initial/final rarity odds; capacity grows as 20 + round(10 × (level − 1)^1.5), with paid costs starting at 400 Essence and growing 20% per level. Future gear gains 0.5% linear stat scaling per map ordinal. Saved gear rolls, hero EXP and earned lamp levels remain intact.
+- Bag draws preserve old saved EXP while granting none. Paid upgrade stages, construction and rarity/capacity progression stay unchanged.
 
 - Lamp cache presentation checks five full-width square columns, a stable two-to-two-and-a-half-row scroll viewport, selected halo and preserved idle guidance across four phone widths.
 
@@ -106,9 +106,9 @@
 
 - Every successful lamp emission shares a saved two-second minimum interval. The core rejects early calls before rolling or granting EXP; UI disables/re-enables the lamp from that saved cooldown. Auto keeps its five-second cadence. Reloads, concurrent clicks and switching manual/Auto cannot reset the gate.
 
-- Dismantling grants essence only. It never changes cumulative party EXP, hero EXP/levels or emits an EXP float; only post-confirmation resource receipts show essence. Lamp emissions remain the EXP source.
+- Dismantling grants Essence only. Gear draws grant zero EXP; Hero ticket spends use saved progression receipts.
 
-- Confirmed dismantling closes the item modal and shows a passive essence reward strip with one original orb and the saved awarded total. Hold three seconds, fade over 250ms, remove automatically. No Close/Continue control; pointer events pass through to combat. Failed saves never show rewards.
+- Receipt tests enforce two seconds for dismantling and 1.5 seconds for COT, then automatic removal.
 
 - Lamp restart proof separates durable cache/EXP/loadouts from session arrivals. Test saved Auto-on restarts off, idle emits nothing, the first manual burp appears, and an explicit unlocked Auto toggle resumes generation.
 
@@ -164,3 +164,5 @@
 - `heroScreenUILayout.test.mjs` serves the production Hero renderer, shared gear CSS/atlas and navigation in isolated browser contexts. Check portrait/row/tab/footer geometry at reference, compact Retina and natural sizes, all canonical active skills through four-card pages, actual metadata and unlock gates, hero/tab selection, and byte-identical saved/in-memory progression and loadouts. Keep isolated fixture proof distinct from native full-app captures.
 
 - Hero CP refresh proof keeps stale combat actors beside updated canonical progression, checks next-render CP across heroes and all tabs, and verifies manual/Auto equip receipts match saved and live CP before resolving.
+
+- Bag/Equip regression proof covers sorted sequential matching-slot assignment, slot-CP/hero-CP/party-order ties, permanent replacement destruction, player-controlled manual review, saved CP feedback before Auto disposal, and explicit conversion of missed upgrades. Keep concurrent arrival, held item, replay and failed-save coverage. Bag VFX/count tests use the installed browser through CHROME_BIN.
