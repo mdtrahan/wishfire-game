@@ -44,6 +44,7 @@
 - The optional `--autoEquip true` scenario clicks the visible Collect and Auto-Equip lamp controls during combat and records initial/final equipped slots and lamp emissions. Reports without that flag observe fresh unbuffed play; do not present them as geared player outcomes.
 - For matched equipment draws, `--lampSeed <uint32>` preloads a fresh save built by the game's own lamp constructor before startup. The harness verifies and reports the loaded seed; collection and equipping still use visible controls. A shared lamp seed does not imply identical final gear when sessions take different actions or durations, so compare recorded loadouts.
 - `--saveLampFixture <path>` exports a headless session's lamp save for reuse. `--lampFixture <path>` validates that save through the served build's conveyor rules and preloads the same equipment state in each isolated browser context. The reported SHA-256 covers exact fixture file bytes. Compare opening hero stats before calling a matrix matched-strength.
+- `--heroSlots` accepts four comma-separated canonical hero slots, including empty slots, through the existing dev tooling config before Canvas START. Verify and report the applied party so healer and no-healer runs cannot silently use a different roster.
 - `--maxBossClears 1` targets a boss victory instead of ordinary-wave count. After a recovery latches manual retry, the harness uses the visible Summon Boss control; a boss trial must record its own clearance and completion.
 
 ## Work Guidance

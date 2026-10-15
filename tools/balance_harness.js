@@ -256,13 +256,17 @@ async function clickCanvasWorld(page, point) {
 async function enterRealtimeCombat(page, config, seed) {
   await waitForGameHooks(page, config);
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text())?.flags?.layout0Ready === true, null, { timeout: config.readyTimeoutMs });
-  await page.evaluate((encounterSeed) => {
+  await page.evaluate(({ encounterSeed, heroSlots }) => {
     window.__codexGame.setEncounterRequest({ seed: encounterSeed, maxSlots: 3, policy: 'mixed' });
     window.__codexGame.globals.DevBalanceCapture = true;
     window.__codexGame.globals.BalanceCombatEventSeq = 0;
     window.__codexGame.globals.BalanceCombatEvents = [];
-    return window.__codexGame.applyDevToolingConfig({ combatSpeed: 4 });
-  }, seed);
+    return window.__codexGame.applyDevToolingConfig({ combatSpeed: 4, ...(heroSlots ? { heroSlots } : {}) });
+  }, { encounterSeed: seed, heroSlots: config.heroSlots });
+  if (config.heroSlots) {
+    const applied = (await readRuntimeState(page)).heroScreen?.activePartySlots;
+    if (JSON.stringify(applied) !== JSON.stringify(config.heroSlots)) throw new Error(`Requested hero slots were not applied: ${JSON.stringify(applied)}`);
+  }
   await clickCanvasWorld(page, START_WORLD_POINT);
   await page.waitForFunction(() => {
     const state = JSON.parse(window.render_game_to_text());
@@ -412,7 +416,7 @@ async function runSession(page, config, sessionId) {
   }
   await page.goto(`${config.origin}/web-runner/index.html`, { waitUntil: 'domcontentloaded' });
   await page.setViewportSize(config.viewport);
-  await enterRealtimeCombat(page, config, seed);
+  const combatState = await enterRealtimeCombat(page, config, seed);
 
   let snapshot = await readBalanceSnapshot(page);
   if (lampFixture && snapshot.lampSeed !== lampFixture.seed) throw new Error('Lamp fixture was not loaded');
@@ -662,6 +666,7 @@ async function runSession(page, config, sessionId) {
     openingRoam,
     continuousProgressionStart: snapshotAtStart,
     continuousProgressionEnd: snapshot.continuousProgression,
+    partyFixture: { requested: config.heroSlots, activeSlots: combatState.heroScreen?.activePartySlots || null },
     equipment: { scenario: config.autoEquip ? 'collect_auto_equip' : 'observe_only', fixture: lampFixture ? { source: config.lampFixture || 'seeded_new_save', sha256: lampFixture.sha256 } : null, savedFixture: savedLampFixture, start: startingEquipment, end: { slots: equippedSlotCount(snapshot.loadouts), lampSeed: snapshot.lampSeed, lampSequence: snapshot.lampSequence, loadouts: snapshot.loadouts }, actions: equipmentActions },
     captures,
     finalArena: ['deadlock', 'timeout'].includes(endReason) ? { heroes: snapshot.heroes.map(hero => ({ uid: hero.uid, name: hero.name, x: hero.x, y: hero.y, hp: hero.hp, arenaTargetUID: hero.arenaTargetUID })), enemies: snapshot.enemies.map(enemy => ({ uid: enemy.uid, name: enemy.name, x: enemy.x, y: enemy.y, hp: enemy.hp, slot: enemy.slot, streamState: enemy.streamState, streamEngageX: enemy.streamEngageX, arenaTargetUID: enemy.arenaTargetUID, arenaInReach: enemy.arenaInReach })), initialRoam: snapshot.initialRoam, readiness: snapshot.readiness } : null,
@@ -757,7 +762,7 @@ function writeOutputs(config, sessions, aggregate) {
   fs.mkdirSync(config.outputDir, { recursive: true });
   const jsonPath = path.join(config.outputDir, 'balance_metrics.json');
   const csvPath = path.join(config.outputDir, 'session_results.csv');
-  const run = { source: config.source, harnessSource: config.harnessSource, serveRoot: config.serveRoot, seedStart: config.seedStart, lampSeed: config.lampSeed, lampFixture: config.lampFixture || null, sessions: config.sessions, maxWaves: config.maxWaves, maxBossClears: config.maxBossClears, autoEquip: config.autoEquip, captureFrames: config.captureFrames, statePollMs: config.statePollMs, sessionTimeoutMs: config.sessionTimeoutMs, deadlockTimeoutMs: config.deadlockTimeoutMs, viewport: config.viewport };
+  const run = { source: config.source, harnessSource: config.harnessSource, serveRoot: config.serveRoot, seedStart: config.seedStart, lampSeed: config.lampSeed, lampFixture: config.lampFixture || null, heroSlots: config.heroSlots, sessions: config.sessions, maxWaves: config.maxWaves, maxBossClears: config.maxBossClears, autoEquip: config.autoEquip, captureFrames: config.captureFrames, statePollMs: config.statePollMs, sessionTimeoutMs: config.sessionTimeoutMs, deadlockTimeoutMs: config.deadlockTimeoutMs, viewport: config.viewport };
   fs.writeFileSync(jsonPath, `${JSON.stringify({ run, aggregate, sessions }, null, 2)}\n`, 'utf8');
   fs.writeFileSync(csvPath, toCsv([
     ['session_id', 'seed', 'enemies_defeated', 'waves_completed', 'bosses_cleared', 'defeat_recoveries', 'simulation_seconds_survived', 'first_ko_side', 'first_ko_time', 'hero_casualties', 'deadlock_count', 'end_reason', 'continuous_progression_start', 'continuous_progression_end'],
@@ -774,6 +779,9 @@ function buildConfig(argSource = parseArgs(process.argv.slice(2)), env = process
   if (lampSeed !== null && (!Number.isInteger(lampSeed) || lampSeed < 0 || lampSeed > 0xffffffff)) throw new Error('lampSeed must be a uint32');
   const lampFixture = readText(args.lampFixture ?? env.BALANCE_LAMP_FIXTURE);
   const saveLampFixture = readText(args.saveLampFixture ?? env.BALANCE_SAVE_LAMP_FIXTURE);
+  const heroSlotsInput = readText(args.heroSlots ?? env.BALANCE_HERO_SLOTS);
+  const heroSlots = heroSlotsInput ? heroSlotsInput.split(',').map(name => name.trim()) : null;
+  if (heroSlots && (heroSlots.length !== 4 || !heroSlots.some(Boolean) || new Set(heroSlots.filter(Boolean)).size !== heroSlots.filter(Boolean).length)) throw new Error('heroSlots must list four distinct slots with at least one hero');
   if (lampSeed !== null && lampFixture) throw new Error('Choose lampSeed or lampFixture');
   if (saveLampFixture && sessions !== 1) throw new Error('saveLampFixture requires one session');
   return {
@@ -783,6 +791,7 @@ function buildConfig(argSource = parseArgs(process.argv.slice(2)), env = process
     seedStart: clampInt(args.seedStart || env.BALANCE_SEED_START, 1, 0xC0DE0001),
     lampSeed,
     lampFixture: lampFixture ? path.resolve(lampFixture) : '',
+    heroSlots,
     saveLampFixture: saveLampFixture ? path.resolve(saveLampFixture) : '',
     serveRoot: path.resolve(args.serveRoot || env.BALANCE_SERVE_ROOT || REPO_ROOT),
     serverHost: env.BALANCE_SERVER_HOST || DEFAULTS.serverHost,

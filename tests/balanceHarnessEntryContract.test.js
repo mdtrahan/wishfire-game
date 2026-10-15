@@ -55,6 +55,18 @@ test('optional progression scenario uses visible lamp collection and auto-equip 
   assert.match(source, /equipment: \{ scenario: config\.autoEquip \? 'collect_auto_equip' : 'observe_only'/);
 });
 
+test('optional four-slot party fixture is applied and checked before combat', () => {
+  const slots = ['Falie', 'Huun', 'Runa', ''];
+  assert.deepEqual(buildConfig({ heroSlots: 'Falie,Huun,Runa,' }, {}).heroSlots, slots);
+  assert.equal(buildConfig({}, {}).heroSlots, null);
+  assert.throws(() => buildConfig({ heroSlots: 'Falie,Huun,Runa' }, {}), /heroSlots must list four/);
+  assert.throws(() => buildConfig({ heroSlots: ',,,' }, {}), /heroSlots must list four/);
+  assert.throws(() => buildConfig({ heroSlots: 'Falie,Falie,Runa,' }, {}), /heroSlots must list four/);
+  assert.match(source, /applyDevToolingConfig\(\{ combatSpeed: 4, \.\.\.\(heroSlots \? \{ heroSlots \} : \{\}\) \}\)/);
+  assert.ok(source.indexOf('Requested hero slots were not applied') < source.indexOf('await clickCanvasWorld(page, START_WORLD_POINT)'));
+  assert.match(source, /partyFixture: \{ requested: config\.heroSlots, activeSlots: combatState\.heroScreen\?\.activePartySlots \|\| null \}/);
+});
+
 test('fixed lamp seed fixture uses the game save constructor and reports the loaded seed', async () => {
   assert.equal(buildConfig({ lampSeed: '4242' }, {}).lampSeed, 4242);
   assert.equal(buildConfig({}, {}).lampSeed, null);
