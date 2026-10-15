@@ -9,7 +9,7 @@ const assert = require('node:assert/strict');
 const harnessPath = path.join(__dirname, '..', 'tools', 'balance_harness.js');
 const source = fs.readFileSync(harnessPath, 'utf8');
 const hookSource = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js'), 'utf8');
-const { START_WORLD_POINT, aggregateSessions, applyPostRecoveryWaveClear, buildConfig, isRealtimeCombatReadyState, loadHeroFixture, loadLampFixture, observeRecoveryTransition, observedOrdinaryWaveClear, sourceFingerprint, writeHeroFixture, writeLampFixture } = require(harnessPath);
+const { START_WORLD_POINT, aggregateSessions, applyPostRecoveryWaveClear, assertActiveLoadoutKeys, buildConfig, isRealtimeCombatReadyState, loadHeroFixture, loadLampFixture, observeRecoveryTransition, observedOrdinaryWaveClear, sourceFingerprint, writeHeroFixture, writeLampFixture } = require(harnessPath);
 
 test('source fingerprint changes when an untracked capture module changes', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'orka-balance-fingerprint-'));
@@ -65,6 +65,14 @@ test('optional four-slot party fixture is applied and checked before combat', ()
   assert.match(source, /applyDevToolingConfig\(\{ combatSpeed: 4, \.\.\.\(heroSlots \? \{ heroSlots \} : \{\}\) \}\)/);
   assert.ok(source.indexOf('Requested hero slots were not applied') < source.indexOf('await clickCanvasWorld(page, START_WORLD_POINT)'));
   assert.match(source, /partyFixture: \{ requested: config\.heroSlots, activeSlots: combatState\.heroScreen\?\.activePartySlots \|\| null, heroProgress:/);
+});
+
+test('lamp fixture rejects stale display-name loadouts for active instance keys', () => {
+  const stale = { heroes: [{ name: 'Falie', instanceKey: 'falie#1' }], loadouts: { Falie: { body: 'lamp:4242:0' } } };
+  assert.throws(() => assertActiveLoadoutKeys(stale), /Stale lamp loadout key for active Falie: expected falie#1/);
+  assert.doesNotThrow(() => assertActiveLoadoutKeys({ ...stale, loadouts: { ...stale.loadouts, 'falie#1': { body: 'lamp:4242:0' } } }));
+  assert.doesNotThrow(() => assertActiveLoadoutKeys({ heroes: [{ name: 'Falie', instanceKey: 'falie#1' }], loadouts: { Runa: { body: 'lamp:4242:2' } } }));
+  assert.match(source, /if \(config\.lampFixture\) assertActiveLoadoutKeys\(snapshot\)/);
 });
 
 test('fixed lamp seed fixture uses the game save constructor and reports the loaded seed', async () => {

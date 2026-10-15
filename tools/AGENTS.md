@@ -41,6 +41,7 @@
 - `--serveRoot` permits an unchanged SHA checkout as the game source while the harness runs from this lane. Reports pin both game and harness fingerprints. On older builds without the wave-clear or recovery counters, observed stage transitions are a limited fallback; ambiguous changes stay explicit, and missing recovery/ordered-event telemetry stays unknown.
 - On deadlock or timeout, preserve the final rendered frame, actor coordinates and enemy stream state so movement stalls can be distinguished from unavailable enemies.
 - Session output includes each starting hero's level, combat stats, attack type and CP plus starting/ending equipment loadouts for strength-matched comparisons.
+- A supplied lamp fixture fails before measurement when an active clone's display-name loadout has gear but its distinct instance key does not; inactive-hero loadouts remain valid.
 - Boss attempt records distinguish clear, KO recovery and harness timeout, preserving last observed HP. The current runtime has no observed boss game timer, so harness timeout must never be reported as a game timer loss.
 - Defeat recovery is a normal route through continuous stages. Balance acceptance gates earned wave completion and deadlocks; recovery count remains a diagnostic and separate recovery fixture surface.
 - The optional `--autoEquip true` scenario clicks the visible Collect and Auto-Equip lamp controls during combat and records initial/final equipped slots and lamp emissions. Reports without that flag observe fresh unbuffed play; do not present them as geared player outcomes.
