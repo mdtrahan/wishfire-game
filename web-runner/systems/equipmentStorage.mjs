@@ -33,7 +33,9 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=g
   for(const hero of [...Object.values(globals.HeroProgress?.heroes||{}),...getActors().filter(a=>a.kind==='hero')]){
    const exp=record.partyEXP-(hero.lampEXPClaimed||0);
    if(exp>0){awardHeroEXP(hero,exp);hero.lampEXPClaimed=record.partyEXP;globals.HeroProgressDirty=true;}
-   const stats=equipmentStats(record.items,record.loadouts[hero.heroInstanceKey]);
+   const canonical=hero.baseHeroName;
+   const primary=hero.heroInstanceKey===canonical||hero.heroInstanceKey===`${canonical?.toLowerCase()}#1`;
+   const stats=equipmentStats(record.items,record.loadouts[hero.heroInstanceKey]??(primary?record.loadouts[canonical]:undefined));
    if(JSON.stringify(hero.equipmentStats||{})!==JSON.stringify(stats)){
     hero.equipmentStats=stats;refreshHeroStats(hero);hero.hp=Math.min(hero.hp,hero.maxHP);globals.HeroProgressDirty=true;
    }

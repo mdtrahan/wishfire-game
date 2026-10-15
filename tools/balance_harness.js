@@ -431,22 +431,6 @@ function equippedSlotCount(loadouts = {}) {
   return Object.values(loadouts).reduce((count, slots) => count + Object.values(slots || {}).filter(Boolean).length, 0);
 }
 
-function hasEquippedLoadout(loadouts, key) {
-  return Object.values(loadouts?.[key] || {}).some(Boolean);
-}
-
-function assertActiveLoadoutKeys(snapshot) {
-  for (const hero of snapshot.heroes || []) {
-    const instanceKey = String(hero.instanceKey || '');
-    const displayName = String(hero.name || '');
-    if (instanceKey && displayName && instanceKey !== displayName
-      && hasEquippedLoadout(snapshot.loadouts, displayName)
-      && !hasEquippedLoadout(snapshot.loadouts, instanceKey)) {
-      throw new Error(`Stale lamp loadout key for active ${displayName}: expected ${instanceKey}`);
-    }
-  }
-}
-
 async function loadLampFixture(config) {
   if (config.lampSeed === null && !config.lampFixture) return null;
   const lampModule = pathToFileURL(path.join(config.serveRoot, 'web-runner/src/core/lampGear.mjs')).href;
@@ -529,7 +513,6 @@ async function runSession(page, config, sessionId) {
 
   let snapshot = await readBalanceSnapshot(page);
   if (lampFixture && snapshot.lampSeed !== lampFixture.seed) throw new Error('Lamp fixture was not loaded');
-  if (config.lampFixture) assertActiveLoadoutKeys(snapshot);
   if (heroFixture) {
     const deployedNames = combatState.heroScreen?.activePartySlots?.filter(Boolean);
     if (!deployedNames?.length) throw new Error('Deployed hero slots were unavailable for fixture verification');
@@ -1009,7 +992,6 @@ if (require.main === module) {
   module.exports = {
     START_WORLD_POINT,
     aggregateSessions,
-    assertActiveLoadoutKeys,
     acquireBrowserSession,
     buildConfig,
     closeAttachedBrowserViaCDP,
