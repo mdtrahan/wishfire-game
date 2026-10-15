@@ -9,7 +9,7 @@ const assert = require('node:assert/strict');
 const harnessPath = path.join(__dirname, '..', 'tools', 'balance_harness.js');
 const source = fs.readFileSync(harnessPath, 'utf8');
 const hookSource = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js'), 'utf8');
-const { START_WORLD_POINT, aggregateSessions, buildConfig, isRealtimeCombatReadyState, loadLampFixture, observedOrdinaryWaveClear, sourceFingerprint, writeLampFixture } = require(harnessPath);
+const { START_WORLD_POINT, aggregateSessions, buildConfig, isRealtimeCombatReadyState, loadHeroFixture, loadLampFixture, observedOrdinaryWaveClear, sourceFingerprint, writeHeroFixture, writeLampFixture } = require(harnessPath);
 
 test('source fingerprint changes when an untracked capture module changes', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'orka-balance-fingerprint-'));
@@ -64,7 +64,7 @@ test('optional four-slot party fixture is applied and checked before combat', ()
   assert.throws(() => buildConfig({ heroSlots: 'Falie,Falie,Runa,' }, {}), /heroSlots must list four/);
   assert.match(source, /applyDevToolingConfig\(\{ combatSpeed: 4, \.\.\.\(heroSlots \? \{ heroSlots \} : \{\}\) \}\)/);
   assert.ok(source.indexOf('Requested hero slots were not applied') < source.indexOf('await clickCanvasWorld(page, START_WORLD_POINT)'));
-  assert.match(source, /partyFixture: \{ requested: config\.heroSlots, activeSlots: combatState\.heroScreen\?\.activePartySlots \|\| null \}/);
+  assert.match(source, /partyFixture: \{ requested: config\.heroSlots, activeSlots: combatState\.heroScreen\?\.activePartySlots \|\| null, heroProgress:/);
 });
 
 test('fixed lamp seed fixture uses the game save constructor and reports the loaded seed', async () => {
@@ -110,6 +110,53 @@ test('lamp fixture import and export preserve raw bytes, loadout, and reject cor
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('hero fixture import and export preserve raw bytes and reject normalized progression', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'orka-hero-fixture-'));
+  try {
+    const { createHeroProgressStore, newHeroProgress, refreshHeroStats } = await import('../web-runner/src/core/heroProgression.mjs');
+    const fixture = createHeroProgressStore();
+    fixture.heroes.Falie.currentLevel = 4;
+    fixture.heroes.Falie.currentEXP = 0;
+    refreshHeroStats(fixture.heroes.Falie);
+    fixture.heroes.Falie.hp = 21;
+    fixture.heroes['falie#1'] = newHeroProgress('Falie', 'falie#1');
+    fixture.heroes['falie#1'].currentLevel = 7;
+    refreshHeroStats(fixture.heroes['falie#1']);
+    fixture.heroes['falie#1'].hp = 30;
+    const raw = `${JSON.stringify(fixture, null, 2)}\n`;
+    const file = path.join(root, 'hero.json');
+    const exported = writeHeroFixture(file, raw);
+    const actualSha = createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+    assert.equal(exported.sha256, actualSha);
+    const loaded = await loadHeroFixture({ serveRoot: path.join(__dirname, '..'), heroFixture: file });
+    assert.equal(loaded.save, raw);
+    assert.equal(loaded.sha256, actualSha);
+    assert.deepEqual(loaded.heroes.find((hero) => hero.id === 'Falie'), { id: 'Falie', name: 'Falie', currentLevel: 4, hp: 21, maxHp: 99 });
+    assert.deepEqual(loaded.heroes.find((hero) => hero.id === 'falie#1'), { id: 'falie#1', name: 'Falie', currentLevel: 7, hp: 30, maxHp: 123 });
+    assert.equal(await loadHeroFixture({ serveRoot: path.join(__dirname, '..'), heroFixture: '' }), null);
+    fs.writeFileSync(file, '{bad json');
+    await assert.rejects(loadHeroFixture({ serveRoot: path.join(__dirname, '..'), heroFixture: file }), SyntaxError);
+    fs.writeFileSync(file, JSON.stringify({ ...fixture, heroes: { ...fixture.heroes, Falie: { ...fixture.heroes.Falie, currentLevel: 999 } } }));
+    await assert.rejects(loadHeroFixture({ serveRoot: path.join(__dirname, '..'), heroFixture: file }), /normalized or invalid/);
+    fs.writeFileSync(file, JSON.stringify({ ...fixture, heroes: { ...fixture.heroes, Falie: { ...fixture.heroes.Falie, maxHP: 999 } } }));
+    await assert.rejects(loadHeroFixture({ serveRoot: path.join(__dirname, '..'), heroFixture: file }), /normalized or invalid/);
+    fs.writeFileSync(file, JSON.stringify({ ...fixture, version: 1 }));
+    await assert.rejects(loadHeroFixture({ serveRoot: path.join(__dirname, '..'), heroFixture: file }), /version is unsupported/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('hero fixture options preload before navigation and only export one isolated session', () => {
+  assert.equal(buildConfig({ heroFixture: '/tmp/heroes.json' }, {}).heroFixture, '/tmp/heroes.json');
+  assert.throws(() => buildConfig({ sessions: '2', saveHeroFixture: '/tmp/heroes.json' }, {}), /saveHeroFixture requires one session/);
+  assert.match(source, /localStorage\.setItem\('orka\.hero_progress\.v2', value\)/);
+  assert.ok(source.indexOf("localStorage.setItem('orka.hero_progress.v2', value)") < source.indexOf('await page.goto'));
+  assert.match(source, /Hero fixture was not applied/);
+  assert.match(source, /fixtureById\.get\(hero\.instanceKey\)/);
+  assert.match(source, /savedHeroFixture = writeHeroFixture\(config\.saveHeroFixture, save\)/);
 });
 
 test('boss target uses the visible manual Summon Boss control after a recovery', () => {

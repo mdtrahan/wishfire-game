@@ -6,6 +6,7 @@
 ## Ownership
 - `serve_web.js` serves the browser runner and writes `web-runner/runtime-fingerprint.js`.
 - `balance_harness.js` is the canonical batch game automation path.
+- Balance fixtures preload lamp and `orka.hero_progress.v2` saves before navigation, preserve input/output bytes for provenance, and reject progression saves whose version, roster, identity, level, or HP would normalize on restore.
 - `ui_presentation_lock_gate.mjs` is the canonical fail-closed rendered presentation gate for approved responsive UI seams.
 - UI-lock startup waits for realtime basic clocks, then its automatic-focus check uses the shared encounter filter and basic-target selector. Focus may be zero only when no living hero can reach a living eligible enemy in the committed encounter; nonzero focus must match the canonical selector.
 - Playwright doctor, launch matrix, and Chrome CDP helpers diagnose browser startup/control issues.

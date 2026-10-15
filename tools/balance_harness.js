@@ -301,7 +301,7 @@ async function readBalanceSnapshot(page, afterEventId = 0) {
       lampPendingIds: (state.lamp?.pending || []).map(String),
       heroes: state.heroes.map((hero) => {
         const uid = Number(hero.uid || 0), actor = actors.get(uid);
-        return { uid, name: String(hero.name || ''), x: Number(hero.x || 0), y: Number(hero.y || 0),
+        return { uid, instanceKey: String(actor?.heroInstanceKey || ''), name: String(hero.name || ''), x: Number(hero.x || 0), y: Number(hero.y || 0),
           footX: Number(actor?.footX ?? hero.x ?? 0), arenaTargetUID: Number(actor?.arenaTargetUID || 0),
           hp: Number(hero.hp || 0), maxHp: Number(hero.maxHp || 0),
           currentLevel: Number(actor?.currentLevel ?? hero.currentLevel ?? 1),
@@ -404,9 +404,48 @@ function writeLampFixture(file, save) {
   return { path: file, sha256: createHash('sha256').update(Buffer.from(save, 'utf8')).digest('hex') };
 }
 
+function validateHeroFixture(fixture, store) {
+  if (!fixture || fixture.version !== 2 || !fixture.heroes || typeof fixture.heroes !== 'object' || Array.isArray(fixture.heroes)) {
+    throw new Error('Hero fixture must be an orka.hero_progress.v2 store');
+  }
+  const fixtureIds = Object.keys(fixture.heroes).sort();
+  if (!fixtureIds.length || fixtureIds.length !== Object.keys(store.heroes).length) throw new Error('Hero fixture has an unexpected hero roster');
+  for (const id of fixtureIds) {
+    const saved = fixture.heroes[id];
+    const restored = store.heroes[id];
+    if (!saved || typeof saved !== 'object' || !restored
+      || saved.heroInstanceKey !== id || saved.baseHeroName !== restored.baseHeroName || saved.name !== restored.name
+      || !Number.isInteger(saved.currentLevel) || saved.currentLevel !== restored.currentLevel
+      || !Number.isFinite(saved.hp) || saved.hp < 0 || saved.hp > restored.maxHP || saved.hp !== restored.hp
+      || !Number.isFinite(saved.maxHP) || saved.maxHP !== restored.maxHP) {
+      throw new Error(`Hero fixture was normalized or invalid for ${id}`);
+    }
+  }
+  return fixtureIds.map((id) => ({ id, name: store.heroes[id].name, currentLevel: store.heroes[id].currentLevel, hp: store.heroes[id].hp, maxHp: store.heroes[id].maxHP }));
+}
+
+async function loadHeroFixture(config) {
+  if (!config.heroFixture) return null;
+  const progressModule = pathToFileURL(path.join(config.serveRoot, 'web-runner/src/core/heroProgression.mjs')).href;
+  const { createHeroProgressStore, HERO_PROGRESS_VERSION } = await import(progressModule);
+  const raw = fs.readFileSync(config.heroFixture);
+  const save = raw.toString('utf8');
+  const fixture = JSON.parse(save);
+  if (fixture?.version !== HERO_PROGRESS_VERSION) throw new Error('Hero fixture version is unsupported');
+  const store = createHeroProgressStore(fixture);
+  return { save, sha256: createHash('sha256').update(raw).digest('hex'), heroes: validateHeroFixture(fixture, store) };
+}
+
+function writeHeroFixture(file, save) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, save, 'utf8');
+  return { path: file, sha256: createHash('sha256').update(Buffer.from(save, 'utf8')).digest('hex') };
+}
+
 async function runSession(page, config, sessionId) {
   const seed = config.seedStart + sessionId - 1;
   const lampFixture = await loadLampFixture(config);
+  const heroFixture = await loadHeroFixture(config);
   if (lampFixture) {
     await page.addInitScript(({ value }) => {
       if (sessionStorage.getItem('__balanceLampFixture') === '1') return;
@@ -414,14 +453,36 @@ async function runSession(page, config, sessionId) {
       sessionStorage.setItem('__balanceLampFixture', '1');
     }, { value: lampFixture.save });
   }
+  if (heroFixture) {
+    await page.addInitScript(({ value }) => {
+      if (sessionStorage.getItem('__balanceHeroFixture') === '1') return;
+      localStorage.setItem('orka.hero_progress.v2', value);
+      sessionStorage.setItem('__balanceHeroFixture', '1');
+    }, { value: heroFixture.save });
+  }
   await page.goto(`${config.origin}/web-runner/index.html`, { waitUntil: 'domcontentloaded' });
   await page.setViewportSize(config.viewport);
   const combatState = await enterRealtimeCombat(page, config, seed);
 
   let snapshot = await readBalanceSnapshot(page);
   if (lampFixture && snapshot.lampSeed !== lampFixture.seed) throw new Error('Lamp fixture was not loaded');
+  if (heroFixture) {
+    const deployedNames = combatState.heroScreen?.activePartySlots?.filter(Boolean);
+    if (!deployedNames?.length) throw new Error('Deployed hero slots were unavailable for fixture verification');
+    const fixtureById = new Map(heroFixture.heroes.map((hero) => [hero.id, hero]));
+    const observed = snapshot.heroes.map((hero) => ({ id: hero.instanceKey, name: hero.name, currentLevel: hero.currentLevel, hp: hero.hp })).sort((a, b) => a.id.localeCompare(b.id));
+    const expected = snapshot.heroes.map((hero) => fixtureById.get(hero.instanceKey)).filter(Boolean).map(({ id, name, currentLevel, hp }) => ({ id, name, currentLevel, hp })).sort((a, b) => a.id.localeCompare(b.id));
+    if (JSON.stringify(observed) !== JSON.stringify(expected)) {
+      const persisted = await page.evaluate(() => {
+        const raw = localStorage.getItem('orka.hero_progress.v2');
+        const saved = raw ? JSON.parse(raw) : null;
+        return { savedLevels: Object.fromEntries(Object.entries(saved?.heroes || {}).map(([id, hero]) => [id, hero.currentLevel])), runtimeLevels: Object.fromEntries(Object.entries(window.__codexGame.globals.HeroProgress?.heroes || {}).map(([id, hero]) => [id, hero.currentLevel])), storageError: String(window.__codexGame.globals.HeroProgressStorageError || '') };
+      });
+      throw new Error(`Hero fixture was not applied: ${JSON.stringify({ expected, observed, persisted })}`);
+    }
+  }
   const startSimulationTime = snapshot.time;
-  const heroMetrics = snapshot.heroes.map((hero) => ({ uid: hero.uid, name: hero.name, currentLevel: hero.currentLevel, combatPower: hero.combatPower, attackType: hero.attackType, stats: hero.stats, startHp: hero.hp, minSampledHp: hero.hp, minEventHp: hero.hp, endHp: hero.hp, sampledHpLoss: 0, largestSampleWindowHpLoss: 0, sampledRecovery: 0, physicalIncomingDamage: 0, magicIncomingDamage: 0, unknownIncomingDamage: 0, effectiveHealing: 0, healingBySourceUID: {}, firstKoTime: null, lastHp: hero.hp, startMaxHp: hero.maxHp, maxHp: hero.maxHp }));
+  const heroMetrics = snapshot.heroes.map((hero) => ({ uid: hero.uid, instanceKey: hero.instanceKey, name: hero.name, currentLevel: hero.currentLevel, combatPower: hero.combatPower, attackType: hero.attackType, stats: hero.stats, startHp: hero.hp, minSampledHp: hero.hp, minEventHp: hero.hp, endHp: hero.hp, sampledHpLoss: 0, largestSampleWindowHpLoss: 0, sampledRecovery: 0, physicalIncomingDamage: 0, magicIncomingDamage: 0, unknownIncomingDamage: 0, effectiveHealing: 0, healingBySourceUID: {}, firstKoTime: null, lastHp: hero.hp, startMaxHp: hero.maxHp, maxHp: hero.maxHp }));
   const defeatedEnemyUIDs = new Set();
   const heroCasualties = new Map();
   const incomingDamageEvents = [];
@@ -658,6 +719,12 @@ async function runSession(page, config, sessionId) {
     if (!save) throw new Error('Lamp save was unavailable for fixture export');
     savedLampFixture = writeLampFixture(config.saveLampFixture, save);
   }
+  let savedHeroFixture = null;
+  if (config.saveHeroFixture) {
+    const save = await page.evaluate(() => localStorage.getItem('orka.hero_progress.v2'));
+    if (!save) throw new Error('Hero progression save was unavailable for fixture export');
+    savedHeroFixture = writeHeroFixture(config.saveHeroFixture, save);
+  }
   return {
     sessionId,
     seed,
@@ -666,7 +733,7 @@ async function runSession(page, config, sessionId) {
     openingRoam,
     continuousProgressionStart: snapshotAtStart,
     continuousProgressionEnd: snapshot.continuousProgression,
-    partyFixture: { requested: config.heroSlots, activeSlots: combatState.heroScreen?.activePartySlots || null },
+    partyFixture: { requested: config.heroSlots, activeSlots: combatState.heroScreen?.activePartySlots || null, heroProgress: heroFixture ? { source: config.heroFixture, sha256: heroFixture.sha256, expected: heroFixture.heroes, observed: heroMetrics.map(({ instanceKey, name, currentLevel, startHp, startMaxHp, stats, combatPower }) => ({ id: instanceKey, name, currentLevel, hp: startHp, maxHp: startMaxHp, stats, combatPower })) } : null, savedHeroFixture },
     equipment: { scenario: config.autoEquip ? 'collect_auto_equip' : 'observe_only', fixture: lampFixture ? { source: config.lampFixture || 'seeded_new_save', sha256: lampFixture.sha256 } : null, savedFixture: savedLampFixture, start: startingEquipment, end: { slots: equippedSlotCount(snapshot.loadouts), lampSeed: snapshot.lampSeed, lampSequence: snapshot.lampSequence, loadouts: snapshot.loadouts }, actions: equipmentActions },
     captures,
     finalArena: ['deadlock', 'timeout'].includes(endReason) ? { heroes: snapshot.heroes.map(hero => ({ uid: hero.uid, name: hero.name, x: hero.x, y: hero.y, hp: hero.hp, arenaTargetUID: hero.arenaTargetUID })), enemies: snapshot.enemies.map(enemy => ({ uid: enemy.uid, name: enemy.name, x: enemy.x, y: enemy.y, hp: enemy.hp, slot: enemy.slot, streamState: enemy.streamState, streamEngageX: enemy.streamEngageX, arenaTargetUID: enemy.arenaTargetUID, arenaInReach: enemy.arenaInReach })), initialRoam: snapshot.initialRoam, readiness: snapshot.readiness } : null,
@@ -762,7 +829,7 @@ function writeOutputs(config, sessions, aggregate) {
   fs.mkdirSync(config.outputDir, { recursive: true });
   const jsonPath = path.join(config.outputDir, 'balance_metrics.json');
   const csvPath = path.join(config.outputDir, 'session_results.csv');
-  const run = { source: config.source, harnessSource: config.harnessSource, serveRoot: config.serveRoot, seedStart: config.seedStart, lampSeed: config.lampSeed, lampFixture: config.lampFixture || null, heroSlots: config.heroSlots, sessions: config.sessions, maxWaves: config.maxWaves, maxBossClears: config.maxBossClears, autoEquip: config.autoEquip, captureFrames: config.captureFrames, statePollMs: config.statePollMs, sessionTimeoutMs: config.sessionTimeoutMs, deadlockTimeoutMs: config.deadlockTimeoutMs, viewport: config.viewport };
+  const run = { source: config.source, harnessSource: config.harnessSource, serveRoot: config.serveRoot, seedStart: config.seedStart, lampSeed: config.lampSeed, lampFixture: config.lampFixture || null, heroFixture: config.heroFixture || null, heroSlots: config.heroSlots, sessions: config.sessions, maxWaves: config.maxWaves, maxBossClears: config.maxBossClears, autoEquip: config.autoEquip, captureFrames: config.captureFrames, statePollMs: config.statePollMs, sessionTimeoutMs: config.sessionTimeoutMs, deadlockTimeoutMs: config.deadlockTimeoutMs, viewport: config.viewport };
   fs.writeFileSync(jsonPath, `${JSON.stringify({ run, aggregate, sessions }, null, 2)}\n`, 'utf8');
   fs.writeFileSync(csvPath, toCsv([
     ['session_id', 'seed', 'enemies_defeated', 'waves_completed', 'bosses_cleared', 'defeat_recoveries', 'simulation_seconds_survived', 'first_ko_side', 'first_ko_time', 'hero_casualties', 'deadlock_count', 'end_reason', 'continuous_progression_start', 'continuous_progression_end'],
@@ -779,11 +846,14 @@ function buildConfig(argSource = parseArgs(process.argv.slice(2)), env = process
   if (lampSeed !== null && (!Number.isInteger(lampSeed) || lampSeed < 0 || lampSeed > 0xffffffff)) throw new Error('lampSeed must be a uint32');
   const lampFixture = readText(args.lampFixture ?? env.BALANCE_LAMP_FIXTURE);
   const saveLampFixture = readText(args.saveLampFixture ?? env.BALANCE_SAVE_LAMP_FIXTURE);
+  const heroFixture = readText(args.heroFixture ?? env.BALANCE_HERO_FIXTURE);
+  const saveHeroFixture = readText(args.saveHeroFixture ?? env.BALANCE_SAVE_HERO_FIXTURE);
   const heroSlotsInput = readText(args.heroSlots ?? env.BALANCE_HERO_SLOTS);
   const heroSlots = heroSlotsInput ? heroSlotsInput.split(',').map(name => name.trim()) : null;
   if (heroSlots && (heroSlots.length !== 4 || !heroSlots.some(Boolean) || new Set(heroSlots.filter(Boolean)).size !== heroSlots.filter(Boolean).length)) throw new Error('heroSlots must list four distinct slots with at least one hero');
   if (lampSeed !== null && lampFixture) throw new Error('Choose lampSeed or lampFixture');
   if (saveLampFixture && sessions !== 1) throw new Error('saveLampFixture requires one session');
+  if (saveHeroFixture && sessions !== 1) throw new Error('saveHeroFixture requires one session');
   return {
     sessions,
     maxWaves: clampInt(args.maxWaves || env.BALANCE_MAX_WAVES, 1, DEFAULTS.maxWaves),
@@ -791,8 +861,10 @@ function buildConfig(argSource = parseArgs(process.argv.slice(2)), env = process
     seedStart: clampInt(args.seedStart || env.BALANCE_SEED_START, 1, 0xC0DE0001),
     lampSeed,
     lampFixture: lampFixture ? path.resolve(lampFixture) : '',
+    heroFixture: heroFixture ? path.resolve(heroFixture) : '',
     heroSlots,
     saveLampFixture: saveLampFixture ? path.resolve(saveLampFixture) : '',
+    saveHeroFixture: saveHeroFixture ? path.resolve(saveHeroFixture) : '',
     serveRoot: path.resolve(args.serveRoot || env.BALANCE_SERVE_ROOT || REPO_ROOT),
     serverHost: env.BALANCE_SERVER_HOST || DEFAULTS.serverHost,
     serverPort: clampInt(args.port || env.BALANCE_SERVER_PORT, 1, DEFAULTS.serverPort),
@@ -853,10 +925,12 @@ if (require.main === module) {
     buildConfig,
     closeAttachedBrowserViaCDP,
     isRealtimeCombatReadyState,
+    loadHeroFixture,
     loadLampFixture,
     parseArgs,
     sourceFingerprint,
     observedOrdinaryWaveClear,
+    writeHeroFixture,
     writeLampFixture,
   };
 }
