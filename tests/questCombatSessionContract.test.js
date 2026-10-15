@@ -1,5 +1,69 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+
+test('app-source outcome routing distinguishes ordinary first KO, boss survivor and boss wipe', async () => {
+ const {createQuestCombatSession,recoverContinuousOrdinaryDefeatIfNeeded}=await import('../web-runner/systems/questCombatSession.mjs');
+ const {createContinuousCombatStageState}=await import('../web-runner/src/core/continuousCombatStage.mjs');
+ const app=fs.readFileSync(require.resolve('../web-runner/app.js'),'utf8');
+ const tick=app.slice(app.indexOf('  function tick(){',app.indexOf('let frameCount = 0;')));
+ const simulationAt=tick.indexOf('combatSimulationTicker.tick(');
+ const ordinaryAt=tick.indexOf('recoverContinuousOrdinaryDefeatIfNeeded({ state, session: questCombat })');
+ const stageAt=tick.indexOf('maybeAdvanceContinuousCombatStage(');
+ const outcomeAt=tick.indexOf('checkMainRuntimeCombatOutcome()');
+ assert.ok(simulationAt>=0&&ordinaryAt>simulationAt&&stageAt>ordinaryAt&&outcomeAt>stageAt,
+  'the app tick routes ordinary KO recovery before stage and all-party outcome checks');
+ const start=app.indexOf('  function checkMainRuntimeCombatOutcome() {');
+ const end=app.indexOf('  function getEnemyHit(mx, my) {',start);
+ assert.ok(start>=0&&end>start,'production outcome functions are present');
+ const outcomeFunctions=app.slice(start,end);
+ const makeScenario=(bossActive)=>{
+  const stage=createContinuousCombatStageState(42,{region:1,stage:2});
+  Object.assign(stage,{wave:2,bossAvailable:bossActive,bossSummonRequired:bossActive,bossArmed:bossActive,bossActive});
+  const state={entities:[
+   {uid:1,kind:'hero',hp:0,maxHP:40,isAlive:false},
+   {uid:2,kind:'hero',hp:30,maxHP:40,isAlive:true},
+   ...(bossActive?[{uid:90,kind:'enemy',enemyRole:'boss',hp:100,maxHP:100}]:[]),
+  ],globals:{ContinuousCombatStageLoop:1,ContinuousCombatStage:stage,time:10,
+   EnemyData:[{name:'Gobloc',HP:20,ATK:2,DEF:2,MAG:1,RES:1,SPD:8,CombatPower:20}]}};
+  const calls=[];
+  const call=(name,row,slotIndex)=>{
+   calls.push(name);
+   if(name==='SpawnEnemy'){
+    const enemy={uid:100+slotIndex,kind:'enemy',name:row.name,enemyRole:row.enemyRole,hp:row.HP,maxHP:row.HP,slotIndex};
+    state.entities.push(enemy);
+    return enemy;
+   }
+   return null;
+  };
+  const session=createQuestCombatSession({state,gameState:{},call,sync(){}});
+  const context=vm.createContext({state,questCombat:session,
+   resolveMainRuntimeCombatOutcome:()=>({reason:'no_living_heroes'})});
+  const checkOutcome=vm.runInContext(`${outcomeFunctions}\ncheckMainRuntimeCombatOutcome`,context);
+  return {state,session,calls,checkOutcome};
+ };
+
+ const ordinary=makeScenario(false);
+ assert.equal(recoverContinuousOrdinaryDefeatIfNeeded({state:ordinary.state,session:ordinary.session}),true);
+ assert.deepEqual(ordinary.state.entities.filter(actor=>actor.kind==='hero').map(hero=>hero.hp),[40,40]);
+ assert.equal(ordinary.state.globals.ContinuousCombatStage.stage,2);
+ assert.equal(ordinary.state.globals.ContinuousCombatStage.wave,2);
+ assert.equal(ordinary.calls.filter(name=>name==='SettleContinuousCombatRewards').length,1);
+
+ const boss=makeScenario(true);
+ assert.equal(recoverContinuousOrdinaryDefeatIfNeeded({state:boss.state,session:boss.session}),false);
+ assert.equal(boss.checkOutcome(),false,'one surviving hero keeps the boss attempt active');
+ assert.equal(boss.state.globals.ContinuousCombatStage.bossActive,true);
+ boss.state.entities.find(actor=>actor.uid===2).hp=0;
+ boss.state.entities.find(actor=>actor.uid===2).isAlive=false;
+ assert.equal(boss.checkOutcome(),true,'the production outcome check routes a full wipe to recovery');
+ assert.equal(boss.state.globals.ContinuousCombatStage.stage,2);
+ assert.equal(boss.state.globals.ContinuousCombatStage.bossActive,false);
+ assert.equal(boss.state.globals.ContinuousCombatStage.bossSummonRequired,true);
+ assert.deepEqual(boss.state.entities.filter(actor=>actor.kind==='hero').map(hero=>hero.hp),[40,40]);
+ assert.equal(boss.calls.filter(name=>name==='SettleContinuousCombatRewards').length,1);
+});
 test('full-party recovery emits per-hero restored HP without treating it as skill healing', async () => {
  const {restoreHeroesToFullHP}=await import('../web-runner/systems/questCombatSession.mjs');
  const state={entities:[{uid:1,kind:'hero',hp:0,maxHP:42,isAlive:false},{uid:2,kind:'hero',hp:20,maxHP:30,isAlive:true}],globals:{time:10,DevBalanceCapture:true,ContinuousCombatStage:{defeatRecoveries:2},PendingDeaths:{1:true}}};
