@@ -900,6 +900,7 @@ function aggregateSessions(config, sessions) {
     endReasons,
     acceptance: {
       everySeedCompletesTarget: sessions.length > 0 && sessions.every((session) => config.maxBossClears > 0 ? session.bossesCleared >= config.maxBossClears : session.wavesCompleted >= config.maxWaves),
+      everySeedCompletesUninterruptedOrdinaryTarget: Number(config.maxBossClears || 0) === 0 && sessions.length > 0 && sessions.every((session) => session.wavesCompleted >= config.maxWaves && session.defeatRecoveries === 0 && Array.isArray(session.heroCasualties) && session.heroCasualties.length === 0 && session.deadlockCount === 0 && session.measurementLimits?.waveClearSource === 'runtime_counter' && session.measurementLimits?.orderedCombatEventStreamObserved === true && session.measurementLimits?.missingCombatEvents === 0 && session.measurementLimits?.ambiguousWaveTransitions === 0),
       zeroDeadlocks: sessions.every((session) => session.deadlockCount === 0),
     },
     coverage: {

@@ -336,6 +336,17 @@ test('casualty variation uses ordered KO evidence before sampled roster order', 
   assert.equal(aggregate.medianDefeatRecoveries, 2.5);
 });
 
+test('uninterrupted ordinary acceptance refuses recoveries, Hero KOs and telemetry gaps', () => {
+  const proof = { seed: 1, enemiesDefeated: 100, wavesCompleted: 20, bossesCleared: 0, defeatRecoveries: 0, simulationSecondsSurvived: 300, heroCasualties: [], firstKoSide: 'enemy', endReason: 'max_waves', deadlockCount: 0, measurementLimits: { waveClearSource: 'runtime_counter', orderedCombatEventStreamObserved: true, missingCombatEvents: 0, ambiguousWaveTransitions: 0 } };
+  const accepted = (sessions) => aggregateSessions({ maxWaves: 20, maxBossClears: 0 }, sessions).acceptance.everySeedCompletesUninterruptedOrdinaryTarget;
+  assert.equal(accepted([proof]), true);
+  assert.equal(accepted([proof, { ...proof, seed: 2, defeatRecoveries: 1, heroCasualties: ['Falie'] }]), false);
+  assert.equal(accepted([{ ...proof, heroCasualties: ['Huun'] }]), false);
+  assert.equal(accepted([{ ...proof, measurementLimits: { ...proof.measurementLimits, missingCombatEvents: 1 } }]), false);
+  assert.equal(accepted([{ ...proof, measurementLimits: { ...proof.measurementLimits, waveClearSource: 'observed_stage_transition' } }]), false);
+  assert.equal(accepted([{ ...proof, measurementLimits: undefined }]), false);
+});
+
 test('sampled casualties do not invent first-KO order when event evidence is incomplete', () => {
   const aggregate = aggregateSessions({ maxWaves: 1 }, [
     { seed: 1, enemiesDefeated: 0, wavesCompleted: 0, bossesCleared: 0, defeatRecoveries: 0, simulationSecondsSurvived: 1, heroCasualties: ['Falie', 'Huun'], firstHeroCasualty: null, firstKoSide: 'unobserved', endReason: 'timeout', deadlockCount: 0 },
