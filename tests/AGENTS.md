@@ -171,3 +171,5 @@
 - Hero CP refresh proof keeps stale combat actors beside updated canonical progression, checks next-render CP across heroes and all tabs, and verifies manual/Auto equip receipts match saved and live CP before resolving.
 
 - Bag/Equip regression proof covers sorted sequential matching-slot assignment, slot-CP/hero-CP/party-order ties, permanent replacement destruction, player-controlled manual review, saved CP feedback before Auto disposal, and explicit conversion of missed upgrades. Keep concurrent arrival, held item, replay and failed-save coverage. Bag VFX/count tests use the installed browser through CHROME_BIN.
+
+- `continuousCombatStageContract` keeps ordinary-wave respite separate from boss-clear restoration. A Hero KO blocks ordinary settlement; surviving Hero HP must persist through HeroProgress JSON reload after either clear path.

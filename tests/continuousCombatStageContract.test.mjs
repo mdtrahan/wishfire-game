@@ -4,6 +4,7 @@ import { COMBAT_BATTLEFIELD_ZOOM, createCombatCameraProjection, deriveCombatForm
 import { actorFootprintRadius } from '../src/core/arenaCombatRules.mjs';
 import { advanceContinuousCombatArena, CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS, deriveContinuousCombatRecoveryHuddle, deriveContinuousCombatSpawnMoat, placeContinuousCombatHeroesInRecoveryHuddle } from '../web-runner/src/core/arenaCombat.mjs';
 import { computeCombatPower } from '../web-runner/src/core/combatPower.mjs';
+import { createHeroProgressStore } from '../web-runner/src/core/heroProgression.mjs';
 import { derivePresentationTurnBarrier } from '../web-runner/src/core/turnGateController.mjs';
 import {
   CONTINUOUS_COMBAT_PACK_CP_STEP,
@@ -719,7 +720,7 @@ test('ordinary waves grant capped respite while a boss clear restores and cleans
       ContinuousCombatStage: { ...createContinuousCombatStageState(1), ...stage, nextEmissionAt: 0 },
       EnemyData: rows, EnemySize: 40, GamePhase: 'RUNTIME', BattleStartActive: 0, DevBalanceCapture: true,
       time: 10, PendingDeaths: {}, EnemyDeathVisualHoldByUID: {}, EnemySlots: [],
-      HeroProgress: { heroes: {} },
+      HeroProgress: createHeroProgressStore(),
     };
     const calls = [];
     const call = (name, row, slotIndex) => {
@@ -758,6 +759,9 @@ test('ordinary waves grant capped respite while a boss clear restores and cleans
     assert.equal(calls.includes('UpdateHeroHPUI'), true);
     assert.equal(globals.HeroProgress.heroes.Falie?.hp, clearedBoss ? 60 : 21);
     assert.equal(globals.HeroProgress.heroes.Huun?.hp, clearedBoss ? 40 : 16);
+    const restored = createHeroProgressStore(JSON.parse(JSON.stringify(globals.HeroProgress)));
+    assert.equal(restored.heroes.Falie?.hp, clearedBoss ? 60 : 21, 'Fara HP survives a HeroProgress save and reload');
+    assert.equal(restored.heroes.Huun?.hp, clearedBoss ? 40 : 16, 'Hondo HP survives a HeroProgress save and reload');
     assert.equal(globals.ContinuousCombatStage.wave, 1);
   }
 });
