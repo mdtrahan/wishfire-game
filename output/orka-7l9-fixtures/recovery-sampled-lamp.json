@@ -1,0 +1,400 @@
+{
+  "version": 5,
+  "partyEXP": 0,
+  "gold": 0,
+  "items": [
+    {
+      "instanceId": "lamp:4242:16",
+      "equipmentId": "wanderer-body",
+      "name": "Wayfarer Vest",
+      "type": "body",
+      "art": 5,
+      "rarity": "common",
+      "level": 1,
+      "stats": {
+        "ATK": 5,
+        "DEF": 2,
+        "MAG": 1,
+        "RES": 1,
+        "HP": 12
+      },
+      "sequence": 16,
+      "ordinal": 0
+    },
+    {
+      "instanceId": "lamp:4242:14",
+      "equipmentId": "wanderer-boots",
+      "name": "Wayfarer Boots",
+      "type": "boots",
+      "art": 8,
+      "rarity": "common",
+      "level": 1,
+      "stats": {
+        "ATK": 3,
+        "DEF": 2,
+        "MAG": 1,
+        "RES": 1,
+        "HP": 6
+      },
+      "sequence": 14,
+      "ordinal": 0
+    },
+    {
+      "instanceId": "lamp:4242:8",
+      "equipmentId": "wanderer-hat",
+      "name": "Wayfarer Cap",
+      "type": "hat",
+      "art": 2,
+      "rarity": "common",
+      "level": 1,
+      "stats": {
+        "ATK": 4,
+        "DEF": 2,
+        "MAG": 1,
+        "RES": 1,
+        "HP": 6
+      },
+      "sequence": 8,
+      "ordinal": 0
+    },
+    {
+      "instanceId": "lamp:4242:12",
+      "equipmentId": "scholar-body",
+      "name": "Scholar Vest",
+      "type": "body",
+      "art": 4,
+      "rarity": "common",
+      "level": 1,
+      "stats": {
+        "ATK": 1,
+        "DEF": 2,
+        "MAG": 3,
+        "RES": 3,
+        "HP": 11
+      },
+      "sequence": 12,
+      "ordinal": 0
+    },
+    {
+      "instanceId": "lamp:4242:21",
+      "equipmentId": "scholar-hat",
+      "name": "Scholar Turban",
+      "type": "hat",
+      "art": 1,
+      "rarity": "uncommon",
+      "level": 1,
+      "stats": {
+        "ATK": 1,
+        "DEF": 1,
+        "MAG": 4,
+        "RES": 2,
+        "HP": 6
+      },
+      "sequence": 21,
+      "ordinal": 0
+    },
+    {
+      "instanceId": "lamp:4242:9",
+      "equipmentId": "scholar-boots",
+      "name": "Scholar Slippers",
+      "type": "boots",
+      "art": 7,
+      "rarity": "uncommon",
+      "level": 1,
+      "stats": {
+        "ATK": 1,
+        "DEF": 1,
+        "MAG": 2,
+        "RES": 4,
+        "HP": 6
+      },
+      "sequence": 9,
+      "ordinal": 0
+    },
+    {
+      "instanceId": "lamp:4242:28",
+      "equipmentId": "scholar-body",
+      "name": "Scholar Vest",
+      "type": "body",
+      "art": 4,
+      "rarity": "common",
+      "level": 1,
+      "stats": {
+        "ATK": 1,
+        "DEF": 2,
+        "MAG": 3,
+        "RES": 2,
+        "HP": 10
+      },
+      "sequence": 28,
+      "ordinal": 0
+    },
+    {
+      "instanceId": "lamp:4242:11",
+      "equipmentId": "scholar-boots",
+      "name": "Scholar Slippers",
+      "type": "boots",
+      "art": 7,
+      "rarity": "uncommon",
+      "level": 1,
+      "stats": {
+        "ATK": 1,
+        "DEF": 1,
+        "MAG": 3,
+        "RES": 4,
+        "HP": 6
+      },
+      "sequence": 11,
+      "ordinal": 0
+    },
+    {
+      "instanceId": "lamp:4242:27",
+      "equipmentId": "scholar-hat",
+      "name": "Scholar Turban",
+      "type": "hat",
+      "art": 1,
+      "rarity": "common",
+      "level": 1,
+      "stats": {
+        "ATK": 1,
+        "DEF": 1,
+        "MAG": 3,
+        "RES": 2,
+        "HP": 6
+      },
+      "sequence": 27,
+      "ordinal": 0
+    },
+    {
+      "instanceId": "lamp:4242:3",
+      "equipmentId": "guardian-body",
+      "name": "Guardian Cuirass",
+      "type": "body",
+      "art": 3,
+      "rarity": "common",
+      "level": 1,
+      "stats": {
+        "ATK": 1,
+        "DEF": 5,
+        "MAG": 1,
+        "RES": 2,
+        "HP": 10
+      },
+      "sequence": 3,
+      "ordinal": 0
+    },
+    {
+      "instanceId": "lamp:4242:30",
+      "equipmentId": "wanderer-hat",
+      "name": "Wayfarer Cap",
+      "type": "hat",
+      "art": 2,
+      "rarity": "common",
+      "level": 1,
+      "stats": {
+        "ATK": 3,
+        "DEF": 2,
+        "MAG": 1,
+        "RES": 1,
+        "HP": 5
+      },
+      "sequence": 30,
+      "ordinal": 0
+    },
+    {
+      "instanceId": "lamp:4242:13",
+      "equipmentId": "wanderer-boots",
+      "name": "Wayfarer Boots",
+      "type": "boots",
+      "art": 8,
+      "rarity": "common",
+      "level": 1,
+      "stats": {
+        "ATK": 3,
+        "DEF": 2,
+        "MAG": 1,
+        "RES": 1,
+        "HP": 6
+      },
+      "sequence": 13,
+      "ordinal": 0
+    }
+  ],
+  "loadouts": {
+    "Falie": {
+      "body": "lamp:4242:16",
+      "boots": "lamp:4242:14",
+      "hat": "lamp:4242:8"
+    },
+    "Kojonn": {
+      "body": "lamp:4242:12",
+      "hat": "lamp:4242:21",
+      "boots": "lamp:4242:9"
+    },
+    "Runa": {
+      "body": "lamp:4242:28",
+      "boots": "lamp:4242:11",
+      "hat": "lamp:4242:27"
+    },
+    "Huun": {
+      "body": "lamp:4242:3",
+      "hat": "lamp:4242:30",
+      "boots": "lamp:4242:13"
+    }
+  },
+  "settledGoldRewards": [],
+  "lamp": {
+    "capacityTier": 0,
+    "upgradeStage": 0,
+    "essence": 0,
+    "seed": 4242,
+    "sequence": 34,
+    "pending": [],
+    "discarded": [],
+    "recent": [],
+    "salvage": {
+      "count": 0,
+      "gold": 0
+    },
+    "autoEnabled": false,
+    "highestOrdinal": 0,
+    "lastActivationAt": 1792081232596,
+    "emissions": [
+      {
+        "item": {
+          "instanceId": "lamp:4242:0",
+          "equipmentId": "guardian-body",
+          "name": "Guardian Cuirass",
+          "type": "body",
+          "art": 3,
+          "rarity": "common",
+          "level": 1,
+          "stats": {
+            "ATK": 1,
+            "DEF": 4,
+            "MAG": 1,
+            "RES": 2,
+            "HP": 10
+          },
+          "sequence": 0,
+          "ordinal": 0
+        },
+        "issuedAt": 1792081199013,
+        "collected": true
+      },
+      {
+        "item": {
+          "instanceId": "lamp:4242:1",
+          "equipmentId": "scholar-body",
+          "name": "Scholar Vest",
+          "type": "body",
+          "art": 4,
+          "rarity": "common",
+          "level": 1,
+          "stats": {
+            "ATK": 1,
+            "DEF": 2,
+            "MAG": 3,
+            "RES": 3,
+            "HP": 8
+          },
+          "sequence": 1,
+          "ordinal": 0
+        },
+        "issuedAt": 1792081204029,
+        "collected": true
+      },
+      {
+        "item": {
+          "instanceId": "lamp:4242:2",
+          "equipmentId": "scholar-body",
+          "name": "Scholar Vest",
+          "type": "body",
+          "art": 4,
+          "rarity": "common",
+          "level": 1,
+          "stats": {
+            "ATK": 1,
+            "DEF": 2,
+            "MAG": 3,
+            "RES": 2,
+            "HP": 9
+          },
+          "sequence": 2,
+          "ordinal": 0
+        },
+        "issuedAt": 1792081209046,
+        "collected": true
+      },
+      {
+        "item": {
+          "instanceId": "lamp:4242:3",
+          "equipmentId": "guardian-body",
+          "name": "Guardian Cuirass",
+          "type": "body",
+          "art": 3,
+          "rarity": "common",
+          "level": 1,
+          "stats": {
+            "ATK": 1,
+            "DEF": 5,
+            "MAG": 1,
+            "RES": 2,
+            "HP": 10
+          },
+          "sequence": 3,
+          "ordinal": 0
+        },
+        "issuedAt": 1792081214061,
+        "collected": true
+      },
+      {
+        "item": {
+          "instanceId": "lamp:4242:4",
+          "equipmentId": "guardian-hat",
+          "name": "Guardian Helm",
+          "type": "hat",
+          "art": 0,
+          "rarity": "common",
+          "level": 1,
+          "stats": {
+            "ATK": 1,
+            "DEF": 3,
+            "MAG": 1,
+            "RES": 2,
+            "HP": 5
+          },
+          "sequence": 4,
+          "ordinal": 0
+        },
+        "issuedAt": 1792081221937,
+        "collected": false
+      },
+      {
+        "item": {
+          "instanceId": "lamp:4242:5",
+          "equipmentId": "wanderer-body",
+          "name": "Wayfarer Vest",
+          "type": "body",
+          "art": 5,
+          "rarity": "common",
+          "level": 1,
+          "stats": {
+            "ATK": 4,
+            "DEF": 2,
+            "MAG": 1,
+            "RES": 1,
+            "HP": 9
+          },
+          "sequence": 5,
+          "ordinal": 0
+        },
+        "issuedAt": 1792081232596,
+        "collected": false
+      }
+    ],
+    "guide": 1
+  },
+  "migration": {},
+  "pendingGearCollections": []
+}
