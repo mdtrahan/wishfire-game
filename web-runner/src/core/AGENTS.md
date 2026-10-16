@@ -105,6 +105,7 @@
 
 - Seeded RNG preview stays byte-identical to the shared source mirror; preview must never advance the combat draw owner.
 - Continuous roaming owns pack spawns and settlement. Every wave clears before the next emission, with at least three seconds between emissions; the boss gate and existing reward/KO rules remain stage-owned. Arena displacement uses full world bounds for arena-enabled actors. An ordinary squad recovery advances the existing stage generation serial once, rerolling unfinished pack composition, CP compensation and placement while retaining the current wave, earned pack mask and boss progress.
+- A completed ordinary wave restores 15% max HP, rounded up, to each living Hero without reviving a KO. The stage owner saves the new HP, refreshes the HUD, and records `ordinary_wave_clear` healing in opt-in balance telemetry. Boss outcomes retain their separate full-party recovery.
 
 - Boss CP uses one local pack's baseline (wave CP divided by pack count), then the existing boss premium and stage curve. Increasing dispersed pack count must not inflate one boss's damage or defenses.
 - The first region's first boss retains its catalog-tuned stats. This introductory encounter must not inherit CP-driven offense/defense amplification; later bosses retain the pack-normalized stage curve.

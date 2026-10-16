@@ -535,7 +535,7 @@ async function runSession(page, config, sessionId) {
     }
   }
   const startSimulationTime = snapshot.time;
-  const heroMetrics = snapshot.heroes.map((hero) => ({ uid: hero.uid, instanceKey: hero.instanceKey, name: hero.name, currentLevel: hero.currentLevel, endLevel: hero.currentLevel, startEXP: hero.currentEXP, endEXP: hero.currentEXP, combatPower: hero.combatPower, endCombatPower: hero.combatPower, attackType: hero.attackType, stats: hero.stats, startHp: hero.hp, minSampledHp: hero.hp, minEventHp: hero.hp, endHp: hero.hp, sampledHpLoss: 0, largestSampleWindowHpLoss: 0, sampledRecovery: 0, physicalIncomingDamage: 0, magicIncomingDamage: 0, unknownIncomingDamage: 0, effectiveHealing: 0, healingBySourceUID: {}, firstKoTime: null, lastHp: hero.hp, startMaxHp: hero.maxHp, maxHp: hero.maxHp }));
+  const heroMetrics = snapshot.heroes.map((hero) => ({ uid: hero.uid, instanceKey: hero.instanceKey, name: hero.name, currentLevel: hero.currentLevel, endLevel: hero.currentLevel, startEXP: hero.currentEXP, endEXP: hero.currentEXP, combatPower: hero.combatPower, endCombatPower: hero.combatPower, attackType: hero.attackType, stats: hero.stats, startHp: hero.hp, minSampledHp: hero.hp, minEventHp: hero.hp, endHp: hero.hp, sampledHpLoss: 0, largestSampleWindowHpLoss: 0, sampledRecovery: 0, physicalIncomingDamage: 0, magicIncomingDamage: 0, unknownIncomingDamage: 0, effectiveHealing: 0, healingBySourceUID: {}, healingByReason: {}, firstKoTime: null, lastHp: hero.hp, startMaxHp: hero.maxHp, maxHp: hero.maxHp }));
   const defeatedEnemyUIDs = new Set();
   const heroCasualties = new Map();
   const incomingDamageEvents = [];
@@ -767,6 +767,8 @@ async function runSession(page, config, sessionId) {
         tracked.effectiveHealing += event.amount;
         const key = String(event.sourceUID || 'unknown');
         tracked.healingBySourceUID[key] = Number(tracked.healingBySourceUID[key] || 0) + event.amount;
+        const reason = String(event.reason || 'unspecified');
+        tracked.healingByReason[reason] = Number(tracked.healingByReason[reason] || 0) + event.amount;
       } else if (event.type === 'damage') {
         const damageKey = event.damageType === 'physical' ? 'physicalIncomingDamage' : event.damageType === 'magic' ? 'magicIncomingDamage' : 'unknownIncomingDamage';
         tracked[damageKey] += event.amount;

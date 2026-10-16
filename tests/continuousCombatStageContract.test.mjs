@@ -326,11 +326,11 @@ test('solo enemies patrol within a small safe radius and engage normally on dete
 
 test('a latched ready stage keeps farming after wave clears until the player summons the boss', () => {
   const globals = {
-    ContinuousCombatStageLoop: 1, GamePhase: 'RUNTIME', BattleStartActive: 0, time: 0,
+    ContinuousCombatStageLoop: 1, GamePhase: 'RUNTIME', BattleStartActive: 0, DevBalanceCapture: true, time: 0,
     EnemyData: rows, EnemySize: 40, EnemySlots: [], PendingDeaths: {}, EnemyDeathVisualHoldByUID: {},
     ContinuousCombatStage: { ...createContinuousCombatStageState(52), wave: 1, bossAvailable: true, bossSummonRequired: true, nextEmissionAt: 0 },
   };
-  const entities = [{ uid: 1, kind: 'hero', hp: 40, maxHP: 40, footX: 180, footY: 280 }];
+  const entities = [{ uid: 1, kind: 'hero', hp: 20, maxHP: 40, footX: 180, footY: 280 }];
   let nextUID = 10;
   const call = (name, row, slotIndex) => {
     if (name === 'SettleContinuousCombatRewards') return;
@@ -349,7 +349,9 @@ test('a latched ready stage keeps farming after wave clears until the player sum
     assert.equal(globals.ContinuousCombatStage.bossAvailable, true);
     assert.equal(globals.ContinuousCombatStage.bossSummonRequired, true);
     assert.ok(entities.some(actor => actor.kind === 'enemy' && actor.enemyRole !== 'boss'), 'the next fodder wave keeps the player farming');
+    assert.equal(entities[0].hp, Math.min(40, 20 + wave * 6), 'each ordinary clear heals 15% max HP without exceeding max');
   }
+  assert.equal(globals.BalanceCombatEvents.filter(event => event.type === 'heal' && event.reason === 'ordinary_wave_clear').length, 4);
   const hero = entities.find(actor => actor.kind === 'hero');
   hero.hp = 0;
   assert.equal(summonContinuousCombatBoss(globals, entities, call), false, 'manual summon cannot bypass a KO before the recovery owner runs');
@@ -702,7 +704,7 @@ test('boss victory advances the checkpoint and wraps stage ten into the next reg
   assert.equal(transition.state.clearedBosses, 1);
 });
 
-test('ordinary waves carry HP while a boss clear restores and cleanses the party', () => {
+test('ordinary waves grant capped respite while a boss clear restores and cleanses the party', () => {
   for (const stage of [
     { wave: 4 },
     { wave: 4, bossAvailable: true, bossSummonRequired: true, bossArmed: true, bossActive: true },
@@ -730,7 +732,7 @@ test('ordinary waves carry HP while a boss clear restores and cleanses the party
     };
     assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), true);
     const clearedBoss = !!stage.bossActive;
-    assert.deepEqual(heroes.map(hero => hero.hp), clearedBoss ? [60, 40] : [13, 10]);
+    assert.deepEqual(heroes.map(hero => hero.hp), clearedBoss ? [60, 40] : [21, 16]);
     assert.deepEqual(heroes.map(hero => hero.isAlive), [true, true]);
     if (clearedBoss) {
       const huddle = deriveContinuousCombatRecoveryHuddle(heroes, globals.ContinuousCombatInitialRoam?.direction || 1);
@@ -750,9 +752,9 @@ test('ordinary waves carry HP while a boss clear restores and cleanses the party
     assert.deepEqual(heroes.map(hero => hero.statuses.map(status => status.statusEffect)),
       clearedBoss ? [['atkUp'], []] : [['dot', 'atkUp'], ['silence']]);
     assert.deepEqual(heroes[0].statusEffects.map(status => status.statusEffect), clearedBoss ? ['barrier'] : ['blind', 'barrier']);
-    assert.equal(calls.includes('UpdateHeroHPUI'), clearedBoss);
-    assert.equal(globals.HeroProgress.heroes.Falie?.hp, clearedBoss ? 60 : undefined);
-    assert.equal(globals.HeroProgress.heroes.Huun?.hp, clearedBoss ? 40 : undefined);
+    assert.equal(calls.includes('UpdateHeroHPUI'), true);
+    assert.equal(globals.HeroProgress.heroes.Falie?.hp, clearedBoss ? 60 : 21);
+    assert.equal(globals.HeroProgress.heroes.Huun?.hp, clearedBoss ? 40 : 16);
     assert.equal(globals.ContinuousCombatStage.wave, 1);
   }
 });

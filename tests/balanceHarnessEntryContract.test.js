@@ -225,6 +225,7 @@ test('balance harness records exact damage and healing events alongside sampled 
   assert.match(source, /globals\.BalanceCombatEvents \|\| \[\]/);
   assert.match(source, /let lastCombatEventId = snapshot\.combatEventSeq/);
   assert.match(source, /tracked\.effectiveHealing \+= event\.amount/);
+  assert.match(source, /tracked\.healingByReason\[reason\] = Number\(tracked\.healingByReason\[reason\] \|\| 0\) \+ event\.amount/);
   assert.match(source, /tracked\[damageKey\] \+= event\.amount/);
   assert.match(source, /missingCombatEvents/);
   assert.match(source, /heroes: heroMetrics\.map\(\(\{ lastHp, \.\.\.hero \}\) => hero\)/);

@@ -8,8 +8,10 @@ import { isActorRecoveryRevealActive, resetActorPresentationAfterRestore } from 
 import { previewSeededRng } from '../../../src/core/seededRngRules.mjs';
 import { actorFootprintRadius } from '../../../src/core/arenaCombatRules.mjs';
 import { enemyCombatTier } from './routineEnemyScaling.mjs';
+import { recordBalanceCombatEvent } from './balanceTelemetry.mjs';
 
 export const CONTINUOUS_COMBAT_PACK_INTERVAL_SEC = 3;
+export const CONTINUOUS_COMBAT_ORDINARY_CLEAR_HEAL_FRACTION = 0.15;
 export const CONTINUOUS_COMBAT_PACK_CP_STEP = 0.06;
 export const CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC = 18;
 const ORDINARY_LEVEL_ONE_HP_CEILING = Object.freeze({ fodder: 28, routine: 45, hard: 55, elite: 70 });
@@ -966,6 +968,23 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
     if (!armContinuousCombatBoss(globals, entities, call)) return false;
     transition = { ...transition, stage: getContinuousCombatStage(globals.ContinuousCombatStage) };
   } else if (!spawnContinuousCombatStage({ globals, entities, call, state: transition.state })) return false;
+  if (!stageState.bossActive) {
+    let healed = false;
+    for (const hero of entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0)) {
+      const maxHP = Math.max(0, Math.floor(Number(hero.maxHP) || 0));
+      const before = Number(hero.hp || 0);
+      const after = Math.min(maxHP, before + Math.ceil(maxHP * CONTINUOUS_COMBAT_ORDINARY_CLEAR_HEAL_FRACTION));
+      if (after <= before) continue;
+      hero.hp = after;
+      recordBalanceCombatEvent(globals, { type: 'heal', reason: 'ordinary_wave_clear', sourceUID: 0, targetUID: Number(hero.uid || 0), amount: after - before, hpBefore: before, hpAfter: after, wave: Number(stageState.wave || 1) });
+      if (globals.HeroProgress) saveHeroProgress(hero, globals.HeroProgress);
+      healed = true;
+    }
+    if (healed) {
+      if (globals.HeroProgress) globals.HeroProgressDirty = true;
+      call('UpdateHeroHPUI');
+    }
+  }
   if (transition.clearedBoss) {
     resetRealtimeSkillAttempt(globals,entities);
     const heroes = entities.filter(actor => actor?.kind === 'hero');
