@@ -632,7 +632,16 @@ async function runSession(page, config, sessionId) {
     }
     const recoveryAttemptsBeforePoll = recoveryAttempts.length;
     const recoveryTransition = observeRecoveryTransition(previousProgression, snapshot.continuousProgression);
-    if (recoveryTransition) recoveryAttempts.push(recoveryTransition);
+    if (recoveryTransition) {
+      recoveryTransition.sampledPartyState = {
+        source: 'post_recovery_poll',
+        observedAt: Number((snapshot.time - startSimulationTime).toFixed(3)),
+        lampSequence: snapshot.lampSequence,
+        loadouts: structuredClone(snapshot.loadouts),
+        heroes: snapshot.heroes.map(hero => ({ instanceKey: hero.instanceKey, name: hero.name, currentLevel: hero.currentLevel, hp: hero.hp, maxHp: hero.maxHp, stats: hero.stats, combatPower: hero.combatPower })),
+      };
+      recoveryAttempts.push(recoveryTransition);
+    }
     applyPostRecoveryWaveClear(recoveryAttempts, recoveryAttemptsBeforePoll, ordinaryWaveClearDelta, snapshot.continuousProgression);
     previousProgression = snapshot.continuousProgression;
     completedBosses = Math.max(0, Number(snapshot.continuousProgression?.clearedBosses || 0) - startClearedBosses);

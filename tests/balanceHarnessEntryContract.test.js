@@ -297,6 +297,9 @@ test('same-poll clear never credits a recovery first observed in that poll', () 
 
 test('recovery telemetry binds first post-recovery enemy KO and later clear only to ordered evidence', () => {
   assert.match(source, /const recoveryTransition = observeRecoveryTransition\(previousProgression, snapshot\.continuousProgression\)/);
+  assert.match(source, /recoveryTransition\.sampledPartyState = \{/);
+  assert.match(source, /source: 'post_recovery_poll'/);
+  assert.match(source, /loadouts: structuredClone\(snapshot\.loadouts\)/);
   assert.match(source, /const recoveryAttemptsBeforePoll = recoveryAttempts\.length/);
   assert.match(source, /applyPostRecoveryWaveClear\(recoveryAttempts, recoveryAttemptsBeforePoll/);
   assert.match(source, /attempt\.firstEnemyKoAfterRecovery = \{ status: 'unknown_event_gap' \}/);
