@@ -305,6 +305,7 @@ async function readBalanceSnapshot(page, afterEventId = 0) {
           footX: Number(actor?.footX ?? hero.x ?? 0), arenaTargetUID: Number(actor?.arenaTargetUID || 0),
           hp: Number(hero.hp || 0), maxHp: Number(hero.maxHp || 0),
           currentLevel: Number(actor?.currentLevel ?? hero.currentLevel ?? 1),
+          currentEXP: Number(actor?.currentEXP ?? hero.currentEXP ?? 0),
           combatPower: Number(actor?.combatPower ?? hero.combatPower ?? 0),
           attackType: String(actor?.attackType || hero.attackType || ''),
           stats: { ...(actor?.stats || hero.stats || {}) }, recoveryRevealActive: !!hero.recoveryRevealActive };
@@ -529,7 +530,7 @@ async function runSession(page, config, sessionId) {
     }
   }
   const startSimulationTime = snapshot.time;
-  const heroMetrics = snapshot.heroes.map((hero) => ({ uid: hero.uid, instanceKey: hero.instanceKey, name: hero.name, currentLevel: hero.currentLevel, combatPower: hero.combatPower, attackType: hero.attackType, stats: hero.stats, startHp: hero.hp, minSampledHp: hero.hp, minEventHp: hero.hp, endHp: hero.hp, sampledHpLoss: 0, largestSampleWindowHpLoss: 0, sampledRecovery: 0, physicalIncomingDamage: 0, magicIncomingDamage: 0, unknownIncomingDamage: 0, effectiveHealing: 0, healingBySourceUID: {}, firstKoTime: null, lastHp: hero.hp, startMaxHp: hero.maxHp, maxHp: hero.maxHp }));
+  const heroMetrics = snapshot.heroes.map((hero) => ({ uid: hero.uid, instanceKey: hero.instanceKey, name: hero.name, currentLevel: hero.currentLevel, endLevel: hero.currentLevel, startEXP: hero.currentEXP, endEXP: hero.currentEXP, combatPower: hero.combatPower, endCombatPower: hero.combatPower, attackType: hero.attackType, stats: hero.stats, startHp: hero.hp, minSampledHp: hero.hp, minEventHp: hero.hp, endHp: hero.hp, sampledHpLoss: 0, largestSampleWindowHpLoss: 0, sampledRecovery: 0, physicalIncomingDamage: 0, magicIncomingDamage: 0, unknownIncomingDamage: 0, effectiveHealing: 0, healingBySourceUID: {}, firstKoTime: null, lastHp: hero.hp, startMaxHp: hero.maxHp, maxHp: hero.maxHp }));
   const defeatedEnemyUIDs = new Set();
   const heroCasualties = new Map();
   const incomingDamageEvents = [];
@@ -682,6 +683,9 @@ async function runSession(page, config, sessionId) {
       if (tracked) {
         tracked.minSampledHp = Math.min(tracked.minSampledHp, hero.hp);
         tracked.endHp = hero.hp;
+        tracked.endLevel = hero.currentLevel;
+        tracked.endEXP = hero.currentEXP;
+        tracked.endCombatPower = hero.combatPower;
         tracked.sampledHpLoss += Math.max(0, tracked.lastHp - hero.hp);
         tracked.largestSampleWindowHpLoss = Math.max(tracked.largestSampleWindowHpLoss, tracked.lastHp - hero.hp);
         tracked.sampledRecovery += Math.max(0, hero.hp - tracked.lastHp);
@@ -975,7 +979,8 @@ async function main(argv = process.argv.slice(2), env = process.env) {
       } finally {
         await isolated.close();
       }
-      console.log(`[balance-harness] completed ${sessionId}/${config.sessions}`);
+      const result = sessions.at(-1);
+      console.log(`[balance-harness] completed ${sessionId}/${config.sessions} waves=${result.wavesCompleted} recoveries=${result.defeatRecoveries} firstHero=${result.firstHeroCasualty || 'none'} end=${result.endReason}`);
     }
     const aggregate = aggregateSessions(config, sessions);
     const outputs = writeOutputs(config, sessions, aggregate);
