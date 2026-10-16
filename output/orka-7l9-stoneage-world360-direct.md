@@ -107,6 +107,25 @@ The next earned Level 4 capture batch supplied Luxurious blue gear. Equipping a 
 
 Stage 3-2 Lucy unlock, Lucy/Woody stat comparison, auto-equip allocation and presentation, and Chapter 4-2 remain required direct-reference captures.
 
+## Chapter 2-14 through 2-17 and ticket exhaustion
+
+Normal UI resumed on WORLD360 at Chapter 2-14, displayed party power 113,998. The Chapter 2-13 Winloth attempt therefore advanced the chapter during the inaccessible interval, but its exact completion frame, timer and report were not captured. Collecting a visible 40-item Capture Successful batch opened the gear comparison against Woody. Equipped items and the immediately displayed party-power changes were:
+
+| Item and compared slot power | Visible stat comparison | Party power after equip |
+| --- | --- | ---: |
+| Special Lv. 10 Durable Cloak, 4,683 vs Luxurious Lv. 8 cloak, 2,918 | HP 3,493 -> 5,030; ATK 168 -> 269; DEF 159 -> 251; +0.02% CRIT Hit Resistance | 121,427 |
+| Luxurious Lv. 10 Adventurer's Helm, 3,648 vs Normal Lv. 7 helm, 2,240 | HP 2,637 -> 4,084; ATK 133 -> 208; DEF 116 -> 210 | 127,704 |
+| Normal Lv. 10 Starter Gloves, 2,810 vs Luxurious Lv. 5 gloves, 2,232 | HP 2,558 -> 3,217; ATK 127 -> 163; DEF 126 -> 154 | 130,284 |
+| Luxurious Lv. 8 Adventurer Boots, 2,800 vs Luxurious Lv. 8 boots, 2,751 | HP 3,142 -> 3,112; ATK 156 -> 164; DEF 159 -> 154 | 130,498 |
+| Normal Lv. 10 Starter Top, 2,783 vs Luxurious Lv. 7 top, 2,716 | HP 3,210 -> 3,082; ATK 151 -> 152; DEF 159 -> 174 | 130,795 |
+| Excellent Lv. 10 Simple Helm, 5,569 vs Luxurious Lv. 10 helm, 3,648 | HP 4,084 -> 6,088; ATK 208 -> 318; DEF 210 -> 320; +0.175% CRIT DMG | 139,295 |
+
+The Excellent helm was directly observed in the batch, correcting the earlier unverified Excellent reward. The first displayed power change is 113,998 -> 121,427; individual item-power changes and party-power changes are different measures. Auto-battle showed Chapter 2-15 Tiger Hog Gang at 91% HP while the cache was open, then a visible Chapter 2-15 clear. Chapter 2-16 Osark Gang was sampled at 100% then 10% HP with party portraits still standing; the screen advanced to Chapter 2-17. These chapter transitions show wins without a captured boss timer or result report.
+
+Holding the Capture NPC for three seconds used earned tickets, with the visible balance falling 65 -> 3 and the strip showing 56/60 at one sample. A further hold exhausted tickets to zero while the strip/bag counts continued changing as results collected; those changing counts are not treated as a stable batch total. Tapping Capture with zero tickets opened `Not enough Capture Ticket(s).` The game listed Auto-Hunt Rewards, Capture Ticket Dungeon, Missions and Pass as ways to obtain them. At Capture Lv. 5, the progress meter showed 1,000/1,000, but Lv. 6 required one ticket and the account had zero. The projected Lv. 6 rates were Normal 81.3%, Luxurious 12%, Special 6%, Excellent 0.7%. The Auto Capture control remained visible at lower right; its unlock state was not proven. No purchase was made.
+
+A later earned batch contained a Luxurious Lv. 9 Adventurer Boots (item power 3,005 vs 2,800), a Normal Lv. 11 Starter Gloves (2,985 vs 2,810), and a Special Lv. 11 Plain Top (4,584 vs 2,783). Equipping these raised displayed party power to 140,211, 140,991, and 148,582 respectively. The Special top compared HP 3,082 -> 4,993, ATK 152 -> 253, DEF 174 -> 264, with +0.02% CRIT Hit Resistance. At 148,582 power, Chapter 2-17 Tralopho was sampled at 65% HP with the party standing. Its final outcome was unobserved because the Mac locked again during normal UI use.
+
 ## Optional Capture Ticket Dungeon, separate power curve
 
 - Tier 1 Nero displayed boss power 51,000 versus the party's 63,537 and was visibly cleared. The first-clear reward screen showed 180 red capture tickets and 150 blue gems. The event then auto-entered Tier 2.
