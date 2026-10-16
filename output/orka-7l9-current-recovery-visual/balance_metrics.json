@@ -1,0 +1,1406 @@
+{
+  "run": {
+    "source": {
+      "head": "1f879557daecead61682f3e09badab885332794b",
+      "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "untracked": []
+    },
+    "harnessSource": {
+      "head": "1f879557daecead61682f3e09badab885332794b",
+      "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "untracked": []
+    },
+    "serveRoot": "/Users/Mace/.codex/worktrees/orka-7l9-survivability/Codex-Orka",
+    "seedStart": 3235774465,
+    "lampSeed": null,
+    "lampFixture": "/Users/Mace/.codex/worktrees/orka-7l9-survivability/Codex-Orka/output/orka-7l9-fixtures/ui-equipped-lamp.json",
+    "heroFixture": "/Users/Mace/.codex/worktrees/orka-7l9-survivability/Codex-Orka/output/orka-7l9-fixtures/stage2-onehp-heroes.json",
+    "heroSlots": [
+      "Falie",
+      "Huun",
+      "Runa",
+      ""
+    ],
+    "sessions": 1,
+    "maxWaves": 1,
+    "maxBossClears": 0,
+    "maxBossTimeouts": 0,
+    "autoEquip": false,
+    "captureFrames": true,
+    "statePollMs": 40,
+    "sessionTimeoutMs": 90000,
+    "deadlockTimeoutMs": 15000,
+    "viewport": {
+      "width": 360,
+      "height": 640
+    }
+  },
+  "aggregate": {
+    "sessionCount": 1,
+    "seeds": [
+      3235774465
+    ],
+    "averageEnemiesDefeated": 71,
+    "medianEnemiesDefeated": 71,
+    "averageWavesCompleted": 1,
+    "medianWavesCompleted": 1,
+    "minimumWavesCompleted": 1,
+    "totalDefeatRecoveries": 1,
+    "totalBossTimeouts": 0,
+    "medianDefeatRecoveries": 1,
+    "minimumEnemiesDefeated": 71,
+    "averageSimulationSecondsSurvived": 90.4,
+    "medianSimulationSecondsSurvived": 90.4,
+    "partyDefeats": 0,
+    "deadlockCount": 0,
+    "casualtyDistribution": {
+      "Huun": 1
+    },
+    "firstHeroCasualtyDistribution": {
+      "Huun": 1
+    },
+    "firstKoSides": {
+      "enemy": 1
+    },
+    "endReasons": {
+      "max_waves": 1
+    },
+    "acceptance": {
+      "everySeedCompletesTarget": true,
+      "everySeedCompletesUninterruptedOrdinaryTarget": false,
+      "zeroDeadlocks": true
+    },
+    "coverage": {
+      "bossClearObserved": false,
+      "defeatRecoveryObserved": true,
+      "firstHeroCasualtyDistribution": {
+        "Huun": 1
+      },
+      "separateFixturesRequired": [
+        "boss_trials",
+        "recovery_trials"
+      ]
+    },
+    "bounds": {
+      "maxWaves": 1,
+      "maxBossClears": 0,
+      "maxBossTimeouts": 0
+    }
+  },
+  "sessions": [
+    {
+      "sessionId": 1,
+      "seed": 3235774465,
+      "enemiesDefeated": 71,
+      "wavesCompleted": 1,
+      "openingRoam": {
+        "start": {
+          "direction": -1,
+          "originX": 1080,
+          "targetX": 880,
+          "distance": 200,
+          "attempt": 0
+        },
+        "release": {
+          "time": 3.269,
+          "centerX": 866.3773136384845,
+          "distanceWalked": 213.62268636151555
+        }
+      },
+      "continuousProgressionStart": {
+        "region": 1,
+        "stage": 2,
+        "wave": 1,
+        "bossAvailable": false,
+        "bossArmed": false,
+        "bossActive": false,
+        "bossUID": 0,
+        "ordinaryWaveClears": 0,
+        "defeatRecoveries": 0,
+        "clearedBosses": 1,
+        "clearedPackMask": 0,
+        "spawnedPackMask": 63,
+        "transitions": 0,
+        "bossSummonRequired": false,
+        "bossTransitionEndsAtMs": 0,
+        "bossTimeLimitSec": 0,
+        "bossTimerStartedAt": null,
+        "bossTimeouts": 0,
+        "lastBossTimeout": null,
+        "stageTransitions": 0
+      },
+      "continuousProgressionEnd": {
+        "region": 1,
+        "stage": 2,
+        "wave": 2,
+        "bossAvailable": false,
+        "bossArmed": false,
+        "bossActive": false,
+        "bossUID": 0,
+        "ordinaryWaveClears": 1,
+        "defeatRecoveries": 1,
+        "clearedBosses": 1,
+        "clearedPackMask": 0,
+        "spawnedPackMask": 63,
+        "transitions": 2,
+        "bossSummonRequired": true,
+        "bossTransitionEndsAtMs": 0,
+        "bossTimeLimitSec": 0,
+        "bossTimerStartedAt": null,
+        "bossTimeouts": 0,
+        "lastBossTimeout": null,
+        "stageTransitions": 2
+      },
+      "partyFixture": {
+        "requested": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "activeSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "heroProgress": {
+          "source": "/Users/Mace/.codex/worktrees/orka-7l9-survivability/Codex-Orka/output/orka-7l9-fixtures/stage2-onehp-heroes.json",
+          "sha256": "a281e7d82ecd8e30569fd0c3727e182a7603d3ece4c713fb5f2bfed58762efbe",
+          "expected": [
+            {
+              "id": "Falie",
+              "name": "Falie",
+              "currentLevel": 1,
+              "hp": 1,
+              "maxHp": 85
+            },
+            {
+              "id": "Huun",
+              "name": "Huun",
+              "currentLevel": 1,
+              "hp": 1,
+              "maxHp": 60
+            },
+            {
+              "id": "Kojonn",
+              "name": "Kojonn",
+              "currentLevel": 1,
+              "hp": 1,
+              "maxHp": 73
+            },
+            {
+              "id": "Runa",
+              "name": "Runa",
+              "currentLevel": 1,
+              "hp": 1,
+              "maxHp": 69
+            },
+            {
+              "id": "falie#1",
+              "name": "Falie",
+              "currentLevel": 1,
+              "hp": 1,
+              "maxHp": 75
+            },
+            {
+              "id": "huun#1",
+              "name": "Huun",
+              "currentLevel": 1,
+              "hp": 1,
+              "maxHp": 60
+            },
+            {
+              "id": "runa#1",
+              "name": "Runa",
+              "currentLevel": 1,
+              "hp": 1,
+              "maxHp": 60
+            }
+          ],
+          "observed": [
+            {
+              "id": "falie#1",
+              "name": "Falie",
+              "currentLevel": 1,
+              "hp": 1,
+              "maxHp": 85,
+              "stats": {
+                "ATK": 8,
+                "DEF": 16,
+                "MAG": 5,
+                "RES": 10,
+                "SPD": 8
+              },
+              "combatPower": 52.4
+            },
+            {
+              "id": "huun#1",
+              "name": "Huun",
+              "currentLevel": 1,
+              "hp": 1,
+              "maxHp": 60,
+              "stats": {
+                "ATK": 16,
+                "DEF": 5,
+                "MAG": 3,
+                "RES": 4,
+                "SPD": 12
+              },
+              "combatPower": 61.5
+            },
+            {
+              "id": "runa#1",
+              "name": "Runa",
+              "currentLevel": 1,
+              "hp": 1,
+              "maxHp": 69,
+              "stats": {
+                "ATK": 4,
+                "DEF": 6,
+                "MAG": 19,
+                "RES": 12,
+                "SPD": 11
+              },
+              "combatPower": 70.4
+            }
+          ]
+        },
+        "savedHeroFixture": null
+      },
+      "equipment": {
+        "scenario": "observe_only",
+        "fixture": {
+          "source": "/Users/Mace/.codex/worktrees/orka-7l9-survivability/Codex-Orka/output/orka-7l9-fixtures/ui-equipped-lamp.json",
+          "sha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe"
+        },
+        "savedFixture": null,
+        "start": {
+          "slots": 3,
+          "lampSeed": 4242,
+          "lampSequence": 6,
+          "loadouts": {
+            "Falie": {
+              "body": "lamp:4242:0"
+            },
+            "Kojonn": {
+              "body": "lamp:4242:1"
+            },
+            "Runa": {
+              "body": "lamp:4242:2"
+            }
+          }
+        },
+        "end": {
+          "slots": 3,
+          "lampSeed": 4242,
+          "lampSequence": 10,
+          "loadouts": {
+            "Falie": {
+              "body": "lamp:4242:0"
+            },
+            "Kojonn": {
+              "body": "lamp:4242:1"
+            },
+            "Runa": {
+              "body": "lamp:4242:2"
+            }
+          }
+        },
+        "actions": {
+          "collect": 0,
+          "auto_equip": 0,
+          "close": 0
+        }
+      },
+      "captures": {
+        "combat_start": "/private/tmp/orka-7l9-current-visual-recovery/session-1-combat_start.png",
+        "recovery_reveal": "/private/tmp/orka-7l9-current-visual-recovery/session-1-recovery_reveal.png",
+        "post_recovery": "/private/tmp/orka-7l9-current-visual-recovery/session-1-post_recovery.png",
+        "first_wave_clear": "/private/tmp/orka-7l9-current-visual-recovery/session-1-first_wave_clear.png"
+      },
+      "finalArena": null,
+      "bossAttempts": {
+        "summonClicks": 0,
+        "activeTransitions": 0,
+        "highestHpObserved": null,
+        "lowestHpObserved": null,
+        "records": [],
+        "gameTimer": "unavailable"
+      },
+      "bossesCleared": 0,
+      "bossTimeouts": 0,
+      "defeatRecoveries": 1,
+      "recoveryRecords": [
+        {
+          "index": 1,
+          "time": 9.136,
+          "reason": "continuous_defeat",
+          "precedingKo": {
+            "uid": 2,
+            "name": "Huun",
+            "time": 9.136
+          },
+          "heroes": [
+            {
+              "uid": 1,
+              "name": "Falie",
+              "hpBefore": 1,
+              "hpAfter": 85,
+              "restoredHp": 84
+            },
+            {
+              "uid": 2,
+              "name": "Huun",
+              "hpBefore": 0,
+              "hpAfter": 60,
+              "restoredHp": 60
+            },
+            {
+              "uid": 3,
+              "name": "Runa",
+              "hpBefore": 1,
+              "hpAfter": 69,
+              "restoredHp": 68
+            }
+          ]
+        }
+      ],
+      "recoveryAttempts": [
+        {
+          "before": {
+            "region": 1,
+            "stage": 2,
+            "wave": 1,
+            "clearedPackMask": 0,
+            "bossReadiness": {
+              "available": false,
+              "summonRequired": false,
+              "ready": false
+            },
+            "counters": {
+              "defeatRecoveries": 0,
+              "ordinaryWaveClears": 0,
+              "stageTransitions": 0,
+              "clearedBosses": 1
+            }
+          },
+          "after": {
+            "region": 1,
+            "stage": 2,
+            "wave": 1,
+            "clearedPackMask": 0,
+            "bossReadiness": {
+              "available": false,
+              "summonRequired": true,
+              "ready": false
+            },
+            "counters": {
+              "defeatRecoveries": 1,
+              "ordinaryWaveClears": 0,
+              "stageTransitions": 1,
+              "clearedBosses": 1
+            }
+          },
+          "counterDelta": {
+            "defeatRecoveries": 1,
+            "ordinaryWaveClears": 0,
+            "stageTransitions": 1,
+            "clearedBosses": 0
+          },
+          "recoveryEventId": 4,
+          "firstEnemyKoAfterRecovery": {
+            "status": "observed",
+            "eventId": 7,
+            "uid": 70,
+            "time": 14.07
+          },
+          "laterOrdinaryWaveClear": {
+            "status": "observed",
+            "after": {
+              "region": 1,
+              "stage": 2,
+              "wave": 2,
+              "clearedPackMask": 0,
+              "bossReadiness": {
+                "available": false,
+                "summonRequired": true,
+                "ready": false
+              },
+              "counters": {
+                "defeatRecoveries": 1,
+                "ordinaryWaveClears": 1,
+                "stageTransitions": 2,
+                "clearedBosses": 1
+              }
+            }
+          },
+          "index": 1,
+          "transition": "observed",
+          "sampledPartyState": {
+            "source": "post_recovery_poll",
+            "observedAt": 9.202,
+            "lampSequence": 6,
+            "loadouts": {
+              "Falie": {
+                "body": "lamp:4242:0"
+              },
+              "Kojonn": {
+                "body": "lamp:4242:1"
+              },
+              "Runa": {
+                "body": "lamp:4242:2"
+              }
+            },
+            "heroes": [
+              {
+                "instanceKey": "falie#1",
+                "name": "Falie",
+                "currentLevel": 1,
+                "hp": 85,
+                "maxHp": 85,
+                "stats": {
+                  "ATK": 8,
+                  "DEF": 16,
+                  "MAG": 5,
+                  "RES": 10,
+                  "SPD": 8
+                },
+                "combatPower": 52.4
+              },
+              {
+                "instanceKey": "huun#1",
+                "name": "Huun",
+                "currentLevel": 1,
+                "hp": 60,
+                "maxHp": 60,
+                "stats": {
+                  "ATK": 16,
+                  "DEF": 5,
+                  "MAG": 3,
+                  "RES": 4,
+                  "SPD": 12
+                },
+                "combatPower": 61.5
+              },
+              {
+                "instanceKey": "runa#1",
+                "name": "Runa",
+                "currentLevel": 1,
+                "hp": 69,
+                "maxHp": 69,
+                "stats": {
+                  "ATK": 4,
+                  "DEF": 6,
+                  "MAG": 19,
+                  "RES": 12,
+                  "SPD": 11
+                },
+                "combatPower": 70.4
+              }
+            ]
+          }
+        }
+      ],
+      "simulationSecondsSurvived": 90.397,
+      "firstKoSide": "enemy",
+      "firstKoTime": 3.468,
+      "firstHeroCasualty": "Huun",
+      "heroCasualties": [
+        "Huun"
+      ],
+      "livingHeroes": 3,
+      "deadlockCount": 0,
+      "endReason": "max_waves",
+      "heroes": [
+        {
+          "uid": 1,
+          "instanceKey": "falie#1",
+          "name": "Falie",
+          "currentLevel": 1,
+          "endLevel": 1,
+          "startEXP": 0,
+          "endEXP": 0,
+          "combatPower": 52.4,
+          "endCombatPower": 52.4,
+          "attackType": "melee",
+          "stats": {
+            "ATK": 8,
+            "DEF": 16,
+            "MAG": 5,
+            "RES": 10,
+            "SPD": 8
+          },
+          "startHp": 1,
+          "minSampledHp": 1,
+          "minEventHp": 1,
+          "endHp": 85,
+          "sampledHpLoss": 0,
+          "largestSampleWindowHpLoss": 0,
+          "sampledRecovery": 84,
+          "physicalIncomingDamage": 0,
+          "magicIncomingDamage": 0,
+          "unknownIncomingDamage": 0,
+          "effectiveHealing": 0,
+          "healingBySourceUID": {},
+          "healingByReason": {},
+          "firstKoTime": null,
+          "startMaxHp": 85,
+          "maxHp": 85
+        },
+        {
+          "uid": 2,
+          "instanceKey": "huun#1",
+          "name": "Huun",
+          "currentLevel": 1,
+          "endLevel": 1,
+          "startEXP": 0,
+          "endEXP": 0,
+          "combatPower": 61.5,
+          "endCombatPower": 61.5,
+          "attackType": "melee",
+          "stats": {
+            "ATK": 16,
+            "DEF": 5,
+            "MAG": 3,
+            "RES": 4,
+            "SPD": 12
+          },
+          "startHp": 1,
+          "minSampledHp": 1,
+          "minEventHp": 0,
+          "endHp": 60,
+          "sampledHpLoss": 9,
+          "largestSampleWindowHpLoss": 1,
+          "sampledRecovery": 68,
+          "physicalIncomingDamage": 10,
+          "magicIncomingDamage": 0,
+          "unknownIncomingDamage": 0,
+          "effectiveHealing": 9,
+          "healingBySourceUID": {
+            "unknown": 9
+          },
+          "healingByReason": {
+            "ordinary_wave_clear": 9
+          },
+          "firstKoTime": 9.136,
+          "startMaxHp": 60,
+          "maxHp": 60
+        },
+        {
+          "uid": 3,
+          "instanceKey": "runa#1",
+          "name": "Runa",
+          "currentLevel": 1,
+          "endLevel": 1,
+          "startEXP": 0,
+          "endEXP": 0,
+          "combatPower": 70.4,
+          "endCombatPower": 70.4,
+          "attackType": "magic",
+          "stats": {
+            "ATK": 4,
+            "DEF": 6,
+            "MAG": 19,
+            "RES": 12,
+            "SPD": 11
+          },
+          "startHp": 1,
+          "minSampledHp": 1,
+          "minEventHp": 1,
+          "endHp": 69,
+          "sampledHpLoss": 2,
+          "largestSampleWindowHpLoss": 1,
+          "sampledRecovery": 70,
+          "physicalIncomingDamage": 2,
+          "magicIncomingDamage": 0,
+          "unknownIncomingDamage": 0,
+          "effectiveHealing": 2,
+          "healingBySourceUID": {
+            "unknown": 2
+          },
+          "healingByReason": {
+            "ordinary_wave_clear": 2
+          },
+          "firstKoTime": null,
+          "startMaxHp": 69,
+          "maxHp": 69
+        }
+      ],
+      "recordedHeroDamageEvents": {
+        "count": 12,
+        "maximumAppliedDamage": {
+          "time": 9.136,
+          "targetUID": 2,
+          "target": "Huun",
+          "amount": 1,
+          "hpBefore": 1,
+          "hpAfter": 0,
+          "targetHpFraction": 0.0167,
+          "sourceUID": 19,
+          "damageType": "physical",
+          "wave": 1,
+          "impactGeometry": {
+            "source": {
+              "uid": 19,
+              "name": "Skeleton",
+              "combatTier": "routine",
+              "x": 951.407082444368,
+              "y": 475.3545653246395,
+              "arenaTargetUID": 2,
+              "streamDelivery": "melee"
+            },
+            "heroes": [
+              {
+                "uid": 1,
+                "x": 914.2141408516763,
+                "y": 494.2010471690159,
+                "hp": 1,
+                "inReach": true
+              },
+              {
+                "uid": 2,
+                "x": 906.4276159530282,
+                "y": 459.05321608368814,
+                "hp": 1,
+                "inReach": true
+              },
+              {
+                "uid": 3,
+                "x": 893.0262798464283,
+                "y": 369.42998275436827,
+                "hp": 1,
+                "inReach": false
+              }
+            ]
+          }
+        },
+        "impactPositionSamples": [
+          {
+            "time": 9.136,
+            "targetUID": 2,
+            "target": "Huun",
+            "amount": 1,
+            "hpBefore": 1,
+            "hpAfter": 0,
+            "targetHpFraction": 0.0167,
+            "sourceUID": 19,
+            "damageType": "physical",
+            "wave": 1,
+            "impactGeometry": {
+              "source": {
+                "uid": 19,
+                "name": "Skeleton",
+                "combatTier": "routine",
+                "x": 951.407082444368,
+                "y": 475.3545653246395,
+                "arenaTargetUID": 2,
+                "streamDelivery": "melee"
+              },
+              "heroes": [
+                {
+                  "uid": 1,
+                  "x": 914.2141408516763,
+                  "y": 494.2010471690159,
+                  "hp": 1,
+                  "inReach": true
+                },
+                {
+                  "uid": 2,
+                  "x": 906.4276159530282,
+                  "y": 459.05321608368814,
+                  "hp": 1,
+                  "inReach": true
+                },
+                {
+                  "uid": 3,
+                  "x": 893.0262798464283,
+                  "y": 369.42998275436827,
+                  "hp": 1,
+                  "inReach": false
+                }
+              ]
+            }
+          },
+          {
+            "time": 18.601,
+            "targetUID": 2,
+            "target": "Huun",
+            "amount": 1,
+            "hpBefore": 60,
+            "hpAfter": 59,
+            "targetHpFraction": 0.0167,
+            "sourceUID": 53,
+            "damageType": "physical",
+            "wave": 1,
+            "impactGeometry": {
+              "source": {
+                "uid": 53,
+                "name": "Skeleton",
+                "combatTier": "fodder",
+                "x": 926.9677626004411,
+                "y": 376.52867414988515,
+                "arenaTargetUID": 2,
+                "streamDelivery": "melee"
+              },
+              "heroes": [
+                {
+                  "uid": 1,
+                  "x": 861.9882618080009,
+                  "y": 404.21081496208427,
+                  "hp": 85,
+                  "inReach": false
+                },
+                {
+                  "uid": 2,
+                  "x": 874.4316702484853,
+                  "y": 368.24257348166293,
+                  "hp": 60,
+                  "inReach": true
+                },
+                {
+                  "uid": 3,
+                  "x": 849.2053386477138,
+                  "y": 298.4856027602269,
+                  "hp": 69,
+                  "inReach": false
+                }
+              ]
+            }
+          },
+          {
+            "time": 20.534,
+            "targetUID": 3,
+            "target": "Runa",
+            "amount": 1,
+            "hpBefore": 69,
+            "hpAfter": 68,
+            "targetHpFraction": 0.0145,
+            "sourceUID": 60,
+            "damageType": "physical",
+            "wave": 1,
+            "impactGeometry": {
+              "source": {
+                "uid": 60,
+                "name": "Gobloc",
+                "combatTier": "fodder",
+                "x": 898.073859175756,
+                "y": 291.92174155415665,
+                "arenaTargetUID": 3,
+                "streamDelivery": "melee"
+              },
+              "heroes": [
+                {
+                  "uid": 1,
+                  "x": 853.3750547255794,
+                  "y": 407.58148883334735,
+                  "hp": 85,
+                  "inReach": false
+                },
+                {
+                  "uid": 2,
+                  "x": 867.6077441198114,
+                  "y": 358.27358977481066,
+                  "hp": 59,
+                  "inReach": false
+                },
+                {
+                  "uid": 3,
+                  "x": 849.2053386477138,
+                  "y": 298.4856027602269,
+                  "hp": 69,
+                  "inReach": true
+                }
+              ]
+            }
+          },
+          {
+            "time": 24.134,
+            "targetUID": 2,
+            "target": "Huun",
+            "amount": 1,
+            "hpBefore": 59,
+            "hpAfter": 58,
+            "targetHpFraction": 0.0167,
+            "sourceUID": 60,
+            "damageType": "physical",
+            "wave": 1,
+            "impactGeometry": {
+              "source": {
+                "uid": 60,
+                "name": "Gobloc",
+                "combatTier": "fodder",
+                "x": 869.3728711977398,
+                "y": 318.10922650529926,
+                "arenaTargetUID": 2,
+                "streamDelivery": "melee"
+              },
+              "heroes": [
+                {
+                  "uid": 1,
+                  "x": 847.8346281048787,
+                  "y": 354.45420488112734,
+                  "hp": 85,
+                  "inReach": true
+                },
+                {
+                  "uid": 2,
+                  "x": 884.3685336248011,
+                  "y": 350.83728204044013,
+                  "hp": 59,
+                  "inReach": true
+                },
+                {
+                  "uid": 3,
+                  "x": 812.3463638467309,
+                  "y": 345.3722180866278,
+                  "hp": 68,
+                  "inReach": true
+                }
+              ]
+            }
+          },
+          {
+            "time": 24.734,
+            "targetUID": 3,
+            "target": "Runa",
+            "amount": 1,
+            "hpBefore": 68,
+            "hpAfter": 67,
+            "targetHpFraction": 0.0145,
+            "sourceUID": 61,
+            "damageType": "physical",
+            "wave": 1,
+            "impactGeometry": {
+              "source": {
+                "uid": 61,
+                "name": "Gobloc",
+                "combatTier": "fodder",
+                "x": 836.3853395010132,
+                "y": 286.0584115194143,
+                "arenaTargetUID": 3,
+                "streamDelivery": "melee"
+              },
+              "heroes": [
+                {
+                  "uid": 1,
+                  "x": 847.8346281048787,
+                  "y": 354.45420488112734,
+                  "hp": 85,
+                  "inReach": false
+                },
+                {
+                  "uid": 2,
+                  "x": 884.3957185247148,
+                  "y": 350.8961321509419,
+                  "hp": 58,
+                  "inReach": false
+                },
+                {
+                  "uid": 3,
+                  "x": 812.3463638467309,
+                  "y": 345.3722180866278,
+                  "hp": 68,
+                  "inReach": true
+                }
+              ]
+            }
+          },
+          {
+            "time": 24.869,
+            "targetUID": 2,
+            "target": "Huun",
+            "amount": 1,
+            "hpBefore": 58,
+            "hpAfter": 57,
+            "targetHpFraction": 0.0167,
+            "sourceUID": 52,
+            "damageType": "physical",
+            "wave": 1,
+            "impactGeometry": {
+              "source": {
+                "uid": 52,
+                "name": "Skeleton",
+                "combatTier": "fodder",
+                "x": 878.3020456675034,
+                "y": 390.178813491876,
+                "arenaTargetUID": 2,
+                "streamDelivery": "melee"
+              },
+              "heroes": [
+                {
+                  "uid": 1,
+                  "x": 847.8346281048787,
+                  "y": 354.45420488112734,
+                  "hp": 85,
+                  "inReach": true
+                },
+                {
+                  "uid": 2,
+                  "x": 884.3958158932618,
+                  "y": 350.89634187737687,
+                  "hp": 58,
+                  "inReach": true
+                },
+                {
+                  "uid": 3,
+                  "x": 812.3463638467309,
+                  "y": 345.3722180866278,
+                  "hp": 67,
+                  "inReach": false
+                }
+              ]
+            }
+          },
+          {
+            "time": 25.069,
+            "targetUID": 2,
+            "target": "Huun",
+            "amount": 1,
+            "hpBefore": 57,
+            "hpAfter": 56,
+            "targetHpFraction": 0.0167,
+            "sourceUID": 65,
+            "damageType": "physical",
+            "wave": 1,
+            "impactGeometry": {
+              "source": {
+                "uid": 65,
+                "name": "Skeleton",
+                "combatTier": "fodder",
+                "x": 912.3739953179228,
+                "y": 403.5963083995481,
+                "arenaTargetUID": 2,
+                "streamDelivery": "melee"
+              },
+              "heroes": [
+                {
+                  "uid": 1,
+                  "x": 847.8346281048787,
+                  "y": 354.45420488112734,
+                  "hp": 85,
+                  "inReach": false
+                },
+                {
+                  "uid": 2,
+                  "x": 884.3958520630028,
+                  "y": 350.89641978307196,
+                  "hp": 57,
+                  "inReach": true
+                },
+                {
+                  "uid": 3,
+                  "x": 812.3463638467309,
+                  "y": 345.3722180866278,
+                  "hp": 67,
+                  "inReach": false
+                }
+              ]
+            }
+          },
+          {
+            "time": 26.402,
+            "targetUID": 2,
+            "target": "Huun",
+            "amount": 1,
+            "hpBefore": 56,
+            "hpAfter": 55,
+            "targetHpFraction": 0.0167,
+            "sourceUID": 53,
+            "damageType": "physical",
+            "wave": 1,
+            "impactGeometry": {
+              "source": {
+                "uid": 53,
+                "name": "Skeleton",
+                "combatTier": "fodder",
+                "x": 941.0103485678269,
+                "y": 380.82761284007125,
+                "arenaTargetUID": 2,
+                "streamDelivery": "melee"
+              },
+              "heroes": [
+                {
+                  "uid": 1,
+                  "x": 846.7295954493393,
+                  "y": 353.03900319064115,
+                  "hp": 85,
+                  "inReach": false
+                },
+                {
+                  "uid": 2,
+                  "x": 889.6258983647211,
+                  "y": 343.79053779076,
+                  "hp": 56,
+                  "inReach": true
+                },
+                {
+                  "uid": 3,
+                  "x": 811.6266775547947,
+                  "y": 345.2045025764291,
+                  "hp": 67,
+                  "inReach": false
+                }
+              ]
+            }
+          },
+          {
+            "time": 27.802,
+            "targetUID": 2,
+            "target": "Huun",
+            "amount": 1,
+            "hpBefore": 55,
+            "hpAfter": 54,
+            "targetHpFraction": 0.0167,
+            "sourceUID": 60,
+            "damageType": "physical",
+            "wave": 1,
+            "impactGeometry": {
+              "source": {
+                "uid": 60,
+                "name": "Gobloc",
+                "combatTier": "fodder",
+                "x": 866.9001735718745,
+                "y": 315.4080788584614,
+                "arenaTargetUID": 2,
+                "streamDelivery": "melee"
+              },
+              "heroes": [
+                {
+                  "uid": 1,
+                  "x": 846.2852622563789,
+                  "y": 352.32013166395495,
+                  "hp": 85,
+                  "inReach": true
+                },
+                {
+                  "uid": 2,
+                  "x": 890.6325314418056,
+                  "y": 342.47789950680556,
+                  "hp": 55,
+                  "inReach": true
+                },
+                {
+                  "uid": 3,
+                  "x": 811.0218006769024,
+                  "y": 345.07525227001145,
+                  "hp": 67,
+                  "inReach": true
+                }
+              ]
+            }
+          },
+          {
+            "time": 29.003,
+            "targetUID": 2,
+            "target": "Huun",
+            "amount": 1,
+            "hpBefore": 54,
+            "hpAfter": 53,
+            "targetHpFraction": 0.0167,
+            "sourceUID": 65,
+            "damageType": "physical",
+            "wave": 1,
+            "impactGeometry": {
+              "source": {
+                "uid": 65,
+                "name": "Skeleton",
+                "combatTier": "fodder",
+                "x": 911.6153635659376,
+                "y": 400.5034202606075,
+                "arenaTargetUID": 2,
+                "streamDelivery": "melee"
+              },
+              "heroes": [
+                {
+                  "uid": 1,
+                  "x": 850.393360292697,
+                  "y": 353.1778891019701,
+                  "hp": 85,
+                  "inReach": false
+                },
+                {
+                  "uid": 2,
+                  "x": 886.2417826333302,
+                  "y": 349.8777958172892,
+                  "hp": 54,
+                  "inReach": true
+                },
+                {
+                  "uid": 3,
+                  "x": 810.4351646391394,
+                  "y": 355.64261252851804,
+                  "hp": 67,
+                  "inReach": false
+                }
+              ]
+            }
+          },
+          {
+            "time": 46.336,
+            "targetUID": 2,
+            "target": "Huun",
+            "amount": 1,
+            "hpBefore": 53,
+            "hpAfter": 52,
+            "targetHpFraction": 0.0167,
+            "sourceUID": 69,
+            "damageType": "physical",
+            "wave": 1,
+            "impactGeometry": {
+              "source": {
+                "uid": 69,
+                "name": "Skeleton",
+                "combatTier": "fodder",
+                "x": 1745.4419994870607,
+                "y": 582.9329643029188,
+                "arenaTargetUID": 2,
+                "streamDelivery": "melee"
+              },
+              "heroes": [
+                {
+                  "uid": 1,
+                  "x": 1698.290166344737,
+                  "y": 532.9892897699488,
+                  "hp": 85,
+                  "inReach": false
+                },
+                {
+                  "uid": 2,
+                  "x": 1691.9129713672528,
+                  "y": 568.4199457647105,
+                  "hp": 53,
+                  "inReach": true
+                },
+                {
+                  "uid": 3,
+                  "x": 1596.9547761660165,
+                  "y": 513.5074838079812,
+                  "hp": 67,
+                  "inReach": false
+                }
+              ]
+            }
+          },
+          {
+            "time": 78.332,
+            "targetUID": 2,
+            "target": "Huun",
+            "amount": 1,
+            "hpBefore": 52,
+            "hpAfter": 51,
+            "targetHpFraction": 0.0167,
+            "sourceUID": 40,
+            "damageType": "physical",
+            "wave": 1,
+            "impactGeometry": {
+              "source": {
+                "uid": 40,
+                "name": "Gobloc",
+                "combatTier": "fodder",
+                "x": 398.8617412850789,
+                "y": 37.899576002994,
+                "arenaTargetUID": 2,
+                "streamDelivery": "melee"
+              },
+              "heroes": [
+                {
+                  "uid": 1,
+                  "x": 459.8354492506528,
+                  "y": 62.160402141683136,
+                  "hp": 85,
+                  "inReach": false
+                },
+                {
+                  "uid": 2,
+                  "x": 461.1121624547979,
+                  "y": 24.977702091837184,
+                  "hp": 52,
+                  "inReach": true
+                },
+                {
+                  "uid": 3,
+                  "x": 562.070659546348,
+                  "y": 61.473089822885505,
+                  "hp": 67,
+                  "inReach": false
+                }
+              ]
+            }
+          }
+        ],
+        "firstKoImpact": {
+          "time": 9.136,
+          "targetUID": 2,
+          "target": "Huun",
+          "amount": 1,
+          "hpBefore": 1,
+          "hpAfter": 0,
+          "targetHpFraction": 0.0167,
+          "sourceUID": 19,
+          "damageType": "physical",
+          "wave": 1,
+          "impactGeometry": {
+            "source": {
+              "uid": 19,
+              "name": "Skeleton",
+              "combatTier": "routine",
+              "x": 951.407082444368,
+              "y": 475.3545653246395,
+              "arenaTargetUID": 2,
+              "streamDelivery": "melee"
+            },
+            "heroes": [
+              {
+                "uid": 1,
+                "x": 914.2141408516763,
+                "y": 494.2010471690159,
+                "hp": 1,
+                "inReach": true
+              },
+              {
+                "uid": 2,
+                "x": 906.4276159530282,
+                "y": 459.05321608368814,
+                "hp": 1,
+                "inReach": true
+              },
+              {
+                "uid": 3,
+                "x": 893.0262798464283,
+                "y": 369.42998275436827,
+                "hp": 1,
+                "inReach": false
+              }
+            ]
+          }
+        },
+        "byCombatTier": {
+          "routine": {
+            "hits": 1,
+            "appliedDamage": 1
+          },
+          "fodder": {
+            "hits": 11,
+            "appliedDamage": 11
+          }
+        },
+        "perHero": {
+          "2": {
+            "name": "Huun",
+            "count": 10,
+            "maximumAppliedDamage": {
+              "time": 9.136,
+              "targetUID": 2,
+              "target": "Huun",
+              "amount": 1,
+              "hpBefore": 1,
+              "hpAfter": 0,
+              "targetHpFraction": 0.0167,
+              "sourceUID": 19,
+              "damageType": "physical",
+              "wave": 1,
+              "impactGeometry": {
+                "source": {
+                  "uid": 19,
+                  "name": "Skeleton",
+                  "combatTier": "routine",
+                  "x": 951.407082444368,
+                  "y": 475.3545653246395,
+                  "arenaTargetUID": 2,
+                  "streamDelivery": "melee"
+                },
+                "heroes": [
+                  {
+                    "uid": 1,
+                    "x": 914.2141408516763,
+                    "y": 494.2010471690159,
+                    "hp": 1,
+                    "inReach": true
+                  },
+                  {
+                    "uid": 2,
+                    "x": 906.4276159530282,
+                    "y": 459.05321608368814,
+                    "hp": 1,
+                    "inReach": true
+                  },
+                  {
+                    "uid": 3,
+                    "x": 893.0262798464283,
+                    "y": 369.42998275436827,
+                    "hp": 1,
+                    "inReach": false
+                  }
+                ]
+              }
+            }
+          },
+          "3": {
+            "name": "Runa",
+            "count": 2,
+            "maximumAppliedDamage": {
+              "time": 20.534,
+              "targetUID": 3,
+              "target": "Runa",
+              "amount": 1,
+              "hpBefore": 69,
+              "hpAfter": 68,
+              "targetHpFraction": 0.0145,
+              "sourceUID": 60,
+              "damageType": "physical",
+              "wave": 1,
+              "impactGeometry": {
+                "source": {
+                  "uid": 60,
+                  "name": "Gobloc",
+                  "combatTier": "fodder",
+                  "x": 898.073859175756,
+                  "y": 291.92174155415665,
+                  "arenaTargetUID": 3,
+                  "streamDelivery": "melee"
+                },
+                "heroes": [
+                  {
+                    "uid": 1,
+                    "x": 853.3750547255794,
+                    "y": 407.58148883334735,
+                    "hp": 85,
+                    "inReach": false
+                  },
+                  {
+                    "uid": 2,
+                    "x": 867.6077441198114,
+                    "y": 358.27358977481066,
+                    "hp": 59,
+                    "inReach": false
+                  },
+                  {
+                    "uid": 3,
+                    "x": 849.2053386477138,
+                    "y": 298.4856027602269,
+                    "hp": 69,
+                    "inReach": true
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "attributionLimit": "mechanical damage type is unknown for paths that do not supply it"
+      },
+      "measurementLimits": {
+        "samplingIntervalMs": 40,
+        "hpChangesAreSampledNetChanges": true,
+        "waveClearSource": "runtime_counter",
+        "ambiguousWaveTransitions": 0,
+        "stageTransitionsObserved": 2,
+        "orderedCombatEventStreamObserved": true,
+        "damageAndHealingTotals": "recorded_events",
+        "missingCombatEvents": 0,
+        "damageTypeAttribution": "unknown for damage paths without a mechanical type",
+        "recoveryHealingAttribution": "full-party defeat recovery is counted separately from skill healing"
+      }
+    }
+  ]
+}
