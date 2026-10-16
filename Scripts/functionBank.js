@@ -1,7 +1,7 @@
 import { partyTrainingCombatStat } from '../web-runner/src/core/realtimeSkillState.mjs';
 import { realtimeBasicDamageMultiplier } from '../web-runner/src/core/realtimeHeroSkills.mjs';
 import { effectiveStat } from '../web-runner/src/core/combatRules.mjs';
-import { recordBalanceCombatEvent } from '../web-runner/src/core/balanceTelemetry.mjs';
+import { captureBalanceImpactGeometry, recordBalanceCombatEvent } from '../web-runner/src/core/balanceTelemetry.mjs';
 import { executeHeroCommand, resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat, settleContinuousCombatRewards, emitResolvedHealEvent } from '../web-runner/modules/heroCommands.mjs';
 import { state } from './state.js';
 import { MONSTER_KEYS, MONSTER_LOOT_TABLE, TOKEN, EMPTY } from './monsterLootTableEventTokens.js';
@@ -5944,6 +5944,8 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   const suppressHitFlash = shouldSuppressHitFlash(ctx, uid, dmg, opts);
   const suppressDamageText = shouldSuppressDamageText(ctx, uid, dmg, opts);
   const beforeHP = Number(t.hp ?? 0);
+  const impactGeometry = g.DevBalanceCapture === true && source?.kind === 'enemy' && t.kind === 'hero'
+    ? captureBalanceImpactGeometry(source, getEntities(ctx).filter((actor) => actor?.kind === 'hero')) : null;
   let incomingDamage = Math.max(0, Number(dmg || 0));
   const shieldBefore = t.kind === 'hero' ? Math.max(0, Number(g.PartyTempHPShield || 0)) : 0;
   const jsShieldAbsorbed = t.kind === 'hero' ? Math.min(shieldBefore, incomingDamage) : 0;
@@ -5986,6 +5988,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
     type: 'damage', sourceUID: Number(source?.uid || 0), targetUID: Number(uid || 0),
     damageType: opts.damageType === 'physical' || opts.damageType === 'magic' ? opts.damageType : opts.magic ? 'magic' : 'unknown',
     amount: appliedDamage, hpBefore: beforeHP, hpAfter: afterHP,
+    wave: Number(g.ContinuousCombatStage?.wave || 0), impactGeometry,
   });
   if (t.kind === 'enemy' && appliedDamage > 0 && afterHP <= 0) recordBalanceCombatEvent(g, {
     type: 'enemy_ko', sourceUID: Number(source?.uid || 0), targetUID: Number(uid || 0),

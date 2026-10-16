@@ -222,6 +222,9 @@ test('balance harness records exact damage and healing events alongside sampled 
   assert.match(source, /missingCombatEvents/);
   assert.match(source, /heroes: heroMetrics\.map\(\(\{ lastHp, \.\.\.hero \}\) => hero\)/);
   assert.match(source, /recordedHeroDamageEvents/);
+  assert.match(source, /impactPositionSamples: incomingDamageEvents\.filter/);
+  assert.match(source, /impactGeometry: event\.impactGeometry \|\| null/);
+  assert.match(source, /wave: event\.wave \?\? Number\(snapshot\.continuousProgression\?\.wave \|\| 0\)/);
   assert.match(source, /maximumAppliedDamage: incomingDamageEvents\.reduce/);
   assert.match(source, /snapshot\.combatEvents/);
   assert.match(source, /recoveryRecords\.push\(record\)/);

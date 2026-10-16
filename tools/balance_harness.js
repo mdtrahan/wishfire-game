@@ -313,7 +313,7 @@ async function readBalanceSnapshot(page, afterEventId = 0) {
       damageEvents: (state.damageEvents || []).map((event) => ({ id: Number(event.id || 0), targetUID: Number(event.targetUID || 0), sourceUID: Number(event.sourceUID || 0), hpBefore: Number(event.hpBefore || 0), hpAfter: Number(event.hpAfter || 0), amount: Number(event.amount || 0) })),
       combatEventSeq: Number(globals.BalanceCombatEventSeq || 0),
       initialRoam: globals.ContinuousCombatInitialRoam ? { ...globals.ContinuousCombatInitialRoam } : null,
-      combatEvents: (globals.BalanceCombatEvents || []).filter(event => Number(event.id || 0) > seenEventId).map(event => ({ id: Number(event.id || 0), time: Number(event.time || 0), type: String(event.type || ''), reason: String(event.reason || ''), recoveryIndex: Number(event.recoveryIndex || 0), targetUID: Number(event.targetUID || 0), sourceUID: Number(event.sourceUID || 0), damageType: String(event.damageType || ''), amount: Number(event.amount || 0), hpBefore: Number(event.hpBefore || 0), hpAfter: Number(event.hpAfter || 0) })),
+      combatEvents: (globals.BalanceCombatEvents || []).filter(event => Number(event.id || 0) > seenEventId).map(event => ({ id: Number(event.id || 0), time: Number(event.time || 0), type: String(event.type || ''), reason: String(event.reason || ''), recoveryIndex: Number(event.recoveryIndex || 0), targetUID: Number(event.targetUID || 0), sourceUID: Number(event.sourceUID || 0), damageType: String(event.damageType || ''), amount: Number(event.amount || 0), hpBefore: Number(event.hpBefore || 0), hpAfter: Number(event.hpAfter || 0), wave: event.wave == null ? null : Number(event.wave), impactGeometry: event.impactGeometry || null })),
       readiness: {
         heroBasics: Object.entries(globals.RealtimeHeroBasicClocks || {}).sort(([a], [b]) => Number(a) - Number(b)).map(([uid, clock]) => [Number(uid), Math.max(0, Number((clock?.basicReadyAt ?? 0) - Number(globals.time || 0)).toFixed(2))]),
         enemies: Object.entries(globals.RealtimeEnemyActionReadyAt || {}).sort(([a], [b]) => Number(a) - Number(b)).map(([uid, readyAt]) => [Number(uid), Math.max(0, Number((readyAt - Number(globals.time || 0)).toFixed(2)))]),
@@ -736,7 +736,7 @@ async function runSession(page, config, sessionId) {
       } else if (event.type === 'damage') {
         const damageKey = event.damageType === 'physical' ? 'physicalIncomingDamage' : event.damageType === 'magic' ? 'magicIncomingDamage' : 'unknownIncomingDamage';
         tracked[damageKey] += event.amount;
-        incomingDamageEvents.push({ targetUID: event.targetUID, target: tracked.name, amount: event.amount, hpBefore: event.hpBefore, hpAfter: event.hpAfter, targetHpFraction: Number((event.amount / tracked.maxHp).toFixed(4)), sourceUID: event.sourceUID, damageType: event.damageType, wave: Number(snapshot.continuousProgression?.wave || 0) });
+        incomingDamageEvents.push({ time: Number(Math.max(0, event.time - startSimulationTime).toFixed(3)), targetUID: event.targetUID, target: tracked.name, amount: event.amount, hpBefore: event.hpBefore, hpAfter: event.hpAfter, targetHpFraction: Number((event.amount / tracked.maxHp).toFixed(4)), sourceUID: event.sourceUID, damageType: event.damageType, wave: event.wave ?? Number(snapshot.continuousProgression?.wave || 0), impactGeometry: event.impactGeometry });
         if (event.hpAfter <= 0) {
           if (!firstKo) firstKo = { side: 'hero', uid: event.targetUID, time: Number(Math.max(0, event.time - startSimulationTime).toFixed(3)) };
           if (!firstOrderedHeroCasualty) firstOrderedHeroCasualty = tracked.name;
@@ -826,6 +826,8 @@ async function runSession(page, config, sessionId) {
     recordedHeroDamageEvents: {
       count: incomingDamageEvents.length,
       maximumAppliedDamage: incomingDamageEvents.reduce((maximum, event) => !maximum || event.amount > maximum.amount ? event : maximum, null),
+      impactPositionSamples: incomingDamageEvents.filter((event) => event.impactGeometry).slice(0, 100),
+      firstKoImpact: incomingDamageEvents.find((event) => event.hpAfter <= 0 && event.impactGeometry) || null,
       perHero: Object.fromEntries([...new Set(incomingDamageEvents.map((event) => event.targetUID))].map((targetUID) => {
         const events = incomingDamageEvents.filter((event) => event.targetUID === targetUID);
         return [targetUID, {

@@ -14,7 +14,7 @@
 - Keep names and state vocabulary compatible with `web-runner/modules/` unless a bead explicitly authorizes a migration.
 - Deterministic gameplay rules should move toward shared `src/core/` or Rust SimulationCore seams, not deeper into the mirror.
 - Mirror the production stream's bypass of retired enemy-slot refill holds in `GetEnemyRosterStability`.
-- The mirrored damage seam records opt-in hero damage and enemy KO events with the browser function bank; keep source, target, type and applied HP delta aligned.
+- The mirrored damage seam records opt-in hero damage and enemy KO events with the browser function bank; keep source, target, type, applied HP delta and incoming-hit geometry aligned.
 - Avoid using this folder as a dumping ground for new browser UI, rendering, storage, or tooling behavior.
 
 ## Work Guidance
