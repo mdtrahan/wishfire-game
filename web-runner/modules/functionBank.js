@@ -8159,6 +8159,7 @@ export function SpawnEnemy(ctx, enemyData, slotIndex = 0) {
     },
     faction: String(enemyData.faction || 'wishless'),
     enemyRole: String(enemyData.enemyRole || enemyData.role || 'fodder'),
+    combatTier: String(enemyData.combatTier || enemyData.routineTier || 'routine'),
     attackPattern: enemyData.attackPattern && typeof enemyData.attackPattern === 'object' ? { ...enemyData.attackPattern } : undefined,
     targetPreference: enemyData.targetPreference || enemyData.targetingPreference || enemyData.targetingPolicy || enemyData.targetPolicy || '',
     localeTags: normalizeLocaleTags(enemyData.localeTags || enemyData.locale || enemyData.biomes || enemyData.biome || 'all'),

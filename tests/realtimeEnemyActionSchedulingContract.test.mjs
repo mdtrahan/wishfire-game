@@ -10,6 +10,7 @@ import { realtimeCooldownSeconds } from '../web-runner/src/core/realtimeCooldown
 import { realtimeProvokeTarget } from '../web-runner/src/core/realtimeHeroSkills.mjs';
 
 const functionBank = fs.readFileSync(new URL('../web-runner/modules/functionBank.js', import.meta.url), 'utf8');
+const scriptsFunctionBank = fs.readFileSync(new URL('../Scripts/functionBank.js', import.meta.url), 'utf8');
 
 function loadTickRealtimeEnemyActions(pickTarget = null, startAction = null) {
   const start = functionBank.indexOf('export function TickRealtimeEnemyActions(ctx) {');
@@ -213,6 +214,12 @@ test('a displaced living enemy retains its cooldown deadline until it re-enters 
 });
 
 test('spawned melee, ranged, and boss actors keep their authored realtime intervals', () => {
+  assert.equal(realtimeCooldownSeconds({ type: 1, combatTier: 'fodder', attackDelivery: 'melee' }), 3.6);
+  assert.equal(realtimeCooldownSeconds({ type: 1, combatTier: 'routine', attackDelivery: 'melee' }), 3.6);
+  assert.equal(realtimeCooldownSeconds({ type: 1, combatTier: 'hard', attackDelivery: 'melee' }), 1.6);
+  assert.equal(realtimeCooldownSeconds({ type: 1, combatTier: 'fodder', attackDelivery: 'ranged' }), 5);
+  assert.match(functionBank, /combatTier: String\(enemyData\.combatTier \|\| enemyData\.routineTier \|\| 'routine'\)/);
+  assert.match(scriptsFunctionBank, /combatTier: String\(enemyData\.combatTier \|\| enemyData\.routineTier \|\| 'routine'\)/);
   const globals = { time: 0, EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 }, EnemySize: 40 };
   const melee = activateContinuousCombatSpawnedEnemy(globals, { uid: 30, kind: 'enemy', name: 'Gobloc', enemyRole: 'fodder', hp: 10 }, { entryOrder: 0 });
   const ranged = activateContinuousCombatSpawnedEnemy(globals, { uid: 31, kind: 'enemy', name: 'Djinn', enemyRole: 'fodder', hp: 10 }, { entryOrder: 1 });

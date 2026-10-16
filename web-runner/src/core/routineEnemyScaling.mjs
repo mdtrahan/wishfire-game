@@ -8,7 +8,7 @@ export const ENEMY_COMBAT_TIER_PROFILES = Object.freeze({
 
 export const ROUTINE_ENEMY_TEMPLATE = ENEMY_COMBAT_TIER_PROFILES.routine;
 
-const MAX_HOSTILE_HIT_FRACTION = Object.freeze({ fodder: 0.05, routine: 0.05, hard: 0.08, elite: 0.12, boss: 0.18 });
+const MAX_HOSTILE_HIT_FRACTION = Object.freeze({ fodder: 0.02, routine: 0.02, hard: 0.08, elite: 0.12, boss: 0.18 });
 
 export function capContinuousHostileHit(amount, targetMaxHP, enemyRow = {}) {
   const damage = Math.max(0, Number(amount) || 0);

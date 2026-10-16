@@ -15,8 +15,8 @@ const catalog = Object.fromEntries(Array.from({ length: columns[0].length - 1 },
   return [row.name, scaleRoutineEnemy(row, 1)];
 }).filter(([name]) => name));
 
-test('continuous hostile damage obeys the approved tier ceiling at the applied hit seam', () => {
-  const limits = { fodder: 3, routine: 3, hard: 4, elite: 7, boss: 10 };
+test('continuous hostile damage obeys the tier ceiling at the applied hit seam', () => {
+  const limits = { fodder: 1, routine: 1, hard: 4, elite: 7, boss: 10 };
   for (const [combatTier, expected] of Object.entries(limits)) {
     assert.equal(capContinuousHostileHit(25, 60, { combatTier }), expected);
   }
@@ -27,8 +27,8 @@ test('continuous hostile damage obeys the approved tier ceiling at the applied h
   const ctx = { state: { globals, entities: [enemy, hero] }, callFunction(name, uid, amount) {
     if (name === 'ApplyDamageToTarget') { applied = amount; hero.hp -= amount; }
   } };
-  assert.equal(rulesContext(ctx).applyDamage(enemy, hero, 25, {}), 3);
-  assert.equal(applied, 3);
+  assert.equal(rulesContext(ctx).applyDamage(enemy, hero, 25, {}), 1);
+  assert.equal(applied, 1);
   globals.ContinuousCombatStageLoop = 0;
   assert.equal(rulesContext(ctx).applyDamage(enemy, hero, 25, {}), 25);
 });
