@@ -31,6 +31,12 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
     // encounters remain available to QA through their explicit setup hooks.
     prepare() { state.globals.QuestFiniteEncounter = 0; },
     isCleared() { return false; },
+    hasPendingBossVictory() {
+      const stage = state.globals.ContinuousCombatStage;
+      if (Number(state.globals.ContinuousCombatStageLoop || 0) !== 1 || stage?.bossActive !== true
+        || !Number.isSafeInteger(stage.bossUID) || stage.bossUID <= 0) return false;
+      return !state.entities.some(actor => actor?.kind === 'enemy' && Number(actor.hp || 0) > 0);
+    },
     surrenderBossAttempt(reason = 'boss_surrender') {
       const stage = state.globals.ContinuousCombatStage;
       if (Number(state.globals.ContinuousCombatStageLoop || 0) !== 1 || stage?.bossActive !== true) return false;

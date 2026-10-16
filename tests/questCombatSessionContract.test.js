@@ -21,6 +21,7 @@ test('app-source outcome routing distinguishes ordinary first KO, boss survivor 
  const makeScenario=(bossActive)=>{
   const stage=createContinuousCombatStageState(42,{region:1,stage:2});
   Object.assign(stage,{wave:2,bossAvailable:bossActive,bossSummonRequired:bossActive,bossArmed:bossActive,bossActive});
+  if(bossActive)stage.bossUID=90;
   const state={entities:[
    {uid:1,kind:'hero',hp:0,maxHP:40,isAlive:false},
    {uid:2,kind:'hero',hp:30,maxHP:40,isAlive:true},
@@ -63,6 +64,14 @@ test('app-source outcome routing distinguishes ordinary first KO, boss survivor 
  assert.equal(boss.state.globals.ContinuousCombatStage.bossSummonRequired,true);
  assert.deepEqual(boss.state.entities.filter(actor=>actor.kind==='hero').map(hero=>hero.hp),[40,40]);
  assert.equal(boss.calls.filter(name=>name==='SettleContinuousCombatRewards').length,1);
+
+ const traded=makeScenario(true);
+ traded.state.entities.filter(actor=>actor.kind==='hero').forEach(hero=>{hero.hp=0;hero.isAlive=false;});
+ traded.state.entities.find(actor=>actor.uid===90).hp=0;
+ traded.state.globals.EnemyDeathVisualHoldByUID={90:true};
+ assert.equal(traded.checkOutcome(),false,'a lethal trade waits for the boss death presentation to clear');
+ assert.equal(traded.state.globals.ContinuousCombatStage.bossActive,true);
+ assert.equal(traded.calls.includes('SettleContinuousCombatRewards'),false);
 });
 test('full-party recovery emits per-hero restored HP without treating it as skill healing', async () => {
  const {restoreHeroesToFullHP}=await import('../web-runner/systems/questCombatSession.mjs');

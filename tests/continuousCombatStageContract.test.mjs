@@ -757,6 +757,40 @@ test('ordinary waves carry HP while a boss clear restores and cleanses the party
   }
 });
 
+test('a lethal boss trade waits for death presentation and then awards the clear', () => {
+  const heroes = [
+    { uid: 1, kind: 'hero', baseHeroName: 'Falie', hp: 0, maxHP: 50, isAlive: false },
+    { uid: 2, kind: 'hero', baseHeroName: 'Huun', hp: 0, maxHP: 40, isAlive: false },
+  ];
+  const entities = [...heroes, { uid: 90, kind: 'enemy', hp: 0, maxHP: 100 }];
+  const globals = {
+    ContinuousCombatStageLoop: 1,
+    ContinuousCombatStage: { ...createContinuousCombatStageState(1), bossAvailable: true, bossArmed: true,
+      bossActive: true, bossUID: 90, bossTimerStartedAt: 0, bossTimeLimitSec: 18, nextEmissionAt: 0 },
+    EnemyData: rows, EnemySize: 40, GamePhase: 'RUNTIME', BattleStartActive: 0,
+    time: 18, PendingDeaths: {}, EnemyDeathVisualHoldByUID: { 90: true }, EnemySlots: [],
+  };
+  const calls = [];
+  const call = (name, row, slotIndex) => {
+    calls.push(name);
+    if (name !== 'SpawnEnemy') return null;
+    const enemy = { uid: 100 + slotIndex, kind: 'enemy', name: row.name, hp: row.HP, maxHP: row.HP };
+    entities.push(enemy);
+    return enemy;
+  };
+  let timeouts = 0;
+  const options = { globals, entities, presentationBarrier: { lanes: {} }, call, onBossTimeout: () => { timeouts += 1; } };
+  assert.equal(maybeAdvanceContinuousCombatStage(options), false);
+  assert.equal(timeouts, 0, 'a dead boss cannot time out at the deadline');
+  assert.equal(globals.ContinuousCombatStage.bossActive, true);
+  globals.EnemyDeathVisualHoldByUID = {};
+  assert.equal(maybeAdvanceContinuousCombatStage(options), true);
+  assert.equal(calls.filter(name => name === 'SettleContinuousCombatRewards').length, 1);
+  assert.equal(globals.ContinuousCombatStage.bossActive, false);
+  assert.deepEqual(heroes.map(hero => hero.hp), [50, 40]);
+  assert.equal(timeouts, 0);
+});
+
 test('the fourth wave waits for its normal interval before looping', () => {
   const globals = {
     ContinuousCombatStageLoop: 1,

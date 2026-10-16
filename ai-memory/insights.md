@@ -644,3 +644,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - ORKA-bnw: Menu CP must read the same canonical hero progression as equipment comparisons. Preferring a paused combat actor can conceal a committed upgrade until a later equipment sync; test the next render with an intentionally stale actor and verify manual/Auto receipts match saved and live CP.
 
 - A live Bead does not prove current source identity. Verify origin, main ancestry and active Bag renderer before editing or serving. Exported snapshots can reuse Bead IDs while having unrelated histories; migrate only requested features and their dependencies into project main. Port Equip fixes into the conveyor owner rather than restoring a legacy strip.
+
+- In continuous boss combat, a zero-HP boss may wait behind a death visual while every Hero is also at zero HP. Defer party-wipe routing until the boss clear barrier drains, then settle the earned win once; test this at the boss deadline as well as before it.

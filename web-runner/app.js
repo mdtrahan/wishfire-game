@@ -3023,6 +3023,7 @@ function getStoryCardLiveLineState() {
     if (heroes.length === 0) return false;
     const livingHeroes = heroes.filter(hero => Number(hero.hp || 0) > 0 && hero.isAlive !== false).length;
     if (livingHeroes > 0) return false;
+    if (questCombat.hasPendingBossVictory()) return false;
     const energy = Number(state.globals.Player_Energy || 0);
     const partyHp = heroes.reduce((sum, hero) => sum + Math.max(0, Number(hero.hp || 0)), 0);
     const outcome = resolveMainRuntimeCombatOutcome({ energy, partyHp, livingHeroes });

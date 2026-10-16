@@ -78,7 +78,7 @@
 - Enemy-stream coverage fixes the single-X staggered emitter, bounded varied Y homes, Y-based sprite depth, three-second post-range-entry cadence, seeded per-sector CP padding from two-or-three base actors up to six, shallow linear CP rise, survivor overlap, role-shaped attack motion and boss clear gate.
 
 - Migration coverage uses `combatRulesMigration`, `heroProgressionMigration` and `continuousCombatStageContract` for canonical effects, growth, infinite stage wrapping, and immediate no-reward enemy removal. VM function-bank harnesses must inject the real core/module imports.
-- Timed boss contracts cover live-boss deadline expiry, victory precedence, same-stage recovery with failure HP, the blue HUD gauge, and separate game versus harness timeout reporting.
+- Timed boss contracts cover live-boss deadline expiry, victory precedence including a last-Hero lethal trade behind death presentation, same-stage recovery with failure HP, the blue HUD gauge, and separate game versus harness timeout reporting.
 
 - Action capacity tests cover mixed 1/2/3 slots, affordability, removal and early commit. Browser proof exercises real target clicks and capacity auto-commit. Paused frame-based regeneration must not affect combat.
 
