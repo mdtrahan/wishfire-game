@@ -3,7 +3,7 @@ import { actorFootPoint, isActorTargetInRange } from '../../../src/core/arenaCom
 export function captureBalanceImpactGeometry(source, heroes) {
   const origin = actorFootPoint(source);
   return {
-    source: { uid: Number(source?.uid || 0), x: origin.x, y: origin.y, arenaTargetUID: Number(source?.arenaTargetUID || 0), streamDelivery: String(source?.streamDelivery || '') },
+    source: { uid: Number(source?.uid || 0), name: String(source?.name || ''), combatTier: String(source?.combatTier || source?.routineTier || 'unknown'), x: origin.x, y: origin.y, arenaTargetUID: Number(source?.arenaTargetUID || 0), streamDelivery: String(source?.streamDelivery || '') },
     heroes: heroes.map((hero) => {
       const foot = actorFootPoint(hero);
       return { uid: Number(hero.uid || 0), x: foot.x, y: foot.y, hp: Number(hero.hp || 0), inReach: isActorTargetInRange(source, hero) };

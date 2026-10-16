@@ -832,6 +832,13 @@ async function runSession(page, config, sessionId) {
       maximumAppliedDamage: incomingDamageEvents.reduce((maximum, event) => !maximum || event.amount > maximum.amount ? event : maximum, null),
       impactPositionSamples: incomingDamageEvents.filter((event) => event.impactGeometry).slice(0, 100),
       firstKoImpact: incomingDamageEvents.find((event) => event.hpAfter <= 0 && event.impactGeometry) || null,
+      byCombatTier: incomingDamageEvents.reduce((summary, event) => {
+        const tier = String(event.impactGeometry?.source?.combatTier || 'unknown');
+        const totals = summary[tier] ||= { hits: 0, appliedDamage: 0 };
+        totals.hits += 1;
+        totals.appliedDamage += event.amount;
+        return summary;
+      }, {}),
       perHero: Object.fromEntries([...new Set(incomingDamageEvents.map((event) => event.targetUID))].map((targetUID) => {
         const events = incomingDamageEvents.filter((event) => event.targetUID === targetUID);
         return [targetUID, {

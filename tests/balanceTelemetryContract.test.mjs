@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import { captureBalanceImpactGeometry, recordBalanceCombatEvent } from '../web-runner/src/core/balanceTelemetry.mjs';
 
 test('impact capture records the enemy target and every hero range before damage', () => {
-  const enemy = { uid: 8, kind: 'enemy', hp: 50, footX: 100, footY: 100, arenaTargetUID: 2 };
+  const enemy = { uid: 8, name: 'Gobloc', combatTier: 'fodder', kind: 'enemy', hp: 50, footX: 100, footY: 100, arenaTargetUID: 2 };
   const heroes = [
     { uid: 1, kind: 'hero', hp: 20, footX: 150, footY: 100 },
     { uid: 2, kind: 'hero', hp: 20, footX: 180, footY: 100 },
     { uid: 3, kind: 'hero', hp: 0, footX: 100, footY: 100 },
   ];
   assert.deepEqual(captureBalanceImpactGeometry(enemy, heroes), {
-    source: { uid: 8, x: 100, y: 100, arenaTargetUID: 2, streamDelivery: '' },
+    source: { uid: 8, name: 'Gobloc', combatTier: 'fodder', x: 100, y: 100, arenaTargetUID: 2, streamDelivery: '' },
     heroes: [
       { uid: 1, x: 150, y: 100, hp: 20, inReach: true },
       { uid: 2, x: 180, y: 100, hp: 20, inReach: false },
