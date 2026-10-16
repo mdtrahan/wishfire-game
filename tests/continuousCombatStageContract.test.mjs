@@ -717,7 +717,7 @@ test('ordinary waves grant capped respite while a boss clear restores and cleans
     const globals = {
       ContinuousCombatStageLoop: 1,
       ContinuousCombatStage: { ...createContinuousCombatStageState(1), ...stage, nextEmissionAt: 0 },
-      EnemyData: rows, EnemySize: 40, GamePhase: 'RUNTIME', BattleStartActive: 0,
+      EnemyData: rows, EnemySize: 40, GamePhase: 'RUNTIME', BattleStartActive: 0, DevBalanceCapture: true,
       time: 10, PendingDeaths: {}, EnemyDeathVisualHoldByUID: {}, EnemySlots: [],
       HeroProgress: { heroes: {} },
     };
@@ -733,6 +733,9 @@ test('ordinary waves grant capped respite while a boss clear restores and cleans
     assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), true);
     const clearedBoss = !!stage.bossActive;
     assert.deepEqual(heroes.map(hero => hero.hp), clearedBoss ? [60, 40] : [21, 16]);
+    assert.equal(globals.ContinuousCombatStage.bossActive, !clearedBoss, 'the fourth ordinary clear arms the boss with its respite already applied');
+    assert.equal((globals.BalanceCombatEvents || []).filter(event => event.reason === 'ordinary_wave_clear').length, clearedBoss ? 0 : 2,
+      'boss victory never receives ordinary-wave healing');
     assert.deepEqual(heroes.map(hero => hero.isAlive), [true, true]);
     if (clearedBoss) {
       const huddle = deriveContinuousCombatRecoveryHuddle(heroes, globals.ContinuousCombatInitialRoam?.direction || 1);
@@ -757,6 +760,17 @@ test('ordinary waves grant capped respite while a boss clear restores and cleans
     assert.equal(globals.HeroProgress.heroes.Huun?.hp, clearedBoss ? 40 : 16);
     assert.equal(globals.ContinuousCombatStage.wave, 1);
   }
+});
+
+test('an ordinary Hero KO blocks wave settlement and respite until recovery', () => {
+  const stage = createContinuousCombatStageState(1);
+  const living = { uid: 1, kind: 'hero', hp: 10, maxHP: 40 };
+  const ko = { uid: 2, kind: 'hero', hp: 0, maxHP: 40 };
+  const globals = { ContinuousCombatStageLoop: 1, ContinuousCombatStage: stage, GamePhase: 'RUNTIME', DevBalanceCapture: true, time: 1 };
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities: [living, ko], call() {} }), false);
+  assert.deepEqual([living.hp, ko.hp], [10, 0]);
+  assert.equal(stage.ordinaryWaveClears, 0);
+  assert.equal((globals.BalanceCombatEvents || []).length, 0);
 });
 
 test('a lethal boss trade waits for death presentation and then awards the clear', () => {
