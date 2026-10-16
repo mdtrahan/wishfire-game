@@ -254,6 +254,32 @@ test('surrender is a no-op outside an active continuous boss attempt', async () 
  assert.equal(session.surrenderBossAttempt(),false);assert.deepEqual(stage,{region:1,stage:4,wave:2,bossAvailable:false,bossSummonRequired:false,bossActive:false,clearedBosses:7});assert.equal(settlements,0);
 });
 
+test('boss timeout records the living party and boss HP before same-stage recovery', async () => {
+ const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
+ const {createContinuousCombatStageState}=await import('../web-runner/src/core/continuousCombatStage.mjs');
+ const stage={...createContinuousCombatStageState(42,{region:1,stage:2}),wave:4,bossAvailable:true,bossActive:true,bossUID:90,bossTimerStartedAt:10,bossTimeLimitSec:18};
+ const hero={uid:1,kind:'hero',name:'Hondo',hp:31,maxHP:60,isAlive:true,statuses:[]};
+ const boss={uid:90,kind:'enemy',name:'Troll',enemyRole:'boss',hp:41,maxHP:231};
+ const state={entities:[hero,boss],globals:{ContinuousCombatStageLoop:1,ContinuousCombatStage:stage,time:28,EnemyData:[{name:'Gobloc',HP:20,ATK:2,DEF:2,MAG:1,RES:1,SPD:8,CombatPower:20}],EnemySlots:[],PendingDeaths:{},Equipment:{lamp:{autoEnabled:true}}}};
+ const calls=[];
+ const call=(name,row,slotIndex)=>{calls.push(name);if(name==='SpawnEnemy'){const enemy={uid:100+slotIndex,kind:'enemy',name:row.name,hp:row.HP,maxHP:row.HP,enemyRole:row.enemyRole,slotIndex};state.entities.push(enemy);return enemy;}return null;};
+ const session=createQuestCombatSession({state,gameState:{},call,sync(){}});
+ assert.equal(session.surrenderBossAttempt('boss_timeout'),true);
+ assert.equal(stage.bossTimeouts,1);
+ assert.equal(stage.lastBossOutcome,'timeout');
+ assert.equal(stage.lastBossTimeout.bossHp,41);
+ assert.equal(stage.lastBossTimeout.elapsedSec,18);
+ assert.deepEqual(stage.lastBossTimeout.heroes.map(({hp})=>hp),[31]);
+ assert.equal(hero.hp,60);
+ const recoveredStage=state.globals.ContinuousCombatStage;
+ assert.equal(recoveredStage.bossActive,false);
+ assert.equal(recoveredStage.bossSummonRequired,true);
+ assert.equal(recoveredStage.stage,2);
+ assert.equal(session.surrenderBossAttempt('boss_timeout'),false);
+ assert.equal(recoveredStage.bossTimeouts,1);
+ assert.equal(calls.filter(name=>name==='SettleContinuousCombatRewards').length,1);
+});
+
 test('ordinary KO captures cleared sectors before removing enemies and respawns only unfinished packs', async () => {
  const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
  const {buildContinuousCombatSpawnPlan,activateContinuousCombatSpawnedEnemy,deriveContinuousCombatWavePackProgress,getContinuousCombatPartyCP}=await import('../web-runner/src/core/continuousCombatStage.mjs');

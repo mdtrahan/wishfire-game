@@ -1,4 +1,4 @@
-import { deriveContinuousCombatWavePackProgress } from '../src/core/continuousCombatStage.mjs';
+import { CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC, continuousCombatBossTimeRemaining, deriveContinuousCombatWavePackProgress } from '../src/core/continuousCombatStage.mjs';
 
 const HUD = Object.freeze({ left: 127.5, top: 44, right: 232.5, bottom: 84 });
 const FALLBACK = Object.freeze({ width: 360, height: 82, top: 2 });
@@ -138,6 +138,8 @@ export function drawCombatProgressHud(ctx, { state, images, worldToCanvas } = {}
   const completed = bossReady ? 4 : wave - 1;
   const wavePacks = bossReady ? { fraction: 0 } : deriveContinuousCombatWavePackProgress(progress, state?.entities);
   const progressPosition = Math.min(4, completed + wavePacks.fraction);
+  const bossTimeRemainingSec = continuousCombatBossTimeRemaining(progress, state?.globals?.time);
+  const bossTimeFraction = bossTimeRemainingSec == null ? null : bossTimeRemainingSec / Number(progress.bossTimeLimitSec || CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC);
   const label = `Chapter ${Math.max(1, Number(progress.region) || 1)}-${Math.max(1, Number(progress.stage) || 1)}`;
   const portrait = images?.CombatProgressHondoHead;
 
@@ -167,16 +169,17 @@ export function drawCombatProgressHud(ctx, { state, images, worldToCanvas } = {}
   ctx.fill();
   ctx.save();
   ctx.clip();
-  if (progressPosition > 0) {
-    ctx.fillStyle = '#55d4be';
-    ctx.fillRect(trackX, trackY - railRadius, trackWidth * progressPosition / 4, railHeight);
+  const fillFraction = bossTimeFraction ?? progressPosition / 4;
+  if (fillFraction > 0) {
+    ctx.fillStyle = bossTimeFraction == null ? '#55d4be' : '#5dbbff';
+    ctx.fillRect(trackX, trackY - railRadius, trackWidth * fillFraction, railHeight);
   }
   ctx.restore();
   ctx.lineWidth = Math.max(1, scale);
   ctx.strokeStyle = '#f6ecd0';
   ctx.stroke();
   ctx.lineWidth = Math.max(2, 2 * scale) * 1.5;
-  for (let notch = 1; notch < 4; notch += 1) {
+  for (let notch = 1; bossTimeFraction == null && notch < 4; notch += 1) {
     const x = trackX + trackWidth * notch / 4;
     ctx.beginPath();
     ctx.moveTo(x, trackY - railRadius * 1.5);
@@ -202,5 +205,5 @@ export function drawCombatProgressHud(ctx, { state, images, worldToCanvas } = {}
   drawMonsterHead(ctx, bossX, trackY, bossSize);
   ctx.restore();
 
-  return { ...rect, label, labelX: chapterX, railCenterX: (trackX + trackEnd) / 2, completedWaves: completed, waveProgress: wavePacks.fraction, progressPosition, bossReady };
+  return { ...rect, label, labelX: chapterX, railCenterX: (trackX + trackEnd) / 2, completedWaves: completed, waveProgress: wavePacks.fraction, progressPosition, bossReady, bossTimeRemainingSec };
 }

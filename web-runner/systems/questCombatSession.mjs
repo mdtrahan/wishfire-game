@@ -31,7 +31,7 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
     // encounters remain available to QA through their explicit setup hooks.
     prepare() { state.globals.QuestFiniteEncounter = 0; },
     isCleared() { return false; },
-    surrenderBossAttempt() {
+    surrenderBossAttempt(reason = 'boss_surrender') {
       const stage = state.globals.ContinuousCombatStage;
       if (Number(state.globals.ContinuousCombatStageLoop || 0) !== 1 || stage?.bossActive !== true) return false;
       const bossUIDs = new Set(state.entities.filter(actor => actor?.kind === 'enemy'
@@ -39,6 +39,17 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
         .map(actor => String(actor.uid)));
       if (Number.isSafeInteger(stage.bossUID) && stage.bossUID > 0) bossUIDs.add(String(stage.bossUID));
       const battle = state.globals.ProgressionBattle;
+      if (reason === 'boss_timeout') {
+        const boss = state.entities.find(actor => Number(actor?.uid || 0) === Number(stage.bossUID || 0));
+        stage.lastBossTimeout = {
+          time: Number(state.globals.time || 0),
+          elapsedSec: Math.max(0, Number(state.globals.time || 0) - Number(stage.bossTimerStartedAt || 0)),
+          timeLimitSec: Number(stage.bossTimeLimitSec || 0),
+          bossHp: Number(boss?.hp || 0),
+          bossMaxHp: Number(boss?.maxHP || 0),
+          heroes: state.entities.filter(actor => actor?.kind === 'hero').map(actor => ({ uid: Number(actor.uid || 0), name: String(actor.name || ''), hp: Number(actor.hp || 0), maxHp: Number(actor.maxHP || 0) })),
+        };
+      }
       let removedReward = false;
       for (const uid of bossUIDs) {
         if (battle?.defeated && Object.hasOwn(battle.defeated, uid)) { delete battle.defeated[uid]; removedReward = true; }
@@ -50,9 +61,13 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
       resetCombatSessionConditions(state.globals, gameState, state.entities);
       state.globals.NativeBattleEnded = false;
       stage.bossSummonRequired = true;
-      return this.recoverContinuousDefeat();
+      if (reason === 'boss_timeout') {
+        stage.bossTimeouts = Number(stage.bossTimeouts || 0) + 1;
+        stage.lastBossOutcome = 'timeout';
+      }
+      return this.recoverContinuousDefeat(reason);
     },
-    recoverContinuousDefeat() {
+    recoverContinuousDefeat(reason = 'continuous_defeat') {
       if (Number(state.globals.ContinuousCombatStageLoop || 0) !== 1) return false;
       const stageBeforeRecovery = state.globals.ContinuousCombatStage;
       if (recordContinuousCombatWavePackProgress(stageBeforeRecovery, state.entities)) state.globals.HeroProgressDirty = true;
@@ -63,7 +78,7 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
       state.globals.EnemyDeathVisualHoldByUID = {};
       state.globals.PendingDeaths = {};
       resetContinuousCombatAfterDefeat(state.globals);
-      restoreHeroesToFullHP({ state, call, reason: 'continuous_defeat' });
+      restoreHeroesToFullHP({ state, call, reason });
       const heroes = state.entities.filter(actor => actor?.kind === 'hero');
       for (const hero of heroes) cleanseDebuffs(hero);
       placeContinuousCombatHeroesInRecoveryHuddle({ globals: state.globals, heroes, now: Number(state.globals.time || 0) });

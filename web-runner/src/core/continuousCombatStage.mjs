@@ -11,6 +11,7 @@ import { enemyCombatTier } from './routineEnemyScaling.mjs';
 
 export const CONTINUOUS_COMBAT_PACK_INTERVAL_SEC = 3;
 export const CONTINUOUS_COMBAT_PACK_CP_STEP = 0.06;
+export const CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC = 18;
 const ORDINARY_LEVEL_ONE_HP_CEILING = Object.freeze({ fodder: 28, routine: 45, hard: 55, elite: 70 });
 export const CONTINUOUS_COMBAT_WAVES_PER_STAGE = 4;
 export const CONTINUOUS_COMBAT_STAGES_PER_REGION = 10;
@@ -53,6 +54,11 @@ export function createContinuousCombatStageState(seed = 1, { region = 1, stage =
     bossSummonRequired: false,
     bossArmed: false,
     bossActive: false,
+    bossTimerStartedAt: null,
+    bossTimeLimitSec: null,
+    bossTimeouts: 0,
+    lastBossOutcome: null,
+    lastBossTimeout: null,
     bossUID: null,
     bossWorldX: null,
     transitions: 0,
@@ -483,6 +489,9 @@ export function advanceContinuousCombatStage(stageState) {
       bossSummonRequired: false,
       bossArmed: false,
       bossActive: false,
+      bossTimerStartedAt: null,
+      bossTimeLimitSec: null,
+      lastBossOutcome: 'clear',
       bossUID: null,
       bossCameraCenterX: null,
       bossWorldX: null,
@@ -523,6 +532,9 @@ export function armContinuousCombatBoss(globals, entities, call, { wallNowMs = D
     ...state,
     bossArmed: true,
     bossActive: true,
+    bossTimerStartedAt: null,
+    bossTimeLimitSec: CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC,
+    lastBossOutcome: null,
     bossWorldX: squadCenterX + 260,
     bossCameraCenterX: squadCenterX + 130,
     bossTransitionStartedAtMs: startedAtMs,
@@ -582,6 +594,8 @@ export function resetContinuousCombatAfterDefeat(globals) {
     bossSummonRequired: true,
     bossArmed: false,
     bossActive: false,
+    bossTimerStartedAt: null,
+    bossTimeLimitSec: null,
     bossCameraCenterX: null,
     bossWorldX: null,
     bossTransitionStartedAtMs: null,
@@ -879,7 +893,20 @@ function updateApproachingEnemies(globals, entities, now) {
   return becameAvailable;
 }
 
-export function maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier, call, runCombatStep } = {}) {
+export function continuousCombatBossTimeRemaining(stageState, now) {
+  if (!stageState?.bossActive) return null;
+  const limit = Number(stageState.bossTimeLimitSec || CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC);
+  const startedAt = stageState.bossTimerStartedAt;
+  return startedAt == null ? limit : Math.max(0, limit - (Number(now || 0) - Number(startedAt)));
+}
+
+export function shouldExpireContinuousCombatBoss(stageState, entities, now) {
+  return stageState?.bossActive === true
+    && continuousCombatBossTimeRemaining(stageState, now) === 0
+    && (entities || []).some(actor => actor?.kind === 'enemy' && Number(actor.uid || 0) === Number(stageState.bossUID || 0) && Number(actor.hp || 0) > 0);
+}
+
+export function maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier, call, runCombatStep, onBossTimeout } = {}) {
   if (!globals || Number(globals.ContinuousCombatStageLoop || 0) !== 1) return false;
   if (globals.DevToolingPaused || globals.QaScenarioPaused || globals.QaFixtureHoldTurn) return false;
   const stageState = globals.ContinuousCombatStage;
@@ -893,6 +920,7 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
     return armContinuousCombatBoss(globals, entities, call);
   }
   const now = Number(globals.time || 0);
+  if (stageState.bossActive && stageState.bossTimerStartedAt == null) stageState.bossTimerStartedAt = now;
   const newlyAvailable = updateApproachingEnemies(globals, entities, now);
   const newlyEngaged = advanceContinuousCombatArena({ globals, entities, seconds: Math.max(0, Math.min(0.1, now - Number(stageState.lastArenaUpdatedAt ?? now))) });
   stageState.lastArenaUpdatedAt = now;
@@ -913,6 +941,10 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
     presentationClear: presentationIsClear(globals, presentationBarrier),
   });
   const timerReady = now >= Number(stageState.nextEmissionAt || 0);
+  if (!clear && typeof onBossTimeout === 'function' && shouldExpireContinuousCombatBoss(stageState, entities, now)) {
+    onBossTimeout();
+    return false;
+  }
   let transition = null;
 
   if (stageState.bossActive) {

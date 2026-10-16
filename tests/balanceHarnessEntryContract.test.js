@@ -11,6 +11,13 @@ const source = fs.readFileSync(harnessPath, 'utf8');
 const hookSource = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js'), 'utf8');
 const { START_WORLD_POINT, aggregateSessions, applyPostRecoveryWaveClear, buildConfig, isRealtimeCombatReadyState, loadHeroFixture, loadLampFixture, observeRecoveryTransition, observedOrdinaryWaveClear, sourceFingerprint, writeHeroFixture, writeLampFixture, writeOutputs } = require(harnessPath);
 
+test('boss timeout measurement has a separate bound and preserves game failure evidence', () => {
+  assert.equal(buildConfig({ maxBossTimeouts: '1' }, {}).maxBossTimeouts, 1);
+  assert.match(source, /activeBossAttempt\.outcome = [\s\S]*timedOut \? 'timeout'/);
+  assert.match(source, /activeBossAttempt\.heroHpAtEnd = bossTimeout\.heroes/);
+  assert.match(source, /endReason = 'max_boss_timeouts'/);
+});
+
 test('source fingerprint changes when an untracked capture module changes', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'orka-balance-fingerprint-'));
   try {
@@ -165,7 +172,7 @@ test('boss target uses the visible manual Summon Boss control after a recovery',
   assert.match(source, /config\.maxBossClears > 0 \? completedBosses >= config\.maxBossClears/);
   assert.match(source, /bossAttemptRecords\.push\(activeBossAttempt\)/);
   assert.match(source, /outcome = Number\(snapshot\.continuousProgression\?\.clearedBosses/);
-  assert.match(source, /gameTimer: 'unavailable'/);
+  assert.match(source, /gameTimer: bossAttemptRecords\.some\(record => record\.gameTimeLimitSec > 0\)/);
 });
 
 test('optional frame capture records real combat, recovery, and boss states', () => {
@@ -314,7 +321,7 @@ test('balance harness counts completed continuous stages from stage transitions,
   assert.match(source, /defeatRecoveries: snapshot\.continuousProgression\?\.defeatRecoveries == null \? null : Number\(snapshot\.continuousProgression\.defeatRecoveries\) - startDefeatRecoveries/);
   assert.match(source, /everySeedCompletesTarget: sessions\.length > 0 && sessions\.every/);
   assert.doesNotMatch(source, /noDefeatRecoveries:/);
-  assert.match(source, /'waves_completed', 'bosses_cleared', 'defeat_recoveries'/);
+  assert.match(source, /'waves_completed', 'bosses_cleared', 'boss_timeouts', 'defeat_recoveries'/);
   assert.match(source, /'continuous_progression_start', 'continuous_progression_end'/);
   assert.doesNotMatch(source, /enemiesPerWave|BALANCE_ENEMIES_PER_WAVE/);
   assert.match(source, /endReason === 'max_waves'/);

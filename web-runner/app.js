@@ -3313,6 +3313,7 @@ function getStoryCardLiveLineState() {
         enemyLineClearPressureActive,
       }),
       call: (name, ...args) => callFunctionWithContext(fnContext, name, ...args),
+      onBossTimeout: () => questCombat.surrenderBossAttempt('boss_timeout'),
     });
     if (continuousStageAdvanced && previousStageKey) combatProgression.record({ id: previousStageKey, type: 'wave_clear' });
     if (checkMainRuntimeCombatOutcome()) {

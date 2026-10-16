@@ -24,6 +24,7 @@
 - Do not store durable gameplay rules in render modules, asset JSON, or `app.js` when a module/core owner exists.
 
 - The combat HUD shows chapter progress and the ready/active boss control. Three internal notches represent four full waves; chapter/stage reads authoritative stage state. A clean first approach enters automatically. Any hero KO or boss defeat preserves earned progress and latches manual retry for that stage; once readiness is earned, fodder farming continues at 100% until summon. The latch survives reload and clears on boss victory.
+- `app.js` passes continuous boss expiry to the combat session; stage core owns the deadline, session owns recovery, and the HUD reads remaining time.
 
 ## Work Guidance
 - Before editing, read the child AGENTS.md for the touched subfolder.

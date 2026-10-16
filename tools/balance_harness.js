@@ -26,6 +26,7 @@ const DEFAULTS = Object.freeze({
   sessions: 12,
   maxWaves: 8,
   maxBossClears: 0,
+  maxBossTimeouts: 0,
   serverHost: '127.0.0.1',
   serverPort: 8080,
   statePollMs: 40,
@@ -292,6 +293,10 @@ async function readBalanceSnapshot(page, afterEventId = 0) {
       continuousProgression: state.continuousProgression ? { ...state.continuousProgression,
         bossSummonRequired: !!globals.ContinuousCombatStage?.bossSummonRequired,
         bossTransitionEndsAtMs: Number(globals.ContinuousCombatStage?.bossTransitionEndsAtMs || 0),
+        bossTimeLimitSec: Number(globals.ContinuousCombatStage?.bossTimeLimitSec || 0),
+        bossTimerStartedAt: globals.ContinuousCombatStage?.bossTimerStartedAt ?? null,
+        bossTimeouts: Number(globals.ContinuousCombatStage?.bossTimeouts || 0),
+        lastBossTimeout: globals.ContinuousCombatStage?.lastBossTimeout || null,
         stageTransitions: Number(globals.ContinuousCombatStage?.transitions || 0),
       } : null,
       encounterSummary: state.encounterSummary || null,
@@ -550,6 +555,7 @@ async function runSession(page, config, sessionId) {
   let observedWaveClears = 0;
   let ambiguousWaveTransitions = 0;
   const startClearedBosses = Number(snapshot.continuousProgression?.clearedBosses || 0);
+  const startBossTimeouts = Number(snapshot.continuousProgression?.bossTimeouts || 0);
   const startDefeatRecoveries = Number(snapshot.continuousProgression?.defeatRecoveries || 0);
   const snapshotAtStart = snapshot.continuousProgression;
   const openingRoam = { start: snapshot.initialRoam, release: null };
@@ -573,6 +579,7 @@ async function runSession(page, config, sessionId) {
   let bossActiveTransitions = 0;
   let previousBossActive = !!snapshot.continuousProgression?.bossActive;
   let previousClearedBosses = Number(snapshot.continuousProgression?.clearedBosses || 0);
+  let previousBossTimeouts = startBossTimeouts;
   let previousDefeatRecoveries = Number(snapshot.continuousProgression?.defeatRecoveries || 0);
   const bossAttemptRecords = [];
   let activeBossAttempt = null;
@@ -633,7 +640,7 @@ async function runSession(page, config, sessionId) {
     if (bossActive && !previousBossActive) bossActiveTransitions += 1;
     const bossEnemy = snapshot.enemies.find(enemy => enemy.uid === Number(snapshot.continuousProgression?.bossUID || 0));
     if (bossActive && !activeBossAttempt) {
-      activeBossAttempt = { startedAt: Number((snapshot.time - startSimulationTime).toFixed(3)), bossUID: bossEnemy?.uid || null, hpAtStart: bossEnemy?.hp ?? null, lowestHp: bossEnemy?.hp ?? null, hpAtEnd: null, endedAt: null, outcome: null };
+      activeBossAttempt = { startedAt: Number((snapshot.time - startSimulationTime).toFixed(3)), bossUID: bossEnemy?.uid || null, hpAtStart: bossEnemy?.hp ?? null, lowestHp: bossEnemy?.hp ?? null, hpAtEnd: null, endedAt: null, outcome: null, gameTimeLimitSec: Number(snapshot.continuousProgression?.bossTimeLimitSec || 0) || null };
     }
     if (bossActive && activeBossAttempt && bossEnemy) {
       activeBossAttempt.bossUID = bossEnemy.uid;
@@ -643,16 +650,30 @@ async function runSession(page, config, sessionId) {
     }
     if (!bossActive && activeBossAttempt) {
       activeBossAttempt.endedAt = Number((snapshot.time - startSimulationTime).toFixed(3));
+      const bossTimeout = snapshot.continuousProgression?.lastBossTimeout;
+      const timedOut = Number(snapshot.continuousProgression?.bossTimeouts || 0) > previousBossTimeouts;
+      if (timedOut && bossTimeout) {
+        activeBossAttempt.hpAtEnd = bossTimeout.bossHp;
+        activeBossAttempt.bossMaxHp = bossTimeout.bossMaxHp;
+        activeBossAttempt.livingHeroesAtEnd = bossTimeout.heroes.filter(hero => hero.hp > 0).length;
+        activeBossAttempt.heroHpAtEnd = bossTimeout.heroes;
+        activeBossAttempt.gameElapsedSec = bossTimeout.elapsedSec;
+        activeBossAttempt.gameTimeLimitSec = bossTimeout.timeLimitSec;
+      }
       activeBossAttempt.outcome = Number(snapshot.continuousProgression?.clearedBosses || 0) > previousClearedBosses ? 'clear'
+        : timedOut ? 'timeout'
         : Number(snapshot.continuousProgression?.defeatRecoveries || 0) > previousDefeatRecoveries ? 'ko_recovery' : 'other_exit';
       bossAttemptRecords.push(activeBossAttempt);
       activeBossAttempt = null;
     }
     previousBossActive = bossActive;
     previousClearedBosses = Number(snapshot.continuousProgression?.clearedBosses || 0);
+    previousBossTimeouts = Number(snapshot.continuousProgression?.bossTimeouts || 0);
     previousDefeatRecoveries = Number(snapshot.continuousProgression?.defeatRecoveries || 0);
     if (completedOrdinaryWaves > 0) await capture('first_wave_clear');
     if (bossActive && Date.now() >= Number(snapshot.continuousProgression?.bossTransitionEndsAtMs || 0) + 100) await capture('boss_active');
+    if (bossActive && snapshot.continuousProgression?.bossTimerStartedAt != null
+      && snapshot.time - snapshot.continuousProgression.bossTimerStartedAt >= snapshot.continuousProgression.bossTimeLimitSec / 2) await capture('boss_timer_half');
     if (snapshot.heroes.some(hero => hero.hp <= 0)) await capture('visible_hero_ko');
     if (Number(snapshot.continuousProgression?.defeatRecoveries || 0) > startDefeatRecoveries) {
       if (firstRecoveryObservedAt == null) firstRecoveryObservedAt = snapshot.time;
@@ -751,6 +772,10 @@ async function runSession(page, config, sessionId) {
       }
     }
 
+    if (config.maxBossTimeouts > 0 && Number(snapshot.continuousProgression?.bossTimeouts || 0) - startBossTimeouts >= config.maxBossTimeouts) {
+      endReason = 'max_boss_timeouts';
+      break;
+    }
     if (config.maxBossClears > 0 ? completedBosses >= config.maxBossClears : completedOrdinaryWaves >= config.maxWaves) {
       endReason = config.maxBossClears > 0 ? 'max_bosses' : 'max_waves';
       break;
@@ -813,8 +838,9 @@ async function runSession(page, config, sessionId) {
     equipment: { scenario: config.autoEquip ? 'collect_auto_equip' : 'observe_only', fixture: lampFixture ? { source: config.lampFixture || 'seeded_new_save', sha256: lampFixture.sha256 } : null, savedFixture: savedLampFixture, start: startingEquipment, end: { slots: equippedSlotCount(snapshot.loadouts), lampSeed: snapshot.lampSeed, lampSequence: snapshot.lampSequence, loadouts: snapshot.loadouts }, actions: equipmentActions },
     captures,
     finalArena: ['deadlock', 'timeout'].includes(endReason) ? { heroes: snapshot.heroes.map(hero => ({ uid: hero.uid, name: hero.name, x: hero.x, y: hero.y, hp: hero.hp, arenaTargetUID: hero.arenaTargetUID })), enemies: snapshot.enemies.map(enemy => ({ uid: enemy.uid, name: enemy.name, x: enemy.x, y: enemy.y, hp: enemy.hp, slot: enemy.slot, streamState: enemy.streamState, streamEngageX: enemy.streamEngageX, arenaTargetUID: enemy.arenaTargetUID, arenaInReach: enemy.arenaInReach })), initialRoam: snapshot.initialRoam, readiness: snapshot.readiness } : null,
-    bossAttempts: { summonClicks: bossSummonClicks, activeTransitions: bossActiveTransitions, highestHpObserved: highestBossHp, lowestHpObserved: lowestBossHp, records: bossAttemptRecords, gameTimer: 'unavailable' },
+    bossAttempts: { summonClicks: bossSummonClicks, activeTransitions: bossActiveTransitions, highestHpObserved: highestBossHp, lowestHpObserved: lowestBossHp, records: bossAttemptRecords, gameTimer: bossAttemptRecords.some(record => record.gameTimeLimitSec > 0) ? { limitSec: bossAttemptRecords.find(record => record.gameTimeLimitSec > 0).gameTimeLimitSec, source: 'runtime' } : 'unavailable' },
     bossesCleared: Number(snapshot.continuousProgression?.clearedBosses || 0) - startClearedBosses,
+    bossTimeouts: Number(snapshot.continuousProgression?.bossTimeouts || 0) - startBossTimeouts,
     defeatRecoveries: snapshot.continuousProgression?.defeatRecoveries == null ? null : Number(snapshot.continuousProgression.defeatRecoveries) - startDefeatRecoveries,
     recoveryRecords,
     recoveryAttempts,
@@ -888,6 +914,7 @@ function aggregateSessions(config, sessions) {
     medianWavesCompleted: Number(median(waves).toFixed(2)),
     minimumWavesCompleted: waves.length ? Math.min(...waves) : 0,
     totalDefeatRecoveries: sessions.every((session) => session.defeatRecoveries != null) ? sessions.reduce((sum, session) => sum + session.defeatRecoveries, 0) : null,
+    totalBossTimeouts: sessions.reduce((sum, session) => sum + Number(session.bossTimeouts || 0), 0),
     medianDefeatRecoveries: sessions.every((session) => session.defeatRecoveries != null) ? Number(median(sessions.map((session) => session.defeatRecoveries)).toFixed(2)) : null,
     minimumEnemiesDefeated: defeats.length ? Math.min(...defeats) : 0,
     averageSimulationSecondsSurvived: Number((durations.reduce((sum, value) => sum + value, 0) / Math.max(1, durations.length)).toFixed(2)),
@@ -909,7 +936,7 @@ function aggregateSessions(config, sessions) {
       firstHeroCasualtyDistribution,
       separateFixturesRequired: ['boss_trials', 'recovery_trials'],
     },
-    bounds: { maxWaves: config.maxWaves, maxBossClears: config.maxBossClears },
+    bounds: { maxWaves: config.maxWaves, maxBossClears: config.maxBossClears, maxBossTimeouts: config.maxBossTimeouts },
   };
 }
 
@@ -917,11 +944,11 @@ function writeOutputs(config, sessions, aggregate) {
   fs.mkdirSync(config.outputDir, { recursive: true });
   const jsonPath = path.join(config.outputDir, 'balance_metrics.json');
   const csvPath = path.join(config.outputDir, 'session_results.csv');
-  const run = { source: config.source, harnessSource: config.harnessSource, serveRoot: config.serveRoot, seedStart: config.seedStart, lampSeed: config.lampSeed, lampFixture: config.lampFixture || null, heroFixture: config.heroFixture || null, heroSlots: config.heroSlots, sessions: config.sessions, maxWaves: config.maxWaves, maxBossClears: config.maxBossClears, autoEquip: config.autoEquip, captureFrames: config.captureFrames, statePollMs: config.statePollMs, sessionTimeoutMs: config.sessionTimeoutMs, deadlockTimeoutMs: config.deadlockTimeoutMs, viewport: config.viewport };
+  const run = { source: config.source, harnessSource: config.harnessSource, serveRoot: config.serveRoot, seedStart: config.seedStart, lampSeed: config.lampSeed, lampFixture: config.lampFixture || null, heroFixture: config.heroFixture || null, heroSlots: config.heroSlots, sessions: config.sessions, maxWaves: config.maxWaves, maxBossClears: config.maxBossClears, maxBossTimeouts: config.maxBossTimeouts, autoEquip: config.autoEquip, captureFrames: config.captureFrames, statePollMs: config.statePollMs, sessionTimeoutMs: config.sessionTimeoutMs, deadlockTimeoutMs: config.deadlockTimeoutMs, viewport: config.viewport };
   fs.writeFileSync(jsonPath, `${JSON.stringify({ run, aggregate, sessions }, null, 2)}\n`, 'utf8');
   fs.writeFileSync(csvPath, toCsv([
-    ['session_id', 'seed', 'enemies_defeated', 'waves_completed', 'bosses_cleared', 'defeat_recoveries', 'simulation_seconds_survived', 'first_ko_side', 'first_ko_time', 'first_hero_casualty', 'hero_casualties', 'deadlock_count', 'end_reason', 'continuous_progression_start', 'continuous_progression_end'],
-    ...sessions.map((session) => [session.sessionId, session.seed, session.enemiesDefeated, session.wavesCompleted, session.bossesCleared, session.defeatRecoveries, session.simulationSecondsSurvived, session.firstKoSide, session.firstKoTime, session.firstHeroCasualty ?? '', session.heroCasualties.join('|'), session.deadlockCount, session.endReason, JSON.stringify(session.continuousProgressionStart), JSON.stringify(session.continuousProgressionEnd)]),
+    ['session_id', 'seed', 'enemies_defeated', 'waves_completed', 'bosses_cleared', 'boss_timeouts', 'defeat_recoveries', 'simulation_seconds_survived', 'first_ko_side', 'first_ko_time', 'first_hero_casualty', 'hero_casualties', 'deadlock_count', 'end_reason', 'continuous_progression_start', 'continuous_progression_end'],
+    ...sessions.map((session) => [session.sessionId, session.seed, session.enemiesDefeated, session.wavesCompleted, session.bossesCleared, session.bossTimeouts, session.defeatRecoveries, session.simulationSecondsSurvived, session.firstKoSide, session.firstKoTime, session.firstHeroCasualty ?? '', session.heroCasualties.join('|'), session.deadlockCount, session.endReason, JSON.stringify(session.continuousProgressionStart), JSON.stringify(session.continuousProgressionEnd)]),
   ]), 'utf8');
   return { jsonPath, csvPath };
 }
@@ -946,6 +973,7 @@ function buildConfig(argSource = parseArgs(process.argv.slice(2)), env = process
     sessions,
     maxWaves: clampInt(args.maxWaves || env.BALANCE_MAX_WAVES, 1, DEFAULTS.maxWaves),
     maxBossClears: clampInt(args.maxBossClears ?? env.BALANCE_MAX_BOSS_CLEARS, 0, DEFAULTS.maxBossClears),
+    maxBossTimeouts: clampInt(args.maxBossTimeouts ?? env.BALANCE_MAX_BOSS_TIMEOUTS, 0, DEFAULTS.maxBossTimeouts),
     seedStart: clampInt(args.seedStart || env.BALANCE_SEED_START, 1, 0xC0DE0001),
     lampSeed,
     lampFixture: lampFixture ? path.resolve(lampFixture) : '',

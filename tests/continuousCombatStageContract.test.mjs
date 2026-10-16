@@ -8,6 +8,7 @@ import { derivePresentationTurnBarrier } from '../web-runner/src/core/turnGateCo
 import {
   CONTINUOUS_COMBAT_PACK_CP_STEP,
   CONTINUOUS_COMBAT_PACK_INTERVAL_SEC,
+  CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC,
   CONTINUOUS_COMBAT_PACKS_PER_WAVE,
   CONTINUOUS_COMBAT_SOLOS_PER_WAVE,
   CONTINUOUS_COMBAT_ALL_PACKS_MASK,
@@ -20,6 +21,7 @@ import {
   buildContinuousCombatSpawnPlan,
   configureContinuousCombatProduction,
   createContinuousCombatStageState,
+  continuousCombatBossTimeRemaining,
   deriveContinuousCombatWavePackProgress,
   finalizeContinuousCombatProduction,
   getContinuousCombatPartyCP,
@@ -27,6 +29,7 @@ import {
   pushContinuousCombatEnemy,
   reverseContinuousCombatEnemy,
   resetContinuousCombatAfterDefeat,
+  shouldExpireContinuousCombatBoss,
   summonContinuousCombatBoss,
   recordContinuousCombatWavePackProgress,
   scaleContinuousCombatPackRow,
@@ -35,6 +38,18 @@ import {
 
 const rows = ['Gobloc', 'Skeleton', 'High Gobloc', 'Lizardo', 'Orc', 'High Orc', 'Chimerilass', 'Djinn', 'Troll']
   .map((name, index) => ({ name, HP: 20 + index * 5, ATK: 2 + index, DEF: 2, MAG: 1, RES: 1, SPD: 8 }));
+
+test('boss clock expires only while its living boss remains active', () => {
+  const stage = { ...createContinuousCombatStageState(), bossActive: true, bossUID: 90, bossTimerStartedAt: 10, bossTimeLimitSec: CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC };
+  const boss = { uid: 90, kind: 'enemy', hp: 1 };
+  assert.equal(continuousCombatBossTimeRemaining(stage, 19), 9);
+  assert.equal(shouldExpireContinuousCombatBoss(stage, [boss], 27.99), false);
+  assert.equal(shouldExpireContinuousCombatBoss(stage, [boss], 28), true);
+  boss.hp = 0;
+  assert.equal(shouldExpireContinuousCombatBoss(stage, [boss], 28), false);
+  stage.bossActive = false;
+  assert.equal(continuousCombatBossTimeRemaining(stage, 29), null);
+});
 
 test('opening ordinary waves use fodder and routine enemies before the boss gate', () => {
   const openingNames = new Set(['Gobloc', 'Skeleton', 'High Gobloc', 'Lizardo', 'Orc']);
