@@ -11,7 +11,7 @@ function bossState(overrides = {}) {
 test('fallback replaces the rail only for an interrupted ready or active boss and fits the compact top band', () => {
   const ready = bossState();
   const page = bossFallbackPresentation({ state: ready, layoutId: 'heroLayout' });
-  assert.deepEqual(page, { visible: true, enabled: true, label: 'Chapter 5-27', bossActive: false });
+  assert.deepEqual(page, { visible: true, enabled: true, label: 'Chapter 5', bossActive: false });
   assert.equal(bossFallbackPresentation({ state: ready, layoutId: 'combat' }).visible, false);
   const retryReady = bossState({ bossSummonRequired: true });
   assert.equal(bossFallbackPresentation({ state: retryReady, layoutId: 'combat' }).visible, true, 'a defeated stage exposes its summon control during farming');
@@ -19,7 +19,7 @@ test('fallback replaces the rail only for an interrupted ready or active boss an
   assert.equal(drawCombatProgressHud({}, { state: { globals: { ...ready.globals, CombatBossFallbackVisible: true } } }), null, 'the Canvas rail is suppressed under the shared fallback');
   assert.equal(bossFallbackPresentation({ state: ready, layoutId: 'combat', overlayOpen: true, canLeave: false }).enabled, false);
   const active = bossFallbackPresentation({ state: bossState({ bossAvailable: false, bossArmed: true, bossActive: true }), layoutId: 'combat', overlayOpen: true });
-  assert.deepEqual(active, { visible: true, enabled: true, label: 'Chapter 5-27', bossActive: true });
+  assert.deepEqual(active, { visible: true, enabled: true, label: 'Chapter 5', bossActive: true });
   assert.equal(bossFallbackPresentation({ state: ready, layoutId: 'storyMock', phase: 'defeat' }).visible, false);
 
   const rect = bossFallbackRect({ left: 0, top: 0, width: 216, height: 384 });
@@ -151,8 +151,8 @@ test('production fallback surface is a reachable DOM button above the modal scri
     assert.equal(result.visible, true);
     const host = body.children[0], button = host.children[1];
     assert.equal(host.style.zIndex, '10002');
-    assert.equal(host.children[0].textContent, 'Chapter 5-27');
-    assert.equal(button.attributes['aria-label'], 'Summon Boss for Chapter 5-27');
+    assert.equal(host.children[0].textContent, 'Chapter 5');
+    assert.equal(button.attributes['aria-label'], 'Summon Boss for Chapter 5');
     button.onclick();
     button.onclick();
     await new Promise(resolve => setImmediate(resolve));

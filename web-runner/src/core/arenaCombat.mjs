@@ -268,7 +268,8 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
     const actorInAttackReach = enemies.some(enemy => heroes.some(hero =>
       isActorTargetInRange(enemy, hero) || isActorTargetInRange(hero, enemy)));
     const distanceWalked = Number(initialRoam.direction || 0) * (center - Number(initialRoam.originX || 0));
-    if (enemyAttackInFlight || actorInAttackReach || distanceWalked >= Number(initialRoam.distance || INITIAL_ROAM_WALK_DISTANCE) - 8) {
+    if (enemyAttackInFlight || actorInAttackReach
+      || distanceWalked >= Number(initialRoam.distance || INITIAL_ROAM_WALK_DISTANCE) - FARA_TRAVEL_OFFSET - 8) {
       delete globals.ContinuousCombatInitialRoam;
       initialRoam = null;
     }

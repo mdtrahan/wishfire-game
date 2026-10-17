@@ -22,6 +22,7 @@ module.exports = {
 };`;
   const context = {
     ...require('../web-runner/src/core/combatRules.mjs'),
+    ...require('../web-runner/src/core/balanceTelemetry.mjs'),
     ...require('../web-runner/modules/heroCommands.mjs'),
     ...require('../web-runner/src/core/personalFlow.mjs'),
     ...require('../web-runner/modules/heroCommands.mjs'),

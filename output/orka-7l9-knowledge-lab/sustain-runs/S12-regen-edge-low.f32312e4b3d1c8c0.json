@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S12-regen-edge-low",
+  "digest": "f32312e4b3d1c8c0c65b2ae2d9f373550d647bf3eadbbb31a0349cb57648c237",
+  "status": "FAIL",
+  "minHpPct": 89.2,
+  "heroKOs": 0,
+  "reason": "minimum HP 89.2% below 90%"
+}

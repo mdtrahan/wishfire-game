@@ -1,4 +1,5 @@
 import { HERO_DEFINITIONS, PROGRESSION, heroDefinition, heroKey } from './heroDefinitions.mjs';
+import { continuousCombatWavesForStage } from './continuousCombatProgressionRules.mjs';
 export const HERO_PROGRESS_VERSION=2;
 export function expToNextLevel(level,config=PROGRESSION){return level>=config.maxLevel?0:Math.ceil(config.expBase*Math.pow(level,config.expExponent));}
 export function unlockedPassives(hero){return (heroDefinition(hero)?.passives||[]).filter(p=>p.unlockLevel<=(hero.currentLevel||1));}
@@ -28,6 +29,24 @@ export function awardHeroEXP(hero,amount){
  if(hero.currentLevel>=hero.maxLevel){hero.currentEXP=0;hero.EXPToNextLevel=0;}
  const d=heroDefinition(hero);return {hero:d.name,exp,fromLevel:before.level,toLevel:hero.currentLevel,expBefore:before.exp,expAfter:Math.max(0,Number(hero.currentEXP||0)),expToNextBefore:before.expToNext,statsBefore:before.stats,statsAfter:{...hero.stats},maxHPBefore:before.hp,maxHPAfter:hero.maxHP};
 }
+function normalizeContinuousStageCheckpoint(stage) {
+ if(!stage||!Number.isSafeInteger(stage.region)||stage.region<1||!Number.isSafeInteger(stage.stage)
+  ||!Number.isSafeInteger(stage.wave)||stage.wave<1||typeof stage.bossAvailable!=='boolean'
+  ||!Number.isSafeInteger(stage.clearedBosses)||stage.clearedBosses<0)return null;
+ if(stage.topologyVersion!=null&&stage.topologyVersion!==2)return null;
+ const legacy=stage.topologyVersion==null;
+ if(legacy&&(stage.stage<1||stage.stage>10||stage.wave>4))return null;
+ if(!legacy&&(stage.stage!==1||stage.wave>continuousCombatWavesForStage(stage.region)))return null;
+ const region=legacy?(stage.region-1)*10+stage.stage:stage.region;
+ if(!Number.isSafeInteger(region)||region<1)return null;
+ // Old four-wave sector credits cannot be carried into the new chapter wave geometry.
+ const checkpoint={topologyVersion:2,region,stage:1,wave:legacy?1:stage.wave,bossAvailable:stage.bossAvailable,
+  bossSummonRequired:stage.bossSummonRequired===true,clearedBosses:stage.clearedBosses};
+ if(!legacy&&Number.isSafeInteger(stage.clearedPackMask)&&stage.clearedPackMask>=0&&stage.clearedPackMask<=63)checkpoint.clearedPackMask=stage.clearedPackMask;
+ if(Number.isSafeInteger(stage.bossUID)&&stage.bossUID>0)checkpoint.bossUID=stage.bossUID;
+ return checkpoint;
+}
+
 export function createHeroProgressStore(snapshot){
  const store={version:HERO_PROGRESS_VERSION,heroes:{},settledBattles:[],pendingBattleRewards:null,pendingGoldSettlements:{},settledTicketSpends:[]};
  // Old skill-rank data is deliberately not imported into the replacement kits.
@@ -40,8 +59,8 @@ export function createHeroProgressStore(snapshot){
   if(pending&&typeof pending.id==='string'&&pending.id&&Array.isArray(pending.participants))store.pendingBattleRewards={id:pending.id,participants:pending.participants.filter(id=>typeof id==='string'),defeated:sanitizeRewardLedger(pending.defeated),defeatedGold:sanitizeRewardLedger(pending.defeatedGold)};
   store.pendingGoldSettlements=sanitizeRewardLedger(snapshot.pendingGoldSettlements);
   store.settledTicketSpends=Array.isArray(snapshot.settledTicketSpends)?[...new Set(snapshot.settledTicketSpends.filter(id=>typeof id==='string'&&id.length<=180))].slice(-256):[];
-  const stage=snapshot.continuousStage;
-  if(stage&&Number.isSafeInteger(stage.region)&&stage.region>=1&&Number.isInteger(stage.stage)&&stage.stage>=1&&stage.stage<=10&&Number.isInteger(stage.wave)&&stage.wave>=1&&stage.wave<=4&&typeof stage.bossAvailable==='boolean'&&Number.isSafeInteger(stage.clearedBosses)&&stage.clearedBosses>=0){store.continuousStage={region:stage.region,stage:stage.stage,wave:stage.wave,bossAvailable:stage.bossAvailable,bossSummonRequired:stage.bossSummonRequired===true,clearedBosses:stage.clearedBosses};if(Number.isSafeInteger(stage.clearedPackMask)&&stage.clearedPackMask>=0&&stage.clearedPackMask<=63)store.continuousStage.clearedPackMask=stage.clearedPackMask;if(Number.isSafeInteger(stage.bossUID)&&stage.bossUID>0)store.continuousStage.bossUID=stage.bossUID;}
+  const stage=normalizeContinuousStageCheckpoint(snapshot.continuousStage);
+  if(stage)store.continuousStage=stage;
  }
  for(const key of Object.keys(HERO_DEFINITIONS))if(!store.heroes[key])store.heroes[key]=newHeroProgress(key);
  return store;

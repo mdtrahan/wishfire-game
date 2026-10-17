@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S20-def-regen-floor",
+  "digest": "ed4f76023c317078fb078bccef3702bbae0a5e6cd12c7e2ddde0f4ed8153f98a",
+  "status": "FAIL",
+  "minHpPct": 44.1,
+  "heroKOs": 0,
+  "reason": "minimum HP 44.1% below 90%"
+}

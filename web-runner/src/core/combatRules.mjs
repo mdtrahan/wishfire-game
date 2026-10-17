@@ -93,7 +93,7 @@ export function resolveSkill(ctx,source,skill,targetIds,origin={}){
      const amount=fixedDamage==null
       ?ctx.calculateDamage(source,defender,skill.tags?.includes('magic')?'magic':'melee',(effect.potency??1)*conditional*100)
       :fixedDamage*(effect.potency??1)*conditional;
-     damageTarget(ctx,source,defender,amount,meta);defenders.set(defender.uid,defender);
+     damageTarget(ctx,source,defender,amount,{...meta,damageType:skill.tags?.includes('magic')?'magic':'physical'});defenders.set(defender.uid,defender);
      if(hasStatus(defender,'mark')) defender.statuses=statuses(defender).filter(s=>s.statusEffect!=='mark');
     }
    }else if(effect.effectType==='status'&&recipient.hp>0){const refreshed=applyStatus(ctx,source,recipient,effect,meta);ctx.onStatus?.(source,recipient,effect,{refreshed});}

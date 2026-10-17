@@ -1,0 +1,1095 @@
+{
+  "schema": "orka.combat-claims.v1",
+  "declaredAt": "2026-10-17T04:52:27Z",
+  "bead": "ORKA-7l9",
+  "purpose": "Predeclared expectations for the ORKA-7l9 combat knowledge lab. Committed before the prospective harness runs; the evaluator refuses prospective evidence that started before this file was committed or was produced after it changed.",
+  "candidate": {
+    "sha": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+    "note": "combat candidate runtime baseline; lab runs must serve identical web-runner/src/Scripts/rust trees"
+  },
+  "sources": {
+    "REQ": [
+      {
+        "id": "REQ-STARTER",
+        "text": "Each required farming fixture completes at least 20 consecutive ordinary waves over five seeds; starter has zero Hero KOs.",
+        "ref": "bd show ORKA-7l9 acceptance 2"
+      },
+      {
+        "id": "REQ-LAB-STARTER",
+        "text": "Starter farming: five fixed no-Kaja seeds, 20 consecutive ordinary clears each, zero Hero KOs, zero event gaps and deadlocks.",
+        "ref": "owner lab brief 2026-10-16 PDT"
+      },
+      {
+        "id": "REQ-BOSS",
+        "text": "Repeated underprepared boss attempts mostly time out with living parties and progressed attempts win across five seeds; Wishfire keeps its authored 18-second timer.",
+        "ref": "bd show ORKA-7l9 acceptance 3"
+      },
+      {
+        "id": "REQ-LAB-BOSS",
+        "text": "Separate synthetic level-1/level-5 results from a fresh-save earned arrival; support a fixed-gear level-1\u20135 sweep.",
+        "ref": "owner lab brief 2026-10-16 PDT"
+      },
+      {
+        "id": "REQ-RECOVERY",
+        "text": "Forced any-Hero-KO recovery restores the full party on the current stage/wave and productive retry occurs without a softlock or hidden cumulative HP loss.",
+        "ref": "bd show ORKA-7l9 acceptance 4"
+      },
+      {
+        "id": "REQ-LAB-RECOVERY",
+        "text": "Initial forced Hero KO, full-party restore on the same stage/wave, then five seeds with 20 consecutive later ordinary clears and no additional KO, gap, ambiguous transition, or deadlock.",
+        "ref": "owner lab brief 2026-10-16 PDT"
+      },
+      {
+        "id": "REQ-NO-DANGER-BAND",
+        "text": "No numeric danger or minimum-HP band is approved; report margins and sensitivity only.",
+        "ref": "output/orka-7l9-claude-review-disposition.md; owner lab brief"
+      },
+      {
+        "id": "REQ-KAJA-UNLOCK",
+        "text": "Kaja is Support; Patchwork healing unlocks at level 15. Approved unlocks are not changed by this lab.",
+        "ref": "web-runner/src/core/heroDefinitions.mjs; governance/planning/conditional-skill-catalog.md"
+      },
+      {
+        "id": "REQ-CAP-UNKNOWN",
+        "text": "Report exact capped-hit share as UNKNOWN unless an existing read-only surface exposes pre-cap values; model estimates carry MODEL labels.",
+        "ref": "owner lab brief 2026-10-16 PDT"
+      }
+    ],
+    "REF": [
+      {
+        "id": "REF-ORDINARY",
+        "text": "Sampled WORLD360 ordinary fights through Chapter 3 kept trainers standing; no counted 20-wave streak, minimum HP or heal formula was measured.",
+        "ref": "output/orka-7l9-stoneage-world360-direct.md"
+      },
+      {
+        "id": "REF-BOSS-GAUGE",
+        "text": "Underprepared early chapter bosses exhausted the blue gauge with trainers standing (Chapter 2-20 failed at 42% boss HP with four green portraits); earned changes preceded later wins. Numeric timer unknown.",
+        "ref": "output/orka-7l9-stoneage-world360-direct.md"
+      },
+      {
+        "id": "REF-PET-KO",
+        "text": "Chapter 1-10 showed an apparent pet KO during a boss win while trainers stood; front-line pets may absorb damage.",
+        "ref": "output/orka-7l9-stoneage-world360-direct.md"
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "starter-l1-nokaja",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "evidence": {
+        "eventLog": "/private/tmp/orka-7l9-lab/runs/starter-l1-nokaja/observed_events.ndjson",
+        "report": "/private/tmp/orka-7l9-lab/runs/starter-l1-nokaja/balance_metrics.json"
+      },
+      "run": {
+        "sessions": 5,
+        "seedStart": 3235774465,
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "lampFixture": "output/orka-7l9-fixtures/ui-equipped-lamp.json",
+        "heroFixture": "output/orka-7l9-fixtures/level1-manual-ready-heroes.json",
+        "heroSlots": "Falie,Huun,Runa,",
+        "autoEquip": "true",
+        "bossPolicy": "hold",
+        "port": 8202,
+        "sessionTimeoutMs": 1200000,
+        "outputDir": "/private/tmp/orka-7l9-lab/runs/starter-l1-nokaja"
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "07855eeb1ec5077c3c60747a99ca5f42ae62f0ce123c07ed3bd3cb76165930e2",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": true,
+        "bossPolicy": "hold",
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 1,
+          "Huun": 1,
+          "Runa": 1
+        }
+      }
+    },
+    {
+      "id": "kaja-l1-four",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "evidence": {
+        "eventLog": "/private/tmp/orka-7l9-lab/runs/kaja-l1-four/observed_events.ndjson",
+        "report": "/private/tmp/orka-7l9-lab/runs/kaja-l1-four/balance_metrics.json"
+      },
+      "run": {
+        "sessions": 5,
+        "seedStart": 3235774465,
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "lampFixture": "output/orka-7l9-fixtures/ui-equipped-lamp.json",
+        "heroFixture": "output/orka-7l9-fixtures/level1-manual-ready-heroes.json",
+        "heroSlots": "Falie,Huun,Runa,Kojonn",
+        "autoEquip": "true",
+        "bossPolicy": "hold",
+        "port": 8203,
+        "sessionTimeoutMs": 1200000,
+        "outputDir": "/private/tmp/orka-7l9-lab/runs/kaja-l1-four"
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "07855eeb1ec5077c3c60747a99ca5f42ae62f0ce123c07ed3bd3cb76165930e2",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          "Kojonn"
+        ],
+        "autoEquip": true,
+        "bossPolicy": "hold",
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 1,
+          "Huun": 1,
+          "Runa": 1,
+          "Kojonn": 1
+        }
+      }
+    },
+    {
+      "id": "kaja-l15-three",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "evidence": {
+        "eventLog": "/private/tmp/orka-7l9-lab/runs/kaja-l15-three/observed_events.ndjson",
+        "report": "/private/tmp/orka-7l9-lab/runs/kaja-l15-three/balance_metrics.json"
+      },
+      "run": {
+        "sessions": 5,
+        "seedStart": 3235774465,
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "lampFixture": "output/orka-7l9-fixtures/ui-equipped-lamp.json",
+        "heroFixture": "output/orka-7l9-fixtures/level15-threehero-heroes.json",
+        "heroSlots": "Falie,Huun,Runa,",
+        "autoEquip": "false",
+        "bossPolicy": "hold",
+        "port": 8204,
+        "sessionTimeoutMs": 1200000,
+        "outputDir": "/private/tmp/orka-7l9-lab/runs/kaja-l15-three"
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "3c414abddab2b76350fc2562bd8c5e87a0513adbc21c9dd3e997be375b01ef4e",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "hold",
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 15,
+          "Huun": 15,
+          "Runa": 15
+        }
+      }
+    },
+    {
+      "id": "kaja-l15-four",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "evidence": {
+        "eventLog": "/private/tmp/orka-7l9-lab/runs/kaja-l15-four/observed_events.ndjson",
+        "report": "/private/tmp/orka-7l9-lab/runs/kaja-l15-four/balance_metrics.json"
+      },
+      "run": {
+        "sessions": 5,
+        "seedStart": 3235774465,
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "lampFixture": "output/orka-7l9-fixtures/ui-equipped-lamp.json",
+        "heroFixture": "output/orka-7l9-fixtures/level15-fourhero-heroes.json",
+        "heroSlots": "Falie,Huun,Runa,Kojonn",
+        "autoEquip": "false",
+        "bossPolicy": "hold",
+        "port": 8205,
+        "sessionTimeoutMs": 1200000,
+        "outputDir": "/private/tmp/orka-7l9-lab/runs/kaja-l15-four"
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "c65de68efe1bd4cbd7d3087e5aee81ee47154d0e815e265d36bbbedf1231ca27",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          "Kojonn"
+        ],
+        "autoEquip": false,
+        "bossPolicy": "hold",
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 15,
+          "Huun": 15,
+          "Runa": 15,
+          "Kojonn": 15
+        }
+      }
+    },
+    {
+      "id": "gear-base",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "evidence": {
+        "eventLog": "/private/tmp/orka-7l9-lab/runs/gear-base/observed_events.ndjson",
+        "report": "/private/tmp/orka-7l9-lab/runs/gear-base/balance_metrics.json"
+      },
+      "run": {
+        "sessions": 5,
+        "seedStart": 3235774465,
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "lampFixture": "output/orka-7l9-knowledge-lab/fixtures/gear-base-lamp.json",
+        "heroFixture": "output/orka-7l9-fixtures/level1-manual-ready-heroes.json",
+        "heroSlots": "Falie,Huun,Runa,",
+        "autoEquip": "false",
+        "bossPolicy": "hold",
+        "port": 8206,
+        "sessionTimeoutMs": 1200000,
+        "outputDir": "/private/tmp/orka-7l9-lab/runs/gear-base"
+      },
+      "expect": {
+        "lampFixtureSha256": "435c3fc8824cc13553cff9083085b968865d993d895dff43ce703d25e425aedf",
+        "heroFixtureSha256": "07855eeb1ec5077c3c60747a99ca5f42ae62f0ce123c07ed3bd3cb76165930e2",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "hold",
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 1,
+          "Huun": 1,
+          "Runa": 1
+        }
+      },
+      "variant": "base",
+      "change": "common bodies on Fara, Hondo and Runa as observed (Hondo receives the pending Guardian Cuirass)"
+    },
+    {
+      "id": "gear-def10",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "evidence": {
+        "eventLog": "/private/tmp/orka-7l9-lab/runs/gear-def10/observed_events.ndjson",
+        "report": "/private/tmp/orka-7l9-lab/runs/gear-def10/balance_metrics.json"
+      },
+      "run": {
+        "sessions": 5,
+        "seedStart": 3235774465,
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "lampFixture": "output/orka-7l9-knowledge-lab/fixtures/gear-def10-lamp.json",
+        "heroFixture": "output/orka-7l9-fixtures/level1-manual-ready-heroes.json",
+        "heroSlots": "Falie,Huun,Runa,",
+        "autoEquip": "false",
+        "bossPolicy": "hold",
+        "port": 8207,
+        "sessionTimeoutMs": 1200000,
+        "outputDir": "/private/tmp/orka-7l9-lab/runs/gear-def10"
+      },
+      "expect": {
+        "lampFixtureSha256": "7b86c7a7825f87d9e5bd13fce0757b67e804bc64e950ba3ec5d412f2754e25f7",
+        "heroFixtureSha256": "07855eeb1ec5077c3c60747a99ca5f42ae62f0ce123c07ed3bd3cb76165930e2",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "hold",
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 1,
+          "Huun": 1,
+          "Runa": 1
+        }
+      },
+      "variant": "def10",
+      "change": "same three bodies with +10 DEF each"
+    },
+    {
+      "id": "gear-hp30",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "evidence": {
+        "eventLog": "/private/tmp/orka-7l9-lab/runs/gear-hp30/observed_events.ndjson",
+        "report": "/private/tmp/orka-7l9-lab/runs/gear-hp30/balance_metrics.json"
+      },
+      "run": {
+        "sessions": 5,
+        "seedStart": 3235774465,
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "lampFixture": "output/orka-7l9-knowledge-lab/fixtures/gear-hp30-lamp.json",
+        "heroFixture": "output/orka-7l9-fixtures/level1-manual-ready-heroes.json",
+        "heroSlots": "Falie,Huun,Runa,",
+        "autoEquip": "false",
+        "bossPolicy": "hold",
+        "port": 8208,
+        "sessionTimeoutMs": 1200000,
+        "outputDir": "/private/tmp/orka-7l9-lab/runs/gear-hp30"
+      },
+      "expect": {
+        "lampFixtureSha256": "5ad4a033e913804ece48633a4c55ded0f4e70ba8c2b37dc900e73ed372003177",
+        "heroFixtureSha256": "07855eeb1ec5077c3c60747a99ca5f42ae62f0ce123c07ed3bd3cb76165930e2",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "hold",
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 1,
+          "Huun": 1,
+          "Runa": 1
+        }
+      },
+      "variant": "hp30",
+      "change": "same three bodies with +30 HP each"
+    },
+    {
+      "id": "boss-sweep-l1",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "evidence": {
+        "eventLog": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l1/observed_events.ndjson",
+        "report": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l1/balance_metrics.json"
+      },
+      "run": {
+        "sessions": 5,
+        "seedStart": 3235774465,
+        "maxWaves": 20,
+        "maxBossClears": 1,
+        "maxBossTimeouts": 1,
+        "lampFixture": "output/orka-7l9-fixtures/ui-equipped-lamp.json",
+        "heroFixture": "output/orka-7l9-fixtures/level1-manual-ready-heroes.json",
+        "heroSlots": "Falie,Huun,Runa,",
+        "autoEquip": "false",
+        "bossPolicy": "auto",
+        "port": 8209,
+        "sessionTimeoutMs": 600000,
+        "outputDir": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l1"
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "07855eeb1ec5077c3c60747a99ca5f42ae62f0ce123c07ed3bd3cb76165930e2",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "auto",
+        "maxBossClears": 1,
+        "maxBossTimeouts": 1,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 1,
+          "Huun": 1,
+          "Runa": 1
+        }
+      },
+      "level": 1
+    },
+    {
+      "id": "boss-sweep-l2",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "evidence": {
+        "eventLog": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l2/observed_events.ndjson",
+        "report": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l2/balance_metrics.json"
+      },
+      "run": {
+        "sessions": 5,
+        "seedStart": 3235774465,
+        "maxWaves": 20,
+        "maxBossClears": 1,
+        "maxBossTimeouts": 1,
+        "lampFixture": "output/orka-7l9-fixtures/ui-equipped-lamp.json",
+        "heroFixture": "output/orka-7l9-knowledge-lab/fixtures/level2-manual-ready-heroes.json",
+        "heroSlots": "Falie,Huun,Runa,",
+        "autoEquip": "false",
+        "bossPolicy": "auto",
+        "port": 8210,
+        "sessionTimeoutMs": 600000,
+        "outputDir": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l2"
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "9a49bf7e5f9947855020ec816c392234576bfc57dc48931117ebd4bf6268b5e0",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "auto",
+        "maxBossClears": 1,
+        "maxBossTimeouts": 1,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 2,
+          "Huun": 2,
+          "Runa": 2
+        }
+      },
+      "level": 2
+    },
+    {
+      "id": "boss-sweep-l3",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "evidence": {
+        "eventLog": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l3/observed_events.ndjson",
+        "report": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l3/balance_metrics.json"
+      },
+      "run": {
+        "sessions": 5,
+        "seedStart": 3235774465,
+        "maxWaves": 20,
+        "maxBossClears": 1,
+        "maxBossTimeouts": 1,
+        "lampFixture": "output/orka-7l9-fixtures/ui-equipped-lamp.json",
+        "heroFixture": "output/orka-7l9-knowledge-lab/fixtures/level3-manual-ready-heroes.json",
+        "heroSlots": "Falie,Huun,Runa,",
+        "autoEquip": "false",
+        "bossPolicy": "auto",
+        "port": 8211,
+        "sessionTimeoutMs": 600000,
+        "outputDir": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l3"
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "d0645cf8fb826770f94d200a270dd2c7f8a0e4fa8550d5a005cca903d1f45868",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "auto",
+        "maxBossClears": 1,
+        "maxBossTimeouts": 1,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 3,
+          "Huun": 3,
+          "Runa": 3
+        }
+      },
+      "level": 3
+    },
+    {
+      "id": "boss-sweep-l4",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "evidence": {
+        "eventLog": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l4/observed_events.ndjson",
+        "report": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l4/balance_metrics.json"
+      },
+      "run": {
+        "sessions": 5,
+        "seedStart": 3235774465,
+        "maxWaves": 20,
+        "maxBossClears": 1,
+        "maxBossTimeouts": 1,
+        "lampFixture": "output/orka-7l9-fixtures/ui-equipped-lamp.json",
+        "heroFixture": "output/orka-7l9-knowledge-lab/fixtures/level4-manual-ready-heroes.json",
+        "heroSlots": "Falie,Huun,Runa,",
+        "autoEquip": "false",
+        "bossPolicy": "auto",
+        "port": 8212,
+        "sessionTimeoutMs": 600000,
+        "outputDir": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l4"
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "8ca75e80c2739a055db6e803f2322a000a4d84d2d758085105036dda90616491",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "auto",
+        "maxBossClears": 1,
+        "maxBossTimeouts": 1,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 4,
+          "Huun": 4,
+          "Runa": 4
+        }
+      },
+      "level": 4
+    },
+    {
+      "id": "boss-sweep-l5",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "evidence": {
+        "eventLog": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l5/observed_events.ndjson",
+        "report": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l5/balance_metrics.json"
+      },
+      "run": {
+        "sessions": 5,
+        "seedStart": 3235774465,
+        "maxWaves": 20,
+        "maxBossClears": 1,
+        "maxBossTimeouts": 1,
+        "lampFixture": "output/orka-7l9-fixtures/ui-equipped-lamp.json",
+        "heroFixture": "output/orka-7l9-fixtures/level5-manual-ready-heroes.json",
+        "heroSlots": "Falie,Huun,Runa,",
+        "autoEquip": "false",
+        "bossPolicy": "auto",
+        "port": 8213,
+        "sessionTimeoutMs": 600000,
+        "outputDir": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l5"
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "5b1f89f95bd362342242b476a39834f8815571ead82c07f986733e2eec1723f3",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "auto",
+        "maxBossClears": 1,
+        "maxBossTimeouts": 1,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 5,
+          "Huun": 5,
+          "Runa": 5
+        }
+      },
+      "level": 5
+    },
+    {
+      "id": "earned-fresh",
+      "timing": "prospective",
+      "fixtureClass": "earned",
+      "evidence": {
+        "eventLog": "/private/tmp/orka-7l9-lab/runs/earned-fresh/observed_events.ndjson",
+        "report": "/private/tmp/orka-7l9-lab/runs/earned-fresh/balance_metrics.json"
+      },
+      "run": {
+        "sessions": 5,
+        "seedStart": 3235774465,
+        "maxWaves": 20,
+        "maxBossClears": 1,
+        "maxBossTimeouts": 3,
+        "lampSeed": 4242,
+        "autoEquip": "true",
+        "bossPolicy": "farm:4",
+        "port": 8214,
+        "sessionTimeoutMs": 1800000,
+        "outputDir": "/private/tmp/orka-7l9-lab/runs/earned-fresh"
+      },
+      "expect": {
+        "autoEquip": true,
+        "bossPolicy": "farm:4",
+        "maxBossClears": 1,
+        "maxBossTimeouts": 3,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ]
+      }
+    },
+    {
+      "id": "recovery-onehp",
+      "timing": "prospective",
+      "fixtureClass": "forced",
+      "evidence": {
+        "eventLog": "/private/tmp/orka-7l9-lab/runs/recovery-onehp/observed_events.ndjson",
+        "report": "/private/tmp/orka-7l9-lab/runs/recovery-onehp/balance_metrics.json"
+      },
+      "run": {
+        "sessions": 5,
+        "seedStart": 3235774465,
+        "maxWaves": 21,
+        "maxBossClears": 0,
+        "lampFixture": "output/orka-7l9-fixtures/ui-equipped-lamp.json",
+        "heroFixture": "output/orka-7l9-fixtures/stage2-onehp-heroes.json",
+        "heroSlots": "Falie,Huun,Runa,",
+        "autoEquip": "false",
+        "bossPolicy": "hold",
+        "port": 8215,
+        "sessionTimeoutMs": 1800000,
+        "outputDir": "/private/tmp/orka-7l9-lab/runs/recovery-onehp"
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "a281e7d82ecd8e30569fd0c3727e182a7603d3ece4c713fb5f2bfed58762efbe",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "hold",
+        "maxWaves": 21,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 1,
+          "Huun": 1,
+          "Runa": 1
+        }
+      }
+    },
+    {
+      "id": "pinned-starter-l1",
+      "timing": "retrospective",
+      "fixtureClass": "synthetic",
+      "evidence": {
+        "report": "/private/tmp/orka-7l9-wave-heal-five-seed-clean/balance_metrics.json"
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "07855eeb1ec5077c3c60747a99ca5f42ae62f0ce123c07ed3bd3cb76165930e2",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": true,
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ]
+      }
+    },
+    {
+      "id": "pinned-fourhero-l1",
+      "timing": "retrospective",
+      "fixtureClass": "synthetic",
+      "evidence": {
+        "report": "/private/tmp/orka-7l9-wave-heal-healer-five-seed-clean/balance_metrics.json"
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "07855eeb1ec5077c3c60747a99ca5f42ae62f0ce123c07ed3bd3cb76165930e2",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          "Kojonn"
+        ],
+        "autoEquip": true,
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ]
+      }
+    },
+    {
+      "id": "pinned-boss-l1",
+      "timing": "retrospective",
+      "fixtureClass": "synthetic",
+      "evidence": {
+        "report": "/private/tmp/orka-7l9-current-boss-level1-five/balance_metrics.json"
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "07855eeb1ec5077c3c60747a99ca5f42ae62f0ce123c07ed3bd3cb76165930e2",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ]
+      },
+      "level": 1
+    },
+    {
+      "id": "pinned-boss-l5",
+      "timing": "retrospective",
+      "fixtureClass": "synthetic",
+      "evidence": {
+        "report": "/private/tmp/orka-7l9-current-boss-level5-five/balance_metrics.json"
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "5b1f89f95bd362342242b476a39834f8815571ead82c07f986733e2eec1723f3",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ]
+      },
+      "level": 5
+    },
+    {
+      "id": "pinned-onehp-oneway",
+      "timing": "retrospective",
+      "fixtureClass": "forced",
+      "evidence": {
+        "report": "/private/tmp/orka-7l9-current-stage2-onehp-five/balance_metrics.json"
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "a281e7d82ecd8e30569fd0c3727e182a7603d3ece4c713fb5f2bfed58762efbe",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ]
+      }
+    }
+  ],
+  "claims": [
+    {
+      "id": "C1-starter-farming",
+      "title": "Starter no-Kaja farming meets the survival gate",
+      "kind": "starter_farming",
+      "tests": "fixture",
+      "pillar": "survival",
+      "requirements": [
+        "REQ-STARTER",
+        "REQ-LAB-STARTER"
+      ],
+      "references": [
+        "REF-ORDINARY",
+        "REF-PET-KO"
+      ],
+      "expectation": "PASS only if each of seeds 3235774465\u20133235774469 records \u226520 consecutive ordinary clears from the runtime counter with zero Hero KOs, zero missing event ids, zero ambiguous transitions and zero deadlocks. Any Hero KO, gap or deadlock is FAIL. A harness timeout short of 20 clears without a failure is INCONCLUSIVE.",
+      "scenarios": {
+        "primary": [
+          "starter-l1-nokaja"
+        ],
+        "retrospective": [
+          "pinned-starter-l1"
+        ]
+      },
+      "rule": {
+        "consecutiveClears": 20,
+        "maxHeroKOs": 0
+      },
+      "unknowns": [
+        "StoneAge 20-wave reference (REF-ORDINARY has none)",
+        "whether surviving is satisfying (see C2)"
+      ]
+    },
+    {
+      "id": "C2-pressure",
+      "title": "Cap plus respite leave measurable pressure; defensive gear changes observed results",
+      "kind": "pressure",
+      "tests": "rule",
+      "pillar": "pressure",
+      "requirements": [
+        "REQ-NO-DANGER-BAND"
+      ],
+      "references": [
+        "REF-ORDINARY"
+      ],
+      "expectation": "Report event-time HP margins, effective healing by source and hits per wave for the starter run. For matched seeds with Auto-Equip off, compare base gear with +10 DEF and +30 HP on all three Hero bodies. Outcome sensitivity PASS if any matched seed changes Hero KOs, recoveries, consecutive clears, end reason or boss clears; FAIL if none change. Margin sensitivity PASS if hits, applied damage, applied-amount distribution or min-HP ratio change in any matched seed; FAIL otherwise. The overall pressure claim stays INCONCLUSIVE because no danger threshold is approved.",
+      "scenarios": {
+        "margins": [
+          "starter-l1-nokaja"
+        ],
+        "gear": [
+          "gear-base",
+          "gear-def10",
+          "gear-hp30"
+        ]
+      },
+      "rule": {
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "waves": 20
+      },
+      "unknowns": [
+        "approved danger band (owner decision)",
+        "pre-cap damage per hit",
+        "enemy hit cadence mechanics"
+      ]
+    },
+    {
+      "id": "C3-cap-share",
+      "title": "Share of Hero hits bound by the hostile-hit cap",
+      "kind": "cap_share",
+      "tests": "model_assumption",
+      "requirements": [
+        "REQ-CAP-UNKNOWN"
+      ],
+      "references": [],
+      "expectation": "Observed capped-hit share is UNKNOWN unless an event carries pre-cap damage; none is expected because telemetry records applied HP only. A MODEL interval may be reported under A1/A2 and never as an observation. Verdict INCONCLUSIVE by rule.",
+      "scenarios": {
+        "traces": [
+          "starter-l1-nokaja",
+          "gear-base",
+          "gear-def10",
+          "gear-hp30",
+          "kaja-l15-four",
+          "pinned-starter-l1",
+          "pinned-onehp-oneway"
+        ]
+      },
+      "unknowns": [
+        "pre-cap damage",
+        "raw damage formula inputs at impact"
+      ]
+    },
+    {
+      "id": "C4-kaja-healing",
+      "title": "Kaja skill healing: zero at level 1, possible at level 15",
+      "kind": "kaja_healing",
+      "tests": "rule",
+      "requirements": [
+        "REQ-KAJA-UNLOCK"
+      ],
+      "references": [],
+      "expectation": "Level-1 four-Hero run: Kojonn skill healing is exactly 0 in every seed (FAIL otherwise). Level-15 four-Hero run: PASS if any seed records Kojonn skill healing > 0; INCONCLUSIVE if none occurs. Outcome change versus the matched three-Hero party is reported separately and is confounded by party size.",
+      "scenarios": {
+        "level1Healer": [
+          "kaja-l1-four"
+        ],
+        "level1Control": [
+          "starter-l1-nokaja"
+        ],
+        "level15Healer": [
+          "kaja-l15-four"
+        ],
+        "level15Control": [
+          "kaja-l15-three"
+        ]
+      },
+      "rule": {
+        "healer": "Kojonn"
+      },
+      "unknowns": [
+        "causal survival value of Kaja when both parties live"
+      ]
+    },
+    {
+      "id": "C5-first-boss",
+      "title": "First boss: underprepared timeouts, progressed wins, earned arrival clears",
+      "kind": "first_boss",
+      "tests": "fixture",
+      "pillar": "earned_boss",
+      "requirements": [
+        "REQ-BOSS",
+        "REQ-LAB-BOSS"
+      ],
+      "references": [
+        "REF-BOSS-GAUGE"
+      ],
+      "expectation": "Fixed-gear synthetic sweep at levels 1\u20135 (one first attempt per seed): level 1 attempts mostly (>50%) time out with \u22651 living Hero; level 5 clears in every seed; report the lowest level with any clear and with all clears. Fresh-save earned run (lamp seed 4242, Auto-Equip on, summon after 4 ordinary clears following a failed attempt): PASS per seed if a boss clear occurs before 3 timeouts; FAIL if 3 timeouts occur first; INCONCLUSIVE on harness timeout.",
+      "scenarios": {
+        "sweep": [
+          "boss-sweep-l1",
+          "boss-sweep-l2",
+          "boss-sweep-l3",
+          "boss-sweep-l4",
+          "boss-sweep-l5",
+          "pinned-boss-l1",
+          "pinned-boss-l5"
+        ],
+        "earned": [
+          "earned-fresh"
+        ]
+      },
+      "rule": {
+        "underpreparedLevel": 1,
+        "progressedLevel": 5,
+        "earnedTimeoutBudget": 3
+      },
+      "unknowns": [
+        "StoneAge numeric timer and boss HP band",
+        "intermediate StoneAge upgrade effects"
+      ]
+    },
+    {
+      "id": "C6-recovery",
+      "title": "Forced-KO recovery resumes productive farming",
+      "kind": "recovery",
+      "tests": "rule",
+      "pillar": "recovery",
+      "requirements": [
+        "REQ-RECOVERY",
+        "REQ-LAB-RECOVERY"
+      ],
+      "references": [],
+      "expectation": "Per seed: an initial Hero KO, a recovery event restoring every deployed Hero to its event-time max HP, the same region/stage/wave across the recovery transition, then \u226520 consecutive ordinary clears with no additional Hero KO, gap, ambiguous transition or deadlock. The boss is held (no summon) so ordinary farming continues at readiness. Timeout short of 20 without a failure is INCONCLUSIVE.",
+      "scenarios": {
+        "primary": [
+          "recovery-onehp"
+        ]
+      },
+      "rule": {
+        "consecutiveClears": 20
+      },
+      "unknowns": [
+        "recovery behaviour after a boss is summoned (not exercised under hold policy)"
+      ]
+    }
+  ]
+}

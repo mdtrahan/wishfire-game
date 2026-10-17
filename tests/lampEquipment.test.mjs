@@ -4,14 +4,60 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {LAMP_CONFIG,LAMP_CAPACITY_TIERS,generateLampItem,createLampEconomy,activateLamp,lampStoredCount,lampCapacity,lampItemCPGain,lampGearCP,sortedLampItems,selectLampUpgrades,lampReviewCandidates,planLampAutoEquip,finishLampReview,lampStageCost,purchaseLampStage,upgradeLamp,completeLampUpgrade,validateLampEconomy,compareLampItem,selectAutoEquipHero,equipLampItem,dismantleLampItems,migrateLegacyEquipment,migrateLampEconomy,migrateFourStatLamp,migrateDraftLamp,salvageValue,GEAR_ARCHETYPES} from '../web-runner/src/core/lampGear.mjs';
 import {createEquipmentStorage,EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
-import {createHeroProgressStore} from '../web-runner/src/core/heroProgression.mjs';
+import {createHeroProgressStore,newHeroProgress} from '../web-runner/src/core/heroProgression.mjs';
 import {computeCombatPower} from '../web-runner/src/core/combatPower.mjs';
 const preview=d=>[...d.lamp.pending,...(d.lamp.discarded||[]),'salvage:'+d.lamp.salvage.count+':'+d.lamp.salvage.gold];
 function fixture(initial={},options={}){const values=new Map(Object.entries(initial));let fail=false,chain=Promise.resolve(),clock=1000;
  const storage={getItem:k=>values.get(k)??null,setItem(k,v){if(fail)throw Error('disk full');values.set(k,v);}};
  const locks={request:(key,fn)=>{const next=chain.then(fn);chain=next.catch(()=>{});return next;}};
- const globals={goldTotal:0,HeroProgress:createHeroProgressStore()};const store=createEquipmentStorage({globals,storage,locks,seed:()=>42,now:()=>clock,reportError:()=>{},onGearCollected:options.onGearCollected});
+ const globals={goldTotal:0,HeroProgress:createHeroProgressStore()};const store=createEquipmentStorage({globals,storage,locks,getActors:options.getActors,seed:()=>42,now:()=>clock,reportError:()=>{},onGearCollected:options.onGearCollected});
  return{values,storage,locks,globals,store,setFail:v=>fail=v,setClock:v=>clock=v};}
+
+test('canonical equipped gear reaches the deployed hero instance',async()=>{
+ const actor={...newHeroProgress('Falie','falie#1'),kind:'hero',uid:1};
+ const f=fixture({}, {getActors:()=>[actor]});
+ f.globals.HeroProgress.heroes['falie#1']=newHeroProgress('Falie','falie#1');
+ await f.store.sync();
+ const item=await f.store.generate();
+ await f.store.equip('Falie',item.instanceId);
+ assert.equal(f.store.data.loadouts.Falie.body,item.instanceId);
+ assert.equal(f.store.data.loadouts['falie#1'],undefined);
+ assert.equal(actor.stats.ATK,7+item.stats.ATK);
+ assert.equal(actor.maxHP,75+item.stats.HP);
+ assert.equal(f.globals.HeroProgress.heroes['falie#1'].maxHP,actor.maxHP);
+ const restored={...newHeroProgress('Falie','falie#1'),kind:'hero',uid:1};
+ const reload=fixture(Object.fromEntries(f.values),{getActors:()=>[restored]});
+ await reload.store.sync();
+ assert.equal(reload.store.data.loadouts.Falie.body,item.instanceId);
+ assert.equal(restored.stats.ATK,actor.stats.ATK);
+ assert.equal(restored.maxHP,actor.maxHP);
+});
+
+test('instance loadouts override canonical gear and duplicate clones do not share it',async()=>{
+ const first={...newHeroProgress('Falie','falie#1'),kind:'hero',uid:1};
+ const second={...newHeroProgress('Falie','falie#2'),kind:'hero',uid:2};
+ const f=fixture({}, {getActors:()=>[first,second]});
+ f.globals.HeroProgress.heroes['falie#1']=newHeroProgress('Falie','falie#1');
+ f.globals.HeroProgress.heroes['falie#2']=newHeroProgress('Falie','falie#2');
+ await f.store.sync();
+ const canonicalItem=await f.store.generate();
+ await f.store.equip('Falie',canonicalItem.instanceId);
+ assert.deepEqual(first.equipmentStats,canonicalItem.stats);
+ assert.deepEqual(second.equipmentStats??{},{});
+ f.setClock(3001);
+ const instanceItem=await f.store.generate();
+ await f.store.equip('falie#1',instanceItem.instanceId);
+ assert.deepEqual(first.equipmentStats,instanceItem.stats);
+ assert.deepEqual(second.equipmentStats??{},{});
+ const saved=structuredClone(f.store.data);
+ saved.loadouts['falie#1']={};
+ saved.lamp.discarded.push(instanceItem.instanceId);
+ f.values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(saved));
+ await f.store.refresh();
+ assert.deepEqual(first.equipmentStats,{});
+ assert.deepEqual(second.equipmentStats??{},{});
+ assert.deepEqual(f.globals.HeroProgress.heroes.Falie.equipmentStats,canonicalItem.stats);
+});
 
 test('automatic conveyor collection commits gear events and retries them after reload',async()=>{
  let failEvent=true;const received=[];
@@ -201,11 +247,11 @@ test('Auto rechecks prior slots after nonlinear CP changes and accepts an exact 
  const tiny={...createLampEconomy(1),items:[{instanceId:'current',type:'body',stats:{ATK:38,DEF:55,MAG:33,RES:82,HP:78}},{instanceId:'tiny',type:'body',stats:{ATK:79,DEF:47,MAG:76,RES:23,HP:85}}],loadouts:{Falie:{body:'current'}}};tiny.lamp.pending=['tiny'];const gain=lampItemCPGain(tiny,tiny.items[1],hero);assert.equal(gain,0.1);assert.equal(lampReviewCandidates(tiny,[hero])[0].bestGain,0.1);assert.equal(planLampAutoEquip(tiny,[hero]).loadouts.Falie.body,'tiny');
 });
 
-test('four-stat saves migrate once without rerolling items or healing; equip reports actual permanent CP',async()=>{
+test('four-stat saves migrate once without rerolling items; equip fills gained max HP and reports actual CP',async()=>{
  const old=createLampEconomy(42,1000);old.version=3;activateLamp(old,{},0);for(const i of old.items)delete i.stats.HP;
  const raw=JSON.stringify(old),f=fixture({'wishfire.equipment-economy.v3':raw});await f.store.sync();assert.equal(f.store.data.version,5);assert.equal(f.store.data.items[0].stats.HP,0);assert.equal(f.values.get('wishfire.equipment-economy.v3'),raw);assert.equal(f.store.data.gold,old.gold);
  f.setClock(2000);await f.store.generate({});const hero=f.globals.HeroProgress.heroes.Falie,hp=hero.hp,maxHP=hero.maxHP;
- const result=await f.store.equip('Falie',f.store.data.lamp.pending.at(-1));assert.ok(hero.maxHP>maxHP);assert.equal(hero.hp,hp);assert.equal(result.cpAfter,hero.combatPower);assert.equal(result.cpChange,Math.round((result.cpAfter-result.cpBefore)*10)/10);
+ const result=await f.store.equip('Falie',f.store.data.lamp.pending.at(-1));assert.ok(hero.maxHP>maxHP);assert.equal(hero.hp,Math.min(hero.maxHP,hp+hero.maxHP-maxHP));assert.equal(result.cpAfter,hero.combatPower);assert.equal(result.cpChange,Math.round((result.cpAfter-result.cpBefore)*10)/10);
 });
 
 test('manual and AUTO draws never grant new EXP; full cache continues issuing gear',async()=>{

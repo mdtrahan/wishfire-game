@@ -10,7 +10,7 @@ function loadFunctionBank(){
  const file=path.join(__dirname,'../web-runner/modules/functionBank.js');
  const source=fs.readFileSync(file,'utf8').replace(/import\s+\{[^}]*\}\s+from\s+['"][^'"]+['"];\n/g,'').replace(/export\s+function\s+/g,'function ').replace(/export\s+\{[^}]*\};\n/g,'');
  const names=[...new Set([...source.matchAll(/function\s+([A-Za-z0-9_]+)\s*\(/g)].map(match=>match[1]))];
- const context={console:{log(){},warn:console.warn,error:console.error},Math,Number,String,Boolean,Array,Object,Set,Map,JSON,Date,structuredClone,document:{documentElement:{setAttribute(){},getAttribute(){return null;}}},globalThis:{},recordEnemyDefeatReward,...require('../web-runner/systems/actorPuppetDefeats.mjs'),...require('../web-runner/src/core/realtimeHeroSkills.mjs'),module:{exports:{}},exports:{}};
+ const context={console:{log(){},warn:console.warn,error:console.error},Math,Number,String,Boolean,Array,Object,Set,Map,JSON,Date,structuredClone,document:{documentElement:{setAttribute(){},getAttribute(){return null;}}},globalThis:{},recordEnemyDefeatReward,...require('../web-runner/systems/actorPuppetDefeats.mjs'),...require('../web-runner/src/core/balanceTelemetry.mjs'),...require('../web-runner/src/core/realtimeHeroSkills.mjs'),module:{exports:{}},exports:{}};
  vm.runInNewContext(`${source}\nmodule.exports={${names.join(',')}};`,context,{filename:file});
  return context.module.exports;
 }

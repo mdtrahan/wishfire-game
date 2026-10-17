@@ -1,0 +1,5243 @@
+{
+  "design": {
+    "verdict": "NOT PROVEN",
+    "pillars": [
+      {
+        "pillar": "survival",
+        "claim": "C1-starter-farming",
+        "verdict": "PASS"
+      },
+      {
+        "pillar": "pressure",
+        "claim": "C2-pressure",
+        "verdict": "INCONCLUSIVE"
+      },
+      {
+        "pillar": "earned_boss",
+        "claim": "C5-first-boss",
+        "verdict": "PASS"
+      },
+      {
+        "pillar": "recovery",
+        "claim": "C6-recovery",
+        "verdict": "FAIL"
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "C1-starter-farming",
+      "title": "Starter no-Kaja farming meets the survival gate",
+      "kind": "starter_farming",
+      "tests": "fixture",
+      "pillar": "survival",
+      "requirements": [
+        "REQ-STARTER",
+        "REQ-LAB-STARTER"
+      ],
+      "references": [
+        "REF-ORDINARY",
+        "REF-PET-KO"
+      ],
+      "expectation": "PASS only if each of seeds 3235774465–3235774469 records ≥20 consecutive ordinary clears from the runtime counter with zero Hero KOs, zero missing event ids, zero ambiguous transitions and zero deadlocks. Any Hero KO, gap or deadlock is FAIL. A harness timeout short of 20 clears without a failure is INCONCLUSIVE.",
+      "unknowns": [
+        "StoneAge 20-wave reference (REF-ORDINARY has none)",
+        "whether surviving is satisfying (see C2)"
+      ],
+      "verdict": "PASS",
+      "rows": [
+        {
+          "scenario": "starter-l1-nokaja",
+          "timing": "prospective",
+          "verdict": "PASS",
+          "reason": null,
+          "perSeed": [
+            {
+              "seed": 3235774465,
+              "verdict": "PASS",
+              "clears": 20,
+              "longestSilence": {
+                "seconds": 17.932,
+                "from": 1236.346,
+                "to": 1254.278
+              },
+              "stagesCleared": [
+                "1-1"
+              ],
+              "heroKOs": 0,
+              "gaps": 0,
+              "deadlocks": 0,
+              "endReason": "max_waves",
+              "reasons": []
+            },
+            {
+              "seed": 3235774466,
+              "verdict": "PASS",
+              "clears": 20,
+              "longestSilence": {
+                "seconds": 17.733,
+                "from": 904.741,
+                "to": 922.474
+              },
+              "stagesCleared": [
+                "1-1"
+              ],
+              "heroKOs": 0,
+              "gaps": 0,
+              "deadlocks": 0,
+              "endReason": "max_waves",
+              "reasons": []
+            },
+            {
+              "seed": 3235774467,
+              "verdict": "PASS",
+              "clears": 20,
+              "longestSilence": {
+                "seconds": 17.129,
+                "from": 46.337,
+                "to": 63.466
+              },
+              "stagesCleared": [
+                "1-1"
+              ],
+              "heroKOs": 0,
+              "gaps": 0,
+              "deadlocks": 0,
+              "endReason": "max_waves",
+              "reasons": []
+            },
+            {
+              "seed": 3235774468,
+              "verdict": "PASS",
+              "clears": 20,
+              "longestSilence": {
+                "seconds": 12.064,
+                "from": 39.774,
+                "to": 51.838
+              },
+              "stagesCleared": [
+                "1-1"
+              ],
+              "heroKOs": 0,
+              "gaps": 0,
+              "deadlocks": 0,
+              "endReason": "max_waves",
+              "reasons": []
+            },
+            {
+              "seed": 3235774469,
+              "verdict": "PASS",
+              "clears": 20,
+              "longestSilence": {
+                "seconds": 18,
+                "from": 469.268,
+                "to": 487.268
+              },
+              "stagesCleared": [
+                "1-1"
+              ],
+              "heroKOs": 0,
+              "gaps": 0,
+              "deadlocks": 0,
+              "endReason": "max_waves",
+              "reasons": []
+            }
+          ],
+          "evidence": {
+            "path": "/private/tmp/orka-7l9-lab/runs/starter-l1-nokaja/observed_events.ndjson",
+            "status": "present",
+            "bytes": 2850925,
+            "sha256": "d79643711bebf713f071971ba394afda57402570eb2b057127bbd180a53c9b16"
+          },
+          "model": {
+            "status": "CONSISTENT_WITH_CONTROL",
+            "checks": 1071,
+            "sessionsDiverged": []
+          }
+        },
+        {
+          "scenario": "pinned-starter-l1",
+          "timing": "retrospective",
+          "verdict": "INCONCLUSIVE",
+          "reason": "retrospective evidence can contradict but not confirm",
+          "perSeed": [
+            {
+              "seed": 3235774465,
+              "verdict": "PASS",
+              "clears": 20,
+              "heroKOs": 0,
+              "gaps": 0,
+              "deadlocks": 0,
+              "endReason": "max_waves",
+              "reasons": [],
+              "coverage": "aggregate_only"
+            },
+            {
+              "seed": 3235774466,
+              "verdict": "PASS",
+              "clears": 20,
+              "heroKOs": 0,
+              "gaps": 0,
+              "deadlocks": 0,
+              "endReason": "max_waves",
+              "reasons": [],
+              "coverage": "aggregate_only"
+            },
+            {
+              "seed": 3235774467,
+              "verdict": "PASS",
+              "clears": 20,
+              "heroKOs": 0,
+              "gaps": 0,
+              "deadlocks": 0,
+              "endReason": "max_waves",
+              "reasons": [],
+              "coverage": "aggregate_only"
+            },
+            {
+              "seed": 3235774468,
+              "verdict": "PASS",
+              "clears": 20,
+              "heroKOs": 0,
+              "gaps": 0,
+              "deadlocks": 0,
+              "endReason": "max_waves",
+              "reasons": [],
+              "coverage": "aggregate_only"
+            },
+            {
+              "seed": 3235774469,
+              "verdict": "PASS",
+              "clears": 20,
+              "heroKOs": 0,
+              "gaps": 0,
+              "deadlocks": 0,
+              "endReason": "max_waves",
+              "reasons": [],
+              "coverage": "aggregate_only"
+            }
+          ],
+          "evidence": {
+            "path": "/private/tmp/orka-7l9-wave-heal-five-seed-clean/balance_metrics.json",
+            "status": "present",
+            "bytes": 764764,
+            "sha256": "102c044ab46a0ce633600dfead73ff070d195d86f6a32f5a5d8092f5f40707d0"
+          },
+          "model": {
+            "status": "not_run",
+            "reason": "aggregate report has no event replay"
+          }
+        }
+      ]
+    },
+    {
+      "id": "C2-pressure",
+      "title": "Cap plus respite leave measurable pressure; defensive gear changes observed results",
+      "kind": "pressure",
+      "tests": "rule",
+      "pillar": "pressure",
+      "requirements": [
+        "REQ-NO-DANGER-BAND"
+      ],
+      "references": [
+        "REF-ORDINARY"
+      ],
+      "expectation": "Report event-time HP margins, effective healing by source and hits per wave for the starter run. For matched seeds with Auto-Equip off, compare base gear with +10 DEF and +30 HP on all three Hero bodies. Outcome sensitivity PASS if any matched seed changes Hero KOs, recoveries, consecutive clears, end reason or boss clears; FAIL if none change. Margin sensitivity PASS if hits, applied damage, applied-amount distribution or min-HP ratio change in any matched seed; FAIL otherwise. The overall pressure claim stays INCONCLUSIVE because no danger threshold is approved.",
+      "unknowns": [
+        "approved danger band (owner decision)",
+        "pre-cap damage per hit",
+        "enemy hit cadence mechanics"
+      ],
+      "verdict": "INCONCLUSIVE",
+      "reason": "No owner-approved pressure threshold exists; measurements and sensitivity are reported without a danger band.",
+      "margins": [
+        {
+          "scenario": "starter-l1-nokaja",
+          "evidence": {
+            "path": "/private/tmp/orka-7l9-lab/runs/starter-l1-nokaja/observed_events.ndjson",
+            "status": "present",
+            "bytes": 2850925,
+            "sha256": "d79643711bebf713f071971ba394afda57402570eb2b057127bbd180a53c9b16"
+          },
+          "admissible": true,
+          "problems": [],
+          "sessions": [
+            {
+              "seed": 3235774465,
+              "heroes": [
+                {
+                  "name": "Falie",
+                  "startHp": 85,
+                  "startMaxHp": 85,
+                  "lowestRatio": 0.722,
+                  "lowestRatioAt": 359.275,
+                  "lowestRatioHp": 70,
+                  "lowestRatioMaxHp": 97,
+                  "lowestRatioUncertain": false,
+                  "minEventHp": 70,
+                  "maxHpAtMin": 97,
+                  "maxHpAtMinUncertain": false,
+                  "minHpRatio": 0.722,
+                  "hits": 125,
+                  "appliedDamage": 125,
+                  "appliedByAmount": {
+                    "1": 125
+                  },
+                  "healing": {
+                    "ordinary_wave_clear": 139
+                  },
+                  "hitsPerWave": {
+                    "completedWaves": 20,
+                    "maxHitsInWave": 22,
+                    "meanHitsPerWave": 6.25,
+                    "counts": [
+                      0,
+                      9,
+                      14,
+                      22,
+                      0,
+                      9,
+                      13,
+                      7,
+                      0,
+                      4,
+                      11,
+                      8,
+                      0,
+                      3,
+                      11,
+                      5,
+                      0,
+                      2,
+                      4,
+                      3,
+                      0
+                    ]
+                  },
+                  "model": {
+                    "label": "MODEL",
+                    "envelope": {
+                      "status": "computed",
+                      "capBound": 1,
+                      "tier": "routine",
+                      "healPerWaveAtFloor": 13,
+                      "waves": 20,
+                      "maxSurvivableUniformHitsPerWave": 16,
+                      "maxSurvivableWithoutHeal": 4,
+                      "singleWaveHitsToKO": 85,
+                      "assumptions": [
+                        "A1",
+                        "A3",
+                        "A10",
+                        "A11"
+                      ]
+                    },
+                    "observedMaxHitsPerWave": 22
+                  }
+                },
+                {
+                  "name": "Huun",
+                  "startHp": 60,
+                  "startMaxHp": 60,
+                  "lowestRatio": 0.811,
+                  "lowestRatioAt": 244.012,
+                  "lowestRatioHp": 60,
+                  "lowestRatioMaxHp": 74,
+                  "lowestRatioUncertain": false,
+                  "minEventHp": 60,
+                  "maxHpAtMin": 60,
+                  "maxHpAtMinUncertain": false,
+                  "minHpRatio": 1,
+                  "hits": 58,
+                  "appliedDamage": 58,
+                  "appliedByAmount": {
+                    "1": 58
+                  },
+                  "healing": {
+                    "ordinary_wave_clear": 81
+                  },
+                  "hitsPerWave": {
+                    "completedWaves": 20,
+                    "maxHitsInWave": 10,
+                    "meanHitsPerWave": 2.9,
+                    "counts": [
+                      0,
+                      7,
+                      10,
+                      6,
+                      0,
+                      1,
+                      4,
+                      3,
+                      0,
+                      1,
+                      6,
+                      3,
+                      0,
+                      1,
+                      7,
+                      2,
+                      0,
+                      1,
+                      1,
+                      5,
+                      0
+                    ]
+                  },
+                  "model": {
+                    "label": "MODEL",
+                    "envelope": {
+                      "status": "computed",
+                      "capBound": 1,
+                      "tier": "routine",
+                      "healPerWaveAtFloor": 9,
+                      "waves": 20,
+                      "maxSurvivableUniformHitsPerWave": 11,
+                      "maxSurvivableWithoutHeal": 2,
+                      "singleWaveHitsToKO": 60,
+                      "assumptions": [
+                        "A1",
+                        "A3",
+                        "A10",
+                        "A11"
+                      ]
+                    },
+                    "observedMaxHitsPerWave": 10
+                  }
+                },
+                {
+                  "name": "Runa",
+                  "startHp": 69,
+                  "startMaxHp": 69,
+                  "lowestRatio": 0.913,
+                  "lowestRatioAt": 103.599,
+                  "lowestRatioHp": 63,
+                  "lowestRatioMaxHp": 69,
+                  "lowestRatioUncertain": false,
+                  "minEventHp": 63,
+                  "maxHpAtMin": 69,
+                  "maxHpAtMinUncertain": false,
+                  "minHpRatio": 0.913,
+                  "hits": 28,
+                  "appliedDamage": 28,
+                  "appliedByAmount": {
+                    "1": 28
+                  },
+                  "healing": {
+                    "ordinary_wave_clear": 41
+                  },
+                  "hitsPerWave": {
+                    "completedWaves": 20,
+                    "maxHitsInWave": 6,
+                    "meanHitsPerWave": 1.4,
+                    "counts": [
+                      3,
+                      6,
+                      0,
+                      5,
+                      0,
+                      0,
+                      5,
+                      0,
+                      0,
+                      0,
+                      4,
+                      0,
+                      0,
+                      1,
+                      2,
+                      0,
+                      0,
+                      0,
+                      2,
+                      0,
+                      0
+                    ]
+                  },
+                  "model": {
+                    "label": "MODEL",
+                    "envelope": {
+                      "status": "computed",
+                      "capBound": 1,
+                      "tier": "routine",
+                      "healPerWaveAtFloor": 11,
+                      "waves": 20,
+                      "maxSurvivableUniformHitsPerWave": 13,
+                      "maxSurvivableWithoutHeal": 3,
+                      "singleWaveHitsToKO": 69,
+                      "assumptions": [
+                        "A1",
+                        "A3",
+                        "A10",
+                        "A11"
+                      ]
+                    },
+                    "observedMaxHitsPerWave": 6
+                  }
+                }
+              ],
+              "noHealCounterfactual": {
+                "label": "MODEL",
+                "alteration": {
+                  "waveHealFraction": 0
+                },
+                "assumptions": [
+                  "A3",
+                  "A5",
+                  "A6",
+                  "A8",
+                  "A9"
+                ],
+                "cutoff": {
+                  "t": 771.324,
+                  "refId": 510,
+                  "reason": "ko_state_differs",
+                  "detail": "Falie observed 92, altered 0; KO changes targeting, actions and wave flow (A8)"
+                },
+                "validThrough": 771.324,
+                "complete": false,
+                "heroes": [
+                  {
+                    "name": "Falie",
+                    "observedMinHp": 70,
+                    "alteredMinHpBeforeCutoff": 0
+                  },
+                  {
+                    "name": "Huun",
+                    "observedMinHp": 60,
+                    "alteredMinHpBeforeCutoff": 23
+                  },
+                  {
+                    "name": "Runa",
+                    "observedMinHp": 63,
+                    "alteredMinHpBeforeCutoff": 46
+                  }
+                ],
+                "afterCutoff": "UNKNOWN"
+              }
+            },
+            {
+              "seed": 3235774466,
+              "heroes": [
+                {
+                  "name": "Falie",
+                  "startHp": 85,
+                  "startMaxHp": 85,
+                  "lowestRatio": 0.773,
+                  "lowestRatioAt": 153.536,
+                  "lowestRatioHp": 75,
+                  "lowestRatioMaxHp": 97,
+                  "lowestRatioUncertain": false,
+                  "minEventHp": 75,
+                  "maxHpAtMin": 91,
+                  "maxHpAtMinUncertain": false,
+                  "minHpRatio": 0.824,
+                  "hits": 86,
+                  "appliedDamage": 86,
+                  "appliedByAmount": {
+                    "1": 86
+                  },
+                  "healing": {
+                    "ordinary_wave_clear": 100
+                  },
+                  "hitsPerWave": {
+                    "completedWaves": 20,
+                    "maxHitsInWave": 12,
+                    "meanHitsPerWave": 4.3,
+                    "counts": [
+                      0,
+                      10,
+                      5,
+                      9,
+                      0,
+                      3,
+                      7,
+                      3,
+                      0,
+                      5,
+                      12,
+                      8,
+                      0,
+                      0,
+                      2,
+                      7,
+                      0,
+                      6,
+                      5,
+                      4,
+                      0
+                    ]
+                  },
+                  "model": {
+                    "label": "MODEL",
+                    "envelope": {
+                      "status": "computed",
+                      "capBound": 1,
+                      "tier": "routine",
+                      "healPerWaveAtFloor": 13,
+                      "waves": 20,
+                      "maxSurvivableUniformHitsPerWave": 16,
+                      "maxSurvivableWithoutHeal": 4,
+                      "singleWaveHitsToKO": 85,
+                      "assumptions": [
+                        "A1",
+                        "A3",
+                        "A10",
+                        "A11"
+                      ]
+                    },
+                    "observedMaxHitsPerWave": 12
+                  }
+                },
+                {
+                  "name": "Huun",
+                  "startHp": 60,
+                  "startMaxHp": 60,
+                  "lowestRatio": 0.824,
+                  "lowestRatioAt": 242.564,
+                  "lowestRatioHp": 61,
+                  "lowestRatioMaxHp": 74,
+                  "lowestRatioUncertain": false,
+                  "minEventHp": 60,
+                  "maxHpAtMin": 60,
+                  "maxHpAtMinUncertain": false,
+                  "minHpRatio": 1,
+                  "hits": 48,
+                  "appliedDamage": 48,
+                  "appliedByAmount": {
+                    "1": 48
+                  },
+                  "healing": {
+                    "ordinary_wave_clear": 71
+                  },
+                  "hitsPerWave": {
+                    "completedWaves": 20,
+                    "maxHitsInWave": 9,
+                    "meanHitsPerWave": 2.4,
+                    "counts": [
+                      0,
+                      4,
+                      9,
+                      1,
+                      0,
+                      1,
+                      4,
+                      5,
+                      0,
+                      5,
+                      2,
+                      4,
+                      0,
+                      4,
+                      2,
+                      3,
+                      0,
+                      1,
+                      0,
+                      3,
+                      0
+                    ]
+                  },
+                  "model": {
+                    "label": "MODEL",
+                    "envelope": {
+                      "status": "computed",
+                      "capBound": 1,
+                      "tier": "routine",
+                      "healPerWaveAtFloor": 9,
+                      "waves": 20,
+                      "maxSurvivableUniformHitsPerWave": 11,
+                      "maxSurvivableWithoutHeal": 2,
+                      "singleWaveHitsToKO": 60,
+                      "assumptions": [
+                        "A1",
+                        "A3",
+                        "A10",
+                        "A11"
+                      ]
+                    },
+                    "observedMaxHitsPerWave": 9
+                  }
+                },
+                {
+                  "name": "Runa",
+                  "startHp": 69,
+                  "startMaxHp": 69,
+                  "lowestRatio": 0.76,
+                  "lowestRatioAt": 244.566,
+                  "lowestRatioHp": 57,
+                  "lowestRatioMaxHp": 75,
+                  "lowestRatioUncertain": false,
+                  "minEventHp": 57,
+                  "maxHpAtMin": 69,
+                  "maxHpAtMinUncertain": false,
+                  "minHpRatio": 0.826,
+                  "hits": 35,
+                  "appliedDamage": 35,
+                  "appliedByAmount": {
+                    "1": 35
+                  },
+                  "healing": {
+                    "ordinary_wave_clear": 48
+                  },
+                  "hitsPerWave": {
+                    "completedWaves": 20,
+                    "maxHitsInWave": 12,
+                    "meanHitsPerWave": 1.75,
+                    "counts": [
+                      3,
+                      5,
+                      12,
+                      4,
+                      0,
+                      0,
+                      1,
+                      0,
+                      0,
+                      2,
+                      0,
+                      0,
+                      0,
+                      1,
+                      4,
+                      2,
+                      0,
+                      1,
+                      0,
+                      0,
+                      0
+                    ]
+                  },
+                  "model": {
+                    "label": "MODEL",
+                    "envelope": {
+                      "status": "computed",
+                      "capBound": 1,
+                      "tier": "routine",
+                      "healPerWaveAtFloor": 11,
+                      "waves": 20,
+                      "maxSurvivableUniformHitsPerWave": 13,
+                      "maxSurvivableWithoutHeal": 3,
+                      "singleWaveHitsToKO": 69,
+                      "assumptions": [
+                        "A1",
+                        "A3",
+                        "A10",
+                        "A11"
+                      ]
+                    },
+                    "observedMaxHitsPerWave": 12
+                  }
+                }
+              ],
+              "noHealCounterfactual": {
+                "label": "MODEL",
+                "alteration": {
+                  "waveHealFraction": 0
+                },
+                "assumptions": [
+                  "A3",
+                  "A5",
+                  "A6",
+                  "A8",
+                  "A9"
+                ],
+                "cutoff": {
+                  "t": 1326.524,
+                  "refId": 814,
+                  "reason": "ko_state_differs",
+                  "detail": "Falie observed 96, altered 0; KO changes targeting, actions and wave flow (A8)"
+                },
+                "validThrough": 1326.524,
+                "complete": false,
+                "heroes": [
+                  {
+                    "name": "Falie",
+                    "observedMinHp": 75,
+                    "alteredMinHpBeforeCutoff": 0
+                  },
+                  {
+                    "name": "Huun",
+                    "observedMinHp": 60,
+                    "alteredMinHpBeforeCutoff": 13
+                  },
+                  {
+                    "name": "Runa",
+                    "observedMinHp": 57,
+                    "alteredMinHpBeforeCutoff": 34
+                  }
+                ],
+                "afterCutoff": "UNKNOWN"
+              }
+            },
+            {
+              "seed": 3235774467,
+              "heroes": [
+                {
+                  "name": "Falie",
+                  "startHp": 85,
+                  "startMaxHp": 85,
+                  "lowestRatio": 0.794,
+                  "lowestRatioAt": 152.26,
+                  "lowestRatioHp": 77,
+                  "lowestRatioMaxHp": 97,
+                  "lowestRatioUncertain": false,
+                  "minEventHp": 77,
+                  "maxHpAtMin": 91,
+                  "maxHpAtMinUncertain": false,
+                  "minHpRatio": 0.846,
+                  "hits": 83,
+                  "appliedDamage": 83,
+                  "appliedByAmount": {
+                    "1": 83
+                  },
+                  "healing": {
+                    "ordinary_wave_clear": 97
+                  },
+                  "hitsPerWave": {
+                    "completedWaves": 20,
+                    "maxHitsInWave": 11,
+                    "meanHitsPerWave": 4.15,
+                    "counts": [
+                      0,
+                      8,
+                      11,
+                      9,
+                      0,
+                      2,
+                      6,
+                      3,
+                      0,
+                      0,
+                      11,
+                      6,
+                      0,
+                      3,
+                      7,
+                      9,
+                      0,
+                      2,
+                      0,
+                      6,
+                      0
+                    ]
+                  },
+                  "model": {
+                    "label": "MODEL",
+                    "envelope": {
+                      "status": "computed",
+                      "capBound": 1,
+                      "tier": "routine",
+                      "healPerWaveAtFloor": 13,
+                      "waves": 20,
+                      "maxSurvivableUniformHitsPerWave": 16,
+                      "maxSurvivableWithoutHeal": 4,
+                      "singleWaveHitsToKO": 85,
+                      "assumptions": [
+                        "A1",
+                        "A3",
+                        "A10",
+                        "A11"
+                      ]
+                    },
+                    "observedMaxHitsPerWave": 11
+                  }
+                },
+                {
+                  "name": "Huun",
+                  "startHp": 60,
+                  "startMaxHp": 60,
+                  "lowestRatio": 0.797,
+                  "lowestRatioAt": 252.589,
+                  "lowestRatioHp": 59,
+                  "lowestRatioMaxHp": 74,
+                  "lowestRatioUncertain": false,
+                  "minEventHp": 59,
+                  "maxHpAtMin": 74,
+                  "maxHpAtMinUncertain": false,
+                  "minHpRatio": 0.797,
+                  "hits": 39,
+                  "appliedDamage": 39,
+                  "appliedByAmount": {
+                    "1": 39
+                  },
+                  "healing": {
+                    "ordinary_wave_clear": 64
+                  },
+                  "hitsPerWave": {
+                    "completedWaves": 20,
+                    "maxHitsInWave": 11,
+                    "meanHitsPerWave": 1.95,
+                    "counts": [
+                      0,
+                      7,
+                      11,
+                      2,
+                      0,
+                      1,
+                      1,
+                      2,
+                      0,
+                      0,
+                      4,
+                      3,
+                      0,
+                      2,
+                      2,
+                      0,
+                      0,
+                      1,
+                      1,
+                      2,
+                      0
+                    ]
+                  },
+                  "model": {
+                    "label": "MODEL",
+                    "envelope": {
+                      "status": "computed",
+                      "capBound": 1,
+                      "tier": "routine",
+                      "healPerWaveAtFloor": 9,
+                      "waves": 20,
+                      "maxSurvivableUniformHitsPerWave": 11,
+                      "maxSurvivableWithoutHeal": 2,
+                      "singleWaveHitsToKO": 60,
+                      "assumptions": [
+                        "A1",
+                        "A3",
+                        "A10",
+                        "A11"
+                      ]
+                    },
+                    "observedMaxHitsPerWave": 11
+                  }
+                },
+                {
+                  "name": "Runa",
+                  "startHp": 69,
+                  "startMaxHp": 69,
+                  "lowestRatio": 0.88,
+                  "lowestRatioAt": 246.396,
+                  "lowestRatioHp": 66,
+                  "lowestRatioMaxHp": 75,
+                  "lowestRatioUncertain": false,
+                  "minEventHp": 66,
+                  "maxHpAtMin": 69,
+                  "maxHpAtMinUncertain": false,
+                  "minHpRatio": 0.957,
+                  "hits": 12,
+                  "appliedDamage": 12,
+                  "appliedByAmount": {
+                    "1": 12
+                  },
+                  "healing": {
+                    "ordinary_wave_clear": 25
+                  },
+                  "hitsPerWave": {
+                    "completedWaves": 20,
+                    "maxHitsInWave": 3,
+                    "meanHitsPerWave": 0.6,
+                    "counts": [
+                      2,
+                      0,
+                      3,
+                      3,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      2,
+                      0,
+                      0,
+                      0,
+                      0,
+                      2,
+                      0
+                    ]
+                  },
+                  "model": {
+                    "label": "MODEL",
+                    "envelope": {
+                      "status": "computed",
+                      "capBound": 1,
+                      "tier": "routine",
+                      "healPerWaveAtFloor": 11,
+                      "waves": 20,
+                      "maxSurvivableUniformHitsPerWave": 13,
+                      "maxSurvivableWithoutHeal": 3,
+                      "singleWaveHitsToKO": 69,
+                      "assumptions": [
+                        "A1",
+                        "A3",
+                        "A10",
+                        "A11"
+                      ]
+                    },
+                    "observedMaxHitsPerWave": 3
+                  }
+                }
+              ],
+              "noHealCounterfactual": {
+                "label": "MODEL",
+                "alteration": {
+                  "waveHealFraction": 0
+                },
+                "assumptions": [
+                  "A3",
+                  "A5",
+                  "A6",
+                  "A8",
+                  "A9"
+                ],
+                "cutoff": null,
+                "validThrough": 1290.798,
+                "complete": true,
+                "heroes": [
+                  {
+                    "name": "Falie",
+                    "observedMinHp": 77,
+                    "alteredMinHpBeforeCutoff": 2
+                  },
+                  {
+                    "name": "Huun",
+                    "observedMinHp": 59,
+                    "alteredMinHpBeforeCutoff": 21
+                  },
+                  {
+                    "name": "Runa",
+                    "observedMinHp": 66,
+                    "alteredMinHpBeforeCutoff": 57
+                  }
+                ],
+                "afterCutoff": null
+              }
+            },
+            {
+              "seed": 3235774468,
+              "heroes": [
+                {
+                  "name": "Falie",
+                  "startHp": 85,
+                  "startMaxHp": 85,
+                  "lowestRatio": 0.869,
+                  "lowestRatioAt": 1065.545,
+                  "lowestRatioHp": 86,
+                  "lowestRatioMaxHp": 99,
+                  "lowestRatioUncertain": false,
+                  "minEventHp": 83,
+                  "maxHpAtMin": 91,
+                  "maxHpAtMinUncertain": false,
+                  "minHpRatio": 0.912,
+                  "hits": 99,
+                  "appliedDamage": 99,
+                  "appliedByAmount": {
+                    "1": 99
+                  },
+                  "healing": {
+                    "ordinary_wave_clear": 113
+                  },
+                  "hitsPerWave": {
+                    "completedWaves": 20,
+                    "maxHitsInWave": 13,
+                    "meanHitsPerWave": 4.95,
+                    "counts": [
+                      0,
+                      2,
+                      4,
+                      7,
+                      0,
+                      8,
+                      5,
+                      9,
+                      0,
+                      3,
+                      12,
+                      11,
+                      0,
+                      2,
+                      13,
+                      11,
+                      0,
+                      5,
+                      3,
+                      4,
+                      0
+                    ]
+                  },
+                  "model": {
+                    "label": "MODEL",
+                    "envelope": {
+                      "status": "computed",
+                      "capBound": 1,
+                      "tier": "routine",
+                      "healPerWaveAtFloor": 13,
+                      "waves": 20,
+                      "maxSurvivableUniformHitsPerWave": 16,
+                      "maxSurvivableWithoutHeal": 4,
+                      "singleWaveHitsToKO": 85,
+                      "assumptions": [
+                        "A1",
+                        "A3",
+                        "A10",
+                        "A11"
+                      ]
+                    },
+                    "observedMaxHitsPerWave": 13
+                  }
+                },
+                {
+                  "name": "Huun",
+                  "startHp": 60,
+                  "startMaxHp": 60,
+                  "lowestRatio": 0.6,
+                  "lowestRatioAt": 360.162,
+                  "lowestRatioHp": 48,
+                  "lowestRatioMaxHp": 80,
+                  "lowestRatioUncertain": false,
+                  "minEventHp": 48,
+                  "maxHpAtMin": 80,
+                  "maxHpAtMinUncertain": false,
+                  "minHpRatio": 0.6,
+                  "hits": 58,
+                  "appliedDamage": 58,
+                  "appliedByAmount": {
+                    "1": 58
+                  },
+                  "healing": {
+                    "ordinary_wave_clear": 81
+                  },
+                  "hitsPerWave": {
+                    "completedWaves": 20,
+                    "maxHitsInWave": 26,
+                    "meanHitsPerWave": 2.9,
+                    "counts": [
+                      0,
+                      3,
+                      7,
+                      26,
+                      0,
+                      0,
+                      3,
+                      0,
+                      0,
+                      3,
+                      5,
+                      1,
+                      0,
+                      0,
+                      1,
+                      3,
+                      0,
+                      0,
+                      1,
+                      5,
+                      0
+                    ]
+                  },
+                  "model": {
+                    "label": "MODEL",
+                    "envelope": {
+                      "status": "computed",
+                      "capBound": 1,
+                      "tier": "routine",
+                      "healPerWaveAtFloor": 9,
+                      "waves": 20,
+                      "maxSurvivableUniformHitsPerWave": 11,
+                      "maxSurvivableWithoutHeal": 2,
+                      "singleWaveHitsToKO": 60,
+                      "assumptions": [
+                        "A1",
+                        "A3",
+                        "A10",
+                        "A11"
+                      ]
+                    },
+                    "observedMaxHitsPerWave": 26
+                  }
+                },
+                {
+                  "name": "Runa",
+                  "startHp": 69,
+                  "startMaxHp": 69,
+                  "lowestRatio": 0.813,
+                  "lowestRatioAt": 245.164,
+                  "lowestRatioHp": 61,
+                  "lowestRatioMaxHp": 75,
+                  "lowestRatioUncertain": false,
+                  "minEventHp": 61,
+                  "maxHpAtMin": 69,
+                  "maxHpAtMinUncertain": false,
+                  "minHpRatio": 0.884,
+                  "hits": 17,
+                  "appliedDamage": 17,
+                  "appliedByAmount": {
+                    "1": 17
+                  },
+                  "healing": {
+                    "ordinary_wave_clear": 30
+                  },
+                  "hitsPerWave": {
+                    "completedWaves": 20,
+                    "maxHitsInWave": 8,
+                    "meanHitsPerWave": 0.85,
+                    "counts": [
+                      1,
+                      4,
+                      8,
+                      0,
+                      0,
+                      0,
+                      0,
+                      3,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      1,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0
+                    ]
+                  },
+                  "model": {
+                    "label": "MODEL",
+                    "envelope": {
+                      "status": "computed",
+                      "capBound": 1,
+                      "tier": "routine",
+                      "healPerWaveAtFloor": 11,
+                      "waves": 20,
+                      "maxSurvivableUniformHitsPerWave": 13,
+                      "maxSurvivableWithoutHeal": 3,
+                      "singleWaveHitsToKO": 69,
+                      "assumptions": [
+                        "A1",
+                        "A3",
+                        "A10",
+                        "A11"
+                      ]
+                    },
+                    "observedMaxHitsPerWave": 8
+                  }
+                }
+              ],
+              "noHealCounterfactual": {
+                "label": "MODEL",
+                "alteration": {
+                  "waveHealFraction": 0
+                },
+                "assumptions": [
+                  "A3",
+                  "A5",
+                  "A6",
+                  "A8",
+                  "A9"
+                ],
+                "cutoff": {
+                  "t": 1113.472,
+                  "refId": 691,
+                  "reason": "ko_state_differs",
+                  "detail": "Falie observed 90, altered 0; KO changes targeting, actions and wave flow (A8)"
+                },
+                "validThrough": 1113.472,
+                "complete": false,
+                "heroes": [
+                  {
+                    "name": "Falie",
+                    "observedMinHp": 83,
+                    "alteredMinHpBeforeCutoff": 0
+                  },
+                  {
+                    "name": "Huun",
+                    "observedMinHp": 48,
+                    "alteredMinHpBeforeCutoff": 9
+                  },
+                  {
+                    "name": "Runa",
+                    "observedMinHp": 61,
+                    "alteredMinHpBeforeCutoff": 52
+                  }
+                ],
+                "afterCutoff": "UNKNOWN"
+              }
+            },
+            {
+              "seed": 3235774469,
+              "heroes": [
+                {
+                  "name": "Falie",
+                  "startHp": 85,
+                  "startMaxHp": 85,
+                  "lowestRatio": 0.763,
+                  "lowestRatioAt": 152.766,
+                  "lowestRatioHp": 74,
+                  "lowestRatioMaxHp": 97,
+                  "lowestRatioUncertain": false,
+                  "minEventHp": 74,
+                  "maxHpAtMin": 97,
+                  "maxHpAtMinUncertain": false,
+                  "minHpRatio": 0.763,
+                  "hits": 115,
+                  "appliedDamage": 115,
+                  "appliedByAmount": {
+                    "1": 115
+                  },
+                  "healing": {
+                    "ordinary_wave_clear": 129
+                  },
+                  "hitsPerWave": {
+                    "completedWaves": 20,
+                    "maxHitsInWave": 20,
+                    "meanHitsPerWave": 5.75,
+                    "counts": [
+                      0,
+                      11,
+                      12,
+                      17,
+                      0,
+                      1,
+                      10,
+                      3,
+                      0,
+                      1,
+                      20,
+                      7,
+                      0,
+                      1,
+                      9,
+                      8,
+                      0,
+                      5,
+                      9,
+                      1,
+                      0
+                    ]
+                  },
+                  "model": {
+                    "label": "MODEL",
+                    "envelope": {
+                      "status": "computed",
+                      "capBound": 1,
+                      "tier": "routine",
+                      "healPerWaveAtFloor": 13,
+                      "waves": 20,
+                      "maxSurvivableUniformHitsPerWave": 16,
+                      "maxSurvivableWithoutHeal": 4,
+                      "singleWaveHitsToKO": 85,
+                      "assumptions": [
+                        "A1",
+                        "A3",
+                        "A10",
+                        "A11"
+                      ]
+                    },
+                    "observedMaxHitsPerWave": 20
+                  }
+                },
+                {
+                  "name": "Huun",
+                  "startHp": 60,
+                  "startMaxHp": 60,
+                  "lowestRatio": 0.625,
+                  "lowestRatioAt": 370.878,
+                  "lowestRatioHp": 50,
+                  "lowestRatioMaxHp": 80,
+                  "lowestRatioUncertain": false,
+                  "minEventHp": 50,
+                  "maxHpAtMin": 80,
+                  "maxHpAtMinUncertain": false,
+                  "minHpRatio": 0.625,
+                  "hits": 56,
+                  "appliedDamage": 56,
+                  "appliedByAmount": {
+                    "1": 56
+                  },
+                  "healing": {
+                    "ordinary_wave_clear": 79
+                  },
+                  "hitsPerWave": {
+                    "completedWaves": 20,
+                    "maxHitsInWave": 18,
+                    "meanHitsPerWave": 2.8,
+                    "counts": [
+                      0,
+                      1,
+                      18,
+                      14,
+                      0,
+                      0,
+                      3,
+                      3,
+                      0,
+                      2,
+                      4,
+                      0,
+                      0,
+                      1,
+                      2,
+                      2,
+                      0,
+                      2,
+                      3,
+                      1,
+                      0
+                    ]
+                  },
+                  "model": {
+                    "label": "MODEL",
+                    "envelope": {
+                      "status": "computed",
+                      "capBound": 1,
+                      "tier": "routine",
+                      "healPerWaveAtFloor": 9,
+                      "waves": 20,
+                      "maxSurvivableUniformHitsPerWave": 11,
+                      "maxSurvivableWithoutHeal": 2,
+                      "singleWaveHitsToKO": 60,
+                      "assumptions": [
+                        "A1",
+                        "A3",
+                        "A10",
+                        "A11"
+                      ]
+                    },
+                    "observedMaxHitsPerWave": 18
+                  }
+                },
+                {
+                  "name": "Runa",
+                  "startHp": 69,
+                  "startMaxHp": 69,
+                  "lowestRatio": 0.84,
+                  "lowestRatioAt": 246.225,
+                  "lowestRatioHp": 63,
+                  "lowestRatioMaxHp": 75,
+                  "lowestRatioUncertain": false,
+                  "minEventHp": 63,
+                  "maxHpAtMin": 69,
+                  "maxHpAtMinUncertain": false,
+                  "minHpRatio": 0.913,
+                  "hits": 14,
+                  "appliedDamage": 14,
+                  "appliedByAmount": {
+                    "1": 14
+                  },
+                  "healing": {
+                    "ordinary_wave_clear": 27
+                  },
+                  "hitsPerWave": {
+                    "completedWaves": 20,
+                    "maxHitsInWave": 6,
+                    "meanHitsPerWave": 0.7,
+                    "counts": [
+                      5,
+                      0,
+                      6,
+                      3,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0
+                    ]
+                  },
+                  "model": {
+                    "label": "MODEL",
+                    "envelope": {
+                      "status": "computed",
+                      "capBound": 1,
+                      "tier": "routine",
+                      "healPerWaveAtFloor": 11,
+                      "waves": 20,
+                      "maxSurvivableUniformHitsPerWave": 13,
+                      "maxSurvivableWithoutHeal": 3,
+                      "singleWaveHitsToKO": 69,
+                      "assumptions": [
+                        "A1",
+                        "A3",
+                        "A10",
+                        "A11"
+                      ]
+                    },
+                    "observedMaxHitsPerWave": 6
+                  }
+                }
+              ],
+              "noHealCounterfactual": {
+                "label": "MODEL",
+                "alteration": {
+                  "waveHealFraction": 0
+                },
+                "assumptions": [
+                  "A3",
+                  "A5",
+                  "A6",
+                  "A8",
+                  "A9"
+                ],
+                "cutoff": {
+                  "t": 991.877,
+                  "refId": 624,
+                  "reason": "ko_state_differs",
+                  "detail": "Falie observed 97, altered 0; KO changes targeting, actions and wave flow (A8)"
+                },
+                "validThrough": 991.877,
+                "complete": false,
+                "heroes": [
+                  {
+                    "name": "Falie",
+                    "observedMinHp": 74,
+                    "alteredMinHpBeforeCutoff": 0
+                  },
+                  {
+                    "name": "Huun",
+                    "observedMinHp": 50,
+                    "alteredMinHpBeforeCutoff": 13
+                  },
+                  {
+                    "name": "Runa",
+                    "observedMinHp": 63,
+                    "alteredMinHpBeforeCutoff": 55
+                  }
+                ],
+                "afterCutoff": "UNKNOWN"
+              }
+            }
+          ]
+        }
+      ],
+      "sensitivity": [
+        {
+          "variant": "gear-def10",
+          "change": "same three bodies with +10 DEF each",
+          "outcome": "PASS",
+          "margin": "PASS",
+          "pairs": [
+            {
+              "seed": 3235774465,
+              "base": {
+                "outcome": {
+                  "heroKOs": 1,
+                  "recoveries": 1,
+                  "clears": 3,
+                  "endReason": "max_waves",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 550,
+                  "applied": 550,
+                  "minRatio": {
+                    "Falie": 0.012,
+                    "Huun": 0.657,
+                    "Runa": 0.623
+                  },
+                  "appliedByAmount": {
+                    "Falie": {
+                      "1": 342
+                    },
+                    "Huun": {
+                      "1": 117
+                    },
+                    "Runa": {
+                      "1": 91
+                    }
+                  }
+                },
+                "longestSilence": 17.936
+              },
+              "variant": {
+                "outcome": {
+                  "heroKOs": 1,
+                  "recoveries": 1,
+                  "clears": 3,
+                  "endReason": "max_waves",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 187,
+                  "applied": 187,
+                  "minRatio": {
+                    "Falie": 1,
+                    "Huun": 0.014,
+                    "Runa": 0.768
+                  },
+                  "appliedByAmount": {
+                    "Falie": {},
+                    "Huun": {
+                      "1": 110
+                    },
+                    "Runa": {
+                      "1": 77
+                    }
+                  }
+                },
+                "longestSilence": 14.733
+              },
+              "outcomeChanged": false,
+              "marginChanged": true
+            },
+            {
+              "seed": 3235774466,
+              "base": {
+                "outcome": {
+                  "heroKOs": 0,
+                  "recoveries": 0,
+                  "clears": 4,
+                  "endReason": "timeout",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 117,
+                  "applied": 117,
+                  "minRatio": {
+                    "Falie": 0.541,
+                    "Huun": 0.671,
+                    "Runa": 0.884
+                  },
+                  "appliedByAmount": {
+                    "Falie": {
+                      "1": 63
+                    },
+                    "Huun": {
+                      "1": 35
+                    },
+                    "Runa": {
+                      "1": 19
+                    }
+                  }
+                },
+                "longestSilence": 4387.856
+              },
+              "variant": {
+                "outcome": {
+                  "heroKOs": 0,
+                  "recoveries": 0,
+                  "clears": 20,
+                  "endReason": "max_waves",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 84,
+                  "applied": 84,
+                  "minRatio": {
+                    "Falie": 1,
+                    "Huun": 0.857,
+                    "Runa": 0.855
+                  },
+                  "appliedByAmount": {
+                    "Falie": {},
+                    "Huun": {
+                      "1": 33
+                    },
+                    "Runa": {
+                      "1": 51
+                    }
+                  }
+                },
+                "longestSilence": 17.263
+              },
+              "outcomeChanged": true,
+              "marginChanged": true
+            },
+            {
+              "seed": 3235774467,
+              "base": {
+                "outcome": {
+                  "heroKOs": 2,
+                  "recoveries": 2,
+                  "clears": 5,
+                  "endReason": "max_waves",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 647,
+                  "applied": 647,
+                  "minRatio": {
+                    "Falie": 0.012,
+                    "Huun": 0.014,
+                    "Runa": 0.014
+                  },
+                  "appliedByAmount": {
+                    "Falie": {
+                      "1": 307
+                    },
+                    "Huun": {
+                      "1": 178
+                    },
+                    "Runa": {
+                      "1": 162
+                    }
+                  }
+                },
+                "longestSilence": 17.663
+              },
+              "variant": {
+                "outcome": {
+                  "heroKOs": 0,
+                  "recoveries": 0,
+                  "clears": 20,
+                  "endReason": "max_waves",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 72,
+                  "applied": 72,
+                  "minRatio": {
+                    "Falie": 1,
+                    "Huun": 0.857,
+                    "Runa": 0.884
+                  },
+                  "appliedByAmount": {
+                    "Falie": {},
+                    "Huun": {
+                      "1": 26
+                    },
+                    "Runa": {
+                      "1": 46
+                    }
+                  }
+                },
+                "longestSilence": 17.201
+              },
+              "outcomeChanged": true,
+              "marginChanged": true
+            },
+            {
+              "seed": 3235774468,
+              "base": {
+                "outcome": {
+                  "heroKOs": 1,
+                  "recoveries": 1,
+                  "clears": 15,
+                  "endReason": "max_waves",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 589,
+                  "applied": 589,
+                  "minRatio": {
+                    "Falie": 0.012,
+                    "Huun": 0.571,
+                    "Runa": 0.667
+                  },
+                  "appliedByAmount": {
+                    "Falie": {
+                      "1": 341
+                    },
+                    "Huun": {
+                      "1": 140
+                    },
+                    "Runa": {
+                      "1": 108
+                    }
+                  }
+                },
+                "longestSilence": 17.13
+              },
+              "variant": {
+                "outcome": {
+                  "heroKOs": 0,
+                  "recoveries": 0,
+                  "clears": 3,
+                  "endReason": "timeout",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 29,
+                  "applied": 29,
+                  "minRatio": {
+                    "Falie": 1,
+                    "Huun": 0.857,
+                    "Runa": 0.768
+                  },
+                  "appliedByAmount": {
+                    "Falie": {},
+                    "Huun": {
+                      "1": 2
+                    },
+                    "Runa": {
+                      "1": 27
+                    }
+                  }
+                },
+                "longestSilence": 4467.727
+              },
+              "outcomeChanged": true,
+              "marginChanged": true
+            },
+            {
+              "seed": 3235774469,
+              "base": {
+                "outcome": {
+                  "heroKOs": 1,
+                  "recoveries": 1,
+                  "clears": 15,
+                  "endReason": "max_waves",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 492,
+                  "applied": 492,
+                  "minRatio": {
+                    "Falie": 0.012,
+                    "Huun": 0.786,
+                    "Runa": 0.812
+                  },
+                  "appliedByAmount": {
+                    "Falie": {
+                      "1": 321
+                    },
+                    "Huun": {
+                      "1": 102
+                    },
+                    "Runa": {
+                      "1": 69
+                    }
+                  }
+                },
+                "longestSilence": 17.862
+              },
+              "variant": {
+                "outcome": {
+                  "heroKOs": 0,
+                  "recoveries": 0,
+                  "clears": 20,
+                  "endReason": "max_waves",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 83,
+                  "applied": 83,
+                  "minRatio": {
+                    "Falie": 1,
+                    "Huun": 0.857,
+                    "Runa": 0.884
+                  },
+                  "appliedByAmount": {
+                    "Falie": {},
+                    "Huun": {
+                      "1": 37
+                    },
+                    "Runa": {
+                      "1": 46
+                    }
+                  }
+                },
+                "longestSilence": 17.597
+              },
+              "outcomeChanged": true,
+              "marginChanged": true
+            }
+          ],
+          "evidence": [
+            {
+              "path": "/private/tmp/orka-7l9-lab/runs/gear-base/observed_events.ndjson",
+              "status": "present",
+              "bytes": 3602245,
+              "sha256": "970f5f45ef3e6a105562d44fb531f1870c7f2e7fc3b69e36ba3cb2da4d378a3a"
+            },
+            {
+              "path": "/private/tmp/orka-7l9-lab/runs/gear-def10/observed_events.ndjson",
+              "status": "present",
+              "bytes": 2133635,
+              "sha256": "d2895bfa26285b095e3da355b63f18a62c161110d5186320f5625d05577b37ee"
+            }
+          ]
+        },
+        {
+          "variant": "gear-hp30",
+          "change": "same three bodies with +30 HP each",
+          "outcome": "PASS",
+          "margin": "PASS",
+          "pairs": [
+            {
+              "seed": 3235774465,
+              "base": {
+                "outcome": {
+                  "heroKOs": 1,
+                  "recoveries": 1,
+                  "clears": 3,
+                  "endReason": "max_waves",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 550,
+                  "applied": 550,
+                  "minRatio": {
+                    "Falie": 0.012,
+                    "Huun": 0.657,
+                    "Runa": 0.623
+                  },
+                  "appliedByAmount": {
+                    "Falie": {
+                      "1": 342
+                    },
+                    "Huun": {
+                      "1": 117
+                    },
+                    "Runa": {
+                      "1": 91
+                    }
+                  }
+                },
+                "longestSilence": 17.936
+              },
+              "variant": {
+                "outcome": {
+                  "heroKOs": 3,
+                  "recoveries": 3,
+                  "clears": 3,
+                  "endReason": "timeout",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 462,
+                  "applied": 801,
+                  "minRatio": {
+                    "Falie": 0.009,
+                    "Huun": 0.6,
+                    "Runa": 0.667
+                  },
+                  "appliedByAmount": {
+                    "Falie": {
+                      "1": 64,
+                      "2": 256
+                    },
+                    "Huun": {
+                      "2": 83
+                    },
+                    "Runa": {
+                      "1": 59
+                    }
+                  }
+                },
+                "longestSilence": 3165.941
+              },
+              "outcomeChanged": true,
+              "marginChanged": true
+            },
+            {
+              "seed": 3235774466,
+              "base": {
+                "outcome": {
+                  "heroKOs": 0,
+                  "recoveries": 0,
+                  "clears": 4,
+                  "endReason": "timeout",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 117,
+                  "applied": 117,
+                  "minRatio": {
+                    "Falie": 0.541,
+                    "Huun": 0.671,
+                    "Runa": 0.884
+                  },
+                  "appliedByAmount": {
+                    "Falie": {
+                      "1": 63
+                    },
+                    "Huun": {
+                      "1": 35
+                    },
+                    "Runa": {
+                      "1": 19
+                    }
+                  }
+                },
+                "longestSilence": 4387.856
+              },
+              "variant": {
+                "outcome": {
+                  "heroKOs": 3,
+                  "recoveries": 3,
+                  "clears": 6,
+                  "endReason": "max_waves",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 483,
+                  "applied": 870,
+                  "minRatio": {
+                    "Falie": 0.009,
+                    "Huun": 0.57,
+                    "Runa": 0.677
+                  },
+                  "appliedByAmount": {
+                    "Falie": {
+                      "1": 29,
+                      "2": 290
+                    },
+                    "Huun": {
+                      "1": 1,
+                      "2": 97
+                    },
+                    "Runa": {
+                      "1": 66
+                    }
+                  }
+                },
+                "longestSilence": 17.601
+              },
+              "outcomeChanged": true,
+              "marginChanged": true
+            },
+            {
+              "seed": 3235774467,
+              "base": {
+                "outcome": {
+                  "heroKOs": 2,
+                  "recoveries": 2,
+                  "clears": 5,
+                  "endReason": "max_waves",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 647,
+                  "applied": 647,
+                  "minRatio": {
+                    "Falie": 0.012,
+                    "Huun": 0.014,
+                    "Runa": 0.014
+                  },
+                  "appliedByAmount": {
+                    "Falie": {
+                      "1": 307
+                    },
+                    "Huun": {
+                      "1": 178
+                    },
+                    "Runa": {
+                      "1": 162
+                    }
+                  }
+                },
+                "longestSilence": 17.663
+              },
+              "variant": {
+                "outcome": {
+                  "heroKOs": 1,
+                  "recoveries": 1,
+                  "clears": 11,
+                  "endReason": "max_waves",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 430,
+                  "applied": 758,
+                  "minRatio": {
+                    "Falie": 0.009,
+                    "Huun": 0.5,
+                    "Runa": 0.677
+                  },
+                  "appliedByAmount": {
+                    "Falie": {
+                      "1": 41,
+                      "2": 229
+                    },
+                    "Huun": {
+                      "1": 3,
+                      "2": 99
+                    },
+                    "Runa": {
+                      "1": 58
+                    }
+                  }
+                },
+                "longestSilence": 17.333
+              },
+              "outcomeChanged": true,
+              "marginChanged": true
+            },
+            {
+              "seed": 3235774468,
+              "base": {
+                "outcome": {
+                  "heroKOs": 1,
+                  "recoveries": 1,
+                  "clears": 15,
+                  "endReason": "max_waves",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 589,
+                  "applied": 589,
+                  "minRatio": {
+                    "Falie": 0.012,
+                    "Huun": 0.571,
+                    "Runa": 0.667
+                  },
+                  "appliedByAmount": {
+                    "Falie": {
+                      "1": 341
+                    },
+                    "Huun": {
+                      "1": 140
+                    },
+                    "Runa": {
+                      "1": 108
+                    }
+                  }
+                },
+                "longestSilence": 17.13
+              },
+              "variant": {
+                "outcome": {
+                  "heroKOs": 2,
+                  "recoveries": 2,
+                  "clears": 10,
+                  "endReason": "max_waves",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 543,
+                  "applied": 949,
+                  "minRatio": {
+                    "Falie": 0.009,
+                    "Huun": 0.33,
+                    "Runa": 0.667
+                  },
+                  "appliedByAmount": {
+                    "Falie": {
+                      "1": 52,
+                      "2": 267
+                    },
+                    "Huun": {
+                      "2": 139
+                    },
+                    "Runa": {
+                      "1": 85
+                    }
+                  }
+                },
+                "longestSilence": 16.667
+              },
+              "outcomeChanged": true,
+              "marginChanged": true
+            },
+            {
+              "seed": 3235774469,
+              "base": {
+                "outcome": {
+                  "heroKOs": 1,
+                  "recoveries": 1,
+                  "clears": 15,
+                  "endReason": "max_waves",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 492,
+                  "applied": 492,
+                  "minRatio": {
+                    "Falie": 0.012,
+                    "Huun": 0.786,
+                    "Runa": 0.812
+                  },
+                  "appliedByAmount": {
+                    "Falie": {
+                      "1": 321
+                    },
+                    "Huun": {
+                      "1": 102
+                    },
+                    "Runa": {
+                      "1": 69
+                    }
+                  }
+                },
+                "longestSilence": 17.862
+              },
+              "variant": {
+                "outcome": {
+                  "heroKOs": 2,
+                  "recoveries": 2,
+                  "clears": 7,
+                  "endReason": "max_waves",
+                  "bossClears": 0
+                },
+                "margin": {
+                  "hits": 510,
+                  "applied": 916,
+                  "minRatio": {
+                    "Falie": 0.009,
+                    "Huun": 0.45,
+                    "Runa": 0.646
+                  },
+                  "appliedByAmount": {
+                    "Falie": {
+                      "1": 12,
+                      "2": 277
+                    },
+                    "Huun": {
+                      "1": 4,
+                      "2": 129
+                    },
+                    "Runa": {
+                      "1": 88
+                    }
+                  }
+                },
+                "longestSilence": 17.536
+              },
+              "outcomeChanged": true,
+              "marginChanged": true
+            }
+          ],
+          "evidence": [
+            {
+              "path": "/private/tmp/orka-7l9-lab/runs/gear-base/observed_events.ndjson",
+              "status": "present",
+              "bytes": 3602245,
+              "sha256": "970f5f45ef3e6a105562d44fb531f1870c7f2e7fc3b69e36ba3cb2da4d378a3a"
+            },
+            {
+              "path": "/private/tmp/orka-7l9-lab/runs/gear-hp30/observed_events.ndjson",
+              "status": "present",
+              "bytes": 3972583,
+              "sha256": "26be56b7c918ada3a6b289ebfd6fd0c843ddb76ef0a3c2f85a4cf9808c48c3f2"
+            }
+          ]
+        }
+      ],
+      "subResults": {
+        "defensiveUpgradeChangesOutcome": "PASS",
+        "defensiveUpgradeChangesMargin": "PASS"
+      }
+    },
+    {
+      "id": "C3-cap-share",
+      "title": "Share of Hero hits bound by the hostile-hit cap",
+      "kind": "cap_share",
+      "tests": "model_assumption",
+      "pillar": null,
+      "requirements": [
+        "REQ-CAP-UNKNOWN"
+      ],
+      "references": [],
+      "expectation": "Observed capped-hit share is UNKNOWN unless an event carries pre-cap damage; none is expected because telemetry records applied HP only. A MODEL interval may be reported under A1/A2 and never as an observation. Verdict INCONCLUSIVE by rule.",
+      "unknowns": [
+        "pre-cap damage",
+        "raw damage formula inputs at impact"
+      ],
+      "verdict": "INCONCLUSIVE",
+      "observed": {
+        "label": "OBS",
+        "hits": 6181,
+        "preCapValuesObserved": 0,
+        "cappedHitShare": "UNKNOWN",
+        "reason": "no read-only surface exposes pre-cap damage; an applied one-damage hit does not show the cap bound",
+        "actorTierToCapTier": {
+          "routine→fodder": 45,
+          "routine→routine": 5681,
+          "fodder→fodder": 434,
+          "boss→boss": 21
+        }
+      },
+      "model": {
+        "label": "MODEL",
+        "assumptions": [
+          "A1",
+          "A2"
+        ],
+        "hitsChecked": 6181,
+        "relations": {
+          "at_bound": 5950,
+          "at_bound_or_hp_floor": 7,
+          "hp_floor": 10,
+          "below_bound": 214
+        },
+        "cappedShareInterval": [
+          0,
+          0.9638
+        ],
+        "definitelyUncappedShare": 0.0346,
+        "note": "Hits at the model bound may be capped or may have raw damage equal to the bound; hits below the bound were not capped if A1/A2 and the poll max HP hold."
+      },
+      "sampleLines": [
+        {
+          "label": "OBS",
+          "scenario": "pinned-starter-l1",
+          "session": 1,
+          "seed": 3235774465,
+          "kind": "HIT",
+          "id": null,
+          "t": 11.058,
+          "timeSource": "event",
+          "wave": 1,
+          "waveSource": "event",
+          "source": {
+            "uid": 9,
+            "name": "Skeleton",
+            "combatTier": "routine",
+            "enemyDataTier": null
+          },
+          "target": {
+            "uid": 3,
+            "name": "Runa",
+            "kind": "hero"
+          },
+          "damageType": "physical",
+          "hpBefore": 69,
+          "hpAfter": 68,
+          "applied": 1,
+          "raw": null,
+          "cap": null,
+          "unknown": {
+            "raw": "runtime telemetry records applied HP change only; pre-cap damage is not exposed",
+            "cap": "whether the hostile-hit cap bound is not exposed by any read-only surface"
+          },
+          "maxHp": null,
+          "evidence": {
+            "file": "/private/tmp/orka-7l9-wave-heal-five-seed-clean/balance_metrics.json",
+            "path": "sessions[0].recordedHeroDamageEvents.maximumAppliedDamage"
+          }
+        },
+        {
+          "label": "OBS",
+          "scenario": "pinned-starter-l1",
+          "session": 2,
+          "seed": 3235774466,
+          "kind": "HIT",
+          "id": null,
+          "t": 7.602,
+          "timeSource": "event",
+          "wave": 1,
+          "waveSource": "event",
+          "source": {
+            "uid": 30,
+            "name": "Skeleton",
+            "combatTier": "routine",
+            "enemyDataTier": null
+          },
+          "target": {
+            "uid": 3,
+            "name": "Runa",
+            "kind": "hero"
+          },
+          "damageType": "physical",
+          "hpBefore": 69,
+          "hpAfter": 68,
+          "applied": 1,
+          "raw": null,
+          "cap": null,
+          "unknown": {
+            "raw": "runtime telemetry records applied HP change only; pre-cap damage is not exposed",
+            "cap": "whether the hostile-hit cap bound is not exposed by any read-only surface"
+          },
+          "maxHp": null,
+          "evidence": {
+            "file": "/private/tmp/orka-7l9-wave-heal-five-seed-clean/balance_metrics.json",
+            "path": "sessions[1].recordedHeroDamageEvents.maximumAppliedDamage"
+          }
+        },
+        {
+          "label": "OBS",
+          "scenario": "pinned-starter-l1",
+          "session": 3,
+          "seed": 3235774467,
+          "kind": "HIT",
+          "id": null,
+          "t": 10.328,
+          "timeSource": "event",
+          "wave": 1,
+          "waveSource": "event",
+          "source": {
+            "uid": 9,
+            "name": "Gobloc",
+            "combatTier": "routine",
+            "enemyDataTier": null
+          },
+          "target": {
+            "uid": 3,
+            "name": "Runa",
+            "kind": "hero"
+          },
+          "damageType": "physical",
+          "hpBefore": 69,
+          "hpAfter": 68,
+          "applied": 1,
+          "raw": null,
+          "cap": null,
+          "unknown": {
+            "raw": "runtime telemetry records applied HP change only; pre-cap damage is not exposed",
+            "cap": "whether the hostile-hit cap bound is not exposed by any read-only surface"
+          },
+          "maxHp": null,
+          "evidence": {
+            "file": "/private/tmp/orka-7l9-wave-heal-five-seed-clean/balance_metrics.json",
+            "path": "sessions[2].recordedHeroDamageEvents.maximumAppliedDamage"
+          }
+        },
+        {
+          "label": "OBS",
+          "scenario": "pinned-starter-l1",
+          "session": 4,
+          "seed": 3235774468,
+          "kind": "HIT",
+          "id": null,
+          "t": 11.398,
+          "timeSource": "event",
+          "wave": 1,
+          "waveSource": "event",
+          "source": {
+            "uid": 26,
+            "name": "Gobloc",
+            "combatTier": "routine",
+            "enemyDataTier": null
+          },
+          "target": {
+            "uid": 3,
+            "name": "Runa",
+            "kind": "hero"
+          },
+          "damageType": "physical",
+          "hpBefore": 69,
+          "hpAfter": 68,
+          "applied": 1,
+          "raw": null,
+          "cap": null,
+          "unknown": {
+            "raw": "runtime telemetry records applied HP change only; pre-cap damage is not exposed",
+            "cap": "whether the hostile-hit cap bound is not exposed by any read-only surface"
+          },
+          "maxHp": null,
+          "evidence": {
+            "file": "/private/tmp/orka-7l9-wave-heal-five-seed-clean/balance_metrics.json",
+            "path": "sessions[3].recordedHeroDamageEvents.maximumAppliedDamage"
+          }
+        },
+        {
+          "label": "OBS",
+          "scenario": "pinned-starter-l1",
+          "session": 5,
+          "seed": 3235774469,
+          "kind": "HIT",
+          "id": null,
+          "t": 9.253,
+          "timeSource": "event",
+          "wave": 1,
+          "waveSource": "event",
+          "source": {
+            "uid": 26,
+            "name": "Gobloc",
+            "combatTier": "routine",
+            "enemyDataTier": null
+          },
+          "target": {
+            "uid": 3,
+            "name": "Runa",
+            "kind": "hero"
+          },
+          "damageType": "physical",
+          "hpBefore": 69,
+          "hpAfter": 68,
+          "applied": 1,
+          "raw": null,
+          "cap": null,
+          "unknown": {
+            "raw": "runtime telemetry records applied HP change only; pre-cap damage is not exposed",
+            "cap": "whether the hostile-hit cap bound is not exposed by any read-only surface"
+          },
+          "maxHp": null,
+          "evidence": {
+            "file": "/private/tmp/orka-7l9-wave-heal-five-seed-clean/balance_metrics.json",
+            "path": "sessions[4].recordedHeroDamageEvents.maximumAppliedDamage"
+          }
+        },
+        {
+          "label": "OBS",
+          "scenario": "pinned-onehp-oneway",
+          "session": 1,
+          "seed": 3235774465,
+          "kind": "HIT",
+          "id": null,
+          "t": 9.202,
+          "timeSource": "event",
+          "wave": 1,
+          "waveSource": "event",
+          "source": {
+            "uid": 19,
+            "name": "Skeleton",
+            "combatTier": "routine",
+            "enemyDataTier": null
+          },
+          "target": {
+            "uid": 2,
+            "name": "Huun",
+            "kind": "hero"
+          },
+          "damageType": "physical",
+          "hpBefore": 1,
+          "hpAfter": 0,
+          "applied": 1,
+          "raw": null,
+          "cap": null,
+          "unknown": {
+            "raw": "runtime telemetry records applied HP change only; pre-cap damage is not exposed",
+            "cap": "whether the hostile-hit cap bound is not exposed by any read-only surface"
+          },
+          "maxHp": null,
+          "evidence": {
+            "file": "/private/tmp/orka-7l9-current-stage2-onehp-five/balance_metrics.json",
+            "path": "sessions[0].recordedHeroDamageEvents.maximumAppliedDamage"
+          }
+        },
+        {
+          "label": "OBS",
+          "scenario": "pinned-onehp-oneway",
+          "session": 2,
+          "seed": 3235774466,
+          "kind": "HIT",
+          "id": null,
+          "t": 6.598,
+          "timeSource": "event",
+          "wave": 1,
+          "waveSource": "event",
+          "source": {
+            "uid": 8,
+            "name": "Gobloc",
+            "combatTier": "routine",
+            "enemyDataTier": null
+          },
+          "target": {
+            "uid": 2,
+            "name": "Huun",
+            "kind": "hero"
+          },
+          "damageType": "physical",
+          "hpBefore": 1,
+          "hpAfter": 0,
+          "applied": 1,
+          "raw": null,
+          "cap": null,
+          "unknown": {
+            "raw": "runtime telemetry records applied HP change only; pre-cap damage is not exposed",
+            "cap": "whether the hostile-hit cap bound is not exposed by any read-only surface"
+          },
+          "maxHp": null,
+          "evidence": {
+            "file": "/private/tmp/orka-7l9-current-stage2-onehp-five/balance_metrics.json",
+            "path": "sessions[1].recordedHeroDamageEvents.maximumAppliedDamage"
+          }
+        },
+        {
+          "label": "OBS",
+          "scenario": "pinned-onehp-oneway",
+          "session": 3,
+          "seed": 3235774467,
+          "kind": "HIT",
+          "id": null,
+          "t": 10.117,
+          "timeSource": "event",
+          "wave": 1,
+          "waveSource": "event",
+          "source": {
+            "uid": 9,
+            "name": "Gobloc",
+            "combatTier": "routine",
+            "enemyDataTier": null
+          },
+          "target": {
+            "uid": 3,
+            "name": "Runa",
+            "kind": "hero"
+          },
+          "damageType": "physical",
+          "hpBefore": 1,
+          "hpAfter": 0,
+          "applied": 1,
+          "raw": null,
+          "cap": null,
+          "unknown": {
+            "raw": "runtime telemetry records applied HP change only; pre-cap damage is not exposed",
+            "cap": "whether the hostile-hit cap bound is not exposed by any read-only surface"
+          },
+          "maxHp": null,
+          "evidence": {
+            "file": "/private/tmp/orka-7l9-current-stage2-onehp-five/balance_metrics.json",
+            "path": "sessions[2].recordedHeroDamageEvents.maximumAppliedDamage"
+          }
+        },
+        {
+          "label": "OBS",
+          "scenario": "pinned-onehp-oneway",
+          "session": 4,
+          "seed": 3235774468,
+          "kind": "HIT",
+          "id": null,
+          "t": 11.581,
+          "timeSource": "event",
+          "wave": 1,
+          "waveSource": "event",
+          "source": {
+            "uid": 26,
+            "name": "Gobloc",
+            "combatTier": "routine",
+            "enemyDataTier": null
+          },
+          "target": {
+            "uid": 3,
+            "name": "Runa",
+            "kind": "hero"
+          },
+          "damageType": "physical",
+          "hpBefore": 1,
+          "hpAfter": 0,
+          "applied": 1,
+          "raw": null,
+          "cap": null,
+          "unknown": {
+            "raw": "runtime telemetry records applied HP change only; pre-cap damage is not exposed",
+            "cap": "whether the hostile-hit cap bound is not exposed by any read-only surface"
+          },
+          "maxHp": null,
+          "evidence": {
+            "file": "/private/tmp/orka-7l9-current-stage2-onehp-five/balance_metrics.json",
+            "path": "sessions[3].recordedHeroDamageEvents.maximumAppliedDamage"
+          }
+        },
+        {
+          "label": "OBS",
+          "scenario": "pinned-onehp-oneway",
+          "session": 5,
+          "seed": 3235774469,
+          "kind": "HIT",
+          "id": null,
+          "t": 8.129,
+          "timeSource": "event",
+          "wave": 1,
+          "waveSource": "event",
+          "source": {
+            "uid": 19,
+            "name": "Skeleton",
+            "combatTier": "routine",
+            "enemyDataTier": null
+          },
+          "target": {
+            "uid": 2,
+            "name": "Huun",
+            "kind": "hero"
+          },
+          "damageType": "physical",
+          "hpBefore": 1,
+          "hpAfter": 0,
+          "applied": 1,
+          "raw": null,
+          "cap": null,
+          "unknown": {
+            "raw": "runtime telemetry records applied HP change only; pre-cap damage is not exposed",
+            "cap": "whether the hostile-hit cap bound is not exposed by any read-only surface"
+          },
+          "maxHp": null,
+          "evidence": {
+            "file": "/private/tmp/orka-7l9-current-stage2-onehp-five/balance_metrics.json",
+            "path": "sessions[4].recordedHeroDamageEvents.maximumAppliedDamage"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "/private/tmp/orka-7l9-lab/runs/starter-l1-nokaja/observed_events.ndjson",
+          "status": "present",
+          "bytes": 2850925,
+          "sha256": "d79643711bebf713f071971ba394afda57402570eb2b057127bbd180a53c9b16"
+        },
+        {
+          "path": "/private/tmp/orka-7l9-lab/runs/gear-base/observed_events.ndjson",
+          "status": "present",
+          "bytes": 3602245,
+          "sha256": "970f5f45ef3e6a105562d44fb531f1870c7f2e7fc3b69e36ba3cb2da4d378a3a"
+        },
+        {
+          "path": "/private/tmp/orka-7l9-lab/runs/gear-def10/observed_events.ndjson",
+          "status": "present",
+          "bytes": 2133635,
+          "sha256": "d2895bfa26285b095e3da355b63f18a62c161110d5186320f5625d05577b37ee"
+        },
+        {
+          "path": "/private/tmp/orka-7l9-lab/runs/gear-hp30/observed_events.ndjson",
+          "status": "present",
+          "bytes": 3972583,
+          "sha256": "26be56b7c918ada3a6b289ebfd6fd0c843ddb76ef0a3c2f85a4cf9808c48c3f2"
+        },
+        {
+          "path": "/private/tmp/orka-7l9-lab/runs/kaja-l15-four/observed_events.ndjson",
+          "status": "present",
+          "bytes": 2229226,
+          "sha256": "f8871b3665634ca0c56f1ceaf0a23578f580c700568e8ead90b1ca1d33825cbc"
+        },
+        {
+          "path": "/private/tmp/orka-7l9-wave-heal-five-seed-clean/balance_metrics.json",
+          "status": "present",
+          "bytes": 764764,
+          "sha256": "102c044ab46a0ce633600dfead73ff070d195d86f6a32f5a5d8092f5f40707d0"
+        },
+        {
+          "path": "/private/tmp/orka-7l9-current-stage2-onehp-five/balance_metrics.json",
+          "status": "present",
+          "bytes": 166846,
+          "sha256": "41e162615742be1383800d512d6bc41a67b7bf9887d8c80017aa4fe55136c967"
+        }
+      ]
+    },
+    {
+      "id": "C4-kaja-healing",
+      "title": "Kaja skill healing: zero at level 1, possible at level 15",
+      "kind": "kaja_healing",
+      "tests": "rule",
+      "pillar": null,
+      "requirements": [
+        "REQ-KAJA-UNLOCK"
+      ],
+      "references": [],
+      "expectation": "Level-1 four-Hero run: Kojonn skill healing is exactly 0 in every seed (FAIL otherwise). Level-15 four-Hero run: PASS if any seed records Kojonn skill healing > 0; INCONCLUSIVE if none occurs. Outcome change versus the matched three-Hero party is reported separately and is confounded by party size.",
+      "unknowns": [
+        "causal survival value of Kaja when both parties live"
+      ],
+      "verdict": "INCONCLUSIVE",
+      "subResults": {
+        "level1SkillHealingZero": "PASS",
+        "level15SkillHealingOccurs": "INCONCLUSIVE"
+      },
+      "outcomeChange": {
+        "level1": {
+          "result": "NO_OUTCOME_DIFFERENCE",
+          "confound": "party size and action economy differ; a difference is not attributable to healing alone",
+          "pairs": [
+            {
+              "seed": 3235774465,
+              "healer": {
+                "heroKOs": 0,
+                "clears": 20
+              },
+              "control": {
+                "seed": 3235774465,
+                "healerSkillHealing": 0,
+                "waveClearHealing": 261,
+                "heroKOs": 0,
+                "clears": 20,
+                "endReason": "max_waves",
+                "removeHealerCounterfactual": null
+              }
+            },
+            {
+              "seed": 3235774466,
+              "healer": {
+                "heroKOs": 0,
+                "clears": 20
+              },
+              "control": {
+                "seed": 3235774466,
+                "healerSkillHealing": 0,
+                "waveClearHealing": 219,
+                "heroKOs": 0,
+                "clears": 20,
+                "endReason": "max_waves",
+                "removeHealerCounterfactual": null
+              }
+            },
+            {
+              "seed": 3235774467,
+              "healer": {
+                "heroKOs": 0,
+                "clears": 20
+              },
+              "control": {
+                "seed": 3235774467,
+                "healerSkillHealing": 0,
+                "waveClearHealing": 186,
+                "heroKOs": 0,
+                "clears": 20,
+                "endReason": "max_waves",
+                "removeHealerCounterfactual": null
+              }
+            },
+            {
+              "seed": 3235774468,
+              "healer": {
+                "heroKOs": 0,
+                "clears": 20
+              },
+              "control": {
+                "seed": 3235774468,
+                "healerSkillHealing": 0,
+                "waveClearHealing": 224,
+                "heroKOs": 0,
+                "clears": 20,
+                "endReason": "max_waves",
+                "removeHealerCounterfactual": null
+              }
+            },
+            {
+              "seed": 3235774469,
+              "healer": {
+                "heroKOs": 0,
+                "clears": 20
+              },
+              "control": {
+                "seed": 3235774469,
+                "healerSkillHealing": 0,
+                "waveClearHealing": 235,
+                "heroKOs": 0,
+                "clears": 20,
+                "endReason": "max_waves",
+                "removeHealerCounterfactual": null
+              }
+            }
+          ]
+        },
+        "level15": {
+          "result": "NO_OUTCOME_DIFFERENCE",
+          "confound": "party size and action economy differ; a difference is not attributable to healing alone",
+          "pairs": [
+            {
+              "seed": 3235774465,
+              "healer": {
+                "heroKOs": 0,
+                "clears": 20
+              },
+              "control": {
+                "seed": 3235774465,
+                "healerSkillHealing": 0,
+                "waveClearHealing": 23,
+                "heroKOs": 0,
+                "clears": 20,
+                "endReason": "max_waves",
+                "removeHealerCounterfactual": null
+              }
+            },
+            {
+              "seed": 3235774466,
+              "healer": {
+                "heroKOs": 0,
+                "clears": 20
+              },
+              "control": {
+                "seed": 3235774466,
+                "healerSkillHealing": 0,
+                "waveClearHealing": 25,
+                "heroKOs": 0,
+                "clears": 20,
+                "endReason": "max_waves",
+                "removeHealerCounterfactual": null
+              }
+            },
+            {
+              "seed": 3235774467,
+              "healer": {
+                "heroKOs": 0,
+                "clears": 20
+              },
+              "control": {
+                "seed": 3235774467,
+                "healerSkillHealing": 0,
+                "waveClearHealing": 28,
+                "heroKOs": 0,
+                "clears": 20,
+                "endReason": "max_waves",
+                "removeHealerCounterfactual": null
+              }
+            },
+            {
+              "seed": 3235774468,
+              "healer": {
+                "heroKOs": 0,
+                "clears": 20
+              },
+              "control": {
+                "seed": 3235774468,
+                "healerSkillHealing": 0,
+                "waveClearHealing": 33,
+                "heroKOs": 0,
+                "clears": 20,
+                "endReason": "max_waves",
+                "removeHealerCounterfactual": null
+              }
+            },
+            {
+              "seed": 3235774469,
+              "healer": {
+                "heroKOs": 0,
+                "clears": 20
+              },
+              "control": {
+                "seed": 3235774469,
+                "healerSkillHealing": 0,
+                "waveClearHealing": 25,
+                "heroKOs": 0,
+                "clears": 20,
+                "endReason": "max_waves",
+                "removeHealerCounterfactual": null
+              }
+            }
+          ]
+        }
+      },
+      "scenarios": {
+        "l1": {
+          "scenario": "kaja-l1-four",
+          "admissible": true,
+          "problems": [],
+          "evidence": {
+            "path": "/private/tmp/orka-7l9-lab/runs/kaja-l1-four/observed_events.ndjson",
+            "status": "present",
+            "bytes": 2640236,
+            "sha256": "dc4e701d02bb98373c8a8da1502298b116e19edd8c2d30a472e6641d865d62de"
+          },
+          "level": 1,
+          "sessions": [
+            {
+              "seed": 3235774465,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 206,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            },
+            {
+              "seed": 3235774466,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 158,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            },
+            {
+              "seed": 3235774467,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 171,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            },
+            {
+              "seed": 3235774468,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 170,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            },
+            {
+              "seed": 3235774469,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 189,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            }
+          ]
+        },
+        "l1Control": {
+          "scenario": "starter-l1-nokaja",
+          "admissible": true,
+          "problems": [],
+          "evidence": {
+            "path": "/private/tmp/orka-7l9-lab/runs/starter-l1-nokaja/observed_events.ndjson",
+            "status": "present",
+            "bytes": 2850925,
+            "sha256": "d79643711bebf713f071971ba394afda57402570eb2b057127bbd180a53c9b16"
+          },
+          "level": null,
+          "sessions": [
+            {
+              "seed": 3235774465,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 261,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            },
+            {
+              "seed": 3235774466,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 219,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            },
+            {
+              "seed": 3235774467,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 186,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            },
+            {
+              "seed": 3235774468,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 224,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            },
+            {
+              "seed": 3235774469,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 235,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            }
+          ]
+        },
+        "l15": {
+          "scenario": "kaja-l15-four",
+          "admissible": true,
+          "problems": [],
+          "evidence": {
+            "path": "/private/tmp/orka-7l9-lab/runs/kaja-l15-four/observed_events.ndjson",
+            "status": "present",
+            "bytes": 2229226,
+            "sha256": "f8871b3665634ca0c56f1ceaf0a23578f580c700568e8ead90b1ca1d33825cbc"
+          },
+          "level": 15,
+          "sessions": [
+            {
+              "seed": 3235774465,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 31,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            },
+            {
+              "seed": 3235774466,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 29,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            },
+            {
+              "seed": 3235774467,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 29,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            },
+            {
+              "seed": 3235774468,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 35,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            },
+            {
+              "seed": 3235774469,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 29,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            }
+          ]
+        },
+        "l15Control": {
+          "scenario": "kaja-l15-three",
+          "admissible": true,
+          "problems": [],
+          "evidence": {
+            "path": "/private/tmp/orka-7l9-lab/runs/kaja-l15-three/observed_events.ndjson",
+            "status": "present",
+            "bytes": 2228312,
+            "sha256": "c6803ac7ef4912cccad866c74ffcb69e806ec0fcc6642c83ff5eb1ee465ce6d3"
+          },
+          "level": null,
+          "sessions": [
+            {
+              "seed": 3235774465,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 23,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            },
+            {
+              "seed": 3235774466,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 25,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            },
+            {
+              "seed": 3235774467,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 28,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            },
+            {
+              "seed": 3235774468,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 33,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            },
+            {
+              "seed": 3235774469,
+              "healerSkillHealing": 0,
+              "waveClearHealing": 25,
+              "heroKOs": 0,
+              "clears": 20,
+              "endReason": "max_waves",
+              "removeHealerCounterfactual": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "C5-first-boss",
+      "title": "First boss: underprepared timeouts, progressed wins, earned arrival clears",
+      "kind": "first_boss",
+      "tests": "fixture",
+      "pillar": "earned_boss",
+      "requirements": [
+        "REQ-BOSS",
+        "REQ-LAB-BOSS"
+      ],
+      "references": [
+        "REF-BOSS-GAUGE"
+      ],
+      "expectation": "Fixed-gear synthetic sweep at levels 1–5 (one first attempt per seed): level 1 attempts mostly (>50%) time out with ≥1 living Hero; level 5 clears in every seed; report the lowest level with any clear and with all clears. Fresh-save earned run (lamp seed 4242, Auto-Equip on, summon after 4 ordinary clears following a failed attempt): PASS per seed if a boss clear occurs before 3 timeouts; FAIL if 3 timeouts occur first; INCONCLUSIVE on harness timeout.",
+      "unknowns": [
+        "StoneAge numeric timer and boss HP band",
+        "intermediate StoneAge upgrade effects"
+      ],
+      "verdict": "PASS",
+      "subResults": {
+        "underpreparedTimeoutsWithLivingParty": "PASS",
+        "progressedWins": "PASS",
+        "earnedArrivalClears": "PASS"
+      },
+      "threshold": {
+        "label": "OBS",
+        "fixtureClass": "synthetic",
+        "lowestLevelWithAnyClear": 2,
+        "lowestLevelAllSeedsClear": 2,
+        "levelsMeasured": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "sweep": [
+        {
+          "scenario": "boss-sweep-l1",
+          "level": 1,
+          "fixtureClass": "synthetic",
+          "timing": "prospective",
+          "admissible": true,
+          "problems": [],
+          "evidence": {
+            "path": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l1/observed_events.ndjson",
+            "status": "present",
+            "bytes": 78814,
+            "sha256": "e04a525f3123b2188d8eeb41610979ce5cbd9e7c2078fe94c7d5f1027e587375"
+          },
+          "attempts": [
+            {
+              "seed": 3235774465,
+              "outcome": "BOSS_TIMEOUT",
+              "elapsed": 18.065200000047707,
+              "timeoutBossHp": 23,
+              "bossMaxHp": 231,
+              "livingAtTimeout": 3,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 1,
+                  "hp": 85,
+                  "maxHp": 85
+                },
+                {
+                  "name": "Huun",
+                  "level": 1,
+                  "hp": 60,
+                  "maxHp": 60
+                },
+                {
+                  "name": "Runa",
+                  "level": 1,
+                  "hp": 69,
+                  "maxHp": 69
+                }
+              ]
+            },
+            {
+              "seed": 3235774466,
+              "outcome": "BOSS_TIMEOUT",
+              "elapsed": 18.06799999999999,
+              "timeoutBossHp": 40,
+              "bossMaxHp": 231,
+              "livingAtTimeout": 3,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 1,
+                  "hp": 85,
+                  "maxHp": 85
+                },
+                {
+                  "name": "Huun",
+                  "level": 1,
+                  "hp": 60,
+                  "maxHp": 60
+                },
+                {
+                  "name": "Runa",
+                  "level": 1,
+                  "hp": 69,
+                  "maxHp": 69
+                }
+              ]
+            },
+            {
+              "seed": 3235774467,
+              "outcome": "BOSS_TIMEOUT",
+              "elapsed": 18.001600000143057,
+              "timeoutBossHp": 34,
+              "bossMaxHp": 231,
+              "livingAtTimeout": 3,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 1,
+                  "hp": 85,
+                  "maxHp": 85
+                },
+                {
+                  "name": "Huun",
+                  "level": 1,
+                  "hp": 60,
+                  "maxHp": 60
+                },
+                {
+                  "name": "Runa",
+                  "level": 1,
+                  "hp": 69,
+                  "maxHp": 69
+                }
+              ]
+            },
+            {
+              "seed": 3235774468,
+              "outcome": "BOSS_TIMEOUT",
+              "elapsed": 18.06679999995229,
+              "timeoutBossHp": 40,
+              "bossMaxHp": 231,
+              "livingAtTimeout": 3,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 1,
+                  "hp": 85,
+                  "maxHp": 85
+                },
+                {
+                  "name": "Huun",
+                  "level": 1,
+                  "hp": 60,
+                  "maxHp": 60
+                },
+                {
+                  "name": "Runa",
+                  "level": 1,
+                  "hp": 69,
+                  "maxHp": 69
+                }
+              ]
+            },
+            {
+              "seed": 3235774469,
+              "outcome": "BOSS_TIMEOUT",
+              "elapsed": 18.06920000004767,
+              "timeoutBossHp": 27,
+              "bossMaxHp": 231,
+              "livingAtTimeout": 3,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 1,
+                  "hp": 85,
+                  "maxHp": 85
+                },
+                {
+                  "name": "Huun",
+                  "level": 1,
+                  "hp": 60,
+                  "maxHp": 60
+                },
+                {
+                  "name": "Runa",
+                  "level": 1,
+                  "hp": 69,
+                  "maxHp": 69
+                }
+              ]
+            }
+          ],
+          "firstAttemptBySeed": [
+            {
+              "seed": 3235774465,
+              "first": "BOSS_TIMEOUT"
+            },
+            {
+              "seed": 3235774466,
+              "first": "BOSS_TIMEOUT"
+            },
+            {
+              "seed": 3235774467,
+              "first": "BOSS_TIMEOUT"
+            },
+            {
+              "seed": 3235774468,
+              "first": "BOSS_TIMEOUT"
+            },
+            {
+              "seed": 3235774469,
+              "first": "BOSS_TIMEOUT"
+            }
+          ],
+          "clears": 0,
+          "timeouts": 5,
+          "seeds": 5
+        },
+        {
+          "scenario": "boss-sweep-l2",
+          "level": 2,
+          "fixtureClass": "synthetic",
+          "timing": "prospective",
+          "admissible": true,
+          "problems": [],
+          "evidence": {
+            "path": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l2/observed_events.ndjson",
+            "status": "present",
+            "bytes": 63261,
+            "sha256": "8dc4466ed517947fd9cf348a2c9c97c3aa4cdc5be1d7adb5121adbdcfc63025f"
+          },
+          "attempts": [
+            {
+              "seed": 3235774465,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 2,
+                  "hp": 93,
+                  "maxHp": 93
+                },
+                {
+                  "name": "Huun",
+                  "level": 2,
+                  "hp": 66,
+                  "maxHp": 66
+                },
+                {
+                  "name": "Runa",
+                  "level": 2,
+                  "hp": 74,
+                  "maxHp": 74
+                }
+              ]
+            },
+            {
+              "seed": 3235774466,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 2,
+                  "hp": 93,
+                  "maxHp": 93
+                },
+                {
+                  "name": "Huun",
+                  "level": 2,
+                  "hp": 66,
+                  "maxHp": 66
+                },
+                {
+                  "name": "Runa",
+                  "level": 2,
+                  "hp": 74,
+                  "maxHp": 74
+                }
+              ]
+            },
+            {
+              "seed": 3235774467,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 2,
+                  "hp": 93,
+                  "maxHp": 93
+                },
+                {
+                  "name": "Huun",
+                  "level": 2,
+                  "hp": 66,
+                  "maxHp": 66
+                },
+                {
+                  "name": "Runa",
+                  "level": 2,
+                  "hp": 74,
+                  "maxHp": 74
+                }
+              ]
+            },
+            {
+              "seed": 3235774468,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 2,
+                  "hp": 93,
+                  "maxHp": 93
+                },
+                {
+                  "name": "Huun",
+                  "level": 2,
+                  "hp": 66,
+                  "maxHp": 66
+                },
+                {
+                  "name": "Runa",
+                  "level": 2,
+                  "hp": 74,
+                  "maxHp": 74
+                }
+              ]
+            },
+            {
+              "seed": 3235774469,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 2,
+                  "hp": 93,
+                  "maxHp": 93
+                },
+                {
+                  "name": "Huun",
+                  "level": 2,
+                  "hp": 66,
+                  "maxHp": 66
+                },
+                {
+                  "name": "Runa",
+                  "level": 2,
+                  "hp": 74,
+                  "maxHp": 74
+                }
+              ]
+            }
+          ],
+          "firstAttemptBySeed": [
+            {
+              "seed": 3235774465,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774466,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774467,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774468,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774469,
+              "first": "BOSS_CLEAR"
+            }
+          ],
+          "clears": 5,
+          "timeouts": 0,
+          "seeds": 5
+        },
+        {
+          "scenario": "boss-sweep-l3",
+          "level": 3,
+          "fixtureClass": "synthetic",
+          "timing": "prospective",
+          "admissible": true,
+          "problems": [],
+          "evidence": {
+            "path": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l3/observed_events.ndjson",
+            "status": "present",
+            "bytes": 57482,
+            "sha256": "38efbce1d820f05996baeb471fe04355f7570be53d1adb80d57028b756954be7"
+          },
+          "attempts": [
+            {
+              "seed": 3235774465,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 3,
+                  "hp": 101,
+                  "maxHp": 101
+                },
+                {
+                  "name": "Huun",
+                  "level": 3,
+                  "hp": 72,
+                  "maxHp": 72
+                },
+                {
+                  "name": "Runa",
+                  "level": 3,
+                  "hp": 79,
+                  "maxHp": 79
+                }
+              ]
+            },
+            {
+              "seed": 3235774466,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 3,
+                  "hp": 101,
+                  "maxHp": 101
+                },
+                {
+                  "name": "Huun",
+                  "level": 3,
+                  "hp": 72,
+                  "maxHp": 72
+                },
+                {
+                  "name": "Runa",
+                  "level": 3,
+                  "hp": 79,
+                  "maxHp": 79
+                }
+              ]
+            },
+            {
+              "seed": 3235774467,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 3,
+                  "hp": 101,
+                  "maxHp": 101
+                },
+                {
+                  "name": "Huun",
+                  "level": 3,
+                  "hp": 72,
+                  "maxHp": 72
+                },
+                {
+                  "name": "Runa",
+                  "level": 3,
+                  "hp": 79,
+                  "maxHp": 79
+                }
+              ]
+            },
+            {
+              "seed": 3235774468,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 3,
+                  "hp": 101,
+                  "maxHp": 101
+                },
+                {
+                  "name": "Huun",
+                  "level": 3,
+                  "hp": 72,
+                  "maxHp": 72
+                },
+                {
+                  "name": "Runa",
+                  "level": 3,
+                  "hp": 79,
+                  "maxHp": 79
+                }
+              ]
+            },
+            {
+              "seed": 3235774469,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 3,
+                  "hp": 101,
+                  "maxHp": 101
+                },
+                {
+                  "name": "Huun",
+                  "level": 3,
+                  "hp": 72,
+                  "maxHp": 72
+                },
+                {
+                  "name": "Runa",
+                  "level": 3,
+                  "hp": 79,
+                  "maxHp": 79
+                }
+              ]
+            }
+          ],
+          "firstAttemptBySeed": [
+            {
+              "seed": 3235774465,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774466,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774467,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774468,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774469,
+              "first": "BOSS_CLEAR"
+            }
+          ],
+          "clears": 5,
+          "timeouts": 0,
+          "seeds": 5
+        },
+        {
+          "scenario": "boss-sweep-l4",
+          "level": 4,
+          "fixtureClass": "synthetic",
+          "timing": "prospective",
+          "admissible": true,
+          "problems": [],
+          "evidence": {
+            "path": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l4/observed_events.ndjson",
+            "status": "present",
+            "bytes": 38072,
+            "sha256": "0b05921a27e10aa1cd3ea7db5b89621b0fbe8d91466fdec533d1238e4e883289"
+          },
+          "attempts": [
+            {
+              "seed": 3235774465,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 4,
+                  "hp": 109,
+                  "maxHp": 109
+                },
+                {
+                  "name": "Huun",
+                  "level": 4,
+                  "hp": 78,
+                  "maxHp": 78
+                },
+                {
+                  "name": "Runa",
+                  "level": 4,
+                  "hp": 84,
+                  "maxHp": 84
+                }
+              ]
+            },
+            {
+              "seed": 3235774466,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 4,
+                  "hp": 109,
+                  "maxHp": 109
+                },
+                {
+                  "name": "Huun",
+                  "level": 4,
+                  "hp": 78,
+                  "maxHp": 78
+                },
+                {
+                  "name": "Runa",
+                  "level": 4,
+                  "hp": 84,
+                  "maxHp": 84
+                }
+              ]
+            },
+            {
+              "seed": 3235774467,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 4,
+                  "hp": 109,
+                  "maxHp": 109
+                },
+                {
+                  "name": "Huun",
+                  "level": 4,
+                  "hp": 78,
+                  "maxHp": 78
+                },
+                {
+                  "name": "Runa",
+                  "level": 4,
+                  "hp": 84,
+                  "maxHp": 84
+                }
+              ]
+            },
+            {
+              "seed": 3235774468,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 4,
+                  "hp": 109,
+                  "maxHp": 109
+                },
+                {
+                  "name": "Huun",
+                  "level": 4,
+                  "hp": 78,
+                  "maxHp": 78
+                },
+                {
+                  "name": "Runa",
+                  "level": 4,
+                  "hp": 84,
+                  "maxHp": 84
+                }
+              ]
+            },
+            {
+              "seed": 3235774469,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 4,
+                  "hp": 109,
+                  "maxHp": 109
+                },
+                {
+                  "name": "Huun",
+                  "level": 4,
+                  "hp": 78,
+                  "maxHp": 78
+                },
+                {
+                  "name": "Runa",
+                  "level": 4,
+                  "hp": 84,
+                  "maxHp": 84
+                }
+              ]
+            }
+          ],
+          "firstAttemptBySeed": [
+            {
+              "seed": 3235774465,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774466,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774467,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774468,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774469,
+              "first": "BOSS_CLEAR"
+            }
+          ],
+          "clears": 5,
+          "timeouts": 0,
+          "seeds": 5
+        },
+        {
+          "scenario": "boss-sweep-l5",
+          "level": 5,
+          "fixtureClass": "synthetic",
+          "timing": "prospective",
+          "admissible": true,
+          "problems": [],
+          "evidence": {
+            "path": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l5/observed_events.ndjson",
+            "status": "present",
+            "bytes": 34197,
+            "sha256": "efc80a1ab9eaa2921633644d74cc773ce1168bdf1bf53dbd3962d581c4122c69"
+          },
+          "attempts": [
+            {
+              "seed": 3235774465,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 5,
+                  "hp": 117,
+                  "maxHp": 117
+                },
+                {
+                  "name": "Huun",
+                  "level": 5,
+                  "hp": 84,
+                  "maxHp": 84
+                },
+                {
+                  "name": "Runa",
+                  "level": 5,
+                  "hp": 89,
+                  "maxHp": 89
+                }
+              ]
+            },
+            {
+              "seed": 3235774466,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 5,
+                  "hp": 117,
+                  "maxHp": 117
+                },
+                {
+                  "name": "Huun",
+                  "level": 5,
+                  "hp": 84,
+                  "maxHp": 84
+                },
+                {
+                  "name": "Runa",
+                  "level": 5,
+                  "hp": 89,
+                  "maxHp": 89
+                }
+              ]
+            },
+            {
+              "seed": 3235774467,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 5,
+                  "hp": 117,
+                  "maxHp": 117
+                },
+                {
+                  "name": "Huun",
+                  "level": 5,
+                  "hp": 84,
+                  "maxHp": 84
+                },
+                {
+                  "name": "Runa",
+                  "level": 5,
+                  "hp": 89,
+                  "maxHp": 89
+                }
+              ]
+            },
+            {
+              "seed": 3235774468,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 5,
+                  "hp": 117,
+                  "maxHp": 117
+                },
+                {
+                  "name": "Huun",
+                  "level": 5,
+                  "hp": 84,
+                  "maxHp": 84
+                },
+                {
+                  "name": "Runa",
+                  "level": 5,
+                  "hp": 89,
+                  "maxHp": 89
+                }
+              ]
+            },
+            {
+              "seed": 3235774469,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null,
+              "heroesAtEnd": [
+                {
+                  "name": "Falie",
+                  "level": 5,
+                  "hp": 117,
+                  "maxHp": 117
+                },
+                {
+                  "name": "Huun",
+                  "level": 5,
+                  "hp": 84,
+                  "maxHp": 84
+                },
+                {
+                  "name": "Runa",
+                  "level": 5,
+                  "hp": 89,
+                  "maxHp": 89
+                }
+              ]
+            }
+          ],
+          "firstAttemptBySeed": [
+            {
+              "seed": 3235774465,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774466,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774467,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774468,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774469,
+              "first": "BOSS_CLEAR"
+            }
+          ],
+          "clears": 5,
+          "timeouts": 0,
+          "seeds": 5
+        },
+        {
+          "scenario": "pinned-boss-l1",
+          "level": 1,
+          "fixtureClass": "synthetic",
+          "timing": "retrospective",
+          "admissible": true,
+          "problems": [],
+          "evidence": {
+            "path": "/private/tmp/orka-7l9-current-boss-level1-five/balance_metrics.json",
+            "status": "present",
+            "bytes": 279859,
+            "sha256": "df4ce7e76cf719c5ca7bdb0e559618f4bbe2f81a7105ea832f72f4640ae1d2d3"
+          },
+          "attempts": [
+            {
+              "seed": 3235774465,
+              "outcome": "BOSS_TIMEOUT",
+              "elapsed": 18.067999999999977,
+              "timeoutBossHp": 39,
+              "bossMaxHp": 231,
+              "livingAtTimeout": 3
+            },
+            {
+              "seed": 3235774465,
+              "outcome": "BOSS_TIMEOUT",
+              "elapsed": 18.000400000095336,
+              "timeoutBossHp": 57,
+              "bossMaxHp": 231,
+              "livingAtTimeout": 3
+            },
+            {
+              "seed": 3235774466,
+              "outcome": "BOSS_TIMEOUT",
+              "elapsed": 18.068799999952294,
+              "timeoutBossHp": 27,
+              "bossMaxHp": 231,
+              "livingAtTimeout": 3
+            },
+            {
+              "seed": 3235774466,
+              "outcome": "BOSS_TIMEOUT",
+              "elapsed": 18.065200000047646,
+              "timeoutBossHp": 51,
+              "bossMaxHp": 231,
+              "livingAtTimeout": 3
+            },
+            {
+              "seed": 3235774467,
+              "outcome": "BOSS_TIMEOUT",
+              "elapsed": 18.063999999999982,
+              "timeoutBossHp": 47,
+              "bossMaxHp": 231,
+              "livingAtTimeout": 3
+            },
+            {
+              "seed": 3235774467,
+              "outcome": "BOSS_TIMEOUT",
+              "elapsed": 18.000400000095276,
+              "timeoutBossHp": 54,
+              "bossMaxHp": 231,
+              "livingAtTimeout": 3
+            },
+            {
+              "seed": 3235774468,
+              "outcome": "BOSS_TIMEOUT",
+              "elapsed": 18.067999999999987,
+              "timeoutBossHp": 39,
+              "bossMaxHp": 231,
+              "livingAtTimeout": 3
+            },
+            {
+              "seed": 3235774468,
+              "outcome": "BOSS_TIMEOUT",
+              "elapsed": 18.062799999952336,
+              "timeoutBossHp": 40,
+              "bossMaxHp": 231,
+              "livingAtTimeout": 3
+            },
+            {
+              "seed": 3235774469,
+              "outcome": "BOSS_TIMEOUT",
+              "elapsed": 18.064400000095354,
+              "timeoutBossHp": 40,
+              "bossMaxHp": 231,
+              "livingAtTimeout": 3
+            },
+            {
+              "seed": 3235774469,
+              "outcome": "BOSS_TIMEOUT",
+              "elapsed": 18.002000000000013,
+              "timeoutBossHp": 66,
+              "bossMaxHp": 231,
+              "livingAtTimeout": 3
+            }
+          ],
+          "firstAttemptBySeed": [
+            {
+              "seed": 3235774465,
+              "first": "BOSS_TIMEOUT"
+            },
+            {
+              "seed": 3235774466,
+              "first": "BOSS_TIMEOUT"
+            },
+            {
+              "seed": 3235774467,
+              "first": "BOSS_TIMEOUT"
+            },
+            {
+              "seed": 3235774468,
+              "first": "BOSS_TIMEOUT"
+            },
+            {
+              "seed": 3235774469,
+              "first": "BOSS_TIMEOUT"
+            }
+          ],
+          "clears": 0,
+          "timeouts": 5,
+          "seeds": 5
+        },
+        {
+          "scenario": "pinned-boss-l5",
+          "level": 5,
+          "fixtureClass": "synthetic",
+          "timing": "retrospective",
+          "admissible": true,
+          "problems": [],
+          "evidence": {
+            "path": "/private/tmp/orka-7l9-current-boss-level5-five/balance_metrics.json",
+            "status": "present",
+            "bytes": 88469,
+            "sha256": "86035a857ceeda6b3ded0721621192af71a346d8e55b10562e6e34890f4c82b3"
+          },
+          "attempts": [
+            {
+              "seed": 3235774465,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null
+            },
+            {
+              "seed": 3235774466,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null
+            },
+            {
+              "seed": 3235774467,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null
+            },
+            {
+              "seed": 3235774468,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null
+            },
+            {
+              "seed": 3235774469,
+              "outcome": "BOSS_CLEAR",
+              "elapsed": null,
+              "timeoutBossHp": null,
+              "bossMaxHp": null,
+              "livingAtTimeout": null
+            }
+          ],
+          "firstAttemptBySeed": [
+            {
+              "seed": 3235774465,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774466,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774467,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774468,
+              "first": "BOSS_CLEAR"
+            },
+            {
+              "seed": 3235774469,
+              "first": "BOSS_CLEAR"
+            }
+          ],
+          "clears": 5,
+          "timeouts": 0,
+          "seeds": 5
+        }
+      ],
+      "earned": {
+        "verdict": "PASS",
+        "budget": 3,
+        "sessions": [
+          {
+            "seed": 3235774465,
+            "verdict": "PASS",
+            "surrenders": 0,
+            "lampActionsDuringBoss": 1,
+            "arrival": {
+              "t": 336.752,
+              "heroes": [
+                {
+                  "uid": 1,
+                  "instanceKey": "falie#1",
+                  "name": "Falie",
+                  "level": 1,
+                  "hp": 61,
+                  "maxHp": 94,
+                  "stats": {
+                    "ATK": 10,
+                    "DEF": 18,
+                    "MAG": 10,
+                    "RES": 17,
+                    "SPD": 8
+                  },
+                  "combatPower": 64.3
+                },
+                {
+                  "uid": 2,
+                  "instanceKey": "huun#1",
+                  "name": "Huun",
+                  "level": 1,
+                  "hp": 66,
+                  "maxHp": 69,
+                  "stats": {
+                    "ATK": 20,
+                    "DEF": 7,
+                    "MAG": 4,
+                    "RES": 5,
+                    "SPD": 12
+                  },
+                  "combatPower": 74.1
+                },
+                {
+                  "uid": 3,
+                  "instanceKey": "runa#1",
+                  "name": "Runa",
+                  "level": 1,
+                  "hp": 75,
+                  "maxHp": 75,
+                  "stats": {
+                    "ATK": 8,
+                    "DEF": 8,
+                    "MAG": 20,
+                    "RES": 13,
+                    "SPD": 11
+                  },
+                  "combatPower": 76
+                },
+                {
+                  "uid": 4,
+                  "instanceKey": "kojonn#1",
+                  "name": "Kojonn",
+                  "level": 1,
+                  "hp": 85,
+                  "maxHp": 86,
+                  "stats": {
+                    "ATK": 9,
+                    "DEF": 14,
+                    "MAG": 13,
+                    "RES": 18,
+                    "SPD": 10
+                  },
+                  "combatPower": 69.3
+                }
+              ],
+              "boss": {
+                "uid": 133,
+                "name": "Troll",
+                "hp": 231,
+                "maxHp": 231
+              },
+              "loadouts": {
+                "Falie": {
+                  "body": "lamp:4242:1",
+                  "hat": "lamp:4242:4",
+                  "boots": "lamp:4242:9"
+                },
+                "Kojonn": {
+                  "body": "lamp:4242:0",
+                  "boots": "lamp:4242:6",
+                  "hat": "lamp:4242:7"
+                },
+                "Runa": {
+                  "body": "lamp:4242:2",
+                  "hat": "lamp:4242:8"
+                },
+                "Huun": {
+                  "body": "lamp:4242:5"
+                }
+              }
+            },
+            "outcomes": [
+              "BOSS_CLEAR"
+            ],
+            "timeoutsBeforeClear": 0,
+            "endReason": "max_bosses",
+            "ordinaryClearsBeforeFirstBoss": 4
+          },
+          {
+            "seed": 3235774466,
+            "verdict": "PASS",
+            "surrenders": 0,
+            "lampActionsDuringBoss": 0,
+            "arrival": {
+              "t": 341.266,
+              "heroes": [
+                {
+                  "uid": 1,
+                  "instanceKey": "falie#1",
+                  "name": "Falie",
+                  "level": 1,
+                  "hp": 70,
+                  "maxHp": 89,
+                  "stats": {
+                    "ATK": 12,
+                    "DEF": 17,
+                    "MAG": 6,
+                    "RES": 11,
+                    "SPD": 8
+                  },
+                  "combatPower": 60.9
+                },
+                {
+                  "uid": 2,
+                  "instanceKey": "huun#1",
+                  "name": "Huun",
+                  "level": 1,
+                  "hp": 67,
+                  "maxHp": 76,
+                  "stats": {
+                    "ATK": 21,
+                    "DEF": 12,
+                    "MAG": 5,
+                    "RES": 7,
+                    "SPD": 12
+                  },
+                  "combatPower": 81.8
+                },
+                {
+                  "uid": 3,
+                  "instanceKey": "runa#1",
+                  "name": "Runa",
+                  "level": 1,
+                  "hp": 69,
+                  "maxHp": 69,
+                  "stats": {
+                    "ATK": 4,
+                    "DEF": 6,
+                    "MAG": 19,
+                    "RES": 12,
+                    "SPD": 11
+                  },
+                  "combatPower": 70.4
+                },
+                {
+                  "uid": 4,
+                  "instanceKey": "kojonn#1",
+                  "name": "Kojonn",
+                  "level": 1,
+                  "hp": 84,
+                  "maxHp": 84,
+                  "stats": {
+                    "ATK": 9,
+                    "DEF": 12,
+                    "MAG": 15,
+                    "RES": 19,
+                    "SPD": 10
+                  },
+                  "combatPower": 71.4
+                }
+              ],
+              "boss": {
+                "uid": 128,
+                "name": "Troll",
+                "hp": 231,
+                "maxHp": 231
+              },
+              "loadouts": {
+                "Falie": {
+                  "body": "lamp:4242:5",
+                  "hat": "lamp:4242:4"
+                },
+                "Kojonn": {
+                  "body": "lamp:4242:1",
+                  "boots": "lamp:4242:6",
+                  "hat": "lamp:4242:7"
+                },
+                "Runa": {
+                  "body": "lamp:4242:2"
+                },
+                "Huun": {
+                  "body": "lamp:4242:3",
+                  "hat": "lamp:4242:8"
+                }
+              }
+            },
+            "outcomes": [
+              "BOSS_CLEAR"
+            ],
+            "timeoutsBeforeClear": 0,
+            "endReason": "max_bosses",
+            "ordinaryClearsBeforeFirstBoss": 4
+          },
+          {
+            "seed": 3235774467,
+            "verdict": "PASS",
+            "surrenders": 0,
+            "lampActionsDuringBoss": 0,
+            "arrival": {
+              "t": 319.89,
+              "heroes": [
+                {
+                  "uid": 1,
+                  "instanceKey": "falie#1",
+                  "name": "Falie",
+                  "level": 1,
+                  "hp": 74,
+                  "maxHp": 89,
+                  "stats": {
+                    "ATK": 12,
+                    "DEF": 17,
+                    "MAG": 6,
+                    "RES": 11,
+                    "SPD": 8
+                  },
+                  "combatPower": 60.9
+                },
+                {
+                  "uid": 2,
+                  "instanceKey": "huun#1",
+                  "name": "Huun",
+                  "level": 1,
+                  "hp": 70,
+                  "maxHp": 70,
+                  "stats": {
+                    "ATK": 17,
+                    "DEF": 10,
+                    "MAG": 4,
+                    "RES": 6,
+                    "SPD": 12
+                  },
+                  "combatPower": 69.8
+                },
+                {
+                  "uid": 3,
+                  "instanceKey": "runa#1",
+                  "name": "Runa",
+                  "level": 1,
+                  "hp": 69,
+                  "maxHp": 69,
+                  "stats": {
+                    "ATK": 4,
+                    "DEF": 6,
+                    "MAG": 19,
+                    "RES": 12,
+                    "SPD": 11
+                  },
+                  "combatPower": 70.4
+                },
+                {
+                  "uid": 4,
+                  "instanceKey": "kojonn#1",
+                  "name": "Kojonn",
+                  "level": 1,
+                  "hp": 84,
+                  "maxHp": 84,
+                  "stats": {
+                    "ATK": 9,
+                    "DEF": 12,
+                    "MAG": 15,
+                    "RES": 19,
+                    "SPD": 10
+                  },
+                  "combatPower": 71.4
+                }
+              ],
+              "boss": {
+                "uid": 128,
+                "name": "Troll",
+                "hp": 231,
+                "maxHp": 231
+              },
+              "loadouts": {
+                "Falie": {
+                  "body": "lamp:4242:5",
+                  "hat": "lamp:4242:4"
+                },
+                "Kojonn": {
+                  "body": "lamp:4242:1",
+                  "boots": "lamp:4242:6",
+                  "hat": "lamp:4242:7"
+                },
+                "Runa": {
+                  "body": "lamp:4242:2"
+                },
+                "Huun": {
+                  "body": "lamp:4242:3"
+                }
+              }
+            },
+            "outcomes": [
+              "BOSS_CLEAR"
+            ],
+            "timeoutsBeforeClear": 0,
+            "endReason": "max_bosses",
+            "ordinaryClearsBeforeFirstBoss": 4
+          },
+          {
+            "seed": 3235774468,
+            "verdict": "PASS",
+            "surrenders": 0,
+            "lampActionsDuringBoss": 1,
+            "arrival": {
+              "t": 329.788,
+              "heroes": [
+                {
+                  "uid": 1,
+                  "instanceKey": "falie#1",
+                  "name": "Falie",
+                  "level": 1,
+                  "hp": 81,
+                  "maxHp": 89,
+                  "stats": {
+                    "ATK": 12,
+                    "DEF": 17,
+                    "MAG": 6,
+                    "RES": 11,
+                    "SPD": 8
+                  },
+                  "combatPower": 60.9
+                },
+                {
+                  "uid": 2,
+                  "instanceKey": "huun#1",
+                  "name": "Huun",
+                  "level": 1,
+                  "hp": 69,
+                  "maxHp": 70,
+                  "stats": {
+                    "ATK": 17,
+                    "DEF": 10,
+                    "MAG": 4,
+                    "RES": 6,
+                    "SPD": 12
+                  },
+                  "combatPower": 69.8
+                },
+                {
+                  "uid": 3,
+                  "instanceKey": "runa#1",
+                  "name": "Runa",
+                  "level": 1,
+                  "hp": 69,
+                  "maxHp": 69,
+                  "stats": {
+                    "ATK": 4,
+                    "DEF": 6,
+                    "MAG": 19,
+                    "RES": 12,
+                    "SPD": 11
+                  },
+                  "combatPower": 70.4
+                },
+                {
+                  "uid": 4,
+                  "instanceKey": "kojonn#1",
+                  "name": "Kojonn",
+                  "level": 1,
+                  "hp": 84,
+                  "maxHp": 84,
+                  "stats": {
+                    "ATK": 9,
+                    "DEF": 12,
+                    "MAG": 15,
+                    "RES": 19,
+                    "SPD": 10
+                  },
+                  "combatPower": 71.4
+                }
+              ],
+              "boss": {
+                "uid": 131,
+                "name": "Troll",
+                "hp": 231,
+                "maxHp": 231
+              },
+              "loadouts": {
+                "Falie": {
+                  "body": "lamp:4242:5",
+                  "hat": "lamp:4242:4"
+                },
+                "Kojonn": {
+                  "body": "lamp:4242:1",
+                  "boots": "lamp:4242:6",
+                  "hat": "lamp:4242:7"
+                },
+                "Runa": {
+                  "body": "lamp:4242:2"
+                },
+                "Huun": {
+                  "body": "lamp:4242:3"
+                }
+              }
+            },
+            "outcomes": [
+              "BOSS_CLEAR"
+            ],
+            "timeoutsBeforeClear": 0,
+            "endReason": "max_bosses",
+            "ordinaryClearsBeforeFirstBoss": 4
+          },
+          {
+            "seed": 3235774469,
+            "verdict": "PASS",
+            "surrenders": 0,
+            "lampActionsDuringBoss": 0,
+            "arrival": {
+              "t": 333.642,
+              "heroes": [
+                {
+                  "uid": 1,
+                  "instanceKey": "falie#1",
+                  "name": "Falie",
+                  "level": 1,
+                  "hp": 81,
+                  "maxHp": 89,
+                  "stats": {
+                    "ATK": 12,
+                    "DEF": 17,
+                    "MAG": 6,
+                    "RES": 11,
+                    "SPD": 8
+                  },
+                  "combatPower": 60.9
+                },
+                {
+                  "uid": 2,
+                  "instanceKey": "huun#1",
+                  "name": "Huun",
+                  "level": 1,
+                  "hp": 62,
+                  "maxHp": 76,
+                  "stats": {
+                    "ATK": 21,
+                    "DEF": 12,
+                    "MAG": 5,
+                    "RES": 7,
+                    "SPD": 12
+                  },
+                  "combatPower": 81.8
+                },
+                {
+                  "uid": 3,
+                  "instanceKey": "runa#1",
+                  "name": "Runa",
+                  "level": 1,
+                  "hp": 69,
+                  "maxHp": 69,
+                  "stats": {
+                    "ATK": 4,
+                    "DEF": 6,
+                    "MAG": 19,
+                    "RES": 12,
+                    "SPD": 11
+                  },
+                  "combatPower": 70.4
+                },
+                {
+                  "uid": 4,
+                  "instanceKey": "kojonn#1",
+                  "name": "Kojonn",
+                  "level": 1,
+                  "hp": 82,
+                  "maxHp": 84,
+                  "stats": {
+                    "ATK": 9,
+                    "DEF": 12,
+                    "MAG": 15,
+                    "RES": 19,
+                    "SPD": 10
+                  },
+                  "combatPower": 71.4
+                }
+              ],
+              "boss": {
+                "uid": 132,
+                "name": "Troll",
+                "hp": 231,
+                "maxHp": 231
+              },
+              "loadouts": {
+                "Falie": {
+                  "body": "lamp:4242:5",
+                  "hat": "lamp:4242:4"
+                },
+                "Kojonn": {
+                  "body": "lamp:4242:1",
+                  "boots": "lamp:4242:6",
+                  "hat": "lamp:4242:7"
+                },
+                "Runa": {
+                  "body": "lamp:4242:2"
+                },
+                "Huun": {
+                  "body": "lamp:4242:3",
+                  "hat": "lamp:4242:8"
+                }
+              }
+            },
+            "outcomes": [
+              "BOSS_CLEAR"
+            ],
+            "timeoutsBeforeClear": 0,
+            "endReason": "max_bosses",
+            "ordinaryClearsBeforeFirstBoss": 4
+          }
+        ],
+        "evidence": {
+          "path": "/private/tmp/orka-7l9-lab/runs/earned-fresh/observed_events.ndjson",
+          "status": "present",
+          "bytes": 796353,
+          "sha256": "445eb1c02f30fbbf3548b489a843d519b39f19758d5fd7f307ba4b026c03d4aa"
+        }
+      }
+    },
+    {
+      "id": "C6-recovery",
+      "title": "Forced-KO recovery resumes productive farming",
+      "kind": "recovery",
+      "tests": "rule",
+      "pillar": "recovery",
+      "requirements": [
+        "REQ-RECOVERY",
+        "REQ-LAB-RECOVERY"
+      ],
+      "references": [],
+      "expectation": "Per seed: an initial Hero KO, a recovery event restoring every deployed Hero to its event-time max HP, the same region/stage/wave across the recovery transition, then ≥20 consecutive ordinary clears with no additional Hero KO, gap, ambiguous transition or deadlock. The boss is held (no summon) so ordinary farming continues at readiness. Timeout short of 20 without a failure is INCONCLUSIVE.",
+      "unknowns": [
+        "recovery behaviour after a boss is summoned (not exercised under hold policy)"
+      ],
+      "verdict": "FAIL",
+      "rows": [
+        {
+          "scenario": "recovery-onehp",
+          "timing": "prospective",
+          "verdict": "FAIL",
+          "reason": null,
+          "perSeed": [
+            {
+              "seed": 3235774465,
+              "verdict": "FAIL",
+              "longestSilence": {
+                "seconds": 20.004,
+                "from": 492.822,
+                "to": 512.826
+              },
+              "initialKO": {
+                "t": 8.666,
+                "id": 3,
+                "uid": 2,
+                "name": "Huun",
+                "wave": 1,
+                "stage": "1-2",
+                "bossActive": false
+              },
+              "recoveryT": 8.666,
+              "stagesCleared": [
+                "1-2"
+              ],
+              "laterKOs": [
+                "Falie t=422.332 1-2 W3",
+                "Falie t=2274.144 1-2 W4"
+              ],
+              "restored": [
+                {
+                  "uid": 1,
+                  "name": "Falie",
+                  "hpBefore": 1,
+                  "hpAfter": 85,
+                  "maxHp": 85,
+                  "maxHpUncertain": false,
+                  "full": true
+                },
+                {
+                  "uid": 2,
+                  "name": "Huun",
+                  "hpBefore": 0,
+                  "hpAfter": 60,
+                  "maxHp": 60,
+                  "maxHpUncertain": false,
+                  "full": true
+                },
+                {
+                  "uid": 3,
+                  "name": "Runa",
+                  "hpBefore": 1,
+                  "hpAfter": 69,
+                  "maxHp": 69,
+                  "maxHpUncertain": false,
+                  "full": true
+                }
+              ],
+              "sameStageWave": true,
+              "postRecoveryClears": 2,
+              "additionalKOs": 2,
+              "bossAttempts": [],
+              "endReason": "max_waves",
+              "reasons": [
+                "2 additional Hero KO(s)"
+              ]
+            },
+            {
+              "seed": 3235774466,
+              "verdict": "FAIL",
+              "longestSilence": {
+                "seconds": 17.871,
+                "from": 483.827,
+                "to": 501.698
+              },
+              "initialKO": {
+                "t": 6.599,
+                "id": 2,
+                "uid": 2,
+                "name": "Huun",
+                "wave": 1,
+                "stage": "1-2",
+                "bossActive": false
+              },
+              "recoveryT": 6.599,
+              "stagesCleared": [
+                "1-2"
+              ],
+              "laterKOs": [
+                "Falie t=1246.902 1-2 W4"
+              ],
+              "restored": [
+                {
+                  "uid": 1,
+                  "name": "Falie",
+                  "hpBefore": 1,
+                  "hpAfter": 85,
+                  "maxHp": 85,
+                  "maxHpUncertain": false,
+                  "full": true
+                },
+                {
+                  "uid": 2,
+                  "name": "Huun",
+                  "hpBefore": 0,
+                  "hpAfter": 60,
+                  "maxHp": 60,
+                  "maxHpUncertain": false,
+                  "full": true
+                },
+                {
+                  "uid": 3,
+                  "name": "Runa",
+                  "hpBefore": 1,
+                  "hpAfter": 69,
+                  "maxHp": 69,
+                  "maxHpUncertain": false,
+                  "full": true
+                }
+              ],
+              "sameStageWave": true,
+              "postRecoveryClears": 11,
+              "additionalKOs": 1,
+              "bossAttempts": [],
+              "endReason": "max_waves",
+              "reasons": [
+                "1 additional Hero KO(s)"
+              ]
+            },
+            {
+              "seed": 3235774467,
+              "verdict": "INCONCLUSIVE",
+              "longestSilence": {
+                "seconds": 7088.788,
+                "from": 107.428,
+                "to": 7196.216
+              },
+              "initialKO": {
+                "t": 7.652,
+                "id": 3,
+                "uid": 2,
+                "name": "Huun",
+                "wave": 1,
+                "stage": "1-2",
+                "bossActive": false
+              },
+              "recoveryT": 7.652,
+              "stagesCleared": [
+                "1-2"
+              ],
+              "laterKOs": [],
+              "restored": [
+                {
+                  "uid": 1,
+                  "name": "Falie",
+                  "hpBefore": 1,
+                  "hpAfter": 85,
+                  "maxHp": 85,
+                  "maxHpUncertain": false,
+                  "full": true
+                },
+                {
+                  "uid": 2,
+                  "name": "Huun",
+                  "hpBefore": 0,
+                  "hpAfter": 60,
+                  "maxHp": 60,
+                  "maxHpUncertain": false,
+                  "full": true
+                },
+                {
+                  "uid": 3,
+                  "name": "Runa",
+                  "hpBefore": 1,
+                  "hpAfter": 69,
+                  "maxHp": 69,
+                  "maxHpUncertain": false,
+                  "full": true
+                }
+              ],
+              "sameStageWave": true,
+              "postRecoveryClears": 1,
+              "additionalKOs": 0,
+              "bossAttempts": [],
+              "endReason": "timeout",
+              "reasons": [
+                "1 post-recovery clears < 20 (end timeout)",
+                "candidate softlock: no combat event or clear for 7088.788s from t=107.428 (harness deadlock detector did not fire)"
+              ]
+            },
+            {
+              "seed": 3235774468,
+              "verdict": "FAIL",
+              "longestSilence": {
+                "seconds": 17.266,
+                "from": 410.188,
+                "to": 427.454
+              },
+              "initialKO": {
+                "t": 10.928,
+                "id": 5,
+                "uid": 3,
+                "name": "Runa",
+                "wave": 1,
+                "stage": "1-2",
+                "bossActive": false
+              },
+              "recoveryT": 10.928,
+              "stagesCleared": [
+                "1-2"
+              ],
+              "laterKOs": [
+                "Huun t=1200.602 1-2 W4"
+              ],
+              "restored": [
+                {
+                  "uid": 1,
+                  "name": "Falie",
+                  "hpBefore": 1,
+                  "hpAfter": 85,
+                  "maxHp": 85,
+                  "maxHpUncertain": false,
+                  "full": true
+                },
+                {
+                  "uid": 2,
+                  "name": "Huun",
+                  "hpBefore": 1,
+                  "hpAfter": 60,
+                  "maxHp": 60,
+                  "maxHpUncertain": false,
+                  "full": true
+                },
+                {
+                  "uid": 3,
+                  "name": "Runa",
+                  "hpBefore": 0,
+                  "hpAfter": 69,
+                  "maxHp": 69,
+                  "maxHpUncertain": false,
+                  "full": true
+                }
+              ],
+              "sameStageWave": true,
+              "postRecoveryClears": 11,
+              "additionalKOs": 1,
+              "bossAttempts": [],
+              "endReason": "max_waves",
+              "reasons": [
+                "1 additional Hero KO(s)"
+              ]
+            },
+            {
+              "seed": 3235774469,
+              "verdict": "FAIL",
+              "longestSilence": {
+                "seconds": 17.732,
+                "from": 697.952,
+                "to": 715.684
+              },
+              "initialKO": {
+                "t": 7.465,
+                "id": 3,
+                "uid": 2,
+                "name": "Huun",
+                "wave": 1,
+                "stage": "1-2",
+                "bossActive": false
+              },
+              "recoveryT": 7.465,
+              "stagesCleared": [
+                "1-2"
+              ],
+              "laterKOs": [
+                "Falie t=800.743 1-2 W4"
+              ],
+              "restored": [
+                {
+                  "uid": 1,
+                  "name": "Falie",
+                  "hpBefore": 1,
+                  "hpAfter": 85,
+                  "maxHp": 85,
+                  "maxHpUncertain": false,
+                  "full": true
+                },
+                {
+                  "uid": 2,
+                  "name": "Huun",
+                  "hpBefore": 0,
+                  "hpAfter": 60,
+                  "maxHp": 60,
+                  "maxHpUncertain": false,
+                  "full": true
+                },
+                {
+                  "uid": 3,
+                  "name": "Runa",
+                  "hpBefore": 1,
+                  "hpAfter": 69,
+                  "maxHp": 69,
+                  "maxHpUncertain": false,
+                  "full": true
+                }
+              ],
+              "sameStageWave": true,
+              "postRecoveryClears": 7,
+              "additionalKOs": 1,
+              "bossAttempts": [],
+              "endReason": "max_waves",
+              "reasons": [
+                "1 additional Hero KO(s)"
+              ]
+            }
+          ],
+          "evidence": {
+            "path": "/private/tmp/orka-7l9-lab/runs/recovery-onehp/observed_events.ndjson",
+            "status": "present",
+            "bytes": 3809507,
+            "sha256": "05ed50c0992f067cc0c5397a82aa7d00aeb8a140d8bbc535a214ac7a147f54db"
+          },
+          "model": {
+            "status": "CONSISTENT_WITH_CONTROL",
+            "checks": 2940,
+            "sessionsDiverged": []
+          }
+        }
+      ]
+    }
+  ],
+  "model": {
+    "version": "orka-7l9-shadow-1",
+    "assumptions": [
+      {
+        "id": "A1",
+        "name": "hostile-hit cap",
+        "statement": "In continuous combat an enemy hit on a Hero applies at most max(1, floor(maxHP × fraction[tier])) HP, with fractions fodder/routine 0.02, hard 0.08, elite 0.12, boss 0.18. Applied HP may be lower than the bound (raw below bound or HP floor).",
+        "basis": "transcribed from candidate web-runner/src/core/routineEnemyScaling.mjs and web-runner/modules/heroCommands.mjs; not imported"
+      },
+      {
+        "id": "A2",
+        "name": "cap tier input",
+        "statement": "The cap tier is the EnemyData row tier looked up by enemy name (combatTier, then routineTier, default routine), not the spawned actor tier.",
+        "basis": "code reading of heroCommands.mjs applyDamage; the harness logs both tiers so disagreement stays visible"
+      },
+      {
+        "id": "A3",
+        "name": "ordinary wave-clear respite",
+        "statement": "Each living Hero below max HP gains min(maxHP, hp + ceil(0.15 × maxHP)) − hp when an ordinary wave clears.",
+        "basis": "governance/product/player-living-guide.md (15% respite)"
+      },
+      {
+        "id": "A4",
+        "name": "defeat recovery",
+        "statement": "Ordinary-defeat and boss-timeout recovery restore every deployed Hero to full max HP.",
+        "basis": "player-living-guide.md recovery rules"
+      },
+      {
+        "id": "A5",
+        "name": "boss-clear restore",
+        "statement": "Boss victory restores every Hero to full HP. The runtime does not log this restore, so the model applies it at the observed boss-clear poll and accepts either pre- or post-restore HP for the next Hero event in that poll window.",
+        "basis": "player-living-guide.md; unlogged HP assignment observed by code reading"
+      },
+      {
+        "id": "A6",
+        "name": "HP continuity",
+        "statement": "Current HP changes only through logged damage, heal and recovery events, A5, and max-HP decreases that clamp current HP. Max-HP increases (level-up, gear) do not change current HP.",
+        "basis": "player-living-guide.md level-up rule; equipmentStorage clamp"
+      },
+      {
+        "id": "A7",
+        "name": "boss timer",
+        "statement": "A boss attempt times out once 18 game seconds elapse with the boss alive; a timeout records elapsed ≥ 18.",
+        "basis": "player-living-guide.md authored 18-second gauge"
+      },
+      {
+        "id": "A8",
+        "name": "enemy targeting",
+        "statement": "Enemy target choice reads Hero HP only through living/KO status (provoke, preferred, stable nearest).",
+        "basis": "code reading of selectContinuousEnemyTarget in web-runner/src/core/arenaCombat.mjs"
+      },
+      {
+        "id": "A9",
+        "name": "Hero HP guards",
+        "statement": "Unlocked Hero skills whose conditions read Hero HP ratios are listed in HP_GUARDS; other unlocked skills do not read Hero HP.",
+        "basis": "transcribed from heroDefinitions.mjs condition labels and unlock levels"
+      },
+      {
+        "id": "A10",
+        "name": "cadence unknown",
+        "statement": "Hits per wave are not modeled from mechanics. The survival envelope sweeps a declared integer range instead of fitting one value.",
+        "basis": "declared ignorance"
+      },
+      {
+        "id": "A11",
+        "name": "envelope worst case",
+        "statement": "For the survival envelope every hit applies the A1 bound at opening max HP, and max HP stays constant.",
+        "basis": "declared simplification"
+      }
+    ]
+  }
+}

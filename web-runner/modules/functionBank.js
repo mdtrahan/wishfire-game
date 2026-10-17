@@ -1,6 +1,9 @@
 import { partyTrainingCombatStat } from '../src/core/realtimeSkillState.mjs';
 import { recordActorPuppetDefeat } from '../systems/actorPuppetDefeats.mjs';
 import { effectiveStat } from '../src/core/combatRules.mjs';
+import { captureBalanceImpactGeometry, recordBalanceCombatEvent } from '../src/core/balanceTelemetry.mjs';
+import { advancePassiveHeroRegen } from '../src/core/heroSustainRules.mjs';
+import { saveHeroProgress } from '../src/core/heroProgression.mjs';
 import { executeHeroCommand, resolveNativeCommandStep, resolveRealtimeBasicImpact, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat, settleContinuousCombatRewards, emitResolvedHealEvent, recordEnemyDefeatReward } from './heroCommands.mjs';
 import { state } from './state.js';
 import { MONSTER_KEYS, MONSTER_LOOT_TABLE, TOKEN, EMPTY } from './monsterLootTableEventTokens.js';
@@ -6067,6 +6070,8 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   const suppressHitFlash = shouldSuppressHitFlash(ctx, uid, dmg, opts);
   const suppressDamageText = shouldSuppressDamageText(ctx, uid, dmg, opts);
   const beforeHP = Number(t.hp ?? 0);
+  const impactGeometry = g.DevBalanceCapture === true && source?.kind === 'enemy' && t.kind === 'hero'
+    ? captureBalanceImpactGeometry(source, getEntities(ctx).filter((actor) => actor?.kind === 'hero')) : null;
   let incomingDamage = realtimeIncomingDamage(ctx, t, source, Math.max(0, Number(dmg || 0)));
   const shieldBefore = t.kind === 'hero' ? Math.max(0, Number(g.PartyTempHPShield || 0)) : 0;
   const jsShieldAbsorbed = t.kind === 'hero' ? Math.min(shieldBefore, incomingDamage) : 0;
@@ -6106,6 +6111,16 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   cleanupRealtimeSkillActors(ctx);
   const afterHP = Number(t.hp ?? 0);
   const appliedDamage = Math.max(0, beforeHP - afterHP);
+  if (t.kind === 'hero' && appliedDamage > 0) recordBalanceCombatEvent(g, {
+    type: 'damage', sourceUID: Number(source?.uid || 0), targetUID: Number(uid || 0),
+    damageType: opts.damageType === 'physical' || opts.damageType === 'magic' ? opts.damageType : opts.magic ? 'magic' : 'unknown',
+    amount: appliedDamage, hpBefore: beforeHP, hpAfter: afterHP,
+    wave: Number(g.ContinuousCombatStage?.wave || 0), impactGeometry,
+  });
+  if (t.kind === 'enemy' && appliedDamage > 0 && afterHP <= 0) recordBalanceCombatEvent(g, {
+    type: 'enemy_ko', sourceUID: Number(source?.uid || 0), targetUID: Number(uid || 0),
+    amount: appliedDamage, hpBefore: beforeHP, hpAfter: afterHP,
+  });
   if (appliedDamage > 0) {
     const now = Number(g.time || 0);
     t.actionState = afterHP <= 0 ? 'ko' : 'hurt';
@@ -7208,16 +7223,37 @@ export function TickRealtimeHeroBasics(ctx) {
   const g = getGlobals(ctx);
   if (Number(g.ContinuousCombatStageLoop || 0) !== 1 || g.GamePhase !== 'RUNTIME' || g.BattleStartActive || g.NativeBattleEnded) return 0;
   tickRealtimeHeroSkillZones(ctx);
+  const actors = getEntities(ctx).filter(actor => actor?.kind === 'hero');
+  const regen = advancePassiveHeroRegen({ now: Number(g.time || 0), lastAt: g.PassiveHeroRegenLastAt,
+    credits: g.PassiveHeroRegenCreditsByUID, heroes: actors });
+  g.PassiveHeroRegenLastAt = regen.lastAt;
+  g.PassiveHeroRegenCreditsByUID = regen.credits;
+  for (const { uid, amount } of regen.heals) {
+    const hero = actors.find(actor => Number(actor.uid) === uid);
+    if (!hero || Number(hero.hp || 0) <= 0) continue;
+    const before = Number(hero.hp || 0);
+    hero.hp = Math.min(Number(hero.maxHP || 0), before + amount);
+    recordBalanceCombatEvent(g, { type: 'heal', reason: 'passive_regen', sourceUID: 0, targetUID: uid,
+      amount: hero.hp - before, hpBefore: before, hpAfter: hero.hp });
+    if (g.HeroProgress) { saveHeroProgress(hero, g.HeroProgress); g.HeroProgressDirty = true; }
+  }
+  if (regen.heals.length) UpdateHeroHPUI(ctx);
   const heroes = getEntities(ctx).filter(hero => hero?.kind === 'hero' && Number(hero.hp || 0) > 0)
     .map(hero => ({ ...hero, type: 0, speed: GetEffectiveStat(ctx, hero, 'SPD') }));
   const enemies = filterContinuousEncounterEnemies(getEnemies(ctx), g, heroes);
   const focusTarget = resolveHeroAttackTarget({ enemies, focusUID: Number(g.RealtimeHeroFocusTargetUID || 0), inRange: enemy => heroes.some(hero => isHeroBasicTargetInRange(enemy, hero)) });
   g.RealtimeHeroFocusTargetUID = Number(focusTarget?.uid || 0);
+  const basicTargetForHero = hero => resolveHeroAttackTarget({
+    enemies, focusUID: Number(focusTarget?.uid || 0),
+    inRange: enemy => isHeroBasicTargetInRange(enemy, hero),
+  });
   for (const hit of g.PendingHeroHits || []) {
-    if (!hit?.realtimeBasic || !hit.retargetOnDeath || !focusTarget) continue;
+    if (!hit?.realtimeBasic || !hit.retargetOnDeath) continue;
     const target = GetActorByUID(ctx, hit.targetUID);
     if (!target || Number(target.hp || 0) <= 0) {
-      hit.targetUID = focusTarget.uid;
+      const replacement = basicTargetForHero(GetActorByUID(ctx, hit.heroUID));
+      if (!replacement) continue;
+      hit.targetUID = replacement.uid;
       hit.at = Number(g.time || 0) + 0.52;
     }
   }
@@ -7272,8 +7308,9 @@ export function TickRealtimeHeroBasics(ctx) {
       push: pushContinuousCombatEnemy, reverse: reverseContinuousCombatEnemy, teleport: teleportContinuousCombatEnemy,
     }) : false;
   };
-  const fireBasic = (heroUID, target) => {
+  const fireBasic = heroUID => {
     const hero = GetActorByUID(ctx, heroUID);
+    const target = basicTargetForHero(hero);
     if (!hero || !target || Number(target.hp || 0) <= 0 || !isHeroBasicTargetInRange(target, hero)) return false;
     const before = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits.length : 0;
     HeroAttackSingle(ctx, heroUID, target.uid, true);
@@ -7298,7 +7335,7 @@ export function TickRealtimeHeroBasics(ctx) {
       continue;
     }
     if (Number(action.startAt || 0) > now) continue;
-    const fired = action.kind === 'skill' ? fireSkill(hero, action.skillId) : fireBasic(hero.uid, focusTarget);
+    const fired = action.kind === 'skill' ? fireSkill(hero, action.skillId) : fireBasic(hero.uid);
     if (fired) servicedUIDs.add(Number(hero.uid));
     else if (action.kind === 'skill') (clocks[key].skillReadyAt ||= {})[action.skillId] = action.dueAt;
     else clocks[key].basicReadyAt = Math.min(Number(clocks[key].basicReadyAt || action.dueAt), Number(action.dueAt));
@@ -7311,7 +7348,7 @@ export function TickRealtimeHeroBasics(ctx) {
       basicIntervalSeconds: realtimeBasicInterval(g, hero, realtimeCooldownSeconds(hero)),
       basicCastSeconds: 0,
       projectileFlightSeconds: 0.52,
-      basicEligible: !scheduled[String(hero.uid)] && !servicedUIDs.has(Number(hero.uid)) && isHeroBasicTargetInRange(focusTarget, hero),
+      basicEligible: !scheduled[String(hero.uid)] && !servicedUIDs.has(Number(hero.uid)) && !!basicTargetForHero(hero),
       skills: (heroDefinition(hero)?.actives || []).filter(skill => skill.trigger === 'poll' && heroSkillUnlocked(hero, skill)).map(skill => ({
         id: skill.skillId, cooldownSeconds: skill.cooldownSeconds,
         eligible: !scheduled[String(hero.uid)] && !servicedUIDs.has(Number(hero.uid)) && !!skillSelection(hero, skill),
@@ -7326,7 +7363,7 @@ export function TickRealtimeHeroBasics(ctx) {
       const key = String(hero.uid);
       const action = scheduled[key];
       if (!action || Number(action.startAt || 0) > now || servicedUIDs.has(Number(hero.uid))) continue;
-      const fired = action.kind === 'skill' ? fireSkill(hero, action.skillId) : fireBasic(hero.uid, focusTarget);
+      const fired = action.kind === 'skill' ? fireSkill(hero, action.skillId) : fireBasic(hero.uid);
       if (fired) servicedUIDs.add(Number(hero.uid));
       else if (action.kind === 'skill') (clocks[key].skillReadyAt ||= {})[action.skillId] = action.dueAt;
       else clocks[key].basicReadyAt = Math.min(Number(clocks[key].basicReadyAt || action.dueAt), Number(action.dueAt));
@@ -8148,6 +8185,7 @@ export function SpawnEnemy(ctx, enemyData, slotIndex = 0) {
     },
     faction: String(enemyData.faction || 'wishless'),
     enemyRole: String(enemyData.enemyRole || enemyData.role || 'fodder'),
+    combatTier: String(enemyData.combatTier || enemyData.routineTier || 'routine'),
     attackPattern: enemyData.attackPattern && typeof enemyData.attackPattern === 'object' ? { ...enemyData.attackPattern } : undefined,
     targetPreference: enemyData.targetPreference || enemyData.targetingPreference || enemyData.targetingPolicy || enemyData.targetPolicy || '',
     localeTags: normalizeLocaleTags(enemyData.localeTags || enemyData.locale || enemyData.biomes || enemyData.biome || 'all'),

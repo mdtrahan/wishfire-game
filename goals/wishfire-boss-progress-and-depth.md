@@ -1,6 +1,6 @@
 # Wishfire: boss progress and actor-owned HP bars
 
-Status: implementing; requested 2026-10-07. Bead: ORKA-7yv. Baseline checkpoint verified before work.
+Status: historical design record; requested 2026-10-07. Its four-wave, automatic-entry and retry details are superseded by the region progression contract in `governance/product/player-living-guide.md`.
 
 ## Goal
 

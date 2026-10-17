@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ORKA-7l9 Sustain Test Bed</title>
+  <style>
+    :root { color-scheme: light; font: 15px/1.45 system-ui, sans-serif; color: #1b2b3a; background: #f4f7fb; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { background: #fff; border-bottom: 1px solid #d4dfeb; padding: 17px 24px; }
+    h1 { font-size: 1.4rem; margin: 0 0 5px; }
+    h2 { font-size: 1.05rem; margin: 0 0 9px; }
+    p { margin: 5px 0; }
+    a { color: #145c99; }
+    .muted { color: #526779; }
+    .shell { max-width: 1480px; margin: auto; padding: 16px 20px 24px; }
+    .panel { background: #fff; border: 1px solid #d4dfeb; border-radius: 9px; padding: 14px 16px; margin-bottom: 12px; }
+    .controls { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 12px; }
+    label { display: grid; gap: 3px; font-size: .78rem; font-weight: 700; color: #456077; }
+    select, input, button { font: inherit; color: #1b2b3a; }
+    select, input[type=number], button { background: #fff; border: 1px solid #b8c9d9; border-radius: 7px; padding: 7px 8px; }
+    input[type=number] { width: 105px; }
+    button { cursor: pointer; }
+    button:hover { background: #eef6fd; }
+    button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid #236eaf; outline-offset: 2px; }
+    button.primary { background: #145d9a; color: #fff; border-color: #145d9a; }
+    .grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 12px; }
+    .readout { display: grid; grid-template-columns: repeat(5, minmax(100px, 1fr)); gap: 7px; }
+    .metric { border: 1px solid #d7e4ef; background: #eff5fb; border-radius: 7px; padding: 8px 10px; }
+    .metric strong { display: block; font: 700 1.05rem ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .metric span { color: #526779; font-size: .75rem; }
+    .badge { display: inline-block; font: 700 .8rem ui-monospace, monospace; border-radius: 5px; padding: 3px 7px; background: #eaf3fc; }
+    .badge.pass { color: #176746; background: #e8f6ed; }
+    .badge.fail { color: #a52e36; background: #fff1f1; }
+    .badge.unknown { color: #705e2d; background: #fff7df; }
+    .table-wrap { overflow-x: auto; max-height: 400px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    th, td { text-align: left; border-bottom: 1px solid #e2eaf1; padding: 6px 7px; vertical-align: top; }
+    th { position: sticky; top: 0; background: #f4f7fb; }
+    tbody tr { cursor: pointer; }
+    tbody tr:hover, tbody tr.selected { background: #eef6fd; }
+    #stream { height: min(58vh, 650px); min-height: 300px; overflow-y: auto; border: 1px solid #c6d7e6; border-radius: 7px; background: #fbfdff; padding: 6px 0; font: .81rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .line { padding: 2px 10px; white-space: pre-wrap; overflow-wrap: anywhere; border-bottom: 1px solid #edf1f5; }
+    .line.hit, .line.model_ko { color: #a52e36; }
+    .line.regen, .line.drain { color: #176746; }
+    .line.evade { color: #175f9b; }
+    .line.enemy_ko { color: #536578; }
+    .activity { color: #176c53; font: 700 .8rem ui-monospace, monospace; }
+    .legend { color: #526779; font-size: .78rem; margin-top: 9px; }
+    .transport { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .readout { grid-template-columns: repeat(2, minmax(100px, 1fr)); } }
+    @media (max-width: 640px) { .shell { padding: 12px; } header { padding: 14px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Sustain test bed</h1>
+    <p>Play one Hero's fixed Wishfire attack trace through <strong>MODEL</strong> sustain. S19–S25 test a hypothetical whole-HP post-hit shield plus HP regen. They do not test Wishfire DEF or full-party farming.</p>
+    <p class="muted"><a href="./">Observed run viewer</a> · <a href="../SUSTAIN-RUNBOOK.md">Agent runbook</a> · <a href="../sustain-runs/tracker.md">Saved case tracker</a></p>
+  </header>
+  <main class="shell">
+    <section class="panel">
+      <div class="controls">
+        <label>Tracked case<select id="case"></select></label>
+        <label>Hypothetical post-hit shield %<input id="mitigation" type="number" min="0" max="100" step="1"></label>
+        <label>Hypothetical evasion %<input id="evasion" type="number" min="0" max="100" step="1"></label>
+        <label>Hypothetical HP drain / strike<input id="drain" type="number" min="0" step="0.1"></label>
+        <label>Assumed strike interval (s)<input id="interval" type="number" min="0.1" step="0.1"></label>
+        <label>Regen HP / s<input id="regen" type="number" min="0" step="0.01"></label>
+        <label>Incoming pressure ×<input id="pressure" type="number" min="0.1" max="100" step="0.1"></label>
+        <button id="run" class="primary" type="button">Run settings</button>
+      </div>
+      <p id="rule" class="muted">Loading fixed cases…</p>
+    </section>
+    <section class="panel">
+      <div class="readout">
+        <div class="metric"><strong id="hp">—</strong><span>Model HP</span></div>
+        <div class="metric"><strong id="minimum">—</strong><span>Minimum HP</span></div>
+        <div class="metric"><strong id="hits">0</strong><span>Incoming hits processed</span></div>
+        <div class="metric"><strong id="healing">0</strong><span>Regen + drain HP</span></div>
+        <div class="metric"><strong id="result">—</strong><span>Case rule</span></div>
+      </div>
+      <p id="source" class="muted"></p>
+      <div class="transport"><button id="play" class="primary" type="button">Play</button><button id="step" type="button">Step event</button><button id="restart" type="button">Restart</button><label>Speed<select id="speed"><option value="1">1×</option><option value="8">8×</option><option value="20">20×</option><option value="60" selected>60×</option><option value="200">200×</option></select></label><span id="clock" class="activity">00:00.000</span></div>
+    </section>
+    <div class="grid">
+      <section class="panel">
+        <h2>Case tracker</h2>
+        <div class="table-wrap"><table><thead><tr><th>Case</th><th>Mechanism</th><th>Rule</th><th>Model result</th><th>Min HP</th><th>KO</th></tr></thead><tbody id="cases"></tbody></table></div>
+      </section>
+      <section class="panel">
+        <h2>Reading the result</h2>
+        <p id="interpretation">Select a case.</p>
+        <p class="legend">OBS incoming hits and enemy KOs come from a saved unchanged-game trace. MODEL holds that attack schedule fixed, so changed HP could alter targeting, skills, and timing in live play. Damage stays in whole HP. The shield is applied after observed damage; Wishfire DEF acts before the tier cap, so these cases cannot estimate DEF points. Evasion and drain are diagnostic hypotheticals; pressure × is synthetic. A single-Hero PASS never certifies full-party farming.</p>
+      </section>
+    </div>
+    <section class="panel">
+      <div class="transport"><h2 style="margin:0">Live event stream</h2><span id="activity" class="activity">LOADING</span></div>
+      <div id="stream" role="log" aria-live="off" aria-label="Trace-locked sustain model events"><div class="line">Loading saved evidence…</div></div>
+      <p class="legend">Any Hero KO in ordinary farming is an immediate FAIL. Case PASS means its declared MODEL rule passed on this fixed trace. Edited settings are exploratory until added to the case tracker. Model outcomes do not certify Wishfire balance or StoneAge parity.</p>
+    </section>
+  </main>
+  <script type="module" src="sustain.js"></script>
+</body>
+</html>

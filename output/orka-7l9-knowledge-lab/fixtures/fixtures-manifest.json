@@ -1,0 +1,12 @@
+{
+  "levelPresetControl": {
+    "reproduced": "level5-manual-ready-heroes.json",
+    "sha256": "5b1f89f95bd362342242b476a39834f8815571ead82c07f986733e2eec1723f3"
+  },
+  "level2-manual-ready-heroes.json": "9a49bf7e5f9947855020ec816c392234576bfc57dc48931117ebd4bf6268b5e0",
+  "level3-manual-ready-heroes.json": "d0645cf8fb826770f94d200a270dd2c7f8a0e4fa8550d5a005cca903d1f45868",
+  "level4-manual-ready-heroes.json": "8ca75e80c2739a055db6e803f2322a000a4d84d2d758085105036dda90616491",
+  "gear-base-lamp.json": "435c3fc8824cc13553cff9083085b968865d993d895dff43ce703d25e425aedf",
+  "gear-def10-lamp.json": "7b86c7a7825f87d9e5bd13fce0757b67e804bc64e950ba3ec5d412f2754e25f7",
+  "gear-hp30-lamp.json": "5ad4a033e913804ece48633a4c55ded0f4e70ba8c2b37dc900e73ed372003177"
+}
