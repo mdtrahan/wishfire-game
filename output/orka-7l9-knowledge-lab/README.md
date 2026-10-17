@@ -18,7 +18,10 @@ A passing parser or shadow model is not proof of good combat design. The design 
 
 - `claims/orka-7l9-combat-claims.json` — expectations, scenario inputs, fixture SHA-256 values and result rules. It was committed before the prospective runs; the evaluator rejects prospective evidence that started before that commit or a claim file edited after it.
 - `fixtures/` — synthetic level-2–4 sweep saves (the game's own developer level preset, checked against the tracked level-5 fixture byte for byte first) and matched gear lamps (base, +10 DEF, +30 HP on three bodies), validated by the game's conveyor validator. `fixtures-manifest.json` pins their hashes.
-- `sample/` — durable evaluator output: `manifest.json`, `claims.json`, `observed.ndjson`, `model.ndjson`, `timeline.md`, `verdict.md`, `verdict.json`.
+- `sample/` — durable evaluator output: `manifest.json`, `claims.json`, `observed.ndjson.gz`, `model.ndjson.gz`, `timeline.md`, `verdict.md`, `verdict.json`.
+- [`sample/index.html`](sample/index.html) — light-theme combat run viewer. It plays the complete recorded OBS stream for any scenario and seed at selectable speed, updates Hero HP and progression as events arrive, and can show aligned MODEL checks. Play, pause, step, seek, and jump to the next key event are available. [`sample/report.html`](sample/report.html) retains the claim tables and filtered text view.
+
+From the repository root, run `python3 -m http.server 8765 --bind 127.0.0.1`, then open `http://localhost:8765/output/orka-7l9-knowledge-lab/sample/` in the Codex in-app browser. This is playback of saved unchanged-game evidence, not a new simulation or a live harness run. The viewer labels poll-time events, missing raw/cap values, and unknown boss HP between samples.
 
 Tool code: [`tools/combat_knowledge_lab.mjs`](../../tools/combat_knowledge_lab.mjs) and [`tools/combat_lab/`](../../tools/combat_lab/). Focused proof: `node --test tests/combatKnowledgeLabContract.test.mjs`.
 
