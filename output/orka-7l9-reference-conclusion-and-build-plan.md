@@ -4,6 +4,7 @@
 
 For a feature-by-feature handoff with source and proof paths, read [the gap analysis](orka-7l9-feature-gap-analysis.md). The [external-review disposition](orka-7l9-claude-review-disposition.md) checks the proposed plan against the cap, heal, boss fixtures and harness limits.
 The [independent knowledge lab plan](orka-7l9-knowledge-simulation-plan.md) defines how to test these claims with unchanged-game logs and a separate shadow model.
+Its first [result review](orka-7l9-knowledge-lab-review.md) records a Stage 1-1 survival pass, an HP-100 cap cliff, an earned first-boss win without prior failure, failed post-recovery endurance, and candidate silent sessions. The overall design remains unproven.
 
 ## What the game showed
 
