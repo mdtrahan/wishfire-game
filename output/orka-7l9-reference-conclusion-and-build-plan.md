@@ -3,6 +3,7 @@
 2026-10-17 UTC (2026-10-16 PDT). The owner ended the WORLD360 reference playthrough after Lucy's unlock. This document records the combat decision from direct observations and a plan for later Wishfire work. No further StoneAge milestone, including Chapter 4-2, is required for this decision. The current Wishfire candidate remains unmerged and is not Integration Ready.
 
 For a feature-by-feature handoff with source and proof paths, read [the gap analysis](orka-7l9-feature-gap-analysis.md). The [external-review disposition](orka-7l9-claude-review-disposition.md) checks the proposed plan against the cap, heal, boss fixtures and harness limits.
+The [independent knowledge lab plan](orka-7l9-knowledge-simulation-plan.md) defines how to test these claims with unchanged-game logs and a separate shadow model.
 
 ## What the game showed
 
