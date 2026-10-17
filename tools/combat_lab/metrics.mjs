@@ -93,6 +93,11 @@ export function sessionFacts(session, { statePollMs = 40 } = {}) {
     }
   }
   const transitions = records.filter(record => record.kind === 'RECOVERY_TRANSITION');
+  // Longest simulated interval without any runtime combat event or ordinary clear, through session end.
+  const marks = records.filter(record => record.timeSource === 'event' || record.kind === 'WAVE_CLEAR').map(record => record.t).filter(Number.isFinite).sort((a, b) => a - b);
+  const endT = session.end?.t ?? (marks.at(-1) ?? 0);
+  let longestSilence = { seconds: 0, from: 0, to: 0 };
+  [0, ...marks, endT].reduce((previous, current) => { if (current - previous > longestSilence.seconds) longestSilence = { seconds: Number((current - previous).toFixed(3)), from: previous, to: current }; return current; });
   return {
     session: session.session,
     seed: session.seed,
@@ -111,6 +116,7 @@ export function sessionFacts(session, { statePollMs = 40 } = {}) {
     bossEnds,
     equipmentActions,
     hits,
+    longestSilence,
     heroes: [...heroes.values()],
     issues: session.issues,
   };

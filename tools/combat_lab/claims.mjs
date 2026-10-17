@@ -99,11 +99,12 @@ function starterRow(facts, rule) {
   if (facts.gapCount > 0) { verdict = 'FAIL'; reasons.push(`${facts.gapCount} missing event id(s)`); }
   if (facts.deadlockCount > 0) { verdict = 'FAIL'; reasons.push('deadlock'); }
   if (facts.ambiguousClears.length) { verdict = verdict === 'FAIL' ? 'FAIL' : 'INCONCLUSIVE'; reasons.push(`${facts.ambiguousClears.length} ambiguous wave transition(s)`); }
+  if (facts.longestSilence.seconds >= 300) reasons.push(`candidate softlock: no combat event or clear for ${facts.longestSilence.seconds}s from t=${facts.longestSilence.from}`);
   if (streak.clears < rule.consecutiveClears) {
     if (verdict !== 'FAIL') verdict = facts.endReason === 'timeout' || facts.endReason == null ? 'INCONCLUSIVE' : 'FAIL';
     reasons.push(`${streak.clears} consecutive clears < ${rule.consecutiveClears} (end ${facts.endReason})`);
   }
-  return { verdict, clears: streak.clears, stagesCleared: stagesCleared(facts), heroKOs: facts.heroKOs.length, gaps: facts.gapCount, deadlocks: facts.deadlockCount, endReason: facts.endReason, reasons };
+  return { verdict, clears: streak.clears, longestSilence: facts.longestSilence, stagesCleared: stagesCleared(facts), heroKOs: facts.heroKOs.length, gaps: facts.gapCount, deadlocks: facts.deadlockCount, endReason: facts.endReason, reasons };
 }
 
 // Stages whose ordinary waves were cleared; a 20-wave pass may loop one ready stage.
@@ -349,7 +350,8 @@ const evaluators = {
         if (facts.deadlockCount) { verdict = 'FAIL'; reasons.push('deadlock'); }
         if (later.ambiguous) { verdict = verdict === 'FAIL' ? 'FAIL' : 'INCONCLUSIVE'; reasons.push(`${later.ambiguous} ambiguous transition(s)`); }
         if (later.clears < rule.consecutiveClears && verdict !== 'FAIL') { verdict = facts.endReason === 'timeout' ? 'INCONCLUSIVE' : 'FAIL'; reasons.push(`${later.clears} post-recovery clears < ${rule.consecutiveClears} (end ${facts.endReason})`); }
-        return { verdict, initialKO: firstKO, recoveryT: recovery.t, stagesCleared: stagesCleared(facts), laterKOs: laterKOs.map(ko => `${ko.name} t=${ko.t} ${ko.stage} W${ko.wave}`), restored: recovery.heroes, sameStageWave: sameStage, postRecoveryClears: later.clears, additionalKOs: laterKOs.length, bossAttempts: facts.bossEnds.map(end => end.kind), endReason: facts.endReason, reasons };
+        if (facts.longestSilence.seconds >= 300) reasons.push(`candidate softlock: no combat event or clear for ${facts.longestSilence.seconds}s from t=${facts.longestSilence.from} (harness deadlock detector did not fire)`);
+        return { verdict, longestSilence: facts.longestSilence, initialKO: firstKO, recoveryT: recovery.t, stagesCleared: stagesCleared(facts), laterKOs: laterKOs.map(ko => `${ko.name} t=${ko.t} ${ko.stage} W${ko.wave}`), restored: recovery.heroes, sameStageWave: sameStage, postRecoveryClears: later.clears, additionalKOs: laterKOs.length, bossAttempts: facts.bossEnds.map(end => end.kind), endReason: facts.endReason, reasons };
       }) : [];
       return { scenario: loaded.scenario.id, timing: loaded.scenario.timing, ...scenarioVerdict(loaded, perSeed), perSeed, evidence: evidenceLink(loaded), model: modelSummary(loaded) };
     });

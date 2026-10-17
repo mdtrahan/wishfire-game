@@ -280,3 +280,12 @@ test('boss surrender is not a combat outcome and max-HP growth lowers the event-
   assert.equal(harness.bossLampPause({ bossAvailable: true, bossSummonRequired: true }), false);
   assert.equal(harness.bossLampPause({ bossTransitionEndsAtMs: Date.now() + 5000 }), true);
 });
+
+test('long combat silence is measured and flagged without changing the predeclared verdict rule', () => {
+  const records = cleanRun().filter(record => !(record.record === 'wave_clear' && record.completedOrdinaryWaves === 2)).map(record => (record.record === 'session_end' ? { ...record, pollTime: 900, endReason: 'timeout' } : record));
+  const facts = sessionFacts(loadObservedLog(writeLog('silence', records), 'x').sessions[0]);
+  assert.equal(facts.longestSilence.seconds, 880);
+  const result = evaluateClaims(claimsDoc({}, writeLog('silence2', records)), { repo: REPO, declaration: COMMITTED }).results[0];
+  assert.equal(result.verdict, 'INCONCLUSIVE');
+  assert.match(result.rows[0].perSeed[0].reasons.join(' '), /candidate softlock/);
+});
