@@ -361,6 +361,25 @@ async function readBalanceSnapshot(page, afterEventId = 0) {
   }, afterEventId);
 }
 
+async function readStallDiagnostic(page) {
+  return page.evaluate(() => {
+    const game = window.__codexGame;
+    const globals = game.globals;
+    const actor = ({ uid, kind, hp, maxHP, footX, footY, x, y, streamState, arenaInReach, arenaTargetUID, attackType, combatRank, enemyRole, role, stats }) =>
+      ({ uid, kind, hp, maxHP, footX: footX ?? x, footY: footY ?? y, streamState, arenaInReach, arenaTargetUID, attackType, combatRank, enemyRole, role, stats });
+    return {
+      time: Number(globals.time || 0),
+      focusUID: Number(globals.RealtimeHeroFocusTargetUID || 0),
+      lastRawDamage: Number(globals.LastCalculateDamageRaw || 0),
+      lastHitShadow: globals.LastSingleHitDamageShadow || null,
+      actors: game.state.entities.filter(value => (value?.kind === 'hero' || value?.kind === 'enemy') && Number(value.hp || 0) > 0).map(actor),
+      clocks: globals.RealtimeHeroBasicClocks || {},
+      scheduled: globals.RealtimeHeroBasicScheduledActions || {},
+      pendingHeroHits: (globals.PendingHeroHits || []).map(hit => ({ targetUID: hit.targetUID, sourceUID: hit.sourceUID, at: hit.at, realtimeBasic: hit.realtimeBasic })),
+    };
+  });
+}
+
 function progressSignature(snapshot) {
   return JSON.stringify({
     layout: snapshot.layout,
@@ -602,6 +621,8 @@ async function runSession(page, config, sessionId) {
   let missingCombatEvents = 0;
   const knownEnemyBySlot = new Map(snapshot.enemies.filter((enemy) => enemy.hp > 0).map((enemy) => [enemy.slot, enemy.uid]));
   let firstKo = null;
+  let lastEnemyKoAt = snapshot.time;
+  let stallDiagnosticEmitted = false;
   const startOrdinaryWaveClears = Number(snapshot.continuousProgression?.ordinaryWaveClears || 0);
   const exactWaveCounterAvailable = snapshot.continuousProgression?.ordinaryWaveClears != null;
   let previousProgression = snapshot.continuousProgression;
@@ -850,6 +871,7 @@ async function runSession(page, config, sessionId) {
       }
       lastCombatEventId = event.id;
       if (event.type === 'enemy_ko') {
+        lastEnemyKoAt = event.time;
         if (!firstKo) firstKo = { side: 'enemy', uid: event.targetUID, time: Number(Math.max(0, event.time - startSimulationTime).toFixed(3)) };
         defeatedEnemyUIDs.add(event.targetUID);
         for (const attempt of recoveryAttempts) if (attempt.recoveryEventId != null && event.id > attempt.recoveryEventId && attempt.firstEnemyKoAfterRecovery.status === 'unknown_future_event') {
@@ -895,6 +917,13 @@ async function runSession(page, config, sessionId) {
           if (!heroCasualties.has(event.targetUID)) heroCasualties.set(event.targetUID, tracked.name);
         }
       }
+    }
+
+    if (!stallDiagnosticEmitted && !snapshot.continuousProgression?.bossActive
+      && snapshot.enemies.some(enemy => enemy.hp > 0)
+      && snapshot.time - lastEnemyKoAt >= 300) {
+      logRecord({ record: 'stall_diagnostic', pollTime: relTime(snapshot.time), sinceEnemyKo: Number((snapshot.time - lastEnemyKoAt).toFixed(3)), diagnostic: await readStallDiagnostic(page) });
+      stallDiagnosticEmitted = true;
     }
 
     if (config.maxBossTimeouts > 0 && Number(snapshot.continuousProgression?.bossTimeouts || 0) - startBossTimeouts >= config.maxBossTimeouts) {

@@ -39,14 +39,15 @@ test('continuous hero basics keep one focus until death, then follow encounter o
   assert.equal(choose(13), null);
 });
 
-test('runtime stores shared focus only when a moving hero can reach it', () => {
+test('runtime keeps shared focus while each Hero can use a reachable fallback', () => {
   const source = readFileSync(new URL('../web-runner/modules/functionBank.js', import.meta.url), 'utf8');
   const basics = source.slice(source.indexOf('export function TickRealtimeHeroBasics('), source.indexOf('function HeroAttackSplit('));
   assert.match(basics, /focusUID: Number\(g\.RealtimeHeroFocusTargetUID \|\| 0\)/);
   assert.match(basics, /inRange: enemy => heroes\.some\(hero => isHeroBasicTargetInRange\(enemy, hero\)\)/);
   assert.match(basics, /g\.RealtimeHeroFocusTargetUID = Number\(focusTarget\?\.uid \|\| 0\)/);
   assert.match(basics, /scheduleRealtimeActions\(\{ actors, clocks, now, frameSeconds: 1 \/ 60 \}\)/);
-  assert.match(basics, /fireBasic\(hero\.uid, focusTarget\)/);
+  assert.match(basics, /inRange: enemy => isHeroBasicTargetInRange\(enemy, hero\)/);
+  assert.match(basics, /fireBasic\(hero\.uid\)/);
   assert.match(source, /if \(realtimeBasic && !isHeroBasicTargetInRange\(target, actor\)\) return;/);
   assert.doesNotMatch(basics, /randomPick/);
   const enemies = [{ uid: 11, hp: 10 }, { uid: 12, hp: 10 }];
@@ -60,7 +61,7 @@ test('realtime basics launch visible travel immediately and redraw before a redi
   }
   const runtime = readFileSync(new URL('../web-runner/modules/functionBank.js', import.meta.url), 'utf8');
   const basics = runtime.slice(runtime.indexOf('export function TickRealtimeHeroBasics('), runtime.indexOf('function HeroAttackSplit('));
-  assert.match(basics, /hit\.targetUID = focusTarget\.uid;\s*hit\.at = Number\(g\.time \|\| 0\) \+ 0\.52;/);
+  assert.match(basics, /hit\.targetUID = replacement\.uid;\s*hit\.at = Number\(g\.time \|\| 0\) \+ 0\.52;/);
   assert.match(basics, /if \(hit\.effectType \|\| hit\.actionName \|\| hit\.generatedBySkillId \|\| hit\.attackVfxKind === 'split'\) continue;/);
   const simulationTick = readFileSync(new URL('../web-runner/systems/combatSimulationTick.mjs', import.meta.url), 'utf8');
   assert.match(simulationTick, /const sourceEntity = callFunctionWithContext\(fnContext, 'GetActorByUID', hit\.heroUID \|\| hit\.sourceUID\)/);

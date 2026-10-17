@@ -7241,11 +7241,17 @@ export function TickRealtimeHeroBasics(ctx) {
   const enemies = filterContinuousEncounterEnemies(getEnemies(ctx), g, heroes);
   const focusTarget = resolveHeroAttackTarget({ enemies, focusUID: Number(g.RealtimeHeroFocusTargetUID || 0), inRange: enemy => heroes.some(hero => isHeroBasicTargetInRange(enemy, hero)) });
   g.RealtimeHeroFocusTargetUID = Number(focusTarget?.uid || 0);
+  const basicTargetForHero = hero => resolveHeroAttackTarget({
+    enemies, focusUID: Number(focusTarget?.uid || 0),
+    inRange: enemy => isHeroBasicTargetInRange(enemy, hero),
+  });
   for (const hit of g.PendingHeroHits || []) {
-    if (!hit?.realtimeBasic || !hit.retargetOnDeath || !focusTarget) continue;
+    if (!hit?.realtimeBasic || !hit.retargetOnDeath) continue;
     const target = GetActorByUID(ctx, hit.targetUID);
     if (!target || Number(target.hp || 0) <= 0) {
-      hit.targetUID = focusTarget.uid;
+      const replacement = basicTargetForHero(GetActorByUID(ctx, hit.heroUID));
+      if (!replacement) continue;
+      hit.targetUID = replacement.uid;
       hit.at = Number(g.time || 0) + 0.52;
     }
   }
@@ -7300,8 +7306,9 @@ export function TickRealtimeHeroBasics(ctx) {
       push: pushContinuousCombatEnemy, reverse: reverseContinuousCombatEnemy, teleport: teleportContinuousCombatEnemy,
     }) : false;
   };
-  const fireBasic = (heroUID, target) => {
+  const fireBasic = heroUID => {
     const hero = GetActorByUID(ctx, heroUID);
+    const target = basicTargetForHero(hero);
     if (!hero || !target || Number(target.hp || 0) <= 0 || !isHeroBasicTargetInRange(target, hero)) return false;
     const before = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits.length : 0;
     HeroAttackSingle(ctx, heroUID, target.uid, true);
@@ -7326,7 +7333,7 @@ export function TickRealtimeHeroBasics(ctx) {
       continue;
     }
     if (Number(action.startAt || 0) > now) continue;
-    const fired = action.kind === 'skill' ? fireSkill(hero, action.skillId) : fireBasic(hero.uid, focusTarget);
+    const fired = action.kind === 'skill' ? fireSkill(hero, action.skillId) : fireBasic(hero.uid);
     if (fired) servicedUIDs.add(Number(hero.uid));
     else if (action.kind === 'skill') (clocks[key].skillReadyAt ||= {})[action.skillId] = action.dueAt;
     else clocks[key].basicReadyAt = Math.min(Number(clocks[key].basicReadyAt || action.dueAt), Number(action.dueAt));
@@ -7339,7 +7346,7 @@ export function TickRealtimeHeroBasics(ctx) {
       basicIntervalSeconds: realtimeBasicInterval(g, hero, realtimeCooldownSeconds(hero)),
       basicCastSeconds: 0,
       projectileFlightSeconds: 0.52,
-      basicEligible: !scheduled[String(hero.uid)] && !servicedUIDs.has(Number(hero.uid)) && isHeroBasicTargetInRange(focusTarget, hero),
+      basicEligible: !scheduled[String(hero.uid)] && !servicedUIDs.has(Number(hero.uid)) && !!basicTargetForHero(hero),
       skills: (heroDefinition(hero)?.actives || []).filter(skill => skill.trigger === 'poll' && heroSkillUnlocked(hero, skill)).map(skill => ({
         id: skill.skillId, cooldownSeconds: skill.cooldownSeconds,
         eligible: !scheduled[String(hero.uid)] && !servicedUIDs.has(Number(hero.uid)) && !!skillSelection(hero, skill),
@@ -7354,7 +7361,7 @@ export function TickRealtimeHeroBasics(ctx) {
       const key = String(hero.uid);
       const action = scheduled[key];
       if (!action || Number(action.startAt || 0) > now || servicedUIDs.has(Number(hero.uid))) continue;
-      const fired = action.kind === 'skill' ? fireSkill(hero, action.skillId) : fireBasic(hero.uid, focusTarget);
+      const fired = action.kind === 'skill' ? fireSkill(hero, action.skillId) : fireBasic(hero.uid);
       if (fired) servicedUIDs.add(Number(hero.uid));
       else if (action.kind === 'skill') (clocks[key].skillReadyAt ||= {})[action.skillId] = action.dueAt;
       else clocks[key].basicReadyAt = Math.min(Number(clocks[key].basicReadyAt || action.dueAt), Number(action.dueAt));
