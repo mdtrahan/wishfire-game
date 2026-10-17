@@ -40,7 +40,31 @@ const DEFAULTS = Object.freeze({
   closeAttachedBrowser: false,
   autoEquip: false,
   captureFrames: false,
+  eventLog: '',
+  bossPolicy: 'auto',
 });
+const BOSS_POLICIES = Object.freeze(['auto', 'hold', 'summon']);
+const FARM_BOSS_POLICY = /^farm:([1-9]\d{0,2})$/;
+
+// Optional ordered observation log. Records copy runtime values read by the harness; poll-derived
+// records carry the poll time because the runtime does not timestamp those transitions itself.
+function createEventLog(file, header) {
+  if (!file) return null;
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, `${JSON.stringify({ record: 'run_start', ...header })}\n`, 'utf8');
+  return { file, append(records) { if (records.length) fs.appendFileSync(file, records.map(record => `${JSON.stringify(record)}\n`).join(''), 'utf8'); } };
+}
+
+// farm:N summons a ready boss only after N ordinary clears since the session start, last boss attempt or last recovery.
+function shouldSummonReadyBoss(config, ordinaryClearsSinceBossOrRecovery = Infinity) {
+  const farm = FARM_BOSS_POLICY.exec(String(config.bossPolicy || ''));
+  if (farm) return ordinaryClearsSinceBossOrRecovery >= Number(farm[1]);
+  return config.bossPolicy === 'summon' || (config.bossPolicy === 'auto' && config.maxBossClears > 0);
+}
+
+function heroLogState(hero) {
+  return { uid: hero.uid, instanceKey: hero.instanceKey, name: hero.name, level: hero.currentLevel, hp: hero.hp, maxHp: hero.maxHp, stats: hero.stats, combatPower: hero.combatPower };
+}
 
 function parseArgs(argv) {
   const out = {};
@@ -315,7 +339,7 @@ async function readBalanceSnapshot(page, afterEventId = 0) {
           attackType: String(actor?.attackType || hero.attackType || ''),
           stats: { ...(actor?.stats || hero.stats || {}) }, recoveryRevealActive: !!hero.recoveryRevealActive };
       }),
-      enemies: state.enemies.map((enemy) => ({ uid: Number(enemy.uid || 0), name: String(enemy.name || ''), slot: Number(enemy.slot || 0), x: Number(enemy.x || 0), y: Number(enemy.y || 0), streamState: String(enemy.streamState || ''), streamEngageX: Number(enemy.streamEngageX || 0), arenaTargetUID: Number(actors.get(Number(enemy.uid || 0))?.arenaTargetUID || 0), arenaInReach: !!actors.get(Number(enemy.uid || 0))?.arenaInReach, hp: Number(enemy.hp || 0), maxHp: Number(enemy.maxHp || 0) })),
+      enemies: state.enemies.map((enemy) => ({ uid: Number(enemy.uid || 0), name: String(enemy.name || ''), combatTier: String(actors.get(Number(enemy.uid || 0))?.combatTier || actors.get(Number(enemy.uid || 0))?.routineTier || ''), enemyDataTier: (() => { const row = (globals.EnemyData || []).find(candidate => String(candidate?.name || '') === String(enemy.name || '')); return row ? String(row.combatTier || row.routineTier || '') : null; })(), slot: Number(enemy.slot || 0), x: Number(enemy.x || 0), y: Number(enemy.y || 0), streamState: String(enemy.streamState || ''), streamEngageX: Number(enemy.streamEngageX || 0), arenaTargetUID: Number(actors.get(Number(enemy.uid || 0))?.arenaTargetUID || 0), arenaInReach: !!actors.get(Number(enemy.uid || 0))?.arenaInReach, hp: Number(enemy.hp || 0), maxHp: Number(enemy.maxHp || 0) })),
       damageEvents: (state.damageEvents || []).map((event) => ({ id: Number(event.id || 0), targetUID: Number(event.targetUID || 0), sourceUID: Number(event.sourceUID || 0), hpBefore: Number(event.hpBefore || 0), hpAfter: Number(event.hpAfter || 0), amount: Number(event.amount || 0) })),
       combatEventSeq: Number(globals.BalanceCombatEventSeq || 0),
       initialRoam: globals.ContinuousCombatInitialRoam ? { ...globals.ContinuousCombatInitialRoam } : null,
@@ -535,6 +559,23 @@ async function runSession(page, config, sessionId) {
     }
   }
   const startSimulationTime = snapshot.time;
+  const relTime = time => Number(Math.max(0, Number(time || 0) - startSimulationTime).toFixed(3));
+  const pendingLog = [];
+  const logRecord = config.eventLogHandle ? record => pendingLog.push({ session: sessionId, seed, ...record }) : () => {};
+  const flushLog = () => { if (config.eventLogHandle) config.eventLogHandle.append(pendingLog.splice(0)); };
+  const actorRegistry = new Map();
+  const loggedHeroState = new Map();
+  const registerActors = (current) => {
+    for (const hero of current.heroes) actorRegistry.set(hero.uid, { kind: 'hero', name: hero.name, instanceKey: hero.instanceKey });
+    for (const enemy of current.enemies) if (!actorRegistry.has(enemy.uid) || !actorRegistry.get(enemy.uid).combatTier) {
+      actorRegistry.set(enemy.uid, { kind: 'enemy', name: enemy.name, combatTier: enemy.combatTier || null, enemyDataTier: enemy.enemyDataTier });
+    }
+  };
+  const progressionLogView = progression => progression ? { region: progression.region ?? null, stage: progression.stage ?? null, wave: progression.wave ?? null, bossActive: !!progression.bossActive, bossAvailable: !!progression.bossAvailable, bossSummonRequired: !!progression.bossSummonRequired, ordinaryWaveClears: progression.ordinaryWaveClears ?? null, defeatRecoveries: progression.defeatRecoveries ?? null, clearedBosses: progression.clearedBosses ?? null, bossTimeouts: progression.bossTimeouts ?? null, stageTransitions: progression.stageTransitions ?? null } : null;
+  let lastLoggedProgression = '';
+  registerActors(snapshot);
+  logRecord({ record: 'session_start', simTime: snapshot.time, pollTime: 0, wallTime: new Date().toISOString(), heroSlots: combatState.heroScreen?.activePartySlots || null, heroes: snapshot.heroes.map(heroLogState), loadouts: snapshot.loadouts, progression: progressionLogView(snapshot.continuousProgression), lampFixtureSha256: lampFixture?.sha256 || null, heroFixtureSha256: heroFixture?.sha256 || null, autoEquip: config.autoEquip, bossPolicy: config.bossPolicy, maxWaves: config.maxWaves, maxBossClears: config.maxBossClears, maxBossTimeouts: config.maxBossTimeouts, startCombatEventId: snapshot.combatEventSeq });
+  for (const hero of snapshot.heroes) { const { hp, ...stable } = heroLogState(hero); loggedHeroState.set(hero.uid, JSON.stringify(stable)); }
   const heroMetrics = snapshot.heroes.map((hero) => ({ uid: hero.uid, instanceKey: hero.instanceKey, name: hero.name, currentLevel: hero.currentLevel, endLevel: hero.currentLevel, startEXP: hero.currentEXP, endEXP: hero.currentEXP, combatPower: hero.combatPower, endCombatPower: hero.combatPower, attackType: hero.attackType, stats: hero.stats, startHp: hero.hp, minSampledHp: hero.hp, minEventHp: hero.hp, endHp: hero.hp, sampledHpLoss: 0, largestSampleWindowHpLoss: 0, sampledRecovery: 0, physicalIncomingDamage: 0, magicIncomingDamage: 0, unknownIncomingDamage: 0, effectiveHealing: 0, healingBySourceUID: {}, healingByReason: {}, firstKoTime: null, lastHp: hero.hp, startMaxHp: hero.maxHp, maxHp: hero.maxHp }));
   const defeatedEnemyUIDs = new Set();
   const heroCasualties = new Map();
@@ -576,6 +617,7 @@ async function runSession(page, config, sessionId) {
   let lastEquipmentReviewKey = '';
   let lastBossCheckAt = 0;
   let bossSummonClicks = 0;
+  let clearsAtLastBossOrRecovery = 0;
   let bossActiveTransitions = 0;
   let previousBossActive = !!snapshot.continuousProgression?.bossActive;
   let previousClearedBosses = Number(snapshot.continuousProgression?.clearedBosses || 0);
@@ -607,6 +649,15 @@ async function runSession(page, config, sessionId) {
       }
     }
     snapshot = await readBalanceSnapshot(page, lastCombatEventId);
+    registerActors(snapshot);
+    for (const hero of snapshot.heroes) {
+      const { hp, ...stable } = heroLogState(hero);
+      const key = JSON.stringify(stable);
+      if (loggedHeroState.get(hero.uid) !== key) {
+        if (loggedHeroState.has(hero.uid)) logRecord({ record: 'hero_state', pollTime: relTime(snapshot.time), ...heroLogState(hero) });
+        loggedHeroState.set(hero.uid, key);
+      }
+    }
     if (openingRoam.start && !openingRoam.release && !snapshot.initialRoam
       && snapshotAtStart?.defeatRecoveries != null && !snapshot.continuousProgression?.bossActive
       && Number(snapshot.continuousProgression?.defeatRecoveries || 0) === startDefeatRecoveries) {
@@ -630,9 +681,19 @@ async function runSession(page, config, sessionId) {
       completedOrdinaryWaves = observedWaveClears;
       ordinaryWaveClearDelta = clear;
     }
+    const progressionView = progressionLogView(snapshot.continuousProgression);
+    if (JSON.stringify(progressionView) !== lastLoggedProgression) {
+      if (lastLoggedProgression) logRecord({ record: 'progression', pollTime: relTime(snapshot.time), progression: progressionView });
+      lastLoggedProgression = JSON.stringify(progressionView);
+    }
+    if (ordinaryWaveClearDelta !== 0) {
+      // delta 1 is one exact clear; null or >1 means the poll cannot order the clear(s) against events.
+      logRecord({ record: ordinaryWaveClearDelta === 1 ? 'wave_clear' : 'wave_clear_ambiguous', pollTime: relTime(snapshot.time), delta: ordinaryWaveClearDelta, completedOrdinaryWaves, progression: progressionView, source: exactWaveCounterAvailable ? 'runtime_counter' : 'observed_stage_transition' });
+    }
     const recoveryAttemptsBeforePoll = recoveryAttempts.length;
     const recoveryTransition = observeRecoveryTransition(previousProgression, snapshot.continuousProgression);
     if (recoveryTransition) {
+      logRecord({ record: 'recovery_transition', pollTime: relTime(snapshot.time), transition: recoveryTransition.transition, counterDelta: recoveryTransition.counterDelta, before: recoveryTransition.before, after: recoveryTransition.after, heroes: snapshot.heroes.map(heroLogState) });
       recoveryTransition.sampledPartyState = {
         source: 'post_recovery_poll',
         observedAt: Number((snapshot.time - startSimulationTime).toFixed(3)),
@@ -641,6 +702,7 @@ async function runSession(page, config, sessionId) {
         heroes: snapshot.heroes.map(hero => ({ instanceKey: hero.instanceKey, name: hero.name, currentLevel: hero.currentLevel, hp: hero.hp, maxHp: hero.maxHp, stats: hero.stats, combatPower: hero.combatPower })),
       };
       recoveryAttempts.push(recoveryTransition);
+      clearsAtLastBossOrRecovery = completedOrdinaryWaves;
     }
     applyPostRecoveryWaveClear(recoveryAttempts, recoveryAttemptsBeforePoll, ordinaryWaveClearDelta, snapshot.continuousProgression);
     previousProgression = snapshot.continuousProgression;
@@ -650,6 +712,7 @@ async function runSession(page, config, sessionId) {
     const bossEnemy = snapshot.enemies.find(enemy => enemy.uid === Number(snapshot.continuousProgression?.bossUID || 0));
     if (bossActive && !activeBossAttempt) {
       activeBossAttempt = { startedAt: Number((snapshot.time - startSimulationTime).toFixed(3)), bossUID: bossEnemy?.uid || null, hpAtStart: bossEnemy?.hp ?? null, lowestHp: bossEnemy?.hp ?? null, hpAtEnd: null, endedAt: null, outcome: null, gameTimeLimitSec: Number(snapshot.continuousProgression?.bossTimeLimitSec || 0) || null };
+      logRecord({ record: 'boss_start', pollTime: relTime(snapshot.time), bossUID: bossEnemy?.uid || null, bossName: bossEnemy?.name || null, bossHp: bossEnemy?.hp ?? null, bossMaxHp: bossEnemy?.maxHp ?? null, gameTimeLimitSec: activeBossAttempt.gameTimeLimitSec, timerStartedAtRel: snapshot.continuousProgression?.bossTimerStartedAt == null ? null : relTime(snapshot.continuousProgression.bossTimerStartedAt), heroes: snapshot.heroes.map(heroLogState), loadouts: snapshot.loadouts, progression: progressionView });
     }
     if (bossActive && activeBossAttempt && bossEnemy) {
       activeBossAttempt.bossUID = bossEnemy.uid;
@@ -672,8 +735,10 @@ async function runSession(page, config, sessionId) {
       activeBossAttempt.outcome = Number(snapshot.continuousProgression?.clearedBosses || 0) > previousClearedBosses ? 'clear'
         : timedOut ? 'timeout'
         : Number(snapshot.continuousProgression?.defeatRecoveries || 0) > previousDefeatRecoveries ? 'ko_recovery' : 'other_exit';
+      logRecord({ record: 'boss_end', pollTime: relTime(snapshot.time), outcome: activeBossAttempt.outcome, startedAt: activeBossAttempt.startedAt, bossUID: activeBossAttempt.bossUID, lastSampledBossHp: timedOut && bossTimeout ? null : activeBossAttempt.hpAtEnd, timeoutBossHp: timedOut && bossTimeout ? bossTimeout.bossHp : null, bossMaxHp: activeBossAttempt.bossMaxHp ?? null, gameElapsedSec: activeBossAttempt.gameElapsedSec ?? null, gameTimeLimitSec: activeBossAttempt.gameTimeLimitSec, timeoutHeroes: timedOut && bossTimeout ? bossTimeout.heroes : null, heroes: snapshot.heroes.map(heroLogState) });
       bossAttemptRecords.push(activeBossAttempt);
       activeBossAttempt = null;
+      clearsAtLastBossOrRecovery = completedOrdinaryWaves;
     }
     previousBossActive = bossActive;
     previousClearedBosses = Number(snapshot.continuousProgression?.clearedBosses || 0);
@@ -694,9 +759,12 @@ async function runSession(page, config, sessionId) {
       lowestBossHp = lowestBossHp == null ? enemy.hp : Math.min(lowestBossHp, enemy.hp);
       highestBossHp = highestBossHp == null ? enemy.maxHp : Math.max(highestBossHp, enemy.maxHp);
     }
-    if (config.maxBossClears > 0 && snapshot.continuousProgression?.bossAvailable && snapshot.continuousProgression?.bossSummonRequired && Date.now() - lastBossCheckAt >= 1000) {
+    if (shouldSummonReadyBoss(config, completedOrdinaryWaves - clearsAtLastBossOrRecovery) && snapshot.continuousProgression?.bossAvailable && snapshot.continuousProgression?.bossSummonRequired && Date.now() - lastBossCheckAt >= 1000) {
       lastBossCheckAt = Date.now();
-      if (await summonReadyBoss(page)) { bossSummonClicks += 1; lastProgressAt = Date.now(); }
+      if (await summonReadyBoss(page)) {
+        bossSummonClicks += 1; lastProgressAt = Date.now();
+        logRecord({ record: 'boss_summon_click', pollTime: relTime(snapshot.time), policy: config.bossPolicy });
+      }
     }
     for (const enemy of snapshot.enemies) {
       const priorUID = knownEnemyBySlot.get(enemy.slot);
@@ -728,6 +796,12 @@ async function runSession(page, config, sessionId) {
     }
     for (const event of snapshot.combatEvents || []) {
       if (event.id <= lastCombatEventId) continue;
+      if (event.id > lastCombatEventId + 1) logRecord({ record: 'event_gap', pollTime: relTime(snapshot.time), afterId: lastCombatEventId, nextId: event.id, missing: event.id - lastCombatEventId - 1 });
+      {
+        const source = actorRegistry.get(event.sourceUID) || null, target = actorRegistry.get(event.targetUID) || null;
+        const targetHero = snapshot.heroes.find(hero => hero.uid === event.targetUID);
+        logRecord({ record: 'combat', id: event.id, simTime: event.time, time: relTime(event.time), pollTime: relTime(snapshot.time), type: event.type, reason: event.reason || null, sourceUID: event.sourceUID, sourceName: event.impactGeometry?.source?.name || source?.name || null, sourceKind: source?.kind || (event.sourceUID ? null : 'system'), sourceCombatTier: event.impactGeometry?.source?.combatTier || source?.combatTier || null, sourceEnemyDataTier: source?.enemyDataTier ?? null, targetUID: event.targetUID, targetName: target?.name || null, targetKind: target?.kind || null, damageType: event.damageType || null, amount: event.amount, hpBefore: event.hpBefore, hpAfter: event.hpAfter, targetMaxHpAtPoll: targetHero ? targetHero.maxHp : null, wave: event.wave, recoveryIndex: event.recoveryIndex || null, progressionAtPoll: progressionView });
+      }
       if (event.id > lastCombatEventId + 1) {
         missingCombatEvents += event.id - lastCombatEventId - 1;
         for (const attempt of recoveryAttempts) if (attempt.recoveryEventId != null && event.id > attempt.recoveryEventId && attempt.firstEnemyKoAfterRecovery.status === 'unknown_future_event') {
@@ -803,8 +877,10 @@ async function runSession(page, config, sessionId) {
     } else if (Date.now() - lastProgressAt >= config.deadlockTimeoutMs) {
       deadlockCount += 1;
       endReason = 'deadlock';
+      logRecord({ record: 'deadlock', pollTime: relTime(snapshot.time), deadlockTimeoutMs: config.deadlockTimeoutMs });
       break;
     }
+    flushLog();
   }
 
   if (Date.now() - startedAt >= config.sessionTimeoutMs && endReason === 'max_waves'
@@ -823,8 +899,11 @@ async function runSession(page, config, sessionId) {
   if (activeBossAttempt) {
     activeBossAttempt.endedAt = Number((snapshot.time - startSimulationTime).toFixed(3));
     activeBossAttempt.outcome = endReason === 'timeout' ? 'harness_timeout' : endReason;
+    logRecord({ record: 'boss_end', pollTime: relTime(snapshot.time), outcome: activeBossAttempt.outcome, startedAt: activeBossAttempt.startedAt, bossUID: activeBossAttempt.bossUID, lastSampledBossHp: activeBossAttempt.hpAtEnd, heroes: snapshot.heroes.map(heroLogState) });
     bossAttemptRecords.push(activeBossAttempt);
   }
+  logRecord({ record: 'session_end', pollTime: relTime(snapshot.time), wallTime: new Date().toISOString(), endReason, completedOrdinaryWaves, bossesCleared: completedBosses, bossTimeouts: Number(snapshot.continuousProgression?.bossTimeouts || 0) - startBossTimeouts, defeatRecoveries: snapshot.continuousProgression?.defeatRecoveries == null ? null : Number(snapshot.continuousProgression.defeatRecoveries) - startDefeatRecoveries, deadlockCount, missingCombatEvents, ambiguousWaveTransitions, lastCombatEventId, waveClearSource: exactWaveCounterAvailable ? 'runtime_counter' : 'observed_stage_transition', statePollMs: config.statePollMs, heroes: snapshot.heroes.map(heroLogState), progression: progressionLogView(snapshot.continuousProgression) });
+  flushLog();
   let savedLampFixture = null;
   if (config.saveLampFixture) {
     const save = await page.evaluate(() => localStorage.getItem('wishfire.equipment-economy.v5'));
@@ -955,7 +1034,7 @@ function writeOutputs(config, sessions, aggregate) {
   fs.mkdirSync(config.outputDir, { recursive: true });
   const jsonPath = path.join(config.outputDir, 'balance_metrics.json');
   const csvPath = path.join(config.outputDir, 'session_results.csv');
-  const run = { source: config.source, harnessSource: config.harnessSource, serveRoot: config.serveRoot, seedStart: config.seedStart, lampSeed: config.lampSeed, lampFixture: config.lampFixture || null, heroFixture: config.heroFixture || null, heroSlots: config.heroSlots, sessions: config.sessions, maxWaves: config.maxWaves, maxBossClears: config.maxBossClears, maxBossTimeouts: config.maxBossTimeouts, autoEquip: config.autoEquip, captureFrames: config.captureFrames, statePollMs: config.statePollMs, sessionTimeoutMs: config.sessionTimeoutMs, deadlockTimeoutMs: config.deadlockTimeoutMs, viewport: config.viewport };
+  const run = { source: config.source, harnessSource: config.harnessSource, serveRoot: config.serveRoot, seedStart: config.seedStart, lampSeed: config.lampSeed, lampFixture: config.lampFixture || null, heroFixture: config.heroFixture || null, heroSlots: config.heroSlots, sessions: config.sessions, maxWaves: config.maxWaves, maxBossClears: config.maxBossClears, maxBossTimeouts: config.maxBossTimeouts, autoEquip: config.autoEquip, captureFrames: config.captureFrames, eventLog: config.eventLog || null, bossPolicy: config.bossPolicy, startedAt: config.startedAt || null, finishedAt: new Date().toISOString(), statePollMs: config.statePollMs, sessionTimeoutMs: config.sessionTimeoutMs, deadlockTimeoutMs: config.deadlockTimeoutMs, viewport: config.viewport };
   fs.writeFileSync(jsonPath, `${JSON.stringify({ run, aggregate, sessions }, null, 2)}\n`, 'utf8');
   fs.writeFileSync(csvPath, toCsv([
     ['session_id', 'seed', 'enemies_defeated', 'waves_completed', 'bosses_cleared', 'boss_timeouts', 'defeat_recoveries', 'simulation_seconds_survived', 'first_ko_side', 'first_ko_time', 'first_hero_casualty', 'hero_casualties', 'deadlock_count', 'end_reason', 'continuous_progression_start', 'continuous_progression_end'],
@@ -980,6 +1059,11 @@ function buildConfig(argSource = parseArgs(process.argv.slice(2)), env = process
   if (lampSeed !== null && lampFixture) throw new Error('Choose lampSeed or lampFixture');
   if (saveLampFixture && sessions !== 1) throw new Error('saveLampFixture requires one session');
   if (saveHeroFixture && sessions !== 1) throw new Error('saveHeroFixture requires one session');
+  const outputDir = path.resolve(args.outputDir || env.BALANCE_OUTPUT_DIR || DEFAULTS.outputDir);
+  const eventLogInput = readText(args.eventLog ?? env.BALANCE_EVENT_LOG, DEFAULTS.eventLog);
+  const bossPolicy = readText(args.bossPolicy ?? env.BALANCE_BOSS_POLICY, DEFAULTS.bossPolicy);
+  if (!BOSS_POLICIES.includes(bossPolicy) && !FARM_BOSS_POLICY.test(bossPolicy)) throw new Error(`bossPolicy must be one of ${BOSS_POLICIES.join(', ')} or farm:<1-999>`);
+  if (bossPolicy === 'hold' && Number(args.maxBossClears ?? env.BALANCE_MAX_BOSS_CLEARS ?? 0) > 0) throw new Error('bossPolicy hold cannot target boss clears');
   return {
     sessions,
     maxWaves: clampInt(args.maxWaves || env.BALANCE_MAX_WAVES, 1, DEFAULTS.maxWaves),
@@ -1000,12 +1084,14 @@ function buildConfig(argSource = parseArgs(process.argv.slice(2)), env = process
     sessionTimeoutMs: clampInt(args.sessionTimeoutMs || env.BALANCE_SESSION_TIMEOUT_MS, 1000, DEFAULTS.sessionTimeoutMs),
     deadlockTimeoutMs: clampInt(args.deadlockTimeoutMs || env.BALANCE_DEADLOCK_TIMEOUT_MS, 1000, DEFAULTS.deadlockTimeoutMs),
     cleanupTimeoutMs: clampInt(args.cleanupTimeoutMs || env.BALANCE_CLEANUP_TIMEOUT_MS, 1000, DEFAULTS.cleanupTimeoutMs),
-    outputDir: path.resolve(args.outputDir || env.BALANCE_OUTPUT_DIR || DEFAULTS.outputDir),
+    outputDir,
     viewport: DEFAULTS.viewport,
     cdpUrl: readText(args.cdpUrl || env.BALANCE_CDP_URL || DEFAULTS.cdpUrl),
     closeAttachedBrowser: readBool(args.closeAttachedBrowser ?? env.BALANCE_CLOSE_ATTACHED_BROWSER, DEFAULTS.closeAttachedBrowser),
     autoEquip: readBool(args.autoEquip ?? env.BALANCE_AUTO_EQUIP, DEFAULTS.autoEquip),
     captureFrames: readBool(args.captureFrames ?? env.BALANCE_CAPTURE_FRAMES, DEFAULTS.captureFrames),
+    eventLog: eventLogInput === '' || eventLogInput === 'false' ? '' : path.resolve(eventLogInput === 'true' ? path.join(outputDir, 'observed_events.ndjson') : eventLogInput),
+    bossPolicy,
   };
 }
 
@@ -1013,6 +1099,8 @@ async function main(argv = process.argv.slice(2), env = process.env) {
   const config = buildConfig(argv, env);
   config.source = sourceFingerprint(config.serveRoot);
   config.harnessSource = sourceFingerprint(REPO_ROOT);
+  config.startedAt = new Date().toISOString();
+  config.eventLogHandle = createEventLog(config.eventLog, { startedAt: config.startedAt, source: config.source, harnessSource: config.harnessSource, serveRoot: config.serveRoot, seedStart: config.seedStart, sessions: config.sessions, lampSeed: config.lampSeed, lampFixture: config.lampFixture || null, heroFixture: config.heroFixture || null, heroSlots: config.heroSlots, maxWaves: config.maxWaves, maxBossClears: config.maxBossClears, maxBossTimeouts: config.maxBossTimeouts, autoEquip: config.autoEquip, bossPolicy: config.bossPolicy, statePollMs: config.statePollMs, sessionTimeoutMs: config.sessionTimeoutMs, deadlockTimeoutMs: config.deadlockTimeoutMs });
   const serverHandle = await startServer(config);
   config.origin = serverHandle.origin;
   let browserSession = null;
@@ -1051,6 +1139,8 @@ if (require.main === module) {
     aggregateSessions,
     acquireBrowserSession,
     buildConfig,
+    createEventLog,
+    shouldSummonReadyBoss,
     closeAttachedBrowserViaCDP,
     isRealtimeCombatReadyState,
     loadHeroFixture,
