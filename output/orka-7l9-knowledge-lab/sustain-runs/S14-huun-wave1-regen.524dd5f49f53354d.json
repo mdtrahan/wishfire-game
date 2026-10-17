@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S14-huun-wave1-regen",
+  "digest": "524dd5f49f53354dd3d47ab990ce9678e41ae1550e5bcc347d5d8028a600febf",
+  "status": "PASS",
+  "minHpPct": 91.5,
+  "heroKOs": 0,
+  "reason": "all declared model checks met"
+}

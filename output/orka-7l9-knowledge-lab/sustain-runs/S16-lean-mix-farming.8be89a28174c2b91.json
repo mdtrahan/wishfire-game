@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S16-lean-mix-farming",
+  "digest": "8be89a28174c2b91adb151c322ff10a64e08688f9edb16e3955f8a758fff39db",
+  "status": "PASS",
+  "minHpPct": 95.8,
+  "heroKOs": 0,
+  "reason": "all declared model checks met"
+}

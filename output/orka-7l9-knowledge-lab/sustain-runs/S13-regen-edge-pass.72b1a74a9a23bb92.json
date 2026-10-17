@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S13-regen-edge-pass",
+  "digest": "72b1a74a9a23bb9238c2dfd7daf344e1ebdf900105b82b2f946a96eee5133c8d",
+  "status": "PASS",
+  "minHpPct": 91.1,
+  "heroKOs": 0,
+  "reason": "all declared model checks met"
+}

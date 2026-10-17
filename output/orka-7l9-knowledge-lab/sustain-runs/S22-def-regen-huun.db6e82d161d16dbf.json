@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S22-def-regen-huun",
+  "digest": "db6e82d161d16dbfec95f1129d22b951bada62f5739cb8aca75d90eca38039d9",
+  "status": "PASS",
+  "minHpPct": 97.9,
+  "heroKOs": 0,
+  "reason": "all declared model checks met"
+}

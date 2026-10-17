@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S8-defense-edge-pass",
+  "digest": "7b26935632e3eedaa180773ea2d811a2b27962737ccf422a253981887f410998",
+  "status": "PASS",
+  "minHpPct": 90,
+  "heroKOs": 0,
+  "reason": "all declared model checks met"
+}

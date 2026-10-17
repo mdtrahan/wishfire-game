@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S9-evasion-edge-low",
+  "digest": "e7d4aeb515f6c3291d546cc96258e915a9924dc1ebbb51911e9cf399ae5c01fb",
+  "status": "FAIL",
+  "minHpPct": 88.2,
+  "heroKOs": 0,
+  "reason": "minimum HP 88.2% below 90%"
+}

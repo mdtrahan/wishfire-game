@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S7-defense-edge-low",
+  "digest": "adebb16e73c05101e403a500fe5263017b88ab523d1fd3bb906c56a4d0d370e8",
+  "status": "FAIL",
+  "minHpPct": 87.5,
+  "heroKOs": 0,
+  "reason": "minimum HP 87.5% below 90%"
+}

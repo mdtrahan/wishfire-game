@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S21-def-regen-95",
+  "digest": "e30600dd733c92ae746541c7ab1f529f17ea78ba7d11f7b1ce7a4821a413cdb3",
+  "status": "PASS",
+  "minHpPct": 95.7,
+  "heroKOs": 0,
+  "reason": "all declared model checks met"
+}

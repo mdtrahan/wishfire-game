@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S17-lean-mix-boss",
+  "digest": "02048cbbafd321e128123938fdc597d6b15e6e27463bb729e2d204251387782a",
+  "status": "PASS",
+  "minHpPct": 78,
+  "heroKOs": 0,
+  "reason": "all declared model checks met"
+}
