@@ -725,17 +725,12 @@ async function runSession(page, config, sessionId) {
     const bossActive = !!snapshot.continuousProgression?.bossActive;
     if (bossActive && !previousBossActive) bossActiveTransitions += 1;
     const bossEnemy = snapshot.enemies.find(enemy => enemy.uid === Number(snapshot.continuousProgression?.bossUID || 0));
-    if (bossActive && !activeBossAttempt) {
-      activeBossAttempt = { startedAt: Number((snapshot.time - startSimulationTime).toFixed(3)), bossUID: bossEnemy?.uid || null, hpAtStart: bossEnemy?.hp ?? null, lowestHp: bossEnemy?.hp ?? null, hpAtEnd: null, endedAt: null, outcome: null, gameTimeLimitSec: Number(snapshot.continuousProgression?.bossTimeLimitSec || 0) || null };
-      logRecord({ record: 'boss_start', pollTime: relTime(snapshot.time), bossUID: bossEnemy?.uid || null, bossName: bossEnemy?.name || null, bossHp: bossEnemy?.hp ?? null, bossMaxHp: bossEnemy?.maxHp ?? null, gameTimeLimitSec: activeBossAttempt.gameTimeLimitSec, timerStartedAtRel: snapshot.continuousProgression?.bossTimerStartedAt == null ? null : relTime(snapshot.continuousProgression.bossTimerStartedAt), heroes: snapshot.heroes.map(heroLogState), loadouts: snapshot.loadouts, progression: progressionView });
-    }
-    if (bossActive && activeBossAttempt && bossEnemy) {
-      activeBossAttempt.bossUID = bossEnemy.uid;
-      if (activeBossAttempt.hpAtStart == null) activeBossAttempt.hpAtStart = bossEnemy.hp;
-      activeBossAttempt.lowestHp = activeBossAttempt.lowestHp == null ? bossEnemy.hp : Math.min(activeBossAttempt.lowestHp, bossEnemy.hp);
-      activeBossAttempt.hpAtEnd = bossEnemy.hp;
-    }
-    if (!bossActive && activeBossAttempt) {
+    // An attempt ends when the boss leaves or when a runtime counter moves; a timeout, recovery and
+    // re-armed boss can all fall between two polls while bossActive reads true at both.
+    const bossCountersMoved = Number(snapshot.continuousProgression?.bossTimeouts || 0) > previousBossTimeouts
+      || Number(snapshot.continuousProgression?.clearedBosses || 0) > previousClearedBosses
+      || Number(snapshot.continuousProgression?.defeatRecoveries || 0) > previousDefeatRecoveries;
+    if (activeBossAttempt && (!bossActive || bossCountersMoved)) {
       activeBossAttempt.endedAt = Number((snapshot.time - startSimulationTime).toFixed(3));
       const bossTimeout = snapshot.continuousProgression?.lastBossTimeout;
       const timedOut = Number(snapshot.continuousProgression?.bossTimeouts || 0) > previousBossTimeouts;
@@ -754,6 +749,16 @@ async function runSession(page, config, sessionId) {
       bossAttemptRecords.push(activeBossAttempt);
       activeBossAttempt = null;
       clearsAtLastBossOrRecovery = completedOrdinaryWaves;
+    }
+    if (bossActive && !activeBossAttempt) {
+      activeBossAttempt = { startedAt: Number((snapshot.time - startSimulationTime).toFixed(3)), bossUID: bossEnemy?.uid || null, hpAtStart: bossEnemy?.hp ?? null, lowestHp: bossEnemy?.hp ?? null, hpAtEnd: null, endedAt: null, outcome: null, gameTimeLimitSec: Number(snapshot.continuousProgression?.bossTimeLimitSec || 0) || null };
+      logRecord({ record: 'boss_start', pollTime: relTime(snapshot.time), bossUID: bossEnemy?.uid || null, bossName: bossEnemy?.name || null, bossHp: bossEnemy?.hp ?? null, bossMaxHp: bossEnemy?.maxHp ?? null, gameTimeLimitSec: activeBossAttempt.gameTimeLimitSec, timerStartedAtRel: snapshot.continuousProgression?.bossTimerStartedAt == null ? null : relTime(snapshot.continuousProgression.bossTimerStartedAt), heroes: snapshot.heroes.map(heroLogState), loadouts: snapshot.loadouts, progression: progressionView });
+    }
+    if (bossActive && activeBossAttempt && bossEnemy) {
+      activeBossAttempt.bossUID = bossEnemy.uid;
+      if (activeBossAttempt.hpAtStart == null) activeBossAttempt.hpAtStart = bossEnemy.hp;
+      activeBossAttempt.lowestHp = activeBossAttempt.lowestHp == null ? bossEnemy.hp : Math.min(activeBossAttempt.lowestHp, bossEnemy.hp);
+      activeBossAttempt.hpAtEnd = bossEnemy.hp;
     }
     previousBossActive = bossActive;
     previousClearedBosses = Number(snapshot.continuousProgression?.clearedBosses || 0);
