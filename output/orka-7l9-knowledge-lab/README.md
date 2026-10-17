@@ -1,5 +1,7 @@
 # ORKA-7l9 combat knowledge lab
 
+**Historical archive:** `shadow-1` and its sample were captured under an earlier 18-second Wishfire boss rule. Current game runtime fixes every boss timeout at 30 game seconds, including loaded legacy checkpoints. Keep the 18-second sample immutable for provenance; use current-source browser-game reports in `../orka-7l9-gauntlet-progress.md` for acceptance.
+
 Standalone checker for the ORKA-7l9 combat claims. It runs the unchanged candidate through the existing balance harness, retains an ordered event log, replays that log through a small independent shadow model, and grades predeclared claims as PASS, FAIL or INCONCLUSIVE with evidence links. It changes no Wishfire gameplay code or balance value. The candidate stays unmerged; this is not QA PASS or Integration Ready.
 
 A passing parser or shadow model is not proof of good combat design. The design verdict stays **NOT PROVEN** whenever survival, meaningful pressure, earned boss progression or recovery evidence is missing.

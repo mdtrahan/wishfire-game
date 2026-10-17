@@ -6,6 +6,7 @@ export const MODEL_VERSION = 'orka-7l9-shadow-1';
 
 export const CAP_FRACTION = Object.freeze({ fodder: 0.02, routine: 0.02, hard: 0.08, elite: 0.12, boss: 0.18 });
 export const WAVE_HEAL_FRACTION = 0.15;
+// Archived shadow-1 assumption. Current Wishfire runtime fixes boss timeouts at 30 game seconds.
 export const BOSS_TIME_LIMIT_SEC = 18;
 
 export const ASSUMPTIONS = Object.freeze([
