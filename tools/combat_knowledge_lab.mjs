@@ -114,10 +114,10 @@ async function evaluate(options) {
   }
   writeNdjson(path.join(out, 'observed.ndjson'), observed, !!options.gzipStreams);
   writeNdjson(path.join(out, 'model.ndjson'), model, !!options.gzipStreams);
-  fs.writeFileSync(path.join(out, 'timeline.md'), `${timeline.join('\n')}\n`);
+  fs.writeFileSync(path.join(out, 'timeline.md'), `${timeline.join('\n').trimEnd()}\n`);
   const strip = value => JSON.parse(JSON.stringify(value, (key, entry) => (key === 'steps' || key === 'records' || key === '__line' ? undefined : entry)));
   fs.writeFileSync(path.join(out, 'verdict.json'), `${JSON.stringify({ design: evaluation.design, results: strip(evaluation.results), model: evaluation.model }, null, 2)}\n`);
-  fs.writeFileSync(path.join(out, 'verdict.md'), renderVerdict({ doc, evaluation, manifest, timelineFile: path.join(out, 'timeline.md') }));
+  fs.writeFileSync(path.join(out, 'verdict.md'), `${renderVerdict({ doc, evaluation, manifest, timelineFile: path.join(out, 'timeline.md') }).trimEnd()}\n`);
   console.log(JSON.stringify({ design: evaluation.design.verdict, claims: evaluation.results.map(result => [result.id, result.verdict]), out }, null, 2));
 }
 
