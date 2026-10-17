@@ -189,7 +189,7 @@ const evaluators = {
         const outcome = facts => ({ heroKOs: facts.heroKOs.length, recoveries: facts.recoveries.length, clears: consecutiveClearsAfter(facts, -1).clears, endReason: facts.endReason, bossClears: facts.bossEnds.filter(end => end.kind === 'BOSS_CLEAR').length });
         const margin = facts => ({ hits: facts.heroes.reduce((sum, hero) => sum + hero.hits, 0), applied: facts.heroes.reduce((sum, hero) => sum + hero.applied, 0), minRatio: Object.fromEntries(facts.heroes.map(hero => [hero.name, hero.lowestRatio == null ? null : Number(hero.lowestRatio.toFixed(3))])), appliedByAmount: Object.fromEntries(facts.heroes.map(hero => [hero.name, hero.appliedByAmount])) });
         const a = outcome(left), b = outcome(right);
-        return { seed, base: { outcome: a, margin: margin(left) }, variant: { outcome: b, margin: margin(right) }, outcomeChanged: JSON.stringify(a) !== JSON.stringify(b), marginChanged: JSON.stringify(margin(left)) !== JSON.stringify(margin(right)) };
+        return { seed, base: { outcome: a, margin: margin(left), longestSilence: left.longestSilence.seconds }, variant: { outcome: b, margin: margin(right), longestSilence: right.longestSilence.seconds }, outcomeChanged: JSON.stringify(a) !== JSON.stringify(b), marginChanged: JSON.stringify(margin(left)) !== JSON.stringify(margin(right)) };
       });
       const complete = pairs.filter(pair => pair.status !== 'missing');
       return {

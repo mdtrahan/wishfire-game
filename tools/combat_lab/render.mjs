@@ -194,7 +194,7 @@ function detail(result) {
     out.push('### Matched defensive-gear sensitivity (OBS)', '');
     for (const entry of result.sensitivity) {
       out.push(`- ${entry.variant}${entry.change ? ` (${entry.change})` : ''}: outcome change **${entry.outcome}**, margin change **${entry.margin}**${entry.reason ? ` — ${entry.reason}` : ''}`);
-      for (const pair of entry.pairs || []) if (pair.status !== 'missing') out.push(`  - seed ${pair.seed}: base ${JSON.stringify(pair.base.outcome)} hits=${pair.base.margin.hits} applied=${pair.base.margin.applied} min ratios ${JSON.stringify(pair.base.margin.minRatio)} | variant ${JSON.stringify(pair.variant.outcome)} hits=${pair.variant.margin.hits} applied=${pair.variant.margin.applied} min ratios ${JSON.stringify(pair.variant.margin.minRatio)}`);
+      for (const pair of entry.pairs || []) if (pair.status !== 'missing') out.push(`  - seed ${pair.seed}${[pair.base, pair.variant].some(side => side.longestSilence >= 300) ? ` (candidate stall: base ${pair.base.longestSilence}s / variant ${pair.variant.longestSilence}s without combat events; clear counts confounded)` : ''}: base ${JSON.stringify(pair.base.outcome)} hits=${pair.base.margin.hits} applied=${pair.base.margin.applied} min ratios ${JSON.stringify(pair.base.margin.minRatio)} | variant ${JSON.stringify(pair.variant.outcome)} hits=${pair.variant.margin.hits} applied=${pair.variant.margin.applied} min ratios ${JSON.stringify(pair.variant.margin.minRatio)}`);
     }
   } else if (result.kind === 'cap_share') {
     out.push(`OBS: ${result.observed.hits} Hero hits; pre-cap values observed: ${result.observed.preCapValuesObserved}. Capped-hit share: **${result.observed.cappedHitShare}** — ${result.observed.reason}.`, '');

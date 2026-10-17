@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // ORKA-7l9 combat knowledge lab. Commands:
-//   evaluate --claims <file> --out <dir> [--timelineLines 400] [--fullTimelines]
+//   evaluate --claims <file> --out <dir> [--timelineLines 400] [--fullTimelines] [--gzipStreams]
 //   commands --claims <file>            print exact harness commands for prospective scenarios
 //   fixtures --out <dir>                synthetic level-sweep and matched gear fixtures
 // The lab reads harness evidence and Git objects. It never edits Wishfire runtime code or values.
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { gzipSync } from 'node:zlib';
 import { pathToFileURL } from 'node:url';
 import { evaluateClaims } from './combat_lab/claims.mjs';
 import { claimDeclaration, fileEvidence, sha256Bytes, EMPTY_PATCH_SHA256 } from './combat_lab/provenance.mjs';
@@ -37,8 +38,11 @@ function repoFingerprint(repo) {
   return { head, patchSha256: sha256Bytes(Buffer.concat([diff, Buffer.from(JSON.stringify(untracked))])), clean: diff.length === 0 && untracked.length === 0, emptyPatchSha256: EMPTY_PATCH_SHA256 };
 }
 
-function writeNdjson(file, records) {
-  fs.writeFileSync(file, records.map(record => JSON.stringify(record, (key, value) => (key === '__line' ? undefined : value))).join('\n') + (records.length ? '\n' : ''), 'utf8');
+// gzip output has no timestamp or name, so identical records give identical bytes.
+function writeNdjson(file, records, gzip = false) {
+  const text = records.map(record => JSON.stringify(record, (key, value) => (key === '__line' ? undefined : value))).join('\n') + (records.length ? '\n' : '');
+  if (gzip) fs.writeFileSync(`${file}.gz`, gzipSync(Buffer.from(text, 'utf8'), { level: 9 }));
+  else fs.writeFileSync(file, text, 'utf8');
 }
 
 export function harnessCommand(scenario, claimsDir = REPO) {
@@ -108,8 +112,8 @@ async function evaluate(options) {
     }
     if (result.kind === 'cap_share') model.push({ ...result.model, kind: 'CAP_SHARE_ESTIMATE' });
   }
-  writeNdjson(path.join(out, 'observed.ndjson'), observed);
-  writeNdjson(path.join(out, 'model.ndjson'), model);
+  writeNdjson(path.join(out, 'observed.ndjson'), observed, !!options.gzipStreams);
+  writeNdjson(path.join(out, 'model.ndjson'), model, !!options.gzipStreams);
   fs.writeFileSync(path.join(out, 'timeline.md'), `${timeline.join('\n')}\n`);
   const strip = value => JSON.parse(JSON.stringify(value, (key, entry) => (key === 'steps' || key === 'records' || key === '__line' ? undefined : entry)));
   fs.writeFileSync(path.join(out, 'verdict.json'), `${JSON.stringify({ design: evaluation.design, results: strip(evaluation.results), model: evaluation.model }, null, 2)}\n`);
