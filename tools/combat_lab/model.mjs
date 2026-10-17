@@ -60,9 +60,12 @@ function heroState(session) {
   return state;
 }
 
-function plausibleMaxHp(hero, t, window) {
+// Max HP is sampled at polls. A change logged in the same poll that read the event (or within the
+// window) may have happened before or after it, so both values stay plausible.
+function plausibleMaxHp(hero, t, window, pollTime = null) {
   const values = [hero.maxHp];
-  if (hero.priorMaxHp != null && hero.maxHpChangedAt != null && Math.abs(hero.maxHpChangedAt - t) <= window) values.push(hero.priorMaxHp);
+  const samePoll = pollTime != null && hero.maxHpChangedAt === pollTime;
+  if (hero.priorMaxHp != null && hero.maxHpChangedAt != null && (samePoll || Math.abs(hero.maxHpChangedAt - t) <= window)) values.push(hero.priorMaxHp);
   return [...new Set(values)];
 }
 
@@ -134,9 +137,9 @@ export function replaySession(session, { pollWindow = 0.25, scenario = null } = 
     }
     if (record.kind === 'HIT') {
       const tier = record.source?.enemyDataTier ?? null;
-      const bounds = tier ? plausibleMaxHp(hero, record.t, pollWindow).map(value => capBound(value, tier)).filter(value => value != null) : [];
+      const bounds = tier ? plausibleMaxHp(hero, record.t, pollWindow, record.pollTime).map(value => capBound(value, tier)).filter(value => value != null) : [];
       const bound = bounds.length ? Math.max(...bounds) : null;
-      const line = { kind: 'HIT_CHECK', t: record.t, refId: record.id, target: hero.name, source: record.source?.name ?? null, capTier: tier, capBound: bound, capBoundCandidates: bounds, maxHpUsed: plausibleMaxHp(hero, record.t, pollWindow), predictedHpBefore: predictedBefore, observedHpBefore: record.hpBefore, applied: record.applied, assumptions: ['A1', 'A2', 'A6'] };
+      const line = { kind: 'HIT_CHECK', t: record.t, refId: record.id, target: hero.name, source: record.source?.name ?? null, capTier: tier, capBound: bound, capBoundCandidates: bounds, maxHpUsed: plausibleMaxHp(hero, record.t, pollWindow, record.pollTime), predictedHpBefore: predictedBefore, observedHpBefore: record.hpBefore, applied: record.applied, assumptions: ['A1', 'A2', 'A6'] };
       if (bound == null) {
         line.capRelation = 'unknown';
         line.reason = tier ? `no cap fraction declared for tier ${tier}` : 'EnemyData tier not observed for source';
@@ -152,7 +155,7 @@ export function replaySession(session, { pollWindow = 0.25, scenario = null } = 
       hero.hp = Math.max(0, record.hpAfter);
     } else if (record.kind === 'HEAL') {
       if (record.healSource === 'ordinary_wave_clear') {
-        const predictions = plausibleMaxHp(hero, record.t, pollWindow).map(value => waveHealAmount(record.hpBefore, value));
+        const predictions = plausibleMaxHp(hero, record.t, pollWindow, record.pollTime).map(value => waveHealAmount(record.hpBefore, value));
         const ok = predictions.includes(record.applied);
         emit({ kind: 'WAVE_HEAL_CHECK', t: record.t, refId: record.id, target: hero.name, predicted: predictions, observed: record.applied, result: ok ? 'consistent' : 'diverged', assumptions: ['A3'] });
         if (!ok) diverge(record, 'wave_heal', `${hero.name} healed ${record.applied}, model predicts ${predictions.join(' or ')}`, ['A3']);
@@ -164,7 +167,7 @@ export function replaySession(session, { pollWindow = 0.25, scenario = null } = 
       }
       hero.hp = record.hpAfter;
     } else if (record.kind === 'RECOVER') {
-      const full = plausibleMaxHp(hero, record.t, pollWindow).includes(record.hpAfter);
+      const full = plausibleMaxHp(hero, record.t, pollWindow, record.pollTime).includes(record.hpAfter);
       emit({ kind: 'RECOVERY_CHECK', t: record.t, refId: record.id, target: hero.name, predictedHpAfter: hero.maxHp, observedHpAfter: record.hpAfter, result: full ? 'consistent' : 'diverged', assumptions: ['A4'] });
       if (!full) diverge(record, 'recovery_not_full', `${hero.name} recovered to ${record.hpAfter}, model expects max HP ${hero.maxHp}`, ['A4']);
       hero.hp = record.hpAfter;

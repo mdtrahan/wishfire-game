@@ -289,3 +289,13 @@ test('long combat silence is measured and flagged without changing the predeclar
   assert.equal(result.verdict, 'INCONCLUSIVE');
   assert.match(result.rows[0].perSeed[0].reasons.join(' '), /candidate softlock/);
 });
+
+test('a max-HP change read in the same poll as a heal keeps both max-HP values plausible', () => {
+  const records = [header(), start({ heroes: heroes({ Falie: { hp: 96, maxHp: 97 } }) }),
+    { session: 1, seed: SEED, record: 'hero_state', pollTime: 402.709, uid: 1, name: 'Falie', level: 1, hp: 97, maxHp: 99 },
+    { ...heal(1, 402.443, 1, 96, 97), pollTime: 402.709 }, end()];
+  const replay = replaySession(loadObservedLog(writeLog('same-poll', records), 'x').sessions[0]);
+  assert.equal(replay.status, 'consistent');
+  const check = replay.records.find(record => record.kind === 'WAVE_HEAL_CHECK');
+  assert.deepEqual(check.predicted.sort(), [1, 3]);
+});

@@ -72,6 +72,7 @@ function normalizeCombat(raw, common) {
     ...common,
     id: raw.id,
     t: roundTime(raw.time),
+    pollTime: roundTime(raw.pollTime),
     timeSource: 'event',
     wave: raw.wave ?? raw.progressionAtPoll?.wave ?? null,
     waveSource: raw.wave != null ? 'event' : raw.progressionAtPoll?.wave != null ? 'poll' : null,
