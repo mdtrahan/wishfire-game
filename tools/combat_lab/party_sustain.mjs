@@ -36,20 +36,33 @@ export function projectPartySession(records, regenHpPerSecond, minimumFraction =
   const invalid = [];
   const pending = [];
   const refundCredits = new Map([...heroes.keys()].map(name => [name, 0]));
+  const regenCredits = new Map([...heroes.keys()].map(name => [name, 0]));
+  const clearCreditsAtFull = (name, hero) => {
+    if (hero.hp >= hero.maxHp) {
+      regenCredits.set(name, 0);
+      refundCredits.set(name, 0);
+    }
+  };
   const updateFloor = hero => { minFraction = Math.min(minFraction, hero.hp / hero.maxHp); };
-  const setMaxHp = (hero, value, level = hero.level) => {
+  const setMaxHp = (name, hero, value, level = hero.level) => {
     const increase = Math.max(0, value - hero.maxHp);
     const levelGrowth = Number(level) > Number(hero.level);
     hero.maxHp = value;
     hero.hp = Math.min(value, hero.hp + (levelGrowth || healGearGrowth ? increase : 0));
     hero.level = level;
+    clearCreditsAtFull(name, hero);
     updateFloor(hero);
   };
   const advance = time => {
     const restoreFlat = until => {
       const elapsed = Math.max(0, until - previousTime);
-      for (const hero of heroes.values()) if (hero.hp > 0)
-        hero.hp = Math.min(hero.maxHp, hero.hp + (regenHpPerSecond + hero.maxHp * regenFraction) * elapsed);
+      for (const [name, hero] of heroes) if (hero.hp > 0) {
+        const credit = regenCredits.get(name) + (regenHpPerSecond + hero.maxHp * regenFraction) * elapsed;
+        const payout = Math.floor(credit + 1e-9);
+        hero.hp = Math.min(hero.maxHp, hero.hp + payout);
+        regenCredits.set(name, credit - payout);
+        clearCreditsAtFull(name, hero);
+      }
       previousTime = until;
     };
     while (pending.length && pending[0].time <= time) {
@@ -60,6 +73,7 @@ export function projectPartySession(records, regenHpPerSecond, minimumFraction =
       const payout = Math.floor(credit + 1e-9);
       refundCredits.set(due.name, credit - payout);
       if (hero.hp > 0) hero.hp = Math.min(hero.maxHp, hero.hp + payout);
+      clearCreditsAtFull(due.name, hero);
     }
     restoreFlat(time);
   };
@@ -103,7 +117,7 @@ export function projectPartySession(records, regenHpPerSecond, minimumFraction =
     if (bossMode && row.kind === 'BOSS_TIMEOUT') { bossTimeout = row; break; }
     if (row.kind === 'HERO_STATE' && heroes.has(row.hero?.name)) {
       const hero = heroes.get(row.hero.name);
-      setMaxHp(hero, row.hero.maxHp, row.hero.level);
+      setMaxHp(row.hero.name, hero, row.hero.maxHp, row.hero.level);
     }
     if (row.kind === 'HIT' && heroes.has(row.target?.name)) {
       if (!bossMode && (row.source?.combatTier === 'boss' || row.bossActiveAtPoll === true)) {
@@ -113,7 +127,7 @@ export function projectPartySession(records, regenHpPerSecond, minimumFraction =
       const hero = heroes.get(row.target.name);
       if (!Number.isInteger(row.applied) || row.applied < 0) { invalid.push('noninteger observed hit'); break; }
       if (Number.isFinite(row.maxHp) && row.maxHp !== hero.maxHp) {
-        setMaxHp(hero, row.maxHp);
+        setMaxHp(row.target.name, hero, row.maxHp);
       }
       const damage = Math.ceil(row.applied * pressure);
       if (row.hpAfter === 0 && row.hpBefore > 0 && row.applied === row.hpBefore && hero.hp > damage) {
@@ -135,8 +149,10 @@ export function projectPartySession(records, regenHpPerSecond, minimumFraction =
     }
     if (row.kind === 'WAVE_CLEAR') {
       clears += Number(row.delta || 0);
-      for (const hero of heroes.values()) if (hero.hp > 0)
+      for (const [name, hero] of heroes) if (hero.hp > 0) {
         hero.hp = Math.min(hero.maxHp, hero.hp + Math.ceil(hero.maxHp * 0.15));
+        clearCreditsAtFull(name, hero);
+      }
     }
   }
   if (!bossMode && bossStartTime !== null && clears < 20) invalid.push('boss interval incomplete');

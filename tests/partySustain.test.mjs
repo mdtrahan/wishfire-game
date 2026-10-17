@@ -26,13 +26,11 @@ test('30% delayed refund alone misses the 90% farming floor', () => {
     assert.equal(projectPartyScenario(rows, scenario, 0, 0.9, recovery).status, 'FAIL');
 });
 
-test('delayed 30% refund plus 0.11 HP/s and gear HP fill clears five seeds for both parties', () => {
+test('fractional 0.11 HP/s plus 30% refund misses the floor after whole-HP payout', () => {
   const recovery = { damageRefundFraction: 0.3, damageRefundDelaySeconds: 2, healGearMaxHpGrowth: true };
-  for (const scenario of ['starter-l1-nokaja', 'kaja-l1-four']) {
-    const result = projectPartyScenario(rows, scenario, 0.11, 0.9, recovery);
-    assert.equal(result.status, 'PASS');
-    assert.ok(result.runs.every(run => run.status === 'PASS' && run.waves === 20 && run.minHpPct >= 90));
-  }
+  const result = projectPartyScenario(rows, 'starter-l1-nokaja', 0.11, 0.9, recovery);
+  assert.equal(result.status, 'FAIL');
+  assert.ok(result.runs.every(run => run.waves === 20 && run.firstModelKo === null));
 });
 
 test('30% refund and 0.2% max-HP regen pass four farming party fixtures across five seeds', () => {
@@ -60,6 +58,32 @@ test('one recovery rule, 0.4% max-HP regen, passes farming with gear HP fill', (
     { regenFractionMaxHpPerSecond: 0.00285, healGearMaxHpGrowth: true }).status, 'FAIL');
   assert.equal(projectPartyScenario(rows, 'starter-l1-nokaja', 0, 0.9,
     { regenFractionMaxHpPerSecond: 0.004 }).status, 'FAIL');
+});
+
+test('a second whole-HP point per 1-HP fodder hit breaks the 0.4% model floor', () => {
+  const recovery = { regenFractionMaxHpPerSecond: 0.004,
+    healGearMaxHpGrowth: true, incomingPressureMultiplier: 1.1 };
+  for (const scenario of ['starter-l1-nokaja', 'kaja-l1-four']) {
+    const result = projectPartyScenario(rows, scenario, 0, 0.9, recovery);
+    assert.equal(result.status, 'FAIL', scenario);
+    assert.ok(result.runs.every(run => run.firstModelKo === null));
+  }
+});
+
+test('two stronger recovery envelopes retain 90% farming floor under quantized pressure', () => {
+  const cases = [
+    { regenFractionMaxHpPerSecond: 0.015, healGearMaxHpGrowth: true,
+      incomingPressureMultiplier: 1.1 },
+    { regenFractionMaxHpPerSecond: 0.01, damageRefundFraction: 0.3,
+      damageRefundDelaySeconds: 2, healGearMaxHpGrowth: true, incomingPressureMultiplier: 1.1 },
+  ];
+  for (const recovery of cases) {
+    for (const scenario of ['starter-l1-nokaja', 'kaja-l1-four', 'kaja-l15-three', 'kaja-l15-four']) {
+      const result = projectPartyScenario(rows, scenario, 0, 0.9, recovery);
+      assert.equal(result.status, 'PASS', `${scenario} ${JSON.stringify(recovery)}`);
+      assert.ok(result.runs.every(run => run.minHpPct >= 90 && run.firstModelKo === null));
+    }
+  }
 });
 
 test('ordinary HP floor excludes boss hits in a mixed trace', () => {
@@ -103,15 +127,15 @@ test('the candidate fails without the proposed gear HP fill', () => {
 });
 
 test('the 90% formula misses a stricter 95% floor', () => {
-  const recovery = { damageRefundFraction: 0.3, damageRefundDelaySeconds: 2, healGearMaxHpGrowth: true };
+  const recovery = { regenFractionMaxHpPerSecond: 0.004, healGearMaxHpGrowth: true };
   for (const scenario of ['starter-l1-nokaja', 'kaja-l1-four'])
-    assert.equal(projectPartyScenario(rows, scenario, 0.11, 0.95, recovery).status, 'FAIL');
+    assert.equal(projectPartyScenario(rows, scenario, 0, 0.95, recovery).status, 'FAIL');
 });
 
-test('0.4 HP/s plus the same refund and gear fill reaches a 95% model floor', () => {
-  const recovery = { damageRefundFraction: 0.3, damageRefundDelaySeconds: 2, healGearMaxHpGrowth: true };
+test('0.7% max-HP/s with gear fill reaches a 95% starter model floor', () => {
+  const recovery = { regenFractionMaxHpPerSecond: 0.007, healGearMaxHpGrowth: true };
   for (const scenario of ['starter-l1-nokaja', 'kaja-l1-four'])
-    assert.equal(projectPartyScenario(rows, scenario, 0.4, 0.95, recovery).status, 'PASS');
+    assert.equal(projectPartyScenario(rows, scenario, 0, 0.95, recovery).status, 'PASS');
 });
 
 test('source KO and incomplete runs cannot certify a five-seed endurance formula', () => {
@@ -192,6 +216,52 @@ test('zero-delay refund arrives before a second same-time hit', () => {
   assert.equal(run.minHpPct, 50);
 });
 
+test('passive regeneration banks fractions and restores only whole HP', () => {
+  const synthetic = [
+    { kind: 'SESSION_START', t: 0, seed: 1, heroes: [{ name: 'Huun', hp: 10, maxHp: 10 }] },
+    { kind: 'HIT', t: 0, target: { name: 'Huun' }, applied: 1 },
+    { kind: 'HIT', t: 1, target: { name: 'Huun' }, applied: 1 },
+    { kind: 'WAVE_CLEAR', t: 2, delta: 20 },
+    { kind: 'SESSION_END', t: 3, completedOrdinaryWaves: 20, missingCombatEvents: 0,
+      ambiguousWaveTransitions: 0, deadlockCount: 0, defeatRecoveries: 0 },
+  ].map(row => ({ ...row, scenario: 'whole-regen', session: 1 }));
+  const run = projectPartyScenario(synthetic, 'whole-regen', 0.6, 0.85).runs[0];
+  assert.equal(run.status, 'FAIL');
+  assert.equal(run.minHpPct, 80);
+
+  const banked = [
+    { kind: 'SESSION_START', t: 0, seed: 2, heroes: [{ name: 'Huun', hp: 2, maxHp: 2 }] },
+    { kind: 'HIT', t: 0, target: { name: 'Huun' }, applied: 1 },
+    { kind: 'HERO_STATE', t: 1, hero: { name: 'Huun', maxHp: 2 } },
+    { kind: 'HIT', t: 2, target: { name: 'Huun' }, applied: 1 },
+    { kind: 'WAVE_CLEAR', t: 3, delta: 20 },
+    { kind: 'SESSION_END', t: 4, completedOrdinaryWaves: 20, missingCombatEvents: 0,
+      ambiguousWaveTransitions: 0, deadlockCount: 0, defeatRecoveries: 0 },
+  ].map(row => ({ ...row, scenario: 'banked-regen', session: 1 }));
+  const withCredit = projectPartyScenario(banked, 'banked-regen', 0.6, 0.5).runs[0];
+  assert.equal(withCredit.status, 'PASS');
+  assert.equal(withCredit.minHpPct, 50);
+});
+
+test('a full wave heal discards fractional refund credit', () => {
+  const synthetic = [
+    { kind: 'SESSION_START', t: 0, seed: 3, heroes: [{ name: 'Huun', hp: 20, maxHp: 20 }] },
+    { kind: 'HIT', t: 0, target: { name: 'Huun' }, applied: 1 },
+    { kind: 'HIT', t: 0.1, target: { name: 'Huun' }, applied: 1 },
+    { kind: 'WAVE_CLEAR', t: 1, delta: 1 },
+    { kind: 'HIT', t: 2, target: { name: 'Huun' }, applied: 1 },
+    { kind: 'HIT', t: 2.1, target: { name: 'Huun' }, applied: 1 },
+    { kind: 'HIT', t: 2.2, target: { name: 'Huun' }, applied: 1 },
+    { kind: 'WAVE_CLEAR', t: 3, delta: 19 },
+    { kind: 'SESSION_END', t: 4, completedOrdinaryWaves: 20, missingCombatEvents: 0,
+      ambiguousWaveTransitions: 0, deadlockCount: 0, defeatRecoveries: 0 },
+  ].map(row => ({ ...row, scenario: 'refund-cap', session: 1 }));
+  const run = projectPartyScenario(synthetic, 'refund-cap', 0, 0.9,
+    { damageRefundFraction: 0.45, damageRefundDelaySeconds: 0 }).runs[0];
+  assert.equal(run.status, 'FAIL');
+  assert.equal(run.minHpPct, 85);
+});
+
 test('gear HP growth needs an explicit fill rule; earned level growth heals by its delta', () => {
   const makeRows = level => [
     { kind: 'SESSION_START', t: 0, seed: 1, heroes: [{ name: 'Huun', hp: 60, maxHp: 60, level: 1 }] },
@@ -229,10 +299,25 @@ test('regen-only farming candidate keeps boss DPS timeout and burst vulnerabilit
   assert.ok(burst.runs.every(run => run.firstModelKo !== null));
 });
 
+test('stronger farming sustain still cannot beat boss timer or fourfold burst', () => {
+  for (const recovery of [
+    { encounter: 'boss', regenFractionMaxHpPerSecond: 0.015 },
+    { encounter: 'boss', regenFractionMaxHpPerSecond: 0.01,
+      damageRefundFraction: 0.3, damageRefundDelaySeconds: 2 },
+  ]) {
+    const normal = projectPartyScenario(rows, 'boss-sweep-l1', 0, 0.01, recovery);
+    assert.equal(normal.status, 'PASS');
+    assert.ok(normal.runs.every(run => run.bossHpAtTimeout > 0));
+    const burst = projectPartyScenario(rows, 'boss-sweep-l1', 0, 0.01,
+      { ...recovery, incomingPressureMultiplier: 4 });
+    assert.ok(burst.runs.every(run => run.firstModelKo !== null));
+  }
+});
+
 test('parallel conductors save one compact result for the same formula', async () => {
   const runner = path.resolve('tools/combat_lab/party_sustain.mjs');
-  const args = [runner, 'starter-l1-nokaja,kaja-l1-four', '0.11', '0.9', '--refund', '0.3',
-    '--delay', '2', '--heal-gear-growth', '--save', '--out', temp];
+  const args = [runner, 'starter-l1-nokaja,kaja-l1-four', '0', '0.9',
+    '--regen-fraction', '0.004', '--heal-gear-growth', '--save', '--out', temp];
   const invoke = () => new Promise((resolve, reject) => {
     const child = spawn(process.execPath, args, { cwd: process.cwd() });
     let output = '';
