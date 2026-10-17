@@ -75,7 +75,7 @@ test('actor HP bars follow their owners in the shared depth-sorted paint queue',
   const renderer = fs.readFileSync(path.join(root, 'web-runner/systems/renderRuntime.js'), 'utf8');
   assert.match(renderer, /addActorPaint\(enemy\.uid, \(\) => \{ ctx\.save\(\); ctx\.globalAlpha \*= enemyFadeAlpha; drawCombatHealthBar\(ctx, \{ x: barX, y: barY, width: drawBarW, height: drawBarH, fillWidth: drawFillW, trailWidth: drawYellowW, team: \\?'enemy\\?' \}\); ctx\.restore\(\); \}\)/);
   assert.match(renderer, /addActorPaint\(uid, \(\) => paintWithActivationAlpha\(ctx, heroBarFadeAlpha, \(\) => drawCombatHealthBar\(ctx, \{ x: barX, y: barY, width: baseW, height: baseH, fillWidth: barState\.fillW, trailWidth: barState\.yellowW, team: \\?'hero\\?' \}\)\)\)/);
-  assert.match(renderer, /const enemyFootY = puppet \? Number\(pos\.y\) : Number\(drawY \+ enemyH\)/);
+  assert.match(renderer, /const enemyFootY = Number\(pos\.y\)/);
   assert.match(renderer, /actorPaintQueue\.push\(\{ footY: enemyFootY/);
   assert.match(renderer, /const barY = Math\.round\(enemyFootY \+ \(4 \* layoutScale\)\)/);
   assert.match(renderer, /footY: pos\.y, height: enemyH/);
