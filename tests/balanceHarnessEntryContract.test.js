@@ -9,7 +9,15 @@ const assert = require('node:assert/strict');
 const harnessPath = path.join(__dirname, '..', 'tools', 'balance_harness.js');
 const source = fs.readFileSync(harnessPath, 'utf8');
 const hookSource = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js'), 'utf8');
-const { START_WORLD_POINT, aggregateSessions, applyPostRecoveryWaveClear, buildConfig, isRealtimeCombatReadyState, loadHeroFixture, loadLampFixture, observeRecoveryTransition, observedOrdinaryWaveClear, sourceFingerprint, writeHeroFixture, writeLampFixture, writeOutputs } = require(harnessPath);
+const { START_WORLD_POINT, aggregateSessions, applyPostRecoveryWaveClear, buildConfig, isRealtimeCombatReadyState, loadHeroFixture, loadLampFixture, observeRecoveryTransition, observedOrdinaryWaveClear, ordinaryEncounterHasNoKoFor, sourceFingerprint, writeHeroFixture, writeLampFixture, writeOutputs } = require(harnessPath);
+
+test('ordinary farming fails after 300 simulated seconds without an enemy KO', () => {
+  const snapshot = { time: 301, continuousProgression: { bossActive: false }, enemies: [{ hp: 1 }] };
+  assert.equal(ordinaryEncounterHasNoKoFor(snapshot, 0), true);
+  assert.equal(ordinaryEncounterHasNoKoFor({ ...snapshot, time: 299 }, 0), false);
+  assert.equal(ordinaryEncounterHasNoKoFor({ ...snapshot, continuousProgression: { bossActive: true } }, 0), false);
+  assert.equal(ordinaryEncounterHasNoKoFor({ ...snapshot, enemies: [] }, 0), false);
+});
 
 test('boss timeout measurement has a separate bound and preserves game failure evidence', () => {
   assert.equal(buildConfig({ maxBossTimeouts: '1' }, {}).maxBossTimeouts, 1);

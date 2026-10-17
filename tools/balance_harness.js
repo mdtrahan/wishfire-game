@@ -393,6 +393,12 @@ function progressSignature(snapshot) {
   });
 }
 
+function ordinaryEncounterHasNoKoFor(snapshot, lastEnemyKoAt, seconds = 300) {
+  return !snapshot?.continuousProgression?.bossActive
+    && snapshot?.enemies?.some(enemy => enemy.hp > 0)
+    && Number(snapshot.time) - Number(lastEnemyKoAt) >= seconds;
+}
+
 function observedOrdinaryWaveClear(before, after) {
   if (!before || !after || before.bossActive || after.bossActive) return 0;
   if (before.region !== after.region || before.stage !== after.stage) return 0;
@@ -622,7 +628,6 @@ async function runSession(page, config, sessionId) {
   const knownEnemyBySlot = new Map(snapshot.enemies.filter((enemy) => enemy.hp > 0).map((enemy) => [enemy.slot, enemy.uid]));
   let firstKo = null;
   let lastEnemyKoAt = snapshot.time;
-  let stallDiagnosticEmitted = false;
   const startOrdinaryWaveClears = Number(snapshot.continuousProgression?.ordinaryWaveClears || 0);
   const exactWaveCounterAvailable = snapshot.continuousProgression?.ordinaryWaveClears != null;
   let previousProgression = snapshot.continuousProgression;
@@ -919,11 +924,10 @@ async function runSession(page, config, sessionId) {
       }
     }
 
-    if (!stallDiagnosticEmitted && !snapshot.continuousProgression?.bossActive
-      && snapshot.enemies.some(enemy => enemy.hp > 0)
-      && snapshot.time - lastEnemyKoAt >= 300) {
+    if (ordinaryEncounterHasNoKoFor(snapshot, lastEnemyKoAt)) {
       logRecord({ record: 'stall_diagnostic', pollTime: relTime(snapshot.time), sinceEnemyKo: Number((snapshot.time - lastEnemyKoAt).toFixed(3)), diagnostic: await readStallDiagnostic(page) });
-      stallDiagnosticEmitted = true;
+      endReason = 'no_enemy_ko';
+      break;
     }
 
     if (config.maxBossTimeouts > 0 && Number(snapshot.continuousProgression?.bossTimeouts || 0) - startBossTimeouts >= config.maxBossTimeouts) {
@@ -1221,6 +1225,7 @@ if (require.main === module) {
     parseArgs,
     sourceFingerprint,
     observedOrdinaryWaveClear,
+    ordinaryEncounterHasNoKoFor,
     recoveryProgressionView,
     writeHeroFixture,
     writeLampFixture,
