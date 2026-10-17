@@ -1,4 +1,4 @@
-export const PASSIVE_HERO_REGEN_FRACTION = 0.004;
+export const PASSIVE_HERO_REGEN_FRACTION = 0.015;
 
 export function fillGearMaxHpGrowth(hp, beforeMaxHp, afterMaxHp) {
   const before = Math.max(0, Math.floor(Number(beforeMaxHp) || 0));
