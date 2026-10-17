@@ -43,14 +43,15 @@ import {
 const rows = ['Gobloc', 'Skeleton', 'High Gobloc', 'Lizardo', 'Orc', 'High Orc', 'Chimerilass', 'Djinn', 'Troll']
   .map((name, index) => ({ name, HP: 20 + index * 5, ATK: 2 + index, DEF: 2, MAG: 1, RES: 1, SPD: 8 }));
 
-test('boss clock expires only while its living boss remains active', () => {
-  const stage = { ...createContinuousCombatStageState(), bossActive: true, bossUID: 90, bossTimerStartedAt: 10, bossTimeLimitSec: CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC };
+test('fixed 30-second boss clock ignores an old saved limit and expires only for a living boss', () => {
+  const stage = { ...createContinuousCombatStageState(), bossActive: true, bossUID: 90, bossTimerStartedAt: 10, bossTimeLimitSec: 18 };
   const boss = { uid: 90, kind: 'enemy', hp: 1 };
-  assert.equal(continuousCombatBossTimeRemaining(stage, 19), 9);
-  assert.equal(shouldExpireContinuousCombatBoss(stage, [boss], 27.99), false);
-  assert.equal(shouldExpireContinuousCombatBoss(stage, [boss], 28), true);
+  assert.equal(CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC, 30);
+  assert.equal(continuousCombatBossTimeRemaining(stage, 19), 21);
+  assert.equal(shouldExpireContinuousCombatBoss(stage, [boss], 39.99), false);
+  assert.equal(shouldExpireContinuousCombatBoss(stage, [boss], 40), true);
   boss.hp = 0;
-  assert.equal(shouldExpireContinuousCombatBoss(stage, [boss], 28), false);
+  assert.equal(shouldExpireContinuousCombatBoss(stage, [boss], 40), false);
   stage.bossActive = false;
   assert.equal(continuousCombatBossTimeRemaining(stage, 29), null);
 });
@@ -64,16 +65,9 @@ test('opening ordinary waves use fodder and routine enemies before the boss gate
 });
 
 test('ordinary wave counts scale by region while template selection cycles', () => {
-  assert.equal(continuousCombatWavesForStage(1, 1), 10);
-  assert.equal(continuousCombatWavesForStage(2, 1), 15);
-  assert.equal(continuousCombatWavesForStage(3, 1), 20);
-  assert.equal(continuousCombatWavesForStage(4, 1), 20);
-  assert.equal(continuousCombatWavesForStage(5, 1), 5);
-  assert.equal(continuousCombatWavesForStage(6, 1), 20);
-  assert.equal(continuousCombatWavesForStage(7, 1), 20);
-  assert.equal(continuousCombatWavesForStage(8, 1), 20);
-  assert.equal(continuousCombatWavesForStage(9, 1), 20);
-  assert.equal(continuousCombatWavesForStage(10, 1), 5);
+  assert.deepEqual(Array.from({ length: 20 }, (_, index) => continuousCombatWavesForStage(index + 1, 1)), [
+    10, 15, 20, 20, 5, 20, 20, 20, 20, 5, 20, 20, 20, 20, 5, 20, 20, 20, 20, 5,
+  ]);
   assert.equal(continuousCombatStagesForRegion(1), 1);
   assert.equal(continuousCombatStagesForRegion(4), 1);
   assert.equal(continuousCombatStagesForRegion(5), 1);
@@ -832,9 +826,9 @@ test('a lethal boss trade waits for death presentation and then awards the clear
   const globals = {
     ContinuousCombatStageLoop: 1,
     ContinuousCombatStage: { ...createContinuousCombatStageState(1), bossAvailable: true, bossArmed: true,
-      bossActive: true, bossUID: 90, bossTimerStartedAt: 0, bossTimeLimitSec: 18, nextEmissionAt: 0 },
+      bossActive: true, bossUID: 90, bossTimerStartedAt: 0, bossTimeLimitSec: 30, nextEmissionAt: 0 },
     EnemyData: rows, EnemySize: 40, GamePhase: 'RUNTIME', BattleStartActive: 0,
-    time: 18, PendingDeaths: {}, EnemyDeathVisualHoldByUID: { 90: true }, EnemySlots: [],
+    time: 30, PendingDeaths: {}, EnemyDeathVisualHoldByUID: { 90: true }, EnemySlots: [],
   };
   const calls = [];
   const call = (name, row, slotIndex) => {

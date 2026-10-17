@@ -84,14 +84,15 @@ test('an abandoned active boss UID is removed before pending rewards restore whi
 }));
 
 test('boss victory clears its UID before checkpoint so its legitimate reward still settles on reload', () => withStorage(async values => {
-  const active={...createContinuousCombatStageState(31,{region:2,stage:4}),bossAvailable:true,bossSummonRequired:true,bossArmed:true,bossActive:true,bossUID:90};
+  const active={...createContinuousCombatStageState(31,{region:2,stage:1}),bossAvailable:true,bossSummonRequired:true,bossArmed:true,bossActive:true,bossUID:90};
   const victory=advanceContinuousCombatStage(active);
   assert.equal(victory.state.bossActive,false);
   assert.equal(victory.state.bossUID,null);
   const globals={ContinuousCombatStageLoop:1,ContinuousCombatStage:victory.state,HeroProgress:createHeroProgressStore(),ProgressionBattle:{id:'witnessed-boss-victory',participants:['Falie'],defeated:{90:500},defeatedGold:{90:321},settled:false},goldTotal:0};
   assert.equal(persistHeroProgressIfDirty({stateGlobals:globals}),true);
   const saved=JSON.parse(values.get('orka.hero_progress.v2'));
-  assert.equal(saved.continuousStage.stage,5);
+  assert.equal(saved.continuousStage.region,3);
+  assert.equal(saved.continuousStage.stage,1);
   assert.equal(saved.continuousStage.bossUID,undefined);
   assert.deepEqual(saved.pendingBattleRewards.defeated,{90:500});
   assert.deepEqual(saved.pendingBattleRewards.defeatedGold,{90:321});

@@ -5,7 +5,7 @@
 
 ## Ownership
 - `player-living-guide.md` is the player-facing source for how Wishfire works.
-- Keep active boss gauge, timeout, recovery and retry behavior aligned between the guide and shipped combat.
+- Keep the active boss gauge's fixed 30-second timeout, recovery and retry behavior aligned between the guide and shipped combat.
 - `hero-and-party-skills.md`, `hero-and-party-skill-pseudocode.md`, and `skill-bead-map.md` own skill design, implementation-start language, and bead mapping.
 - `combat-vfx-index.md` owns the attack-to-impact visual inventory, completion gates, and preserve list for combat effects.
 - `vault-progression.md` owns Vault/relic passive progression lanes.

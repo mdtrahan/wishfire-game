@@ -8,6 +8,9 @@ import { HERO_DEFINITIONS } from '../web-runner/src/core/heroDefinitions.mjs';
 import { heroDefinition, heroSkillUnlocked } from '../web-runner/src/core/heroDefinitions.mjs';
 import { filterContinuousEncounterEnemies, selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
 import { castRealtimeHeroSkill, realtimeBasicInterval, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
+import { advancePassiveHeroRegen } from '../web-runner/src/core/heroSustainRules.mjs';
+import { recordBalanceCombatEvent } from '../web-runner/src/core/balanceTelemetry.mjs';
+import { saveHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
 
 const source = fs.readFileSync(new URL('../web-runner/modules/functionBank.js', import.meta.url), 'utf8');
 
@@ -20,6 +23,7 @@ function loadTickRealtimeHeroBasics() {
     'GetEffectiveStat', 'realtimeCooldownSeconds', 'selectRealtimeReadyActor', 'scheduleRealtimeActions',
     'HeroAttackSingle', 'GetActorByUID', 'tickRealtimeHeroSkillZones', 'heroDefinition', 'heroSkillUnlocked',
     'selectRealtimeHeroSkillTarget', 'filterContinuousEncounterEnemies', 'castRealtimeHeroSkill', 'realtimeBasicInterval',
+    'advancePassiveHeroRegen', 'recordBalanceCombatEvent', 'saveHeroProgress', 'UpdateHeroHPUI',
     'pushContinuousCombatEnemy', 'reverseContinuousCombatEnemy', 'teleportContinuousCombatEnemy',
     `${body}; return TickRealtimeHeroBasics;`,
   )(ctx => ctx.state.globals,
@@ -36,6 +40,7 @@ function loadTickRealtimeHeroBasics() {
     },
     (ctx, uid) => ctx.state.entities.find(entity => Number(entity.uid) === Number(uid)) || null,
     tickRealtimeHeroSkillZones, heroDefinition, heroSkillUnlocked, selectRealtimeHeroSkillTarget, filterContinuousEncounterEnemies, castRealtimeHeroSkill, realtimeBasicInterval,
+    advancePassiveHeroRegen, recordBalanceCombatEvent, saveHeroProgress, () => {},
     () => false, () => false, () => false,
   );
 }

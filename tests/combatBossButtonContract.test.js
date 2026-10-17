@@ -61,10 +61,10 @@ test('combat progress HUD shows the current chapter and region-sized wave progre
   state.globals.ContinuousCombatStage.bossActive = true;
   state.globals.ContinuousCombatStage.bossTimerStartedAt = 0;
   state.globals.ContinuousCombatStage.bossTimeLimitSec = 18;
-  state.globals.time = 9;
+  state.globals.time = 15;
   assertBossMarkerSeparated();
   assert.ok(calls.some(([name, key, value]) => name === 'set' && key === 'fillStyle' && value === '#5dbbff'));
-  assert.equal(control.drawCombatProgressHud(ctx, { state, images: {}, worldToCanvas }).bossTimeRemainingSec, 9);
+  assert.equal(control.drawCombatProgressHud(ctx, { state, images: {}, worldToCanvas }).bossTimeRemainingSec, 15);
   state.globals.ContinuousCombatStage.bossActive = false;
   state.globals.ContinuousCombatStage.wave = 1;
   calls.length = 0;

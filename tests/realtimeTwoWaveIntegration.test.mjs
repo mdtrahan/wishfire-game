@@ -8,6 +8,9 @@ import { isHeroBasicTargetInRange, resolveHeroAttackTarget } from '../src/core/h
 import { realtimeCooldownSeconds, scheduleRealtimeActions, selectRealtimeReadyActor } from '../web-runner/src/core/realtimeCooldown.mjs';
 import { filterContinuousEncounterEnemies, selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
 import { castRealtimeHeroSkill, realtimeBasicInterval, realtimeProvokeTarget, realtimeRetaliation, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
+import { advancePassiveHeroRegen } from '../web-runner/src/core/heroSustainRules.mjs';
+import { recordBalanceCombatEvent } from '../web-runner/src/core/balanceTelemetry.mjs';
+import { saveHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
 import { pickEnemyTargetHeroFromRoster } from '../web-runner/src/core/enemyTargetingRules.mjs';
 import { selectContinuousEnemyTarget } from '../web-runner/src/core/arenaCombat.mjs';
 import { isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
@@ -48,7 +51,8 @@ function makeTickBasics(ctx) {
     'getGlobals', 'getEnemies', 'resolveHeroAttackTarget', 'isHeroBasicTargetInRange', 'getEntities', 'GetEffectiveStat',
     'realtimeCooldownSeconds', 'selectRealtimeReadyActor', 'scheduleRealtimeActions', 'HeroAttackSingle', 'GetActorByUID',
     'tickRealtimeHeroSkillZones', 'heroDefinition', 'heroSkillUnlocked', 'selectRealtimeHeroSkillTarget', 'filterContinuousEncounterEnemies', 'castRealtimeHeroSkill',
-    'realtimeBasicInterval', 'pushContinuousCombatEnemy', 'reverseContinuousCombatEnemy', 'teleportContinuousCombatEnemy',
+    'realtimeBasicInterval', 'advancePassiveHeroRegen', 'recordBalanceCombatEvent', 'saveHeroProgress', 'UpdateHeroHPUI',
+    'pushContinuousCombatEnemy', 'reverseContinuousCombatEnemy', 'teleportContinuousCombatEnemy',
   ], [
     c => c.state.globals,
     c => c.state.entities.filter(e => e?.kind === 'enemy' && Number(e.hp) > 0 && e.streamState !== 'approaching'),
@@ -58,7 +62,8 @@ function makeTickBasics(ctx) {
     (c, heroUID, targetUID) => (c.state.globals.PendingHeroHits ||= []).push({ at: c.state.globals.time + 0.52, heroUID, targetUID, dmg: 1, finalDmg: 1, heroType: 'melee', combatRulesBasic: 1, realtimeBasic: 1, retargetOnDeath: 1 }),
     (c, uid) => c.state.entities.find(e => Number(e.uid) === Number(uid)) || null,
     tickRealtimeHeroSkillZones, actor => HERO_DEFINITIONS[actor.baseHeroName], heroSkillUnlocked, selectRealtimeHeroSkillTarget, filterContinuousEncounterEnemies,
-    castRealtimeHeroSkill, realtimeBasicInterval, () => 0, () => 0, (_target,distance) => distance,
+    castRealtimeHeroSkill, realtimeBasicInterval, advancePassiveHeroRegen, recordBalanceCombatEvent, saveHeroProgress, () => {},
+    () => 0, () => 0, (_target,distance) => distance,
   ]);
 }
 
@@ -293,7 +298,7 @@ test('stage and recovery seams require full-wave clear, auto-enter the boss, pre
   assert.equal(pausedTarget.hp, 100, 'resume does not apply an impact before its simulation due time');
 
   const gate = createContinuousCombatStageState(17);
-  gate.wave = 4; gate.nextEmissionAt = 0;
+  gate.wave = 10; gate.nextEmissionAt = 0;
   const gateGlobals = { time: 4, ContinuousCombatStageLoop: 1, GamePhase: 'RUNTIME', ContinuousCombatStage: gate,
     EnemySlots: [], EnemyData: globals.EnemyData, EnemyDeathVisualHoldByUID: {} };
   const gateEntities = [];
@@ -306,7 +311,7 @@ test('stage and recovery seams require full-wave clear, auto-enter the boss, pre
   maybeAdvanceContinuousCombatStage({ globals: gateGlobals, entities: gateEntities, call: gateCall });
   assert.equal(gateGlobals.ContinuousCombatStage.bossAvailable, true);
   assert.equal(gateGlobals.ContinuousCombatStage.bossActive, true);
-  assert.ok(bossSpawned.some(enemy => enemy.enemyRole === 'boss'), 'the fourth clear immediately replaces farming with the boss');
+  assert.ok(bossSpawned.some(enemy => enemy.enemyRole === 'boss'), 'the tenth clear immediately replaces farming with the boss');
 
   const hero = Object.assign(newHeroProgress('Falie', 'hero-1'), { uid: 1, kind: 'hero', heroDisplaySlot: 0 });
   const heroes = [hero];

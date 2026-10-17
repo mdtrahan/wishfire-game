@@ -139,7 +139,7 @@ export function drawCombatProgressHud(ctx, { state, images, worldToCanvas } = {}
   const wavePacks = bossReady ? { fraction: 0 } : deriveContinuousCombatWavePackProgress(progress, state?.entities);
   const progressPosition = Math.min(waveCount, completed + wavePacks.fraction);
   const bossTimeRemainingSec = continuousCombatBossTimeRemaining(progress, state?.globals?.time);
-  const bossTimeFraction = bossTimeRemainingSec == null ? null : bossTimeRemainingSec / Number(progress.bossTimeLimitSec || CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC);
+  const bossTimeFraction = bossTimeRemainingSec == null ? null : bossTimeRemainingSec / CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC;
   const label = `Chapter ${Math.max(1, Number(progress.region) || 1)}`;
   const portrait = images?.CombatProgressHondoHead;
 

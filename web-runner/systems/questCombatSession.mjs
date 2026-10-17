@@ -1,4 +1,4 @@
-import { activateContinuousCombatSpawnedEnemy, buildContinuousCombatSpawnPlan, getContinuousCombatPartyCP, recordContinuousCombatWavePackProgress, resetContinuousCombatAfterDefeat } from '../src/core/continuousCombatStage.mjs';
+import { CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC, activateContinuousCombatSpawnedEnemy, buildContinuousCombatSpawnPlan, getContinuousCombatPartyCP, recordContinuousCombatWavePackProgress, resetContinuousCombatAfterDefeat } from '../src/core/continuousCombatStage.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import { resetActorPresentationAfterRestore } from '../src/core/actorPresentationState.mjs';
 import { placeContinuousCombatHeroesInRecoveryHuddle } from '../src/core/arenaCombat.mjs';
@@ -50,7 +50,7 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
         stage.lastBossTimeout = {
           time: Number(state.globals.time || 0),
           elapsedSec: Math.max(0, Number(state.globals.time || 0) - Number(stage.bossTimerStartedAt || 0)),
-          timeLimitSec: Number(stage.bossTimeLimitSec || 0),
+          timeLimitSec: CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC,
           bossHp: Number(boss?.hp || 0),
           bossMaxHp: Number(boss?.maxHP || 0),
           heroes: state.entities.filter(actor => actor?.kind === 'hero').map(actor => ({ uid: Number(actor.uid || 0), name: String(actor.name || ''), hp: Number(actor.hp || 0), maxHp: Number(actor.maxHP || 0) })),

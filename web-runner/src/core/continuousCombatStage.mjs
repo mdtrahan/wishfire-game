@@ -15,7 +15,7 @@ export { continuousCombatStagesForRegion, continuousCombatWavesForStage } from '
 export const CONTINUOUS_COMBAT_PACK_INTERVAL_SEC = 3;
 export const CONTINUOUS_COMBAT_ORDINARY_CLEAR_HEAL_FRACTION = 0.15;
 export const CONTINUOUS_COMBAT_PACK_CP_STEP = 0.06;
-export const CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC = 18;
+export const CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC = 30;
 const ORDINARY_LEVEL_ONE_HP_CEILING = Object.freeze({ fodder: 28, routine: 45, hard: 55, elite: 70 });
 export function continuousCombatPacksForStage(region) {
   const chapter = Math.max(1, Math.floor(Number(region) || 1));
@@ -917,7 +917,7 @@ function updateApproachingEnemies(globals, entities, now) {
 
 export function continuousCombatBossTimeRemaining(stageState, now) {
   if (!stageState?.bossActive) return null;
-  const limit = Number(stageState.bossTimeLimitSec || CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC);
+  const limit = CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC;
   const startedAt = stageState.bossTimerStartedAt;
   return startedAt == null ? limit : Math.max(0, limit - (Number(now || 0) - Number(startedAt)));
 }

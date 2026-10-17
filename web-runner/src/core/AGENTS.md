@@ -109,6 +109,7 @@
 - A completed ordinary wave restores 15% max HP, rounded up, to each living Hero without reviving a KO. The stage owner saves the new HP, refreshes the HUD, and records `ordinary_wave_clear` healing in opt-in balance telemetry. Boss outcomes retain their separate full-party recovery.
 
 - Boss CP uses one local pack's baseline (wave CP divided by pack count), then the existing boss premium and stage curve. Increasing dispersed pack count must not inflate one boss's damage or defenses.
+- Boss attempts use the shared fixed 30-second deadline, including saves created under older limits.
 - The first region's first boss retains its catalog-tuned stats. This introductory encounter must not inherit CP-driven offense/defense amplification; later bosses retain the pack-normalized stage curve.
 
 - Bag conveyor rules own emitted/collected gear and the full-cache held item. Auto-Equip processes the displayed rarity/CP order once, matching slots only: lowest equipped slot CP, then lowest current total hero CP, then H1–H4. Each assignment updates state before the next. Replaced equipped gear is destroyed without Essence. Explicit dismantle converts the reviewed snapshot, including missed upgrades; later arrivals survive. COT and party Training rules remain deterministic; buffs project at combat boundaries without rewriting individual base stats.

@@ -15,6 +15,7 @@
 - `simulationCoreShadow.js` owns WASM loading, Rust owner markers, shadow checks, and mismatch diagnostics.
 - `runtimeAssetUrl.mjs` owns document-base asset resolution and embedded offline JSON/WASM payload lookup; hosted runtime loading remains the default path. Hero skill icons use this resolver so the classic offline bundle can open the current Skills screen.
 - `devToolingControls.js` and runtime debug helpers own QA/dev surfaces.
+- Boss HUD fractions and timeout receipts use the stage core's fixed 30-second limit, including old stage objects carrying a prior limit.
 - `renderCombatBossControl.mjs` owns the shared boss progress rail and interrupted-boss fallback surface. The fallback appears for a ready or active boss outside combat or under the gear modal, and for a stage-latched ready boss during combat. It suppresses the Canvas rail and sits in the top-center safe band above the modal scrim. Hero reserves matching top space while preserving its footer, Vault hides its overlapping Back To Combat control, and lamp modal CSS reserves the same band. The developer modal keeps its existing close path and suppresses the fallback until it closes. Returning through the existing combat layout preserves an active encounter snapshot; first-entry bosses arm automatically, while a latched retry waits for explicit summon through the shared boss arm path. The return action waits until lamp opening, draw/equip work, and feedback receipts can leave safely.
 
 ## Local Contracts
