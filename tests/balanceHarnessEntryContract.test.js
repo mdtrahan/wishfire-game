@@ -18,6 +18,13 @@ test('boss timeout measurement has a separate bound and preserves game failure e
   assert.match(source, /endReason = 'max_boss_timeouts'/);
 });
 
+test('synthetic ordinary Hero KO is explicit and uses the production damage route', () => {
+  assert.equal(buildConfig({}, {}).forceOrdinaryKo, false);
+  assert.equal(buildConfig({ forceOrdinaryKo: 'true' }, {}).forceOrdinaryKo, true);
+  assert.match(source, /game\.callFunction\('ApplyDamageToTarget', hero\.uid/);
+  assert.match(source, /if \(!forcedHit \|\| forcedHit\.afterHP > 0\) throw/);
+});
+
 test('source fingerprint changes when an untracked capture module changes', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'orka-balance-fingerprint-'));
   try {

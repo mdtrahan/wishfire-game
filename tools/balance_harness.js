@@ -40,6 +40,7 @@ const DEFAULTS = Object.freeze({
   closeAttachedBrowser: false,
   autoEquip: false,
   captureFrames: false,
+  forceOrdinaryKo: false,
   eventLog: '',
   bossPolicy: 'auto',
 });
@@ -614,6 +615,25 @@ async function runSession(page, config, sessionId) {
   const startingEquipment = { slots: equippedSlotCount(snapshot.loadouts), lampSeed: snapshot.lampSeed, lampSequence: snapshot.lampSequence, loadouts: snapshot.loadouts };
   const equipmentActions = { collect: 0, auto_equip: 0, close: 0 };
   const captures = {};
+  if (config.forceOrdinaryKo) {
+    let forcedHit = null;
+    for (let attempt = 0; attempt < 100 && !forcedHit; attempt += 1) {
+      forcedHit = await page.evaluate(() => {
+        const game = window.__codexGame;
+        const enemy = game.state.entities.find(actor => actor?.kind === 'enemy' && actor.hp > 0);
+        const hero = game.state.entities.find(actor => actor?.kind === 'hero' && actor.hp > 0);
+        if (!enemy || !hero) return null;
+        hero.hp = 1;
+        const damage = game.callFunction('ApplyDamageToTarget', hero.uid, 999999, {
+          sourceUID: enemy.uid, nativeResolved: true, damageType: 'physical',
+        });
+        return { enemyUID: enemy.uid, heroUID: hero.uid, damage, afterHP: hero.hp };
+      });
+      if (!forcedHit) await sleep(50);
+    }
+    if (!forcedHit || forcedHit.afterHP > 0) throw new Error(`Forced ordinary Hero KO failed: ${JSON.stringify(forcedHit)}`);
+    logRecord({ record: 'synthetic_ordinary_ko', ...forcedHit });
+  }
   async function capture(label) {
     if (!config.captureFrames || captures[label]) return;
     if (await page.locator('#lamp-overlay:not([hidden])').count()) return;
@@ -1110,6 +1130,7 @@ function buildConfig(argSource = parseArgs(process.argv.slice(2)), env = process
     closeAttachedBrowser: readBool(args.closeAttachedBrowser ?? env.BALANCE_CLOSE_ATTACHED_BROWSER, DEFAULTS.closeAttachedBrowser),
     autoEquip: readBool(args.autoEquip ?? env.BALANCE_AUTO_EQUIP, DEFAULTS.autoEquip),
     captureFrames: readBool(args.captureFrames ?? env.BALANCE_CAPTURE_FRAMES, DEFAULTS.captureFrames),
+    forceOrdinaryKo: readBool(args.forceOrdinaryKo ?? env.BALANCE_FORCE_ORDINARY_KO, DEFAULTS.forceOrdinaryKo),
     eventLog: eventLogInput === '' || eventLogInput === 'false' ? '' : path.resolve(eventLogInput === 'true' ? path.join(outputDir, 'observed_events.ndjson') : eventLogInput),
     bossPolicy,
   };
