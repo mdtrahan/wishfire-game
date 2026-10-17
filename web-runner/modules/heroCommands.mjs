@@ -1,4 +1,5 @@
 import {resetRealtimeSkillAttempt} from '../src/core/realtimeSkillState.mjs';
+import {recordActorPuppetDefeat} from '../systems/actorPuppetDefeats.mjs';
 import {actionCapacity} from '../src/core/actionSelection.mjs';
 import {settleBattleEXP} from '../src/core/heroProgression.mjs';
 import {heroDefinition,PROGRESSION} from '../src/core/heroDefinitions.mjs';
@@ -85,7 +86,7 @@ export function rulesContext(ctx,roleEvents=null){
  onHeal:(source,target,delta,meta={})=>{if(delta>0)emitResolvedHealEvent(ctx,source,target,Math.max(0,Number(target?.hp||0)-Number(delta||0)),{allowRevive:true,presentation:meta.healPresentation==='minor'||meta.statusEffect==='hot'?'minor':['heal','revive'].includes(meta.effectType)?'major':'minor'});},
  onDamage:(source,target,delta,meta={})=>{if(roleEvents&&delta>0)roleEvents.push({type:'damage',sourceUID:Number(source?.uid||0),sourceKind:source?.kind,targetUID:Number(target?.uid||0),targetKind:target?.kind,delta:Number(delta||0),targetWasLiving:meta.targetWasLiving!==false});},
  onStatus:(source,target,effect,meta={})=>{if(roleEvents&&!meta.refreshed&&source?.kind==='hero')roleEvents.push({type:'status',sourceUID:Number(source.uid||0),targetUID:Number(target?.uid||0)});},
- onKO:actor=>{if(actor.kind==='enemy')recordEnemyDefeatReward(g.ProgressionBattle,actor);},
+ onKO:actor=>{if(actor.kind==='enemy'){recordActorPuppetDefeat(g,actor);recordEnemyDefeatReward(g.ProgressionBattle,actor);}},
  isOver:()=>{
   const noLivingEnemy=!ctx.state.entities.some(a=>a.kind==='enemy'&&a.hp>0);
   const streamComplete=Number(g.ContinuousCombatStageLoop||0)!==1||Number(g.ContinuousCombatStageComplete||0)===1;

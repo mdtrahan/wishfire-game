@@ -644,3 +644,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - ORKA-bnw: Menu CP must read the same canonical hero progression as equipment comparisons. Preferring a paused combat actor can conceal a committed upgrade until a later equipment sync; test the next render with an intentionally stale actor and verify manual/Auto receipts match saved and live CP.
 
 - A live Bead does not prove current source identity. Verify origin, main ancestry and active Bag renderer before editing or serving. Exported snapshots can reuse Bead IDs while having unrelated histories; migrate only requested features and their dependencies into project main. Port Equip fixes into the conveyor owner rather than restoring a legacy strip.
+
+- Puppet loading: retain the displayed image across asynchronous transitions, and let the initial request complete before chasing state/facing changes. Zero post-ready misses alone can hide actors that never became ready; validate readiness for every required UID plus encoded video frame counts and crop containment.

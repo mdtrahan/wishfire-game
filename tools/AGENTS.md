@@ -70,3 +70,7 @@
 - Hondo and Kaja reuse the Fara pilot layout and motion curves with character-painted slots. `PUPPET_ACTOR=hondo,kaja` regenerates only those actors and preserves other manifest entries; source metadata supplies facing and relative paint paths.
 
 - Server fingerprints identify actual repository origin, commit, source root and Bag/legacy renderer. A Bead ID comes only from the branch; never infer ownership from the tracker queue or unrelated commit history.
+
+- `complete_missing_actor_clips.py` exports only recovered Djinn/High Orc sources through native Synfig1024 to Lanczos128. It preserves existing sources and supports actor/state-scoped re-export; never run the pilot exporter over recovered packages.
+
+- Run pad_actor_motion_clips.py after affected native exports. It re-renders an expanded view box rather than padding already-clipped PNGs; referenceHeight128 and translated foot origins preserve body scale. The owner review capture script lives with its generated output, outside the production game.

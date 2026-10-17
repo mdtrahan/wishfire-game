@@ -1,0 +1,37 @@
+{
+  "sourceCommit": "c6e7d2209752fd5fadfcd58d681b009986c5fb0f",
+  "ownerSuppliedReference": "output/puppet-rig-guide.zip",
+  "guidePartsSha256": "f9cfc0823ceb51704ebeec3ac7d56a9db68747a283a21e7e9bd7b5a6eee8023c",
+  "guideRigSha256": "da8aa1b9ee92c1caea496b92f3745885f2acc1649595464b69b4b5fbe1a595e4",
+  "sourcePaintSha256": {
+    "belt_cord.png": "aa7421206f387bf9a295633c286d0779032773092dc3803e8150282543b2986e",
+    "shin_boot_near.png": "d6b206e4bccac4568b3c855769041ab565a87d0610e1825df4a1ec5cae79ac20",
+    "orb.png": "0ad58145e3a0b7d93717ff772e3b76c889410549a4b2f26c8a81e7037b360909",
+    "hand_far.png": "297159373e2830ad1e59370d42d6c6ae9d7166f43b4eafe73dccb7fbb205bda8",
+    "upper_arm_far.png": "59d46daf0c108da75fe55ab6769757a8c1de34bf62d169890218c3772e45931c",
+    "forearm_far.png": "6e67d9154ae1a032f77fbf075701c8f9e70c8a8d1b4367e33dc14b778ef16c1f",
+    "neutral-left.png": "0a8e1bae8f046681a6d748f4b3d8139a155e663f41edd949d5cd95ebca9596aa",
+    "upper_arm_near.png": "5e7c03df49a4e823169b3745d0fe8126c50a6c65cd63ea631b84328766c81731",
+    "hand_near.png": "34cb40193934e08afcf64de06550f6acb6c0301207fab7162a263bc71323b22a",
+    "head.png": "095b73516701ace14251f2d9a9181e222b4524e07ffd59f6edfc82521631bd56",
+    "shin_boot_far.png": "d6ee268bceb3da4997c550f7e7e517092813b4591fc08df80b15331b59d63ddb",
+    "neutral-left-author.png": "c0c66bdd7761b57af5ba2a5bd60f7b34a6894af083cb0d317f53d1da5529c80f",
+    "forearm_near.png": "3ba4bf06c583acf5c117504ac1ade556156f0c6f01124d5cbd4ca9943ebc7a7b",
+    "torso.png": "9d3d8203575c8160cc84c1729883b7061fcd9db978e7b5c9f430a30ce4beb103",
+    "coat_back.png": "7b353bbbe6b00d618b6728045f9f0c599558ee9e2aaa4dbc9dcb0812165f76db",
+    "neutral-right-author.png": "258c8b3f924f8441d592a0de1f040fafbfa5d6e59926d6bfec3c71623915f91a",
+    "pelvis.png": "6061cc612400140d9bd6a1c747035ff443661fda5f3f759c4cee0ca1e85bbe00",
+    "thigh_far.png": "fbf672827afb32303f9990ad53ae5994fd6dec6b5b027e1f3fb0364a64ddae6a",
+    "parts-left-v1.png": "ed574c17d359e1b51e9f846a12b5318c474e9a85c4273c2aa7da63f594c890a1",
+    "neutral-right.png": "4742e3160df5ebd220cce2d3c9c49a31c10896464a685ed2a4d16e228588fbec",
+    "thigh_near.png": "d0d22bcd263acb5e788e57c48271c0820b6f8c75953ad532c5e0e1d2cf9dc0ba",
+    "parts-left-v2.png": "e1adb3f6733a14b98281fc15e13e8fc8b4bd35a2abaa2b6afbe738fe285d1c16"
+  },
+  "unchangedNeutralSha256": {
+    "neutral-left.sif": "da8aa1b9ee92c1caea496b92f3745885f2acc1649595464b69b4b5fbe1a595e4",
+    "neutral-right.sif": "72907cdb678a5e8fc9acec5be5f9ffe6edcabb9ce701eba83fc282d5403a78a6"
+  },
+  "sharedMotionTemplate": "marid",
+  "motionPolicy": "Preserve neutral local attachment origins; reuse template rotations and relative body translation. Preserve pre-existing High Orc walk/basic/cast sources. Native overscan preserves complete KO silhouettes at unchanged body scale.",
+  "status": "Runtime candidate for owner video review; no independent art approval claimed."
+}

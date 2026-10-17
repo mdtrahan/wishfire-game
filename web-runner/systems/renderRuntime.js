@@ -10,12 +10,12 @@ import {
   normalizeCombatOrientation,
   orientCombatWorldOffsetX,
 } from '../../src/core/combatOrientation.mjs';
-import { drawCombatActorSprite } from './combatActorSpritePresentation.mjs';
 import { heroArtAsset, resolveHeroArtSourceRect } from '../state/heroArtAssets.mjs';
 import { combatVfxProfileForActor, queueCombatAttackImpactVfx, renderCombatAttackVfx } from './combatAttackVfxPresentation.mjs';
 import { drawCombatProgressHud } from './renderCombatBossControl.mjs';
 import { drawCombatHealthBar } from './combatHealthBarPresentation.mjs';
 import { drawActorPuppetFrame } from './actorPuppetPresentation.mjs';
+import { combatEnemiesForPresentation } from './actorPuppetDefeats.mjs';
 import { renderRealtimeSkillGroundVfx } from './realtimeSkillGroundPresentation.mjs';
 import { createEnemyActivationFade, paintWithActivationAlpha } from './enemyActivationFadePresentation.mjs';
 import { isActorTargetInRange } from '../../src/core/heroAttackTargetingRules.mjs';
@@ -86,6 +86,12 @@ const removeBlock = (marker, searchFrom = 0) => {
   throw new Error(`[RENDER_EXTRACTION] unterminated block: ${marker}`);
 };
 effectiveBody = effectiveBody.replace('    if (!state.globals.time) state.globals.time = 0;\n    state.globals.time += dt;\n', '');
+effectiveBody = replaceRequired(
+  effectiveBody,
+  "state.entities.filter(e => e.kind === 'enemy' && ((e.hp ?? 0) > 0 || deathHoldByUID[e.uid])).sort((a, b) => Number(b.y ?? b.originY ?? 0) - Number(a.y ?? a.originY ?? 0))",
+  'combatEnemiesForPresentation(state.entities, state.globals)',
+  'puppet defeat lifetime',
+);
 removeBetween('    if (state.globals.BattleStartActive) {', '    const casino = gameState.yellowCasino;');
 removeBetween('    const refill = gameState.refillBounce;\n    if (refill && refill.active) {', '    // Apply delayed hero hits after lunge/impact timing');
 removeBetween('    // Apply delayed hero hits after lunge/impact timing', '    // Enemy action state machine (advance -> act -> retreat -> done)');
@@ -146,9 +152,16 @@ replaceBetween(
   body => {
     const puppetDeclaration = 'const puppet = actorPuppetPresentation?.frameFor(enemy, Number(g.time || 0), activeCombatOrientation);';
     if (!body.includes(puppetDeclaration)) throw new Error('[RENDER_EXTRACTION] missing enemy puppet anchor');
-    const enemyDrawBody = body.replace(puppetDeclaration, '');
-    return `        const puppet = sprite ? actorPuppetPresentation?.frameFor(enemy, Number(g.time || 0), activeCombatOrientation) : null;
-        const enemyFootY = puppet ? Number(pos.y) : Number(drawY + enemyH);
+    const enemyDrawBody = `
+          const drawEnemySprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY: pos.y, height: enemyH, actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }) : null;
+          drawEnemySprite();
+          if (puppet && (hasPersistentEnemyBlightOverlay(enemy.uid) || enemyStandsInRenderedTaintedGround(enemy))) {
+            renderHitFlashOverlay(drawEnemySprite, 'purple');
+            renderEnemyBlightShimmer(drawX, drawY, enemyW, enemyH, enemy.uid);
+          }
+          if (puppet && isHitFlashActive(enemy.uid)) renderHitFlashOverlay(drawEnemySprite, getHitFlashTone(enemy.uid));`;
+    return `        const puppet = actorPuppetPresentation?.frameFor(enemy, Number(g.time || 0), activeCombatOrientation);
+        const enemyFootY = Number(pos.y);
         const enemyFadeAlpha = getEnemyActivationFadeAlpha(enemy, Number(g.time || 0));
         const paintEnemyActor = () => {
           ctx.save();
@@ -181,12 +194,6 @@ effectiveBody = replaceRequired(
   'ctx.globalAlpha = Math.max(0, Math.min(0.9, alpha));',
   'ctx.globalAlpha *= Math.max(0, Math.min(0.9, alpha));',
   'nested blight shimmer alpha',
-);
-effectiveBody = replaceRequired(
-  effectiveBody,
-  'ctx.globalAlpha = 0.35;',
-  'ctx.globalAlpha *= 0.35;',
-  'nested fallback blight alpha',
 );
 effectiveBody = replaceRequired(
   effectiveBody,
@@ -238,7 +245,6 @@ export function renderRuntime(deps) {
   deps.deriveCombatFormationAnchors = deriveCombatFormationAnchors;
   deps.normalizeCombatOrientation = normalizeCombatOrientation;
   deps.orientCombatWorldOffsetX = orientCombatWorldOffsetX;
-  deps.drawCombatActorSprite = drawCombatActorSprite;
   deps.heroArtAsset = heroArtAsset;
   deps.resolveHeroArtSourceRect = resolveHeroArtSourceRect;
   deps.combatVfxProfileForActor = combatVfxProfileForActor;
@@ -247,6 +253,7 @@ export function renderRuntime(deps) {
   deps.drawCombatProgressHud = drawCombatProgressHud;
   deps.drawCombatHealthBar = drawCombatHealthBar;
   deps.drawActorPuppetFrame = drawActorPuppetFrame;
+  deps.combatEnemiesForPresentation = combatEnemiesForPresentation;
   deps.renderRealtimeSkillGroundVfx = renderRealtimeSkillGroundVfx;
   deps.getEnemyActivationFadeAlpha = enemyActivationFadeAlpha;
   deps.paintWithActivationAlpha = paintWithActivationAlpha;
@@ -577,7 +584,7 @@ export function renderRuntime(deps) {
       )
       .replace(
         "drawCombatActorSprite(ctx, sprite, { drawX, drawY, width: enemyW, height: enemyH, pivotX: pos.x, orientation: activeCombatOrientation, facing: enemy.facing, nativeFacing: 'left', actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) })",
-        "const puppet = actorPuppetPresentation?.frameFor(enemy, Number(g.time || 0), activeCombatOrientation);\n        const drawEnemySprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY: pos.y, height: enemyH, actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }) : drawCombatActorSprite(ctx, sprite, { drawX, drawY, width: enemyW, height: enemyH, pivotX: pos.x, orientation: activeCombatOrientation, facing: enemy.facing, nativeFacing: 'left', actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) });\n        drawEnemySprite();",
+        "const puppet = actorPuppetPresentation?.frameFor(enemy, Number(g.time || 0), activeCombatOrientation);\n        const drawEnemySprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY: pos.y, height: enemyH, actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }) : null;\n        drawEnemySprite();",
       )
       .replaceAll(
         "renderHitFlashOverlay(() => drawCombatActorSprite(ctx, sprite, { drawX, drawY, width: enemyW, height: enemyH, pivotX: pos.x, orientation: activeCombatOrientation, facing: enemy.facing, nativeFacing: 'left', actorUID: enemy.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }),",
@@ -597,7 +604,7 @@ export function renderRuntime(deps) {
       )
       .replace(
         "const img = heroPortraitImages[entry.portraitName];\n          if (!img) continue;",
-        "const heroArt = heroArtAsset(entry.portraitName);\n          const img = heroPortraitImages[heroArt?.key || entry.portraitName];\n          if (!img) continue;\n          const sourceRect = heroArt ? resolveHeroArtSourceRect(img, heroArt.combat) : null;",
+        "const img = { width: 128, height: 128 };\n          const sourceRect = null;",
       )
       .replace(
         "const wWorld = heroWByName(img, hWorld);",
@@ -605,7 +612,7 @@ export function renderRuntime(deps) {
       )
       .replace(
         "drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation, facing: hero.facing, nativeFacing: 'right' });",
-        "const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0), activeCombatOrientation);\n\t          const drawHeroSprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY, height: scaledH, actorUID: hero.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }) : drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation, facing: hero.facing, nativeFacing: 'right', ...sourceRect });\n\t          drawHeroSprite();",
+        "const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0), activeCombatOrientation);\n\t          const drawHeroSprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY, height: scaledH, actorUID: hero.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }) : null;\n\t          drawHeroSprite();",
       )
       .replace(
         "renderHitFlashOverlay(() => drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation, facing: hero.facing, nativeFacing: 'right' }), getHitFlashTone(hero.uid));",

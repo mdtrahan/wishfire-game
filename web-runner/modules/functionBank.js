@@ -1,4 +1,5 @@
 import { partyTrainingCombatStat } from '../src/core/realtimeSkillState.mjs';
+import { recordActorPuppetDefeat } from '../systems/actorPuppetDefeats.mjs';
 import { effectiveStat } from '../src/core/combatRules.mjs';
 import { executeHeroCommand, resolveNativeCommandStep, resolveRealtimeBasicImpact, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat, settleContinuousCombatRewards, emitResolvedHealEvent, recordEnemyDefeatReward } from './heroCommands.mjs';
 import { state } from './state.js';
@@ -6031,6 +6032,7 @@ function resolveActorDefeatTransition(ctx, target, killerUID = 0, options = unde
   if (target.kind === 'enemy') {
     target.pendingOfficialDeath = 1;
     target.deathState = 'pending_attack';
+    recordActorPuppetDefeat(g, target);
     recordEnemyDefeatReward(g.ProgressionBattle, target);
   } else {
     target.isAlive = false;

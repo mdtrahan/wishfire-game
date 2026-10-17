@@ -16,7 +16,7 @@
 - Do not hand-edit `simulation_core.wasm`; rebuild it with `npm run rust:build-wasm`.
 - Treat `layouts.json` as large structured data from the retired Construct surface. Use JSON-aware edits and keep gameplay rules in code/product docs.
 - Asset filenames are often referenced directly by render code and tests; rename only with a full reference search.
-- Hero art files use the current display names `Fara.png`, `Hondo.png`, `Runa.png`, and `Kaja.png`; they are transparent full-body combat sprites. Legacy hero IDs resolve through `state/heroArtAssets.mjs` and never own filenames.
+- Hero art files use the current display names `Fara.png`, `Hondo.png`, `Runa.png`, and `Kaja.png`; they are transparent full-body portraits; combat actors consume puppet packages. Legacy hero IDs resolve through `state/heroArtAssets.mjs` and never own filenames.
 - Battlefield selectors have no raster assets; actor readiness and enemy targeting are state-owned and render no marker.
 - Do not store secrets or environment-specific paths in assets.
 
@@ -41,6 +41,8 @@
 - `puppets/runa/AGENTS.md` - actor source geometry, identity and native motion contracts.
 - `puppets/skeleton/AGENTS.md` - actor source geometry, identity and native motion contracts.
 - `puppets/troll/AGENTS.md` - actor source geometry, identity and native motion contracts.
+- `puppets/djinn/AGENTS.md` - recovered native Djinn source and complete runtime export contract.
+- `puppets/highorc/AGENTS.md` - recovered High Orc source, authored sword actions and complete runtime export contract.
 
 - `narrative/chapter-1-map.png` is a terrain-only 360x640 background. `chapter-town-token.png` is a separate transparent token; chapterMapPresentation.mjs owns overlay positions and labels.
 
@@ -113,3 +115,5 @@
 - Hondo and Kaja share Fara's fifteen-bone rig and fourteen paint slots. Character repainting stays within this common chibi silhouette; retain joints, pivots and motion channels. Canonical source and exported states remain presentation-only.
 
 - Current combat strip uses images/lamp/equipment-bag.png. Progression resource/stat/ticket assets and Training Ground scene are approved raster art; resource consumers display the matching icon and yellow held / white required amounts. Preserve Bag wish-ring styling, center emission, randomized sizes and directions, and current bounce timing.
+
+- Every authored enemy must have all seven states in both facings in `puppets/manifest.json`; combat has no static-art fallback.

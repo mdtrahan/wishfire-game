@@ -3,14 +3,28 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createActorClipLoader, sampleActorClip } from '../web-runner/systems/actorClipPlayback.mjs';
 
+test('every authored enemy has a complete runtime puppet package', () => {
+  const manifest = JSON.parse(fs.readFileSync(new URL('../web-runner/assets/puppets/manifest.json', import.meta.url)));
+  const enemies = JSON.parse(fs.readFileSync(new URL('../web-runner/assets/enemies.json', import.meta.url))).data[0].slice(1).flat().filter(Boolean);
+  for (const name of enemies) {
+    const actor = manifest.actors[name.toLowerCase().replaceAll(' ', '')];
+    assert.ok(actor, `${name} must have puppet animation, never static substitution`);
+    for (const state of ['idle', 'walk', 'basic', 'cast', 'hurt', 'ko', 'spawn']) {
+      for (const facing of ['left', 'right']) assert.ok(actor.clips[state]?.[facing]?.frames.length, `${name}/${state}/${facing}`);
+    }
+  }
+});
+
 test('actor clips load once per explicit facing and sample only supplied time', async () => {
   const entry = { frames: ['fara/right/idle_001.png', 'fara/right/idle_002.png'], frameHoldMs: [100, 200], impactTimeMs: 100, loop: true, canvas: { width: 192, height: 192 }, footOrigin: { x: 96, y: 176 } };
   let manifests = 0;
   const images = [];
   const load = createActorClipLoader({ loadManifest: () => { manifests++; return { actors: { fara: { clips: { idle: { right: entry }, defeated: { right: { ...entry, loop: false } }, bad: { right: { ...entry, frameHoldMs: [0, 1] } } } } } }; }, loadImage: async name => { images.push(name); return { name, width: 192, height: 192 }; }, frameUrl: name => name });
   assert.equal(manifests, 0);
+  assert.equal(load.peek('fara', 'idle', 'right'), null);
   const [a, b] = await Promise.all([load('fara', 'idle', 'right'), load('fara', 'idle', 'right')]);
   assert.equal(a, b);
+  assert.equal(load.peek('fara', 'idle', 'right'), a);
   assert.equal(manifests, 1);
   assert.equal(images.length, 2);
   assert.equal(a.impactTimeMs, 100);
