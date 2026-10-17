@@ -2,6 +2,8 @@
 
 2026-10-17. The owner ended the WORLD360 reference playthrough after Lucy's unlock. This document records the combat decision from direct observations and a plan for later Wishfire work. No further StoneAge milestone, including Chapter 4-2, is required for this decision. The current Wishfire candidate remains unmerged and is not Integration Ready.
 
+For a feature-by-feature handoff with source and proof paths, read [the gap analysis](orka-7l9-feature-gap-analysis.md).
+
 ## What the game showed
 
 - WORLD360 progressed from Chapter 1-2 into Chapter 3 and unlocked Lucy after the Chapter 3-1 boss. Early chapter bosses repeatedly exhausted their blue gauge while the visible party remained standing. At Chapter 2-20, a 42%-HP failure showed an empty gauge and four green party portraits. Earned levels, equipment, training, and a mount accumulated before a later win. These changes overlap, so the observations establish a progression pattern, not the effect of any one upgrade.
