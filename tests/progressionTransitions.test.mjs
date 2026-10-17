@@ -170,7 +170,7 @@ test('legacy deferred boss checkpoints keep readiness and auto-enter once after 
 });
 
 test('fractional current-wave credits survive checkpoint reload without duplicate sector spawns',()=>{
- const rows=['High Orc','Chimerilass','Djinn'].map((name,index)=>({name,HP:30+index,ATK:3,DEF:2,MAG:1,RES:1,SPD:8}));
+ const rows=['High Gobloc','Lizardo','Orc'].map((name,index)=>({name,HP:30+index,ATK:3,DEF:2,MAG:1,RES:1,SPD:8}));
  const globals={HeroProgress:createHeroProgressStore(),ContinuousCombatStageLoop:1,ContinuousCombatStage:{region:1,stage:2,wave:3,bossAvailable:false,clearedBosses:0,clearedPackMask:0b010101}};
  const values=new Map();const persist=createPersistHeroProgressIfDirty({localStorage:{setItem:(key,value)=>values.set(key,value)}});
  assert.equal(persist({stateGlobals:globals}),true);
