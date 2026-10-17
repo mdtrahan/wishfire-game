@@ -101,8 +101,8 @@
 
 - Shop presentation test covers touch and mouse drop purchases without confirmation, exact wallet deduction, canonical inventory and green upgrade badges. FLOW Back returns to the main shell; open Quests explicitly before comparing the shared wallet. Equipment contract tests cover equal, stronger, incompatible and tradeoff comparisons.
 
-- Lamp equip proof covers five mandatory stats including HP, v3-to-v4 preservation, no healing from gear, Skip retention, and recipient floats using the saved before/after CP receipt.
-- Continuous-stage proof covers the capped ordinary-wave heal for living Heroes and keeps gear equip's no-heal contract separate.
+- Lamp equip proof covers five mandatory stats including HP, v3-to-v5 preservation, filling only gained max HP on gear growth, Skip retention, and recipient floats using the saved before/after CP receipt.
+- Continuous-stage proof covers the capped ordinary-wave heal for living Heroes and keeps gear max-HP growth fill separate.
 
 - Lamp presentation verifies 15-second idle guidance, Hondo-to-Auto-Equip targeting and dismissal by ordinary document clicks using an offset monotonic clock, preserving live combat timing.
 
