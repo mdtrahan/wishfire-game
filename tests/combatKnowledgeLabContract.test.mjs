@@ -258,3 +258,25 @@ test('harness boss policy and event log are explicit, optional and default-off',
   const lines = fs.readFileSync(config.eventLog, 'utf8').trim().split('\n').map(line => JSON.parse(line));
   assert.deepEqual(lines.map(line => line.record), ['run_start', 'session_start']);
 });
+
+test('boss surrender is not a combat outcome and max-HP growth lowers the event-time ratio', async () => {
+  const records = [header(), start(),
+    { session: 1, seed: SEED, record: 'hero_state', pollTime: 3, uid: 2, name: 'Huun', level: 1, hp: 60, maxHp: 80 },
+    { session: 1, seed: SEED, record: 'boss_start', pollTime: 4, bossUID: 9, bossName: 'Troll', bossHp: 231, bossMaxHp: 231, gameTimeLimitSec: 18, heroes: heroes() },
+    { session: 1, seed: SEED, record: 'equipment_action', pollTime: 6, action: 'collect', bossActive: true },
+    { session: 1, seed: SEED, record: 'boss_end', pollTime: 8, outcome: 'ko_recovery', startedAt: 4, gameTimeLimitSec: 18 },
+    ...[1, 2, 3].map((uid, index) => ({ ...heal(index + 1, 8, uid, [0, 85, 60, 69][uid], [0, 85, 80, 69][uid]), type: 'recovery', reason: 'boss_surrender', recoveryIndex: 1 })),
+    end()];
+  const facts = sessionFacts(loadObservedLog(writeLog('surrender', records), 'x').sessions[0]);
+  assert.deepEqual(facts.bossEnds.map(endRecord => endRecord.kind), ['BOSS_SURRENDER']);
+  assert.equal(facts.equipmentActions.length, 1);
+  const huun = facts.heroes.find(hero => hero.name === 'Huun');
+  assert.equal(huun.minHp, 60);
+  assert.equal(huun.lowestRatio, 0.75);
+  const { createRequire } = await import('node:module');
+  const harness = createRequire(import.meta.url)('../tools/balance_harness.js');
+  assert.equal(harness.bossLampPause({ bossActive: true }), true);
+  assert.equal(harness.bossLampPause({ bossAvailable: true, bossSummonRequired: false }), true);
+  assert.equal(harness.bossLampPause({ bossAvailable: true, bossSummonRequired: true }), false);
+  assert.equal(harness.bossLampPause({ bossTransitionEndsAtMs: Date.now() + 5000 }), true);
+});

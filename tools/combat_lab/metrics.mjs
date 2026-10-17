@@ -34,18 +34,38 @@ export function sessionFacts(session, { statePollMs = 40 } = {}) {
   const records = session.records.slice().sort(byOrder);
   const pollWindow = Math.max(0.2, (statePollMs / 1000) * 4 * 1.5);
   const maxHp = maxHpTimeline(session);
-  const heroes = new Map((session.start?.heroes || []).map(hero => [hero.uid, { uid: hero.uid, name: hero.name, level: hero.level, startHp: hero.hp, startMaxHp: hero.maxHp, minHp: hero.hp, minHpAt: 0, minHpMaxHp: hero.maxHp, minHpMaxHpUncertain: false, hits: 0, applied: 0, appliedByAmount: {}, healing: {}, kos: 0 }]));
+  const heroes = new Map((session.start?.heroes || []).map(hero => [hero.uid, { uid: hero.uid, name: hero.name, level: hero.level, startHp: hero.hp, startMaxHp: hero.maxHp, minHp: hero.hp, minHpAt: 0, minHpMaxHp: hero.maxHp, minHpMaxHpUncertain: false, lowestRatio: hero.maxHp ? hero.hp / hero.maxHp : null, lowestRatioAt: 0, lowestRatioHp: hero.hp, lowestRatioMaxHp: hero.maxHp, lowestRatioUncertain: false, currentHp: hero.hp, hits: 0, applied: 0, appliedByAmount: {}, healing: {}, kos: 0 }]));
+  // Lowest current/max ratio at any HP event or observed max-HP change (max HP rises without healing).
+  const noteRatio = (hero, t, hp) => {
+    const known = maxHp.at(hero.uid, t, pollWindow);
+    if (!known.maxHp) return;
+    const ratio = hp / known.maxHp;
+    if (hero.lowestRatio == null || ratio < hero.lowestRatio) Object.assign(hero, { lowestRatio: ratio, lowestRatioAt: t, lowestRatioHp: hp, lowestRatioMaxHp: known.maxHp, lowestRatioUncertain: known.uncertain });
+  };
   const kos = [];
   const recoveries = new Map();
   const waveClears = [];
   const ambiguousClears = [];
   const gaps = records.filter(record => record.kind === 'GAP');
   const deadlocks = records.filter(record => record.kind === 'DEADLOCK');
-  const bossEnds = records.filter(record => ['BOSS_CLEAR', 'BOSS_TIMEOUT', 'BOSS_KO_RECOVERY', 'BOSS_EXIT'].includes(record.kind));
+  // A boss attempt whose recovery reason is boss_surrender ended by leaving combat (e.g. opening
+  // the Lamp), not by KO or timer; it is not a combat outcome.
+  const surrenderTimes = records.filter(record => record.kind === 'RECOVER' && record.reason === 'boss_surrender').map(record => record.t);
+  const bossEnds = records.filter(record => ['BOSS_CLEAR', 'BOSS_TIMEOUT', 'BOSS_KO_RECOVERY', 'BOSS_EXIT'].includes(record.kind))
+    .map(record => (record.kind === 'BOSS_KO_RECOVERY' && surrenderTimes.some(t => t <= record.t + 1e-6 && record.t - t <= 1) ? { ...record, kind: 'BOSS_SURRENDER', surrender: true } : record));
+  const equipmentActions = records.filter(record => record.kind === 'EQUIPMENT');
   const bossStarts = records.filter(record => record.kind === 'BOSS_START');
   const hits = [];
   for (const record of records) {
     const hero = heroes.get(record.target?.uid);
+    if (record.kind === 'HERO_STATE') {
+      const owner = heroes.get(record.hero.uid);
+      if (owner && owner.currentHp > 0) noteRatio(owner, record.t, Math.min(owner.currentHp, record.hero.maxHp));
+    }
+    if (['HIT', 'HEAL', 'RECOVER'].includes(record.kind) && hero) {
+      hero.currentHp = record.hpAfter;
+      if (record.hpAfter > 0) noteRatio(hero, record.t, record.hpAfter);
+    }
     if (record.kind === 'HIT' && hero) {
       hero.hits += 1;
       hero.applied += record.applied;
@@ -89,6 +109,7 @@ export function sessionFacts(session, { statePollMs = 40 } = {}) {
     deadlockCount: session.end?.deadlockCount ?? deadlocks.length,
     bossStarts,
     bossEnds,
+    equipmentActions,
     hits,
     heroes: [...heroes.values()],
     issues: session.issues,

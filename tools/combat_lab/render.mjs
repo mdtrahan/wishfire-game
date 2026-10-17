@@ -35,6 +35,10 @@ export function obsLine(record) {
       return `OBS ${pollT(record)} BOSS_CLEAR last sampled boss HP ${fmt(record.boss?.lastSampledHp)} (sample precedes the clear; not settlement HP)`;
     case 'BOSS_TIMEOUT':
       return `OBS ${pollT(record)} BOSS_TIMEOUT boss ${fmt(record.boss?.timeoutHp)}/${fmt(record.boss?.maxHp)} elapsed=${fmt(record.gameElapsedSec)}s living=${record.timeoutHeroes ? record.timeoutHeroes.filter(hero => hero.hp > 0).length : '?'}`;
+    case 'BOSS_SURRENDER':
+      return `OBS ${pollT(record)} BOSS_SURRENDER attempt left combat (recovery reason boss_surrender); not a combat outcome`;
+    case 'EQUIPMENT':
+      return `OBS ${pollT(record)} EQUIPMENT ${record.action}${record.bossActive ? ' during active boss' : ''}`;
     case 'BOSS_KO_RECOVERY':
     case 'BOSS_EXIT':
       return `OBS ${pollT(record)} ${record.kind} outcome=${fmt(record.outcome)}`;
@@ -183,7 +187,7 @@ function detail(result) {
     out.push(result.reason, '');
     for (const scenario of result.margins) {
       out.push(`### HP margins — ${scenario.scenario}`, '', `Evidence: ${link(scenario.evidence)}${scenario.admissible ? '' : ` — inadmissible: ${scenario.problems.join('; ')}`}`, '');
-      out.push(table(['seed', 'Hero', 'start', 'min event HP / max HP at min', 'min ratio', 'hits', 'applied', 'applied amounts', 'healing by source', 'max hits in a wave', 'MODEL max survivable uniform hits/wave (no heal)'], scenario.sessions.flatMap(session => session.heroes.map(hero => [session.seed, hero.name, `${hero.startHp}/${hero.startMaxHp}`, `${hero.minEventHp}/${hero.maxHpAtMin ?? '?'}${hero.maxHpAtMinUncertain ? ' (max HP changed within poll window)' : ''}`, hero.minHpRatio ?? '?', hero.hits, hero.appliedDamage, JSON.stringify(hero.appliedByAmount), JSON.stringify(hero.healing), hero.hitsPerWave?.maxHitsInWave ?? '?', `${hero.model.envelope.maxSurvivableUniformHitsPerWave ?? '?'} (${hero.model.envelope.maxSurvivableWithoutHeal ?? '?'})`]))), '');
+      out.push(table(['seed', 'Hero', 'start', 'lowest event-time HP/maxHP', 'lowest ratio', 'min absolute HP', 'hits', 'applied', 'applied amounts', 'healing by source', 'hits/wave mean · max', 'MODEL max survivable uniform hits/wave (no heal)'], scenario.sessions.flatMap(session => session.heroes.map(hero => [session.seed, hero.name, `${hero.startHp}/${hero.startMaxHp}`, `${hero.lowestRatioHp}/${hero.lowestRatioMaxHp ?? '?'} t=${hero.lowestRatioAt}${hero.lowestRatioUncertain ? ' (max HP changed within poll window)' : ''}`, hero.lowestRatio ?? '?', hero.minEventHp, hero.hits, hero.appliedDamage, JSON.stringify(hero.appliedByAmount), JSON.stringify(hero.healing), `${hero.hitsPerWave?.meanHitsPerWave ?? '?'} · ${hero.hitsPerWave?.maxHitsInWave ?? '?'}`, `${hero.model.envelope.maxSurvivableUniformHitsPerWave ?? '?'} (${hero.model.envelope.maxSurvivableWithoutHeal ?? '?'})`]))), '');
       out.push('MODEL no-heal counterfactual over the frozen trace (stops when altered HP could change later events):', '');
       out.push(table(['seed', 'complete', 'cutoff', 'Hero altered min HP before cutoff'], scenario.sessions.map(session => [session.seed, session.noHealCounterfactual.complete, session.noHealCounterfactual.cutoff ? `t=${session.noHealCounterfactual.cutoff.t} ${session.noHealCounterfactual.cutoff.reason}: ${session.noHealCounterfactual.cutoff.detail}` : 'none (trace end)', session.noHealCounterfactual.heroes.map(hero => `${hero.name} ${hero.alteredMinHpBeforeCutoff} (obs ${hero.observedMinHp})`).join(', ')])), '');
     }
@@ -208,7 +212,7 @@ function detail(result) {
     out.push(table(['scenario', 'level', 'class', 'timing', 'first-attempt clears', 'timeouts', 'seeds', 'attempt detail', 'admissible'], result.sweep.map(entry => [entry.scenario, entry.level, entry.fixtureClass, entry.timing, entry.clears, entry.timeouts, entry.seeds, entry.attempts.map(attempt => `${attempt.seed}:${attempt.outcome}${attempt.timeoutBossHp != null ? ` ${attempt.timeoutBossHp}/${attempt.bossMaxHp ?? '?'}` : ''}${attempt.livingAtTimeout != null ? ` living ${attempt.livingAtTimeout}` : ''}`).join('; '), entry.admissible ? 'yes' : `no: ${entry.problems.join('; ')}`])), '');
     out.push(`Synthetic fixed-gear threshold (OBS): lowest level with any first-attempt clear L${result.threshold.lowestLevelWithAnyClear ?? '?'}; all seeds clear L${result.threshold.lowestLevelAllSeedsClear ?? '?'}; levels measured ${result.threshold.levelsMeasured.join(', ') || 'none'}.`, '');
     out.push(`Earned arrival: **${result.earned.verdict}**${result.earned.reason ? ` — ${result.earned.reason}` : ''} ${link(result.earned.evidence)}`);
-    for (const session of result.earned.sessions || []) out.push(`- seed ${session.seed}: ${session.verdict}; ordinary clears before first boss ${session.ordinaryClearsBeforeFirstBoss}; arrival ${session.arrival ? session.arrival.heroes.map(hero => `${hero.name} L${hero.level} ${hero.hp}/${hero.maxHp} CP ${hero.combatPower}`).join(', ') : '?'}; outcomes ${session.outcomes.join(' ') || 'none'}; end ${session.endReason}`);
+    for (const session of result.earned.sessions || []) out.push(`- seed ${session.seed}: ${session.verdict}; ordinary clears before first boss ${session.ordinaryClearsBeforeFirstBoss}; arrival ${session.arrival ? session.arrival.heroes.map(hero => `${hero.name} L${hero.level} ${hero.hp}/${hero.maxHp} CP ${hero.combatPower}`).join(', ') : '?'}; outcomes ${session.outcomes.join(' ') || 'none'}; surrenders excluded ${session.surrenders} (lamp actions during boss ${session.lampActionsDuringBoss}); end ${session.endReason}`);
   }
   return out;
 }

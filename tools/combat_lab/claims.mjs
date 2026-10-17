@@ -169,7 +169,7 @@ const evaluators = {
           seed: facts.seed,
           heroes: facts.heroes.map(hero => {
             const envelope = survivalEnvelope({ hp: hero.startHp, maxHp: hero.startMaxHp, tier: 'routine', waves: claim.rule?.waves || 20 });
-            return { name: hero.name, startHp: hero.startHp, startMaxHp: hero.startMaxHp, minEventHp: hero.minHp, maxHpAtMin: hero.minHpMaxHp, maxHpAtMinUncertain: hero.minHpMaxHpUncertain, minHpRatio: hero.minHpMaxHp ? Number((hero.minHp / hero.minHpMaxHp).toFixed(3)) : null, hits: hero.hits, appliedDamage: hero.applied, appliedByAmount: hero.appliedByAmount, healing: hero.healing, hitsPerWave: perWave[hero.name], model: { label: 'MODEL', envelope, observedMaxHitsPerWave: perWave[hero.name]?.maxHitsInWave ?? null } };
+            return { name: hero.name, startHp: hero.startHp, startMaxHp: hero.startMaxHp, lowestRatio: hero.lowestRatio == null ? null : Number(hero.lowestRatio.toFixed(3)), lowestRatioAt: hero.lowestRatioAt, lowestRatioHp: hero.lowestRatioHp, lowestRatioMaxHp: hero.lowestRatioMaxHp, lowestRatioUncertain: hero.lowestRatioUncertain, minEventHp: hero.minHp, maxHpAtMin: hero.minHpMaxHp, maxHpAtMinUncertain: hero.minHpMaxHpUncertain, minHpRatio: hero.minHpMaxHp ? Number((hero.minHp / hero.minHpMaxHp).toFixed(3)) : null, hits: hero.hits, appliedDamage: hero.applied, appliedByAmount: hero.appliedByAmount, healing: hero.healing, hitsPerWave: perWave[hero.name], model: { label: 'MODEL', envelope, observedMaxHitsPerWave: perWave[hero.name]?.maxHitsInWave ?? null } };
           }),
           noHealCounterfactual: counterfactual(ctx.loaded.get(loaded.scenario.id).log.sessions[index], { waveHealFraction: 0 }, { scenario: loaded.scenario.id }),
         };
@@ -186,7 +186,7 @@ const evaluators = {
         const left = base.facts.find(fact => fact.seed === seed), right = variant.facts.find(fact => fact.seed === seed);
         if (!left || !right) return { seed, status: 'missing' };
         const outcome = facts => ({ heroKOs: facts.heroKOs.length, recoveries: facts.recoveries.length, clears: consecutiveClearsAfter(facts, -1).clears, endReason: facts.endReason, bossClears: facts.bossEnds.filter(end => end.kind === 'BOSS_CLEAR').length });
-        const margin = facts => ({ hits: facts.heroes.reduce((sum, hero) => sum + hero.hits, 0), applied: facts.heroes.reduce((sum, hero) => sum + hero.applied, 0), minRatio: Object.fromEntries(facts.heroes.map(hero => [hero.name, hero.minHpMaxHp ? Number((hero.minHp / hero.minHpMaxHp).toFixed(3)) : null])), appliedByAmount: Object.fromEntries(facts.heroes.map(hero => [hero.name, hero.appliedByAmount])) });
+        const margin = facts => ({ hits: facts.heroes.reduce((sum, hero) => sum + hero.hits, 0), applied: facts.heroes.reduce((sum, hero) => sum + hero.applied, 0), minRatio: Object.fromEntries(facts.heroes.map(hero => [hero.name, hero.lowestRatio == null ? null : Number(hero.lowestRatio.toFixed(3))])), appliedByAmount: Object.fromEntries(facts.heroes.map(hero => [hero.name, hero.appliedByAmount])) });
         const a = outcome(left), b = outcome(right);
         return { seed, base: { outcome: a, margin: margin(left) }, variant: { outcome: b, margin: margin(right) }, outcomeChanged: JSON.stringify(a) !== JSON.stringify(b), marginChanged: JSON.stringify(margin(left)) !== JSON.stringify(margin(right)) };
       });
@@ -306,11 +306,12 @@ const evaluators = {
         const budget = claim.rule?.earnedTimeoutBudget ?? 3;
         const sessions = earnedLoaded.facts.map(facts => {
           const arrival = facts.bossStarts[0];
-          const outcomes = facts.bossEnds.map(end => end.kind);
+          const allOutcomes = facts.bossEnds.map(end => end.kind);
+          const outcomes = allOutcomes.filter(kind => kind !== 'BOSS_SURRENDER');
           const clearIndex = outcomes.indexOf('BOSS_CLEAR');
           const timeoutsBeforeClear = (clearIndex < 0 ? outcomes : outcomes.slice(0, clearIndex)).filter(kind => kind === 'BOSS_TIMEOUT').length;
           const verdict = clearIndex >= 0 && timeoutsBeforeClear < budget ? 'PASS' : timeoutsBeforeClear >= budget ? 'FAIL' : 'INCONCLUSIVE';
-          return { seed: facts.seed, verdict, arrival: arrival ? { t: arrival.t, heroes: arrival.heroes, boss: arrival.boss, loadouts: arrival.loadouts } : null, outcomes, timeoutsBeforeClear, endReason: facts.endReason, ordinaryClearsBeforeFirstBoss: facts.waveClears.filter(clear => !arrival || clear.t <= arrival.t).length };
+          return { seed: facts.seed, verdict, surrenders: allOutcomes.filter(kind => kind === 'BOSS_SURRENDER').length, lampActionsDuringBoss: facts.equipmentActions.filter(action => action.bossActive).length, arrival: arrival ? { t: arrival.t, heroes: arrival.heroes, boss: arrival.boss, loadouts: arrival.loadouts } : null, outcomes, timeoutsBeforeClear, endReason: facts.endReason, ordinaryClearsBeforeFirstBoss: facts.waveClears.filter(clear => !arrival || clear.t <= arrival.t).length };
         });
         earned = { verdict: combine(sessions.map(session => session.verdict)), budget, sessions, evidence: evidenceLink(earnedLoaded) };
       }

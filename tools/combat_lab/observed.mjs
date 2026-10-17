@@ -56,6 +56,8 @@ export function normalizeRecord(raw, scenario, file) {
       return [{ ...common, kind: 'SUMMON', t: roundTime(raw.pollTime), timeSource: 'poll', policy: raw.policy }];
     case 'event_gap':
       return [{ ...common, kind: 'GAP', t: roundTime(raw.pollTime), timeSource: 'poll', afterId: raw.afterId, nextId: raw.nextId, missing: raw.missing }];
+    case 'equipment_action':
+      return [{ ...common, kind: 'EQUIPMENT', t: roundTime(raw.pollTime), timeSource: 'poll', action: raw.action, bossPause: raw.bossPause ?? null, bossActive: raw.bossActive ?? null }];
     case 'deadlock':
       return [{ ...common, kind: 'DEADLOCK', t: roundTime(raw.pollTime), timeSource: 'poll' }];
     case 'combat':

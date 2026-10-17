@@ -56,6 +56,11 @@ function createEventLog(file, header) {
 }
 
 // farm:N summons a ready boss only after N ordinary clears since the session start, last boss attempt or last recovery.
+function bossLampPause(progression, nowMs = Date.now()) {
+  if (!progression) return false;
+  return !!progression.bossActive || (!!progression.bossAvailable && !progression.bossSummonRequired) || Number(progression.bossTransitionEndsAtMs || 0) > nowMs;
+}
+
 function shouldSummonReadyBoss(config, ordinaryClearsSinceBossOrRecovery = Infinity) {
   const farm = FARM_BOSS_POLICY.exec(String(config.bossPolicy || ''));
   if (farm) return ordinaryClearsSinceBossOrRecovery >= Number(farm[1]);
@@ -427,10 +432,16 @@ function applyPostRecoveryWaveClear(attempts, existingAttemptCount, ordinaryWave
   }
 }
 
-async function useAvailableLampEquipment(page, allowCollect) {
-  return page.evaluate((collectAllowed) => {
+async function useAvailableLampEquipment(page, allowCollect, closeOnly = false) {
+  return page.evaluate(({ collectAllowed, onlyClose }) => {
     const visible = button => button && !button.disabled && button.getClientRects().length > 0;
     const overlay = document.querySelector('#lamp-overlay:not([hidden])');
+    if (overlay && onlyClose) {
+      const close = overlay.querySelector('button[data-action="close"]');
+      if (visible(close)) { close.click(); return 'close'; }
+      return null;
+    }
+    if (onlyClose) return null;
     if (overlay) {
       const equip = overlay.querySelector('button[data-action="auto-equip"]');
       if (visible(equip)) { equip.click(); return 'auto_equip'; }
@@ -445,7 +456,7 @@ async function useAvailableLampEquipment(page, allowCollect) {
       return 'collect';
     }
     return null;
-  }, allowCollect);
+  }, { collectAllowed: allowCollect, onlyClose: closeOnly });
 }
 
 async function summonReadyBoss(page) {
@@ -638,11 +649,15 @@ async function runSession(page, config, sessionId) {
 
   while (Date.now() - startedAt < config.sessionTimeoutMs) {
     await sleep(config.statePollMs);
+    // Opening the Lamp surrenders an active boss attempt (player guide), so lamp actions pause
+    // while a boss is active, transitioning or about to auto-enter.
     if (config.autoEquip && Date.now() - lastEquipmentCheckAt >= 1000) {
       lastEquipmentCheckAt = Date.now();
       const pendingKey = snapshot.lampPendingIds.join('|');
-      const action = await useAvailableLampEquipment(page, !!pendingKey && pendingKey !== lastEquipmentReviewKey);
+      const paused = bossLampPause(snapshot.continuousProgression);
+      const action = await useAvailableLampEquipment(page, !paused && !!pendingKey && pendingKey !== lastEquipmentReviewKey, paused);
       if (action) {
+        logRecord({ record: 'equipment_action', pollTime: relTime(snapshot.time), action, bossPause: paused, bossActive: !!snapshot.continuousProgression?.bossActive });
         equipmentActions[action] += 1;
         if (action === 'collect') lastEquipmentReviewKey = pendingKey;
         lastProgressAt = Date.now();
@@ -1141,6 +1156,7 @@ if (require.main === module) {
     buildConfig,
     createEventLog,
     shouldSummonReadyBoss,
+    bossLampPause,
     closeAttachedBrowserViaCDP,
     isRealtimeCombatReadyState,
     loadHeroFixture,

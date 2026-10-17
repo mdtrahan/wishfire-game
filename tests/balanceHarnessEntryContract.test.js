@@ -55,7 +55,8 @@ test('balance harness creates and closes an isolated browser context for each se
 });
 
 test('optional progression scenario uses visible lamp collection and auto-equip controls', () => {
-  assert.match(source, /async function useAvailableLampEquipment\(page, allowCollect\)/);
+  assert.match(source, /async function useAvailableLampEquipment\(page, allowCollect, closeOnly = false\)/);
+  assert.match(source, /const paused = bossLampPause\(snapshot\.continuousProgression\);/);
   assert.match(source, /pendingKey !== lastEquipmentReviewKey/);
   assert.match(source, /#wishfire-lamp button\[data-action="collect"\]/);
   assert.match(source, /button\[data-action="auto-equip"\]/);
