@@ -95,6 +95,7 @@ export function configureContinuousCombatProduction(globals, { productionPath = 
   globals.ContinuousCombatStage = {
     ...createContinuousCombatStageState(globals.EncounterSeed || 1, checkpoint),
     ...checkpoint,
+    bossTimeLimitSec: checkpoint?.bossActive ? CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC : null,
     clearedPackMask: normalizeContinuousCombatPackMask(checkpoint?.clearedPackMask),
     spawnedPackMask: 0,
     spawnSerial: 0,

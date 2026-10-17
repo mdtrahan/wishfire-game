@@ -48,6 +48,9 @@ test('fixed 30-second boss clock ignores an old saved limit and expires only for
   const boss = { uid: 90, kind: 'enemy', hp: 1 };
   assert.equal(CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC, 30);
   assert.equal(continuousCombatBossTimeRemaining(stage, 19), 21);
+  const globals = { EncounterSeed: 1, HeroProgress: { continuousStage: stage } };
+  assert.equal(configureContinuousCombatProduction(globals, { productionPath: true }), true);
+  assert.equal(globals.ContinuousCombatStage.bossTimeLimitSec, 30);
   assert.equal(shouldExpireContinuousCombatBoss(stage, [boss], 39.99), false);
   assert.equal(shouldExpireContinuousCombatBoss(stage, [boss], 40), true);
   boss.hp = 0;
