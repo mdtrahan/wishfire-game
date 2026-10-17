@@ -1,9 +1,0 @@
-{
-  "version": "orka.sustain-case-run.v2",
-  "caseId": "S1-high-defense",
-  "digest": "cdd6fc81756c452399338b00dca55ae406e843cbacf31ff3d051a8fea38b0bfb",
-  "status": "PASS",
-  "minHpPct": 95,
-  "heroKOs": 0,
-  "reason": "all declared model checks met"
-}

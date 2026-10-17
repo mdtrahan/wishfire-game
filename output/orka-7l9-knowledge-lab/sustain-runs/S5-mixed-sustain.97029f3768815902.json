@@ -1,9 +1,9 @@
 {
   "version": "orka.sustain-case-run.v2",
   "caseId": "S5-mixed-sustain",
-  "digest": "eeb90393d7df2d78f9b6a576f1d3ee8bfa51d88eab481604756c06c34088907b",
+  "digest": "97029f3768815902e77be4b683b106a93fa8cd6b5d0987de1be90f5fc3123d35",
   "status": "PASS",
-  "minHpPct": 98.9,
+  "minHpPct": 97.4,
   "heroKOs": 0,
   "reason": "all declared model checks met"
 }

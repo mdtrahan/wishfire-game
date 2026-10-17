@@ -1,5 +1,5 @@
 // A trace-locked design sandbox. Changed HP never changes recorded attacks or targeting.
-export const SUSTAIN_MODEL_VERSION = '1';
+export const SUSTAIN_MODEL_VERSION = '2';
 
 const finite = value => Number.isFinite(Number(value)) ? Number(value) : null;
 const round = value => Math.round(value * 1000) / 1000;
@@ -151,10 +151,12 @@ export function evaluateSustainCase(observedRecords, caseSpec) {
       break;
     }
     summary.incomingHitCount += 1;
-    const scaled = observed * pressure;
+    const scaled = Math.ceil(observed * pressure);
     const dodged = evadeRoll(event.row.id ?? summary.incomingHitCount, model.evadeSeed ?? source.seed) < evasion;
-    const blocked = dodged ? 0 : scaled * mitigation;
-    const damage = dodged ? 0 : scaled - blocked;
+    // OBS is already post-DEF, post-cap integer HP loss. This is only a
+    // hypothetical post-hit shield; it cannot recover the hidden DEF input.
+    const damage = dodged ? 0 : Math.ceil(scaled * (1 - mitigation));
+    const blocked = dodged ? 0 : scaled - damage;
     summary.evadedHits += Number(dodged);
     summary.preventedByDefense += blocked;
     summary.incomingDamageModeled += damage;
@@ -163,7 +165,7 @@ export function evaluateSustainCase(observedRecords, caseSpec) {
     summary.minHp = Math.min(summary.minHp, hp);
     push(event, dodged ? 'EVADE' : 'HIT', before, hp,
       `${event.row.source?.name || 'enemy'} → ${trace.displayHero || source.target}: OBS ${observed} HP, MODEL ${round(damage)} HP` +
-      (blocked ? `, DEF-like block ${round(blocked)}` : ''), damage);
+      (blocked ? `, post-hit shield ${round(blocked)}` : ''), damage);
     if (hp <= 0) {
       summary.heroKoCount = 1;
       summary.firstKoTime = round(event.t);

@@ -1,7 +1,7 @@
 {
   "version": "orka.sustain-case-run.v2",
   "caseId": "S15-fara-wave2-regen",
-  "digest": "2fa865443292b280a88de74ce0b3718d0d5c92dd0cea830a37b2e9c8fcd3d553",
+  "digest": "485ab736808ea563695e2504101df795f638567e2407829a1532a4c2adaad31d",
   "status": "PASS",
   "minHpPct": 93.3,
   "heroKOs": 0,

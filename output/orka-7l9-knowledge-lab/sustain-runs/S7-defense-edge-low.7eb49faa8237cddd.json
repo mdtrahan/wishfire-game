@@ -1,7 +1,7 @@
 {
   "version": "orka.sustain-case-run.v2",
-  "caseId": "S6-pressure-break",
-  "digest": "e6ace510047bb1cd8446cfc4c15ee9a129e1c8f4b818151bab3ccce5e57cfd05",
+  "caseId": "S7-defense-edge-low",
+  "digest": "7eb49faa8237cddd86f91226613ada2e1d8e246e3d3d53c403e7e93249278ecd",
   "status": "FAIL",
   "minHpPct": 0,
   "heroKOs": 1,

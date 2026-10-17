@@ -146,7 +146,7 @@ function runSettings() {
   $('rule').textContent = `${selected.id} · ${ruleText(selected.expectation)}${tracked ? ' · tracked MODEL case' : ' · *exploratory edit; no saved tracker result'}`;
   $('source').textContent = `${active.source.scenario} session ${active.source.session}, seed ${active.source.seed ?? '?'} · ${active.source.hero} · ${active.source.wave == null ? 'boss' : `ordinary wave ${active.source.wave}`} · ${clock(active.source.endTime - active.source.startTime)} observed window · ${active.summary.sourceIncomingHitCount} incoming hits · ${active.summary.enemyKoCount} observed enemy KOs`;
   $('interpretation').textContent = active.summary.invalidReasons.length ? active.summary.invalidReasons.join('; ') :
-    `MODEL ${grade.status}: minimum ${nice(active.summary.minHpFraction * 100)}% HP; ${active.summary.heroKoCount + active.summary.observedOtherHeroKoCount} Hero KO; ${active.summary.evadedHits} avoided hits; ${nice(active.summary.preventedByDefense)} HP blocked; ${nice(active.summary.regenHealing)} HP regenerated; ${nice(active.summary.drainHealing)} HP drained. ${grade.reasons.join('; ')}.`;
+    `ONE-HERO MODEL ${grade.status}: minimum ${nice(active.summary.minHpFraction * 100)}% HP; ${active.summary.heroKoCount + active.summary.observedOtherHeroKoCount} Hero KO; ${active.summary.evadedHits} avoided hits; ${nice(active.summary.preventedByDefense)} HP shielded; ${nice(active.summary.regenHealing)} HP regenerated; ${nice(active.summary.drainHealing)} HP drained. ${grade.reasons.join('; ')}. Full-party 20-wave result remains separate.`;
   $('activity').textContent = 'READY';
 }
 

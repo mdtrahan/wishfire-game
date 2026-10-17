@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S21-def-regen-95",
+  "digest": "6425bd85727c84d5490433da2227609af85be923b5cfd2f1da435a56123784bd",
+  "status": "FAIL",
+  "minHpPct": 58.8,
+  "heroKOs": 0,
+  "reason": "minimum HP 58.8% below 95%"
+}

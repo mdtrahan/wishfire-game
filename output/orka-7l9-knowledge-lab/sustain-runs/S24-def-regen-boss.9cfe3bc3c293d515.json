@@ -1,9 +1,9 @@
 {
   "version": "orka.sustain-case-run.v2",
   "caseId": "S24-def-regen-boss",
-  "digest": "667e46eb3e00a33e465881e32b6fb0316631d1baf33a79e0ed6230d69039da14",
+  "digest": "9cfe3bc3c293d515d293553f904fc537d13194f812399d99394c70427f021383",
   "status": "PASS",
-  "minHpPct": 86.2,
+  "minHpPct": 81.9,
   "heroKOs": 0,
   "reason": "all declared model checks met"
 }

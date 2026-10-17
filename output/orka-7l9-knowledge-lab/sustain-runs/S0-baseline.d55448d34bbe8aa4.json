@@ -1,7 +1,7 @@
 {
   "version": "orka.sustain-case-run.v2",
   "caseId": "S0-baseline",
-  "digest": "5f0effc55f4f3bb4beaab1cd4602f5d4badc1a6bba8aad98468e4cee20d71f71",
+  "digest": "d55448d34bbe8aa44a9148b8bbef4baf0c5cf7ba7ef941d60a9141116a883015",
   "status": "FAIL",
   "minHpPct": 0,
   "heroKOs": 1,

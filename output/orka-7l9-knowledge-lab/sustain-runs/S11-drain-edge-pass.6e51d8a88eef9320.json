@@ -1,7 +1,7 @@
 {
   "version": "orka.sustain-case-run.v2",
   "caseId": "S11-drain-edge-pass",
-  "digest": "541b21ceea9aef640b665703eb1d23cc3f4d5a2fd9a97d5198418efdfde918e8",
+  "digest": "6e51d8a88eef9320f69e7dd6384222ee1b4d07a3dd4fa67d33b681d18ad205b0",
   "status": "PASS",
   "minHpPct": 91.3,
   "heroKOs": 0,

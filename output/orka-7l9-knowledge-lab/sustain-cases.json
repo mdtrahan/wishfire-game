@@ -13,7 +13,7 @@
     "The wave begins after a full-HP ordinary clear. Its later KO is natural; the earlier forced one-HP recovery is outside the selected interval.",
     "Defense, evasion, drain cadence, and regen values are illustrative knobs. Drain assumes a successful Hero strike every three seconds because the OBS log does not expose all outgoing hits.",
     "Every ordinary-farming case fails immediately on its first Hero KO, including the synthetic high-pressure stress case. No farming KO is a passing control.",
-    "S19 onward isolates effective hit mitigation plus passive HP regeneration, the actionable two-knob design space. Evasion, drain, and four-mechanism cases are hypothetical diagnostics only; Wishfire does not have those baseline stats. A mitigation fraction is not a proven mapping from Wishfire DEF points."
+    "S19 onward uses a hypothetical whole-HP post-hit shield plus passive regeneration on one Hero. It cannot map shield percent to Wishfire DEF, which acts before the hostile-hit cap. Full-party endurance is tracked separately; evasion and drain remain diagnostics."
   ],
   "cases": [
     {

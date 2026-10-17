@@ -1,7 +1,7 @@
 {
   "version": "orka.sustain-case-run.v2",
   "caseId": "S25-def-regen-boss-pressure",
-  "digest": "6c08726edde046c22d6f8f26906da15236aaefc3ad8446a4ab27cbfdc2f66402",
+  "digest": "fef2b74328bece1242befb299a6599a8f5481290956a716d55c9dfb48816bcde",
   "status": "FAIL",
   "minHpPct": 0,
   "heroKOs": 1,

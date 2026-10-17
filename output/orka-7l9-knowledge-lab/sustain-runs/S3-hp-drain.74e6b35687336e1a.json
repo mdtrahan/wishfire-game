@@ -1,7 +1,7 @@
 {
   "version": "orka.sustain-case-run.v2",
   "caseId": "S3-hp-drain",
-  "digest": "10d8433d2784cd50cecbdd9b4dc91377d3d8b177e25be2db44c0507956f8c4b6",
+  "digest": "74e6b35687336e1aba4409c358c8e2db5e73e4d74be094a61bae12c370721658",
   "status": "PASS",
   "minHpPct": 96.5,
   "heroKOs": 0,

@@ -1,7 +1,7 @@
 {
   "version": "orka.sustain-case-run.v2",
   "caseId": "S14-huun-wave1-regen",
-  "digest": "524dd5f49f53354dd3d47ab990ce9678e41ae1550e5bcc347d5d8028a600febf",
+  "digest": "554cd149f27c3feed76720172451d44af1d507aa576b375b335ab16d795afc11",
   "status": "PASS",
   "minHpPct": 91.5,
   "heroKOs": 0,

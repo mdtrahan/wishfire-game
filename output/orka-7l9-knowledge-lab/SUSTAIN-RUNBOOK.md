@@ -2,7 +2,11 @@
 
 These are fixed **MODEL counterfactuals** over one unchanged Wishfire **OBS** event stream. They do not edit game code, change balance, rerun the game, or infer StoneAge's hidden formulas. The source is [sample/observed.ndjson.gz](sample/observed.ndjson.gz), pinned by SHA-256 in [sustain-cases.json](sustain-cases.json). The main stress trace is recovery-onehp session 1, Fara (internal save identity `Falie`), Stage 1-2 wave 3, simulation time 171.201–422.332, starting at 85/85 HP. The earlier forced one-HP setup is outside this interval. Other declared cases use the first two ordinary waves and a separate first-boss trace. Each case pins its own opening HP and time window.
 
-**Actionable lane:** `S19`–`S25` vary only effective incoming-hit mitigation and passive HP regeneration. `S1`–`S18` include evasion, drain, and four-mechanism probes for diagnosis. Wishfire has no baseline evasion or drain stat; their passing MODEL results do not propose adding either. Effective mitigation here is a fraction of applied hit damage, not a verified conversion from Wishfire DEF points.
+`S0`–`S25` are one-Hero diagnostics. The model now rounds post-hit damage up to whole HP. `S19`–`S25` use a hypothetical post-hit shield plus regen, not Wishfire DEF: the source exposes applied damage, while DEF acts before the hostile-hit cap. `S21` fails its 95% floor under corrected math. Evasion and drain remain hypothetical probes.
+
+Full-party tests use `node tools/combat_lab/party_sustain.mjs starter-l1-nokaja,kaja-l1-four,kaja-l15-three,kaja-l15-four 0 0.90 --regen-fraction 0.004 --heal-gear-growth --save`. The shared [party tracker](sustain-runs/party-tracker.json) stores formula settings, five distinct seed verdicts, minimum HP, wave counts, KOs and boss timeout HP. Matching source/model/setting hashes print `SKIPPED`. Ordinary farming excludes boss hits and boss elapsed time. Every Hero must clear 20 ordinary waves in each seed without KO and stay at or above the declared HP floor.
+
+The simplest passing MODEL case adds 0.4% max-HP passive regen per second and fills current HP by the max-HP increase when gear raises max HP. Worst minimum HP across five seeds is 92.901% for the three-Hero starter, 93.688% for the four-Hero starter, and 93.525% in each synthetic level-15 group. Gear-growth fill is proposed: current Wishfire gear raises max HP without filling current HP. The 30% damage-refund suggestion alone fails the 90% floor. It passes when combined with 0.2% max-HP regen per second and gear fill; removing either recovery component fails the starter check. Omitting gear fill also fails both bundles. These are frozen-trace counterfactuals; no gameplay implementation or live modified-game validation has occurred. Boss checks retain observed outgoing damage and timer; fourfold synthetic hit pressure is not a Chapter 3 projection.
 
 ## Assignment and one command
 
@@ -26,7 +30,7 @@ Replace the ID with the assigned one. Agents run CLI cases only; the browser vie
 
 `S7`–`S13` bracket the one-knob HP-floor boundaries. `S14`–`S15` use earlier ordinary waves. `S16`–`S18` transfer a hypothetical four-mechanism mix to farming and a boss. The current design lane uses these fixed cases:
 
-| ID | Declared DEF plus regen condition | Check |
+| ID | Declared post-hit shield plus regen condition | Check |
 | --- | --- | --- |
 | `S19-def-regen-low` | 50% effective mitigation, 0.10 HP/s, hard farming wave | No Hero KO; minimum HP ≥90% |
 | `S20-def-regen-floor` | 50% effective mitigation, 0.15 HP/s, same wave | Same |

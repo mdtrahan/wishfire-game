@@ -1,7 +1,7 @@
 {
   "version": "orka.sustain-case-run.v2",
   "caseId": "S4-high-regen",
-  "digest": "c5f45ddee450b717916f0b189b35fa88c66dc32a5ad0c882537334e298b5764b",
+  "digest": "21afd3030e0ed5fc15bdf94aa7af0a28570725302f330d2c921ebc2690d5c575",
   "status": "PASS",
   "minHpPct": 96.6,
   "heroKOs": 0,

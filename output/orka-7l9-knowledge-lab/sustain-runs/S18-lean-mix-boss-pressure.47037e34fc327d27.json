@@ -1,7 +1,7 @@
 {
   "version": "orka.sustain-case-run.v2",
   "caseId": "S18-lean-mix-boss-pressure",
-  "digest": "3d79a6b8d0945339199dd7ae5c526ec81fa59eaa501d6c821bea4cdf11ea54d9",
+  "digest": "47037e34fc327d27d3fec0f335e0fdce412b79da1a38bf60526cc900f9025630",
   "status": "FAIL",
   "minHpPct": 0,
   "heroKOs": 1,
