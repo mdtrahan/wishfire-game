@@ -103,7 +103,12 @@ function starterRow(facts, rule) {
     if (verdict !== 'FAIL') verdict = facts.endReason === 'timeout' || facts.endReason == null ? 'INCONCLUSIVE' : 'FAIL';
     reasons.push(`${streak.clears} consecutive clears < ${rule.consecutiveClears} (end ${facts.endReason})`);
   }
-  return { verdict, clears: streak.clears, heroKOs: facts.heroKOs.length, gaps: facts.gapCount, deadlocks: facts.deadlockCount, endReason: facts.endReason, reasons };
+  return { verdict, clears: streak.clears, stagesCleared: stagesCleared(facts), heroKOs: facts.heroKOs.length, gaps: facts.gapCount, deadlocks: facts.deadlockCount, endReason: facts.endReason, reasons };
+}
+
+// Stages whose ordinary waves were cleared; a 20-wave pass may loop one ready stage.
+export function stagesCleared(facts) {
+  return [...new Set(facts.waveClears.map(clear => `${clear.progression?.region ?? '?'}-${clear.progression?.stage ?? '?'}`))];
 }
 
 function aggregateStarterRow(session, rule) {
@@ -343,7 +348,7 @@ const evaluators = {
         if (facts.deadlockCount) { verdict = 'FAIL'; reasons.push('deadlock'); }
         if (later.ambiguous) { verdict = verdict === 'FAIL' ? 'FAIL' : 'INCONCLUSIVE'; reasons.push(`${later.ambiguous} ambiguous transition(s)`); }
         if (later.clears < rule.consecutiveClears && verdict !== 'FAIL') { verdict = facts.endReason === 'timeout' ? 'INCONCLUSIVE' : 'FAIL'; reasons.push(`${later.clears} post-recovery clears < ${rule.consecutiveClears} (end ${facts.endReason})`); }
-        return { verdict, initialKO: firstKO, recoveryT: recovery.t, restored: recovery.heroes, sameStageWave: sameStage, postRecoveryClears: later.clears, additionalKOs: laterKOs.length, bossAttempts: facts.bossEnds.map(end => end.kind), endReason: facts.endReason, reasons };
+        return { verdict, initialKO: firstKO, recoveryT: recovery.t, stagesCleared: stagesCleared(facts), laterKOs: laterKOs.map(ko => `${ko.name} t=${ko.t} ${ko.stage} W${ko.wave}`), restored: recovery.heroes, sameStageWave: sameStage, postRecoveryClears: later.clears, additionalKOs: laterKOs.length, bossAttempts: facts.bossEnds.map(end => end.kind), endReason: facts.endReason, reasons };
       }) : [];
       return { scenario: loaded.scenario.id, timing: loaded.scenario.timing, ...scenarioVerdict(loaded, perSeed), perSeed, evidence: evidenceLink(loaded), model: modelSummary(loaded) };
     });
