@@ -2,6 +2,7 @@ import {CONVEYOR_TRAVEL_MS,validateConveyorState,emitConveyorItem,collectConveyo
 import {equipmentStats} from '../src/core/equipment.mjs';
 import {markLampGuide,createLampEconomy,lampStoredCount,migrateLegacyEquipment,migrateDraftLamp,migrateFourStatLamp,migrateLampEconomy,lampCapacity,purchaseLampStage,upgradeLamp,completeLampUpgrade,speedUpLampUpgrade,LAMP_CONFIG,progressionOrdinal} from '../src/core/lampGear.mjs';
 import {refreshHeroStats,awardHeroEXP} from '../src/core/heroProgression.mjs';
+import {fillGearMaxHpGrowth} from '../src/core/heroSustainRules.mjs';
 import {computeCombatPower} from '../src/core/combatPower.mjs';
 export const EQUIPMENT_SAVE_KEY='wishfire.equipment-economy.v5';
 const FOUR_STAT_HP_KEY='wishfire.equipment-economy.v4';
@@ -37,7 +38,8 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=g
    const primary=hero.heroInstanceKey===canonical||hero.heroInstanceKey===`${canonical?.toLowerCase()}#1`;
    const stats=equipmentStats(record.items,record.loadouts[hero.heroInstanceKey]??(primary?record.loadouts[canonical]:undefined));
    if(JSON.stringify(hero.equipmentStats||{})!==JSON.stringify(stats)){
-    hero.equipmentStats=stats;refreshHeroStats(hero);hero.hp=Math.min(hero.hp,hero.maxHP);globals.HeroProgressDirty=true;
+    const beforeMaxHp=hero.maxHP,beforeHp=hero.hp;
+    hero.equipmentStats=stats;refreshHeroStats(hero);hero.hp=fillGearMaxHpGrowth(beforeHp,beforeMaxHp,hero.maxHP);globals.HeroProgressDirty=true;
    }
    hero.combatPower=computeCombatPower(hero);
   }

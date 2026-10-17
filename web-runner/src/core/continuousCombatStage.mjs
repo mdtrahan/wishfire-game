@@ -9,14 +9,22 @@ import { previewSeededRng } from '../../../src/core/seededRngRules.mjs';
 import { actorFootprintRadius } from '../../../src/core/arenaCombatRules.mjs';
 import { enemyCombatTier } from './routineEnemyScaling.mjs';
 import { recordBalanceCombatEvent } from './balanceTelemetry.mjs';
+import { continuousCombatStagesForRegion, continuousCombatWavesForStage } from './continuousCombatProgressionRules.mjs';
+export { continuousCombatStagesForRegion, continuousCombatWavesForStage } from './continuousCombatProgressionRules.mjs';
 
 export const CONTINUOUS_COMBAT_PACK_INTERVAL_SEC = 3;
 export const CONTINUOUS_COMBAT_ORDINARY_CLEAR_HEAL_FRACTION = 0.15;
 export const CONTINUOUS_COMBAT_PACK_CP_STEP = 0.06;
 export const CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC = 18;
 const ORDINARY_LEVEL_ONE_HP_CEILING = Object.freeze({ fodder: 28, routine: 45, hard: 55, elite: 70 });
-export const CONTINUOUS_COMBAT_WAVES_PER_STAGE = 4;
-export const CONTINUOUS_COMBAT_STAGES_PER_REGION = 10;
+export function continuousCombatPacksForStage(region) {
+  const chapter = Math.max(1, Math.floor(Number(region) || 1));
+  return chapter % 5 === 0 ? 3 : CONTINUOUS_COMBAT_PACKS_PER_WAVE;
+}
+function activePackMask(region) {
+  return continuousCombatPacksForStage(region) === CONTINUOUS_COMBAT_PACKS_PER_WAVE
+    ? CONTINUOUS_COMBAT_ALL_PACKS_MASK : 0b010101;
+}
 export const CONTINUOUS_COMBAT_PACKS_PER_WAVE = 6;
 export const CONTINUOUS_COMBAT_SOLOS_PER_WAVE = 6;
 export const CONTINUOUS_COMBAT_ALL_PACKS_MASK = (1 << CONTINUOUS_COMBAT_PACKS_PER_WAVE) - 1;
@@ -31,8 +39,8 @@ const CONTINUOUS_COMBAT_PACK_BOUNDARY_INSET = 0.01;
 const CONTINUOUS_COMBAT_PACK_COLUMNS = Object.freeze([-0.352, 0, 0.352]);
 export const CONTINUOUS_COMBAT_BOSS_ENTRY_WIPE_MS = 440;
 
-// Four normal packs form one repeatable stage. The boss is a gate rather than
-// a fifth timed pack.
+// Repeat these ordinary compositions through each chapter's stage length.
+// The boss remains a separate gate after the final ordinary wave.
 export const CONTINUOUS_COMBAT_STAGES = Object.freeze([
   Object.freeze({ wave: 1, kind: 'fodder', enemyNames: Object.freeze(['Gobloc', 'Skeleton']) }),
   Object.freeze({ wave: 2, kind: 'fodder', enemyNames: Object.freeze(['Gobloc', 'High Gobloc', 'Skeleton', 'Lizardo']) }),
@@ -44,7 +52,7 @@ export const CONTINUOUS_COMBAT_STAGES = Object.freeze([
 export function createContinuousCombatStageState(seed = 1, { region = 1, stage = 1 } = {}) {
   const normalizedSeed = Number(seed) >>> 0 || 1;
   const normalizedRegion = Math.max(1, Math.floor(Number(region) || 1));
-  const normalizedStage = Math.max(1, Math.min(CONTINUOUS_COMBAT_STAGES_PER_REGION, Math.floor(Number(stage) || 1)));
+  const normalizedStage = Math.max(1, Math.min(continuousCombatStagesForRegion(normalizedRegion), Math.floor(Number(stage) || 1)));
   return {
     seed: normalizedSeed,
     region: normalizedRegion,
@@ -101,14 +109,15 @@ export function getContinuousCombatPartyCP(entities) {
 }
 
 export function deriveContinuousCombatWavePackProgress(stageState, entities = []) {
-  const packsPerWave = CONTINUOUS_COMBAT_PACKS_PER_WAVE;
+  const packsPerWave = continuousCombatPacksForStage(stageState?.region);
   if (!stageState) {
     return { clearedPacks: 0, packsPerWave, fraction: 0 };
   }
   if (stageState.bossAvailable || stageState.bossActive) {
     return { clearedPacks: packsPerWave, packsPerWave, fraction: 1 };
   }
-  return progressFromMask(deriveContinuousCombatWavePackMask(stageState, entities), packsPerWave);
+  const mask = deriveContinuousCombatWavePackMask(stageState, entities) & activePackMask(stageState.region);
+  return progressFromMask(mask, packsPerWave);
 }
 
 function deriveContinuousCombatWavePackMask(stageState, entities) {
@@ -140,7 +149,7 @@ function normalizeContinuousCombatPackMask(value) {
 }
 
 function progressFromMask(mask, packsPerWave) {
-  const clearedPacks = Array.from({ length: packsPerWave }, (_, index) => (mask & (1 << index)) !== 0).filter(Boolean).length;
+  const clearedPacks = Array.from({ length: CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, index) => (mask & (1 << index)) !== 0).filter(Boolean).length;
   return { clearedPacks, packsPerWave, fraction: clearedPacks / packsPerWave };
 }
 
@@ -462,12 +471,12 @@ export function finalizeContinuousCombatProduction(globals, entities = []) {
 
 export function getContinuousCombatStage(stageState) {
   const region = Math.max(1, Math.floor(Number(stageState?.region) || 1));
-  const stage = Math.max(1, Math.min(CONTINUOUS_COMBAT_STAGES_PER_REGION, Math.floor(Number(stageState?.stage) || 1)));
+  const stage = Math.max(1, Math.min(continuousCombatStagesForRegion(region), Math.floor(Number(stageState?.stage) || 1)));
   const bossActive = !!stageState?.bossActive;
-  const wave = Math.max(1, Math.min(CONTINUOUS_COMBAT_WAVES_PER_STAGE, Math.floor(Number(stageState?.wave) || 1)));
+  const wave = Math.max(1, Math.min(continuousCombatWavesForStage(region, stage), Math.floor(Number(stageState?.wave) || 1)));
   const template = bossActive
     ? CONTINUOUS_COMBAT_STAGES[CONTINUOUS_COMBAT_STAGES.length - 1]
-    : CONTINUOUS_COMBAT_STAGES[wave - 1];
+    : CONTINUOUS_COMBAT_STAGES[(wave - 1) % (CONTINUOUS_COMBAT_STAGES.length - 1)];
   return template ? { ...template, id: `${region}-${stage}-${bossActive ? 'boss' : `wave-${wave}`}`, region, stage, wave } : null;
 }
 
@@ -475,11 +484,11 @@ export function advanceContinuousCombatStage(stageState) {
   const current = getContinuousCombatStage(stageState);
   const transitions = Number(stageState?.transitions || 0) + 1;
   if (stageState?.bossActive) {
+    const region = Math.max(1, Math.floor(Number(stageState?.region) || 1));
     const currentStage = Math.max(1, Math.floor(Number(stageState?.stage) || 1));
-    const nextRegion = currentStage >= CONTINUOUS_COMBAT_STAGES_PER_REGION
-      ? Math.max(1, Math.floor(Number(stageState?.region) || 1)) + 1
-      : Math.max(1, Math.floor(Number(stageState?.region) || 1));
-    const nextStage = currentStage >= CONTINUOUS_COMBAT_STAGES_PER_REGION ? 1 : currentStage + 1;
+    const chapterComplete = currentStage >= continuousCombatStagesForRegion(region);
+    const nextRegion = chapterComplete ? region + 1 : region;
+    const nextStage = chapterComplete ? 1 : currentStage + 1;
     const state = {
       ...stageState,
       region: nextRegion,
@@ -504,9 +513,10 @@ export function advanceContinuousCombatStage(stageState) {
     };
     return { done: false, stage: getContinuousCombatStage(state), state, clearedBoss: current?.id || '' };
   }
-  const currentWave = Math.max(1, Math.min(CONTINUOUS_COMBAT_WAVES_PER_STAGE, Math.floor(Number(stageState?.wave) || 1)));
+  const wavesPerStage = continuousCombatWavesForStage(stageState?.region, stageState?.stage);
+  const currentWave = Math.max(1, Math.min(wavesPerStage, Math.floor(Number(stageState?.wave) || 1)));
   const ordinaryWaveClears = Math.max(0, Math.floor(Number(stageState?.ordinaryWaveClears) || 0)) + 1;
-  const state = currentWave >= CONTINUOUS_COMBAT_WAVES_PER_STAGE
+  const state = currentWave >= wavesPerStage
     ? { ...stageState, wave: 1, clearedPackMask: 0, spawnedPackMask: 0, bossAvailable: true, transitions, ordinaryWaveClears }
     : { ...stageState, wave: currentWave + 1, clearedPackMask: 0, spawnedPackMask: 0, transitions, ordinaryWaveClears };
   return { done: false, stage: getContinuousCombatStage(state), state };
@@ -581,8 +591,8 @@ export function resetContinuousCombatAfterDefeat(globals) {
   const state = globals?.ContinuousCombatStage;
   if (!state) return false;
   const recordedPackMask = normalizeContinuousCombatPackMask(state.clearedPackMask);
-  const finalWaveClear = !state.bossActive && Number(state.wave || 1) >= CONTINUOUS_COMBAT_WAVES_PER_STAGE
-    && recordedPackMask === CONTINUOUS_COMBAT_ALL_PACKS_MASK;
+  const finalWaveClear = !state.bossActive && Number(state.wave || 1) >= continuousCombatWavesForStage(state.region, state.stage)
+    && (recordedPackMask & activePackMask(state.region)) === activePackMask(state.region);
   const bossAvailable = !!state.bossAvailable || !!state.bossActive || finalWaveClear;
   const clearedPackMask = bossAvailable ? 0 : recordedPackMask;
   globals.ContinuousCombatStage = {
@@ -635,6 +645,11 @@ function boundOrdinaryWaveHP(row, progressionScale) {
   return { ...row, HP: hp, maxHP: hp, CombatPower: computeCombatPower({ ...row, HP: hp, maxHP: hp }) };
 }
 
+function toughenShortChapterRow(row) {
+  const hp = Math.max(1, Math.ceil(Number(row.HP || row.maxHP || 1) * 1.5));
+  return { ...row, HP: hp, maxHP: hp, CombatPower: computeCombatPower({ ...row, HP: hp, maxHP: hp }) };
+}
+
 export function scaleContinuousCombatPackRow(row, cpStep = 0) {
   return scaleContinuousCombatRow(row, 1 + Math.max(0, Number(cpStep || 0)) * CONTINUOUS_COMBAT_PACK_CP_STEP);
 }
@@ -678,9 +693,10 @@ export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase
   const selectedRows = expandWaveRows(stage, byName, rows, compositionSeed);
   const baselineRows = expandWaveRows(CONTINUOUS_COMBAT_STAGES[0], byName, rows);
   const totalCP = entries => entries.reduce((sum, row) => sum + computeCombatPower(row), 0);
-  const stageOrdinal = (Math.max(1, Number(stage.region || 1)) - 1) * CONTINUOUS_COMBAT_STAGES_PER_REGION
-    + Math.max(0, Number(stage.stage || 1) - 1);
-  const waveStep = stage.kind === 'boss' ? CONTINUOUS_COMBAT_WAVES_PER_STAGE - 1 : Math.max(0, Number(stage.wave || 1) - 1);
+  const stageOrdinal = Math.max(1, Number(stage.region || 1)) - 1;
+  const waveStep = stage.kind === 'boss'
+    ? continuousCombatWavesForStage(stage.region, stage.stage) - 1
+    : Math.max(0, Number(stage.wave || 1) - 1);
   const progressionScale = 1 + stageOrdinal * 0.08 + waveStep * 0.04;
   // A boss challenges one local pack's party, not all six dispersed packs at once.
   const baselineCP = totalCP(baselineRows) / (stage.kind === 'boss' ? CONTINUOUS_COMBAT_PACKS_PER_WAVE : 1);
@@ -688,14 +704,17 @@ export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase
   const introductoryBoss = stage.kind === 'boss' && stageOrdinal === 0;
   const packScale = introductoryBoss ? 1 : selectedRows.length ? findPackScale(selectedRows, linearTarget) : 1;
   const packSize = stage.kind === 'boss' ? 1 : selectedRows.length / CONTINUOUS_COMBAT_PACKS_PER_WAVE;
+  const shortChapter = continuousCombatPacksForStage(stage.region) === 3;
   const entries = selectedRows.map((row, index) => ({
-    row: stage.kind === 'boss' ? scaleContinuousCombatRow(row, packScale) : boundOrdinaryWaveHP(scaleContinuousCombatRow(row, packScale), progressionScale),
+    row: stage.kind === 'boss' ? scaleContinuousCombatRow(row, packScale)
+      : shortChapter ? toughenShortChapterRow(boundOrdinaryWaveHP(scaleContinuousCombatRow(row, packScale), progressionScale))
+        : boundOrdinaryWaveHP(scaleContinuousCombatRow(row, packScale), progressionScale),
     lane: index % packSize,
     rank: Math.floor(Number(slotBase || 0) / CONTINUOUS_COMBAT_PACKS_PER_WAVE),
     packIndex: Number(stageState?.transitions || 0),
     entryOrder: index % packSize,
     sectorIndex: stage.kind === 'boss' ? 1 : Math.floor(index / packSize),
-  })).filter(entry => entry.row?.name);
+  })).filter(entry => entry.row?.name && (stage.kind === 'boss' || (activePackMask(stage.region) & (1 << entry.sectorIndex))));
 
   const deployedPartyCP = Math.max(0, Number(partyCP) || 0);
   if (stage.kind !== 'boss' && deployedPartyCP > 0) {
@@ -728,6 +747,7 @@ export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase
     });
     const soloFeet = [];
     for (let sector = 0; soloRows.length && sector < CONTINUOUS_COMBAT_SOLOS_PER_WAVE; sector += 1) {
+      if (!(activePackMask(stage.region) & (1 << sector))) continue;
       if (normalizeContinuousCombatPackMask(stageState?.clearedPackMask) & (1 << sector)) continue;
       const soloRow = soloRows[Math.floor(previewSeededRng(stageState?.seed || 1, Number(stageState?.transitions || 0) * CONTINUOUS_COMBAT_SOLOS_PER_WAVE + sector) * soloRows.length)];
       const foot = seededSoloFoot(stageState, sector, occupiedPackFeet, soloFeet, enemySize);
@@ -952,9 +972,6 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   if (stageState.bossActive) {
     if (!clear) return false;
     call('SettleContinuousCombatRewards');
-    transition = advanceContinuousCombatStage(stageState);
-  } else if (Number(stageState.wave || 1) >= CONTINUOUS_COMBAT_WAVES_PER_STAGE) {
-    if (!clear || !timerReady) return false;
     transition = advanceContinuousCombatStage(stageState);
   } else {
     if (!clear || !timerReady) return false;

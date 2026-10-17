@@ -28,6 +28,49 @@ function fixture(){
  return{globals,storage,locks,values,options,store:createEquipmentStorage(options),setClock:v=>clock=v,setFail:v=>fail=v};
 }
 
+test('expanded continuous checkpoints survive persistence and reload while short-region overflow is rejected',()=>{
+ const accepted=[
+  {region:1,stage:1,wave:10},
+  {region:2,stage:1,wave:15},
+  {region:3,stage:1,wave:20},
+  {region:5,stage:1,wave:5},
+ ];
+ for(const checkpoint of accepted){
+  const values=new Map();
+  const persist=createPersistHeroProgressIfDirty({localStorage:{setItem:(key,value)=>values.set(key,value)}});
+  const globals={
+   HeroProgress:createHeroProgressStore(),HeroProgressDirty:true,ContinuousCombatStageLoop:1,
+   ContinuousCombatStage:{...checkpoint,bossAvailable:false,bossSummonRequired:false,clearedBosses:0,clearedPackMask:0},
+  };
+  assert.equal(persist({stateGlobals:globals}),true,`saves region ${checkpoint.region} stage ${checkpoint.stage} wave ${checkpoint.wave}`);
+  const restored=createHeroProgressStore(JSON.parse(values.get(HERO_PROGRESS_SAVE_KEY)));
+  assert.deepEqual(
+   {region:restored.continuousStage.region,stage:restored.continuousStage.stage,wave:restored.continuousStage.wave},
+   checkpoint,
+  );
+ }
+ const legacy=createHeroProgressStore({version:2,heroes:{},continuousStage:{region:1,stage:2,wave:4,bossAvailable:false,clearedBosses:0}});
+ assert.deepEqual(
+  {region:legacy.continuousStage.region,stage:legacy.continuousStage.stage,wave:legacy.continuousStage.wave,topologyVersion:legacy.continuousStage.topologyVersion},
+  {region:2,stage:1,wave:1,topologyVersion:2},
+  'legacy Region 1 Stage 2 restarts at Chapter 2 wave 1',
+ );
+ const shortLegacy=createHeroProgressStore({version:2,heroes:{},continuousStage:{region:1,stage:5,wave:4,bossAvailable:false,clearedBosses:4,clearedPackMask:0b010101}});
+ assert.deepEqual(
+  {region:shortLegacy.continuousStage.region,wave:shortLegacy.continuousStage.wave,clearedPackMask:shortLegacy.continuousStage.clearedPackMask},
+  {region:5,wave:1,clearedPackMask:undefined},
+  'legacy sector credits cannot skip the short chapter',
+ );
+ const readyLegacy=createHeroProgressStore({version:2,heroes:{},continuousStage:{region:2,stage:1,wave:4,bossAvailable:true,clearedBosses:10,clearedPackMask:63}});
+ assert.deepEqual(
+  {region:readyLegacy.continuousStage.region,wave:readyLegacy.continuousStage.wave,bossAvailable:readyLegacy.continuousStage.bossAvailable,clearedPackMask:readyLegacy.continuousStage.clearedPackMask},
+  {region:11,wave:1,bossAvailable:true,clearedPackMask:undefined},
+  'an already unlocked legacy boss remains available after the chapter mapping',
+ );
+ const invalid=createHeroProgressStore({version:2,heroes:{},continuousStage:{topologyVersion:2,region:5,stage:2,wave:6,bossAvailable:false,clearedBosses:0}});
+ assert.equal(invalid.continuousStage,undefined,'stage two and wave six exceed the one-stage, five-wave short region');
+});
+
 test('construction uses a seven-hour deadline, survives reload and automatically commits once',async()=>{
  const f=fixture();await f.store.sync();for(let n=0;n<4;n++)await f.store.purchaseStage(0,n);
  const end=1000+7*60*60*1000;assert.equal(f.store.data.lamp.upgradeEndsAt,end);assert.equal(f.store.data.lamp.capacityTier,0);
@@ -104,23 +147,23 @@ test('RESET GAME preserves a recovery snapshot and unrelated origin data; failed
 });
 
 test('manual boss retry state restores from the existing progression save and survives defeat',()=>{
- const store=createHeroProgressStore();const g={HeroProgress:store,ContinuousCombatStageLoop:1,ContinuousCombatStage:{region:3,stage:7,wave:3,bossAvailable:true,bossSummonRequired:true,bossActive:true,clearedBosses:26}};
+ const store=createHeroProgressStore();const g={HeroProgress:store,ContinuousCombatStageLoop:1,ContinuousCombatStage:{region:3,stage:1,wave:3,bossAvailable:true,bossSummonRequired:true,bossActive:true,clearedBosses:26}};
  const values=new Map();const source=progressSource.replace(/^import .*\n/gm,'').replace(/export /g,'');
  const persist=new Function('window',source+';return persistHeroProgressIfDirty;')({localStorage:{setItem:(k,v)=>values.set(k,v)}});
  assert.equal(persist({stateGlobals:g}),true);const restored=createHeroProgressStore(JSON.parse(values.get(HERO_PROGRESS_SAVE_KEY)));
  const next={HeroProgress:restored};configureContinuousCombatProduction(next,{productionPath:true});
- assert.equal(next.ContinuousCombatStage.region,3);assert.equal(next.ContinuousCombatStage.stage,7);assert.equal(next.ContinuousCombatStage.wave,1);assert.equal(next.ContinuousCombatStage.bossAvailable,true);assert.equal(next.ContinuousCombatStage.bossSummonRequired,true);assert.equal(next.ContinuousCombatStage.bossArmed,false);assert.equal(next.ContinuousCombatStage.bossActive,false);
+ assert.equal(next.ContinuousCombatStage.region,3);assert.equal(next.ContinuousCombatStage.stage,1);assert.equal(next.ContinuousCombatStage.wave,1);assert.equal(next.ContinuousCombatStage.bossAvailable,true);assert.equal(next.ContinuousCombatStage.bossSummonRequired,true);assert.equal(next.ContinuousCombatStage.bossArmed,false);assert.equal(next.ContinuousCombatStage.bossActive,false);
  next.time=14;assert.equal(resetContinuousCombatAfterDefeat(next),true);assert.equal(next.ContinuousCombatStage.bossAvailable,true);assert.equal(next.ContinuousCombatStage.bossSummonRequired,true);assert.equal(next.ContinuousCombatStage.clearedPackMask,0);
  assert.equal(persist({stateGlobals:next}),true);const afterDefeat=createHeroProgressStore(JSON.parse(values.get(HERO_PROGRESS_SAVE_KEY)));
- assert.deepEqual(afterDefeat.continuousStage,{region:3,stage:7,wave:1,bossAvailable:true,bossSummonRequired:true,clearedBosses:26,clearedPackMask:0});
+ assert.deepEqual(afterDefeat.continuousStage,{topologyVersion:2,region:3,stage:1,wave:1,bossAvailable:true,bossSummonRequired:true,clearedBosses:26,clearedPackMask:0});
 });
 
 test('an unfinished active boss checkpoint reloads as a manual retry instead of a live boss',()=>{
- const globals={HeroProgress:createHeroProgressStore(),ContinuousCombatStageLoop:1,ContinuousCombatStage:{region:2,stage:4,wave:1,bossAvailable:true,bossSummonRequired:false,bossArmed:true,bossActive:true,bossUID:90,clearedBosses:9}};
+ const globals={HeroProgress:createHeroProgressStore(),ContinuousCombatStageLoop:1,ContinuousCombatStage:{region:2,stage:1,wave:1,bossAvailable:true,bossSummonRequired:false,bossArmed:true,bossActive:true,bossUID:90,clearedBosses:9}};
  const values=new Map(),persist=createPersistHeroProgressIfDirty({localStorage:{setItem:(key,value)=>values.set(key,value)}});
  assert.equal(persist({stateGlobals:globals}),true);
  const restored=createHeroProgressStore(JSON.parse(values.get(HERO_PROGRESS_SAVE_KEY)));
- assert.deepEqual(restored.continuousStage,{region:2,stage:4,wave:1,bossAvailable:true,bossSummonRequired:true,clearedBosses:9,bossUID:90,clearedPackMask:0});
+ assert.deepEqual(restored.continuousStage,{topologyVersion:2,region:2,stage:1,wave:1,bossAvailable:true,bossSummonRequired:true,clearedBosses:9,bossUID:90,clearedPackMask:0});
  const reloaded={HeroProgress:restored,EncounterSeed:73};configureContinuousCombatProduction(reloaded,{productionPath:true});
  assert.equal(reloaded.ContinuousCombatStage.bossActive,false);
  assert.equal(reloaded.ContinuousCombatStage.bossAvailable,true);
@@ -154,11 +197,11 @@ test('production combat layout surrenders before capturing the outgoing combat s
 });
 
 test('legacy deferred boss checkpoints keep readiness and auto-enter once after reload',()=>{
- const globals={HeroProgress:createHeroProgressStore(),ContinuousCombatStageLoop:1,ContinuousCombatStage:{region:2,stage:3,wave:1,bossAvailable:true,bossArmed:false,bossActive:false,bossEntryDeferredUntilWaveFour:true,clearedBosses:5}};
+ const globals={HeroProgress:createHeroProgressStore(),ContinuousCombatStageLoop:1,ContinuousCombatStage:{region:2,stage:1,wave:1,bossAvailable:true,bossArmed:false,bossActive:false,bossEntryDeferredUntilWaveFour:true,clearedBosses:5}};
  const values=new Map();const persist=createPersistHeroProgressIfDirty({localStorage:{setItem:(key,value)=>values.set(key,value)}});
  assert.equal(persist({stateGlobals:globals}),true);
  const restored=createHeroProgressStore(JSON.parse(values.get(HERO_PROGRESS_SAVE_KEY)));
- assert.equal(restored.continuousStage.bossEntryDeferredUntilWaveFour,undefined,'the retired four-wave refill flag is omitted from saves');
+ assert.equal(restored.continuousStage.bossEntryDeferredUntilWaveFour,undefined,'the retired deferred-entry flag is omitted from saves');
  assert.equal(restored.continuousStage.bossSummonRequired,false,'older ready saves without a defeat latch retain first-entry automatic behavior');
  const next={HeroProgress:restored,GamePhase:'RUNTIME',BattleStartActive:0,time:1,EnemyData:[{name:'Troll',HP:40,ATK:4,DEF:3,MAG:1,RES:2,SPD:7,enemyRole:'boss'}],EnemySlots:[],PendingDeaths:{},EnemyDeathVisualHoldByUID:{}};
  configureContinuousCombatProduction(next,{productionPath:true});
@@ -166,12 +209,12 @@ test('legacy deferred boss checkpoints keep readiness and auto-enter once after 
  assert.equal(maybeAdvanceContinuousCombatStage({globals:next,entities:[{uid:1,kind:'hero',hp:40,maxHP:40}],presentationBarrier:{lanes:{}},call}),true);
  assert.equal(next.ContinuousCombatStage.bossAvailable,true);
  assert.equal(next.ContinuousCombatStage.bossActive,true);
- assert.equal(spawned.length,1,'restored legacy readiness enters exactly one boss without a four-wave refill');
+ assert.equal(spawned.length,1,'restored legacy readiness enters exactly one boss');
 });
 
 test('fractional current-wave credits survive checkpoint reload without duplicate sector spawns',()=>{
  const rows=['High Gobloc','Lizardo','Orc'].map((name,index)=>({name,HP:30+index,ATK:3,DEF:2,MAG:1,RES:1,SPD:8}));
- const globals={HeroProgress:createHeroProgressStore(),ContinuousCombatStageLoop:1,ContinuousCombatStage:{region:1,stage:2,wave:3,bossAvailable:false,clearedBosses:0,clearedPackMask:0b010101}};
+ const globals={HeroProgress:createHeroProgressStore(),ContinuousCombatStageLoop:1,ContinuousCombatStage:{region:1,stage:1,wave:3,bossAvailable:false,clearedBosses:0,clearedPackMask:0b010101}};
  const values=new Map();const persist=createPersistHeroProgressIfDirty({localStorage:{setItem:(key,value)=>values.set(key,value)}});
  assert.equal(persist({stateGlobals:globals}),true);
  const restored=createHeroProgressStore(JSON.parse(values.get(HERO_PROGRESS_SAVE_KEY)));
@@ -181,18 +224,18 @@ test('fractional current-wave credits survive checkpoint reload without duplicat
  const remaining=buildContinuousCombatSpawnPlan(rows,reloaded.ContinuousCombatStage);
  assert.deepEqual([...new Set(remaining.map(entry=>entry.sectorIndex))],[1,3,5]);
  assert.equal(deriveContinuousCombatWavePackProgress(reloaded.ContinuousCombatStage,[]).fraction,0.5,'stored credit remains visible before reloaded enemies finish spawning');
- const full={HeroProgress:createHeroProgressStore({version:2,heroes:{},continuousStage:{region:1,stage:2,wave:3,bossAvailable:false,clearedBosses:0,clearedPackMask:63}}),EncounterSeed:8};
+ const full={HeroProgress:createHeroProgressStore({version:2,heroes:{},continuousStage:{topologyVersion:2,region:1,stage:1,wave:3,bossAvailable:false,clearedBosses:0,clearedPackMask:63}}),EncounterSeed:8};
  configureContinuousCombatProduction(full,{productionPath:true});
  assert.equal(deriveContinuousCombatWavePackProgress(full.ContinuousCombatStage,[]).fraction,1);
  assert.equal(buildContinuousCombatSpawnPlan(rows,full.ContinuousCombatStage).length,0,'a fully credited but unsettled wave does not respawn fodder after reload');
 });
 
-test('ordinary KO recovery, save and reload keep the bar at 75 percent before the boss',async()=>{
+test('ordinary KO recovery and reload preserve progress within a region-sized stage',async()=>{
  const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
  const {buildContinuousCombatSpawnPlan,activateContinuousCombatSpawnedEnemy}=await import('../web-runner/src/core/continuousCombatStage.mjs');
  const {drawCombatProgressHud}=await import('../web-runner/systems/renderCombatBossControl.mjs');
  const rows=['Orc','High Orc','Chimerilass','Djinn'].map((name,index)=>({name,HP:30+index,ATK:4,DEF:2,MAG:1,RES:1,SPD:8}));
- const stage={seed:5,region:1,stage:8,wave:4,bossAvailable:false,bossArmed:false,bossActive:false,transitions:3,clearedBosses:7,clearedPackMask:0,spawnedPackMask:63,spawnSerial:12};
+ const stage={seed:5,region:1,stage:1,wave:4,bossAvailable:false,bossArmed:false,bossActive:false,transitions:3,clearedBosses:7,clearedPackMask:0,spawnedPackMask:63,spawnSerial:12};
  const globals={HeroProgress:createHeroProgressStore(),ContinuousCombatStageLoop:1,ContinuousCombatStage:stage,EnemyData:rows,time:20,EnemySlots:[],PendingDeaths:{},EnemyDeathVisualHoldByUID:{}};
  const entities=[{uid:1,kind:'hero',hp:0,maxHP:42,isAlive:false}];
  for(const entry of buildContinuousCombatSpawnPlan(rows,stage)){const enemy={uid:entities.length+1,kind:'enemy',hp:entry.row.HP,maxHP:entry.row.HP,name:entry.row.name};activateContinuousCombatSpawnedEnemy(globals,enemy,entry);entities.push(enemy);}
@@ -211,7 +254,8 @@ test('ordinary KO recovery, save and reload keep the bar at 75 percent before th
  const hud=drawCombatProgressHud(ctx,{state:{globals:{ContinuousCombatStage:next.ContinuousCombatStage},entities:[]},worldToCanvas:(x,y)=>({x,y})});
  assert.equal(hud.completedWaves,3);
  assert.equal(hud.progressPosition,3);
- assert.equal(hud.progressPosition/4,0.75);
+ assert.equal(hud.waveCount,10);
+ assert.equal(hud.progressPosition/10,0.3);
 });
 
 test('the app tick persists boss readiness before its stage early return and defeat reset before its outcome early return',()=>{
@@ -261,7 +305,7 @@ test('the app tick persists boss readiness before its stage early return and def
 
  const globals={
   HeroProgress:createHeroProgressStore(),ContinuousCombatStageLoop:1,
-  ContinuousCombatStage:{seed:7,region:1,stage:1,wave:4,bossAvailable:false,bossArmed:false,bossActive:false,clearedBosses:0,transitions:3,nextEmissionAt:3,lastUpdatedAt:3,lastArenaUpdatedAt:3},
+  ContinuousCombatStage:{seed:7,region:1,stage:1,wave:10,bossAvailable:false,bossArmed:false,bossActive:false,clearedBosses:0,transitions:9,nextEmissionAt:3,lastUpdatedAt:3,lastArenaUpdatedAt:3},
   GamePhase:'RUNTIME',BattleStartActive:0,time:3,EnemyData:rows,EnemySize:40,EnemySlots:[],PendingDeaths:{},EnemyDeathVisualHoldByUID:{},
   RealtimeEnemyActionsByUID:{},RealtimeEnemyActionReadyAt:{},PendingHeroHits:[],RealtimeHeroBasicScheduledActions:{},
  };
@@ -269,7 +313,7 @@ test('the app tick persists boss readiness before its stage early return and def
  const gameState={storyEntry:{phase:'combat',combatPaused:false}};
  runTick(state,gameState,()=>false);
  checkpoint=JSON.parse(savedValues.get(HERO_PROGRESS_SAVE_KEY)).continuousStage;
- assert.equal(checkpoint.bossAvailable,true,'wave-four stage early return saves the earned readiness');
+ assert.equal(checkpoint.bossAvailable,true,'final ordinary wave early return saves the earned readiness');
  assert.equal(checkpoint.wave,1);
 
  const restored=createHeroProgressStore(JSON.parse(savedValues.get(HERO_PROGRESS_SAVE_KEY)));

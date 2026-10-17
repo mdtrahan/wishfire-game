@@ -6,7 +6,7 @@ const { pathToFileURL } = require('node:url');
 
 const root = path.join(__dirname, '..');
 
-test('combat progress HUD shows the current chapter and four-wave progress', async () => {
+test('combat progress HUD shows the current chapter and region-sized wave progress', async () => {
   const renderer = fs.readFileSync(path.join(root, 'web-runner/systems/renderRuntime.js'), 'utf8');
   const loader = fs.readFileSync(path.join(root, 'web-runner/systems/runtimeVisualAssetLoader.js'), 'utf8');
   const control = await import(pathToFileURL(path.join(root, 'web-runner/systems/renderCombatBossControl.mjs')));
@@ -21,22 +21,23 @@ test('combat progress HUD shows the current chapter and four-wave progress', asy
   const calls = [];
   const ctx = new Proxy({}, { get: (_target, key) => (...args) => calls.push([key, ...args]), set: (_target, key, value) => { calls.push(['set', key, value]); return true; } });
   const worldToCanvas = (x, y) => ({ x: x * 1.5 + 10, y: y * 1.5 + 4 });
-  const state = { globals: { ContinuousCombatStage: { region: 4, stage: 22, wave: 3 } } };
+  const state = { globals: { ContinuousCombatStage: { region: 4, stage: 1, wave: 3 } } };
   const rect = control.combatProgressHudRect(worldToCanvas);
   assert.deepEqual(rect, { x: 201.25, y: 70, w: 157.5, h: 60 });
   assert.equal(rect.x + rect.w / 2, worldToCanvas(180, 0).x);
   const result = control.drawCombatProgressHud(ctx, { state, images: { CombatProgressHondoHead: { width: 367, height: 391 } }, worldToCanvas });
-  assert.equal(result.label, 'Chapter 4-22');
+  assert.equal(result.label, 'Chapter 4');
+  assert.equal(result.waveCount, 20);
   assert.equal(result.railCenterX, result.labelX);
   assert.equal(result.railCenterX, worldToCanvas(180, 0).x);
   assert.equal(calls.find(([name, text]) => name === 'strokeText' && text === result.label)[2], worldToCanvas(180, 0).x);
-  const notchX = worldToCanvas(138.5 + 83 / 4, 0).x;
-  const notchTop = calls.find(([name, x]) => name === 'moveTo' && x === notchX);
-  const notchBottom = calls.find(([name, x]) => name === 'lineTo' && x === notchX);
+  const notchX = worldToCanvas(138.5 + 83 / 20, 0).x;
+  const notchTop = calls.find(([name, x]) => name === 'moveTo' && Math.abs(x - notchX) < 1e-9);
+  const notchBottom = calls.find(([name, x]) => name === 'lineTo' && Math.abs(x - notchX) < 1e-9);
   assert.equal(notchBottom[2] - notchTop[2], 11.25, 'notch height grows from 5 to 7.5 logical pixels');
-  assert.ok(calls.some(([name, key, value]) => name === 'set' && key === 'lineWidth' && value === 4.5), 'notch width grows from 2 to 3 logical pixels');
+  assert.ok(calls.some(([name, key, value]) => name === 'set' && key === 'lineWidth' && value === 1.5), 'notch width scales with the twenty-wave chapter count');
   const notchColors = () => calls.filter(([name, key, value]) => name === 'set' && key === 'strokeStyle' && ['#55d4be', '#243237'].includes(value)).map(([, , value]) => value);
-  assert.deepEqual(notchColors(), ['#55d4be', '#55d4be', '#243237']);
+  assert.deepEqual(notchColors(), [...Array(2).fill('#55d4be'), ...Array(17).fill('#243237')]);
   assert.equal(result.completedWaves, 2);
   assert.equal(result.bossReady, false);
   assert.equal(calls.filter(([name]) => name === 'fillRect').length, 1);
@@ -50,8 +51,9 @@ test('combat progress HUD shows the current chapter and four-wave progress', asy
     const bossHead = calls.find(([name]) => name === 'translate');
     const markerX = markerImage[2] + markerImage[4] / 2;
     const scale = bossHud.w / 105;
-    assert.equal(bossHud.completedWaves, 4);
-    assert.deepEqual(notchColors(), bossHud.bossTimeRemainingSec == null ? ['#55d4be', '#55d4be', '#55d4be'] : []);
+    assert.equal(bossHud.waveCount, 20);
+    assert.equal(bossHud.completedWaves, 20);
+    assert.deepEqual(notchColors(), bossHud.bossTimeRemainingSec == null ? Array(19).fill('#55d4be') : []);
     assert.ok(bossHead[1] - markerX >= 16 * scale + 2 * scale - 0.01, 'full-progress heads remain visible with a scaled gap');
   };
   assertBossMarkerSeparated();
@@ -68,12 +70,24 @@ test('combat progress HUD shows the current chapter and four-wave progress', asy
   calls.length = 0;
   const deferredHud = control.drawCombatProgressHud(ctx, { state, images: {}, worldToCanvas });
   assert.equal(deferredHud.completedWaves, 0, 'cleared readiness refills the meter during an ordinary wave');
-  assert.deepEqual(notchColors(), ['#243237', '#243237', '#243237']);
+  assert.deepEqual(notchColors(), Array(19).fill('#243237'));
   state.globals.ContinuousCombatStage.bossAvailable = true;
   state.globals.ContinuousCombatStage.bossSummonRequired = true;
   calls.length = 0;
-  assert.equal(control.drawCombatProgressHud(ctx, { state, images: {}, worldToCanvas }).completedWaves, 4);
-  assert.deepEqual(notchColors(), ['#55d4be', '#55d4be', '#55d4be']);
+  assert.equal(control.drawCombatProgressHud(ctx, { state, images: {}, worldToCanvas }).completedWaves, 20);
+  assert.deepEqual(notchColors(), Array(19).fill('#55d4be'));
+
+  state.globals.ContinuousCombatStage.region = 5;
+  state.globals.ContinuousCombatStage.stage = 1;
+  state.globals.ContinuousCombatStage.wave = 5;
+  state.globals.ContinuousCombatStage.bossAvailable = false;
+  state.globals.ContinuousCombatStage.bossSummonRequired = false;
+  calls.length = 0;
+  const shortChapterHud = control.drawCombatProgressHud(ctx, { state, images: {}, worldToCanvas });
+  assert.equal(shortChapterHud.label, 'Chapter 5');
+  assert.equal(shortChapterHud.waveCount, 5);
+  assert.equal(shortChapterHud.completedWaves, 4);
+  assert.equal(notchColors().length, 4);
 });
 
 test('actor HP bars follow their owners in the shared depth-sorted paint queue', () => {

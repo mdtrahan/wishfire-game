@@ -534,11 +534,11 @@ test('automatic gear collection retries a failed COT save after service reload',
   assert.equal(globals.Equipment.lamp.essence, 2);
 });
 
-test('wave clear identities remain unique across repeated four-wave cycles', () => {
+test('wave clear identities remain unique across repeated region-sized cycles', () => {
   let state = createCombatProgressionState({ cursor: 2, objective: { id: 'first-wave', type: 'wave_clear', target: 1, progress: 0, seed: 1 } });
   const ids = [];
-  for (let transitions = 0; transitions < 8; transitions += 1) {
-    const eventId = continuousCombatWaveClearEventId({ region: 1, stage: 1, wave: transitions % 4 + 1, bossActive: false, transitions });
+  for (let transitions = 0; transitions < 20; transitions += 1) {
+    const eventId = continuousCombatWaveClearEventId({ region: 1, stage: 1, wave: transitions % 10 + 1, bossActive: false, transitions });
     ids.push(eventId);
     state.objective = { id: `wave-${transitions}`, type: 'wave_clear', target: 1, progress: 0, seed: transitions + 1 };
     const result = recordCombatObjectiveEvent(state, { id: eventId, type: 'wave_clear' }, heroes, transitions);
@@ -548,10 +548,10 @@ test('wave clear identities remain unique across repeated four-wave cycles', () 
     assert.equal(state.cursor, transitions + 2);
     state = claimCombatObjectiveReward(state, state.objective.id, heroes, transitions).state;
   }
-  assert.equal(new Set(ids).size, 8);
+  assert.equal(new Set(ids).size, 20);
   assert.ok(ids[0].endsWith('-0-1-wave'));
-  assert.ok(ids[4].endsWith('-4-1-wave'));
-  assert.equal(state.processedEvents.length, 8);
+  assert.ok(ids[10].endsWith('-10-1-wave'));
+  assert.equal(state.processedEvents.length, 20);
 });
 
 test('COT UI exposes a claim action only for ready objectives and uses the two-row ticket sheet crop', () => {

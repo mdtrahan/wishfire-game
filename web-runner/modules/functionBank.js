@@ -1,6 +1,8 @@
 import { partyTrainingCombatStat } from '../src/core/realtimeSkillState.mjs';
 import { effectiveStat } from '../src/core/combatRules.mjs';
 import { captureBalanceImpactGeometry, recordBalanceCombatEvent } from '../src/core/balanceTelemetry.mjs';
+import { advancePassiveHeroRegen } from '../src/core/heroSustainRules.mjs';
+import { saveHeroProgress } from '../src/core/heroProgression.mjs';
 import { executeHeroCommand, resolveNativeCommandStep, resolveRealtimeBasicImpact, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat, settleContinuousCombatRewards, emitResolvedHealEvent, recordEnemyDefeatReward } from './heroCommands.mjs';
 import { state } from './state.js';
 import { MONSTER_KEYS, MONSTER_LOOT_TABLE, TOKEN, EMPTY } from './monsterLootTableEventTokens.js';
@@ -7219,6 +7221,21 @@ export function TickRealtimeHeroBasics(ctx) {
   const g = getGlobals(ctx);
   if (Number(g.ContinuousCombatStageLoop || 0) !== 1 || g.GamePhase !== 'RUNTIME' || g.BattleStartActive || g.NativeBattleEnded) return 0;
   tickRealtimeHeroSkillZones(ctx);
+  const actors = getEntities(ctx).filter(actor => actor?.kind === 'hero');
+  const regen = advancePassiveHeroRegen({ now: Number(g.time || 0), lastAt: g.PassiveHeroRegenLastAt,
+    credits: g.PassiveHeroRegenCreditsByUID, heroes: actors });
+  g.PassiveHeroRegenLastAt = regen.lastAt;
+  g.PassiveHeroRegenCreditsByUID = regen.credits;
+  for (const { uid, amount } of regen.heals) {
+    const hero = actors.find(actor => Number(actor.uid) === uid);
+    if (!hero || Number(hero.hp || 0) <= 0) continue;
+    const before = Number(hero.hp || 0);
+    hero.hp = Math.min(Number(hero.maxHP || 0), before + amount);
+    recordBalanceCombatEvent(g, { type: 'heal', reason: 'passive_regen', sourceUID: 0, targetUID: uid,
+      amount: hero.hp - before, hpBefore: before, hpAfter: hero.hp });
+    if (g.HeroProgress) { saveHeroProgress(hero, g.HeroProgress); g.HeroProgressDirty = true; }
+  }
+  if (regen.heals.length) UpdateHeroHPUI(ctx);
   const heroes = getEntities(ctx).filter(hero => hero?.kind === 'hero' && Number(hero.hp || 0) > 0)
     .map(hero => ({ ...hero, type: 0, speed: GetEffectiveStat(ctx, hero, 'SPD') }));
   const enemies = filterContinuousEncounterEnemies(getEnemies(ctx), g, heroes);
