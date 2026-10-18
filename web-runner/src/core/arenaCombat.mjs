@@ -142,6 +142,7 @@ export function deriveContinuousCombatSpawnMoat() {
 }
 
 export function placeContinuousCombatHeroesInRecoveryHuddle({ globals = {}, heroes = [], now = 0 } = {}) {
+  delete globals.ContinuousCombatPatrolReturn;
   Object.assign(globals, {
     HeroLungeOffsetByUID: {}, HeroRestBasePosByUID: {}, HeroRestFeetPosByUID: {}, HeroIconPosByIndex: [],
     RealtimeHeroBasicScheduledActions: {}, RealtimeHeroFocusTargetUID: 0,
@@ -164,6 +165,34 @@ export function placeContinuousCombatHeroesInRecoveryHuddle({ globals = {}, hero
     delete hero.arenaDirectionY;
     hero.recoveryFadeStartedAt = Number(now || 0);
     resetActorPresentationAfterRestore(hero, now);
+  }
+}
+
+export function beginContinuousCombatPatrolReturn(globals, heroes) {
+  const patrol = deriveCombatOrdinaryPatrolBounds();
+  const points = heroes.map(actorFootPoint);
+  if (!points.length) return;
+  const project = (axis, min, max) => {
+    const low = Math.min(...points.map(point => point[axis]));
+    const high = Math.max(...points.map(point => point[axis]));
+    const shift = clamp(0, min - low, max - high);
+    return value => high - low <= max - min ? value + shift : min + (value - low) * (max - min) / (high - low);
+  };
+  const projectX = project('x', patrol.minX, patrol.maxX), projectY = project('y', patrol.minY, patrol.maxY);
+  const targets = heroes.map((hero, index) => ({
+    ...hero,
+    footX: projectX(points[index].x),
+    footY: projectY(points[index].y),
+  }));
+  // Settle the destination before walking there, including compressed rows.
+  // Otherwise the first ordinary collision pass would displace arrived Heroes.
+  for (let pass = 0; pass < 32; pass += 1) {
+    separateFootprints(targets, { heroMinX: patrol.minX, heroMaxX: patrol.maxX, heroMinY: patrol.minY, heroMaxY: patrol.maxY });
+    if (targets.every((actor, index) => targets.slice(index + 1).every(other => distance(actor, other)
+      >= actorFootprintRadius(actor) + actorFootprintRadius(other) - 1e-6))) break;
+  }
+  if (targets.some((target, index) => Math.hypot(target.footX - points[index].x, target.footY - points[index].y) > 1e-6)) {
+    globals.ContinuousCombatPatrolReturn = targets.map(({ uid, footX, footY }) => ({ uid, footX, footY }));
   }
 }
 function separateFootprints(actors, bounds) {
@@ -210,6 +239,31 @@ function separateFootprints(actors, bounds) {
 
 export function advanceContinuousCombatArena({ globals = {}, entities = [], seconds = 0 } = {}) {
   const heroes = entities.filter(actor => actor?.kind === 'hero' && isLiving(actor));
+  if (globals.ContinuousCombatStage?.bossActive) delete globals.ContinuousCombatPatrolReturn;
+  const returning = globals.ContinuousCombatPatrolReturn;
+  if (returning) {
+    // Boss settlement preserves all-living feet. Walk the squad back before
+    // ordinary pursuit/clamping resumes; this phase never widens the patrol.
+    const world = deriveCombatWorldBounds(), vertical = deriveCombatWorldVerticalBounds();
+    for (const hero of heroes) {
+      const target = returning.find(point => point.uid === hero.uid);
+      if (!target) continue;
+      advanceActorToward(hero, compensateActorTravelTarget(hero, target), {
+        seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0),
+        minX: world.heroMinX, maxX: world.heroMaxX, minY: vertical.minY, maxY: vertical.maxY,
+        preserveActionState: Number(hero.actionStateUntil || 0) > Number(globals.time || 0),
+      });
+      if (Math.hypot(hero.footX - target.footX, hero.footY - target.footY) <= 1e-6) {
+        hero.x = hero.footX = target.footX;
+        hero.y = hero.footY = target.footY;
+      }
+    }
+    if (heroes.every(hero => {
+      const target = returning.find(point => point.uid === hero.uid);
+      return !target || Math.hypot(hero.footX - target.footX, hero.footY - target.footY) <= 1e-6;
+    })) delete globals.ContinuousCombatPatrolReturn;
+    return 0;
+  }
   // Retreat is stage-owned displacement. Letting its direct steering run here
   // would pull an enemy back toward its target during Frost Reversal.
   const enemies = entities.filter(actor => actor?.kind === 'enemy' && isLiving(actor)

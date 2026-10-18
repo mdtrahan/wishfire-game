@@ -3,7 +3,7 @@ import { computeCombatPower } from './combatPower.mjs';
 import { deriveCombatArenaBounds, deriveCombatWorldBounds, deriveCombatWorldStartFormation, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
 import { cleanseDebuffs } from './combatRules.mjs';
 import { saveHeroProgress } from './heroProgression.mjs';
-import { advanceContinuousCombatArena, deriveContinuousCombatSpawnMoat, placeContinuousCombatHeroesInRecoveryHuddle } from './arenaCombat.mjs';
+import { advanceContinuousCombatArena, beginContinuousCombatPatrolReturn, deriveContinuousCombatSpawnMoat, placeContinuousCombatHeroesInRecoveryHuddle } from './arenaCombat.mjs';
 import { isActorRecoveryRevealActive, resetActorPresentationAfterRestore } from './actorPresentationState.mjs';
 import { previewSeededRng } from '../../../src/core/seededRngRules.mjs';
 import { actorFootprintRadius } from '../../../src/core/arenaCombatRules.mjs';
@@ -1015,6 +1015,7 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
       if (globals.HeroProgress) saveHeroProgress(hero, globals.HeroProgress);
     }
     if (revivedKoHero) placeContinuousCombatHeroesInRecoveryHuddle({ globals, heroes, now });
+    else beginContinuousCombatPatrolReturn(globals, heroes);
     if (globals.HeroProgress) globals.HeroProgressDirty = true;
     call('UpdateHeroHPUI');
   }
