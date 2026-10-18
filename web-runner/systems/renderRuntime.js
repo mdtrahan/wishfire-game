@@ -14,6 +14,7 @@ import { heroArtAsset, resolveHeroArtSourceRect } from '../state/heroArtAssets.m
 import { combatVfxProfileForActor, queueCombatAttackImpactVfx, renderCombatAttackVfx } from './combatAttackVfxPresentation.mjs';
 import { drawCombatProgressHud } from './renderCombatBossControl.mjs';
 import { drawCombatHealthBar } from './combatHealthBarPresentation.mjs';
+import { drawCombatArenaBackground } from './combatArenaBackground.mjs';
 import { drawActorPuppetFrame } from './actorPuppetPresentation.mjs';
 import { combatEnemiesForPresentation } from './actorPuppetDefeats.mjs';
 import { renderRealtimeSkillGroundVfx } from './realtimeSkillGroundPresentation.mjs';
@@ -29,6 +30,10 @@ const enemyActivationFadeAlpha = createEnemyActivationFade();
 
 export function assembleCombatRenderBody(body) {
 let effectiveBody = body;
+effectiveBody = effectiveBody.replace(
+  'const drawCombatReferenceGrid = () => {',
+  'const drawCombatReferenceGrid = () => {\n      if (drawCombatArenaBackground(ctx, { region: state.globals.ContinuousCombatStage?.region ?? 1, worldWidth: combatWorldBounds.worldWidth, project: projectCombatActorWorldToCanvas, worldToCanvas, layoutH })) return;',
+);
 const removeBetween = (start, end) => {
   const startAt = effectiveBody.indexOf(start);
   if (startAt < 0) throw new Error(`[RENDER_EXTRACTION] missing start: ${start}`);
@@ -235,6 +240,7 @@ effectiveBody = effectiveBody.replace('    actorPaintQueue.sort(', '    renderRe
 let renderImpl = null;
 
 export function renderRuntime(deps) {
+  deps.drawCombatArenaBackground = drawCombatArenaBackground;
   deps.COMBAT_BATTLEFIELD_ZOOM = COMBAT_BATTLEFIELD_ZOOM;
   deps.createCombatCameraProjection = createCombatCameraProjection;
   deps.deriveCombatWorldBounds = deriveCombatWorldBounds;

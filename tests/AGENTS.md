@@ -1,4 +1,5 @@
 # Tests DOX
+- `combatArenaBackground.test.mjs` covers chapter 1–4 asset availability, chapter 5+ grid retention, undecoded-image fallback and camera orientation without changing vertical framing.
 - `balanceTelemetryContract.test.mjs` protects opt-in capture, bounded event retention and pre-hit range geometry and enemy-tier attribution; `balanceHarnessEntryContract.test.js` protects exact-event use alongside sampled HP, including bounded impact samples and per-tier totals, ordered first-hero casualty aggregation, labeled post-recovery gear/stat samples, fail-closed uninterrupted ordinary acceptance and CSV output.
 - `balanceHarnessEntryContract.test.js` also keeps the synthetic ordinary-KO probe opt-in and routed through production damage; integrated proof still requires recovery events and a later wave clear.
 - Boss clock contracts require a fixed 30-second runtime deadline, reload normalization, and matching HUD and timeout receipt, even if an older stage object carries 18 seconds.
