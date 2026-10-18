@@ -136,7 +136,7 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,checkpo
    queueGearCollection(next,receipt);
    return{...item,rewardEXP:receipt.exp};
   }).then(async result=>{await flushGearCollections();return result;});},
-  async collect(id){const result=await transact((next,t)=>{const collected=collectConveyorItem(next,id,t);queueGearCollection(next,collected);return collected;});await flushGearCollections();return result;},
+  async collect(id,canCollect=()=>true){const result=await transact((next,t)=>{if(!canCollect(next))return null;const collected=collectConveyorItem(next,id,t);queueGearCollection(next,collected);return collected;});await flushGearCollections();return result;},
   awardCombatEssence(receiptId,amount){
    const id=String(receiptId||'').slice(0,180),count=Math.max(0,Math.floor(Number(amount)||0));
    if(!id||!count)return Promise.resolve({applied:false,reason:'invalid_receipt'});
@@ -152,7 +152,8 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,checkpo
    const id=String(receiptId||'').slice(0,180);if(!id)return false;
    const current=record||read();return Array.isArray(current.settledCombatEssenceRewards)&&current.settledCombatEssenceRewards.includes(id);
   },
-  collectAvailable(ids){return transact((next,t)=>[...new Set(ids)].flatMap(id=>{
+  collectAvailable(ids,canCollect=()=>true){return transact((next,t)=>[...new Set(ids)].flatMap(id=>{
+   if(!canCollect(next))return[];
    const emission=next.lamp.emissions?.find(e=>e.item.instanceId===id);
    if(!emission||emission.collected||conveyorItemAge(next.lamp,emission,t)>=CONVEYOR_TRAVEL_MS)return[];
    const result=collectConveyorItem(next,id,t,{automatic:true});queueGearCollection(next,result);return[result];
@@ -162,7 +163,7 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,checkpo
   // Legacy combat-exit call remains a sync barrier, without a preference or toggle.
   stopAuto(){return this.sync();},
   tickConveyor(context={},canCreate=()=>true,{deferCollection=false}={}){return transact((next,t)=>{
-   if(!canCreate())return null;
+   if(!canCreate(next))return null;
    next.lamp.highestOrdinal=Math.max(next.lamp.highestOrdinal,progressionOrdinal(context));
    if(t-next.lamp.lastActivationAt<LAMP_CONFIG.autoIntervalMs)return null;
    const previous=next.lamp.emissions?.at(-1);

@@ -651,3 +651,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Conveyor pause fixes must share a time coordinate across emission cadence, rendering and expiry. Measure spacing at the rendered artwork edges because tile bounds can exclude enlarged art. Persist gate transitions through the save lock. Browser teardown can abort asynchronous exit transactions, so checkpoint same-tab clock metadata synchronously in session storage, match it to emission history, and keep inventory writes locked.
 
 - Recheck destructive-review candidates after an equip transaction and its feedback complete. Zero remaining gear and zero saved salvage should close review, preserving focus, instead of rendering an empty disabled confirmation.
+
+- Bag receipt animation must follow a successful durable arrival, never CSS animation completion. Share modal/capacity gates across active time, motion, emissions and save-lock callbacks; a frozen visual with a live capture queue still misrepresents inventory.

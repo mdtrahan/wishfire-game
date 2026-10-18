@@ -8,45 +8,32 @@ const crestWatches=new WeakMap();
 const bagRecords=new WeakMap();
 function updateBagCount(strip){
  const data=bagRecords.get(strip);if(!data)return;
- const l=data.lamp,stored=lampStoredCount(data),queued=new Set([...l.pending,...(l.discarded||[])]);
- // Saved gear in transit is safe in inventory, but has not reached this bag yet.
- // Read current queue membership so equipped/dismantled items cannot increment later.
- const incoming=new Set([...strip.querySelectorAll('.lamp-conveyor-item')]
-  .filter(node=>(!node.hidden||node.dataset.countPending==='true')&&node.dataset.countReceived!=='true'&&queued.has(node.dataset.id))
-  .map(node=>node.dataset.id));
- const collect=strip.querySelector('.lamp-collect'),count=strip.querySelector('.lamp-count');
+ const l=data.lamp,stored=lampStoredCount(data),collect=strip.querySelector('.lamp-collect'),count=strip.querySelector('.lamp-count');
  collect.dataset.held=String(!!l.reviewHold);
- collect.setAttribute('aria-label',`Open equipment cache, ${stored} of ${lampCapacity(data)}${incoming.size?`, ${incoming.size} arriving`:''}${l.reviewHold?', one item held for review':''}`);
- count.dataset.storedCount=String(stored);count.dataset.incomingCount=String(incoming.size);
- count.textContent=(stored-incoming.size)+(l.reviewHold?'+1':'');
+ collect.setAttribute('aria-label',`Open equipment cache, ${stored} of ${lampCapacity(data)}${l.reviewHold?', one item held for review':''}`);
+ count.dataset.storedCount=String(stored);count.dataset.incomingCount='0';
+ count.textContent=stored+(l.reviewHold?'+1':'');
 }
-export function acknowledgeConveyorItem(strip,id){
- const node=[...strip.querySelectorAll('.lamp-conveyor-item')].find(n=>n.dataset.id===id);
- if(node){node.dataset.countReceived='true';delete node.dataset.countPending;}
+export function acknowledgeConveyorItem(strip,id,{animate=false}={}){
+ const node=[...strip.querySelectorAll('.lamp-conveyor-item')].find(n=>n.dataset.id===id),data=bagRecords.get(strip);
+ if(node){
+  const received=node.dataset.countReceived==='true';
+  if(node.dataset.arrived==='true'){node.hidden=true;node.style.display='none';}
+  node.dataset.countReceived='true';delete node.dataset.countPending;
+  if(animate&&!received&&node.dataset.collected==='true'&&[...data.lamp.pending,...data.lamp.discarded].includes(id))bounceBag(strip);
+ }
  updateBagCount(strip);
 }
-function bounceBag(strip,node){
- const receive=()=>{node.dataset.countReceived='true';delete node.dataset.countPending;updateBagCount(strip);};
- if(strip.hidden||document.hidden){receive();return;}
+function bounceBag(strip){
+ if(strip.hidden||document.hidden)return;
  const art=strip.querySelector('.lamp-bag-art'),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
  bagEffects.get(strip)?.cancel();crestWatches.get(strip)?.();
  passageAnimations.get(strip)?.cancel();
  const effect=beginLampBagWishRing(art);bagEffects.set(strip,effect);
- if(reduced){receive();return;}
+ if(reduced)return;
  const animation=art.animate([{transform:'scale(1)'},{transform:'scale(1)',offset:.15},{transform:'scale(1.4375)',offset:.4},{transform:'scale(1.4375)',offset:.6},{transform:'scale(1)',offset:.85},{transform:'scale(1)'}],{duration:800,easing:'cubic-bezier(0.680, -0.550, 0.265, 1.550)'});
  passageAnimations.set(strip,animation);
  crestWatches.set(strip,watchLampBagBounceCrest(art,animation,effect));
- // Flat endpoint segments keep the easing anticipation from shrinking below base. Acknowledge one frame after visible
- // expansion, rather than at animate() creation or before the first grown frame.
- const afterExpansion=()=>{
-  if(!node.isConnected)return;
-  const animation=passageAnimations.get(strip),transform=getComputedStyle(art).transform;
-  const scale=transform==='none'?1:new DOMMatrixReadOnly(transform).a;
-  if(scale>1.01){requestAnimationFrame(receive);return;}
-  if(strip.hidden||document.hidden||!animation||['finished','idle'].includes(animation.playState)){receive();return;}
-  requestAnimationFrame(afterExpansion);
- };
- requestAnimationFrame(afterExpansion);
 }
 
 // Persistent DOM nodes keep CSS motion independent of saves and cache rendering.
@@ -86,8 +73,14 @@ export function updateLampConveyor({strip,data,heroes,now,activeMs=data.lamp.con
    node.style.animationDelay=`-${age/1000}s`;
    // Replayed previews already past the bag are hidden without replaying feedback.
    if(age>=duration*1000){node.hidden=true;node.style.display='none';node.dataset.collectionAttempted='true';node.dataset.countReceived='true';}
-   node.addEventListener('animationend',event=>{if(event.animationName!=='lamp-conveyor-travel'||event.target!==node||node.hidden)return;node.hidden=true;node.style.display='none';node.dataset.arrived='true';node.dataset.countPending='true';if(node.isConnected)bounceBag(strip,node);});lane.append(node);
+   node.addEventListener('animationend',event=>{if(event.animationName!=='lamp-conveyor-travel'||event.target!==node||node.hidden)return;node.dataset.arrived='true';node.dataset.countPending='true';if(node.dataset.collected==='true')acknowledgeConveyorItem(strip,node.dataset.id);});lane.append(node);
   }
+  // Anchor the paused CSS position to the durable active clock for reloads.
+  if(paused&&node.dataset.clockPaused!=='true'){
+   const motion=node.getAnimations()[0];
+   if(motion?.currentTime!=null)node.style.animationDelay=`${(motion.currentTime-age)/1000}s`;
+  }
+  node.dataset.clockPaused=String(paused);
   node.dataset.bestGain=bestGain;node.dataset.collected=String(e.collected);
   const arrow=node.querySelector('.lamp-review-arrow');
   if(bestGain>0&&!arrow){const badge=document.createElement('span');badge.className='lamp-review-arrow';badge.setAttribute('aria-hidden','true');badge.innerHTML='<span class="lamp-cp-direction up"></span>';node.querySelector('.lamp-art').append(badge);}else if(bestGain<=0)arrow?.remove();
