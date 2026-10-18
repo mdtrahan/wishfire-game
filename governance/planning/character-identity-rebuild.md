@@ -1,64 +1,51 @@
-# Character identity: revised audit and staged plan
+# Character identity: audit and proposed execution boundaries
 
-Planning only, ORKA-90u. No runtime implementation, save conversion, asset changes or merges are authorized by this document. Player-visible names, artwork, stats, skills, gear, earned progress, resources, HP/KO and combat behavior remain preservation requirements.
+Planning only, ORKA-90u. This revision supersedes `4b1db897`; it authorizes no runtime work, save writes or merges. Preserve current player-facing content, gear, earned progress, resources, HP/KO and combat rules. The desired destination remains modular identity independent of character names and art.
 
-## Findings and scope
+## Verified findings and unresolved preservation issue
 
-The diagnosis holds; the first proposal combined too many changes and underspecified save failure. This revision replaces it. The [reference and storage audit](character-identity-reference-audit.md) records exact paths, writer ownership and scan method against main `97f77474e44cb1f869ec2ecd227cc397fe4aac75`: **84 files with exact-case retired names, 92 case-insensitively, 31 using `heroInstanceKey`**. These are file counts, not 92 independent runtime defects.
+The [source audit](character-identity-reference-audit.md) pins main `97f77474e44cb1f869ec2ecd227cc397fe4aac75`, reproduces 84 exact-case retired-name files / 92 case-insensitive / 31 instance-key files, and lists storage keys and writers. The second review identified additional hazards beyond that name census, including first-four-record roster selection, nested version loss and synchronous lifecycle writers.
 
-A read-only probe using an in-memory storage mock confirmed that a version-99, level-42 snapshot becomes version 2, level 1 on restore when progress is dirty, without a storage error. `createHeroProgressStore` discards unrecognized versions; restore calls persistence, which can overwrite the original bytes. Both name-gated reaction skills, the unknown-hero cooldown fallback, puppet aliases and stranded ticket references are included in the audit.
+**Purchased levels on duplicate records remain an unresolved conversion blocker.** Saves lack complete historical spend information. Selecting the greatest record can discard paid investment; a precise refund cannot be invented. Pending forensic review and a specific owner decision, preserve affected saves byte-for-byte and do not activate their conversion. The safety release remains their supported format. Do not ship a final schema release that strands known affected saves. First report actual affected records and recoverable history; do not ask the owner to choose an abstract refund before showing the discrepancy.
 
-The immediate ownership repair remains [ORKA-5af.3 as already approved](wishfire-progression-adaptations/hero-owner-decision.md). It does not absorb definition rekeying, saved party data, skins or support for additional owned copies.
+The exact preservation, activation and rollback rules are in the [save cutover contract](character-save-cutover-contract.md). It replaces the earlier ticket rule, watermark rule, all-tab checkpoint requirement and same-origin tab-closure prerequisite.
 
-## Required release order
+## Work boundaries and order
 
-Each row needs its own execution scope and validation against the main it will merge into. Proposed new beads are not implementation authorization. Enemy and appearance work may ship independently after save safety; they do not wait for one combined character rebuild.
+New entries below are proposed bead scopes, not created implementation tasks. Re-read current main and ownership before execution. ORKA-bhb's corrected `f506f2d2` candidate is still unmerged.
 
-| Order | Scoped work | Required evidence before the next dependent change |
-| --- | --- | --- |
-| 1 | New safety bead: fail closed on unknown/malformed hero save versions, without bumping a schema or rekeying a record. Distinguish absent storage from unsupported data. | Original bytes stay unchanged; normal, dirty, settlement and error paths cannot write a default store over unsupported data. Explicitly supported migrations remain explicit. |
-| 2 | New writer-coordination bead: protect all participating hero/reward writers, developer level/reset/restore paths and ticket transactions; coordinate with equipment's existing lock. | Concurrent tabs and injected failures preserve complete writes; stale revision/epoch writes are refused. No private writer bypass or nested-lock deadlock. See the contract below. |
-| 3 | Integrate ORKA-bhb's corrected candidate `f506f2d2` through its existing QA/Integration Ready gates. | CP and four-hero screen fixes are on main before ORKA-5af.3 implementation starts. A failed gate blocks that dependent repair; no silent copying from an unmerged lane. |
-| 4 | Ship ORKA-5af.3 in its original permanent-owner/disposable-actor scope. A separate ticket-reconciliation bead uses its owner mapping to recover stranded wallets, pending spends and objective/reward references. | Menu and deployed base stats agree; temporary actors cannot create permanent heroes. Tickets remain spendable by their intended owner with no duplicate credits. Coordinate the two changes' save fields before conversion. |
-| 5 | New hero definition-ID bead: replace name-derived identity using neutral immutable definition IDs and permanent owner references. Only this stage rekeys hero save identity. | Rename invariance, complete reference conversion and downgrade protection. Existing ownership/roster policy stays unchanged. |
-| Independent | New enemy-ID bead: ID-based catalog, encounters, history and explicit delivery traits. Preserve authored catalog order. | Enumerate RNG input ordering and compare definition picks, draw counts, positions and rewards for pinned seeds. Convert only enemy-related persisted fields actually found by the audit; do not rewrite hero progression unnecessarily. |
-| Independent | New appearance-ID bead: definition-to-appearance lookup for portraits, sprites, puppets and loader caches, initially pointing to existing files. | Same visible art/crops/scale and unchanged state. This stage adds no saved skin selection and does not rewrite hero progression. |
-| Last | Separate cosmetic cleanup bead(s): rename obsolete symbols, files and current docs after ID consumers are proven. | Exact asset bytes and behavior retained; rerun the census case-insensitively. Keep semantic rekeying separate from cosmetic diffs. |
+| Scope | Boundary and release gate |
+| --- | --- |
+| A. Save-health guard | Cover hero version, nested topology, equipment and combat-progression validation, developer level/reset/import and all dependent writers. Unsupported data blocks mutable gameplay before defaults, classification or objective boot writes. See contract. No schema bump or identity conversion. |
+| B. Existing CP/screen work | Integrate ORKA-bhb through its existing QA/Integration Ready gates before ownership work touches those consumers. Do not silently reimplement the unmerged branch. This plan adds no CP algorithm scope. |
+| C. Lamp roster source | After B, replace every first-four-progress-record selector with the four current authored heroes in definition order, resolved to their existing permanent owners. No new saved party. This intentionally repairs omitted-hero gear protection; document that classification change. Land before conversion. |
+| D1. Writer resource and developer paths | Introduce one version-independent lock-name constant. Route supported developer writes through the owner; remove destructive developer controls from production builds, keeping explicit QA access separate. No nested acquisition of the same lock. |
+| D2. Synchronous durability | Implement and prove the single-writer lease and lifecycle contract, including reward boundaries. Never implement cross-tab compare-and-write as an atomic operation. D1 alone does not solve synchronous writers. |
+| D3. Combat-progression commits | Route wallet/objective/debit/boot commits through the same writer lease. Partial coordination may be reviewed separately; it cannot be advertised as complete protection. |
+| E. Actor containment | Develop the original ORKA-5af.3 actor/permanent-owner boundary in a separately reviewable slice. A no-conversion release is allowed only if it preserves existing save keys, eligibility IDs, objectives and normal fresh-save behavior. If owner resolution changes any of these, activate it with F instead. Do not claim this slice completes ORKA-5af.3. |
+| F. One coordinated owner/ID conversion | A new explicitly scoped migration bead owns the final neutral owner/definition IDs and the joint conversion of heroes, loadouts, wallets, spends, objectives and receipts. Actor/eligibility switching activates with this bundle. Do not perform an intermediate duplicate merge followed by a second identity rekey. ORKA-5af.3 keeps its approved responsibility; broader content/migration work is not silently added to it. |
+| Independent enemy IDs | May ship before A–F if the field census confirms no persistent enemy identity changes. Current checkpoints contain region/stage/wave state and numeric defeat UIDs, not enemy definition identity. Preserve catalog array/RNG order explicitly; prove same definition picks, draw counts, positions and rewards. |
+| Independent appearances | Add definition-to-appearance lookup using existing assets/crops/scale. No saved skin-selection feature or hero-save rewrite. Existing display names are editable metadata. |
+| Final cosmetic cleanup | Separately rename obsolete symbols/assets/current docs after semantic consumers are proven. Check asset hashes and rerun the case-insensitive census. Definition lookup tables remain normal architecture; retired-name gameplay aliases do not. |
 
-ORKA-5af.3 and the ticket companion must settle ownership before hero ID conversion. Enemy/appearance stages use explicit definition lookup tables as normal modular architecture. Those tables are not gameplay aliases from retired names to another saved hero. Each stage converts only its owned fields and publishes a supported format; releases need not wait for every row.
+**Recommended target: one hero-identity conversion, into the final IDs.** This is a revised proposal requiring an explicit migration-bead scope before code. Code review may split E/F by module; release activation cannot split the fields that share an owner. A standalone E build must leave existing hero/equipment/combat-progression fixtures byte-identical on no-op boot, including a pending hero-upgrade objective targeting a duplicate. A failed proof folds E activation into F.
 
-## Modular destination without added gameplay
+## Destination and mutation manifest
 
-A definition describes a character; a permanent owner records an individual player's hero; a battle-local entity references that owner. Display names, asset paths and temporary clone ordinals never identify permanent state. Hero-specific mechanics resolve through authored skill/effect IDs or traits. Unknown actors cannot inherit another hero's attack interval.
+Definition, permanent owned hero and battle entity are different identities. Actors cannot create permanent records. Use immutable non-integer-like, prefixed IDs; no ID derives from labels, filenames or enumeration order. A definition can later support multiple owned copies without making temporary combat clones permanent. No new acquisition, duplicate-copy, gacha, party or skin gameplay is added now. Preserve current auto-ownership of definitions and configured party resolution until a separate product decision changes them.
 
-An enemy definition has an immutable ID, editable label/stats and explicit behavior traits. Appearance IDs resolve surface-specific art and animation data. Renaming or replacing those assets leaves identity intact. Reuse the existing content modules and loading services, with one owner per value; avoid a universal content framework.
+| Stage | Persistent fields allowed to change |
+| --- | --- |
+| A | Healthy saves: none from the guard itself. Unsupported saves: no writes/removals in any dependent area. |
+| C | Cache pending/discarded classification for the documented roster bug; no gear ownership, progression or identity-key changes. |
+| D | Writer protocol metadata only when its activation is specified; no identity rekey. Existing payload schemas remain until F. Its old-client protection is not complete before protected storage activation. |
+| E alone | No hero/loadout/wallet/target rekey. Temporary actor references only, subject to the no-op boot and fresh-save proof. |
+| F | Hero-map keys and definition references; loadout owner keys; ticket-wallet keys; pending-spend/objective/reward/participant owner references; generation metadata. Preserve item IDs, balances, progression values and checkpoint content under the explicit reconciliation rules. |
+| Enemy / appearance | No hero-save fields. Any discovered persisted enemy/appearance reference requires its own field-specific conversion scope before release. |
+| Cosmetic | Files/identifiers and explicit asset paths only; no serialized state. |
 
-**No saved party is introduced by this repair.** Combat currently derives party order from roster configuration and dev tooling. Preserve that exact resolution. A persistent party feature requires a separate proposal specifying its source and defaults. Likewise, current boot creates ownership for every definition: keep that rule during rekeying. Explicit acquisition, multiple separately owned copies, and saved skin choices require later product decisions. The destination separates definition from owner so those decisions do not require name-based identity again.
+## Acceptance and limits
 
-## Writer and cutover contract
+Use the concrete fixtures in the cutover contract. Re-run affected existing consumer tests, including equipment protection where its roster source changes. Screenshots verify presentation changes against the same valid save. Keep app.js orchestration-only and preserve deterministic JS/Rust ownership and required mirrors.
 
-All writers listed in the audit must participate. Use one documented cross-domain save coordinator/lock order for affected transactions; retained equipment locking must not be acquired recursively. Under the lock, reread storage, verify supported schema plus epoch/revision, stage the change, and acknowledge durable success before permanent state is reported as saved. Queue and flush lifecycle/settlement writes through that owner; prove failure and reload recovery. Storage events invalidate caches but do not serialize writes. QA reset/restore must use the same version-aware owner and treat backups as recovery inputs, never blindly copy old keys into an active generation.
-
-A lock or epoch check protects only cooperating builds. An already running old tab ignores new rules. Schema-changing releases therefore use new versioned storage keys and readers that never implicitly import old keys again. Retain old bytes as a checkpoint. Quiesce supported clients and reconcile pending receipts before conversion; supported guard-aware tabs refuse stale writes and request reload. Changes made to an abandoned old generation are a detectable fork, never silently added or replayed.
-
-An old same-origin QA reset can erase *all* namespaced keys, including new ones. Application locks cannot prevent arbitrary old JavaScript from doing this. Incompatible QA branches must use distinct origins/storage. Before same-origin cutover, unguarded tabs/builds must be closed and removed from the supported writer set. If this cannot be established, block cutover or specify storage isolation first. Do not claim a broadcast acknowledgment proves an unknown old tab is gone.
-
-## Conversion and rollback rules
-
-Before each schema-changing stage, publish its exact input/output schema, supported versions, key manifest and reconciliation rules. Checkpoint localStorage **and per-tab sessionStorage** from the audit, including missing-key markers, Gold/receipts, the conveyor clock and QA backup. Capture pending in-memory writes after writers are paused and flushed. Shared Gold appears in both equipment and reward receipts; do not sum replicated balances or re-credit acknowledged rewards. Resolve ticket duplicates using source receipts, not a blanket sum or maximum. Ambiguous credits stop conversion.
-
-Preserve the approved hero reconciliation: greatest earned progression without duplicated EXP, reward watermarks, unique item ownership, the menu's equipped item, and HP/KO. Report conflicts with preservation requirements before applying them. Conversion cannot quietly repair balance or reroll inventory.
-
-For a stage touching multiple persistent records, stage its complete affected set under new versioned keys, validate every reference, then commit a single active-generation marker. Unaffected domains retain their format and ownership. Every reader/writer of affected fields must use the marker; fence related session checkpoints with that generation. Interruptions before activation leave the original complete set active. Test missing components, quota/write failure and every commit boundary. This protocol is scoped to a stage, not an all-game rewrite.
-
-**After activation, schema downgrade is prohibited.** Code rollback is allowed only to a build that supports the active schema. Otherwise ship a forward fix. Never restore the pre-conversion checkpoint over progress earned after cutover. Before activation, cancel by discarding the uncommitted stage while retaining original bytes. An older cached build must not read new payloads through an old key or overwrite the active generation. Incompatible old reset tools remain subject to the isolation requirement above.
-
-Retired-name input maps are bounded migration tools. Remove them from active delivery after all supported saves have converted; retain original checkpoints as historical recovery evidence outside ordinary indexing. Definition registries remain. No indefinite retired-name gameplay resolver is part of the destination.
-
-## Focused proof and stop conditions
-
-Each bead tests its changed contract. Save safety covers downgrade, corruption, direct writers and two-tab races. Ownership covers repeat combat/reload, menu/deployed agreement and ticket reconciliation. Hero IDs cover renamed/duplicate labels without changing owners or the existing acquisition rule. Enemy IDs cover deterministic ordering explicitly. Appearances cover unchanged visuals and a test-only art substitution. Cosmetic cleanup proves asset hashes and reference removal separately.
-
-The existing equipment tests remain regression checks where a touched consumer needs them; this plan adds no equipment algorithm work or new CP acceptance scope. Compare existing player controls and exact saves before/after each stage. Source-matched screenshots are required for changed presentation paths. Preserve the current JS/Rust simulation boundary and app.js orchestration-only rule.
-
-Stop conversion on an unguarded writer, ambiguous owner/credit, incomplete save set, incompatible rollback build or unexplained player-visible difference. Implementation begins only after its bead records exact scope and dependencies. This revision contains audit evidence and a plan; it does not implement any of these protections or certify merge readiness.
+This proposal remains **not ready for conversion** until purchased-level reconciliation has evidence and an owner decision, the write protocol passes browser lifecycle/concurrency proof, and the old-build namespace audit supports the selected protected storage. No test result, migration success or merge readiness is claimed by these Markdown changes.
