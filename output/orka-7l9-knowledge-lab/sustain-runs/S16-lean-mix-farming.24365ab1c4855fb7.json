@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S16-lean-mix-farming",
+  "digest": "24365ab1c4855fb7dd7688f32054cc8b7ca6a500c72861cbdf5606bd1be5f0b6",
+  "status": "FAIL",
+  "minHpPct": 92.3,
+  "heroKOs": 0,
+  "reason": "minimum HP 92.3% below 95%"
+}

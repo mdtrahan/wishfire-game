@@ -1,0 +1,729 @@
+{
+  "run": {
+    "source": {
+      "head": "a6fd69f803889159aacd63b342d92d211316b776",
+      "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "untracked": []
+    },
+    "harnessSource": {
+      "head": "a6fd69f803889159aacd63b342d92d211316b776",
+      "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "untracked": []
+    },
+    "serveRoot": "/Users/Mace/.codex/worktrees/orka-7l9-survivability/Codex-Orka",
+    "seedStart": 3235774465,
+    "lampSeed": null,
+    "lampFixture": "/Users/Mace/.codex/worktrees/orka-7l9-survivability/Codex-Orka/output/orka-7l9-fixtures/ui-equipped-lamp.json",
+    "heroFixture": "/private/tmp/orka-7l9-level5-manual-ready-heroes.json",
+    "heroSlots": [
+      "Falie",
+      "Huun",
+      "Runa",
+      ""
+    ],
+    "sessions": 1,
+    "maxWaves": 8,
+    "maxBossClears": 1,
+    "maxBossTimeouts": 1,
+    "autoEquip": false,
+    "captureFrames": true,
+    "statePollMs": 40,
+    "sessionTimeoutMs": 180000,
+    "deadlockTimeoutMs": 15000,
+    "viewport": {
+      "width": 360,
+      "height": 640
+    }
+  },
+  "aggregate": {
+    "sessionCount": 1,
+    "seeds": [
+      3235774465
+    ],
+    "averageEnemiesDefeated": 35,
+    "medianEnemiesDefeated": 35,
+    "averageWavesCompleted": 0,
+    "medianWavesCompleted": 0,
+    "minimumWavesCompleted": 0,
+    "totalDefeatRecoveries": 0,
+    "totalBossTimeouts": 0,
+    "medianDefeatRecoveries": 0,
+    "minimumEnemiesDefeated": 35,
+    "averageSimulationSecondsSurvived": 15.27,
+    "medianSimulationSecondsSurvived": 15.27,
+    "partyDefeats": 0,
+    "deadlockCount": 0,
+    "casualtyDistribution": {},
+    "firstHeroCasualtyDistribution": {},
+    "firstKoSides": {
+      "enemy": 1
+    },
+    "endReasons": {
+      "max_bosses": 1
+    },
+    "acceptance": {
+      "everySeedCompletesTarget": true,
+      "everySeedCompletesUninterruptedOrdinaryTarget": false,
+      "zeroDeadlocks": true
+    },
+    "coverage": {
+      "bossClearObserved": true,
+      "defeatRecoveryObserved": false,
+      "firstHeroCasualtyDistribution": {},
+      "separateFixturesRequired": [
+        "boss_trials",
+        "recovery_trials"
+      ]
+    },
+    "bounds": {
+      "maxWaves": 8,
+      "maxBossClears": 1,
+      "maxBossTimeouts": 1
+    }
+  },
+  "sessions": [
+    {
+      "sessionId": 1,
+      "seed": 3235774465,
+      "enemiesDefeated": 35,
+      "wavesCompleted": 0,
+      "openingRoam": {
+        "start": {
+          "direction": -1,
+          "originX": 1080,
+          "targetX": 880,
+          "distance": 200,
+          "attempt": 0
+        },
+        "release": {
+          "time": 3.2,
+          "centerX": 867.6980307469943,
+          "distanceWalked": 212.30196925300572
+        }
+      },
+      "continuousProgressionStart": {
+        "region": 1,
+        "stage": 1,
+        "wave": 1,
+        "bossAvailable": true,
+        "bossArmed": false,
+        "bossActive": false,
+        "bossUID": 0,
+        "ordinaryWaveClears": 0,
+        "defeatRecoveries": 0,
+        "clearedBosses": 0,
+        "clearedPackMask": 0,
+        "spawnedPackMask": 63,
+        "transitions": 0,
+        "bossSummonRequired": true,
+        "bossTransitionEndsAtMs": 0,
+        "bossTimeLimitSec": 0,
+        "bossTimerStartedAt": null,
+        "bossTimeouts": 0,
+        "lastBossTimeout": null,
+        "stageTransitions": 0
+      },
+      "continuousProgressionEnd": {
+        "region": 1,
+        "stage": 2,
+        "wave": 1,
+        "bossAvailable": false,
+        "bossArmed": false,
+        "bossActive": false,
+        "bossUID": 0,
+        "ordinaryWaveClears": 0,
+        "defeatRecoveries": 0,
+        "clearedBosses": 1,
+        "clearedPackMask": 0,
+        "spawnedPackMask": 63,
+        "transitions": 2,
+        "bossSummonRequired": false,
+        "bossTransitionEndsAtMs": 0,
+        "bossTimeLimitSec": 0,
+        "bossTimerStartedAt": null,
+        "bossTimeouts": 0,
+        "lastBossTimeout": null,
+        "stageTransitions": 2
+      },
+      "partyFixture": {
+        "requested": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "activeSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "heroProgress": {
+          "source": "/private/tmp/orka-7l9-level5-manual-ready-heroes.json",
+          "sha256": "5b1f89f95bd362342242b476a39834f8815571ead82c07f986733e2eec1723f3",
+          "expected": [
+            {
+              "id": "Falie",
+              "name": "Falie",
+              "currentLevel": 5,
+              "hp": 117,
+              "maxHp": 117
+            },
+            {
+              "id": "Huun",
+              "name": "Huun",
+              "currentLevel": 5,
+              "hp": 84,
+              "maxHp": 84
+            },
+            {
+              "id": "Kojonn",
+              "name": "Kojonn",
+              "currentLevel": 5,
+              "hp": 101,
+              "maxHp": 101
+            },
+            {
+              "id": "Runa",
+              "name": "Runa",
+              "currentLevel": 5,
+              "hp": 89,
+              "maxHp": 89
+            },
+            {
+              "id": "falie#1",
+              "name": "Falie",
+              "currentLevel": 5,
+              "hp": 117,
+              "maxHp": 117
+            },
+            {
+              "id": "huun#1",
+              "name": "Huun",
+              "currentLevel": 5,
+              "hp": 84,
+              "maxHp": 84
+            },
+            {
+              "id": "kojonn#1",
+              "name": "Kojonn",
+              "currentLevel": 5,
+              "hp": 101,
+              "maxHp": 101
+            },
+            {
+              "id": "runa#1",
+              "name": "Runa",
+              "currentLevel": 5,
+              "hp": 89,
+              "maxHp": 89
+            }
+          ],
+          "observed": [
+            {
+              "id": "falie#1",
+              "name": "Falie",
+              "currentLevel": 5,
+              "hp": 117,
+              "maxHp": 117,
+              "stats": {
+                "ATK": 11,
+                "DEF": 23,
+                "MAG": 6,
+                "RES": 14,
+                "SPD": 8
+              },
+              "combatPower": 70.8
+            },
+            {
+              "id": "huun#1",
+              "name": "Huun",
+              "currentLevel": 5,
+              "hp": 84,
+              "maxHp": 84,
+              "stats": {
+                "ATK": 24,
+                "DEF": 7,
+                "MAG": 4,
+                "RES": 6,
+                "SPD": 13
+              },
+              "combatPower": 88.8
+            },
+            {
+              "id": "runa#1",
+              "name": "Runa",
+              "currentLevel": 5,
+              "hp": 89,
+              "maxHp": 89,
+              "stats": {
+                "ATK": 5,
+                "DEF": 8,
+                "MAG": 27,
+                "RES": 17,
+                "SPD": 12
+              },
+              "combatPower": 96.9
+            }
+          ]
+        },
+        "savedHeroFixture": null
+      },
+      "equipment": {
+        "scenario": "observe_only",
+        "fixture": {
+          "source": "/Users/Mace/.codex/worktrees/orka-7l9-survivability/Codex-Orka/output/orka-7l9-fixtures/ui-equipped-lamp.json",
+          "sha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe"
+        },
+        "savedFixture": null,
+        "start": {
+          "slots": 3,
+          "lampSeed": 4242,
+          "lampSequence": 6,
+          "loadouts": {
+            "Falie": {
+              "body": "lamp:4242:0"
+            },
+            "Kojonn": {
+              "body": "lamp:4242:1"
+            },
+            "Runa": {
+              "body": "lamp:4242:2"
+            }
+          }
+        },
+        "end": {
+          "slots": 3,
+          "lampSeed": 4242,
+          "lampSequence": 6,
+          "loadouts": {
+            "Falie": {
+              "body": "lamp:4242:0"
+            },
+            "Kojonn": {
+              "body": "lamp:4242:1"
+            },
+            "Runa": {
+              "body": "lamp:4242:2"
+            }
+          }
+        },
+        "actions": {
+          "collect": 0,
+          "auto_equip": 0,
+          "close": 0
+        }
+      },
+      "captures": {
+        "combat_start": "/private/tmp/orka-7l9-boss-level5-visual-proof/session-1-combat_start.png",
+        "boss_active": "/private/tmp/orka-7l9-boss-level5-visual-proof/session-1-boss_active.png",
+        "after_boss_clear": "/private/tmp/orka-7l9-boss-level5-visual-proof/session-1-after_boss_clear.png"
+      },
+      "finalArena": null,
+      "bossAttempts": {
+        "summonClicks": 1,
+        "activeTransitions": 1,
+        "highestHpObserved": 231,
+        "lowestHpObserved": 15,
+        "records": [
+          {
+            "startedAt": 7.403,
+            "bossUID": 39,
+            "hpAtStart": 231,
+            "lowestHp": 15,
+            "hpAtEnd": 15,
+            "endedAt": 15.27,
+            "outcome": "clear",
+            "gameTimeLimitSec": 18
+          }
+        ],
+        "gameTimer": {
+          "limitSec": 18,
+          "source": "runtime"
+        }
+      },
+      "bossesCleared": 1,
+      "bossTimeouts": 0,
+      "defeatRecoveries": 0,
+      "recoveryRecords": [],
+      "recoveryAttempts": [],
+      "simulationSecondsSurvived": 15.27,
+      "firstKoSide": "enemy",
+      "firstKoTime": 3.47,
+      "firstHeroCasualty": null,
+      "heroCasualties": [],
+      "livingHeroes": 3,
+      "deadlockCount": 0,
+      "endReason": "max_bosses",
+      "heroes": [
+        {
+          "uid": 1,
+          "instanceKey": "falie#1",
+          "name": "Falie",
+          "currentLevel": 5,
+          "endLevel": 5,
+          "startEXP": 0,
+          "endEXP": 0,
+          "combatPower": 70.8,
+          "endCombatPower": 70.8,
+          "attackType": "melee",
+          "stats": {
+            "ATK": 11,
+            "DEF": 23,
+            "MAG": 6,
+            "RES": 14,
+            "SPD": 8
+          },
+          "startHp": 117,
+          "minSampledHp": 117,
+          "minEventHp": 117,
+          "endHp": 117,
+          "sampledHpLoss": 0,
+          "largestSampleWindowHpLoss": 0,
+          "sampledRecovery": 0,
+          "physicalIncomingDamage": 0,
+          "magicIncomingDamage": 0,
+          "unknownIncomingDamage": 0,
+          "effectiveHealing": 0,
+          "healingBySourceUID": {},
+          "firstKoTime": null,
+          "startMaxHp": 117,
+          "maxHp": 117
+        },
+        {
+          "uid": 2,
+          "instanceKey": "huun#1",
+          "name": "Huun",
+          "currentLevel": 5,
+          "endLevel": 5,
+          "startEXP": 0,
+          "endEXP": 0,
+          "combatPower": 88.8,
+          "endCombatPower": 88.8,
+          "attackType": "melee",
+          "stats": {
+            "ATK": 24,
+            "DEF": 7,
+            "MAG": 4,
+            "RES": 6,
+            "SPD": 13
+          },
+          "startHp": 84,
+          "minSampledHp": 71,
+          "minEventHp": 71,
+          "endHp": 84,
+          "sampledHpLoss": 13,
+          "largestSampleWindowHpLoss": 13,
+          "sampledRecovery": 13,
+          "physicalIncomingDamage": 13,
+          "magicIncomingDamage": 0,
+          "unknownIncomingDamage": 0,
+          "effectiveHealing": 0,
+          "healingBySourceUID": {},
+          "firstKoTime": null,
+          "startMaxHp": 84,
+          "maxHp": 84
+        },
+        {
+          "uid": 3,
+          "instanceKey": "runa#1",
+          "name": "Runa",
+          "currentLevel": 5,
+          "endLevel": 5,
+          "startEXP": 0,
+          "endEXP": 0,
+          "combatPower": 96.9,
+          "endCombatPower": 96.9,
+          "attackType": "magic",
+          "stats": {
+            "ATK": 5,
+            "DEF": 8,
+            "MAG": 27,
+            "RES": 17,
+            "SPD": 12
+          },
+          "startHp": 89,
+          "minSampledHp": 77,
+          "minEventHp": 77,
+          "endHp": 89,
+          "sampledHpLoss": 12,
+          "largestSampleWindowHpLoss": 12,
+          "sampledRecovery": 12,
+          "physicalIncomingDamage": 12,
+          "magicIncomingDamage": 0,
+          "unknownIncomingDamage": 0,
+          "effectiveHealing": 0,
+          "healingBySourceUID": {},
+          "firstKoTime": null,
+          "startMaxHp": 89,
+          "maxHp": 89
+        }
+      ],
+      "recordedHeroDamageEvents": {
+        "count": 2,
+        "maximumAppliedDamage": {
+          "time": 10.007,
+          "targetUID": 2,
+          "target": "Huun",
+          "amount": 13,
+          "hpBefore": 84,
+          "hpAfter": 71,
+          "targetHpFraction": 0.1548,
+          "sourceUID": 39,
+          "damageType": "physical",
+          "wave": 1,
+          "impactGeometry": {
+            "source": {
+              "uid": 39,
+              "name": "Troll",
+              "combatTier": "boss",
+              "x": 1149.1352984581204,
+              "y": 290,
+              "arenaTargetUID": 2,
+              "streamDelivery": "melee"
+            },
+            "heroes": [
+              {
+                "uid": 1,
+                "x": 1038.418151310324,
+                "y": 369.1636399975492,
+                "hp": 117,
+                "inReach": true
+              },
+              {
+                "uid": 2,
+                "x": 1056.3010258387574,
+                "y": 337.91939575000316,
+                "hp": 84,
+                "inReach": true
+              },
+              {
+                "uid": 3,
+                "x": 945.4900922189,
+                "y": 351.1725474079295,
+                "hp": 77,
+                "inReach": true
+              }
+            ]
+          }
+        },
+        "impactPositionSamples": [
+          {
+            "time": 8.41,
+            "targetUID": 3,
+            "target": "Runa",
+            "amount": 12,
+            "hpBefore": 89,
+            "hpAfter": 77,
+            "targetHpFraction": 0.1348,
+            "sourceUID": 39,
+            "damageType": "physical",
+            "wave": 1,
+            "impactGeometry": {
+              "source": {
+                "uid": 39,
+                "name": "Troll",
+                "combatTier": "boss",
+                "x": 1149.1352984581204,
+                "y": 290,
+                "arenaTargetUID": 3,
+                "streamDelivery": "melee"
+              },
+              "heroes": [
+                {
+                  "uid": 1,
+                  "x": 945.4957153543805,
+                  "y": 432.1983733857462,
+                  "hp": 117,
+                  "inReach": true
+                },
+                {
+                  "uid": 2,
+                  "x": 952.8282104998896,
+                  "y": 396.9530259631276,
+                  "hp": 84,
+                  "inReach": true
+                },
+                {
+                  "uid": 3,
+                  "x": 945.1583597465815,
+                  "y": 351.28722522695216,
+                  "hp": 89,
+                  "inReach": true
+                }
+              ]
+            }
+          },
+          {
+            "time": 10.007,
+            "targetUID": 2,
+            "target": "Huun",
+            "amount": 13,
+            "hpBefore": 84,
+            "hpAfter": 71,
+            "targetHpFraction": 0.1548,
+            "sourceUID": 39,
+            "damageType": "physical",
+            "wave": 1,
+            "impactGeometry": {
+              "source": {
+                "uid": 39,
+                "name": "Troll",
+                "combatTier": "boss",
+                "x": 1149.1352984581204,
+                "y": 290,
+                "arenaTargetUID": 2,
+                "streamDelivery": "melee"
+              },
+              "heroes": [
+                {
+                  "uid": 1,
+                  "x": 1038.418151310324,
+                  "y": 369.1636399975492,
+                  "hp": 117,
+                  "inReach": true
+                },
+                {
+                  "uid": 2,
+                  "x": 1056.3010258387574,
+                  "y": 337.91939575000316,
+                  "hp": 84,
+                  "inReach": true
+                },
+                {
+                  "uid": 3,
+                  "x": 945.4900922189,
+                  "y": 351.1725474079295,
+                  "hp": 77,
+                  "inReach": true
+                }
+              ]
+            }
+          }
+        ],
+        "firstKoImpact": null,
+        "byCombatTier": {
+          "boss": {
+            "hits": 2,
+            "appliedDamage": 25
+          }
+        },
+        "perHero": {
+          "2": {
+            "name": "Huun",
+            "count": 1,
+            "maximumAppliedDamage": {
+              "time": 10.007,
+              "targetUID": 2,
+              "target": "Huun",
+              "amount": 13,
+              "hpBefore": 84,
+              "hpAfter": 71,
+              "targetHpFraction": 0.1548,
+              "sourceUID": 39,
+              "damageType": "physical",
+              "wave": 1,
+              "impactGeometry": {
+                "source": {
+                  "uid": 39,
+                  "name": "Troll",
+                  "combatTier": "boss",
+                  "x": 1149.1352984581204,
+                  "y": 290,
+                  "arenaTargetUID": 2,
+                  "streamDelivery": "melee"
+                },
+                "heroes": [
+                  {
+                    "uid": 1,
+                    "x": 1038.418151310324,
+                    "y": 369.1636399975492,
+                    "hp": 117,
+                    "inReach": true
+                  },
+                  {
+                    "uid": 2,
+                    "x": 1056.3010258387574,
+                    "y": 337.91939575000316,
+                    "hp": 84,
+                    "inReach": true
+                  },
+                  {
+                    "uid": 3,
+                    "x": 945.4900922189,
+                    "y": 351.1725474079295,
+                    "hp": 77,
+                    "inReach": true
+                  }
+                ]
+              }
+            }
+          },
+          "3": {
+            "name": "Runa",
+            "count": 1,
+            "maximumAppliedDamage": {
+              "time": 8.41,
+              "targetUID": 3,
+              "target": "Runa",
+              "amount": 12,
+              "hpBefore": 89,
+              "hpAfter": 77,
+              "targetHpFraction": 0.1348,
+              "sourceUID": 39,
+              "damageType": "physical",
+              "wave": 1,
+              "impactGeometry": {
+                "source": {
+                  "uid": 39,
+                  "name": "Troll",
+                  "combatTier": "boss",
+                  "x": 1149.1352984581204,
+                  "y": 290,
+                  "arenaTargetUID": 3,
+                  "streamDelivery": "melee"
+                },
+                "heroes": [
+                  {
+                    "uid": 1,
+                    "x": 945.4957153543805,
+                    "y": 432.1983733857462,
+                    "hp": 117,
+                    "inReach": true
+                  },
+                  {
+                    "uid": 2,
+                    "x": 952.8282104998896,
+                    "y": 396.9530259631276,
+                    "hp": 84,
+                    "inReach": true
+                  },
+                  {
+                    "uid": 3,
+                    "x": 945.1583597465815,
+                    "y": 351.28722522695216,
+                    "hp": 89,
+                    "inReach": true
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "attributionLimit": "mechanical damage type is unknown for paths that do not supply it"
+      },
+      "measurementLimits": {
+        "samplingIntervalMs": 40,
+        "hpChangesAreSampledNetChanges": true,
+        "waveClearSource": "runtime_counter",
+        "ambiguousWaveTransitions": 0,
+        "stageTransitionsObserved": 2,
+        "orderedCombatEventStreamObserved": true,
+        "damageAndHealingTotals": "recorded_events",
+        "missingCombatEvents": 0,
+        "damageTypeAttribution": "unknown for damage paths without a mechanical type",
+        "recoveryHealingAttribution": "full-party defeat recovery is counted separately from skill healing"
+      }
+    }
+  ]
+}

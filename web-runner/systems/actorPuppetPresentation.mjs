@@ -82,7 +82,15 @@ export function createActorPuppetPresentation({ loadClip }) {
       let slot = actors.get(id);
       if (!slot) { slot = { seen: now }; actors.set(id, slot); }
       slot.seen = now;
-      if (slot.key !== key) { slot.key = key; slot.pending = null; }
+      // Finish one initial puppet load before chasing changing action/facing keys.
+      // Otherwise a moving actor can invalidate every request before ever appearing.
+      if (!slot.shown && slot.ready) {
+        const { clip, state, facing } = slot.ready;
+        slot.shown = { frame: sampleActorClip(clip, 0), clip, state, facing };
+      }
+      if (slot.key !== key && (slot.shown || !slot.pending)) { slot.key = key; slot.pending = null; }
+      const cached = loadClip.peek?.(actorKey, state, facing);
+      if (cached) slot.ready = { key, clip: cached, state, facing };
       protect();
       if (slot.ready?.key !== key && !slot.pending) {
         const request = Promise.resolve().then(() => loadClip(actorKey, state, facing));
@@ -96,9 +104,19 @@ export function createActorPuppetPresentation({ loadClip }) {
       }
       const ready = slot.ready;
       const clip = ready?.clip;
-      const sameLifeState = (ready?.state === 'ko') === (Number(actor.hp) <= 0);
-      const frame = sameLifeState && ready?.facing === facing && clip && sampleActorClip(clip, actorClipAgeMs(actor, ready.state, clip, now));
-      return frame ? { frame, clip, state: ready.state, facing } : null;
+      // A replacement's clock/facing must never resample the outgoing pose.
+      // Keep the image last presented until the requested clip is ready.
+      if (ready?.key !== key) return slot.shown ?? null;
+      if (actor.isPuppetDefeat && slot.defeatClipKey !== key) {
+        // This is a presentation copy, already removed from the simulation.
+        actor.actionStateStartedAt = now;
+        actor.puppetDefeatEndsAt = now + clip.durationMs / 1000;
+        actor.actionStateUntil = actor.puppetDefeatEndsAt;
+        slot.defeatClipKey = key;
+      }
+      const frame = clip && sampleActorClip(clip, actorClipAgeMs(actor, state, clip, now));
+      slot.shown = frame ? { frame, clip, state, facing } : null;
+      return slot.shown;
     },
     retention() { return { displayedActors: actors.size, ...loadClip.retention?.() }; },
   };
@@ -109,10 +127,11 @@ export function drawActorPuppetFrame(ctx, presentation, { footX, footY, height, 
   if (!ctx || !presentation?.frame || !clip || !Number.isFinite(footX) || !Number.isFinite(footY) || !Number.isFinite(height) || height <= 0) return null;
   const visualScale = combatActorVisualScale({ actorUID, effects, now });
   const scaledHeight = height * visualScale;
-  const scale = scaledHeight / clip.canvas.height;
+  const scale = scaledHeight / (clip.canvas.referenceHeight ?? clip.canvas.height);
   const width = clip.canvas.width * scale;
+  const imageHeight = clip.canvas.height * scale;
   const drawX = footX - clip.footOrigin.x * scale;
   const drawY = footY - clip.footOrigin.y * scale;
-  ctx.drawImage(presentation.frame, drawX, drawY, width, scaledHeight);
-  return { drawX, drawY, width, height: scaledHeight, visualScale };
+  ctx.drawImage(presentation.frame, drawX, drawY, width, imageHeight);
+  return { drawX, drawY, width, height: imageHeight, visualScale };
 }

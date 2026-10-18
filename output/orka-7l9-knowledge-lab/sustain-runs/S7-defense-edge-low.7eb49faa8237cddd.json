@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S7-defense-edge-low",
+  "digest": "7eb49faa8237cddd86f91226613ada2e1d8e246e3d3d53c403e7e93249278ecd",
+  "status": "FAIL",
+  "minHpPct": 0,
+  "heroKOs": 1,
+  "reason": "any Hero KO during farming is immediate failure"
+}

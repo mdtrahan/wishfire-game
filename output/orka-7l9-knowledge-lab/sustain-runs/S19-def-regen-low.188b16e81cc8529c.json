@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S19-def-regen-low",
+  "digest": "188b16e81cc8529c1bfdb845a848e4ec0b050c492159c5ffcefa3a7b1be4321d",
+  "status": "FAIL",
+  "minHpPct": 29.4,
+  "heroKOs": 0,
+  "reason": "minimum HP 29.4% below 90%"
+}

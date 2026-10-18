@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S23-def-regen-fara-wave2",
+  "digest": "1555b412330fb5a95e3b413a353c92f01af4a45204008ea4dfe87e597fa0c0d0",
+  "status": "PASS",
+  "minHpPct": 95.6,
+  "heroKOs": 0,
+  "reason": "all declared model checks met"
+}

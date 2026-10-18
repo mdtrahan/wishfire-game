@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ORKA-7l9 Combat Knowledge Lab</title>
+  <style>
+    :root { color-scheme: light; font: 15px/1.5 system-ui, sans-serif; background: #f4f7fb; color: #1d2a38; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    a { color: #135b9c; }
+    button, select, input { font: inherit; }
+    button, select, input[type="search"] { border: 1px solid #b9c8d7; border-radius: 7px; background: #fff; color: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid #236eaf; outline-offset: 2px; }
+    header { padding: 22px 28px; border-bottom: 1px solid #d6e0eb; background: #fff; }
+    h1 { margin: 0; font-size: 1.45rem; }
+    h2 { margin: 0 0 12px; font-size: 1.13rem; }
+    h3 { margin: 20px 0 9px; font-size: .98rem; }
+    p { margin: 8px 0; }
+    .subtitle { color: #526579; margin-top: 5px; }
+    .meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; color: #526579; font-size: .86rem; }
+    .shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: calc(100vh - 138px); }
+    nav { padding: 18px; border-right: 1px solid #d6e0eb; background: #eaf0f6; }
+    nav .hint { color: #526579; font-size: .82rem; margin: 0 0 12px; }
+    .claim { display: block; width: 100%; text-align: left; padding: 11px; margin: 0 0 8px; }
+    .claim[aria-current="true"] { border-color: #2d79b9; background: #e5f2ff; }
+    .claim small { display: block; color: #526579; }
+    main { min-width: 0; max-width: 1250px; padding: 22px 26px 38px; }
+    .panel { border: 1px solid #d4dee8; border-radius: 10px; background: #fff; padding: 18px; margin-bottom: 16px; }
+    .panel p { max-width: 92ch; }
+    .verdict { display: inline-block; border-radius: 999px; padding: 2px 9px; font-weight: 700; font-size: .78rem; letter-spacing: .03em; }
+    .pass { background: #dff3e7; color: #17613a; }
+    .fail { background: #fde7e5; color: #8e292b; }
+    .inconclusive, .not-proven { background: #fff0c9; color: #76520b; }
+    .facts { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0; }
+    .fact { min-width: 115px; padding: 9px 12px; border: 1px solid #d2deea; border-radius: 8px; background: #f1f6fb; }
+    .fact strong { display: block; font-size: 1.08rem; }
+    .fact span { display: block; color: #526579; font-size: .78rem; }
+    .note { border-left: 3px solid #b77d16; padding-left: 11px; color: #76520b; }
+    .muted { color: #526579; }
+    .scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: .85rem; }
+    th, td { padding: 7px 10px; border-bottom: 1px solid #d9e2ec; text-align: left; white-space: nowrap; }
+    th { color: #43566a; font-weight: 600; }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 12px 0; }
+    .controls select, .controls input[type="search"] { padding: 7px 9px; }
+    .controls input[type="search"] { min-width: 220px; flex: 1; }
+    .controls label { white-space: nowrap; }
+    .legend { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; font-size: .82rem; color: #526579; }
+    .tag { border: 1px solid #b9c8d7; border-radius: 5px; padding: 1px 6px; font: 700 .75rem ui-monospace, monospace; }
+    .tag.obs { color: #176146; }
+    .tag.model { color: #155b9b; }
+    .events { max-height: 640px; overflow: auto; border: 1px solid #c9d7e5; border-radius: 8px; background: #fbfdff; }
+    .event { padding: 4px 9px; border-bottom: 1px solid #e3ebf3; white-space: pre-wrap; overflow-wrap: anywhere; font: .78rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .event.obs { color: #174e39; }
+    .event.model { color: #164f82; background: #eff6fd; }
+    .event.other { color: #536578; }
+    details { margin-top: 14px; }
+    summary { cursor: pointer; }
+    pre { overflow: auto; max-height: 420px; padding: 12px; border-radius: 7px; background: #f1f6fb; font-size: .75rem; }
+    @media (max-width: 760px) { .shell { display: block; } nav { border-right: 0; border-bottom: 1px solid #d6e0eb; display: flex; gap: 8px; overflow-x: auto; } nav .hint { display: none; } .claim { min-width: 185px; } main { padding: 15px; } header { padding: 17px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Combat Knowledge Lab</h1>
+    <div class="subtitle">ORKA-7l9 · unchanged-game observations beside model predictions</div>
+    <div class="meta"><span id="design" class="verdict inconclusive">Loading</span><span id="source"></span><a href="verdict.md">Full verdict</a><a href="timeline.md">Full timeline text</a><a href="manifest.json">Manifest</a></div>
+  </header>
+  <div class="shell">
+    <nav id="claims" aria-label="Test claims"><p class="hint">Choose a test to inspect its evidence.</p></nav>
+    <main>
+      <section class="panel" id="claim-panel" aria-live="polite"><p>Loading saved report…</p></section>
+      <section class="panel">
+        <h2>Event timeline</h2>
+        <p class="muted">Sampled session 1 per scenario. The saved timeline may truncate lines; use the raw evidence named in the manifest for complete traces.</p>
+        <div class="legend"><span class="tag obs">OBS</span> unchanged game <span class="tag model">MODEL</span> shadow prediction <span class="tag">REQ</span> owner rule <span class="tag">?</span> unknown</div>
+        <div class="controls">
+          <label for="scenario">Scenario</label><select id="scenario"></select>
+          <label for="kind">Event</label><select id="kind"><option value="">All events</option><option>HIT</option><option>HEAL</option><option>KO</option><option>WAVE_CLEAR</option><option>BOSS</option><option>RECOVER</option><option>GAP</option><option>DEADLOCK</option></select>
+          <label><input type="checkbox" id="show-obs" checked> OBS</label>
+          <label><input type="checkbox" id="show-model" checked> MODEL</label>
+          <input id="search" type="search" placeholder="Search Hero, enemy, wave, event…" aria-label="Search timeline">
+        </div>
+        <p id="timeline-note" class="muted"></p>
+        <div id="events" class="events" role="log" aria-label="Filtered event timeline"></div>
+      </section>
+    </main>
+  </div>
+  <script>
+    const $ = id => document.getElementById(id);
+    const text = (tag, value, className = '') => { const el = document.createElement(tag); el.textContent = String(value ?? ''); if (className) el.className = className; return el; };
+    const statusClass = value => String(value).toLowerCase().replaceAll(' ', '-');
+    let report, claimFile, sections, selectedClaim;
+
+    function parseSections(markdown) {
+      return markdown.split(/^## /m).slice(1).map(chunk => {
+        const newline = chunk.indexOf('\n');
+        const title = chunk.slice(0, newline).trim();
+        const body = chunk.slice(newline + 1);
+        const match = body.match(/```text\n([\s\S]*?)\n```/);
+        return { title, scenario: title.split(' session ')[0], note: body.split('```text')[0].trim(), lines: match ? match[1].split('\n') : [] };
+      });
+    }
+    function addFact(container, value, label) {
+      const box = text('div', '', 'fact'); box.append(text('strong', value), text('span', label)); container.append(box);
+    }
+    function table(container, headings, rows) {
+      const wrap = text('div', '', 'scroll'), el = document.createElement('table'), head = document.createElement('tr');
+      headings.forEach(h => head.append(text('th', h)));
+      el.append(head);
+      rows.forEach(row => { const tr = document.createElement('tr'); row.forEach(cell => tr.append(text('td', cell))); el.append(tr); });
+      wrap.append(el); container.append(wrap);
+    }
+    function detailsFor(claim, container) {
+      const facts = text('div', '', 'facts');
+      if (claim.id === 'C1-starter-farming') {
+        const seeds = claim.rows?.[0]?.perSeed || [];
+        addFact(facts, `${seeds.filter(s => s.verdict === 'PASS').length}/${seeds.length}`, 'seeds passed');
+        addFact(facts, seeds.reduce((n, s) => n + (s.clears || 0), 0), 'ordinary clears');
+        addFact(facts, seeds.reduce((n, s) => n + (s.heroKOs || 0), 0), 'Hero KOs');
+        table(container, ['Seed', 'Clears', 'Hero KOs', 'Stage', 'Verdict'], seeds.map(s => [s.seed, s.clears, s.heroKOs, (s.stagesCleared || []).join(', '), s.verdict]));
+        container.append(text('p', 'These clears repeat Stage 1-1; the pass proves this fixture only.', 'note'));
+      } else if (claim.id === 'C2-pressure') {
+        const variants = claim.sensitivity || [];
+        table(container, ['Gear', 'Base KOs', 'Variant KOs', 'Changed outcome seeds'], variants.map(v => [v.variant, v.pairs.reduce((n, p) => n + p.base.outcome.heroKOs, 0), v.pairs.reduce((n, p) => n + p.variant.outcome.heroKOs, 0), v.pairs.filter(p => p.outcomeChanged).length]));
+        container.append(text('p', 'Some pairs stalled and matching seeds do not guarantee identical action traces. The 100-HP cap step can change the hit ceiling from 1 to 2.', 'note'));
+      } else if (claim.id === 'C3-cap-share') {
+        addFact(facts, claim.observed?.hits ?? '?', 'applied hits');
+        addFact(facts, claim.observed?.preCapValuesObserved ?? '?', 'pre-cap values seen');
+        addFact(facts, 'UNKNOWN', 'exact capped share');
+      } else if (claim.id === 'C4-kaja-healing') {
+        for (const key of ['l1', 'l15']) { const x = claim.scenarios?.[key]; if (x) addFact(facts, x.sessions.reduce((n, s) => n + s.healerSkillHealing, 0), `Kaja healing at level ${x.level}`); }
+        container.append(text('p', 'Level-15 Patchwork did not trigger in these runs. Zero observed healing here does not mean the skill cannot heal.', 'note'));
+      } else if (claim.id === 'C5-first-boss') {
+        addFact(facts, claim.threshold?.lowestLevelAllSeedsClear ?? '?', 'synthetic all-seed clear level');
+        const earned = claim.earned?.sessions || [];
+        addFact(facts, `${earned.filter(s => s.outcomes?.[0] === 'BOSS_CLEAR').length}/${earned.length}`, 'earned first-attempt clears');
+        table(container, ['Seed', 'Arrival party', 'First outcome', 'Timeouts before clear'], earned.map(s => [s.seed, `${s.arrival?.heroes?.length ?? '?'} Heroes`, s.outcomes?.[0] ?? '?', s.timeoutsBeforeClear ?? '?']));
+        container.append(text('p', 'The synthetic three-Hero sweep and earned four-Hero Auto-Equip path have different openings. A fixture PASS does not establish earned failure-then-growth pacing.', 'note'));
+      } else if (claim.id === 'C6-recovery') {
+        const seeds = claim.rows?.[0]?.perSeed || [];
+        addFact(facts, `${seeds.filter(s => s.verdict === 'PASS').length}/${seeds.length}`, '20-clear recoveries');
+        table(container, ['Seed', 'Full restore', 'Same stage/wave', 'Later clears', 'Later KOs', 'Verdict'], seeds.map(s => [s.seed, (s.restored || []).every(h => h.full) ? 'Yes' : 'Unknown', s.sameStageWave === true ? 'Yes' : '?', s.postRecoveryClears ?? '?', s.additionalKOs ?? '?', s.verdict]));
+      }
+      if (facts.childElementCount) container.insertBefore(facts, container.children[3] || null);
+    }
+    function scenarioIds(claim) {
+      const declared = claimFile.claims.find(c => c.id === claim.id)?.scenarios || {};
+      return new Set(Object.values(declared).flatMap(v => Array.isArray(v) ? v : Object.values(v || {}).flat()).filter(v => typeof v === 'string'));
+    }
+    function renderClaims() {
+      const nav = $('claims'); nav.querySelectorAll('button').forEach(el => el.remove());
+      report.results.forEach(claim => {
+        const button = text('button', '', 'claim'); button.type = 'button'; button.setAttribute('aria-current', claim.id === selectedClaim ? 'true' : 'false');
+        button.append(text('strong', `${claim.id.split('-')[0]}  ${claim.title}`), text('small', claim.verdict));
+        button.onclick = () => { selectedClaim = claim.id; location.hash = claim.id; render(); };
+        nav.append(button);
+      });
+    }
+    function renderClaim() {
+      const claim = report.results.find(x => x.id === selectedClaim);
+      const panel = $('claim-panel'); panel.replaceChildren();
+      const heading = text('h2', claim.title); panel.append(heading, text('span', claim.verdict, `verdict ${statusClass(claim.verdict)}`));
+      panel.append(text('p', claim.expectation));
+      detailsFor(claim, panel);
+      if (claim.unknowns?.length) { panel.append(text('h3', 'Still unknown')); const ul = document.createElement('ul'); claim.unknowns.forEach(x => ul.append(text('li', x))); panel.append(ul); }
+      const more = document.createElement('details'); more.append(text('summary', 'Structured claim data'), text('pre', JSON.stringify(claim, null, 2))); panel.append(more);
+      const ids = scenarioIds(claim), options = sections.filter(s => ids.has(s.scenario));
+      const select = $('scenario'), previous = select.value; select.replaceChildren();
+      (options.length ? options : sections).forEach(s => { const option = document.createElement('option'); option.value = s.title; option.textContent = s.title; select.append(option); });
+      select.value = [...select.options].some(o => o.value === previous) ? previous : select.options[0]?.value || '';
+      renderTimeline();
+    }
+    function renderTimeline() {
+      const section = sections.find(s => s.title === $('scenario').value);
+      const holder = $('events'); holder.replaceChildren();
+      if (!section) { $('timeline-note').textContent = 'No timeline section is available.'; return; }
+      const search = $('search').value.toLowerCase(), kind = $('kind').value;
+      const lines = section.lines.filter(line => {
+        const source = line.startsWith('OBS ') ? 'obs' : line.startsWith('MODEL ') ? 'model' : 'other';
+        if (source === 'obs' && !$('show-obs').checked) return false;
+        if (source === 'model' && !$('show-model').checked) return false;
+        if (kind && !line.includes(kind)) return false;
+        return line.toLowerCase().includes(search);
+      });
+      $('timeline-note').textContent = `${lines.length} of ${section.lines.length} saved lines shown. ${section.note.replace(/\s+/g, ' ').slice(0, 210)}`;
+      const fragment = document.createDocumentFragment();
+      lines.forEach(line => fragment.append(text('div', line, `event ${line.startsWith('OBS ') ? 'obs' : line.startsWith('MODEL ') ? 'model' : 'other'}`)));
+      holder.append(fragment);
+    }
+    function render() { renderClaims(); renderClaim(); }
+    async function load() {
+      try {
+        const files = await Promise.all(['verdict.json', 'claims.json', 'manifest.json', 'timeline.md'].map(async name => { const response = await fetch(name); if (!response.ok) throw Error(`${name}: HTTP ${response.status}`); return name.endsWith('.md') ? response.text() : response.json(); }));
+        [report, claimFile] = files; const manifest = files[2]; sections = parseSections(files[3]);
+        $('design').textContent = report.design.verdict; $('design').className = `verdict ${statusClass(report.design.verdict)}`;
+        $('source').textContent = `Game SHA ${manifest.candidate?.sha?.slice(0, 12) || '?'} · claims ${manifest.claims?.sha256?.slice(0, 12) || '?'} · ${sections.length} sampled timelines`;
+        selectedClaim = report.results.some(x => x.id === location.hash.slice(1)) ? location.hash.slice(1) : 'C6-recovery';
+        render();
+      } catch (error) { $('claim-panel').replaceChildren(text('h2', 'Report unavailable'), text('p', `${error.message}. Serve this folder over localhost; browsers usually block local file fetches.`)); $('design').textContent = 'LOAD ERROR'; }
+    }
+    $('scenario').onchange = renderTimeline;
+    for (const id of ['kind', 'show-obs', 'show-model', 'search']) $(id).addEventListener(id === 'search' ? 'input' : 'change', renderTimeline);
+    window.addEventListener('hashchange', () => { if (report?.results.some(x => x.id === location.hash.slice(1))) { selectedClaim = location.hash.slice(1); render(); } });
+    load();
+  </script>
+</body>
+</html>

@@ -581,6 +581,39 @@ async function captureCombat(page, viewport, artifactDir) {
   });
   await page.screenshot({ path: path.join(artifactDir, `${viewport.name}-07-damage-text.png`) });
 
+  // Exercise the separate DOM retry group after the Canvas HUD/resource checks.
+  await page.evaluate(() => {
+    const game = window.__codexGame;
+    Object.assign(game.globals.ContinuousCombatStage, {bossAvailable:true,bossSummonRequired:true,bossActive:false,bossArmed:false});
+    game.stepFrames(1);
+  });
+  await page.locator('#combat-boss-fallback').waitFor({state:'visible'});
+  const boss = await page.evaluate(() => {
+    const rect = n => {const r=n.getBoundingClientRect();return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
+    return {group:rect(document.querySelector('#combat-boss-fallback')),resources:rect(document.querySelector('#combat-progression-ui')),canvas:rect(document.querySelector('canvas')),pageWidth:document.documentElement.scrollWidth,viewportWidth:innerWidth};
+  });
+  const bossScale = Math.min(boss.canvas.width / 360, boss.canvas.height / 640);
+  const bossFrameTop = boss.canvas.top + (boss.canvas.height - 640 * bossScale) / 2;
+  await page.screenshot({path:path.join(artifactDir, `${viewport.name}-08-boss-summon.png`)});
+
+  await page.locator('.lamp-tier-badge').click();
+  await page.locator('#lamp-dialog').waitFor({state:'visible'});
+  await page.locator('#combat-boss-fallback').waitFor({state:'hidden'});
+  const bossHiddenInModal = await page.evaluate(() => document.querySelector('#combat-boss-fallback').hidden && !window.__codexGame.globals.CombatBossFallbackVisible);
+  await page.locator('#lamp-dialog [data-action="close"]').click();
+  await page.locator('#combat-boss-fallback').waitFor({state:'visible'});
+  await page.getByRole('button',{name:'POWER UP',exact:true}).click();
+  await page.locator('#training-ground').waitFor({state:'visible'});
+  await page.locator('#combat-boss-fallback').waitFor({state:'hidden'});
+  const bossHiddenInGrowth = await page.evaluate(() => document.querySelector('#combat-boss-fallback').hidden && !window.__codexGame.globals.CombatBossFallbackVisible);
+  await page.getByRole('button',{name:'Close Growth',exact:true}).click();
+  await page.locator('#combat-boss-fallback').waitFor({state:'visible'});
+  await page.getByRole('button',{name:'HERO',exact:true}).click();
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text()).flags.layoutId === 'heroLayout');
+  await page.locator('#combat-boss-fallback').waitFor({state:'hidden'});
+  const bossMenu = await page.evaluate(() => ({hidden:document.querySelector('#combat-boss-fallback').hidden,display:getComputedStyle(document.querySelector('#combat-boss-fallback')).display,visibleFlag:window.__codexGame.globals.CombatBossFallbackVisible,ready:window.__codexGame.globals.ContinuousCombatStage.bossAvailable}));
+  await page.screenshot({path:path.join(artifactDir, `${viewport.name}-09-boss-hidden-menu.png`)});
+
   const canvasWidth = Number(targeting?.canvas?.width || 0);
   const damageRatio = damage.fontPx / canvasWidth;
   const damageDensity = (damage.backing?.width || 0) / Math.max(1, damage.rect?.width || 0);
@@ -589,6 +622,11 @@ async function captureCombat(page, viewport, artifactDir) {
   const expectedDamageHeight = Math.max(12, Math.ceil(expectedDamageFontPx * 2.6));
 
   return [
+    invariant('boss-summon-hidden-in-modal', bossHiddenInModal && bossHiddenInGrowth, {equipment:bossHiddenInModal,growth:bossHiddenInGrowth}, {equipment:true,growth:true}),
+    invariant('boss-summon-combat-only', bossMenu.hidden && bossMenu.display==='none' && !bossMenu.visibleFlag && bossMenu.ready, bossMenu, {visible:false,readinessPreserved:true}),
+    invariant('boss-summon-clears-resources', boss.group.top >= boss.resources.bottom, boss, {overlap:0}),
+    invariant('boss-summon-combat-y', within((boss.group.top-bossFrameTop)/bossScale,42,.5), boss.group, {logicalY:42,tolerance:.5}),
+    invariant('boss-summon-contained', boss.group.left>=boss.canvas.left-.5 && boss.group.right<=boss.canvas.right+.5 && boss.pageWidth<=boss.viewportWidth, boss, {horizontalOverflow:0}),
     ...commandInvariants,
     invariant('battlefield-selectors-absent', !heroSelector && !targetSelector, { heroSelector, targetSelector }, { count: 0 }),
     invariant('automatic-focus-matches-eligible-target', focusGuard.pass, { focusTargetUID: targeting.focusTargetUID, livingEnemyUIDs: targeting.livingEnemyUIDs, expectedFocusTargetUID: focusGuard.expectedFocusTargetUID, eligibleInRangeEnemyUIDs: focusGuard.eligibleInRangeEnemyUIDs, livingHeroCount: focusGuard.livingHeroCount }, { zeroOnlyWhenNoEligibleInRangeTarget: true, nonzeroMustMatchCanonicalSelector: true }),

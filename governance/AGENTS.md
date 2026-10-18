@@ -35,3 +35,5 @@
 ## Child DOX Index
 - `governance/product/AGENTS.md` - gameplay, player-facing, hero/skill/progression truth.
 - `governance/planning/AGENTS.md` - architecture contracts, invariants, and current process plans.
+
+- Consolidation audits index retained historical lanes and local checkpoint locations; an archive or reachable tip does not establish feature acceptance or authorize historical runtime restoration.

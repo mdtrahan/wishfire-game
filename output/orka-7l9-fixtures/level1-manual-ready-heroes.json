@@ -1,0 +1,222 @@
+{
+  "version": 2,
+  "heroes": {
+    "Falie": {
+      "heroInstanceKey": "Falie",
+      "baseHeroName": "Falie",
+      "name": "Falie",
+      "currentLevel": 1,
+      "currentEXP": 0,
+      "lampEXPClaimed": 0,
+      "maxLevel": 100,
+      "combatBaseMaxHP": 85,
+      "maxHP": 85,
+      "stats": {
+        "ATK": 8,
+        "DEF": 16,
+        "MAG": 5,
+        "RES": 10,
+        "SPD": 8
+      },
+      "EXPToNextLevel": 100,
+      "hp": 85,
+      "equipmentStats": {
+        "ATK": 1,
+        "DEF": 4,
+        "MAG": 1,
+        "RES": 2,
+        "HP": 10
+      }
+    },
+    "Huun": {
+      "heroInstanceKey": "Huun",
+      "baseHeroName": "Huun",
+      "name": "Huun",
+      "currentLevel": 1,
+      "currentEXP": 0,
+      "lampEXPClaimed": 0,
+      "maxLevel": 100,
+      "combatBaseMaxHP": 60,
+      "maxHP": 60,
+      "stats": {
+        "ATK": 16,
+        "DEF": 5,
+        "MAG": 3,
+        "RES": 4,
+        "SPD": 12
+      },
+      "EXPToNextLevel": 100,
+      "hp": 60,
+      "equipmentStats": {}
+    },
+    "Runa": {
+      "heroInstanceKey": "Runa",
+      "baseHeroName": "Runa",
+      "name": "Runa",
+      "currentLevel": 1,
+      "currentEXP": 0,
+      "lampEXPClaimed": 0,
+      "maxLevel": 100,
+      "combatBaseMaxHP": 69,
+      "maxHP": 69,
+      "stats": {
+        "ATK": 4,
+        "DEF": 6,
+        "MAG": 19,
+        "RES": 12,
+        "SPD": 11
+      },
+      "EXPToNextLevel": 100,
+      "hp": 69,
+      "equipmentStats": {
+        "ATK": 1,
+        "DEF": 2,
+        "MAG": 3,
+        "RES": 2,
+        "HP": 9
+      }
+    },
+    "Kojonn": {
+      "heroInstanceKey": "Kojonn",
+      "baseHeroName": "Kojonn",
+      "name": "Kojonn",
+      "currentLevel": 1,
+      "currentEXP": 0,
+      "lampEXPClaimed": 0,
+      "maxLevel": 100,
+      "combatBaseMaxHP": 73,
+      "maxHP": 73,
+      "stats": {
+        "ATK": 5,
+        "DEF": 9,
+        "MAG": 12,
+        "RES": 15,
+        "SPD": 10
+      },
+      "EXPToNextLevel": 100,
+      "hp": 73,
+      "equipmentStats": {
+        "ATK": 1,
+        "DEF": 2,
+        "MAG": 3,
+        "RES": 3,
+        "HP": 8
+      }
+    },
+    "falie#1": {
+      "heroInstanceKey": "falie#1",
+      "baseHeroName": "Falie",
+      "name": "Falie",
+      "currentLevel": 1,
+      "currentEXP": 0,
+      "lampEXPClaimed": 0,
+      "maxLevel": 100,
+      "combatBaseMaxHP": 85,
+      "maxHP": 85,
+      "stats": {
+        "ATK": 8,
+        "DEF": 16,
+        "MAG": 5,
+        "RES": 10,
+        "SPD": 8
+      },
+      "EXPToNextLevel": 100,
+      "hp": 85,
+      "equipmentStats": {
+        "ATK": 1,
+        "DEF": 4,
+        "MAG": 1,
+        "RES": 2,
+        "HP": 10
+      }
+    },
+    "huun#1": {
+      "heroInstanceKey": "huun#1",
+      "baseHeroName": "Huun",
+      "name": "Huun",
+      "currentLevel": 1,
+      "currentEXP": 0,
+      "lampEXPClaimed": 0,
+      "maxLevel": 100,
+      "combatBaseMaxHP": 60,
+      "maxHP": 60,
+      "stats": {
+        "ATK": 16,
+        "DEF": 5,
+        "MAG": 3,
+        "RES": 4,
+        "SPD": 12
+      },
+      "EXPToNextLevel": 100,
+      "hp": 60,
+      "equipmentStats": {}
+    },
+    "runa#1": {
+      "heroInstanceKey": "runa#1",
+      "baseHeroName": "Runa",
+      "name": "Runa",
+      "currentLevel": 1,
+      "currentEXP": 0,
+      "lampEXPClaimed": 0,
+      "maxLevel": 100,
+      "combatBaseMaxHP": 69,
+      "maxHP": 69,
+      "stats": {
+        "ATK": 4,
+        "DEF": 6,
+        "MAG": 19,
+        "RES": 12,
+        "SPD": 11
+      },
+      "EXPToNextLevel": 100,
+      "hp": 69,
+      "equipmentStats": {
+        "ATK": 1,
+        "DEF": 2,
+        "MAG": 3,
+        "RES": 2,
+        "HP": 9
+      }
+    },
+    "kojonn#1": {
+      "heroInstanceKey": "kojonn#1",
+      "baseHeroName": "Kojonn",
+      "name": "Kojonn",
+      "currentLevel": 1,
+      "currentEXP": 0,
+      "lampEXPClaimed": 0,
+      "maxLevel": 100,
+      "combatBaseMaxHP": 73,
+      "maxHP": 73,
+      "stats": {
+        "ATK": 5,
+        "DEF": 9,
+        "MAG": 12,
+        "RES": 15,
+        "SPD": 10
+      },
+      "EXPToNextLevel": 100,
+      "hp": 73,
+      "equipmentStats": {
+        "ATK": 1,
+        "DEF": 2,
+        "MAG": 3,
+        "RES": 3,
+        "HP": 8
+      }
+    }
+  },
+  "settledBattles": [],
+  "pendingBattleRewards": null,
+  "pendingGoldSettlements": {},
+  "settledTicketSpends": [],
+  "continuousStage": {
+    "region": 1,
+    "stage": 1,
+    "wave": 1,
+    "clearedPackMask": 0,
+    "bossAvailable": true,
+    "bossSummonRequired": true,
+    "clearedBosses": 0
+  }
+}

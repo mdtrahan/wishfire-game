@@ -54,9 +54,9 @@ test('world-height bounds invert the half-scale camera only inside measured HUD-
   assert.equal(projectY(bounds.maxY + 4), 478);
 });
 
-test('enemy health bars follow puppet feet and fallback sprite bounds', () => {
+test('enemy health bars stay anchored to puppet feet during clip loading', () => {
   const renderer = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
-  assert.match(renderer, /const enemyFootY = puppet \? Number\(pos\.y\) : Number\(drawY \+ enemyH\)/);
+  assert.match(renderer, /const enemyFootY = Number\(pos\.y\)/);
   assert.match(renderer, /const barY = Math\.round\(enemyFootY \+ \(4 \* layoutScale\)\)/);
   assert.match(renderer, /const drawY = pos\.y - \(enemy\.combatRank === 'boss' \? enemyH : enemyH \/ 2\)/);
 });

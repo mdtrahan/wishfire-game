@@ -1,0 +1,34 @@
+# ORKA-7l9: independent combat knowledge lab
+
+2026-10-17 UTC (2026-10-16 PDT). This is a design for testing the current combat hypothesis without changing Wishfire game code. It does not approve new balance values. Read the [direct WORLD360 log](orka-7l9-stoneage-world360-direct.md), [reference conclusion and build plan](orka-7l9-reference-conclusion-and-build-plan.md), [feature gap analysis](orka-7l9-feature-gap-analysis.md), [external-review disposition](orka-7l9-claude-review-disposition.md), and [gauntlet ledger](orka-7l9-gauntlet-progress.md) before interpreting a result.
+
+## Two independent views
+
+1. **Observed Wishfire run.** Run the unchanged candidate at an exact Git SHA through [`tools/balance_harness.js`](../tools/balance_harness.js). Fix the seed, lamp and HeroProgress fixture hashes, active slots, gear policy, starting HP, level, and run bound. The harness already reads ordered `BalanceCombatEvents` and reports applied HP damage, effective healing, KOs, wave clears, boss outcomes, recoveries, and gaps. A separate tool may retain and render that stream as NDJSON; it must not alter combat rules. The current saved `balance_metrics.json` contains aggregates and selected maximum-hit records, not a complete event replay.
+2. **Independent shadow model.** A standalone process accepts the same opening state and explicitly declared assumptions for attack cadence, target choice, damage, tier cap, wave-clear healing, boss timer, and recovery. It must not import Wishfire's combat functions as its own oracle. Run a range for unknown cadence or targeting instead of fitting a single value to the desired answer. Mark each event `MODEL`, and compare its prediction with `OBSERVED` events from the unchanged game. A frozen observed hit trace may support a limited cap/heal counterfactual only until a changed HP/KO state would alter targeting, actions, or future waves; stop the replay there and mark later results `UNKNOWN`.
+
+StoneAge observations provide qualitative constraints. Trainers stayed standing in sampled early ordinary and chapter-boss frames, while pets could absorb frontline damage; exact damage, timer, minimum HP, and a 20-wave reference were not measured. A shadow model cannot recover StoneAge's formula from those observations. The owner's separate Wishfire starter criterion is zero Hero KOs across five fixed 20-wave runs.
+
+## Claim file written before each run
+
+Each scenario declares `claim_id`, source/provenance, candidate SHA, fixture SHA-256 values, seeds, party, level, gear policy, enemy tier, controls, expected observable, and `PASS`/`FAIL`/`INCONCLUSIVE` rule. The same file accompanies outputs. Never turn a post-run observation into a pre-run expectation. Five fixed seeds give regression coverage, not a statistical population estimate.
+
+| Claim to challenge | Required observation | Result rule |
+| --- | --- | --- |
+| Starter farming meets the owner's survival gate | Five no-Kaja seeds, 20 consecutive ordinary clears each; Hero KOs, effective healing, minimum HP with event-time maximum HP, event gaps and deadlocks | Pass only on all five complete runs with zero Hero KOs, zero gaps and zero deadlocks. Report pressure separately. |
+| The 2% routine cap and 15% wave heal preserve meaningful pressure | Incoming applied hits, wave-clear heals, HP margins; matched HP/DEF gear variants and a no-heal shadow scenario | Show sensitivity and first divergence. No numeric danger band is approved. An applied one-damage hit alone does not prove the cap bound. |
+| Early Kaja is a healer | Source-attributed skill healing in matched level-1 and level-15 healer/no-healer parties | Expect zero skill healing at level 1 because Patchwork unlocks at 15; report any level-15 effective heal without inferring causal survival when both parties live. |
+| The first boss is beatable through earned growth | Fresh-save arrival stats/gear/outcome, then same-gear five-seed level-1–5 sweep under the authored Wishfire 18-second timer | Report the win threshold and whether the earned arrival clears. Existing synthetic level-1 timeout and level-5 win are narrower controls. |
+| A recovered party can resume farming | Initial forced Hero KO, full-party restore on same stage/wave, ordered later enemy KO and 20 consecutive ordinary clears per seed | Require five complete seeds with zero additional Hero KOs, event gaps, ambiguous transitions and deadlocks. The existing harness needs an explicit boss-summon policy while counting ordinary waves; a stop at boss readiness is `INCONCLUSIVE`. |
+
+## Log contract and legend
+
+Write `manifest.json` (source and fixture hashes), `claims.json` (predeclared expectations), `events.ndjson` (ordered records), and `verdict.md` (one row per claim with evidence paths and first divergence). A record carries simulation time, seed, stage/wave, actor/source/target IDs, event kind, damage type, raw/pre-cap damage if known, cap if known, applied damage, HP before/after/event-time max HP, heal source, boss timer/HP when relevant, and provenance. Use `null` with a reason for unknown values. Keep observed and modeled event streams separate.
+
+Legend: `OBS` is an unchanged-game event; `MODEL` is a shadow prediction; `REQ` is an owner acceptance rule; `REF` is a direct StoneAge observation; `?` is unmeasured. `HIT`, `CAP`, `HEAL`, `KO`, `WAVE_CLEAR`, `BOSS_TIMEOUT`, and `RECOVER` name event types. A verdict must say whether it tests a rule, a model assumption, or only a fixture.
+
+Example from the clean five-seed no-Kaja report, session 1: `OBS t=11.058 W1 Skeleton -> Runa HIT physical HP 69→68 applied=1 raw=? cap=?`. Its `recordedHeroDamageEvents.maximumAppliedDamage` supplies the observed fields. The saved report cannot say whether this hit was capped. A later model line could predict raw damage and a cap, but must remain labeled `MODEL` until a game-side pre-cap observation exists. The expected starter outcome line is `REQ five seeds × 20 ordinary clears; Hero KOs=0`; it does not imply that the battle felt dangerous.
+
+## Boundary and build order
+
+First implement a read-only log renderer and claim evaluator over existing exact-SHA reports. It can already expose survival, heal source, boss result, event gaps, and missing measurements. Then add optional event-stream retention to the harness or an external browser observer. Build the small shadow model only for claims whose inputs and event order can be declared; reject a model that cannot explain an unchanged-game control. Do not claim measured cap activation from current applied-damage reports: [`balanceTelemetry.mjs`](../web-runner/src/core/balanceTelemetry.mjs) records applied HP changes, and the saved reports omit pre-cap damage. Exact capped-hit share requires a separately exposed pre-cap observation; without game-code changes, keep it `UNKNOWN` and use matched sensitivity runs as indirect evidence.

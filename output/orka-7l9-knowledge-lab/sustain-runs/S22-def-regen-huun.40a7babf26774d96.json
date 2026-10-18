@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S22-def-regen-huun",
+  "digest": "40a7babf26774d968770f10ef2c11933dfb02491f8324ce0c5ca268c8537a822",
+  "status": "FAIL",
+  "minHpPct": 92.9,
+  "heroKOs": 0,
+  "reason": "minimum HP 92.9% below 95%"
+}

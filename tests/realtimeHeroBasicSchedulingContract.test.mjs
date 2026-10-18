@@ -8,6 +8,9 @@ import { HERO_DEFINITIONS } from '../web-runner/src/core/heroDefinitions.mjs';
 import { heroDefinition, heroSkillUnlocked } from '../web-runner/src/core/heroDefinitions.mjs';
 import { filterContinuousEncounterEnemies, selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
 import { castRealtimeHeroSkill, realtimeBasicInterval, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
+import { advancePassiveHeroRegen } from '../web-runner/src/core/heroSustainRules.mjs';
+import { recordBalanceCombatEvent } from '../web-runner/src/core/balanceTelemetry.mjs';
+import { saveHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
 
 const source = fs.readFileSync(new URL('../web-runner/modules/functionBank.js', import.meta.url), 'utf8');
 
@@ -20,6 +23,7 @@ function loadTickRealtimeHeroBasics() {
     'GetEffectiveStat', 'realtimeCooldownSeconds', 'selectRealtimeReadyActor', 'scheduleRealtimeActions',
     'HeroAttackSingle', 'GetActorByUID', 'tickRealtimeHeroSkillZones', 'heroDefinition', 'heroSkillUnlocked',
     'selectRealtimeHeroSkillTarget', 'filterContinuousEncounterEnemies', 'castRealtimeHeroSkill', 'realtimeBasicInterval',
+    'advancePassiveHeroRegen', 'recordBalanceCombatEvent', 'saveHeroProgress', 'UpdateHeroHPUI',
     'pushContinuousCombatEnemy', 'reverseContinuousCombatEnemy', 'teleportContinuousCombatEnemy',
     `${body}; return TickRealtimeHeroBasics;`,
   )(ctx => ctx.state.globals,
@@ -36,6 +40,7 @@ function loadTickRealtimeHeroBasics() {
     },
     (ctx, uid) => ctx.state.entities.find(entity => Number(entity.uid) === Number(uid)) || null,
     tickRealtimeHeroSkillZones, heroDefinition, heroSkillUnlocked, selectRealtimeHeroSkillTarget, filterContinuousEncounterEnemies, castRealtimeHeroSkill, realtimeBasicInterval,
+    advancePassiveHeroRegen, recordBalanceCombatEvent, saveHeroProgress, () => {},
     () => false, () => false, () => false,
   );
 }
@@ -152,6 +157,39 @@ test('scheduled basic dispatch validates range again and restores dueAt when its
   assert.equal(tick(ctx), 0);
   assert.equal(globals.RealtimeHeroBasicScheduledActions['2'], undefined);
   assert.equal(globals.RealtimeHeroBasicReadyAt['2'], action.dueAt);
+});
+
+test('each Hero attacks a reachable enemy when shared focus is out of range', () => {
+  const enemies = [
+    { uid: 90, kind: 'enemy', hp: 20, x: 200, y: 200, streamState: 'engaged' },
+    { uid: 91, kind: 'enemy', hp: 20, x: 520, y: 200, streamState: 'engaged' },
+  ];
+  const { ctx, globals, actors, tick } = fixture({ time: 20, heroes: [1, 2], readyAt: { 1: 20, 2: 20 }, enemies });
+  actors[1].footX = 480;
+  globals.RealtimeHeroFocusTargetUID = 90;
+  for (let frame = 0; frame < 4; frame += 1) {
+    globals.time = 20 + frame / 60;
+    tick(ctx);
+  }
+  assert.equal(globals.RealtimeHeroFocusTargetUID, 90);
+  assert.deepEqual(globals.PendingHeroHits.map(hit => [hit.heroUID, hit.targetUID]), [[1, 90], [2, 91]]);
+});
+
+test('redirected basics choose replacements reachable by each source Hero', () => {
+  const enemies = [
+    { uid: 90, kind: 'enemy', hp: 20, x: 200, y: 200, streamState: 'engaged' },
+    { uid: 91, kind: 'enemy', hp: 20, x: 520, y: 200, streamState: 'engaged' },
+    { uid: 99, kind: 'enemy', hp: 0, x: 350, y: 200, streamState: 'engaged' },
+  ];
+  const { ctx, globals, actors, tick } = fixture({ time: 20, heroes: [1, 2], readyAt: { 1: 100, 2: 100 }, enemies });
+  actors[1].footX = 480;
+  globals.RealtimeHeroFocusTargetUID = 90;
+  globals.PendingHeroHits.push(
+    { heroUID: 1, targetUID: 99, realtimeBasic: 1, retargetOnDeath: 1, at: 20 },
+    { heroUID: 2, targetUID: 99, realtimeBasic: 1, retargetOnDeath: 1, at: 20 },
+  );
+  tick(ctx);
+  assert.deepEqual(globals.PendingHeroHits.map(hit => [hit.heroUID, hit.targetUID, hit.at]), [[1, 90, 20.52], [2, 91, 20.52]]);
 });
 
 test('fresh session reset discards pending clocks before hero UIDs repeat', () => {

@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const vm = require('node:vm');
 
 function read(relPath) {
   return fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
@@ -21,7 +22,14 @@ test('damage application sets brief hit-flash window in both function-bank mirro
 
 test('renderer applies tone-aware hit-flash overlay to attacked combatants', () => {
   const src = read('web-runner/app.js');
-  const renderRuntimeSrc = read('web-runner/systems/renderRuntime.js');
+  const source = read('web-runner/systems/renderRuntime.js');
+  const bodyStart = source.indexOf('    const body = [');
+  const bodyEnd = source.indexOf('    const effectiveBody = assembleCombatRenderBody(body);', bodyStart);
+  const body = vm.runInNewContext(`(function(){${source.slice(bodyStart, bodyEnd)};return body;})()`);
+  const helperStart = source.indexOf('export function assembleCombatRenderBody(body) {');
+  const helperEnd = source.indexOf('\nlet renderImpl = null;', helperStart);
+  const assemble = new Function(`${source.slice(helperStart, helperEnd).replace('export function', 'function')};return assembleCombatRenderBody;`)();
+  const renderRuntimeSrc = assemble(body);
   assert.match(src, /function isHitFlashActive\(uid\) \{/);
   assert.match(src, /function getHitFlashTone\(uid\) \{/);
   assert.match(src, /function isActiveTaintedGroundZone\(zone\) \{/);
@@ -48,18 +56,18 @@ test('renderer applies tone-aware hit-flash overlay to attacked combatants', () 
   assert.match(renderRuntimeSrc, /ctx\.strokeStyle = '#4B176F';/);
   assert.match(renderRuntimeSrc, /ctx\.lineWidth = Math\.max\(1, enemyW \* 0\.018\);/);
   assert.match(renderRuntimeSrc, /ctx\.shadowColor = '#5E1C91';/);
-  assert.match(renderRuntimeSrc, /ctx\.globalAlpha = Math\.max\(0, Math\.min\(0\.9, alpha\)\);/);
+  assert.match(renderRuntimeSrc, /ctx\.globalAlpha \*= Math\.max\(0, Math\.min\(0\.9, alpha\)\);/);
   assert.match(renderRuntimeSrc, /ctx\.arc\(0, 0, dotSize, 0, Math\.PI \* 2\);/);
   assert.match(renderRuntimeSrc, /ctx\.stroke\(\);/);
   assert.doesNotMatch(renderRuntimeSrc, /renderEnemyBlightShimmer[\s\S]*ctx\.clip\(\);/);
-  assert.match(renderRuntimeSrc, /ctx\.globalAlpha = tone === 'purple' \? 0\.5 : \(tone === 'blue' \? 0\.42 : 0\.3\);/);
+  assert.match(renderRuntimeSrc, /ctx\.globalAlpha \*= tone === 'purple' \? 0\.5 : \(tone === 'blue' \? 0\.42 : 0\.3\);/);
   assert.match(renderRuntimeSrc, /tone === 'purple'/);
   assert.match(src, /return 'black';/);
   assert.match(renderRuntimeSrc, /const renderHitFlashOverlay = \(drawSprite, tone = 'black'\) => \{/);
   assert.match(renderRuntimeSrc, /: 'brightness\(0\)'/);
-  assert.match(renderRuntimeSrc, /hasPersistentEnemyBlightOverlay\(enemy\.uid\)[\s\S]*renderHitFlashOverlay\(\(\) => ctx\.drawImage\(sprite, drawX, drawY, enemyW, enemyH\), 'purple'\);[\s\S]*renderEnemyBlightShimmer\(drawX, drawY, enemyW, enemyH, enemy\.uid\);/);
-  assert.match(renderRuntimeSrc, /renderHitFlashOverlay\(\(\) => ctx\.drawImage\(sprite, drawX, drawY, enemyW, enemyH\), getHitFlashTone\(enemy\.uid\)\);/);
-  assert.match(renderRuntimeSrc, /renderHitFlashOverlay\(\(\) => ctx\.drawImage\(img, drawX, drawY, scaledW, scaledH\), getHitFlashTone\(hero\.uid\)\);/);
+  assert.match(renderRuntimeSrc, /hasPersistentEnemyBlightOverlay\(enemy\.uid\)[\s\S]*renderHitFlashOverlay\(drawEnemySprite, 'purple'\);[\s\S]*renderEnemyBlightShimmer\(drawX, drawY, enemyW, enemyH, enemy\.uid\);/);
+  assert.match(renderRuntimeSrc, /renderHitFlashOverlay\(drawEnemySprite, getHitFlashTone\(enemy\.uid\)\);/);
+  assert.match(renderRuntimeSrc, /renderHitFlashOverlay\(drawHeroSprite, getHitFlashTone\(hero\.uid\)\);/);
   const idleWhiteFlashes = renderRuntimeSrc.match(/ctx\.filter = 'brightness\(0\) invert\(1\)';/g) || [];
   assert.equal(idleWhiteFlashes.length, 0, 'expected legacy white hit-flash filters to be removed from runtime render paths');
 });

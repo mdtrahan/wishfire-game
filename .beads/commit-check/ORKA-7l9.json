@@ -1,0 +1,1210 @@
+{
+  "changed_functions": {
+    ".beads/commit-check/ORKA-7l9.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-7l9.prepared.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-7l9.scope": [
+      "__MODULE__"
+    ],
+    "Scripts/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "Scripts/functionBank.js": [
+      "ApplyDamageToTarget",
+      "SpawnEnemy",
+      "__MODULE__"
+    ],
+    "ai-memory/insights.md": [
+      "__MODULE__"
+    ],
+    "goals/wishfire-boss-progress-and-depth.md": [
+      "__MODULE__"
+    ],
+    "governance/product/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "governance/product/player-living-guide.md": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-boss-visual/README.md": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-boss-visual/level1-boss-report.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-boss-visual/level1-boss-timer-half.png": [],
+    "output/orka-7l9-boss-visual/level1-post-recovery.png": [],
+    "output/orka-7l9-boss-visual/level1-recovery-reveal.png": [],
+    "output/orka-7l9-boss-visual/level1-repeat-report.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-boss-visual/level5-after-boss-clear.png": [],
+    "output/orka-7l9-boss-visual/level5-boss-report.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-claude-review-disposition.md": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-current-boss-visual/README.md": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-current-boss-visual/timeout/balance_metrics.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-current-boss-visual/timeout/session-1-boss_active.png": [],
+    "output/orka-7l9-current-boss-visual/timeout/session-1-boss_timer_half.png": [],
+    "output/orka-7l9-current-boss-visual/timeout/session-1-combat_start.png": [],
+    "output/orka-7l9-current-boss-visual/timeout/session-1-recovery_reveal.png": [],
+    "output/orka-7l9-current-boss-visual/timeout/session_results.csv": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-current-boss-visual/win/balance_metrics.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-current-boss-visual/win/session-1-after_boss_clear.png": [],
+    "output/orka-7l9-current-boss-visual/win/session-1-boss_active.png": [],
+    "output/orka-7l9-current-boss-visual/win/session-1-combat_start.png": [],
+    "output/orka-7l9-current-boss-visual/win/session_results.csv": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-current-recovery-visual/README.md": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-current-recovery-visual/balance_metrics.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-current-recovery-visual/session-1-combat_start.png": [],
+    "output/orka-7l9-current-recovery-visual/session-1-first_wave_clear.png": [],
+    "output/orka-7l9-current-recovery-visual/session-1-post_recovery.png": [],
+    "output/orka-7l9-current-recovery-visual/session-1-recovery_reveal.png": [],
+    "output/orka-7l9-current-recovery-visual/session_results.csv": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-evidence/README.md": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-evidence/ch1-boss-active.png": [],
+    "output/orka-7l9-evidence/ch1-boss-half.png": [],
+    "output/orka-7l9-evidence/ch1-boss-timeout-reveal.png": [],
+    "output/orka-7l9-evidence/ch2-forced-ko-restored.png": [],
+    "output/orka-7l9-evidence/ch2-retry-wave-clear.png": [],
+    "output/orka-7l9-evidence/farming-matrix.csv": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-feature-gap-analysis.md": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-fixtures/README.md": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-fixtures/ch3-progressed-boss-ready.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-fixtures/chapter2-level15-equipped-heroes.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-fixtures/chapter3-level15-equipped-heroes.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-fixtures/four-equipped-lamp.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-fixtures/instance-key-lamp.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-fixtures/level1-fullhp-heroes.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-fixtures/level1-manual-ready-heroes.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-fixtures/level15-fourhero-heroes.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-fixtures/level15-healer-wound-heroes.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-fixtures/level15-stage2-onehp-heroes.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-fixtures/level15-threehero-heroes.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-fixtures/level5-manual-ready-heroes.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-fixtures/level5-stage2-onehp-heroes.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-fixtures/recovery-sampled-fullhp-heroes.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-fixtures/recovery-sampled-lamp.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-fixtures/recovery-sampled-partialhp-heroes.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-fixtures/stage2-onehp-heroes.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-fixtures/ui-equipped-lamp.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-gauntlet-progress.md": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab-review.md": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/README.md": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/SUSTAIN-RUNBOOK.md": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/claims/orka-7l9-combat-claims.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/fixtures/fixtures-manifest.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/fixtures/gear-base-lamp.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/fixtures/gear-def10-lamp.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/fixtures/gear-hp30-lamp.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/fixtures/level2-manual-ready-heroes.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/fixtures/level3-manual-ready-heroes.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/fixtures/level4-manual-ready-heroes.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sample/claims.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sample/index.html": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sample/manifest.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sample/model.ndjson.gz": [],
+    "output/orka-7l9-knowledge-lab/sample/observed.ndjson.gz": [],
+    "output/orka-7l9-knowledge-lab/sample/report.html": [
+      "$",
+      "text",
+      "statusClass",
+      "parseSections",
+      "addFact",
+      "table",
+      "detailsFor",
+      "scenarioIds",
+      "renderClaims",
+      "renderClaim",
+      "renderTimeline",
+      "render",
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sample/sustain-model.mjs": [
+      "finite",
+      "round",
+      "sameTime",
+      "evadeRoll",
+      "value",
+      "sourceWindow",
+      "evaluateSustainCase",
+      "push",
+      "gradeSustainCase",
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sample/sustain.html": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sample/sustain.js": [
+      "$",
+      "clock",
+      "nice",
+      "badge",
+      "ruleText",
+      "modelFromInputs",
+      "sameModel",
+      "fillInputs",
+      "renderTracker",
+      "primary",
+      "pause",
+      "resetPlayback",
+      "appendStep",
+      "frame",
+      "runSettings",
+      "selectCase",
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sample/timeline.md": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sample/verdict.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sample/verdict.md": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sample/viewer.js": [
+      "$",
+      "clock",
+      "name",
+      "key",
+      "resetState",
+      "setHero",
+      "apply",
+      "format",
+      "modelLine",
+      "addLine",
+      "emit",
+      "renderState",
+      "updateActivity",
+      "pause",
+      "play",
+      "rebuild",
+      "selectRun",
+      "chooseSession",
+      "frame",
+      "emitAndApply",
+      "fail"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-cases.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S0-baseline.d55448d34bbe8aa4.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S1-high-defense.feb5c607e1acd24c.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S10-drain-edge-low.e0630b13447415c8.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S11-drain-edge-pass.6e51d8a88eef9320.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S12-regen-edge-low.f32312e4b3d1c8c0.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S13-regen-edge-pass.3061c1fa87428baf.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S14-huun-wave1-regen.554cd149f27c3fee.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S15-fara-wave2-regen.485ab736808ea563.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S16-lean-mix-farming.24365ab1c4855fb7.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S17-lean-mix-boss.64eaa97d0f8191c1.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S18-lean-mix-boss-pressure.47037e34fc327d27.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S19-def-regen-low.188b16e81cc8529c.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S2-high-evasion.aa7ebf057b2793aa.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S20-def-regen-floor.ed4f76023c317078.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S21-def-regen-95.6425bd85727c84d5.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S22-def-regen-huun.40a7babf26774d96.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S23-def-regen-fara-wave2.1555b412330fb5a9.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S24-def-regen-boss.9cfe3bc3c293d515.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S25-def-regen-boss-pressure.fef2b74328bece12.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S3-hp-drain.74e6b35687336e1a.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S4-high-regen.21afd3030e0ed5fc.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S5-mixed-sustain.97029f3768815902.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S6-pressure-break.d6bb635fd4304fb1.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S7-defense-edge-low.7eb49faa8237cddd.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S8-defense-edge-pass.41fef9b150513e6e.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/S9-evasion-edge-low.579b51a849dffe70.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/latest.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/party-tracker.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-lab/sustain-runs/tracker.md": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-knowledge-simulation-plan.md": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-reference-conclusion-and-build-plan.md": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-stoneage-d1/README.md": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-stoneage-d1/chapter1-2-boss-gate.png": [],
+    "output/orka-7l9-stoneage-d1/chapter1-2-farming.mp4": [],
+    "output/orka-7l9-stoneage-d1/chapter1-2-timestamps.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-stoneage-d1/chapter1-3-farming.mp4": [],
+    "output/orka-7l9-stoneage-d1/chapter1-3-fight.png": [],
+    "output/orka-7l9-stoneage-d1/chapter1-3-timestamps.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-stoneage-d1/chapter1-4-after-clear.png": [],
+    "output/orka-7l9-stoneage-d1/chapter1-4-boss-77pct.png": [],
+    "output/orka-7l9-stoneage-d1/chapter1-4-clear.png": [],
+    "output/orka-7l9-stoneage-d1/chapter1-4-timestamps.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-stoneage-d1/chapter1-5-boss-69pct.png": [],
+    "output/orka-7l9-stoneage-d1/chapter1-5-defeat.png": [],
+    "output/orka-7l9-stoneage-d1/chapter1-5-return.png": [],
+    "output/orka-7l9-stoneage-d1/chapter1-5-timestamps.json": [
+      "__MODULE__"
+    ],
+    "output/orka-7l9-stoneage-world360-direct.md": [
+      "__MODULE__"
+    ],
+    "tests/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "tests/balanceHarnessEntryContract.test.js": [
+      "accepted",
+      "__MODULE__"
+    ],
+    "tests/balanceTelemetryContract.test.mjs": [
+      "__MODULE__"
+    ],
+    "tests/baseDamageDurabilityContract.test.mjs": [
+      "__MODULE__"
+    ],
+    "tests/combatBossButtonContract.test.js": [
+      "worldToCanvas",
+      "notchColors",
+      "assertBossMarkerSeparated",
+      "__MODULE__"
+    ],
+    "tests/combatBossFallbackContract.test.mjs": [
+      "bossState"
+    ],
+    "tests/combatKnowledgeLabContract.test.mjs": [
+      "heroes",
+      "hit",
+      "heal",
+      "start",
+      "clear",
+      "end",
+      "header",
+      "writeLog",
+      "cleanRun",
+      "claimsDoc",
+      "attritionSession",
+      "__MODULE__"
+    ],
+    "tests/combatProgression.test.mjs": [
+      "present"
+    ],
+    "tests/continuousCombatStageContract.test.mjs": [
+      "call",
+      "draw",
+      "total",
+      "__MODULE__"
+    ],
+    "tests/enemyRewardLifecycleContract.test.js": [
+      "loadFunctionBank"
+    ],
+    "tests/heroSustainRulesContract.test.mjs": [
+      "__MODULE__"
+    ],
+    "tests/lampEquipment.test.mjs": [
+      "fixture",
+      "__MODULE__"
+    ],
+    "tests/lampPresentation.test.mjs": [
+      "fixture"
+    ],
+    "tests/partyDamageAccountingContract.test.js": [
+      "loadModule"
+    ],
+    "tests/partySustain.test.mjs": [
+      "makeRows",
+      "invoke",
+      "__MODULE__"
+    ],
+    "tests/pendingRewardPersistenceContract.test.mjs": [
+      "__MODULE__"
+    ],
+    "tests/progressionTransitions.test.mjs": [
+      "fixture",
+      "runTick"
+    ],
+    "tests/questCombatSessionContract.test.js": [
+      "makeScenario",
+      "call",
+      "__MODULE__"
+    ],
+    "tests/realtimeBasicCombatRulesContract.test.mjs": [
+      "run"
+    ],
+    "tests/realtimeEnemyActionSchedulingContract.test.mjs": [
+      "advanceActionFrame",
+      "__MODULE__"
+    ],
+    "tests/realtimeHeroBasicSchedulingContract.test.mjs": [
+      "loadTickRealtimeHeroBasics",
+      "fixture",
+      "__MODULE__"
+    ],
+    "tests/realtimeHeroFocusTargetContract.test.mjs": [
+      "choose"
+    ],
+    "tests/realtimeTwoWaveIntegration.test.mjs": [
+      "makeTickBasics",
+      "stageCall",
+      "gateCall",
+      "__MODULE__"
+    ],
+    "tests/singleHitOwnershipContract.test.js": [
+      "loadFunctionBank"
+    ],
+    "tests/sustainTrackerContract.test.mjs": [
+      "invoke",
+      "__MODULE__"
+    ],
+    "tools/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "tools/balance_harness.js": [
+      "sourceFingerprint",
+      "createEventLog",
+      "bossLampPause",
+      "shouldSummonReadyBoss",
+      "heroLogState",
+      "detectPreferredBrowserExecutable",
+      "isRealtimeCombatReadyState",
+      "applied",
+      "actor",
+      "progressSignature",
+      "ordinaryEncounterHasNoKoFor",
+      "observedOrdinaryWaveClear",
+      "recoveryProgressionView",
+      "recoveryCounterDelta",
+      "observeRecoveryTransition",
+      "applyPostRecoveryWaveClear",
+      "visible",
+      "equippedSlotCount",
+      "writeLampFixture",
+      "validateHeroFixture",
+      "writeHeroFixture",
+      "relTime",
+      "flushLog",
+      "registerActors",
+      "progressionLogView",
+      "aggregateSessions",
+      "writeOutputs",
+      "buildConfig",
+      "__MODULE__"
+    ],
+    "tools/combat_knowledge_lab.mjs": [
+      "parseArgs",
+      "repoFingerprint",
+      "run",
+      "writeNdjson",
+      "harnessCommand",
+      "strip",
+      "commands",
+      "atLevel",
+      "variant",
+      "__MODULE__"
+    ],
+    "tools/combat_lab/claims.mjs": [
+      "validateClaimsDocument",
+      "combine",
+      "capForTiming",
+      "loadScenario",
+      "seedRows",
+      "starterRow",
+      "stagesCleared",
+      "aggregateStarterRow",
+      "scenarioVerdict",
+      "evidenceLink",
+      "modelSummary",
+      "scenarios",
+      "margins",
+      "gear",
+      "seeds",
+      "outcome",
+      "margin",
+      "atBound",
+      "summarize",
+      "decide",
+      "outcomeChange",
+      "attempts",
+      "aggregateAttempts",
+      "sweep",
+      "bySeed",
+      "level",
+      "timeoutsBeforeClear",
+      "rows",
+      "partySize",
+      "evaluateClaims",
+      "__MODULE__"
+    ],
+    "tools/combat_lab/metrics.mjs": [
+      "byOrder",
+      "maxHpTimeline",
+      "sessionFacts",
+      "noteRatio",
+      "consecutiveClearsAfter",
+      "hitsPerWave",
+      "__MODULE__"
+    ],
+    "tools/combat_lab/model.mjs": [
+      "capBound",
+      "waveHealAmount",
+      "lineOrder",
+      "heroState",
+      "plausibleMaxHp",
+      "replaySession",
+      "emit",
+      "diverge",
+      "survivalEnvelope",
+      "survives",
+      "largest",
+      "activeGuards",
+      "counterfactual",
+      "guardsInPlay",
+      "checkGuards",
+      "__MODULE__"
+    ],
+    "tools/combat_lab/observed.mjs": [
+      "readNdjson",
+      "roundTime",
+      "base",
+      "bossKind",
+      "normalizeRecord",
+      "normalizeCombat",
+      "validateSession",
+      "loadObservedLog",
+      "observedRunSettings",
+      "loadAggregateReport",
+      "aggregateSampleHit",
+      "__MODULE__"
+    ],
+    "tools/combat_lab/party_sustain.mjs": [
+      "round",
+      "projectPartySession",
+      "clearCreditsAtFull",
+      "updateFloor",
+      "setMaxHp",
+      "advance",
+      "restoreFlat",
+      "projectPartyScenario",
+      "main",
+      "option",
+      "evaluate",
+      "__MODULE__"
+    ],
+    "tools/combat_lab/provenance.mjs": [
+      "sha256Bytes",
+      "fileEvidence",
+      "git",
+      "gameTreeIds",
+      "compareGameSource",
+      "claimDeclaration",
+      "checkScenarioProvenance",
+      "same",
+      "__MODULE__"
+    ],
+    "tools/combat_lab/render.mjs": [
+      "fmt",
+      "waveLabel",
+      "pollT",
+      "obsLine",
+      "modelLine",
+      "renderTimeline",
+      "link",
+      "table",
+      "perSeedTable",
+      "sourceList",
+      "renderVerdict",
+      "obsSummary",
+      "modelSummaryText",
+      "detail",
+      "__MODULE__"
+    ],
+    "tools/combat_lab/sustain_tracker.mjs": [
+      "hash",
+      "fileHash",
+      "sleep",
+      "withinRepo",
+      "outputPath",
+      "loadSustainCases",
+      "evidenceState",
+      "readObserved",
+      "identity",
+      "reportPath",
+      "writeImmutable",
+      "atomicWrite",
+      "withIndexLock",
+      "indexMarkdown",
+      "buildIndex",
+      "runSustainTracker",
+      "main",
+      "__MODULE__"
+    ],
+    "web-runner/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/app.js": [
+      "checkMainRuntimeCombatOutcome",
+      "tick"
+    ],
+    "web-runner/modules/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/modules/functionBank.js": [
+      "ApplyDamageToTarget",
+      "TickRealtimeHeroBasics",
+      "basicTargetForHero",
+      "fireBasic",
+      "SpawnEnemy",
+      "__MODULE__"
+    ],
+    "web-runner/modules/heroCommands.mjs": [
+      "emitResolvedHealEvent",
+      "heroPresentationPosition",
+      "__MODULE__"
+    ],
+    "web-runner/src/core/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/src/core/arenaCombat.mjs": [
+      "hasHeroImpact"
+    ],
+    "web-runner/src/core/balanceTelemetry.mjs": [
+      "captureBalanceImpactGeometry",
+      "recordBalanceCombatEvent",
+      "__MODULE__"
+    ],
+    "web-runner/src/core/combatRules.mjs": [
+      "resolveSkill"
+    ],
+    "web-runner/src/core/continuousCombatProgressionRules.mjs": [
+      "continuousCombatStagesForRegion",
+      "continuousCombatWavesForStage"
+    ],
+    "web-runner/src/core/continuousCombatStage.mjs": [
+      "continuousCombatPacksForStage",
+      "activePackMask",
+      "CONTINUOUS_COMBAT_ALL_PACKS_MASK",
+      "createContinuousCombatStageState",
+      "configureContinuousCombatProduction",
+      "deriveContinuousCombatWavePackProgress",
+      "progressFromMask",
+      "getContinuousCombatStage",
+      "advanceContinuousCombatStage",
+      "armContinuousCombatBoss",
+      "resetContinuousCombatAfterDefeat",
+      "boundOrdinaryWaveHP",
+      "toughenShortChapterRow",
+      "totalCP",
+      "continuousCombatBossTimeRemaining",
+      "shouldExpireContinuousCombatBoss",
+      "maybeAdvanceContinuousCombatStage",
+      "__MODULE__"
+    ],
+    "web-runner/src/core/heroProgression.mjs": [
+      "normalizeContinuousStageCheckpoint",
+      "createHeroProgressStore",
+      "__MODULE__"
+    ],
+    "web-runner/src/core/heroSustainRules.mjs": [
+      "fillGearMaxHpGrowth",
+      "advancePassiveHeroRegen",
+      "credit",
+      "__MODULE__"
+    ],
+    "web-runner/src/core/realtimeCooldown.mjs": [
+      "realtimeCooldownSeconds"
+    ],
+    "web-runner/src/core/routineEnemyScaling.mjs": [
+      "capContinuousHostileHit",
+      "__MODULE__"
+    ],
+    "web-runner/systems/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/systems/devBrowserTestHooks.js": [
+      "registerDevBrowserTestHooks",
+      "__MODULE__"
+    ],
+    "web-runner/systems/equipmentStorage.mjs": [
+      "apply",
+      "__MODULE__"
+    ],
+    "web-runner/systems/heroProgressStorage.js": [
+      "persistHeroProgressIfDirty"
+    ],
+    "web-runner/systems/questCombatSession.mjs": [
+      "restoreHeroesToFullHP",
+      "createQuestCombatSession",
+      "__MODULE__"
+    ],
+    "web-runner/systems/renderCombatBossControl.mjs": [
+      "bossFallbackPresentation",
+      "drawCombatProgressHud",
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "Scripts/functionBank.js",
+      "web-runner/app.js",
+      "web-runner/modules/functionBank.js"
+    ],
+    "staged_file_count": 194,
+    "staged_line_count": 31866,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/commit-check/ORKA-7l9.json",
+    ".beads/hot-file-lock/ORKA-7l9.prepared.json",
+    ".beads/hot-file-lock/ORKA-7l9.scope",
+    "Scripts/AGENTS.md",
+    "Scripts/functionBank.js",
+    "ai-memory/insights.md",
+    "goals/wishfire-boss-progress-and-depth.md",
+    "governance/product/AGENTS.md",
+    "governance/product/player-living-guide.md",
+    "output/orka-7l9-boss-visual/README.md",
+    "output/orka-7l9-boss-visual/level1-boss-report.json",
+    "output/orka-7l9-boss-visual/level1-boss-timer-half.png",
+    "output/orka-7l9-boss-visual/level1-post-recovery.png",
+    "output/orka-7l9-boss-visual/level1-recovery-reveal.png",
+    "output/orka-7l9-boss-visual/level1-repeat-report.json",
+    "output/orka-7l9-boss-visual/level5-after-boss-clear.png",
+    "output/orka-7l9-boss-visual/level5-boss-report.json",
+    "output/orka-7l9-claude-review-disposition.md",
+    "output/orka-7l9-current-boss-visual/README.md",
+    "output/orka-7l9-current-boss-visual/timeout/balance_metrics.json",
+    "output/orka-7l9-current-boss-visual/timeout/session-1-boss_active.png",
+    "output/orka-7l9-current-boss-visual/timeout/session-1-boss_timer_half.png",
+    "output/orka-7l9-current-boss-visual/timeout/session-1-combat_start.png",
+    "output/orka-7l9-current-boss-visual/timeout/session-1-recovery_reveal.png",
+    "output/orka-7l9-current-boss-visual/timeout/session_results.csv",
+    "output/orka-7l9-current-boss-visual/win/balance_metrics.json",
+    "output/orka-7l9-current-boss-visual/win/session-1-after_boss_clear.png",
+    "output/orka-7l9-current-boss-visual/win/session-1-boss_active.png",
+    "output/orka-7l9-current-boss-visual/win/session-1-combat_start.png",
+    "output/orka-7l9-current-boss-visual/win/session_results.csv",
+    "output/orka-7l9-current-recovery-visual/README.md",
+    "output/orka-7l9-current-recovery-visual/balance_metrics.json",
+    "output/orka-7l9-current-recovery-visual/session-1-combat_start.png",
+    "output/orka-7l9-current-recovery-visual/session-1-first_wave_clear.png",
+    "output/orka-7l9-current-recovery-visual/session-1-post_recovery.png",
+    "output/orka-7l9-current-recovery-visual/session-1-recovery_reveal.png",
+    "output/orka-7l9-current-recovery-visual/session_results.csv",
+    "output/orka-7l9-evidence/README.md",
+    "output/orka-7l9-evidence/ch1-boss-active.png",
+    "output/orka-7l9-evidence/ch1-boss-half.png",
+    "output/orka-7l9-evidence/ch1-boss-timeout-reveal.png",
+    "output/orka-7l9-evidence/ch2-forced-ko-restored.png",
+    "output/orka-7l9-evidence/ch2-retry-wave-clear.png",
+    "output/orka-7l9-evidence/farming-matrix.csv",
+    "output/orka-7l9-feature-gap-analysis.md",
+    "output/orka-7l9-fixtures/README.md",
+    "output/orka-7l9-fixtures/ch3-progressed-boss-ready.json",
+    "output/orka-7l9-fixtures/chapter2-level15-equipped-heroes.json",
+    "output/orka-7l9-fixtures/chapter3-level15-equipped-heroes.json",
+    "output/orka-7l9-fixtures/four-equipped-lamp.json",
+    "output/orka-7l9-fixtures/instance-key-lamp.json",
+    "output/orka-7l9-fixtures/level1-fullhp-heroes.json",
+    "output/orka-7l9-fixtures/level1-manual-ready-heroes.json",
+    "output/orka-7l9-fixtures/level15-fourhero-heroes.json",
+    "output/orka-7l9-fixtures/level15-healer-wound-heroes.json",
+    "output/orka-7l9-fixtures/level15-stage2-onehp-heroes.json",
+    "output/orka-7l9-fixtures/level15-threehero-heroes.json",
+    "output/orka-7l9-fixtures/level5-manual-ready-heroes.json",
+    "output/orka-7l9-fixtures/level5-stage2-onehp-heroes.json",
+    "output/orka-7l9-fixtures/recovery-sampled-fullhp-heroes.json",
+    "output/orka-7l9-fixtures/recovery-sampled-lamp.json",
+    "output/orka-7l9-fixtures/recovery-sampled-partialhp-heroes.json",
+    "output/orka-7l9-fixtures/stage2-onehp-heroes.json",
+    "output/orka-7l9-fixtures/ui-equipped-lamp.json",
+    "output/orka-7l9-gauntlet-progress.md",
+    "output/orka-7l9-knowledge-lab-review.md",
+    "output/orka-7l9-knowledge-lab/README.md",
+    "output/orka-7l9-knowledge-lab/SUSTAIN-RUNBOOK.md",
+    "output/orka-7l9-knowledge-lab/claims/orka-7l9-combat-claims.json",
+    "output/orka-7l9-knowledge-lab/fixtures/fixtures-manifest.json",
+    "output/orka-7l9-knowledge-lab/fixtures/gear-base-lamp.json",
+    "output/orka-7l9-knowledge-lab/fixtures/gear-def10-lamp.json",
+    "output/orka-7l9-knowledge-lab/fixtures/gear-hp30-lamp.json",
+    "output/orka-7l9-knowledge-lab/fixtures/level2-manual-ready-heroes.json",
+    "output/orka-7l9-knowledge-lab/fixtures/level3-manual-ready-heroes.json",
+    "output/orka-7l9-knowledge-lab/fixtures/level4-manual-ready-heroes.json",
+    "output/orka-7l9-knowledge-lab/sample/claims.json",
+    "output/orka-7l9-knowledge-lab/sample/index.html",
+    "output/orka-7l9-knowledge-lab/sample/manifest.json",
+    "output/orka-7l9-knowledge-lab/sample/model.ndjson.gz",
+    "output/orka-7l9-knowledge-lab/sample/observed.ndjson.gz",
+    "output/orka-7l9-knowledge-lab/sample/report.html",
+    "output/orka-7l9-knowledge-lab/sample/sustain-model.mjs",
+    "output/orka-7l9-knowledge-lab/sample/sustain.html",
+    "output/orka-7l9-knowledge-lab/sample/sustain.js",
+    "output/orka-7l9-knowledge-lab/sample/timeline.md",
+    "output/orka-7l9-knowledge-lab/sample/verdict.json",
+    "output/orka-7l9-knowledge-lab/sample/verdict.md",
+    "output/orka-7l9-knowledge-lab/sample/viewer.js",
+    "output/orka-7l9-knowledge-lab/sustain-cases.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S0-baseline.d55448d34bbe8aa4.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S1-high-defense.feb5c607e1acd24c.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S10-drain-edge-low.e0630b13447415c8.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S11-drain-edge-pass.6e51d8a88eef9320.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S12-regen-edge-low.f32312e4b3d1c8c0.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S13-regen-edge-pass.3061c1fa87428baf.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S14-huun-wave1-regen.554cd149f27c3fee.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S15-fara-wave2-regen.485ab736808ea563.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S16-lean-mix-farming.24365ab1c4855fb7.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S17-lean-mix-boss.64eaa97d0f8191c1.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S18-lean-mix-boss-pressure.47037e34fc327d27.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S19-def-regen-low.188b16e81cc8529c.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S2-high-evasion.aa7ebf057b2793aa.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S20-def-regen-floor.ed4f76023c317078.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S21-def-regen-95.6425bd85727c84d5.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S22-def-regen-huun.40a7babf26774d96.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S23-def-regen-fara-wave2.1555b412330fb5a9.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S24-def-regen-boss.9cfe3bc3c293d515.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S25-def-regen-boss-pressure.fef2b74328bece12.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S3-hp-drain.74e6b35687336e1a.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S4-high-regen.21afd3030e0ed5fc.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S5-mixed-sustain.97029f3768815902.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S6-pressure-break.d6bb635fd4304fb1.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S7-defense-edge-low.7eb49faa8237cddd.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S8-defense-edge-pass.41fef9b150513e6e.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S9-evasion-edge-low.579b51a849dffe70.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/latest.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/party-tracker.json",
+    "output/orka-7l9-knowledge-lab/sustain-runs/tracker.md",
+    "output/orka-7l9-knowledge-simulation-plan.md",
+    "output/orka-7l9-reference-conclusion-and-build-plan.md",
+    "output/orka-7l9-stoneage-d1/README.md",
+    "output/orka-7l9-stoneage-d1/chapter1-2-boss-gate.png",
+    "output/orka-7l9-stoneage-d1/chapter1-2-farming.mp4",
+    "output/orka-7l9-stoneage-d1/chapter1-2-timestamps.json",
+    "output/orka-7l9-stoneage-d1/chapter1-3-farming.mp4",
+    "output/orka-7l9-stoneage-d1/chapter1-3-fight.png",
+    "output/orka-7l9-stoneage-d1/chapter1-3-timestamps.json",
+    "output/orka-7l9-stoneage-d1/chapter1-4-after-clear.png",
+    "output/orka-7l9-stoneage-d1/chapter1-4-boss-77pct.png",
+    "output/orka-7l9-stoneage-d1/chapter1-4-clear.png",
+    "output/orka-7l9-stoneage-d1/chapter1-4-timestamps.json",
+    "output/orka-7l9-stoneage-d1/chapter1-5-boss-69pct.png",
+    "output/orka-7l9-stoneage-d1/chapter1-5-defeat.png",
+    "output/orka-7l9-stoneage-d1/chapter1-5-return.png",
+    "output/orka-7l9-stoneage-d1/chapter1-5-timestamps.json",
+    "output/orka-7l9-stoneage-world360-direct.md",
+    "tests/AGENTS.md",
+    "tests/balanceHarnessEntryContract.test.js",
+    "tests/balanceTelemetryContract.test.mjs",
+    "tests/baseDamageDurabilityContract.test.mjs",
+    "tests/combatBossButtonContract.test.js",
+    "tests/combatBossFallbackContract.test.mjs",
+    "tests/combatKnowledgeLabContract.test.mjs",
+    "tests/combatProgression.test.mjs",
+    "tests/continuousCombatStageContract.test.mjs",
+    "tests/enemyRewardLifecycleContract.test.js",
+    "tests/heroSustainRulesContract.test.mjs",
+    "tests/lampEquipment.test.mjs",
+    "tests/lampPresentation.test.mjs",
+    "tests/partyDamageAccountingContract.test.js",
+    "tests/partySustain.test.mjs",
+    "tests/pendingRewardPersistenceContract.test.mjs",
+    "tests/progressionTransitions.test.mjs",
+    "tests/questCombatSessionContract.test.js",
+    "tests/realtimeBasicCombatRulesContract.test.mjs",
+    "tests/realtimeEnemyActionSchedulingContract.test.mjs",
+    "tests/realtimeHeroBasicSchedulingContract.test.mjs",
+    "tests/realtimeHeroFocusTargetContract.test.mjs",
+    "tests/realtimeTwoWaveIntegration.test.mjs",
+    "tests/singleHitOwnershipContract.test.js",
+    "tests/sustainTrackerContract.test.mjs",
+    "tools/AGENTS.md",
+    "tools/balance_harness.js",
+    "tools/combat_knowledge_lab.mjs",
+    "tools/combat_lab/claims.mjs",
+    "tools/combat_lab/metrics.mjs",
+    "tools/combat_lab/model.mjs",
+    "tools/combat_lab/observed.mjs",
+    "tools/combat_lab/party_sustain.mjs",
+    "tools/combat_lab/provenance.mjs",
+    "tools/combat_lab/render.mjs",
+    "tools/combat_lab/sustain_tracker.mjs",
+    "web-runner/AGENTS.md",
+    "web-runner/app.js",
+    "web-runner/modules/AGENTS.md",
+    "web-runner/modules/functionBank.js",
+    "web-runner/modules/heroCommands.mjs",
+    "web-runner/src/core/AGENTS.md",
+    "web-runner/src/core/arenaCombat.mjs",
+    "web-runner/src/core/balanceTelemetry.mjs",
+    "web-runner/src/core/combatRules.mjs",
+    "web-runner/src/core/continuousCombatProgressionRules.mjs",
+    "web-runner/src/core/continuousCombatStage.mjs",
+    "web-runner/src/core/heroProgression.mjs",
+    "web-runner/src/core/heroSustainRules.mjs",
+    "web-runner/src/core/realtimeCooldown.mjs",
+    "web-runner/src/core/routineEnemyScaling.mjs",
+    "web-runner/systems/AGENTS.md",
+    "web-runner/systems/devBrowserTestHooks.js",
+    "web-runner/systems/equipmentStorage.mjs",
+    "web-runner/systems/heroProgressStorage.js",
+    "web-runner/systems/questCombatSession.mjs",
+    "web-runner/systems/renderCombatBossControl.mjs"
+  ],
+  "issue_id": "ORKA-7l9",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/commit-check/ORKA-7l9.json": "ca70633045d9d8af173c73e7a56876c5ac314241",
+    ".beads/hot-file-lock/ORKA-7l9.prepared.json": "f9e5c338366fbe55d59be0e38070f85c95254c63",
+    ".beads/hot-file-lock/ORKA-7l9.scope": "a2fdb346c3b5d20ca2d3b4d031043f1bc6e451d8",
+    "Scripts/AGENTS.md": "2a8a8a5995754f12f6e0e83e59083615bcb452b2",
+    "Scripts/functionBank.js": "0e8ba0adf432545c2865a127759b024e2a4cef8d",
+    "ai-memory/insights.md": "c7ec15fc2dc7a734a18885977f0d2fe5b49b4896",
+    "goals/wishfire-boss-progress-and-depth.md": "0057e895dd7e847678812abb421852eb634ab174",
+    "governance/product/AGENTS.md": "879a22fdf97c3077a7b2e6044445c19084f3c008",
+    "governance/product/player-living-guide.md": "0006101d3fa463339e0013fa4223b30d74b86017",
+    "output/orka-7l9-boss-visual/README.md": "64034c85ae9bc20b73e574c9f17c394d5bbabf06",
+    "output/orka-7l9-boss-visual/level1-boss-report.json": "d3d7e5f582a7a775bd6f23561f2e32379b997363",
+    "output/orka-7l9-boss-visual/level1-boss-timer-half.png": "14d13454450ecb747b4feca3a6fd559087e5b5fa",
+    "output/orka-7l9-boss-visual/level1-post-recovery.png": "1cc2b3a424733c61bfcb6a56e032c2c2e3630442",
+    "output/orka-7l9-boss-visual/level1-recovery-reveal.png": "7c341018e8d2660106e41c720e1ded01ca49057d",
+    "output/orka-7l9-boss-visual/level1-repeat-report.json": "c61b69b9b33b6c7ee620a6a154012c302eb16ddf",
+    "output/orka-7l9-boss-visual/level5-after-boss-clear.png": "837d34bb220e3119093ccf688d1e7c3acc9694e2",
+    "output/orka-7l9-boss-visual/level5-boss-report.json": "409bfec6206fdcf5e299dbc7512a4afd59d62478",
+    "output/orka-7l9-claude-review-disposition.md": "ae7dc4c6c1d17d8bf8cbf58a7647c9272fe7aa94",
+    "output/orka-7l9-current-boss-visual/README.md": "00ebd3ea3ea403de3945d9c6131b16883e5e5d1d",
+    "output/orka-7l9-current-boss-visual/timeout/balance_metrics.json": "e3adb653d14f75318dfbc05fd5bfa0be13a27b08",
+    "output/orka-7l9-current-boss-visual/timeout/session-1-boss_active.png": "ac09d9888335894772cbcabcc7f79bd72e67c64d",
+    "output/orka-7l9-current-boss-visual/timeout/session-1-boss_timer_half.png": "ac3bac3fd930486e98083d951c05cb5f5ed84d42",
+    "output/orka-7l9-current-boss-visual/timeout/session-1-combat_start.png": "759b0e3b8e0a1ddb592d7457edce266000fc38da",
+    "output/orka-7l9-current-boss-visual/timeout/session-1-recovery_reveal.png": "b91579a8f787a8bdc0398997a863f5ad36f16e98",
+    "output/orka-7l9-current-boss-visual/timeout/session_results.csv": "8fcd15c1f1e1bffe7af5ce89f5131cdc6de5b2a1",
+    "output/orka-7l9-current-boss-visual/win/balance_metrics.json": "9d766f1537c75b2f2a136af684520eba4cee1b17",
+    "output/orka-7l9-current-boss-visual/win/session-1-after_boss_clear.png": "81e26094b4d038dbd042e38a71bcad98818827a1",
+    "output/orka-7l9-current-boss-visual/win/session-1-boss_active.png": "9c9b3c5c457a95944bb5b7dff9310f748d5b8b6e",
+    "output/orka-7l9-current-boss-visual/win/session-1-combat_start.png": "fd497fd2e130c3955a109b70e78004a0f4ff5059",
+    "output/orka-7l9-current-boss-visual/win/session_results.csv": "b88eeb198b462675807f331ef464764be16f07a5",
+    "output/orka-7l9-current-recovery-visual/README.md": "901f22d3e6265b99073b50fdd35818c73610c060",
+    "output/orka-7l9-current-recovery-visual/balance_metrics.json": "f13695337a277b0030b682cb7e744ca4608cc87d",
+    "output/orka-7l9-current-recovery-visual/session-1-combat_start.png": "9909a6fcfc37f4deb45fe9b01001cd40dacce57f",
+    "output/orka-7l9-current-recovery-visual/session-1-first_wave_clear.png": "69554733c1ef5d52c3a5c3cb2eaa7f17750dc309",
+    "output/orka-7l9-current-recovery-visual/session-1-post_recovery.png": "10bd45afc2815f31c1e56b592fa47ca991025e30",
+    "output/orka-7l9-current-recovery-visual/session-1-recovery_reveal.png": "9043c23e53fce096be79ac88a8206d18c1f0bb78",
+    "output/orka-7l9-current-recovery-visual/session_results.csv": "6ec0810c10d217c56edb5cda1ff56fff4c2f2f57",
+    "output/orka-7l9-evidence/README.md": "06af21b87536bea9ba348fb7ae580ceb914f0b5b",
+    "output/orka-7l9-evidence/ch1-boss-active.png": "50935e3baa1186a287ea0a8a5d9148862f5ec33b",
+    "output/orka-7l9-evidence/ch1-boss-half.png": "29f98313008cf262ed8ae2c5549252c22b84a690",
+    "output/orka-7l9-evidence/ch1-boss-timeout-reveal.png": "c75686d607d08f1524f8c2a6f3e74d0a33ccda43",
+    "output/orka-7l9-evidence/ch2-forced-ko-restored.png": "dae8fc33e31c6989c50b553409f0917aba186e3c",
+    "output/orka-7l9-evidence/ch2-retry-wave-clear.png": "1e05a84655f2fa8b1dc6e1284ace0b2b32a232c1",
+    "output/orka-7l9-evidence/farming-matrix.csv": "6e078cb3e84a0a58eebe09313290c554c6863cd2",
+    "output/orka-7l9-feature-gap-analysis.md": "7c8bc91065052d34996390bb86e9f2d4e8a478b7",
+    "output/orka-7l9-fixtures/README.md": "76c64221e4107fea42ecadae102ccd5ba34bc325",
+    "output/orka-7l9-fixtures/ch3-progressed-boss-ready.json": "33514e40ee78e2abe92d385d74178143b6ec87ba",
+    "output/orka-7l9-fixtures/chapter2-level15-equipped-heroes.json": "6c426d83ac993bf009b97c64f3f64240a2b6cde2",
+    "output/orka-7l9-fixtures/chapter3-level15-equipped-heroes.json": "ba52e74bf1354078af0d47954a4d1125c970143f",
+    "output/orka-7l9-fixtures/four-equipped-lamp.json": "905e2e7b1ed79d28a248ecb3ed1db9aba768e8d7",
+    "output/orka-7l9-fixtures/instance-key-lamp.json": "0c769993244bd46f9f59c3dbe7551fcfe06e2c9c",
+    "output/orka-7l9-fixtures/level1-fullhp-heroes.json": "24079e6ad5293dbc81a429ee596bbfecba1a02ac",
+    "output/orka-7l9-fixtures/level1-manual-ready-heroes.json": "1e4da7209262c665a055fed815aa53bbddd6e7a1",
+    "output/orka-7l9-fixtures/level15-fourhero-heroes.json": "cb603ea7b36b008935411ddfab05210a328e2c4b",
+    "output/orka-7l9-fixtures/level15-healer-wound-heroes.json": "892127be609706c7b1c6cec22ac75d1c92b50be4",
+    "output/orka-7l9-fixtures/level15-stage2-onehp-heroes.json": "093345560d11774fbfaa873f416ca25ea8163808",
+    "output/orka-7l9-fixtures/level15-threehero-heroes.json": "aef0c44a7e5a45466bb80fa478c13cfed59c2cc1",
+    "output/orka-7l9-fixtures/level5-manual-ready-heroes.json": "47d86c154f653211b38a6a86c568d870058106c0",
+    "output/orka-7l9-fixtures/level5-stage2-onehp-heroes.json": "218b75daefd8b87dbd1c6f1888976c1e218336c4",
+    "output/orka-7l9-fixtures/recovery-sampled-fullhp-heroes.json": "00347260116022306e184020510b0ed0720e953a",
+    "output/orka-7l9-fixtures/recovery-sampled-lamp.json": "c5c8cc3a7b3ebd30b2b47110433c050fb3e8650c",
+    "output/orka-7l9-fixtures/recovery-sampled-partialhp-heroes.json": "cd7b50d76ec38589352998b7d114087486a26466",
+    "output/orka-7l9-fixtures/stage2-onehp-heroes.json": "714a750b5b6fa0aaef0c25570b222f5523b8dafd",
+    "output/orka-7l9-fixtures/ui-equipped-lamp.json": "c8fe584212a195f2e9a1f67db53cd3582a152e60",
+    "output/orka-7l9-gauntlet-progress.md": "c8de8c04d97985b29fdfd442c57533979b5c7c05",
+    "output/orka-7l9-knowledge-lab-review.md": "9f321c7b0874ad7aad38284d8af7f3ce4182683f",
+    "output/orka-7l9-knowledge-lab/README.md": "97b6296c939d8c1345e714f781dc48e163a6098c",
+    "output/orka-7l9-knowledge-lab/SUSTAIN-RUNBOOK.md": "c7bb299d4cf34ebd34c4b23979c770e24d7a61cd",
+    "output/orka-7l9-knowledge-lab/claims/orka-7l9-combat-claims.json": "8141b44905009b1f0d8bfcb9fd130895c2484565",
+    "output/orka-7l9-knowledge-lab/fixtures/fixtures-manifest.json": "3239b134465cd5af9ad9a88b5669a80f9443ba04",
+    "output/orka-7l9-knowledge-lab/fixtures/gear-base-lamp.json": "c3355bfe6ff88b86025b0f1f25b69b58647fcf3a",
+    "output/orka-7l9-knowledge-lab/fixtures/gear-def10-lamp.json": "485d63c47187156cfffb45c98f5cd54605ded893",
+    "output/orka-7l9-knowledge-lab/fixtures/gear-hp30-lamp.json": "d5b1a33de6342b78cdf541ea3276c87a98f6bfff",
+    "output/orka-7l9-knowledge-lab/fixtures/level2-manual-ready-heroes.json": "08b4111167a7ab8e928a687b880c9aa2158347b3",
+    "output/orka-7l9-knowledge-lab/fixtures/level3-manual-ready-heroes.json": "d0c8d3a6180403f32d3f7c5c80fa3dfa0202b637",
+    "output/orka-7l9-knowledge-lab/fixtures/level4-manual-ready-heroes.json": "f4c51002af87591bb1bddf19ec50911bad522d76",
+    "output/orka-7l9-knowledge-lab/sample/claims.json": "8141b44905009b1f0d8bfcb9fd130895c2484565",
+    "output/orka-7l9-knowledge-lab/sample/index.html": "2e957452f15e265c8534a51d3ca0a30f11cabb4d",
+    "output/orka-7l9-knowledge-lab/sample/manifest.json": "5ab6ec78347b63c44736ee96c133649d271d675f",
+    "output/orka-7l9-knowledge-lab/sample/model.ndjson.gz": "b285a86bb2d573f52f20ac0fae0021fc4cf6120d",
+    "output/orka-7l9-knowledge-lab/sample/observed.ndjson.gz": "2f839d19a210a7324e11b749bf45f6d0084d8062",
+    "output/orka-7l9-knowledge-lab/sample/report.html": "693623b8253e9a9b34f1933bd2ed79d12fa7aafc",
+    "output/orka-7l9-knowledge-lab/sample/sustain-model.mjs": "56c60c1d3ca46d563c07e53ad58c13106b0afdac",
+    "output/orka-7l9-knowledge-lab/sample/sustain.html": "3b229f780befed6d0450ea5b248ac905c44358e9",
+    "output/orka-7l9-knowledge-lab/sample/sustain.js": "5626a8f99a8ae55b4d470ccd219dd2f925a00604",
+    "output/orka-7l9-knowledge-lab/sample/timeline.md": "6fedc134f0b9f6da54c12e4ce8659273bbff3e46",
+    "output/orka-7l9-knowledge-lab/sample/verdict.json": "18d5351859f8b45f95ca9b7ce5da55292654ef95",
+    "output/orka-7l9-knowledge-lab/sample/verdict.md": "eeb4fd9424631ee0a1d36cab2f4159fbff532a99",
+    "output/orka-7l9-knowledge-lab/sample/viewer.js": "f7f67cd886ecb6aa5ff628a0d19bca03b2a5b899",
+    "output/orka-7l9-knowledge-lab/sustain-cases.json": "e496f5c92f596ef945c8262ee63155d7680b588e",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S0-baseline.d55448d34bbe8aa4.json": "2edaac2ffb7bd83691a95dd34bee2b8f971bdc0f",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S1-high-defense.feb5c607e1acd24c.json": "da7233edee2636c4d3e9aa8efd264d2dd4132e2d",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S10-drain-edge-low.e0630b13447415c8.json": "14a99cf81db703f48af7684605ce46c9fb59dd2e",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S11-drain-edge-pass.6e51d8a88eef9320.json": "bf42dafcdd5d6fc39ccd2641a70e41fc142f3fac",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S12-regen-edge-low.f32312e4b3d1c8c0.json": "923c65b9600bf58dd2f37b8f4cd4f18e201f7a63",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S13-regen-edge-pass.3061c1fa87428baf.json": "47248cd17d36ce700dfde54752583d16939a1ae4",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S14-huun-wave1-regen.554cd149f27c3fee.json": "6014aa2573dabda02fbd1c369dd39a4a85f34e76",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S15-fara-wave2-regen.485ab736808ea563.json": "663ac92073e1d282aa9f07f5d4de8405f1552810",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S16-lean-mix-farming.24365ab1c4855fb7.json": "d6f2471be106541d60225ca559e0171f5b8463b8",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S17-lean-mix-boss.64eaa97d0f8191c1.json": "12349c985cc28c9a983d7c3dc91695f27829e3a8",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S18-lean-mix-boss-pressure.47037e34fc327d27.json": "77ba0d02fd83522feff93d887cdc373a166307df",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S19-def-regen-low.188b16e81cc8529c.json": "3109cad520acb7a999d069732147a25c7087448f",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S2-high-evasion.aa7ebf057b2793aa.json": "42686c21824284e65ec4b8882b3a3761563d219a",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S20-def-regen-floor.ed4f76023c317078.json": "215265d4b7ff28865df9d6f15d1a91f37d2ce678",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S21-def-regen-95.6425bd85727c84d5.json": "347791b681732e6ad201bed5ee1bc8851e5d4c13",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S22-def-regen-huun.40a7babf26774d96.json": "d51ff16090025a84e9ccbdef27146856af93398a",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S23-def-regen-fara-wave2.1555b412330fb5a9.json": "38c82be95da39e67575c3bdf7b8cee6818a75205",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S24-def-regen-boss.9cfe3bc3c293d515.json": "1d36004c3c7770b0d772fe1e57318b15a76da67a",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S25-def-regen-boss-pressure.fef2b74328bece12.json": "76fafa151a2745d14bea9abf3ca3762f39c2fdba",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S3-hp-drain.74e6b35687336e1a.json": "a4bc47cb71442980a352b6cd2e07e988769b5b1a",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S4-high-regen.21afd3030e0ed5fc.json": "bf29db9616facb3e64d5f3f943301cdb339912b7",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S5-mixed-sustain.97029f3768815902.json": "1b513e3c9dc770dbe3d31b6a89e7bcbb4b21eb63",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S6-pressure-break.d6bb635fd4304fb1.json": "db461517f8d19e9078fef2fbab3d2b1cefb76718",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S7-defense-edge-low.7eb49faa8237cddd.json": "31c1c0dc8ff2f1172e5ecd7f5574983643508192",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S8-defense-edge-pass.41fef9b150513e6e.json": "d50771cacd54198d204d9703157085abd6c7b03c",
+    "output/orka-7l9-knowledge-lab/sustain-runs/S9-evasion-edge-low.579b51a849dffe70.json": "582c54e211869c9c61581994d159c7c824387065",
+    "output/orka-7l9-knowledge-lab/sustain-runs/latest.json": "79fe5d8ab0e3a58cb64b71ec8aeb64ecf45f96c4",
+    "output/orka-7l9-knowledge-lab/sustain-runs/party-tracker.json": "7b5b19c09247e34710a545442af88052a5cda3bb",
+    "output/orka-7l9-knowledge-lab/sustain-runs/tracker.md": "78ef3d9b3ad96cdba741e7f23c6e6101d82b58d4",
+    "output/orka-7l9-knowledge-simulation-plan.md": "69baf7d24594432fb4a4e9a50cc535ac6db06f59",
+    "output/orka-7l9-reference-conclusion-and-build-plan.md": "97ce0e37b0cb48a9dad316fa829260d8056b94be",
+    "output/orka-7l9-stoneage-d1/README.md": "d0c9beea2d408e3d5604bc362ae10785e0da01a0",
+    "output/orka-7l9-stoneage-d1/chapter1-2-boss-gate.png": "23abb2de084e80d6a53307553a7dce0063d74f5a",
+    "output/orka-7l9-stoneage-d1/chapter1-2-farming.mp4": "7b7d35ad7bf305c726fe837d7b66aa4a2e374309",
+    "output/orka-7l9-stoneage-d1/chapter1-2-timestamps.json": "eea11e2ef6b50275e34c39c1776d15a6d87070c3",
+    "output/orka-7l9-stoneage-d1/chapter1-3-farming.mp4": "cdb11ac50f224c05abb0cb05a406241523834082",
+    "output/orka-7l9-stoneage-d1/chapter1-3-fight.png": "5d5f3f2da8a5a2c893ba3b79cd56e3d6cb06504e",
+    "output/orka-7l9-stoneage-d1/chapter1-3-timestamps.json": "78e913343cc936230f87d5d9fa579b45dd4473fa",
+    "output/orka-7l9-stoneage-d1/chapter1-4-after-clear.png": "fa3a497268eacf1649642269c65e3645a33318bf",
+    "output/orka-7l9-stoneage-d1/chapter1-4-boss-77pct.png": "181ec3220e55361fe9f559775a8a2fc8f8319d63",
+    "output/orka-7l9-stoneage-d1/chapter1-4-clear.png": "39f3cab4aebc79ac618d73ffe48fe779419e18a4",
+    "output/orka-7l9-stoneage-d1/chapter1-4-timestamps.json": "ab53dda4c223944ab6045e05b89356a0d4167598",
+    "output/orka-7l9-stoneage-d1/chapter1-5-boss-69pct.png": "d4d6144ba81495b1bd4a021c1c0e88093e45beca",
+    "output/orka-7l9-stoneage-d1/chapter1-5-defeat.png": "b17780b53dbdfb6a4d8fbbb58cef646e13caec99",
+    "output/orka-7l9-stoneage-d1/chapter1-5-return.png": "7269d710042b1334670f475207004cdfba80d743",
+    "output/orka-7l9-stoneage-d1/chapter1-5-timestamps.json": "4f3475d0c6348b798e91cee59008117f5235435b",
+    "output/orka-7l9-stoneage-world360-direct.md": "562a5b21ec680609090e39d84f98948732604642",
+    "tests/AGENTS.md": "26558414c395ad16115ed89dcfcbb99805a002ab",
+    "tests/balanceHarnessEntryContract.test.js": "aa6957898cbff729d363bdf9bd5aca170bfb0d55",
+    "tests/balanceTelemetryContract.test.mjs": "4560dc2b939224a603da417c93c222de888f6d8b",
+    "tests/baseDamageDurabilityContract.test.mjs": "035d9d04b29b87ffabdd51ce282d377867418913",
+    "tests/combatBossButtonContract.test.js": "a838fc8515bc286d26f9b141cecf5eff862421ed",
+    "tests/combatBossFallbackContract.test.mjs": "98b2284375362896556d868fc5a61d106be1cadd",
+    "tests/combatKnowledgeLabContract.test.mjs": "e9fc4b54b705b4ae90c3ddb15d8db0eef92278fd",
+    "tests/combatProgression.test.mjs": "638a07de506db8602f68f072a2fc4558f046500e",
+    "tests/continuousCombatStageContract.test.mjs": "ffc66dd2e13a2efd3210b466927cea4e0561cd40",
+    "tests/enemyRewardLifecycleContract.test.js": "5bbf97a38f802954ec5fabcd1e2f449effb27991",
+    "tests/heroSustainRulesContract.test.mjs": "69462a45efc1e522bc4c6a145bb2537810a9b6a3",
+    "tests/lampEquipment.test.mjs": "e426d27b040c0da4b7a3ac76421b9c228cf8dbb0",
+    "tests/lampPresentation.test.mjs": "76b309df751b0b477ed82ddc62b92060db0d54a2",
+    "tests/partyDamageAccountingContract.test.js": "94f3249a2fef6053c27bdf4c794c91190e2ab9a2",
+    "tests/partySustain.test.mjs": "75bf179a728fa5e963ae71bb77e52985b552ea21",
+    "tests/pendingRewardPersistenceContract.test.mjs": "e55246afb91da91a03be8b12a82d743c25069c9b",
+    "tests/progressionTransitions.test.mjs": "aba39439383aa7c9a88d4aa0f6ced781e0908498",
+    "tests/questCombatSessionContract.test.js": "9c4bdf7c4e7ed569b78cf94e7afa8b3b30211003",
+    "tests/realtimeBasicCombatRulesContract.test.mjs": "cdacc3ec2b8ebf61a6b3eeb4edd5b613830b48c6",
+    "tests/realtimeEnemyActionSchedulingContract.test.mjs": "ad7e154b529f0fbbe6ca5439d26a3f8209bcebd1",
+    "tests/realtimeHeroBasicSchedulingContract.test.mjs": "dca5941a9903c6662de454b16d3971a8a672838c",
+    "tests/realtimeHeroFocusTargetContract.test.mjs": "f1181e36ee1222bc86618451ae0a3bf8ee6e4eeb",
+    "tests/realtimeTwoWaveIntegration.test.mjs": "d12e26b4683eef6927e66fe3c419b61419680b5e",
+    "tests/singleHitOwnershipContract.test.js": "9a8dd0134db438978df561855a3ed1f00415394a",
+    "tests/sustainTrackerContract.test.mjs": "efaca7b762c487b4e07d05f14b347c4e071e86ac",
+    "tools/AGENTS.md": "6f5b13a679b95bbbba11704ad1f90a40027526de",
+    "tools/balance_harness.js": "49c69f1775848259ee753586bd77f47fdeb8edae",
+    "tools/combat_knowledge_lab.mjs": "c9452c6e90b537e2e93037eca16a6d0b6f3d996c",
+    "tools/combat_lab/claims.mjs": "82b46df9cc71d1ec6eb418b732aa0881629f5b18",
+    "tools/combat_lab/metrics.mjs": "821511f11dc5702885b4343e75c88e3efa2f5f61",
+    "tools/combat_lab/model.mjs": "530cc98087d86cac90b7246a17dec4123aae1228",
+    "tools/combat_lab/observed.mjs": "3d809b9f3542a72ca2b83035d5863d3b955c2288",
+    "tools/combat_lab/party_sustain.mjs": "5a8196af59e40ca5c732773fe36cdd4775603db6",
+    "tools/combat_lab/provenance.mjs": "4337dfca8ebe355e0f6778ffe7dfbf1c42a5f595",
+    "tools/combat_lab/render.mjs": "e5845b8d4b705655a8ec6052b4240fd271963cea",
+    "tools/combat_lab/sustain_tracker.mjs": "1b78b3bcc049b1913542826dfb962678c1e1345c",
+    "web-runner/AGENTS.md": "4bd25330c755de1130858c05b3dc45e39568e33c",
+    "web-runner/app.js": "656f3f4c9fb92d2177ec481f1af0fa0ca7be9d1e",
+    "web-runner/modules/AGENTS.md": "4ac069dfc8f2009836e44966b099ec63159ddf3b",
+    "web-runner/modules/functionBank.js": "aeaef751c2d291eab4fc91c91ddc454289bfc102",
+    "web-runner/modules/heroCommands.mjs": "77562954c152edb4d7e5003ddcb4d184599e73a4",
+    "web-runner/src/core/AGENTS.md": "9782a4d8bcc76bd3826abce25d08240811ae2cb2",
+    "web-runner/src/core/arenaCombat.mjs": "300f33d3593956d49305b3865a11e5b25861d5aa",
+    "web-runner/src/core/balanceTelemetry.mjs": "cc457f39b52754d540c0ce02d4d32af22a4a4972",
+    "web-runner/src/core/combatRules.mjs": "01b29549b12fd925de6e9ae39169ee0c862b17af",
+    "web-runner/src/core/continuousCombatProgressionRules.mjs": "399ad1e500cc53029abc21f0f0e6bdaa8baad783",
+    "web-runner/src/core/continuousCombatStage.mjs": "851fc32700ac0e68a5e2455e5c4e033be061a808",
+    "web-runner/src/core/heroProgression.mjs": "6f15016f92d2d98c35e907aa41b00cfc3585d8ac",
+    "web-runner/src/core/heroSustainRules.mjs": "23877fd64b6b7a64cdc155361c9913515f4deae3",
+    "web-runner/src/core/realtimeCooldown.mjs": "06446f2b80ef3d4364dc4ecfee7b63b70b463d11",
+    "web-runner/src/core/routineEnemyScaling.mjs": "ad2ace348790a7f63510e1f22afb5ae5f19916e7",
+    "web-runner/systems/AGENTS.md": "c35f51eb7a3a167bec619efae7c840bd619b372e",
+    "web-runner/systems/devBrowserTestHooks.js": "3b51885f91cdb64495cf17b25f70e80dd34c7e69",
+    "web-runner/systems/equipmentStorage.mjs": "87e0f8e96e1368e513e464fc952cecc4381258b9",
+    "web-runner/systems/heroProgressStorage.js": "d6d884a4c902b24f487fa56d129aa04946e2017c",
+    "web-runner/systems/questCombatSession.mjs": "7d968b25e4eeb1329b1ef878da7282feaa20cdb7",
+    "web-runner/systems/renderCombatBossControl.mjs": "c8617dd7c7a4344e45569608118bd60764168c92"
+  }
+}

@@ -1,0 +1,1801 @@
+{
+  "schema": "orka.combat-lab-manifest.v1",
+  "generatedAt": "2026-10-17T06:18:49.063Z",
+  "repo": {
+    "head": "0aa06beab0c81afdd8233f1e5a9b62a8b3b0ef35",
+    "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "clean": true,
+    "emptyPatchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "lab": {
+    "tools/combat_knowledge_lab.mjs": "07ab7e036a7b6f3a3e930cb47c69a19920ac30a13b89766c3bb58e927cd283bc",
+    "tools/combat_lab/provenance.mjs": "258f847bc251ce01aa9aa5e520a5fdebe10b9da055e0dc8e53c72bfd3e8ef7f6",
+    "tools/combat_lab/observed.mjs": "bee56825461a05809ba23d123ce018147467f134d8c63599a86e7a8d83b8be97",
+    "tools/combat_lab/metrics.mjs": "911ad803adb4796060a81799eb5b8689acdd8615ea97cee9faefa2594cd66b6b",
+    "tools/combat_lab/model.mjs": "690c822321f1bf1d535671620764bd2106d42a48dd80c1761e69a9701318495a",
+    "tools/combat_lab/claims.mjs": "0feccc2d2872dfcd253c65c2a8faa6fad103b621bfc9de7a2b3c6da80ab7585f",
+    "tools/combat_lab/render.mjs": "20cf4fae5d876924fcdf58304293c59f375f931580096673ad2d9058a309f04d",
+    "tools/balance_harness.js": "5654bc9cb383a833fa873cf0d39734f71e3a093a1e55e0e19ba51dd0f6982ba3"
+  },
+  "claims": {
+    "path": "output/orka-7l9-knowledge-lab/claims/orka-7l9-combat-claims.json",
+    "sha256": "cbffeed98f7ea18d86a528dabe8ecd861c8392e8300f86e509daae7171c27480",
+    "declaration": {
+      "status": "committed",
+      "evidence": {
+        "path": "/Users/Mace/.codex/worktrees/orka-7l9-survivability/Codex-Orka/output/orka-7l9-knowledge-lab/claims/orka-7l9-combat-claims.json",
+        "status": "present",
+        "bytes": 35379,
+        "sha256": "cbffeed98f7ea18d86a528dabe8ecd861c8392e8300f86e509daae7171c27480"
+      },
+      "commit": "2ca44d0bc329ad8ca2a7ec329507dffa20b92bdf",
+      "committedAt": "2026-10-16T21:55:56-07:00"
+    }
+  },
+  "candidate": {
+    "sha": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+    "note": "combat candidate runtime baseline; lab runs must serve identical web-runner/src/Scripts/rust trees"
+  },
+  "model": {
+    "version": "orka-7l9-shadow-1",
+    "assumptions": [
+      "A1",
+      "A2",
+      "A3",
+      "A4",
+      "A5",
+      "A6",
+      "A7",
+      "A8",
+      "A9",
+      "A10",
+      "A11"
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "starter-l1-nokaja",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "kind": "event_log",
+      "admissible": true,
+      "problems": [],
+      "evidence": {
+        "eventLog": {
+          "path": "/private/tmp/orka-7l9-lab/runs/starter-l1-nokaja/observed_events.ndjson",
+          "status": "present",
+          "bytes": 2850925,
+          "sha256": "d79643711bebf713f071971ba394afda57402570eb2b057127bbd180a53c9b16"
+        },
+        "report": {
+          "path": "/private/tmp/orka-7l9-lab/runs/starter-l1-nokaja/balance_metrics.json",
+          "status": "present",
+          "bytes": 765146,
+          "sha256": "43c79ccdd310df54a6af8b300496d59c6e8988b8e8c44108bdfa08229ca9aff3"
+        }
+      },
+      "startedAt": "2026-10-17T04:56:31.529Z",
+      "gameSource": {
+        "status": "unchanged",
+        "head": "2ca44d0bc329ad8ca2a7ec329507dffa20b92bdf",
+        "candidate": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+        "trees": {
+          "web-runner": "fda4697a27c2430a3535ce4b2d35e09a9b4777b5",
+          "src": "446135fa9eea826cd4cbdbb06c7b9ec63af92aaf",
+          "Scripts": "12b0e68ce1caa4e1b78bc6ce816f8963d4818a0c",
+          "rust": "e1191e641d9eae7788817dcf7a866a255a1d8f98"
+        }
+      },
+      "runSource": {
+        "head": "2ca44d0bc329ad8ca2a7ec329507dffa20b92bdf",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "harnessSource": {
+        "head": "2ca44d0bc329ad8ca2a7ec329507dffa20b92bdf",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "07855eeb1ec5077c3c60747a99ca5f42ae62f0ce123c07ed3bd3cb76165930e2",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": true,
+        "bossPolicy": "hold",
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 1,
+          "Huun": 1,
+          "Runa": 1
+        }
+      },
+      "command": "node tools/balance_harness.js --sessions 5 --seedStart 3235774465 --maxWaves 20 --maxBossClears 0 --lampFixture output/orka-7l9-fixtures/ui-equipped-lamp.json --heroFixture output/orka-7l9-fixtures/level1-manual-ready-heroes.json --heroSlots 'Falie,Huun,Runa,' --autoEquip true --bossPolicy hold --port 8202 --sessionTimeoutMs 1200000 --outputDir /private/tmp/orka-7l9-lab/runs/starter-l1-nokaja --eventLog /private/tmp/orka-7l9-lab/runs/starter-l1-nokaja/observed_events.ndjson",
+      "sessions": [
+        {
+          "session": 1,
+          "seed": 3235774465,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 2,
+          "seed": 3235774466,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 3,
+          "seed": 3235774467,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 4,
+          "seed": 3235774468,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 5,
+          "seed": 3235774469,
+          "endReason": "max_waves",
+          "issues": []
+        }
+      ]
+    },
+    {
+      "id": "kaja-l1-four",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "kind": "event_log",
+      "admissible": true,
+      "problems": [],
+      "evidence": {
+        "eventLog": {
+          "path": "/private/tmp/orka-7l9-lab/runs/kaja-l1-four/observed_events.ndjson",
+          "status": "present",
+          "bytes": 2640236,
+          "sha256": "dc4e701d02bb98373c8a8da1502298b116e19edd8c2d30a472e6641d865d62de"
+        },
+        "report": {
+          "path": "/private/tmp/orka-7l9-lab/runs/kaja-l1-four/balance_metrics.json",
+          "status": "present",
+          "bytes": 877898,
+          "sha256": "820be33dea67d137e8a6c71de63fd015688cd2c242e32354f949d42da165d9a6"
+        }
+      },
+      "startedAt": "2026-10-17T04:56:31.517Z",
+      "gameSource": {
+        "status": "unchanged",
+        "head": "2ca44d0bc329ad8ca2a7ec329507dffa20b92bdf",
+        "candidate": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+        "trees": {
+          "web-runner": "fda4697a27c2430a3535ce4b2d35e09a9b4777b5",
+          "src": "446135fa9eea826cd4cbdbb06c7b9ec63af92aaf",
+          "Scripts": "12b0e68ce1caa4e1b78bc6ce816f8963d4818a0c",
+          "rust": "e1191e641d9eae7788817dcf7a866a255a1d8f98"
+        }
+      },
+      "runSource": {
+        "head": "2ca44d0bc329ad8ca2a7ec329507dffa20b92bdf",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "harnessSource": {
+        "head": "2ca44d0bc329ad8ca2a7ec329507dffa20b92bdf",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "07855eeb1ec5077c3c60747a99ca5f42ae62f0ce123c07ed3bd3cb76165930e2",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          "Kojonn"
+        ],
+        "autoEquip": true,
+        "bossPolicy": "hold",
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 1,
+          "Huun": 1,
+          "Runa": 1,
+          "Kojonn": 1
+        }
+      },
+      "command": "node tools/balance_harness.js --sessions 5 --seedStart 3235774465 --maxWaves 20 --maxBossClears 0 --lampFixture output/orka-7l9-fixtures/ui-equipped-lamp.json --heroFixture output/orka-7l9-fixtures/level1-manual-ready-heroes.json --heroSlots 'Falie,Huun,Runa,Kojonn' --autoEquip true --bossPolicy hold --port 8203 --sessionTimeoutMs 1200000 --outputDir /private/tmp/orka-7l9-lab/runs/kaja-l1-four --eventLog /private/tmp/orka-7l9-lab/runs/kaja-l1-four/observed_events.ndjson",
+      "sessions": [
+        {
+          "session": 1,
+          "seed": 3235774465,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 2,
+          "seed": 3235774466,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 3,
+          "seed": 3235774467,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 4,
+          "seed": 3235774468,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 5,
+          "seed": 3235774469,
+          "endReason": "max_waves",
+          "issues": []
+        }
+      ]
+    },
+    {
+      "id": "kaja-l15-three",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "kind": "event_log",
+      "admissible": true,
+      "problems": [],
+      "evidence": {
+        "eventLog": {
+          "path": "/private/tmp/orka-7l9-lab/runs/kaja-l15-three/observed_events.ndjson",
+          "status": "present",
+          "bytes": 2228312,
+          "sha256": "c6803ac7ef4912cccad866c74ffcb69e806ec0fcc6642c83ff5eb1ee465ce6d3"
+        },
+        "report": {
+          "path": "/private/tmp/orka-7l9-lab/runs/kaja-l15-three/balance_metrics.json",
+          "status": "present",
+          "bytes": 140612,
+          "sha256": "bdc41781a4af4408fac56a4ac29e84ea69860208e434bd30a7713f968951d8ae"
+        }
+      },
+      "startedAt": "2026-10-17T04:56:31.501Z",
+      "gameSource": {
+        "status": "unchanged",
+        "head": "2ca44d0bc329ad8ca2a7ec329507dffa20b92bdf",
+        "candidate": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+        "trees": {
+          "web-runner": "fda4697a27c2430a3535ce4b2d35e09a9b4777b5",
+          "src": "446135fa9eea826cd4cbdbb06c7b9ec63af92aaf",
+          "Scripts": "12b0e68ce1caa4e1b78bc6ce816f8963d4818a0c",
+          "rust": "e1191e641d9eae7788817dcf7a866a255a1d8f98"
+        }
+      },
+      "runSource": {
+        "head": "2ca44d0bc329ad8ca2a7ec329507dffa20b92bdf",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "harnessSource": {
+        "head": "2ca44d0bc329ad8ca2a7ec329507dffa20b92bdf",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "3c414abddab2b76350fc2562bd8c5e87a0513adbc21c9dd3e997be375b01ef4e",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "hold",
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 15,
+          "Huun": 15,
+          "Runa": 15
+        }
+      },
+      "command": "node tools/balance_harness.js --sessions 5 --seedStart 3235774465 --maxWaves 20 --maxBossClears 0 --lampFixture output/orka-7l9-fixtures/ui-equipped-lamp.json --heroFixture output/orka-7l9-fixtures/level15-threehero-heroes.json --heroSlots 'Falie,Huun,Runa,' --autoEquip false --bossPolicy hold --port 8204 --sessionTimeoutMs 1200000 --outputDir /private/tmp/orka-7l9-lab/runs/kaja-l15-three --eventLog /private/tmp/orka-7l9-lab/runs/kaja-l15-three/observed_events.ndjson",
+      "sessions": [
+        {
+          "session": 1,
+          "seed": 3235774465,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 2,
+          "seed": 3235774466,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 3,
+          "seed": 3235774467,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 4,
+          "seed": 3235774468,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 5,
+          "seed": 3235774469,
+          "endReason": "max_waves",
+          "issues": []
+        }
+      ]
+    },
+    {
+      "id": "kaja-l15-four",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "kind": "event_log",
+      "admissible": true,
+      "problems": [],
+      "evidence": {
+        "eventLog": {
+          "path": "/private/tmp/orka-7l9-lab/runs/kaja-l15-four/observed_events.ndjson",
+          "status": "present",
+          "bytes": 2229226,
+          "sha256": "f8871b3665634ca0c56f1ceaf0a23578f580c700568e8ead90b1ca1d33825cbc"
+        },
+        "report": {
+          "path": "/private/tmp/orka-7l9-lab/runs/kaja-l15-four/balance_metrics.json",
+          "status": "present",
+          "bytes": 150343,
+          "sha256": "9dcbbb88cd4c8da8ab4ef1bc7f49a809c51e4a99795739f6a80b002410e9171c"
+        }
+      },
+      "startedAt": "2026-10-17T04:56:31.502Z",
+      "gameSource": {
+        "status": "unchanged",
+        "head": "2ca44d0bc329ad8ca2a7ec329507dffa20b92bdf",
+        "candidate": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+        "trees": {
+          "web-runner": "fda4697a27c2430a3535ce4b2d35e09a9b4777b5",
+          "src": "446135fa9eea826cd4cbdbb06c7b9ec63af92aaf",
+          "Scripts": "12b0e68ce1caa4e1b78bc6ce816f8963d4818a0c",
+          "rust": "e1191e641d9eae7788817dcf7a866a255a1d8f98"
+        }
+      },
+      "runSource": {
+        "head": "2ca44d0bc329ad8ca2a7ec329507dffa20b92bdf",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "harnessSource": {
+        "head": "2ca44d0bc329ad8ca2a7ec329507dffa20b92bdf",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "c65de68efe1bd4cbd7d3087e5aee81ee47154d0e815e265d36bbbedf1231ca27",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          "Kojonn"
+        ],
+        "autoEquip": false,
+        "bossPolicy": "hold",
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 15,
+          "Huun": 15,
+          "Runa": 15,
+          "Kojonn": 15
+        }
+      },
+      "command": "node tools/balance_harness.js --sessions 5 --seedStart 3235774465 --maxWaves 20 --maxBossClears 0 --lampFixture output/orka-7l9-fixtures/ui-equipped-lamp.json --heroFixture output/orka-7l9-fixtures/level15-fourhero-heroes.json --heroSlots 'Falie,Huun,Runa,Kojonn' --autoEquip false --bossPolicy hold --port 8205 --sessionTimeoutMs 1200000 --outputDir /private/tmp/orka-7l9-lab/runs/kaja-l15-four --eventLog /private/tmp/orka-7l9-lab/runs/kaja-l15-four/observed_events.ndjson",
+      "sessions": [
+        {
+          "session": 1,
+          "seed": 3235774465,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 2,
+          "seed": 3235774466,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 3,
+          "seed": 3235774467,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 4,
+          "seed": 3235774468,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 5,
+          "seed": 3235774469,
+          "endReason": "max_waves",
+          "issues": []
+        }
+      ]
+    },
+    {
+      "id": "gear-base",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "kind": "event_log",
+      "admissible": true,
+      "problems": [],
+      "evidence": {
+        "eventLog": {
+          "path": "/private/tmp/orka-7l9-lab/runs/gear-base/observed_events.ndjson",
+          "status": "present",
+          "bytes": 3602245,
+          "sha256": "970f5f45ef3e6a105562d44fb531f1870c7f2e7fc3b69e36ba3cb2da4d378a3a"
+        },
+        "report": {
+          "path": "/private/tmp/orka-7l9-lab/runs/gear-base/balance_metrics.json",
+          "status": "present",
+          "bytes": 798047,
+          "sha256": "d1801c8cd0738af628f1bae83e9de2b826d3cbbd887c855ae9bb72dff8c2b4b4"
+        }
+      },
+      "startedAt": "2026-10-17T05:17:02.753Z",
+      "gameSource": {
+        "status": "unchanged",
+        "head": "d53a8f515dfed44d6a2d9066b15b7dac96e2f00b",
+        "candidate": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+        "trees": {
+          "web-runner": "fda4697a27c2430a3535ce4b2d35e09a9b4777b5",
+          "src": "446135fa9eea826cd4cbdbb06c7b9ec63af92aaf",
+          "Scripts": "12b0e68ce1caa4e1b78bc6ce816f8963d4818a0c",
+          "rust": "e1191e641d9eae7788817dcf7a866a255a1d8f98"
+        }
+      },
+      "runSource": {
+        "head": "d53a8f515dfed44d6a2d9066b15b7dac96e2f00b",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "harnessSource": {
+        "head": "d53a8f515dfed44d6a2d9066b15b7dac96e2f00b",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "expect": {
+        "lampFixtureSha256": "435c3fc8824cc13553cff9083085b968865d993d895dff43ce703d25e425aedf",
+        "heroFixtureSha256": "07855eeb1ec5077c3c60747a99ca5f42ae62f0ce123c07ed3bd3cb76165930e2",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "hold",
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 1,
+          "Huun": 1,
+          "Runa": 1
+        }
+      },
+      "command": "node tools/balance_harness.js --sessions 5 --seedStart 3235774465 --maxWaves 20 --maxBossClears 0 --lampFixture output/orka-7l9-knowledge-lab/fixtures/gear-base-lamp.json --heroFixture output/orka-7l9-fixtures/level1-manual-ready-heroes.json --heroSlots 'Falie,Huun,Runa,' --autoEquip false --bossPolicy hold --port 8206 --sessionTimeoutMs 1200000 --outputDir /private/tmp/orka-7l9-lab/runs/gear-base --eventLog /private/tmp/orka-7l9-lab/runs/gear-base/observed_events.ndjson",
+      "sessions": [
+        {
+          "session": 1,
+          "seed": 3235774465,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 2,
+          "seed": 3235774466,
+          "endReason": "timeout",
+          "issues": []
+        },
+        {
+          "session": 3,
+          "seed": 3235774467,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 4,
+          "seed": 3235774468,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 5,
+          "seed": 3235774469,
+          "endReason": "max_waves",
+          "issues": []
+        }
+      ]
+    },
+    {
+      "id": "gear-def10",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "kind": "event_log",
+      "admissible": true,
+      "problems": [],
+      "evidence": {
+        "eventLog": {
+          "path": "/private/tmp/orka-7l9-lab/runs/gear-def10/observed_events.ndjson",
+          "status": "present",
+          "bytes": 2133635,
+          "sha256": "d2895bfa26285b095e3da355b63f18a62c161110d5186320f5625d05577b37ee"
+        },
+        "report": {
+          "path": "/private/tmp/orka-7l9-lab/runs/gear-def10/balance_metrics.json",
+          "status": "present",
+          "bytes": 592508,
+          "sha256": "18db01f0ee6c5f4d2a95ff8e8b442b785a6835e534fe264ff7f2b84b0b05d3b6"
+        }
+      },
+      "startedAt": "2026-10-17T05:18:22.864Z",
+      "gameSource": {
+        "status": "unchanged",
+        "head": "d53a8f515dfed44d6a2d9066b15b7dac96e2f00b",
+        "candidate": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+        "trees": {
+          "web-runner": "fda4697a27c2430a3535ce4b2d35e09a9b4777b5",
+          "src": "446135fa9eea826cd4cbdbb06c7b9ec63af92aaf",
+          "Scripts": "12b0e68ce1caa4e1b78bc6ce816f8963d4818a0c",
+          "rust": "e1191e641d9eae7788817dcf7a866a255a1d8f98"
+        }
+      },
+      "runSource": {
+        "head": "d53a8f515dfed44d6a2d9066b15b7dac96e2f00b",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "harnessSource": {
+        "head": "d53a8f515dfed44d6a2d9066b15b7dac96e2f00b",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "expect": {
+        "lampFixtureSha256": "7b86c7a7825f87d9e5bd13fce0757b67e804bc64e950ba3ec5d412f2754e25f7",
+        "heroFixtureSha256": "07855eeb1ec5077c3c60747a99ca5f42ae62f0ce123c07ed3bd3cb76165930e2",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "hold",
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 1,
+          "Huun": 1,
+          "Runa": 1
+        }
+      },
+      "command": "node tools/balance_harness.js --sessions 5 --seedStart 3235774465 --maxWaves 20 --maxBossClears 0 --lampFixture output/orka-7l9-knowledge-lab/fixtures/gear-def10-lamp.json --heroFixture output/orka-7l9-fixtures/level1-manual-ready-heroes.json --heroSlots 'Falie,Huun,Runa,' --autoEquip false --bossPolicy hold --port 8207 --sessionTimeoutMs 1200000 --outputDir /private/tmp/orka-7l9-lab/runs/gear-def10 --eventLog /private/tmp/orka-7l9-lab/runs/gear-def10/observed_events.ndjson",
+      "sessions": [
+        {
+          "session": 1,
+          "seed": 3235774465,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 2,
+          "seed": 3235774466,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 3,
+          "seed": 3235774467,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 4,
+          "seed": 3235774468,
+          "endReason": "timeout",
+          "issues": []
+        },
+        {
+          "session": 5,
+          "seed": 3235774469,
+          "endReason": "max_waves",
+          "issues": []
+        }
+      ]
+    },
+    {
+      "id": "gear-hp30",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "kind": "event_log",
+      "admissible": true,
+      "problems": [],
+      "evidence": {
+        "eventLog": {
+          "path": "/private/tmp/orka-7l9-lab/runs/gear-hp30/observed_events.ndjson",
+          "status": "present",
+          "bytes": 3972583,
+          "sha256": "26be56b7c918ada3a6b289ebfd6fd0c843ddb76ef0a3c2f85a4cf9808c48c3f2"
+        },
+        "report": {
+          "path": "/private/tmp/orka-7l9-lab/runs/gear-hp30/balance_metrics.json",
+          "status": "present",
+          "bytes": 830820,
+          "sha256": "6e114d0d3267cdd7581c9fef630a85465184baad63f641e97b7c68734ec22951"
+        }
+      },
+      "startedAt": "2026-10-17T05:21:54.903Z",
+      "gameSource": {
+        "status": "unchanged",
+        "head": "d53a8f515dfed44d6a2d9066b15b7dac96e2f00b",
+        "candidate": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+        "trees": {
+          "web-runner": "fda4697a27c2430a3535ce4b2d35e09a9b4777b5",
+          "src": "446135fa9eea826cd4cbdbb06c7b9ec63af92aaf",
+          "Scripts": "12b0e68ce1caa4e1b78bc6ce816f8963d4818a0c",
+          "rust": "e1191e641d9eae7788817dcf7a866a255a1d8f98"
+        }
+      },
+      "runSource": {
+        "head": "d53a8f515dfed44d6a2d9066b15b7dac96e2f00b",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "harnessSource": {
+        "head": "d53a8f515dfed44d6a2d9066b15b7dac96e2f00b",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "expect": {
+        "lampFixtureSha256": "5ad4a033e913804ece48633a4c55ded0f4e70ba8c2b37dc900e73ed372003177",
+        "heroFixtureSha256": "07855eeb1ec5077c3c60747a99ca5f42ae62f0ce123c07ed3bd3cb76165930e2",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "hold",
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 1,
+          "Huun": 1,
+          "Runa": 1
+        }
+      },
+      "command": "node tools/balance_harness.js --sessions 5 --seedStart 3235774465 --maxWaves 20 --maxBossClears 0 --lampFixture output/orka-7l9-knowledge-lab/fixtures/gear-hp30-lamp.json --heroFixture output/orka-7l9-fixtures/level1-manual-ready-heroes.json --heroSlots 'Falie,Huun,Runa,' --autoEquip false --bossPolicy hold --port 8208 --sessionTimeoutMs 1200000 --outputDir /private/tmp/orka-7l9-lab/runs/gear-hp30 --eventLog /private/tmp/orka-7l9-lab/runs/gear-hp30/observed_events.ndjson",
+      "sessions": [
+        {
+          "session": 1,
+          "seed": 3235774465,
+          "endReason": "timeout",
+          "issues": []
+        },
+        {
+          "session": 2,
+          "seed": 3235774466,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 3,
+          "seed": 3235774467,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 4,
+          "seed": 3235774468,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 5,
+          "seed": 3235774469,
+          "endReason": "max_waves",
+          "issues": []
+        }
+      ]
+    },
+    {
+      "id": "boss-sweep-l1",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "kind": "event_log",
+      "admissible": true,
+      "problems": [],
+      "evidence": {
+        "eventLog": {
+          "path": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l1/observed_events.ndjson",
+          "status": "present",
+          "bytes": 78814,
+          "sha256": "e04a525f3123b2188d8eeb41610979ce5cbd9e7c2078fe94c7d5f1027e587375"
+        },
+        "report": {
+          "path": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l1/balance_metrics.json",
+          "status": "present",
+          "bytes": 179914,
+          "sha256": "b241c1b25c1fc7653b3bed7d54cb12f4969292a20b832da749f4d9c076f0023b"
+        }
+      },
+      "startedAt": "2026-10-17T05:53:29.383Z",
+      "gameSource": {
+        "status": "unchanged",
+        "head": "97effdf83f35c3115535f55924aaaa940a5eefdb",
+        "candidate": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+        "trees": {
+          "web-runner": "fda4697a27c2430a3535ce4b2d35e09a9b4777b5",
+          "src": "446135fa9eea826cd4cbdbb06c7b9ec63af92aaf",
+          "Scripts": "12b0e68ce1caa4e1b78bc6ce816f8963d4818a0c",
+          "rust": "e1191e641d9eae7788817dcf7a866a255a1d8f98"
+        }
+      },
+      "runSource": {
+        "head": "97effdf83f35c3115535f55924aaaa940a5eefdb",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "harnessSource": {
+        "head": "97effdf83f35c3115535f55924aaaa940a5eefdb",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "07855eeb1ec5077c3c60747a99ca5f42ae62f0ce123c07ed3bd3cb76165930e2",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "auto",
+        "maxBossClears": 1,
+        "maxBossTimeouts": 1,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 1,
+          "Huun": 1,
+          "Runa": 1
+        }
+      },
+      "command": "node tools/balance_harness.js --sessions 5 --seedStart 3235774465 --maxWaves 20 --maxBossClears 1 --maxBossTimeouts 1 --lampFixture output/orka-7l9-fixtures/ui-equipped-lamp.json --heroFixture output/orka-7l9-fixtures/level1-manual-ready-heroes.json --heroSlots 'Falie,Huun,Runa,' --autoEquip false --bossPolicy auto --port 8209 --sessionTimeoutMs 600000 --outputDir /private/tmp/orka-7l9-lab/runs/boss-sweep-l1 --eventLog /private/tmp/orka-7l9-lab/runs/boss-sweep-l1/observed_events.ndjson",
+      "sessions": [
+        {
+          "session": 1,
+          "seed": 3235774465,
+          "endReason": "max_boss_timeouts",
+          "issues": []
+        },
+        {
+          "session": 2,
+          "seed": 3235774466,
+          "endReason": "max_boss_timeouts",
+          "issues": []
+        },
+        {
+          "session": 3,
+          "seed": 3235774467,
+          "endReason": "max_boss_timeouts",
+          "issues": []
+        },
+        {
+          "session": 4,
+          "seed": 3235774468,
+          "endReason": "max_boss_timeouts",
+          "issues": []
+        },
+        {
+          "session": 5,
+          "seed": 3235774469,
+          "endReason": "max_boss_timeouts",
+          "issues": []
+        }
+      ]
+    },
+    {
+      "id": "boss-sweep-l2",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "kind": "event_log",
+      "admissible": true,
+      "problems": [],
+      "evidence": {
+        "eventLog": {
+          "path": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l2/observed_events.ndjson",
+          "status": "present",
+          "bytes": 63261,
+          "sha256": "8dc4466ed517947fd9cf348a2c9c97c3aa4cdc5be1d7adb5121adbdcfc63025f"
+        },
+        "report": {
+          "path": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l2/balance_metrics.json",
+          "status": "present",
+          "bytes": 148554,
+          "sha256": "9ba3c0ee725f4dad06336936f5b00e3f5e5c72249740f24352ecebe3a2d41a04"
+        }
+      },
+      "startedAt": "2026-10-17T05:54:23.846Z",
+      "gameSource": {
+        "status": "unchanged",
+        "head": "97effdf83f35c3115535f55924aaaa940a5eefdb",
+        "candidate": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+        "trees": {
+          "web-runner": "fda4697a27c2430a3535ce4b2d35e09a9b4777b5",
+          "src": "446135fa9eea826cd4cbdbb06c7b9ec63af92aaf",
+          "Scripts": "12b0e68ce1caa4e1b78bc6ce816f8963d4818a0c",
+          "rust": "e1191e641d9eae7788817dcf7a866a255a1d8f98"
+        }
+      },
+      "runSource": {
+        "head": "97effdf83f35c3115535f55924aaaa940a5eefdb",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "harnessSource": {
+        "head": "97effdf83f35c3115535f55924aaaa940a5eefdb",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "9a49bf7e5f9947855020ec816c392234576bfc57dc48931117ebd4bf6268b5e0",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "auto",
+        "maxBossClears": 1,
+        "maxBossTimeouts": 1,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 2,
+          "Huun": 2,
+          "Runa": 2
+        }
+      },
+      "command": "node tools/balance_harness.js --sessions 5 --seedStart 3235774465 --maxWaves 20 --maxBossClears 1 --maxBossTimeouts 1 --lampFixture output/orka-7l9-fixtures/ui-equipped-lamp.json --heroFixture output/orka-7l9-knowledge-lab/fixtures/level2-manual-ready-heroes.json --heroSlots 'Falie,Huun,Runa,' --autoEquip false --bossPolicy auto --port 8210 --sessionTimeoutMs 600000 --outputDir /private/tmp/orka-7l9-lab/runs/boss-sweep-l2 --eventLog /private/tmp/orka-7l9-lab/runs/boss-sweep-l2/observed_events.ndjson",
+      "sessions": [
+        {
+          "session": 1,
+          "seed": 3235774465,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 2,
+          "seed": 3235774466,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 3,
+          "seed": 3235774467,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 4,
+          "seed": 3235774468,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 5,
+          "seed": 3235774469,
+          "endReason": "max_bosses",
+          "issues": []
+        }
+      ]
+    },
+    {
+      "id": "boss-sweep-l3",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "kind": "event_log",
+      "admissible": true,
+      "problems": [],
+      "evidence": {
+        "eventLog": {
+          "path": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l3/observed_events.ndjson",
+          "status": "present",
+          "bytes": 57482,
+          "sha256": "38efbce1d820f05996baeb471fe04355f7570be53d1adb80d57028b756954be7"
+        },
+        "report": {
+          "path": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l3/balance_metrics.json",
+          "status": "present",
+          "bytes": 134796,
+          "sha256": "9808e7c5b75e01e0e7ec4149946df626376711609605f055121116949195dbac"
+        }
+      },
+      "startedAt": "2026-10-17T05:41:37.910Z",
+      "gameSource": {
+        "status": "unchanged",
+        "head": "77cdc7d9ffc1567d0babc61351f36d64d2bbbdc9",
+        "candidate": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+        "trees": {
+          "web-runner": "fda4697a27c2430a3535ce4b2d35e09a9b4777b5",
+          "src": "446135fa9eea826cd4cbdbb06c7b9ec63af92aaf",
+          "Scripts": "12b0e68ce1caa4e1b78bc6ce816f8963d4818a0c",
+          "rust": "e1191e641d9eae7788817dcf7a866a255a1d8f98"
+        }
+      },
+      "runSource": {
+        "head": "77cdc7d9ffc1567d0babc61351f36d64d2bbbdc9",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "harnessSource": {
+        "head": "77cdc7d9ffc1567d0babc61351f36d64d2bbbdc9",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "d0645cf8fb826770f94d200a270dd2c7f8a0e4fa8550d5a005cca903d1f45868",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "auto",
+        "maxBossClears": 1,
+        "maxBossTimeouts": 1,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 3,
+          "Huun": 3,
+          "Runa": 3
+        }
+      },
+      "command": "node tools/balance_harness.js --sessions 5 --seedStart 3235774465 --maxWaves 20 --maxBossClears 1 --maxBossTimeouts 1 --lampFixture output/orka-7l9-fixtures/ui-equipped-lamp.json --heroFixture output/orka-7l9-knowledge-lab/fixtures/level3-manual-ready-heroes.json --heroSlots 'Falie,Huun,Runa,' --autoEquip false --bossPolicy auto --port 8211 --sessionTimeoutMs 600000 --outputDir /private/tmp/orka-7l9-lab/runs/boss-sweep-l3 --eventLog /private/tmp/orka-7l9-lab/runs/boss-sweep-l3/observed_events.ndjson",
+      "sessions": [
+        {
+          "session": 1,
+          "seed": 3235774465,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 2,
+          "seed": 3235774466,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 3,
+          "seed": 3235774467,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 4,
+          "seed": 3235774468,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 5,
+          "seed": 3235774469,
+          "endReason": "max_bosses",
+          "issues": []
+        }
+      ]
+    },
+    {
+      "id": "boss-sweep-l4",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "kind": "event_log",
+      "admissible": true,
+      "problems": [],
+      "evidence": {
+        "eventLog": {
+          "path": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l4/observed_events.ndjson",
+          "status": "present",
+          "bytes": 38072,
+          "sha256": "0b05921a27e10aa1cd3ea7db5b89621b0fbe8d91466fdec533d1238e4e883289"
+        },
+        "report": {
+          "path": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l4/balance_metrics.json",
+          "status": "present",
+          "bytes": 85760,
+          "sha256": "3502ad261c758fa54c23746da0223160eff2a85cd94ba4a3ccea0eb467bf9083"
+        }
+      },
+      "startedAt": "2026-10-17T05:42:00.942Z",
+      "gameSource": {
+        "status": "unchanged",
+        "head": "77cdc7d9ffc1567d0babc61351f36d64d2bbbdc9",
+        "candidate": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+        "trees": {
+          "web-runner": "fda4697a27c2430a3535ce4b2d35e09a9b4777b5",
+          "src": "446135fa9eea826cd4cbdbb06c7b9ec63af92aaf",
+          "Scripts": "12b0e68ce1caa4e1b78bc6ce816f8963d4818a0c",
+          "rust": "e1191e641d9eae7788817dcf7a866a255a1d8f98"
+        }
+      },
+      "runSource": {
+        "head": "77cdc7d9ffc1567d0babc61351f36d64d2bbbdc9",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "harnessSource": {
+        "head": "77cdc7d9ffc1567d0babc61351f36d64d2bbbdc9",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "8ca75e80c2739a055db6e803f2322a000a4d84d2d758085105036dda90616491",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "auto",
+        "maxBossClears": 1,
+        "maxBossTimeouts": 1,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 4,
+          "Huun": 4,
+          "Runa": 4
+        }
+      },
+      "command": "node tools/balance_harness.js --sessions 5 --seedStart 3235774465 --maxWaves 20 --maxBossClears 1 --maxBossTimeouts 1 --lampFixture output/orka-7l9-fixtures/ui-equipped-lamp.json --heroFixture output/orka-7l9-knowledge-lab/fixtures/level4-manual-ready-heroes.json --heroSlots 'Falie,Huun,Runa,' --autoEquip false --bossPolicy auto --port 8212 --sessionTimeoutMs 600000 --outputDir /private/tmp/orka-7l9-lab/runs/boss-sweep-l4 --eventLog /private/tmp/orka-7l9-lab/runs/boss-sweep-l4/observed_events.ndjson",
+      "sessions": [
+        {
+          "session": 1,
+          "seed": 3235774465,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 2,
+          "seed": 3235774466,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 3,
+          "seed": 3235774467,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 4,
+          "seed": 3235774468,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 5,
+          "seed": 3235774469,
+          "endReason": "max_bosses",
+          "issues": []
+        }
+      ]
+    },
+    {
+      "id": "boss-sweep-l5",
+      "timing": "prospective",
+      "fixtureClass": "synthetic",
+      "kind": "event_log",
+      "admissible": true,
+      "problems": [],
+      "evidence": {
+        "eventLog": {
+          "path": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l5/observed_events.ndjson",
+          "status": "present",
+          "bytes": 34197,
+          "sha256": "efc80a1ab9eaa2921633644d74cc773ce1168bdf1bf53dbd3962d581c4122c69"
+        },
+        "report": {
+          "path": "/private/tmp/orka-7l9-lab/runs/boss-sweep-l5/balance_metrics.json",
+          "status": "present",
+          "bytes": 74476,
+          "sha256": "c71f246c6a95526c88149c8e1d88789d9275109517ed4289c413ef440a6bd7f2"
+        }
+      },
+      "startedAt": "2026-10-17T05:42:30.372Z",
+      "gameSource": {
+        "status": "unchanged",
+        "head": "77cdc7d9ffc1567d0babc61351f36d64d2bbbdc9",
+        "candidate": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+        "trees": {
+          "web-runner": "fda4697a27c2430a3535ce4b2d35e09a9b4777b5",
+          "src": "446135fa9eea826cd4cbdbb06c7b9ec63af92aaf",
+          "Scripts": "12b0e68ce1caa4e1b78bc6ce816f8963d4818a0c",
+          "rust": "e1191e641d9eae7788817dcf7a866a255a1d8f98"
+        }
+      },
+      "runSource": {
+        "head": "77cdc7d9ffc1567d0babc61351f36d64d2bbbdc9",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "harnessSource": {
+        "head": "77cdc7d9ffc1567d0babc61351f36d64d2bbbdc9",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "5b1f89f95bd362342242b476a39834f8815571ead82c07f986733e2eec1723f3",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "auto",
+        "maxBossClears": 1,
+        "maxBossTimeouts": 1,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 5,
+          "Huun": 5,
+          "Runa": 5
+        }
+      },
+      "command": "node tools/balance_harness.js --sessions 5 --seedStart 3235774465 --maxWaves 20 --maxBossClears 1 --maxBossTimeouts 1 --lampFixture output/orka-7l9-fixtures/ui-equipped-lamp.json --heroFixture output/orka-7l9-fixtures/level5-manual-ready-heroes.json --heroSlots 'Falie,Huun,Runa,' --autoEquip false --bossPolicy auto --port 8213 --sessionTimeoutMs 600000 --outputDir /private/tmp/orka-7l9-lab/runs/boss-sweep-l5 --eventLog /private/tmp/orka-7l9-lab/runs/boss-sweep-l5/observed_events.ndjson",
+      "sessions": [
+        {
+          "session": 1,
+          "seed": 3235774465,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 2,
+          "seed": 3235774466,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 3,
+          "seed": 3235774467,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 4,
+          "seed": 3235774468,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 5,
+          "seed": 3235774469,
+          "endReason": "max_bosses",
+          "issues": []
+        }
+      ]
+    },
+    {
+      "id": "earned-fresh",
+      "timing": "prospective",
+      "fixtureClass": "earned",
+      "kind": "event_log",
+      "admissible": true,
+      "problems": [],
+      "evidence": {
+        "eventLog": {
+          "path": "/private/tmp/orka-7l9-lab/runs/earned-fresh/observed_events.ndjson",
+          "status": "present",
+          "bytes": 796353,
+          "sha256": "445eb1c02f30fbbf3548b489a843d519b39f19758d5fd7f307ba4b026c03d4aa"
+        },
+        "report": {
+          "path": "/private/tmp/orka-7l9-lab/runs/earned-fresh/balance_metrics.json",
+          "status": "present",
+          "bytes": 758847,
+          "sha256": "3f929557b8cf03d7a2caa02398763c2e725ebe4a9e2e387e4b139b202f4312cd"
+        }
+      },
+      "startedAt": "2026-10-17T05:31:06.060Z",
+      "gameSource": {
+        "status": "unchanged",
+        "head": "77cdc7d9ffc1567d0babc61351f36d64d2bbbdc9",
+        "candidate": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+        "trees": {
+          "web-runner": "fda4697a27c2430a3535ce4b2d35e09a9b4777b5",
+          "src": "446135fa9eea826cd4cbdbb06c7b9ec63af92aaf",
+          "Scripts": "12b0e68ce1caa4e1b78bc6ce816f8963d4818a0c",
+          "rust": "e1191e641d9eae7788817dcf7a866a255a1d8f98"
+        }
+      },
+      "runSource": {
+        "head": "77cdc7d9ffc1567d0babc61351f36d64d2bbbdc9",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "harnessSource": {
+        "head": "77cdc7d9ffc1567d0babc61351f36d64d2bbbdc9",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "expect": {
+        "autoEquip": true,
+        "bossPolicy": "farm:4",
+        "maxBossClears": 1,
+        "maxBossTimeouts": 3,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ]
+      },
+      "command": "node tools/balance_harness.js --sessions 5 --seedStart 3235774465 --maxWaves 20 --maxBossClears 1 --maxBossTimeouts 3 --lampSeed 4242 --autoEquip true --bossPolicy farm:4 --port 8214 --sessionTimeoutMs 1800000 --outputDir /private/tmp/orka-7l9-lab/runs/earned-fresh --eventLog /private/tmp/orka-7l9-lab/runs/earned-fresh/observed_events.ndjson",
+      "sessions": [
+        {
+          "session": 1,
+          "seed": 3235774465,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 2,
+          "seed": 3235774466,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 3,
+          "seed": 3235774467,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 4,
+          "seed": 3235774468,
+          "endReason": "max_bosses",
+          "issues": []
+        },
+        {
+          "session": 5,
+          "seed": 3235774469,
+          "endReason": "max_bosses",
+          "issues": []
+        }
+      ]
+    },
+    {
+      "id": "recovery-onehp",
+      "timing": "prospective",
+      "fixtureClass": "forced",
+      "kind": "event_log",
+      "admissible": true,
+      "problems": [],
+      "evidence": {
+        "eventLog": {
+          "path": "/private/tmp/orka-7l9-lab/runs/recovery-onehp/observed_events.ndjson",
+          "status": "present",
+          "bytes": 3809507,
+          "sha256": "05ed50c0992f067cc0c5397a82aa7d00aeb8a140d8bbc535a214ac7a147f54db"
+        },
+        "report": {
+          "path": "/private/tmp/orka-7l9-lab/runs/recovery-onehp/balance_metrics.json",
+          "status": "present",
+          "bytes": 717653,
+          "sha256": "f7a830cef8dce7980a9503955b7c980b2cebaf72cabbba9a1662b0e32fe8041f"
+        }
+      },
+      "startedAt": "2026-10-17T04:56:31.501Z",
+      "gameSource": {
+        "status": "unchanged",
+        "head": "2ca44d0bc329ad8ca2a7ec329507dffa20b92bdf",
+        "candidate": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+        "trees": {
+          "web-runner": "fda4697a27c2430a3535ce4b2d35e09a9b4777b5",
+          "src": "446135fa9eea826cd4cbdbb06c7b9ec63af92aaf",
+          "Scripts": "12b0e68ce1caa4e1b78bc6ce816f8963d4818a0c",
+          "rust": "e1191e641d9eae7788817dcf7a866a255a1d8f98"
+        }
+      },
+      "runSource": {
+        "head": "2ca44d0bc329ad8ca2a7ec329507dffa20b92bdf",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "harnessSource": {
+        "head": "2ca44d0bc329ad8ca2a7ec329507dffa20b92bdf",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "a281e7d82ecd8e30569fd0c3727e182a7603d3ece4c713fb5f2bfed58762efbe",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "bossPolicy": "hold",
+        "maxWaves": 21,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ],
+        "levels": {
+          "Falie": 1,
+          "Huun": 1,
+          "Runa": 1
+        }
+      },
+      "command": "node tools/balance_harness.js --sessions 5 --seedStart 3235774465 --maxWaves 21 --maxBossClears 0 --lampFixture output/orka-7l9-fixtures/ui-equipped-lamp.json --heroFixture output/orka-7l9-fixtures/stage2-onehp-heroes.json --heroSlots 'Falie,Huun,Runa,' --autoEquip false --bossPolicy hold --port 8215 --sessionTimeoutMs 1800000 --outputDir /private/tmp/orka-7l9-lab/runs/recovery-onehp --eventLog /private/tmp/orka-7l9-lab/runs/recovery-onehp/observed_events.ndjson",
+      "sessions": [
+        {
+          "session": 1,
+          "seed": 3235774465,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 2,
+          "seed": 3235774466,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 3,
+          "seed": 3235774467,
+          "endReason": "timeout",
+          "issues": []
+        },
+        {
+          "session": 4,
+          "seed": 3235774468,
+          "endReason": "max_waves",
+          "issues": []
+        },
+        {
+          "session": 5,
+          "seed": 3235774469,
+          "endReason": "max_waves",
+          "issues": []
+        }
+      ]
+    },
+    {
+      "id": "pinned-starter-l1",
+      "timing": "retrospective",
+      "fixtureClass": "synthetic",
+      "kind": "aggregate_only",
+      "admissible": true,
+      "problems": [],
+      "evidence": {
+        "eventLog": {
+          "path": null,
+          "status": "not_declared"
+        },
+        "report": {
+          "path": "/private/tmp/orka-7l9-wave-heal-five-seed-clean/balance_metrics.json",
+          "status": "present",
+          "bytes": 764764,
+          "sha256": "102c044ab46a0ce633600dfead73ff070d195d86f6a32f5a5d8092f5f40707d0"
+        }
+      },
+      "startedAt": null,
+      "gameSource": {
+        "status": "unchanged",
+        "head": "bf749727b2703ed695980f81103fddea70cc6b22",
+        "candidate": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+        "trees": {
+          "web-runner": "fda4697a27c2430a3535ce4b2d35e09a9b4777b5",
+          "src": "446135fa9eea826cd4cbdbb06c7b9ec63af92aaf",
+          "Scripts": "12b0e68ce1caa4e1b78bc6ce816f8963d4818a0c",
+          "rust": "e1191e641d9eae7788817dcf7a866a255a1d8f98"
+        }
+      },
+      "runSource": {
+        "head": "bf749727b2703ed695980f81103fddea70cc6b22",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "harnessSource": {
+        "head": "bf749727b2703ed695980f81103fddea70cc6b22",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "07855eeb1ec5077c3c60747a99ca5f42ae62f0ce123c07ed3bd3cb76165930e2",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": true,
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ]
+      },
+      "command": null,
+      "sessions": []
+    },
+    {
+      "id": "pinned-fourhero-l1",
+      "timing": "retrospective",
+      "fixtureClass": "synthetic",
+      "kind": "aggregate_only",
+      "admissible": true,
+      "problems": [],
+      "evidence": {
+        "eventLog": {
+          "path": null,
+          "status": "not_declared"
+        },
+        "report": {
+          "path": "/private/tmp/orka-7l9-wave-heal-healer-five-seed-clean/balance_metrics.json",
+          "status": "present",
+          "bytes": 888842,
+          "sha256": "7da25408db8cc91012c1b5952216259c72858667c66af53769245ec03d92b810"
+        }
+      },
+      "startedAt": null,
+      "gameSource": {
+        "status": "unchanged",
+        "head": "6cf544638e84fb024a8ac9c707c1f0b5e6d9bf21",
+        "candidate": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+        "trees": {
+          "web-runner": "fda4697a27c2430a3535ce4b2d35e09a9b4777b5",
+          "src": "446135fa9eea826cd4cbdbb06c7b9ec63af92aaf",
+          "Scripts": "12b0e68ce1caa4e1b78bc6ce816f8963d4818a0c",
+          "rust": "e1191e641d9eae7788817dcf7a866a255a1d8f98"
+        }
+      },
+      "runSource": {
+        "head": "6cf544638e84fb024a8ac9c707c1f0b5e6d9bf21",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "harnessSource": {
+        "head": "6cf544638e84fb024a8ac9c707c1f0b5e6d9bf21",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "07855eeb1ec5077c3c60747a99ca5f42ae62f0ce123c07ed3bd3cb76165930e2",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          "Kojonn"
+        ],
+        "autoEquip": true,
+        "maxWaves": 20,
+        "maxBossClears": 0,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ]
+      },
+      "command": null,
+      "sessions": []
+    },
+    {
+      "id": "pinned-boss-l1",
+      "timing": "retrospective",
+      "fixtureClass": "synthetic",
+      "kind": "aggregate_only",
+      "admissible": true,
+      "problems": [],
+      "evidence": {
+        "eventLog": {
+          "path": null,
+          "status": "not_declared"
+        },
+        "report": {
+          "path": "/private/tmp/orka-7l9-current-boss-level1-five/balance_metrics.json",
+          "status": "present",
+          "bytes": 279859,
+          "sha256": "df4ce7e76cf719c5ca7bdb0e559618f4bbe2f81a7105ea832f72f4640ae1d2d3"
+        }
+      },
+      "startedAt": null,
+      "gameSource": {
+        "status": "unchanged",
+        "head": "654acf85d57251ce619caa4d6524348318a5c84b",
+        "candidate": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+        "trees": {
+          "web-runner": "fda4697a27c2430a3535ce4b2d35e09a9b4777b5",
+          "src": "446135fa9eea826cd4cbdbb06c7b9ec63af92aaf",
+          "Scripts": "12b0e68ce1caa4e1b78bc6ce816f8963d4818a0c",
+          "rust": "e1191e641d9eae7788817dcf7a866a255a1d8f98"
+        }
+      },
+      "runSource": {
+        "head": "654acf85d57251ce619caa4d6524348318a5c84b",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "harnessSource": {
+        "head": "654acf85d57251ce619caa4d6524348318a5c84b",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "07855eeb1ec5077c3c60747a99ca5f42ae62f0ce123c07ed3bd3cb76165930e2",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ]
+      },
+      "command": null,
+      "sessions": []
+    },
+    {
+      "id": "pinned-boss-l5",
+      "timing": "retrospective",
+      "fixtureClass": "synthetic",
+      "kind": "aggregate_only",
+      "admissible": true,
+      "problems": [],
+      "evidence": {
+        "eventLog": {
+          "path": null,
+          "status": "not_declared"
+        },
+        "report": {
+          "path": "/private/tmp/orka-7l9-current-boss-level5-five/balance_metrics.json",
+          "status": "present",
+          "bytes": 88469,
+          "sha256": "86035a857ceeda6b3ded0721621192af71a346d8e55b10562e6e34890f4c82b3"
+        }
+      },
+      "startedAt": null,
+      "gameSource": {
+        "status": "unchanged",
+        "head": "654acf85d57251ce619caa4d6524348318a5c84b",
+        "candidate": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+        "trees": {
+          "web-runner": "fda4697a27c2430a3535ce4b2d35e09a9b4777b5",
+          "src": "446135fa9eea826cd4cbdbb06c7b9ec63af92aaf",
+          "Scripts": "12b0e68ce1caa4e1b78bc6ce816f8963d4818a0c",
+          "rust": "e1191e641d9eae7788817dcf7a866a255a1d8f98"
+        }
+      },
+      "runSource": {
+        "head": "654acf85d57251ce619caa4d6524348318a5c84b",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "harnessSource": {
+        "head": "654acf85d57251ce619caa4d6524348318a5c84b",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "5b1f89f95bd362342242b476a39834f8815571ead82c07f986733e2eec1723f3",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "autoEquip": false,
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ]
+      },
+      "command": null,
+      "sessions": []
+    },
+    {
+      "id": "pinned-onehp-oneway",
+      "timing": "retrospective",
+      "fixtureClass": "forced",
+      "kind": "aggregate_only",
+      "admissible": true,
+      "problems": [],
+      "evidence": {
+        "eventLog": {
+          "path": null,
+          "status": "not_declared"
+        },
+        "report": {
+          "path": "/private/tmp/orka-7l9-current-stage2-onehp-five/balance_metrics.json",
+          "status": "present",
+          "bytes": 166846,
+          "sha256": "41e162615742be1383800d512d6bc41a67b7bf9887d8c80017aa4fe55136c967"
+        }
+      },
+      "startedAt": null,
+      "gameSource": {
+        "status": "unchanged",
+        "head": "1cf0c0342dbeb8133df8f94c6a9929167e079688",
+        "candidate": "c43f614714fe07c27b2aad6bc80e727bb485603e",
+        "trees": {
+          "web-runner": "fda4697a27c2430a3535ce4b2d35e09a9b4777b5",
+          "src": "446135fa9eea826cd4cbdbb06c7b9ec63af92aaf",
+          "Scripts": "12b0e68ce1caa4e1b78bc6ce816f8963d4818a0c",
+          "rust": "e1191e641d9eae7788817dcf7a866a255a1d8f98"
+        }
+      },
+      "runSource": {
+        "head": "1cf0c0342dbeb8133df8f94c6a9929167e079688",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "harnessSource": {
+        "head": "1cf0c0342dbeb8133df8f94c6a9929167e079688",
+        "patchSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "untracked": []
+      },
+      "expect": {
+        "lampFixtureSha256": "dc2dc36342235e8691b7e6226c3adfd9349f6fa04666f00ae0453b8f3d9d25fe",
+        "heroFixtureSha256": "a281e7d82ecd8e30569fd0c3727e182a7603d3ece4c713fb5f2bfed58762efbe",
+        "heroSlots": [
+          "Falie",
+          "Huun",
+          "Runa",
+          ""
+        ],
+        "seeds": [
+          3235774465,
+          3235774466,
+          3235774467,
+          3235774468,
+          3235774469
+        ]
+      },
+      "command": null,
+      "sessions": []
+    }
+  ]
+}

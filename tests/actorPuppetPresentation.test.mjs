@@ -73,10 +73,76 @@ test('active cues retain their facing snapshot until their simulation window end
   const actor = { hp: 10, portraitName: 'Fara', actionState: 'basic', actionStateStartedAt: 2, actionImpactAt: 2.52, actionStateUntil: 2.72, actionFacing: 'left', facing: 'right' };
   presentation.frameFor(actor, 2);
   await new Promise(resolve => setTimeout(resolve, 0));
-  assert.equal(presentation.frameFor(actor, 2.1)?.facing, 'left');
-  assert.equal(presentation.frameFor(actor, 2.1, 'right-wise'), null);
+  const shown = presentation.frameFor(actor, 2.1);
+  assert.equal(shown.facing, 'left');
+  assert.equal(presentation.frameFor(actor, 2.1, 'right-wise'), shown);
   await new Promise(resolve => setTimeout(resolve, 0));
   assert.equal(presentation.frameFor(actor, 2.1, 'right-wise')?.facing, 'right');
+});
+
+test('pending state and facing switches hold the displayed frame without restarting its clock', async () => {
+  const pending = [];
+  const presentation = createActorPuppetPresentation({
+    loadClip: () => new Promise(resolve => pending.push(resolve)),
+  });
+  const flush = () => new Promise(resolve => setImmediate(resolve));
+  const actor = { uid: 7, name: 'Fara', hp: 10, facing: 'right', locomotion: 'idle', locomotionStartedAt: 1 };
+  presentation.frameFor(actor, 1); await flush(); pending.shift()(clip); await flush();
+  const shown = presentation.frameFor(actor, 1.7);
+  assert.equal(shown.frame, clip.frames[1]);
+  actor.actionState = 'hurt'; actor.actionStateStartedAt = 1.7; actor.actionStateUntil = 2;
+  actor.actionFacing = 'left';
+  assert.equal(presentation.frameFor(actor, 1.71), shown);
+  await flush();
+  assert.equal(presentation.frameFor(actor, 1.8), shown);
+  pending.shift()(clip); await flush();
+  const replacement = presentation.frameFor(actor, 1.8);
+  assert.equal(replacement.state, 'hurt');
+  assert.equal(replacement.facing, 'left');
+  assert.equal(replacement.frame, clip.frames[0]);
+});
+
+test('initial load survives action and facing churn so the actor can appear', async () => {
+  const requests = [];
+  const presentation = createActorPuppetPresentation({ loadClip: (...key) => new Promise(resolve => requests.push({ key, resolve })) });
+  const actor = { uid: 1, name: 'Fara', hp: 10, facing: 'right', locomotion: 'idle' };
+  presentation.frameFor(actor, 1); await Promise.resolve();
+  actor.facing = 'left'; actor.locomotion = 'walk';
+  presentation.frameFor(actor, 1.1); await Promise.resolve();
+  assert.equal(requests.length, 1, 'initial load is allowed to finish');
+  requests[0].resolve(clip); await new Promise(resolve => setImmediate(resolve));
+  const shown = presentation.frameFor(actor, 1.2);
+  assert.equal(shown.frame, clip.frames[0]);
+  assert.equal(shown.state, 'idle');
+  await Promise.resolve();
+  assert.equal(requests.length, 2, 'latest state loads after a puppet image exists');
+});
+
+test('decoded facing changes are sampled synchronously without another load', () => {
+  const load = () => { throw new Error('decoded clips must not reload'); };
+  load.peek = () => clip;
+  const presentation = createActorPuppetPresentation({ loadClip: load });
+  const actor = { uid: 1, name: 'Fara', hp: 10, facing: 'right', locomotionStartedAt: 1 };
+  assert.equal(presentation.frameFor(actor, 1.6).frame, clip.frames[1]);
+  actor.facing = 'left';
+  const flipped = presentation.frameFor(actor, 1.6);
+  assert.equal(flipped.frame, clip.frames[1]);
+  assert.equal(flipped.facing, 'left');
+});
+
+test('a delayed defeat clip gets its full duration and committed facing on the presentation copy', async () => {
+  let resolve;
+  const presentation = createActorPuppetPresentation({ loadClip: () => new Promise(r => { resolve = r; }) });
+  const actor = { uid: 9, name: 'Gobloc', hp: 0, isPuppetDefeat: true, facing: 'right',
+    actionState: 'ko', actionFacing: 'left', actionStateStartedAt: 1, actionStateUntil: 2, puppetDefeatEndsAt: 2 };
+  presentation.frameFor(actor, 1); await Promise.resolve();
+  resolve(clip); await new Promise(r => setImmediate(r));
+  const first = presentation.frameFor(actor, 1.4);
+  assert.equal(first.frame, clip.frames[0]);
+  assert.equal(actor.actionStateStartedAt, 1.4);
+  assert.equal(actor.puppetDefeatEndsAt, 2.4);
+  assert.equal(actor.actionStateUntil, 2.4);
+  assert.equal(presentation.frameFor(actor, 2.2).facing, 'left');
 });
 
 test('puppet Shrink uses the shared visual scale and keeps its semantic foot fixed', () => {
@@ -90,6 +156,18 @@ test('puppet Shrink uses the shared visual scale and keeps its semantic foot fix
   assert.equal(expired.visualScale, 1);
   assert.equal(expired.height, 100);
   assert.equal(expired.drawY + expired.height * (clip.footOrigin.y / clip.canvas.height), 200);
+});
+
+test('transparent overscan preserves body scale and foot anchoring', () => {
+  const draws = [];
+  const ctx = { drawImage: (...args) => draws.push(args) };
+  const padded = { ...clip, canvas: { width: 192, height: 192, referenceHeight: 128 }, footOrigin: { x: 96, y: 157 } };
+  const result = drawActorPuppetFrame(ctx, { frame: {}, clip: padded }, { footX: 100, footY: 200, height: 64 });
+  assert.equal(result.width, 96);
+  assert.equal(result.height, 96);
+  assert.equal(result.drawX + padded.footOrigin.x * .5, 100);
+  assert.equal(result.drawY + padded.footOrigin.y * .5, 200);
+  assert.equal(draws.length, 1);
 });
 
 test('presentation protects displayed replacement, ignores stale loads and retires absent actors', async () => {
@@ -144,7 +222,7 @@ test('render boundaries retire empty and unsupported scenes even at a paused clo
   assert.equal(presentation.retention().displayedActors, 0);
 });
 
-test('deferred replacements cannot hold a ready clip across KO or revival', async () => {
+test('death and revival retain the outgoing puppet image until their HP-selected clip is ready', async () => {
   const pending = [];
   let pins;
   const load = (actor, state, facing) => new Promise(resolve => pending.push({ state, facing, resolve }));
@@ -153,15 +231,17 @@ test('deferred replacements cannot hold a ready clip across KO or revival', asyn
   const actor = { uid: 1, name: 'Fara', hp: 10, facing: 'right', locomotion: 'idle' };
   const flush = () => new Promise(resolve => setImmediate(resolve));
   presentation.frameFor(actor, 1); await flush(); pending[0].resolve(clip); await flush();
-  assert.equal(presentation.frameFor(actor, 1).state, 'idle');
+  const alive = presentation.frameFor(actor, 1);
+  assert.equal(alive.state, 'idle');
   actor.hp = 0;
-  assert.equal(presentation.frameFor(actor, 1), null, 'alive ready clip cannot paint a newly KO actor');
+  assert.equal(presentation.frameFor(actor, 1), alive, 'pending KO retains the last puppet image');
   assert.ok(pins.includes('fara/idle/right'));
   assert.ok(pins.includes('fara/ko/right'));
   await flush(); pending[1].resolve(clip); await flush();
-  assert.equal(presentation.frameFor(actor, 1).state, 'ko');
+  const defeated = presentation.frameFor(actor, 1);
+  assert.equal(defeated.state, 'ko');
   actor.hp = 10;
-  assert.equal(presentation.frameFor(actor, 1), null, 'KO ready clip cannot paint a revived actor');
+  assert.equal(presentation.frameFor(actor, 1), defeated, 'pending revival retains the last puppet image');
   await flush(); pending[2].resolve(clip); await flush();
   assert.equal(presentation.frameFor(actor, 1).state, 'idle');
   actor.locomotion = 'walk';

@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S2-high-evasion",
+  "digest": "aa7ebf057b2793aa2c95c58aa133be987255a2f4d5cef3eeac41b21295bc1f2f",
+  "status": "PASS",
+  "minHpPct": 92.9,
+  "heroKOs": 0,
+  "reason": "all declared model checks met"
+}

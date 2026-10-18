@@ -8,28 +8,39 @@ function bossState(overrides = {}) {
   return { globals: { ContinuousCombatStage: { region: 5, stage: 27, wave: 4, bossAvailable: true, bossArmed: false, bossActive: false, ...overrides } } };
 }
 
-test('fallback replaces the rail only for an interrupted ready or active boss and fits the compact top band', () => {
-  const ready = bossState();
-  const page = bossFallbackPresentation({ state: ready, layoutId: 'heroLayout' });
-  assert.deepEqual(page, { visible: true, enabled: true, label: 'Chapter 5-27', bossActive: false });
-  assert.equal(bossFallbackPresentation({ state: ready, layoutId: 'combat' }).visible, false);
-  const retryReady = bossState({ bossSummonRequired: true });
-  assert.equal(bossFallbackPresentation({ state: retryReady, layoutId: 'combat' }).visible, true, 'a defeated stage exposes its summon control during farming');
-  assert.equal(bossFallbackPresentation({ state: ready, layoutId: 'combat', overlayOpen: true, suppress: true }).visible, false, 'developer modal keeps its existing close path');
-  assert.equal(drawCombatProgressHud({}, { state: { globals: { ...ready.globals, CombatBossFallbackVisible: true } } }), null, 'the Canvas rail is suppressed under the shared fallback');
-  assert.equal(bossFallbackPresentation({ state: ready, layoutId: 'combat', overlayOpen: true, canLeave: false }).enabled, false);
-  const active = bossFallbackPresentation({ state: bossState({ bossAvailable: false, bossArmed: true, bossActive: true }), layoutId: 'combat', overlayOpen: true });
-  assert.deepEqual(active, { visible: true, enabled: true, label: 'Chapter 5-27', bossActive: true });
-  assert.equal(bossFallbackPresentation({ state: ready, layoutId: 'storyMock', phase: 'defeat' }).visible, false);
+test('summon group belongs only to unobstructed combat manual retries', () => {
+  const retryReady = bossState({bossSummonRequired:true});
+  assert.deepEqual(bossFallbackPresentation({state:retryReady,layoutId:'combat'}), {visible:true,enabled:true,label:'Chapter 5',bossActive:false});
+  assert.equal(bossFallbackPresentation({state:bossState(),layoutId:'combat'}).visible,false,'first approach remains automatic');
+  for (const layoutId of ['heroLayout','storyMock','chestsLayout','idleFarmLayout','townLayout',undefined]) {
+    for (const stage of [{},{bossSummonRequired:true},{bossSummonRequired:true,bossActive:true,bossArmed:true}]) {
+      for (const overlayOpen of [false,true]) {
+        const state=bossState(stage),before=structuredClone(state);
+        const view=bossFallbackPresentation({state,layoutId,overlayOpen,phase:'combat'});
+        assert.equal(view.visible,false,`${layoutId} never owns combat UI`);
+        assert.equal(view.enabled,false);
+        assert.deepEqual(state,before,'visibility preserves earned boss readiness');
+      }
+    }
+  }
+  assert.equal(bossFallbackPresentation({state:retryReady,layoutId:'combat',overlayOpen:true}).visible,false,'blocking equipment modal owns its screen');
+  assert.equal(bossFallbackPresentation({state:retryReady,layoutId:'combat',suppress:true}).visible,false,'developer modal owns its screen');
+  assert.equal(bossFallbackPresentation({state:retryReady,layoutId:'combat',canLeave:false}).enabled,false);
+  assert.equal(bossFallbackPresentation({state:bossState({bossActive:true,bossSummonRequired:true}),layoutId:'combat'}).visible,false,'active boss retains the timer rail');
+  for (const phase of ['opening','defeat','victory']) assert.equal(bossFallbackPresentation({state:retryReady,layoutId:'combat',phase}).visible,false);
+  assert.equal(drawCombatProgressHud({}, {state:{globals:{...retryReady.globals,CombatBossFallbackVisible:true}}}),null,'retry group replaces the Canvas rail');
+});
 
-  const rect = bossFallbackRect({ left: 0, top: 0, width: 216, height: 384 });
-  assert.equal(rect.x, 0);
-  assert.equal(rect.width, 216);
-  assert.equal(rect.scale, 0.6);
-  assert.ok(Math.abs(rect.y - 1.2) < 1e-9 && Math.abs(rect.height - 49.2) < 1e-9);
-  assert.ok(rect.y + rect.height < 92 * rect.scale, 'the fallback stays above the Quests chapter header');
-  const letterboxed = bossFallbackRect({ left: 0, top: 0, width: 233, height: 452 });
-  assert.ok(letterboxed.y > 18 && letterboxed.y < 22, 'the fallback follows the centered 360x640 reference frame');
+test('combat summon group keeps the HUD revision below resources at every presentation scale', () => {
+  for (const [width, height] of [[360,640],[216,384],[233,452],[316,452],[570,1015]]) {
+    const canvas = {left:26,top:7,width,height};
+    const rect = bossFallbackRect(canvas);
+    const frameTop = canvas.top + (height - 640 * rect.scale) / 2;
+    assert.ok(Math.abs(rect.y - frameTop - 42 * rect.scale) < 1e-8, 'combat keeps the approved 40px downward HUD revision');
+    assert.ok(rect.y >= frameTop + 30 * rect.scale, 'entire group clears the resource strip');
+    assert.ok(rect.x >= canvas.left && rect.x + rect.width <= canvas.left + width);
+    assert.equal(rect.height, 82 * rect.scale, 'placement preserves size');
+  }
 });
 
 test('an explicit fallback return preserves the durable retry latch after combat resumes', async () => {
@@ -122,7 +133,7 @@ test('fallback button gates unsafe transactions and resumes the same combat snap
   assert.deepEqual(activeBoss.globals.ContinuousCombatStage, activeBossBefore, 'resuming an active boss preserves its stage state');
 });
 
-test('production fallback surface is a reachable DOM button above the modal scrim', async () => {
+test('production retry control hides on navigation and visible modals without double-summoning', async () => {
   class Element {
     constructor(tag) {
       this.tag = tag;
@@ -140,27 +151,36 @@ test('production fallback surface is a reachable DOM button above the modal scri
   }
   const priorDocument = globalThis.document;
   const body = new Element('body');
-  globalThis.document = { createElement: tag => new Element(tag), body };
+  let modalVisible = false;
+  globalThis.document = { createElement: tag => new Element(tag), body, querySelectorAll: () => modalVisible ? [{getClientRects:()=>[{}]}] : [] };
   try {
     const control = await import(`../web-runner/systems/renderCombatBossControl.mjs?fixture=${Date.now()}`);
-    const state = bossState();
+    const state = bossState({bossSummonRequired:true});
     const canvas = { getBoundingClientRect: () => ({ left: 0, top: 0, width: 216, height: 384 }) };
     let summons = 0;
     let redraws = 0;
-    const result = control.updateBossSummonFallback({ canvas, state, layoutId: 'combat', overlayOpen: true, onSummonBoss: () => { summons += 1; }, redraw: () => { redraws += 1; } });
+    const result = control.updateBossSummonFallback({ canvas, state, layoutId: 'combat', onSummonBoss: () => { summons += 1; }, redraw: () => { redraws += 1; } });
     assert.equal(result.visible, true);
     const host = body.children[0], button = host.children[1];
     assert.equal(host.style.zIndex, '10002');
-    assert.equal(host.children[0].textContent, 'Chapter 5-27');
-    assert.equal(button.attributes['aria-label'], 'Summon Boss for Chapter 5-27');
+    assert.equal(host.children[0].textContent, 'Chapter 5');
+    assert.equal(button.attributes['aria-label'], 'Summon Boss for Chapter 5');
     button.onclick();
     button.onclick();
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(summons, 1);
     assert.equal(redraws, 1);
     assert.equal(state.globals.CombatBossFallbackVisible, true);
-    assert.equal(control.updateBossSummonFallback({ canvas, state, layoutId: 'heroLayout', phase: 'defeat' }).visible, false);
-    assert.equal(state.globals.CombatBossFallbackVisible, false, 'production update forwards the terminal phase guard');
+    assert.equal(control.updateBossSummonFallback({ canvas, state, layoutId: 'heroLayout', phase: 'combat' }).visible, false);
+    assert.equal(state.globals.CombatBossFallbackVisible, false, 'production update clears the combat-only visible flag on navigation');
+    assert.equal(host.hidden,true);
+    assert.equal(host.style.display,'none');
+    assert.equal(control.updateBossSummonFallback({canvas,state,layoutId:'combat'}).visible,true,'returning to combat restores the same retry group');
+    modalVisible=true;
+    assert.equal(control.updateBossSummonFallback({canvas,state,layoutId:'combat'}).visible,false,'a modal over a retained combat layout still hides the group');
+    assert.equal(host.hidden,true);
+    modalVisible=false;
+    assert.equal(control.updateBossSummonFallback({canvas,state,layoutId:'combat'}).visible,true,'closing the modal restores the retry');
   } finally {
     if (priorDocument === undefined) delete globalThis.document;
     else globalThis.document = priorDocument;

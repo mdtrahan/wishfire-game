@@ -1,0 +1,2610 @@
+<?xml version='1.0' encoding='utf-8'?>
+<canvas version="1.0" width="256" height="256" view-box="0 256 256 0" fps="12" begin-time="0f" end-time="1s" bgcolor="0 0 0 0">
+  <name>highorc idle left</name>
+  <bones>
+    <bone_root type="bone_object" guid="EC3C21F49CEBEA5BD389B52D69343D42" />
+    <bone type="bone_object" guid="1D195E6D202923604D8DB5721F822E5D">
+      <name>
+        <string>body</string>
+      </name>
+      <parent>
+        <bone_valuenode type="bone_object" guid="EC3C21F49CEBEA5BD389B52D69343D42" />
+      </parent>
+      <origin>
+        <vector>
+          <x>128</x>
+          <y>112</y>
+        </vector>
+      </origin>
+      <scalelx>
+        <real value="1" />
+      </scalelx>
+      <scalex>
+        <real value="1" />
+      </scalex>
+      <width>
+        <real value=".1" />
+      </width>
+      <tipwidth>
+        <real value=".1" />
+      </tipwidth>
+      <bone_depth>
+        <real value="0" />
+      </bone_depth>
+      <length>
+        <real value="1" />
+      </length>
+      <angle>
+        <animated type="angle">
+          <waypoint time="0s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+        </animated>
+      </angle>
+    </bone>
+    <bone type="bone_object" guid="8FAFB038A5C20840D3749854494DAF56">
+      <name>
+        <string>head</string>
+      </name>
+      <parent>
+        <bone_valuenode type="bone_object" guid="1D195E6D202923604D8DB5721F822E5D" />
+      </parent>
+      <scalelx>
+        <real value="1" />
+      </scalelx>
+      <scalex>
+        <real value="1" />
+      </scalex>
+      <width>
+        <real value=".1" />
+      </width>
+      <tipwidth>
+        <real value=".1" />
+      </tipwidth>
+      <bone_depth>
+        <real value="0" />
+      </bone_depth>
+      <length>
+        <real value="1" />
+      </length>
+      <origin>
+        <animated type="vector">
+          <waypoint time="0s" before="linear" after="linear">
+            <vector>
+              <x>-5.0</x>
+              <y>14.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <vector>
+              <x>-5.0</x>
+              <y>14.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <vector>
+              <x>-5.0</x>
+              <y>14.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <vector>
+              <x>-5.0</x>
+              <y>14.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <vector>
+              <x>-5.0</x>
+              <y>14.0</y>
+            </vector>
+          </waypoint>
+        </animated>
+      </origin>
+      <angle>
+        <animated type="angle">
+          <waypoint time="0s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <angle value="1.0" />
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <angle value="-1.0" />
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+        </animated>
+      </angle>
+    </bone>
+    <bone type="bone_object" guid="8F5A4F2B0C34AD70C196BB3723B81688">
+      <name>
+        <string>torso</string>
+      </name>
+      <parent>
+        <bone_valuenode type="bone_object" guid="1D195E6D202923604D8DB5721F822E5D" />
+      </parent>
+      <scalelx>
+        <real value="1" />
+      </scalelx>
+      <scalex>
+        <real value="1" />
+      </scalex>
+      <width>
+        <real value=".1" />
+      </width>
+      <tipwidth>
+        <real value=".1" />
+      </tipwidth>
+      <bone_depth>
+        <real value="0" />
+      </bone_depth>
+      <length>
+        <real value="1" />
+      </length>
+      <origin>
+        <animated type="vector">
+          <waypoint time="0s" before="linear" after="linear">
+            <vector>
+              <x>0.0</x>
+              <y>13.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <vector>
+              <x>0.0</x>
+              <y>13.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <vector>
+              <x>0.0</x>
+              <y>13.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <vector>
+              <x>0.0</x>
+              <y>13.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <vector>
+              <x>0.0</x>
+              <y>13.0</y>
+            </vector>
+          </waypoint>
+        </animated>
+      </origin>
+      <angle>
+        <animated type="angle">
+          <waypoint time="0s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+        </animated>
+      </angle>
+    </bone>
+    <bone type="bone_object" guid="772556D48E894C62DFF055400A827553">
+      <name>
+        <string>pelvis</string>
+      </name>
+      <parent>
+        <bone_valuenode type="bone_object" guid="1D195E6D202923604D8DB5721F822E5D" />
+      </parent>
+      <scalelx>
+        <real value="1" />
+      </scalelx>
+      <scalex>
+        <real value="1" />
+      </scalex>
+      <width>
+        <real value=".1" />
+      </width>
+      <tipwidth>
+        <real value=".1" />
+      </tipwidth>
+      <bone_depth>
+        <real value="0" />
+      </bone_depth>
+      <length>
+        <real value="1" />
+      </length>
+      <origin>
+        <animated type="vector">
+          <waypoint time="0s" before="linear" after="linear">
+            <vector>
+              <x>0.0</x>
+              <y>-36.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <vector>
+              <x>0.0</x>
+              <y>-36.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <vector>
+              <x>0.0</x>
+              <y>-36.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <vector>
+              <x>0.0</x>
+              <y>-36.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <vector>
+              <x>0.0</x>
+              <y>-36.0</y>
+            </vector>
+          </waypoint>
+        </animated>
+      </origin>
+      <angle>
+        <animated type="angle">
+          <waypoint time="0s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+        </animated>
+      </angle>
+    </bone>
+    <bone type="bone_object" guid="A51A65EEE3BD656C1A720E706F099B38">
+      <name>
+        <string>coat_back</string>
+      </name>
+      <parent>
+        <bone_valuenode type="bone_object" guid="1D195E6D202923604D8DB5721F822E5D" />
+      </parent>
+      <scalelx>
+        <real value="1" />
+      </scalelx>
+      <scalex>
+        <real value="1" />
+      </scalex>
+      <width>
+        <real value=".1" />
+      </width>
+      <tipwidth>
+        <real value=".1" />
+      </tipwidth>
+      <bone_depth>
+        <real value="0" />
+      </bone_depth>
+      <length>
+        <real value="1" />
+      </length>
+      <origin>
+        <animated type="vector">
+          <waypoint time="0s" before="linear" after="linear">
+            <vector>
+              <x>12.0</x>
+              <y>18.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <vector>
+              <x>12.0</x>
+              <y>18.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <vector>
+              <x>12.0</x>
+              <y>18.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <vector>
+              <x>12.0</x>
+              <y>18.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <vector>
+              <x>12.0</x>
+              <y>18.0</y>
+            </vector>
+          </waypoint>
+        </animated>
+      </origin>
+      <angle>
+        <animated type="angle">
+          <waypoint time="0s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+        </animated>
+      </angle>
+    </bone>
+    <bone type="bone_object" guid="2468BFED54BF230920CB91270AFA289C">
+      <name>
+        <string>upper_arm_far</string>
+      </name>
+      <parent>
+        <bone_valuenode type="bone_object" guid="1D195E6D202923604D8DB5721F822E5D" />
+      </parent>
+      <scalelx>
+        <real value="1" />
+      </scalelx>
+      <scalex>
+        <real value="1" />
+      </scalex>
+      <width>
+        <real value=".1" />
+      </width>
+      <tipwidth>
+        <real value=".1" />
+      </tipwidth>
+      <bone_depth>
+        <real value="0" />
+      </bone_depth>
+      <length>
+        <real value="1" />
+      </length>
+      <origin>
+        <animated type="vector">
+          <waypoint time="0s" before="linear" after="linear">
+            <vector>
+              <x>42.0</x>
+              <y>13.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <vector>
+              <x>42.0</x>
+              <y>13.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <vector>
+              <x>42.0</x>
+              <y>13.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <vector>
+              <x>42.0</x>
+              <y>13.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <vector>
+              <x>42.0</x>
+              <y>13.0</y>
+            </vector>
+          </waypoint>
+        </animated>
+      </origin>
+      <angle>
+        <animated type="angle">
+          <waypoint time="0s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+        </animated>
+      </angle>
+    </bone>
+    <bone type="bone_object" guid="CB9C472363CBDE6814DFD912D13C23FD">
+      <name>
+        <string>forearm_far</string>
+      </name>
+      <parent>
+        <bone_valuenode type="bone_object" guid="2468BFED54BF230920CB91270AFA289C" />
+      </parent>
+      <scalelx>
+        <real value="1" />
+      </scalelx>
+      <scalex>
+        <real value="1" />
+      </scalex>
+      <width>
+        <real value=".1" />
+      </width>
+      <tipwidth>
+        <real value=".1" />
+      </tipwidth>
+      <bone_depth>
+        <real value="0" />
+      </bone_depth>
+      <length>
+        <real value="1" />
+      </length>
+      <origin>
+        <animated type="vector">
+          <waypoint time="0s" before="linear" after="linear">
+            <vector>
+              <x>3.0</x>
+              <y>-36.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <vector>
+              <x>3.0</x>
+              <y>-36.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <vector>
+              <x>3.0</x>
+              <y>-36.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <vector>
+              <x>3.0</x>
+              <y>-36.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <vector>
+              <x>3.0</x>
+              <y>-36.0</y>
+            </vector>
+          </waypoint>
+        </animated>
+      </origin>
+      <angle>
+        <animated type="angle">
+          <waypoint time="0s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+        </animated>
+      </angle>
+    </bone>
+    <bone type="bone_object" guid="2DEC39DF97FF1B378D99F977F960A6E8">
+      <name>
+        <string>hand_far</string>
+      </name>
+      <parent>
+        <bone_valuenode type="bone_object" guid="CB9C472363CBDE6814DFD912D13C23FD" />
+      </parent>
+      <scalelx>
+        <real value="1" />
+      </scalelx>
+      <scalex>
+        <real value="1" />
+      </scalex>
+      <width>
+        <real value=".1" />
+      </width>
+      <tipwidth>
+        <real value=".1" />
+      </tipwidth>
+      <bone_depth>
+        <real value="0" />
+      </bone_depth>
+      <length>
+        <real value="1" />
+      </length>
+      <origin>
+        <animated type="vector">
+          <waypoint time="0s" before="linear" after="linear">
+            <vector>
+              <x>3.0</x>
+              <y>-19.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <vector>
+              <x>3.0</x>
+              <y>-19.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <vector>
+              <x>3.0</x>
+              <y>-19.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <vector>
+              <x>3.0</x>
+              <y>-19.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <vector>
+              <x>3.0</x>
+              <y>-19.0</y>
+            </vector>
+          </waypoint>
+        </animated>
+      </origin>
+      <angle>
+        <animated type="angle">
+          <waypoint time="0s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+        </animated>
+      </angle>
+    </bone>
+    <bone type="bone_object" guid="6A5EF2F4C5C48F83B7BE056C69708580">
+      <name>
+        <string>upper_arm_near</string>
+      </name>
+      <parent>
+        <bone_valuenode type="bone_object" guid="1D195E6D202923604D8DB5721F822E5D" />
+      </parent>
+      <scalelx>
+        <real value="1" />
+      </scalelx>
+      <scalex>
+        <real value="1" />
+      </scalex>
+      <width>
+        <real value=".1" />
+      </width>
+      <tipwidth>
+        <real value=".1" />
+      </tipwidth>
+      <bone_depth>
+        <real value="0" />
+      </bone_depth>
+      <length>
+        <real value="1" />
+      </length>
+      <origin>
+        <animated type="vector">
+          <waypoint time="0s" before="linear" after="linear">
+            <vector>
+              <x>-46.0</x>
+              <y>13.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <vector>
+              <x>-46.0</x>
+              <y>13.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <vector>
+              <x>-46.0</x>
+              <y>13.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <vector>
+              <x>-46.0</x>
+              <y>13.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <vector>
+              <x>-46.0</x>
+              <y>13.0</y>
+            </vector>
+          </waypoint>
+        </animated>
+      </origin>
+      <angle>
+        <animated type="angle">
+          <waypoint time="0s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+        </animated>
+      </angle>
+    </bone>
+    <bone type="bone_object" guid="5D6ECDFE3C1F8A57AE731C4FD289967E">
+      <name>
+        <string>forearm_near</string>
+      </name>
+      <parent>
+        <bone_valuenode type="bone_object" guid="6A5EF2F4C5C48F83B7BE056C69708580" />
+      </parent>
+      <scalelx>
+        <real value="1" />
+      </scalelx>
+      <scalex>
+        <real value="1" />
+      </scalex>
+      <width>
+        <real value=".1" />
+      </width>
+      <tipwidth>
+        <real value=".1" />
+      </tipwidth>
+      <bone_depth>
+        <real value="0" />
+      </bone_depth>
+      <length>
+        <real value="1" />
+      </length>
+      <origin>
+        <animated type="vector">
+          <waypoint time="0s" before="linear" after="linear">
+            <vector>
+              <x>-4.0</x>
+              <y>-36.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <vector>
+              <x>-4.0</x>
+              <y>-36.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <vector>
+              <x>-4.0</x>
+              <y>-36.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <vector>
+              <x>-4.0</x>
+              <y>-36.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <vector>
+              <x>-4.0</x>
+              <y>-36.0</y>
+            </vector>
+          </waypoint>
+        </animated>
+      </origin>
+      <angle>
+        <animated type="angle">
+          <waypoint time="0s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+        </animated>
+      </angle>
+    </bone>
+    <bone type="bone_object" guid="062AB008CFB7601A0231E0FF919BE10A">
+      <name>
+        <string>hand_near</string>
+      </name>
+      <parent>
+        <bone_valuenode type="bone_object" guid="5D6ECDFE3C1F8A57AE731C4FD289967E" />
+      </parent>
+      <scalelx>
+        <real value="1" />
+      </scalelx>
+      <scalex>
+        <real value="1" />
+      </scalex>
+      <width>
+        <real value=".1" />
+      </width>
+      <tipwidth>
+        <real value=".1" />
+      </tipwidth>
+      <bone_depth>
+        <real value="0" />
+      </bone_depth>
+      <length>
+        <real value="1" />
+      </length>
+      <origin>
+        <animated type="vector">
+          <waypoint time="0s" before="linear" after="linear">
+            <vector>
+              <x>-5.0</x>
+              <y>-19.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <vector>
+              <x>-5.0</x>
+              <y>-19.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <vector>
+              <x>-5.0</x>
+              <y>-19.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <vector>
+              <x>-5.0</x>
+              <y>-19.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <vector>
+              <x>-5.0</x>
+              <y>-19.0</y>
+            </vector>
+          </waypoint>
+        </animated>
+      </origin>
+      <angle>
+        <animated type="angle">
+          <waypoint time="0s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+        </animated>
+      </angle>
+    </bone>
+    <bone type="bone_object" guid="65B815FA7F3ECB3529AED1BF168D4FF3">
+      <name>
+        <string>thigh_far</string>
+      </name>
+      <parent>
+        <bone_valuenode type="bone_object" guid="1D195E6D202923604D8DB5721F822E5D" />
+      </parent>
+      <scalelx>
+        <real value="1" />
+      </scalelx>
+      <scalex>
+        <real value="1" />
+      </scalex>
+      <width>
+        <real value=".1" />
+      </width>
+      <tipwidth>
+        <real value=".1" />
+      </tipwidth>
+      <bone_depth>
+        <real value="0" />
+      </bone_depth>
+      <length>
+        <real value="1" />
+      </length>
+      <origin>
+        <animated type="vector">
+          <waypoint time="0s" before="linear" after="linear">
+            <vector>
+              <x>20.0</x>
+              <y>-57.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <vector>
+              <x>20.0</x>
+              <y>-57.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <vector>
+              <x>20.0</x>
+              <y>-57.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <vector>
+              <x>20.0</x>
+              <y>-57.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <vector>
+              <x>20.0</x>
+              <y>-57.0</y>
+            </vector>
+          </waypoint>
+        </animated>
+      </origin>
+      <angle>
+        <animated type="angle">
+          <waypoint time="0s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+        </animated>
+      </angle>
+    </bone>
+    <bone type="bone_object" guid="98F702503412A04636C3960ACFAD0AFB">
+      <name>
+        <string>shin_boot_far</string>
+      </name>
+      <parent>
+        <bone_valuenode type="bone_object" guid="65B815FA7F3ECB3529AED1BF168D4FF3" />
+      </parent>
+      <scalelx>
+        <real value="1" />
+      </scalelx>
+      <scalex>
+        <real value="1" />
+      </scalex>
+      <width>
+        <real value=".1" />
+      </width>
+      <tipwidth>
+        <real value=".1" />
+      </tipwidth>
+      <bone_depth>
+        <real value="0" />
+      </bone_depth>
+      <length>
+        <real value="1" />
+      </length>
+      <origin>
+        <animated type="vector">
+          <waypoint time="0s" before="linear" after="linear">
+            <vector>
+              <x>1.0</x>
+              <y>-24.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <vector>
+              <x>1.0</x>
+              <y>-24.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <vector>
+              <x>1.0</x>
+              <y>-24.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <vector>
+              <x>1.0</x>
+              <y>-24.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <vector>
+              <x>1.0</x>
+              <y>-24.0</y>
+            </vector>
+          </waypoint>
+        </animated>
+      </origin>
+      <angle>
+        <animated type="angle">
+          <waypoint time="0s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+        </animated>
+      </angle>
+    </bone>
+    <bone type="bone_object" guid="A67CF56024BE8378F81506B9CCB326A7">
+      <name>
+        <string>thigh_near</string>
+      </name>
+      <parent>
+        <bone_valuenode type="bone_object" guid="1D195E6D202923604D8DB5721F822E5D" />
+      </parent>
+      <scalelx>
+        <real value="1" />
+      </scalelx>
+      <scalex>
+        <real value="1" />
+      </scalex>
+      <width>
+        <real value=".1" />
+      </width>
+      <tipwidth>
+        <real value=".1" />
+      </tipwidth>
+      <bone_depth>
+        <real value="0" />
+      </bone_depth>
+      <length>
+        <real value="1" />
+      </length>
+      <origin>
+        <animated type="vector">
+          <waypoint time="0s" before="linear" after="linear">
+            <vector>
+              <x>-20.0</x>
+              <y>-57.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <vector>
+              <x>-20.0</x>
+              <y>-57.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <vector>
+              <x>-20.0</x>
+              <y>-57.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <vector>
+              <x>-20.0</x>
+              <y>-57.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <vector>
+              <x>-20.0</x>
+              <y>-57.0</y>
+            </vector>
+          </waypoint>
+        </animated>
+      </origin>
+      <angle>
+        <animated type="angle">
+          <waypoint time="0s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+        </animated>
+      </angle>
+    </bone>
+    <bone type="bone_object" guid="A7BDB9BDA5D5DFE1110D999477B77CBB">
+      <name>
+        <string>shin_boot_near</string>
+      </name>
+      <parent>
+        <bone_valuenode type="bone_object" guid="A67CF56024BE8378F81506B9CCB326A7" />
+      </parent>
+      <scalelx>
+        <real value="1" />
+      </scalelx>
+      <scalex>
+        <real value="1" />
+      </scalex>
+      <width>
+        <real value=".1" />
+      </width>
+      <tipwidth>
+        <real value=".1" />
+      </tipwidth>
+      <bone_depth>
+        <real value="0" />
+      </bone_depth>
+      <length>
+        <real value="1" />
+      </length>
+      <origin>
+        <animated type="vector">
+          <waypoint time="0s" before="linear" after="linear">
+            <vector>
+              <x>-1.0</x>
+              <y>-24.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <vector>
+              <x>-1.0</x>
+              <y>-24.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <vector>
+              <x>-1.0</x>
+              <y>-24.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <vector>
+              <x>-1.0</x>
+              <y>-24.0</y>
+            </vector>
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <vector>
+              <x>-1.0</x>
+              <y>-24.0</y>
+            </vector>
+          </waypoint>
+        </animated>
+      </origin>
+      <angle>
+        <animated type="angle">
+          <waypoint time="0s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.25s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.5s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="0.75s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+          <waypoint time="1s" before="linear" after="linear">
+            <angle value="0.0" />
+          </waypoint>
+        </animated>
+      </angle>
+    </bone>
+    <bone type="bone_object" guid="FA95CDEB533BCF2019DD013FAAD8F86E">
+      <name>
+        <string>sword</string>
+      </name>
+      <parent>
+        <bone_valuenode type="bone_object" guid="062AB008CFB7601A0231E0FF919BE10A" />
+      </parent>
+      <angle>
+        <angle value="0" />
+      </angle>
+      <scalelx>
+        <real value="1" />
+      </scalelx>
+      <scalex>
+        <real value="1" />
+      </scalex>
+      <width>
+        <real value=".1" />
+      </width>
+      <tipwidth>
+        <real value=".1" />
+      </tipwidth>
+      <bone_depth>
+        <real value="0" />
+      </bone_depth>
+      <length>
+        <real value="1" />
+      </length>
+      <origin>
+        <vector>
+          <x>0</x>
+          <y>-16</y>
+        </vector>
+      </origin>
+    </bone>
+  </bones>
+  <layer type="skeleton" active="true" exclude_from_rendering="true" version="0.1" desc="editable anatomy bones">
+    <param name="bones">
+      <static_list type="bone_object">
+        <entry>
+          <bone type="bone_object" guid="1D195E6D202923604D8DB5721F822E5D" />
+        </entry>
+        <entry>
+          <bone type="bone_object" guid="8FAFB038A5C20840D3749854494DAF56" />
+        </entry>
+        <entry>
+          <bone type="bone_object" guid="8F5A4F2B0C34AD70C196BB3723B81688" />
+        </entry>
+        <entry>
+          <bone type="bone_object" guid="772556D48E894C62DFF055400A827553" />
+        </entry>
+        <entry>
+          <bone type="bone_object" guid="A51A65EEE3BD656C1A720E706F099B38" />
+        </entry>
+        <entry>
+          <bone type="bone_object" guid="2468BFED54BF230920CB91270AFA289C" />
+        </entry>
+        <entry>
+          <bone type="bone_object" guid="CB9C472363CBDE6814DFD912D13C23FD" />
+        </entry>
+        <entry>
+          <bone type="bone_object" guid="2DEC39DF97FF1B378D99F977F960A6E8" />
+        </entry>
+        <entry>
+          <bone type="bone_object" guid="6A5EF2F4C5C48F83B7BE056C69708580" />
+        </entry>
+        <entry>
+          <bone type="bone_object" guid="5D6ECDFE3C1F8A57AE731C4FD289967E" />
+        </entry>
+        <entry>
+          <bone type="bone_object" guid="062AB008CFB7601A0231E0FF919BE10A" />
+        </entry>
+        <entry>
+          <bone type="bone_object" guid="65B815FA7F3ECB3529AED1BF168D4FF3" />
+        </entry>
+        <entry>
+          <bone type="bone_object" guid="98F702503412A04636C3960ACFAD0AFB" />
+        </entry>
+        <entry>
+          <bone type="bone_object" guid="A67CF56024BE8378F81506B9CCB326A7" />
+        </entry>
+        <entry>
+          <bone type="bone_object" guid="A7BDB9BDA5D5DFE1110D999477B77CBB" />
+        </entry>
+        <entry>
+          <bone type="bone_object" guid="FA95CDEB533BCF2019DD013FAAD8F86E" />
+        </entry>
+      </static_list>
+    </param>
+  </layer>
+  <layer type="group" version="0.2">
+    <param name="amount">
+      <real value="1" />
+    </param>
+    <param name="origin">
+      <vector>
+        <x>0</x>
+        <y>0</y>
+      </vector>
+    </param>
+    <param name="transformation">
+      <composite type="transformation">
+        <offset>
+          <vector>
+            <x>0</x>
+            <y>0</y>
+          </vector>
+        </offset>
+        <angle>
+          <angle value="0" />
+        </angle>
+        <skew_angle>
+          <angle value="0" />
+        </skew_angle>
+        <scale>
+          <vector>
+            <x>1</x>
+            <y>1</y>
+          </vector>
+        </scale>
+      </composite>
+    </param>
+    <param name="canvas">
+      <canvas>
+        <layer type="group" version="0.2" desc="coat_back">
+          <param name="amount">
+            <real value="1" />
+          </param>
+          <param name="blend_method">
+            <integer value="0" />
+          </param>
+          <param name="origin">
+            <vector>
+              <x>0</x>
+              <y>0</y>
+            </vector>
+          </param>
+          <param name="transformation">
+            <bone_link type="transformation">
+              <bone>
+                <bone_valuenode type="bone_object" guid="A51A65EEE3BD656C1A720E706F099B38" />
+              </bone>
+              <base_value>
+                <composite type="transformation">
+                  <offset>
+                    <vector>
+                      <x>0</x>
+                      <y>0</y>
+                    </vector>
+                  </offset>
+                  <angle>
+                    <angle value="0" />
+                  </angle>
+                  <skew_angle>
+                    <angle value="0" />
+                  </skew_angle>
+                  <scale>
+                    <vector>
+                      <x>1</x>
+                      <y>1</y>
+                    </vector>
+                  </scale>
+                </composite>
+              </base_value>
+              <translate>
+                <bool value="true" />
+              </translate>
+              <rotate>
+                <bool value="true" />
+              </rotate>
+              <skew>
+                <bool value="true" />
+              </skew>
+              <scale_x>
+                <bool value="true" />
+              </scale_x>
+              <scale_y>
+                <bool value="true" />
+              </scale_y>
+            </bone_link>
+          </param>
+          <param name="canvas">
+            <canvas>
+              <layer type="import" version="0.1">
+                <param name="amount">
+                  <real value="1" />
+                </param>
+                <param name="blend_method">
+                  <integer value="0" />
+                </param>
+                <param name="tl">
+                  <vector>
+                    <x>-50.0</x>
+                    <y>12.0</y>
+                  </vector>
+                </param>
+                <param name="br">
+                  <vector>
+                    <x>50.0</x>
+                    <y>-88.0</y>
+                  </vector>
+                </param>
+                <param name="filename">
+                  <string>coat_back.png</string>
+                </param>
+                <param name="c">
+                  <integer value="1" />
+                </param>
+              </layer>
+            </canvas>
+          </param>
+        </layer>
+        <layer type="group" version="0.2" desc="thigh_far">
+          <param name="amount">
+            <real value="1" />
+          </param>
+          <param name="blend_method">
+            <integer value="0" />
+          </param>
+          <param name="origin">
+            <vector>
+              <x>0</x>
+              <y>0</y>
+            </vector>
+          </param>
+          <param name="transformation">
+            <bone_link type="transformation">
+              <bone>
+                <bone_valuenode type="bone_object" guid="65B815FA7F3ECB3529AED1BF168D4FF3" />
+              </bone>
+              <base_value>
+                <composite type="transformation">
+                  <offset>
+                    <vector>
+                      <x>0</x>
+                      <y>0</y>
+                    </vector>
+                  </offset>
+                  <angle>
+                    <angle value="0" />
+                  </angle>
+                  <skew_angle>
+                    <angle value="0" />
+                  </skew_angle>
+                  <scale>
+                    <vector>
+                      <x>1</x>
+                      <y>1</y>
+                    </vector>
+                  </scale>
+                </composite>
+              </base_value>
+              <translate>
+                <bool value="true" />
+              </translate>
+              <rotate>
+                <bool value="true" />
+              </rotate>
+              <skew>
+                <bool value="true" />
+              </skew>
+              <scale_x>
+                <bool value="true" />
+              </scale_x>
+              <scale_y>
+                <bool value="true" />
+              </scale_y>
+            </bone_link>
+          </param>
+          <param name="canvas">
+            <canvas>
+              <layer type="import" version="0.1">
+                <param name="amount">
+                  <real value="1" />
+                </param>
+                <param name="blend_method">
+                  <integer value="0" />
+                </param>
+                <param name="tl">
+                  <vector>
+                    <x>-21.5</x>
+                    <y>4.56</y>
+                  </vector>
+                </param>
+                <param name="br">
+                  <vector>
+                    <x>21.5</x>
+                    <y>-33.44</y>
+                  </vector>
+                </param>
+                <param name="filename">
+                  <string>thigh_far.png</string>
+                </param>
+                <param name="c">
+                  <integer value="1" />
+                </param>
+              </layer>
+            </canvas>
+          </param>
+        </layer>
+        <layer type="group" version="0.2" desc="shin_boot_far">
+          <param name="amount">
+            <real value="1" />
+          </param>
+          <param name="blend_method">
+            <integer value="0" />
+          </param>
+          <param name="origin">
+            <vector>
+              <x>0</x>
+              <y>0</y>
+            </vector>
+          </param>
+          <param name="transformation">
+            <bone_link type="transformation">
+              <bone>
+                <bone_valuenode type="bone_object" guid="98F702503412A04636C3960ACFAD0AFB" />
+              </bone>
+              <base_value>
+                <composite type="transformation">
+                  <offset>
+                    <vector>
+                      <x>0</x>
+                      <y>0</y>
+                    </vector>
+                  </offset>
+                  <angle>
+                    <angle value="0" />
+                  </angle>
+                  <skew_angle>
+                    <angle value="0" />
+                  </skew_angle>
+                  <scale>
+                    <vector>
+                      <x>1</x>
+                      <y>1</y>
+                    </vector>
+                  </scale>
+                </composite>
+              </base_value>
+              <translate>
+                <bool value="true" />
+              </translate>
+              <rotate>
+                <bool value="true" />
+              </rotate>
+              <skew>
+                <bool value="true" />
+              </skew>
+              <scale_x>
+                <bool value="true" />
+              </scale_x>
+              <scale_y>
+                <bool value="true" />
+              </scale_y>
+            </bone_link>
+          </param>
+          <param name="canvas">
+            <canvas>
+              <layer type="import" version="0.1">
+                <param name="amount">
+                  <real value="1" />
+                </param>
+                <param name="blend_method">
+                  <integer value="0" />
+                </param>
+                <param name="tl">
+                  <vector>
+                    <x>-22.5</x>
+                    <y>3.36</y>
+                  </vector>
+                </param>
+                <param name="br">
+                  <vector>
+                    <x>22.5</x>
+                    <y>-24.64</y>
+                  </vector>
+                </param>
+                <param name="filename">
+                  <string>shin_boot_far.png</string>
+                </param>
+                <param name="c">
+                  <integer value="1" />
+                </param>
+              </layer>
+            </canvas>
+          </param>
+        </layer>
+        <layer type="group" version="0.2" desc="forearm_far">
+          <param name="amount">
+            <real value="1" />
+          </param>
+          <param name="blend_method">
+            <integer value="0" />
+          </param>
+          <param name="origin">
+            <vector>
+              <x>0</x>
+              <y>0</y>
+            </vector>
+          </param>
+          <param name="transformation">
+            <bone_link type="transformation">
+              <bone>
+                <bone_valuenode type="bone_object" guid="CB9C472363CBDE6814DFD912D13C23FD" />
+              </bone>
+              <base_value>
+                <composite type="transformation">
+                  <offset>
+                    <vector>
+                      <x>0</x>
+                      <y>0</y>
+                    </vector>
+                  </offset>
+                  <angle>
+                    <angle value="0" />
+                  </angle>
+                  <skew_angle>
+                    <angle value="0" />
+                  </skew_angle>
+                  <scale>
+                    <vector>
+                      <x>1</x>
+                      <y>1</y>
+                    </vector>
+                  </scale>
+                </composite>
+              </base_value>
+              <translate>
+                <bool value="true" />
+              </translate>
+              <rotate>
+                <bool value="true" />
+              </rotate>
+              <skew>
+                <bool value="true" />
+              </skew>
+              <scale_x>
+                <bool value="true" />
+              </scale_x>
+              <scale_y>
+                <bool value="true" />
+              </scale_y>
+            </bone_link>
+          </param>
+          <param name="canvas">
+            <canvas>
+              <layer type="import" version="0.1">
+                <param name="amount">
+                  <real value="1" />
+                </param>
+                <param name="blend_method">
+                  <integer value="0" />
+                </param>
+                <param name="tl">
+                  <vector>
+                    <x>-17.5</x>
+                    <y>8.0</y>
+                  </vector>
+                </param>
+                <param name="br">
+                  <vector>
+                    <x>17.5</x>
+                    <y>-32.0</y>
+                  </vector>
+                </param>
+                <param name="filename">
+                  <string>forearm_far.png</string>
+                </param>
+                <param name="c">
+                  <integer value="1" />
+                </param>
+              </layer>
+            </canvas>
+          </param>
+        </layer>
+        <layer type="group" version="0.2" desc="hand_far">
+          <param name="amount">
+            <real value="1" />
+          </param>
+          <param name="blend_method">
+            <integer value="0" />
+          </param>
+          <param name="origin">
+            <vector>
+              <x>0</x>
+              <y>0</y>
+            </vector>
+          </param>
+          <param name="transformation">
+            <bone_link type="transformation">
+              <bone>
+                <bone_valuenode type="bone_object" guid="2DEC39DF97FF1B378D99F977F960A6E8" />
+              </bone>
+              <base_value>
+                <composite type="transformation">
+                  <offset>
+                    <vector>
+                      <x>0</x>
+                      <y>0</y>
+                    </vector>
+                  </offset>
+                  <angle>
+                    <angle value="0" />
+                  </angle>
+                  <skew_angle>
+                    <angle value="0" />
+                  </skew_angle>
+                  <scale>
+                    <vector>
+                      <x>1</x>
+                      <y>1</y>
+                    </vector>
+                  </scale>
+                </composite>
+              </base_value>
+              <translate>
+                <bool value="true" />
+              </translate>
+              <rotate>
+                <bool value="true" />
+              </rotate>
+              <skew>
+                <bool value="true" />
+              </skew>
+              <scale_x>
+                <bool value="true" />
+              </scale_x>
+              <scale_y>
+                <bool value="true" />
+              </scale_y>
+            </bone_link>
+          </param>
+          <param name="canvas">
+            <canvas>
+              <layer type="import" version="0.1">
+                <param name="amount">
+                  <real value="1" />
+                </param>
+                <param name="blend_method">
+                  <integer value="0" />
+                </param>
+                <param name="tl">
+                  <vector>
+                    <x>-14.0</x>
+                    <y>6.0</y>
+                  </vector>
+                </param>
+                <param name="br">
+                  <vector>
+                    <x>14.0</x>
+                    <y>-24.0</y>
+                  </vector>
+                </param>
+                <param name="filename">
+                  <string>hand_far.png</string>
+                </param>
+                <param name="c">
+                  <integer value="1" />
+                </param>
+              </layer>
+            </canvas>
+          </param>
+        </layer>
+        <layer type="group" version="0.2" desc="thigh_near">
+          <param name="amount">
+            <real value="1" />
+          </param>
+          <param name="blend_method">
+            <integer value="0" />
+          </param>
+          <param name="origin">
+            <vector>
+              <x>0</x>
+              <y>0</y>
+            </vector>
+          </param>
+          <param name="transformation">
+            <bone_link type="transformation">
+              <bone>
+                <bone_valuenode type="bone_object" guid="A67CF56024BE8378F81506B9CCB326A7" />
+              </bone>
+              <base_value>
+                <composite type="transformation">
+                  <offset>
+                    <vector>
+                      <x>0</x>
+                      <y>0</y>
+                    </vector>
+                  </offset>
+                  <angle>
+                    <angle value="0" />
+                  </angle>
+                  <skew_angle>
+                    <angle value="0" />
+                  </skew_angle>
+                  <scale>
+                    <vector>
+                      <x>1</x>
+                      <y>1</y>
+                    </vector>
+                  </scale>
+                </composite>
+              </base_value>
+              <translate>
+                <bool value="true" />
+              </translate>
+              <rotate>
+                <bool value="true" />
+              </rotate>
+              <skew>
+                <bool value="true" />
+              </skew>
+              <scale_x>
+                <bool value="true" />
+              </scale_x>
+              <scale_y>
+                <bool value="true" />
+              </scale_y>
+            </bone_link>
+          </param>
+          <param name="canvas">
+            <canvas>
+              <layer type="import" version="0.1">
+                <param name="amount">
+                  <real value="1" />
+                </param>
+                <param name="blend_method">
+                  <integer value="0" />
+                </param>
+                <param name="tl">
+                  <vector>
+                    <x>-21.5</x>
+                    <y>4.56</y>
+                  </vector>
+                </param>
+                <param name="br">
+                  <vector>
+                    <x>21.5</x>
+                    <y>-33.44</y>
+                  </vector>
+                </param>
+                <param name="filename">
+                  <string>thigh_near.png</string>
+                </param>
+                <param name="c">
+                  <integer value="1" />
+                </param>
+              </layer>
+            </canvas>
+          </param>
+        </layer>
+        <layer type="group" version="0.2" desc="shin_boot_near">
+          <param name="amount">
+            <real value="1" />
+          </param>
+          <param name="blend_method">
+            <integer value="0" />
+          </param>
+          <param name="origin">
+            <vector>
+              <x>0</x>
+              <y>0</y>
+            </vector>
+          </param>
+          <param name="transformation">
+            <bone_link type="transformation">
+              <bone>
+                <bone_valuenode type="bone_object" guid="A7BDB9BDA5D5DFE1110D999477B77CBB" />
+              </bone>
+              <base_value>
+                <composite type="transformation">
+                  <offset>
+                    <vector>
+                      <x>0</x>
+                      <y>0</y>
+                    </vector>
+                  </offset>
+                  <angle>
+                    <angle value="0" />
+                  </angle>
+                  <skew_angle>
+                    <angle value="0" />
+                  </skew_angle>
+                  <scale>
+                    <vector>
+                      <x>1</x>
+                      <y>1</y>
+                    </vector>
+                  </scale>
+                </composite>
+              </base_value>
+              <translate>
+                <bool value="true" />
+              </translate>
+              <rotate>
+                <bool value="true" />
+              </rotate>
+              <skew>
+                <bool value="true" />
+              </skew>
+              <scale_x>
+                <bool value="true" />
+              </scale_x>
+              <scale_y>
+                <bool value="true" />
+              </scale_y>
+            </bone_link>
+          </param>
+          <param name="canvas">
+            <canvas>
+              <layer type="import" version="0.1">
+                <param name="amount">
+                  <real value="1" />
+                </param>
+                <param name="blend_method">
+                  <integer value="0" />
+                </param>
+                <param name="tl">
+                  <vector>
+                    <x>-22.5</x>
+                    <y>3.36</y>
+                  </vector>
+                </param>
+                <param name="br">
+                  <vector>
+                    <x>22.5</x>
+                    <y>-24.64</y>
+                  </vector>
+                </param>
+                <param name="filename">
+                  <string>shin_boot_near.png</string>
+                </param>
+                <param name="c">
+                  <integer value="1" />
+                </param>
+              </layer>
+            </canvas>
+          </param>
+        </layer>
+        <layer type="group" version="0.2" desc="pelvis">
+          <param name="amount">
+            <real value="1" />
+          </param>
+          <param name="blend_method">
+            <integer value="0" />
+          </param>
+          <param name="origin">
+            <vector>
+              <x>0</x>
+              <y>0</y>
+            </vector>
+          </param>
+          <param name="transformation">
+            <bone_link type="transformation">
+              <bone>
+                <bone_valuenode type="bone_object" guid="772556D48E894C62DFF055400A827553" />
+              </bone>
+              <base_value>
+                <composite type="transformation">
+                  <offset>
+                    <vector>
+                      <x>0</x>
+                      <y>0</y>
+                    </vector>
+                  </offset>
+                  <angle>
+                    <angle value="0" />
+                  </angle>
+                  <skew_angle>
+                    <angle value="0" />
+                  </skew_angle>
+                  <scale>
+                    <vector>
+                      <x>1</x>
+                      <y>1</y>
+                    </vector>
+                  </scale>
+                </composite>
+              </base_value>
+              <translate>
+                <bool value="true" />
+              </translate>
+              <rotate>
+                <bool value="true" />
+              </rotate>
+              <skew>
+                <bool value="true" />
+              </skew>
+              <scale_x>
+                <bool value="true" />
+              </scale_x>
+              <scale_y>
+                <bool value="true" />
+              </scale_y>
+            </bone_link>
+          </param>
+          <param name="canvas">
+            <canvas>
+              <layer type="import" version="0.1">
+                <param name="amount">
+                  <real value="1" />
+                </param>
+                <param name="blend_method">
+                  <integer value="0" />
+                </param>
+                <param name="tl">
+                  <vector>
+                    <x>-49.0</x>
+                    <y>7.92</y>
+                  </vector>
+                </param>
+                <param name="br">
+                  <vector>
+                    <x>49.0</x>
+                    <y>-58.08</y>
+                  </vector>
+                </param>
+                <param name="filename">
+                  <string>pelvis.png</string>
+                </param>
+                <param name="c">
+                  <integer value="1" />
+                </param>
+              </layer>
+            </canvas>
+          </param>
+        </layer>
+        <layer type="group" version="0.2" desc="torso">
+          <param name="amount">
+            <real value="1" />
+          </param>
+          <param name="blend_method">
+            <integer value="0" />
+          </param>
+          <param name="origin">
+            <vector>
+              <x>0</x>
+              <y>0</y>
+            </vector>
+          </param>
+          <param name="transformation">
+            <bone_link type="transformation">
+              <bone>
+                <bone_valuenode type="bone_object" guid="8F5A4F2B0C34AD70C196BB3723B81688" />
+              </bone>
+              <base_value>
+                <composite type="transformation">
+                  <offset>
+                    <vector>
+                      <x>0</x>
+                      <y>0</y>
+                    </vector>
+                  </offset>
+                  <angle>
+                    <angle value="0" />
+                  </angle>
+                  <skew_angle>
+                    <angle value="0" />
+                  </skew_angle>
+                  <scale>
+                    <vector>
+                      <x>1</x>
+                      <y>1</y>
+                    </vector>
+                  </scale>
+                </composite>
+              </base_value>
+              <translate>
+                <bool value="true" />
+              </translate>
+              <rotate>
+                <bool value="true" />
+              </rotate>
+              <skew>
+                <bool value="true" />
+              </skew>
+              <scale_x>
+                <bool value="true" />
+              </scale_x>
+              <scale_y>
+                <bool value="true" />
+              </scale_y>
+            </bone_link>
+          </param>
+          <param name="canvas">
+            <canvas>
+              <layer type="import" version="0.1">
+                <param name="amount">
+                  <real value="1" />
+                </param>
+                <param name="blend_method">
+                  <integer value="0" />
+                </param>
+                <param name="tl">
+                  <vector>
+                    <x>-54.5</x>
+                    <y>9.84</y>
+                  </vector>
+                </param>
+                <param name="br">
+                  <vector>
+                    <x>54.5</x>
+                    <y>-72.16</y>
+                  </vector>
+                </param>
+                <param name="filename">
+                  <string>torso.png</string>
+                </param>
+                <param name="c">
+                  <integer value="1" />
+                </param>
+              </layer>
+            </canvas>
+          </param>
+        </layer>
+        <layer type="group" version="0.2" desc="upper_arm_far">
+          <param name="amount">
+            <real value="1" />
+          </param>
+          <param name="blend_method">
+            <integer value="0" />
+          </param>
+          <param name="origin">
+            <vector>
+              <x>0</x>
+              <y>0</y>
+            </vector>
+          </param>
+          <param name="transformation">
+            <bone_link type="transformation">
+              <bone>
+                <bone_valuenode type="bone_object" guid="2468BFED54BF230920CB91270AFA289C" />
+              </bone>
+              <base_value>
+                <composite type="transformation">
+                  <offset>
+                    <vector>
+                      <x>0</x>
+                      <y>0</y>
+                    </vector>
+                  </offset>
+                  <angle>
+                    <angle value="0" />
+                  </angle>
+                  <skew_angle>
+                    <angle value="0" />
+                  </skew_angle>
+                  <scale>
+                    <vector>
+                      <x>1</x>
+                      <y>1</y>
+                    </vector>
+                  </scale>
+                </composite>
+              </base_value>
+              <translate>
+                <bool value="true" />
+              </translate>
+              <rotate>
+                <bool value="true" />
+              </rotate>
+              <skew>
+                <bool value="true" />
+              </skew>
+              <scale_x>
+                <bool value="true" />
+              </scale_x>
+              <scale_y>
+                <bool value="true" />
+              </scale_y>
+            </bone_link>
+          </param>
+          <param name="canvas">
+            <canvas>
+              <layer type="import" version="0.1">
+                <param name="amount">
+                  <real value="1" />
+                </param>
+                <param name="blend_method">
+                  <integer value="0" />
+                </param>
+                <param name="tl">
+                  <vector>
+                    <x>-24.5</x>
+                    <y>10.08</y>
+                  </vector>
+                </param>
+                <param name="br">
+                  <vector>
+                    <x>24.5</x>
+                    <y>-45.92</y>
+                  </vector>
+                </param>
+                <param name="filename">
+                  <string>upper_arm_far.png</string>
+                </param>
+                <param name="c">
+                  <integer value="1" />
+                </param>
+              </layer>
+            </canvas>
+          </param>
+        </layer>
+        <layer type="group" version="0.2" desc="upper_arm_near">
+          <param name="amount">
+            <real value="1" />
+          </param>
+          <param name="blend_method">
+            <integer value="0" />
+          </param>
+          <param name="origin">
+            <vector>
+              <x>0</x>
+              <y>0</y>
+            </vector>
+          </param>
+          <param name="transformation">
+            <bone_link type="transformation">
+              <bone>
+                <bone_valuenode type="bone_object" guid="6A5EF2F4C5C48F83B7BE056C69708580" />
+              </bone>
+              <base_value>
+                <composite type="transformation">
+                  <offset>
+                    <vector>
+                      <x>0</x>
+                      <y>0</y>
+                    </vector>
+                  </offset>
+                  <angle>
+                    <angle value="0" />
+                  </angle>
+                  <skew_angle>
+                    <angle value="0" />
+                  </skew_angle>
+                  <scale>
+                    <vector>
+                      <x>1</x>
+                      <y>1</y>
+                    </vector>
+                  </scale>
+                </composite>
+              </base_value>
+              <translate>
+                <bool value="true" />
+              </translate>
+              <rotate>
+                <bool value="true" />
+              </rotate>
+              <skew>
+                <bool value="true" />
+              </skew>
+              <scale_x>
+                <bool value="true" />
+              </scale_x>
+              <scale_y>
+                <bool value="true" />
+              </scale_y>
+            </bone_link>
+          </param>
+          <param name="canvas">
+            <canvas>
+              <layer type="import" version="0.1">
+                <param name="amount">
+                  <real value="1" />
+                </param>
+                <param name="blend_method">
+                  <integer value="0" />
+                </param>
+                <param name="tl">
+                  <vector>
+                    <x>-24.5</x>
+                    <y>10.08</y>
+                  </vector>
+                </param>
+                <param name="br">
+                  <vector>
+                    <x>24.5</x>
+                    <y>-45.92</y>
+                  </vector>
+                </param>
+                <param name="filename">
+                  <string>upper_arm_near.png</string>
+                </param>
+                <param name="c">
+                  <integer value="1" />
+                </param>
+              </layer>
+            </canvas>
+          </param>
+        </layer>
+        <layer type="group" version="0.2" desc="sword">
+          <param name="amount">
+            <real value="1" />
+          </param>
+          <param name="blend_method">
+            <integer value="0" />
+          </param>
+          <param name="origin">
+            <vector>
+              <x>0</x>
+              <y>0</y>
+            </vector>
+          </param>
+          <param name="transformation">
+            <bone_link type="transformation">
+              <bone>
+                <bone_valuenode type="bone_object" guid="FA95CDEB533BCF2019DD013FAAD8F86E" />
+              </bone>
+              <base_value>
+                <composite type="transformation">
+                  <offset>
+                    <vector>
+                      <x>0</x>
+                      <y>0</y>
+                    </vector>
+                  </offset>
+                  <angle>
+                    <angle value="0" />
+                  </angle>
+                  <skew_angle>
+                    <angle value="0" />
+                  </skew_angle>
+                  <scale>
+                    <vector>
+                      <x>1</x>
+                      <y>1</y>
+                    </vector>
+                  </scale>
+                </composite>
+              </base_value>
+              <translate>
+                <bool value="true" />
+              </translate>
+              <rotate>
+                <bool value="true" />
+              </rotate>
+              <skew>
+                <bool value="true" />
+              </skew>
+              <scale_x>
+                <bool value="true" />
+              </scale_x>
+              <scale_y>
+                <bool value="true" />
+              </scale_y>
+            </bone_link>
+          </param>
+          <param name="canvas">
+            <canvas>
+              <layer type="import" version="0.1">
+                <param name="amount">
+                  <real value="1" />
+                </param>
+                <param name="blend_method">
+                  <integer value="0" />
+                </param>
+                <param name="tl">
+                  <vector>
+                    <x>-18.5</x>
+                    <y>145.34</y>
+                  </vector>
+                </param>
+                <param name="br">
+                  <vector>
+                    <x>18.5</x>
+                    <y>-23.660000000000004</y>
+                  </vector>
+                </param>
+                <param name="filename">
+                  <string>sword.png</string>
+                </param>
+                <param name="c">
+                  <integer value="1" />
+                </param>
+              </layer>
+            </canvas>
+          </param>
+        </layer>
+        <layer type="group" version="0.2" desc="forearm_near">
+          <param name="amount">
+            <real value="1" />
+          </param>
+          <param name="blend_method">
+            <integer value="0" />
+          </param>
+          <param name="origin">
+            <vector>
+              <x>0</x>
+              <y>0</y>
+            </vector>
+          </param>
+          <param name="transformation">
+            <bone_link type="transformation">
+              <bone>
+                <bone_valuenode type="bone_object" guid="5D6ECDFE3C1F8A57AE731C4FD289967E" />
+              </bone>
+              <base_value>
+                <composite type="transformation">
+                  <offset>
+                    <vector>
+                      <x>0</x>
+                      <y>0</y>
+                    </vector>
+                  </offset>
+                  <angle>
+                    <angle value="0" />
+                  </angle>
+                  <skew_angle>
+                    <angle value="0" />
+                  </skew_angle>
+                  <scale>
+                    <vector>
+                      <x>1</x>
+                      <y>1</y>
+                    </vector>
+                  </scale>
+                </composite>
+              </base_value>
+              <translate>
+                <bool value="true" />
+              </translate>
+              <rotate>
+                <bool value="true" />
+              </rotate>
+              <skew>
+                <bool value="true" />
+              </skew>
+              <scale_x>
+                <bool value="true" />
+              </scale_x>
+              <scale_y>
+                <bool value="true" />
+              </scale_y>
+            </bone_link>
+          </param>
+          <param name="canvas">
+            <canvas>
+              <layer type="import" version="0.1">
+                <param name="amount">
+                  <real value="1" />
+                </param>
+                <param name="blend_method">
+                  <integer value="0" />
+                </param>
+                <param name="tl">
+                  <vector>
+                    <x>-17.5</x>
+                    <y>8.0</y>
+                  </vector>
+                </param>
+                <param name="br">
+                  <vector>
+                    <x>17.5</x>
+                    <y>-32.0</y>
+                  </vector>
+                </param>
+                <param name="filename">
+                  <string>forearm_near.png</string>
+                </param>
+                <param name="c">
+                  <integer value="1" />
+                </param>
+              </layer>
+            </canvas>
+          </param>
+        </layer>
+        <layer type="group" version="0.2" desc="hand_near">
+          <param name="amount">
+            <real value="1" />
+          </param>
+          <param name="blend_method">
+            <integer value="0" />
+          </param>
+          <param name="origin">
+            <vector>
+              <x>0</x>
+              <y>0</y>
+            </vector>
+          </param>
+          <param name="transformation">
+            <bone_link type="transformation">
+              <bone>
+                <bone_valuenode type="bone_object" guid="062AB008CFB7601A0231E0FF919BE10A" />
+              </bone>
+              <base_value>
+                <composite type="transformation">
+                  <offset>
+                    <vector>
+                      <x>0</x>
+                      <y>0</y>
+                    </vector>
+                  </offset>
+                  <angle>
+                    <angle value="0" />
+                  </angle>
+                  <skew_angle>
+                    <angle value="0" />
+                  </skew_angle>
+                  <scale>
+                    <vector>
+                      <x>1</x>
+                      <y>1</y>
+                    </vector>
+                  </scale>
+                </composite>
+              </base_value>
+              <translate>
+                <bool value="true" />
+              </translate>
+              <rotate>
+                <bool value="true" />
+              </rotate>
+              <skew>
+                <bool value="true" />
+              </skew>
+              <scale_x>
+                <bool value="true" />
+              </scale_x>
+              <scale_y>
+                <bool value="true" />
+              </scale_y>
+            </bone_link>
+          </param>
+          <param name="canvas">
+            <canvas>
+              <layer type="import" version="0.1">
+                <param name="amount">
+                  <real value="1" />
+                </param>
+                <param name="blend_method">
+                  <integer value="0" />
+                </param>
+                <param name="tl">
+                  <vector>
+                    <x>-14.5</x>
+                    <y>6.0</y>
+                  </vector>
+                </param>
+                <param name="br">
+                  <vector>
+                    <x>14.5</x>
+                    <y>-24.0</y>
+                  </vector>
+                </param>
+                <param name="filename">
+                  <string>hand_near.png</string>
+                </param>
+                <param name="c">
+                  <integer value="1" />
+                </param>
+              </layer>
+            </canvas>
+          </param>
+        </layer>
+        <layer type="group" version="0.2" desc="head">
+          <param name="amount">
+            <real value="1" />
+          </param>
+          <param name="blend_method">
+            <integer value="0" />
+          </param>
+          <param name="origin">
+            <vector>
+              <x>0</x>
+              <y>0</y>
+            </vector>
+          </param>
+          <param name="transformation">
+            <bone_link type="transformation">
+              <bone>
+                <bone_valuenode type="bone_object" guid="8FAFB038A5C20840D3749854494DAF56" />
+              </bone>
+              <base_value>
+                <composite type="transformation">
+                  <offset>
+                    <vector>
+                      <x>0</x>
+                      <y>0</y>
+                    </vector>
+                  </offset>
+                  <angle>
+                    <angle value="0" />
+                  </angle>
+                  <skew_angle>
+                    <angle value="0" />
+                  </skew_angle>
+                  <scale>
+                    <vector>
+                      <x>1</x>
+                      <y>1</y>
+                    </vector>
+                  </scale>
+                </composite>
+              </base_value>
+              <translate>
+                <bool value="true" />
+              </translate>
+              <rotate>
+                <bool value="true" />
+              </rotate>
+              <skew>
+                <bool value="true" />
+              </skew>
+              <scale_x>
+                <bool value="true" />
+              </scale_x>
+              <scale_y>
+                <bool value="true" />
+              </scale_y>
+            </bone_link>
+          </param>
+          <param name="canvas">
+            <canvas>
+              <layer type="import" version="0.1">
+                <param name="amount">
+                  <real value="1" />
+                </param>
+                <param name="blend_method">
+                  <integer value="0" />
+                </param>
+                <param name="tl">
+                  <vector>
+                    <x>-58.0</x>
+                    <y>106.64</y>
+                  </vector>
+                </param>
+                <param name="br">
+                  <vector>
+                    <x>58.0</x>
+                    <y>-17.360000000000003</y>
+                  </vector>
+                </param>
+                <param name="filename">
+                  <string>head.png</string>
+                </param>
+                <param name="c">
+                  <integer value="1" />
+                </param>
+              </layer>
+            </canvas>
+          </param>
+        </layer>
+      </canvas>
+    </param>
+  </layer>
+</canvas>

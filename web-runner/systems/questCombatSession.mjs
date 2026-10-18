@@ -1,15 +1,18 @@
-import { activateContinuousCombatSpawnedEnemy, buildContinuousCombatSpawnPlan, getContinuousCombatPartyCP, recordContinuousCombatWavePackProgress, resetContinuousCombatAfterDefeat } from '../src/core/continuousCombatStage.mjs';
+import { CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC, activateContinuousCombatSpawnedEnemy, buildContinuousCombatSpawnPlan, getContinuousCombatPartyCP, recordContinuousCombatWavePackProgress, resetContinuousCombatAfterDefeat } from '../src/core/continuousCombatStage.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import { resetActorPresentationAfterRestore } from '../src/core/actorPresentationState.mjs';
 import { placeContinuousCombatHeroesInRecoveryHuddle } from '../src/core/arenaCombat.mjs';
 import { cleanseDebuffs } from '../src/core/combatRules.mjs';
 import { hasContinuousOrdinaryHeroKO } from './combatSimulationTick.mjs';
+import { recordBalanceCombatEvent } from '../src/core/balanceTelemetry.mjs';
 
 // Session lifecycle only. Damage, initiative and skill rules remain runtime-owned.
-export function restoreHeroesToFullHP({ state, call }) {
+export function restoreHeroesToFullHP({ state, call, reason = 'manual' }) {
   const now = Number(state.globals?.time || 0);
   for (const hero of state.entities.filter(e => e?.kind === 'hero')) {
+    const hpBefore = Number(hero.hp || 0);
     hero.hp = hero.maxHP;
+    recordBalanceCombatEvent(state.globals, { type: 'recovery', reason, recoveryIndex: Number(state.globals.ContinuousCombatStage?.defeatRecoveries || 0), targetUID: Number(hero.uid || 0), sourceUID: 0, amount: Math.max(0, Number(hero.hp || 0) - hpBefore), hpBefore, hpAfter: Number(hero.hp || 0) });
     hero.isAlive = true;
     resetActorPresentationAfterRestore(hero, now);
     if (state.globals.PendingDeaths) delete state.globals.PendingDeaths[hero.uid];
@@ -28,7 +31,13 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
     // encounters remain available to QA through their explicit setup hooks.
     prepare() { state.globals.QuestFiniteEncounter = 0; },
     isCleared() { return false; },
-    surrenderBossAttempt() {
+    hasPendingBossVictory() {
+      const stage = state.globals.ContinuousCombatStage;
+      if (Number(state.globals.ContinuousCombatStageLoop || 0) !== 1 || stage?.bossActive !== true
+        || !Number.isSafeInteger(stage.bossUID) || stage.bossUID <= 0) return false;
+      return !state.entities.some(actor => actor?.kind === 'enemy' && Number(actor.hp || 0) > 0);
+    },
+    surrenderBossAttempt(reason = 'boss_surrender') {
       const stage = state.globals.ContinuousCombatStage;
       if (Number(state.globals.ContinuousCombatStageLoop || 0) !== 1 || stage?.bossActive !== true) return false;
       const bossUIDs = new Set(state.entities.filter(actor => actor?.kind === 'enemy'
@@ -36,6 +45,17 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
         .map(actor => String(actor.uid)));
       if (Number.isSafeInteger(stage.bossUID) && stage.bossUID > 0) bossUIDs.add(String(stage.bossUID));
       const battle = state.globals.ProgressionBattle;
+      if (reason === 'boss_timeout') {
+        const boss = state.entities.find(actor => Number(actor?.uid || 0) === Number(stage.bossUID || 0));
+        stage.lastBossTimeout = {
+          time: Number(state.globals.time || 0),
+          elapsedSec: Math.max(0, Number(state.globals.time || 0) - Number(stage.bossTimerStartedAt || 0)),
+          timeLimitSec: CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC,
+          bossHp: Number(boss?.hp || 0),
+          bossMaxHp: Number(boss?.maxHP || 0),
+          heroes: state.entities.filter(actor => actor?.kind === 'hero').map(actor => ({ uid: Number(actor.uid || 0), name: String(actor.name || ''), hp: Number(actor.hp || 0), maxHp: Number(actor.maxHP || 0) })),
+        };
+      }
       let removedReward = false;
       for (const uid of bossUIDs) {
         if (battle?.defeated && Object.hasOwn(battle.defeated, uid)) { delete battle.defeated[uid]; removedReward = true; }
@@ -47,9 +67,13 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
       resetCombatSessionConditions(state.globals, gameState, state.entities);
       state.globals.NativeBattleEnded = false;
       stage.bossSummonRequired = true;
-      return this.recoverContinuousDefeat();
+      if (reason === 'boss_timeout') {
+        stage.bossTimeouts = Number(stage.bossTimeouts || 0) + 1;
+        stage.lastBossOutcome = 'timeout';
+      }
+      return this.recoverContinuousDefeat(reason);
     },
-    recoverContinuousDefeat() {
+    recoverContinuousDefeat(reason = 'continuous_defeat') {
       if (Number(state.globals.ContinuousCombatStageLoop || 0) !== 1) return false;
       const stageBeforeRecovery = state.globals.ContinuousCombatStage;
       if (recordContinuousCombatWavePackProgress(stageBeforeRecovery, state.entities)) state.globals.HeroProgressDirty = true;
@@ -60,7 +84,7 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
       state.globals.EnemyDeathVisualHoldByUID = {};
       state.globals.PendingDeaths = {};
       resetContinuousCombatAfterDefeat(state.globals);
-      restoreHeroesToFullHP({ state, call });
+      restoreHeroesToFullHP({ state, call, reason });
       const heroes = state.entities.filter(actor => actor?.kind === 'hero');
       for (const hero of heroes) cleanseDebuffs(hero);
       placeContinuousCombatHeroesInRecoveryHuddle({ globals: state.globals, heroes, now: Number(state.globals.time || 0) });
@@ -89,7 +113,7 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
       if (Number(state.globals.ContinuousCombatStageLoop || 0) === 1 && recordContinuousCombatWavePackProgress(stage, state.entities)) state.globals.HeroProgressDirty = true;
       const needsContinuousHuddle = Number(state.globals.ContinuousCombatStageLoop || 0) === 1
         && heroes.some(hero => Number(hero.hp || 0) <= 0);
-      restoreHeroesToFullHP({ state, call });
+      restoreHeroesToFullHP({ state, call, reason: 'resurrect' });
       if (needsContinuousHuddle) {
         placeContinuousCombatHeroesInRecoveryHuddle({ globals: state.globals, heroes, now: Number(state.globals.time || 0) });
       }

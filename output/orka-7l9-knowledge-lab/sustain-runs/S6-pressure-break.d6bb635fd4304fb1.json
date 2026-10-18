@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S6-pressure-break",
+  "digest": "d6bb635fd4304fb179b8bea2df1a7b3358b45d8e6324b0d8c7f9c24f675c42ab",
+  "status": "FAIL",
+  "minHpPct": 0,
+  "heroKOs": 1,
+  "reason": "any Hero KO during farming is immediate failure"
+}

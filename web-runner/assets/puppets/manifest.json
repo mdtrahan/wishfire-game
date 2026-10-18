@@ -277,12 +277,13 @@
             "loop": false,
             "releaseTimeMs": 500,
             "canvas": {
-              "width": 128,
-              "height": 128
+              "width": 192,
+              "height": 192,
+              "referenceHeight": 128
             },
             "footOrigin": {
-              "x": 64,
-              "y": 125
+              "x": 96,
+              "y": 157
             }
           },
           "right": {
@@ -318,12 +319,13 @@
             "loop": false,
             "releaseTimeMs": 500,
             "canvas": {
-              "width": 128,
-              "height": 128
+              "width": 192,
+              "height": 192,
+              "referenceHeight": 128
             },
             "footOrigin": {
-              "x": 64,
-              "y": 125
+              "x": 96,
+              "y": 157
             }
           }
         },
@@ -418,12 +420,13 @@
             ],
             "loop": false,
             "canvas": {
-              "width": 128,
-              "height": 128
+              "width": 192,
+              "height": 192,
+              "referenceHeight": 128
             },
             "footOrigin": {
-              "x": 64,
-              "y": 125
+              "x": 96,
+              "y": 157
             }
           },
           "right": {
@@ -458,12 +461,13 @@
             ],
             "loop": false,
             "canvas": {
-              "width": 128,
-              "height": 128
+              "width": 192,
+              "height": 192,
+              "referenceHeight": 128
             },
             "footOrigin": {
-              "x": 64,
-              "y": 125
+              "x": 96,
+              "y": 157
             }
           }
         },
@@ -954,12 +958,13 @@
             ],
             "loop": false,
             "canvas": {
-              "width": 128,
-              "height": 128
+              "width": 192,
+              "height": 192,
+              "referenceHeight": 128
             },
             "footOrigin": {
-              "x": 64,
-              "y": 125
+              "x": 96,
+              "y": 157
             }
           },
           "right": {
@@ -994,12 +999,13 @@
             ],
             "loop": false,
             "canvas": {
-              "width": 128,
-              "height": 128
+              "width": 192,
+              "height": 192,
+              "referenceHeight": 128
             },
             "footOrigin": {
-              "x": 64,
-              "y": 125
+              "x": 96,
+              "y": 157
             }
           }
         },
@@ -5637,12 +5643,13 @@
             "loop": false,
             "releaseTimeMs": 500,
             "canvas": {
-              "width": 128,
-              "height": 128
+              "width": 192,
+              "height": 192,
+              "referenceHeight": 128
             },
             "footOrigin": {
-              "x": 64,
-              "y": 125
+              "x": 96,
+              "y": 157
             }
           },
           "right": {
@@ -5678,12 +5685,13 @@
             "loop": false,
             "releaseTimeMs": 500,
             "canvas": {
-              "width": 128,
-              "height": 128
+              "width": 192,
+              "height": 192,
+              "referenceHeight": 128
             },
             "footOrigin": {
-              "x": 64,
-              "y": 125
+              "x": 96,
+              "y": 157
             }
           }
         },
@@ -5778,12 +5786,13 @@
             ],
             "loop": false,
             "canvas": {
-              "width": 128,
-              "height": 128
+              "width": 192,
+              "height": 192,
+              "referenceHeight": 128
             },
             "footOrigin": {
-              "x": 64,
-              "y": 125
+              "x": 96,
+              "y": 157
             }
           },
           "right": {
@@ -5818,12 +5827,13 @@
             ],
             "loop": false,
             "canvas": {
-              "width": 128,
-              "height": 128
+              "width": 192,
+              "height": 192,
+              "referenceHeight": 128
             },
             "footOrigin": {
-              "x": 64,
-              "y": 125
+              "x": 96,
+              "y": 157
             }
           }
         },
@@ -6173,12 +6183,13 @@
             "loop": false,
             "releaseTimeMs": 500,
             "canvas": {
-              "width": 128,
-              "height": 128
+              "width": 192,
+              "height": 192,
+              "referenceHeight": 128
             },
             "footOrigin": {
-              "x": 64,
-              "y": 125
+              "x": 96,
+              "y": 157
             }
           },
           "right": {
@@ -6214,12 +6225,13 @@
             "loop": false,
             "releaseTimeMs": 500,
             "canvas": {
-              "width": 128,
-              "height": 128
+              "width": 192,
+              "height": 192,
+              "referenceHeight": 128
             },
             "footOrigin": {
-              "x": 64,
-              "y": 125
+              "x": 96,
+              "y": 157
             }
           }
         },
@@ -6314,12 +6326,13 @@
             ],
             "loop": false,
             "canvas": {
-              "width": 128,
-              "height": 128
+              "width": 192,
+              "height": 192,
+              "referenceHeight": 128
             },
             "footOrigin": {
-              "x": 64,
-              "y": 125
+              "x": 96,
+              "y": 157
             }
           },
           "right": {
@@ -6354,12 +6367,13 @@
             ],
             "loop": false,
             "canvas": {
-              "width": 128,
-              "height": 128
+              "width": 192,
+              "height": 192,
+              "referenceHeight": 128
             },
             "footOrigin": {
-              "x": 64,
-              "y": 125
+              "x": 96,
+              "y": 157
             }
           }
         },
@@ -6410,6 +6424,1082 @@
               "kaja/frames/spawn-right-006.png",
               "kaja/frames/spawn-right-007.png",
               "kaja/frames/spawn-right-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        }
+      }
+    },
+    "djinn": {
+      "sourceFacing": "left",
+      "oppositeFacing": "mirrored-source; asymmetric costume reverses sides",
+      "clips": {
+        "idle": {
+          "left": {
+            "source": "djinn/source/idle-left.sif",
+            "frames": [
+              "djinn/frames/idle-left-000.png",
+              "djinn/frames/idle-left-001.png",
+              "djinn/frames/idle-left-002.png",
+              "djinn/frames/idle-left-003.png",
+              "djinn/frames/idle-left-004.png",
+              "djinn/frames/idle-left-005.png",
+              "djinn/frames/idle-left-006.png",
+              "djinn/frames/idle-left-007.png",
+              "djinn/frames/idle-left-008.png",
+              "djinn/frames/idle-left-009.png",
+              "djinn/frames/idle-left-010.png",
+              "djinn/frames/idle-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "djinn/source/idle-right.sif",
+            "frames": [
+              "djinn/frames/idle-right-000.png",
+              "djinn/frames/idle-right-001.png",
+              "djinn/frames/idle-right-002.png",
+              "djinn/frames/idle-right-003.png",
+              "djinn/frames/idle-right-004.png",
+              "djinn/frames/idle-right-005.png",
+              "djinn/frames/idle-right-006.png",
+              "djinn/frames/idle-right-007.png",
+              "djinn/frames/idle-right-008.png",
+              "djinn/frames/idle-right-009.png",
+              "djinn/frames/idle-right-010.png",
+              "djinn/frames/idle-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "walk": {
+          "left": {
+            "source": "djinn/source/walk-left.sif",
+            "frames": [
+              "djinn/frames/walk-left-000.png",
+              "djinn/frames/walk-left-001.png",
+              "djinn/frames/walk-left-002.png",
+              "djinn/frames/walk-left-003.png",
+              "djinn/frames/walk-left-004.png",
+              "djinn/frames/walk-left-005.png",
+              "djinn/frames/walk-left-006.png",
+              "djinn/frames/walk-left-007.png",
+              "djinn/frames/walk-left-008.png",
+              "djinn/frames/walk-left-009.png",
+              "djinn/frames/walk-left-010.png",
+              "djinn/frames/walk-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "djinn/source/walk-right.sif",
+            "frames": [
+              "djinn/frames/walk-right-000.png",
+              "djinn/frames/walk-right-001.png",
+              "djinn/frames/walk-right-002.png",
+              "djinn/frames/walk-right-003.png",
+              "djinn/frames/walk-right-004.png",
+              "djinn/frames/walk-right-005.png",
+              "djinn/frames/walk-right-006.png",
+              "djinn/frames/walk-right-007.png",
+              "djinn/frames/walk-right-008.png",
+              "djinn/frames/walk-right-009.png",
+              "djinn/frames/walk-right-010.png",
+              "djinn/frames/walk-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "basic": {
+          "left": {
+            "source": "djinn/source/attack-left.sif",
+            "frames": [
+              "djinn/frames/attack-left-000.png",
+              "djinn/frames/attack-left-001.png",
+              "djinn/frames/attack-left-002.png",
+              "djinn/frames/attack-left-003.png",
+              "djinn/frames/attack-left-004.png",
+              "djinn/frames/attack-left-005.png",
+              "djinn/frames/attack-left-006.png",
+              "djinn/frames/attack-left-007.png",
+              "djinn/frames/attack-left-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            },
+            "impactTimeMs": 416.6666666666667
+          },
+          "right": {
+            "source": "djinn/source/attack-right.sif",
+            "frames": [
+              "djinn/frames/attack-right-000.png",
+              "djinn/frames/attack-right-001.png",
+              "djinn/frames/attack-right-002.png",
+              "djinn/frames/attack-right-003.png",
+              "djinn/frames/attack-right-004.png",
+              "djinn/frames/attack-right-005.png",
+              "djinn/frames/attack-right-006.png",
+              "djinn/frames/attack-right-007.png",
+              "djinn/frames/attack-right-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            },
+            "impactTimeMs": 416.6666666666667
+          }
+        },
+        "cast": {
+          "left": {
+            "source": "djinn/source/cast-left.sif",
+            "frames": [
+              "djinn/frames/cast-left-000.png",
+              "djinn/frames/cast-left-001.png",
+              "djinn/frames/cast-left-002.png",
+              "djinn/frames/cast-left-003.png",
+              "djinn/frames/cast-left-004.png",
+              "djinn/frames/cast-left-005.png",
+              "djinn/frames/cast-left-006.png",
+              "djinn/frames/cast-left-007.png",
+              "djinn/frames/cast-left-008.png",
+              "djinn/frames/cast-left-009.png",
+              "djinn/frames/cast-left-010.png",
+              "djinn/frames/cast-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            },
+            "releaseTimeMs": 500
+          },
+          "right": {
+            "source": "djinn/source/cast-right.sif",
+            "frames": [
+              "djinn/frames/cast-right-000.png",
+              "djinn/frames/cast-right-001.png",
+              "djinn/frames/cast-right-002.png",
+              "djinn/frames/cast-right-003.png",
+              "djinn/frames/cast-right-004.png",
+              "djinn/frames/cast-right-005.png",
+              "djinn/frames/cast-right-006.png",
+              "djinn/frames/cast-right-007.png",
+              "djinn/frames/cast-right-008.png",
+              "djinn/frames/cast-right-009.png",
+              "djinn/frames/cast-right-010.png",
+              "djinn/frames/cast-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            },
+            "releaseTimeMs": 500
+          }
+        },
+        "hurt": {
+          "left": {
+            "source": "djinn/source/hit-left.sif",
+            "frames": [
+              "djinn/frames/hit-left-000.png",
+              "djinn/frames/hit-left-001.png",
+              "djinn/frames/hit-left-002.png",
+              "djinn/frames/hit-left-003.png",
+              "djinn/frames/hit-left-004.png",
+              "djinn/frames/hit-left-005.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "djinn/source/hit-right.sif",
+            "frames": [
+              "djinn/frames/hit-right-000.png",
+              "djinn/frames/hit-right-001.png",
+              "djinn/frames/hit-right-002.png",
+              "djinn/frames/hit-right-003.png",
+              "djinn/frames/hit-right-004.png",
+              "djinn/frames/hit-right-005.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "ko": {
+          "left": {
+            "source": "djinn/source/defeated-left.sif",
+            "frames": [
+              "djinn/frames/defeated-left-000.png",
+              "djinn/frames/defeated-left-001.png",
+              "djinn/frames/defeated-left-002.png",
+              "djinn/frames/defeated-left-003.png",
+              "djinn/frames/defeated-left-004.png",
+              "djinn/frames/defeated-left-005.png",
+              "djinn/frames/defeated-left-006.png",
+              "djinn/frames/defeated-left-007.png",
+              "djinn/frames/defeated-left-008.png",
+              "djinn/frames/defeated-left-009.png",
+              "djinn/frames/defeated-left-010.png",
+              "djinn/frames/defeated-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 192,
+              "height": 192,
+              "referenceHeight": 128
+            },
+            "footOrigin": {
+              "x": 96,
+              "y": 157
+            }
+          },
+          "right": {
+            "source": "djinn/source/defeated-right.sif",
+            "frames": [
+              "djinn/frames/defeated-right-000.png",
+              "djinn/frames/defeated-right-001.png",
+              "djinn/frames/defeated-right-002.png",
+              "djinn/frames/defeated-right-003.png",
+              "djinn/frames/defeated-right-004.png",
+              "djinn/frames/defeated-right-005.png",
+              "djinn/frames/defeated-right-006.png",
+              "djinn/frames/defeated-right-007.png",
+              "djinn/frames/defeated-right-008.png",
+              "djinn/frames/defeated-right-009.png",
+              "djinn/frames/defeated-right-010.png",
+              "djinn/frames/defeated-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 192,
+              "height": 192,
+              "referenceHeight": 128
+            },
+            "footOrigin": {
+              "x": 96,
+              "y": 157
+            }
+          }
+        },
+        "spawn": {
+          "left": {
+            "source": "djinn/source/spawn-left.sif",
+            "frames": [
+              "djinn/frames/spawn-left-000.png",
+              "djinn/frames/spawn-left-001.png",
+              "djinn/frames/spawn-left-002.png",
+              "djinn/frames/spawn-left-003.png",
+              "djinn/frames/spawn-left-004.png",
+              "djinn/frames/spawn-left-005.png",
+              "djinn/frames/spawn-left-006.png",
+              "djinn/frames/spawn-left-007.png",
+              "djinn/frames/spawn-left-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "djinn/source/spawn-right.sif",
+            "frames": [
+              "djinn/frames/spawn-right-000.png",
+              "djinn/frames/spawn-right-001.png",
+              "djinn/frames/spawn-right-002.png",
+              "djinn/frames/spawn-right-003.png",
+              "djinn/frames/spawn-right-004.png",
+              "djinn/frames/spawn-right-005.png",
+              "djinn/frames/spawn-right-006.png",
+              "djinn/frames/spawn-right-007.png",
+              "djinn/frames/spawn-right-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        }
+      }
+    },
+    "highorc": {
+      "sourceFacing": "left",
+      "oppositeFacing": "mirrored-source; asymmetric costume reverses sides",
+      "clips": {
+        "idle": {
+          "left": {
+            "source": "highorc/source/idle-left.sif",
+            "frames": [
+              "highorc/frames/idle-left-000.png",
+              "highorc/frames/idle-left-001.png",
+              "highorc/frames/idle-left-002.png",
+              "highorc/frames/idle-left-003.png",
+              "highorc/frames/idle-left-004.png",
+              "highorc/frames/idle-left-005.png",
+              "highorc/frames/idle-left-006.png",
+              "highorc/frames/idle-left-007.png",
+              "highorc/frames/idle-left-008.png",
+              "highorc/frames/idle-left-009.png",
+              "highorc/frames/idle-left-010.png",
+              "highorc/frames/idle-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "highorc/source/idle-right.sif",
+            "frames": [
+              "highorc/frames/idle-right-000.png",
+              "highorc/frames/idle-right-001.png",
+              "highorc/frames/idle-right-002.png",
+              "highorc/frames/idle-right-003.png",
+              "highorc/frames/idle-right-004.png",
+              "highorc/frames/idle-right-005.png",
+              "highorc/frames/idle-right-006.png",
+              "highorc/frames/idle-right-007.png",
+              "highorc/frames/idle-right-008.png",
+              "highorc/frames/idle-right-009.png",
+              "highorc/frames/idle-right-010.png",
+              "highorc/frames/idle-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "walk": {
+          "left": {
+            "source": "highorc/source/walk-left.sif",
+            "frames": [
+              "highorc/frames/walk-left-000.png",
+              "highorc/frames/walk-left-001.png",
+              "highorc/frames/walk-left-002.png",
+              "highorc/frames/walk-left-003.png",
+              "highorc/frames/walk-left-004.png",
+              "highorc/frames/walk-left-005.png",
+              "highorc/frames/walk-left-006.png",
+              "highorc/frames/walk-left-007.png",
+              "highorc/frames/walk-left-008.png",
+              "highorc/frames/walk-left-009.png",
+              "highorc/frames/walk-left-010.png",
+              "highorc/frames/walk-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "highorc/source/walk-right.sif",
+            "frames": [
+              "highorc/frames/walk-right-000.png",
+              "highorc/frames/walk-right-001.png",
+              "highorc/frames/walk-right-002.png",
+              "highorc/frames/walk-right-003.png",
+              "highorc/frames/walk-right-004.png",
+              "highorc/frames/walk-right-005.png",
+              "highorc/frames/walk-right-006.png",
+              "highorc/frames/walk-right-007.png",
+              "highorc/frames/walk-right-008.png",
+              "highorc/frames/walk-right-009.png",
+              "highorc/frames/walk-right-010.png",
+              "highorc/frames/walk-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": true,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "basic": {
+          "left": {
+            "source": "highorc/source/attack-left.sif",
+            "frames": [
+              "highorc/frames/attack-left-000.png",
+              "highorc/frames/attack-left-001.png",
+              "highorc/frames/attack-left-002.png",
+              "highorc/frames/attack-left-003.png",
+              "highorc/frames/attack-left-004.png",
+              "highorc/frames/attack-left-005.png",
+              "highorc/frames/attack-left-006.png",
+              "highorc/frames/attack-left-007.png",
+              "highorc/frames/attack-left-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            },
+            "impactTimeMs": 416.6666666666667
+          },
+          "right": {
+            "source": "highorc/source/attack-right.sif",
+            "frames": [
+              "highorc/frames/attack-right-000.png",
+              "highorc/frames/attack-right-001.png",
+              "highorc/frames/attack-right-002.png",
+              "highorc/frames/attack-right-003.png",
+              "highorc/frames/attack-right-004.png",
+              "highorc/frames/attack-right-005.png",
+              "highorc/frames/attack-right-006.png",
+              "highorc/frames/attack-right-007.png",
+              "highorc/frames/attack-right-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            },
+            "impactTimeMs": 416.6666666666667
+          }
+        },
+        "cast": {
+          "left": {
+            "source": "highorc/source/cast-left.sif",
+            "frames": [
+              "highorc/frames/cast-left-000.png",
+              "highorc/frames/cast-left-001.png",
+              "highorc/frames/cast-left-002.png",
+              "highorc/frames/cast-left-003.png",
+              "highorc/frames/cast-left-004.png",
+              "highorc/frames/cast-left-005.png",
+              "highorc/frames/cast-left-006.png",
+              "highorc/frames/cast-left-007.png",
+              "highorc/frames/cast-left-008.png",
+              "highorc/frames/cast-left-009.png",
+              "highorc/frames/cast-left-010.png",
+              "highorc/frames/cast-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            },
+            "releaseTimeMs": 500
+          },
+          "right": {
+            "source": "highorc/source/cast-right.sif",
+            "frames": [
+              "highorc/frames/cast-right-000.png",
+              "highorc/frames/cast-right-001.png",
+              "highorc/frames/cast-right-002.png",
+              "highorc/frames/cast-right-003.png",
+              "highorc/frames/cast-right-004.png",
+              "highorc/frames/cast-right-005.png",
+              "highorc/frames/cast-right-006.png",
+              "highorc/frames/cast-right-007.png",
+              "highorc/frames/cast-right-008.png",
+              "highorc/frames/cast-right-009.png",
+              "highorc/frames/cast-right-010.png",
+              "highorc/frames/cast-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            },
+            "releaseTimeMs": 500
+          }
+        },
+        "hurt": {
+          "left": {
+            "source": "highorc/source/hit-left.sif",
+            "frames": [
+              "highorc/frames/hit-left-000.png",
+              "highorc/frames/hit-left-001.png",
+              "highorc/frames/hit-left-002.png",
+              "highorc/frames/hit-left-003.png",
+              "highorc/frames/hit-left-004.png",
+              "highorc/frames/hit-left-005.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "highorc/source/hit-right.sif",
+            "frames": [
+              "highorc/frames/hit-right-000.png",
+              "highorc/frames/hit-right-001.png",
+              "highorc/frames/hit-right-002.png",
+              "highorc/frames/hit-right-003.png",
+              "highorc/frames/hit-right-004.png",
+              "highorc/frames/hit-right-005.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          }
+        },
+        "ko": {
+          "left": {
+            "source": "highorc/source/defeated-left.sif",
+            "frames": [
+              "highorc/frames/defeated-left-000.png",
+              "highorc/frames/defeated-left-001.png",
+              "highorc/frames/defeated-left-002.png",
+              "highorc/frames/defeated-left-003.png",
+              "highorc/frames/defeated-left-004.png",
+              "highorc/frames/defeated-left-005.png",
+              "highorc/frames/defeated-left-006.png",
+              "highorc/frames/defeated-left-007.png",
+              "highorc/frames/defeated-left-008.png",
+              "highorc/frames/defeated-left-009.png",
+              "highorc/frames/defeated-left-010.png",
+              "highorc/frames/defeated-left-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 192,
+              "height": 192,
+              "referenceHeight": 128
+            },
+            "footOrigin": {
+              "x": 96,
+              "y": 157
+            }
+          },
+          "right": {
+            "source": "highorc/source/defeated-right.sif",
+            "frames": [
+              "highorc/frames/defeated-right-000.png",
+              "highorc/frames/defeated-right-001.png",
+              "highorc/frames/defeated-right-002.png",
+              "highorc/frames/defeated-right-003.png",
+              "highorc/frames/defeated-right-004.png",
+              "highorc/frames/defeated-right-005.png",
+              "highorc/frames/defeated-right-006.png",
+              "highorc/frames/defeated-right-007.png",
+              "highorc/frames/defeated-right-008.png",
+              "highorc/frames/defeated-right-009.png",
+              "highorc/frames/defeated-right-010.png",
+              "highorc/frames/defeated-right-011.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 192,
+              "height": 192,
+              "referenceHeight": 128
+            },
+            "footOrigin": {
+              "x": 96,
+              "y": 157
+            }
+          }
+        },
+        "spawn": {
+          "left": {
+            "source": "highorc/source/spawn-left.sif",
+            "frames": [
+              "highorc/frames/spawn-left-000.png",
+              "highorc/frames/spawn-left-001.png",
+              "highorc/frames/spawn-left-002.png",
+              "highorc/frames/spawn-left-003.png",
+              "highorc/frames/spawn-left-004.png",
+              "highorc/frames/spawn-left-005.png",
+              "highorc/frames/spawn-left-006.png",
+              "highorc/frames/spawn-left-007.png",
+              "highorc/frames/spawn-left-008.png"
+            ],
+            "frameHoldMs": [
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333,
+              83.33333333333333
+            ],
+            "loop": false,
+            "canvas": {
+              "width": 128,
+              "height": 128
+            },
+            "footOrigin": {
+              "x": 64,
+              "y": 125
+            }
+          },
+          "right": {
+            "source": "highorc/source/spawn-right.sif",
+            "frames": [
+              "highorc/frames/spawn-right-000.png",
+              "highorc/frames/spawn-right-001.png",
+              "highorc/frames/spawn-right-002.png",
+              "highorc/frames/spawn-right-003.png",
+              "highorc/frames/spawn-right-004.png",
+              "highorc/frames/spawn-right-005.png",
+              "highorc/frames/spawn-right-006.png",
+              "highorc/frames/spawn-right-007.png",
+              "highorc/frames/spawn-right-008.png"
             ],
             "frameHoldMs": [
               83.33333333333333,

@@ -120,7 +120,7 @@ test('basic impact applies damage cut and barrier before HP damage', () => {
 test('basic impact uses the rules counter reaction and records KO rewards through onKO', () => {
   const counter = fixture({ enemyStatuses: [{ statusEffect: 'counter', magnitude: 0.5 }], damage: 20 });
   counter.run();
-  assert.equal(counter.hero.hp, 95);
+  assert.equal(counter.hero.hp, 98, 'a routine enemy counter is capped at 2% of 100 max HP in continuous combat');
 
   const lethal = fixture({ enemyHP: 20, damage: 20 });
   lethal.run();

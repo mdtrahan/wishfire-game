@@ -8,6 +8,15 @@ export const ENEMY_COMBAT_TIER_PROFILES = Object.freeze({
 
 export const ROUTINE_ENEMY_TEMPLATE = ENEMY_COMBAT_TIER_PROFILES.routine;
 
+const MAX_HOSTILE_HIT_FRACTION = Object.freeze({ fodder: 0.02, routine: 0.02, hard: 0.08, elite: 0.12, boss: 0.18 });
+
+export function capContinuousHostileHit(amount, targetMaxHP, enemyRow = {}) {
+  const damage = Math.max(0, Number(amount) || 0);
+  const maxHP = Number(targetMaxHP);
+  if (!Number.isFinite(maxHP) || maxHP <= 0) return damage;
+  return Math.min(damage, Math.max(1, Math.floor(maxHP * MAX_HOSTILE_HIT_FRACTION[enemyCombatTier(enemyRow)])));
+}
+
 const DURABILITY_BY_TIER = Object.freeze({
   fodder: { hp: 1.4, def: 8, res: 8 },
   routine: { hp: 1.3, def: 10, res: 8 },

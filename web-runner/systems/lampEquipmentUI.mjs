@@ -15,8 +15,9 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
  const fontMeasure=document.createElement('canvas').getContext('2d');
  const heroes=()=>Object.values(globals.HeroProgress?.heroes||{}).slice(0,4);
 
- const otherMenuOpen=()=>[...document.querySelectorAll('[role="dialog"]')].some(n=>n!==dialog&&n.getClientRects().length>0);
+ const otherMenuOpen=()=>[...document.querySelectorAll('[role="dialog"],[role="alertdialog"],dialog[open],[aria-modal="true"]')].some(n=>n!==dialog&&n.getClientRects().length>0);
  const context=()=>globals.ContinuousCombatStage||{region:1,stage:1};
+ const canConvey=(data=economy.data)=>!!(strip&&!strip.hidden&&!document.hidden&&!open&&!opening&&!isPaused()&&!otherMenuOpen()&&data&&lampStoredCount(data)<lampCapacity(data));
  const item=id=>economy.data?.items.find(i=>i.instanceId===id)||(economy.data?.lamp.reviewHold?.item.instanceId===id?economy.data.lamp.reviewHold.item:null);
  const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const atlas=(i,cls='',upgrade=false,labels=true)=>'<span class="lamp-art '+cls+'" style="--col:'+(i.art%3)+';--row:'+Math.floor(i.art/3)+';--gear-midpoint:var(--lamp-gear-midpoint-'+i.art+',50%)" aria-hidden="true">'+(labels?'<span class="lamp-level">Lv.'+i.level+'</span>':'')+(upgrade?'<span class="lamp-review-arrow"><span class="lamp-cp-direction up"></span></span>':'')+'</span>';
@@ -46,7 +47,9 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   helper=document.createElement('div');helper.className='lamp-idle-helper';helper.hidden=true;helper.setAttribute('aria-hidden','true');helper.innerHTML='<span></span><span></span><img src="assets/images/lamp/genie-pointer.png" alt="">';
   document.body.append(strip,modal,helper);
   for(const type of ['pointerdown','click','keydown','wheel'])document.addEventListener(type,resetHelper,{capture:true,passive:true});
-  document.addEventListener('visibilitychange',()=>{resetHelper();lastEmissionFrame=null;});
+  const freezeConveyor=()=>{lastEmissionFrame=null;creationActive=false;strip.dataset.conveyorPaused='true';void economy.setConveyorActive(false).catch(e=>{notice=e.message;lastKey='';});};
+  document.addEventListener('visibilitychange',()=>{resetHelper();if(document.hidden)freezeConveyor();else lastEmissionFrame=null;});
+  window.addEventListener('pagehide',freezeConveyor);
   strip.addEventListener('click',onClick);dialog.addEventListener('click',onClick);
   modal.addEventListener('click',e=>{if(e.target===modal&&!busy)close();});
   dialog.addEventListener('keydown',e=>{
@@ -67,7 +70,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   const kind=b.dataset.action,id=b.dataset.id;
   if(kind==='close')return close();
   if(kind==='inspect')return openCollection(id);
-  if(kind==='conveyor')return void action(async()=>{await economy.collect(id);acknowledgeConveyorItem(strip,id);setTimeout(()=>openCollection(id),0);});
+  if(kind==='conveyor'&&canConvey())return void action(async()=>{const result=await economy.collect(id,canConvey);if(result){render();acknowledgeConveyorItem(strip,id);setTimeout(()=>openCollection(id),0);}});
   if(kind==='disposal'){reviewDisposal();lastKey='';return render();}
   if(kind==='queue-disposal')return void action(async()=>{await economy.queueDisposal(selectedItem);selectedItem=null;selectedHero=null;disposalView=true;disposalPreview=economy.disposalPreview();});
   if(kind==='collect')return openCollection();
@@ -82,7 +85,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   if(kind==='speed-up')return void action(async()=>{const used=await economy.speedUp(Number(b.dataset.tier));notice=used+' speed-up ticket'+(used===1?'':'s')+' spent.';});
   if(kind==='dismantle')return void action(async()=>{const r=await economy.dismantle(disposalPreview);document.querySelectorAll('.lamp-party-exp').forEach(n=>n.remove());notice='';selectedItem=null;selectedHero=null;close();showDismantleReward(r);});
  }
- function reviewDisposal(){selectedItem=null;selectedHero=null;disposalView=true;disposalPreview=economy.disposalPreview();notice='';}
+ function reviewDisposal(){selectedItem=null;selectedHero=null;disposalPreview=economy.disposalPreview();notice='';disposalView=!!(disposalPreview.ids.length||economy.data.lamp.salvage.count);if(!disposalView)close();}
  function startEmission(){lastKey='';render();}
  function showDismantleReward(result){
   showRewardReceipt(canvas,{resource:'essence',amount:result.essence},'DISMANTLED',2000);position();
@@ -124,7 +127,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   if(!strip)return;const data=economy.data;if(!data){strip.innerHTML='<div class="lamp-status">'+escape(globals.LampStorageError||'Preparing the lamp…')+'</div>';return;}
   const l=data.lamp,roster=heroes(),reviewCandidates=conveyorReviewCandidates(data,roster);
   const remaining=l.upgradeEndsAt?Math.max(0,Math.ceil((l.upgradeEndsAt-economy.time())/1000)):0;
-  updateLampConveyor({strip,data,heroes:roster,now:economy.time(),tile,gearBounds,error:globals.LampStorageError});
+  updateLampConveyor({strip,data,heroes:roster,now:economy.time(),activeMs:economy.conveyorTime(),paused:!creationActive,tile,gearBounds,error:globals.LampStorageError});
   if(feedbacks.size&&open&&(autoTransitionAfterFeedback||closeRequested))return;
   if(selectedItem&&!reviewCandidates.some(c=>c.item.instanceId===selectedItem)){selectedItem=null;selectedHero=null;}
   const key=JSON.stringify([l.pending,l.discarded,l.salvage,l.sequence,data.gold,data.loadouts,l.capacityTier,l.upgradeStage,l.essence,l.upgradeEndsAt,l.speedUpTickets,open&&upgradeOpen?remaining:0,roster.map(h=>[h.currentLevel,h.currentEXP,h.EXPToNextLevel]),selectedItem,selectedHero,disposalView,l.reviewHold,l.disposalRequested,open,upgradeOpen,busy,notice,window.innerWidth,window.innerHeight,window.devicePixelRatio]);
@@ -221,27 +224,33 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   modal.style.setProperty('--boss-fallback-reserve',bossFallbackVisible?`${bossFallbackReservePx}px`:'0px');
  }
  return{
-  draw({layoutId='combat',phase='combat',bossFallbackVisible:showBossFallback=false,bossFallbackReservePx:reservePx=0}={}){init();bossFallbackVisible=showBossFallback===true;bossFallbackReservePx=Math.max(0,Number(reservePx)||0);modal.dataset.bossFallback=String(bossFallbackVisible);position();const visible=['combat','storyMock'].includes(layoutId)&&phase==='combat';strip.hidden=!visible;render();updateHelper();
+  draw({layoutId='combat',phase='combat',bossFallbackVisible:showBossFallback=false,bossFallbackReservePx:reservePx=0}={}){init();bossFallbackVisible=showBossFallback===true;bossFallbackReservePx=Math.max(0,Number(reservePx)||0);modal.dataset.bossFallback=String(bossFallbackVisible);position();const visible=['combat','storyMock'].includes(layoutId)&&phase==='combat';strip.hidden=!visible;
+   creationActive=canConvey();
+   void economy.setConveyorActive(creationActive).catch(e=>{notice=e.message;lastKey='';});
+   render();updateHelper();
    const data=economy.data,t=economy.time();
    // CSS reports arrivals; the controller requests an idempotent locked save.
    // Cache review never collects approaching equipment or acknowledges it in bulk.
-   if(visible&&!document.hidden&&!arrivalPending){
+   if(canConvey()&&!arrivalPending){
     const arrivals=[...strip.querySelectorAll('.lamp-conveyor-item')].filter(n=>n.dataset.arrived==='true'&&n.dataset.collectionAttempted!=='true');
     if(arrivals.length){
      for(const node of arrivals)node.dataset.collectionAttempted='true';
      arrivalPending=true;
-     void economy.collectAvailable(arrivals.map(n=>n.dataset.id))
-      .catch(e=>{notice=e.message;lastKey='';}).finally(()=>{arrivalPending=false,autoTransitionAfterFeedback=false;});
+     void economy.collectAvailable(arrivals.map(n=>n.dataset.id),canConvey)
+      .then(results=>{creationActive=canConvey();void economy.setConveyorActive(creationActive).catch(e=>{notice=e.message;});render();for(const result of results)if(result.saved&&!result.held)acknowledgeConveyorItem(strip,result.item.instanceId,{animate:true});})
+      .catch(e=>{notice=e.message;lastKey='';}).finally(()=>{for(const node of arrivals)if(node.dataset.collected!=='true')delete node.dataset.collectionAttempted;arrivalPending=false;});
     }
    }
-   // Capacity and inventory actions never gate emission; storage serializes collection.
-   creationActive=visible&&!document.hidden&&!open&&!opening&&!isPaused()&&!otherMenuOpen();
+   // Every modal and full cache freeze emission, movement, aging and capture together.
+   creationActive=canConvey();
    if(!creationActive){lastEmissionFrame=null;return;}
    if(lastEmissionFrame!==null)emissionElapsed+=Math.max(0,t-lastEmissionFrame);
    lastEmissionFrame=t;
+   const issuedActiveMs=data?.lamp.emissions?.at(-1)?.issuedActiveMs;
+   if(issuedActiveMs!==undefined)emissionElapsed=Math.max(0,economy.conveyorTime()-issuedActiveMs);
    if(data&&!emissionPending&&emissionElapsed>=LAMP_CONFIG.autoIntervalMs&&t-data.lamp.lastActivationAt>=LAMP_CONFIG.autoIntervalMs){
     emissionElapsed=0;emissionPending=true;
-    void reveal(()=>creationActive&&!open&&!opening&&!document.hidden&&!isPaused()&&!otherMenuOpen()?economy.tickConveyor(context(),()=>creationActive&&!open&&!opening&&!document.hidden&&!isPaused()&&!otherMenuOpen(),{deferCollection:true}):null)
+    void reveal(()=>canConvey()?economy.tickConveyor(context(),canConvey,{deferCollection:true}):null)
      .catch(e=>{notice=e.message;lastKey='';}).finally(()=>{emissionPending=false;});
    }
   },

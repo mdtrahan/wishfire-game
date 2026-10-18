@@ -1,0 +1,33 @@
+{
+  "actor": "djinn",
+  "bead": "ORKA-ah1",
+  "baseCommit": "670236ab",
+  "recipeCommit": "2ad525f6",
+  "creativeTool": "built-in image_gen",
+  "transparentBackground": true,
+  "nativeRenderer": "/opt/homebrew/bin/synfig 1.5.5 (installed 1.5.5_4)",
+  "referenceHashes": {
+    "web-runner/assets/images/enemy_sprite-djinn-000.png": "dfc83e1862eab327fba553dfb8c9d0cc960c459eeed065e7649080404debbc9d",
+    "web-runner/assets/images/Fara.png": "9cf39376dacb0913153c0d0a78518eedb2ce40744301a6e33bb510f301369f0e",
+    "web-runner/assets/images/lamp/genie-pointer.png": "7040e2a38c56bf7285bad2661c33e530beb233397bd87fa8eea85d0a7493776d"
+  },
+  "generationOutputs": [
+    "exec-b75600f8-7f2f-46d9-a1f8-e5578c51c65a.png",
+    "exec-a91cfe29-84a8-4297-9e72-c0e1067d4c8a.png"
+  ],
+  "identity": "Slim dark indigo biped, ivory horn, spiked head, pointed ears, red eyes, bare torso, gold neck jewelry and bracelets, gold bead belt, pale baggy trousers, dark bare feet, long thin belt cord and floating silver-blue orb. Orb inherits hand_near; belt_cord inherits pelvis.",
+  "paintingBrief": "Polished chibi anime/cel shading matching current Fara and blue genie hand. Transparent separated 4x4 atlas: head, complete torso, pelvis/belt, hanging waist cloth, far upper arm, far forearm, far hand, near upper arm, near forearm, near hand, far thigh, far shin/foot, near thigh, near shin/foot; Djinn final cells orb and cord, Marid final cells empty. Complete hidden shoulder/elbow/wrist/hip/knee anatomy and costume paint. No weapons or smoke body.",
+  "correctionBrief": "Preserve all cells; correct torso to smooth complete shoulder caps without attached arm cuffs/socket ends; remove duplicate head necklace, preserving full blue neck.",
+  "mechanicalProcessing": "rectangular crop and alpha trim via ImageMagick; parented native bone transformations; native rendering; Lanczos downsampling and neutral/contact layouts",
+  "rejectedMaster": "source/parts-left-v1.png",
+  "selectedMaster": "source/parts-left-v2.png",
+  "visualStatus": "builder-inspected static source; fresh critic pending",
+  "motionStatus": "not authored or certified",
+  "sourceRevision2": {
+    "basedOn": "96eb4f0f8ecca0de5c2918a5073a567047f52d17",
+    "freshCritic": "qa/rejected-source-r1/critic-verdict.md",
+    "repair": "Near hand mirrors mechanically to open outward; orb remains parented to hand_near with palm-local offset and hand-over-orb stacking. Belt cord remains pelvis-owned, with a 76px native length and narrow 24px width; its root stays at the visible belt edge.",
+    "newCreativePaint": false,
+    "status": "revised source frozen; fresh second critique pending"
+  }
+}

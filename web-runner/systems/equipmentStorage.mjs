@@ -1,15 +1,50 @@
-import {CONVEYOR_TRAVEL_MS,validateConveyorState,emitConveyorItem,collectConveyorItem,classifyConveyorCache,equipConveyorItem,planConveyorAutoEquip,queueConveyorDisposal,conveyorDisposalPreview,dismantleConveyorItems} from '../src/core/lampConveyor.mjs';
+import {CONVEYOR_TRAVEL_MS,conveyorItemAge,validateConveyorState,emitConveyorItem,collectConveyorItem,classifyConveyorCache,equipConveyorItem,planConveyorAutoEquip,queueConveyorDisposal,conveyorDisposalPreview,dismantleConveyorItems} from '../src/core/lampConveyor.mjs';
 import {equipmentStats} from '../src/core/equipment.mjs';
 import {markLampGuide,createLampEconomy,lampStoredCount,migrateLegacyEquipment,migrateDraftLamp,migrateFourStatLamp,migrateLampEconomy,lampCapacity,purchaseLampStage,upgradeLamp,completeLampUpgrade,speedUpLampUpgrade,LAMP_CONFIG,progressionOrdinal} from '../src/core/lampGear.mjs';
 import {refreshHeroStats,awardHeroEXP} from '../src/core/heroProgression.mjs';
+import {fillGearMaxHpGrowth} from '../src/core/heroSustainRules.mjs';
 import {computeCombatPower} from '../src/core/combatPower.mjs';
 export const EQUIPMENT_SAVE_KEY='wishfire.equipment-economy.v5';
+const CONVEYOR_CLOCK_KEY='wishfire.equipment-conveyor-clock.v1';
 const FOUR_STAT_HP_KEY='wishfire.equipment-economy.v4';
 const PREVIOUS_KEY='wishfire.equipment-economy.v3';
 const DRAFT_KEY='wishfire.equipment-economy.v2';
 const LEGACY_KEY='wishfire.equipment-economy.v1';
-export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=globalThis.navigator?.locks,now=Date.now,seed=()=>crypto.getRandomValues(new Uint32Array(1))[0],reportError=console.error,persistProgress=()=>{},onGearCollected=null}){
+export function createEquipmentStorage({globals,getActors=()=>[],storage,checkpointStorage,locks=globalThis.navigator?.locks,now=Date.now,seed=()=>crypto.getRandomValues(new Uint32Array(1))[0],reportError=console.error,persistProgress=()=>{},onGearCollected=null}){
  let record,appliedGold,loading,dirty=false,lastClock=0,classifiedHeroes;
+ let conveyorClock,conveyorFrame,conveyorOrigin,conveyorOriginWall,conveyorRunning=false;
+ // Session storage survives reload in this tab and never overwrites inventory.
+ try{checkpointStorage??=globalThis.sessionStorage;}catch{}
+ function restoredConveyorClock(lamp){
+  try{
+   const saved=JSON.parse(checkpointStorage?.getItem(CONVEYOR_CLOCK_KEY)||'null');
+   if(lamp.conveyorActiveMs!==undefined&&saved&&saved.seed===lamp.seed&&saved.sequence===lamp.sequence&&saved.lastActivationAt===lamp.lastActivationAt&&Number.isSafeInteger(saved.activeMs)&&saved.activeMs>=0)return Math.max(lamp.conveyorActiveMs??0,saved.activeMs);
+  }catch(error){reportError('Lamp conveyor checkpoint could not be read',error);}
+  return lamp.conveyorActiveMs;
+ }
+ function checkpointConveyorClock(){
+  const {seed,sequence,lastActivationAt}=record.lamp;
+  try{checkpointStorage?.setItem(CONVEYOR_CLOCK_KEY,JSON.stringify({seed,sequence,lastActivationAt,activeMs:conveyorClock}));}
+  catch(error){reportError('Lamp conveyor checkpoint could not be saved',error);}
+ }
+ function setConveyorActive(active){
+  if(!record)return Promise.resolve();
+  const t=time(),wasRunning=conveyorRunning,initializing=conveyorClock===undefined;
+  conveyorClock=Math.max(conveyorClock??restoredConveyorClock(record.lamp)??t,record.lamp.conveyorActiveMs??0);
+  if(initializing){conveyorOrigin=conveyorClock;conveyorOriginWall=t;}
+  if(wasRunning)conveyorClock+=Math.max(0,t-conveyorFrame);
+  conveyorFrame=t;conveyorRunning=active;
+  // Checkpoint active time through the pause event, including visibility/page exit.
+  if(initializing||wasRunning&&!active){checkpointConveyorClock();return transact();}
+  return Promise.resolve();
+ }
+ function saveConveyorClock(next){
+  if(conveyorClock===undefined)return;
+  next.lamp.conveyorActiveMs=Math.max(next.lamp.conveyorActiveMs??0,conveyorClock);
+  for(const emission of next.lamp.emissions||[]){
+   emission.issuedActiveMs??=Math.max(0,conveyorOrigin-Math.max(0,conveyorOriginWall-emission.issuedAt));
+  }
+ }
  const heroClassificationKey=()=>JSON.stringify(Object.values(globals.HeroProgress?.heroes||{}).slice(0,4).map(h=>[h.heroInstanceKey,h.currentLevel,h.baseStats,h.statGrowth]));
  globalThis.addEventListener?.('storage',e=>{if(e.key===EQUIPMENT_SAVE_KEY)dirty=true;});
  const time=()=>lastClock=Math.max(lastClock,now(),record?.lamp.lastActivationAt||0);
@@ -33,9 +68,12 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=g
   for(const hero of [...Object.values(globals.HeroProgress?.heroes||{}),...getActors().filter(a=>a.kind==='hero')]){
    const exp=record.partyEXP-(hero.lampEXPClaimed||0);
    if(exp>0){awardHeroEXP(hero,exp);hero.lampEXPClaimed=record.partyEXP;globals.HeroProgressDirty=true;}
-   const stats=equipmentStats(record.items,record.loadouts[hero.heroInstanceKey]);
+   const canonical=hero.baseHeroName;
+   const primary=hero.heroInstanceKey===canonical||hero.heroInstanceKey===`${canonical?.toLowerCase()}#1`;
+   const stats=equipmentStats(record.items,record.loadouts[hero.heroInstanceKey]??(primary?record.loadouts[canonical]:undefined));
    if(JSON.stringify(hero.equipmentStats||{})!==JSON.stringify(stats)){
-    hero.equipmentStats=stats;refreshHeroStats(hero);hero.hp=Math.min(hero.hp,hero.maxHP);globals.HeroProgressDirty=true;
+    const beforeMaxHp=hero.maxHP,beforeHp=hero.hp;
+    hero.equipmentStats=stats;refreshHeroStats(hero);hero.hp=fillGearMaxHpGrowth(beforeHp,beforeMaxHp,hero.maxHP);globals.HeroProgressDirty=true;
    }
    hero.combatPower=computeCombatPower(hero);
   }
@@ -51,7 +89,7 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=g
     if(receipts.has(id)){if(appliedGold!==undefined)delta-=amount;continue;}
     receipts.add(id);next.settledGoldRewards.push(id);if(appliedGold===undefined)delta+=amount;
    }
-   const t=time();completeLampUpgrade(next,t);
+   const t=time();saveConveyorClock(next);completeLampUpgrade(next,t);
    next.gold+=delta;
    const roster=Object.values(globals.HeroProgress?.heroes||{}).slice(0,4);
    classifyConveyorCache(next,roster);
@@ -89,7 +127,8 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=g
   return gearCollectionFlush;
  }
  return{
-  get data(){return record;},time,
+  get data(){return record;},time,setConveyorActive,
+  conveyorTime(){return Math.max(conveyorClock??record?.lamp.conveyorActiveMs??time(),record?.lamp.conveyorActiveMs??0);},
   sync(){if(loading)return loading;if(record&&classifiedHeroes===heroClassificationKey()&&Number(globals.goldTotal)===appliedGold&&!dirty&&!(record.lamp.upgradeEndsAt&&time()>=record.lamp.upgradeEndsAt)){apply(record);return flushGearCollections();}dirty=false;loading=transact().then(flushGearCollections).finally(()=>loading=null);return loading;},
   refresh(){dirty=true;return this.sync();},
   generate(context={}){return transact((next,t)=>{
@@ -97,7 +136,7 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=g
    queueGearCollection(next,receipt);
    return{...item,rewardEXP:receipt.exp};
   }).then(async result=>{await flushGearCollections();return result;});},
-  async collect(id){const result=await transact((next,t)=>{const collected=collectConveyorItem(next,id,t);queueGearCollection(next,collected);return collected;});await flushGearCollections();return result;},
+  async collect(id,canCollect=()=>true){const result=await transact((next,t)=>{if(!canCollect(next))return null;const collected=collectConveyorItem(next,id,t);queueGearCollection(next,collected);return collected;});await flushGearCollections();return result;},
   awardCombatEssence(receiptId,amount){
    const id=String(receiptId||'').slice(0,180),count=Math.max(0,Math.floor(Number(amount)||0));
    if(!id||!count)return Promise.resolve({applied:false,reason:'invalid_receipt'});
@@ -113,9 +152,10 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=g
    const id=String(receiptId||'').slice(0,180);if(!id)return false;
    const current=record||read();return Array.isArray(current.settledCombatEssenceRewards)&&current.settledCombatEssenceRewards.includes(id);
   },
-  collectAvailable(ids){return transact((next,t)=>[...new Set(ids)].flatMap(id=>{
+  collectAvailable(ids,canCollect=()=>true){return transact((next,t)=>[...new Set(ids)].flatMap(id=>{
+   if(!canCollect(next))return[];
    const emission=next.lamp.emissions?.find(e=>e.item.instanceId===id);
-   if(!emission||emission.collected||t-emission.issuedAt>=CONVEYOR_TRAVEL_MS)return[];
+   if(!emission||emission.collected||conveyorItemAge(next.lamp,emission,t)>=CONVEYOR_TRAVEL_MS)return[];
    const result=collectConveyorItem(next,id,t,{automatic:true});queueGearCollection(next,result);return[result];
   })).then(async result=>{await flushGearCollections();return result;});},
   queueDisposal(id){return transact(next=>queueConveyorDisposal(next,id));},
@@ -123,9 +163,11 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=g
   // Legacy combat-exit call remains a sync barrier, without a preference or toggle.
   stopAuto(){return this.sync();},
   tickConveyor(context={},canCreate=()=>true,{deferCollection=false}={}){return transact((next,t)=>{
-   if(!canCreate())return null;
+   if(!canCreate(next))return null;
    next.lamp.highestOrdinal=Math.max(next.lamp.highestOrdinal,progressionOrdinal(context));
    if(t-next.lamp.lastActivationAt<LAMP_CONFIG.autoIntervalMs)return null;
+   const previous=next.lamp.emissions?.at(-1);
+   if(previous?.issuedActiveMs!==undefined&&conveyorItemAge(next.lamp,previous,t)<LAMP_CONFIG.autoIntervalMs)return null;
    const item=emitConveyorItem(next,context,t),receipt=deferCollection?{exp:0}:collectConveyorItem(next,item.instanceId,t,{automatic:true});queueGearCollection(next,receipt);
    return{...item,rewardEXP:receipt.exp};
   }).then(async result=>{await flushGearCollections();return result;});},

@@ -11,7 +11,8 @@ export function realtimeCooldownSeconds(actor) {
   const bossInterval = String(actor?.enemyRole || '').toLowerCase() === 'boss'
     ? Number(actor?.attackPattern?.intervalSeconds) : 0;
   if (Number.isFinite(bossInterval) && bossInterval > 0) return bossInterval;
-  return actor?.attackDelivery === 'ranged' ? 5 : 1.6;
+  if (actor?.attackDelivery === 'ranged') return 5;
+  return ['fodder', 'routine'].includes(String(actor?.combatTier || '').toLowerCase()) ? 3.6 : 1.6;
 }
 
 const initialCooldownPhase = uid => (((Number(uid || 0) * 2654435761) >>> 0) / 0x100000000);

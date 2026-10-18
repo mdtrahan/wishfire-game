@@ -1,0 +1,498 @@
+{
+  "actor": "highorc",
+  "atlas": "repair-parts-v2.png + repair-hands-v3.png; original parts-left-v1.png retained",
+  "facing": "left",
+  "sourceFacing": "left",
+  "oppositeFacing": "explicit horizontal mirror; handedness reverses",
+  "status": "complete arm-source repair candidate; independent anatomy/motion envelope pending",
+  "parts": {
+    "head": {
+      "file": "head.png",
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 292,
+        "height": 377
+      },
+      "sourceDimensions": {
+        "width": 280,
+        "height": 338
+      },
+      "pivot": {
+        "x": 140.0,
+        "y": 290.68
+      },
+      "composition": {
+        "x": 123,
+        "y": 130,
+        "w": 116,
+        "h": 124,
+        "pivotX": 0.5,
+        "pivot": 0.86,
+        "parent": "body"
+      }
+    },
+    "torso": {
+      "file": "torso.png",
+      "crop": {
+        "x": 292,
+        "y": 0,
+        "width": 292,
+        "height": 377
+      },
+      "sourceDimensions": {
+        "width": 462,
+        "height": 505
+      },
+      "pivot": {
+        "x": 231.0,
+        "y": 60.599999999999994
+      },
+      "composition": {
+        "x": 128,
+        "y": 131,
+        "w": 109,
+        "h": 82,
+        "pivotX": 0.5,
+        "pivot": 0.12,
+        "parent": "body"
+      },
+      "replacementSource": {
+        "atlas": "repair-parts-v2.png",
+        "crop": {
+          "x": 0,
+          "y": 0,
+          "width": 520,
+          "height": 540
+        },
+        "method": "mechanical rectangular crop/transparent trim; generated paint preserved"
+      }
+    },
+    "pelvis": {
+      "file": "pelvis.png",
+      "crop": {
+        "x": 584,
+        "y": 0,
+        "width": 249,
+        "height": 377
+      },
+      "sourceDimensions": {
+        "width": 246,
+        "height": 354
+      },
+      "pivot": {
+        "x": 123.0,
+        "y": 42.48
+      },
+      "composition": {
+        "x": 128,
+        "y": 180,
+        "w": 98,
+        "h": 66,
+        "pivotX": 0.5,
+        "pivot": 0.12,
+        "parent": "body"
+      }
+    },
+    "coat_back": {
+      "file": "coat_back.png",
+      "crop": {
+        "x": 833,
+        "y": 0,
+        "width": 284,
+        "height": 377
+      },
+      "sourceDimensions": {
+        "width": 265,
+        "height": 292
+      },
+      "pivot": {
+        "x": 132.5,
+        "y": 35.04
+      },
+      "composition": {
+        "x": 140,
+        "y": 126,
+        "w": 100,
+        "h": 100,
+        "pivotX": 0.5,
+        "pivot": 0.12,
+        "parent": "body"
+      }
+    },
+    "upper_arm_far": {
+      "file": "upper_arm_far.png",
+      "crop": {
+        "x": 0,
+        "y": 377,
+        "width": 292,
+        "height": 260
+      },
+      "sourceDimensions": {
+        "width": 283,
+        "height": 471
+      },
+      "pivot": {
+        "x": 141.5,
+        "y": 84.78
+      },
+      "composition": {
+        "x": 170,
+        "y": 131,
+        "w": 49,
+        "h": 56,
+        "pivotX": 0.5,
+        "pivot": 0.18,
+        "parent": "body"
+      },
+      "replacementSource": {
+        "atlas": "repair-parts-v2.png",
+        "crop": {
+          "x": 520,
+          "y": 0,
+          "width": 300,
+          "height": 540
+        },
+        "method": "mechanical rectangular crop/transparent trim; generated paint preserved"
+      }
+    },
+    "forearm_far": {
+      "file": "forearm_far.png",
+      "crop": {
+        "x": 292,
+        "y": 377,
+        "width": 292,
+        "height": 260
+      },
+      "sourceDimensions": {
+        "width": 270,
+        "height": 331
+      },
+      "pivot": {
+        "x": 135.0,
+        "y": 66.2
+      },
+      "composition": {
+        "x": 173,
+        "y": 167,
+        "w": 35,
+        "h": 40,
+        "pivotX": 0.5,
+        "pivot": 0.2,
+        "parent": "upper_arm_far"
+      },
+      "replacementSource": {
+        "atlas": "repair-parts-v2.png",
+        "crop": {
+          "x": 1160,
+          "y": 205,
+          "width": 376,
+          "height": 335
+        },
+        "method": "mechanical rectangular crop/transparent trim; generated paint preserved"
+      }
+    },
+    "hand_far": {
+      "file": "hand_far.png",
+      "crop": {
+        "x": 584,
+        "y": 377,
+        "width": 249,
+        "height": 260
+      },
+      "sourceDimensions": {
+        "width": 699,
+        "height": 987
+      },
+      "pivot": {
+        "x": 349.5,
+        "y": 197.4
+      },
+      "composition": {
+        "x": 176,
+        "y": 186,
+        "w": 28,
+        "h": 30,
+        "pivotX": 0.5,
+        "pivot": 0.2,
+        "parent": "forearm_far"
+      },
+      "replacementSource": {
+        "atlas": "repair-hands-v3.png",
+        "crop": {
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 1024
+        },
+        "method": "mechanical rectangular crop/transparent trim; full solid flesh wrist"
+      }
+    },
+    "upper_arm_near": {
+      "file": "upper_arm_near.png",
+      "crop": {
+        "x": 833,
+        "y": 377,
+        "width": 284,
+        "height": 260
+      },
+      "sourceDimensions": {
+        "width": 269,
+        "height": 448
+      },
+      "pivot": {
+        "x": 134.5,
+        "y": 80.64
+      },
+      "composition": {
+        "x": 82,
+        "y": 131,
+        "w": 49,
+        "h": 56,
+        "pivotX": 0.5,
+        "pivot": 0.18,
+        "parent": "body"
+      },
+      "replacementSource": {
+        "atlas": "repair-parts-v2.png",
+        "crop": {
+          "x": 820,
+          "y": 0,
+          "width": 340,
+          "height": 540
+        },
+        "method": "mechanical rectangular crop/transparent trim; generated paint preserved"
+      }
+    },
+    "forearm_near": {
+      "file": "forearm_near.png",
+      "crop": {
+        "x": 0,
+        "y": 637,
+        "width": 292,
+        "height": 303
+      },
+      "sourceDimensions": {
+        "width": 321,
+        "height": 364
+      },
+      "pivot": {
+        "x": 160.5,
+        "y": 72.8
+      },
+      "composition": {
+        "x": 78,
+        "y": 167,
+        "w": 35,
+        "h": 40,
+        "pivotX": 0.5,
+        "pivot": 0.2,
+        "parent": "upper_arm_near"
+      },
+      "replacementSource": {
+        "atlas": "repair-parts-v2.png",
+        "crop": {
+          "x": 0,
+          "y": 660,
+          "width": 450,
+          "height": 364
+        },
+        "method": "mechanical rectangular crop/transparent trim; generated paint preserved"
+      }
+    },
+    "hand_near": {
+      "file": "hand_near.png",
+      "crop": {
+        "x": 292,
+        "y": 637,
+        "width": 292,
+        "height": 303
+      },
+      "sourceDimensions": {
+        "width": 700,
+        "height": 941
+      },
+      "pivot": {
+        "x": 350.0,
+        "y": 188.20000000000002
+      },
+      "composition": {
+        "x": 73,
+        "y": 186,
+        "w": 29,
+        "h": 30,
+        "pivotX": 0.5,
+        "pivot": 0.2,
+        "parent": "forearm_near"
+      },
+      "replacementSource": {
+        "atlas": "repair-hands-v3.png",
+        "crop": {
+          "x": 768,
+          "y": 0,
+          "width": 768,
+          "height": 1024
+        },
+        "method": "mechanical rectangular crop/transparent trim; full solid flesh wrist"
+      }
+    },
+    "thigh_far": {
+      "file": "thigh_far.png",
+      "crop": {
+        "x": 584,
+        "y": 637,
+        "width": 249,
+        "height": 260
+      },
+      "sourceDimensions": {
+        "width": 240,
+        "height": 260
+      },
+      "pivot": {
+        "x": 120.0,
+        "y": 31.2
+      },
+      "composition": {
+        "x": 148,
+        "y": 201,
+        "w": 43,
+        "h": 38,
+        "pivotX": 0.5,
+        "pivot": 0.12,
+        "parent": "body"
+      }
+    },
+    "shin_boot_far": {
+      "file": "shin_boot_far.png",
+      "crop": {
+        "x": 833,
+        "y": 637,
+        "width": 284,
+        "height": 303
+      },
+      "sourceDimensions": {
+        "width": 258,
+        "height": 303
+      },
+      "pivot": {
+        "x": 129.0,
+        "y": 36.36
+      },
+      "composition": {
+        "x": 149,
+        "y": 225,
+        "w": 45,
+        "h": 28,
+        "pivotX": 0.5,
+        "pivot": 0.12,
+        "parent": "thigh_far"
+      }
+    },
+    "thigh_near": {
+      "file": "thigh_near.png",
+      "crop": {
+        "x": 0,
+        "y": 940,
+        "width": 292,
+        "height": 468
+      },
+      "sourceDimensions": {
+        "width": 292,
+        "height": 465
+      },
+      "pivot": {
+        "x": 146.0,
+        "y": 55.8
+      },
+      "composition": {
+        "x": 108,
+        "y": 201,
+        "w": 43,
+        "h": 38,
+        "pivotX": 0.5,
+        "pivot": 0.12,
+        "parent": "body"
+      }
+    },
+    "shin_boot_near": {
+      "file": "shin_boot_near.png",
+      "crop": {
+        "x": 292,
+        "y": 940,
+        "width": 292,
+        "height": 468
+      },
+      "sourceDimensions": {
+        "width": 291,
+        "height": 389
+      },
+      "pivot": {
+        "x": 145.5,
+        "y": 46.68
+      },
+      "composition": {
+        "x": 107,
+        "y": 225,
+        "w": 45,
+        "h": 28,
+        "pivotX": 0.5,
+        "pivot": 0.12,
+        "parent": "thigh_near"
+      }
+    },
+    "sword": {
+      "file": "sword.png",
+      "crop": {
+        "x": 604,
+        "y": 897,
+        "width": 179,
+        "height": 511
+      },
+      "sourceDimensions": {
+        "width": 179,
+        "height": 487
+      },
+      "pivot": {
+        "x": 89.5,
+        "y": 418.82
+      },
+      "composition": {
+        "x": 73,
+        "y": 202,
+        "w": 37,
+        "h": 169,
+        "pivotX": 0.5,
+        "pivot": 0.86,
+        "parent": "hand_near"
+      }
+    }
+  },
+  "nativeSourceModes": {
+    "neutral": {
+      "left": "neutral-left.sif",
+      "right": "neutral-right.sif",
+      "parts": "parts.json"
+    },
+    "movement": {
+      "left": "movement-left.sif",
+      "right": "movement-right.sif",
+      "parts": "parts.json",
+      "restAngles": {
+        "upper_arm_near": 0,
+        "upper_arm_far": 0,
+        "forearm_near": 0,
+        "forearm_far": 0,
+        "hand_near": 0,
+        "hand_far": 0
+      },
+      "leadHand": "near",
+      "authorCanvas": {
+        "width": 256,
+        "height": 256,
+        "footX": 128,
+        "footY": 250
+      },
+      "poseControls": "movement-controls.json; actor-local native QA envelope; future motion owner adopts reviewed controls"
+    }
+  }
+}

@@ -644,3 +644,14 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - ORKA-bnw: Menu CP must read the same canonical hero progression as equipment comparisons. Preferring a paused combat actor can conceal a committed upgrade until a later equipment sync; test the next render with an intentionally stale actor and verify manual/Auto receipts match saved and live CP.
 
 - A live Bead does not prove current source identity. Verify origin, main ancestry and active Bag renderer before editing or serving. Exported snapshots can reuse Bead IDs while having unrelated histories; migrate only requested features and their dependencies into project main. Port Equip fixes into the conveyor owner rather than restoring a legacy strip.
+
+- Puppet loading: retain the displayed image across asynchronous transitions, and let the initial request complete before chasing state/facing changes. Zero post-ready misses alone can hide actors that never became ready; validate readiness for every required UID plus encoded video frame counts and crop containment.
+- In continuous boss combat, a zero-HP boss may wait behind a death visual while every Hero is also at zero HP. Defer party-wipe routing until the boss clear barrier drains, then settle the earned win once; test this at the boss deadline as well as before it.
+
+- Conveyor pause fixes must share a time coordinate across emission cadence, rendering and expiry. Measure spacing at the rendered artwork edges because tile bounds can exclude enlarged art. Persist gate transitions through the save lock. Browser teardown can abort asynchronous exit transactions, so checkpoint same-tab clock metadata synchronously in session storage, match it to emission history, and keep inventory writes locked.
+
+- Recheck destructive-review candidates after an equip transaction and its feedback complete. Zero remaining gear and zero saved salvage should close review, preserving focus, instead of rendering an empty disabled confirmation.
+
+- Bag receipt animation must follow a successful durable arrival, never CSS animation completion. Share modal/capacity gates across active time, motion, emissions and save-lock callbacks; a frozen visual with a live capture queue still misrepresents inventory.
+
+- When a Canvas HUD moves vertically, inspect its DOM fallback and alternate ready/retry states. Anchor both combat paths to the same revision and fail closed outside their owning battle screen. Readiness alone cannot grant menu visibility; test resource separation, modal hiding and real navigation in the rendered retry state.

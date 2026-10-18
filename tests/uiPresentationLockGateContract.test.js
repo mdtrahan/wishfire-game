@@ -17,6 +17,11 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
   for (const requiredEvidence of [
     'quests-banner-text-scale',
     'combat-entry-landmark',
+    'boss-summon-clears-resources',
+    'boss-summon-combat-y',
+    'boss-summon-contained',
+    'boss-summon-hidden-in-modal',
+    'boss-summon-combat-only',
     'actual-viewport-metrics',
     'page-horizontal-overflow',
     'canvas-contained-reference-aspect',
@@ -99,6 +104,8 @@ test('pre-commit routes staged UI-owner changes through the full UI lock', () =>
   assert.match(hook, /UI_LOCK_OWNER_PATTERN=/);
   assert.match(hook, /git diff --cached --name-only --diff-filter=ACMRD/);
   assert.match(hook, /npm run test:ui-lock/);
+  const ownerPattern = new RegExp(hook.match(/UI_LOCK_OWNER_PATTERN='([^']+)'/)[1]);
+  assert.ok(ownerPattern.test('web-runner/systems/renderCombatBossControl.mjs'), 'boss renderer changes must run the rendered lock');
   assert.match(hook, /web-runner\/systems\/renderRuntime\.js/);
   assert.match(hook, /web-runner\/systems\/devToolingRuntime\.js/);
   assert.match(hook, /web-runner\/systems\/combatPresentationScale\.mjs/);

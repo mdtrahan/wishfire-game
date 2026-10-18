@@ -1,8 +1,10 @@
 import { resetRealtimeSkillAttempt } from '../src/core/realtimeSkillState.mjs';
+import { resetActorPuppetDefeats } from './actorPuppetDefeats.mjs';
 // Called only when creating a battle. Resurrection resumes the existing instance.
 // A continuing adventure carries its chosen buffs into its next battle; terminal
 // callers use the default and clear them with the rest of the session state.
 export function resetCombatSessionConditions(globals, gameState, entities = []) {
+  resetActorPuppetDefeats(globals);
   resetRealtimeSkillAttempt(globals,entities);
   for (const key of [
     'AstralFlowAmpPoints', 'AstralFlowAmpReady', 'AstralFlowWallet', 'FlowOrbs',

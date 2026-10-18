@@ -1,0 +1,3 @@
+Scripts/functionBank.js:ApplyDamageToTarget,SpawnEnemy,__MODULE__
+web-runner/app.js:checkMainRuntimeCombatOutcome,tick
+web-runner/modules/functionBank.js:ApplyDamageToTarget,TickRealtimeHeroBasics,basicTargetForHero,fireBasic,SpawnEnemy,__MODULE__

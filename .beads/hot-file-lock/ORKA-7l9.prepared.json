@@ -1,0 +1,31 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "ApplyDamageToTarget",
+        "SpawnEnemy",
+        "__MODULE__"
+      ],
+      "staged_blob": "0e8ba0adf432545c2865a127759b024e2a4cef8d"
+    },
+    "web-runner/app.js": {
+      "functions": [
+        "checkMainRuntimeCombatOutcome",
+        "tick"
+      ],
+      "staged_blob": "656f3f4c9fb92d2177ec481f1af0fa0ca7be9d1e"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "ApplyDamageToTarget",
+        "TickRealtimeHeroBasics",
+        "basicTargetForHero",
+        "fireBasic",
+        "SpawnEnemy",
+        "__MODULE__"
+      ],
+      "staged_blob": "aeaef751c2d291eab4fc91c91ddc454289bfc102"
+    }
+  },
+  "issue_id": "ORKA-7l9"
+}

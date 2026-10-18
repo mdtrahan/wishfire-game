@@ -17,6 +17,23 @@ function effectiveRendererBody(source = rendererSource) {
   return new Function(`${helper}; return assembleCombatRenderBody;`)()(rawBody);
 }
 
+
+test('combat actors never draw static artwork when a puppet is unavailable', () => {
+  const body = effectiveRendererBody();
+  assert.doesNotMatch(body, /drawCombatActorSprite\(/);
+  for (const kind of ['Hero', 'Enemy']) {
+    const declaration = body.match(new RegExp(`const draw${kind}Sprite = \\(\\) =>[^;]+;`))?.[0];
+    assert.ok(declaration, `${kind} puppet draw is present`);
+    let draws = 0;
+    const invoke = new Function('puppet', 'drawActorPuppetFrame', 'ctx', 'pos', 'footY', 'scaledH', 'enemyH', 'hero', 'enemy', 'g', `${declaration}; return draw${kind}Sprite();`);
+    const args = [() => { draws++; }, {}, { x: 10, y: 20 }, 20, 56, 40, { uid: 1 }, { uid: 2 }, { time: 0 }];
+    invoke(null, ...args);
+    assert.equal(draws, 0, 'missing puppet cannot select static art');
+    invoke({ frame: {} }, ...args);
+    assert.equal(draws, 1, 'ready puppet uses the same draw path');
+  }
+});
+
 function fixture(action = {}, globalOverrides = {}) {
   const enemy = { uid: 9, kind: 'enemy', hp: 50, maxHP: 50, x: 200, y: 180, originX: 200, originY: 180, attackType: 'melee' };
   const hero = { uid: 1, kind: 'hero', hp: 100, maxHP: 100, x: 100, y: 180, heroIndex: 0 };
@@ -139,7 +156,7 @@ test('renderer contains no enemy action advancement or enemy damage application'
 test('assembled renderer paints each actor with its health bar in the shared foot-depth queue', () => {
   const body = effectiveRendererBody();
   assert.match(body, /const actorPaintQueue = \[\];[\s\S]*const actorFrontOverlayQueue = \[\];/);
-  assert.match(body, /const enemyFootY = puppet \? Number\(pos\.y\) : Number\(drawY \+ enemyH\)/);
+  assert.match(body, /const enemyFootY = Number\(pos\.y\)/);
   assert.match(body, /actorPaintQueue\.push\(\{ footY: enemyFootY, uid: Number\(enemy\.uid/);
   assert.match(body, /const paintEnemyActor = \(\) => \{\s*ctx\.save\(\);\s*ctx\.globalAlpha \*= enemyFadeAlpha;[\s\S]*?ctx\.restore\(\);\s*\};/);
   assert.match(body, /actorPaintQueue\.push\(\{ footY: Number\(footY\), uid: Number\(hero\?\.uid/);
@@ -167,14 +184,14 @@ test('hero recovery fade multiplies both queued sprite and HP-bar opacity', () =
   assert.match(effectiveRendererBody(), /paintWithActivationAlpha\(ctx, heroBarFadeAlpha/);
 });
 
-test('assembled enemy queue carries loaded-puppet and fallback foot anchors into bar placement', () => {
+test('assembled enemy queue anchors puppet and loading bars to the same feet', () => {
   const body = effectiveRendererBody();
   const get = (pattern, label) => {
     const match = body.match(pattern);
     assert.ok(match, `assembled renderer retains ${label}`);
     return match[0];
   };
-  const enemyFoot = get(/const enemyFootY = puppet \? Number\(pos\.y\) : Number\(drawY \+ enemyH\);/, 'enemy foot selection');
+  const enemyFoot = get(/const enemyFootY = Number\(pos\.y\);/, 'enemy foot selection');
   const enemyFade = get(/const enemyFadeAlpha = getEnemyActivationFadeAlpha\(enemy, Number\(g\.time \|\| 0\)\);/, 'activation fade capture');
   const actorPush = get(/actorPaintQueue\.push\(\{ footY: enemyFootY, uid: Number\(enemy\.uid \|\| 0\), paint: paintEnemyActor \}\);/, 'actor queue insertion');
   const barPush = get(/barQueue\.push\(\{ enemy, pos, enemyH, origH, enemyW, enemyFootY, enemyFadeAlpha \}\);/, 'bar queue insertion');
@@ -206,7 +223,7 @@ test('assembled enemy queue carries loaded-puppet and fallback foot anchors into
     return result[0];
   `);
   assert.deepEqual(run({ frame: {} }, 100, 40, 60, () => 0.5), { actorFootY: 100, barY: 104, enemyFadeAlpha: 0.5 });
-  assert.deepEqual(run(null, 100, 70, 60, () => 0.5), { actorFootY: 130, barY: 134, enemyFadeAlpha: 0.5 });
+  assert.deepEqual(run(null, 100, 70, 60, () => 0.5), { actorFootY: 100, barY: 104, enemyFadeAlpha: 0.5 });
   assert.deepEqual(run(null, 100, 40, 60, () => 0.5), { actorFootY: 100, barY: 104, enemyFadeAlpha: 0.5 });
 });
 
@@ -228,9 +245,9 @@ test('enemy activation fade follows active combat time and resets only for a new
   assert.equal(fadeAlpha(regularSpawn, 30.35), 1);
 });
 
-test('assembled enemy sprite, puppet, nested overlays and fallback respect activation alpha', () => {
+test('assembled enemy puppet and nested overlays respect activation alpha', () => {
   const body = effectiveRendererBody();
-  const paintStart = body.indexOf('const puppet = sprite ? actorPuppetPresentation?.frameFor(enemy');
+  const paintStart = body.indexOf('const puppet = actorPuppetPresentation?.frameFor(enemy');
   const paintEnd = body.indexOf('\n\n        // Queue enemy HP bars', paintStart);
   assert.ok(paintStart >= 0 && paintEnd > paintStart, 'assembled actor paint closure is present');
   const paintChunk = body.slice(paintStart, paintEnd);
@@ -270,7 +287,7 @@ test('assembled enemy sprite, puppet, nested overlays and fallback respect activ
 
   for (const fade of [0, 0.5, 1]) {
     const multiplier = 0.8 * fade;
-    assert.deepEqual(run(null, fade), [multiplier, multiplier * 0.35, multiplier * 0.25, multiplier]);
+    assert.deepEqual(run(null, fade), [multiplier, multiplier * 0.5, multiplier * 0.25]);
     assert.deepEqual(run({}, fade), [multiplier, multiplier * 0.5, multiplier * 0.25]);
   }
 });

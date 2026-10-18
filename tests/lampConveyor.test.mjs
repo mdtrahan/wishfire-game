@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createEquipmentStorage,EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
 import {createHeroProgressStore} from '../web-runner/src/core/heroProgression.mjs';
 import {createLampEconomy,generateLampItem,lampStoredCount,lampCapacity,lampItemCPGain,salvageValue} from '../web-runner/src/core/lampGear.mjs';
-import {CONVEYOR_TRAVEL_MS,validateConveyorState,conveyorReviewCandidates,planConveyorAutoEquip} from '../web-runner/src/core/lampConveyor.mjs';
+import {CONVEYOR_TRAVEL_MS,conveyorItemAge,validateConveyorState,conveyorReviewCandidates,planConveyorAutoEquip} from '../web-runner/src/core/lampConveyor.mjs';
 
 function fixture({full=false,equipped=true}={}){
  const heroes=createHeroProgressStore();for(const h of Object.values(heroes.heroes))h.currentLevel=5;
@@ -16,9 +16,9 @@ function fixture({full=false,equipped=true}={}){
  const values=new Map([[EQUIPMENT_SAVE_KEY,JSON.stringify(initial)]]);let clock=100000,fail=false,chain=Promise.resolve();
  const storage={getItem:k=>values.get(k)??null,setItem(k,v){if(fail)throw Error('disk full');values.set(k,v);}};
  const locks={request:(key,fn)=>{const result=chain.then(fn);chain=result.catch(()=>{});return result;}};
- function tab(){const globals={goldTotal:0,HeroProgress:structuredClone(heroes)};return{globals,store:createEquipmentStorage({globals,storage,locks,now:()=>clock,reportError:()=>{}})};}
- const {store,globals}=tab();
- return{store,globals,storage,values,tab,advance:n=>clock+=n,fail:v=>fail=v,stats};
+ function tab(checkpointValues=new Map()){const checkpointStorage={getItem:k=>checkpointValues.get(k)??null,setItem:(k,v)=>checkpointValues.set(k,v)};const globals={goldTotal:0,HeroProgress:structuredClone(heroes)};return{globals,checkpointValues,reload:()=>tab(checkpointValues),store:createEquipmentStorage({globals,storage,checkpointStorage,locks,now:()=>clock,reportError:()=>{}})};}
+ const active=tab(),{store,globals}=active;
+ return{store,globals,storage,values,tab,reload:active.reload,checkpointValues:active.checkpointValues,advance:n=>clock+=n,fail:v=>fail=v,stats};
 }
 function invariant(data){
  validateConveyorState(data);assert.ok(lampStoredCount(data)<=lampCapacity(data));
@@ -162,4 +162,78 @@ test('automatic arrival respects latest capacity, expiration and failed atomic s
  f.fail(false);await f.store.collectAvailable([first.instanceId]);assert.equal(lampStoredCount(f.store.data),1);
  f.advance(5000);const later=await f.store.tickConveyor({},()=>true,{deferCollection:true});f.advance(CONVEYOR_TRAVEL_MS);
  assert.deepEqual(await f.store.collectAvailable([later.instanceId,'missing']),[]);assert.equal(lampStoredCount(f.store.data),1);invariant(f.store.data);
+});
+
+
+test('active conveyor time preserves gaps and collection through long pauses and reload',async()=>{
+ const f=fixture();await f.store.sync();await f.store.setConveyorActive(true);
+ const first=await f.store.tickConveyor({},()=>true,{deferCollection:true});
+ f.advance(5000);await f.store.setConveyorActive(true);
+ const second=await f.store.tickConveyor({},()=>true,{deferCollection:true});
+ const ages=()=>f.store.data.lamp.emissions.map(e=>conveyorItemAge(f.store.data.lamp,e,f.store.time(),f.store.conveyorTime()));
+ assert.deepEqual(ages(),[5000,0]);
+ await f.store.setConveyorActive(false);const checkpoint=f.store.conveyorTime();
+ f.advance(60000);await f.store.setConveyorActive(false);
+ assert.deepEqual(ages(),[5000,0]);
+ const other=f.tab();await other.store.sync();await other.store.setConveyorActive(true);
+ assert.equal(other.store.conveyorTime(),checkpoint,'reload resumes the saved active coordinate');
+ assert.equal(other.store.data.lamp.emissions[1].issuedActiveMs-other.store.data.lamp.emissions[0].issuedActiveMs,5000);
+ const collected=await other.store.collectAvailable([first.instanceId,second.instanceId]);
+ assert.equal(collected.filter(r=>r.saved).length,2,'wall-clock pause never expires active emissions');
+ const third=await other.store.tickConveyor({},()=>true,{deferCollection:true});assert.equal(third,null,'resume preserves the remaining five-second cadence');
+ f.advance(5000);await other.store.setConveyorActive(true);
+ const expired=await other.store.tickConveyor({},()=>true,{deferCollection:true});
+ f.advance(CONVEYOR_TRAVEL_MS);await other.store.setConveyorActive(true);
+ await assert.rejects(other.store.collect(expired.instanceId),/passed/);
+});
+test('supported wall-clock saves migrate existing emission ages once and reject malformed active clocks',async()=>{
+ const f=fixture();await f.store.sync();const item=await f.store.tickConveyor({},()=>true,{deferCollection:true});
+ f.advance(3000);await f.store.setConveyorActive(true);
+ const e=f.store.data.lamp.emissions[0];assert.equal(conveyorItemAge(f.store.data.lamp,e,f.store.time()),3000);
+ await f.store.setConveyorActive(false);f.advance(60000);await f.store.setConveyorActive(false);
+ assert.equal(conveyorItemAge(f.store.data.lamp,e,f.store.time()),3000);
+ assert.equal((await f.store.collect(item.instanceId)).saved,true);
+ for(const mutate of [d=>{d.lamp.conveyorActiveMs=-1;},d=>{d.lamp.conveyorActiveMs=NaN;},d=>{d.lamp.emissions[0].issuedActiveMs=d.lamp.conveyorActiveMs+1;},d=>{delete d.lamp.conveyorActiveMs;}]){
+  const bad=structuredClone(f.store.data);mutate(bad);assert.throws(()=>validateConveyorState(bad),/invalid/);
+ }
+});
+test('failed active-time checkpoint preserves the durable save and can retry',async()=>{
+ const f=fixture();await f.store.sync();await f.store.setConveyorActive(true);
+ const saved=f.values.get(EQUIPMENT_SAVE_KEY);f.advance(2000);await f.store.setConveyorActive(true);f.fail(true);
+ await assert.rejects(f.store.setConveyorActive(false),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),saved);
+ f.fail(false);await f.store.finishReview();assert.equal(f.store.data.lamp.conveyorActiveMs,f.store.conveyorTime());
+});
+
+test('a full-cache item remains manually collectible after a long active-clock pause',async()=>{
+ const f=fixture({full:true});await f.store.sync();await f.store.setConveyorActive(true);
+ const item=await f.store.tickConveyor({},()=>true,{deferCollection:true});
+ f.advance(2000);await f.store.setConveyorActive(true);await f.store.setConveyorActive(false);
+ f.advance(60000);const result=await f.store.collect(item.instanceId);
+ assert.equal(result.saved,true);assert.equal(result.held,true);assert.equal(result.exp,0);invariant(f.store.data);
+});
+test('concurrent active-clock checkpoints preserve one monotonic coordinate',async()=>{
+ const f=fixture(),other=f.tab();await Promise.all([f.store.sync(),other.store.sync()]);
+ await Promise.all([f.store.setConveyorActive(true),other.store.setConveyorActive(true)]);
+ const start=f.store.conveyorTime();f.advance(5000);
+ await Promise.all([f.store.setConveyorActive(true),other.store.setConveyorActive(true)]);
+ await Promise.all([f.store.setConveyorActive(false),other.store.setConveyorActive(false)]);
+ assert.equal(JSON.parse(f.values.get(EQUIPMENT_SAVE_KEY)).lamp.conveyorActiveMs,start+5000);
+});
+
+test('same-tab reload restores the synchronous clock checkpoint when the exit transaction is lost',async()=>{
+ const f=fixture();await f.store.sync();await f.store.setConveyorActive(true);
+ await f.store.tickConveyor({},()=>true,{deferCollection:true});const durable=f.values.get(EQUIPMENT_SAVE_KEY);
+ f.advance(1200);await f.store.setConveyorActive(true);f.fail(true);
+ await assert.rejects(f.store.setConveyorActive(false),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),durable);
+ f.fail(false);f.advance(60000);const reloaded=f.reload();await reloaded.store.sync();await reloaded.store.setConveyorActive(true);
+ assert.equal(reloaded.store.conveyorTime(),f.store.conveyorTime());
+ assert.equal(conveyorItemAge(reloaded.store.data.lamp,reloaded.store.data.lamp.emissions[0],reloaded.store.time()),1200);
+});
+test('session clock rejects malformed metadata and checkpoints belonging to another emission history',async()=>{
+ for(const mutate of [c=>{c.sequence++;},c=>{c.seed++;},c=>{c.lastActivationAt++;},c=>{c.activeMs=-1;},c=>{c.activeMs=1.5;}]){
+  const f=fixture();await f.store.sync();await f.store.setConveyorActive(true);await f.store.setConveyorActive(false);
+  const [key,value]=[...f.checkpointValues][0],checkpoint=JSON.parse(value);mutate(checkpoint);f.checkpointValues.set(key,JSON.stringify(checkpoint));
+  const reloaded=f.reload();await reloaded.store.sync();await reloaded.store.setConveyorActive(true);
+  assert.equal(reloaded.store.conveyorTime(),f.store.data.lamp.conveyorActiveMs);
+ }
 });

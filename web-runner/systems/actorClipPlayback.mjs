@@ -37,6 +37,7 @@ export function createActorClipLoader({ loadManifest, loadImage, frameUrl, maxDe
       const footOrigin = entry.footOrigin;
       if (!Array.isArray(holds) || holds.length !== entry.frames.length || !holds.every(ms => Number.isFinite(ms) && ms > 0)) return null;
       if (!canvas || ![canvas.width, canvas.height].every(size => Number.isSafeInteger(size) && size > 0) || !footOrigin || ![footOrigin.x, footOrigin.y].every(Number.isFinite)) return null;
+      if (canvas.referenceHeight !== undefined && (!Number.isSafeInteger(canvas.referenceHeight) || canvas.referenceHeight <= 0 || canvas.referenceHeight > canvas.height)) return null;
       const durationMs = holds.reduce((sum, ms) => sum + ms, 0);
       if ([entry.impactTimeMs, entry.releaseTimeMs].some(ms => ms !== undefined && (!Number.isFinite(ms) || ms < 0 || ms >= durationMs))) return null;
       const bytes = canvas.width * canvas.height * 4 * entry.frames.length;
@@ -58,6 +59,7 @@ export function createActorClipLoader({ loadManifest, loadImage, frameUrl, maxDe
     })().catch(() => null);
     record.promise = request.then(clip => {
       record.pending = false;
+      record.clip = clip;
       if (!clip) {
         requests.delete(key);
         retainedBytes -= record.bytes;
@@ -67,6 +69,8 @@ export function createActorClipLoader({ loadManifest, loadImage, frameUrl, maxDe
     requests.set(key, record);
     return record.promise;
   };
+  // Renderers can switch an already-decoded clip without a promise-sized gap.
+  load.peek = (actor, state, facing) => requests.get(`${actor}/${state}/${facing}`)?.clip ?? null;
   load.protect = keys => { protectedKeys = new Set(keys); };
   load.retention = () => ({ maxDecodedBytes, retainedBytes, reservedBytes: [...requests.values()].filter(entry => entry.pending).reduce((sum, entry) => sum + entry.bytes, 0), entries: requests.size, pending: [...requests.values()].filter(entry => entry.pending).length, evictions });
   return load;

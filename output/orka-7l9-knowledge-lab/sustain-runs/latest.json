@@ -1,0 +1,192 @@
+{
+  "version": "orka.sustain-tracker.v2",
+  "label": "MODEL",
+  "casebookSha256": "eec0cefead2f81dd22f21109ba7c7028889ab1f0c7fedeebc105ea09b34e6e91",
+  "sourceSha256": "64bf409702c21fbe4b3a26807eef35d3e4a2254f73a41a48e921ca11b0c77502",
+  "modelSha256": "19890f317a71274bc33bba6fa9f7dbce4a94003089f6f4de3a4999eb8f6602df",
+  "runnerSha256": "24717276d3974d9a0daafef02dce6f3f3b2cf472c933ba7f4099d7664ba5e755",
+  "cases": [
+    {
+      "id": "S0-baseline",
+      "status": "FAIL",
+      "minHpPct": 0,
+      "heroKOs": 1,
+      "report": "S0-baseline.d55448d34bbe8aa4.json"
+    },
+    {
+      "id": "S1-high-defense",
+      "status": "FAIL",
+      "minHpPct": 0,
+      "heroKOs": 1,
+      "report": "S1-high-defense.feb5c607e1acd24c.json"
+    },
+    {
+      "id": "S2-high-evasion",
+      "status": "PASS",
+      "minHpPct": 92.9,
+      "heroKOs": 0,
+      "report": "S2-high-evasion.aa7ebf057b2793aa.json"
+    },
+    {
+      "id": "S3-hp-drain",
+      "status": "PASS",
+      "minHpPct": 96.5,
+      "heroKOs": 0,
+      "report": "S3-hp-drain.74e6b35687336e1a.json"
+    },
+    {
+      "id": "S4-high-regen",
+      "status": "PASS",
+      "minHpPct": 96.6,
+      "heroKOs": 0,
+      "report": "S4-high-regen.21afd3030e0ed5fc.json"
+    },
+    {
+      "id": "S5-mixed-sustain",
+      "status": "PASS",
+      "minHpPct": 97.4,
+      "heroKOs": 0,
+      "report": "S5-mixed-sustain.97029f3768815902.json"
+    },
+    {
+      "id": "S6-pressure-break",
+      "status": "FAIL",
+      "minHpPct": 0,
+      "heroKOs": 1,
+      "report": "S6-pressure-break.d6bb635fd4304fb1.json"
+    },
+    {
+      "id": "S7-defense-edge-low",
+      "status": "FAIL",
+      "minHpPct": 0,
+      "heroKOs": 1,
+      "report": "S7-defense-edge-low.7eb49faa8237cddd.json"
+    },
+    {
+      "id": "S8-defense-edge-pass",
+      "status": "FAIL",
+      "minHpPct": 0,
+      "heroKOs": 1,
+      "report": "S8-defense-edge-pass.41fef9b150513e6e.json"
+    },
+    {
+      "id": "S9-evasion-edge-low",
+      "status": "FAIL",
+      "minHpPct": 88.2,
+      "heroKOs": 0,
+      "report": "S9-evasion-edge-low.579b51a849dffe70.json"
+    },
+    {
+      "id": "S10-drain-edge-low",
+      "status": "FAIL",
+      "minHpPct": 88.8,
+      "heroKOs": 0,
+      "report": "S10-drain-edge-low.e0630b13447415c8.json"
+    },
+    {
+      "id": "S11-drain-edge-pass",
+      "status": "PASS",
+      "minHpPct": 91.3,
+      "heroKOs": 0,
+      "report": "S11-drain-edge-pass.6e51d8a88eef9320.json"
+    },
+    {
+      "id": "S12-regen-edge-low",
+      "status": "FAIL",
+      "minHpPct": 89.2,
+      "heroKOs": 0,
+      "report": "S12-regen-edge-low.f32312e4b3d1c8c0.json"
+    },
+    {
+      "id": "S13-regen-edge-pass",
+      "status": "PASS",
+      "minHpPct": 91.1,
+      "heroKOs": 0,
+      "report": "S13-regen-edge-pass.3061c1fa87428baf.json"
+    },
+    {
+      "id": "S14-huun-wave1-regen",
+      "status": "PASS",
+      "minHpPct": 91.5,
+      "heroKOs": 0,
+      "report": "S14-huun-wave1-regen.554cd149f27c3fee.json"
+    },
+    {
+      "id": "S15-fara-wave2-regen",
+      "status": "PASS",
+      "minHpPct": 93.3,
+      "heroKOs": 0,
+      "report": "S15-fara-wave2-regen.485ab736808ea563.json"
+    },
+    {
+      "id": "S16-lean-mix-farming",
+      "status": "FAIL",
+      "minHpPct": 92.3,
+      "heroKOs": 0,
+      "report": "S16-lean-mix-farming.24365ab1c4855fb7.json"
+    },
+    {
+      "id": "S17-lean-mix-boss",
+      "status": "PASS",
+      "minHpPct": 71.4,
+      "heroKOs": 0,
+      "report": "S17-lean-mix-boss.64eaa97d0f8191c1.json"
+    },
+    {
+      "id": "S18-lean-mix-boss-pressure",
+      "status": "FAIL",
+      "minHpPct": 0,
+      "heroKOs": 1,
+      "report": "S18-lean-mix-boss-pressure.47037e34fc327d27.json"
+    },
+    {
+      "id": "S19-def-regen-low",
+      "status": "FAIL",
+      "minHpPct": 29.4,
+      "heroKOs": 0,
+      "report": "S19-def-regen-low.188b16e81cc8529c.json"
+    },
+    {
+      "id": "S20-def-regen-floor",
+      "status": "FAIL",
+      "minHpPct": 44.1,
+      "heroKOs": 0,
+      "report": "S20-def-regen-floor.ed4f76023c317078.json"
+    },
+    {
+      "id": "S21-def-regen-95",
+      "status": "FAIL",
+      "minHpPct": 58.8,
+      "heroKOs": 0,
+      "report": "S21-def-regen-95.6425bd85727c84d5.json"
+    },
+    {
+      "id": "S22-def-regen-huun",
+      "status": "FAIL",
+      "minHpPct": 92.9,
+      "heroKOs": 0,
+      "report": "S22-def-regen-huun.40a7babf26774d96.json"
+    },
+    {
+      "id": "S23-def-regen-fara-wave2",
+      "status": "PASS",
+      "minHpPct": 95.6,
+      "heroKOs": 0,
+      "report": "S23-def-regen-fara-wave2.1555b412330fb5a9.json"
+    },
+    {
+      "id": "S24-def-regen-boss",
+      "status": "PASS",
+      "minHpPct": 81.9,
+      "heroKOs": 0,
+      "report": "S24-def-regen-boss.9cfe3bc3c293d515.json"
+    },
+    {
+      "id": "S25-def-regen-boss-pressure",
+      "status": "FAIL",
+      "minHpPct": 0,
+      "heroKOs": 1,
+      "report": "S25-def-regen-boss-pressure.fef2b74328bece12.json"
+    }
+  ]
+}

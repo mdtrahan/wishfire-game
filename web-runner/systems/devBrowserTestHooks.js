@@ -1,6 +1,7 @@
 import { serializeQaPauseCombatSnapshot } from '../src/core/qaPauseSnapshot.mjs';
 import { canUseHeroCommand, rulesContext, settleVictory } from '../modules/heroCommands.mjs';
 import { derivePresentationTurnBarrier } from '../src/core/turnGateController.mjs';
+import { isActorRecoveryRevealActive } from '../src/core/actorPresentationState.mjs';
 
 export const QA_STORY_TRANSITION_TIMEOUT_MS = 2400;
 
@@ -237,7 +238,18 @@ export function registerDevBrowserTestHooks({
         bossAvailable: !!state.globals.ContinuousCombatStage.bossAvailable,
         bossArmed: !!state.globals.ContinuousCombatStage.bossArmed,
         bossActive: !!state.globals.ContinuousCombatStage.bossActive,
+        bossUID: Number(state.globals.ContinuousCombatStage.bossUID || 0),
+        ordinaryWaveClears: Number(state.globals.ContinuousCombatStage.ordinaryWaveClears || 0),
+        defeatRecoveries: Number(state.globals.ContinuousCombatStage.defeatRecoveries || 0),
         clearedBosses: Number(state.globals.ContinuousCombatStage.clearedBosses || 0),
+        clearedPackMask: Number(state.globals.ContinuousCombatStage.clearedPackMask || 0),
+        spawnedPackMask: Number(state.globals.ContinuousCombatStage.spawnedPackMask || 0),
+        transitions: Number(state.globals.ContinuousCombatStage.transitions || 0),
+        bossSummonRequired: !!state.globals.ContinuousCombatStage.bossSummonRequired,
+      } : null,
+      encounterSummary: state.globals.EncounterSummary ? {
+        ...state.globals.EncounterSummary,
+        selected: (state.globals.EncounterSummary.selected || []).map(row => ({ name: String(row.name || ''), combatPower: Number(row.CombatPower || row.combatPower || 0), enemyRole: String(row.enemyRole || row.role || ''), maxHP: Number(row.HP || row.maxHP || 0) })),
       } : null,
       resources: {
         energy: state.globals.Player_Energy || 0,
@@ -290,7 +302,7 @@ export function registerDevBrowserTestHooks({
       },
       heroes: state.entities
         .filter(e => e.kind === 'hero')
-        .map(e => ({ uid: e.uid, name: e.name, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHP, combatPower: Number(e.combatPower || 0) })),
+        .map(e => ({ uid: e.uid, name: e.name, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHP, currentLevel: Number(e.currentLevel || 1), attackType: String(e.attackType || ''), stats: { ...(e.stats || {}) }, combatPower: Number(e.combatPower || 0), recoveryRevealActive: isActorRecoveryRevealActive(e, state.globals.time) })),
       enemies: state.entities
         .filter(e => e.kind === 'enemy')
         .map(e => ({
@@ -312,6 +324,10 @@ export function registerDevBrowserTestHooks({
         const baseY = Number(d.baseY != null ? d.baseY : (d.y || 0));
         return {
           amount: d.amount,
+          zIndex: Number(d.zIndex || 0),
+          targetUID: Number(d.targetUID || 0),
+          hpBefore: Number(d.hpBefore || 0),
+          hpAfter: Number(d.hpAfter || 0),
           kind: d.kind,
           targetKind: d.targetKind || null,
           baseX,
@@ -328,6 +344,15 @@ export function registerDevBrowserTestHooks({
           domSpawned: !!d.domSpawned,
         };
       }),
+      damageEvents: (state.globals.DamageTexts || []).filter(d => d.targetKind === 'hero' && Number(d.targetUID || 0) > 0 && Number(d.hpBefore || 0) > Number(d.hpAfter || 0)).map(d => ({
+        id: Number(d.zIndex || 0),
+        targetUID: Number(d.targetUID || 0),
+        sourceUID: Number(d.sourceUID || 0),
+        attackerName: String((state.entities || []).find(e => Number(e.uid || 0) === Number(d.sourceUID || 0))?.name || ''),
+        amount: Number(d.amount || 0),
+        hpBefore: Number(d.hpBefore || 0),
+        hpAfter: Number(d.hpAfter || 0),
+      })),
       pendingHeroHits: (state.globals.PendingHeroHits || []).map(hit => ({
         at: Number(hit.at || 0),
         heroUID: Number(hit.heroUID || 0),

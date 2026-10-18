@@ -1,0 +1,234 @@
+{
+  "canvas": 256,
+  "footOrigin": [
+    128,
+    250
+  ],
+  "sourceFacing": "left",
+  "swordHand": "near",
+  "swordLocalAngle": 0,
+  "swordGlobalBasicContact": 60,
+  "swordGlobalCastRelease": 120,
+  "states": {
+    "attack": {
+      "times": [
+        0,
+        0.25,
+        0.4166666666666667,
+        0.5833333333333334,
+        0.6666666666666666
+      ],
+      "angles": {
+        "upper_arm_near": [
+          0,
+          50,
+          85,
+          35,
+          0
+        ],
+        "forearm_near": [
+          0,
+          -65,
+          10,
+          -10,
+          0
+        ],
+        "hand_near": [
+          0,
+          -15,
+          -35,
+          -5,
+          0
+        ],
+        "upper_arm_far": [
+          0,
+          -15,
+          -20,
+          -8,
+          0
+        ],
+        "forearm_far": [
+          0,
+          45,
+          50,
+          20,
+          0
+        ],
+        "hand_far": [
+          0,
+          -15,
+          -20,
+          -5,
+          0
+        ]
+      }
+    },
+    "cast": {
+      "times": [
+        0,
+        0.25,
+        0.5,
+        0.625,
+        0.75,
+        0.9166666666666666
+      ],
+      "angles": {
+        "upper_arm_near": [
+          0,
+          60,
+          85,
+          85,
+          45,
+          0
+        ],
+        "forearm_near": [
+          0,
+          -60,
+          -10,
+          -10,
+          -5,
+          0
+        ],
+        "hand_near": [
+          0,
+          -25,
+          45,
+          -15,
+          -10,
+          0
+        ],
+        "upper_arm_far": [
+          0,
+          -12,
+          -20,
+          -20,
+          -10,
+          0
+        ],
+        "forearm_far": [
+          0,
+          40,
+          65,
+          65,
+          25,
+          0
+        ],
+        "hand_far": [
+          0,
+          -10,
+          -25,
+          -25,
+          -8,
+          0
+        ]
+      }
+    },
+    "walk": {
+      "times": [
+        0,
+        0.25,
+        0.5,
+        0.75,
+        1
+      ],
+      "angles": {
+        "upper_arm_near": [
+          -22,
+          22,
+          -22,
+          22,
+          -22
+        ],
+        "upper_arm_far": [
+          22,
+          -22,
+          22,
+          -22,
+          22
+        ],
+        "forearm_near": [
+          5,
+          5,
+          5,
+          5,
+          5
+        ],
+        "forearm_far": [
+          -5,
+          -5,
+          -5,
+          -5,
+          -5
+        ]
+      }
+    },
+    "movement": {
+      "times": [
+        0,
+        0.2,
+        0.4,
+        0.6,
+        0.725,
+        0.85,
+        1
+      ],
+      "angles": {
+        "upper_arm_near": [
+          0,
+          50,
+          85,
+          85,
+          85,
+          45,
+          0
+        ],
+        "forearm_near": [
+          0,
+          -65,
+          10,
+          -10,
+          -10,
+          -5,
+          0
+        ],
+        "hand_near": [
+          0,
+          -15,
+          -35,
+          45,
+          -15,
+          -10,
+          0
+        ],
+        "upper_arm_far": [
+          0,
+          -15,
+          -20,
+          -20,
+          -20,
+          -10,
+          0
+        ],
+        "forearm_far": [
+          0,
+          45,
+          50,
+          65,
+          65,
+          25,
+          0
+        ],
+        "hand_far": [
+          0,
+          -15,
+          -20,
+          -25,
+          -25,
+          -8,
+          0
+        ]
+      }
+    }
+  },
+  "scope": "native source envelope diagnostics; no runtime timing/effects"
+}

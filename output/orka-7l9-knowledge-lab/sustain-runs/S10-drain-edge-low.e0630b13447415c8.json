@@ -1,0 +1,9 @@
+{
+  "version": "orka.sustain-case-run.v2",
+  "caseId": "S10-drain-edge-low",
+  "digest": "e0630b13447415c83988bfa1c2981afeb0937a66c85eda0ac1ac5b44f4906eb2",
+  "status": "FAIL",
+  "minHpPct": 88.8,
+  "heroKOs": 0,
+  "reason": "minimum HP 88.8% below 90%"
+}

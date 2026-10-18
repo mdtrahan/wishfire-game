@@ -1,0 +1,95 @@
+{
+  "version": "orka.sustain-cases.v1",
+  "source": {
+    "kind": "OBS",
+    "path": "output/orka-7l9-knowledge-lab/sample/observed.ndjson.gz",
+    "sha256": "64bf409702c21fbe4b3a26807eef35d3e4a2254f73a41a48e921ca11b0c77502",
+    "manifest": "output/orka-7l9-knowledge-lab/sample/manifest.json",
+    "manifestSha256": "d0d3bc8e4c6dff4364ce55ce285ffd5328e543e7de657789b0332b8649782642"
+  },
+  "notes": [
+    "MODEL counterfactuals on one frozen OBS trace. These cases do not change Wishfire gameplay or establish a StoneAge combat formula.",
+    "The target is ordinary farming with zero Hero KOs and minimum modeled HP at least 90% of max HP. This is an explicit test-bed threshold, not an approved production balance value.",
+    "The wave begins after a full-HP ordinary clear. Its later KO is natural; the earlier forced one-HP recovery is outside the selected interval.",
+    "Defense, evasion, drain cadence, and regen values are illustrative knobs. Drain assumes a successful Hero strike every three seconds because the OBS log does not expose all outgoing hits.",
+    "Every ordinary-farming case fails immediately on its first Hero KO, including the synthetic high-pressure stress case. No farming KO is a passing control.",
+    "S19 onward uses a hypothetical whole-HP post-hit shield plus passive regeneration on one Hero. It cannot map shield percent to Wishfire DEF, which acts before the hostile-hit cap. Full-party endurance is tracked separately; evasion and drain remain diagnostics."
+  ],
+  "cases": [
+    {
+      "id": "S0-baseline",
+      "title": "Observed ordinary wave without extra sustain",
+      "family": "baseline",
+      "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 3, "startTime": 171.201, "endTime": 422.332, "initialHp": 85, "maxHp": 85 },
+      "model": { "mitigationFraction": 0, "evasionFraction": 0, "regenHpPerSecond": 0, "drainHpPerStrike": 0, "attackIntervalSeconds": null, "pressureMultiplier": 1, "evadeSeed": 7401 },
+      "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.9 }
+    },
+    {
+      "id": "S1-high-defense",
+      "title": "High defense on each recorded incoming hit",
+      "family": "defense",
+      "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 3, "startTime": 171.201, "endTime": 422.332, "initialHp": 85, "maxHp": 85 },
+      "model": { "mitigationFraction": 0.95, "evasionFraction": 0, "regenHpPerSecond": 0, "drainHpPerStrike": 0, "attackIntervalSeconds": null, "pressureMultiplier": 1, "evadeSeed": 7401 },
+      "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.9 }
+    },
+    {
+      "id": "S2-high-evasion",
+      "title": "High evasion of recorded incoming hits",
+      "family": "evasion",
+      "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 3, "startTime": 171.201, "endTime": 422.332, "initialHp": 85, "maxHp": 85 },
+      "model": { "mitigationFraction": 0, "evasionFraction": 0.95, "regenHpPerSecond": 0, "drainHpPerStrike": 0, "attackIntervalSeconds": null, "pressureMultiplier": 1, "evadeSeed": 7401 },
+      "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.9 }
+    },
+    {
+      "id": "S3-hp-drain",
+      "title": "HP drain from assumed successful Hero strikes",
+      "family": "drain",
+      "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 3, "startTime": 171.201, "endTime": 422.332, "initialHp": 85, "maxHp": 85 },
+      "model": { "mitigationFraction": 0, "evasionFraction": 0, "regenHpPerSecond": 0, "drainHpPerStrike": 3, "attackIntervalSeconds": 3, "pressureMultiplier": 1, "evadeSeed": 7401 },
+      "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.9 }
+    },
+    {
+      "id": "S4-high-regen",
+      "title": "Continuous HP regeneration",
+      "family": "regen",
+      "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 3, "startTime": 171.201, "endTime": 422.332, "initialHp": 85, "maxHp": 85 },
+      "model": { "mitigationFraction": 0, "evasionFraction": 0, "regenHpPerSecond": 0.8, "drainHpPerStrike": 0, "attackIntervalSeconds": null, "pressureMultiplier": 1, "evadeSeed": 7401 },
+      "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.9 }
+    },
+    {
+      "id": "S5-mixed-sustain",
+      "title": "Mixed mitigation, evasion, drain and regeneration",
+      "family": "mix",
+      "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 3, "startTime": 171.201, "endTime": 422.332, "initialHp": 85, "maxHp": 85 },
+      "model": { "mitigationFraction": 0.5, "evasionFraction": 0.4, "regenHpPerSecond": 0.2, "drainHpPerStrike": 1, "attackIntervalSeconds": 3, "pressureMultiplier": 1, "evadeSeed": 7401 },
+      "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.9 }
+    },
+    {
+      "id": "S6-pressure-break",
+      "title": "Synthetic pressure overwhelms mixed sustain",
+      "family": "stress-control",
+      "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 3, "startTime": 171.201, "endTime": 422.332, "initialHp": 85, "maxHp": 85 },
+      "model": { "mitigationFraction": 0.5, "evasionFraction": 0.4, "regenHpPerSecond": 0.2, "drainHpPerStrike": 1, "attackIntervalSeconds": 3, "pressureMultiplier": 10, "evadeSeed": 7401 },
+      "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.9 }
+    },
+    { "id": "S7-defense-edge-low", "title": "Defense just below the farming HP floor", "family": "defense-boundary", "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 3, "startTime": 171.201, "endTime": 422.332, "initialHp": 85, "maxHp": 85 }, "model": { "mitigationFraction": 0.875, "evasionFraction": 0, "regenHpPerSecond": 0, "drainHpPerStrike": 0, "attackIntervalSeconds": null, "pressureMultiplier": 1, "evadeSeed": 7401 }, "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.9 } },
+    { "id": "S8-defense-edge-pass", "title": "Defense at the farming HP floor", "family": "defense-boundary", "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 3, "startTime": 171.201, "endTime": 422.332, "initialHp": 85, "maxHp": 85 }, "model": { "mitigationFraction": 0.9, "evasionFraction": 0, "regenHpPerSecond": 0, "drainHpPerStrike": 0, "attackIntervalSeconds": null, "pressureMultiplier": 1, "evadeSeed": 7401 }, "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.9 } },
+    { "id": "S9-evasion-edge-low", "title": "Evasion just below the farming HP floor", "family": "evasion-boundary", "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 3, "startTime": 171.201, "endTime": 422.332, "initialHp": 85, "maxHp": 85 }, "model": { "mitigationFraction": 0, "evasionFraction": 0.925, "regenHpPerSecond": 0, "drainHpPerStrike": 0, "attackIntervalSeconds": null, "pressureMultiplier": 1, "evadeSeed": 7401 }, "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.9 } },
+    { "id": "S10-drain-edge-low", "title": "Drain just below the farming HP floor", "family": "drain-boundary", "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 3, "startTime": 171.201, "endTime": 422.332, "initialHp": 85, "maxHp": 85 }, "model": { "mitigationFraction": 0, "evasionFraction": 0, "regenHpPerSecond": 0, "drainHpPerStrike": 1.5, "attackIntervalSeconds": 3, "pressureMultiplier": 1, "evadeSeed": 7401 }, "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.9 } },
+    { "id": "S11-drain-edge-pass", "title": "Drain above the farming HP floor", "family": "drain-boundary", "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 3, "startTime": 171.201, "endTime": 422.332, "initialHp": 85, "maxHp": 85 }, "model": { "mitigationFraction": 0, "evasionFraction": 0, "regenHpPerSecond": 0, "drainHpPerStrike": 1.8, "attackIntervalSeconds": 3, "pressureMultiplier": 1, "evadeSeed": 7401 }, "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.9 } },
+    { "id": "S12-regen-edge-low", "title": "Regen just below the farming HP floor", "family": "regen-boundary", "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 3, "startTime": 171.201, "endTime": 422.332, "initialHp": 85, "maxHp": 85 }, "model": { "mitigationFraction": 0, "evasionFraction": 0, "regenHpPerSecond": 0.5, "drainHpPerStrike": 0, "attackIntervalSeconds": null, "pressureMultiplier": 1, "evadeSeed": 7401 }, "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.9 } },
+    { "id": "S13-regen-edge-pass", "title": "Regen above the farming HP floor", "family": "regen-boundary", "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 3, "startTime": 171.201, "endTime": 422.332, "initialHp": 85, "maxHp": 85 }, "model": { "mitigationFraction": 0, "evasionFraction": 0, "regenHpPerSecond": 0.55, "drainHpPerStrike": 0, "attackIntervalSeconds": null, "pressureMultiplier": 1, "evadeSeed": 7401 }, "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.9 } },
+    { "id": "S14-huun-wave1-regen", "title": "Small regen on Huun first ordinary wave", "family": "cross-wave", "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Huun", "displayHero": "Hondo", "wave": 1, "startTime": 8.666, "endTime": 89.469, "initialHp": 60, "maxHp": 60 }, "model": { "mitigationFraction": 0, "evasionFraction": 0, "regenHpPerSecond": 0.1, "drainHpPerStrike": 0, "attackIntervalSeconds": null, "pressureMultiplier": 1, "evadeSeed": 7401 }, "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.9 } },
+    { "id": "S15-fara-wave2-regen", "title": "Small regen on Fara second ordinary wave", "family": "cross-wave", "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 2, "startTime": 89.469, "endTime": 171.201, "initialHp": 85, "maxHp": 85 }, "model": { "mitigationFraction": 0, "evasionFraction": 0, "regenHpPerSecond": 0.1, "drainHpPerStrike": 0, "attackIntervalSeconds": null, "pressureMultiplier": 1, "evadeSeed": 7401 }, "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.9 } },
+    { "id": "S16-lean-mix-farming", "title": "Lean four-mechanism mix on the hard ordinary wave", "family": "mix-transfer", "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 3, "startTime": 171.201, "endTime": 422.332, "initialHp": 85, "maxHp": 85 }, "model": { "mitigationFraction": 0.2, "evasionFraction": 0.2, "regenHpPerSecond": 0.15, "drainHpPerStrike": 0.5, "attackIntervalSeconds": 3, "pressureMultiplier": 1, "evadeSeed": 7401 }, "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.95 } },
+    { "id": "S17-lean-mix-boss", "title": "Same lean mix on observed first boss", "family": "boss-transfer", "trace": { "scenario": "boss-sweep-l1", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "combatContext": "boss", "startTime": 3.883, "endTime": 21.952, "initialHp": 85, "maxHp": 85 }, "model": { "mitigationFraction": 0.2, "evasionFraction": 0.2, "regenHpPerSecond": 0.15, "drainHpPerStrike": 0.5, "attackIntervalSeconds": 3, "pressureMultiplier": 1, "evadeSeed": 7401 }, "expectation": { "maxHeroKOs": 0 } },
+    { "id": "S18-lean-mix-boss-pressure", "title": "Fourfold synthetic boss pressure breaks lean mix", "family": "boss-stress", "trace": { "scenario": "boss-sweep-l1", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "combatContext": "boss", "startTime": 3.883, "endTime": 21.952, "initialHp": 85, "maxHp": 85 }, "model": { "mitigationFraction": 0.2, "evasionFraction": 0.2, "regenHpPerSecond": 0.15, "drainHpPerStrike": 0.5, "attackIntervalSeconds": 3, "pressureMultiplier": 4, "evadeSeed": 7401 }, "expectation": { "maxHeroKOs": 0 } },
+    { "id": "S19-def-regen-low", "title": "Effective mitigation 50%, regen 0.10 HP/s on farming wave", "family": "defense-regen", "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 3, "startTime": 171.201, "endTime": 422.332, "initialHp": 85, "maxHp": 85 }, "model": { "mitigationFraction": 0.5, "evasionFraction": 0, "regenHpPerSecond": 0.1, "drainHpPerStrike": 0, "attackIntervalSeconds": null, "pressureMultiplier": 1 }, "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.9 } },
+    { "id": "S20-def-regen-floor", "title": "Effective mitigation 50%, regen 0.15 HP/s on farming wave", "family": "defense-regen", "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 3, "startTime": 171.201, "endTime": 422.332, "initialHp": 85, "maxHp": 85 }, "model": { "mitigationFraction": 0.5, "evasionFraction": 0, "regenHpPerSecond": 0.15, "drainHpPerStrike": 0, "attackIntervalSeconds": null, "pressureMultiplier": 1 }, "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.9 } },
+    { "id": "S21-def-regen-95", "title": "Effective mitigation 60%, regen 0.20 HP/s on farming wave", "family": "defense-regen", "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 3, "startTime": 171.201, "endTime": 422.332, "initialHp": 85, "maxHp": 85 }, "model": { "mitigationFraction": 0.6, "evasionFraction": 0, "regenHpPerSecond": 0.2, "drainHpPerStrike": 0, "attackIntervalSeconds": null, "pressureMultiplier": 1 }, "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.95 } },
+    { "id": "S22-def-regen-huun", "title": "Same 60% and 0.20 HP/s on Huun first farming wave", "family": "defense-regen-transfer", "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Huun", "displayHero": "Hondo", "wave": 1, "startTime": 8.666, "endTime": 89.469, "initialHp": 60, "maxHp": 60 }, "model": { "mitigationFraction": 0.6, "evasionFraction": 0, "regenHpPerSecond": 0.2, "drainHpPerStrike": 0, "attackIntervalSeconds": null, "pressureMultiplier": 1 }, "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.95 } },
+    { "id": "S23-def-regen-fara-wave2", "title": "Same 60% and 0.20 HP/s on Fara second farming wave", "family": "defense-regen-transfer", "trace": { "scenario": "recovery-onehp", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "wave": 2, "startTime": 89.469, "endTime": 171.201, "initialHp": 85, "maxHp": 85 }, "model": { "mitigationFraction": 0.6, "evasionFraction": 0, "regenHpPerSecond": 0.2, "drainHpPerStrike": 0, "attackIntervalSeconds": null, "pressureMultiplier": 1 }, "expectation": { "maxHeroKOs": 0, "minHpFractionAtLeast": 0.95 } },
+    { "id": "S24-def-regen-boss", "title": "Same DEF and regen knobs on observed first-boss trace", "family": "defense-regen-boss", "trace": { "scenario": "boss-sweep-l1", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "combatContext": "boss", "startTime": 3.883, "endTime": 21.952, "initialHp": 85, "maxHp": 85 }, "model": { "mitigationFraction": 0.6, "evasionFraction": 0, "regenHpPerSecond": 0.2, "drainHpPerStrike": 0, "attackIntervalSeconds": null, "pressureMultiplier": 1 }, "expectation": { "maxHeroKOs": 0 } },
+    { "id": "S25-def-regen-boss-pressure", "title": "Eightfold synthetic boss pressure breaks DEF plus regen", "family": "defense-regen-boss", "trace": { "scenario": "boss-sweep-l1", "session": 1, "targetHero": "Falie", "displayHero": "Fara", "combatContext": "boss", "startTime": 3.883, "endTime": 21.952, "initialHp": 85, "maxHp": 85 }, "model": { "mitigationFraction": 0.6, "evasionFraction": 0, "regenHpPerSecond": 0.2, "drainHpPerStrike": 0, "attackIntervalSeconds": null, "pressureMultiplier": 8 }, "expectation": { "maxHeroKOs": 0 } }
+  ]
+}
