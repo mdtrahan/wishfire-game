@@ -95,13 +95,13 @@
 
 - Dismantling grants Essence only, including explicitly confirmed missed upgrades. Replaced gear is destroyed without Essence. COT Hero tickets fund individual level-ups.
 
-- Upgrade preview shows current/next odds to three decimals, capacity, essence bank and next installment. Purchase carries the rendered tier and stage; locked storage rejects stale clicks before spending. Four saved purchases expose Lv.UP, which alone promotes the lamp and resets stages. Failed writes retain the bank, stage and level. Only the odds table may scroll on compact phones; purchase controls stay visible.
+- Bag upgrade preview uses full-cost Essence progress and Current/Next odds with Common/Uncommon/Rare/Epic/Legendary labels. Preserve the owner reference's gray/green/teal/orange/red pills independently of equipment rarity frames. A stale expected tier rejects before spending; a failed write shows no promotion or reward.
 
 - Lamp guidance stores validated optional v5 bits for actual storage/comparison/preview actions. They are monotonic receipts with no currency, EXP, gear or tier effect; existing earned draw/equip/dismantle/tier records own the other milestones.
 
 - Four cleared waves set boss readiness and enter the boss automatically through the existing 440ms wipe, with no intervening fodder wave. A restored readiness checkpoint enters once on the first unpaused runtime tick. Boss defeat keeps readiness at 100%, restores the full party, then retries after the existing recovery interval; victory clears readiness and advances the tier. Boss entry cancels queued fodder actions immediately. Never carry bossArmed into the next tier.
 - Canonical hero levels cap at100. Existing five-skill kits declare unlock levels1/5/10/15/25; scheduler eligibility, direct casts, reactive retaliation and menu disclosure read those definitions. Preserve earned EXP and gear; defaults are configurable tuning.
-- Lamp v5 accepts optional upgradeEndsAt and speedUpTickets. The fourth paid stage records a7-hour deadline; only expiry grants the next level. Five-minute tickets reduce that same deadline and SPD UP ALL spends only the amount needed. Partial stages and already-earned levels remain intact.
+- Supported v5 paid-stage/deadline fields are import-only: credit floor(fullCost × stage / 4) to Essence once, then remove both retired fields. Validate malformed stages/deadlines and safe-integer overflow; storage preserves the raw source backup before its first replacement.
 
 - The conditional hero kits have 33 stable skill IDs and explicit unlocks. Target selection and commitment share the same composable predicates, shapes, recipient policies and projected stat reader. Attempt state owns Fruit/Grow; ordinary waves and boss entry preserve hero state, while boss victory, defeat and exit clear it. Level/gear refresh preserves clean max HP and never saves battle modifiers.
 

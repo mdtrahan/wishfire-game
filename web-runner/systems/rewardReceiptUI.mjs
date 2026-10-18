@@ -144,7 +144,7 @@ export function createRewardReceiptPresenter(doc = globalThis.document, timers =
     return node;
   }
 
-  return { show, position, isVisible: () => !!active };
+  return { show, showFanfare, position, isVisible: () => !!active };
 }
 
 const rewardReceiptPresenter = createRewardReceiptPresenter();

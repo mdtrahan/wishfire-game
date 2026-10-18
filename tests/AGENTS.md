@@ -107,7 +107,7 @@
 
 - Lamp presentation verifies 15-second idle guidance, Hondo-to-Auto-Equip targeting and dismissal by ordinary document clicks using an offset monotonic clock, preserving live combat timing.
 
-- Bag draws preserve old saved EXP while granting none. Paid upgrade stages, construction and rarity/capacity progression stay unchanged.
+- Bag draws preserve old saved EXP while granting none. Full-cost Bag upgrades preserve the existing capacity/rarity curves and draw cadence.
 
 - Lamp cache presentation checks five full-width square columns, a stable two-to-two-and-a-half-row scroll viewport, selected halo and preserved idle guidance across four phone widths.
 
@@ -129,9 +129,9 @@
 
 - Lamp strip checks follow the reference upper-left AUTO position and require the complete left progress corner beneath the level disc. Shared strip coordinates, circular badge bounds and the left-centered 95% arrival group are measured by `output/qa/lamp-check-alignment.cjs`.
 
-- Strip progress displays the earned lamp level and purchased stages out of four; validate both against the lamp record independently of bank balance and hero EXP. A full stage meter awaits explicit Lv.UP.
+- The strip disc displays the earned Bag level; its smooth meter follows banked Essence divided by the full next-level cost, capped visually at 100%, or MAX. It has no intermediate notches. Overflow remains in the bank after Level Up.
 
-- Lamp upgrade regression covers four purchases before seven-hour construction, exact installment totals, stale tier/stage clicks, concurrent writers, failed saves, insufficient essence, reload and Lv100 MAX. Banked essence never grants a stage or level. Compare gear and hero level/EXP across upgrades while live combat continues.
+- Bag upgrade regression covers full-cost spending, stale/concurrent requests, failed saves, overflow, reload, MAX and exact paid-stage credit/backup. Verify existing gear, canonical Hero EXP and draw behavior are unchanged.
 
 - Guidance proof checks durable duplicate receipts and failed saves without rewards; phone QA covers dismantle/preview/shortfall/affordable/MAX retargets and reload. Disclosed monotonic-clock offsets test idle guidance only, preserving Date.now draw cooldown and combat inputs.
 
@@ -163,14 +163,14 @@
 
 - Lamp odds containment checks text ranges inside every table cell, alongside panel and action bounds; a contained outer panel cannot certify unclipped percentages.
 
-- progressionTransitions protects 7-hour construction, reload/expiry, atomic last-stage/ticket spending, unlocked/direct/reactive skill gates, genuine progression presets, recoverable namespace-only reset and tier-owned boss restoration. Phone QA exercises the real DEV buttons, canonical saved/live stats and SKILLS disclosure, then RESET GAME in isolated contexts.
+- progressionTransitions protects atomic immediate Bag promotion and reload, plus unlocked/direct/reactive skill gates, progression presets, namespace-only reset and tier-owned boss restoration.
 
 - Basic-rate coverage preserves authored hero ordering, SPD independence and independent skill cooldown clocks; representative four-hero combat must keep basic cadence and skill recurrence valid.
 - Conditional-skill proof covers all 33 IDs, current-stat comparisons, recipient guards, modifier bounds, deterministic RNG preview, final expiry ticks, KO/revival identity, clean saved progression and real scheduler dispatch/refunds. Runtime VM fixtures must bind the actual imported realtime services when exercising changed seams.
 
 - `actorClipPlayback.test.mjs` compares Hondo/Kaja normalized native XML to Fara across all seven states and both facings, preserving cadence and foot origins while checking every frame exists. It also checks every loaded actor's basic/cast torso source in both facings, including the forward 0.6-amplitude curves and untouched zero/recoil channels.
 
-- Lamp curve tests enforce accelerating capacity across all 100 levels, increasing four-notch prices and unchanged seven-hour construction; rarity-first cache display must preserve CP-driven auto-equip and saved queues.
+- Bag curve tests preserve all 100 accelerating capacities, full-level geometric Essence costs and fractional rarity odds. Retired installment fields are tested only as supported save imports.
 
 - `heroScreenUILayout.test.mjs` serves the production Hero renderer, shared gear CSS/atlas and navigation in isolated browser contexts. Check portrait/row/tab/footer geometry at reference, compact Retina and natural sizes, all canonical active skills through four-card pages, actual metadata and unlock gates, hero/tab selection, and byte-identical saved/in-memory progression and loadouts. Keep isolated fixture proof distinct from native full-app captures.
 
@@ -194,3 +194,14 @@
 - `combatDpsContract.test.mjs` protects actual-damage attribution, active-time hit rates and successful hit counts, no toggle reset, fresh-session reset, idle hit-rate decay and scaled overlay containment and canonical current CP refresh without importing boss policy.
 
 - `combatDpsOverlay.test.mjs` drives normal entry and the real DEV checkbox at four viewport sizes, compares current CP with canonical equipped heroes, checks text/Canvas containment and saves screenshots. Hide/show must retain nonzero earned damage.
+- `bagUpgradePresentation.test.mjs` drives production UI/storage in an isolated component fixture at four phone sizes and the natural desktop size. Guard reference pill colors, cell/close containment, disabled/ready/MAX states, failed-save suppression, capacity-only reward and detached X hit testing. Keep this component evidence separate from full-app native proof.
+
+- Bag component proof locks the sample meter to a straight-ended 17.28px track at reference scale, 43px rotated badge bounds, 18px level labels and 13.2px parenthesized progress text across all five profiles; retain existing palette and save checks.
+
+- Both Bag views must share the CSS rounded-square X with no image child; preserve detached placement and close behavior. Progress readout outer outline is2px (4px centered stroke beneath fill).
+
+- Bag arrow midpoint proof measures the visible CSS triangle box against every row/level-strip center (under0.1px), with equal horizontal label gaps in ordinary and MAX states. Numeric text stays contained in its own columns; arrows stay within their pill and label gap.
+
+- Both Bag close glyphs must crop to nontransparent painted pixels and center that cropped raster within the square (under0.1px). Keep the Canvas CSS background transparent and preserve existing frame colors.
+
+- The five-profile Bag component guard also covers Training Ground: exactly one shared floating close outside the sheet, 24px scaled gap below tabs, full hit-area containment, exact visible-block vertical centering, resize recentering, close/Escape/focus return and keyboard wrap. Closing cannot purchase training or mutate its fixture state.

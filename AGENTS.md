@@ -88,7 +88,7 @@ Support ├── `agents/` (retired)
 - Do not write outside the repo without approval.
 
 ## Combat Migration Specification
-- `LAMP_EQUIPMENT_MVP.md` owns the approved lamp replacement; `goals/wishfire-lamp-progression.md` separates delivered paid progression from proposed quality tiers and pacing assumptions.
+- `LAMP_EQUIPMENT_MVP.md` owns the approved lamp replacement; `goals/approved-bag-upgrades.md` owns the smooth full-cost Bag upgrade and reward contract; `goals/wishfire-lamp-progression.md` separates delivered paid progression from proposed quality tiers and pacing assumptions.
 - `COMBAT_ENGINE_CLEANUP_PLAN.md` owns the realtime foundation. Approved conditional-skill definitions and their progression supersede its earlier five-active kit contract. `COMBAT_MIGRATION_PLAN.md` retains the earlier hero-command contract as history; SP/FLOW, hidden Pals and playable turns are retired.
 - `governance/planning/conditional-skill-catalog.md` owns the 33 conditional skill definitions and effect guards; `COMBAT_MIGRATION_PLAN.md` links this current kit contract.
 

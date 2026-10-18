@@ -59,7 +59,7 @@
 
 - Hero Gear Upgrade idle guidance uses the Hondo-inspired blue pointer and cyan rings: 15 seconds since input points to Hondo (Huun), or Auto-Equip after portrait selection. Document pointer/click, key and wheel input dismisses and resets it. Hidden/busy surfaces, active reward banners and the completed strip tutorial suppress guidance; the overlay never intercepts input.
 
-- Lamp draws preserve the configured saved party EXP and timing. Essence is a bank, never a level calculation: each earned lamp level requires four explicitly purchased stages, then seven-hour construction and automatic completion. `capacityTier` is level minus one; optional v5 `upgradeStage` defaults to zero. Levels 1–100 interpolate the original initial/final rarity odds; capacities remain 20/30/40/50 at levels 1/2/3/4+. Future gear gains 0.5% linear stat scaling per map ordinal. Saved gear rolls, hero EXP and earned lamp levels remain intact.
+- Bag progression keeps Essence in its existing bank. One explicit full-cost Level Up grants the next earned level immediately after persistence; no installments, construction timer or speed-up action remain. Bank growth never promotes automatically. Capacity, odds, gear rolls, hero EXP and draw cadence retain current tuning.
 
 - Equip feedback animates only the saved CP value. Keep hero art stationary and name the recipient in the accessible status announcement.
 
@@ -103,10 +103,10 @@
 
 - Selected equip-cache artwork undulates from100% to94% and back over1.6 seconds, centered inside its fixed tile. The gold outer halo uses4.92px blur/2.46px spread,23% above the prior4px/2px; reduced motion retains this static halo.
 
-- Lamp odds keep equal numeric weight across Current/Next and reserve 40% of table width for quality names; three-decimal percentages must fit each cell on compact phones. The odds viewport may scroll vertically while purchase controls remain visible.
+- Bag odds retain equal numeric weight and percentages rounded upward to one decimal inside full-width colored pills, with 5px extra scaled left padding on rarity labels; only their viewport may scroll if needed. Keep level/action controls, the separate probability footer and shared close fully contained at reference and compact widths.
 - When the shared boss fallback is visible over an open lamp modal, `#lamp-overlay` reserves the measured fallback bottom plus gutter above `#lamp-dialog`, including centered letterbox offset; the dialog remains scrollable within the reduced space, and lamp close remains gated by in-flight receipts.
 
-- Construction replaces the stage/flame card with a centered tabular countdown. SPD UP ALL uses the blue alternate button state below it; zero tickets disables it. Keep the card and countdown centered at compact and reference widths.
+- Bag upgrade and completion windows share one slate rounded-square control with the existing X glyph cropped to actual painted pixel bounds and centered inside it; retain its colors. It floats below the complete window/footer with a visible scaled gap. Completion ends closely beneath Bag Capacity X > Y, with original bag art and fanfare, one close control and no odds, Continue or extra notes.
 
 - `puppets/` holds independently accepted layered actor sources and Synfig-authored clips. Adopt each roster entry only after its source and seven-state motion gates pass; final assembled acceptance remains separate. Keep rejected/native QA recovery in task checkpoints instead of the active asset tree. Preserve original static hero/enemy sprites. Native bone sources export transparent PNG frames; runtime metadata owns presentation cadence and foot origins only. Opposite facing uses documented mirrored source until authored coverage replaces it.
 - Puppet action clips must read at their battlefield size through anticipation, a target-directed strike or outward release, and recovery. Hurt requires a distinct recoil silhouette. Judge motion independently from neutral source coverage.
@@ -119,3 +119,17 @@
 - Every authored enemy must have all seven states in both facings in `puppets/manifest.json`; combat has no static-art fallback.
 
 - Conveyor empty spacing is measured between the full 112.1% artwork bounds. Preserve the five-second emission rate and art size; the visible gap is 60% of the previous `.6*.7` gap. `data-conveyor-paused=true` freezes travel with the creation gate.
+
+- Preserve embedded color profiles when matching owner references; convert sampled colors to CSS sRGB rather than copying raw RGB from a display-profile PNG. The Bag menu palette and provenance are recorded in `images/ui/ART.md`.
+
+- Bag progress follows the owner sample: thin straight-ended rectangular meter at 17.28px reference height, outlined readout at 13.2px reference scale centered across it with a 2px outer outline (4px centered stroke painted beneath the white fill), and prominent rounded diamonds at both ends. Keep diamonds unscaled after rotation; shrinking the whole badge also shrinks its numeral. Preserve these proportions in the five-profile Bag browser guard.
+
+- Bag rarity pills are authored CSS surfaces, one continuous rounded backdrop and edge per row. Cells stay transparent; screenshot fragments and cell-by-cell fills/bevels are prohibited. Preserve the approved five-color palette and geometry.
+
+- All six Bag comparison arrows are code-drawn triangles sized to the prior glyph paint bounds (.307em by .317em at 120% font size and 1.625 visual scale). Center their visible boxes vertically on the row/strip, avoiding font baseline drift. Both percentage labels center horizontally within their columns. Only each arrow moves to the measured midpoint between its adjacent percentage labels, giving equal gaps.
+
+- Disabled Bag Level Up uses an opaque aqua-gray palette with a lighter gray label. Override shared disabled opacity to1; preserve button geometry and bevels through explicit gray color tokens, with no dimming/filter/blend treatment. Enabled teal styling stays unchanged.
+
+- Bag probability footer shares the main window dark gradient and 2px gold border; retain its existing text, dimensions and detached close spacing.
+
+- Shared Bag/Training Ground close styling and glyph painting live in `systems/modalClose.mjs`; retain the accepted slate palette, floating gap and painted-bounds centering when changing either consumer.

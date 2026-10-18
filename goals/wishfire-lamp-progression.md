@@ -1,5 +1,7 @@
 # Lamp progression and quality ladder · ORKA-5af.16
 
+Historical paid-stage model. Current owner-approved runtime upgrades are described in [approved-bag-upgrades.md](approved-bag-upgrades.md); earlier timing, cost and stage assumptions below do not define current behavior.
+
 ## Delivered review-lane behavior
 
 Essence remains available until the player purchases an upgrade stage. Four purchases fill four blue sockets; each saves its own receipt. The button then becomes Lv.UP. Only that action advances the earned lamp level, resets the sockets, and applies the new drop odds and storage capacity. Bank changes, collection, opening the menu and reloads grant no stages or levels. The strip and menu use the same earned level and purchased-stage record. No notification bubble or timer is added.

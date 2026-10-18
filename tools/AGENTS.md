@@ -101,3 +101,7 @@
 - `complete_missing_actor_clips.py` exports only recovered Djinn/High Orc sources through native Synfig1024 to Lanczos128. It preserves existing sources and supports actor/state-scoped re-export; never run the pilot exporter over recovered packages.
 
 - Run pad_actor_motion_clips.py after affected native exports. It re-renders an expanded view box rather than padding already-clipped PNGs; referenceHeight128 and translated foot origins preserve body scale. The owner review capture script lives with its generated output, outside the production game.
+
+- The lamp phone gate includes the isolated Bag-upgrade component proof. Changes to its presentation module, CSS, shared close/medallion assets or strip progress must trigger `test:lamp-ui`; the suite runs browser files serially.
+
+- Shared `modalClose.mjs` and Training Ground `combatProgressionUI.mjs` changes route through the existing lamp/Training five-profile presentation guard. Preserve Bag coverage when extending the shared close consumer set.

@@ -1,5 +1,7 @@
 # Wishfire Lamp Equipment MVP · ORKA-0ln
 
+Current Bag upgrade progression and presentation are owned by `goals/approved-bag-upgrades.md`, which supersedes all paid-stage/construction wording below.
+
 Historical initial lamp design. The owner-authorized ORKA-pop conveyor/cache redesign in `goals/lamp-conveyor-validation.md` supersedes the burp, five-result history, full-cache generation stop, lamp EXP grants and batch-review routing described below. Enemy EXP is explicitly deferred to a later task. Generator, rarity, CP, Essence and paid-progression rules remain current unless a later progression contract explicitly supersedes them.
 
 Status: implemented in the isolated `codex/ORKA-0ln-lamp` review lane. Owner art and gameplay acceptance remains a human review. The feature replaces the former Gold equipment shop and shared inventory reassignment; it preserves the current continuous combat loop. This approved replacement supersedes shop-preservation instructions in the combat cutover plan.
