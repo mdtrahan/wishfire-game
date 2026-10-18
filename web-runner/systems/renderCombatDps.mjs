@@ -42,7 +42,7 @@ export function updateCombatDpsOverlay({ canvas, state, layoutId, phase, overlay
     document.body.append(overlay);
   }
   const snapshot = combatDpsReadout(state);
-  const values = [['Hero', 'CP', '5s DPS', 'Avg DPS', 'Damage'], ...[{ name: 'Party', ...snapshot.party }, ...snapshot.heroes].map(row => [row.name, formatDps(row.cp), formatDps(row.rollingDps), formatDps(row.averageDps), formatDps(row.total)])];
+  const values = [['Hero', 'CP', '5s DPS', 'Hits', 'Damage'], ...[{ name: 'Party', ...snapshot.party }, ...snapshot.heroes].map(row => [row.name, formatDps(row.cp), formatDps(row.rollingDps), formatDps(row.hits).replace(/\.0$/, ''), formatDps(row.total)])];
   while (table.rows.length > values.length) table.deleteRow(-1);
   values.forEach((cells, rowIndex) => {
     const row = table.rows[rowIndex] || table.insertRow();

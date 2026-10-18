@@ -61,9 +61,12 @@ test('DPS and current CP: normal combat, toggle continuity and four contained vi
         const expectedLeader = combatDpsReadout(state).heroes.find(hero => hero.leading);
         const leader = overlay.querySelector('[data-kind=leader]');
         const partyColor = getComputedStyle(overlay.querySelector('[data-kind=party]')).color;
-        return { partyColor, leaderColor: leader ? getComputedStyle(leader).color : null, leader: leader?.cells[0].textContent || null, expectedLeader: expectedLeader?.name || null, viewport: [innerWidth, innerHeight, devicePixelRatio], canvas: frame.toJSON(), backing: [canvas.width, canvas.height], overlay: rect.toJSON(), contained: rect.left >= frame.left && rect.right <= frame.right && rect.top >= frame.top && rect.bottom <= frame.bottom, horizontal: document.documentElement.scrollWidth > innerWidth, cellOverflow, partyCP, displayedCP: overlay.querySelectorAll('tr')[1].cells[1].textContent, text: overlay.innerText };
+        return { headers: [...overlay.querySelectorAll('th')].map(cell => cell.textContent), displayedHits: Number(overlay.querySelectorAll('tr')[1].cells[3].textContent), expectedHits: state.globals.CombatDps.hitCount, partyColor, leaderColor: leader ? getComputedStyle(leader).color : null, leader: leader?.cells[0].textContent || null, expectedLeader: expectedLeader?.name || null, viewport: [innerWidth, innerHeight, devicePixelRatio], canvas: frame.toJSON(), backing: [canvas.width, canvas.height], overlay: rect.toJSON(), contained: rect.left >= frame.left && rect.right <= frame.right && rect.top >= frame.top && rect.bottom <= frame.bottom, horizontal: document.documentElement.scrollWidth > innerWidth, cellOverflow, partyCP, displayedCP: overlay.querySelectorAll('tr')[1].cells[1].textContent, text: overlay.innerText };
       });
       assert.deepEqual(metrics.viewport, [width, height, 2]);
+      assert.deepEqual(metrics.headers, ['Hero', 'CP', '5s DPS', 'Hits', 'Damage']);
+      assert.equal(metrics.displayedHits, metrics.expectedHits);
+      assert.ok(metrics.displayedHits > 0);
       assert.equal(metrics.partyColor, 'rgb(169, 192, 208)');
       assert.equal(metrics.leader, metrics.expectedLeader);
       if (metrics.leader) assert.equal(metrics.leaderColor, 'rgb(255, 217, 87)');

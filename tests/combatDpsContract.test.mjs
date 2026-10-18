@@ -17,14 +17,14 @@ test('DPS attributes heroes separately and retains zero-damage members in roster
   const snapshot = combatDpsSnapshot(globals, roster);
   assert.equal(snapshot.party.total, 30);
   assert.equal(snapshot.party.rollingDps, 15);
-  assert.equal(snapshot.party.averageDps, 15);
+  assert.equal(snapshot.party.hits, 1);
   assert.deepEqual(snapshot.heroes.map(row => [row.uid, row.total]), [[1, 30], [2, 0]]);
   assert.equal(recordCombatDpsDamage(globals, enemy, fara, 100), false);
   for (const invalid of [0, -1, NaN, Infinity]) assert.equal(recordCombatDpsDamage(globals, fara, enemy, invalid), false);
   assert.equal(combatDpsSnapshot(globals, roster).party.total, 30);
 });
 
-test('five-second DPS expires during idle time while the session average retains all damage', () => {
+test('five-second DPS expires during idle time while session damage and hit totals persist', () => {
   const globals = fixture(); globals.time = 11;
   recordCombatDpsDamage(globals, fara, enemy, 30);
   globals.time = 15;
@@ -33,7 +33,8 @@ test('five-second DPS expires during idle time while the session average retains
   const snapshot = combatDpsSnapshot(globals, roster);
   assert.equal(snapshot.party.total, 50);
   assert.equal(snapshot.party.rollingDps, 4);
-  assert.equal(snapshot.party.averageDps, 50 / 7);
+  assert.equal(snapshot.party.hits, 2);
+  assert.deepEqual(snapshot.heroes.map(hero => hero.hits), [1, 1]);
   assert.equal(snapshot.heroes[0].rollingDps, 0);
   globals.time = 21;
   assert.equal(combatDpsSnapshot(globals, roster).party.rollingDps, 0);
@@ -111,4 +112,22 @@ test('yellow leader follows the far-right damage total, retains ties and survive
   globals.time = 24;
   assert.deepEqual(leaders(), [hondo.uid]);
   assert.equal(combatDpsReadout(state).heroes[1].rollingDps, 0);
+});
+
+
+test('Hits count successful per-target damage events, exclude zero damage and retain session totals', () => {
+  const globals = fixture();
+  globals.time = 12;
+  recordCombatDpsDamage(globals, fara, enemy, 5);
+  recordCombatDpsDamage(globals, fara, { ...enemy, uid: 11 }, 7);
+  recordCombatDpsDamage(globals, hondo, enemy, 10);
+  recordCombatDpsDamage(globals, hondo, enemy, 0);
+  recordCombatDpsDamage(globals, enemy, fara, 2);
+  const snapshot = combatDpsSnapshot(globals, roster);
+  assert.equal(snapshot.party.hits, 3);
+  assert.deepEqual(snapshot.heroes.map(hero => hero.hits), [2, 1]);
+  globals.time = 30;
+  assert.equal(combatDpsSnapshot(globals, roster).party.hits, 3);
+  beginCombatDpsSession(globals);
+  assert.equal(combatDpsSnapshot(globals, roster).party.hits, 0);
 });

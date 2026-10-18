@@ -191,6 +191,6 @@
 
 - `boundedPartyRoamingContract.test.mjs` checks stationary restored feet and separation in both camera projections, recovery, fifteen seeded complete waves through actual reach, and sparse melee/ranged world-corner targets. A production boss-clear regression covers right-edge and Y-outside all-living returns in both orientations, preserving settlement positions and limiting each0.1s step to7.8 world units. Oversized-Y return proof preserves separated targets and paths, then rejects collision pops on zero-time and first moving ordinary ticks. Synthetic damage is diagnostic; normal-entry candidate footage remains required. Formation fixtures belong inside the ordinary patrol; enemy placement fixtures retain full-world geometry.
 
-- `combatDpsContract.test.mjs` protects actual-damage attribution, rolling/session clocks, no toggle reset, fresh-session reset, idle window expiry and scaled overlay containment and canonical current CP refresh without importing boss policy.
+- `combatDpsContract.test.mjs` protects actual-damage attribution, rolling/session clocks and successful hit counts, no toggle reset, fresh-session reset, idle window expiry and scaled overlay containment and canonical current CP refresh without importing boss policy.
 
 - `combatDpsOverlay.test.mjs` drives normal entry and the real DEV checkbox at four viewport sizes, compares current CP with canonical equipped heroes, checks text/Canvas containment and saves screenshots. Hide/show must retain nonzero earned damage.

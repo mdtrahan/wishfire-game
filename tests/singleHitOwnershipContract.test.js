@@ -208,7 +208,8 @@ test('DPS counts resolved enemy HP loss once, including a lethal overkill and ig
   const applied = bank.ApplyDamageToTarget(ctx, 200, 999, { sourceUID: 100, suppressPartySkillHitHooks: 1 });
   assert.equal(applied, 5);
   assert.equal(globals.CombatDps.totalDamage, 5);
-  assert.equal(globals.CombatDps.byHero[100], 5);
+  assert.equal(globals.CombatDps.byHero[100].total, 5);
+  assert.equal(globals.CombatDps.byHero[100].hits, 1);
   assert.equal(bank.ApplyDamageToTarget(ctx, 200, 999, { sourceUID: 100 }), 0);
   bank.ApplyDamageToTarget(ctx, 100, 1, { sourceUID: 200, nativeResolved: true });
   assert.equal(globals.CombatDps.totalDamage, 5);

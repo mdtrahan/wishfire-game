@@ -562,7 +562,7 @@ export function createDevToolingRuntime(deps = {}) {
         </fieldset>
         <label style="grid-column:1/-1;display:flex;align-items:center;gap:8px;">
           <input data-devtool-combat-dps type="checkbox" style="width:auto;">
-          Show live combat DPS (5-second rolling and session average)
+          Show live combat DPS, hits and damage totals
         </label>
         <div style="display:flex;flex-direction:column;gap:4px;">
           <div style="font-weight:700;">Hero Slots</div>
