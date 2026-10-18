@@ -2,7 +2,7 @@ import {RARITIES} from '../web-runner/src/core/equipment.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {LAMP_CONFIG,LAMP_CAPACITY_TIERS,generateLampItem,createLampEconomy,activateLamp,lampStoredCount,lampCapacity,lampItemCPGain,lampGearCP,sortedLampItems,selectLampUpgrades,lampReviewCandidates,planLampAutoEquip,finishLampReview,lampStageCost,purchaseLampStage,upgradeLamp,completeLampUpgrade,validateLampEconomy,compareLampItem,selectAutoEquipHero,equipLampItem,dismantleLampItems,migrateLegacyEquipment,migrateLampEconomy,migrateFourStatLamp,migrateDraftLamp,salvageValue,GEAR_ARCHETYPES} from '../web-runner/src/core/lampGear.mjs';
+import {LAMP_CONFIG,LAMP_CAPACITY_TIERS,generateLampItem,createLampEconomy,activateLamp,lampStoredCount,lampCapacity,lampItemCPGain,lampItemSlotCPGain,lampGearCP,sortedLampItems,selectLampUpgrades,lampReviewCandidates,planLampAutoEquip,finishLampReview,lampStageCost,purchaseLampStage,upgradeLamp,completeLampUpgrade,validateLampEconomy,compareLampItem,selectAutoEquipHero,equipLampItem,dismantleLampItems,migrateLegacyEquipment,migrateLampEconomy,migrateFourStatLamp,migrateDraftLamp,salvageValue,GEAR_ARCHETYPES} from '../web-runner/src/core/lampGear.mjs';
 import {createEquipmentStorage,EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
 import {createHeroProgressStore,newHeroProgress} from '../web-runner/src/core/heroProgression.mjs';
 import {computeCombatPower} from '../web-runner/src/core/combatPower.mjs';
@@ -240,11 +240,11 @@ test('Auto Equip prefers the lowest matching-slot CP, then lowest total hero CP,
  assert.equal(selectAutoEquipHero(data,candidate,[]),null);
 });
 
-test('Auto rechecks prior slots after nonlinear CP changes and accepts an exact 0.1 gain',()=>{
+test('Auto uses matching-slot CP independently of nonlinear whole-hero CP changes',()=>{
  const hero=createHeroProgressStore().heroes.Falie,data=createLampEconomy(1),current={instanceId:'cur',type:'hat',stats:{ATK:0,DEF:0,MAG:200,RES:0,HP:0}},hat={instanceId:'hat-up',type:'hat',stats:{ATK:0,DEF:200,MAG:0,RES:200,HP:2000}},body={instanceId:'body-up',type:'body',stats:{ATK:10,DEF:0,MAG:0,RES:0,HP:0}};
  data.items=[current,hat,body];data.loadouts.Falie={hat:'cur'};data.lamp.pending=['body-up','hat-up'];assert.equal(lampItemCPGain(data,body,hero),0);assert.ok(lampItemCPGain(data,hat,hero)>0);
  const plan=planLampAutoEquip(data,[hero]);assert.equal(plan.loadouts.Falie.hat,'hat-up');assert.equal(plan.loadouts.Falie.body,'body-up');
- const tiny={...createLampEconomy(1),items:[{instanceId:'current',type:'body',stats:{ATK:38,DEF:55,MAG:33,RES:82,HP:78}},{instanceId:'tiny',type:'body',stats:{ATK:79,DEF:47,MAG:76,RES:23,HP:85}}],loadouts:{Falie:{body:'current'}}};tiny.lamp.pending=['tiny'];const gain=lampItemCPGain(tiny,tiny.items[1],hero);assert.equal(gain,0.1);assert.equal(lampReviewCandidates(tiny,[hero])[0].bestGain,0.1);assert.equal(planLampAutoEquip(tiny,[hero]).loadouts.Falie.body,'tiny');
+ const tiny={...createLampEconomy(1),items:[{instanceId:'current',type:'body',stats:{ATK:38,DEF:55,MAG:33,RES:82,HP:78}},{instanceId:'tiny',type:'body',stats:{ATK:79,DEF:47,MAG:76,RES:23,HP:85}}],loadouts:{Falie:{body:'current'}}};tiny.lamp.pending=['tiny'];const gain=lampItemCPGain(tiny,tiny.items[1],hero);assert.equal(gain,0.1);assert.equal(lampReviewCandidates(tiny,[hero])[0].bestGain,16);assert.equal(planLampAutoEquip(tiny,[hero]).loadouts.Falie.body,'tiny');
 });
 
 test('four-stat saves migrate once without rerolling items; equip fills gained max HP and reports actual CP',async()=>{
@@ -392,11 +392,11 @@ test('explicit dismantle accepts positive upgrades and converts remaining cache'
 });
 
 
-test('earned batch Auto Equip bypasses item-CP leaders that give no hero gain',async()=>{
+test('earned batch Auto Equip uses slot gains and preserves accurate hero receipts',async()=>{
  const captured=JSON.parse(readFileSync(new URL('./fixtures/lamp-auto-earned-69.json',import.meta.url)));
  const data=structuredClone(captured.economy),heroes=Object.values(captured.heroes.heroes).slice(0,4);
- const eligible=sortedLampItems(data).filter(i=>heroes.some(h=>lampItemCPGain(data,i,h)>0));
- assert.equal(eligible.length,21);
+ const eligible=sortedLampItems(data).filter(i=>heroes.some(h=>lampItemSlotCPGain(data,i,h)>0));
+ assert.equal(eligible.length,25);
  assert.deepEqual(selectLampUpgrades(data,heroes).map(i=>i.instanceId),eligible.map(i=>i.instanceId));
  const f=fixture({[EQUIPMENT_SAVE_KEY]:JSON.stringify(data)});f.globals.HeroProgress=structuredClone(captured.heroes);await f.store.sync();
  const exp=data.partyEXP,progress=heroes.map(h=>[h.currentLevel,h.currentEXP,h.lampEXPClaimed]);

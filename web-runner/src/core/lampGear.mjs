@@ -158,6 +158,11 @@ export function lampItemCPGain(data,item,hero){
  return Math.round((computeCombatPower(after)-computeCombatPower(before))*10)/10;
 }
 export const lampGearCP=item=>item?computeCombatPower({stats:item.stats,level:1}):0;
+// Eligibility compares equipment in the matching slot; saved receipts use whole-hero CP.
+export function lampItemSlotCPGain(data,item,hero){
+ const current=data.items.find(i=>i.instanceId===data.loadouts[hero.heroInstanceKey]?.[item.type]);
+ return Math.round((lampGearCP(item)-lampGearCP(current))*10)/10;
+}
 export function sortedLampItems(data,ids=data.lamp.pending){
  const items=new Map(data.items.map(item=>[item.instanceId,item])),rarities=Object.keys(RARITIES);
  return ids.map(id=>items.get(id)).sort((a,b)=>rarities.indexOf(b.rarity)-rarities.indexOf(a.rarity)||lampGearCP(b)-lampGearCP(a)||(a.sequence??0)-(b.sequence??0)||a.instanceId.localeCompare(b.instanceId));
@@ -165,7 +170,7 @@ export function sortedLampItems(data,ids=data.lamp.pending){
 export function lampReviewCandidates(data,heroes){
  const queues=new Map();for(const id of data.lamp.pending)queues.set(id,'pending');for(const id of data.lamp.discarded||[])queues.set(id,'discarded');
  return sortedLampItems(data,[...queues.keys()]).map(item=>{
-  const gains=heroes.map(hero=>({heroId:hero.heroInstanceKey,cpGain:lampItemCPGain(data,item,hero)}));
+  const gains=heroes.map(hero=>({heroId:hero.heroInstanceKey,cpGain:lampItemSlotCPGain(data,item,hero)}));
   const bestHeroId=selectAutoEquipHero(data,item,heroes),best=gains.find(gain=>gain.heroId===bestHeroId)||{heroId:null,cpGain:0};
   return{item,queue:queues.get(item.instanceId),gains,bestGain:best.cpGain,bestHeroId:best.heroId};
  });
@@ -174,7 +179,7 @@ export function selectLampUpgrades(data,heroes){return lampReviewCandidates(data
 export function selectAutoEquipHero(data,item,heroes){
  let best=null,bestSlotCP=Infinity,bestHeroCP=Infinity;
  for(const hero of heroes){
-  if(lampItemCPGain(data,item,hero)<=0)continue;
+  if(lampItemSlotCPGain(data,item,hero)<=0)continue;
   const currentId=data.loadouts[hero.heroInstanceKey]?.[item.type],slotCP=lampGearCP(data.items.find(entry=>entry.instanceId===currentId)),heroCP=lampHeroCP(data,hero);
   if(slotCP<bestSlotCP||(slotCP===bestSlotCP&&heroCP<bestHeroCP)){best=hero.heroInstanceKey;bestSlotCP=slotCP;bestHeroCP=heroCP;}
  }

@@ -2,6 +2,8 @@
 
 Historical initial lamp design. The owner-authorized ORKA-pop conveyor/cache redesign in `goals/lamp-conveyor-validation.md` supersedes the burp, five-result history, full-cache generation stop, lamp EXP grants and batch-review routing described below. Enemy EXP is explicitly deferred to a later task. Generator, rarity, CP, Essence and paid-progression rules remain current unless a later progression contract explicitly supersedes them.
 
+Current owner correction (ORKA-bhb, 2026-10-17) supersedes the total-hero CP eligibility and arrow rules below. For the selected cache item, each hero compares its CP with the currently equipped matching slot: green means strictly higher slot CP; red means equal or lower. Multiple heroes may show green for one item. Auto processes rarity/CP order once, assigns only slot upgrades, and favors the lowest equipped matching-slot CP, then lowest whole-hero CP, then party order. Apply every assignment before the next item; consume each item once. Saved CP feedback reports the actual whole-hero before/after change.
+
 Status: implemented in the isolated `codex/ORKA-0ln-lamp` review lane. Owner art and gameplay acceptance remains a human review. The feature replaces the former Gold equipment shop and shared inventory reassignment; it preserves the current continuous combat loop. This approved replacement supersedes shop-preservation instructions in the combat cutover plan.
 
 ## Publisher-quality definition of done

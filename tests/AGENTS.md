@@ -31,7 +31,7 @@
 - Ground-skill presentation checks preserve planted zone point/radius across caster movement, recipient foot projection, source/target KO eligibility, exact expiry, paused-frame equality and zero simulation mutation.
 - Puppet selection tests route actual hero definitions and enemy catalog names to their source IDs, keep KO owned by HP, reject stale KO facing for living actors, and preserve simulation clocks while outgoing puppet images bridge death/revival loads. Initial-load churn, synchronous decoded flips, full enemy manifest coverage and executed assembled draw callbacks must prevent actor disappearance and static substitution.
 - `storageHygieneContract.test.mjs` protects the worktree-retirement guard and an apply fixture; a lane is eligible only when present, clean, merged, tied to a CLOSED Bead, and free of protected ignored files. Unknown evidence and dirty source must survive a refused apply.
-- Lamp browser fixtures use bounded page waits and the current Hero screen tabs/selected conditional-skill detail, with unlock checks against authored definitions.
+- Lamp browser fixtures use bounded page waits and the current Hero screen tabs/selected conditional-skill detail, with unlock checks against authored definitions. Measure upgrade geometry after the runtime positioning frame, preserving all containment assertions.
 - Lamp rules protect durable spending, migration, unique assignment and previewed salvage. `npm run test:lamp-ui` starts an owned local server, checks four phone viewports and proves combat continues during comparison; screenshots and numeric evidence live under `test-results/lamp/`.
 - `elementalImpactVfxContract.test.mjs` protects lazy per-element frame loading, approved manifest cadence, skill mapping, target centering and the 52 logical-pixel impact size cap.
 - Function-bank VM tests that extract individual helpers must terminate slices at either exported or private function declarations.
@@ -111,7 +111,7 @@
 
 - Lamp cache presentation checks five full-width square columns, a stable two-to-two-and-a-half-row scroll viewport, selected halo and preserved idle guidance across four phone widths.
 
-- Lamp regression proof checks descending item CP review, raw last-five emission order, manual lower-CP override, positive same-slot Auto gains across all 12 slots, and finite storage/EXP capacity. Pending and discarded cache tiles stay inspectable; green arrows use shared positive total-hero CP gain, and discarded gear remains manually equipable. Dismantling rejects any queued positive-gain gear and hides resource amounts until confirmation.
+- Lamp regression proof checks descending item CP review, raw last-five emission order, manual lower-CP override, positive same-slot Auto gains across all 12 slots, and finite storage/EXP capacity. Pending and discarded cache tiles stay inspectable; green arrows use shared strictly positive matching-slot CP gain, and discarded gear remains manually equipable. Explicit dismantling may convert missed upgrades in its reviewed snapshot.
 
 - Equip-close proof requires the modal to remain visible while its CP float plays, including the last Auto-Equip item; after automatic close no CP float may remain.
 
@@ -135,7 +135,7 @@
 
 - Guidance proof checks durable duplicate receipts and failed saves without rewards; phone QA covers dismantle/preview/shortfall/affordable/MAX retargets and reload. Disclosed monotonic-clock offsets test idle guidance only, preserving Date.now draw cooldown and combat inputs.
 
-- Lamp comparison proves positive/zero/negative total hero CP previews, direct portrait selection, one selected portrait, selected-hero matching-slot stat arrows and saved equip receipt agreement across the four phone profiles.
+- Lamp comparison proves selected-item green/red matching-slot CP eligibility (equality is red), direct portrait selection, one selected portrait, selected-hero matching-slot stat arrows and saved equip receipt agreement across the four phone profiles.
 
 - The four-phone lamp guard hit-tests and clicks Close during active CP feedback, verifies deferred closure, and rejects remaining CP floats after departure.
 
@@ -188,3 +188,5 @@
 - Auto-Equip phone coverage checks that consuming the final cache item closes after feedback without displaying empty disposal; saved legacy salvage still opens an enabled confirmation.
 
 - Boss fallback geometry checks keep combat at logical Y=42 below resources, including letterboxing. Visibility checks reject every non-combat layout, blocking modal and terminal phase without changing readiness. The rendered UI lock drives retry, equipment/Growth modals and HERO navigation on all standard phone profiles.
+
+- `lampSlotCP.test.mjs` protects generated opposite-sign slot/whole-hero cases, the +0.1 threshold, four green recipients and unique Hondo allocation for +13.6/+15/+6/+11.9, equality, empty slots and factual saved whole-hero receipts. The production four-phone Lamp suite renders the same slot rule and exercises Auto through visible controls.

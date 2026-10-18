@@ -7,7 +7,7 @@ import {createServer} from 'node:net';
 import {setTimeout as delay} from 'node:timers/promises';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {createHeroProgressStore,refreshHeroStats} from '../web-runner/src/core/heroProgression.mjs';
-import {createLampEconomy,generateLampItem,lampStoredCount,lampCapacity,salvageValue} from '../web-runner/src/core/lampGear.mjs';
+import {createLampEconomy,generateLampItem,lampStoredCount,lampCapacity,salvageValue,lampGearCP} from '../web-runner/src/core/lampGear.mjs';
 import {validateConveyorState} from '../web-runner/src/core/lampConveyor.mjs';
 const require=createRequire(import.meta.url),{detectChromeExecutable}=require('../tools/playwright_support.js');
 const directory=process.env.LAMP_QA_OUTPUT||'test-results/lamp';
@@ -42,6 +42,8 @@ async function containment(page){
  assert.equal(result.horizontal,false);assert.equal(result.dialogHorizontal,false);assert.equal(result.contained,true);assert.equal(result.conveyorAccessible,await page.locator('#lamp-dialog').getAttribute('data-view')!=='upgrade');assert.equal(result.portraits,true);assert.equal(result.buttons,true);assert.equal(result.primaryVisible,true);assert.equal(result.identityFits,true);assert.ok(Math.abs(result.stripY-488)<.5);assert.ok(Math.abs(result.stripHeight-92)<.5);return result;
 }
 async function upgradeWithoutScroll(page){
+ // The runtime positions the newly opened upgrade dialog on its next frame.
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
  const metrics=await page.evaluate(()=>{
   const dialog=document.querySelector('#lamp-dialog'),odds=dialog.querySelector('.lamp-odds-scroll'),overlay=document.querySelector('#lamp-overlay'),r=dialog.getBoundingClientRect();
   const cells=[...odds.querySelectorAll('th,td')].map(n=>{const range=document.createRange();range.selectNodeContents(n);const text=range.getBoundingClientRect(),cell=n.getBoundingClientRect();return text.left>=cell.left-.5&&text.right<=cell.right+.5&&text.top>=r.top&&text.bottom<=r.bottom;});
@@ -74,6 +76,42 @@ function fixture(){
  // Disclosed seeded cache/issued fixture; production UI owns every subsequent transaction.
  save.lamp.emissions=save.items.filter(i=>i.instanceId.startsWith('lamp:')).slice(0,3).map((item,n)=>({item,issuedAt:0,collected:true,age:3000+n*2000}));return{save,heroes};
 }
+
+test('selected-item slot arrows agree for all heroes and Auto assigns the one item once',async()=>{
+ let server,url=process.env.LAMP_QA_URL;const report=[];await mkdir(directory,{recursive:true});
+ if(!url){const socket=createServer();await new Promise(r=>socket.listen(0,'127.0.0.1',r));const port=socket.address().port;await new Promise(r=>socket.close(r));url=`http://localhost:${port}/web-runner/index.html`;server=spawn(process.execPath,['tools/serve_web.js','--port',String(port),'--host','127.0.0.1'],{stdio:'ignore'});for(let n=0;n<50;n++){try{if((await fetch(url)).ok)break;}catch{}if(n===49)throw Error('Lamp server did not start');await delay(100);}}
+ const browser=await chromium.launch({headless:true,executablePath:detectChromeExecutable()});
+ try{for(const [width,height,dpr] of profiles){
+  const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:dpr});context.setDefaultTimeout(15000);
+  try{for(const scenario of [{name:'increase',owned:[368,421,121],selected:180,gain:3.6},{name:'decrease',owned:[35,76,135],selected:85,gain:-2.7},{name:'equal',owned:[35,76,135],selected:85,gain:0},{name:'mixed',owned:[368,421,121],selected:180,gain:3.6}]){
+   const save=createLampEconomy(42),heroes=createHeroProgressStore(),roll=n=>generateLampItem(42,n,n%70),candidate=roll(scenario.selected);
+   for(const hero of Object.values(heroes.heroes))for(const n of scenario.owned){const item={...roll(n),instanceId:`owned:${hero.heroInstanceKey}:${n}`};save.items.push(item);(save.loadouts[hero.heroInstanceKey]||={})[item.type]=item.instanceId;}
+   if(scenario.name==='equal')candidate.stats={...save.items.find(i=>i.instanceId===save.loadouts.Falie[candidate.type]).stats};
+   if(scenario.name==='mixed')for(const [n,hero] of Object.values(heroes.heroes).slice(0,2).entries())save.items.find(i=>i.instanceId===save.loadouts[hero.heroInstanceKey][candidate.type]).stats={...candidate.stats,HP:candidate.stats.HP+n*20};
+   const expectedGains=Object.values(heroes.heroes).map(h=>Math.round((lampGearCP(candidate)-lampGearCP(save.items.find(i=>i.instanceId===save.loadouts[h.heroInstanceKey][candidate.type])))*10)/10);
+   save.items.push(candidate);save.lamp.pending=[candidate.instanceId];save.lamp.sequence=600;save.lamp.highestOrdinal=69;validateConveyorState(save);
+   const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+   try{
+    await page.addInitScript(({save,heroes})=>{save.lamp.lastActivationAt=Date.now();localStorage.setItem('wishfire.equipment-economy.v5',JSON.stringify(save));localStorage.setItem('orka.hero_progress.v2',JSON.stringify(heroes));},{save,heroes});
+    await enter(page,url);const dialog=page.locator('#lamp-dialog');await page.locator('#wishfire-lamp .lamp-collect').click();await dialog.waitFor();
+    if(scenario.gain<=0)await dialog.locator(`.lamp-tile[data-id="${candidate.instanceId}"]`).click();
+    await page.waitForFunction(()=>document.querySelector('#lamp-dialog').dataset.view==='equip');
+    const arrows=await dialog.locator('.lamp-hero').evaluateAll(ns=>ns.map(n=>({hero:n.dataset.id,gain:Number(n.dataset.cpChange),up:!!n.querySelector('.lamp-cp-direction.up'),down:!!n.querySelector('.lamp-cp-direction.down')})));
+    assert.equal(arrows.length,4);assert.ok(arrows.every((a,n)=>a.gain===expectedGains[n]&&a.up===(expectedGains[n]>0)&&a.down===(expectedGains[n]<=0)));
+    const auto=dialog.getByRole('button',{name:'Auto-Equip',exact:true});assert.equal(await auto.isEnabled(),scenario.gain>0);
+    const layout=await containment(page);await page.screenshot({path:`${directory}/${width}-slot-${scenario.name}.png`});
+    if(scenario.gain>0){
+     await auto.click();await page.locator('.lamp-cp-feedback').waitFor();
+     const feedback=await page.locator('.lamp-cp-feedback').evaluateAll(ns=>ns.map(n=>({before:+n.dataset.before,after:+n.dataset.after,change:+n.dataset.change})));
+     assert.equal(feedback.length,1);assert.equal(Math.round((feedback[0].after-feedback[0].before)*10)/10,feedback[0].change);
+     const saved=await assertSave(page);assert.equal(Object.values(saved.loadouts).filter(slots=>slots[candidate.type]===candidate.instanceId).length,1);
+     await page.waitForFunction(()=>document.querySelector('#lamp-overlay').hidden);
+    }
+    assert.deepEqual(errors,[]);report.push({width,height,dpr,scenario:scenario.name,arrows,layout,errors});
+   }finally{await page.close();}
+  }}finally{await context.close();}
+ }}finally{await browser.close();server?.kill();await writeFile(`${directory}/slot-arrows.json`,JSON.stringify(report,null,2));}
+});
 
 test('continuous equipment lifecycle: four phones, full-cache pause, concurrent active-tab collection, manual downgrade and selected disposal',async()=>{
  let server,url=process.env.LAMP_QA_URL;const report=[];await mkdir(directory,{recursive:true});
