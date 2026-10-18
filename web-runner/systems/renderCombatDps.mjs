@@ -42,7 +42,7 @@ export function updateCombatDpsOverlay({ canvas, state, layoutId, phase, overlay
     document.body.append(overlay);
   }
   const snapshot = combatDpsReadout(state);
-  const values = [['Hero', 'CP', 'H.Rate', 'Hits', 'Damage'], ...[...snapshot.heroes, { name: 'Party', ...snapshot.party }].map(row => [row.name, formatDps(row.cp), formatDps(row.hitRate), formatDps(row.hits).replace(/\.0$/, ''), formatDps(row.total)])];
+  const values = [['Hero', 'CP', 'Damage', 'Hits', 'H.Rate'], ...[...snapshot.heroes, { name: 'Party', ...snapshot.party }].map(row => [row.name, formatDps(row.cp), formatDps(row.total), formatDps(row.hits).replace(/\.0$/, ''), formatDps(row.hitRate)])];
   while (table.rows.length > values.length) table.deleteRow(-1);
   values.forEach((cells, rowIndex) => {
     const row = table.rows[rowIndex] || table.insertRow();
@@ -50,7 +50,7 @@ export function updateCombatDpsOverlay({ canvas, state, layoutId, phase, overlay
     cells.forEach((value, cellIndex) => {
       let cell = row.cells[cellIndex];
       if (!cell) { cell = document.createElement(rowIndex === 0 ? 'th' : 'td'); row.append(cell); }
-      if (rowIndex === 0 && cellIndex === 2) cell.title = 'Hits dealt per active combat second (session average)';
+      if (rowIndex === 0 && cellIndex === 4) cell.title = 'Hits dealt per active combat second (session average)';
       if (cell.textContent !== value) cell.textContent = value;
     });
   });

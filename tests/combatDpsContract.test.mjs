@@ -99,7 +99,7 @@ test('current CP follows canonical equipped stats and refreshes independently of
 });
 
 
-test('yellow leader follows the far-right damage total, retains ties and ignores the hit-rate column', () => {
+test('yellow leader follows cumulative damage, retains ties and ignores the hit-rate column', () => {
   const globals = fixture(), state = { globals, entities: roster };
   const leaders = () => combatDpsReadout(state).heroes.filter(hero => hero.leading).map(hero => hero.uid);
   assert.deepEqual(leaders(), []);
