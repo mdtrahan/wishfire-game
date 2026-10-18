@@ -42,11 +42,11 @@ export function updateCombatDpsOverlay({ canvas, state, layoutId, phase, overlay
     document.body.append(overlay);
   }
   const snapshot = combatDpsReadout(state);
-  const values = [['Hero', 'CP', '5s DPS', 'Hits', 'Damage'], ...[{ name: 'Party', ...snapshot.party }, ...snapshot.heroes].map(row => [row.name, formatDps(row.cp), formatDps(row.rollingDps), formatDps(row.hits).replace(/\.0$/, ''), formatDps(row.total)])];
+  const values = [['Hero', 'CP', '5s DPS', 'Hits', 'Damage'], ...[...snapshot.heroes, { name: 'Party', ...snapshot.party }].map(row => [row.name, formatDps(row.cp), formatDps(row.rollingDps), formatDps(row.hits).replace(/\.0$/, ''), formatDps(row.total)])];
   while (table.rows.length > values.length) table.deleteRow(-1);
   values.forEach((cells, rowIndex) => {
     const row = table.rows[rowIndex] || table.insertRow();
-    row.dataset.kind = rowIndex === 0 ? 'header' : rowIndex === 1 ? 'party' : snapshot.heroes[rowIndex - 2].leading ? 'leader' : 'hero';
+    row.dataset.kind = rowIndex === 0 ? 'header' : rowIndex === values.length - 1 ? 'party' : snapshot.heroes[rowIndex - 1].leading ? 'leader' : 'hero';
     cells.forEach((value, cellIndex) => {
       let cell = row.cells[cellIndex];
       if (!cell) { cell = document.createElement(rowIndex === 0 ? 'th' : 'td'); row.append(cell); }
