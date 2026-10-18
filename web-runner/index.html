@@ -156,6 +156,15 @@
       flex:none;
     }
     .quest-qa-controls[data-qa-layout="dock"] .quest-qa-rail-right{margin-top:0;margin-left:0}
+    .combat-dps-overlay[hidden]{display:none}
+    .combat-dps-overlay{position:fixed;z-index:9998;width:270px;box-sizing:border-box;padding:4px 5px;border:1px solid #c7d8dc;border-radius:4px;background:rgba(17,25,31,.97);color:#f6ecd0;pointer-events:none;transform-origin:top left;font:10px/12px ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-variant-numeric:tabular-nums}
+    .combat-dps-overlay h2{margin:0 0 3px;font:700 10px/12px ui-monospace,monospace}
+    .combat-dps-overlay table{width:100%;table-layout:fixed;border-collapse:collapse;font:inherit}
+    .combat-dps-overlay th,.combat-dps-overlay td{padding:0;text-align:right;white-space:nowrap}
+    .combat-dps-overlay th:first-child,.combat-dps-overlay td:first-child{width:42px;text-align:left}
+    .combat-dps-overlay th{color:#acb9bd;font-size:9px}
+    .combat-dps-overlay tr[data-kind="party"]{color:#a9c0d0;font-weight:700}
+    .combat-dps-overlay tr[data-kind="leader"]{color:#ffd957;font-weight:700}
     .dev2-launcher{
       position:fixed;
       top:var(--orka-dev2-top,30px);

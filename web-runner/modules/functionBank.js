@@ -1,3 +1,4 @@
+import { recordCombatDpsDamage } from '../src/core/combatDps.mjs';
 import { partyTrainingCombatStat } from '../src/core/realtimeSkillState.mjs';
 import { recordActorPuppetDefeat } from '../systems/actorPuppetDefeats.mjs';
 import { effectiveStat } from '../src/core/combatRules.mjs';
@@ -6111,6 +6112,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   cleanupRealtimeSkillActors(ctx);
   const afterHP = Number(t.hp ?? 0);
   const appliedDamage = Math.max(0, beforeHP - afterHP);
+  recordCombatDpsDamage(g, source, t, appliedDamage);
   if (t.kind === 'hero' && appliedDamage > 0) recordBalanceCombatEvent(g, {
     type: 'damage', sourceUID: Number(source?.uid || 0), targetUID: Number(uid || 0),
     damageType: opts.damageType === 'physical' || opts.damageType === 'magic' ? opts.damageType : opts.magic ? 'magic' : 'unknown',

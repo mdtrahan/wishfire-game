@@ -383,6 +383,7 @@ export function createDevToolingRuntime(deps = {}) {
   function syncDevToolingDomFromConfig() {
     if (!devToolingDom) return;
     const cfg = ensureDevToolingConfig();
+    devToolingDom.combatDps.checked = state.globals.ShowCombatDpsOverlay === true;
     const heroChoices = getDevToolHeroOptions();
     const enemyChoices = getDevToolEnemyOptions();
     devToolingDom.heroSlots.forEach((selectEl, idx) => {
@@ -559,6 +560,10 @@ export function createDevToolingRuntime(deps = {}) {
           <div style="display:flex;flex-wrap:wrap;gap:6px;">${['RESET GAME',1,5,25,100].map(p=>`<button type="button" data-devtool-level="${p}" style="border:1px solid #475569;border-radius:6px;padding:6px;background:#e2e8f0;color:#172033;">${typeof p==='number'?'LV '+p:p}</button>`).join('')}</div>
           <small data-devtool-progression-status role="status">Level presets save real stats and unlocks. Reset saves a recovery snapshot.</small>
         </fieldset>
+        <label style="grid-column:1/-1;display:flex;align-items:center;gap:8px;">
+          <input data-devtool-combat-dps type="checkbox" style="width:auto;">
+          Show live combat DPS (5-second rolling and session average)
+        </label>
         <div style="display:flex;flex-direction:column;gap:4px;">
           <div style="font-weight:700;">Hero Slots</div>
           <label style="display:flex;flex-direction:column;gap:4px;">Hero Slot 1
@@ -647,6 +652,7 @@ export function createDevToolingRuntime(deps = {}) {
       apply: panel.querySelector('[data-devtool-apply]'),
       refresh: panel.querySelector('[data-devtool-refresh]'),
       restart: panel.querySelector('[data-devtool-restart]'),
+      combatDps: panel.querySelector('[data-devtool-combat-dps]'),
       heroSlots: Array.from(panel.querySelectorAll('[data-devtool-hero-slot]')),
       enemySlots: Array.from(panel.querySelectorAll('[data-devtool-enemy-slot]')),
       boardGemColor: panel.querySelector('[data-devtool-board-color]'),
@@ -658,6 +664,9 @@ export function createDevToolingRuntime(deps = {}) {
       doubleAttackHero: panel.querySelector('[data-devtool-double-attack-hero]'),
       status: null,
     };
+    devToolingDom.combatDps.addEventListener('change', () => {
+      state.globals.ShowCombatDpsOverlay = devToolingDom.combatDps.checked;
+    });
     devToolingDom.launcher.addEventListener('click', () => toggleDevToolingModal(true));
     devToolingDom.close.addEventListener('click', () => toggleDevToolingModal(false));
     devToolingDom.refresh.addEventListener('click', () => applyDevToolingConfig(readDevToolingDomConfigPatch(), { closeModal: false }));

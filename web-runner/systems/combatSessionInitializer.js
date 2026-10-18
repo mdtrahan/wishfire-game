@@ -1,3 +1,4 @@
+import { beginCombatDpsSession } from '../src/core/combatDps.mjs';
 import {attachHeroProgress, createHeroProgressStore} from '../src/core/heroProgression.mjs';
 import { computeCombatPower as canonicalCombatPower } from '../src/core/combatPower.mjs';
 import { scaleRoutineEnemy } from '../src/core/routineEnemyScaling.mjs';
@@ -276,6 +277,7 @@ export function createCombatSessionInitializer({
     beforeInit?.();
     assertCombatLayoutDev('initEntities');
     resetCombatSessionConditions(state.globals, gameState, state.entities);
+    beginCombatDpsSession(state.globals);
     state.entities = [];
     const routineLevel=Number(state.globals.ContinuousCombatStageLoop||0)===1?1:Number(state.globals.PartyLevel||1);
     state.globals.EnemyData = (enemyRows || []).map((rawRow) => {

@@ -21,8 +21,9 @@ module.exports = {
   ApplyDamageToTarget,
 };`;
   const context = {
+    ...require('../web-runner/systems/actorPuppetDefeats.mjs'),
     ...require('../web-runner/src/core/combatRules.mjs'),
-    ...require('../web-runner/src/core/balanceTelemetry.mjs'),
+    ...require('../web-runner/src/core/balanceTelemetry.mjs'),...require('../web-runner/src/core/combatDps.mjs'),
     ...require('../web-runner/modules/heroCommands.mjs'),
     ...require('../web-runner/src/core/personalFlow.mjs'),
     ...require('../web-runner/modules/heroCommands.mjs'),
@@ -194,4 +195,21 @@ test('single-hit ApplyDamageToTarget follows Rust owner when Rust and JS disagre
     assert.equal(ctx.state.globals.LastSingleHitPacket.owner, 'rust');
     assert.equal(ctx.state.globals.LastSingleHitPacket.actionType, 'combat.singleHit');
   }
+});
+
+
+test('DPS counts resolved enemy HP loss once, including a lethal overkill and ignoring hostile damage', () => {
+  const bank = loadFunctionBank(runtimeFunctionBankPath);
+  const ctx = makeContext();
+  const globals = ctx.state.globals;
+  const enemy = ctx.state.entities.find(actor => actor.kind === 'enemy');
+  Object.assign(globals, { ContinuousCombatStageLoop: 1, time: 4, GroupResolving: 1, RoundActive: 1 });
+  enemy.hp = 5;
+  const applied = bank.ApplyDamageToTarget(ctx, 200, 999, { sourceUID: 100, suppressPartySkillHitHooks: 1 });
+  assert.equal(applied, 5);
+  assert.equal(globals.CombatDps.totalDamage, 5);
+  assert.equal(globals.CombatDps.byHero[100], 5);
+  assert.equal(bank.ApplyDamageToTarget(ctx, 200, 999, { sourceUID: 100 }), 0);
+  bank.ApplyDamageToTarget(ctx, 100, 1, { sourceUID: 200, nativeResolved: true });
+  assert.equal(globals.CombatDps.totalDamage, 5);
 });

@@ -1,0 +1,81 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { chromium } from 'playwright';
+import { createRequire } from 'node:module';
+import { spawn } from 'node:child_process';
+import { createServer } from 'node:net';
+import { mkdir, writeFile } from 'node:fs/promises';
+const require = createRequire(import.meta.url);
+const { detectChromeExecutable } = require('../tools/playwright_support.js');
+
+test('DPS and current CP: normal combat, toggle continuity and four contained viewport sizes', { timeout: 60000 }, async () => {
+  const probe = createServer();
+  await new Promise(resolve => probe.listen(0, '127.0.0.1', resolve));
+  const port = probe.address().port;
+  await new Promise(resolve => probe.close(resolve));
+  const server = spawn(process.execPath, ['tools/serve_web.js', '--port', String(port)], { stdio: ['ignore', 'pipe', 'pipe'] });
+  let browser;
+  const directory = process.env.DPS_QA_OUTPUT || 'test-results/combat-dps';
+  try {
+    await new Promise((resolve, reject) => { server.stdout.on('data', data => { if (String(data).includes('Serving ')) resolve(); }); server.once('error', reject); server.once('exit', code => reject(Error(`DPS QA server exited ${code}`))); });
+    browser = await chromium.launch({ executablePath: detectChromeExecutable(), headless: true });
+    const context = await browser.newContext({ viewport: { width: 360, height: 640 }, deviceScaleFactor: 2 });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.goto(`http://localhost:${port}/web-runner/index.html`);
+    await page.waitForFunction(() => typeof window.render_game_to_text === 'function');
+    await page.getByRole('button', { name: 'Open developer tooling modal', exact: true }).click();
+    await page.locator('[data-devtool-combat-dps]').check();
+    await page.locator('[data-devtool-close]').click();
+    await page.mouse.click(180, 426);
+    await page.locator('#combat-dps-overlay').waitFor();
+    await page.evaluate(async () => { window.dpsQaState = (await import('./modules/state.js')).state; });
+    await page.waitForFunction(() => window.dpsQaState.globals.CombatDps?.totalDamage > 0);
+    const before = await page.evaluate(async () => { const { state } = await import('./modules/state.js'); return state.globals.CombatDps.totalDamage; });
+    await page.getByRole('button', { name: 'Open developer tooling modal', exact: true }).click();
+    await page.locator('[data-devtool-combat-dps]').uncheck();
+    await page.locator('[data-devtool-close]').click();
+    await page.locator('#combat-dps-overlay').waitFor({ state: 'hidden' });
+    await page.getByRole('button', { name: 'Open developer tooling modal', exact: true }).click();
+    await page.locator('[data-devtool-combat-dps]').check();
+    await page.locator('[data-devtool-close]').click();
+    await page.locator('#combat-dps-overlay').waitFor();
+    assert.ok(before > 0, 'normal gameplay produced resolved damage');
+    const after = await page.evaluate(async () => (await import('./modules/state.js')).state.globals.CombatDps.totalDamage);
+    assert.ok(after >= before, 'hide/show retains accumulated damage');
+    await mkdir(directory, { recursive: true });
+    const evidence = [];
+    for (const [width, height] of [[360, 640], [216, 384], [233, 452], [316, 452]]) {
+      await page.setViewportSize({ width, height });
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      const metrics = await page.evaluate(async () => {
+        const { state } = await import('./modules/state.js');
+        const { computeCombatPower } = await import('./src/core/combatPower.mjs');
+        const { heroKey } = await import('./src/core/heroDefinitions.mjs');
+        const { combatDpsReadout } = await import('./systems/renderCombatDps.mjs');
+        const canvas = document.querySelector('#view'), overlay = document.querySelector('#combat-dps-overlay');
+        const rect = overlay.getBoundingClientRect(), frame = canvas.getBoundingClientRect();
+        const cellOverflow = [...overlay.querySelectorAll('th,td')].some(cell => { const range = document.createRange(); range.selectNodeContents(cell); const text = range.getBoundingClientRect(), box = cell.getBoundingClientRect(); return text.left < box.left - .5 || text.right > box.right + .5; });
+        const partyCP = state.entities.filter(actor => actor.kind === 'hero').reduce((sum, actor) => sum + computeCombatPower(state.globals.HeroProgress.heroes[actor.heroInstanceKey || heroKey(actor)] || actor), 0).toFixed(1);
+        const expectedLeader = combatDpsReadout(state).heroes.find(hero => hero.leading);
+        const leader = overlay.querySelector('[data-kind=leader]');
+        const partyColor = getComputedStyle(overlay.querySelector('[data-kind=party]')).color;
+        return { partyColor, leaderColor: leader ? getComputedStyle(leader).color : null, leader: leader?.cells[0].textContent || null, expectedLeader: expectedLeader?.name || null, viewport: [innerWidth, innerHeight, devicePixelRatio], canvas: frame.toJSON(), backing: [canvas.width, canvas.height], overlay: rect.toJSON(), contained: rect.left >= frame.left && rect.right <= frame.right && rect.top >= frame.top && rect.bottom <= frame.bottom, horizontal: document.documentElement.scrollWidth > innerWidth, cellOverflow, partyCP, displayedCP: overlay.querySelectorAll('tr')[1].cells[1].textContent, text: overlay.innerText };
+      });
+      assert.deepEqual(metrics.viewport, [width, height, 2]);
+      assert.equal(metrics.partyColor, 'rgb(169, 192, 208)');
+      assert.equal(metrics.leader, metrics.expectedLeader);
+      if (metrics.leader) assert.equal(metrics.leaderColor, 'rgb(255, 217, 87)');
+      assert.equal(metrics.contained, true);
+      assert.equal(metrics.horizontal, false);
+      assert.equal(metrics.cellOverflow, false);
+      assert.equal(metrics.displayedCP, metrics.partyCP);
+      await page.screenshot({ path: `${directory}/${width}x${height}.png` });
+      evidence.push(metrics);
+    }
+    assert.deepEqual(errors, []);
+    await writeFile(`${directory}/report.json`, JSON.stringify({ before, after, errors, evidence }, null, 2));
+    await context.close();
+  } finally { await browser?.close(); server.kill('SIGTERM'); }
+});

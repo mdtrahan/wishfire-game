@@ -1,3 +1,4 @@
+import { updateCombatDpsOverlay } from './systems/renderCombatDps.mjs';
 import { createEquipmentStorage } from './systems/equipmentStorage.mjs';
 import { createCombatProgression } from './systems/combatProgression.mjs';
 import { createCombatProgressionUI, createTrainingGroundUI } from './systems/combatProgressionUI.mjs';
@@ -2485,6 +2486,7 @@ async function main(){
     questUI.update();
     const lampState = lampEquipment.state();
     const devModalOpen = ensureDevToolingConfig().open;
+    updateCombatDpsOverlay({ canvas, state, layoutId: activeLayoutId, phase: gameState.storyEntry.phase, overlayOpen: lampState.open || devModalOpen });
     const bossFallback = updateBossSummonFallback({
       canvas,
       state,
