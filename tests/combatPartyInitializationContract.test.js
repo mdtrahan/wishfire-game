@@ -50,7 +50,7 @@ async function initialize(heroMembers, escortMember = null, withEnemy = false, {
     .replace(/^export /gm, '');
   // Match the existing browser-module test convention without changing module packaging.
   const context = {
-    module: { exports: {} }, resetCombatSessionConditions, crypto:require('node:crypto').webcrypto,
+    module: { exports: {} }, ...require('../web-runner/src/core/combatDps.mjs'), resetCombatSessionConditions, crypto:require('node:crypto').webcrypto,
     ...require('../web-runner/src/core/heroProgression.mjs'),
     ...require('../web-runner/src/core/routineEnemyScaling.mjs'),
     buildContinuousCombatSpawnPlan: require('../web-runner/src/core/continuousCombatStage.mjs').buildContinuousCombatSpawnPlan,

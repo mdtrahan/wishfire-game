@@ -118,3 +118,5 @@
 - Conveyor movement, expiry and five-second cadence use saved `lamp.conveyorActiveMs` and each emission's `issuedActiveMs` when present. Supported wall-clock emissions retain their age during first activation; optional clocks must be nonnegative safe integers with issue time at or before current active time.
 
 - Dialogue imports from older lanes retain the current combat handoff marker and stable localization keys; compare content directly instead of merging retired runtime history.
+
+- `combatDps.mjs` observes actual hero-to-enemy HP loss only. Session damage/hit totals and average hits per active second use simulation time, reset only on fresh combat session, survive ordinary recovery, and never own boss clocks, outcomes, damage formulas or saves.

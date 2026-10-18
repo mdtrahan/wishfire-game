@@ -94,3 +94,5 @@
 - Conditional skills execute through the live realtime scheduler and UID damage/heal adapters. Scheduled commits revalidate targets; cancelled casts refund readiness. Deployed KO heroes remain visible to Sanctuary and retain cooldowns; only living heroes take actions. Retaliation and Chain evaluate immediate damage/basic events once, without recursive skill triggers.
 
 - Browser KO seams record an ephemeral puppet-defeat copy before simulation removal, including native rules onKO. This presentation-only bridge intentionally stays out of the retired Scripts mirror; mirrored removal/reward functions retain parity.
+
+- Browser `ApplyDamageToTarget` reports resolved hero-to-enemy HP loss to standalone DPS accounting. This diagnostic bridge intentionally stays outside the retired Scripts mirror and does not alter damage or targeting.
