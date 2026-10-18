@@ -27,7 +27,8 @@
 - For SimulationCore boundary changes, run Rust/WASM and focused ownership tests named in the relevant plan.
 
 ## Child DOX Index
-- `character-identity-rebuild.md` - audit and proposed modular character/enemy identity, owned-hero and appearance boundaries; preserves current player-visible state and saves, with a gated one-time conversion and no runtime implementation authorization.
+- `character-identity-rebuild.md` - planning-only release order: save safety and writer coordination, ORKA-bhb integration, the original ownership repair, then independently scoped identity/presentation changes; explicit stale-build and forward-only schema rollback rules preserve player state.
+- `character-identity-reference-audit.md` - pinned identity reference census, browser save keys and writer/removal paths; distinguishes actual storage keys from artifact schema strings and records the unknown-version overwrite probe.
 - `session-level-up-buff-pool.md` - final 48-card universal Wishfire session buff catalog, stage rules, runtime limits, and deterministic validation.
 
 - `wishfire-progression-adaptations/README.md` owns the full adaptation goal, active stories, research holds, withdrawals and trial status; the acceptance matrix must cover every active spec criterion before full-goal completion.
