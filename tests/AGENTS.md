@@ -184,3 +184,5 @@
 - `continuousCombatStageContract` keeps ordinary-wave respite separate from boss-clear restoration. A Hero KO blocks ordinary settlement; surviving Hero HP must persist through HeroProgress JSON reload after either clear path.
 
 - Lamp conveyor checks cover active-time pause/collection/restore, malformed clocks, failed checkpoint preservation, synchronous same-tab restore when exit transactions are lost, session checkpoint identity/number validation, and supported wall-clock saves. Bag presentation measures 40% tighter artwork-edge gaps at 360/450 and compact widths with travel below 27 seconds; production emitter QA holds cache review for 20 seconds and compares every retained item position.
+
+- Auto-Equip phone coverage checks that consuming the final cache item closes after feedback without displaying empty disposal; saved legacy salvage still opens an enabled confirmation.

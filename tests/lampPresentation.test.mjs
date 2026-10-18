@@ -251,3 +251,32 @@ test('trash-only full cache and held item open directly to one dismantle-all act
  }}finally{await browser.close();server?.kill();}
  await writeFile(`${directory}/direct-dismantle.json`,JSON.stringify(report,null,2));
 });
+
+test('Auto-Equip closes empty disposal after feedback and preserves legacy salvage review',async()=>{
+ const socket=createServer();await new Promise(r=>socket.listen(0,'127.0.0.1',r));const port=socket.address().port;await new Promise(r=>socket.close(r));
+ const server=spawn(process.execPath,['tools/serve_web.js','--port',String(port),'--host','127.0.0.1'],{stdio:'ignore'}),url=`http://localhost:${port}/web-runner/index.html`;
+ let browser;
+ try{
+  for(let n=0;n<50;n++){try{if((await fetch(url)).ok)break;}catch{}if(n===49)throw Error('Lamp server did not start');await delay(100);}
+  await mkdir(directory,{recursive:true});browser=await chromium.launch({headless:true,executablePath:detectChromeExecutable()});
+  for(const [width,height,dpr] of profiles)for(const legacy of [false,true]){
+   const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:dpr}),page=await context.newPage();
+   try{
+    const seed=fixture(),upgrade=seed.save.items.find(i=>i.instanceId===seed.save.lamp.pending[0]);
+    seed.save.items=seed.save.items.filter(i=>i.instanceId.startsWith('owned:')||i.instanceId===upgrade.instanceId);
+    seed.save.lamp.pending=[upgrade.instanceId];seed.save.lamp.discarded=[];seed.save.lamp.emissions=[];
+    seed.save.lamp.salvage={count:legacy?1:0,gold:legacy?5:0};
+    await page.addInitScript(({save,heroes})=>{save.lamp.lastActivationAt=Date.now()+3600000;localStorage.setItem('wishfire.equipment-economy.v5',JSON.stringify(save));localStorage.setItem('orka.hero_progress.v2',JSON.stringify(heroes));},seed);
+    await enter(page,url);await page.locator('#wishfire-lamp .lamp-collect').click();
+    await page.evaluate(()=>{window.emptyDisposalVisible=false;const check=()=>{const dialog=document.querySelector('#lamp-dialog'),overlay=document.querySelector('#lamp-overlay'),save=JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5'));if(!overlay.hidden&&dialog.dataset.view==='dismantle'&&!dialog.querySelector('[data-disposal-selected=true]')&&!save.lamp.salvage.count)window.emptyDisposalVisible=true;};new MutationObserver(check).observe(document.querySelector('#lamp-overlay'),{subtree:true,attributes:true,childList:true});});
+    await page.getByRole('button',{name:'Auto-Equip',exact:true}).click();
+    await page.waitForFunction(()=>!!document.querySelector('.lamp-cp-feedback'),null,{timeout:3000});
+    await page.waitForFunction(()=>!document.querySelector('.lamp-cp-feedback'),null,{timeout:5000});
+    if(legacy){await page.waitForFunction(()=>document.querySelector('#lamp-dialog').dataset.view==='dismantle');assert.equal(await page.getByRole('button',{name:'Dismantle all',exact:true}).isEnabled(),true);}
+    else await page.waitForFunction(()=>document.querySelector('#lamp-overlay').hidden,null,{timeout:3000});
+    const saved=await assertSave(page);assert.equal(lampStoredCount(saved),legacy?1:0);assert.ok(Object.values(saved.loadouts).some(slots=>Object.values(slots).includes(upgrade.instanceId)));assert.deepEqual(saved.lamp.salvage,seed.save.lamp.salvage);assert.equal(await page.evaluate(()=>window.emptyDisposalVisible),false);
+    await page.screenshot({path:`${directory}/${width}-auto-equip-${legacy?'legacy':'empty'}.png`});
+   }finally{await context.close();}
+  }
+ }finally{await browser?.close();server.kill();}
+});

@@ -84,7 +84,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   if(kind==='speed-up')return void action(async()=>{const used=await economy.speedUp(Number(b.dataset.tier));notice=used+' speed-up ticket'+(used===1?'':'s')+' spent.';});
   if(kind==='dismantle')return void action(async()=>{const r=await economy.dismantle(disposalPreview);document.querySelectorAll('.lamp-party-exp').forEach(n=>n.remove());notice='';selectedItem=null;selectedHero=null;close();showDismantleReward(r);});
  }
- function reviewDisposal(){selectedItem=null;selectedHero=null;disposalView=true;disposalPreview=economy.disposalPreview();notice='';}
+ function reviewDisposal(){selectedItem=null;selectedHero=null;disposalPreview=economy.disposalPreview();notice='';disposalView=!!(disposalPreview.ids.length||economy.data.lamp.salvage.count);if(!disposalView)close();}
  function startEmission(){lastKey='';render();}
  function showDismantleReward(result){
   showRewardReceipt(canvas,{resource:'essence',amount:result.essence},'DISMANTLED',2000);position();

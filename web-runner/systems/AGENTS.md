@@ -273,3 +273,5 @@
 - actorPuppetDefeats.mjs keeps removed enemy pictures for their one-second KO clip in a session-keyed WeakMap. Pictures never re-enter targeting, rewards or persistence; reset them on session/recovery. Start a retained defeat clip when decoded so its full motion can finish. Overscanned clips use canvas.referenceHeight for constant body scale and explicit padded foot origins.
 
 - The Bag conveyor advances only under the existing creation gates. Storage checkpoints its active coordinate through the shared save lock on pause/visibility/page exit; presentation pauses CSS on the same gate. Reload reconstructs age and remaining cadence from saved active timestamps. A synchronous session-storage clock checkpoint, matched to seed/sequence/last emission, preserves same-tab reload position without writing inventory outside its lock. Abrupt process termination resumes the last checkpoint.
+
+- Disposal review opens only when the current preview contains gear IDs or saved legacy salvage. When Auto-Equip consumes the final item, finish CP feedback and close the overlay without an empty dismantle interstitial.
