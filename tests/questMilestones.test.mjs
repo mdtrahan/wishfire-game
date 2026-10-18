@@ -160,3 +160,14 @@ test('new quests step with cleared chapters while active targets and 40-count re
     assert.ok(late.objective.target>=30&&late.objective.target<=40);
   }
 });
+
+test('type selection and target roll allow every action type to reach both band endpoints', () => {
+  for (const [chapter,low,high] of [[1,1,3],[2,5,10],[3,10,20],[4,20,30],[5,30,40]]) {
+    const values={enemy_defeat:new Set(),gear_collect:new Set()};
+    for(let seed=1;seed<=1000;seed++) {
+      const next=ensureCombatObjective(createCombatProgressionState({cursor:6,seed,chaptersCleared:chapter-1}),[]);
+      values[next.objective.type]?.add(next.objective.target);
+    }
+    for(const type of Object.keys(values)) {assert.ok(values[type].has(low),`${type}:${chapter}:low`);assert.ok(values[type].has(high),`${type}:${chapter}:high`);}
+  }
+});

@@ -157,7 +157,7 @@ export function ensureCombatObjective(state, heroes = [], context = {}) {
     return reconcileQuestMilestones(next, heroes, context);
   }
   const type = picked.type;
-  const target = combatObjectiveActionTarget(type, chapter, roll);
+  const target = combatObjectiveActionTarget(type, chapter, nextRandom(next));
   const recipients = type === 'hero_upgrade' ? ready : eligible;
   const hero = ['hero_upgrade', 'training_upgrade'].includes(type) ? recipients[next.cursor % recipients.length] : null;
   next.objective = { id: `cot-${next.cursor}-${next.seed.toString(16)}`, type, target, progress: 0, seed: next.seed, ...(hero ? { heroId: hero.id } : {}), ...(hero && type === 'hero_upgrade' ? { heroName: hero.name } : {}), ...(hero && type === 'training_upgrade' ? { rewardHeroName: hero.name } : {}) };
