@@ -22,6 +22,8 @@
 - `advanceActorToward` keeps logical facing aligned with nonzero world-space horizontal travel. Browser fallback presentation applies that facing relative to each actor's native sprite direction and the camera reflection.
 - `deriveCombatFormationAnchors` reserves an 18-unit hero buff-icon row plus a 2-unit gap above HP bars. `deriveCombatWorldVerticalBounds` separately maps the camera's HUD-safe viewport interval back into world feet bounds; continuous pack centers span that interval rather than following the static four-slot hero anchors.
 
+- `deriveCombatOrdinaryPatrolBounds` owns ordinary Hero feet X520..1640/Y290..450 independently of full enemy/world bounds and boss-local constraints. Camera zoom and projection remain presentation-only.
+
 ## Work Guidance
 - Add fixture rows for deterministic behavior with meaningful edge cases.
 - Use explicit owner-hook diagnostics when a rule can be resolved by Rust or JS.

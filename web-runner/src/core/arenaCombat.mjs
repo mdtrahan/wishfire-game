@@ -1,5 +1,5 @@
 import { advanceActorToward, actorAttackReach, actorFootPoint, actorFootprintRadius, isActorTargetInRange } from '../../../src/core/arenaCombatRules.mjs';
-import { COMBAT_BATTLEFIELD_ZOOM, deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldStartFormation, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
+import { COMBAT_BATTLEFIELD_ZOOM, deriveCombatFormationAnchors, deriveCombatOrdinaryPatrolBounds, deriveCombatWorldBounds, deriveCombatWorldStartFormation, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
 import { previewSeededRng } from '../../../src/core/seededRngRules.mjs';
 import { isActorRecoveryRevealActive, resetActorPresentationAfterRestore } from './actorPresentationState.mjs';
 
@@ -56,6 +56,7 @@ export const CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS = 460;
 const RECOVERY_MOAT_DIAMETER_SCREEN_PX = 150;
 const SQUAD_STRAGGLE_RADIUS = 144;
 const SEARCH_SPEED = 78;
+const SEARCH_STANDOFF = 130;
 const TRAVEL_FRONT_OFFSET = 22.4;
 const FORMATION_ROW_GAP = 8;
 const FRONTLINE_LEAD_GAP = 6.4;
@@ -97,7 +98,7 @@ function heroFormationSlot(hero, index, { faraLeads = false } = {}) {
 
 export function deriveContinuousCombatRecoveryHuddle(heroes = [], heading = 1) {
   const formation = deriveCombatWorldStartFormation(heroes.length);
-  const vertical = deriveCombatWorldVerticalBounds();
+  const vertical = deriveCombatOrdinaryPatrolBounds();
   const centerY = (vertical.minY + vertical.maxY) / 2;
   const direction = Number(heading) < 0 ? -1 : 1;
   const faraLeads = heroes.some(hero => isLiving(hero) && isFara(hero));
@@ -116,9 +117,9 @@ function setContinuousCombatInitialRoam({ globals = {}, attempt = 0 } = {}) {
   const stageSeed = Number(globals.ContinuousCombatStage?.seed || globals.EncounterSeed || 1) >>> 0 || 1;
   const roamAttempt = Math.max(0, Math.floor(Number(attempt) || 0));
   const direction = previewSeededRng(stageSeed, INITIAL_ROAM_SEED_DRAW + roamAttempt) < 0.5 ? -1 : 1;
-  const world = deriveCombatWorldBounds();
   const centerX = deriveCombatWorldStartFormation(0).centerX;
-  const targetX = clamp(centerX + direction * INITIAL_ROAM_WALK_DISTANCE, world.heroMinX, world.heroMaxX);
+  const patrol = deriveCombatOrdinaryPatrolBounds();
+  const targetX = clamp(centerX + direction * INITIAL_ROAM_WALK_DISTANCE, patrol.minX, patrol.maxX);
   globals.ContinuousCombatRoamAttempt = roamAttempt;
   globals.ContinuousCombatInitialRoam = {
     direction,
@@ -132,7 +133,7 @@ function setContinuousCombatInitialRoam({ globals = {}, attempt = 0 } = {}) {
 
 export function deriveContinuousCombatSpawnMoat() {
   const formation = deriveCombatWorldStartFormation(0);
-  const vertical = deriveCombatWorldVerticalBounds();
+  const vertical = deriveCombatOrdinaryPatrolBounds();
   return {
     centerX: formation.centerX,
     centerY: (vertical.minY + vertical.maxY) / 2,
@@ -171,7 +172,10 @@ function separateFootprints(actors, bounds) {
     : String(actor?.combatRank || actor?.enemyRole || actor?.role || '').toLowerCase() === 'boss'
       && Number.isFinite(bounds.bossMinX) && Number.isFinite(bounds.bossMaxX)
       ? { min: bounds.bossMinX, max: bounds.bossMaxX }
-      : { min: bounds.heroMinX, max: bounds.maxX };
+      : { min: bounds.enemyMinX, max: bounds.maxX };
+  const actorYBounds = actor => actor?.kind === 'hero'
+    ? { min: bounds.heroMinY, max: bounds.heroMaxY }
+    : { min: bounds.visibleTopY, max: bounds.visibleBottomY };
   const ordered = actors.slice().sort((a, b) => Number(a.uid || 0) - Number(b.uid || 0));
   // Several passes settle a compact crowd after one separation changes a
   // neighboring pair. Zero-distance actors split vertically so an X boundary
@@ -186,18 +190,19 @@ function separateFootprints(actors, bounds) {
     const push = (minDistance - currentDistance) / 2;
     const firstBounds = actorXBounds(first);
     const secondBounds = actorXBounds(second);
+    const firstY = actorYBounds(first), secondY = actorYBounds(second);
     first.footX = clamp(a.x - dx * push, firstBounds.min, firstBounds.max);
-    first.footY = clamp(a.y - dy * push, bounds.visibleTopY, bounds.visibleBottomY);
+    first.footY = clamp(a.y - dy * push, firstY.min, firstY.max);
     second.footX = clamp(b.x + dx * push, secondBounds.min, secondBounds.max);
-    second.footY = clamp(b.y + dy * push, bounds.visibleTopY, bounds.visibleBottomY);
+    second.footY = clamp(b.y + dy * push, secondY.min, secondY.max);
     for (const actor of [first, second]) { actor.x = actor.footX; actor.y = actor.footY; }
   }
   // A stationary actor can arrive outside the encounter band through a skill
   // or restore path. Enforce the same bounds after movement and separation.
   for (const actor of ordered) {
-    const point = actorFootPoint(actor), xBounds = actorXBounds(actor);
+    const point = actorFootPoint(actor), xBounds = actorXBounds(actor), yBounds = actorYBounds(actor);
     actor.footX = clamp(point.x, xBounds.min, xBounds.max);
-    actor.footY = clamp(point.y, bounds.visibleTopY, bounds.visibleBottomY);
+    actor.footY = clamp(point.y, yBounds.min, yBounds.max);
     actor.x = actor.footX;
     actor.y = actor.footY;
   }
@@ -229,7 +234,16 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
     bounds.bossMinY = Math.max(worldYBounds.minY, bossAnchorY - 32);
     bounds.bossMaxY = Math.min(worldYBounds.maxY, bossAnchorY + 32);
   }
-  const minY = bounds.visibleTopY, maxY = bounds.visibleBottomY;
+  bounds.enemyMinX = worldBounds.heroMinX;
+  const patrol = deriveCombatOrdinaryPatrolBounds();
+  if (!bossEncounter) {
+    bounds.heroMinX = patrol.minX;
+    bounds.heroMaxX = patrol.maxX;
+  }
+  bounds.heroMinY = bossEncounter ? bounds.visibleTopY : patrol.minY;
+  bounds.heroMaxY = bossEncounter ? bounds.visibleBottomY : patrol.maxY;
+  const minY = bounds.heroMinY, maxY = bounds.heroMaxY;
+  const patrolPoint = point => ({ x: clamp(point.x, bounds.heroMinX, bounds.heroMaxX), y: clamp(point.y, minY, maxY) });
   const startFormation = deriveCombatWorldStartFormation(heroes.length);
   heroes.forEach((hero, index) => {
     if (!Number.isFinite(Number(hero.footX))) {
@@ -238,6 +252,9 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
     if (!Number.isFinite(Number(hero.footY)) && !Number.isFinite(Number(hero.y))) {
       hero.footY = Number(anchors.heroYs[index] ?? (minY + maxY) / 2) + Number(anchors.heroH || 0) / 2;
     }
+    const point = patrolPoint(actorFootPoint(hero));
+    hero.x = hero.footX = point.x;
+    hero.y = hero.footY = point.y;
     hero.arenaEnabled = true;
   });
   for (const enemy of enemies) {
@@ -293,7 +310,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
         kind: 'solo-patrol-anchor',
         hp: 1,
         footX: clamp(anchorX + Math.cos(patrolAngle) * 30, sideMinX, sideMaxX),
-        footY: clamp(anchorY + Math.sin(patrolAngle) * 30, minY + footprint, maxY - footprint),
+        footY: clamp(anchorY + Math.sin(patrolAngle) * 30, worldYBounds.minY + footprint, worldYBounds.maxY - footprint),
       };
       const before = actorFootPoint(enemy);
       const dx = target.footX - before.x, dy = target.footY - before.y;
@@ -309,8 +326,8 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
         now,
         minX: sideMinX,
         maxX: sideMaxX,
-        minY: minY + footprint,
-        maxY: maxY - footprint,
+        minY: worldYBounds.minY + footprint,
+        maxY: worldYBounds.maxY - footprint,
         preserveActionState: Number(enemy.actionStateUntil || 0) > now,
       });
       const next = actorFootPoint(enemy);
@@ -342,13 +359,26 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
     const point = groupCenter(group);
     return Math.hypot(point.x - center, point.y - centerY);
   };
-  const isWithinLocalDetectionRange = enemy => heroes.some(hero => distance(hero, enemy) <= CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS);
+  const approachingPatrol = new Set();
+  const isWithinLocalDetectionRange = enemy => approachingPatrol.has(enemy)
+    || heroes.some(hero => distance(hero, enemy) <= CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS);
   const orderedGroups = [...groups.entries()].sort((a, b) => groupDistance(a[1]) - groupDistance(b[1]));
   const activeStates = new Set(['in_range', 'engaged', 'retreating']);
   const localGroups = orderedGroups.filter(([, group]) => group.some(enemy =>
     (bossEncounter && activeStates.has(enemy.streamState))
       || selectContinuousEnemyTarget({ enemy, heroes, globals, requireInReach: true })
       || isWithinLocalDetectionRange(enemy)));
+  // Search stops inside the patrol. Let the selected remote group close the
+  // remaining gap once the squad reaches its legal approach point.
+  if (!bossEncounter && !localGroups.length && orderedGroups.length) {
+    const entry = orderedGroups[0];
+    const point = patrolPoint(groupCenter(entry[1]));
+    if (Math.hypot(point.x - center, point.y - centerY) <= SEARCH_STANDOFF
+      + Math.max(...heroes.map(hero => actorAttackReach(hero) + actorFootprintRadius(hero)))) {
+      entry[1].forEach(enemy => approachingPatrol.add(enemy));
+      localGroups.push(entry);
+    }
+  }
   const activeGroups = localGroups.filter(([, group]) => group.some(enemy => activeStates.has(enemy.streamState)));
   const storedGroupId = Number(stage?.activeEncounterGroupId);
   const storedGroup = activeGroups.find(([groupId]) => groupId === storedGroupId);
@@ -367,7 +397,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   }
   const sharedTarget = focusedEnemies.length ? nearest({ footX: center, footY: centerY }, focusedEnemies) : null;
   const targetPoint = sharedTarget ? actorFootPoint(sharedTarget) : null;
-  const travelPoint = targetPoint || nearestGroupCenter || { x: center + 1, y: centerY };
+  const travelPoint = patrolPoint(targetPoint || nearestGroupCenter || { x: center + 1, y: centerY });
   const travelDeltaX = travelPoint.x - center, travelDeltaY = travelPoint.y - centerY;
   const travelLength = Math.hypot(travelDeltaX, travelDeltaY);
   const directionX = initialRoamActive ? Number(initialRoam.direction) : travelLength > 1e-6 ? travelDeltaX / travelLength : 1;
@@ -435,12 +465,12 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
     } else {
     const nextPoint = hasStragglers ? { x: center, y: centerY }
         : initialRoamActive ? { x: Number(initialRoam.targetX), y: centerY }
-          : nearestGroupCenter || { x: clamp(center + 160, bounds.heroMinX, bounds.heroMaxX), y: centerY };
+          : nearestGroupCenter ? patrolPoint(nearestGroupCenter) : { x: clamp(center + 160, bounds.heroMinX, bounds.heroMaxX), y: centerY };
       const deltaX = nextPoint.x - center, deltaY = nextPoint.y - centerY;
       const deltaLength = Math.hypot(deltaX, deltaY) || 1;
       const directionX = deltaLength > 1e-6 ? deltaX / deltaLength : targetDirection;
       const directionY = deltaLength > 1e-6 ? deltaY / deltaLength : 0;
-      const approachDistance = initialRoamActive || hasStragglers || locallyDetected ? 0 : 130;
+      const approachDistance = initialRoamActive || hasStragglers || locallyDetected ? 0 : SEARCH_STANDOFF;
       const approachX = nextPoint.x - directionX * approachDistance;
       const approachY = nextPoint.y - directionY * approachDistance;
       const frontOffset = formation.travelOffset;
@@ -462,7 +492,15 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
     const target = inReachTarget || selectContinuousEnemyTarget({ enemy, heroes, globals });
     if (!target) { enemy.locomotion = 'idle'; if (Number(enemy.actionStateUntil || 0) <= Number(globals.time || 0)) enemy.actionState = 'idle'; continue; }
     const isBoss = bossEncounter && enemy === boss;
-    advanceActorToward(enemy, target, { seconds, speed: Math.max(34, Number(enemy.streamWalkSpeed || 40)), now: Number(globals.time || 0), minX: isBoss ? bounds.bossMinX : bounds.heroMinX, maxX: isBoss ? bounds.bossMaxX : bounds.maxX, minY: isBoss ? bounds.bossMinY : minY, maxY: isBoss ? bounds.bossMaxY : maxY,
+    const enemyPoint = actorFootPoint(enemy);
+    const outsidePatrol = enemyPoint.x < patrol.minX || enemyPoint.x > patrol.maxX
+      || enemyPoint.y < patrol.minY || enemyPoint.y > patrol.maxY;
+    // A ranged corner enemy must not stop beyond every bounded Hero's reach.
+    // Keep its authored attack eligibility while letting it close this gap.
+    const approachTarget = !bossEncounter && outsidePatrol && !heroes.some(hero => distance(hero, enemy) <= actorAttackReach(hero))
+      ? compensateActorTravelTarget(enemy, { ...target, footX: actorFootPoint(target).x, footY: actorFootPoint(target).y })
+      : target;
+    advanceActorToward(enemy, approachTarget, { seconds, speed: Math.max(34, Number(enemy.streamWalkSpeed || 40)), now: Number(globals.time || 0), minX: isBoss ? bounds.bossMinX : worldBounds.heroMinX, maxX: isBoss ? bounds.bossMaxX : bounds.maxX, minY: isBoss ? bounds.bossMinY : bounds.visibleTopY, maxY: isBoss ? bounds.bossMaxY : bounds.visibleBottomY,
       preserveActionState: Number(enemy.actionStateUntil || 0) > Number(globals.time || 0) });
   }
   separateFootprints([...heroes, ...enemies], bounds);

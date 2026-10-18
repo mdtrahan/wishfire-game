@@ -335,7 +335,8 @@ test('solo enemies patrol within a small safe radius and engage normally on dete
     enemy.footX = enemy.x = targetSolo.footX + 800;
     enemy.footY = enemy.y = targetSolo.footY;
   }
-  heroes.forEach((hero, index) => { hero.footX = targetSolo.footX + index; hero.footY = targetSolo.footY + index; });
+  targetSolo.footX = targetSolo.x = 1120; targetSolo.footY = targetSolo.y = 370;
+  heroes.forEach((hero, index) => { hero.footX = 1080 + index; hero.footY = 370 + index; });
   globals.time += 0.25;
   advanceContinuousCombatArena({ globals, entities: [...heroes, ...enemies], seconds: 0.25 });
   assert.equal(targetSolo.streamState, 'engaged');
@@ -786,7 +787,7 @@ test('ordinary waves grant capped respite while a boss clear restores and cleans
       assert.deepEqual(heroes.map(hero => [hero.footX, hero.footY]), huddle.map(({ x, y }) => [x, y]), 'the revived party snaps to role-based huddle coordinates');
       assert.ok(heroes.every(hero => hero.recoveryFadeStartedAt === 10), 'all revived heroes share one fade start');
     } else {
-      assert.deepEqual([heroes[1].footX, heroes[1].footY], [420, 205], 'ordinary wave settlement leaves KO position unchanged');
+      assert.deepEqual([heroes[1].footX, heroes[1].footY], [520, 290], 'living out-of-bounds restore is normalized before ordinary settlement');
     }
     if (clearedBoss) {
       assert.equal(globals.ContinuousCombatStage.bossSummonRequired, false, 'boss victory clears the retry latch for the new stage');
@@ -1518,7 +1519,8 @@ test('nearby pack engagement wakes the cooldown scheduler', () => {
     EnemyData: rows, EnemySlots: [2], PendingDeaths: {}, ActionInProgress: 0, IsPlayerBusy: 1, DeferAdvance: 1,
   };
   const enemy = activateContinuousCombatSpawnedEnemy(globals, { uid: 1, kind: 'enemy', hp: 10 }, { lane: 1, entryOrder: 0, sectorIndex: 0 });
-  const hero = { uid: 2, kind: 'hero', hp: 100, attackType: 'melee', footX: enemy.x - 40, footY: enemy.y };
+  enemy.x = enemy.footX = 1120; enemy.y = enemy.footY = 370;
+  const hero = { uid: 2, kind: 'hero', hp: 100, attackType: 'melee', footX: 1080, footY: 370 };
   globals.ContinuousCombatStage.lastUpdatedAt = 0.9;
   globals.time = 1;
   let resumed = 0;
@@ -1585,7 +1587,7 @@ test('production finalization preserves an already-positioned continuous party',
   const huddle = deriveContinuousCombatRecoveryHuddle(heroes, globals.ContinuousCombatInitialRoam.direction);
   assert.deepEqual(heroes.map(hero => [hero.footX, hero.footY]), huddle.map(slot => [slot.x, slot.y]),
     'fresh production starts from the authored midpoint huddle, regardless of prior actor coordinates');
-  assert.ok(heroes.every(hero => Math.abs(hero.footX - 1080) < 30 && Math.abs(hero.footY - 319.5) < 40));
+  assert.ok(heroes.every(hero => Math.abs(hero.footX - 1080) < 30 && Math.abs(hero.footY - 370) < 40));
 });
 
 test('fresh production and full recovery choose a stable seeded opening heading with tanks in front', () => {
@@ -1798,7 +1800,7 @@ test('production traversal visits ten waves before entering the chapter boss', (
     entities.push(enemy);
     return enemy;
   };
-  for (let tick = 0; tick <= 700 && globals.ContinuousCombatStage.wave === 1; tick += 1) {
+  for (let tick = 0; tick <= 3000 && globals.ContinuousCombatStage.wave === 1; tick += 1) {
     globals.time = tick / 10;
     maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} });
     for (const enemy of enemies) {

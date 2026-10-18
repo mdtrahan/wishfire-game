@@ -15,14 +15,14 @@ test('actor reach uses initialized feet and preserves delivery-specific range', 
 });
 
 test('arena advances both factions to contact with bounded semantic actor state', () => {
-  const hero = { uid: 1, kind: 'hero', hp: 100, maxHP: 100, attackType: 'melee', footX: 190, footY: 200 };
-  const enemy = { uid: 2, kind: 'enemy', hp: 100, maxHP: 100, x: 290, y: 200, streamState: 'in_range', streamWalkSpeed: 40, streamDelivery: 'melee' };
+  const hero = { uid: 1, kind: 'hero', hp: 100, maxHP: 100, attackType: 'melee', footX: 990, footY: 370 };
+  const enemy = { uid: 2, kind: 'enemy', hp: 100, maxHP: 100, x: 1090, y: 370, streamState: 'in_range', streamWalkSpeed: 40, streamDelivery: 'melee' };
   const entities = [hero, enemy];
   for (let index = 0; index < 70; index += 1) {
     advanceContinuousCombatArena({ globals: { EnemySize: 40 }, entities, seconds: 0.1 });
   }
-  assert.ok(hero.footX > 106);
-  assert.ok(enemy.footX < 290);
+  assert.ok(hero.footX > 906);
+  assert.ok(enemy.footX < 1090);
   assert.equal(enemy.streamState, 'engaged');
   assert.notEqual(hero.arenaTargetUID, 0);
   assert.notEqual(enemy.arenaTargetUID, 0);
@@ -46,20 +46,20 @@ test('missing-feet party fallback tightens its authored horizontal spread by twe
 
 test('straggler regroup begins at the tightened 144-unit squad leash', () => {
   const heroes = [
-    { uid: 1, name: 'Fara', kind: 'hero', hp: 100, attackType: 'physical', footX: 100, footY: 220 },
-    { uid: 2, name: 'Hondo', kind: 'hero', hp: 100, attackType: 'physical', footX: 110, footY: 260 },
-    { uid: 3, name: 'Runa', kind: 'hero', hp: 100, attackType: 'magic', footX: 120, footY: 300 },
-    { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: 320, footY: 340 },
+    { uid: 1, name: 'Fara', kind: 'hero', hp: 100, attackType: 'physical', footX: 900, footY: 290 },
+    { uid: 2, name: 'Hondo', kind: 'hero', hp: 100, attackType: 'physical', footX: 910, footY: 330 },
+    { uid: 3, name: 'Runa', kind: 'hero', hp: 100, attackType: 'magic', footX: 920, footY: 370 },
+    { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: 1120, footY: 410 },
   ];
   advanceContinuousCombatArena({ globals: {}, entities: heroes, seconds: 0.1 });
-  assert.ok(heroes[3].footX < 320, 'a 150-plus unit outlier starts moving toward the party before the old 180-unit leash');
+  assert.ok(heroes[3].footX < 1120, 'a 150-plus unit outlier starts moving toward the party before the old 180-unit leash');
 });
 
 test('four heroes retain stable targets and separate crowded footprints', () => {
-  const heroes = Array.from({ length: 4 }, (_, index) => ({ uid: index + 1, kind: 'hero', hp: 100, attackType: index === 2 ? 'magic' : 'melee', footX: 106, footY: 240, arenaEnabled: true }));
+  const heroes = Array.from({ length: 4 }, (_, index) => ({ uid: index + 1, kind: 'hero', hp: 100, attackType: index === 2 ? 'magic' : 'melee', footX: 906, footY: 340, arenaEnabled: true }));
   const enemies = [
-    { uid: 10, kind: 'enemy', hp: 100, streamState: 'in_range', footX: 175, footY: 240, streamDelivery: 'melee', arenaEnabled: true },
-    { uid: 11, kind: 'enemy', hp: 100, streamState: 'in_range', footX: 178, footY: 240, streamDelivery: 'melee', arenaEnabled: true },
+    { uid: 10, kind: 'enemy', hp: 100, streamState: 'in_range', footX: 975, footY: 340, streamDelivery: 'melee', arenaEnabled: true },
+    { uid: 11, kind: 'enemy', hp: 100, streamState: 'in_range', footX: 978, footY: 340, streamDelivery: 'melee', arenaEnabled: true },
   ];
   const entities = [...heroes, ...enemies];
   advanceContinuousCombatArena({ globals: { time: 1 }, entities, seconds: 0.1 });
@@ -74,13 +74,13 @@ test('four heroes retain stable targets and separate crowded footprints', () => 
 
 test('contact cancellation settles both tanks to idle without aging locomotion every frame', () => {
   const heroes = ['Fara', 'Hondo'].map((name, index) => ({
-    uid: index + 1, name, kind: 'hero', hp: 100, attackType: 'physical', footX: 2120, footY: 280,
+    uid: index + 1, name, kind: 'hero', hp: 100, attackType: 'physical', footX: 1580, footY: 370,
     locomotion: 'idle', locomotionStartedAt: 3,
   }));
-  const enemy = { uid: 10, kind: 'enemy', hp: 100, footX: 2200, footY: 280, streamState: 'in_range', streamDelivery: 'melee' };
+  const enemy = { uid: 10, kind: 'enemy', hp: 100, footX: 1640, footY: 370, streamState: 'in_range', streamDelivery: 'melee' };
   const entities = [...heroes, enemy];
   const globals = { time: 4 };
-  for (let tick = 0; tick < 8; tick += 1) {
+  for (let tick = 0; tick < 60; tick += 1) {
     advanceContinuousCombatArena({ globals, entities, seconds: 0.1 });
     globals.time += 0.1;
   }
@@ -103,8 +103,8 @@ test('contact cancellation settles both tanks to idle without aging locomotion e
   assert.equal(actorPuppetState(enemy, globals.time), 'hurt', 'the active hurt retains its actual presentation clip');
   assert.ok(isActorTargetInRange(heroes[0], enemy), 'contact locomotion reconciliation leaves authored attack reach unchanged');
 
-  const mover = { uid: 20, kind: 'hero', hp: 100, attackType: 'physical', footX: 1800, footY: 260, locomotion: 'idle', locomotionStartedAt: 2 };
-  const distantEnemy = { uid: 21, kind: 'enemy', hp: 100, footX: 1950, footY: 260, streamState: 'in_range' };
+  const mover = { uid: 20, kind: 'hero', hp: 100, attackType: 'physical', footX: 1280, footY: 370, locomotion: 'idle', locomotionStartedAt: 2 };
+  const distantEnemy = { uid: 21, kind: 'enemy', hp: 100, footX: 1430, footY: 370, streamState: 'in_range' };
   const movingGlobals = { time: 10 };
   advanceContinuousCombatArena({ globals: movingGlobals, entities: [mover, distantEnemy], seconds: 0.1 });
   assert.equal(mover.locomotion, 'walk');
@@ -115,16 +115,16 @@ test('contact cancellation settles both tanks to idle without aging locomotion e
 });
 
 test('Fara and Hondo lead while Runa and Kaja keep ranged support spacing in either travel direction', () => {
-  for (const enemyX of [650, 80]) {
-    const direction = enemyX > 300 ? 1 : -1;
-    const heroStartX = enemyX > 300 ? 120 : 320;
+  for (const enemyX of [1450, 880]) {
+    const direction = enemyX > 1100 ? 1 : -1;
+    const heroStartX = enemyX > 1100 ? 920 : 1120;
     const heroes = [
-      { uid: 1, name: 'Fara', kind: 'hero', hp: 100, attackType: 'physical', footX: heroStartX, footY: 240 },
-      { uid: 2, name: 'Hondo', kind: 'hero', hp: 100, attackType: 'physical', footX: heroStartX, footY: 280 },
-      { uid: 3, name: 'Runa', kind: 'hero', hp: 100, attackType: 'magic', footX: heroStartX - direction * 10, footY: 240 },
-      { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: heroStartX - direction * 10, footY: 280 },
+      { uid: 1, name: 'Fara', kind: 'hero', hp: 100, attackType: 'physical', footX: heroStartX, footY: 340 },
+      { uid: 2, name: 'Hondo', kind: 'hero', hp: 100, attackType: 'physical', footX: heroStartX, footY: 380 },
+      { uid: 3, name: 'Runa', kind: 'hero', hp: 100, attackType: 'magic', footX: heroStartX - direction * 10, footY: 340 },
+      { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: heroStartX - direction * 10, footY: 380 },
     ];
-    const enemy = { uid: 20, name: 'Gobloc', kind: 'enemy', hp: 1000, streamState: 'in_range', streamWalkSpeed: 34, streamDelivery: 'melee', footX: enemyX, footY: 260 };
+    const enemy = { uid: 20, name: 'Gobloc', kind: 'enemy', hp: 1000, streamState: 'in_range', streamWalkSpeed: 34, streamDelivery: 'melee', footX: enemyX, footY: 360 };
     const entities = [...heroes, enemy];
     for (let tick = 0; tick < 180; tick += 1) advanceContinuousCombatArena({ globals: { time: tick / 10 }, entities, seconds: 0.1 });
     const frontX = (heroes[0].footX + heroes[1].footX) / 2;
@@ -177,9 +177,9 @@ test('stale remote engagement cannot pull the squad or make a remote pack chase'
 });
 
 test('a wounded retreating encounter holds the whole squad until neutralized', () => {
-  const heroes = Array.from({ length: 4 }, (_, index) => ({ uid: index + 1, kind: 'hero', hp: 100, footX: 300 + index * 6, footY: 250 + index * 10 }));
-  const survivor = { uid: 20, kind: 'enemy', hp: 20, footX: 380, footY: 300, streamState: 'retreating', streamSectorIndex: 4 };
-  const nearerPack = { uid: 30, kind: 'enemy', hp: 100, footX: 300, footY: 330, streamState: 'roaming', streamSectorIndex: 5 };
+  const heroes = Array.from({ length: 4 }, (_, index) => ({ uid: index + 1, kind: 'hero', hp: 100, footX: 1100 + index * 6, footY: 290 + index * 10 }));
+  const survivor = { uid: 20, kind: 'enemy', hp: 20, footX: 1180, footY: 340, streamState: 'retreating', streamSectorIndex: 4 };
+  const nearerPack = { uid: 30, kind: 'enemy', hp: 100, footX: 1100, footY: 370, streamState: 'roaming', streamSectorIndex: 5 };
   const globals = { time: 2, ContinuousCombatStage: { activeEncounterGroupId: 4 } };
   const before = heroes.map(hero => [hero.footX, hero.footY]);
   advanceContinuousCombatArena({ globals, entities: [...heroes, survivor, nearerPack], seconds: 0.1 });
@@ -218,12 +218,12 @@ test('six seeded packs occupy the full HUD-safe world height with compact huddle
 
 test('frontline roles follow diagonal target reversals while ranged supports stay behind', () => {
   const heroes = [
-    { uid: 1, name: 'Fara', kind: 'hero', hp: 100, attackType: 'physical', footX: 1000, footY: 260 },
-    { uid: 2, name: 'Hondo', kind: 'hero', hp: 100, attackType: 'physical', footX: 990, footY: 280 },
-    { uid: 3, name: 'Runa', kind: 'hero', hp: 100, attackType: 'magic', footX: 980, footY: 260 },
-    { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: 970, footY: 280 },
+    { uid: 1, name: 'Fara', kind: 'hero', hp: 100, attackType: 'physical', footX: 1000, footY: 330 },
+    { uid: 2, name: 'Hondo', kind: 'hero', hp: 100, attackType: 'physical', footX: 990, footY: 350 },
+    { uid: 3, name: 'Runa', kind: 'hero', hp: 100, attackType: 'magic', footX: 980, footY: 330 },
+    { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: 970, footY: 350 },
   ];
-  const first = { uid: 20, kind: 'enemy', hp: 50, footX: 1400, footY: 270, streamState: 'roaming', streamSectorIndex: 0 };
+  const first = { uid: 20, kind: 'enemy', hp: 50, footX: 1400, footY: 340, streamState: 'roaming', streamSectorIndex: 0 };
   const second = { uid: 30, kind: 'enemy', hp: 50, footX: 600, footY: 430, streamState: 'roaming', streamSectorIndex: 1 };
   const globals = { time: 0 };
   const checkOrder = (target, sign, expectRegroup = true) => {
@@ -272,7 +272,7 @@ test('Fara leads Hondo and the compact support row across all eight travel headi
     const perpendicular = { x: -direction.y, y: direction.x };
     const position = (along, side) => ({
       footX: 1080 + direction.x * along + perpendicular.x * side,
-      footY: 304 + direction.y * along + perpendicular.y * side,
+      footY: 370 + direction.y * along + perpendicular.y * side,
     });
     const heroes = [
       { uid: 1, baseHeroName: 'Falie', name: 'Fara', kind: 'hero', hp: 100, ...position(18, -8) },
@@ -282,8 +282,8 @@ test('Fara leads Hondo and the compact support row across all eight travel headi
     ];
     const enemy = {
       uid: 20, kind: 'enemy', hp: 100,
-      footX: 1080 + direction.x * 620,
-      footY: 304 + direction.y * 620,
+      footX: 1080 + direction.x * 100,
+      footY: 370 + direction.y * 100,
       streamState: 'roaming', streamSectorIndex: octant,
     };
     const globals = { time: 0 };
@@ -331,12 +331,12 @@ test('remaining ranged heroes can finish a local encounter and regroup without a
 
 test('rear supports retain authored reach while both tanks lead in close contact', () => {
   const heroes = [
-    { uid: 1, name: 'Fara', kind: 'hero', hp: 100, attackType: 'physical', footX: 220, footY: 300 },
-    { uid: 2, name: 'Hondo', kind: 'hero', hp: 100, attackType: 'physical', footX: 210, footY: 320 },
-    { uid: 3, name: 'Runa', kind: 'hero', hp: 100, attackType: 'magic', footX: 320, footY: 300 },
-    { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: 330, footY: 320 },
+    { uid: 1, name: 'Fara', kind: 'hero', hp: 100, attackType: 'physical', footX: 1020, footY: 300 },
+    { uid: 2, name: 'Hondo', kind: 'hero', hp: 100, attackType: 'physical', footX: 1010, footY: 320 },
+    { uid: 3, name: 'Runa', kind: 'hero', hp: 100, attackType: 'magic', footX: 1120, footY: 300 },
+    { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: 1130, footY: 320 },
   ];
-  const enemy = { uid: 20, kind: 'enemy', hp: 100, footX: 380, footY: 310, streamState: 'engaged', streamSectorIndex: 0 };
+  const enemy = { uid: 20, kind: 'enemy', hp: 100, footX: 1180, footY: 310, streamState: 'engaged', streamSectorIndex: 0 };
   const globals = { time: 0, ContinuousCombatStage: {} };
   globals.ContinuousCombatStage.activeEncounterGroupId = 0;
   assert.ok(heroes.slice(2).every(hero => Math.hypot(hero.footX - enemy.footX, hero.footY - enemy.footY) <= 64),
@@ -358,7 +358,7 @@ test('rear supports retain authored reach while both tanks lead in close contact
       `all four remain inside the tightened cohort envelope during close-contact regrouping (${heroes.map(hero => Math.hypot(hero.footX - center.x, hero.footY - center.y).toFixed(1))})`);
   };
   assertFormation(1);
-  enemy.footX = 145;
+  enemy.footX = 945;
   enemy.footY = 400;
   const reversalCenter = heroes.reduce((sum, hero) => ({ x: sum.x + hero.footX / 4, y: sum.y + hero.footY / 4 }), { x: 0, y: 0 });
   assert.ok(enemy.footX < reversalCenter.x && enemy.footY > reversalCenter.y, 'the same committed pack reverses to a left/down approach');
@@ -457,9 +457,9 @@ test('boss combat keeps the four-times body to the right of the party and preser
 });
 
 test('enemy contact uses an in-reach target when a Provoke source is outside delivery range', () => {
-  const nearby = { uid: 1, kind: 'hero', hp: 100, attackType: 'melee', footX: 180, footY: 200, arenaEnabled: true };
-  const provoker = { uid: 2, kind: 'hero', hp: 100, attackType: 'melee', footX: 106, footY: 340, arenaEnabled: true };
-  const enemy = { uid: 10, kind: 'enemy', hp: 100, footX: 230, footY: 200, streamState: 'engaged', arenaInReach: true, streamDelivery: 'melee' };
+  const nearby = { uid: 1, kind: 'hero', hp: 100, attackType: 'melee', footX: 980, footY: 300, arenaEnabled: true };
+  const provoker = { uid: 2, kind: 'hero', hp: 100, attackType: 'melee', footX: 906, footY: 440, arenaEnabled: true };
+  const enemy = { uid: 10, kind: 'enemy', hp: 100, footX: 1030, footY: 300, streamState: 'engaged', arenaInReach: true, streamDelivery: 'melee' };
   const globals = { time: 1, EnemySize: 40, RealtimeSkillEffects: { 10: { provoke: { sourceUID: 2, expiresAt: 5 } } } };
   advanceContinuousCombatArena({ globals, entities: [nearby, provoker, enemy], seconds: 0.1 });
   assert.equal(enemy.arenaTargetUID, nearby.uid);

@@ -188,3 +188,5 @@
 - Auto-Equip phone coverage checks that consuming the final cache item closes after feedback without displaying empty disposal; saved legacy salvage still opens an enabled confirmation.
 
 - Boss fallback geometry checks keep combat at logical Y=42 below resources, including letterboxing. Visibility checks reject every non-combat layout, blocking modal and terminal phase without changing readiness. The rendered UI lock drives retry, equipment/Growth modals and HERO navigation on all standard phone profiles.
+
+- `boundedPartyRoamingContract.test.mjs` checks stationary restored feet and separation in both camera projections, recovery, fifteen seeded complete waves through actual reach, and sparse melee/ranged world-corner targets. Synthetic damage is diagnostic; normal-entry candidate footage remains required. Formation fixtures belong inside the ordinary patrol; enemy placement fixtures retain full-world geometry.

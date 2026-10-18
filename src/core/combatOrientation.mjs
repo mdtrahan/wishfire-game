@@ -26,6 +26,12 @@ export function deriveCombatWorldBounds(viewportWidth = COMBAT_ARENA_REFERENCE_W
   return { minX: 0, maxX: worldWidth, heroMinX: 40, heroMaxX: worldWidth - 40, visibleWorldWidth, worldWidth, zoom: scale };
 }
 
+// Ordinary Hero feet use a central patrol; enemies and bosses retain world bounds.
+export function deriveCombatOrdinaryPatrolBounds() {
+  const world = deriveCombatWorldBounds();
+  return { minX: 520, maxX: world.worldWidth - 520, minY: 290, maxY: 450 };
+}
+
 export function deriveCombatWorldStartFormation(heroCount = 4, viewportWidth = COMBAT_ARENA_REFERENCE_WIDTH, zoom = COMBAT_BATTLEFIELD_ZOOM) {
   const count = Math.max(0, Math.floor(Number(heroCount) || 0));
   const world = deriveCombatWorldBounds(viewportWidth, zoom);
