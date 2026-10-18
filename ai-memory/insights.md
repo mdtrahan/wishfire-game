@@ -653,3 +653,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Recheck destructive-review candidates after an equip transaction and its feedback complete. Zero remaining gear and zero saved salvage should close review, preserving focus, instead of rendering an empty disabled confirmation.
 
 - Bag receipt animation must follow a successful durable arrival, never CSS animation completion. Share modal/capacity gates across active time, motion, emissions and save-lock callbacks; a frozen visual with a live capture queue still misrepresents inventory.
+
+- When a Canvas HUD moves vertically, inspect its DOM fallback and alternate ready/retry states. Anchor both combat paths to the same revision and fail closed outside their owning battle screen. Readiness alone cannot grant menu visibility; test resource separation, modal hiding and real navigation in the rendered retry state.

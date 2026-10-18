@@ -1,7 +1,7 @@
 import { CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC, continuousCombatBossTimeRemaining, continuousCombatWavesForStage, deriveContinuousCombatWavePackProgress } from '../src/core/continuousCombatStage.mjs';
 
 const HUD = Object.freeze({ left: 127.5, top: 44, right: 232.5, bottom: 84 });
-const FALLBACK = Object.freeze({ width: 360, height: 82, top: 2 });
+const FALLBACK = Object.freeze({ width: 360, height: 82 });
 let fallbackHost = null;
 let fallbackChapter = null;
 let fallbackButton = null;
@@ -12,12 +12,11 @@ export function combatProgressHudRect(worldToCanvas) {
   return { x: topLeft.x, y: topLeft.y, w: bottomRight.x - topLeft.x, h: bottomRight.y - topLeft.y };
 }
 
-export function bossFallbackPresentation({ state, layoutId, overlayOpen = false, canLeave = true, phase = '', suppress = false } = {}) {
+export function bossFallbackPresentation({ state, layoutId, overlayOpen = false, canLeave = true, phase = 'combat', suppress = false } = {}) {
   const stage = state?.globals?.ContinuousCombatStage;
   const ready = stage?.bossAvailable === true || stage?.bossActive === true;
-  const interrupted = layoutId !== 'combat' || overlayOpen;
   const manualRetryInCombat = layoutId === 'combat' && stage?.bossSummonRequired === true && stage?.bossActive !== true;
-  const visible = ready && (interrupted || manualRetryInCombat) && !suppress && !['opening', 'defeat'].includes(phase);
+  const visible = ready && manualRetryInCombat && !overlayOpen && !suppress && phase === 'combat';
   const region = Math.max(1, Number(stage?.region) || 1);
   return {
     visible,
@@ -29,11 +28,12 @@ export function bossFallbackPresentation({ state, layoutId, overlayOpen = false,
 
 export function bossFallbackRect(canvasRect) {
   const scale = Math.min(canvasRect.width / FALLBACK.width, canvasRect.height / 640);
+  const top = HUD.top - 2;
   const width = FALLBACK.width * scale;
   const height = FALLBACK.height * scale;
   return {
     x: canvasRect.left + (canvasRect.width - width) / 2,
-    y: canvasRect.top + (canvasRect.height - 640 * scale) / 2 + FALLBACK.top * scale,
+    y: canvasRect.top + (canvasRect.height - 640 * scale) / 2 + top * scale,
     width,
     height,
     scale,
@@ -58,8 +58,9 @@ function ensureFallbackHost() {
   document.body.append(fallbackHost);
 }
 
-export function updateBossSummonFallback({ canvas, state, layoutId, overlayOpen = false, canLeave = true, phase = '', suppress = false, onSummonBoss = () => {}, redraw = () => {} } = {}) {
-  const view = bossFallbackPresentation({ state, layoutId, overlayOpen, canLeave, phase, suppress });
+export function updateBossSummonFallback({ canvas, state, layoutId, overlayOpen = false, canLeave = true, phase = 'combat', suppress = false, onSummonBoss = () => {}, redraw = () => {} } = {}) {
+  const modalVisible = typeof document !== 'undefined' && [...document.querySelectorAll('[role="dialog"],[role="alertdialog"],dialog[open],[aria-modal="true"]')].some(node => node.getClientRects().length > 0);
+  const view = bossFallbackPresentation({ state, layoutId, overlayOpen: overlayOpen || modalVisible, canLeave, phase, suppress });
   state?.globals && (state.globals.CombatBossFallbackVisible = view.visible);
   if (!view.visible || !canvas?.getBoundingClientRect || typeof document === 'undefined') {
     if (fallbackHost) { fallbackHost.hidden = true; fallbackHost.style.display = 'none'; }
