@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createCombatProgressionState, ensureCombatObjective, claimCombatObjectiveReward } from '../web-runner/src/core/combatProgressionRules.mjs';
+import { createCombatProgressionState, ensureCombatObjective, claimCombatObjectiveReward, combatObjectiveActionTarget } from '../web-runner/src/core/combatProgressionRules.mjs';
 import { milestoneCandidates, reconcileQuestMilestones, observeChapterMilestones, questFamily, milestonePresentation } from '../web-runner/src/core/questMilestones.mjs';
 import { createCombatProgression } from '../web-runner/systems/combatProgression.mjs';
 const heroes = ['Hondo','Fara','Runa','Kaja'].map(name => ({kind:'hero', heroInstanceKey:name, baseHeroName:name, currentLevel:5, maxLevel:100, hp:100}));
@@ -120,4 +120,43 @@ test('a failed survival milestone is replaced instead of locking an unreplayable
 
 test('invalid saved milestone dimensions cannot become ready claims', () => {
   for (const [type,details] of [['equip_rarity',{rarity:'invalid'}],['equip_slot',{slot:'orb'}],['equip_level',{threshold:6}],['chapter_clear',{chapter:0}],['hero_level',{threshold:0}]]) assert.equal(objective(type,details).objective,null);
+});
+
+test('repeatable action targets use inclusive chapter bands and cap at 30–40', () => {
+  const bands = [[1,3],[5,10],[10,20],[20,30],[30,40],[30,40]];
+  for (const type of ['enemy_defeat','gear_collect','wave_clear']) {
+    for (const [index,[low,high]] of bands.entries()) {
+      const chapter = index === 5 ? 1000 : index + 1;
+      const targets = new Set(Array.from({length:120},(_,roll)=>combatObjectiveActionTarget(type,chapter,roll)));
+      assert.deepEqual([...targets].sort((a,b)=>a-b),Array.from({length:high-low+1},(_,n)=>low+n));
+    }
+  }
+  assert.equal(combatObjectiveActionTarget('hero_upgrade',100,39),1);
+  assert.equal(combatObjectiveActionTarget('training_upgrade',100,39),1);
+});
+
+test('new quests step with cleared chapters while active targets and 40-count reloads stay frozen', () => {
+  for (const [chapter,low,high] of [[1,1,3],[2,5,10],[3,10,20],[4,20,30],[5,30,40],[100,30,40]]) {
+    const observed = new Set();
+    for (let seed=1;seed<=160;seed++) {
+      const base=createCombatProgressionState({cursor:6,seed,chaptersCleared:chapter-1});
+      const next=ensureCombatObjective(base,[]);
+      if (!['enemy_defeat','gear_collect'].includes(next.objective.type)) continue;
+      observed.add(next.objective.type);
+      assert.ok(next.objective.target>=low && next.objective.target<=high,JSON.stringify(next.objective));
+    }
+    assert.deepEqual([...observed].sort(),['enemy_defeat','gear_collect']);
+  }
+  const active=createCombatProgressionState({cursor:6,chaptersCleared:1,objective:{id:'active',type:'enemy_defeat',target:7,progress:4,seed:1}});
+  active.chaptersCleared=4;
+  assert.deepEqual(ensureCombatObjective(active,[],{chapter:5}).objective,active.objective);
+  for (const type of ['enemy_defeat','gear_collect','wave_clear']) {
+    const saved=objective(type,{target:40,progress:39});
+    const reloaded=createCombatProgressionState(JSON.parse(JSON.stringify(saved)));
+    assert.equal(reloaded.objective.target,40);assert.equal(reloaded.objective.progress,39);
+  }
+  for (const cursor of [0,1]) {
+    const late=ensureCombatObjective(createCombatProgressionState({cursor,chaptersCleared:4,seed:2}),[]);
+    assert.ok(late.objective.target>=30&&late.objective.target<=40);
+  }
 });

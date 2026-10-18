@@ -196,3 +196,5 @@
 - `combatDpsOverlay.test.mjs` drives normal entry and the real DEV checkbox at four viewport sizes, compares current CP with canonical equipped heroes, checks text/Canvas containment and saves screenshots. Hide/show must retain nonzero earned damage.
 
 - questMilestones.test.mjs protects saved per-slot equipment coverage, level steps of five, at-or-above rarity/level credit, family diversity across reloads, stale/duplicate claims, and witnessed zero-KO chapter clears including revival and unknown-history refusal.
+
+- Chapter quest-band coverage checks inclusive endpoints, seeded enemy/gear generation, capped late chapters, frozen active targets and 40-count save reloads.

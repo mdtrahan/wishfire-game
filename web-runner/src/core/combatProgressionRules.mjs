@@ -24,7 +24,7 @@ const safeId = value => typeof value === 'string' && value.length <= 180 && !['_
 export function createCombatProgressionState(snapshot, seed = 0x43544f) {
   const raw = snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot) ? snapshot : {};
   const objectiveTarget = raw.objective && OBJECTIVE_TYPES.includes(raw.objective.type)
-    ? Math.max(1, Math.min(20, Math.floor(Number(raw.objective.target) || 1))) : 1;
+    ? Math.max(1, Math.min(40, Math.floor(Number(raw.objective.target) || 1))) : 1;
   const objective = raw.objective && OBJECTIVE_TYPES.includes(raw.objective.type) ? {
     id: safeId(raw.objective.id), type: raw.objective.type,
     target: objectiveTarget,
@@ -68,9 +68,16 @@ function nextRandom(state) {
   return state.seed;
 }
 
-function openingObjective(cursor, seed) {
+export function combatObjectiveActionTarget(type, chapter, roll) {
+  if (!['enemy_defeat', 'gear_collect', 'wave_clear'].includes(type)) return 1;
+  const bands = [[1, 3], [5, 10], [10, 20], [20, 30], [30, 40]];
+  const [minimum, maximum] = bands[Math.max(0, Math.min(4, Math.floor(Number(chapter) || 1) - 1))];
+  return minimum + ((Number(roll) >>> 0) % (maximum - minimum + 1));
+}
+
+function openingObjective(cursor, seed, chapter) {
   const type = cursor === 0 ? 'gear_collect' : 'enemy_defeat';
-  return { id: `cot-opening-${cursor}-${seed.toString(16)}`, type, target: cursor === 0 ? 1 : 3, progress: 0, seed };
+  return { id: `cot-opening-${cursor}-${seed.toString(16)}`, type, target: chapter <= 1 ? (cursor === 0 ? 1 : 3) : combatObjectiveActionTarget(type, chapter, seed), progress: 0, seed };
 }
 
 export function eligibleTicketHeroes(heroes = []) {
@@ -85,6 +92,7 @@ export function eligibleHeroUpgradeTargets(state, heroes = []) {
 
 export function ensureCombatObjective(state, heroes = [], context = {}) {
   const next = reconcileQuestMilestones(createCombatProgressionState(state), heroes, context);
+  const chapter = Math.max(Number(context.chapter) || 1, next.chaptersCleared + 1);
   if (next.objective && next.objective.progress >= next.objective.target) return next;
   if (next.objective?.type === 'chapter_survive' && !next.survivalChapters.includes(next.objective.chapter) && (next.chaptersCleared >= next.objective.chapter || (next.chapterObservation?.failed && next.chapterObservation.chapter === next.objective.chapter))) next.objective = null;
   const canTrain = TRAINING_STATS.some(stat => next.training[stat] < 100 && trainingCost(next, stat) <= next.wallet.incense);
@@ -95,11 +103,11 @@ export function ensureCombatObjective(state, heroes = [], context = {}) {
     if (!hero || next.objective.threshold > hero.maxLevel || (next.wallet.ticketsByHero[next.objective.heroId] || 0) < cost) next.objective = null;
   }
   if (next.cursor < 2 && next.objective?.type === 'wave_clear') {
-    next.objective = openingObjective(next.cursor, next.seed);
+    next.objective = openingObjective(next.cursor, next.seed, chapter);
     return next;
   }
   if (next.cursor < 2 && !next.objective) {
-    next.objective = openingObjective(next.cursor, next.seed);
+    next.objective = openingObjective(next.cursor, next.seed, chapter);
     return next;
   }
   if (next.objective) {
@@ -149,7 +157,7 @@ export function ensureCombatObjective(state, heroes = [], context = {}) {
     return reconcileQuestMilestones(next, heroes, context);
   }
   const type = picked.type;
-  const target = type === 'enemy_defeat' ? 3 + (roll % 3) : 1;
+  const target = combatObjectiveActionTarget(type, chapter, roll);
   const recipients = type === 'hero_upgrade' ? ready : eligible;
   const hero = ['hero_upgrade', 'training_upgrade'].includes(type) ? recipients[next.cursor % recipients.length] : null;
   next.objective = { id: `cot-${next.cursor}-${next.seed.toString(16)}`, type, target, progress: 0, seed: next.seed, ...(hero ? { heroId: hero.id } : {}), ...(hero && type === 'hero_upgrade' ? { heroName: hero.name } : {}), ...(hero && type === 'training_upgrade' ? { rewardHeroName: hero.name } : {}) };
