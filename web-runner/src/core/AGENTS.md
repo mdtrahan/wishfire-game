@@ -119,4 +119,4 @@
 
 - Dialogue imports from older lanes retain the current combat handoff marker and stable localization keys; compare content directly instead of merging retired runtime history.
 
-- `combatDps.mjs` observes actual hero-to-enemy HP loss only. Five-second samples and session totals use simulation time, reset only on fresh combat session, survive ordinary recovery, and never own boss clocks, outcomes, damage formulas or saves.
+- `combatDps.mjs` observes actual hero-to-enemy HP loss only. Session damage/hit totals and average hits per active second use simulation time, reset only on fresh combat session, survive ordinary recovery, and never own boss clocks, outcomes, damage formulas or saves.

@@ -16,7 +16,7 @@ test('DPS attributes heroes separately and retains zero-damage members in roster
   recordCombatDpsDamage(globals, fara, enemy, 30);
   const snapshot = combatDpsSnapshot(globals, roster);
   assert.equal(snapshot.party.total, 30);
-  assert.equal(snapshot.party.rollingDps, 15);
+  assert.equal(snapshot.party.hitRate, 0.5);
   assert.equal(snapshot.party.hits, 1);
   assert.deepEqual(snapshot.heroes.map(row => [row.uid, row.total]), [[1, 30], [2, 0]]);
   assert.equal(recordCombatDpsDamage(globals, enemy, fara, 100), false);
@@ -24,7 +24,7 @@ test('DPS attributes heroes separately and retains zero-damage members in roster
   assert.equal(combatDpsSnapshot(globals, roster).party.total, 30);
 });
 
-test('five-second DPS expires during idle time while session damage and hit totals persist', () => {
+test('hit rate divides session outgoing hits by active combat time and declines during idle time', () => {
   const globals = fixture(); globals.time = 11;
   recordCombatDpsDamage(globals, fara, enemy, 30);
   globals.time = 15;
@@ -32,12 +32,13 @@ test('five-second DPS expires during idle time while session damage and hit tota
   globals.time = 17;
   const snapshot = combatDpsSnapshot(globals, roster);
   assert.equal(snapshot.party.total, 50);
-  assert.equal(snapshot.party.rollingDps, 4);
+  assert.equal(snapshot.party.hitRate, 2 / 7);
   assert.equal(snapshot.party.hits, 2);
-  assert.deepEqual(snapshot.heroes.map(hero => hero.hits), [1, 1]);
-  assert.equal(snapshot.heroes[0].rollingDps, 0);
+  assert.deepEqual(snapshot.heroes.map(hero => hero.hitRate), [1 / 7, 1 / 7]);
   globals.time = 21;
-  assert.equal(combatDpsSnapshot(globals, roster).party.rollingDps, 0);
+  assert.equal(combatDpsSnapshot(globals, roster).party.hitRate, 2 / 11);
+  globals.time = 10;
+  assert.equal(combatDpsSnapshot(globals, roster).party.hitRate, 0);
 });
 
 test('pause, hide/show, and ordinary recovery preserve measurements; fresh entry clears them', () => {
@@ -51,13 +52,15 @@ test('pause, hide/show, and ordinary recovery preserve measurements; fresh entry
   assert.deepEqual(combatDpsSnapshot(globals, roster), before);
   beginCombatDpsSession(globals);
   assert.equal(combatDpsSnapshot(globals, roster).party.total, 0);
+  assert.equal(combatDpsSnapshot(globals, roster).party.hitRate, 0);
 });
 
-test('rolling samples discard prior windows while session totals remain exact', () => {
+test('session counters remain exact without retaining per-hit samples', () => {
   const globals = fixture();
   for (let tick = 0; tick < 1000; tick++) { globals.time = 10 + tick; recordCombatDpsDamage(globals, fara, enemy, 1); }
   assert.equal(globals.CombatDps.totalDamage, 1000);
-  assert.equal(globals.CombatDps.hits.length, 6);
+  assert.equal(globals.CombatDps.hitCount, 1000);
+  assert.equal(globals.CombatDps.hits, undefined);
 });
 
 test('DPS stays inside the Canvas frame above the conveyor at reference and compact sizes', () => {
@@ -96,7 +99,7 @@ test('current CP follows canonical equipped stats and refreshes independently of
 });
 
 
-test('yellow leader follows the far-right damage total, retains ties and survives idle DPS expiry', () => {
+test('yellow leader follows the far-right damage total, retains ties and ignores the hit-rate column', () => {
   const globals = fixture(), state = { globals, entities: roster };
   const leaders = () => combatDpsReadout(state).heroes.filter(hero => hero.leading).map(hero => hero.uid);
   assert.deepEqual(leaders(), []);
@@ -111,7 +114,7 @@ test('yellow leader follows the far-right damage total, retains ties and survive
   assert.deepEqual(leaders(), [hondo.uid]);
   globals.time = 24;
   assert.deepEqual(leaders(), [hondo.uid]);
-  assert.equal(combatDpsReadout(state).heroes[1].rollingDps, 0);
+  assert.equal(combatDpsReadout(state).heroes[1].hitRate, 2 / 14);
 });
 
 
