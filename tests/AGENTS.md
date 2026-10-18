@@ -111,7 +111,7 @@
 
 - Lamp cache presentation checks five full-width square columns, a stable two-to-two-and-a-half-row scroll viewport, selected halo and preserved idle guidance across four phone widths.
 
-- Lamp regression proof checks descending item CP review, raw last-five emission order, manual lower-CP override, positive same-slot Auto gains across all 12 slots, and finite storage/EXP capacity. Pending and discarded cache tiles stay inspectable; green arrows use shared strictly positive matching-slot CP gain, and discarded gear remains manually equipable. Explicit dismantling may convert missed upgrades in its reviewed snapshot.
+- Lamp regression proof enforces one actual hero CP invariant across arrows, manual Equip, Auto, queueing, preview and locked dismantling. Every successful equip raises CP; every item in disposal is red for every current hero. Re-evaluate all remaining items after each assignment, preserve unique ownership and failed-save atomicity, and verify newer arrivals survive old disposal snapshots.
 
 - Equip-close proof requires the modal to remain visible while its CP float plays, including the last Auto-Equip item; after automatic close no CP float may remain.
 
@@ -135,7 +135,7 @@
 
 - Guidance proof checks durable duplicate receipts and failed saves without rewards; phone QA covers dismantle/preview/shortfall/affordable/MAX retargets and reload. Disclosed monotonic-clock offsets test idle guidance only, preserving Date.now draw cooldown and combat inputs.
 
-- Lamp comparison proves selected-item green/red matching-slot CP eligibility (equality is red), direct portrait selection, one selected portrait, selected-hero matching-slot stat arrows and saved equip receipt agreement across the four phone profiles.
+- Lamp comparison proves positive/zero/negative actual matching-slot replacement CP, per-hero arrows, blocked red Equip, blocked green disposal, and strictly positive saved receipt agreement across four phone profiles.
 
 - The four-phone lamp guard hit-tests and clicks Close during active CP feedback, verifies deferred closure, and rejects remaining CP floats after departure.
 
@@ -176,7 +176,7 @@
 
 - Hero CP refresh proof keeps stale combat actors beside updated canonical progression, checks next-render CP across heroes and all tabs, and verifies manual/Auto equip receipts match saved and live CP before resolving.
 
-- Bag/Equip regression proof covers sorted sequential matching-slot assignment, slot-CP/hero-CP/party-order ties, permanent replacement destruction, player-controlled manual review, saved CP feedback before Auto disposal, and explicit conversion of missed upgrades. Keep concurrent arrival, held item, replay and failed-save coverage. Bag VFX/count tests use the installed browser through CHROME_BIN.
+- Bag/Equip proof covers highest actual gain recipient allocation, lower-hero-CP/party-order ties, re-ranking after every assignment, upgrade protection at destructive boundaries, permanently removed replacements, factual positive CP feedback, and unchanged COT/Essence receipts.
 
 - actorPuppetDefeats tests isolate presentation lifetime, duplicate KO, expiry and session/reset handling. Reward lifecycle fixtures bind the real browser defeat-copy module; presentation must never alter reward counts or actor removal.
 - Cross-tab Bag arrival checks wait for the specific emitted item ID to appear outside the frozen disposal snapshot; an unrelated unselected tile does not prove that arrival. Post-disposal phone checks sum salvage for every selected item because autonomous issuance can collect another valid item during the arrival wait.
@@ -189,4 +189,4 @@
 
 - Boss fallback geometry checks keep combat at logical Y=42 below resources, including letterboxing. Visibility checks reject every non-combat layout, blocking modal and terminal phase without changing readiness. The rendered UI lock drives retry, equipment/Growth modals and HERO navigation on all standard phone profiles.
 
-- `lampSlotCP.test.mjs` protects generated opposite-sign slot/whole-hero cases, the +0.1 threshold, four green recipients and unique Hondo allocation for +13.6/+15/+6/+11.9, equality, empty slots and factual saved whole-hero receipts. The production four-phone Lamp suite renders the same slot rule and exercises Auto through visible controls.
+- `lampCPInvariant.test.mjs` supersedes the rejected standalone-slot tests. It protects one actual CP predicate, the Hondo +15 example, repeated full-cache reassessment, illegal zero/negative equips, green disposal rejection, stale-preview protection after another legal equip, and the valid case where a better equipped item makes the leftover red.
