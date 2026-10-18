@@ -14,8 +14,8 @@ test('hero screen renders the basic attack and active descriptions with level ga
   assert.doesNotMatch(source, /d\.special|d\.passives|actionSlotsPerTurn|spMax|flowMode|\.flow\b|\.sp\b|\bAF\b|FLOW/);
 });
 
-test('hero redesign preserves the full roster behind directional controls and exposes the approved tabs and stats', () => {
-  assert.match(source, /Object\.values\(globals\.HeroProgress\.heroes\)/);
+test('hero redesign preserves the canonical roster behind directional controls and exposes the approved tabs and stats', () => {
+  assert.match(source, /Object\.keys\(HERO_DEFINITIONS\)\.map\(key=>globals\.HeroProgress\.heroes\[key\]\)\.filter\(Boolean\)/);
   assert.match(source, /Previous hero/);
   assert.match(source, /Next hero/);
   assert.match(source, /\['orb','Orb'\].*\['gear','Gear'\].*\['skills','Skills'\]/);
