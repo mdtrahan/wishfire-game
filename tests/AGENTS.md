@@ -194,3 +194,5 @@
 - `combatDpsContract.test.mjs` protects actual-damage attribution, active-time hit rates and successful hit counts, no toggle reset, fresh-session reset, idle hit-rate decay and scaled overlay containment and canonical current CP refresh without importing boss policy.
 
 - `combatDpsOverlay.test.mjs` drives normal entry and the real DEV checkbox at four viewport sizes, compares current CP with canonical equipped heroes, checks text/Canvas containment and saves screenshots. Hide/show must retain nonzero earned damage.
+
+- questMilestones.test.mjs protects saved per-slot equipment coverage, level steps of five, at-or-above rarity/level credit, family diversity across reloads, stale/duplicate claims, and witnessed zero-KO chapter clears including revival and unknown-history refusal.

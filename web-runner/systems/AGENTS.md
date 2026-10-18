@@ -279,3 +279,5 @@
 - `renderCombatDps.mjs` owns the session-only DEV DPS readout, scaled with the Canvas frame below the progress rail and hidden on modals/non-combat screens. Its toggle never resets damage or combat; columns follow Hero / CP / Damage / Hits / H.Rate, using canonical equipped CP, resolved damage, outgoing hit counts and session hits per active combat second. Party CP sums deployed heroes through the existing CP formula.
 
 - DPS Party total row follows all Hero rows and stays muted light blue; yellow follows the highest positive cumulative Hero damage total. All-zero totals have no leader, ties keep displayed roster order, and H.Rate/CP never select the highlight.
+
+- Combat progression observes canonical saved equipment plus deployed heroes and chapter transitions. Cache observation by equipment record identity and progression signature, recheck milestone facts on claim, and commit before reward feedback. Long COT labels wrap within the existing HUD footprint; rarity objectives use canonical rarity colors.

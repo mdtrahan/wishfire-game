@@ -120,3 +120,5 @@
 - Dialogue imports from older lanes retain the current combat handoff marker and stable localization keys; compare content directly instead of merging retired runtime history.
 
 - `combatDps.mjs` observes actual hero-to-enemy HP loss only. Session damage/hit totals and average hits per active second use simulation time, reset only on fresh combat session, survive ordinary recovery, and never own boss clocks, outcomes, damage formulas or saves.
+
+- Quest milestones reconcile current saved Hat/Body/Boots loadouts for every deployed Hero. Equipment level thresholds advance by five and higher levels/rarities qualify. Claimed milestone keys and last family persist; seeded selection alternates available families. Chapter survival requires a witnessed chapter with zero Hero KOs; unknown historical survival stays unearned. Observe before recovery and before boss-clear restoration.

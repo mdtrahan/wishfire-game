@@ -3299,6 +3299,7 @@ function getStoryCardLiveLineState() {
       YELLOW_CASINO_SETTLE_SEC, YELLOW_CASINO_SETTLE_BOUNCE_AMP, YELLOW_COLOR,
       startGemMergeFx, getGoldLabelTargetWorld,
     });
+    combatProgression.observe();
     if (recoverContinuousOrdinaryDefeatIfNeeded({ state, session: questCombat })) {
       heroProgressStorage.persistHeroProgressIfDirty({ stateGlobals: state.globals, callFunctionWithContext, fnContext });
       drawFrame();
@@ -3317,6 +3318,7 @@ function getStoryCardLiveLineState() {
       }),
       call: (name, ...args) => callFunctionWithContext(fnContext, name, ...args),
       onBossTimeout: () => questCombat.surrenderBossAttempt('boss_timeout'),
+      onBossClear: () => combatProgression.observe(),
     });
     if (continuousStageAdvanced && previousStageKey) combatProgression.record({ id: previousStageKey, type: 'wave_clear' });
     if (checkMainRuntimeCombatOutcome()) {

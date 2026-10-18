@@ -1,3 +1,4 @@
+import { observeChapterMilestones } from '../src/core/questMilestones.mjs';
 import {
   COMBAT_PROGRESSION_SAVE_KEY, createCombatProgressionState, ensureCombatObjective,
   recordCombatObjectiveEvent, claimCombatObjectiveReward, purchasePartyTraining, TRAINING_STATS, eligibleTicketHeroes,
@@ -33,7 +34,20 @@ export function createCombatProgression({ globals, storage, equipmentProgress, g
     applyGlobals();
   }
   const heroes = () => getHeroes().filter(hero => hero?.kind === 'hero');
-  const ensured = ensureCombatObjective(state, heroes());
+  const context = () => ({ equipment: equipmentProgress?.data, chapter: globals.ContinuousCombatStage?.region });
+  let observationSignature = '', observedEquipment;
+  function observe() {
+    const party = heroes(), stage = globals.ContinuousCombatStage;
+    const signature = JSON.stringify([stage?.region, stage?.bossActive, party.map(hero => [hero.heroInstanceKey, hero.currentLevel, Number(hero.hp) <= 0]), state.cursor, state.training]);
+    if (signature === observationSignature && observedEquipment === equipmentProgress?.data) return state;
+    const next = ensureCombatObjective(observeChapterMilestones(createCombatProgressionState(state), party, stage), party, context());
+    if (JSON.stringify(next) !== JSON.stringify(state)) {
+      try { commit(next); } catch (error) { reportError('Quest milestone save failed', error); return state; }
+    }
+    observationSignature = signature; observedEquipment = equipmentProgress?.data;
+    return state;
+  }
+  const ensured = ensureCombatObjective(state, heroes(), context());
   if (!storageReady) { state = ensured; applyGlobals(); }
   else if (!state.objective || JSON.stringify(ensured) !== JSON.stringify(state)) {
     try { commit(ensured); } catch (error) { globals.CombatProgressionStorageError = String(error); state = ensured; applyGlobals(); }
@@ -89,6 +103,7 @@ export function createCombatProgression({ globals, storage, equipmentProgress, g
   }
 
   function record(event) {
+    observe();
     const result = recordCombatObjectiveEvent(state, event, heroes(), now());
     if (JSON.stringify(result.state) !== JSON.stringify(state)) {
       commit(result.state);
@@ -98,7 +113,8 @@ export function createCombatProgression({ globals, storage, equipmentProgress, g
   }
 
   function claimObjective(expectedObjectiveId) {
-    const result = claimCombatObjectiveReward(state, expectedObjectiveId, heroes(), now());
+    observe();
+    const result = claimCombatObjectiveReward(state, expectedObjectiveId, heroes(), now(), context());
     if (!result.ok) return result;
     try { commit(result.state); }
     catch (error) { reportError('COT reward claim save failed', error); return { ...result, ok: false, reason: 'save_failed', receipt: null }; }
@@ -128,7 +144,8 @@ export function createCombatProgression({ globals, storage, equipmentProgress, g
   }
 
   return {
-    state: () => state,
+    state: observe,
+    observe,
     sync: settleEssenceReceipts,
     subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
     record,
@@ -159,7 +176,7 @@ export function createCombatProgression({ globals, storage, equipmentProgress, g
       const event = recordCombatObjectiveEvent(state, { id: `training:${purchase.state.cursor}:${purchase.stat}:${purchase.level}`, type: 'training_upgrade' }, heroes(), now());
       event.state.wallet.incense = purchase.state.wallet.incense;
       event.state.training = purchase.state.training;
-      const committed = ensureCombatObjective(event.state, heroes());
+      const committed = ensureCombatObjective(event.state, heroes(), context());
       try { commit(committed); }
       catch (error) { reportError('Party training save failed', error); return { ok: false, reason: 'save_failed' }; }
       notify('training');

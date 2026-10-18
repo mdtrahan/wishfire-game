@@ -1,3 +1,4 @@
+import { MILESTONE_REWARDS, questFamily, milestoneCandidates, reconcileQuestMilestones, milestonePresentation, validMilestoneObjective } from './questMilestones.mjs';
 export const COMBAT_PROGRESSION_VERSION = 1;
 export const COMBAT_PROGRESSION_SAVE_KEY = 'orka.combat_progression.v1';
 export const TRAINING_STATS = Object.freeze(['ATK', 'DEF', 'MATK', 'RES']);
@@ -8,6 +9,7 @@ export const HERO_TICKET_REWARD = 5;
 export const HERO_TICKET_LEVEL_COST_BASE = 100;
 export const HERO_TICKET_LEVEL_COST_STEP = 50;
 export const COMBAT_REWARD_BUNDLES = Object.freeze({
+  ...MILESTONE_REWARDS,
   enemy_defeat: Object.freeze({ resource: 'incense', amount: 5 }),
   wave_clear: Object.freeze({ resource: 'incense', amount: 5 }),
   gear_collect: Object.freeze({ resource: 'essence', amount: 2 }),
@@ -15,7 +17,7 @@ export const COMBAT_REWARD_BUNDLES = Object.freeze({
   hero_upgrade: Object.freeze({ resource: 'hero_ticket', amount: HERO_TICKET_REWARD }),
 });
 
-const OBJECTIVE_TYPES = Object.freeze(['enemy_defeat', 'wave_clear', 'gear_collect', 'training_upgrade', 'hero_upgrade']);
+const OBJECTIVE_TYPES = Object.freeze(['enemy_defeat', 'wave_clear', 'gear_collect', 'training_upgrade', 'hero_upgrade', ...Object.keys(MILESTONE_REWARDS)]);
 const clampCount = value => Number.isSafeInteger(value) && value > 0 ? Math.min(value, 1000000000) : 0;
 const safeId = value => typeof value === 'string' && value.length <= 180 && !['__proto__', 'constructor', 'prototype'].includes(value) ? value : '';
 
@@ -28,15 +30,21 @@ export function createCombatProgressionState(snapshot, seed = 0x43544f) {
     target: objectiveTarget,
     progress: Math.max(0, Math.min(objectiveTarget, Math.floor(Number(raw.objective.progress) || 0))),
     seed: Number(raw.objective.seed) >>> 0,
+    ...(MILESTONE_REWARDS[raw.objective.type] ? { key: safeId(raw.objective.key), chapter: clampCount(raw.objective.chapter), threshold: clampCount(raw.objective.threshold), slot: ['hat','body','boots'].includes(raw.objective.slot) ? raw.objective.slot : '', rarity: ['common','uncommon','rare','epic','legendary'].includes(raw.objective.rarity) ? raw.objective.rarity : '', stat: TRAINING_STATS.includes(raw.objective.stat) ? raw.objective.stat : '' } : {}),
     ...(raw.objective.heroId ? { heroId: safeId(raw.objective.heroId) } : {}),
-    ...(raw.objective.type === 'hero_upgrade' && raw.objective.heroName ? { heroName: String(raw.objective.heroName).slice(0, 32) } : {}),
+    ...(['hero_upgrade', 'hero_level'].includes(raw.objective.type) && raw.objective.heroName ? { heroName: String(raw.objective.heroName).slice(0, 32) } : {}),
     ...(raw.objective.type === 'training_upgrade' && raw.objective.rewardHeroName ? { rewardHeroName: String(raw.objective.rewardHeroName).slice(0, 32) } : {}),
   } : null;
   return {
     version: COMBAT_PROGRESSION_VERSION,
     seed: Number.isSafeInteger(raw.seed) ? raw.seed >>> 0 : Number(seed) >>> 0,
     cursor: Math.max(0, Math.floor(Number(raw.cursor) || 0)),
-    objective,
+    objective: objective && validMilestoneObjective(objective) ? objective : null,
+    lastFamily: ['equipment','battle','training','heroes'].includes(raw.lastFamily) ? raw.lastFamily : '',
+    claimedMilestones: Array.isArray(raw.claimedMilestones) ? [...new Set(raw.claimedMilestones.map(safeId).filter(Boolean))] : [],
+    chaptersCleared: clampCount(raw.chaptersCleared),
+    survivalChapters: Array.isArray(raw.survivalChapters) ? [...new Set(raw.survivalChapters.map(clampCount).filter(Boolean))] : [],
+    chapterObservation: raw.chapterObservation && typeof raw.chapterObservation === 'object' ? { chapter: clampCount(raw.chapterObservation.chapter), bossActive: raw.chapterObservation.bossActive === true, failed: raw.chapterObservation.failed !== false } : null,
     wallet: { incense: clampCount(raw.wallet?.incense), ticketsByHero: Object.fromEntries(Object.entries(raw.wallet?.ticketsByHero || {}).map(([id, amount]) => [safeId(id), clampCount(amount)]).filter(([id]) => id)) },
     training: Object.fromEntries(TRAINING_STATS.map(stat => [stat, Math.max(0, Math.min(100, Math.floor(Number(raw.training?.[stat]) || 0)))])),
     processedEvents: Array.isArray(raw.processedEvents) ? [...new Set(raw.processedEvents.map(safeId).filter(Boolean))].slice(-512) : [],
@@ -75,10 +83,17 @@ export function eligibleHeroUpgradeTargets(state, heroes = []) {
   return eligibleTicketHeroes(heroes).filter(hero => (state.wallet.ticketsByHero[hero.id] || 0) >= heroTicketLevelCost(heroes.find(candidate => candidate.heroInstanceKey === hero.id)?.currentLevel));
 }
 
-export function ensureCombatObjective(state, heroes = []) {
-  const next = createCombatProgressionState(state);
+export function ensureCombatObjective(state, heroes = [], context = {}) {
+  const next = reconcileQuestMilestones(createCombatProgressionState(state), heroes, context);
   if (next.objective && next.objective.progress >= next.objective.target) return next;
+  if (next.objective?.type === 'chapter_survive' && !next.survivalChapters.includes(next.objective.chapter) && (next.chaptersCleared >= next.objective.chapter || (next.chapterObservation?.failed && next.chapterObservation.chapter === next.objective.chapter))) next.objective = null;
   const canTrain = TRAINING_STATS.some(stat => next.training[stat] < 100 && trainingCost(next, stat) <= next.wallet.incense);
+  if (next.objective?.type === 'training_level' && next.objective.progress < next.objective.target && next.wallet.incense < trainingCost(next, next.objective.stat)) next.objective = null;
+  if (next.objective?.type === 'hero_level' && next.objective.progress < next.objective.target) {
+    const hero = heroes.find(row => row.heroInstanceKey === next.objective.heroId);
+    let cost = 0; for (let level = Number(hero?.currentLevel || 1); level < next.objective.threshold; level++) cost += heroTicketLevelCost(level);
+    if (!hero || next.objective.threshold > hero.maxLevel || (next.wallet.ticketsByHero[next.objective.heroId] || 0) < cost) next.objective = null;
+  }
   if (next.cursor < 2 && next.objective?.type === 'wave_clear') {
     next.objective = openingObjective(next.cursor, next.seed);
     return next;
@@ -123,8 +138,17 @@ export function ensureCombatObjective(state, heroes = []) {
   const roll = nextRandom(next);
   const eligible = eligibleTicketHeroes(heroes);
   const ready = eligibleHeroUpgradeTargets(next, heroes);
-  const candidates = OBJECTIVE_TYPES.filter(type => type !== 'wave_clear' && (type !== 'training_upgrade' && type !== 'hero_upgrade' || (type === 'training_upgrade' ? eligible.length > 0 && canTrain : ready.length > 0)));
-  const type = candidates[(next.cursor + (roll % candidates.length)) % candidates.length];
+  const candidates = OBJECTIVE_TYPES.filter(type => !MILESTONE_REWARDS[type] && type !== 'wave_clear' && (type !== 'training_upgrade' && type !== 'hero_upgrade' || (type === 'training_upgrade' ? eligible.length > 0 && canTrain : ready.length > 0)));
+  const milestones = milestoneCandidates(next, heroes, context);
+  const pool = [...milestones, ...candidates.map(type => ({ type }))].filter(row => questFamily(row.type) !== next.lastFamily);
+  const choices = pool.length ? pool : candidates.map(type => ({ type }));
+  const openingGear = next.cursor === 2 && context.equipment && milestones.find(row => row.type === 'equip_slot' && row.slot === 'hat');
+  const picked = openingGear || choices[(next.cursor + roll) % choices.length];
+  if (MILESTONE_REWARDS[picked.type]) {
+    next.objective = { ...picked, id: `cot-${next.cursor}-${next.seed.toString(16)}`, progress: 0, seed: next.seed };
+    return reconcileQuestMilestones(next, heroes, context);
+  }
+  const type = picked.type;
   const target = type === 'enemy_defeat' ? 3 + (roll % 3) : 1;
   const recipients = type === 'hero_upgrade' ? ready : eligible;
   const hero = ['hero_upgrade', 'training_upgrade'].includes(type) ? recipients[next.cursor % recipients.length] : null;
@@ -139,6 +163,8 @@ export function combatObjectivePresentation(objective) {
     gear_collect: ['Supplies', 'Collect equipment'], training_upgrade: ['Training', 'Train a party stat'], hero_upgrade: ['Level Up', 'Level up a hero'],
   };
   const [category, baseChallenge] = labels[objective.type] || labels.enemy_defeat;
+  const milestone = milestonePresentation(objective);
+  if (milestone) return { ...milestone, count: `${Math.min(objective.progress, objective.target)}/${objective.target}` };
   const challenge = objective.type === 'hero_upgrade' && objective.heroName ? `${baseChallenge}: ${objective.heroName}` : baseChallenge;
   return { category, challenge, count: `${Math.min(objective.progress, objective.target)}/${objective.target}` };
 }
@@ -168,8 +194,8 @@ export function recordCombatObjectiveEvent(state, event, heroes = [], now = 0) {
   return { state: next, changed: true, receipt: null };
 }
 
-export function claimCombatObjectiveReward(state, expectedObjectiveId, heroes = [], now = 0) {
-  const next = ensureCombatObjective(state, heroes);
+export function claimCombatObjectiveReward(state, expectedObjectiveId, heroes = [], now = 0, context = {}) {
+  const next = ensureCombatObjective(state, heroes, context);
   const objective = next.objective;
   if (!objective || objective.id !== safeId(expectedObjectiveId)) return { state: next, ok: false, reason: 'stale_objective', receipt: null };
   if (objective.progress < objective.target) return { state: next, ok: false, reason: 'not_ready', receipt: null };
@@ -181,9 +207,11 @@ export function claimCombatObjectiveReward(state, expectedObjectiveId, heroes = 
   if (rewards.resource === 'hero_ticket' && rewards.heroId) next.wallet.ticketsByHero[rewards.heroId] = (next.wallet.ticketsByHero[rewards.heroId] || 0) + rewards.amount;
   next.rewardReceipts.push(rewards);
   next.lastReward = { label: 'Objective cleared', icon: rewards.resource, count: rewards.amount, shownAt: Math.max(0, Number(now) || 0), receiptId, ...(rewards.heroId ? { heroId: rewards.heroId, heroName: rewards.heroName } : {}) };
+  next.lastFamily = questFamily(objective.type);
+  if (objective.key) next.claimedMilestones.push(objective.key);
   next.cursor += 1;
   next.objective = null;
-  return { state: ensureCombatObjective(next, heroes), ok: true, reason: null, receipt: rewards, changed: true };
+  return { state: ensureCombatObjective(next, heroes, context), ok: true, reason: null, receipt: rewards, changed: true };
 }
 
 export function heroTicketLevelCost(level) { return HERO_TICKET_LEVEL_COST_BASE + Math.max(0, Number(level) - 1) * HERO_TICKET_LEVEL_COST_STEP; }
