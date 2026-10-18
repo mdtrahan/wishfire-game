@@ -348,6 +348,7 @@ export function registerDevBrowserTestHooks({
         id: Number(d.zIndex || 0),
         targetUID: Number(d.targetUID || 0),
         sourceUID: Number(d.sourceUID || 0),
+        attackerName: String((state.entities || []).find(e => Number(e.uid || 0) === Number(d.sourceUID || 0))?.name || ''),
         amount: Number(d.amount || 0),
         hpBefore: Number(d.hpBefore || 0),
         hpAfter: Number(d.hpAfter || 0),

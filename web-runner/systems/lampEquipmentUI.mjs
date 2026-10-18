@@ -46,7 +46,9 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   helper=document.createElement('div');helper.className='lamp-idle-helper';helper.hidden=true;helper.setAttribute('aria-hidden','true');helper.innerHTML='<span></span><span></span><img src="assets/images/lamp/genie-pointer.png" alt="">';
   document.body.append(strip,modal,helper);
   for(const type of ['pointerdown','click','keydown','wheel'])document.addEventListener(type,resetHelper,{capture:true,passive:true});
-  document.addEventListener('visibilitychange',()=>{resetHelper();lastEmissionFrame=null;});
+  const freezeConveyor=()=>{lastEmissionFrame=null;creationActive=false;strip.dataset.conveyorPaused='true';void economy.setConveyorActive(false).catch(e=>{notice=e.message;lastKey='';});};
+  document.addEventListener('visibilitychange',()=>{resetHelper();if(document.hidden)freezeConveyor();else lastEmissionFrame=null;});
+  window.addEventListener('pagehide',freezeConveyor);
   strip.addEventListener('click',onClick);dialog.addEventListener('click',onClick);
   modal.addEventListener('click',e=>{if(e.target===modal&&!busy)close();});
   dialog.addEventListener('keydown',e=>{
@@ -124,7 +126,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   if(!strip)return;const data=economy.data;if(!data){strip.innerHTML='<div class="lamp-status">'+escape(globals.LampStorageError||'Preparing the lamp…')+'</div>';return;}
   const l=data.lamp,roster=heroes(),reviewCandidates=conveyorReviewCandidates(data,roster);
   const remaining=l.upgradeEndsAt?Math.max(0,Math.ceil((l.upgradeEndsAt-economy.time())/1000)):0;
-  updateLampConveyor({strip,data,heroes:roster,now:economy.time(),tile,gearBounds,error:globals.LampStorageError});
+  updateLampConveyor({strip,data,heroes:roster,now:economy.time(),activeMs:economy.conveyorTime(),paused:!creationActive,tile,gearBounds,error:globals.LampStorageError});
   if(feedbacks.size&&open&&(autoTransitionAfterFeedback||closeRequested))return;
   if(selectedItem&&!reviewCandidates.some(c=>c.item.instanceId===selectedItem)){selectedItem=null;selectedHero=null;}
   const key=JSON.stringify([l.pending,l.discarded,l.salvage,l.sequence,data.gold,data.loadouts,l.capacityTier,l.upgradeStage,l.essence,l.upgradeEndsAt,l.speedUpTickets,open&&upgradeOpen?remaining:0,roster.map(h=>[h.currentLevel,h.currentEXP,h.EXPToNextLevel]),selectedItem,selectedHero,disposalView,l.reviewHold,l.disposalRequested,open,upgradeOpen,busy,notice,window.innerWidth,window.innerHeight,window.devicePixelRatio]);
@@ -221,7 +223,10 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   modal.style.setProperty('--boss-fallback-reserve',bossFallbackVisible?`${bossFallbackReservePx}px`:'0px');
  }
  return{
-  draw({layoutId='combat',phase='combat',bossFallbackVisible:showBossFallback=false,bossFallbackReservePx:reservePx=0}={}){init();bossFallbackVisible=showBossFallback===true;bossFallbackReservePx=Math.max(0,Number(reservePx)||0);modal.dataset.bossFallback=String(bossFallbackVisible);position();const visible=['combat','storyMock'].includes(layoutId)&&phase==='combat';strip.hidden=!visible;render();updateHelper();
+  draw({layoutId='combat',phase='combat',bossFallbackVisible:showBossFallback=false,bossFallbackReservePx:reservePx=0}={}){init();bossFallbackVisible=showBossFallback===true;bossFallbackReservePx=Math.max(0,Number(reservePx)||0);modal.dataset.bossFallback=String(bossFallbackVisible);position();const visible=['combat','storyMock'].includes(layoutId)&&phase==='combat';strip.hidden=!visible;
+   creationActive=visible&&!document.hidden&&!open&&!opening&&!isPaused()&&!otherMenuOpen();
+   void economy.setConveyorActive(creationActive).catch(e=>{notice=e.message;lastKey='';});
+   render();updateHelper();
    const data=economy.data,t=economy.time();
    // CSS reports arrivals; the controller requests an idempotent locked save.
    // Cache review never collects approaching equipment or acknowledges it in bulk.
@@ -239,6 +244,8 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
    if(!creationActive){lastEmissionFrame=null;return;}
    if(lastEmissionFrame!==null)emissionElapsed+=Math.max(0,t-lastEmissionFrame);
    lastEmissionFrame=t;
+   const issuedActiveMs=data?.lamp.emissions?.at(-1)?.issuedActiveMs;
+   if(issuedActiveMs!==undefined)emissionElapsed=Math.max(0,economy.conveyorTime()-issuedActiveMs);
    if(data&&!emissionPending&&emissionElapsed>=LAMP_CONFIG.autoIntervalMs&&t-data.lamp.lastActivationAt>=LAMP_CONFIG.autoIntervalMs){
     emissionElapsed=0;emissionPending=true;
     void reveal(()=>creationActive&&!open&&!opening&&!document.hidden&&!isPaused()&&!otherMenuOpen()?economy.tickConveyor(context(),()=>creationActive&&!open&&!opening&&!document.hidden&&!isPaused()&&!otherMenuOpen(),{deferCollection:true}):null)

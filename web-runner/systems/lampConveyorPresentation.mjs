@@ -1,4 +1,4 @@
-import {CONVEYOR_TRAVEL_MS} from '../src/core/lampConveyor.mjs';
+import {CONVEYOR_TRAVEL_MS,conveyorItemAge} from '../src/core/lampConveyor.mjs';
 import {lampItemCPGain,lampCapacity,lampStoredCount,LAMP_CONFIG} from '../src/core/lampGear.mjs';
 import {beginLampBagWishRing,watchLampBagBounceCrest} from './lampBagWishRing.mjs';
 
@@ -50,7 +50,8 @@ function bounceBag(strip,node){
 }
 
 // Persistent DOM nodes keep CSS motion independent of saves and cache rendering.
-export function updateLampConveyor({strip,data,heroes,now,tile,gearBounds=[],error=''}){
+export function updateLampConveyor({strip,data,heroes,now,activeMs=data.lamp.conveyorActiveMs,paused=false,tile,gearBounds=[],error=''}){
+ strip.dataset.conveyorPaused=String(paused);
  const reconstructing=!strip.querySelector('.lamp-conveyor');
  if(reconstructing)strip.innerHTML='<div class="lamp-strip-body"><div class="lamp-results lamp-conveyor" aria-label="Moving equipment conveyor"></div><div class="lamp-side"><button class="lamp-collect lamp-bag" data-action="collect" aria-label="Open equipment cache"><img class="lamp-bag-art" src="assets/images/lamp/equipment-bag.png" alt=""><span class="lamp-count"></span></button><button class="lamp-tier-badge" data-action="lamp-upgrades" aria-label="Lamp upgrades"><span class="lamp-progress" role="progressbar" aria-label="Purchased lamp upgrade stages"><span></span><small class="lamp-exp-value"></small></span><span class="lamp-level-disc"><b></b><small>Lamp</small></span></button></div></div>';
  bagRecords.set(strip,data);
@@ -65,9 +66,10 @@ export function updateLampConveyor({strip,data,heroes,now,tile,gearBounds=[],err
  // The lane now extends behind the bag; retain the accepted art size and pace.
  const width=(strip.getBoundingClientRect().width*.7275-4.2*parseFloat(getComputedStyle(strip).fontSize))*.228;
  const entryWidth=width*1.121;
- // Keep the whole art width; shrink the already-reduced empty gap another 30%.
+ // Keep full art size; reduce the previous visible empty gap by exactly 40%.
  // One shared pace still drives the regular off-left emitter, never pair placement.
- const pitch=entryWidth+(30*scale*5-entryWidth)*.6*.7,speed=pitch/5;
+ const gap=(30*scale*5-entryWidth)*.6*.7;
+ const pitch=entryWidth+gap*.6,speed=pitch/5;
  lane.style.setProperty('--conveyor-start',-entryWidth+'px');
  const bag=strip.querySelector('.lamp-bag').getBoundingClientRect();
  const destination=bag.left+bag.width/2-lane.getBoundingClientRect().left-width/2;
@@ -76,7 +78,7 @@ export function updateLampConveyor({strip,data,heroes,now,tile,gearBounds=[],err
  lane.style.setProperty('--conveyor-end',destination+'px');
  lane.style.setProperty('--conveyor-duration',duration+'s');
  for(const e of l.emissions||[]){
-  const age=Math.max(0,now-e.issuedAt);if(age>=CONVEYOR_TRAVEL_MS||gearBounds.length<9)continue;live.add(e.item.instanceId);
+  const age=conveyorItemAge(l,e,now,activeMs);if(age>=CONVEYOR_TRAVEL_MS||gearBounds.length<9)continue;live.add(e.item.instanceId);
   let node=[...lane.querySelectorAll('.lamp-conveyor-item')].find(n=>n.dataset.id===e.item.instanceId);
   const bestGain=Math.max(0,...heroes.map(h=>lampItemCPGain(data,e.item,h)));
   if(!node){

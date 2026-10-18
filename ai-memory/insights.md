@@ -647,3 +647,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 
 - Puppet loading: retain the displayed image across asynchronous transitions, and let the initial request complete before chasing state/facing changes. Zero post-ready misses alone can hide actors that never became ready; validate readiness for every required UID plus encoded video frame counts and crop containment.
 - In continuous boss combat, a zero-HP boss may wait behind a death visual while every Hero is also at zero HP. Defer party-wipe routing until the boss clear barrier drains, then settle the earned win once; test this at the boss deadline as well as before it.
+
+- Conveyor pause fixes must share a time coordinate across emission cadence, rendering and expiry. Measure spacing at the rendered artwork edges because tile bounds can exclude enlarged art. Persist gate transitions through the save lock. Browser teardown can abort asynchronous exit transactions, so checkpoint same-tab clock metadata synchronously in session storage, match it to emission history, and keep inventory writes locked.

@@ -117,3 +117,5 @@
 - Current combat strip uses images/lamp/equipment-bag.png. Progression resource/stat/ticket assets and Training Ground scene are approved raster art; resource consumers display the matching icon and yellow held / white required amounts. Preserve Bag wish-ring styling, center emission, randomized sizes and directions, and current bounce timing.
 
 - Every authored enemy must have all seven states in both facings in `puppets/manifest.json`; combat has no static-art fallback.
+
+- Conveyor empty spacing is measured between the full 112.1% artwork bounds. Preserve the five-second emission rate and art size; the visible gap is 60% of the previous `.6*.7` gap. `data-conveyor-paused=true` freezes travel with the creation gate.

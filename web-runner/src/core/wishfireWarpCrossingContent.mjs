@@ -196,7 +196,7 @@ export const WISHFIRE_WARP_CROSSING_CONTENT = Object.freeze({
       'scene.warpCrossing.014': 'You think that\u2019s what these orbs are? But they\u2019re everywhere... Wait!... What\u2019s that!?',
       'scene.warpCrossing.016': 'RAWR!!',
       'scene.warpCrossing.017': 'COMBAT TUTORIAL: RED ORBS',
-      'scene.warpCrossing.018': 'Hey, you two look like you\u2019ve seen things. What were those things?',
+      'scene.warpCrossing.018': 'Hey, you two look like you\u2019ve seen things. What was that creature?',
       'scene.warpCrossing.019': 'No idea, but we can cast during battle it seems.',
       'scene.warpCrossing.020': 'Good thing, too. These orbs helped us when we needed to fight...',
       'scene.warpCrossing.021': 'Yeah, that saved our skins!',

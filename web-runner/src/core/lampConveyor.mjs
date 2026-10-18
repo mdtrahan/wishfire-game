@@ -1,15 +1,19 @@
 import {LAMP_CONFIG,LAMP_CAPACITY_TIERS,createLampEconomy,validateLampEconomy,generateLampItem,progressionOrdinal,lampCooldownRemaining,lampStoredCount,lampCapacity,lampReviewCandidates,lampItemCPGain,selectAutoEquipHero,equipLampItem,salvageValue} from './lampGear.mjs';
 
 export const CONVEYOR_TRAVEL_MS = 28000;
+export function conveyorItemAge(lamp,emission,now,activeMs=lamp.conveyorActiveMs){
+ return Math.max(0,emission.issuedActiveMs===undefined?now-emission.issuedAt:activeMs-emission.issuedActiveMs);
+}
 export function validateConveyorState(data){
  validateLampEconomy(data);
  const l=data.lamp,bad=()=>{throw new Error('Lamp conveyor save is invalid. Original data is preserved.');};
  const check=item=>{const sample=createLampEconomy(l.seed);sample.items=[item];sample.lamp.pending=[item?.instanceId];validateLampEconomy(sample);};
  if(lampStoredCount(data)>lampCapacity(data))bad();
+ if(l.conveyorActiveMs!==undefined&&(!Number.isSafeInteger(l.conveyorActiveMs)||l.conveyorActiveMs<0))bad();
  if(l.emissions!==undefined){
   if(!Array.isArray(l.emissions)||l.emissions.length>16)bad();
   const ids=new Set();
-  for(const e of l.emissions){if(!e||!Number.isSafeInteger(e.issuedAt)||e.issuedAt<0||typeof e.collected!=='boolean'||!Number.isSafeInteger(e.item?.sequence)||e.item.sequence>=l.sequence||e.item.instanceId!==`lamp:${l.seed}:${e.item.sequence}`||ids.has(e.item.instanceId))bad();check(e.item);ids.add(e.item.instanceId);}
+  for(const e of l.emissions){if(!e||!Number.isSafeInteger(e.issuedAt)||e.issuedAt<0||typeof e.collected!=='boolean'||!Number.isSafeInteger(e.item?.sequence)||e.item.sequence>=l.sequence||e.item.instanceId!==`lamp:${l.seed}:${e.item.sequence}`||ids.has(e.item.instanceId))bad();if(e.issuedActiveMs!==undefined&&(!Number.isSafeInteger(e.issuedActiveMs)||e.issuedActiveMs<0||l.conveyorActiveMs===undefined||e.issuedActiveMs>l.conveyorActiveMs))bad();check(e.item);ids.add(e.item.instanceId);}
  }
  if(l.reviewHold){check(l.reviewHold.item);if(typeof l.reviewHold.disposal!=='boolean'||data.items.some(i=>i.instanceId===l.reviewHold.item.instanceId))bad();}
  if(l.disposalRequested!==undefined&&(!Array.isArray(l.disposalRequested)||new Set(l.disposalRequested).size!==l.disposalRequested.length||l.disposalRequested.some(id=>![...l.pending,...(l.discarded||[]),l.reviewHold?.item.instanceId].includes(id))))bad();
@@ -42,14 +46,14 @@ export function emitConveyorItem(data,context,now){
  const l=data.lamp;l.highestOrdinal=Math.max(l.highestOrdinal,progressionOrdinal(context));
  const item=generateLampItem(l.seed,l.sequence,l.highestOrdinal,LAMP_CAPACITY_TIERS[l.capacityTier].rarityWeights);
  l.sequence++;l.lastActivationAt=now;
- l.emissions=[...(l.emissions||[]),{item,issuedAt:now,collected:false}].slice(-16);
+ l.emissions=[...(l.emissions||[]),{item,issuedAt:now,...(l.conveyorActiveMs===undefined?{}:{issuedActiveMs:l.conveyorActiveMs}),collected:false}].slice(-16);
  return item;
 }
 export function collectConveyorItem(data,id,now,{automatic=false}={}){
  const l=data.lamp,e=l.emissions?.find(e=>e.item.instanceId===id);
  const owned=data.items.find(i=>i.instanceId===id)||l.reviewHold?.item;
  if(owned?.instanceId===id)return{item:owned,saved:false,exp:0,held:l.reviewHold?.item.instanceId===id};
- if(!e||e.collected||now-e.issuedAt>=CONVEYOR_TRAVEL_MS)throw new Error('That item has passed. Review the cache for collected equipment.');
+ if(!e||e.collected||conveyorItemAge(l,e,now)>=CONVEYOR_TRAVEL_MS)throw new Error('That item has passed. Review the cache for collected equipment.');
  if(lampStoredCount(data)>=lampCapacity(data)){
   if(automatic)return{item:e.item,saved:false,exp:0,held:false};
   if(l.reviewHold)throw new Error('Resolve the held item first: equip it or confirm its disposal.');

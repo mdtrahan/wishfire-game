@@ -114,3 +114,7 @@
 - The first region's first boss retains its catalog-tuned stats. This introductory encounter must not inherit CP-driven offense/defense amplification; later bosses retain the pack-normalized stage curve.
 
 - Bag conveyor rules own emitted/collected gear and the full-cache held item. Auto-Equip processes the displayed rarity/CP order once, matching slots only: lowest equipped slot CP, then lowest current total hero CP, then H1–H4. Each assignment updates state before the next. Replaced equipped gear is destroyed without Essence. Explicit dismantle converts the reviewed snapshot, including missed upgrades; later arrivals survive. COT and party Training rules remain deterministic; buffs project at combat boundaries without rewriting individual base stats.
+
+- Conveyor movement, expiry and five-second cadence use saved `lamp.conveyorActiveMs` and each emission's `issuedActiveMs` when present. Supported wall-clock emissions retain their age during first activation; optional clocks must be nonnegative safe integers with issue time at or before current active time.
+
+- Dialogue imports from older lanes retain the current combat handoff marker and stable localization keys; compare content directly instead of merging retired runtime history.
