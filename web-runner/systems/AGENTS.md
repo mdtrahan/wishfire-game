@@ -7,6 +7,7 @@
 ## Ownership
 - `render*.js` files own Canvas/UI presentation for combat, HUD, map, overlays, and progression shells.
 - `heroGearUI.mjs` renders equipped gear levels with the shared lower-right `.lamp-level` badge inside the art; empty slots retain their slot label and filled slots omit the redundant top label.
+- Hero-screen navigation selects canonical roster records from `HERO_DEFINITIONS`, matching equipment ownership. Combat `*#1` progression copies remain saved but must never appear as duplicate heroes with empty loadouts. Equipped gear stays with its hero until a cached positive-CP replacement changes that same slot; it cannot transfer to another hero.
 - `renderRuntime.js` owns a large partially purified runtime render path and remains high-risk.
 - `combatSimulationTick.mjs` owns the frozen-aware combat clock, queued hero impacts, independently scheduled hero/enemy actions, action presentation, status/effect timing, and reward settlement; renderers consume prepared state and presentation events.
 - `inputHandling.js` owns browser pointer/map input helpers.

@@ -89,3 +89,25 @@ test('a saved disposal request cannot keep a currently green item in discarded s
  classifyConveyorCache(data,[hero]);assert.deepEqual(data.lamp.pending,[item.instanceId]);assert.deepEqual(data.lamp.discarded,[]);assert.deepEqual(data.lamp.disposalRequested,[]);
  assert.deepEqual(conveyorDisposalPreview(data,[hero]).ids,[]);
 });
+test('Auto retains every equipped slot until a same-hero upgrade and never transfers equipped gear',()=>{
+ const data=createLampEconomy(42),heroes=Object.values(createHeroProgressStore().heroes),slots={hat:[],body:[],boots:[]};let sequence=0;
+ while(Object.values(slots).some(items=>items.length<4)){const item=generateLampItem(42,sequence++,0);if(slots[item.type].length<4){slots[item.type].push(item);data.items.push(item);}}
+ for(const [index,hero] of heroes.entries())data.loadouts[hero.heroInstanceKey]=Object.fromEntries(Object.entries(slots).map(([slot,items])=>[slot,items[index].instanceId]));
+ for(let count=0;count<20;count++){const item=generateLampItem(42,sequence++,5);data.items.push(item);data.lamp.pending.push(item.instanceId);}
+ data.lamp.sequence=sequence;data.lamp.highestOrdinal=5;validateLampEconomy(data);
+ const before=structuredClone(data),plan=planConveyorAutoEquip(data,heroes),replay=structuredClone(data),originallyEquipped=new Set(Object.values(data.loadouts).flatMap(Object.values));
+ assert.ok(plan.changes.length>0);
+ for(const change of plan.changes){
+  const hero=heroes.find(h=>h.heroInstanceKey===change.heroId),old=structuredClone(replay.loadouts);
+  assert.ok(!originallyEquipped.has(change.item.instanceId),'Auto takes items only from the cache');assert.ok(lampItemCPGain(replay,change.item,hero)>0);
+  equipConveyorItem(replay,change.heroId,change.item.instanceId,hero);
+  for(const member of heroes)for(const [slot,id] of Object.entries(old[member.heroInstanceKey])){
+   assert.equal(replay.loadouts[member.heroInstanceKey][slot],member===hero&&slot===change.item.type?change.item.instanceId:id,'only the upgraded hero and slot may change');
+  }
+ }
+ assert.deepEqual(replay.loadouts,plan.working.loadouts);assert.deepEqual(planLampAutoEquip(data,heroes).loadouts,plan.working.loadouts);
+ assert.deepEqual(data,before,'planning never changes the input save');
+ const foreignId=data.loadouts.Falie.hat,foreign=data.items.find(i=>i.instanceId===foreignId);foreign.stats=Object.fromEntries(Object.keys(foreign.stats).map(k=>[k,1000]));
+ assert.ok(lampItemCPGain(data,foreign,heroes[1])>0);const manualBefore=structuredClone(data);
+ assert.throws(()=>equipConveyorItem(data,'Huun',foreignId,heroes[1]),/no longer available/);assert.deepEqual(data,manualBefore,'even an improving equipped item cannot transfer to another hero');
+});
