@@ -39,7 +39,7 @@ test('only chapter milestones omit counters; collection and other quests keep si
   for (const type of Object.keys(COMBAT_REWARD_BUNDLES)) {
     for (const progress of [0, 1, 3]) {
       const objective = { type, target: 1, progress, chapter: 1, threshold: 5, heroName: 'Hondo', stat: 'ATK', slot: 'hat', rarity: 'rare' };
-      const chapterMilestone = ['chapter_clear', 'boss_defeat', 'chapter_survive'].includes(type);
+      const chapterMilestone = ['chapter_clear', 'boss_defeat'].includes(type);
       assert.equal(combatObjectivePresentation(objective).count, chapterMilestone ? '' : `${Math.min(progress, 1)}/1`, `${type}:${progress}`);
       assert.equal(combatObjectivePresentation({ ...objective, target: 4 }).count, chapterMilestone ? '' : `${progress}/4`, type);
     }
