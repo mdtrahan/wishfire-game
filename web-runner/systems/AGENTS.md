@@ -286,6 +286,7 @@
 
 - DEV Boss Battle QA accepts a positive whole chapter number and launches that chapter through the canonical stage planner/arm path after the existing combat refresh and story-entry handoff. It uses current hero builds at full HP, clears transient battle conditions, and awards no skipped-wave clears. Validate input before refreshing; surface setup errors in the open DEV panel.
 - Combat progression observes canonical saved equipment plus deployed heroes and chapter transitions. Cache observation by equipment record identity and progression signature, recheck milestone facts on claim, and commit before reward feedback. Long COT labels wrap within the existing HUD footprint; rarity objectives use canonical rarity colors.
+- The mini-quest text backer uses neutral medium grey (#808080) with its existing gradient alpha bytes 85/4d and transparent endpoint; preserve opacity and fade geometry when changing its color.
 - `bagUpgradePresentation.mjs` owns the approved menu/reward markup; `bagUpgradeUI.css` follows the measured Canvas scale. Scope upgrade render keys to visible balances/state so unrelated combat receipts cannot detach controls. The reward appears only after a successful saved transaction; both views share the floating CSS rounded-square X and existing fanfare.
 
 - Bag upgrade progress uses the reference `(current/required)` readout without spaces or thousands separators at ordinary values; exact accessible values remain available and large banks use compact notation.
