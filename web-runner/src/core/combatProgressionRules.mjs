@@ -165,16 +165,17 @@ export function ensureCombatObjective(state, heroes = [], context = {}) {
 }
 
 export function combatObjectivePresentation(objective) {
-  if (!objective) return { category: 'Ready', challenge: 'Complete a combat action', count: '0/1' };
+  if (!objective) return { category: 'Ready', challenge: 'Complete a combat action', count: '' };
   const labels = {
     enemy_defeat: ['Battle', 'Defeat enemies'], wave_clear: ['Advance', 'Clear a wave'],
     gear_collect: ['Supplies', 'Collect equipment'], training_upgrade: ['Training', 'Train a party stat'], hero_upgrade: ['Level Up', 'Level up a hero'],
   };
   const [category, baseChallenge] = labels[objective.type] || labels.enemy_defeat;
   const milestone = milestonePresentation(objective);
-  if (milestone) return { ...milestone, count: `${Math.min(objective.progress, objective.target)}/${objective.target}` };
+  const count = objective.target === 1 ? '' : `${Math.min(objective.progress, objective.target)}/${objective.target}`;
+  if (milestone) return { ...milestone, count };
   const challenge = objective.type === 'hero_upgrade' && objective.heroName ? `${baseChallenge}: ${objective.heroName}` : baseChallenge;
-  return { category, challenge, count: `${Math.min(objective.progress, objective.target)}/${objective.target}` };
+  return { category, challenge, count };
 }
 
 export function combatObjectiveReward(objective) {

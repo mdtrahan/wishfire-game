@@ -6,6 +6,7 @@
 - Do not log routine execution history, file lists, or status chatter.
 
 ## Operating Constraints
+- Mini-quest counters belong in the shared presentation formatter: omit fractions when the objective target is one while retaining the saved target for completion and rewards.
 - Beads are the sole work authorization channel.
 - Use one lane at a time; mirror deterministic rule edits in both runtime mirrors when required.
 - When a problem appears, check this file for prior fixes before expanding scope.

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   createCombatProgressionState, ensureCombatObjective, recordCombatObjectiveEvent, claimCombatObjectiveReward, combatObjectivePresentation, combatObjectiveReward,
-  COMBAT_PROGRESSION_SAVE_KEY, purchasePartyTraining, trainingCost, TRAINING_STATS, spendHeroTickets, settleHeroTicketSpend, heroTicketLevelCost,
+  COMBAT_PROGRESSION_SAVE_KEY, COMBAT_REWARD_BUNDLES, purchasePartyTraining, trainingCost, TRAINING_STATS, spendHeroTickets, settleHeroTicketSpend, heroTicketLevelCost,
 } from '../web-runner/src/core/combatProgressionRules.mjs';
 import { awardHeroEXP, createHeroProgressStore, newHeroProgress, saveHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
 import { partyTrainingCombatStat, realtimeCombatStat } from '../web-runner/src/core/realtimeSkillState.mjs';
@@ -32,6 +32,18 @@ test('objective generation is deterministic and freezes a bounded target', () =>
   assert.equal(first.objective.type, 'gear_collect');
   assert.equal(first.objective.target, 1);
   assert.deepEqual(TRAINING_STATS, ['ATK', 'DEF', 'MATK', 'RES']);
+});
+
+test('single-target mini quests omit counters while multi-target quests keep progress', () => {
+  assert.equal(combatObjectivePresentation(null).count, '');
+  for (const type of Object.keys(COMBAT_REWARD_BUNDLES)) {
+    for (const progress of [0, 1, 3]) {
+      const objective = { type, target: 1, progress, chapter: 1, threshold: 5, heroName: 'Hondo', stat: 'ATK', slot: 'hat', rarity: 'rare' };
+      assert.equal(combatObjectivePresentation(objective).count, '', `${type}:${progress}`);
+      assert.equal(combatObjectivePresentation({ ...objective, target: 4 }).count, `${progress}/4`, type);
+    }
+  }
+  assert.equal(combatObjectivePresentation({ type: 'boss_defeat', chapter: 1, target: 1, progress: 1 }).challenge, 'Defeat Chapter 1 boss');
 });
 
 test('legacy over-target progress normalizes to ready without exceeding the frozen target', () => {
