@@ -21,6 +21,10 @@ async function enter(page,url){
  await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).quest.phase==='combat');await page.locator('#wishfire-lamp .lamp-collect').waitFor();
 }
 async function arrows(page,expected){
+ const portraits=await page.locator('#lamp-dialog .lamp-hero').evaluateAll(ns=>ns.map(n=>({opacity:getComputedStyle(n).opacity,disabled:n.disabled,view:n.closest('#lamp-dialog').dataset.view})));
+ for(const portrait of portraits){assert.equal(portrait.opacity,'1','portraits and their CP arrows retain full color');assert.equal(portrait.disabled,portrait.view==='cache','overview keeps portrait selection disabled');}
+ const disabledEquip=page.locator('#lamp-dialog [data-action="equip"]:disabled');
+ if(await disabledEquip.count())assert.equal(await disabledEquip.evaluate(n=>getComputedStyle(n).opacity),'1','unavailable Equip retains full color');
  const actual=await page.locator('#lamp-dialog .lamp-hero').evaluateAll(ns=>ns.map(n=>({id:n.dataset.id,gain:Number(n.dataset.cpChange),green:!!n.querySelector('.lamp-cp-direction.up'),red:!!n.querySelector('.lamp-cp-direction.down')})));
  assert.deepEqual(actual.map(a=>a.id),owners);
  for(const [n,a]of actual.entries()){assert.equal(a.gain,expected[n],a.id+' displayed gain');assert.equal(a.green,expected[n]>0,a.id+' green');assert.equal(a.red,expected[n]<=0,a.id+' red');}

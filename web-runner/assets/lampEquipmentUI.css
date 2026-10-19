@@ -3,6 +3,7 @@
 #wishfire-lamp *,#lamp-overlay *{box-sizing:border-box}
 #wishfire-lamp button,#lamp-overlay button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
 #wishfire-lamp button:disabled,#lamp-overlay button:disabled{opacity:.45;cursor:default}
+#lamp-overlay button:disabled{opacity:1}
 #wishfire-lamp button:focus-visible,#lamp-overlay button:focus-visible{outline:2px solid #75e4dd;outline-offset:1px}
 .lamp-strip-top{height:22%;display:flex;align-items:center;padding:0 3%;gap:3%;font-size:.84em}
 .lamp-title{font-weight:900;letter-spacing:.08em;color:#edcf8a;margin-right:auto}
@@ -190,7 +191,6 @@
 #wishfire-lamp .lamp-results.lamp-conveyor .lamp-conveyor-item{width:var(--conveyor-tile-width);overflow:visible}
 .lamp-conveyor-notice{position:absolute;bottom:100%;left:4px;right:4px;margin:0;padding:6px;background:#502c25;color:#fff1d1;font-size:12px;z-index:4;border:1px solid #d89c78;border-radius:6px}
 #lamp-dialog [data-disposal-selected=true]{outline:1px solid #dfc777;outline-offset:1px}
-#lamp-dialog [data-disposal-selected=false]{opacity:.7}
 
 /* Full comparison: scroll review content, keep the two primary actions visible. */
 #lamp-dialog[data-view=equip]{overflow:hidden;gap:6px}

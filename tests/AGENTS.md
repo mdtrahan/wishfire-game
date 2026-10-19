@@ -25,6 +25,7 @@
 - `fixtures/` owns deterministic CSV cases shared by JS and Rust/WASM tests.
 
 ## Local Contracts
+- Lamp browser proofs check full opacity in cache and selected-item views, including unavailable Equip actions, while retaining disabled overview selection and equip eligibility.
 - Boss progress proof executes the production tick: each chapter's final ordinary wave enters once and saves readiness before the wipe; ordinary recovery preserves wave and sector-mask progress, boss defeat saves full readiness, and both survive reload without duplicate packs. HP depth checks preserve puppet-foot anchors during clip loading. Hit-flash contracts inspect assembled puppet callbacks. Keep chapter/rail centering and dynamic notch geometry measured independently.
 - Manual retry proof keeps first clean boss entry automatic, latches every stage KO and boss defeat through checkpoint reload, loops ready fodder at 100%, blocks summon during KO/recovery reveal, and verifies explicit summon uses the existing arm path. Boss victory clears the retry latch; a single KO during the boss still follows the whole-party defeat rule.
 - Arena engagement proof advances the real arena owner and enemy scheduler together: all living actors in local sectors can enter independent melee/ranged actions in one tick, out-of-reach actors remain unscheduled, and remote roaming packs remain dormant.

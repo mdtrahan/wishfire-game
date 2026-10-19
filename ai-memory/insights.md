@@ -6,6 +6,7 @@
 - Do not log routine execution history, file lists, or status chatter.
 
 ## Operating Constraints
+- Equipment review communicates eligibility through CP arrows while retaining full color for portraits, tiles and controls. Keep disabled semantics separate from opacity, and test computed ancestor opacity when changing interaction scope.
 - Beads are the sole work authorization channel.
 - Use one lane at a time; mirror deterministic rule edits in both runtime mirrors when required.
 - When a problem appears, check this file for prior fixes before expanding scope.
