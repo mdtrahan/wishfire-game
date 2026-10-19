@@ -6,6 +6,7 @@ const passageAnimations=new WeakMap();
 const bagEffects=new WeakMap();
 const crestWatches=new WeakMap();
 const bagRecords=new WeakMap();
+const conveyorAnimations=new WeakMap();
 function updateBagCount(strip){
  const data=bagRecords.get(strip);if(!data)return;
  const l=data.lamp,stored=lampStoredCount(data),collect=strip.querySelector('.lamp-collect'),count=strip.querySelector('.lamp-count');
@@ -70,15 +71,16 @@ export function updateLampConveyor({strip,data,heroes,now,activeMs=data.lamp.con
   const bestGain=Math.max(0,...heroes.map(h=>lampItemCPGain(data,e.item,h)));
   if(!node){
    const template=document.createElement('template');template.innerHTML=tile(e.item,'conveyor');node=template.content.firstElementChild;node.classList.add('lamp-conveyor-item');
-   node.style.animationDelay=`-${age/1000}s`;
    // Replayed previews already past the bag are hidden without replaying feedback.
    if(age>=duration*1000){node.hidden=true;node.style.display='none';node.dataset.collectionAttempted='true';node.dataset.countReceived='true';}
    node.addEventListener('animationend',event=>{if(event.animationName!=='lamp-conveyor-travel'||event.target!==node||node.hidden)return;node.dataset.arrived='true';node.dataset.countPending='true';if(node.dataset.collected==='true')acknowledgeConveyorItem(strip,node.dataset.id);});lane.append(node);
   }
-  // Anchor the paused CSS position to the durable active clock for reloads.
-  if(paused&&node.dataset.clockPaused!=='true'){
-   const motion=node.getAnimations()[0];
-   if(motion?.currentTime!=null)node.style.animationDelay=`${(motion.currentTime-age)/1000}s`;
+  // Hiding the strip discards CSS animations even when its DOM nodes survive.
+  // Seek replacements and gate transitions from the same active clock as issuance.
+  const motion=node.getAnimations().find(a=>a.animationName==='lamp-conveyor-travel');
+  if(motion&&(conveyorAnimations.get(node)!==motion||node.dataset.clockPaused!==String(paused))){
+   motion.currentTime=age;
+   conveyorAnimations.set(node,motion);
   }
   node.dataset.clockPaused=String(paused);
   node.dataset.bestGain=bestGain;node.dataset.collected=String(e.collected);
