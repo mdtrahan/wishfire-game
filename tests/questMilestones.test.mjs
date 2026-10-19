@@ -39,7 +39,7 @@ test('level milestones use multiples of five and rarity goals require an availab
   assert.equal(milestoneCandidates(state,heroes,{equipment:early}).some(r=>r.type==='equip_level'||r.type==='equip_rarity'),false);
 });
 
-test('chapter completion credits saved progress; survival requires witnessed clear with zero KOs, including revived KOs', () => {
+test('chapter completion credits saved progress regardless of earlier hero KOs', () => {
   let state = createCombatProgressionState({cursor:5});
   state = observeChapterMilestones(state,heroes,{region:1,bossActive:false});
   state = observeChapterMilestones(state,heroes,{region:1,bossActive:true});
@@ -47,14 +47,14 @@ test('chapter completion credits saved progress; survival requires witnessed cle
   state = observeChapterMilestones(state,ko,{region:1,bossActive:true});
   state = createCombatProgressionState(JSON.parse(JSON.stringify(state)));
   state = observeChapterMilestones(state,heroes,{region:2,bossActive:false});
-  assert.equal(state.chaptersCleared,1); assert.deepEqual(state.survivalChapters,[]);
+  assert.equal(state.chaptersCleared,1);
   state = observeChapterMilestones(state,heroes,{region:2,bossActive:true});
   state = observeChapterMilestones(state,heroes,{region:3,bossActive:false});
-  assert.deepEqual(state.survivalChapters,[2]);
+  assert.equal(state.chaptersCleared,2);
   state.objective = {id:'chapter',type:'chapter_clear',chapter:1,target:1,progress:0};
   assert.equal(reconcileQuestMilestones(state,heroes).objective.progress,1);
   const unknown = observeChapterMilestones(createCombatProgressionState(),heroes,{region:8,bossActive:false});
-  assert.equal(unknown.chaptersCleared,7); assert.deepEqual(unknown.survivalChapters,[]);
+  assert.equal(unknown.chaptersCleared,7);
 });
 
 test('seeded scheduling avoids adjacent families and claimed milestones across reloads', () => {
@@ -63,13 +63,14 @@ test('seeded scheduling avoids adjacent families and claimed milestones across r
     let last = '';
     for (let n=0;n<35;n++) {
       state = ensureCombatObjective(state,heroes,context);
+      assert.notEqual(state.objective.type,'chapter_survive');
       const family = questFamily(state.objective.type);
       assert.notEqual(family,last,`${seed}:${n}:${state.objective.type}`);
       const claimed = state.objective.key;
       if (claimed) assert.ok(!state.claimedMilestones.includes(claimed));
       state.objective.progress = state.objective.target;
       // Supply the saved facts needed by milestone claims.
-      state.chaptersCleared = 100; state.survivalChapters = [1,2,3,4];
+      state.chaptersCleared = 100;
       const row = state.objective;
       const party = heroes.map(h=>({...h,currentLevel:Math.max(h.currentLevel,row.threshold||1)}));
       const ctx = {...context,equipment:equipment(100,'legendary')};
@@ -110,12 +111,31 @@ test('combat #1 inherits canonical saved gear, while duplicate #2 requires its o
   assert.equal(reconcileQuestMilestones(state,deployed,{equipment:data}).objective.progress,3);
 });
 
-test('a failed survival milestone is replaced instead of locking an unreplayable chapter', () => {
-  const state = objective('chapter_survive',{chapter:1,target:1});
-  state.chapterObservation={chapter:1,bossActive:false,failed:true};
-  const next = ensureCombatObjective(state,heroes,context);
-  assert.notEqual(next.objective.id,'objective');
-  assert.ok(next.objective.type!=='chapter_survive'||next.objective.chapter!==1);
+test('pending and completed retired zero-KO saves get a persistent replacement without changing rewards', () => {
+  for (const progress of [0,1]) {
+    const snapshot = {
+      cursor:5,seed:123,chaptersCleared:1,
+      objective:{id:'retired-survival',type:'chapter_survive',chapter:1,key:'chapter_survive::1',target:1,progress},
+      survivalChapters:[1],chapterObservation:{chapter:1,bossActive:true,failed:false},
+      wallet:{incense:77,ticketsByHero:{Hondo:250}},
+      claimedMilestones:['chapter_clear::1'],rewardReceipts:[{id:'earned-reward',resource:'incense',amount:5}],
+    };
+    const values = new Map([['orka.combat_progression.v1',JSON.stringify(snapshot)]]);
+    const storage = {getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v)};
+    const make = () => createCombatProgression({globals:{ContinuousCombatStage:{region:2}},storage,getHeroes:()=>heroes,equipmentProgress:{data:equipment()},reportError:()=>{}});
+    const controller = make(), next = controller.state();
+    assert.notEqual(next.objective.type,'chapter_survive');
+    assert.notEqual(next.objective.id,'retired-survival');
+    assert.equal(next.cursor,snapshot.cursor);
+    assert.deepEqual(next.wallet,snapshot.wallet);
+    assert.deepEqual(next.rewardReceipts,snapshot.rewardReceipts);
+    assert.deepEqual(next.claimedMilestones,snapshot.claimedMilestones);
+    assert.equal('survivalChapters' in next,false);
+    assert.equal('chapterObservation' in next,false);
+    assert.equal(controller.claimObjective('retired-survival').ok,false);
+    assert.equal(make().state().objective.id,next.objective.id);
+    assert.notEqual(JSON.parse(storage.getItem('orka.combat_progression.v1')).objective.type,'chapter_survive');
+  }
 });
 
 test('invalid saved milestone dimensions cannot become ready claims', () => {
