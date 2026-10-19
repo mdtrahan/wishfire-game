@@ -77,7 +77,11 @@ test('zero actual CP change is red and cannot be equipped',()=>{
 });
 test('production storage rejects CP loss atomically and saves factual positive receipts',async()=>{
  for(const [owned,selected,expected] of [[[368,421,121],180,-.9],[[35,76,135],85,2.4]]){
-  const {data,hero,item}=generatedFixture(owned,selected),values=new Map([[EQUIPMENT_SAVE_KEY,JSON.stringify(data)]]),globals={goldTotal:0,HeroProgress:{...createHeroProgressStore(),heroes:{Falie:hero}}};
+  const {data,hero,item}=generatedFixture(owned,selected),values=new Map([[EQUIPMENT_SAVE_KEY,JSON.stringify(data)]]),globals={goldTotal:0,HeroProgress:createHeroProgressStore()};
+  globals.HeroProgress.heroes.Falie=hero;
+  // Synthetic saturated non-recipients keep this full-roster fixture focused on Fara.
+  for(const id of ['Huun','Runa','Kojonn'])for(const source of data.items.filter(i=>Object.values(data.loadouts.Falie).includes(i.instanceId))){const owned={...source,instanceId:`owned:${id}:${source.type}`,stats:{ATK:10000,DEF:10000,MAG:10000,RES:10000,HP:10000}};data.items.push(owned);(data.loadouts[id]||={})[source.type]=owned.instanceId;}
+  values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(data));
   const store=createEquipmentStorage({globals,storage:{getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v)},locks:{request:(_k,fn)=>fn()},now:()=>100000,reportError:()=>{}});await store.sync();
   if(expected<0){const before=values.get(EQUIPMENT_SAVE_KEY);await assert.rejects(store.equip('Falie',item.instanceId),/does not increase/);assert.equal(values.get(EQUIPMENT_SAVE_KEY),before);assert.deepEqual(await store.autoEquip(),[]);}
   else{const [receipt]=await store.autoEquip();assert.equal(receipt.cpChange,expected);assert.ok(receipt.cpAfter>receipt.cpBefore);assert.equal(globals.HeroProgress.heroes.Falie.combatPower,receipt.cpAfter);}

@@ -26,3 +26,5 @@
 - Combat migration fixtures require individual HP eligibility even with stale pool totals and pending groups. Enemy-target rows contain six hero records and exercise slots five/six, preferences and KO exclusion.
 
 - lamp-auto-earned-69.json preserves a disclosed ordinary saved batch to catch early item-CP truncation; it is a replay fixture and provides no timing proof.
+
+- lampTrust.mjs builds disclosed synthetic cache/loadout fixtures and projects CP independently of lamp eligibility, sorting and allocation. Seed once per browser context so reload checks cannot overwrite the result.

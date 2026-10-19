@@ -220,3 +220,5 @@
 - Both Bag close glyphs must crop to nontransparent painted pixels and center that cropped raster within the square (under0.1px). Keep the Canvas CSS background transparent and preserve existing frame colors.
 
 - The five-profile Bag component guard also covers Training Ground: exactly one shared floating close outside the sheet, 24px scaled gap below tabs, full hit-area containment, exact visible-block vertical centering, resize recentering, close/Escape/focus return and keyboard wrap. Closing cannot purchase training or mutate its fixture state.
+
+- lampAutoEquipGameplay runs the full game in isolated contexts through cache/item controls, Auto receipts, Hero screens and reload. Its red-promise test fails on main 5d7910f9 after an actual Auto click. Fixed golden gains and a separate stat-projection oracle check allocation; lampRoster covers all 120 five-record orders and atomic guards. Both browser files run in test:lamp-ui.

@@ -33,7 +33,7 @@ test('canonical equipped gear reaches the deployed hero instance',async()=>{
  assert.equal(restored.maxHP,actor.maxHP);
 });
 
-test('instance loadouts override canonical gear and duplicate clones do not share it',async()=>{
+test('combat copies cannot receive lamp gear and existing instance loadouts stay isolated',async()=>{
  const first={...newHeroProgress('Falie','falie#1'),kind:'hero',uid:1};
  const second={...newHeroProgress('Falie','falie#2'),kind:'hero',uid:2};
  const f=fixture({}, {getActors:()=>[first,second]});
@@ -46,11 +46,15 @@ test('instance loadouts override canonical gear and duplicate clones do not shar
  assert.deepEqual(second.equipmentStats??{},{});
  f.setClock(3001);
  const instanceItem=await f.store.generate();
- await f.store.equip('falie#1',instanceItem.instanceId);
- assert.deepEqual(first.equipmentStats,instanceItem.stats);
+ const before=structuredClone(f.store.data);
+ await assert.rejects(f.store.equip('falie#1',instanceItem.instanceId),/not a lamp equipment owner/);
+ assert.deepEqual(f.store.data,before);
+ assert.deepEqual(first.equipmentStats,canonicalItem.stats);
  assert.deepEqual(second.equipmentStats??{},{});
  const saved=structuredClone(f.store.data);
  saved.loadouts['falie#1']={};
+ // Moving a still-cached item requires removing its old queue membership.
+ saved.lamp.pending=saved.lamp.pending.filter(id=>id!==instanceItem.instanceId);
  saved.lamp.discarded.push(instanceItem.instanceId);
  f.values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(saved));
  await f.store.refresh();

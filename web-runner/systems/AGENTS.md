@@ -296,3 +296,5 @@
 - Bag close glyphs use actual alpha-pixel bounds, cropped on a DPR-aware Canvas and centered within the square frame. Reuse the UI font-measure context and repaint after stylesheet/font readiness on both views; no font-line-box centering or hardcoded offset.
 
 - `modalClose.mjs` owns the shared slate rounded-square frame, mark and alpha-cropped X painting for Bag and Training Ground. Both consumers supply their Canvas-relative close scale; maintain one style source. Training Ground has one floating close below all window tabs, restores opening focus on click/Escape/programmatic closure and traps Tab while open. Its visible ribbon-to-close-frame block is vertically centered after opening, fonts and resize; preserve all internal training geometry and state.
+
+- Cache opening and disposal recovery show aggregate arrows with full-cache Auto. Explicit item review shows per-item arrows, manual Equip and Back to cache; its controls never invoke full-cache Auto. All lamp readers use lampHeroRoster in authored definition order, and transactions reject incomplete owner records before any save or backup write.
