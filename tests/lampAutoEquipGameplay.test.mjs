@@ -173,7 +173,10 @@ test('a legal equip in another tab rescues a stale disposal item and manual Equi
    const saved=JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5'));saved.items.push(hat);saved.lamp.pending.push(hat.instanceId);saved.lamp.sequence=14;localStorage.setItem('wishfire.equipment-economy.v5',JSON.stringify(saved));
    const {createEquipmentStorage}=await import('/web-runner/systems/equipmentStorage.mjs');const store=createEquipmentStorage({globals:{HeroProgress:JSON.parse(localStorage.getItem('orka.hero_progress.v2')),goldTotal:saved.gold},storage:localStorage});await store.sync();return store.equip('Falie',hat.instanceId);
   },hat);assert.ok(receipt.cpChange>0);
-  await page.bringToFront();await page.waitForFunction(()=>document.querySelector('#lamp-dialog').dataset.view==='cache');
+  await page.bringToFront();
+  // The arrival opens the overview before the second tab finishes equipping.
+  // Wait for its committed loadout AND rendered tile removal, independently of arrows.
+  await page.waitForFunction(id=>document.querySelector('#lamp-dialog').dataset.view==='cache'&&window.__codexGame.globals.Equipment?.loadouts?.Falie?.hat===id&&![...document.querySelectorAll('#lamp-dialog .lamp-tile')].some(n=>n.dataset.id===id),hat.instanceId);
   const afterHat=await read(page);assert.ok(gain(afterHat,heroes.heroes.Falie,selected)>0);
   await arrows(page,owners.map(id=>Math.max(0,gain(afterHat,heroes.heroes[id],selected))));
   const guard=await page.evaluate(async preview=>{const {createEquipmentStorage}=await import('./systems/equipmentStorage.mjs');const store=createEquipmentStorage({globals:window.__codexGame.globals,storage:localStorage,reportError:()=>{}});await store.sync();const before=localStorage.getItem('wishfire.equipment-economy.v5');try{await store.dismantle(preview);return{rejected:false};}catch(e){return{rejected:true,message:e.message,unchanged:before===localStorage.getItem('wishfire.equipment-economy.v5')};}},preview);

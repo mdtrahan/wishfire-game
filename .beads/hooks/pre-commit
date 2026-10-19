@@ -63,6 +63,7 @@ LAMP_GAMEPLAY_OWNER_PATTERN='^(\.beads/hooks/pre-commit|package\.json|web-runner
 if printf '%s\n' "$UI_LOCK_STAGED_FILES" | grep -Eq "$LAMP_PRESENTATION_OWNER_PATTERN"; then
   echo "Lamp presentation owner changed; running phone geometry and guide lock..."
   npm run test:lamp-ui
+  node --test tests/lampRoster.test.mjs
 elif printf '%s\n' "$UI_LOCK_STAGED_FILES" | grep -Eq "$LAMP_GAMEPLAY_OWNER_PATTERN"; then
   echo "Lamp rules or ownership changed; running gameplay and roster proof..."
   node --test --test-concurrency=1 tests/lampAutoEquipGameplay.test.mjs tests/lampRoster.test.mjs
