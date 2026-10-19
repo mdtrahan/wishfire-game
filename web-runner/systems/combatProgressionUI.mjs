@@ -38,7 +38,7 @@ function installStyle() {
     .cot-resource[data-resource=gold] img{width:22px;height:22px}
     .cot-resource b{display:block;min-width:0;flex:1;text-align:right;font-size:12px;line-height:1;font-weight:800;font-variant-numeric:tabular-nums;color:#F6EEDC;white-space:nowrap}
     .cot-objective{position:absolute;box-sizing:border-box;width:270px;height:52px;display:flex;align-items:flex-start;color:white;text-align:left;transition:opacity .6s ease}
-    .cot-objective::before{content:'';position:absolute;left:20px;right:0;top:2px;height:34px;background:linear-gradient(90deg,#efddb985,#efddb94d 75%,transparent)}
+    .cot-objective::before{content:'';position:absolute;left:20px;right:0;top:2px;height:34px;background:linear-gradient(90deg,#80808085,#8080804d 75%,transparent)}
     .cot-text-backer{position:relative;min-width:0;max-width:236px;padding:2px 0 0 4px;white-space:normal;font-weight:700}
     .cot-category{font-size:11px;color:#ffd45c;line-height:14px;text-transform:uppercase}
     .cot-challenge{font-size:13px;line-height:18px}
