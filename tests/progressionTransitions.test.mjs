@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {HERO_DEFINITIONS,heroSkillUnlocked} from '../web-runner/src/core/heroDefinitions.mjs';
 import {attachHeroProgress,createHeroProgressStore,setHeroProgressLevel,awardHeroEXP} from '../web-runner/src/core/heroProgression.mjs';
-import {createLampEconomy,validateLampEconomy,LAMP_CONFIG,purchaseLampStage,upgradeLamp,speedUpLampUpgrade} from '../web-runner/src/core/lampGear.mjs';
+import {createLampEconomy,validateLampEconomy,LAMP_CONFIG,upgradeLamp} from '../web-runner/src/core/lampGear.mjs';
 import {createEquipmentStorage,EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
 import {castRealtimeHeroSkill,realtimeRetaliation} from '../web-runner/src/core/realtimeHeroSkills.mjs';
 import {continuousCombatWaveClearEventId,buildContinuousCombatSpawnPlan,configureContinuousCombatProduction,deriveContinuousCombatWavePackProgress,maybeAdvanceContinuousCombatStage,resetContinuousCombatAfterDefeat,summonContinuousCombatBoss} from '../web-runner/src/core/continuousCombatStage.mjs';
@@ -71,35 +71,19 @@ test('expanded continuous checkpoints survive persistence and reload while short
  assert.equal(invalid.continuousStage,undefined,'stage two and wave six exceed the one-stage, five-wave short region');
 });
 
-test('construction uses a seven-hour deadline, survives reload and automatically commits once',async()=>{
- const f=fixture();await f.store.sync();for(let n=0;n<4;n++)await f.store.purchaseStage(0,n);
- const end=1000+7*60*60*1000;assert.equal(f.store.data.lamp.upgradeEndsAt,end);assert.equal(f.store.data.lamp.capacityTier,0);
- f.setClock(end-1);const reload=createEquipmentStorage(f.options);await reload.sync();assert.equal(reload.data.lamp.capacityTier,0);
- f.setClock(end);await reload.sync();assert.equal(reload.data.lamp.capacityTier,1);assert.equal(reload.data.lamp.upgradeEndsAt,0);
+test('full-cost upgrade is immediate and reload does not grant another level',async()=>{
+ const f=fixture();await f.store.sync();await f.store.upgrade(0);
+ assert.equal(f.store.data.lamp.capacityTier,1);assert.equal(f.store.data.lamp.essence,0);
+ f.setClock(7*60*60*1000);const reload=createEquipmentStorage(f.options);await reload.sync();assert.equal(reload.data.lamp.capacityTier,1);assert.equal(reload.data.partyEXP,0);
  const receipt=f.values.get(EQUIPMENT_SAVE_KEY);await reload.sync();assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),receipt);
- assert.equal(reload.data.lamp.essence,0);assert.equal(reload.data.partyEXP,0);
 });
 
-test('final essence purchase and its timer are atomic, and stale clicks cannot restart construction',async()=>{
- const f=fixture();await f.store.sync();for(let n=0;n<3;n++)await f.store.purchaseStage(0,n);
- const before=f.values.get(EQUIPMENT_SAVE_KEY);f.setFail(true);await assert.rejects(f.store.purchaseStage(0,3),/disk full/);
- assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),before);assert.equal(f.store.data.lamp.upgradeEndsAt,undefined);f.setFail(false);
- const results=await Promise.allSettled([f.store.purchaseStage(0,3),f.store.purchaseStage(0,3)]);
- assert.equal(results.filter(r=>r.status==='fulfilled').length,1);const deadline=f.store.data.lamp.upgradeEndsAt;
- await assert.rejects(f.store.upgrade(0),/under construction/);assert.equal(f.store.data.lamp.upgradeEndsAt,deadline);
- const paid=createLampEconomy(4);paid.lamp.upgradeStage=4;upgradeLamp(paid,0,1000);assert.equal(paid.lamp.capacityTier,0);
- for(const value of [NaN,-1,1.2,Number.MAX_SAFE_INTEGER])assert.throws(()=>purchaseLampStage(createLampEconomy(4),0,0,value));
-});
-
-test('SPD UP ALL consumes five-minute tickets without waste; failures and concurrent clicks stay atomic',async()=>{
- const zero=createLampEconomy(1,0);zero.lamp.upgradeStage=4;zero.lamp.speedUpTickets=84;upgradeLamp(zero,0,0);assert.equal(speedUpLampUpgrade(zero,0,0),84);assert.equal(zero.lamp.capacityTier,1);
- const f=fixture();const save=JSON.parse(f.values.get(EQUIPMENT_SAVE_KEY));save.lamp.speedUpTickets=2;f.values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(save));
- await f.store.sync();for(let n=0;n<4;n++)await f.store.purchaseStage(0,n);
- const before=f.values.get(EQUIPMENT_SAVE_KEY);f.setFail(true);await assert.rejects(f.store.speedUp(0),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),before);f.setFail(false);
- const end=f.store.data.lamp.upgradeEndsAt;const results=await Promise.allSettled([f.store.speedUp(0),f.store.speedUp(0)]);
- assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.equal(f.store.data.lamp.upgradeEndsAt,end-2*5*60*1000);assert.equal(f.store.data.lamp.speedUpTickets,0);
- const extra=JSON.parse(f.values.get(EQUIPMENT_SAVE_KEY));extra.lamp.speedUpTickets=100;f.values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(extra));await f.store.refresh();
- f.setClock(f.store.data.lamp.upgradeEndsAt-1);assert.equal(await f.store.speedUp(0),1);assert.equal(f.store.data.lamp.capacityTier,1);assert.equal(f.store.data.lamp.speedUpTickets,99);
+test('failed and concurrent level-up clicks keep spending and promotion atomic',async()=>{
+ const f=fixture();await f.store.sync();const before=f.values.get(EQUIPMENT_SAVE_KEY);
+ f.setFail(true);await assert.rejects(f.store.upgrade(0),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),before);assert.equal(f.store.data.lamp.capacityTier,0);f.setFail(false);
+ const results=await Promise.allSettled([f.store.upgrade(0),f.store.upgrade(0)]);assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
+ assert.equal(f.store.data.lamp.capacityTier,1);assert.equal(f.store.data.lamp.essence,0);await assert.rejects(f.store.upgrade(0),/level changed/);
+ const insufficient=createLampEconomy(4);assert.throws(()=>upgradeLamp(insufficient),/Need 400 more Essence/);
 });
 
 test('fresh heroes gate every skill at the authoritative milestone including direct casts and retaliation',()=>{
@@ -277,7 +261,7 @@ test('the app tick persists boss readiness before its stage early return and def
  const runTick=(state,gameState,checkOutcome)=>{
   const context=vm.createContext({
    state,gameState,document:{hidden:false},performance:{now:()=>100},requestAnimationFrame(){},continuousCombatWaveClearEventId,
-   combatProgression:{recordCommittedEnemyDefeats(){},record(){}},
+   combatProgression:{recordCommittedEnemyDefeats(){},record(){},observe(){}},
    combatSimulationTicker:{reset(){},tick(){}},lastFrameTime:0,ensureDevToolingConfig:()=>({open:false}),
    layoutState:{getActiveLayoutId:()=> 'combat'},shouldFreezeCombatSimulation:()=>false,drawFrame(){},
    fnContext:{},callFunctionWithContext:(ctx,name,...args)=>makeCall(state)(name,...args),

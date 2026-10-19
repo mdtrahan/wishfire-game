@@ -6,10 +6,10 @@ import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
 import {test} from 'node:test';
 import {chromium} from 'playwright';
-import {createHeroProgressStore,refreshHeroStats} from '../web-runner/src/core/heroProgression.mjs';
+import {createHeroProgressStore,refreshHeroStats,newHeroProgress} from '../web-runner/src/core/heroProgression.mjs';
 import {equipmentStats} from '../web-runner/src/core/equipment.mjs';
 import {createLampEconomy,generateLampItem} from '../web-runner/src/core/lampGear.mjs';
-import {heroDefinition,heroSkillUnlocked} from '../web-runner/src/core/heroDefinitions.mjs';
+import {HERO_DEFINITIONS,heroDefinition,heroSkillUnlocked} from '../web-runner/src/core/heroDefinitions.mjs';
 import {actorAttackReach} from '../src/core/arenaCombatRules.mjs';
 import {EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
 
@@ -39,7 +39,7 @@ function expectedSkillRange(ability,hero){
  return `${reach}-unit actor reach`;
 }
 
-function makeSavedFixture(){
+function makeSavedFixture({shellsFirst=true}={}){
  const progress=createHeroProgressStore();
  const economy=createLampEconomy(0x2c2);
  const wanted={hat:4,body:4,boots:4},items={hat:[],body:[],boots:[]};
@@ -56,6 +56,14 @@ function makeSavedFixture(){
   hero.equipmentStats=equipmentStats(economy.items,economy.loadouts[id]);
   refreshHeroStats(hero);hero.hp=hero.maxHP-2;
  }
+ // Retired instance records precede canonical records and carry distinct progression/loadouts.
+ const shells=Object.fromEntries(Object.keys(HERO_DEFINITIONS).map(key=>{
+  const id=key.toLowerCase()+'#1';
+  const hero=newHeroProgress(key,id);hero.equipmentStats={};
+  economy.loadouts[id]={};
+  return [id,hero];
+ }));
+ progress.heroes=shellsFirst?{...shells,...progress.heroes}:{...progress.heroes,...shells};
  progress.settledBattles=['hero-redesign-save-preservation'];
  return{progress,economy};
 }
@@ -106,6 +114,42 @@ const fixtureModule=`
  };
 `;
 
+test('combat copies never appear as unequipped duplicate heroes in the Hero screen',{timeout:60000},async()=>{
+ await mkdir(artifactDir,{recursive:true});
+ const {progress,economy}=makeSavedFixture({shellsFirst:false}),heroes=Object.keys(HERO_DEFINITIONS).map(key=>progress.heroes[key]);
+ for(const hero of heroes){const id=hero.heroInstanceKey.toLowerCase()+'#1';progress.heroes[id]={...structuredClone(hero),heroInstanceKey:id};}
+ const {server,url}=await startFixtureServer(),browser=await chromium.launch({headless:true,executablePath:detectChromeExecutable()});
+ try{
+  for(const profile of profiles){
+   const context=await browser.newContext({viewport:{width:profile.width,height:profile.height},deviceScaleFactor:profile.dpr}),page=await context.newPage();
+   await page.goto(url);await page.addScriptTag({type:'module',content:fixtureModule});await page.waitForFunction(()=>typeof window.mountHeroRedesignFixture==='function');
+   await page.evaluate(({progress,economy})=>window.mountHeroRedesignFixture({progress,economy}),{progress,economy});
+   const afterAuto=await page.evaluate(async()=>{
+    const {generateLampItem}=await import('/web-runner/src/core/lampGear.mjs'),{createEquipmentStorage}=await import('/web-runner/systems/equipmentStorage.mjs');
+    const qa=window.heroQa,item=generateLampItem(qa.equipment.lamp.seed,5000,69);
+    qa.equipment.items.push(item);qa.equipment.lamp.pending.push(item.instanceId);qa.equipment.lamp.sequence=5001;qa.equipment.lamp.highestOrdinal=69;
+    localStorage.setItem('wishfire.equipment-economy.v5',JSON.stringify(qa.equipment));
+    const store=createEquipmentStorage({globals:qa.globals,storage:localStorage,locks:navigator.locks});await store.sync();const changes=await store.autoEquip();
+    Object.assign(qa.equipment,store.data);qa.render();return{economy:store.data,changes};
+   });
+   assert.equal(afterAuto.changes.length,1,'production Auto assigns the cached upgrade once');assert.ok(afterAuto.changes[0].cpChange>0);
+   const detail=page.locator('#hero-details'),before=await page.evaluate(()=>JSON.stringify(window.heroQa.globals.HeroProgress));
+   for(let step=0;step<8;step++){
+    const hero=heroes[step%4];assert.equal(await detail.locator('h1').textContent(),heroDefinition(hero).name);
+    for(const id of Object.values(afterAuto.economy.loadouts[hero.heroInstanceKey])){
+     const item=afterAuto.economy.items.find(i=>i.instanceId===id);assert.equal(await detail.getByRole('button',{name:new RegExp('^Inspect .*: '+item.name+',')}).count(),1,`${profile.name}: ${hero.heroInstanceKey} retains ${item.type} on visit ${step}`);
+    }
+    await detail.getByRole('button',{name:'Next hero'}).click();
+    await page.waitForFunction(expected=>document.querySelector('#hero-details h1')?.textContent===expected,heroDefinition(heroes[(step+1)%4]).name);
+   }
+   await detail.getByRole('button',{name:'Previous hero'}).click();await page.waitForFunction(()=>document.querySelector('#hero-details h1')?.textContent==='Kaja');
+   assert.equal(await page.evaluate(()=>JSON.stringify(window.heroQa.globals.HeroProgress)),before,'browsing preserves canonical and combat-copy progression');
+   assert.equal(await page.evaluate(()=>localStorage.getItem('wishfire.equipment-economy.v5')),JSON.stringify(afterAuto.economy),'browsing preserves every equipped item');
+   await page.screenshot({path:path.join(artifactDir,`${profile.name}-canonical-gear.png`),fullPage:true});await context.close();
+  }
+ }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
+});
+
 test('hero redesign uses saved canonical data and stays contained across portrait viewport profiles',{timeout:120000},async()=>{
  await mkdir(artifactDir,{recursive:true});
  const {progress,economy}=makeSavedFixture(),saved={progress:JSON.stringify(progress),economy:JSON.stringify(economy)};
@@ -140,7 +184,7 @@ test('hero redesign uses saved canonical data and stays contained across portrai
    assert.equal(await mainNav.locator('button[aria-current="page"]').innerText(),'HERO','hero is the active shared-navigation destination');
    assert.equal(await mainNav.locator('button img').count(),5,'the five production navigation badges use decoded artwork');
    assert.equal(await mainNav.locator('button img').evaluateAll(images=>images.every(image=>image.complete&&image.naturalWidth>0)),true,'shared navigation artwork is loaded');
-   const heroes=Object.values(progress.heroes);
+   const heroes=Object.keys(HERO_DEFINITIONS).map(key=>progress.heroes[key]);
    assert.deepEqual(heroes.map(hero=>heroDefinition(hero).actives.length),[8,8,8,9],'the saved roster contains the complete eight- and nine-skill kits');
    for(let offset=0;offset<heroes.length;offset++){
     const index=(offset+heroes.length)%heroes.length,hero=heroes[index],definition=heroDefinition(hero);
@@ -243,7 +287,8 @@ test('hero redesign uses saved canonical data and stays contained across portrai
    const cpRefresh=await page.evaluate(async()=>{
     const {refreshHeroStats}=await import('/web-runner/src/core/heroProgression.mjs');
     const {computeCombatPower}=await import('/web-runner/src/core/combatPower.mjs');
-    const qa=window.heroQa,heroes=Object.values(qa.globals.HeroProgress.heroes);
+    const {HERO_DEFINITIONS}=await import('/web-runner/src/core/heroDefinitions.mjs');
+    const qa=window.heroQa,heroes=Object.keys(HERO_DEFINITIONS).map(key=>qa.globals.HeroProgress.heroes[key]);
     qa.fnContext.state.entities=heroes.map(hero=>({...structuredClone(hero),kind:'hero'}));
     const results=[];
     for(const [index,hero] of heroes.entries()){

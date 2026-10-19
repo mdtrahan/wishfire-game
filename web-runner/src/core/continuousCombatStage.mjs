@@ -929,7 +929,7 @@ export function shouldExpireContinuousCombatBoss(stageState, entities, now) {
     && (entities || []).some(actor => actor?.kind === 'enemy' && Number(actor.uid || 0) === Number(stageState.bossUID || 0) && Number(actor.hp || 0) > 0);
 }
 
-export function maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier, call, runCombatStep, onBossTimeout } = {}) {
+export function maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier, call, runCombatStep, onBossTimeout, onBossClear } = {}) {
   if (!globals || Number(globals.ContinuousCombatStageLoop || 0) !== 1) return false;
   if (globals.DevToolingPaused || globals.QaScenarioPaused || globals.QaFixtureHoldTurn) return false;
   const stageState = globals.ContinuousCombatStage;
@@ -972,6 +972,7 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
 
   if (stageState.bossActive) {
     if (!clear) return false;
+    onBossClear?.();
     call('SettleContinuousCombatRewards');
     transition = advanceContinuousCombatStage(stageState);
   } else {

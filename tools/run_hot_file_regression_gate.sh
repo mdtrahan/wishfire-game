@@ -14,6 +14,6 @@ node --test \
 
 node --test tests/lampEquipment.test.mjs
 # Lamp presentation owners use the same reference/compact phone gate.
-if git diff --name-only HEAD -- web-runner/app.js web-runner/systems/lampEquipmentUI.mjs web-runner/assets/lampEquipmentUI.css web-runner/systems/renderExistingNavigation.mjs | rg -q .; then
+if git diff --name-only HEAD -- web-runner/app.js web-runner/systems/lampEquipmentUI.mjs web-runner/assets/lampEquipmentUI.css web-runner/systems/renderExistingNavigation.mjs web-runner/systems/modalClose.mjs web-runner/systems/combatProgressionUI.mjs web-runner/systems/bagUpgradePresentation.mjs web-runner/assets/bagUpgradeUI.css web-runner/systems/lampConveyorPresentation.mjs | rg -q .; then
   npm run test:lamp-ui
 fi

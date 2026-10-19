@@ -1,7 +1,7 @@
 import {renderHeroGear} from './heroGearUI.mjs';
 import {runtimeAssetUrl} from './runtimeAssetUrl.mjs';
 import {computeCombatPower} from '../src/core/combatPower.mjs';
-import {heroDefinition,heroSkillUnlocked} from '../src/core/heroDefinitions.mjs';
+import {HERO_DEFINITIONS,heroDefinition,heroSkillUnlocked} from '../src/core/heroDefinitions.mjs';
 import {createHeroProgressStore} from '../src/core/heroProgression.mjs';
 import {heroTicketLevelCost} from '../src/core/combatProgressionRules.mjs';
 import {heroArtKey} from '../state/heroArtAssets.mjs';
@@ -15,7 +15,7 @@ export function hideHeroScreen(){if(host)host.hidden=true;}
 export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gameState,fnContext,heroPortraitImages}){
  const globals=fnContext.state.globals;
  globals.HeroProgress ||= createHeroProgressStore();
- const roster=Object.values(globals.HeroProgress.heroes);
+ const roster=Object.keys(HERO_DEFINITIONS).map(key=>globals.HeroProgress.heroes[key]).filter(Boolean);
  if(!roster.length)return {mode:'details',selectedSkillIndex:0,hitZones:{skillNodes:[]}};
  const index=((Number(gameState.selectedHero)||0)%roster.length+roster.length)%roster.length;
  if(activeHeroIndex!==index){activeHeroIndex=index;activeSkillIndex=0;activeSkillPage=0;ticketNotice='';}

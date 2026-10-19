@@ -1,6 +1,10 @@
 # Wishfire Lamp Equipment MVP · ORKA-0ln
 
+Current Bag upgrade progression and presentation are owned by `goals/approved-bag-upgrades.md`, which supersedes all paid-stage/construction wording below.
+
 Historical initial lamp design. The owner-authorized ORKA-pop conveyor/cache redesign in `goals/lamp-conveyor-validation.md` supersedes the burp, five-result history, full-cache generation stop, lamp EXP grants and batch-review routing described below. Enemy EXP is explicitly deferred to a later task. Generator, rarity, CP, Essence and paid-progression rules remain current unless a later progression contract explicitly supersedes them.
+
+Current owner correction (ORKA-bhb) supersedes rejected commit 1157a530 and every conflicting equip/disposal rule below. Use one CP comparison: hero CP after replacing the selected item's matching slot minus current hero CP. A strict increase is green; zero/decrease is red. Every successful manual or Auto equip must increase actual hero CP. For the selected item, choose the hero with greatest positive gain, then lower current total CP, then party order. After every assignment, recompute and re-sort all remaining item/hero comparisons; finish only when every leftover is red for every hero. Useful gear cannot be sent to disposal or dismantled, even explicitly; validate again under the save lock. A formerly green leftover becomes dismantleable only after another equip makes it red. Preserve the CP formula, exact rolls, saved receipts, existing layout and currencies.
 
 Status: implemented in the isolated `codex/ORKA-0ln-lamp` review lane. Owner art and gameplay acceptance remains a human review. The feature replaces the former Gold equipment shop and shared inventory reassignment; it preserves the current continuous combat loop. This approved replacement supersedes shop-preservation instructions in the combat cutover plan.
 

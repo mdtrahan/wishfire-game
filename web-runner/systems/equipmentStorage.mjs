@@ -1,10 +1,11 @@
 import {CONVEYOR_TRAVEL_MS,conveyorItemAge,validateConveyorState,emitConveyorItem,collectConveyorItem,classifyConveyorCache,equipConveyorItem,planConveyorAutoEquip,queueConveyorDisposal,conveyorDisposalPreview,dismantleConveyorItems} from '../src/core/lampConveyor.mjs';
 import {equipmentStats} from '../src/core/equipment.mjs';
-import {markLampGuide,createLampEconomy,lampStoredCount,migrateLegacyEquipment,migrateDraftLamp,migrateFourStatLamp,migrateLampEconomy,lampCapacity,purchaseLampStage,upgradeLamp,completeLampUpgrade,speedUpLampUpgrade,LAMP_CONFIG,progressionOrdinal} from '../src/core/lampGear.mjs';
+import {markLampGuide,createLampEconomy,lampStoredCount,migrateLegacyEquipment,migrateDraftLamp,migrateFourStatLamp,migrateLampEconomy,lampCapacity,upgradeLamp,restorePaidLampUpgrade,LAMP_CONFIG,progressionOrdinal} from '../src/core/lampGear.mjs';
 import {refreshHeroStats,awardHeroEXP} from '../src/core/heroProgression.mjs';
 import {fillGearMaxHpGrowth} from '../src/core/heroSustainRules.mjs';
 import {computeCombatPower} from '../src/core/combatPower.mjs';
 export const EQUIPMENT_SAVE_KEY='wishfire.equipment-economy.v5';
+export const BAG_UPGRADE_BACKUP_KEY=EQUIPMENT_SAVE_KEY+'.before-bag-upgrades';
 const CONVEYOR_CLOCK_KEY='wishfire.equipment-conveyor-clock.v1';
 const FOUR_STAT_HP_KEY='wishfire.equipment-economy.v4';
 const PREVIOUS_KEY='wishfire.equipment-economy.v3';
@@ -83,13 +84,18 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,checkpo
   if(globals.HeroProgressStorageError&&Object.keys(globals.PendingGoldSettlements||{}).length)throw new Error('Pending Gold needs a saved HeroProgress receipt.');
   if(!locks)throw new Error('This browser cannot safely save lamp changes.');
   return locks.request(EQUIPMENT_SAVE_KEY,async()=>{
-   const next=read(),receipts=new Set(next.settledGoldRewards);let delta=appliedGold===undefined?0:Number(globals.goldTotal)-appliedGold;
+   const next=read();
+   if(restorePaidLampUpgrade(next)&&storage.getItem(BAG_UPGRADE_BACKUP_KEY)===null){
+    const original=storage.getItem(EQUIPMENT_SAVE_KEY);
+    if(original!==null)storage.setItem(BAG_UPGRADE_BACKUP_KEY,original);
+   }
+   const receipts=new Set(next.settledGoldRewards);let delta=appliedGold===undefined?0:Number(globals.goldTotal)-appliedGold;
    for(const[rawId,rawAmount]of Object.entries(globals.PendingGoldSettlements||{})){
     const id=String(rawId),amount=Math.max(0,Math.floor(Number(rawAmount)||0));
     if(receipts.has(id)){if(appliedGold!==undefined)delta-=amount;continue;}
     receipts.add(id);next.settledGoldRewards.push(id);if(appliedGold===undefined)delta+=amount;
    }
-   const t=time();saveConveyorClock(next);completeLampUpgrade(next,t);
+   const t=time();saveConveyorClock(next);
    next.gold+=delta;
    const roster=Object.values(globals.HeroProgress?.heroes||{}).slice(0,4);
    classifyConveyorCache(next,roster);
@@ -102,7 +108,7 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,checkpo
    const hero=globals.HeroProgress.heroes[heroId],before=refreshHeroStats({...hero,equipmentStats:equipmentStats(next.items,next.loadouts[heroId])});
    const candidate=next.items.find(i=>i.instanceId===id)||next.lamp.reviewHold?.item;
    if(!candidate)throw new Error('Item missing.');
-   const equipped=equipConveyorItem(next,heroId,id),after=refreshHeroStats({...hero,equipmentStats:equipmentStats(next.items,next.loadouts[heroId])});
+   const equipped=equipConveyorItem(next,heroId,id,hero),after=refreshHeroStats({...hero,equipmentStats:equipmentStats(next.items,next.loadouts[heroId])});
    const cpBefore=computeCombatPower(before),cpAfter=computeCombatPower(after);
    return{item:equipped,heroId,cpBefore,cpAfter,cpChange:Math.round((cpAfter-cpBefore)*10)/10};
  }
@@ -129,7 +135,7 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,checkpo
  return{
   get data(){return record;},time,setConveyorActive,
   conveyorTime(){return Math.max(conveyorClock??record?.lamp.conveyorActiveMs??time(),record?.lamp.conveyorActiveMs??0);},
-  sync(){if(loading)return loading;if(record&&classifiedHeroes===heroClassificationKey()&&Number(globals.goldTotal)===appliedGold&&!dirty&&!(record.lamp.upgradeEndsAt&&time()>=record.lamp.upgradeEndsAt)){apply(record);return flushGearCollections();}dirty=false;loading=transact().then(flushGearCollections).finally(()=>loading=null);return loading;},
+  sync(){if(loading)return loading;if(record&&classifiedHeroes===heroClassificationKey()&&Number(globals.goldTotal)===appliedGold&&!dirty){apply(record);return flushGearCollections();}dirty=false;loading=transact().then(flushGearCollections).finally(()=>loading=null);return loading;},
   refresh(){dirty=true;return this.sync();},
   generate(context={}){return transact((next,t)=>{
    const item=emitConveyorItem(next,context,t),receipt=collectConveyorItem(next,item.instanceId,t,{automatic:true});
@@ -158,7 +164,7 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,checkpo
    if(!emission||emission.collected||conveyorItemAge(next.lamp,emission,t)>=CONVEYOR_TRAVEL_MS)return[];
    const result=collectConveyorItem(next,id,t,{automatic:true});queueGearCollection(next,result);return[result];
   })).then(async result=>{await flushGearCollections();return result;});},
-  queueDisposal(id){return transact(next=>queueConveyorDisposal(next,id));},
+  queueDisposal(id){return transact(next=>queueConveyorDisposal(next,id,Object.values(globals.HeroProgress?.heroes||{}).slice(0,4)));},
   disposalPreview(ids){return conveyorDisposalPreview(record,Object.values(globals.HeroProgress?.heroes||{}).slice(0,4),ids);},
   // Legacy combat-exit call remains a sync barrier, without a preference or toggle.
   stopAuto(){return this.sync();},
@@ -184,9 +190,7 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,checkpo
   });},
   finishReview(){return transact(()=>{});},
   markGuide(step){return transact(next=>markLampGuide(next,step));},
-  purchaseStage(expectedTier=record?.lamp.capacityTier,expectedStage=record?.lamp.upgradeStage||0){return transact((next,t)=>purchaseLampStage(next,expectedTier,expectedStage,t));},
-  upgrade(expectedTier=record?.lamp.capacityTier){return transact((next,t)=>upgradeLamp(next,expectedTier,t));},
-  speedUp(expectedTier=record?.lamp.capacityTier){return transact((next,t)=>speedUpLampUpgrade(next,expectedTier,t));},
+  upgrade(expectedTier=record?.lamp.capacityTier){return transact(next=>upgradeLamp(next,expectedTier));},
   dismantle(preview){return transact(next=>{
    const roster=Object.values(globals.HeroProgress?.heroes||{}).slice(0,4);
    if(Array.isArray(preview)){

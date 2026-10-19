@@ -103,3 +103,6 @@
 - Run pad_actor_motion_clips.py after affected native exports. It re-renders an expanded view box rather than padding already-clipped PNGs; referenceHeight128 and translated foot origins preserve body scale. The owner review capture script lives with its generated output, outside the production game.
 
 - The rendered UI lock also runs bossBattleHud.test.mjs for independent boss HP/countdown rails, actor identity, inspector lifecycle and phone containment.
+- The lamp phone gate includes the isolated Bag-upgrade component proof. Changes to its presentation module, CSS, shared close/medallion assets or strip progress must trigger `test:lamp-ui`; the suite runs browser files serially.
+
+- Shared `modalClose.mjs` and Training Ground `combatProgressionUI.mjs` changes route through the existing lamp/Training five-profile presentation guard. Preserve Bag coverage when extending the shared close consumer set.

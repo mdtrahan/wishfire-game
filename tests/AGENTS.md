@@ -1,4 +1,5 @@
 # Tests DOX
+- `combatArenaBackground.test.mjs` covers chapter 1–4 asset availability, chapter 5+ grid retention, undecoded-image fallback and camera orientation without changing vertical framing.
 - `balanceTelemetryContract.test.mjs` protects opt-in capture, bounded event retention and pre-hit range geometry and enemy-tier attribution; `balanceHarnessEntryContract.test.js` protects exact-event use alongside sampled HP, including bounded impact samples and per-tier totals, ordered first-hero casualty aggregation, labeled post-recovery gear/stat samples, fail-closed uninterrupted ordinary acceptance and CSV output.
 - `balanceHarnessEntryContract.test.js` also keeps the synthetic ordinary-KO probe opt-in and routed through production damage; integrated proof still requires recovery events and a later wave clear.
 - Boss clock contracts require a fixed 30-second runtime deadline, reload normalization, and matching HUD and timeout receipt, even if an older stage object carries 18 seconds.
@@ -31,7 +32,7 @@
 - Ground-skill presentation checks preserve planted zone point/radius across caster movement, recipient foot projection, source/target KO eligibility, exact expiry, paused-frame equality and zero simulation mutation.
 - Puppet selection tests route actual hero definitions and enemy catalog names to their source IDs, keep KO owned by HP, reject stale KO facing for living actors, and preserve simulation clocks while outgoing puppet images bridge death/revival loads. Initial-load churn, synchronous decoded flips, full enemy manifest coverage and executed assembled draw callbacks must prevent actor disappearance and static substitution.
 - `storageHygieneContract.test.mjs` protects the worktree-retirement guard and an apply fixture; a lane is eligible only when present, clean, merged, tied to a CLOSED Bead, and free of protected ignored files. Unknown evidence and dirty source must survive a refused apply.
-- Lamp browser fixtures use bounded page waits and the current Hero screen tabs/selected conditional-skill detail, with unlock checks against authored definitions.
+- Lamp browser fixtures use bounded page waits and the current Hero screen tabs/selected conditional-skill detail, with unlock checks against authored definitions. Measure upgrade geometry after the runtime positioning frame, preserving all containment assertions.
 - Lamp rules protect durable spending, migration, unique assignment and previewed salvage. `npm run test:lamp-ui` starts an owned local server, checks four phone viewports and proves combat continues during comparison; screenshots and numeric evidence live under `test-results/lamp/`.
 - `elementalImpactVfxContract.test.mjs` protects lazy per-element frame loading, approved manifest cadence, skill mapping, target centering and the 52 logical-pixel impact size cap.
 - Function-bank VM tests that extract individual helpers must terminate slices at either exported or private function declarations.
@@ -107,11 +108,11 @@
 
 - Lamp presentation verifies 15-second idle guidance, Hondo-to-Auto-Equip targeting and dismissal by ordinary document clicks using an offset monotonic clock, preserving live combat timing.
 
-- Bag draws preserve old saved EXP while granting none. Paid upgrade stages, construction and rarity/capacity progression stay unchanged.
+- Bag draws preserve old saved EXP while granting none. Full-cost Bag upgrades preserve the existing capacity/rarity curves and draw cadence.
 
 - Lamp cache presentation checks five full-width square columns, a stable two-to-two-and-a-half-row scroll viewport, selected halo and preserved idle guidance across four phone widths.
 
-- Lamp regression proof checks descending item CP review, raw last-five emission order, manual lower-CP override, positive same-slot Auto gains across all 12 slots, and finite storage/EXP capacity. Pending and discarded cache tiles stay inspectable; green arrows use shared positive total-hero CP gain, and discarded gear remains manually equipable. Dismantling rejects any queued positive-gain gear and hides resource amounts until confirmation.
+- Lamp regression proof enforces one actual hero CP invariant across arrows, manual Equip, Auto, queueing, preview and locked dismantling. Every successful equip raises CP; every item in disposal is red for every current hero. Re-evaluate all remaining items after each assignment, preserve unique ownership and failed-save atomicity, and verify newer arrivals survive old disposal snapshots.
 
 - Equip-close proof requires the modal to remain visible while its CP float plays, including the last Auto-Equip item; after automatic close no CP float may remain.
 
@@ -129,13 +130,13 @@
 
 - Lamp strip checks follow the reference upper-left AUTO position and require the complete left progress corner beneath the level disc. Shared strip coordinates, circular badge bounds and the left-centered 95% arrival group are measured by `output/qa/lamp-check-alignment.cjs`.
 
-- Strip progress displays the earned lamp level and purchased stages out of four; validate both against the lamp record independently of bank balance and hero EXP. A full stage meter awaits explicit Lv.UP.
+- The strip disc displays the earned Bag level; its smooth meter follows banked Essence divided by the full next-level cost, capped visually at 100%, or MAX. It has no intermediate notches. Overflow remains in the bank after Level Up.
 
-- Lamp upgrade regression covers four purchases before seven-hour construction, exact installment totals, stale tier/stage clicks, concurrent writers, failed saves, insufficient essence, reload and Lv100 MAX. Banked essence never grants a stage or level. Compare gear and hero level/EXP across upgrades while live combat continues.
+- Bag upgrade regression covers full-cost spending, stale/concurrent requests, failed saves, overflow, reload, MAX and exact paid-stage credit/backup. Verify existing gear, canonical Hero EXP and draw behavior are unchanged.
 
 - Guidance proof checks durable duplicate receipts and failed saves without rewards; phone QA covers dismantle/preview/shortfall/affordable/MAX retargets and reload. Disclosed monotonic-clock offsets test idle guidance only, preserving Date.now draw cooldown and combat inputs.
 
-- Lamp comparison proves positive/zero/negative total hero CP previews, direct portrait selection, one selected portrait, selected-hero matching-slot stat arrows and saved equip receipt agreement across the four phone profiles.
+- Lamp comparison proves positive/zero/negative actual matching-slot replacement CP, per-hero arrows, blocked red Equip, blocked green disposal, and strictly positive saved receipt agreement across four phone profiles.
 
 - The four-phone lamp guard hit-tests and clicks Close during active CP feedback, verifies deferred closure, and rejects remaining CP floats after departure.
 
@@ -163,20 +164,22 @@
 
 - Lamp odds containment checks text ranges inside every table cell, alongside panel and action bounds; a contained outer panel cannot certify unclipped percentages.
 
-- progressionTransitions protects 7-hour construction, reload/expiry, atomic last-stage/ticket spending, unlocked/direct/reactive skill gates, genuine progression presets, recoverable namespace-only reset and tier-owned boss restoration. Phone QA exercises the real DEV buttons, canonical saved/live stats and SKILLS disclosure, then RESET GAME in isolated contexts.
+- progressionTransitions protects atomic immediate Bag promotion and reload, plus unlocked/direct/reactive skill gates, progression presets, namespace-only reset and tier-owned boss restoration.
 
 - Basic-rate coverage preserves authored hero ordering, SPD independence and independent skill cooldown clocks; representative four-hero combat must keep basic cadence and skill recurrence valid.
 - Conditional-skill proof covers all 33 IDs, current-stat comparisons, recipient guards, modifier bounds, deterministic RNG preview, final expiry ticks, KO/revival identity, clean saved progression and real scheduler dispatch/refunds. Runtime VM fixtures must bind the actual imported realtime services when exercising changed seams.
 
 - `actorClipPlayback.test.mjs` compares Hondo/Kaja normalized native XML to Fara across all seven states and both facings, preserving cadence and foot origins while checking every frame exists. It also checks every loaded actor's basic/cast torso source in both facings, including the forward 0.6-amplitude curves and untouched zero/recoil channels.
 
-- Lamp curve tests enforce accelerating capacity across all 100 levels, increasing four-notch prices and unchanged seven-hour construction; rarity-first cache display must preserve CP-driven auto-equip and saved queues.
+- Bag curve tests preserve all 100 accelerating capacities, full-level geometric Essence costs and fractional rarity odds. Retired installment fields are tested only as supported save imports.
 
 - `heroScreenUILayout.test.mjs` serves the production Hero renderer, shared gear CSS/atlas and navigation in isolated browser contexts. Check portrait/row/tab/footer geometry at reference, compact Retina and natural sizes, all canonical active skills through four-card pages, actual metadata and unlock gates, hero/tab selection, and byte-identical saved/in-memory progression and loadouts. Keep isolated fixture proof distinct from native full-app captures.
 
+- Hero roster fixtures place retired instance saves before canonical records with differing levels and loadouts; navigation wraps after four heroes while saved and in-memory records remain unchanged.
+
 - Hero CP refresh proof keeps stale combat actors beside updated canonical progression, checks next-render CP across heroes and all tabs, and verifies manual/Auto equip receipts match saved and live CP before resolving.
 
-- Bag/Equip regression proof covers sorted sequential matching-slot assignment, slot-CP/hero-CP/party-order ties, permanent replacement destruction, player-controlled manual review, saved CP feedback before Auto disposal, and explicit conversion of missed upgrades. Keep concurrent arrival, held item, replay and failed-save coverage. Bag VFX/count tests use the installed browser through CHROME_BIN.
+- Bag/Equip proof covers highest actual gain recipient allocation, lower-hero-CP/party-order ties, re-ranking after every assignment, upgrade protection at destructive boundaries, permanently removed replacements, factual positive CP feedback, and unchanged COT/Essence receipts.
 
 - actorPuppetDefeats tests isolate presentation lifetime, duplicate KO, expiry and session/reset handling. Reward lifecycle fixtures bind the real browser defeat-copy module; presentation must never alter reward counts or actor removal.
 - Cross-tab Bag arrival checks wait for the specific emitted item ID to appear outside the frozen disposal snapshot; an unrelated unselected tile does not prove that arrival. Post-disposal phone checks sum salvage for every selected item because autonomous issuance can collect another valid item during the arrival wait.
@@ -200,3 +203,20 @@
 - Boss inspection stays open through zero HP, an expired clock and removal of the defeated actor while the same boss stage remains active. Actual stage exit dismisses in that render; retained actor data cannot cross into another attempt.
 
 - devBossLaunch.test.mjs compares developer launches against canonical chapter spawn plans, rejects invalid input before refreshing, and drives the real numeric control from map and repeated boss sessions. Four phone captures guard control containment.
+- `lampCPInvariant.test.mjs` supersedes the rejected standalone-slot tests. It protects one actual CP predicate, the Hondo +15 example, repeated full-cache reassessment, illegal zero/negative equips, green disposal rejection, stale-preview protection after another legal equip, and the valid case where a better equipped item makes the leftover red.
+- Equipment ownership regressions replay Auto assignments against all twelve equipped slots and reject cross-hero transfers even when the foreign item would increase CP. Hero-screen browser proof includes canonical heroes plus combat-copy progression, cycles twice through the four canonical heroes, and checks unchanged saves and equipped slots at reference, compact Retina and natural sizes.
+- Extracted app-tick fixtures provide the progression observation hook while testing checkpoint persistence independently.
+- questMilestones.test.mjs protects saved per-slot equipment coverage, level steps of five, at-or-above rarity/level credit, family diversity across reloads, stale/duplicate claims, and witnessed zero-KO chapter clears including revival and unknown-history refusal.
+
+- Chapter quest-band coverage checks inclusive endpoints, seeded enemy/gear generation, capped late chapters, frozen active targets and 40-count save reloads.
+- `bagUpgradePresentation.test.mjs` drives production UI/storage in an isolated component fixture at four phone sizes and the natural desktop size. Guard reference pill colors, cell/close containment, disabled/ready/MAX states, failed-save suppression, capacity-only reward and detached X hit testing. Keep this component evidence separate from full-app native proof.
+
+- Bag component proof locks the sample meter to a straight-ended 17.28px track at reference scale, 43px rotated badge bounds, 18px level labels and 13.2px parenthesized progress text across all five profiles; retain existing palette and save checks.
+
+- Both Bag views must share the CSS rounded-square X with no image child; preserve detached placement and close behavior. Progress readout outer outline is2px (4px centered stroke beneath fill).
+
+- Bag arrow midpoint proof measures the visible CSS triangle box against every row/level-strip center (under0.1px), with equal horizontal label gaps in ordinary and MAX states. Numeric text stays contained in its own columns; arrows stay within their pill and label gap.
+
+- Both Bag close glyphs must crop to nontransparent painted pixels and center that cropped raster within the square (under0.1px). Keep the Canvas CSS background transparent and preserve existing frame colors.
+
+- The five-profile Bag component guard also covers Training Ground: exactly one shared floating close outside the sheet, 24px scaled gap below tabs, full hit-area containment, exact visible-block vertical centering, resize recentering, close/Escape/focus return and keyboard wrap. Closing cannot purchase training or mutate its fixture state.
