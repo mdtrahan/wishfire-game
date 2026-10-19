@@ -121,7 +121,7 @@
 
 - `combatDps.mjs` observes actual hero-to-enemy HP loss only. Session damage/hit totals and average hits per active second use simulation time, reset only on fresh combat session, survive ordinary recovery, and never own boss clocks, outcomes, damage formulas or saves.
 
-- Quest milestones reconcile current saved Hat/Body/Boots loadouts for every deployed Hero. Equipment level thresholds advance by five and higher levels/rarities qualify. Claimed milestone keys and last family persist; seeded selection alternates available families. Chapter survival requires a witnessed chapter with zero Hero KOs; unknown historical survival stays unearned. Observe before recovery and before boss-clear restoration.
+- Quest milestones reconcile current saved Hat/Body/Boots loadouts for every deployed Hero. Equipment level thresholds advance by five and higher levels/rarities qualify. Claimed milestone keys and last family persist; seeded selection alternates available families. Chapter milestones credit completed chapters regardless of Hero KOs. Zero-KO quests and survival-only tracking are retired; normal state validation replaces saved retired objectives without granting rewards.
 
 - Repeatable enemy/gear/wave action counts use inclusive chapter bands 1–3, 5–10, 10–20, 20–30, then 30–40 for Chapter 5 onward. Generate from current/completed chapter state, preserve active targets, and retain counts through 40 on reload. Milestones and resource-gated single upgrades keep their own requirements.
 
