@@ -124,4 +124,4 @@
 - Quest milestones reconcile current saved Hat/Body/Boots loadouts for every deployed Hero. Equipment level thresholds advance by five and higher levels/rarities qualify. Claimed milestone keys and last family persist; seeded selection alternates available families. Chapter survival requires a witnessed chapter with zero Hero KOs; unknown historical survival stays unearned. Observe before recovery and before boss-clear restoration.
 
 - Repeatable enemy/gear/wave action counts use inclusive chapter bands 1–3, 5–10, 10–20, 20–30, then 30–40 for Chapter 5 onward. Generate from current/completed chapter state, preserve active targets, and retain counts through 40 on reload. Milestones and resource-gated single upgrades keep their own requirements.
-- Mini-quest presentation omits fractions for every target-one objective, pending or complete. Keep multi-target counters and saved completion/reward requirements intact.
+- Only chapter-clear, chapter-boss and zero-KO chapter milestones omit counters. Collection and other quests retain all counters, including `0/1` and `1/1`; saved completion/reward requirements stay intact.

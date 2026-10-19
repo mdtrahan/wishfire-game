@@ -6,7 +6,7 @@
 - Do not log routine execution history, file lists, or status chatter.
 
 ## Operating Constraints
-- Mini-quest counters belong in the shared presentation formatter: omit fractions when the objective target is one while retaining the saved target for completion and rewards.
+- Mini-quest counter suppression follows objective semantics: hide counters only for chapter-clear/boss/survival milestones. Collection and other quests retain `0/1` and `1/1`; saved requirements and rewards stay intact.
 - Beads are the sole work authorization channel.
 - Use one lane at a time; mirror deterministic rule edits in both runtime mirrors when required.
 - When a problem appears, check this file for prior fixes before expanding scope.
