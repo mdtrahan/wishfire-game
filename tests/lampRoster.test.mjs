@@ -1,3 +1,4 @@
+import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {trustFixture,owners,gain} from './fixtures/lampTrust.mjs';
@@ -40,4 +41,10 @@ test('reclassification preserves owned gear, copy loadouts, balances and every i
  assert.deepEqual(after.lamp.pending,[selected.instanceId]);assert.deepEqual(after.lamp.discarded,[]);assert.deepEqual(after.lamp.disposalRequested,[]);
  await assert.rejects(f.store.equip('falie#1',selected.instanceId),/not a lamp equipment owner/);
  await f.store.autoEquip();assert.deepEqual(f.store.data.loadouts['falie#1'],save.loadouts['falie#1']);assert.deepEqual(f.store.data.items.find(i=>i.instanceId===copyItem.instanceId),copyItem);
+});
+
+test('commit guard routes CP equipment roster and proof changes through real gameplay',()=>{
+ const hook=readFileSync(new URL('../.beads/hooks/pre-commit',import.meta.url),'utf8'),pattern=new RegExp(hook.match(/LAMP_GAMEPLAY_OWNER_PATTERN='([^']+)'/)[1]);
+ for(const path of ['.beads/hooks/pre-commit','package.json','web-runner/app.js','web-runner/src/core/lampGear.mjs','web-runner/src/core/lampConveyor.mjs','web-runner/src/core/lampHeroRoster.mjs','web-runner/src/core/equipment.mjs','web-runner/src/core/combatPower.mjs','web-runner/src/core/heroProgression.mjs','web-runner/src/core/heroDefinitions.mjs','web-runner/systems/equipmentStorage.mjs','web-runner/systems/renderHeroScreen.js','web-runner/systems/heroGearUI.mjs','tests/lampAutoEquipGameplay.test.mjs','tests/lampRoster.test.mjs','tests/fixtures/lampTrust.mjs'])assert.ok(pattern.test(path),path+' must run gameplay proof');
+ assert.equal(pattern.test('README.md'),false);assert.match(hook,/node --test --test-concurrency=1 tests\/lampAutoEquipGameplay\.test\.mjs tests\/lampRoster\.test\.mjs/);
 });

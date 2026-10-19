@@ -16,3 +16,5 @@ Original prompt: Produce in-game regression proof for arrow/equip reliability, i
 
 - Main 5d7910f9 fails the browser red-promise assertion after Auto equips a red-advertised Hondo. Cache opening silently selected an item.
 - Candidate separates overview Auto from selected-item manual Equip and uses authored canonical lamp owners. Evidence and ongoing validation: test-results/ORKA-der/.
+
+- Runtime checkpoint 93ccc6e0 passed the normal hook: 11 lamp/browser tests, four-phone cases and 145 rendered UI invariants. Follow-up adds independent leftover-exhaustion assertions, negative controls and automatic gameplay gate routing without changing runtime code.

@@ -26,6 +26,10 @@ async function arrows(page,expected){
  for(const [n,a]of actual.entries()){assert.equal(a.gain,expected[n],a.id+' displayed gain');assert.equal(a.green,expected[n]>0,a.id+' green');assert.equal(a.red,expected[n]<=0,a.id+' red');}
  return actual;
 }
+function assertCacheExhausted(save,heroes){
+ const queued=new Set([...save.lamp.pending,...(save.lamp.discarded||[])]),items=[...save.items.filter(i=>queued.has(i.instanceId)),...(save.lamp.reviewHold?[save.lamp.reviewHold.item]:[])];
+ for(const item of items)for(const id of owners){const delta=gain(save,heroes.heroes[id],item);assert.ok(delta<=0,`Auto left ${item.instanceId} as a +${delta} CP upgrade for ${id}`);}
+}
 async function guidance(page,target){
  await page.evaluate(()=>{const now=performance.now.bind(performance);performance.now=()=>now()+16000;});
  const helper=page.locator('.lamp-idle-helper');await helper.waitFor();assert.equal(await helper.getAttribute('data-target'),target);
@@ -66,7 +70,7 @@ test('player-visible cache arrows, item review, Auto receipts and Hero gear agre
    }
    // This assertion must fail against the old implicit-first-item UI.
    await page.screenshot({path:`${directory}/${scenario}-opened.png`});assert.equal(await dialog.getAttribute('data-view'),'cache','opening cache must show inventory-wide arrows');
-   const candidates=[...save.items.filter(i=>save.lamp.pending.includes(i.instanceId)),...(save.lamp.reviewHold?[selected]:[])],cacheArrows=await arrows(page,owners.map(id=>Math.max(0,...candidates.map(i=>gain(save,heroes.heroes[id],i)))));
+   const candidates=[...save.items.filter(i=>save.lamp.pending.includes(i.instanceId)||(save.lamp.discarded||[]).includes(i.instanceId)),...(save.lamp.reviewHold?[selected]:[])],cacheArrows=await arrows(page,owners.map(id=>Math.max(0,...candidates.map(i=>gain(save,heroes.heroes[id],i)))));
    assert.equal(await dialog.getByRole('button',{name:'Auto-Equip',exact:true}).isEnabled(),true);
    if(scenario==='mixed')await guidance(page,'auto-equip');
    await dialog.locator(`[data-action="queue"][data-id="${selected.instanceId}"]`).click();await page.waitForFunction(()=>document.querySelector('#lamp-dialog').dataset.view==='equip');
@@ -77,6 +81,7 @@ test('player-visible cache arrows, item review, Auto receipts and Hero gear agre
    await arrows(page,cacheArrows.map(a=>a.gain));const before=await read(page);
    await dialog.getByRole('button',{name:'Auto-Equip',exact:true}).click();await page.locator('.lamp-cp-feedback').first().waitFor();
    const receipts=await page.locator('.lamp-cp-feedback').evaluateAll(ns=>ns.map(n=>({id:n.dataset.hero,before:Number(n.dataset.before),after:Number(n.dataset.after),gain:Number(n.dataset.change)}))),after=await read(page);
+   assertCacheExhausted(after,heroes);
    for(const receipt of receipts){assert.ok(cacheArrows.find(a=>a.id===receipt.id).green,'every Auto recipient was green in the cache');assert.equal(receipt.before,cp(before,heroes.heroes[receipt.id]));assert.equal(receipt.after,cp(after,heroes.heroes[receipt.id]));assert.ok(receipt.after>receipt.before);}
    for(const id of owners)for(const slot of ['hat','body','boots']){
     if(after.loadouts[id][slot]===before.loadouts[id][slot])continue;
@@ -176,6 +181,7 @@ test('a legal equip in another tab rescues a stale disposal item and manual Equi
   await page.screenshot({path:`${directory}/stale-disposal-rescued.png`});
   await page.locator(`#lamp-dialog [data-action="queue"][data-id="${selected.instanceId}"]`).click();await page.locator('#lamp-dialog [data-action="hero"][data-id="Falie"]').click();
   const beforeManual=await read(page);await page.locator('#lamp-dialog [data-action="equip"]').click();await page.locator('.lamp-cp-feedback').waitFor();const after=await read(page);
+  assertCacheExhausted(after,heroes);
   assert.equal(after.loadouts.Falie.body,selected.instanceId);assert.equal(Math.round((cp(after,heroes.heroes.Falie)-cp(beforeManual,heroes.heroes.Falie))*10)/10,gain(beforeManual,heroes.heroes.Falie,selected));
   for(const id of owners)for(const slot of ['hat','body','boots'])if(id!=='Falie'||slot!=='body')assert.equal(after.loadouts[id][slot],beforeManual.loadouts[id][slot]);
   await page.waitForFunction(()=>!document.querySelector('.lamp-cp-feedback'));if(await page.locator('#lamp-overlay').isVisible())await page.locator('#lamp-dialog [data-action="close"]').click();
@@ -183,4 +189,15 @@ test('a legal equip in another tab rescues a stale disposal item and manual Equi
   await page.reload();await page.waitForFunction(()=>typeof window.render_game_to_text==='function');assert.deepEqual((await read(page)).loadouts,after.loadouts);assert.deepEqual(errors,[]);
   await writeFile(`${directory}/stale-disposal.json`,JSON.stringify({beforeScreens,afterScreens,preview,guard,receipt,reloadPreserved:true,errors},null,2));
  }catch(e){await page.screenshot({path:`${directory}/stale-disposal-failure.png`});throw e;}finally{await context.close();await browser.close();server?.kill();}
+});
+
+// Negative controls prove the browser assertion detects a missed positive assignment.
+ test('exhaustion proof detects eligible leftovers in pending discarded and held queues',async()=>{
+ const report=[];
+ for(const queue of ['pending','discarded','held']){
+  const {save,heroes,selected,other}=trustFixture('mixed');save.items=save.items.filter(i=>i.instanceId!==other.instanceId);save.lamp.pending=queue==='pending'?[selected.instanceId]:[];save.lamp.discarded=queue==='discarded'?[selected.instanceId]:[];save.lamp.reviewHold=queue==='held'?{item:selected,disposal:false}:null;if(queue==='held')save.items=save.items.filter(i=>i.instanceId!==selected.instanceId);
+  let message;try{assertCacheExhausted(save,heroes);}catch(error){message=error.message;}
+  assert.match(message,/Auto left .* as a \+[\d.]+ CP upgrade for Falie/);report.push({queue,rejected:true,message});
+ }
+ await mkdir(directory,{recursive:true});await writeFile(`${directory}/exhaustion-negative-controls.json`,JSON.stringify(report,null,2));
 });

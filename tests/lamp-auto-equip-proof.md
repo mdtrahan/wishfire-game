@@ -35,6 +35,8 @@ The full game loads through `web-runner/index.html`; browser clicks drive its no
 | Hero screen + reload | Read actual displayed CP and inspect gear for all four heroes after allocation. Compare fixed golden values and a separate projection that never calls lamp eligibility/ranking. Reload retains exact item records and loadouts. The cross-tab case also reads all four Hero screens before the change. |
 | Phones | Existing four-phone suite checks arrows, manual eligibility, Auto, disposal, feedback, modal/helper bounds and ongoing combat at 360×640, 216×384, 233×452 and 316×452. |
 
+After every matrix Auto and the cross-tab manual equip, the independent oracle also asserts every pending, discarded and held leftover is nonpositive for all four owners. Negative controls show the assertion rejecting known positive leftovers in each queue.
+
 The focused suite additionally checks all 120 permutations of four owners plus a copy, queue/preview/locked protection, missing or mismatched owner guards, copy-recipient rejection, and preservation of item bytes, loadouts and balances. Missing-owner tests exercise a runtime guard; the current save loader recreates absent canonical records. This guard blocks every lamp transaction, including draws, conveyor checkpoints and Gold settlement, before read/migration/backup writes.
 
 ## Reading the evidence
@@ -56,3 +58,5 @@ LAMP_BASELINE_URL=http://localhost:8563/web-runner/index.html LAMP_QA_URL=http:/
 This optional two-build audit reports an explicit skip when either URL is absent. It compares no-action boots for a canonical-first fixture and a geared-copy-first fixture. Protected equipment fields are every item/roll/ID, every loadout including copy keys, Gold, settled Gold receipts, party EXP, Essence, capacity tier, salvage, and all remaining fields. Hero progress (every record, settled list and pending outbox), combat progression, the Bag backup, QA reset backup and legacy Gold key compare byte-for-byte with unchanged main.
 
 Allowed equipment differences are enumerated individually: lamp.pending, lamp.discarded, lamp.disposalRequested, lamp.reviewHold, lamp.guide, lamp.conveyorActiveMs and emissions[].issuedActiveMs. The current fixtures produce only pending/discarded queue differences for Kaja. boot-preservation.json records the actual differences. Separate storage tests prove reclassification changes no owned gear or balances; browser Back-to-cache asserts the whole equipment record stays identical.
+
+The commit hook routes CP, equipment, roster, Hero gear display and proof-owner changes through the real gameplay and roster tests. Presentation changes retain the full phone suite. This keeps browser proof active when only rule code changes.
