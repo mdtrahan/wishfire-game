@@ -63,7 +63,7 @@
 
 - Progression recovery separates earned readiness from boss-entry authorization: clean first readiness enters automatically, while any stage KO or boss defeat latches manual retry until boss victory. The latch and full approach survive reload; ready farming waves continue until explicit Summon Boss.
 
-- Bag progression uses continuous combat emissions and durable arrival collection, including a single held item when full. New gear grants zero EXP; Hero tickets from COT fund individual levels. Existing saved EXP remains intact. Essence funds four paid upgrade stages followed by seven-hour construction.
+- Bag progression uses continuous combat emissions and durable arrival collection, including a single held item when full. New gear grants zero EXP; Hero tickets from COT fund individual levels. Existing saved EXP remains intact. Essence funds one explicit full-cost upgrade that grants the next Bag level after a successful save.
 
 - Canonical product source is mdtrahan/wishfire-game main. Current combat equipment presentation is the Bag conveyor (lampConveyorPresentation.mjs and equipment-bag.png). Before editing or QA, verify repository, commit and renderer; exported Cloud snapshots are historical sources. COT/resources remain combat-only; Growth opens the approved Training Ground without changing navigation backers.
 

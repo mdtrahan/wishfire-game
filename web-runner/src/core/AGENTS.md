@@ -87,7 +87,7 @@
 
 - Auto-Equip chooses the greatest current positive actual hero CP gain across all remaining items and heroes. Equal recipient gain favors lower current hero CP, then party order. Apply one assignment, re-sort and recompute the full remaining cache, and stop only when every remaining item is red for every hero. Never use standalone item score as equip eligibility.
 
-- Bag draws grant zero new EXP and retain earned saved EXP. Essence buys four explicitly purchased stages before seven-hour construction; it never implies an earned level.
+- Bag draws grant zero new EXP and retain earned saved EXP. Essence buys one full-cost Bag level through an explicit saved upgrade; bank growth alone never grants a level.
 
 - Raw emissions retain exact rolls and recent snapshots. Review ranks actual replacement CP gains before deterministic rarity/item-score ties; recompute after every assignment. Any currently useful saved disposal request returns to pending. All-red items remain inspectable; manual equip still requires positive actual hero CP. Disposal and locked conversion reject green items. Later arrivals remain outside a confirmed disposal snapshot; capacity includes stored and legacy salvage records.
 
