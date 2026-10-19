@@ -10,6 +10,7 @@
 - `images/`, `gems/`, and `fonts/` are presentation assets referenced by render/runtime code and tests.
 
 ## Local Contracts
+- `arenas/` owns muted original Genielands panoramas for chapters 1–4 and their generation prompts. Keep open combat ground, scenery at edges, and UI independent. Chapter 5 onward has no arena art assignment.
 - `images/lamp/ART.md` records original gear/device atlas hashes and grid order. Rarity is conveyed separately through white/green/blue/purple/gold frames/glow. Collector cells are unused; only the shared lamp appears in acquisition UI.
 - The `.lamp-level` badge is shared by lamp equipment and equipped hero gear art; keep its lower-right placement and legibility sizing consistent across both.
 - `narrative/characters/` contains the existing Hondo, Fara, Kaja, and Runa scene sprites. Content character IDs resolve these filenames through the narrative renderer; the opening uses the existing solo/pair shot contract.

@@ -60,7 +60,7 @@
 - Combat Canvas text must derive its font size from the active layout scale through `combatPresentationScale.mjs` and fit its measured slot. Desktop font minimums must not override compact Canvas geometry.
 - Hero status presentation uses actor-owned HP and readiness state. The shared Astral Flow HUD and pooled health bar are retired.
 - `combatHealthBarPresentation.mjs` draws both actor HP bars as rounded dark-grey tracks with blue hero and orange enemy fills; keep the hero bar's existing width and height rule for both teams.
-- Combat draws neither the legacy `radiatorPanels.track` backdrop nor the `EnemyArea` texture. The `EnemyArea` layer position triggers one full-canvas logical reference grid behind combat actors.
+- Combat draws neither the legacy `radiatorPanels.track` backdrop nor the `EnemyArea` texture. At the `EnemyArea` layer, combatArenaBackground.mjs paints chapter 1–4 ground panoramas with the actors' horizontal camera and fixed vertical layout frame. Chapter 5 onward retains the full-canvas reference grid; undecoded art also keeps that grid visible.
 - `renderRuntime.js` should shrink over time. Draw calls may prepare buff-icon geometry for the ticker, but must not advance refill, buff completion, icon phases, merge payout, or turn dispatch. Do not add broad new gameplay branches there when a focused render module or gameplay module can own the change.
 - `heroProgressStorage.js` may use `window.localStorage`; SimulationCore packets and Rust-owned code must not.
 - `simulationCoreShadow.js` must expose stable owner markers for Rust-owned rule families and should surface mismatches as diagnostics, not silent fallbacks.
