@@ -212,6 +212,7 @@
 - questMilestones.test.mjs protects saved per-slot equipment coverage, level steps of five, at-or-above rarity/level credit, family diversity across reloads, stale/duplicate claims, and witnessed zero-KO chapter clears including revival and unknown-history refusal.
 
 - Chapter quest-band coverage checks inclusive endpoints, seeded enemy/gear generation, capped late chapters, frozen active targets and 40-count save reloads.
+- Mini-quest presentation coverage hides counters only for chapter-clear/boss/survival milestones; equipment collection and every other objective retain pending/completed single-target and multi-target counters.
 - `bagUpgradePresentation.test.mjs` drives production UI/storage in an isolated component fixture at four phone sizes and the natural desktop size. Guard reference pill colors, cell/close containment, disabled/ready/MAX states, failed-save suppression, capacity-only reward and detached X hit testing. Keep this component evidence separate from full-app native proof.
 
 - Bag component proof locks the sample meter to a straight-ended 17.28px track at reference scale, 43px rotated badge bounds, 18px level labels and 13.2px parenthesized progress text across all five profiles; retain existing palette and save checks.

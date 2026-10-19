@@ -172,9 +172,11 @@ export function combatObjectivePresentation(objective) {
   };
   const [category, baseChallenge] = labels[objective.type] || labels.enemy_defeat;
   const milestone = milestonePresentation(objective);
-  if (milestone) return { ...milestone, count: `${Math.min(objective.progress, objective.target)}/${objective.target}` };
+  const count = ['chapter_clear', 'boss_defeat', 'chapter_survive'].includes(objective.type)
+    ? '' : `${Math.min(objective.progress, objective.target)}/${objective.target}`;
+  if (milestone) return { ...milestone, count };
   const challenge = objective.type === 'hero_upgrade' && objective.heroName ? `${baseChallenge}: ${objective.heroName}` : baseChallenge;
-  return { category, challenge, count: `${Math.min(objective.progress, objective.target)}/${objective.target}` };
+  return { category, challenge, count };
 }
 
 export function combatObjectiveReward(objective) {

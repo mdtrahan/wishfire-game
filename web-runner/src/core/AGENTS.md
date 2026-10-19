@@ -126,3 +126,4 @@
 - Repeatable enemy/gear/wave action counts use inclusive chapter bands 1–3, 5–10, 10–20, 20–30, then 30–40 for Chapter 5 onward. Generate from current/completed chapter state, preserve active targets, and retain counts through 40 on reload. Milestones and resource-gated single upgrades keep their own requirements.
 
 - lampHeroRoster selects only canonical authored equipment owners in definition order. Save enumeration and combat copies never define the lamp roster. requireComplete rejects missing/mismatched owner records; existing copy loadouts remain preserved for the separate identity repair.
+- Only chapter-clear, chapter-boss and zero-KO chapter milestones omit counters. Collection and other quests retain all counters, including `0/1` and `1/1`; saved completion/reward requirements stay intact.

@@ -8,6 +8,7 @@
 ## Operating Constraints
 - Equipment-service test setup uses the production hero-store factory. Empty stores cause the ownership guard to reject reward and Gold transactions before those contracts can be exercised.
 - Equipment review communicates eligibility through CP arrows while retaining full color for portraits, tiles and controls. Keep disabled semantics separate from opacity, and test computed ancestor opacity when changing interaction scope.
+- Mini-quest counter suppression follows objective semantics: hide counters only for chapter-clear/boss/survival milestones. Collection and other quests retain `0/1` and `1/1`; saved requirements and rewards stay intact.
 - Beads are the sole work authorization channel.
 - Use one lane at a time; mirror deterministic rule edits in both runtime mirrors when required.
 - When a problem appears, check this file for prior fixes before expanding scope.
