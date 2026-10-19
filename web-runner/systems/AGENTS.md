@@ -7,6 +7,7 @@
 ## Ownership
 - `render*.js` files own Canvas/UI presentation for combat, HUD, map, overlays, and progression shells.
 - `heroGearUI.mjs` renders equipped gear levels with the shared lower-right `.lamp-level` badge inside the art; empty slots retain their slot label and filled slots omit the redundant top label.
+- Hero-screen navigation selects canonical roster records from `HERO_DEFINITIONS`, matching equipment ownership. Combat `*#1` progression copies remain saved but must never appear as duplicate heroes with empty loadouts. Equipped gear stays with its hero until a cached positive-CP replacement changes that same slot; it cannot transfer to another hero.
 - `renderRuntime.js` owns a large partially purified runtime render path and remains high-risk.
 - `combatSimulationTick.mjs` owns the frozen-aware combat clock, queued hero impacts, independently scheduled hero/enemy actions, action presentation, status/effect timing, and reward settlement; renderers consume prepared state and presentation events.
 - `inputHandling.js` owns browser pointer/map input helpers.
@@ -202,7 +203,7 @@
 
 - Lamp burp presentation clears its trigger at animation completion so unrelated review renders do not repeat emission. Manual and Auto share the same current-lamp tilt and gear pop tween.
 
-- Raw lamp emissions append every roll without CP filtering. lamp.recent preserves the last five emission snapshots independently of equip/collection routing. Equip review sorts rarity descending, then descending lampGearCP within each rarity, derived from the shared CP evaluator using gear stats at neutral level 1; item level already scales those stats. Auto compares every queued candidate against all four heroes' three matching slots and keeps strictly positive party improvements until no queued candidate adds CP. Equal gain favors lowest maxHP then party order. Manual equip permits lower-CP overrides from pending or discarded queues. Auto completion or finishing review moves remaining pending pieces into lamp.discarded, where they stay inspectable and equipable. Dismantle rejects queued positive-gain gear before spending; confirmed conversion grants essence only and shows its receipt. Later raw arrivals remain separate from the confirmed pile. Capacity includes pending, discarded and historical aggregate credits; full storage pauses Auto draws without clearing its saved preference. Optional recent/discarded fields preserve supported older v5 saves.
+- Review derives eligibility and rank from actual matching-slot replacement changes in total hero CP. Recompute all remaining items after every equip. Strict increases are green; equality/decreases are red and cannot be equipped. Previously queued gear that becomes useful returns to pending. Queueing or confirming disposal cannot bypass upgrade protection; only all-red gear is convertible.
 
 - Gear review displays stats in HP, ATK, DEF, MAG, RES order. Candidate stats occupy three columns: HP/ATK/DEF followed by MAG/RES; presentation order does not change saved rolls.
 
@@ -234,8 +235,8 @@
 
 - The lamp helper extends the15-second idle threshold through draw, collection, Hondo comparison, equip, dismantle and free/affordable upgrade preview. Retarget disabled controls to useful enabled actions; hide during reward banners and after a completed upgrade loop outside review. Any input dismisses it. Guide receipts persist once through the existing locked equipment transaction.
 
-- Lamp recipient previews use lampItemCPGain for signed total hero CP changes. Direct portrait taps select the recipient, with stat arrows comparing its matching slot. Equality has no indicator and there are no Previous/Next controls. These UI reads do not repair canonical versus combat-instance ownership.
-- Lamp review starts and advances through rarity/CP-ranked positive total-hero CP upgrades. The dismantle preview retains every stored item for inspection and Auto-Equip, while explicit dismantling and the shared positive-upgrade guard remain authoritative.
+- Selected-item portrait arrows and Equip use `lampItemCPGain`, the actual hero CP after replacing the matching slot minus before. Green strictly predicts a positive saved receipt; equality/decrease is red and disables Equip. Several heroes can show green for one item. Standalone item score never determines a portrait arrow.
+- Done / Dismantle is disabled while any current upgrade remains; a stale transition returns to equipment review. Send selected item is disabled if any hero benefits; storage enforces the same guard. Recheck pending disposal previews after loadout or inventory changes and return to review if a green item appears.
 
 - Concurrent saved CP receipts use their measured wrapped heights and34px spacing for32px animation travel. Place each hero column in modal coordinates under its stationary portrait; keep ordinary rapid bursts within the visible modal.
 
@@ -247,7 +248,7 @@
 
 - Hero identity, portrait scale and equipment/skill stage geometry remain consistent across all three tabs.
 
-- Lamp review uses canonical hero art and independent total-CP arrows, omitting numeric per-hero CP labels and the character stat table. Its three-column item card compares only the selected hero; unchanged values have no arrow. Every pending or discarded cache tile stays inspectable; the green marker uses shared positive total-hero CP gain, and discarded gear remains manually equipable. Disable dismantling while queued positive-gain gear remains. Only the five-column cache scrolls; the equip dialog fits the measured Canvas height. Preserve manual downgrade eligibility, saved receipts and Skip/Auto review flow.
+- Preserve canonical hero art, three-column stat comparison and existing geometry. Portrait and cache green markers use shared actual hero CP eligibility; individual unchanged stat rows have no arrow. Manual CP-decreasing overrides are forbidden. Saved CP feedback remains factual and strictly positive for every successful equip.
 
 - Selected-stat numbers and arrows share one font-derived digit height across both rows, independent of the displayed numeral. Normalize digit ink into that height; keep arrows pointed in both Canvas and CSS.
 
@@ -266,7 +267,7 @@
 
 - Hero menus read canonical HeroProgress records for CP, stats and EXP. Combat actor snapshots may lag committed gear; they must not override owned progression in presentation. Equipment commits project the shared CP formula to saved and live heroes before their promise resolves. The first deployed clone (`#1`) inherits canonical gear unless an explicit instance-key loadout exists; later clones require their own loadouts so one item cannot buff multiple actors.
 
-- Bag equipment presentation uses the approved conveyor, Bag art and wish-ring VFX. Manual Equip saves immediately and retains player control until explicit Done / Dismantle. Auto snapshots all hero CP, assigns sequentially, and enters disposal only after accurate saved before/after CP floats finish. Replacement destroys old gear without Essence. Explicit disposal converts missed upgrades in its snapshot, with later arrivals preserved. COT updates from committed individual events and requires a click to claim; its Reward Obtained receipt lasts 1.5 seconds, dismantle 2 seconds. Combat damage renders beneath modal layers.
+- Bag presentation preserves the approved conveyor, Bag art and Wish Ring. Manual Equip immediately commits a strictly positive actual hero CP replacement. Auto repeatedly chooses the highest current gain, recomputes the cache after each assignment, and enters disposal after positive saved feedback only when all remaining gear is red for all heroes. Queue and locked dismantle reject upgrades; later arrivals remain outside an existing confirmation. Replacement destroys old gear without Essence. COT claims and receipt timings remain unchanged.
 
 - `actorClipPlayback.mjs` retains its 24MiB logical RGBA budget and 32-record ceiling. Pin displayed/replacement keys, retire absent slots at scene boundaries, reject obsolete completions after first readiness, and retry capacity denial. Physical browser/GPU ownership remains outside this logical budget.
 

@@ -85,7 +85,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   if(kind==='speed-up')return void action(async()=>{const used=await economy.speedUp(Number(b.dataset.tier));notice=used+' speed-up ticket'+(used===1?'':'s')+' spent.';});
   if(kind==='dismantle')return void action(async()=>{const r=await economy.dismantle(disposalPreview);document.querySelectorAll('.lamp-party-exp').forEach(n=>n.remove());notice='';selectedItem=null;selectedHero=null;close();showDismantleReward(r);});
  }
- function reviewDisposal(){selectedItem=null;selectedHero=null;disposalPreview=economy.disposalPreview();notice='';disposalView=!!(disposalPreview.ids.length||economy.data.lamp.salvage.count);if(!disposalView)close();}
+ function reviewDisposal(){const upgrade=conveyorReviewCandidates(economy.data,heroes()).find(c=>c.bestGain>0);if(upgrade){selectedItem=upgrade.item.instanceId;selectedHero=null;disposalView=false;disposalPreview=null;notice='';return;}selectedItem=null;selectedHero=null;disposalPreview=economy.disposalPreview();notice='';disposalView=!!(disposalPreview.ids.length||economy.data.lamp.salvage.count);if(!disposalView)close();}
  function startEmission(){lastKey='';render();}
  function showDismantleReward(result){
   showRewardReceipt(canvas,{resource:'essence',amount:result.essence},'DISMANTLED',2000);position();
@@ -129,6 +129,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   const remaining=l.upgradeEndsAt?Math.max(0,Math.ceil((l.upgradeEndsAt-economy.time())/1000)):0;
   updateLampConveyor({strip,data,heroes:roster,now:economy.time(),activeMs:economy.conveyorTime(),paused:!creationActive,tile,gearBounds,error:globals.LampStorageError});
   if(feedbacks.size&&open&&(autoTransitionAfterFeedback||closeRequested))return;
+  if(disposalView&&reviewCandidates.some(c=>c.bestGain>0))reviewDisposal();
   if(selectedItem&&!reviewCandidates.some(c=>c.item.instanceId===selectedItem)){selectedItem=null;selectedHero=null;}
   const key=JSON.stringify([l.pending,l.discarded,l.salvage,l.sequence,data.gold,data.loadouts,l.capacityTier,l.upgradeStage,l.essence,l.upgradeEndsAt,l.speedUpTickets,open&&upgradeOpen?remaining:0,roster.map(h=>[h.currentLevel,h.currentEXP,h.EXPToNextLevel]),selectedItem,selectedHero,disposalView,l.reviewHold,l.disposalRequested,open,upgradeOpen,busy,notice,window.innerWidth,window.innerHeight,window.devicePixelRatio]);
   if(key===lastKey)return;lastKey=key;
@@ -142,9 +143,9 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   const candidate=item(selectedItem);
   const heroRow='<div class="lamp-hero-row" aria-label="Choose equipment recipient">'+roster.map(h=>{
     const d=heroDefinition(h),gain=candidate?lampItemCPGain(data,candidate,h):Math.max(0,...reviewCandidates.map(c=>lampItemCPGain(data,c.item,h))),art=HERO_ART_ASSETS[heroArtKey(h)],currentCP=computeCombatPower(refreshHeroStats({...h,equipmentStats:equipmentStats(data.items,data.loadouts[h.heroInstanceKey]||{})}));
-    return '<button '+(!candidate?'disabled ':'')+'class="lamp-hero lamp-portrait" data-action="hero" data-id="'+escape(h.heroInstanceKey)+'" data-cp-change="'+gain+'" aria-pressed="'+(selectedHero===h.heroInstanceKey)+'" aria-label="Choose '+d.name+'" aria-description="'+d.name+' total CP change '+(gain>0?'+':'')+gain+'" style="--portrait-position:'+art.strip.position+'"><img decoding="sync" src="assets/'+art.path+'" alt=""><span class="lamp-hero-current-cp"><span>CP</span> <b>'+currentCP+'</b></span>'+(gain?'<span class="lamp-cp-direction '+(gain>0?'up':'down')+'" aria-hidden="true"></span>':'')+'</button>';
+    return '<button '+(!candidate?'disabled ':'')+'class="lamp-hero lamp-portrait" data-action="hero" data-id="'+escape(h.heroInstanceKey)+'" data-cp-change="'+gain+'" aria-pressed="'+(selectedHero===h.heroInstanceKey)+'" aria-label="Choose '+d.name+'" aria-description="'+d.name+' CP change '+(gain>0?'+':'')+gain+'" style="--portrait-position:'+art.strip.position+'"><img decoding="sync" src="assets/'+art.path+'" alt=""><span class="lamp-hero-current-cp"><span>CP</span> <b>'+currentCP+'</b></span>'+(candidate||reviewCandidates.length?'<span class="lamp-cp-direction '+(gain>0?'up':'down')+'" aria-hidden="true"></span>':'')+'</button>';
    }).join('')+'</div>';
-  let body='<header class="lamp-modal-header"><span>'+(upgradeOpen?'WISH LAMP':selectedItem?'EQUIPMENT REVIEW':disposalView?'':'EQUIPMENT CACHE')+'</span>'+(!upgradeOpen&&!disposalView?'<button class="lamp-disposal-link" data-action="disposal">Done / Dismantle</button>':'')+'<button data-action="close" aria-label="Close equipment comparison">×</button></header>';
+  let body='<header class="lamp-modal-header"><span>'+(upgradeOpen?'WISH LAMP':selectedItem?'EQUIPMENT REVIEW':disposalView?'':'EQUIPMENT CACHE')+'</span>'+(!upgradeOpen&&!disposalView?'<button class="lamp-disposal-link" data-action="disposal" '+(reviewCandidates.some(c=>c.bestGain>0)?'disabled':'')+'>Done / Dismantle</button>':'')+'<button data-action="close" aria-label="Close equipment comparison">×</button></header>';
   if(l.reviewHold&&!upgradeOpen&&!candidate&&!disposalView)body+='<p class="lamp-held" role="status">Held: '+escape(l.reviewHold.item.name)+(disposalView?'.':'. Cache full — equip it or review disposal.')+'</p>';
   if(upgradeOpen){
    const level=l.capacityTier+1,stages=l.upgradeStage||0;
@@ -167,9 +168,9 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
    body+=heroRow;
    body+='<div class="lamp-candidate" style="--rarity:'+RARITIES[candidate.rarity].color+'">'+atlas(candidate,'',roster.some(h=>lampItemCPGain(data,candidate,h)>0))+'<div><div class="lamp-quality-band"><small>'+RARITIES[candidate.rarity].label+' · '+EQUIPMENT_SLOTS[candidate.type]+' · Lv. '+candidate.level+'</small><h2>'+escape(candidate.name)+'</h2><p class="lamp-item-cp">CP '+lampGearCP(candidate)+'</p></div><dl class="lamp-item-stats">'+rows.filter(k=>Object.hasOwn(candidate.stats,k)).map(k=>{const delta=comparison?.deltas[k]||0;return '<div><dt>'+k+'</dt><dd data-delta="'+delta+'" aria-label="'+k+' '+candidate.stats[k]+(selectedHero?', '+(delta>0?'increase ':delta<0?'decrease ':'no change ')+Math.abs(delta):'')+'"><span class="lamp-stat-value"><canvas class="lamp-stat-paint" aria-hidden="true"></canvas><span class="lamp-stat-number" aria-hidden="true">'+candidate.stats[k]+'</span>'+(delta?'<span class="lamp-stat-arrow '+(delta>0?'up':'down')+'" aria-hidden="true"></span>':'')+'</span></dd></div>';}).join('')+'</dl></div></div>';
    body+='<div class="lamp-queue" aria-label="'+(disposalView?'Equipment candidates':'Actionable upgrades')+'">'+reviewCandidates.filter(c=>disposalView||c.bestGain>0&&!l.disposalRequested?.includes(c.item.instanceId)).map(c=>tile(c.item,'queue',c)).join('')+'</div>';
-   body+='<button class="lamp-disposal-link lamp-item-disposal" data-action="queue-disposal">Send selected item to disposal</button></div>';
+   body+='<button class="lamp-disposal-link lamp-item-disposal" data-action="queue-disposal" '+(roster.some(h=>lampItemCPGain(data,candidate,h)>0)?'disabled':'')+'>Send selected item to disposal</button></div>';
    if(notice)body+='<p class="lamp-modal-notice" role="status">'+escape(notice)+'</p>';
-   body+='<div class="lamp-actions lamp-review-actions"><button class="primary" data-action="equip" '+(!selectedHero||busy?'disabled':'')+'>Equip</button><button data-action="auto-equip" '+(busy||!reviewCandidates.some(c=>c.bestGain>0)?'disabled':'')+'>Auto-Equip</button></div>';
+   body+='<div class="lamp-actions lamp-review-actions"><button class="primary" data-action="equip" '+(!selectedHero||busy||!roster.some(h=>h.heroInstanceKey===selectedHero&&lampItemCPGain(data,candidate,h)>0)?'disabled':'')+'>Equip</button><button data-action="auto-equip" '+(busy||!reviewCandidates.some(c=>c.bestGain>0)?'disabled':'')+'>Auto-Equip</button></div>';
   }else{
    const useful=reviewCandidates.filter(c=>c.bestGain>0),inferior=reviewCandidates.filter(c=>c.bestGain<=0);
    if(disposalView){

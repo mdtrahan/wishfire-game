@@ -35,7 +35,7 @@ export function classifyConveyorCache(data,heroes){
  if(l.reviewHold&&lampStoredCount(data)<lampCapacity(data)){
   data.items.push(l.reviewHold.item);l.pending.push(l.reviewHold.item.instanceId);l.reviewHold=null;
  }
- const candidates=conveyorReviewCandidates(data,heroes),requested=new Set(l.disposalRequested||[]);
+ const candidates=conveyorReviewCandidates(data,heroes),requested=new Set((l.disposalRequested||[]).filter(id=>candidates.some(c=>c.item.instanceId===id&&c.bestGain<=0)));
  if(l.disposalRequested!==undefined)l.disposalRequested=[...requested].filter(id=>candidates.some(c=>c.item.instanceId===id));
  l.pending=candidates.filter(c=>c.queue!=='held'&&c.bestGain>0&&!requested.has(c.item.instanceId)).map(c=>c.item.instanceId);
  l.discarded=candidates.filter(c=>c.queue!=='held'&&(c.bestGain<=0||requested.has(c.item.instanceId))).map(c=>c.item.instanceId);
@@ -62,31 +62,36 @@ export function collectConveyorItem(data,id,now,{automatic=false}={}){
  e.collected=true;
  return{item:e.item,saved:true,exp:0,held:l.reviewHold?.item.instanceId===id};
 }
-export function equipConveyorItem(data,heroId,id){
- const l=data.lamp;
+export function equipConveyorItem(data,heroId,id,hero){
+ const l=data.lamp,item=data.items.find(i=>i.instanceId===id)||l.reviewHold?.item;
+ if(!hero||hero.heroInstanceKey!==heroId||!item||lampItemCPGain(data,item,hero)<=0)throw new Error('This equipment does not increase this hero CP.');
  if(l.reviewHold?.item.instanceId===id){
   data.items.push(l.reviewHold.item);l.pending.push(id);l.reviewHold=null;
  }
- return equipLampItem(data,heroId,id);
+ return equipLampItem(data,heroId,id,hero);
 }
-export function queueConveyorDisposal(data,id){
+export function queueConveyorDisposal(data,id,heroes){
+ conveyorDisposalPreview(data,heroes,[id]);
  if(![...data.lamp.pending,...(data.lamp.discarded||[]),data.lamp.reviewHold?.item.instanceId].includes(id))throw new Error('Equipment is no longer available.');
  data.lamp.disposalRequested=[...new Set([...(data.lamp.disposalRequested||[]),id])];
  if(data.lamp.reviewHold?.item.instanceId===id)data.lamp.reviewHold.disposal=true;
 }
 export function planConveyorAutoEquip(data,heroes){
  const working=structuredClone(data),changes=[];
- // Freeze the displayed rarity/CP order; each assignment sees the preceding one.
- for(const {item} of conveyorReviewCandidates(data,heroes)){
-  const heroId=selectAutoEquipHero(working,item,heroes);if(!heroId)continue;
-  equipConveyorItem(working,heroId,item.instanceId);classifyConveyorCache(working,heroes);
+ // Every assignment changes the next candidate/recipient comparison.
+ while(true){
+  const candidate=conveyorReviewCandidates(working,heroes).find(c=>c.bestGain>0);if(!candidate)break;
+  const {item,bestHeroId:heroId}=candidate;
+  equipConveyorItem(working,heroId,item.instanceId,heroes.find(h=>h.heroInstanceKey===heroId));classifyConveyorCache(working,heroes);
   changes.push({heroId,item});
  }
  return{working,changes};
 }
 export function conveyorDisposalPreview(data,heroes,ids){
+ if(!Array.isArray(heroes)||!heroes.length)throw new Error('Current heroes are required before dismantling.');
  const candidates=conveyorReviewCandidates(data,heroes);
- const selected=ids||candidates.map(c=>c.item.instanceId);
+ const selected=ids||candidates.filter(c=>c.bestGain<=0).map(c=>c.item.instanceId);
+ if(candidates.some(c=>selected.includes(c.item.instanceId)&&c.bestGain>0))throw new Error('Equipment still improves a hero. Equip upgrades before dismantling.');
  const pieces=selected.map(id=>candidates.find(c=>c.item.instanceId===id)?.item);
  if(new Set(selected).size!==selected.length||pieces.some(i=>!i))throw new Error('Disposal changed. Review the updated equipment.');
  return{ids:selected,signature:JSON.stringify(pieces),legacy:`salvage:${data.lamp.salvage.count}:${data.lamp.salvage.gold}`,essence:pieces.reduce((n,i)=>n+salvageValue(i),0)+data.lamp.salvage.gold};

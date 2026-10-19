@@ -102,7 +102,7 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,checkpo
    const hero=globals.HeroProgress.heroes[heroId],before=refreshHeroStats({...hero,equipmentStats:equipmentStats(next.items,next.loadouts[heroId])});
    const candidate=next.items.find(i=>i.instanceId===id)||next.lamp.reviewHold?.item;
    if(!candidate)throw new Error('Item missing.');
-   const equipped=equipConveyorItem(next,heroId,id),after=refreshHeroStats({...hero,equipmentStats:equipmentStats(next.items,next.loadouts[heroId])});
+   const equipped=equipConveyorItem(next,heroId,id,hero),after=refreshHeroStats({...hero,equipmentStats:equipmentStats(next.items,next.loadouts[heroId])});
    const cpBefore=computeCombatPower(before),cpAfter=computeCombatPower(after);
    return{item:equipped,heroId,cpBefore,cpAfter,cpChange:Math.round((cpAfter-cpBefore)*10)/10};
  }
@@ -158,7 +158,7 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,checkpo
    if(!emission||emission.collected||conveyorItemAge(next.lamp,emission,t)>=CONVEYOR_TRAVEL_MS)return[];
    const result=collectConveyorItem(next,id,t,{automatic:true});queueGearCollection(next,result);return[result];
   })).then(async result=>{await flushGearCollections();return result;});},
-  queueDisposal(id){return transact(next=>queueConveyorDisposal(next,id));},
+  queueDisposal(id){return transact(next=>queueConveyorDisposal(next,id,Object.values(globals.HeroProgress?.heroes||{}).slice(0,4)));},
   disposalPreview(ids){return conveyorDisposalPreview(record,Object.values(globals.HeroProgress?.heroes||{}).slice(0,4),ids);},
   // Legacy combat-exit call remains a sync barrier, without a preference or toggle.
   stopAuto(){return this.sync();},

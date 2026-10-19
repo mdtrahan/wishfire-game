@@ -37,10 +37,11 @@ test('full automatic flow keeps issuing equipment without storage or EXP; a tapp
  f.advance(5000);const next=await f.store.tickConveyor();assert.equal(next.rewardEXP,0);await assert.rejects(f.store.collect(next.instanceId),/Resolve the held item/);
  assert.equal(f.store.data.lamp.reviewHold.item.instanceId,item.instanceId);invariant(f.store.data);
 });
-test('held manual replacement destroys displaced gear permanently without Essence or overflow',async()=>{
- const f=fixture({full:true});await f.store.sync();const emitted=await f.store.generate();await f.store.collect(emitted.instanceId);
+test('held positive-CP replacement destroys displaced gear without Essence or overflow',async()=>{
+ const f=fixture({full:true,equipped:false});await f.store.sync();const emitted=await f.store.generate();await f.store.collect(emitted.instanceId);
+ const ready=structuredClone(f.store.data),weak={...emitted,instanceId:'weak-current',stats:f.stats(1)};ready.items.push(weak);ready.loadouts.Falie={[emitted.type]:weak.instanceId};f.values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(ready));await f.store.refresh();
  const hero='Falie',old=f.store.data.loadouts[hero][emitted.type],bank=f.store.data.lamp.essence;
- const receipt=await f.store.equip(hero,emitted.instanceId);assert.ok(receipt.cpChange<0);
+ const receipt=await f.store.equip(hero,emitted.instanceId);assert.ok(receipt.cpChange>0);
  assert.equal(f.store.data.loadouts[hero][emitted.type],emitted.instanceId);assert.equal(f.store.data.lamp.reviewHold,null);
  assert.ok(!f.store.data.items.some(i=>i.instanceId===old));assert.equal(f.store.data.lamp.essence,bank);invariant(f.store.data);
 });
@@ -59,13 +60,14 @@ test('confirmed disposal preserves newer automatic arrivals and awards only sele
  assert.ok(f.store.data.items.some(i=>i.instanceId===later.instanceId));assert.ok(!f.store.data.items.some(i=>i.instanceId===first.instanceId));
  assert.equal(f.store.data.partyEXP,exp);const saved=f.values.get(EQUIPMENT_SAVE_KEY);await assert.rejects(f.store.dismantle(preview),/Disposal changed/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),saved);invariant(f.store.data);
 });
-test('explicit disposal converts missed upgrades and never recovers replaced gear',async()=>{
- const f=fixture();await f.store.sync();const i=await f.store.generate();const old=f.store.data.loadouts.Falie[i.type];
- const r=await f.store.equip('Falie',i.instanceId);assert.ok(r.cpChange<0);assert.ok(!f.store.data.items.some(x=>x.instanceId===old));
+test('explicit disposal rejects a missed upgrade without spending or changing ownership',async()=>{
+ const f=fixture({equipped:false});await f.store.sync();const i=await f.store.generate();
+ const r=await f.store.equip('Falie',i.instanceId);assert.ok(r.cpChange>0);
  const data=structuredClone(f.store.data),upgrade={...i,instanceId:'missed',stats:f.stats(10000)};
  data.items.push(upgrade);data.lamp.pending.push(upgrade.instanceId);f.values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(data));await f.store.refresh();
- const bank=f.store.data.lamp.essence,result=await f.store.dismantle(f.store.disposalPreview());
- assert.equal(result.count,1);assert.equal(f.store.data.lamp.essence,bank+salvageValue(upgrade));assert.equal(f.store.data.loadouts.Falie[i.type],i.instanceId);invariant(f.store.data);
+ const saved=f.values.get(EQUIPMENT_SAVE_KEY);assert.throws(()=>f.store.disposalPreview([upgrade.instanceId]),/still improves/);
+ await assert.rejects(f.store.dismantle({ids:[upgrade.instanceId],signature:JSON.stringify([upgrade]),legacy:'salvage:0:0'}),/still improves/);
+ assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),saved);invariant(f.store.data);
 });
 
 test('a freed cache slot is reserved for the held item before a concurrent automatic collection',async()=>{
@@ -83,7 +85,7 @@ test('two tabs collect the same passing item under the shared lock with one dura
 test('failed manual collection, equip and dismantling leave items and rewards unchanged',async()=>{
  const f=fixture({full:true});await f.store.sync();const i=await f.store.generate(),saved=f.values.get(EQUIPMENT_SAVE_KEY);
  f.fail(true);await assert.rejects(f.store.collect(i.instanceId),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),saved);assert.equal(f.store.data.partyEXP,0);assert.ok(Object.values(f.globals.HeroProgress.heroes).every(h=>!h.lampEXPClaimed));
- f.fail(false);await f.store.collect(i.instanceId);const protectedSave=f.values.get(EQUIPMENT_SAVE_KEY),heroes=structuredClone(f.globals.HeroProgress);
+ f.fail(false);await f.store.collect(i.instanceId);const ready=structuredClone(f.store.data),old=ready.loadouts.Falie[i.type];delete ready.loadouts.Falie[i.type];ready.items=ready.items.filter(x=>x.instanceId!==old);f.values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(ready));await f.store.refresh();const protectedSave=f.values.get(EQUIPMENT_SAVE_KEY),heroes=structuredClone(f.globals.HeroProgress);
  f.fail(true);await assert.rejects(f.store.equip('Falie',i.instanceId),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),protectedSave);assert.deepEqual(f.globals.HeroProgress,heroes);
  await assert.rejects(f.store.dismantle(f.store.disposalPreview()),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),protectedSave);
  f.fail(false);invariant(f.store.data);
@@ -97,9 +99,9 @@ test('stale preview rejects edited items and a newly useful CP classification',a
  const changed=structuredClone(f.store.data);changed.items.find(x=>x.instanceId===i.instanceId).stats.ATK++;f.values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(changed));await f.store.refresh();
  const saved=f.values.get(EQUIPMENT_SAVE_KEY);await assert.rejects(f.store.dismantle(preview),/Disposal changed/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),saved);
  const useful=structuredClone(f.store.data);useful.items.find(x=>x.instanceId===i.instanceId).stats=f.stats(10000);f.values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(useful));await f.store.refresh();
- assert.ok(f.store.data.lamp.pending.includes(i.instanceId));await assert.rejects(f.store.dismantle(preview),/Disposal changed/);invariant(f.store.data);
+ assert.ok(f.store.data.lamp.pending.includes(i.instanceId));await assert.rejects(f.store.dismantle(preview),/still improves/);invariant(f.store.data);
 });
-test('AUTO planner follows displayed rarity/CP order and commits unique sequential slots',async()=>{
+test('AUTO planner recomputes current CP gains and commits unique sequential assignments',async()=>{
  const f=fixture({full:true,equipped:false});await f.store.sync();const roster=Object.values(f.globals.HeroProgress.heroes),before=structuredClone(f.store.data);
  const expectedFirst=conveyorReviewCandidates(before,roster)[0].item.instanceId;
  const plan=planConveyorAutoEquip(before,roster),first=plan.changes[0];assert.equal(first.item.instanceId,expectedFirst);
