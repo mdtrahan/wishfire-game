@@ -198,7 +198,7 @@ effectiveBody = replaceRequired(
 effectiveBody = replaceRequired(
   effectiveBody,
   '        drawCombatHealthBar(ctx, { x: barX, y: barY, width: drawBarW, height: drawBarH, fillWidth: drawFillW, trailWidth: drawYellowW, team: \'enemy\' });',
-  '        addActorPaint(enemy.uid, () => { ctx.save(); ctx.globalAlpha *= enemyFadeAlpha; drawCombatHealthBar(ctx, { x: barX, y: barY, width: drawBarW, height: drawBarH, fillWidth: drawFillW, trailWidth: drawYellowW, team: \'enemy\' }); ctx.restore(); });',
+  '        if (!(state.globals.ContinuousCombatStage?.bossActive && enemy.uid === state.globals.ContinuousCombatStage.bossUID)) addActorPaint(enemy.uid, () => { ctx.save(); ctx.globalAlpha *= enemyFadeAlpha; drawCombatHealthBar(ctx, { x: barX, y: barY, width: drawBarW, height: drawBarH, fillWidth: drawFillW, trailWidth: drawYellowW, team: \'enemy\' }); ctx.restore(); });',
   'enemy health bar fade',
 );
 effectiveBody = replaceRequired(

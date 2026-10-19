@@ -105,6 +105,11 @@ test('pre-commit routes staged UI-owner changes through the full UI lock', () =>
   assert.match(hook, /git diff --cached --name-only --diff-filter=ACMRD/);
   assert.match(hook, /npm run test:ui-lock/);
   const ownerPattern = new RegExp(hook.match(/UI_LOCK_OWNER_PATTERN='([^']+)'/)[1]);
+  assert.ok(ownerPattern.test('web-runner/systems/renderBossBattleHud.mjs'));
+  assert.ok(ownerPattern.test('web-runner/assets/images/boss-hud/clock.png'));
+  assert.ok(ownerPattern.test('tests/bossBattleHud.test.mjs'));
+  assert.ok(ownerPattern.test('tests/devBossLaunch.test.mjs'));
+  assert.ok(ownerPattern.test('web-runner/systems/devToolingControls.js'));
   assert.ok(ownerPattern.test('web-runner/systems/renderCombatBossControl.mjs'), 'boss renderer changes must run the rendered lock');
   assert.match(hook, /web-runner\/systems\/renderRuntime\.js/);
   assert.match(hook, /web-runner\/systems\/devToolingRuntime\.js/);

@@ -53,7 +53,7 @@ test('combat progress HUD shows the current chapter and region-sized wave progre
     const scale = bossHud.w / 105;
     assert.equal(bossHud.waveCount, 20);
     assert.equal(bossHud.completedWaves, 20);
-    assert.deepEqual(notchColors(), bossHud.bossTimeRemainingSec == null ? Array(19).fill('#55d4be') : []);
+    assert.deepEqual(notchColors(), Array(19).fill('#55d4be'));
     assert.ok(bossHead[1] - markerX >= 16 * scale + 2 * scale - 0.01, 'full-progress heads remain visible with a scaled gap');
   };
   assertBossMarkerSeparated();
@@ -63,7 +63,7 @@ test('combat progress HUD shows the current chapter and region-sized wave progre
   state.globals.ContinuousCombatStage.bossTimeLimitSec = 18;
   state.globals.time = 15;
   assertBossMarkerSeparated();
-  assert.ok(calls.some(([name, key, value]) => name === 'set' && key === 'fillStyle' && value === '#5dbbff'));
+  assert.ok(calls.some(([name, key, value]) => name === 'set' && key === 'fillStyle' && value === '#55d4be'));
   assert.equal(control.drawCombatProgressHud(ctx, { state, images: {}, worldToCanvas }).bossTimeRemainingSec, 15);
   state.globals.ContinuousCombatStage.bossActive = false;
   state.globals.ContinuousCombatStage.wave = 1;

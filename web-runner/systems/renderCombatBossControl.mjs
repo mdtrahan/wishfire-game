@@ -1,4 +1,5 @@
-import { CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC, continuousCombatBossTimeRemaining, continuousCombatWavesForStage, deriveContinuousCombatWavePackProgress } from '../src/core/continuousCombatStage.mjs';
+import { updateBossBattleHud } from './renderBossBattleHud.mjs';
+import { continuousCombatBossTimeRemaining, continuousCombatWavesForStage, deriveContinuousCombatWavePackProgress } from '../src/core/continuousCombatStage.mjs';
 
 const HUD = Object.freeze({ left: 127.5, top: 44, right: 232.5, bottom: 84 });
 const FALLBACK = Object.freeze({ width: 360, height: 82 });
@@ -59,6 +60,7 @@ function ensureFallbackHost() {
 }
 
 export function updateBossSummonFallback({ canvas, state, layoutId, overlayOpen = false, canLeave = true, phase = 'combat', suppress = false, onSummonBoss = () => {}, redraw = () => {} } = {}) {
+  updateBossBattleHud({ canvas, state, layoutId, phase, overlayOpen, suppress });
   const modalVisible = typeof document !== 'undefined' && [...document.querySelectorAll('[role="dialog"],[role="alertdialog"],dialog[open],[aria-modal="true"]')].some(node => node.getClientRects().length > 0);
   const view = bossFallbackPresentation({ state, layoutId, overlayOpen: overlayOpen || modalVisible, canLeave, phase, suppress });
   state?.globals && (state.globals.CombatBossFallbackVisible = view.visible);
@@ -140,7 +142,6 @@ export function drawCombatProgressHud(ctx, { state, images, worldToCanvas } = {}
   const wavePacks = bossReady ? { fraction: 0 } : deriveContinuousCombatWavePackProgress(progress, state?.entities);
   const progressPosition = Math.min(waveCount, completed + wavePacks.fraction);
   const bossTimeRemainingSec = continuousCombatBossTimeRemaining(progress, state?.globals?.time);
-  const bossTimeFraction = bossTimeRemainingSec == null ? null : bossTimeRemainingSec / CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC;
   const label = `Chapter ${Math.max(1, Number(progress.region) || 1)}`;
   const portrait = images?.CombatProgressHondoHead;
 
@@ -170,9 +171,9 @@ export function drawCombatProgressHud(ctx, { state, images, worldToCanvas } = {}
   ctx.fill();
   ctx.save();
   ctx.clip();
-  const fillFraction = bossTimeFraction ?? progressPosition / waveCount;
+  const fillFraction = progressPosition / waveCount;
   if (fillFraction > 0) {
-    ctx.fillStyle = bossTimeFraction == null ? '#55d4be' : '#5dbbff';
+    ctx.fillStyle = '#55d4be';
     ctx.fillRect(trackX, trackY - railRadius, trackWidth * fillFraction, railHeight);
   }
   ctx.restore();
@@ -180,7 +181,7 @@ export function drawCombatProgressHud(ctx, { state, images, worldToCanvas } = {}
   ctx.strokeStyle = '#f6ecd0';
   ctx.stroke();
   ctx.lineWidth = Math.max(1, 20 / waveCount) * scale;
-  for (let notch = 1; bossTimeFraction == null && notch < waveCount; notch += 1) {
+  for (let notch = 1; notch < waveCount; notch += 1) {
     const x = trackX + trackWidth * notch / waveCount;
     ctx.beginPath();
     ctx.moveTo(x, trackY - railRadius * 1.5);

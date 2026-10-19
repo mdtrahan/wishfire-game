@@ -119,3 +119,5 @@
 - Every authored enemy must have all seven states in both facings in `puppets/manifest.json`; combat has no static-art fallback.
 
 - Conveyor empty spacing is measured between the full 112.1% artwork bounds. Preserve the five-second emission rate and art size; the visible gap is 60% of the previous `.6*.7` gap. `data-conveyor-paused=true` freezes travel with the creation gate.
+
+- images/boss-hud contains generated transparent raster boss, clock and inspect icons; ART.md records provenance. They serve the active battle HUD independently from the chapter rail and summon control.
