@@ -1,3 +1,4 @@
+import {MODAL_CLOSE_MARK,installModalCloseStyles,paintModalClose} from './modalClose.mjs';
 import { combatObjectivePresentation, combatObjectiveReward, TRAINING_STATS, trainingCost, TRAINING_BONUS_PER_LEVEL } from '../src/core/combatProgressionRules.mjs';
 import { positionRewardReceipt, showRewardReceipt } from './rewardReceiptUI.mjs';
 
@@ -50,11 +51,12 @@ function installStyle() {
     .cot-objective[data-ready=true]{pointer-events:auto;cursor:pointer}
     .cot-objective[data-ready=true]:focus-visible{outline:2px solid #fff0a7;outline-offset:2px}
     #training-ground{position:fixed;inset:0;z-index:35;background:rgba(8,7,12,.82);display:grid;place-items:center;color:#F6EEDC;font:14px/1.35 system-ui,sans-serif}
-    #training-ground .tg-stage{position:relative;width:min(calc(100vw - 24px),56.25dvh);aspect-ratio:9/16;container-type:inline-size;font-family:system-ui,sans-serif;color:#2b2116}
+    #training-ground .tg-stage{position:relative;width:min(calc(100vw - 24px),56.25dvh);aspect-ratio:360/515;container-type:inline-size;font-family:system-ui,sans-serif;color:#2b2116}
+    #training-ground .tg-content{position:absolute;left:0;top:-37.7778cqw;width:100%}
     #training-ground .tg-ribbon{position:absolute;z-index:3;left:17.7778cqw;top:37.7778cqw;width:64.4444cqw;height:7.7778cqw;margin:0;display:grid;place-items:center;border:.2778cqw solid #d0a45b;background:#25454a;color:#ffe0a0;font:700 3.3333cqw/1 Georgia,serif}
     #training-ground .tg-sheet{position:absolute;left:1.6667cqw;top:41.6667cqw;width:96.6667cqw;height:107.2222cqw;border:.5556cqw solid #bd8749;background:linear-gradient(160deg,#f0dfbb,#d7c49e 62%,#c6b189);box-shadow:0 -1.1111cqw 5.5556cqw #07151bcc}
-    #training-ground .tg-close{position:absolute;z-index:4;right:2.2222cqw;top:1.9444cqw;width:8.8889cqw;height:8.8889cqw;padding:0;border:.2778cqw solid #7c6543;background:linear-gradient(#f8e9c6,#ddc89e);color:#2b2116;font:700 5.5556cqw/1 system-ui}
-    #training-ground .tg-close:focus-visible,#training-ground .tg-train:focus-visible,#training-ground .tg-tab:focus-visible{outline:.8333cqw solid #fff0a7;outline-offset:.5556cqw}
+    #training-ground .tg-stage .tg-close{position:absolute;z-index:4;left:50%;top:127.7778cqw;transform:translateX(-50%);margin:0}
+    #training-ground .tg-train:focus-visible,#training-ground .tg-tab:focus-visible{outline:.8333cqw solid #fff0a7;outline-offset:.5556cqw}
     #training-ground .tg-scene{position:absolute;z-index:2;left:4.4444cqw;top:44.4444cqw;width:91.1111cqw;height:45.5556cqw;object-fit:fill;border:.2778cqw solid #8f6436;display:block}
     #training-ground .tg-balance{position:absolute;left:5cqw;top:91cqw;height:3.4cqw;display:flex;align-items:center;gap:1cqw;color:#2b2116;font-size:2.5cqw;font-weight:850}
     #training-ground .tg-balance img{width:4cqw;height:4cqw}
@@ -156,25 +158,27 @@ export function createCombatProgressionUI({ canvas, onClaim = () => {} }) {
 }
 
 export function createTrainingGroundUI({ progression }) {
-  installStyle();
+  installStyle();installModalCloseStyles();
   const host = document.createElement('section'); host.id = 'training-ground'; host.hidden = true;
   host.setAttribute('role', 'dialog'); host.setAttribute('aria-modal', 'true'); host.setAttribute('aria-labelledby', 'training-ground-title');
   const panel = document.createElement('div'); panel.className = 'tg-stage'; host.append(panel);
-  const title = document.createElement('h1'); title.className = 'tg-ribbon'; title.id = 'training-ground-title'; title.textContent = 'Training Ground'; panel.append(title);
-  const sheet = document.createElement('section'); sheet.className = 'tg-sheet'; sheet.setAttribute('aria-label', 'Training Ground'); panel.append(sheet);
-  const close = document.createElement('button'); close.className = 'tg-close'; close.type = 'button'; close.textContent = '×'; close.setAttribute('aria-label', 'Close Growth'); close.onclick = () => { host.hidden = true; }; sheet.append(close);
-  const scene = makeImage('assets/images/progression/training-scene.png', 'Approved training courtyard with four training stations', 328); scene.className = 'tg-scene'; panel.append(scene);
+  const content=document.createElement('div');content.className='tg-content';panel.append(content);
+  const measure=document.createElement('canvas').getContext('2d');let lastFocus;
+  const title = document.createElement('h1'); title.className = 'tg-ribbon'; title.id = 'training-ground-title'; title.textContent = 'Training Ground'; content.append(title);
+  const sheet = document.createElement('section'); sheet.className = 'tg-sheet'; sheet.setAttribute('aria-label', 'Training Ground'); content.append(sheet);
+  const close = document.createElement('button'); close.className = 'game-modal-close tg-close'; close.type = 'button'; close.innerHTML=MODAL_CLOSE_MARK; close.setAttribute('aria-label', 'Close Growth'); close.onclick = dismiss; panel.append(close);
+  const scene = makeImage('assets/images/progression/training-scene.png', 'Approved training courtyard with four training stations', 328); scene.className = 'tg-scene'; content.append(scene);
   const tabs = document.createElement('nav'); tabs.className = 'tg-tabs'; tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', 'Growth sections');
   for (const [label, active] of [['Training Ground', true], ['Strengthen', false], ['Aquafarm', false], ['Hatchery', false]]) {
     const tab = document.createElement('button'); tab.className = 'tg-tab'; tab.type = 'button'; tab.textContent = label; tab.setAttribute('role', 'tab');
     tab.disabled = !active; tab.setAttribute('aria-selected', String(active)); tabs.append(tab);
   }
-  panel.append(tabs);
+  content.append(tabs);
   const balance = document.createElement('div'); balance.className = 'tg-balance';
   balance.append(makeImage(RESOURCE_ICONS.incense, 'Incense', 22));
-  const balanceValue = document.createElement('span'); balanceValue.setAttribute('aria-label', 'Incense balance'); balance.append(balanceValue); panel.append(balance);
-  const status = document.createElement('p'); status.className = 'tg-status'; status.setAttribute('role', 'status'); panel.append(status);
-  const stats = document.createElement('div'); stats.className = 'tg-stats'; stats.setAttribute('aria-label', 'Party stat upgrades'); panel.append(stats);
+  const balanceValue = document.createElement('span'); balanceValue.setAttribute('aria-label', 'Incense balance'); balance.append(balanceValue); content.append(balance);
+  const status = document.createElement('p'); status.className = 'tg-status'; status.setAttribute('role', 'status'); content.append(status);
+  const stats = document.createElement('div'); stats.className = 'tg-stats'; stats.setAttribute('aria-label', 'Party stat upgrades'); content.append(stats);
   const controls = {};
   for (const stat of TRAINING_STATS) {
     const row = document.createElement('article'); row.className = 'tg-stat'; row.setAttribute('aria-label', `${STAT_LABELS[stat]} party upgrade`);
@@ -199,7 +203,24 @@ export function createTrainingGroundUI({ progression }) {
     }
   }
   progression.subscribe?.(() => { if (!host.hidden) refresh(); });
-  function open() { refresh(); host.hidden = false; close.focus(); }
+  function layoutClose(){
+    if(host.hidden)return;
+    panel.style.setProperty('--modal-close-scale',panel.getBoundingClientRect().width/360);
+    paintModalClose(close,measure);
+    const height=close.firstElementChild.getBoundingClientRect().bottom-title.getBoundingClientRect().top;
+    if(Math.abs(panel.getBoundingClientRect().height-height)>.1)panel.style.height=height+'px';
+  }
+  function dismiss(){host.hidden=true;lastFocus?.focus?.();}
+  host.addEventListener('keydown',event=>{
+    if(event.key==='Escape'){event.preventDefault();dismiss();}
+    else if(event.key==='Tab'){
+      const buttons=[...host.querySelectorAll('button:not(:disabled)')],first=buttons[0],last=buttons.at(-1);
+      if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+      else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+    }
+  });
+  function open(){if(host.hidden)lastFocus=document.activeElement;refresh();host.hidden=false;layoutClose();void document.fonts.ready.then(layoutClose);close.focus();}
   document.body.append(host);
-  return { open, close() { host.hidden = true; }, refresh, isOpen: () => !host.hidden };
+  new ResizeObserver(()=>requestAnimationFrame(layoutClose)).observe(panel);
+  return { open, close:dismiss, refresh, isOpen: () => !host.hidden };
 }

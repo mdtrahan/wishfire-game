@@ -1,5 +1,5 @@
 import {CONVEYOR_TRAVEL_MS,conveyorItemAge} from '../src/core/lampConveyor.mjs';
-import {lampItemCPGain,lampCapacity,lampStoredCount,LAMP_CONFIG} from '../src/core/lampGear.mjs';
+import {lampItemCPGain,lampCapacity,lampStoredCount,LAMP_CONFIG,lampUpgradeProgress} from '../src/core/lampGear.mjs';
 import {beginLampBagWishRing,watchLampBagBounceCrest} from './lampBagWishRing.mjs';
 
 const passageAnimations=new WeakMap();
@@ -40,7 +40,7 @@ function bounceBag(strip){
 export function updateLampConveyor({strip,data,heroes,now,activeMs=data.lamp.conveyorActiveMs,paused=false,tile,gearBounds=[],error=''}){
  strip.dataset.conveyorPaused=String(paused);
  const reconstructing=!strip.querySelector('.lamp-conveyor');
- if(reconstructing)strip.innerHTML='<div class="lamp-strip-body"><div class="lamp-results lamp-conveyor" aria-label="Moving equipment conveyor"></div><div class="lamp-side"><button class="lamp-collect lamp-bag" data-action="collect" aria-label="Open equipment cache"><img class="lamp-bag-art" src="assets/images/lamp/equipment-bag.png" alt=""><span class="lamp-count"></span></button><button class="lamp-tier-badge" data-action="lamp-upgrades" aria-label="Lamp upgrades"><span class="lamp-progress" role="progressbar" aria-label="Purchased lamp upgrade stages"><span></span><small class="lamp-exp-value"></small></span><span class="lamp-level-disc"><b></b><small>Lamp</small></span></button></div></div>';
+ if(reconstructing)strip.innerHTML='<div class="lamp-strip-body"><div class="lamp-results lamp-conveyor" aria-label="Moving equipment conveyor"></div><div class="lamp-side"><button class="lamp-collect lamp-bag" data-action="collect" aria-label="Open equipment cache"><img class="lamp-bag-art" src="assets/images/lamp/equipment-bag.png" alt=""><span class="lamp-count"></span></button><button class="lamp-tier-badge" data-action="lamp-upgrades" aria-label="Bag upgrades"><span class="lamp-progress" role="progressbar" aria-label="Bag upgrade progress"><span></span><small class="lamp-exp-value"></small></span><span class="lamp-level-disc"><b></b><small>Bag</small></span></button></div></div>';
  bagRecords.set(strip,data);
  const l=data.lamp,lane=strip.querySelector('.lamp-conveyor'),live=new Set();
  let status=strip.querySelector('.lamp-conveyor-notice');
@@ -87,6 +87,6 @@ export function updateLampConveyor({strip,data,heroes,now,activeMs=data.lamp.con
  }
  for(const node of lane.querySelectorAll('.lamp-conveyor-item'))if(!live.has(node.dataset.id))node.remove();
  updateBagCount(strip);
- const level=l.capacityTier+1,stages=l.upgradeStage||0,max=level===LAMP_CONFIG.lampLevels,p=strip.querySelector('.lamp-progress');
- p.setAttribute('aria-valuenow',String(max?4:stages));p.setAttribute('aria-valuemax','4');p.firstElementChild.style.width=(max?100:stages/4*100)+'%';p.querySelector('small').textContent=max?'MAX':stages+' / 4';strip.querySelector('.lamp-level-disc b').textContent=level;
+ const level=l.capacityTier+1,{current,required,max,fraction}=lampUpgradeProgress(data),p=strip.querySelector('.lamp-progress');
+ p.setAttribute('aria-valuenow',String(max?1:Math.min(current,required)));p.setAttribute('aria-valuemax',String(required??1));p.firstElementChild.style.width=fraction*100+'%';p.querySelector('small').textContent=max?'MAX':Math.floor(fraction*100)+'%';strip.querySelector('.lamp-level-disc b').textContent=level;
 }

@@ -199,7 +199,7 @@
 
 - Hero Gear Upgrade idle guidance uses the Hondo-inspired blue pointer and cyan rings: 15 seconds since input points to Hondo (Huun), or Auto-Equip after portrait selection. Document pointer/click, key and wheel input dismisses and resets it. Hidden/closed/busy review suppresses guidance; the overlay never intercepts input.
 
-- Lamp draws preserve the configured saved party EXP and timing. Essence is a bank, never a level calculation: each earned lamp level requires four explicitly purchased stages, then seven-hour construction and automatic completion. `capacityTier` is level minus one; optional v5 `upgradeStage` defaults to zero. Levels 1–100 interpolate the original initial/final rarity odds; capacity grows as 20 + round(10 × (level − 1)^1.5), while total paid upgrade cost starts at 400 Essence and grows 20% per level. Future gear gains 0.5% linear stat scaling per map ordinal. Saved gear rolls, hero EXP and earned lamp levels remain intact.
+- Bag progression keeps Essence in its existing bank. One explicit full-cost Level Up grants the next earned level immediately after persistence; no installments, construction timer or speed-up action remain. Bank growth never promotes automatically. Capacity, odds, gear rolls, hero EXP and draw cadence retain current tuning.
 
 - Lamp burp presentation clears its trigger at animation completion so unrelated review renders do not repeat emission. Manual and Auto share the same current-lamp tilt and gear pop tween.
 
@@ -229,9 +229,9 @@
 
 - CP receipt lifetime never holds the durable action lock or freezes ordinary recipient/item selection. Track concurrent receipt elements; only final review/close waits for all receipts, keeping feedback inside the modal. Collection entry awaits any in-flight transaction, storage sync and decoded shared gear atlas, then renders the full sorted cache together. Auto generation pauses while collection is opening/open and resumes afterward when enabled.
 
-- The strip disc displays the earned lamp level; its meter displays purchased stages out of four, or MAX. Party EXP appears only in its draw feedback. Bank changes and reloads never purchase stages or promote the lamp.
+- The strip disc displays the earned Bag level; its smooth meter follows banked Essence divided by the full next-level cost, capped visually at 100%, or MAX. It has no intermediate notches. Overflow remains in the bank after Level Up.
 
-- Upgrade preview shows current/next odds to three decimals, capacity, essence bank and next installment. Purchase carries the rendered tier and stage; locked storage rejects stale clicks before spending. Four saved purchases expose Lv.UP, which alone promotes the lamp and resets stages. Failed writes retain the bank, stage and level. Only the odds table may scroll on compact phones; purchase controls stay visible.
+- Bag upgrade preview uses full-cost Essence progress and Current/Next odds with Common/Uncommon/Rare/Epic/Legendary labels. Preserve the owner reference's gray/green/teal/orange/red pills independently of equipment rarity frames. A stale expected tier rejects before spending; a failed write shows no promotion or reward.
 
 - The lamp helper extends the15-second idle threshold through draw, collection, Hondo comparison, equip, dismantle and free/affordable upgrade preview. Retarget disabled controls to useful enabled actions; hide during reward banners and after a completed upgrade loop outside review. Any input dismisses it. Guide receipts persist once through the existing locked equipment transaction.
 
@@ -254,7 +254,7 @@
 
 - Lamp gear decodes original alpha bounds once. Cache/card artwork keeps its derived centered atlas. Arrivals paint the original raster through a sprite-only offset: every silhouette midpoint equals the tallest current arrival's midpoint, independently of fixed level badges. Manual and Auto reveal await preparation before spending/granting or starting the bounce; its final transform returns to zero.
 
-- Lamp storage completes expired construction atomically before applying any transaction and on sync, including reload/offline return. A failed save leaves level, tickets and deadline unchanged. The upgrade card replaces flames with a centered live countdown and a blue SPD UP ALL control below it.
+- Equipment storage normalizes supported paid-stage saves under the same Web Lock, preserving original bytes at `wishfire.equipment-economy.v5.before-bag-upgrades`. No load, clock expiry or sync grants a Bag level. An upgrade returns a saved capacity receipt for presentation only.
 - Developer progression controls live only in the existing DEV modal. LV 1/5/25/100 saves canonical HeroProgress, refreshes deployed stats/HP and clears pending skills/effects; lampEXPClaimed starts at the current cumulative draw receipt so old EXP cannot replay. RESET GAME backs up this game's localStorage namespaces before clearing them and reloading the clean entry.
 - HeroProgress optionally persists the current continuous tier, wave and boss access; reload restores farming with access retained, never an armed/active boss encounter.
 
@@ -285,3 +285,14 @@
 
 - DEV Boss Battle QA accepts a positive whole chapter number and launches that chapter through the canonical stage planner/arm path after the existing combat refresh and story-entry handoff. It uses current hero builds at full HP, clears transient battle conditions, and awards no skipped-wave clears. Validate input before refreshing; surface setup errors in the open DEV panel.
 - Combat progression observes canonical saved equipment plus deployed heroes and chapter transitions. Cache observation by equipment record identity and progression signature, recheck milestone facts on claim, and commit before reward feedback. Long COT labels wrap within the existing HUD footprint; rarity objectives use canonical rarity colors.
+- `bagUpgradePresentation.mjs` owns the approved menu/reward markup; `bagUpgradeUI.css` follows the measured Canvas scale. Scope upgrade render keys to visible balances/state so unrelated combat receipts cannot detach controls. The reward appears only after a successful saved transaction; both views share the floating CSS rounded-square X and existing fanfare.
+
+- Bag upgrade progress uses the reference `(current/required)` readout without spaces or thousands separators at ordinary values; exact accessible values remain available and large banks use compact notation.
+
+- Bag odds round upward to one decimal only for display; underlying rarity weights remain unchanged.
+
+- Bag comparison arrow alignment measures the visible triangle box and neighboring text bounds after render, stylesheet load and font readiness. Move arrows only; current/next percentage labels remain centered within their respective columns, including on resize.
+
+- Bag close glyphs use actual alpha-pixel bounds, cropped on a DPR-aware Canvas and centered within the square frame. Reuse the UI font-measure context and repaint after stylesheet/font readiness on both views; no font-line-box centering or hardcoded offset.
+
+- `modalClose.mjs` owns the shared slate rounded-square frame, mark and alpha-cropped X painting for Bag and Training Ground. Both consumers supply their Canvas-relative close scale; maintain one style source. Training Ground has one floating close below all window tabs, restores opening focus on click/Escape/programmatic closure and traps Tab while open. Its visible ribbon-to-close-frame block is vertically centered after opening, fonts and resize; preserve all internal training geometry and state.
