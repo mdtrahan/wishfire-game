@@ -15,7 +15,7 @@ export function hideHeroScreen(){if(host)host.hidden=true;}
 export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gameState,fnContext,heroPortraitImages}){
  const globals=fnContext.state.globals;
  globals.HeroProgress ||= createHeroProgressStore();
- const roster=Object.keys(HERO_DEFINITIONS).map(id=>globals.HeroProgress.heroes[id]).filter(Boolean);
+ const roster=Object.keys(HERO_DEFINITIONS).map(key=>globals.HeroProgress.heroes[key]).filter(Boolean);
  if(!roster.length)return {mode:'details',selectedSkillIndex:0,hitZones:{skillNodes:[]}};
  const index=((Number(gameState.selectedHero)||0)%roster.length+roster.length)%roster.length;
  if(activeHeroIndex!==index){activeHeroIndex=index;activeSkillIndex=0;activeSkillPage=0;ticketNotice='';}

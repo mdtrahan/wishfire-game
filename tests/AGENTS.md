@@ -174,6 +174,8 @@
 
 - `heroScreenUILayout.test.mjs` serves the production Hero renderer, shared gear CSS/atlas and navigation in isolated browser contexts. Check portrait/row/tab/footer geometry at reference, compact Retina and natural sizes, all canonical active skills through four-card pages, actual metadata and unlock gates, hero/tab selection, and byte-identical saved/in-memory progression and loadouts. Keep isolated fixture proof distinct from native full-app captures.
 
+- Hero roster fixtures place retired instance saves before canonical records with differing levels and loadouts; navigation wraps after four heroes while saved and in-memory records remain unchanged.
+
 - Hero CP refresh proof keeps stale combat actors beside updated canonical progression, checks next-render CP across heroes and all tabs, and verifies manual/Auto equip receipts match saved and live CP before resolving.
 
 - Bag/Equip proof covers highest actual gain recipient allocation, lower-hero-CP/party-order ties, re-ranking after every assignment, upgrade protection at destructive boundaries, permanently removed replacements, factual positive CP feedback, and unchanged COT/Essence receipts.
