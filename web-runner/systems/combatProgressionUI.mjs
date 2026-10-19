@@ -38,7 +38,7 @@ function installStyle() {
     .cot-resource b{display:block;min-width:0;flex:1;text-align:right;font-size:12px;line-height:1;font-weight:800;font-variant-numeric:tabular-nums;color:#F6EEDC;white-space:nowrap}
     .cot-objective{position:absolute;box-sizing:border-box;width:270px;height:52px;display:flex;align-items:flex-start;color:white;text-align:left;transition:opacity .6s ease}
     .cot-objective::before{content:'';position:absolute;left:20px;right:0;top:2px;height:34px;background:linear-gradient(90deg,#efddb985,#efddb94d 75%,transparent)}
-    .cot-text-backer{position:relative;padding:2px 0 0 4px;white-space:nowrap;font-weight:700}
+    .cot-text-backer{position:relative;min-width:0;max-width:236px;padding:2px 0 0 4px;white-space:normal;font-weight:700}
     .cot-category{font-size:11px;color:#ffd45c;line-height:14px;text-transform:uppercase}
     .cot-challenge{font-size:13px;line-height:18px}
     .cot-reward{position:relative;width:44px;flex:none;height:52px}
@@ -136,6 +136,8 @@ export function createCombatProgressionUI({ canvas, onClaim = () => {} }) {
     objective.setAttribute('aria-disabled', String(!ready));
     category.textContent = ready ? 'Claim reward' : view.category;
     challenge.textContent = `${view.challenge} ${view.count}`;
+    challenge.style.color = view.color || '';
+    challenge.title = ['equip_level', 'equip_rarity'].includes(progression?.objective?.type) ? 'Every deployed hero needs qualifying gear in Hat, Body and Boots. Higher levels and rarities count.' : '';
     const rewardPreview = combatObjectiveReward(progression?.objective);
     const rewardResource = rewardPreview?.resource;
     reward.hidden = !rewardPreview;

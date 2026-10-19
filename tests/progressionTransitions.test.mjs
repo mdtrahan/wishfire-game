@@ -277,7 +277,7 @@ test('the app tick persists boss readiness before its stage early return and def
  const runTick=(state,gameState,checkOutcome)=>{
   const context=vm.createContext({
    state,gameState,document:{hidden:false},performance:{now:()=>100},requestAnimationFrame(){},continuousCombatWaveClearEventId,
-   combatProgression:{recordCommittedEnemyDefeats(){},record(){}},
+   combatProgression:{recordCommittedEnemyDefeats(){},record(){},observe(){}},
    combatSimulationTicker:{reset(){},tick(){}},lastFrameTime:0,ensureDevToolingConfig:()=>({open:false}),
    layoutState:{getActiveLayoutId:()=> 'combat'},shouldFreezeCombatSimulation:()=>false,drawFrame(){},
    fnContext:{},callFunctionWithContext:(ctx,name,...args)=>makeCall(state)(name,...args),

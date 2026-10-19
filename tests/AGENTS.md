@@ -204,3 +204,7 @@
 - devBossLaunch.test.mjs compares developer launches against canonical chapter spawn plans, rejects invalid input before refreshing, and drives the real numeric control from map and repeated boss sessions. Four phone captures guard control containment.
 - `lampCPInvariant.test.mjs` supersedes the rejected standalone-slot tests. It protects one actual CP predicate, the Hondo +15 example, repeated full-cache reassessment, illegal zero/negative equips, green disposal rejection, stale-preview protection after another legal equip, and the valid case where a better equipped item makes the leftover red.
 - Equipment ownership regressions replay Auto assignments against all twelve equipped slots and reject cross-hero transfers even when the foreign item would increase CP. Hero-screen browser proof includes canonical heroes plus combat-copy progression, cycles twice through the four canonical heroes, and checks unchanged saves and equipped slots at reference, compact Retina and natural sizes.
+- Extracted app-tick fixtures provide the progression observation hook while testing checkpoint persistence independently.
+- questMilestones.test.mjs protects saved per-slot equipment coverage, level steps of five, at-or-above rarity/level credit, family diversity across reloads, stale/duplicate claims, and witnessed zero-KO chapter clears including revival and unknown-history refusal.
+
+- Chapter quest-band coverage checks inclusive endpoints, seeded enemy/gear generation, capped late chapters, frozen active targets and 40-count save reloads.

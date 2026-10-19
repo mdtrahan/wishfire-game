@@ -66,3 +66,5 @@
 - Bag progression uses continuous combat emissions and durable arrival collection, including a single held item when full. New gear grants zero EXP; Hero tickets from COT fund individual levels. Existing saved EXP remains intact. Essence funds four paid upgrade stages followed by seven-hour construction.
 
 - Canonical product source is mdtrahan/wishfire-game main. Current combat equipment presentation is the Bag conveyor (lampConveyorPresentation.mjs and equipment-bag.png). Before editing or QA, verify repository, commit and renderer; exported Cloud snapshots are historical sources. COT/resources remain combat-only; Growth opens the approved Training Ground without changing navigation backers.
+
+- COT quest milestones include chapter/boss clears, zero-KO chapter clears, party equipment coverage and level/rarity thresholds, plus Hero and Training milestones. app.js only wires pre-recovery and pre-restoration observation; deterministic progression stays in core and the controller.
