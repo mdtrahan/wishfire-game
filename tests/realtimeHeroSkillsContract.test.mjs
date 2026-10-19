@@ -3,12 +3,66 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { HERO_DEFINITIONS } from '../web-runner/src/core/heroDefinitions.mjs';
 import { castRealtimeHeroSkill, realtimeBasicFollowups, realtimeCoverTarget, realtimeIncomingDamage, realtimeMagicBlocked, realtimeProvokeTarget, realtimeCombatStat, tickRealtimeHeroSkillZones, realtimeBasicInterval, cleanupRealtimeSkillActors } from '../web-runner/src/core/realtimeHeroSkills.mjs';
-import { selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
+import { isHeroSupportTargetInRange, selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
 import { resetRealtimeSkillAttempt, ensureSkillBattle } from '../web-runner/src/core/realtimeSkillState.mjs';
 import { previewSeededRng } from '../src/core/seededRngRules.mjs';
 import { calculateDamageFromJs } from '../src/core/calculateDamageRules.mjs';
 import { renderCombatAttackVfx } from '../web-runner/systems/combatAttackVfxPresentation.mjs';
 const skill=(key,id)=>HERO_DEFINITIONS[key].actives.find(a=>a.skillId===id);
+test('all hero support ranges include 92 units and exclude farther allies at every level',()=>{
+ for(const baseHeroName of Object.keys(HERO_DEFINITIONS))for(const currentLevel of [1,100]) {
+  const source={kind:'hero',baseHeroName,currentLevel,footX:100,footY:200};
+  assert.equal(isHeroSupportTargetInRange(source,{footX:100,footY:292}),true);
+  assert.equal(isHeroSupportTargetInRange(source,{footX:100,footY:292.001}),false);
+  assert.equal(isHeroSupportTargetInRange(source,{footX:192,footY:201}),false);
+ }
+});
+test('level-one Wishgrant buffs only nearby allies and rechecks range at commit',()=>{
+ const {ctx,g,heroes,enemies}=combat(),source=heroes[3],entry=skill('Kojonn','wishgrant');
+ source.currentLevel=1;
+ heroes[0].footX=source.footX+92;
+ heroes[1].footX=source.footX+92.001;
+ const selection=selectRealtimeHeroSkillTarget({skill:entry,hero:source,heroes,enemies,globals:g});
+ assert.deepEqual(selection.targetUIDs,[1,3,4]);
+ heroes[0].footX+=1;
+ assert.equal(castRealtimeHeroSkill(ctx,source.uid,entry,selection),true);
+ assert.equal(g.RealtimeSkillEffects['1']?.wishgrant,undefined);
+ assert.equal(g.RealtimeSkillEffects['2']?.wishgrant,undefined);
+ assert.ok(g.RealtimeSkillEffects['3'].wishgrant);
+});
+test('support healing and revival exclude distant allies and choose a reachable KO',()=>{
+ const {heroes,cast}=combat(),source=heroes[3];
+ heroes[0].footX=source.footX+93;
+ assert.equal(cast('Kojonn','patchwork'),true);
+ assert.equal(heroes[0].hp,30);
+ assert.equal(heroes[1].hp,38);
+ heroes[0].hp=0;heroes[1].hp=0;
+ assert.equal(cast('Kojonn','sanctuary'),true);
+ assert.equal(heroes[0].hp,0);
+ assert.equal(heroes[1].hp,30);
+});
+test('lasting Fruit and Grow modifiers apply only to recipients inside cast range',()=>{
+ const {g,heroes,enemies,cast}=combat(),source=heroes[3];
+ heroes[0].footX=source.footX+93;
+ assert.equal(cast('Kojonn','magic_fruit'),true);
+ assert.equal(heroes[0].maxHP,100);
+ assert.equal(heroes[1].maxHP,115);
+ assert.deepEqual(g.RealtimeSkillBattleState.fruitUIDs,[2,3,4]);
+ heroes.forEach(a=>a.hp=a.maxHP);enemies[0].combatRank='boss';
+ assert.equal(cast('Kojonn','grow'),true);
+ assert.equal(heroes[0].maxHP,100);
+ assert.equal(realtimeCombatStat(g,heroes[0],'damageAmp'),0);
+ assert.equal(heroes[1].maxHP,105);
+});
+test('Crimson Ward records only nearby recipients and clears them on attempt reset',()=>{
+ const {ctx,g,heroes,cast}=combat();
+ heroes[1].footX=heroes[0].footX+93;
+ assert.equal(cast('Falie','crimson_ward'),true);
+ assert.deepEqual(g.PartyTempHPShieldTargetUIDs,[1,3,4]);
+ assert.equal(g.PartyTempHPShield,54);
+ resetRealtimeSkillAttempt(g,ctx.state.entities);
+ assert.equal(g.PartyTempHPShieldTargetUIDs,undefined);
+});
 function combat() {
  const heroes=Object.keys(HERO_DEFINITIONS).map((key,index)=>({uid:index+1,kind:'hero',baseHeroName:key,name:key,currentLevel:100,hp:30,maxHP:100,x:155,y:200,footX:155,footY:200,stats:{ATK:100,DEF:20,MAG:100,RES:10,SPD:10},equipmentStats:{ATK:4}}));
  const enemies=[0,1,2].map(i=>({uid:10+i,kind:'enemy',hp:1000,maxHP:1000,x:190+i*10,y:200+i*10,footX:190+i*10,footY:200+i*10,streamEngageX:200,streamState:'engaged',combatRank:'ordinary',attackType:'magic',stats:{ATK:100,DEF:30,RES:0,MAG:101,SPD:5}}));

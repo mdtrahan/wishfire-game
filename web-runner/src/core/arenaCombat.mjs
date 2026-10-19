@@ -65,6 +65,7 @@ const SUPPORT_STEP_BACK = 12.8;
 const INITIAL_ROAM_WALK_DISTANCE = 200;
 const INITIAL_ROAM_SEED_DRAW = 0x764;
 const CONTACT_INSET = 6.4;
+const FRONTLINE_CONTACT_DISTANCE = 46;
 const FARA_TRAVEL_OFFSET = 16;
 const HONDO_TRAVEL_OFFSET = 4;
 const SUPPORT_TRAVEL_OFFSET = -10;
@@ -508,13 +509,14 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
     const target = initialRoamActive ? null : sharedTarget;
     if (target) {
       hero.arenaTargetUID = Number(target.uid || 0);
-      const alongOffset = formation.contactOffset;
+      const contactReach = Math.min(actorAttackReach(hero), formation.frontline ? FRONTLINE_CONTACT_DISTANCE : Infinity) + actorFootprintRadius(target);
+      const alongOffset = formation.contactOffset - contactReach;
       const contactTarget = {
         ...target,
         footX: targetPoint.x + directionX * alongOffset - directionY * formation.rowOffset,
         footY: targetPoint.y + directionY * alongOffset + directionX * formation.rowOffset,
       };
-      advanceActorToward(hero, contactTarget, { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
+      advanceActorToward(hero, compensateActorTravelTarget(hero, contactTarget), { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
       preserveActionState: Number(hero.actionStateUntil || 0) > Number(globals.time || 0) });
     } else {
     const nextPoint = hasStragglers ? { x: center, y: centerY }
@@ -534,7 +536,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
       footY: clamp(approachY + directionY * frontOffset + directionX * sideOffset, minY, maxY),
       };
       hero.arenaTargetUID = Number(sharedTarget?.uid || 0);
-      advanceActorToward(hero, initialRoamActive ? compensateActorTravelTarget(hero, searchTarget) : searchTarget, { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
+      advanceActorToward(hero, compensateActorTravelTarget(hero, searchTarget), { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
         preserveActionState: Number(hero.actionStateUntil || 0) > Number(globals.time || 0) });
     }
   }

@@ -10,6 +10,7 @@
 - Browser-specific copies of shared rule modules when the runtime cannot import the root `src/core/` file directly.
 
 ## Local Contracts
+- Support skills select and revalidate allies within 92 world units of the caster's feet, including revival and persistent Fruit/Grow/Ward recipients. Contact formation and noncombat waypoints use explicit destinations independent of attack stopping distance; frontline contact remains 46 units before formation offsets.
 - `ContinuousCombatStage.ordinaryWaveClears` and `.defeatRecoveries` are ephemeral balance-harness measurements; checkpoint serialization must omit them.
 - Reloading an active boss checkpoint normalizes its saved time limit to the fixed 30-second rule before telemetry reads it.
 - `balanceTelemetry.mjs` keeps opt-in combat event IDs ordered and bounded; the harness detects gaps before trusting totals. Incoming-hit geometry captures the enemy name/tier, chosen target and living Hero range before HP changes, only while DevBalanceCapture is on. The mirrored damage emitters tag damage with the event-time ordinary wave.

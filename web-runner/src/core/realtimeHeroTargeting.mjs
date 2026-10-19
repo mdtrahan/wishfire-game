@@ -1,5 +1,6 @@
 import {resolveBasicInterval} from '../../../src/core/combatModifierRules.mjs';
 import { isActorTargetInRange } from '../../../src/core/heroAttackTargetingRules.mjs';
+import { actorAttackReach } from '../../../src/core/arenaCombatRules.mjs';
 import { evaluateSkillCondition, livingCombatActor as alive } from '../../../src/core/skillConditionRules.mjs';
 import { realtimeCooldownSeconds } from './realtimeCooldown.mjs';
 import { rawCombatStat, realtimeCombatStat, projectedSkillBenefit } from './realtimeSkillState.mjs';
@@ -7,6 +8,10 @@ import { previewSeededRng } from '../../../src/core/seededRngRules.mjs';
 // Spatial combat owns foot coordinates. x/y still mirror feet for existing
 // presentation consumers, but target geometry reads the semantic source.
 const point = actor => ({x:Number(actor?.footX ?? actor?.x ?? 0),y:Number(actor?.footY ?? actor?.y ?? 0)});
+export function isHeroSupportTargetInRange(hero, target) {
+  const source = point(hero), destination = point(target);
+  return Math.hypot(destination.x - source.x, destination.y - source.y) <= actorAttackReach(hero);
+}
 const ratio = actor => Number(actor.hp)/Math.max(1,Number(actor.maxHP));
 export function filterContinuousEncounterEnemies(enemies = [], globals = {}, heroes = []) {
   const targetable = (enemies || []).filter(actor => alive(actor) && actor?.streamState !== 'approaching');
@@ -64,13 +69,13 @@ export function selectRealtimeHeroSkillTarget({skill,hero,heroes=[],enemies=[],e
     case 'self': anchor=hero; targets=matches(hero)&&eligible(hero)?[hero]:[]; break;
     case 'party':
       if (!matches(hero)) return null;
-      targets=livingHeroes.filter(eligible); anchor=hero;
+      targets=livingHeroes.filter(a=>isHeroSupportTargetInRange(hero,a)&&eligible(a)); anchor=hero;
       if (skill.effectSpec.kind==='sanctuary') {
-        const ko=heroes.find(a=>!alive(a)); if (ko) targets.push(ko);
+        const ko=heroes.find(a=>!alive(a)&&isHeroSupportTargetInRange(hero,a)); if (ko) targets.push(ko);
       }
       break;
     case 'lowestHPAlly': case 'slowestAlly':
-      candidates=livingHeroes.filter(a=>matches(a)&&eligible(a));
+      candidates=livingHeroes.filter(a=>isHeroSupportTargetInRange(hero,a)&&matches(a)&&eligible(a));
       candidates.sort(rule.kind==='lowestHPAlly' ? (a,b)=>ratio(a)-ratio(b) : (a,b)=>realtimeCooldownSeconds({...b,type:0,speed:read(b,'SPD')})-realtimeCooldownSeconds({...a,type:0,speed:read(a,'SPD')}));
       anchor=candidates[0]; targets=anchor?[anchor]:[]; break;
     case 'enemy':

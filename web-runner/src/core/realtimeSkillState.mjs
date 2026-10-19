@@ -15,8 +15,9 @@ export function battleModifiers(globals, actor) {
   const battle = globals.RealtimeSkillBattleState;
   const result = [];
   if (battle?.fruitUIDs?.includes(Number(actor.uid))) result.push({channel:'HP',direction:'up',magnitude:.15});
-  if (Number(battle?.growTier) > 0) {
-    const magnitude = [.08,.14,.20][Math.min(3,Number(battle.growTier))-1];
+  const growTier = Number(battle?.growTiersByUID?.[String(actor.uid)] || 0);
+  if (growTier > 0) {
+    const magnitude = [.08,.14,.20][Math.min(3,growTier)-1];
     result.push({channel:'HP',direction:'down',magnitude:magnitude*(battle?.fruitUIDs?.includes(Number(actor.uid))?1.15:1)},{channel:'damageAmp',direction:'up',magnitude});
   }
   return result;
@@ -96,4 +97,5 @@ export function resetRealtimeSkillAttempt(globals, entities = []) {
   globals.PartyTempHPShield = 0;
   globals.PartyWardBarrierActive=0;globals.PartyWardBarrierVisualsByUID={};
   delete globals.PartyTempHPShieldSourceUID;
+  delete globals.PartyTempHPShieldTargetUIDs;
 }

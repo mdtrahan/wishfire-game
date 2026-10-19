@@ -1,5 +1,5 @@
 import { heroDefinition, heroKey, heroSkillUnlocked } from './heroDefinitions.mjs';
-import { enemiesInSkillShape, selectRealtimeHeroSkillTarget } from './realtimeHeroTargeting.mjs';
+import { enemiesInSkillShape, isHeroSupportTargetInRange, selectRealtimeHeroSkillTarget } from './realtimeHeroTargeting.mjs';
 import { isActorTargetInRange } from '../../../src/core/heroAttackTargetingRules.mjs';
 import { activeCombatEffect, incomingReduction, resolveBasicInterval, projectCombatStat } from '../../../src/core/combatModifierRules.mjs';
 import { ensureSkillBattle, realtimeCombatStat, actorCombatModifiers, skillModifiers } from './realtimeSkillState.mjs';
@@ -100,13 +100,16 @@ export function castRealtimeHeroSkill(ctx,heroUID,skill,selection,displacement={
     case 'ward':
       g.PartyTempHPShield=Math.floor(targets.reduce((sum,a)=>sum+Number(a.maxHP),0)*.18);
       if(g.PartyTempHPShield<=0)return false;
+      g.PartyTempHPShieldTargetUIDs=targets.map(a=>Number(a.uid));
       g.PartyTempHPShieldSourceUID=source.uid; ctx.callFunction('StartRealtimeWardPresentation'); break;
     case 'fruit':
       battle.magicFruitUsed=1;
-      battle.fruitUIDs=ctx.state.entities.filter(a=>a.kind==='hero'&&living(a)).map(a=>Number(a.uid));
+      battle.fruitUIDs=ctx.state.entities.filter(a=>a.kind==='hero'&&living(a)&&isHeroSupportTargetInRange(source,a)).map(a=>Number(a.uid));
       ensureSkillBattle(ctx); heal(ctx,source,target,32); break;
     case 'grow':
-      battle.growTier=Math.min(3,Number(battle.growTier)+1); ensureSkillBattle(ctx); ctx.callFunction('UpdateHeroHPUI'); break;
+      battle.growTier=Math.min(3,Number(battle.growTier)+1);
+      for(const victim of targets)(battle.growTiersByUID ||= {})[String(victim.uid)]=battle.growTier;
+      ensureSkillBattle(ctx); ctx.callFunction('UpdateHeroHPUI'); break;
     case 'brace':
       grant(g,source,source,'brace',skill.durationSeconds,{charges:skill.charges,damageCutPct:skill.damageCutPct}); break;
     case 'cover':

@@ -5828,7 +5828,7 @@ const CRIMSON_WARD_BARRIER_HEIGHT = 62;
 function refreshCrimsonWardBarrierVisuals(ctx) {
   const g = getGlobals(ctx);
   const now = Number(g.time || 0);
-  const heroes = getHeroes(ctx);
+  const heroes = getHeroes(ctx).filter(hero => !g.PartyTempHPShieldTargetUIDs || g.PartyTempHPShieldTargetUIDs.includes(Number(hero.uid)));
   if (!heroes.length) return false;
   const visuals = g.PartyWardBarrierVisualsByUID && typeof g.PartyWardBarrierVisualsByUID === 'object'
     ? g.PartyWardBarrierVisualsByUID
@@ -6074,7 +6074,8 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   const impactGeometry = g.DevBalanceCapture === true && source?.kind === 'enemy' && t.kind === 'hero'
     ? captureBalanceImpactGeometry(source, getEntities(ctx).filter((actor) => actor?.kind === 'hero')) : null;
   let incomingDamage = realtimeIncomingDamage(ctx, t, source, Math.max(0, Number(dmg || 0)));
-  const shieldBefore = t.kind === 'hero' ? Math.max(0, Number(g.PartyTempHPShield || 0)) : 0;
+  const wardApplies = t.kind === 'hero' && (!g.PartyTempHPShieldTargetUIDs || g.PartyTempHPShieldTargetUIDs.includes(Number(t.uid)));
+  const shieldBefore = wardApplies ? Math.max(0, Number(g.PartyTempHPShield || 0)) : 0;
   const jsShieldAbsorbed = t.kind === 'hero' ? Math.min(shieldBefore, incomingDamage) : 0;
   const jsDamageToHP = Math.max(0, incomingDamage - jsShieldAbsorbed);
   const jsAfterHp = Math.max(0, beforeHP - jsDamageToHP);
@@ -6093,7 +6094,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   }
   let damageToHP = incomingDamage;
   let shieldAbsorbed = 0;
-  if (t.kind === 'hero') {
+  if (wardApplies) {
     const shieldResult = absorbPartyTempHPShield(g, damageToHP);
     damageToHP = shieldResult.damageAfterShield;
     shieldAbsorbed = shieldResult.absorbed;

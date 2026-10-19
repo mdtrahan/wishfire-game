@@ -26,16 +26,16 @@ const profiles=[
 const mime={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml'};
 
 function expectedSkillRange(ability,hero){
- const {kind,shape}=ability.targetRule,reach=actorAttackReach({...hero,attackType:heroDefinition(hero).basic.tags.includes('magic')?'magic':'physical'});
+ const {kind,shape}=ability.targetRule,reach=actorAttackReach({...hero,kind:'hero'});
  if(shape){
   const extent=shape.kind==='circle'?`radius ${shape.radius} units`:shape.kind==='rectangle'?`${shape.width} × ${shape.height} units`:shape.kind==='horizontalLine'?`${shape.width}-unit line to world X ${shape.toX}`:`${shape.length}-unit cone at ${shape.angleDegrees}°`;
   return `${extent}${['bestArea','firstArea','eventArea'].includes(kind)?`; anchor within ${reach} units`:''}`;
  }
  if(kind==='self')return 'Self';
- if(kind==='party')return `Party; foe trigger within ${reach} units`;
+ if(kind==='party')return `Allies within ${reach} units; foe trigger within ${reach} units`;
  if(kind==='eventChain')return `${ability.targetRule.minimum} other foes after a basic hit`;
  if(kind==='allEnemies')return 'All attackable foes';
- if(kind==='lowestHPAlly'||kind==='slowestAlly')return `Eligible ally; foe trigger within ${reach} units`;
+ if(kind==='lowestHPAlly'||kind==='slowestAlly')return `Eligible ally within ${reach} units; foe trigger within ${reach} units`;
  return `${reach}-unit actor reach`;
 }
 

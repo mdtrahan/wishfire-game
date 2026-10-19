@@ -1,17 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { actorFootprintRadius, isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
+import { actorAttackReach, actorFootprintRadius, isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
 import { advanceContinuousCombatArena, deriveContinuousCombatRecoveryHuddle, selectContinuousEnemyTarget } from '../web-runner/src/core/arenaCombat.mjs';
 import { activateContinuousCombatSpawnedEnemy, pushContinuousCombatEnemy } from '../web-runner/src/core/continuousCombatStage.mjs';
 import { actorPuppetState } from '../web-runner/systems/actorPuppetPresentation.mjs';
 import { deriveCombatWorldVerticalBounds } from '../src/core/combatOrientation.mjs';
 
-test('actor reach uses initialized feet and preserves delivery-specific range', () => {
+test('hero reach uses initialized feet and a shared base range', () => {
   const melee = { kind: 'hero', hp: 10, footX: 100, footY: 200, attackType: 'melee', arenaEnabled: true };
   const mage = { kind: 'hero', hp: 10, footX: 100, footY: 200, attackType: 'magic', arenaEnabled: true };
   const enemy = { kind: 'enemy', hp: 10, footX: 210, footY: 200, streamState: 'in_range' };
-  assert.equal(isActorTargetInRange(melee, enemy), false);
+  assert.equal(isActorTargetInRange(melee, enemy), true);
   assert.equal(isActorTargetInRange(mage, enemy), true);
+  enemy.footX = 210.001;
+  assert.equal(isActorTargetInRange(melee, enemy), false);
+  assert.equal(isActorTargetInRange(mage, enemy), false);
+  for (const name of ['Fara', 'Hondo', 'Runa', 'Kaja']) {
+    for (const currentLevel of [1, 100]) assert.equal(actorAttackReach({kind:'hero',name,currentLevel}),92);
+  }
+  assert.equal(actorAttackReach({kind:'enemy',streamDelivery:'melee'}),46);
+  assert.equal(actorAttackReach({kind:'enemy',streamDelivery:'ranged'}),146);
+  assert.equal(actorAttackReach({kind:'enemy',combatRank:'boss'}),184);
 });
 
 test('arena advances both factions to contact with bounded semantic actor state', () => {
