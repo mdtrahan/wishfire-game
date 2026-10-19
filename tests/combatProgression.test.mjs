@@ -385,7 +385,7 @@ test('pending ticket settlement reloads idempotently after HeroProgress receipt 
 test('saved Essence reward receipt prevents duplicate wallet payment across service reload', async () => {
   const storage = new MemoryStorage();
   storage.setItem('orka.combat_progression.v1', JSON.stringify({ seed: 99, objective: { id: 'fixed-gear', type: 'gear_collect', target: 1, progress: 0, seed: 99 } }));
-  const globals = { goldTotal: 0, HeroProgress: { heroes: {} } };
+  const globals = { goldTotal: 0, HeroProgress: createHeroProgressStore() };
   const equipment = createEquipmentStorage({ globals, storage, getActors: () => [], locks: { request: async (_key, callback) => callback() }, seed: () => 1, now: () => 1000 });
   const progression = createCombatProgression({ globals, storage, equipmentProgress: equipment, getHeroes: () => heroes, now: () => 1000 });
   const objective = { ...progression.state().objective };
@@ -473,7 +473,7 @@ test('accepted lethal receipts advance and notify COT progress before visual dea
 test('manual gear collection records the committed event and settles its Essence payout', async () => {
   const storage = new MemoryStorage();
   storage.setItem('orka.combat_progression.v1', JSON.stringify({ seed: 12, objective: { id: 'collect-gear', type: 'gear_collect', target: 1, progress: 0, seed: 12 } }));
-  const globals = { goldTotal: 0, HeroProgress: { heroes: {} } };
+  const globals = { goldTotal: 0, HeroProgress: createHeroProgressStore() };
   let progression;
   const equipment = createEquipmentStorage({
     globals, storage, getActors: () => [], locks: { request: async (_key, callback) => callback() },
@@ -496,7 +496,7 @@ test('manual gear collection records the committed event and settles its Essence
 test('automatic gear collection retries a failed COT save after service reload', async () => {
   const storage = new MemoryStorage();
   storage.setItem(COMBAT_PROGRESSION_SAVE_KEY, JSON.stringify({ seed: 12, objective: { id: 'collect-auto-gear', type: 'gear_collect', target: 2, progress: 0, seed: 12 } }));
-  const globals = { goldTotal: 0, HeroProgress: { heroes: {} } };
+  const globals = { goldTotal: 0, HeroProgress: createHeroProgressStore() };
   let progression;
   let clock = 100000;
   const equipmentOptions = { globals, storage, getActors: () => [], locks: { request: async (_key, callback) => callback() }, seed: () => 1, now: () => clock, reportError: () => {}, onGearCollected: result => progression.record({ id: `gear:${result.item.instanceId}`, type: 'gear_collect' }) };
