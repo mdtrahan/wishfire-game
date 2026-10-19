@@ -57,6 +57,7 @@ export function createDevToolingRuntime(deps = {}) {
 
   let devToolingDom = null;
   let devToolingRefreshHandler = null;
+  let devToolingBossResumeHandler = null;
   let devToolingPauseSnapshot = null;
 
   const layoutState = {
@@ -383,6 +384,7 @@ export function createDevToolingRuntime(deps = {}) {
   function syncDevToolingDomFromConfig() {
     if (!devToolingDom) return;
     const cfg = ensureDevToolingConfig();
+    if (!devToolingDom.bossChapter.value) devToolingDom.bossChapter.value = String(state.globals.ContinuousCombatStage?.region || 1);
     devToolingDom.combatDps.checked = state.globals.ShowCombatDpsOverlay === true;
     const heroChoices = getDevToolHeroOptions();
     const enemyChoices = getDevToolEnemyOptions();
@@ -555,6 +557,17 @@ export function createDevToolingRuntime(deps = {}) {
         <button type="button" data-devtool-restart style="border:1px solid #92400e;background:#fff7ed;color:#9a3412;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Restart</button>
       </div>
       <div data-devtool-control-grid style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;">
+        <fieldset style="grid-column:1/-1;border:1px solid #94a3b8;border-radius:8px;padding:8px;min-width:0;">
+          <legend>Boss Battle QA</legend>
+          <div style="display:flex;align-items:end;flex-wrap:wrap;gap:8px;">
+            <label style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:80px;">Chapter
+              <input data-devtool-boss-chapter type="number" inputmode="numeric" min="1" step="1" style="width:100%;box-sizing:border-box;">
+            </label>
+            <button type="button" data-devtool-launch-boss style="border:1px solid #92400e;background:#fff7ed;color:#9a3412;padding:8px;border-radius:8px;font-weight:800;cursor:pointer;">Launch Boss</button>
+          </div>
+          <small>Current heroes start at full HP.</small>
+          <div data-devtool-boss-status role="status"></div>
+        </fieldset>
         <fieldset data-devtool-progression style="grid-column:1/-1;border:1px solid #94a3b8;border-radius:8px;padding:8px;min-width:0;">
           <legend>Developer only · Progression QA</legend>
           <div style="display:flex;flex-wrap:wrap;gap:6px;">${['RESET GAME',1,5,25,100].map(p=>`<button type="button" data-devtool-level="${p}" style="border:1px solid #475569;border-radius:6px;padding:6px;background:#e2e8f0;color:#172033;">${typeof p==='number'?'LV '+p:p}</button>`).join('')}</div>
@@ -653,6 +666,9 @@ export function createDevToolingRuntime(deps = {}) {
       refresh: panel.querySelector('[data-devtool-refresh]'),
       restart: panel.querySelector('[data-devtool-restart]'),
       combatDps: panel.querySelector('[data-devtool-combat-dps]'),
+      bossChapter: panel.querySelector('[data-devtool-boss-chapter]'),
+      launchBoss: panel.querySelector('[data-devtool-launch-boss]'),
+      bossStatus: panel.querySelector('[data-devtool-boss-status]'),
       heroSlots: Array.from(panel.querySelectorAll('[data-devtool-hero-slot]')),
       enemySlots: Array.from(panel.querySelectorAll('[data-devtool-enemy-slot]')),
       boardGemColor: panel.querySelector('[data-devtool-board-color]'),
@@ -669,6 +685,20 @@ export function createDevToolingRuntime(deps = {}) {
     });
     devToolingDom.launcher.addEventListener('click', () => toggleDevToolingModal(true));
     devToolingDom.close.addEventListener('click', () => toggleDevToolingModal(false));
+    devToolingDom.launchBoss.addEventListener('click', async () => {
+      devToolingDom.launchBoss.disabled = true;
+      devToolingDom.bossChapter.disabled = true;
+      devToolingDom.bossStatus.textContent = '';
+      try {
+        await devToolingControls.launchDeveloperBossBattle({
+          chapter: devToolingDom.bossChapter.value, state, gameState,
+          call: (...args) => callFunctionWithContext(fnContext, ...args),
+          refresh: devToolingRefreshHandler, resumeBossActivity: devToolingBossResumeHandler,
+        });
+        closeDevToolingModal({ restorePauseSnapshot: false });
+      } catch (error) { devToolingDom.bossStatus.textContent = error.message; }
+      finally { devToolingDom.launchBoss.disabled = false; devToolingDom.bossChapter.disabled = false; }
+    });
     devToolingDom.refresh.addEventListener('click', () => applyDevToolingConfig(readDevToolingDomConfigPatch(), { closeModal: false }));
     devToolingDom.apply.addEventListener('click', () => applyDevToolingConfig(readDevToolingDomConfigPatch(), { closeModal: true }));
     devToolingDom.restart.addEventListener('click', async () => devToolingControls.handleRestartClick({
@@ -904,6 +934,9 @@ export function createDevToolingRuntime(deps = {}) {
     toggleDevToolingModal,
     isDevToolingHotkey,
     isEditableDomTarget,
+    setBossResumeHandler(handler) {
+      devToolingBossResumeHandler = typeof handler === 'function' ? handler : null;
+    },
     setRefreshHandler(handler) {
       devToolingRefreshHandler = typeof handler === 'function' ? handler : null;
     },

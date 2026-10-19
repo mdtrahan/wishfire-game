@@ -24,6 +24,8 @@ const viewports = [
   { name: 'compact-retina', width: 216, height: 384, dpr: 2 },
 ];
 const focusedContracts = [
+  'tests/bossBattleHud.test.mjs',
+  'tests/devBossLaunch.test.mjs',
   'tests/heroCommandsContract.test.js',
   'tests/uiPresentationLockGateContract.test.js',
   'tests/compactViewportContainmentContract.test.js',
