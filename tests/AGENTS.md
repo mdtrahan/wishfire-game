@@ -25,6 +25,7 @@
 - `fixtures/` owns deterministic CSV cases shared by JS and Rust/WASM tests.
 
 ## Local Contracts
+- Scheduler fixtures must place support casters, required foes and recipients inside current reach before asserting that every conditional skill casts.
 - Equipment-service fixtures initialize HeroProgress with createHeroProgressStore unless they explicitly test missing-owner rejection. Retain reward, quota and persistence assertions when repairing setup.
 - Lamp browser proofs check full opacity in cache and selected-item views, including unavailable Equip actions, while retaining disabled overview selection and equip eligibility.
 - Boss progress proof executes the production tick: each chapter's final ordinary wave enters once and saves readiness before the wipe; ordinary recovery preserves wave and sector-mask progress, boss defeat saves full readiness, and both survive reload without duplicate packs. HP depth checks preserve puppet-foot anchors during clip loading. Hit-flash contracts inspect assembled puppet callbacks. Keep chapter/rail centering and dynamic notch geometry measured independently.

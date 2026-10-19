@@ -137,7 +137,7 @@ function makeTickEnemies(ctx, actionEvents) {
   };
 }
 
-const makeHero = (uid, key, hp, maxHP) => ({ uid, kind: 'hero', x:145, y:180+(uid-1)*35, footX:145, footY:180+(uid-1)*35, currentLevel:25, heroInstanceKey: `hero-${uid}`, baseHeroName: key, name: key, hp, maxHP, stats: { ...HERO_DEFINITIONS[key].baseStats }, attackType: key === 'Runa' || key === 'Kojonn' ? 'magic' : 'melee', heroDisplaySlot: uid - 1 });
+const makeHero = (uid, key, hp, maxHP) => ({ uid, kind: 'hero', x:145, y:180+(uid-1)*20, footX:145, footY:180+(uid-1)*20, currentLevel:25, heroInstanceKey: `hero-${uid}`, baseHeroName: key, name: key, hp, maxHP, stats: { ...HERO_DEFINITIONS[key].baseStats }, attackType: key === 'Runa' || key === 'Kojonn' ? 'magic' : 'melee', heroDisplaySlot: uid - 1 });
 const makeEnemy = (uid, name, x, y, hp = 1_000_000, maxHP = 1_000_000, extra = {}) => ({ uid, kind: 'enemy', name, hp, maxHP, x, y, footX:x, footY:y, originX: x, originY: y, streamEngageX: x, streamState: 'engaged', arenaTargetUID: 1, enemyRole: 'fodder', ATK: 1, stats: { ATK: 1, MAG: 2, RES: 1 }, ...extra });
 
 function createTwoWaveFixture() {
@@ -222,6 +222,7 @@ function createTwoWaveFixture() {
 test('two-wave fixture records real hero scheduler actions, active skills, basics and impact timing', () => {
   const fixture = createTwoWaveFixture();
   const { state, actionLog } = fixture;
+  assert.ok(fixture.waveOne.every(enemy => isHeroBasicTargetInRange(enemy, fixture.heroes[3])), 'Kaja starts within reach of both foes required by support conditions');
   for (let frame = 0; frame <= 1100; frame += 1) {
     const now = frame * 0.05;
     if (frame === 500) {
