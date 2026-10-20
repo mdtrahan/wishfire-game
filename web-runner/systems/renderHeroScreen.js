@@ -103,16 +103,17 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .formation-top{display:flex;align-items:center;justify-content:space-between;gap:.5em}
    #hero-details .formation-power{display:flex;flex-direction:column;padding:.2em 1.4em .25em .7em;border-radius:0 1em 1em 0;margin-left:-.7em;background:linear-gradient(90deg,#b26a2c,#d98a3d);box-shadow:0 .1em .2em #07172a80;line-height:1.1}
    #hero-details .formation-power small{font-size:.75em;font-weight:700;color:#fff1d1} #hero-details .formation-power b{font-size:1.25em;color:#ffe9a8}
-   #hero-details .formation-field[data-grids="2"]{--cell:4.95em;gap:.5em}
    #hero-details .formation-field{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;gap:1em;border-radius:.8em;border:2px solid #3f5675;background:radial-gradient(ellipse 70% 60% at 50% 55%,#4f7fa8 0%,#2d5079 50%,#1b3150 100%)}
    #hero-details .formation-tools{display:flex;gap:.35em}
    #hero-details .formation-tools button{width:2.4em;height:2.4em;min-height:0;padding:0;border-radius:50%;font-weight:800;background:#192e48;border:2px solid #9eafc2;color:#fff1d1}
    #hero-details .formation-tools button[aria-pressed=true]{background:#fff3d8;color:#163052;border-color:#fff3d8}
    #hero-details .formation-tools button.copy{font-size:.72em;width:3.33em;height:3.33em}
    #hero-details .formation-facing{position:absolute;left:.6em;top:.5em;font-size:.78em;font-weight:800;color:#cfe9ff}
-   #hero-details .formation-grid{display:grid;grid-template-columns:repeat(${FORMATION_GRID_SIZE},var(--cell,6.6em));grid-auto-rows:var(--cell,6.6em);gap:1.2em .35em;padding:1em .35em .35em;border-radius:.6em;background:#0e1a2c66}
-   #hero-details .formation-locked{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.15em;width:4.2em;align-self:center;height:14em;border:2px dashed #7e93ad;border-radius:.6em;color:#b9c8da;font-size:.85em;font-weight:800;text-align:center;line-height:1.1}
-   #hero-details .formation-locked b{font-size:1.5em}
+   #hero-details .formation-grid{display:grid;grid-template-columns:repeat(${FORMATION_GRID_SIZE},5em);grid-auto-rows:5em;gap:1.2em .3em;padding:1em .3em .3em;border-radius:.6em;background:#0e1a2c66}
+   #hero-details .formation-grid[data-grid="0"]{margin-top:4em} #hero-details .formation-grid[data-grid="1"]{margin-bottom:4em}
+   #hero-details .formation-grid[data-locked=true]{position:relative}
+   #hero-details .formation-grid[data-locked=true] .formation-cell{opacity:.45;filter:grayscale(.6)}
+   #hero-details .formation-lock{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;display:flex;align-items:center;gap:.3em;padding:.25em .7em;border-radius:1em;background:#1b2a42ee;border:1px solid #7e93ad;color:#fff1d1;font-size:.85em;font-weight:800;white-space:nowrap}
    #hero-details .formation-cell{position:relative;min-height:0;padding:0;overflow:visible;border:2px solid #d8c9a6;border-radius:.45em;background:linear-gradient(#fff8ea,#ecdcbc);box-shadow:inset 0 -.25em 0 #cdb98f}
    #hero-details .formation-cell[aria-pressed=true]{border-color:#2fb3a6;box-shadow:0 0 0 3px #2fb3a6aa,inset 0 -.25em 0 #cdb98f}
    #hero-details .formation-cell .cell-face{position:absolute;left:0;right:0;bottom:1.05em;height:118%;display:flex;justify-content:center;align-items:flex-end;pointer-events:none}
@@ -216,8 +217,14 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    // Two 2x2 grids read left to right; the board faces left, so the left column is the frontline.
    field.setAttribute('aria-label','Formation board, front on the left');
    for(let grid=0;grid<FORMATION_GRIDS;grid++){
-    if(grid>=formationState.unlockedGrids){const locked=el('div',null,field);locked.className='formation-locked';locked.setAttribute('aria-label',`Second formation grid locked until a hero reaches level ${FORMATION_SECOND_GRID_LEVEL}`);el('b','🔒',locked);el('span',`Lv. ${FORMATION_SECOND_GRID_LEVEL}`,locked);continue;}
+    // One layout: both grids always render at full size; a locked grid dims its tiles under a lock badge.
     const cells=el('div',null,field);cells.className='formation-grid';cells.dataset.grid=String(grid);
+    if(grid>=formationState.unlockedGrids){
+     cells.dataset.locked='true';cells.setAttribute('aria-label',`Second formation grid locked until a hero reaches level ${FORMATION_SECOND_GRID_LEVEL}`);
+     for(let slot=0;slot<FORMATION_GRID_SIZE*FORMATION_ROWS;slot++)el('div',null,cells).className='formation-cell';
+     el('span',`🔒 Lv. ${FORMATION_SECOND_GRID_LEVEL}`,cells).className='formation-lock';
+     continue;
+    }
     for(let row=0;row<FORMATION_ROWS;row++)for(let offset=0;offset<FORMATION_GRID_SIZE;offset++){
      const column=grid*FORMATION_GRID_SIZE+offset,cell=formationCell(row,column),occupant=formationOccupant(preset,cell),line=column===0?'front':'back';
      const node=button(cells,null,()=>{
