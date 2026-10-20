@@ -71,18 +71,18 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .pane h2{font-size:1em;margin:0 0 .35em} #hero-details .pane p{margin:.35em 0} #hero-details small{display:block}
    #hero-details .roster{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45em}
    #hero-details .roster-card{position:relative;display:flex;flex-direction:column}
-   #hero-details .card-select{position:relative;z-index:1;display:block;width:100%;aspect-ratio:1/1.05;padding:0;overflow:hidden;border:2px solid #c9cfd8;border-radius:.5em;background:radial-gradient(ellipse 75% 65% at 50% 38%,#ffffff 0%,#eef2f6 55%,#d5dce5 100%)}
+   #hero-details .card-select{position:relative;z-index:1;display:block;width:100%;aspect-ratio:1/1.05;padding:0;overflow:hidden;border:2px solid #6b8590;border-radius:.4em;background:radial-gradient(ellipse 75% 65% at 50% 38%,#ffffff 0%,#eef2f6 55%,#d5dce5 100%)}
    #hero-details .card-select img{position:absolute;left:-40%;top:-2%;width:180%;height:auto;max-width:none}
    #hero-details .roster-card[data-selected=true] .card-select{border-color:#2fb3a6;box-shadow:0 0 0 2px #2fb3a655}
    #hero-details .leader-badge{position:absolute;left:50%;top:-.15em;transform:translateX(-50%);z-index:1;padding:0 .4em;border-radius:.3em;background:#2d7a5f;color:#fff;font-size:.62em;font-weight:700;white-space:nowrap}
    #hero-details .hero-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.4em;margin-top:.6em}
    #hero-details .hero-actions button{min-height:2.2em;font-size:.82em;font-weight:800;background:linear-gradient(#fffaf0,#f1e2bf);color:#1d3150;border:1px solid #b99c66;box-shadow:0 .12em 0 #b99c66}
    #hero-details .hero-actions button:disabled{opacity:1;background:#e3e6ea;color:#7d8794;border-color:#b8bfc8;box-shadow:none}
-   #hero-details .ticket-bar{position:relative;display:flex;align-items:center;height:1.45em;width:90%;flex:none;margin-left:0;border:2px solid #0e1626;border-radius:1em;background:#33435f;box-shadow:inset 0 .15em .2em #0b1626aa}
+   #hero-details .ticket-bar{position:relative;display:flex;align-items:center;height:1.3em;width:84%;flex:none;margin-left:0;border-radius:1em;background:#0a0e15;box-shadow:inset 0 .1em .15em #000c}
    #hero-details .ticket-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:1em;background:linear-gradient(#a6e6ff 0%,#4fb6f2 45%,#2a86d6 100%);box-shadow:inset 0 .12em 0 #ffffff99}
-   #hero-details .ticket-bar span{position:relative;flex:1;padding-left:1.3em;text-align:center;white-space:nowrap;font-size:.64em;letter-spacing:-.02em;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #14213a,1px -1px 0 #14213a,-1px 1px 0 #14213a,1px 1px 0 #14213a}
-   #hero-details .ticket-strip{position:relative;display:flex;align-items:center;justify-content:center;margin:-1.1em .2em 0;padding:1.45em .25em .4em;border-radius:0 0 .55em .55em;background:linear-gradient(#2a3446,#1c2433);box-shadow:0 .1em .2em #0b162655}
-   #hero-details .ticket-strip .hero-ticket-art{position:absolute;z-index:1;left:-.2em;bottom:.5em;width:1.7em;height:1.13em;flex:none;background-image:url('assets/images/progression/hero-tickets.png');background-size:240% 240%;background-repeat:no-repeat;filter:drop-shadow(0 1px 1px #14213a)}
+   #hero-details .ticket-bar span{position:relative;flex:1;padding-left:.9em;text-align:center;white-space:nowrap;font-size:.7em;letter-spacing:-.02em;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #14213a,1px -1px 0 #14213a,-1px 1px 0 #14213a,1px 1px 0 #14213a}
+   #hero-details .ticket-strip{position:relative;display:flex;align-items:center;justify-content:center;margin:-1.1em .07em 0;padding:1.65em .25em .6em;border-radius:0 0 .5em .5em;background:linear-gradient(#2a3446,#1c2433);box-shadow:0 .1em .2em #0b162655}
+   #hero-details .ticket-strip .hero-ticket-art{position:absolute;z-index:1;left:-.4em;bottom:.77em;width:1.45em;height:.97em;flex:none;background-image:url('assets/images/progression/hero-tickets.png');background-size:240% 240%;background-repeat:no-repeat;filter:drop-shadow(0 1px 1px #14213a)}
    #hero-details .hero-ticket-notice{margin-top:.5em;color:#36465c;font-size:.8em}
    #hero-details .sub-panel header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4em}
    #hero-details .sub-panel header h2{margin:0;padding:.1em .8em;border-radius:1em;background:#1b2a42;color:#fff4d6}

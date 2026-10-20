@@ -127,6 +127,7 @@ async function mountPage(browser,profile,fixture,url){
 }
 const openTab=async(page,name)=>{await page.locator('#hero-details .tabs').getByRole('button',{name,exact:true}).click();await page.waitForFunction(tab=>document.querySelector('#hero-details')?.dataset.tab===tab,name.toLowerCase());};
 const plateText=hero=>heroDefinition(hero).name+'★★★★★';
+const p_scale=profile=>Math.min(profile.width/360,profile.height/640);
 const heading=page=>page.locator('#hero-details .hero-name h1').textContent();
 
 test('combat copies never appear as unequipped duplicate heroes in the Hero screen',{timeout:90000},async()=>{
@@ -206,11 +207,18 @@ test('hero party screen uses saved canonical data and stays contained across por
     assert.equal(await card.locator('.card-select img').count(),1,`${definition.name} card shows the hero portrait`);
     assert.equal(await card.locator('.card-level').count(),0,`${definition.name} card has no level counter`);
     assert.equal(await card.locator('.stars').count(),0,`${definition.name} card carries no stars`);
-    const shell=await card.evaluate(node=>{const c=node.getBoundingClientRect(),b=node.querySelector('.ticket-bar').getBoundingClientRect(),t=node.querySelector('.hero-ticket-art').getBoundingClientRect(),p=node.querySelector('.card-select').getBoundingClientRect();const strip=node.querySelector('.ticket-strip'),st=strip.getBoundingClientRect();return{bg:getComputedStyle(strip).backgroundImage,hangs:st.top<p.bottom,inside:t.left>=c.left-0.5&&b.right<=c.right+0.5&&b.bottom<=c.bottom+0.5&&b.top>=p.bottom,center:(b.left+b.right)/2-(c.left+c.right)/2};});
+    const shell=await card.evaluate(node=>{const c=node.getBoundingClientRect(),b=node.querySelector('.ticket-bar').getBoundingClientRect(),t=node.querySelector('.hero-ticket-art').getBoundingClientRect(),p=node.querySelector('.card-select').getBoundingClientRect();const strip=node.querySelector('.ticket-strip'),st=strip.getBoundingClientRect();return{bg:getComputedStyle(strip).backgroundImage,hangs:st.top<p.bottom,inside:t.left>=node.closest('.pane').getBoundingClientRect().left&&b.right<=c.right+0.5&&b.bottom<=c.bottom+0.5&&b.top>=p.bottom,center:(b.left+b.right)/2-(c.left+c.right)/2};});
     assert.match(shell.bg,/linear-gradient/,`${definition.name} ticket strip hangs on a dark card`);
     assert.ok(shell.hangs,`${definition.name} dark card starts behind the portrait`);
     assert.equal(await card.locator('.ticket-bar span').last().evaluate(node=>node.getClientRects().length===1&&node.scrollWidth<=node.parentElement.clientWidth),true,`${definition.name} ticket count stays on one line`);
     assert.equal(await card.evaluate(node=>{const t=node.querySelector('.hero-ticket-art').getBoundingClientRect(),range=document.createRange();range.selectNodeContents(node.querySelector('.ticket-bar span:last-child'));return range.getBoundingClientRect().left>=t.right-0.5;}),true,`${definition.name} ticket icon never covers the count`);
+    const hierarchy=await card.evaluate(node=>{const p=node.querySelector('.card-select').getBoundingClientRect(),st=node.querySelector('.ticket-strip').getBoundingClientRect(),b=node.querySelector('.ticket-bar').getBoundingClientRect(),t=node.querySelector('.hero-ticket-art').getBoundingClientRect();return{inset:[st.left-p.left,p.right-st.right],visible:(st.bottom-p.bottom)/p.height,hidden:p.bottom-st.top,barMid:(b.top+b.bottom)/2,iconMid:(t.top+t.bottom)/2,visibleMid:(p.bottom+st.bottom)/2,iconOut:t.left<st.left,border:getComputedStyle(node.querySelector('.card-select')).borderTopColor};});
+    assert.ok(hierarchy.inset.every(gap=>gap>0&&gap<p_scale(profile)*1.5+.5),`${definition.name} dark card is only a hair narrower than the portrait (${hierarchy.inset})`);
+    assert.ok(hierarchy.hidden>0,'dark card starts behind the portrait');
+    assert.ok(hierarchy.visible>.33&&hierarchy.visible<.5,`${definition.name} dark card shows about two fifths of the portrait height below it (${hierarchy.visible})`);
+    assert.ok(Math.abs(hierarchy.barMid-hierarchy.visibleMid)<1.5&&Math.abs(hierarchy.iconMid-hierarchy.barMid)<1.5,`${definition.name} bar and icon are vertically centred in the visible dark card`);
+    assert.ok(hierarchy.iconOut,`${definition.name} ticket icon clamps past the dark card's left edge`);
+    if(cardIndex)assert.equal(hierarchy.border,'rgb(107, 133, 144)',`${definition.name} portrait carries the slate frame`);
     assert.ok(shell.inside,`${definition.name} ticket icon and bar sit inside the dark card below the portrait`);
     assert.ok(Math.abs(shell.center)<1.5,`${definition.name} progress bar is centered (${shell.center})`);
     const crop=await card.locator('.card-select').evaluate(node=>{const box=node.getBoundingClientRect(),img=node.querySelector('img').getBoundingClientRect();return img.height/box.height;});
