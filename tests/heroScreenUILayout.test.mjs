@@ -281,71 +281,131 @@ test('hero party screen uses saved canonical data and stays contained across por
    await sheetFits('Resonance');
    screenshots.resonance=`${profile.name}-resonance.png`;await page.screenshot({path:path.join(artifactDir,screenshots.resonance),fullPage:true});
    await detail.getByRole('button',{name:'Close Resonance'}).click();await page.waitForFunction(()=>!document.querySelector('#hero-details .sub-panel'));
-   // Formation: StoneAge two 2x2 grids, left grid open and filled left to right, right grid locked.
-   await detail.getByRole('button',{name:'Formation',exact:true}).click();await page.waitForFunction(()=>!!document.querySelector('#hero-details .formation-modal'));
+   // Formation: full-screen modal, two 2x2 grids in one row; the right grid opens first with the frontline rightmost.
+   const openFormationModal=async()=>{await detail.locator('.identity').getByRole('button',{name:'Formation',exact:true}).click();await page.waitForFunction(()=>!!document.querySelector('#hero-details .formation-modal'));};
+   await openFormationModal();
    const modal=detail.locator('.formation-modal'),board=modal.locator('.formation-field');
+   const cellHero=cell=>page.evaluate(cell=>document.querySelector(`#hero-details .formation-cell[data-cell="${cell}"]`)?.dataset.hero||'',cell);
    const modalFits=async label=>{
     const fit=await page.evaluate(()=>{
      const host=document.querySelector('#hero-details'),modal=host.querySelector('.formation-modal'),h=host.getBoundingClientRect(),m=modal.getBoundingClientRect(),nav=document.querySelector('#game-meta-nav').getBoundingClientRect();
      const top=document.elementFromPoint(nav.left+nav.width/2,nav.top+nav.height/2);
      const field=modal.querySelector('.formation-field').getBoundingClientRect(),cell=modal.querySelector('.formation-cell').getBoundingClientRect();
-     const inside=[...modal.querySelectorAll('header,.formation-power,.formation-field,.formation-note,.formation-actions,.formation-grid,.formation-tools')].every(node=>{const r=node.getBoundingClientRect();return r.left>=m.left-0.5&&r.right<=m.right+0.5&&r.top>=m.top-0.5&&r.bottom<=m.bottom+0.5;});
-     const grids=[...modal.querySelectorAll('.formation-grid,.formation-tools')].map(node=>node.getBoundingClientRect());
+     const parts=[...modal.querySelectorAll(':scope>header,.formation-top,.formation-field,.formation-roster-bar,.formation-roster,.formation-note,.formation-actions,.formation-grid,.formation-card')];
+     const inside=parts.every(node=>{const r=node.getBoundingClientRect();return r.left>=m.left-0.5&&r.right<=m.right+0.5&&r.top>=m.top-0.5&&r.bottom<=m.bottom+0.5;});
+     const grids=[...modal.querySelectorAll('.formation-grid')].map(node=>node.getBoundingClientRect());
      const overlap=grids.some((r,i)=>grids.some((o,j)=>j>i&&r.left<o.right-0.5&&o.left<r.right-0.5&&r.top<o.bottom-0.5&&o.top<r.bottom-0.5));
-     return{full:Math.abs(m.width-h.width)<1&&Math.abs(m.height-h.height)<1,coversNav:modal.contains(top),inside,overlap,fieldShare:field.height/m.height,cellShare:cell.width/m.width,scroll:modal.scrollHeight-modal.clientHeight};
+     const close=modal.querySelector('.game-modal-close').getBoundingClientRect();
+     return{full:Math.abs(m.width-h.width)<1&&Math.abs(m.height-h.height)<1,coversNav:modal.contains(top),inside,overlap,aligned:Math.abs(grids[0].top-grids[1].top)<1&&Math.abs(grids[0].height-grids[1].height)<1,closeInside:close.right<=m.right+0.5&&close.top>=m.top-0.5,cellShare:cell.width/m.width,scroll:modal.scrollHeight-modal.clientHeight};
     });
     assert.ok(fit.full&&fit.coversNav,`${profile.name}: ${label} is a full-screen modal over the navigation (${JSON.stringify(fit)})`);
-    assert.ok(fit.inside&&!fit.overlap&&fit.scroll<=1,`${profile.name}: ${label} contents stay contained without overlap (${JSON.stringify(fit)})`);
-    assert.ok(fit.fieldShare>.45&&fit.cellShare>.17,`${profile.name}: ${label} gives the board room (${JSON.stringify(fit)})`);
+    assert.ok(fit.inside&&!fit.overlap&&fit.aligned&&fit.closeInside&&fit.scroll<=1,`${profile.name}: ${label} lines both grids up in one contained row (${JSON.stringify(fit)})`);
+    assert.ok(fit.cellShare>.15,`${profile.name}: ${label} keeps tiles readable (${JSON.stringify(fit)})`);
     assert.deepEqual((await measure()).clipped,[],`${profile.name}: ${label} has no clipped labels`);
    };
-   // Fixture heroes reach level 42, so both grids are open; the right one stays empty by default.
-   assert.equal(await board.locator('.formation-grid').count(),2,'a level-30 hero unlocks the right 2x2 grid');
-   assert.deepEqual(await board.locator('.formation-grid[data-grid="0"] .formation-cell').evaluateAll(nodes=>nodes.map(node=>[node.dataset.cell,node.dataset.hero||''])),[['0','Falie'],['1','Runa'],['4','Huun'],['5','Kojonn']],'tanks fill the left frontline column, ranged the right backline column');
-   assert.equal(await board.locator('.formation-grid[data-grid="1"] .formation-cell[data-hero]').count(),0,'heroes fill the left grid before the right');
+   assert.equal(await modal.locator('.game-modal-close').count(),1,'Formation uses the shared modal close');
+   // Fixture heroes reach level 42, so both grids are open; the left one stays empty by default.
+   assert.equal(await board.locator('.formation-grid').count(),2,'both grids render');
+   assert.deepEqual(await board.locator('.formation-grid[data-grid="1"] .formation-cell').evaluateAll(nodes=>nodes.map(node=>[node.dataset.cell,node.dataset.hero||''])),[['2','Runa'],['3','Falie'],['6','Kojonn'],['7','Huun']],'tanks hold the rightmost frontline column, ranged the column beside it');
+   assert.equal(await board.locator('.formation-grid[data-grid="0"] .formation-cell[data-hero]').count(),0,'heroes fill the right grid before the left');
+   const gridRects=()=>board.evaluate(node=>[...node.querySelectorAll('.formation-grid')].map(grid=>{const r=grid.getBoundingClientRect();return[Math.round(r.left),Math.round(r.top),Math.round(r.width),Math.round(r.height)];}));
+   const openRects=await gridRects();
    const levels=await page.evaluate(()=>Object.fromEntries(Object.entries(window.heroQa.globals.HeroProgress.heroes).map(([id,hero])=>[id,hero.currentLevel])));
    await page.evaluate(()=>{for(const hero of Object.values(window.heroQa.globals.HeroProgress.heroes))hero.currentLevel=Math.min(hero.currentLevel,29);window.heroQa.render();});
+   // Leaving and reopening picks up the new unlock state.
+   await modal.locator('.game-modal-close').click();await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-modal'));await openFormationModal();
    await board.locator('.formation-grid[data-locked="true"]').waitFor();
-   assert.equal(await board.locator('.formation-grid').count(),2,'both grids always render');
-   assert.equal(await board.locator('.formation-grid[data-locked="true"]').getAttribute('aria-label'),'Second formation grid locked until a hero reaches level 30');
+   assert.equal(await board.locator('.formation-grid[data-locked="true"]').getAttribute('data-grid'),'0','the left back grid is the locked one');
    assert.equal(await board.locator('.formation-grid[data-locked="true"] button').count(),0,'locked tiles are not interactive');
    assert.equal(await board.locator('.formation-lock').textContent(),'🔒 Lv. 30');
-   const sameLayout=await board.evaluate(node=>[...node.querySelectorAll('.formation-grid')].map(grid=>{const r=grid.getBoundingClientRect();return[Math.round(r.width),Math.round(r.height)];}));
-   assert.deepEqual(sameLayout[1],sameLayout[0],`locked grid keeps the open grid's full size (${JSON.stringify(sameLayout)})`);
-   const lockedRects=await board.evaluate(node=>[...node.querySelectorAll('.formation-grid')].map(grid=>{const r=grid.getBoundingClientRect();return[r.left,r.top,r.width,r.height];}));
+   assert.deepEqual(await gridRects(),openRects,'locking changes no layout');
    await modalFits('Locked formation');
    screenshots.formationLocked=`${profile.name}-formation-locked.png`;await page.screenshot({path:path.join(artifactDir,screenshots.formationLocked),fullPage:true});
    await page.evaluate(levels=>{for(const [id,level] of Object.entries(levels))window.heroQa.globals.HeroProgress.heroes[id].currentLevel=level;window.heroQa.render();},levels);
+   await modal.locator('.game-modal-close').click();await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-modal'));await openFormationModal();
    await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-grid[data-locked]'));
-   assert.deepEqual(await board.evaluate(node=>[...node.querySelectorAll('.formation-grid')].map(grid=>{const r=grid.getBoundingClientRect();return[r.left,r.top,r.width,r.height];})),lockedRects,'unlocking changes no layout');
    assert.equal(await board.locator('.formation-cell[data-leader="true"]').getAttribute('data-hero'),'Falie','Fara leads by default');
    assert.match(await modal.locator('.formation-total').textContent(),/^\d+$/);
-   assert.match(await modal.locator('.formation-note').textContent(),/^Leader Fara/);
    await modalFits('Formation');
    screenshots.formation=`${profile.name}-formation.png`;await page.screenshot({path:path.join(artifactDir,screenshots.formation),fullPage:true});
+   // Roster with sort and filter.
+   const rosterOrder=()=>modal.locator('.formation-card').evaluateAll(nodes=>nodes.map(node=>node.dataset.hero));
+   assert.equal(await modal.locator('.formation-count').textContent(),'4/4');
+   assert.deepEqual(await rosterOrder(),['Kojonn','Runa','Huun','Falie'],'roster sorts by level, highest first');
+   await modal.getByRole('button',{name:'Sort descending'}).click();await page.waitForFunction(()=>document.querySelector('#hero-details .formation-card')?.dataset.hero==='Falie');
+   await modal.getByRole('button',{name:'Sort and filter heroes'}).click();const sortSheet=modal.locator('.formation-sort');await sortSheet.waitFor();
+   await sortSheet.getByRole('button',{name:'Tank',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('#hero-details .formation-card').length===1);
+   assert.deepEqual(await rosterOrder(),['Falie'],'role filter narrows the roster');
+   await sortSheet.getByRole('button',{name:'All',exact:true}).click();await sortSheet.getByRole('button',{name:'Done'}).click();
+   await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-sort')&&document.querySelectorAll('#hero-details .formation-card').length===4);
+   await modal.getByRole('button',{name:'Sort ascending'}).click();await page.waitForFunction(()=>document.querySelector('#hero-details .formation-card')?.dataset.hero==='Kojonn');
+   // Move from the roster, undo, redo on the board, then Save.
+   const savedBefore=await page.evaluate(()=>localStorage.getItem('wishfire.heroFormation.v3'));
+   assert.equal(await modal.getByRole('button',{name:'Formation saved'}).isDisabled(),true,'Save waits for changes');
+   await modal.locator('.formation-card[data-hero="Runa"] .formation-card-pick').click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-card[data-hero="Runa"]')?.dataset.selected==='true');
+   await board.locator('.formation-cell[data-cell="3"]').click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-cell="3"]')?.dataset.hero==='Runa');
+   assert.equal(await cellHero(2),'Falie','occupied target swaps');
+   assert.equal(await modal.locator('.formation-note').textContent(),'Unsaved changes.');
+   assert.equal(await page.evaluate(()=>localStorage.getItem('wishfire.heroFormation.v3')),savedBefore,'moves stay in the draft until Save');
+   await modal.getByRole('button',{name:'Undo'}).click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-cell="3"]')?.dataset.hero==='Falie');
+   assert.equal(await modal.getByRole('button',{name:'Undo'}).isDisabled(),true,'undo history empties');
    await board.locator('.formation-cell[data-hero="Runa"]').click();
    await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-hero="Runa"]')?.getAttribute('aria-pressed')==='true');
-   await board.locator('.formation-cell[data-cell="0"]').click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-cell="0"]')?.dataset.hero==='Runa'&&document.querySelector('#hero-details .formation-cell[data-cell="1"]')?.dataset.hero==='Falie');
+   await board.locator('.formation-cell[data-cell="3"]').click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-cell="3"]')?.dataset.hero==='Runa');
    await board.locator('.formation-cell[data-hero="Runa"]').click();
    await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-hero="Runa"]')?.getAttribute('aria-pressed')==='true');
    await modal.getByRole('button',{name:'Set Runa as leader'}).click();
    await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-leader="true"]')?.dataset.hero==='Runa');
-   assert.deepEqual(await page.evaluate(()=>[window.heroQa.globals.HeroFormationLeader,window.heroQa.globals.HeroFormationOrder,JSON.parse(localStorage.getItem('wishfire.heroFormation.v2')).presets[0].leader]),['Runa',['Runa','Hondo','Fara','Kaja'],'Runa'],'leader and succession publish to combat and persist');
+   await modal.getByRole('button',{name:'Save formation'}).click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-note')?.textContent==='Formation saved.');
+   assert.deepEqual(await page.evaluate(()=>[window.heroQa.globals.HeroFormationLeader,window.heroQa.globals.HeroFormationOrder,JSON.parse(localStorage.getItem('wishfire.heroFormation.v3')).presets[0].leader]),['Runa',['Runa','Hondo','Fara','Kaja'],'Runa'],'Save publishes the leader and succession to combat and persists');
+   // Lock commits and blocks edits until unlocked.
+   await modal.getByRole('button',{name:'Lock formation'}).click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-tools .lock')?.getAttribute('aria-pressed')==='true');
+   assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.heroFormation.v3')).presets[0].locked),true,'lock persists');
+   assert.equal(await modal.getByRole('button',{name:'Auto-Form'}).isDisabled(),true,'Auto-Form is disabled while locked');
+   await board.locator('.formation-cell[data-hero="Falie"]').click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-note')?.textContent==='Unlock the formation to make changes.');
+   await modal.getByRole('button',{name:'Unlock formation'}).click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-tools .lock')?.getAttribute('aria-pressed')==='false');
+   // Presets and Copy edit the draft.
    await modal.getByRole('button',{name:'Preset 2',exact:true}).click();
    await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-leader="true"]')?.dataset.hero==='Falie');
    await modal.getByRole('button',{name:'Preset 1',exact:true}).click();
    await modal.getByRole('button',{name:'Copy preset 1 to preset 2'}).click();
    await page.waitForFunction(()=>document.querySelector('#hero-details .formation-tools button[aria-label="Preset 2"]')?.getAttribute('aria-pressed')==='true'&&document.querySelector('#hero-details .formation-cell[data-leader="true"]')?.dataset.hero==='Runa');
    await modal.getByRole('button',{name:'Auto-Form'}).click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-cell="0"]')?.dataset.hero==='Falie');
-   await modal.getByRole('button',{name:'Preset 1',exact:true}).click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-cell="3"]')?.dataset.hero==='Falie');
+   // Closing with unsaved changes asks to save or discard; Discard keeps the saved formation.
+   await modal.locator('.game-modal-close').click();
+   const confirm=modal.locator('.formation-confirm');await confirm.waitFor();
+   await confirm.getByRole('button',{name:'Discard'}).click();await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-modal'));
+   assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.heroFormation.v3')).active),0,'discarded draft never saves');
+   // The magnifier opens that hero's screen and returns to the same Formation draft.
+   await openFormationModal();
+   await board.locator('.formation-cell[data-hero="Kojonn"]').click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-hero="Kojonn"]')?.getAttribute('aria-pressed')==='true');
+   await board.locator('.formation-cell[data-cell="2"]').click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-cell="2"]')?.dataset.hero==='Kojonn');
+   await modal.getByRole('button',{name:"Open Kaja's hero screen"}).click();
+   await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-modal')&&document.querySelector('#hero-details h1')?.textContent==='Kaja');
+   await detail.getByRole('button',{name:'Back to Formation'}).click();await page.waitForFunction(()=>!!document.querySelector('#hero-details .formation-modal'));
+   assert.equal(await cellHero(2),'Kojonn','returning keeps the unsaved draft');
+   await modal.locator('.game-modal-close').click();await confirm.waitFor();await confirm.getByRole('button',{name:'Discard'}).click();
+   await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-modal'));
+   // Restore Fara as leader for the remaining checks; Escape closes a clean modal.
+   await cards.nth(0).locator('.card-select').click();await page.waitForFunction(()=>document.querySelector('#hero-details h1')?.textContent==='Fara');
+   await openFormationModal();
    await board.locator('.formation-cell[data-hero="Falie"]').click();
-   await modal.getByRole('button',{name:'Set Fara as leader'}).click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-hero="Falie"]')?.getAttribute('aria-pressed')==='true');
+   await modal.getByRole('button',{name:'Set Fara as leader'}).click();await modal.getByRole('button',{name:'Save formation'}).click();
    await page.waitForFunction(()=>window.heroQa.globals.HeroFormationLeader==='Fara');
-   await modal.getByRole('button',{name:'Done'}).click();await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-modal'));
-   await detail.getByRole('button',{name:'Formation',exact:true}).click();await modal.waitFor();
-   await page.keyboard.press('Tab');await modal.getByRole('button',{name:'Close Formation'}).click();await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-modal'));
+   await page.keyboard.press('Escape');
+   await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-modal'));
    // Card selection drives the showcase.
    for(const [cardIndex,hero] of heroes.entries()){
     await cards.nth(cardIndex).locator('.card-select').click();

@@ -1,10 +1,11 @@
 // Hero formation board (ORKA-9ee phase 2, goals/wishfire-hero-party-screen-plan.md).
-// Pure and deterministic. StoneAge layout: two 2x2 grids side by side, read left to right.
-// The board faces left: column 0 is the frontline, higher columns sit further back. The left
-// grid is open; the right grid stays locked until a hero reaches FORMATION_SECOND_GRID_LEVEL.
-// Combat mirrors the board when the party travels right, and an empty right grid adds no depth.
+// Pure and deterministic. StoneAge layout: two 2x2 grids side by side in one row.
+// The board faces right: the rightmost column is the frontline and columns further left sit
+// further back. The right grid is open; the left grid stays locked until a hero reaches
+// FORMATION_SECOND_GRID_LEVEL. Combat mirrors the board when the party travels left, and an
+// empty left grid adds no depth. A locked preset refuses moves and Auto-Form.
 
-export const FORMATION_SAVE_KEY = 'wishfire.heroFormation.v2';
+export const FORMATION_SAVE_KEY = 'wishfire.heroFormation.v3';
 export const FORMATION_GRID_SIZE = 2;
 export const FORMATION_GRIDS = 2;
 export const FORMATION_COLUMNS = FORMATION_GRID_SIZE * FORMATION_GRIDS;
@@ -17,20 +18,24 @@ export const formationCell = (row, column) => row * FORMATION_COLUMNS + column;
 export const formationColumn = cell => cell % FORMATION_COLUMNS;
 export const formationRow = cell => Math.floor(cell / FORMATION_COLUMNS);
 export const formationGrid = cell => Math.floor(formationColumn(cell) / FORMATION_GRID_SIZE);
+// Depth from the front: 0 is the rightmost (frontline) column.
+export const formationDepth = cell => FORMATION_COLUMNS - 1 - formationColumn(cell);
+// Grid 1 (right) opens first; grid 0 (left) is the locked back grid.
+export const formationGridOpen = (grid, unlockedGrids = 1) => grid >= FORMATION_GRIDS - Math.max(1, Math.min(FORMATION_GRIDS, unlockedGrids));
 
 export function unlockedFormationGrids(highestHeroLevel = 1) {
   return Number(highestHeroLevel) >= FORMATION_SECOND_GRID_LEVEL ? 2 : 1;
 }
 
-// Open cells in fill order: left to right by column, top to bottom within a column.
+// Open cells in fill order: frontline (rightmost) column first, top to bottom within a column.
 export function openFormationCells(unlockedGrids = 1) {
   const columns = Math.max(1, Math.min(FORMATION_GRIDS, unlockedGrids)) * FORMATION_GRID_SIZE, cells = [];
-  for (let column = 0; column < columns; column++) for (let row = 0; row < FORMATION_ROWS; row++) cells.push(formationCell(row, column));
+  for (let depth = 0; depth < columns; depth++) for (let row = 0; row < FORMATION_ROWS; row++) cells.push(formationCell(row, FORMATION_COLUMNS - 1 - depth));
   return cells;
 }
 
-// Auto-Form: tankier heroes (Tank, Damage) fill the leftmost frontline first, ranged heroes follow,
-// each in roster order, filling the left grid before the right one.
+// Auto-Form: tankier heroes (Tank, Damage) fill the rightmost frontline first, ranged heroes follow,
+// each in roster order, filling the right grid before the left one.
 export function autoFormPreset(heroes = [], unlockedGrids = 1) {
   const ordered = [...heroes.filter(hero => FRONT_ROLES.has(hero.role)), ...heroes.filter(hero => !FRONT_ROLES.has(hero.role))];
   const open = openFormationCells(unlockedGrids), cells = {};
@@ -53,7 +58,7 @@ function sanitizePreset(raw, heroes, unlockedGrids) {
     cells[hero.id] = cell; used.add(cell);
   }
   const leader = heroes.some(hero => hero.id === raw?.leader) ? raw.leader : fallback.leader;
-  return { leader, cells };
+  return { leader, cells, ...(raw?.locked === true ? { locked: true } : {}) };
 }
 
 // `heroes` is the canonical roster: [{ id, name, role }].
@@ -62,7 +67,7 @@ export function sanitizeHeroFormation(raw, heroes = [], unlockedGrids = 1) {
   const grids = Math.max(1, Math.min(FORMATION_GRIDS, Math.floor(Number(unlockedGrids) || 1)));
   const presets = Array.from({ length: FORMATION_PRESETS }, (_, index) => sanitizePreset(source.presets?.[index], heroes, grids));
   const active = Math.max(0, Math.min(FORMATION_PRESETS - 1, Math.floor(Number(source.active) || 0)));
-  return { version: 2, active, unlockedGrids: grids, presets };
+  return { version: 3, active, unlockedGrids: grids, presets };
 }
 
 export function activeFormationPreset(state) { return state.presets[state.active]; }
@@ -70,14 +75,18 @@ export function activeFormationPreset(state) { return state.presets[state.active
 export function formationOccupant(preset, cell) { return Object.keys(preset.cells).find(id => preset.cells[id] === cell) || ''; }
 
 function updateActive(state, change) {
-  const presets = state.presets.map((preset, index) => index === state.active ? change({ leader: preset.leader, cells: { ...preset.cells } }) : preset);
+  const presets = state.presets.map((preset, index) => index === state.active ? change({ ...preset, cells: { ...preset.cells } }) : preset);
   return { ...state, presets };
+}
+
+export function setFormationLocked(state, locked) {
+  return updateActive(state, next => { const { locked: _, ...rest } = next; return locked ? { ...rest, locked: true } : rest; });
 }
 
 // Moves a hero to an open cell; an occupied target swaps places. Locked cells refuse.
 export function placeFormationHero(state, heroId, cell) {
   const preset = activeFormationPreset(state);
-  if (!(heroId in preset.cells) || !openFormationCells(state.unlockedGrids).includes(cell)) return state;
+  if (preset.locked || !(heroId in preset.cells) || !openFormationCells(state.unlockedGrids).includes(cell)) return state;
   return updateActive(state, next => {
     const occupant = formationOccupant(next, cell);
     if (occupant && occupant !== heroId) next.cells[occupant] = next.cells[heroId];
@@ -92,7 +101,8 @@ export function setFormationLeader(state, heroId) {
 }
 
 export function autoFormActive(state, heroes = []) {
-  return updateActive(state, next => ({ leader: next.leader, cells: autoFormPreset(heroes, state.unlockedGrids).cells }));
+  if (activeFormationPreset(state).locked) return state;
+  return updateActive(state, next => ({ ...next, cells: autoFormPreset(heroes, state.unlockedGrids).cells }));
 }
 
 export function selectFormationPreset(state, index) {
@@ -104,18 +114,19 @@ export function selectFormationPreset(state, index) {
 export function copyFormationPreset(state) {
   const target = (state.active + 1) % FORMATION_PRESETS, source = activeFormationPreset(state);
   const presets = state.presets.map((preset, index) => index === target ? { leader: source.leader, cells: { ...source.cells } } : preset);
+  if (state.presets[target].locked) return state;
   return { ...state, presets, active: target };
 }
 
-// Leader first, then left to right, top to bottom. Combat hands the lead down this order on KO.
+// Leader first, then front to back (right to left), top to bottom. Combat hands the lead down this order on KO.
 export function formationSuccession(preset) {
-  const order = id => formationColumn(preset.cells[id]) * FORMATION_ROWS + formationRow(preset.cells[id]);
+  const order = id => formationDepth(preset.cells[id]) * FORMATION_ROWS + formationRow(preset.cells[id]);
   const others = Object.keys(preset.cells).filter(id => id !== preset.leader).sort((a, b) => order(a) - order(b));
   return preset.leader ? [preset.leader, ...others] : others;
 }
 
 // Combat placement per hero: depth 0 is the frontline column; row 0 is the upper lane.
-// Depth counts only columns up to the deepest occupied one, so an empty grid adds no space.
+// Depth is absolute from the front, so an empty back grid adds no space.
 export function formationPlacement(preset) {
-  return Object.fromEntries(Object.entries(preset.cells).map(([id, cell]) => [id, { depth: formationColumn(cell), row: formationRow(cell) }]));
+  return Object.fromEntries(Object.entries(preset.cells).map(([id, cell]) => [id, { depth: formationDepth(cell), row: formationRow(cell) }]));
 }
