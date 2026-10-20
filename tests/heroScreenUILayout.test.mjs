@@ -111,7 +111,8 @@ const fixtureModule=`
   const gameState={selectedHero:0,storyEntry:{phase:'hero'}};
   const fnContext={state:{globals,entities:[]}};
   const layoutState={getActiveLayoutId:()=> 'heroLayout'},eventBus={emit(){}};
-  const render=()=>{renderHeroScreen({equipmentProgress:{data:equipment},canvas,gameState,fnContext,heroPortraitImages:portraits});const scale=canvas.getBoundingClientRect().width/360;renderExistingNavigation({canvas},{worldToCanvas:(x,y)=>({x:x*scale,y:y*scale}),layoutScale:scale,gameState,layoutState,eventBus});};
+  const combatProgression={ticketCount:id=>window.heroQa?.tickets?.[id]||0,spendLevelUp:()=>({ok:false,reason:'unavailable'})};
+  const render=()=>{renderHeroScreen({equipmentProgress:{data:equipment},combatProgression,canvas,gameState,fnContext,heroPortraitImages:portraits});const scale=canvas.getBoundingClientRect().width/360;renderExistingNavigation({canvas},{worldToCanvas:(x,y)=>({x:x*scale,y:y*scale}),layoutScale:scale,gameState,layoutState,eventBus});};
   const frame=()=>{render();window.heroQaFrame=requestAnimationFrame(frame);};render();window.heroQaFrame=requestAnimationFrame(frame);
   window.heroQa={globals,gameState,equipment,fnContext,render};
  };
@@ -326,6 +327,17 @@ test('hero party screen uses saved canonical data and stays contained across por
     return results;
    });
    for(const result of cpRefresh){assert.ok(result.visible.includes(result.expected),'next render reads committed CP despite a stale combat actor');assert.notEqual(result.expected,'CP '+result.before,'fixture adds a measurable CP upgrade');}
+   await openTab(page,'Heroes');
+   const ticketFixture={Falie:300,Huun:900,Runa:1600,Kojonn:500};
+   await page.evaluate(tickets=>{window.heroQa.tickets=tickets;window.heroQa.render();},ticketFixture);
+   for(const [cardIndex,hero] of heroes.entries()){
+    const card=detail.locator('.roster-card').nth(cardIndex),cost=heroTicketLevelCost(hero.currentLevel),balance=ticketFixture[hero.heroInstanceKey];
+    await page.waitForFunction(([index,text])=>document.querySelectorAll('#hero-details .ticket-bar span')[index]?.textContent===text,[cardIndex,`${balance}/${cost}`]);
+    const fill=await card.locator('.ticket-bar i').evaluate(node=>({ratio:node.getBoundingClientRect().width/node.parentElement.getBoundingClientRect().width,image:getComputedStyle(node).backgroundImage}));
+    assert.ok(Math.abs(fill.ratio-Math.min(1,balance/cost))<.03,`${heroDefinition(hero).name} fill tracks ticket progress (${fill.ratio})`);
+    assert.match(fill.image,/rgb\(26, 140, 255\)/,'progress fill is bright blue');
+   }
+   screenshots.tickets=`${profile.name}-tickets.png`;await page.screenshot({path:path.join(artifactDir,screenshots.tickets),fullPage:true});
    assert.deepEqual(pageErrors,[],'renderer has no browser exceptions');
    report.push({fixture:'isolated production hero renderer and shared navigation modules',profile,geometry:initial,screenshots,reachedSkillCount:reachedSkills.length,pass:true});
    await context.close();
