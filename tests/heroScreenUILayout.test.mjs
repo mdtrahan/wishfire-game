@@ -206,11 +206,13 @@ test('hero party screen uses saved canonical data and stays contained across por
     assert.equal(await card.locator('.card-select img').count(),1,`${definition.name} card shows the hero portrait`);
     assert.equal(await card.locator('.card-level').count(),0,`${definition.name} card has no level counter`);
     assert.equal(await card.locator('.stars').count(),0,`${definition.name} card carries no stars`);
-    const shell=await card.evaluate(node=>{const c=node.getBoundingClientRect(),b=node.querySelector('.ticket-bar').getBoundingClientRect(),t=node.querySelector('.hero-ticket-art').getBoundingClientRect(),p=node.querySelector('.card-select').getBoundingClientRect();return{bg:getComputedStyle(node).backgroundImage,inside:t.left>=c.left-0.5&&b.right<=c.right+0.5&&b.bottom<=c.bottom+0.5&&b.top>=p.bottom,center:(t.left+b.right)/2-(c.left+c.right)/2};});
-    assert.match(shell.bg,/linear-gradient/,`${definition.name} card sits on a dark backing card`);
+    const shell=await card.evaluate(node=>{const c=node.getBoundingClientRect(),b=node.querySelector('.ticket-bar').getBoundingClientRect(),t=node.querySelector('.hero-ticket-art').getBoundingClientRect(),p=node.querySelector('.card-select').getBoundingClientRect();const strip=node.querySelector('.ticket-strip'),st=strip.getBoundingClientRect();return{bg:getComputedStyle(strip).backgroundImage,hangs:st.top<p.bottom,inside:t.left>=c.left-0.5&&b.right<=c.right+0.5&&b.bottom<=c.bottom+0.5&&b.top>=p.bottom,center:(b.left+b.right)/2-(c.left+c.right)/2};});
+    assert.match(shell.bg,/linear-gradient/,`${definition.name} ticket strip hangs on a dark card`);
+    assert.ok(shell.hangs,`${definition.name} dark card starts behind the portrait`);
     assert.equal(await card.locator('.ticket-bar span').last().evaluate(node=>node.getClientRects().length===1&&node.scrollWidth<=node.parentElement.clientWidth),true,`${definition.name} ticket count stays on one line`);
+    assert.equal(await card.evaluate(node=>{const t=node.querySelector('.hero-ticket-art').getBoundingClientRect(),range=document.createRange();range.selectNodeContents(node.querySelector('.ticket-bar span:last-child'));return range.getBoundingClientRect().left>=t.right-0.5;}),true,`${definition.name} ticket icon never covers the count`);
     assert.ok(shell.inside,`${definition.name} ticket icon and bar sit inside the dark card below the portrait`);
-    assert.ok(Math.abs(shell.center)<1.5,`${definition.name} ticket strip is centered (${shell.center})`);
+    assert.ok(Math.abs(shell.center)<1.5,`${definition.name} progress bar is centered (${shell.center})`);
     const crop=await card.locator('.card-select').evaluate(node=>{const box=node.getBoundingClientRect(),img=node.querySelector('img').getBoundingClientRect();return img.height/box.height;});
     assert.ok(crop>1.5,`${definition.name} card crops to the head and shoulders (${crop})`);
     assert.equal(await card.locator('.ticket-bar span').last().textContent(),`0/${cost}`,`${definition.name} card shows hero-ticket progress`);
