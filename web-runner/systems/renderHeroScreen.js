@@ -78,9 +78,9 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .hero-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.4em;margin-top:.6em}
    #hero-details .hero-actions button{min-height:2.2em;font-size:.82em;font-weight:800;background:linear-gradient(#fffaf0,#f1e2bf);color:#1d3150;border:1px solid #b99c66;box-shadow:0 .12em 0 #b99c66}
    #hero-details .hero-actions button:disabled{opacity:1;background:#e3e6ea;color:#7d8794;border-color:#b8bfc8;box-shadow:none}
-   #hero-details .ticket-bar{position:relative;display:flex;align-items:center;height:1.3em;width:84%;flex:none;margin-left:0;border-radius:1em;background:#0a0e15;box-shadow:inset 0 .1em .15em #000c}
+   #hero-details .ticket-bar{position:relative;display:flex;align-items:center;height:1.3em;width:86%;flex:none;margin-left:0;border-radius:1em;background:#0a0e15;box-shadow:inset 0 .1em .15em #000c}
    #hero-details .ticket-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:1em;background:linear-gradient(#9cecff 0%,#38b8ff 40%,#1a8cff 100%);box-shadow:inset 0 .12em 0 #ffffffb3,0 0 .35em #2aa6ff99}
-   #hero-details .ticket-bar span{position:relative;flex:1;padding-left:.9em;text-align:center;white-space:nowrap;font-size:.7em;letter-spacing:-.02em;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #14213a,1px -1px 0 #14213a,-1px 1px 0 #14213a,1px 1px 0 #14213a}
+   #hero-details .ticket-bar span{position:relative;flex:1;padding-left:.5em;text-align:center;white-space:nowrap;font-size:.55em;letter-spacing:-.03em;font-weight:800;color:#fff;text-shadow:-1px -1px 0 #14213a,1px -1px 0 #14213a,-1px 1px 0 #14213a,1px 1px 0 #14213a}
    #hero-details .ticket-strip{position:relative;display:flex;align-items:center;justify-content:center;margin:-1.1em .07em 0;padding:1.65em .25em .6em;border-radius:0 0 .5em .5em;background:linear-gradient(#2a3446,#1c2433);box-shadow:0 .1em .2em #0b162655}
    #hero-details .ticket-strip .hero-ticket-art{position:absolute;z-index:1;left:-.4em;bottom:.77em;width:1.45em;height:.97em;flex:none;background-image:url('assets/images/progression/hero-tickets.png');background-size:240% 240%;background-repeat:no-repeat;filter:drop-shadow(0 1px 1px #14213a)}
    #hero-details .hero-ticket-notice{margin-top:.5em;color:#36465c;font-size:.8em}

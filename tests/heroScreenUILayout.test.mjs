@@ -336,6 +336,8 @@ test('hero party screen uses saved canonical data and stays contained across por
     const fill=await card.locator('.ticket-bar i').evaluate(node=>({ratio:node.getBoundingClientRect().width/node.parentElement.getBoundingClientRect().width,image:getComputedStyle(node).backgroundImage}));
     assert.ok(Math.abs(fill.ratio-Math.min(1,balance/cost))<.03,`${heroDefinition(hero).name} fill tracks ticket progress (${fill.ratio})`);
     assert.match(fill.image,/rgb\(26, 140, 255\)/,'progress fill is bright blue');
+    const room=await card.evaluate(node=>{const bar=node.querySelector('.ticket-bar').getBoundingClientRect(),icon=node.querySelector('.hero-ticket-art').getBoundingClientRect(),range=document.createRange();range.selectNodeContents(node.querySelector('.ticket-bar span:last-child'));const text=range.getBoundingClientRect();return{right:(bar.right-text.right)/bar.width,left:(text.left-icon.right)/bar.width};});
+    assert.ok(room.right>=.08&&room.left>=0,`${heroDefinition(hero).name} count fits inside the bar with room to spare (${JSON.stringify(room)})`);
    }
    screenshots.tickets=`${profile.name}-tickets.png`;await page.screenshot({path:path.join(artifactDir,screenshots.tickets),fullPage:true});
    assert.deepEqual(pageErrors,[],'renderer has no browser exceptions');
