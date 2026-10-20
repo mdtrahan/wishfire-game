@@ -3,7 +3,7 @@
 import { HERO_DEFINITIONS } from '../src/core/heroDefinitions.mjs';
 import {
   FORMATION_SAVE_KEY, sanitizeHeroFormation, activeFormationPreset, formationSuccession,
-  placeFormationHero, setFormationLeader, autoFormActive, selectFormationPreset, copyFormationPreset,
+  placeFormationHero, setFormationLeader, autoFormActive, selectFormationPreset, copyFormationPresetTo,
   unlockedFormationGrids, formationPlacement, setFormationLocked,
 } from '../src/core/heroFormationRules.mjs';
 
@@ -46,7 +46,7 @@ export function createHeroFormationStore({ globals, storage, reportError = conso
     setLeader: heroId => apply(setFormationLeader(current(), heroId)),
     autoForm: () => apply(autoFormActive(current(), roster)),
     selectPreset: index => apply(selectFormationPreset(current(), index)),
-    copyPreset: () => apply(copyFormationPreset(current())),
+    copyPreset: targets => apply(copyFormationPresetTo(current(), targets)),
     // The Formation modal edits a draft with the pure rules and commits it here on Save.
     save: draft => apply(sanitizeHeroFormation(draft, roster, grids())),
     setLocked: locked => apply(setFormationLocked(current(), locked)),

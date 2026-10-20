@@ -110,12 +110,12 @@ export function selectFormationPreset(state, index) {
   return active >= 0 && active < FORMATION_PRESETS ? { ...state, active } : state;
 }
 
-// Copy duplicates the active preset into the next preset slot and switches to it.
-export function copyFormationPreset(state) {
-  const target = (state.active + 1) % FORMATION_PRESETS, source = activeFormationPreset(state);
-  const presets = state.presets.map((preset, index) => index === target ? { leader: source.leader, cells: { ...source.cells } } : preset);
-  if (state.presets[target].locked) return state;
-  return { ...state, presets, active: target };
+// Copy sends the active preset to each chosen destination preset (StoneAge Copy Party); locked
+// destinations and the source itself are skipped. The active preset stays selected.
+export function copyFormationPresetTo(state, targets = []) {
+  const source = activeFormationPreset(state), wanted = new Set(targets.map(Number));
+  const presets = state.presets.map((preset, index) => wanted.has(index) && index !== state.active && !preset.locked ? { leader: source.leader, cells: { ...source.cells } } : preset);
+  return presets.every((preset, index) => preset === state.presets[index]) ? state : { ...state, presets };
 }
 
 // Leader first, then front to back (right to left), top to bottom. Combat hands the lead down this order on KO.

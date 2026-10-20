@@ -6,14 +6,14 @@ import {createHeroProgressStore} from '../src/core/heroProgression.mjs';
 import {heroTicketLevelCost} from '../src/core/combatProgressionRules.mjs';
 import {resolveCombatMovementTuning} from '../src/core/combatMovementTuning.mjs';
 import {STAR_MAX,STAR_TIER_SIZE,STAR_STAT_BONUS,STAR_TIER_PARTY_BONUS,RESONANCE_SLOT_STARS,RESONANCE_ECHOES,starUpCost,heroStars,heroGrowthBreakdown,resonanceSlots,resonanceSlotUnlocked,resonanceEcho} from '../src/core/heroGrowthRules.mjs';
-import {FORMATION_ROWS,FORMATION_GRIDS,FORMATION_GRID_SIZE,FORMATION_PRESETS,FORMATION_SECOND_GRID_LEVEL,formationCell,formationGridOpen,sanitizeHeroFormation,activeFormationPreset,formationOccupant,placeFormationHero,setFormationLeader,autoFormActive,selectFormationPreset,copyFormationPreset,setFormationLocked} from '../src/core/heroFormationRules.mjs';
+import {FORMATION_ROWS,FORMATION_GRIDS,FORMATION_GRID_SIZE,FORMATION_PRESETS,FORMATION_SECOND_GRID_LEVEL,formationCell,formationGridOpen,sanitizeHeroFormation,activeFormationPreset,formationOccupant,placeFormationHero,setFormationLeader,autoFormActive,selectFormationPreset,copyFormationPresetTo,setFormationLocked} from '../src/core/heroFormationRules.mjs';
 import {MODAL_CLOSE_MARK,installModalCloseStyles,paintModalClose} from './modalClose.mjs';
 import {heroArtKey} from '../state/heroArtAssets.mjs';
 import {actorAttackReach} from '../../src/core/arenaCombatRules.mjs';
 
 let host,content,lastKey,currentTab='heroes',subPanel='',activeSkillIndex=-1,activeHeroIndex=-1,ticketNotice='',formationPick='',resonancePick=-1,sheetNotice='';
 // Formation modal: edits a draft (committed on Save/Lock), with undo history, roster sort and a return path from the hero screen.
-let formationEscape=null,formationFocus=false,formationDraft=null,formationHistory=[],formationConfirm=false,formationSortOpen=false,formationReturn=false,closeMeasure=null;
+let formationCopyOpen=false,formationCopyTargets=[],formationEscape=null,formationFocus=false,formationDraft=null,formationHistory=[],formationConfirm=false,formationSortOpen=false,formationReturn=false,closeMeasure=null;
 const formationSort={key:'level',descending:true,role:''};
 const SORT_KEYS=[['level','Level'],['cp','CP'],['HP','HP'],['ATK','ATK'],['DEF','DEF'],['MAG','MATK'],['role','Role']];
 const ROLE_ORDER=['Tank','Damage','Mage','Support'];
@@ -116,6 +116,9 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .formation-tools button[aria-pressed=true]{background:#fff3d8;color:#163052;border-color:#fff3d8}
    #hero-details .formation-tools button.copy{font-size:.72em;width:3.33em;height:3.33em}
    #hero-details .formation-tools button.lock[aria-pressed=true]{background:#e59a3a;border-color:#ffcf7a}
+   #hero-details .formation-field[data-picking=true] .formation-grid:not([data-locked]) .formation-cell:not([aria-pressed=true]){border-color:#50cfff;box-shadow:0 0 0 2px #50cfff88,inset 0 -.25em 0 #cdb98f}
+   #hero-details .formation-lock{cursor:pointer;min-height:0}
+   #hero-details .formation-sort button:disabled{opacity:.5}
    #hero-details .formation-facing{position:absolute;right:.6em;top:.4em;font-size:.78em;font-weight:800;color:#cfe9ff}
    #hero-details .formation-grid{display:grid;grid-template-columns:repeat(${FORMATION_GRID_SIZE},4.7em);grid-auto-rows:4.7em;gap:1em .3em;padding:.9em .3em .3em;border-radius:.6em;background:#0e1a2c66}
    #hero-details .formation-field[data-locked=true] .formation-grid:not([data-locked]){box-shadow:0 0 0 2px #e59a3a}
@@ -190,7 +193,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
  const tickets=Object.fromEntries(roster.map(member=>[member.heroInstanceKey,combatProgression?.ticketCount(member.heroInstanceKey)||0]));
  const leaderName=resolveCombatMovementTuning(globals).leaderName;
  const growth=combatProgression?.heroGrowth?.()||null,formationStore=combatProgression?.formation||null,formationState=formationStore?.state()||null;
- const key=JSON.stringify([index,currentTab,subPanel,activeSkillIndex,leaderName,roster.map(member=>[member.currentLevel,member.currentEXP,member.maxHP,member.stats]),hero.hp,globals.Equipment,tickets,ticketNotice,growth,formationState,formationPick,resonancePick,sheetNotice,formationDraft,formationHistory.length,formationConfirm,formationSortOpen,formationSort,formationReturn]);
+ const key=JSON.stringify([index,currentTab,subPanel,activeSkillIndex,leaderName,roster.map(member=>[member.currentLevel,member.currentEXP,member.maxHP,member.stats]),hero.hp,globals.Equipment,tickets,ticketNotice,growth,formationState,formationPick,resonancePick,sheetNotice,formationDraft,formationHistory.length,formationConfirm,formationSortOpen,formationSort,formationReturn,formationCopyOpen,formationCopyTargets]);
  if(key!==lastKey){
   lastKey=key;
   const focused=content.contains(document.activeElement)?document.activeElement:null;
@@ -241,11 +244,11 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    // The back grid unlocks with hero level; carry that into an open draft without marking it unsaved.
    if(formationDraft&&formationState&&formationDraft.unlockedGrids!==formationState.unlockedGrids)formationDraft=sanitizeHeroFormation(formationDraft,formationStore.roster,formationState.unlockedGrids);
    const saved=formationState,draft=formationDraft||saved,dirty=!!saved&&JSON.stringify(draft)!==JSON.stringify(saved);
-   const finish=()=>{subPanel='';formationPick='';sheetNotice='';formationDraft=null;formationHistory=[];formationConfirm=false;formationSortOpen=false;};
+   const finish=()=>{subPanel='';formationPick='';sheetNotice='';formationDraft=null;formationHistory=[];formationConfirm=false;formationSortOpen=false;formationCopyOpen=false;};
    const requestClose=()=>{if(formationDraft&&JSON.stringify(formationDraft)!==JSON.stringify(formationStore.state()))formationConfirm=true;else finish();};
    const edit=next=>{if(next===formationDraft||JSON.stringify(next)===JSON.stringify(formationDraft))return false;formationHistory.push(formationDraft);formationHistory=formationHistory.slice(-30);formationDraft=next;return true;};
    const commit=next=>{const result=formationStore.save(next);if(result.ok){formationDraft=structuredClone(formationStore.state());formationHistory=[];sheetNotice='Formation saved.';}else sheetNotice=notice(result.reason);return result.ok;};
-   formationEscape=()=>{if(formationConfirm)formationConfirm=false;else if(formationSortOpen)formationSortOpen=false;else requestClose();lastKey='';};
+   formationEscape=()=>{if(formationConfirm)formationConfirm=false;else if(formationCopyOpen)formationCopyOpen=false;else if(formationSortOpen)formationSortOpen=false;else requestClose();lastKey='';};
    const head=el('header',null,modal);el('h2','Formation',head);
    const close=button(head,null,requestClose);close.className='game-modal-close formation-close';close.innerHTML=MODAL_CLOSE_MARK;close.setAttribute('aria-label','Close Formation');
    const totalCP=Math.round(roster.reduce((sum,member)=>sum+computeCombatPower(member),0));
@@ -255,11 +258,12 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    const preset=activeFormationPreset(draft),locked=!!preset.locked,nameOf=id=>heroDefinition(globals.HeroProgress.heroes[id]||{baseHeroName:id}).name;
    const tools=el('div',null,top);tools.className='formation-tools';tools.setAttribute('aria-label','Formation presets');
    for(let slot=0;slot<FORMATION_PRESETS;slot++){const tab=button(tools,String(slot+1),()=>{edit(selectFormationPreset(formationDraft,slot));formationPick='';});tab.setAttribute('aria-pressed',String(draft.active===slot));tab.setAttribute('aria-label',`Preset ${slot+1}`);}
-   const copy=button(tools,'Copy',()=>{edit(copyFormationPreset(formationDraft));formationPick='';});copy.className='copy';copy.setAttribute('aria-label',`Copy preset ${draft.active+1} to preset ${(draft.active+1)%FORMATION_PRESETS+1}`);
+   const copy=button(tools,'Copy',()=>{formationCopyOpen=true;formationCopyTargets=[];formationPick='';formationSortOpen=false;});copy.className='copy';copy.setAttribute('aria-label',`Copy preset ${draft.active+1}`);
+   const undo=button(tools,'↩',()=>{formationDraft=formationHistory.pop()||formationDraft;formationPick='';sheetNotice='';});undo.className='undo';undo.setAttribute('aria-label','Undo');undo.disabled=!formationHistory.length;
    const lock=button(tools,locked?'🔒':'🔓',()=>{formationPick='';if(commit(setFormationLocked(formationDraft,!locked)))sheetNotice=locked?'Formation unlocked.':'Formation locked.';});
    lock.className='lock';lock.setAttribute('aria-pressed',String(locked));lock.setAttribute('aria-label',locked?'Unlock formation':'Lock formation');
    // Two 2x2 grids in one row; the board faces right, so the rightmost column is the frontline. The right grid opens first.
-   const field=el('div',null,modal);field.className='formation-field';field.dataset.locked=String(locked);field.setAttribute('aria-label','Formation board, front on the right');
+   const field=el('div',null,modal);field.className='formation-field';field.dataset.locked=String(locked);field.dataset.picking=String(!!formationPick);field.setAttribute('aria-label','Formation board, front on the right');
    el('span','Front ▶',field).className='formation-facing';
    const pick=id=>{if(locked){sheetNotice='Unlock the formation to make changes.';return;}formationPick=formationPick===id?'':id;sheetNotice='';};
    for(let grid=0;grid<FORMATION_GRIDS;grid++){
@@ -267,7 +271,8 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
     if(!formationGridOpen(grid,draft.unlockedGrids)){
      cells.dataset.locked='true';cells.setAttribute('aria-label',`Back formation grid locked until a hero reaches level ${FORMATION_SECOND_GRID_LEVEL}`);
      for(let slot=0;slot<FORMATION_GRID_SIZE*FORMATION_ROWS;slot++)el('div',null,cells).className='formation-cell';
-     el('span',`🔒 Lv. ${FORMATION_SECOND_GRID_LEVEL}`,cells).className='formation-lock';
+     const lockBadge=button(cells,`🔒 Lv. ${FORMATION_SECOND_GRID_LEVEL}`,()=>{formationPick='';sheetNotice=`This grid unlocks when a hero reaches Lv. ${FORMATION_SECOND_GRID_LEVEL}.`;});
+     lockBadge.className='formation-lock';lockBadge.setAttribute('aria-label',`Locked until a hero reaches level ${FORMATION_SECOND_GRID_LEVEL}`);
      continue;
     }
     for(let row=0;row<FORMATION_ROWS;row++)for(let offset=0;offset<FORMATION_GRID_SIZE;offset++){
@@ -290,7 +295,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    el('span',`${placed}/${roster.length}`,bar).className='formation-count';
    const sortButton=button(bar,'Sort',()=>{formationSortOpen=!formationSortOpen;});sortButton.setAttribute('aria-label','Sort and filter heroes');sortButton.setAttribute('aria-expanded',String(formationSortOpen));
    const direction=button(bar,formationSort.descending?'▼':'▲',()=>{formationSort.descending=!formationSort.descending;});direction.setAttribute('aria-label',formationSort.descending?'Sort descending':'Sort ascending');
-   const undo=button(bar,'↺',()=>{formationDraft=formationHistory.pop()||formationDraft;formationPick='';sheetNotice='';});undo.setAttribute('aria-label','Undo');undo.disabled=!formationHistory.length;
+   const resetSort=button(bar,'↺',()=>{Object.assign(formationSort,{key:'level',descending:true,role:''});});resetSort.setAttribute('aria-label','Reset sort and filter');
    const stat=(member,key)=>key==='level'?member.currentLevel:key==='cp'?computeCombatPower(member):key==='HP'?member.maxHP:key==='role'?-ROLE_ORDER.indexOf(heroDefinition(member).role):Number(member.stats?.[key])||0;
    const shown=roster.filter(member=>!formationSort.role||heroDefinition(member).role===formationSort.role)
     .map((member,order)=>({member,order})).sort((a,b)=>(stat(b.member,formationSort.key)-stat(a.member,formationSort.key))*(formationSort.descending?1:-1)||a.order-b.order).map(row=>row.member);
@@ -321,6 +326,19 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
     el('h3','Filter',sheet);const roles=el('div',null,sheet);roles.className='sort-options';
     for(const role of ['',...ROLE_ORDER]){const option=button(roles,role||'All',()=>{formationSort.role=role;});option.setAttribute('aria-pressed',String(formationSort.role===role));}
     button(sheet,'Done',()=>{formationSortOpen=false;}).className='sort-done';
+   }
+   if(formationCopyOpen){
+    const sheet=el('div',null,modal);sheet.className='formation-sort formation-copy';sheet.setAttribute('role','dialog');sheet.setAttribute('aria-label','Copy preset');
+    el('h3',`Copy preset ${draft.active+1} to`,sheet);const targets=el('div',null,sheet);targets.className='sort-options';
+    const others=[...Array(FORMATION_PRESETS).keys()].filter(slot=>slot!==draft.active);
+    for(const slot of others){
+     const target=draft.presets[slot],option=button(targets,`${target.locked?'🔒 ':''}Preset ${slot+1}`,()=>{formationCopyTargets=formationCopyTargets.includes(slot)?formationCopyTargets.filter(value=>value!==slot):[...formationCopyTargets,slot];});
+     option.setAttribute('aria-pressed',String(formationCopyTargets.includes(slot)));option.disabled=!!target.locked;
+    }
+    const open=others.filter(slot=>!draft.presets[slot].locked);
+    button(targets,'Select All',()=>{formationCopyTargets=formationCopyTargets.length===open.length?[]:open;}).setAttribute('aria-pressed',String(open.length>0&&formationCopyTargets.length===open.length));
+    const go=button(sheet,'Copy',()=>{const count=formationCopyTargets.length;if(edit(copyFormationPresetTo(formationDraft,formationCopyTargets)))sheetNotice=`Copied to ${count} preset${count===1?'':'s'}.`;formationCopyOpen=false;});
+    go.className='sort-done';go.disabled=!formationCopyTargets.length;
    }
    if(formationConfirm){
     const confirm=el('div',null,modal);confirm.className='formation-confirm';confirm.setAttribute('role','alertdialog');confirm.setAttribute('aria-label','Unsaved formation changes');

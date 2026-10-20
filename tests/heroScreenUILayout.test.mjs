@@ -316,8 +316,10 @@ test('hero party screen uses saved canonical data and stays contained across por
    await modal.locator('.game-modal-close').click();await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-modal'));await openFormationModal();
    await board.locator('.formation-grid[data-locked="true"]').waitFor();
    assert.equal(await board.locator('.formation-grid[data-locked="true"]').getAttribute('data-grid'),'0','the left back grid is the locked one');
-   assert.equal(await board.locator('.formation-grid[data-locked="true"] button').count(),0,'locked tiles are not interactive');
+   assert.equal(await board.locator('.formation-grid[data-locked="true"] .formation-cell').evaluateAll(nodes=>nodes.every(node=>node.tagName==='DIV')),true,'locked tiles are not slots');
    assert.equal(await board.locator('.formation-lock').textContent(),'🔒 Lv. 30');
+   await board.locator('.formation-lock').click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-note')?.textContent==='This grid unlocks when a hero reaches Lv. 30.');
    assert.deepEqual(await gridRects(),openRects,'locking changes no layout');
    await modalFits('Locked formation');
    screenshots.formationLocked=`${profile.name}-formation-locked.png`;await page.screenshot({path:path.join(artifactDir,screenshots.formationLocked),fullPage:true});
@@ -336,14 +338,16 @@ test('hero party screen uses saved canonical data and stays contained across por
    await modal.getByRole('button',{name:'Sort and filter heroes'}).click();const sortSheet=modal.locator('.formation-sort');await sortSheet.waitFor();
    await sortSheet.getByRole('button',{name:'Tank',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('#hero-details .formation-card').length===1);
    assert.deepEqual(await rosterOrder(),['Falie'],'role filter narrows the roster');
-   await sortSheet.getByRole('button',{name:'All',exact:true}).click();await sortSheet.getByRole('button',{name:'Done'}).click();
-   await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-sort')&&document.querySelectorAll('#hero-details .formation-card').length===4);
-   await modal.getByRole('button',{name:'Sort ascending'}).click();await page.waitForFunction(()=>document.querySelector('#hero-details .formation-card')?.dataset.hero==='Kojonn');
+   await sortSheet.getByRole('button',{name:'Done'}).click();await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-sort'));
+   await modal.getByRole('button',{name:'Reset sort and filter'}).click();
+   await page.waitForFunction(()=>document.querySelectorAll('#hero-details .formation-card').length===4&&document.querySelector('#hero-details .formation-card')?.dataset.hero==='Kojonn');
+   assert.equal(await modal.getByRole('button',{name:'Sort descending'}).count(),1,'reset restores Level, highest first, no filter');
    // Move from the roster, undo, redo on the board, then Save.
    const savedBefore=await page.evaluate(()=>localStorage.getItem('wishfire.heroFormation.v3'));
    assert.equal(await modal.getByRole('button',{name:'Formation saved'}).isDisabled(),true,'Save waits for changes');
    await modal.locator('.formation-card[data-hero="Runa"] .formation-card-pick').click();
    await page.waitForFunction(()=>document.querySelector('#hero-details .formation-card[data-hero="Runa"]')?.dataset.selected==='true');
+   assert.equal(await board.evaluate(node=>[...node.querySelectorAll('.formation-grid:not([data-locked]) .formation-cell')].filter(cell=>getComputedStyle(cell).borderTopColor==='rgb(80, 207, 255)').length),7,'a picked hero highlights every other open slot');
    await board.locator('.formation-cell[data-cell="3"]').click();
    await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-cell="3"]')?.dataset.hero==='Runa');
    assert.equal(await cellHero(2),'Falie','occupied target swaps');
@@ -376,7 +380,13 @@ test('hero party screen uses saved canonical data and stays contained across por
    await modal.getByRole('button',{name:'Preset 2',exact:true}).click();
    await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-leader="true"]')?.dataset.hero==='Falie');
    await modal.getByRole('button',{name:'Preset 1',exact:true}).click();
-   await modal.getByRole('button',{name:'Copy preset 1 to preset 2'}).click();
+   await modal.getByRole('button',{name:'Copy preset 1'}).click();const copySheet=modal.locator('.formation-copy');await copySheet.waitFor();
+   assert.equal(await copySheet.getByRole('button',{name:'Copy',exact:true}).isDisabled(),true,'Copy waits for a destination');
+   await copySheet.getByRole('button',{name:'Select All'}).click();
+   await page.waitForFunction(()=>[...document.querySelectorAll('#hero-details .formation-copy .sort-options button')].filter(node=>node.getAttribute('aria-pressed')==='true').length===3);
+   await copySheet.getByRole('button',{name:'Copy',exact:true}).click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-note')?.textContent==='Copied to 2 presets.');
+   await modal.getByRole('button',{name:'Preset 2',exact:true}).click();
    await page.waitForFunction(()=>document.querySelector('#hero-details .formation-tools button[aria-label="Preset 2"]')?.getAttribute('aria-pressed')==='true'&&document.querySelector('#hero-details .formation-cell[data-leader="true"]')?.dataset.hero==='Runa');
    await modal.getByRole('button',{name:'Auto-Form'}).click();
    await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-cell="3"]')?.dataset.hero==='Falie');
