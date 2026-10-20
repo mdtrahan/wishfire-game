@@ -11,6 +11,7 @@
 
 ## Local Contracts
 - Support skills select and revalidate allies within 92 world units of the caster's feet, including revival and persistent Fruit/Grow/Ward recipients. Contact formation and noncombat waypoints use explicit destinations independent of attack stopping distance; frontline contact remains 46 units before formation offsets.
+- Ordinary roaming is leader-anchored (bd-ORKA-6i3): `combatMovementTuning.mjs` owns defaults, ranges, legacy values and leader fallback; `combatCamera.mjs` owns the stage-ticked leader camera (dead zone, smoothing, rate-limited non-leader cast pull, large-jump cut). Approach vectors stay centroid-based because a leader-relative vector orbits targets at contact. Bosses keep the centroid layout and full hero spacing. Tests asserting the old shared-target formation pin `LEGACY_COMBAT_MOVEMENT_TUNING`.
 - `ContinuousCombatStage.ordinaryWaveClears` and `.defeatRecoveries` are ephemeral balance-harness measurements; checkpoint serialization must omit them.
 - Reloading an active boss checkpoint normalizes its saved time limit to the fixed 30-second rule before telemetry reads it.
 - `balanceTelemetry.mjs` keeps opt-in combat event IDs ordered and bounded; the harness detects gaps before trusting totals. Incoming-hit geometry captures the enemy name/tier, chosen target and living Hero range before HP changes, only while DevBalanceCapture is on. The mirrored damage emitters tag damage with the event-time ordinary wave.

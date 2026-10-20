@@ -18,6 +18,7 @@ import { drawCombatArenaBackground } from './combatArenaBackground.mjs';
 import { drawActorPuppetFrame } from './actorPuppetPresentation.mjs';
 import { combatEnemiesForPresentation } from './actorPuppetDefeats.mjs';
 import { renderRealtimeSkillGroundVfx } from './realtimeSkillGroundPresentation.mjs';
+import { resolveCombatCameraCenterX } from '../src/core/combatCamera.mjs';
 import { createEnemyActivationFade, paintWithActivationAlpha } from './enemyActivationFadePresentation.mjs';
 import { isActorTargetInRange } from '../../src/core/heroAttackTargetingRules.mjs';
 import {
@@ -127,7 +128,7 @@ effectiveBody = effectiveBody
   )
   .replace(
     'const combatFormationProjection = createCombatFormationProjection({ orientation: activeCombatOrientation, layoutW, ...combatFormationAnchors });\n    const projectCombatActorWorldToCanvas = (x, y, actorKind = \'\') => { const point = combatFormationProjection.project(x, y, actorKind); return worldToCanvas(point.x, point.y); };',
-    'const combatWorldVfxScale = layoutScale * COMBAT_BATTLEFIELD_ZOOM;\n    const combatWorldBounds = deriveCombatWorldBounds(layoutW, COMBAT_BATTLEFIELD_ZOOM);\n    const livingHeroesForCamera = state.entities.filter(actor => actor?.kind === \'hero\' && Number(actor.hp || 0) > 0);\n    const squadCenterX = livingHeroesForCamera.length ? livingHeroesForCamera.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? layoutW / 2), 0) / livingHeroesForCamera.length : layoutW / 2;\n    const cameraCenterX = bossPresentationActive ? Number(state.globals.ContinuousCombatStage?.bossCameraCenterX ?? squadCenterX) : squadCenterX;\n    const combatCameraProjection = createCombatCameraProjection({ viewportWidth: layoutW, worldWidth: combatWorldBounds.worldWidth, zoom: COMBAT_BATTLEFIELD_ZOOM, centerX: cameraCenterX, orientation: activeCombatOrientation });\n    const projectCombatActorWorldToCanvas = (x, y, actorKind = \'\') => { const point = combatCameraProjection.project(x, y, actorKind); return worldToCanvas(point.x, point.y); };',
+    'const combatWorldVfxScale = layoutScale * COMBAT_BATTLEFIELD_ZOOM;\n    const combatWorldBounds = deriveCombatWorldBounds(layoutW, COMBAT_BATTLEFIELD_ZOOM);\n    const livingHeroesForCamera = state.entities.filter(actor => actor?.kind === \'hero\' && Number(actor.hp || 0) > 0);\n    const squadCenterX = livingHeroesForCamera.length ? livingHeroesForCamera.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? layoutW / 2), 0) / livingHeroesForCamera.length : layoutW / 2;\n    const cameraCenterX = bossPresentationActive ? Number(state.globals.ContinuousCombatStage?.bossCameraCenterX ?? squadCenterX) : resolveCombatCameraCenterX(state.globals, squadCenterX);\n    const combatCameraProjection = createCombatCameraProjection({ viewportWidth: layoutW, worldWidth: combatWorldBounds.worldWidth, zoom: COMBAT_BATTLEFIELD_ZOOM, centerX: cameraCenterX, orientation: activeCombatOrientation });\n    const projectCombatActorWorldToCanvas = (x, y, actorKind = \'\') => { const point = combatCameraProjection.project(x, y, actorKind); return worldToCanvas(point.x, point.y); };',
   )
   .replace('const grid = deriveCombatReferenceGrid(layoutW, layoutH);', 'const grid = deriveCombatReferenceGrid(combatWorldBounds.worldWidth, layoutH);')
   .replace('grid.vertical.filter(line => line.major && line.value < layoutW).forEach(line => {', 'grid.vertical.filter(line => line.major && line.value < combatWorldBounds.worldWidth).forEach(line => {')
@@ -243,6 +244,7 @@ export function renderRuntime(deps) {
   deps.drawCombatArenaBackground = drawCombatArenaBackground;
   deps.COMBAT_BATTLEFIELD_ZOOM = COMBAT_BATTLEFIELD_ZOOM;
   deps.createCombatCameraProjection = createCombatCameraProjection;
+  deps.resolveCombatCameraCenterX = resolveCombatCameraCenterX;
   deps.deriveCombatWorldBounds = deriveCombatWorldBounds;
   deps.updateHpTextRollState = updateHpTextRollState;
   deps.createCombatFormationProjection = createCombatFormationProjection;

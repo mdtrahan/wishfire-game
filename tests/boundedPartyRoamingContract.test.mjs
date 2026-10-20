@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createCombatCameraProjection, deriveCombatOrdinaryPatrolBounds, deriveCombatWorldVerticalBounds } from '../src/core/combatOrientation.mjs';
 import { actorFootprintRadius, isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
+import { LEGACY_COMBAT_MOVEMENT_TUNING } from '../web-runner/src/core/combatMovementTuning.mjs';
 import { advanceContinuousCombatArena, beginContinuousCombatPatrolReturn, placeContinuousCombatHeroesInRecoveryHuddle } from '../web-runner/src/core/arenaCombat.mjs';
 import { activateContinuousCombatSpawnedEnemy, buildContinuousCombatSpawnPlan, createContinuousCombatStageState, maybeAdvanceContinuousCombatStage, resetContinuousCombatAfterDefeat } from '../web-runner/src/core/continuousCombatStage.mjs';
 
@@ -20,7 +21,7 @@ test('stationary restored feet, separation and recovery enforce the ordinary pat
   for (const orientation of ['left-wise', 'right-wise']) for (const [x, y] of [[-100, -500], [2300, 1000], [-100, 1000], [2300, -500]]) {
     const heroes = party();
     heroes.forEach(h => { h.footX = x; h.footY = y; });
-    const globals = { time: 1, CombatOrientation: orientation, ContinuousCombatStage: createContinuousCombatStageState(42) };
+    const globals = { time: 1, DevMovementTuning: LEGACY_COMBAT_MOVEMENT_TUNING, CombatOrientation: orientation, ContinuousCombatStage: createContinuousCombatStageState(42) };
     for (let i = 0; i < 16; i++) advanceContinuousCombatArena({ globals, entities: heroes, seconds: 0 });
     assertBounded(heroes);
     for (let i = 0; i < heroes.length; i++) for (let j = i + 1; j < heroes.length; j++) {
