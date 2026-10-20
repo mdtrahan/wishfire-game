@@ -1,0 +1,65 @@
+# Hero Party Screen Redesign — plan for owner review
+
+Bead: ORKA-k63. Lane: `bead/ORKA-k63-hero-party-screen` at `.worktrees/wt-ORKA-k63-hero-party-screen`.
+Rollback: tag `wishfire-checkpoint-20261020-before-ORKA-k63-hero-redesign` (= main `b5895de6`). Nothing lands on `main` without separate approval and Integration Ready evidence.
+
+Status: drawn mockups r1–r3 in `output/ORKA-k63/mockup/drawn/`. Owner approved building phase 1 on 2026-10-20 (bead ORKA-9ee) with the r4 notes below; phases 2–4 still need their own approval.
+
+## What Archero 2 does better
+
+Reference: the owner's Archero 2 Characters captures (roster, card actions, Resonance, Choose-a-skill, Star-up Stats).
+
+| Archero pattern | Why it works | Wishfire today (ORKA-2c2 screen) |
+|---|---|---|
+| One screen: showcase on top, roster below, always visible together | You see who you're editing *and* the whole party; no carousel | Single hero with ‹ › arrows; roster hidden |
+| Showcase sits on a scenic stage with a name plate and star row | Hero feels like a collectible; stars show long-term growth at a glance | Hero on flat navy; name/level/CP text top-left |
+| Right-side card shows **one** signature skill with 3 tiers gated by stars | Clear "what makes this hero special" and "what's next" | Skills hidden in a tab; 8–9 skills paged four at a time |
+| Actions appear **on the selected card** (Resonance / Star Up / Use) | Zero travel; context is obvious | Actions spread over tabs and slot buttons |
+| Sub-panels replace the roster area with pill title + X; showcase stays | Deep features without leaving the screen | Tabs swap a cream panel |
+| Card progress pill (29/150) + red dots | Always tells you what's upgradeable | No roster-level progress cues |
+| **Resonance:** 2 slots that borrow other heroes' skills as passives | Player expression; every owned hero has value even when benched | No equivalent |
+| **Star Up:** duplicate currency buys star milestones with hero *and* team-wide [All] rewards, +skill tiers, +Resonance slot | Second progression axis; collection pays the whole party | Level/EXP only; gear via lamp |
+
+Streamlined because each piece of information has exactly one home; robust because two extra progression layers (stars, resonance) hang off the same card.
+
+## Wishfire adaptation
+
+Wishfire is a 4-hero party game, not a single-hero game, so:
+- Archero **Use** → **Set Leader** (camera and lead, per the leader-anchored movement). Later, when the roster exceeds the deployed party, add **Deploy**.
+- The roster shows 4 heroes + locked future slots; the **Formation** button (mini 4×3 preview + camera badge) sits at the showcase's left edge where Archero puts its castle icon, opening the agreed 4×3 board as a bottom sheet.
+- Signature skill card = each hero's role-defining **awakening** (Cover, Overrun, Cataclysm, Sanctuary), not the full active list. The 8–9-skill kit with level unlocks (1/5/10/15/25, 35/50, 60, 75) stays in a Skills detail reached from the card.
+- Tabs: **Heroes | Gear | Orb**. Gear keeps the existing Hat/Body/Boots lamp equipment detail; Orb keeps EXP, level progress and expanded stats until Orb equipment exists.
+
+## Phases (each its own bead, lane and rollback tag)
+
+1. **Layout restructure — existing data only.** Showcase on `training-scene.png`, name plate, signature card, tab strip, roster grid with on-card actions (Level Up / Set Leader / Details), sub-panel pattern, Formation button (opens a read-only preview until phase 2). Removes the carousel. No save or gameplay change. Shippable alone. Stars render hidden or as level tiers until phase 3.
+2. **Formation sheet.** The agreed 4×3 board, drag/swap, leader badge, Auto-Form, 3 presets + Copy, Total CP. No formation board exists in runtime yet, so this needs a deterministic owner in `src/`/Rust and a save field — separate bead.
+3. **Star Up.** New progression layer: material, star count, milestone rewards, save migration. **Gameplay change → requires player-living-guide update and owner approval first.**
+4. **Resonance.** Passive slots fed by other heroes' skills; slot 2 from a star milestone. Depends on phase 3. **Gameplay change → same approval gate.**
+
+Phases 1–2 are presentation and party setup; 3–4 change balance and must not start on presentation approval alone.
+
+## Owner r4 notes (2026-10-20, applied to phase 1)
+
+- Showcase backdrop is simple and quiet so the hero is the focus.
+- Signature skill panel is a high-contrast card (light panel, strong border) that stands apart from the backdrop.
+- Tabs are flat labels without ornament, hero art or flavour icons.
+- Roster cards sit on a soft neutral light gradient, never coloured backers that read as rarity; cards show portrait, level and the hero-ticket progress bar only (no name or EXP strip).
+- Gear tab shows the hero's equipped items and the full stat sheet; selectable inventory stays in the Bag screen. Orb tab shows only the coming-soon placeholder.
+- Resonance stays as a placeholder entry for a later progression layer.
+
+## Owner decisions needed
+
+1. **Signature skill:** is the awakening the right "headline" skill for the card, or should it show the next locked active?
+2. **Star Up material:** hero-specific Hero Tickets (art exists in `progression/hero-tickets.png`)? Source: quests, boss clears, Vault, daily? Wishfire has no duplicate/gacha source today.
+3. **Star track:** how many stars (Archero: 5 gold + purple tier) and what milestones grant — party-wide stat bonuses, signature tiers, Resonance slot +1? Should stars gate any active skill, or stay additive so the level schedule in the player guide is untouched? (Recommend additive.)
+4. **Resonance pool:** passive versions of other heroes' skills (Archero model), or a separate passive-talent pool? Is it worth having before the roster grows past four?
+5. **Formation button side:** left edge (Archero position, recommended) vs right.
+6. **Phase 1 action set:** Level Up / Set Leader / Details now, swapping to Resonance / Star Up / Set Leader when phases 3–4 land?
+
+## Constraints carried forward
+
+- Real hero art only (Fara, Hondo, Runa, Kaja PNGs); no Archero/StoneAge art or colours.
+- Wishfire palette and existing bottom nav; 360×640 and 216×384 compact containment; UI-lock gate (`test:lamp-ui`) on presentation owners.
+- Preserve saves, earned levels, EXP and equipment; `web-runner/app.js` stays orchestration-only.
+- Previous redesign (ORKA-2c2) contracts for Gear detail and 33-skill coverage must still pass.
