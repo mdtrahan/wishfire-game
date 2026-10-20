@@ -23,7 +23,7 @@ test('hero party screen preserves the canonical roster and exposes the approved 
   assert.match(source, /\{HP:hero\.maxHP,\.\.\.hero\.stats\}/);
   assert.match(source, /hero-ticket-art/);
   assert.match(source, /heroTicketLevelCost\(member\.currentLevel\)/);
-  assert.match(source, /combatProgression\?\.spendLevelUp\(member\.heroInstanceKey\)/);
+  assert.match(source, /combatProgression\?\.spendLevelUp\(hero\.heroInstanceKey\)/);
   assert.match(source, /Maximum level/);
   assert.doesNotMatch(source, /training-scene/);
 });

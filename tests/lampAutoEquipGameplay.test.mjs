@@ -45,7 +45,7 @@ async function heroScreens(page,save,heroes,prefix){
  const rows=[];
  for(const id of owners){
   const identity=page.locator('#hero-details .hero-name');const label=await identity.locator('h1').innerText();
-  const value=Number((await identity.innerText()).match(/CP ([\d.]+)/)[1]);assert.equal(value,cp(save,heroes.heroes[id]),id+' Hero screen CP');
+  const value=Number((await page.locator('#hero-details .hero-cp').innerText()).match(/CP ([\d.]+)/)[1]);assert.equal(value,cp(save,heroes.heroes[id]),id+' Hero screen CP');
   const slots=await page.locator('#hero-details .gear-slot[data-slot]').evaluateAll(ns=>ns.map(n=>({slot:n.dataset.slot,label:n.getAttribute('aria-label'),empty:!!n.querySelector('.gear-empty')})));
   for(const slot of slots){const item=save.items.find(i=>i.instanceId===save.loadouts[id]?.[slot.slot]);assert.equal(slot.empty,!item,id+' '+slot.slot+' ownership');if(item)assert.ok(slot.label.includes(item.name));}
   rows.push({id,label,cp:value,slots});

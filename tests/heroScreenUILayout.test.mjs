@@ -126,6 +126,7 @@ async function mountPage(browser,profile,fixture,url){
  return{context,page,pageErrors};
 }
 const openTab=async(page,name)=>{await page.locator('#hero-details .tabs').getByRole('button',{name,exact:true}).click();await page.waitForFunction(tab=>document.querySelector('#hero-details')?.dataset.tab===tab,name.toLowerCase());};
+const plateText=hero=>heroDefinition(hero).name+'★★★★★';
 const heading=page=>page.locator('#hero-details .hero-name h1').textContent();
 
 test('combat copies never appear as unequipped duplicate heroes in the Hero screen',{timeout:90000},async()=>{
@@ -176,7 +177,7 @@ test('hero party screen uses saved canonical data and stays contained across por
    const measure=()=>page.evaluate(()=>{
     const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
     const host=document.querySelector('#hero-details'),q=s=>host.querySelector(s);
-    const clipped=[...host.querySelectorAll('button,h1,h2,.ticket-bar span,.card-level,.leader-badge,.exp-bar span,dt,dd')].filter(node=>node.offsetParent&&(node.scrollWidth>node.clientWidth+1)).map(node=>node.textContent);
+    const clipped=[...host.querySelectorAll('button:not(.card-select),.stars,h1,h2,.ticket-bar span,.card-level,.leader-badge,.exp-bar span,dt,dd')].filter(node=>node.offsetParent&&(node.scrollWidth>node.clientWidth+1)).map(node=>node.textContent);
     return{viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},stage:rect(document.querySelector('#game-screen')),host:rect(host),identity:rect(q('.identity')),portrait:rect(q('.hero-portrait')),panel:rect(q('.skill-panel')),name:rect(q('.hero-name')),tabs:rect(q('.tabs')),pane:rect(q('.pane')),bottomNav:rect(document.querySelector('#game-meta-nav')),clipped,
      panelColor:getComputedStyle(q('.skill-panel')).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth||document.body.scrollWidth>innerWidth};
    });
@@ -203,19 +204,25 @@ test('hero party screen uses saved canonical data and stays contained across por
    for(const [cardIndex,hero] of heroes.entries()){
     const card=cards.nth(cardIndex),definition=heroDefinition(hero),cost=heroTicketLevelCost(hero.currentLevel);
     assert.equal(await card.locator('.card-select img').count(),1,`${definition.name} card shows the hero portrait`);
-    assert.equal(await card.locator('.card-level').textContent(),'Lv.'+hero.currentLevel);
+    assert.equal(await card.locator('.card-level').count(),0,`${definition.name} card has no level counter`);
+    assert.equal(await card.locator('.card-select .stars span').count(),5,`${definition.name} card shows a five-slot star meter`);
+    assert.equal(await card.locator('.card-select .stars span[data-tier]').count(),0,'stars stay grey until Star Up exists');
+    const crop=await card.locator('.card-select').evaluate(node=>{const box=node.getBoundingClientRect(),img=node.querySelector('img').getBoundingClientRect();return img.height/box.height;});
+    assert.ok(crop>1.5,`${definition.name} card crops to the head and shoulders (${crop})`);
     assert.equal(await card.locator('.ticket-bar span').last().textContent(),`0/${cost}`,`${definition.name} card shows hero-ticket progress`);
     assert.equal(await card.locator('.card-select').evaluate(node=>node.innerText.includes(node.querySelector('img').alt)),false,`${definition.name} card omits the hero name`);
     assert.match(await card.locator('.card-select').evaluate(node=>getComputedStyle(node).backgroundImage),/radial-gradient\(.*rgb\(255, 255, 255\)/,'card uses a soft light gradient');
    }
    assert.equal(await cards.locator('.leader-badge').count(),1,'one leader badge');
    assert.equal(await cards.nth(0).locator('.leader-badge').textContent(),'Leader','default leader is Fara');
-   assert.deepEqual(await cards.nth(0).locator('.card-actions button').allTextContents(),['Level Up','Star Up','Resonance'],'selected card exposes its actions');
-   assert.equal(await cards.nth(0).locator('.hero-level-up').isDisabled(),true,'Level Up stays gated by the existing ticket spend');
-   assert.equal(await detail.locator('.card-actions').count(),1,'only the selected card carries actions');
+   const actions=detail.locator('.hero-actions');
+   assert.deepEqual(await actions.locator('button').allTextContents(),['Level Up','Star Up','Resonance'],'selected hero exposes its actions');
+   assert.equal(await actions.getAttribute('aria-label'),'Fara actions','actions follow the selected hero');
+   assert.equal(await actions.locator('.hero-level-up').isDisabled(),true,'Level Up stays gated by the existing ticket spend');
+   assert.equal(await cards.locator('button').count(),4,'cards keep faces clear of action buttons');
    screenshots.heroes=`${profile.name}-heroes.png`;await page.screenshot({path:path.join(artifactDir,screenshots.heroes),fullPage:true});
    for(const [action,panelId,title] of [['Star Up','star','Star Up'],['Resonance','resonance','Resonance']]){
-    await cards.nth(0).getByRole('button',{name:action,exact:true}).click();
+    await detail.locator('.hero-actions').getByRole('button',{name:action,exact:true}).click();
     await page.waitForFunction(id=>document.querySelector('#hero-details .sub-panel')?.dataset.panel===id,panelId);
     if(panelId==='resonance'){assert.equal(await detail.locator('.resonance-slots span').count(),2,'two Resonance placeholder slots');screenshots.resonance=`${profile.name}-resonance.png`;await page.screenshot({path:path.join(artifactDir,screenshots.resonance),fullPage:true});}
     assert.deepEqual((await measure()).clipped,[],`${profile.name}: ${title} sheet has no clipped labels`);
@@ -226,12 +233,13 @@ test('hero party screen uses saved canonical data and stays contained across por
    await detail.getByRole('button',{name:'Close Formation'}).click();
    // Card selection drives the showcase.
    for(const [cardIndex,hero] of heroes.entries()){
-    await cards.nth(cardIndex).locator('.card-select').click({position:{x:4,y:4}});
+    await cards.nth(cardIndex).locator('.card-select').click();
     await page.waitForFunction(expected=>document.querySelector('#hero-details h1')?.textContent===expected,heroDefinition(hero).name);
     assert.equal(await cards.nth(cardIndex).getAttribute('data-selected'),'true');
-    assert.match(await detail.locator('.hero-name').innerText(),new RegExp(`Lv\\. ${hero.currentLevel} · EXP ${hero.currentEXP} / ${hero.EXPToNextLevel}`),'EXP bar reads saved progression');
+    assert.equal(await detail.locator('.hero-name').innerText().then(text=>text.replace(/\s+/g,'')),plateText(hero),'showcase shows only the wide name plate and stars');
+    assert.equal(await detail.locator('.hero-name .stars span').count(),5,'showcase star meter replaces the EXP readout');
    }
-   await cards.nth(0).locator('.card-select').click({position:{x:4,y:4}});await page.waitForFunction(()=>document.querySelector('#hero-details h1')?.textContent==='Fara');
+   await cards.nth(0).locator('.card-select').click();await page.waitForFunction(()=>document.querySelector('#hero-details h1')?.textContent==='Fara');
    // Gear tab: equipped items and the full stat sheet, no inventory.
    await openTab(page,'Gear');
    for(const [heroIndex,hero] of heroes.entries()){
@@ -244,6 +252,9 @@ test('hero party screen uses saved canonical data and stays contained across por
     const stats=Object.entries({HP:hero.maxHP,...hero.stats}).map(([label,value])=>[label==='MAG'?'MATK':label,String(value)]);
     assert.deepEqual(await detail.locator('.stat-grid div').evaluateAll(cells=>cells.map(cell=>[cell.querySelector('dt').textContent,cell.querySelector('dd').textContent])),stats,`${definition.name} full stats come from saved progression and gear`);
     assert.equal(await detail.locator('.pane .lamp-results, .pane .lamp-candidate').count(),0,'no selectable inventory in the hero Gear tab');
+    const layout=await detail.locator('.pane').evaluate(pane=>{const p=pane.getBoundingClientRect(),b=pane.querySelector('.stat-block').getBoundingClientRect(),d=pane.querySelector('.gear-detail');return{gap:p.bottom-b.bottom,pad:parseFloat(getComputedStyle(pane).paddingBottom),backer:getComputedStyle(d).backgroundColor,radius:parseFloat(getComputedStyle(d).borderTopLeftRadius)};});
+    assert.ok(Math.abs(layout.gap-layout.pad)<1.5,`${profile.name}: hero stats sit at the bottom of the Gear pane (${JSON.stringify(layout)})`);
+    assert.equal(layout.backer,'rgb(27, 42, 66)','equip readout sits on a rounded cell backer');assert.ok(layout.radius>0);
     const gearMeasure=await measure();assert.deepEqual(gearMeasure.clipped,[],`${profile.name}: Gear has no clipped labels`);
     const paneBox=await detail.locator('.pane').evaluate(node=>({scroll:node.scrollHeight,client:node.clientHeight}));
     assert.ok(paneBox.scroll<=paneBox.client+1,`${profile.name}: Gear content fits without scrolling (${paneBox.scroll}/${paneBox.client})`);
@@ -283,6 +294,7 @@ test('hero party screen uses saved canonical data and stays contained across por
    assert.equal(await page.evaluate(()=>JSON.stringify([localStorage.getItem('orka.hero_progress.v2'),localStorage.getItem('wishfire.equipment-economy.v5')])),JSON.stringify([saved.progress,saved.economy]),'hero and equipment saves stay byte-identical while browsing');
    assert.deepEqual(await page.evaluate(()=>window.heroQa.globals.HeroProgress),progress,'progression data stays unchanged in memory');
    assert.deepEqual(await page.evaluate(()=>window.heroQa.equipment),economy,'equipped items and loadouts stay unchanged in memory');
+   await openTab(page,'Gear');
    const cpRefresh=await page.evaluate(async()=>{
     const {refreshHeroStats}=await import('/web-runner/src/core/heroProgression.mjs');
     const {computeCombatPower}=await import('/web-runner/src/core/combatPower.mjs');
@@ -295,7 +307,7 @@ test('hero party screen uses saved canonical data and stays contained across por
      const before=computeCombatPower(hero);
      hero.equipmentStats.HP=(hero.equipmentStats.HP||0)+80;
      refreshHeroStats(hero);qa.render();
-     results.push({before,expected:'CP '+computeCombatPower(hero),visible:document.querySelector('.hero-name').textContent});
+     results.push({before,expected:'CP '+computeCombatPower(hero),visible:document.querySelector('#hero-details .stat-head').textContent});
     }
     return results;
    });
