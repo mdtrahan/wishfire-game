@@ -68,6 +68,7 @@ import {
   orientCombatWorldOffsetX,
   readCombatOrientationFromSearch,
 } from '../src/core/combatOrientation.mjs';
+import { resolveCombatCameraCenterX } from './src/core/combatCamera.mjs';
 import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
 import { createHealBloom } from './src/core/healBloomAnimation.mjs';
 import { createCombatOutcomeSimulationPacket } from './src/core/combatOutcomeRules.mjs';
@@ -2140,7 +2141,9 @@ async function main(){
 
   function combatActorWorldToCanvas(wx, wy, actorKind = '') {
     const heroes = state.entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
-    const centerX = heroes.length ? heroes.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? layoutW / 2), 0) / heroes.length : layoutW / 2;
+    const squadCenterX = heroes.length ? heroes.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? layoutW / 2), 0) / heroes.length : layoutW / 2;
+    const stage = state.globals.ContinuousCombatStage;
+    const centerX = stage?.bossActive === true ? Number(stage.bossCameraCenterX ?? squadCenterX) : resolveCombatCameraCenterX(state.globals, squadCenterX);
     const world = deriveCombatWorldBounds(layoutW, COMBAT_BATTLEFIELD_ZOOM);
     const projection = createCombatCameraProjection({ viewportWidth: layoutW, worldWidth: world.worldWidth, zoom: COMBAT_BATTLEFIELD_ZOOM, centerX, orientation: state.globals.CombatOrientation });
     const point = projection.project(wx, wy, actorKind);

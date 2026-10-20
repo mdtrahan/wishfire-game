@@ -4,6 +4,7 @@ import { deriveCombatArenaBounds, deriveCombatWorldBounds, deriveCombatWorldStar
 import { cleanseDebuffs } from './combatRules.mjs';
 import { saveHeroProgress } from './heroProgression.mjs';
 import { advanceContinuousCombatArena, beginContinuousCombatPatrolReturn, deriveContinuousCombatSpawnMoat, placeContinuousCombatHeroesInRecoveryHuddle } from './arenaCombat.mjs';
+import { advanceCombatCamera } from './combatCamera.mjs';
 import { isActorRecoveryRevealActive, resetActorPresentationAfterRestore } from './actorPresentationState.mjs';
 import { previewSeededRng } from '../../../src/core/seededRngRules.mjs';
 import { actorFootprintRadius } from '../../../src/core/arenaCombatRules.mjs';
@@ -945,8 +946,10 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   const now = Number(globals.time || 0);
   if (stageState.bossActive && stageState.bossTimerStartedAt == null) stageState.bossTimerStartedAt = now;
   const newlyAvailable = updateApproachingEnemies(globals, entities, now);
-  const newlyEngaged = advanceContinuousCombatArena({ globals, entities, seconds: Math.max(0, Math.min(0.1, now - Number(stageState.lastArenaUpdatedAt ?? now))) });
+  const arenaSeconds = Math.max(0, Math.min(0.1, now - Number(stageState.lastArenaUpdatedAt ?? now)));
+  const newlyEngaged = advanceContinuousCombatArena({ globals, entities, seconds: arenaSeconds });
   stageState.lastArenaUpdatedAt = now;
+  advanceCombatCamera({ globals, entities, seconds: arenaSeconds });
   if (globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) call('TickRealtimeHeroBasics');
   if ((newlyAvailable > 0 || newlyEngaged > 0 || entities?.some(enemy => enemy?.kind === 'enemy' && Number(enemy.hp || 0) > 0 && enemy.streamState === 'engaged'))
     && globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) {

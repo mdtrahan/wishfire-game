@@ -1,6 +1,7 @@
 import * as devToolingControls from './devToolingControls.js';
 import { normalizeCombatOrientation } from '../../src/core/combatOrientation.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
+import { loadCombatMovementTuning, mountCombatMovementTuningPanel } from './devMovementTuningPanel.mjs';
 
 const DEV_TOOL_HOTKEY_LABEL = 'Ctrl+Shift+P';
 const DEV_TOOL_GEM_RANDOM = -1;
@@ -59,6 +60,13 @@ export function createDevToolingRuntime(deps = {}) {
   let devToolingRefreshHandler = null;
   let devToolingBossResumeHandler = null;
   let devToolingPauseSnapshot = null;
+  // Source-evaluated contract tests strip module imports; the movement lab is
+  // optional there, so resolve it through typeof instead of a bare reference.
+  const movementLab = typeof mountCombatMovementTuningPanel === 'function'
+    ? { load: loadCombatMovementTuning, mount: mountCombatMovementTuningPanel } : null;
+  const devStorage = typeof window !== 'undefined' ? window.localStorage ?? null : null;
+  const persistedMovementTuning = movementLab?.load(devStorage);
+  if (persistedMovementTuning && state?.globals) state.globals.DevMovementTuning = persistedMovementTuning;
 
   const layoutState = {
     getActiveLayoutId() {
@@ -680,6 +688,7 @@ export function createDevToolingRuntime(deps = {}) {
       doubleAttackHero: panel.querySelector('[data-devtool-double-attack-hero]'),
       status: null,
     };
+    movementLab?.mount({ container: panel.querySelector('[data-devtool-control-grid]'), state, storage: devStorage });
     devToolingDom.combatDps.addEventListener('change', () => {
       state.globals.ShowCombatDpsOverlay = devToolingDom.combatDps.checked;
     });
