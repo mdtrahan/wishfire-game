@@ -247,7 +247,7 @@
 
 - Hero is a primary shared-navigation destination. Its screen has no Back button; use the existing main navigation to switch destinations.
 
-- Star Up and Resonance commit through `combatProgression.starUp/setResonance` (rules in `src/core/heroGrowthRules.mjs`, saved as `growth` in the combat progression record and published as `globals.HeroGrowth`). `heroFormationStore.mjs` owns the Formation save (`wishfire.heroFormation.v1`), is composed by `createCombatProgression` (exposed as `.formation`) and publishes `HeroFormationLeader`/`HeroFormationOrder`; it writes only on explicit player changes. The leader badge reads the resolved movement-tuning leader.
+- Star Up and Resonance commit through `combatProgression.starUp/setResonance` (rules in `src/core/heroGrowthRules.mjs`, saved as `growth` in the combat progression record and published as `globals.HeroGrowth`). `heroFormationStore.mjs` owns the Formation save (`wishfire.heroFormation.v2`), is composed by `createCombatProgression` (exposed as `.formation`) and publishes `HeroFormationLeader`/`HeroFormationOrder`/`HeroFormationPlacement`; it writes only on explicit player changes and re-derives the unlocked grid count from hero levels in memory. The Formation sheet shows the open 2x2 grid(s) at full size and a locked grid as a slim tile, never a full-size empty block. The leader badge reads the resolved movement-tuning leader.
 
 - Preserve canonical hero art, three-column stat comparison and existing geometry. Portrait and cache green markers use shared actual hero CP eligibility; individual unchanged stat rows have no arrow. Manual CP-decreasing overrides are forbidden. Saved CP feedback remains factual and strictly positive for every successful equip.
 

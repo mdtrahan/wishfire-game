@@ -87,8 +87,26 @@ const FRONTLINE_HERO_NAMES = new Set(['fara', 'falie', 'hondo', 'huun']);
 const heroName = hero => String(hero?.baseHeroName || hero?.name || '').trim().toLowerCase();
 const isFara = hero => ['fara', 'falie'].includes(heroName(hero));
 const isHondo = hero => ['hondo', 'huun'].includes(heroName(hero));
-function heroFormationSlot(hero, index, { faraLeads = false } = {}) {
+// A saved Formation board (`placement`, see heroFormationRules.formationPlacement) overrides the
+// authored role slots: depth 0 is the frontline, each deeper column steps back, row picks the lane.
+// The default board reproduces the authored slots exactly.
+function heroFormationSlot(hero, index, { faraLeads = false, placement = null } = {}) {
   const name = heroName(hero);
+  const placed = placement?.[name];
+  if (placed) {
+    const front = placed.depth === 0;
+    const stagger = faraLeads && (placement.fara || placement.falie)?.depth === 0;
+    const behind = Math.max(0, placed.depth - 1) * SUPPORT_STEP_BACK;
+    return {
+      frontline: front,
+      hondo: isHondo(hero),
+      travelOffset: stagger
+        ? (front ? (isFara(hero) ? FARA_TRAVEL_OFFSET : HONDO_TRAVEL_OFFSET) : SUPPORT_TRAVEL_OFFSET - behind)
+        : (front ? TRAVEL_FRONT_OFFSET : -TRAVEL_FRONT_OFFSET - behind),
+      contactOffset: stagger && front ? (isFara(hero) ? FARA_CONTACT_OFFSET : HONDO_CONTACT_OFFSET) : CONTACT_INSET,
+      rowOffset: placed.row === 0 ? -FORMATION_ROW_GAP : FORMATION_ROW_GAP,
+    };
+  }
   const slot = name === 'fara' || name === 'falie' ? 0
     : name === 'hondo' || name === 'huun' ? 1
       : name === 'runa' ? 2
@@ -109,14 +127,14 @@ function heroFormationSlot(hero, index, { faraLeads = false } = {}) {
   };
 }
 
-export function deriveContinuousCombatRecoveryHuddle(heroes = [], heading = 1) {
+export function deriveContinuousCombatRecoveryHuddle(heroes = [], heading = 1, placement = null) {
   const formation = deriveCombatWorldStartFormation(heroes.length);
   const vertical = deriveCombatOrdinaryPatrolBounds();
   const centerY = (vertical.minY + vertical.maxY) / 2;
   const direction = Number(heading) < 0 ? -1 : 1;
   const faraLeads = heroes.some(hero => isLiving(hero) && isFara(hero));
   return heroes.map((hero, index) => {
-    const slot = heroFormationSlot(hero, index, { faraLeads });
+    const slot = heroFormationSlot(hero, index, { faraLeads, placement });
     const rowSide = Math.sign(slot.rowOffset) || (index % 2 === 0 ? -1 : 1);
     return {
       hero,
@@ -164,7 +182,7 @@ export function placeContinuousCombatHeroesInRecoveryHuddle({ globals = {}, hero
     ? globals.ContinuousCombatRoamAttempt + 1
     : 0;
   const direction = setContinuousCombatInitialRoam({ globals, attempt });
-  for (const { hero, x, y } of deriveContinuousCombatRecoveryHuddle(heroes, direction)) {
+  for (const { hero, x, y } of deriveContinuousCombatRecoveryHuddle(heroes, direction, globals.HeroFormationPlacement)) {
     hero.x = hero.footX = x;
     hero.y = hero.footY = y;
     hero.arenaEnabled = true;
@@ -481,7 +499,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   const directionY = initialRoamActive ? 0 : travelLength > 1e-6 ? travelDeltaY / travelLength : 0;
   const targetDirection = Math.sign(directionX) || 1;
   const faraLeads = heroes.some(isFara);
-  const formations = heroes.map((hero, index) => heroFormationSlot(hero, index, { faraLeads: faraLeads && !bossEncounter }));
+  const formations = heroes.map((hero, index) => heroFormationSlot(hero, index, { faraLeads: faraLeads && !bossEncounter, placement: globals.HeroFormationPlacement }));
   const frontline = heroes.filter((hero, index) => formations[index].frontline);
   const supports = heroes.filter((hero, index) => !formations[index].frontline);
   const progress = actor => {

@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createCombatProgressionState } from '../web-runner/src/core/combatProgressionRules.mjs';
 import { starUpHero, setHeroResonance, starUpCost, heroGrowthModifiers, heroGrowthBreakdown, sanitizeHeroGrowth, canonicalGrowthId, STAR_MAX } from '../web-runner/src/core/heroGrowthRules.mjs';
-import { sanitizeHeroFormation, placeFormationHero, setFormationLeader, autoFormActive, copyFormationPreset, selectFormationPreset, activeFormationPreset, formationSuccession, formationOccupant } from '../web-runner/src/core/heroFormationRules.mjs';
+import { sanitizeHeroFormation, placeFormationHero, setFormationLeader, autoFormActive, copyFormationPreset, selectFormationPreset, activeFormationPreset, formationSuccession, formationPlacement, openFormationCells, unlockedFormationGrids, FORMATION_SECOND_GRID_LEVEL } from '../web-runner/src/core/heroFormationRules.mjs';
+import { deriveContinuousCombatRecoveryHuddle } from '../web-runner/src/core/arenaCombat.mjs';
 import { resolveCombatMovementTuning, resolveCombatLeader } from '../web-runner/src/core/combatMovementTuning.mjs';
 import { permanentHeroModifiers } from '../web-runner/src/core/realtimeSkillState.mjs';
 
@@ -62,29 +63,47 @@ test('Resonance slots respect star unlocks, exclude self and never duplicate a l
   assert.equal(result.state.growth.resonance?.Falie, undefined);
 });
 
-test('formation board defaults to the role layout and supports move, swap, leader and presets', () => {
+test('formation board is two 2x2 grids filled left to right, with the right grid locked', () => {
   let state = sanitizeHeroFormation(null, roster);
   const preset = activeFormationPreset(state);
-  assert.deepEqual(preset, { leader: 'Falie', cells: { Falie: 1, Huun: 2, Runa: 9, Kojonn: 10 } });
+  assert.equal(state.unlockedGrids, 1);
+  assert.deepEqual(preset, { leader: 'Falie', cells: { Falie: 0, Huun: 4, Runa: 1, Kojonn: 5 } }, 'tanks take the left column, ranged the right');
+  assert.deepEqual(formationPlacement(preset), { Falie: { depth: 0, row: 0 }, Huun: { depth: 0, row: 1 }, Runa: { depth: 1, row: 0 }, Kojonn: { depth: 1, row: 1 } });
   assert.deepEqual(formationSuccession(preset), ['Falie', 'Huun', 'Runa', 'Kojonn']);
-  state = placeFormationHero(state, 'Runa', 2);
-  assert.deepEqual([activeFormationPreset(state).cells.Runa, activeFormationPreset(state).cells.Huun], [2, 9], 'occupied target swaps');
-  state = placeFormationHero(state, 'Kojonn', 0);
-  assert.equal(formationOccupant(activeFormationPreset(state), 0), 'Kojonn');
+  assert.deepEqual(openFormationCells(1), [0, 4, 1, 5]);
+  assert.deepEqual(openFormationCells(2), [0, 4, 1, 5, 2, 6, 3, 7]);
+  assert.equal(placeFormationHero(state, 'Runa', 2), state, 'locked grid refuses placement');
+  state = placeFormationHero(state, 'Runa', 0);
+  assert.deepEqual([activeFormationPreset(state).cells.Runa, activeFormationPreset(state).cells.Falie], [0, 1], 'occupied target swaps');
   state = setFormationLeader(state, 'Runa');
-  assert.deepEqual(formationSuccession(activeFormationPreset(state)), ['Runa', 'Kojonn', 'Falie', 'Huun']);
+  assert.deepEqual(formationSuccession(activeFormationPreset(state)), ['Runa', 'Huun', 'Falie', 'Kojonn']);
   assert.equal(setFormationLeader(state, 'Ghost'), state);
   state = copyFormationPreset(state);
   assert.equal(state.active, 1);
   assert.deepEqual(state.presets[1], state.presets[0]);
   state = autoFormActive(state, roster);
-  assert.deepEqual(activeFormationPreset(state), { leader: 'Runa', cells: { Falie: 1, Huun: 2, Runa: 9, Kojonn: 10 } });
+  assert.deepEqual(activeFormationPreset(state), { leader: 'Runa', cells: { Falie: 0, Huun: 4, Runa: 1, Kojonn: 5 } });
   assert.equal(selectFormationPreset(state, 7), state);
-  const repaired = sanitizeHeroFormation({ active: 2, presets: [{ leader: 'Ghost', cells: { Falie: 3, Huun: 3, Runa: 99 } }] }, roster);
-  const cells = Object.values(repaired.presets[0].cells);
-  assert.equal(new Set(cells).size, 4, 'corrupt saves repair to unique cells');
+  const repaired = sanitizeHeroFormation({ active: 2, presets: [{ leader: 'Ghost', cells: { Falie: 6, Huun: 6, Runa: 99 } }] }, roster);
+  assert.deepEqual(Object.values(repaired.presets[0].cells).sort(), [0, 1, 4, 5], 'locked or corrupt cells repair into the open grid');
   assert.equal(repaired.presets[0].leader, 'Falie');
   assert.equal(repaired.active, 2);
+  assert.deepEqual([unlockedFormationGrids(29), unlockedFormationGrids(FORMATION_SECOND_GRID_LEVEL)], [1, 2]);
+  let open = placeFormationHero(sanitizeHeroFormation(null, roster, 2), 'Kojonn', 3);
+  assert.deepEqual(formationPlacement(activeFormationPreset(open)).Kojonn, { depth: 3, row: 0 }, 'an unlocked, occupied right grid adds depth');
+  open = sanitizeHeroFormation(open, roster, 1);
+  assert.ok([0, 1, 4, 5].includes(activeFormationPreset(open).cells.Kojonn), 'relocking returns heroes to the open grid');
+});
+
+test('default board reproduces the authored combat formation and mirrors with travel direction', () => {
+  const heroes = ['Falie', 'Huun', 'Runa', 'Kojonn'].map(baseHeroName => ({ baseHeroName, hp: 10, kind: 'hero' }));
+  const placement = Object.fromEntries(Object.entries(formationPlacement(activeFormationPreset(sanitizeHeroFormation(null, roster)))).map(([id, slot]) => [id.toLowerCase(), slot]));
+  for (const heading of [1, -1]) assert.deepEqual(deriveContinuousCombatRecoveryHuddle(heroes, heading, placement).map(row => [row.x, row.y]), deriveContinuousCombatRecoveryHuddle(heroes, heading).map(row => [row.x, row.y]), 'default board matches the authored huddle');
+  const swapped = { ...placement, falie: { depth: 1, row: 0 }, runa: { depth: 0, row: 0 } };
+  const right = deriveContinuousCombatRecoveryHuddle(heroes, 1, swapped), left = deriveContinuousCombatRecoveryHuddle(heroes, -1, swapped);
+  const x = (rows, name) => rows.find(row => row.hero.baseHeroName === name).x;
+  assert.ok(x(right, 'Runa') > x(right, 'Falie'), 'moving right, the frontline leads on the right');
+  assert.ok(x(left, 'Runa') < x(left, 'Falie'), 'moving left, the frontline leads on the left');
 });
 
 test('combat leader follows Formation unless a dev tuning names one, with succession on KO', () => {

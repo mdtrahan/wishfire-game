@@ -6,7 +6,7 @@ import {createHeroProgressStore} from '../src/core/heroProgression.mjs';
 import {heroTicketLevelCost} from '../src/core/combatProgressionRules.mjs';
 import {resolveCombatMovementTuning} from '../src/core/combatMovementTuning.mjs';
 import {STAR_MAX,STAR_TIER_SIZE,STAR_STAT_BONUS,STAR_TIER_PARTY_BONUS,RESONANCE_SLOT_STARS,RESONANCE_ECHOES,starUpCost,heroStars,heroGrowthBreakdown,resonanceSlots,resonanceSlotUnlocked,resonanceEcho} from '../src/core/heroGrowthRules.mjs';
-import {FORMATION_COLUMNS,FORMATION_ROWS,FORMATION_PRESETS,FORMATION_ROW_LABELS,activeFormationPreset,formationOccupant} from '../src/core/heroFormationRules.mjs';
+import {FORMATION_ROWS,FORMATION_GRIDS,FORMATION_GRID_SIZE,FORMATION_PRESETS,FORMATION_SECOND_GRID_LEVEL,formationCell,activeFormationPreset,formationOccupant} from '../src/core/heroFormationRules.mjs';
 import {heroArtKey} from '../state/heroArtAssets.mjs';
 import {actorAttackReach} from '../../src/core/arenaCombatRules.mjs';
 
@@ -47,7 +47,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .identity{position:relative;flex:0 0 21em;border-radius:.6em;overflow:hidden;isolation:isolate;background:radial-gradient(ellipse 60% 55% at 28% 52%,#4f7fa8 0%,#2d5079 45%,#1b3150 100%)}
    #hero-details .identity::after{content:'';position:absolute;left:4%;width:48%;bottom:5.3em;height:1.6em;border-radius:50%;background:radial-gradient(#0b1626aa,transparent 70%);z-index:-1}
    #hero-details .hero-portrait{position:absolute;left:2%;width:52%;top:.6em;bottom:5.6em;height:calc(100% - 6.2em);object-fit:contain;object-position:50% 100%;z-index:0;filter:drop-shadow(0 .3em .25em #07172a80)}
-   #hero-details .formation-button{position:absolute;left:.4em;top:.4em;z-index:2;width:2.7em;height:2.4em;padding:.3em;display:grid;grid-template-columns:repeat(4,1fr);gap:.12em;background:#132238cc;border-color:#7e93ad}
+   #hero-details .formation-button{position:absolute;left:.4em;top:.4em;z-index:2;width:2.4em;height:2.4em;padding:.35em;display:grid;grid-template-columns:repeat(2,1fr);gap:.15em;background:#132238cc;border-color:#7e93ad}
    #hero-details .formation-button i{display:block;border-radius:.1em;background:#3a4c66} #hero-details .formation-button i.filled{background:#9fb3cc} #hero-details .formation-button i.lead{background:#ffd56e}
    #hero-details .hero-arrows{position:absolute;left:0;width:56%;top:38%;display:flex;justify-content:space-between;pointer-events:none;z-index:2}
    #hero-details .hero-arrows button{pointer-events:auto;min-height:0;padding:0 .25em;border:0;background:transparent;color:#cfe9ff;font-size:2em;font-weight:800;line-height:1;text-shadow:0 1px 4px #07172a}
@@ -95,13 +95,15 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .sheet-row button[aria-pressed=true]{background:#1b2a42;color:#fff4d6;border-color:#1b2a42;box-shadow:none}
    #hero-details .sheet-action:disabled{opacity:1;background:#e3e6ea;color:#7d8794;border-color:#b8bfc8;box-shadow:none}
    #hero-details .sheet-note{margin:0;color:#36465c;font-size:.9em}
-   #hero-details .formation-board{display:grid;grid-template-columns:auto repeat(${FORMATION_COLUMNS},minmax(0,1fr));gap:.2em;align-items:stretch}
-   #hero-details .formation-board>small{align-self:center;font-size:.72em;font-weight:700;color:#5b6678;writing-mode:vertical-rl;transform:rotate(180deg)}
-   #hero-details .formation-cell{position:relative;min-height:0;height:2.6em;padding:0;overflow:hidden;border:1px dashed #b9c1cc;border-radius:.35em;background:#eef2f6}
+   #hero-details .formation-board{display:flex;justify-content:center;align-items:stretch;gap:.6em}
+   #hero-details .formation-grid{display:grid;grid-template-columns:repeat(${FORMATION_GRID_SIZE},4.6em);grid-auto-rows:3.3em;gap:.25em;padding:.25em;border-radius:.5em;background:#e6dcc6}
+   #hero-details .formation-locked{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.1em;width:3.2em;border:1px dashed #b9a98a;border-radius:.5em;color:#7d6f57;font-size:.78em;font-weight:800;text-align:center;line-height:1.1}
+   #hero-details .formation-locked b{font-size:1.4em}
+   #hero-details .formation-cell{position:relative;min-height:0;padding:0;overflow:hidden;border:1px dashed #b9c1cc;border-radius:.35em;background:#f4f1ea}
    #hero-details .formation-cell[data-hero]{border:2px solid #6b8590;background:radial-gradient(ellipse 75% 65% at 50% 38%,#fff 0%,#eef2f6 55%,#d5dce5 100%)}
    #hero-details .formation-cell[aria-pressed=true]{border-color:#2fb3a6;box-shadow:0 0 0 2px #2fb3a655}
    #hero-details .formation-cell .cell-face{position:absolute;inset:0;overflow:hidden}
-   #hero-details .formation-cell img{position:absolute;left:12%;top:-22%;width:76%;height:auto;max-width:none}
+   #hero-details .formation-cell img{position:absolute;left:-20%;top:-6%;width:140%;height:auto;max-width:none}
    #hero-details .formation-cell em{position:absolute;left:0;right:0;bottom:0;font-style:normal;font-size:.62em;font-weight:800;color:#fff;background:#1b2a42cc;white-space:nowrap}
    #hero-details .formation-cell[data-leader=true] em{background:#2d7a5f}
    #hero-details .star-sheet .stars span{font-size:1.5em}
@@ -152,7 +154,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
   const formation=button(identity,null,()=>{subPanel=subPanel==='formation'?'':'formation';currentTab='heroes';formationPick='';sheetNotice='';});
   formation.className='formation-button';formation.setAttribute('aria-label','Formation');
   const miniPreset=formationState&&activeFormationPreset(formationState);
-  for(let cell=0;cell<FORMATION_COLUMNS*FORMATION_ROWS;cell++){const occupant=miniPreset?formationOccupant(miniPreset,cell):'';el('i',null,formation).className=occupant&&occupant===miniPreset.leader?'lead':occupant?'filled':'';}
+  for(let row=0;row<FORMATION_ROWS;row++)for(let column=0;column<FORMATION_GRID_SIZE;column++){const occupant=miniPreset?formationOccupant(miniPreset,formationCell(row,column)):'';el('i',null,formation).className=occupant&&occupant===miniPreset.leader?'lead':occupant?'filled':'';}
   const arrows=el('nav',null,identity);arrows.className='hero-arrows';arrows.setAttribute('aria-label','Choose hero');
   button(arrows,'‹',()=>selectHero(index-1)).setAttribute('aria-label','Previous hero');
   button(arrows,'›',()=>selectHero(index+1)).setAttribute('aria-label','Next hero');
@@ -197,12 +199,14 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
     el('span',null,presets);
     button(presets,'Copy',()=>{formationStore.copyPreset();formationPick='';}).setAttribute('aria-label',`Copy preset ${formationState.active+1} to preset ${(formationState.active+1)%FORMATION_PRESETS+1}`);
     button(presets,'Auto',()=>{formationStore.autoForm();formationPick='';}).setAttribute('aria-label','Auto-Form');
-    const board=el('div',null,sheet);board.className='formation-board';board.setAttribute('aria-label','Formation board');
-    for(let row=0;row<FORMATION_ROWS;row++){
-     el('small',FORMATION_ROW_LABELS[row],board);
-     for(let column=0;column<FORMATION_COLUMNS;column++){
-      const cell=row*FORMATION_COLUMNS+column,occupant=formationOccupant(preset,cell);
-      const node=button(board,null,()=>{
+    // Two 2x2 grids read left to right; the board faces left, so the left column is the frontline.
+    const board=el('div',null,sheet);board.className='formation-board';board.setAttribute('aria-label','Formation board, front on the left');
+    for(let grid=0;grid<FORMATION_GRIDS;grid++){
+     if(grid>=formationState.unlockedGrids){const locked=el('div',null,board);locked.className='formation-locked';locked.setAttribute('aria-label',`Second formation grid locked until a hero reaches level ${FORMATION_SECOND_GRID_LEVEL}`);el('b','🔒',locked);el('span',`Lv. ${FORMATION_SECOND_GRID_LEVEL}`,locked);continue;}
+     const cells=el('div',null,board);cells.className='formation-grid';cells.dataset.grid=String(grid);
+     for(let row=0;row<FORMATION_ROWS;row++)for(let offset=0;offset<FORMATION_GRID_SIZE;offset++){
+      const column=grid*FORMATION_GRID_SIZE+offset,cell=formationCell(row,column),occupant=formationOccupant(preset,cell),line=column===0?'front':'back';
+      const node=button(cells,null,()=>{
        if(formationPick&&formationPick!==occupant){const result=formationStore.place(formationPick,cell);sheetNotice=result.ok?'':notice(result.reason);formationPick='';}
        else formationPick=formationPick===occupant?'':occupant;
       });
@@ -210,8 +214,8 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
       if(occupant){
        const member=globals.HeroProgress.heroes[occupant];node.dataset.hero=occupant;node.dataset.leader=String(occupant===preset.leader);
        const face=el('i',null,node);face.className='cell-face';if(member)portrait(member,face);el('em',occupant===preset.leader?`★ ${nameOf(occupant)}`:nameOf(occupant),node);
-       node.setAttribute('aria-label',`${nameOf(occupant)}, ${FORMATION_ROW_LABELS[row]} row${occupant===preset.leader?', leader':''}`);
-      }else node.setAttribute('aria-label',`Empty ${FORMATION_ROW_LABELS[row]} cell ${column+1}${formationPick?`; move ${nameOf(formationPick)} here`:''}`);
+       node.setAttribute('aria-label',`${nameOf(occupant)}, ${line} line${occupant===preset.leader?', leader':''}`);
+      }else node.setAttribute('aria-label',`Empty ${line} slot${formationPick?`; move ${nameOf(formationPick)} here`:''}`);
      }
     }
     const footer=el('div',null,sheet);footer.className='sheet-row';
@@ -220,7 +224,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
     const lead=button(footer,'Set Leader',()=>{const result=formationStore.setLeader(formationPick);sheetNotice=result.ok?'':notice(result.reason);formationPick='';});
     lead.className='sheet-action';lead.disabled=!formationPick||formationPick===preset.leader;
     lead.setAttribute('aria-label',formationPick?`Set ${nameOf(formationPick)} as leader`:'Set Leader');
-    if(!formationPick&&!sheetNotice)el('p','Tap a hero, then a cell to move or swap. The leader guides the camera and party.',sheet).className='sheet-note';
+    if(!formationPick&&!sheetNotice)el('p','Front ◀ left · Tap a hero, then a slot.',sheet).className='sheet-note';
    }
 
    function renderStarSheet(sheet){
