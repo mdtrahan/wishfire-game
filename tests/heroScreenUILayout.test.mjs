@@ -282,8 +282,23 @@ test('hero party screen uses saved canonical data and stays contained across por
    screenshots.resonance=`${profile.name}-resonance.png`;await page.screenshot({path:path.join(artifactDir,screenshots.resonance),fullPage:true});
    await detail.getByRole('button',{name:'Close Resonance'}).click();await page.waitForFunction(()=>!document.querySelector('#hero-details .sub-panel'));
    // Formation: StoneAge two 2x2 grids, left grid open and filled left to right, right grid locked.
-   await detail.getByRole('button',{name:'Formation',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#hero-details .sub-panel')?.dataset.panel==='formation');
-   const board=sheet.locator('.formation-board');
+   await detail.getByRole('button',{name:'Formation',exact:true}).click();await page.waitForFunction(()=>!!document.querySelector('#hero-details .formation-modal'));
+   const modal=detail.locator('.formation-modal'),board=modal.locator('.formation-field');
+   const modalFits=async label=>{
+    const fit=await page.evaluate(()=>{
+     const host=document.querySelector('#hero-details'),modal=host.querySelector('.formation-modal'),h=host.getBoundingClientRect(),m=modal.getBoundingClientRect(),nav=document.querySelector('#game-meta-nav').getBoundingClientRect();
+     const top=document.elementFromPoint(nav.left+nav.width/2,nav.top+nav.height/2);
+     const field=modal.querySelector('.formation-field').getBoundingClientRect(),cell=modal.querySelector('.formation-cell').getBoundingClientRect();
+     const inside=[...modal.querySelectorAll('header,.formation-power,.formation-field,.formation-note,.formation-actions,.formation-grid,.formation-locked,.formation-tools')].every(node=>{const r=node.getBoundingClientRect();return r.left>=m.left-0.5&&r.right<=m.right+0.5&&r.top>=m.top-0.5&&r.bottom<=m.bottom+0.5;});
+     const grids=[...modal.querySelectorAll('.formation-grid,.formation-locked,.formation-tools')].map(node=>node.getBoundingClientRect());
+     const overlap=grids.some((r,i)=>grids.some((o,j)=>j>i&&r.left<o.right-0.5&&o.left<r.right-0.5&&r.top<o.bottom-0.5&&o.top<r.bottom-0.5));
+     return{full:Math.abs(m.width-h.width)<1&&Math.abs(m.height-h.height)<1,coversNav:modal.contains(top),inside,overlap,fieldShare:field.height/m.height,cellShare:cell.width/m.width,scroll:modal.scrollHeight-modal.clientHeight};
+    });
+    assert.ok(fit.full&&fit.coversNav,`${profile.name}: ${label} is a full-screen modal over the navigation (${JSON.stringify(fit)})`);
+    assert.ok(fit.inside&&!fit.overlap&&fit.scroll<=1,`${profile.name}: ${label} contents stay contained without overlap (${JSON.stringify(fit)})`);
+    assert.ok(fit.fieldShare>.45&&fit.cellShare>.17,`${profile.name}: ${label} gives the board room (${JSON.stringify(fit)})`);
+    assert.deepEqual((await measure()).clipped,[],`${profile.name}: ${label} has no clipped labels`);
+   };
    // Fixture heroes reach level 42, so both grids are open; the right one stays empty by default.
    assert.equal(await board.locator('.formation-grid').count(),2,'a level-30 hero unlocks the right 2x2 grid');
    assert.deepEqual(await board.locator('.formation-grid[data-grid="0"] .formation-cell').evaluateAll(nodes=>nodes.map(node=>[node.dataset.cell,node.dataset.hero||''])),[['0','Falie'],['1','Runa'],['4','Huun'],['5','Kojonn']],'tanks fill the left frontline column, ranged the right backline column');
@@ -295,13 +310,14 @@ test('hero party screen uses saved canonical data and stays contained across por
    assert.equal(await board.locator('.formation-locked').getAttribute('aria-label'),'Second formation grid locked until a hero reaches level 30');
    const lockedWidth=await board.evaluate(node=>node.querySelector('.formation-locked').getBoundingClientRect().width/node.querySelector('.formation-grid').getBoundingClientRect().width);
    assert.ok(lockedWidth<.5,`locked grid takes no full grid space (${lockedWidth})`);
-   await sheetFits('Locked formation');
+   await modalFits('Locked formation');
    screenshots.formationLocked=`${profile.name}-formation-locked.png`;await page.screenshot({path:path.join(artifactDir,screenshots.formationLocked),fullPage:true});
    await page.evaluate(levels=>{for(const [id,level] of Object.entries(levels))window.heroQa.globals.HeroProgress.heroes[id].currentLevel=level;window.heroQa.render();},levels);
    await page.waitForFunction(()=>document.querySelectorAll('#hero-details .formation-grid').length===2);
    assert.equal(await board.locator('.formation-cell[data-leader="true"]').getAttribute('data-hero'),'Falie','Fara leads by default');
-   assert.match(await sheet.locator('.formation-total').textContent(),/^Total CP \d+ · Leader Fara$/);
-   await sheetFits('Formation');
+   assert.match(await modal.locator('.formation-total').textContent(),/^\d+$/);
+   assert.match(await modal.locator('.formation-note').textContent(),/^Leader Fara/);
+   await modalFits('Formation');
    screenshots.formation=`${profile.name}-formation.png`;await page.screenshot({path:path.join(artifactDir,screenshots.formation),fullPage:true});
    await board.locator('.formation-cell[data-hero="Runa"]').click();
    await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-hero="Runa"]')?.getAttribute('aria-pressed')==='true');
@@ -309,21 +325,23 @@ test('hero party screen uses saved canonical data and stays contained across por
    await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-cell="0"]')?.dataset.hero==='Runa'&&document.querySelector('#hero-details .formation-cell[data-cell="1"]')?.dataset.hero==='Falie');
    await board.locator('.formation-cell[data-hero="Runa"]').click();
    await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-hero="Runa"]')?.getAttribute('aria-pressed')==='true');
-   await sheet.getByRole('button',{name:'Set Runa as leader'}).click();
+   await modal.getByRole('button',{name:'Set Runa as leader'}).click();
    await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-leader="true"]')?.dataset.hero==='Runa');
    assert.deepEqual(await page.evaluate(()=>[window.heroQa.globals.HeroFormationLeader,window.heroQa.globals.HeroFormationOrder,JSON.parse(localStorage.getItem('wishfire.heroFormation.v2')).presets[0].leader]),['Runa',['Runa','Hondo','Fara','Kaja'],'Runa'],'leader and succession publish to combat and persist');
-   await sheet.getByRole('button',{name:'Preset 2',exact:true}).click();
+   await modal.getByRole('button',{name:'Preset 2',exact:true}).click();
    await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-leader="true"]')?.dataset.hero==='Falie');
-   await sheet.getByRole('button',{name:'Preset 1',exact:true}).click();
-   await sheet.getByRole('button',{name:'Copy preset 1 to preset 2'}).click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .sheet-row button[aria-label="Preset 2"]')?.getAttribute('aria-pressed')==='true'&&document.querySelector('#hero-details .formation-cell[data-leader="true"]')?.dataset.hero==='Runa');
-   await sheet.getByRole('button',{name:'Auto-Form'}).click();
+   await modal.getByRole('button',{name:'Preset 1',exact:true}).click();
+   await modal.getByRole('button',{name:'Copy preset 1 to preset 2'}).click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-tools button[aria-label="Preset 2"]')?.getAttribute('aria-pressed')==='true'&&document.querySelector('#hero-details .formation-cell[data-leader="true"]')?.dataset.hero==='Runa');
+   await modal.getByRole('button',{name:'Auto-Form'}).click();
    await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-cell="0"]')?.dataset.hero==='Falie');
-   await sheet.getByRole('button',{name:'Preset 1',exact:true}).click();
+   await modal.getByRole('button',{name:'Preset 1',exact:true}).click();
    await board.locator('.formation-cell[data-hero="Falie"]').click();
-   await sheet.getByRole('button',{name:'Set Fara as leader'}).click();
+   await modal.getByRole('button',{name:'Set Fara as leader'}).click();
    await page.waitForFunction(()=>window.heroQa.globals.HeroFormationLeader==='Fara');
-   await detail.getByRole('button',{name:'Close Formation'}).click();
+   await modal.getByRole('button',{name:'Done'}).click();await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-modal'));
+   await detail.getByRole('button',{name:'Formation',exact:true}).click();await modal.waitFor();
+   await page.keyboard.press('Tab');await modal.getByRole('button',{name:'Close Formation'}).click();await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-modal'));
    // Card selection drives the showcase.
    for(const [cardIndex,hero] of heroes.entries()){
     await cards.nth(cardIndex).locator('.card-select').click();
