@@ -1,3 +1,4 @@
+import { sanitizeHeroGrowth } from './heroGrowthRules.mjs';
 import { MILESTONE_REWARDS, questFamily, milestoneCandidates, reconcileQuestMilestones, milestonePresentation, validMilestoneObjective } from './questMilestones.mjs';
 export const COMBAT_PROGRESSION_VERSION = 1;
 export const COMBAT_PROGRESSION_SAVE_KEY = 'orka.combat_progression.v1';
@@ -35,6 +36,7 @@ export function createCombatProgressionState(snapshot, seed = 0x43544f) {
     ...(['hero_upgrade', 'hero_level'].includes(raw.objective.type) && raw.objective.heroName ? { heroName: String(raw.objective.heroName).slice(0, 32) } : {}),
     ...(raw.objective.type === 'training_upgrade' && raw.objective.rewardHeroName ? { rewardHeroName: String(raw.objective.rewardHeroName).slice(0, 32) } : {}),
   } : null;
+  const growth = sanitizeHeroGrowth(raw.growth);
   return {
     version: COMBAT_PROGRESSION_VERSION,
     seed: Number.isSafeInteger(raw.seed) ? raw.seed >>> 0 : Number(seed) >>> 0,
@@ -56,6 +58,7 @@ export function createCombatProgressionState(snapshot, seed = 0x43544f) {
       count: clampCount(raw.lastReward.count), shownAt: Math.max(0, Number(raw.lastReward.shownAt) || 0), receiptId: safeId(raw.lastReward.receiptId),
       ...(raw.lastReward.heroId ? { heroId: safeId(raw.lastReward.heroId), heroName: String(raw.lastReward.heroName || '').slice(0, 32) } : {}),
     } : null,
+    ...(growth ? { growth } : {}),
   };
 }
 

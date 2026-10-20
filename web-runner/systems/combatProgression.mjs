@@ -5,6 +5,8 @@ import {
   spendHeroTickets, settleHeroTicketSpend,
 } from '../src/core/combatProgressionRules.mjs';
 import { PROGRESSION } from '../src/core/heroDefinitions.mjs';
+import { starUpHero, setHeroResonance } from '../src/core/heroGrowthRules.mjs';
+import { createHeroFormationStore } from './heroFormationStore.mjs';
 import { awardHeroEXP, expToNextLevel, saveHeroProgress } from '../src/core/heroProgression.mjs';
 
 export function createCombatProgression({ globals, storage, equipmentProgress, getHeroes = () => [], persistHeroProgress = () => false, now = () => Date.now(), reportError = console.error }) {
@@ -25,6 +27,7 @@ export function createCombatProgression({ globals, storage, equipmentProgress, g
   function applyGlobals() {
     globals.CombatProgression = state;
     globals.PartyTrainingLevels = { ...state.training };
+    globals.HeroGrowth = state.growth || null;
   }
   function commit(next) {
     if (!storageReady) throw new Error('Combat progression storage is unavailable; saved data was preserved.');
@@ -143,8 +146,21 @@ export function createCombatProgression({ globals, storage, equipmentProgress, g
     return recorded;
   }
 
+  const formation = createHeroFormationStore({ globals, storage, reportError });
+  function commitGrowth(result, reason, label) {
+    if (!result.ok) return result;
+    try { commit(result.state); }
+    catch (error) { reportError(label, error); return { ...result, ok: false, reason: 'save_failed' }; }
+    notify(reason);
+    return result;
+  }
+
   return {
     state: observe,
+    formation,
+    heroGrowth() { return state.growth || null; },
+    starUp(heroId) { return commitGrowth(starUpHero(state, heroId), 'star-up', 'Star Up save failed'); },
+    setResonance(heroId, slot, linkedId) { return commitGrowth(setHeroResonance(state, heroId, slot, linkedId), 'resonance', 'Resonance save failed'); },
     observe,
     sync: settleEssenceReceipts,
     subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },

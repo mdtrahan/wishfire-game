@@ -5,23 +5,23 @@ import {HERO_DEFINITIONS,heroDefinition,heroSkillUnlocked} from '../src/core/her
 import {createHeroProgressStore} from '../src/core/heroProgression.mjs';
 import {heroTicketLevelCost} from '../src/core/combatProgressionRules.mjs';
 import {resolveCombatMovementTuning} from '../src/core/combatMovementTuning.mjs';
+import {STAR_MAX,STAR_TIER_SIZE,STAR_STAT_BONUS,STAR_TIER_PARTY_BONUS,RESONANCE_SLOT_STARS,RESONANCE_ECHOES,starUpCost,heroStars,heroGrowthBreakdown,resonanceSlots,resonanceSlotUnlocked,resonanceEcho} from '../src/core/heroGrowthRules.mjs';
+import {FORMATION_COLUMNS,FORMATION_ROWS,FORMATION_PRESETS,FORMATION_ROW_LABELS,activeFormationPreset,formationOccupant} from '../src/core/heroFormationRules.mjs';
 import {heroArtKey} from '../state/heroArtAssets.mjs';
 import {actorAttackReach} from '../../src/core/arenaCombatRules.mjs';
 
-let host,content,lastKey,currentTab='heroes',subPanel='',activeSkillIndex=-1,activeHeroIndex=-1,ticketNotice='';
+let host,content,lastKey,currentTab='heroes',subPanel='',activeSkillIndex=-1,activeHeroIndex=-1,ticketNotice='',formationPick='',resonancePick=-1,sheetNotice='';
 const TICKET_QUADRANT={Fara:'12% 12%',Hondo:'94% 12%',Kaja:'12% 89%',Runa:'94% 89%'};
 const STAT_ICONS={ATK:'stat-atk',DEF:'stat-def',MAG:'stat-matk',RES:'stat-res'};
-const SUB_PANELS={
- formation:{title:'Formation',body:leader=>[`Current leader: ${leader}.`,'The formation board, leader choice and presets arrive in a later update.']},
- star:{title:'Star Up',body:()=>['Star Up is coming soon.','Stars will add a second progression track alongside hero levels.']},
- resonance:{title:'Resonance',body:()=>['Resonance is coming soon.','Two passive slots will borrow skills from other heroes as a later progression layer.'],slots:true},
-};
+const SHEET_TITLES={formation:'Formation',star:'Star Up',resonance:'Resonance'};
+const STAT_NAMES={HP:'HP',ATK:'ATK',DEF:'DEF',MAG:'MATK',RES:'RES'};
+const pct=value=>`${Math.round(value*1000)/10}%`;
 
-// Star Up is not approved yet, so every hero shows an empty (grey) meter. Tiers fill five slots: bronze 1-5, silver 6-10, gold 11-15.
+// Tiers fill five slots: bronze 1-5, silver 6-10, gold 11-15; grey when incomplete.
 const STAR_TIERS=['bronze','silver','gold'];
-function starMeter(hero,parent){
- const count=Math.max(0,Math.min(15,Math.floor(Number(hero?.stars)||0))),tier=Math.max(0,Math.ceil(count/5)-1),filled=count?count-tier*5:0;
- const meter=document.createElement('div');meter.className='stars';meter.setAttribute('role','img');meter.setAttribute('aria-label',count?`${count} stars`:'No stars yet; Star Up coming soon');
+function starMeter(stars,parent){
+ const count=Math.max(0,Math.min(STAR_MAX,Math.floor(Number(stars)||0))),tier=Math.max(0,Math.ceil(count/5)-1),filled=count?count-tier*5:0;
+ const meter=document.createElement('div');meter.className='stars';meter.setAttribute('role','img');meter.setAttribute('aria-label',count?`${count} of ${STAR_MAX} stars`:'No stars yet');
  for(let slot=0;slot<5;slot++){const star=document.createElement('span');star.textContent='★';if(slot<filled)star.dataset.tier=STAR_TIERS[tier];else if(tier>0)star.dataset.tier=STAR_TIERS[tier-1];meter.append(star);}
  parent.append(meter);return meter;
 }
@@ -35,7 +35,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
  if(!roster.length)return {mode:'details',selectedSkillIndex:0,hitZones:{skillNodes:[]}};
  const index=((Number(gameState.selectedHero)||0)%roster.length+roster.length)%roster.length;
  const hero=roster[index],definition=heroDefinition(hero),entries=[...definition.actives,null];
- if(activeHeroIndex!==index){activeHeroIndex=index;activeSkillIndex=definition.actives.length-1;ticketNotice='';}
+ if(activeHeroIndex!==index){activeHeroIndex=index;activeSkillIndex=definition.actives.length-1;ticketNotice='';resonancePick=-1;sheetNotice='';}
  activeSkillIndex=Math.max(0,Math.min(activeSkillIndex,entries.length-1));
  if(!host){
   host=document.createElement('section');host.id='hero-details';host.setAttribute('aria-label','Hero details');
@@ -48,7 +48,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .identity::after{content:'';position:absolute;left:4%;width:48%;bottom:5.3em;height:1.6em;border-radius:50%;background:radial-gradient(#0b1626aa,transparent 70%);z-index:-1}
    #hero-details .hero-portrait{position:absolute;left:2%;width:52%;top:.6em;bottom:5.6em;height:calc(100% - 6.2em);object-fit:contain;object-position:50% 100%;z-index:0;filter:drop-shadow(0 .3em .25em #07172a80)}
    #hero-details .formation-button{position:absolute;left:.4em;top:.4em;z-index:2;width:2.7em;height:2.4em;padding:.3em;display:grid;grid-template-columns:repeat(4,1fr);gap:.12em;background:#132238cc;border-color:#7e93ad}
-   #hero-details .formation-button i{display:block;border-radius:.1em;background:#5d7290} #hero-details .formation-button i.lead{background:#ffd56e}
+   #hero-details .formation-button i{display:block;border-radius:.1em;background:#3a4c66} #hero-details .formation-button i.filled{background:#9fb3cc} #hero-details .formation-button i.lead{background:#ffd56e}
    #hero-details .hero-arrows{position:absolute;left:0;width:56%;top:38%;display:flex;justify-content:space-between;pointer-events:none;z-index:2}
    #hero-details .hero-arrows button{pointer-events:auto;min-height:0;padding:0 .25em;border:0;background:transparent;color:#cfe9ff;font-size:2em;font-weight:800;line-height:1;text-shadow:0 1px 4px #07172a}
    #hero-details .hero-name{position:absolute;left:2%;width:52%;bottom:.55em;z-index:1;display:flex;flex-direction:column;align-items:center;gap:.3em}
@@ -87,8 +87,33 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .sub-panel header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4em}
    #hero-details .sub-panel header h2{margin:0;padding:.1em .8em;border-radius:1em;background:#1b2a42;color:#fff4d6}
    #hero-details .sub-panel header button{min-height:0;width:1.9em;height:1.9em;padding:0;background:#5b6678;color:#fff;border:0;font-weight:800}
-   #hero-details .resonance-slots{display:grid;grid-template-columns:1fr 1fr;gap:.5em;margin:.5em 0}
-   #hero-details .resonance-slots span{display:grid;place-items:center;min-height:3.4em;border:2px dashed #b9c1cc;border-radius:.5em;color:#6b778a;font-size:.8em;text-align:center}
+   #hero-details .pane[data-view=heroes]:has(.sub-panel){display:flex;flex-direction:column}
+   #hero-details .sub-panel{display:flex;flex-direction:column;gap:.35em;flex:1;min-height:0;font-size:.85em}
+   #hero-details .sub-panel header{margin-bottom:0}
+   #hero-details .sheet-row{display:flex;align-items:center;gap:.3em} #hero-details .sheet-row>span{flex:1;font-weight:700}
+   #hero-details .sheet-row button,#hero-details .sheet-action{min-height:1.9em;padding:.1em .55em;font-weight:800;background:linear-gradient(#fffaf0,#f1e2bf);color:#1d3150;border:1px solid #b99c66;box-shadow:0 .12em 0 #b99c66}
+   #hero-details .sheet-row button[aria-pressed=true]{background:#1b2a42;color:#fff4d6;border-color:#1b2a42;box-shadow:none}
+   #hero-details .sheet-action:disabled{opacity:1;background:#e3e6ea;color:#7d8794;border-color:#b8bfc8;box-shadow:none}
+   #hero-details .sheet-note{margin:0;color:#36465c;font-size:.9em}
+   #hero-details .formation-board{display:grid;grid-template-columns:auto repeat(${FORMATION_COLUMNS},minmax(0,1fr));gap:.2em;align-items:stretch}
+   #hero-details .formation-board>small{align-self:center;font-size:.72em;font-weight:700;color:#5b6678;writing-mode:vertical-rl;transform:rotate(180deg)}
+   #hero-details .formation-cell{position:relative;min-height:0;height:2.6em;padding:0;overflow:hidden;border:1px dashed #b9c1cc;border-radius:.35em;background:#eef2f6}
+   #hero-details .formation-cell[data-hero]{border:2px solid #6b8590;background:radial-gradient(ellipse 75% 65% at 50% 38%,#fff 0%,#eef2f6 55%,#d5dce5 100%)}
+   #hero-details .formation-cell[aria-pressed=true]{border-color:#2fb3a6;box-shadow:0 0 0 2px #2fb3a655}
+   #hero-details .formation-cell .cell-face{position:absolute;inset:0;overflow:hidden}
+   #hero-details .formation-cell img{position:absolute;left:12%;top:-22%;width:76%;height:auto;max-width:none}
+   #hero-details .formation-cell em{position:absolute;left:0;right:0;bottom:0;font-style:normal;font-size:.62em;font-weight:800;color:#fff;background:#1b2a42cc;white-space:nowrap}
+   #hero-details .formation-cell[data-leader=true] em{background:#2d7a5f}
+   #hero-details .star-sheet .stars span{font-size:1.5em}
+   #hero-details .growth-lines{display:grid;grid-template-columns:auto 1fr;gap:.1em .5em;margin:0;font-size:.92em} #hero-details .growth-lines dt{font-weight:800;color:#36465c} #hero-details .growth-lines dd{margin:0}
+   #hero-details .resonance-slots{display:grid;grid-template-columns:1fr 1fr;gap:.4em}
+   #hero-details .resonance-slot{display:flex;align-items:center;gap:.35em;min-height:3em;padding:.25em .35em;text-align:left;border:2px dashed #b9c1cc;border-radius:.5em;background:#f7f8fa;color:#36465c}
+   #hero-details .resonance-slot[data-linked]{border:2px solid #6b8590;background:#fff}
+   #hero-details .resonance-slot[aria-pressed=true]{border-color:#2fb3a6;box-shadow:0 0 0 2px #2fb3a655}
+   #hero-details .resonance-slot span{flex:1;font-size:.82em;line-height:1.2}
+   #hero-details .resonance-slot .slot-face{position:relative;flex:none;width:2.3em;height:2.3em;overflow:hidden;border-radius:.3em;background:#eef2f6}
+   #hero-details .resonance-slot .slot-face img{position:absolute;left:-15%;top:-6%;width:130%;height:auto;max-width:none}
+   #hero-details .resonance-picker{display:flex;flex-wrap:wrap;gap:.3em}
    #hero-details .gear-slots{display:flex;gap:.45em;justify-content:center;height:4.1em;margin-bottom:.3em}
    #hero-details .gear-slot{position:relative;flex:0 0 4.1em;aspect-ratio:1;min-height:0;padding:.2em;border:2px solid var(--rarity);border-radius:.55em;background:linear-gradient(145deg,color-mix(in srgb,var(--rarity) 60%,#122241),#182843);box-shadow:inset 0 1px #fff8,0 .2em .2em #07172a50}
    #hero-details button.gear-slot{min-height:0;padding:.2em;border:2px solid var(--rarity);background:linear-gradient(145deg,color-mix(in srgb,var(--rarity) 60%,#122241),#182843)}
@@ -110,7 +135,8 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
  host.hidden=false;host.dataset.tab=currentTab;
  const tickets=Object.fromEntries(roster.map(member=>[member.heroInstanceKey,combatProgression?.ticketCount(member.heroInstanceKey)||0]));
  const leaderName=resolveCombatMovementTuning(globals).leaderName;
- const key=JSON.stringify([index,currentTab,subPanel,activeSkillIndex,leaderName,roster.map(member=>[member.currentLevel,member.currentEXP,member.maxHP,member.stats]),hero.hp,globals.Equipment,tickets,ticketNotice]);
+ const growth=combatProgression?.heroGrowth?.()||null,formationStore=combatProgression?.formation||null,formationState=formationStore?.state()||null;
+ const key=JSON.stringify([index,currentTab,subPanel,activeSkillIndex,leaderName,roster.map(member=>[member.currentLevel,member.currentEXP,member.maxHP,member.stats]),hero.hp,globals.Equipment,tickets,ticketNotice,growth,formationState,formationPick,resonancePick,sheetNotice]);
  if(key!==lastKey){
   lastKey=key;
   const focused=content.contains(document.activeElement)?document.activeElement:null;
@@ -123,14 +149,15 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
 
   const identity=el('header');identity.className='identity';
   portrait(hero,identity)?.classList.add('hero-portrait');
-  const formation=button(identity,null,()=>{subPanel=subPanel==='formation'?'':'formation';currentTab='heroes';});
+  const formation=button(identity,null,()=>{subPanel=subPanel==='formation'?'':'formation';currentTab='heroes';formationPick='';sheetNotice='';});
   formation.className='formation-button';formation.setAttribute('aria-label','Formation');
-  for(let cell=0;cell<12;cell++)el('i',null,formation).className=cell===5?'lead':'';
+  const miniPreset=formationState&&activeFormationPreset(formationState);
+  for(let cell=0;cell<FORMATION_COLUMNS*FORMATION_ROWS;cell++){const occupant=miniPreset?formationOccupant(miniPreset,cell):'';el('i',null,formation).className=occupant&&occupant===miniPreset.leader?'lead':occupant?'filled':'';}
   const arrows=el('nav',null,identity);arrows.className='hero-arrows';arrows.setAttribute('aria-label','Choose hero');
   button(arrows,'‹',()=>selectHero(index-1)).setAttribute('aria-label','Previous hero');
   button(arrows,'›',()=>selectHero(index+1)).setAttribute('aria-label','Next hero');
   const name=el('div',null,identity);name.className='hero-name';
-  el('h1',definition.name,name);starMeter(hero,name);
+  el('h1',definition.name,name);starMeter(heroStars(growth,hero.heroInstanceKey),name);
 
   const panel=el('aside',null,identity);panel.className='skill-panel';panel.setAttribute('aria-label','Hero skills');
   const panelNav=document.createElement('footer');
@@ -154,10 +181,86 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
   const pane=el('div');pane.className='pane';pane.dataset.view=currentTab;pane.setAttribute('aria-label',`${currentTab} view`);
 
   if(currentTab==='heroes'&&subPanel){
-   const spec=SUB_PANELS[subPanel],sheet=el('section',null,pane);sheet.className='sub-panel';sheet.dataset.panel=subPanel;
-   const head=el('header',null,sheet);el('h2',spec.title,head);button(head,'✕',()=>{subPanel='';}).setAttribute('aria-label','Close '+spec.title);
-   if(spec.slots){const slots=el('div',null,sheet);slots.className='resonance-slots';for(const slot of [1,2])el('span',`Slot ${slot} · Coming soon`,slots);}
-   for(const line of spec.body(leaderName))el('p',line,sheet);
+   const sheet=el('section',null,pane);sheet.className='sub-panel';sheet.dataset.panel=subPanel;
+   const head=el('header',null,sheet);el('h2',SHEET_TITLES[subPanel],head);button(head,'✕',()=>{subPanel='';sheetNotice='';}).setAttribute('aria-label','Close '+SHEET_TITLES[subPanel]);
+   const notice=reason=>reason==='insufficient_tickets'?'Not enough tickets yet.':reason==='slot_locked'?'That slot is still locked.':reason==='max_stars'?'All stars earned.':'The change could not be saved.';
+   if(subPanel==='formation')renderFormationSheet(sheet);
+   else if(subPanel==='star')renderStarSheet(sheet);
+   else renderResonanceSheet(sheet);
+   if(sheetNotice)el('p',sheetNotice,sheet).className='sheet-note';
+
+   function renderFormationSheet(sheet){
+    if(!formationState){el('p',`Current leader: ${leaderName}.`,sheet);return;}
+    const preset=activeFormationPreset(formationState),nameOf=id=>heroDefinition(globals.HeroProgress.heroes[id]||{baseHeroName:id}).name;
+    const presets=el('div',null,sheet);presets.className='sheet-row';presets.setAttribute('aria-label','Formation presets');
+    for(let slot=0;slot<FORMATION_PRESETS;slot++){const tab=button(presets,String(slot+1),()=>{formationStore.selectPreset(slot);formationPick='';});tab.setAttribute('aria-pressed',String(formationState.active===slot));tab.setAttribute('aria-label',`Preset ${slot+1}`);}
+    el('span',null,presets);
+    button(presets,'Copy',()=>{formationStore.copyPreset();formationPick='';}).setAttribute('aria-label',`Copy preset ${formationState.active+1} to preset ${(formationState.active+1)%FORMATION_PRESETS+1}`);
+    button(presets,'Auto',()=>{formationStore.autoForm();formationPick='';}).setAttribute('aria-label','Auto-Form');
+    const board=el('div',null,sheet);board.className='formation-board';board.setAttribute('aria-label','Formation board');
+    for(let row=0;row<FORMATION_ROWS;row++){
+     el('small',FORMATION_ROW_LABELS[row],board);
+     for(let column=0;column<FORMATION_COLUMNS;column++){
+      const cell=row*FORMATION_COLUMNS+column,occupant=formationOccupant(preset,cell);
+      const node=button(board,null,()=>{
+       if(formationPick&&formationPick!==occupant){const result=formationStore.place(formationPick,cell);sheetNotice=result.ok?'':notice(result.reason);formationPick='';}
+       else formationPick=formationPick===occupant?'':occupant;
+      });
+      node.className='formation-cell';node.dataset.cell=String(cell);node.setAttribute('aria-pressed',String(!!occupant&&occupant===formationPick));
+      if(occupant){
+       const member=globals.HeroProgress.heroes[occupant];node.dataset.hero=occupant;node.dataset.leader=String(occupant===preset.leader);
+       const face=el('i',null,node);face.className='cell-face';if(member)portrait(member,face);el('em',occupant===preset.leader?`★ ${nameOf(occupant)}`:nameOf(occupant),node);
+       node.setAttribute('aria-label',`${nameOf(occupant)}, ${FORMATION_ROW_LABELS[row]} row${occupant===preset.leader?', leader':''}`);
+      }else node.setAttribute('aria-label',`Empty ${FORMATION_ROW_LABELS[row]} cell ${column+1}${formationPick?`; move ${nameOf(formationPick)} here`:''}`);
+     }
+    }
+    const footer=el('div',null,sheet);footer.className='sheet-row';
+    const totalCP=Math.round(roster.reduce((sum,member)=>sum+computeCombatPower(member),0));
+    el('span',`Total CP ${totalCP} · Leader ${nameOf(preset.leader)}`,footer).className='formation-total';
+    const lead=button(footer,'Set Leader',()=>{const result=formationStore.setLeader(formationPick);sheetNotice=result.ok?'':notice(result.reason);formationPick='';});
+    lead.className='sheet-action';lead.disabled=!formationPick||formationPick===preset.leader;
+    lead.setAttribute('aria-label',formationPick?`Set ${nameOf(formationPick)} as leader`:'Set Leader');
+    if(!formationPick&&!sheetNotice)el('p','Tap a hero, then a cell to move or swap. The leader guides the camera and party.',sheet).className='sheet-note';
+   }
+
+   function renderStarSheet(sheet){
+    sheet.classList.add('star-sheet');
+    const id=hero.heroInstanceKey,stars=heroStars(growth,id),maxed=stars>=STAR_MAX,cost=starUpCost(stars),balance=tickets[id]||0,breakdown=heroGrowthBreakdown(growth,id);
+    const top=el('div',null,sheet);top.className='sheet-row';starMeter(stars,top);el('span',`${stars} / ${STAR_MAX}`,top);
+    const lines=el('dl',null,sheet);lines.className='growth-lines';
+    el('dt','Now',lines);el('dd',`+${pct(breakdown.own)} HP ATK DEF MATK RES`,lines);
+    el('dt','Next',lines);el('dd',maxed?'All stars earned':`+${pct(breakdown.own+STAR_STAT_BONUS)}${(stars+1)%STAR_TIER_SIZE===0?` · [All] party +${pct(STAR_TIER_PARTY_BONUS)}`:''}${stars+1===RESONANCE_SLOT_STARS[1]?' · Resonance slot 2':''}`,lines);
+    el('dt','[All]',lines);el('dd',`Party +${pct(breakdown.party)} from every hero's completed tiers`,lines);
+    const row=el('div',null,sheet);row.className='sheet-row';
+    el('span',maxed?'Max stars':`${balance}/${cost} ${definition.name} tickets`,row).className='star-cost';
+    const action=button(row,'Star Up',()=>{const result=combatProgression.starUp(id);sheetNotice=result.ok?`${definition.name} reached ★${result.stars}.`:notice(result.reason);});
+    action.className='sheet-action star-up';action.disabled=maxed||balance<cost||!combatProgression?.starUp;
+    action.setAttribute('aria-label',maxed?'Maximum stars':`Star Up · ${cost} tickets`);
+   }
+
+   function renderResonanceSheet(sheet){
+    const id=hero.heroInstanceKey,slots=resonanceSlots(growth,id),nameOf=key=>heroDefinition(globals.HeroProgress.heroes[key]||{baseHeroName:key}).name;
+    el('p',`Other heroes lend ${definition.name} a passive echo of their signature stat.`,sheet).className='sheet-note';
+    const grid=el('div',null,sheet);grid.className='resonance-slots';
+    slots.forEach((linked,slot)=>{
+     const unlocked=resonanceSlotUnlocked(growth,id,slot),echo=linked&&resonanceEcho(growth,linked);
+     const node=button(grid,null,()=>{resonancePick=resonancePick===slot?-1:slot;sheetNotice='';});
+     node.className='resonance-slot';node.disabled=!unlocked;node.setAttribute('aria-pressed',String(resonancePick===slot));
+     const face=el('i',null,node);face.className='slot-face';
+     if(echo){node.dataset.linked=linked;const member=globals.HeroProgress.heroes[linked];if(member)portrait(member,face);}
+     const text=!unlocked?`Slot ${slot+1} · Unlocks at ★${RESONANCE_SLOT_STARS[slot]}`:echo?`${nameOf(linked)} · ${echo.label} +${pct(echo.magnitude)} ${STAT_NAMES[echo.stat]}`:`Slot ${slot+1} · Empty`;
+     el('span',text,node);node.setAttribute('aria-label',`Resonance slot ${slot+1}: ${text}`);
+    });
+    if(resonancePick>=0){
+     const picker=el('div',null,sheet);picker.className='resonance-picker';picker.setAttribute('aria-label',`Choose a hero for slot ${resonancePick+1}`);
+     for(const other of Object.keys(RESONANCE_ECHOES).filter(key=>key!==id&&globals.HeroProgress.heroes[key])){
+      const echo=resonanceEcho(growth,other);
+      const choice=button(picker,`${nameOf(other)} +${pct(echo.magnitude)} ${STAT_NAMES[echo.stat]}`,()=>{const result=combatProgression.setResonance(id,resonancePick,other);sheetNotice=result.ok?'':notice(result.reason);resonancePick=-1;});
+      choice.className='sheet-action';choice.setAttribute('aria-pressed',String(slots[resonancePick]===other));
+     }
+     if(slots[resonancePick])button(picker,'Clear',()=>{const result=combatProgression.setResonance(id,resonancePick,'');sheetNotice=result.ok?'':notice(result.reason);resonancePick=-1;}).className='sheet-action';
+    }else if(!sheetNotice)el('p',`Slot 2 opens at ★${RESONANCE_SLOT_STARS[1]}. Echoes grow with the lending hero's stars.`,sheet).className='sheet-note';
+   }
   }else if(currentTab==='heroes'){
    const grid=el('div',null,pane);grid.className='roster';grid.setAttribute('aria-label','Party roster');
    for(const [memberIndex,member] of roster.entries()){
@@ -181,8 +284,8 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    });
    levelUp.className='hero-level-up';levelUp.disabled=maxedHero||balance<cost||!combatProgression;
    levelUp.setAttribute('aria-label',maxedHero?'Maximum level':`Level Up · ${cost} tickets`);
-   button(actions,'Star Up',()=>{subPanel='star';});
-   button(actions,'Resonance',()=>{subPanel='resonance';});
+   button(actions,'Star Up',()=>{subPanel='star';sheetNotice='';});
+   button(actions,'Resonance',()=>{subPanel='resonance';resonancePick=-1;sheetNotice='';});
    if(ticketNotice)el('small',ticketNotice,pane).className='hero-ticket-notice';
   }else if(currentTab==='gear'){
    const slots=el('div',null,pane),itemDetail=el('div',null,pane);itemDetail.className='gear-detail';

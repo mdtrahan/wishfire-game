@@ -3,7 +3,7 @@
 Bead: ORKA-k63. Lane: `bead/ORKA-k63-hero-party-screen` at `.worktrees/wt-ORKA-k63-hero-party-screen`.
 Rollback: tag `wishfire-checkpoint-20261020-before-ORKA-k63-hero-redesign` (= main `b5895de6`). Nothing lands on `main` without separate approval and Integration Ready evidence.
 
-Status: drawn mockups r1–r3 in `output/ORKA-k63/mockup/drawn/`. Owner approved building phase 1 on 2026-10-20 (bead ORKA-9ee) with the r4 notes below; phases 2–4 still need their own approval.
+Status: drawn mockups r1–r3 in `output/ORKA-k63/mockup/drawn/`. Owner approved building phase 1 on 2026-10-20 (bead ORKA-9ee) with the r4 notes below. On 2026-10-20 the owner directed phases 2–4 to be built in the same ORKA-9ee lane (rollback tag `wishfire-checkpoint-20261020-before-ORKA-9ee-phase2`); the defaults taken for the open decisions are recorded under "Phase 2–4 build".
 
 ## What Archero 2 does better
 
@@ -63,3 +63,12 @@ Phases 1–2 are presentation and party setup; 3–4 change balance and must not
 - Wishfire palette and existing bottom nav; 360×640 and 216×384 compact containment; UI-lock gate (`test:lamp-ui`) on presentation owners.
 - Preserve saves, earned levels, EXP and equipment; `web-runner/app.js` stays orchestration-only.
 - Previous redesign (ORKA-2c2) contracts for Gear detail and 33-skill coverage must still pass.
+
+## Phase 2–4 build (2026-10-20, ORKA-9ee lane)
+
+Defaults taken for the open owner decisions; each is a tunable constant and can be revised.
+- **Formation** (`web-runner/src/core/heroFormationRules.mjs`, `systems/heroFormationStore.mjs`, save `wishfire.heroFormation.v1`): 4×3 board (Front/Middle/Back), tap a hero then a cell to move or swap, Set Leader, Auto-Form (Tank/Damage front, Mage/Support back), three presets with Copy (active → next), Total CP. Combat reads the leader and the KO succession order (leader, then front-to-back, left-to-right); a saved dev movement tuning that names a leader still wins. Board rows do not move combat geometry yet — the authored role formation (Fara leads Hondo, Runa/Kaja rear) is unchanged. Formation button: left edge.
+- **Star Up** (`heroGrowthRules.mjs`, saved as `growth` inside the combat progression record, omitted while empty): material is the hero's own Hero Tickets (shared with Level Up). 15 stars = bronze/silver/gold tiers of five. Star n costs 50·n tickets. +2% HP/ATK/DEF/MATK/RES per own star; each completed tier on any hero is a +1% [All] party bonus. Additive only — stars gate no skills, so the level schedule is untouched.
+- **Resonance**: two slots per hero, slot 2 at ★5. A slot holds another hero, who lends a passive echo of its signature stat (Fara DEF, Hondo ATK, Runa MATK, Kaja HP) worth 5% + 0.5% per lender star. Chosen over borrowing other heroes' active skills because it needs no new combat behaviour; skill-borrowing can replace it later. Free to change.
+- Combat applies party training plus growth as one permanent `up` modifier per stat (`permanentHeroModifiers` in `realtimeSkillState.mjs`); later deployed copies (`#2+`) do not inherit growth, matching gear ownership. CP readouts stay on base stats.
+- Signature skill card keeps the awakening; the selected-hero action row is Level Up / Star Up / Resonance.

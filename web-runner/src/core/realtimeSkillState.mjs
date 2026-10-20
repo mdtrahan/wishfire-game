@@ -1,3 +1,4 @@
+import { heroGrowthModifiers } from './heroGrowthRules.mjs';
 import { combatModifiers, projectCombatStat, projectCombatMultiplier, modifierCanImprove } from '../../../src/core/combatModifierRules.mjs';
 export const rawCombatStat = (actor, stat) => Number(actor?.stats?.[stat] ?? actor?.[stat] ?? 0) || 0;
 export function skillModifiers(id, choice) {
@@ -38,21 +39,25 @@ export function actorCombatModifiers(globals, actor) {
       if(status.statusEffect===stat.toLowerCase()+'Down')legacy.push({channel:stat,direction:'down',magnitude:status.magnitude});
     }
   }
-  if (actor?.kind === 'hero') {
-    for (const [trainingStat, combatStat] of [['ATK', 'ATK'], ['DEF', 'DEF'], ['MATK', 'MAG'], ['RES', 'RES']]) {
-      const base = rawCombatStat(actor, combatStat);
-      const levels = Math.max(0, Math.floor(Number(globals.PartyTrainingLevels?.[trainingStat]) || 0));
-      if (base > 0 && levels > 0) legacy.push({ channel: combatStat, direction: 'up', magnitude: Math.min(2, levels * 0.02) });
-    }
-  }
+  if (actor?.kind === 'hero') legacy.push(...permanentHeroModifiers(globals, actor));
   return [...legacy,...combatModifiers(globals.RealtimeSkillEffects?.[String(actor.uid)],Number(globals.time || 0)),...battleModifiers(globals,actor)];
+}
+// Party training and Star Up/Resonance growth are permanent and additive, so they share one
+// 'up' modifier per stat (projection keeps only the strongest 'up' entry).
+export function permanentHeroModifiers(globals, actor) {
+  const totals = {};
+  for (const [trainingStat, combatStat] of [['ATK', 'ATK'], ['DEF', 'DEF'], ['MATK', 'MAG'], ['RES', 'RES']]) {
+    const levels = Math.max(0, Math.floor(Number(globals.PartyTrainingLevels?.[trainingStat]) || 0));
+    if (levels > 0) totals[combatStat] = Math.min(2, levels * 0.02);
+  }
+  for (const modifier of heroGrowthModifiers(globals.HeroGrowth, actor?.heroInstanceKey || actor?.baseHeroName)) totals[modifier.channel] = (totals[modifier.channel] || 0) + modifier.magnitude;
+  return Object.entries(totals).filter(([stat]) => stat === 'HP' || rawCombatStat(actor, stat) > 0).map(([channel, magnitude]) => ({ channel, direction: 'up', magnitude }));
 }
 export function partyTrainingCombatStat(globals, actor, stat, value) {
   if (actor?.kind !== 'hero' || !['ATK', 'DEF', 'MAG', 'RES'].includes(stat)) return Math.max(0, Number(value) || 0);
-  const trainingStat = stat === 'MAG' ? 'MATK' : stat;
-  const levels = Math.max(0, Math.floor(Number(globals.PartyTrainingLevels?.[trainingStat]) || 0));
-  if (!levels) return Math.max(0, Number(value) || 0);
-  return projectCombatStat(Math.max(0, Number(value) || 0), stat, [{ channel: stat, direction: 'up', magnitude: Math.min(2, levels * 0.02) }]);
+  const modifiers = permanentHeroModifiers(globals, actor).filter(modifier => modifier.channel === stat);
+  if (!modifiers.length) return Math.max(0, Number(value) || 0);
+  return projectCombatStat(Math.max(0, Number(value) || 0), stat, modifiers);
 }
 export function realtimeCombatStat(globals, actor, stat, base = rawCombatStat(actor,stat), ownedValue = base) {
   const modifiers = actorCombatModifiers(globals,actor);

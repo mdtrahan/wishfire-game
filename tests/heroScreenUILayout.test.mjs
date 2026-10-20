@@ -94,6 +94,8 @@ const fixtureModule=`
  import {heroArtKey} from '/web-runner/state/heroArtAssets.mjs';
  import {EQUIPMENT_SAVE_KEY} from '/web-runner/systems/equipmentStorage.mjs';
  import {HERO_PROGRESS_SAVE_KEY} from '/web-runner/systems/heroProgressStorage.js';
+ import {createHeroFormationStore} from '/web-runner/systems/heroFormationStore.mjs';
+ import {starUpHero,setHeroResonance} from '/web-runner/src/core/heroGrowthRules.mjs';
  window.mountHeroRedesignFixture=async({progress,economy})=>{
   localStorage.setItem(HERO_PROGRESS_SAVE_KEY,JSON.stringify(progress));
   localStorage.setItem(EQUIPMENT_SAVE_KEY,JSON.stringify(economy));
@@ -111,7 +113,14 @@ const fixtureModule=`
   const gameState={selectedHero:0,storyEntry:{phase:'hero'}};
   const fnContext={state:{globals,entities:[]}};
   const layoutState={getActiveLayoutId:()=> 'heroLayout'},eventBus={emit(){}};
-  const combatProgression={ticketCount:id=>window.heroQa?.tickets?.[id]||0,spendLevelUp:()=>({ok:false,reason:'unavailable'})};
+  // Growth runs through the real rules against an in-memory wallet; Formation uses the real store.
+  let growthState={wallet:{ticketsByHero:{}}};
+  const wallet=()=>({ticketsByHero:{...(window.heroQa?.tickets||{})}});
+  const growthResult=result=>{if(result.ok){growthState=result.state;window.heroQa.tickets={...result.state.wallet.ticketsByHero};}return result;};
+  const combatProgression={ticketCount:id=>window.heroQa?.tickets?.[id]||0,spendLevelUp:()=>({ok:false,reason:'unavailable'}),
+   heroGrowth:()=>growthState.growth||null,formation:createHeroFormationStore({globals,storage:localStorage}),
+   starUp:id=>growthResult(starUpHero({...growthState,wallet:wallet()},id)),
+   setResonance:(id,slot,linked)=>growthResult(setHeroResonance({...growthState,wallet:wallet()},id,slot,linked))};
   const render=()=>{renderHeroScreen({equipmentProgress:{data:equipment},combatProgression,canvas,gameState,fnContext,heroPortraitImages:portraits});const scale=canvas.getBoundingClientRect().width/360;renderExistingNavigation({canvas},{worldToCanvas:(x,y)=>({x:x*scale,y:y*scale}),layoutScale:scale,gameState,layoutState,eventBus});};
   const frame=()=>{render();window.heroQaFrame=requestAnimationFrame(frame);};render();window.heroQaFrame=requestAnimationFrame(frame);
   window.heroQa={globals,gameState,equipment,fnContext,render};
@@ -179,7 +188,7 @@ test('hero party screen uses saved canonical data and stays contained across por
    const measure=()=>page.evaluate(()=>{
     const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
     const host=document.querySelector('#hero-details'),q=s=>host.querySelector(s);
-    const clipped=[...host.querySelectorAll('button:not(.card-select),.stars,h1,h2,.ticket-bar span,.card-level,.leader-badge,.exp-bar span,dt,dd')].filter(node=>node.offsetParent&&(node.scrollWidth>node.clientWidth+1)).map(node=>node.textContent);
+    const clipped=[...host.querySelectorAll('button:not(.card-select),.stars,h1,h2,.ticket-bar span,.card-level,.leader-badge,.exp-bar span,dt,dd,.formation-cell em,.resonance-slot span')].filter(node=>node.offsetParent&&(node.scrollWidth>node.clientWidth+1)).map(node=>node.textContent);
     return{viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},stage:rect(document.querySelector('#game-screen')),host:rect(host),identity:rect(q('.identity')),portrait:rect(q('.hero-portrait')),panel:rect(q('.skill-panel')),name:rect(q('.hero-name')),tabs:rect(q('.tabs')),pane:rect(q('.pane')),bottomNav:rect(document.querySelector('#game-meta-nav')),clipped,
      panelColor:getComputedStyle(q('.skill-panel')).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth||document.body.scrollWidth>innerWidth};
    });
@@ -236,15 +245,71 @@ test('hero party screen uses saved canonical data and stays contained across por
    assert.equal(await actions.locator('.hero-level-up').isDisabled(),true,'Level Up stays gated by the existing ticket spend');
    assert.equal(await cards.locator('button').count(),4,'cards keep faces clear of action buttons');
    screenshots.heroes=`${profile.name}-heroes.png`;await page.screenshot({path:path.join(artifactDir,screenshots.heroes),fullPage:true});
-   for(const [action,panelId,title] of [['Star Up','star','Star Up'],['Resonance','resonance','Resonance']]){
-    await detail.locator('.hero-actions').getByRole('button',{name:action,exact:true}).click();
-    await page.waitForFunction(id=>document.querySelector('#hero-details .sub-panel')?.dataset.panel===id,panelId);
-    if(panelId==='resonance'){assert.equal(await detail.locator('.resonance-slots span').count(),2,'two Resonance placeholder slots');screenshots.resonance=`${profile.name}-resonance.png`;await page.screenshot({path:path.join(artifactDir,screenshots.resonance),fullPage:true});}
-    assert.deepEqual((await measure()).clipped,[],`${profile.name}: ${title} sheet has no clipped labels`);
-    await detail.getByRole('button',{name:'Close '+title}).click();await page.waitForFunction(()=>!document.querySelector('#hero-details .sub-panel'));
-   }
-   await detail.getByRole('button',{name:'Formation'}).click();await page.waitForFunction(()=>document.querySelector('#hero-details .sub-panel')?.dataset.panel==='formation');
-   assert.match(await detail.locator('.sub-panel').innerText(),/Current leader: Fara\./);
+   const sheetFits=async label=>{
+    const fit=await page.evaluate(()=>{const pane=document.querySelector('#hero-details .pane'),sheet=pane.querySelector('.sub-panel');const p=pane.getBoundingClientRect(),r=sheet.getBoundingClientRect();return{scroll:pane.scrollHeight-pane.clientHeight,inside:r.bottom<=p.bottom+0.5&&r.right<=p.right+0.5};});
+    assert.ok(fit.scroll<=1&&fit.inside,`${profile.name}: ${label} sheet fits the pane without scrolling (${JSON.stringify(fit)})`);
+    assert.deepEqual((await measure()).clipped,[],`${profile.name}: ${label} sheet has no clipped labels`);
+   };
+   const sheet=detail.locator('.sub-panel');
+   // Star Up: spends the hero's own tickets and fills the bronze meter.
+   await detail.locator('.hero-actions').getByRole('button',{name:'Star Up',exact:true}).click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .sub-panel')?.dataset.panel==='star');
+   assert.equal(await sheet.locator('.star-up').isDisabled(),true,'Star Up waits for enough tickets');
+   assert.equal(await sheet.locator('.star-cost').textContent(),'0/50 Fara tickets');
+   await sheetFits('Star Up');
+   await page.evaluate(()=>{window.heroQa.tickets={Falie:60};window.heroQa.render();});
+   await sheet.getByRole('button',{name:'Star Up · 50 tickets'}).click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .star-cost')?.textContent==='10/100 Fara tickets');
+   assert.equal(await detail.locator('.hero-name .stars span[data-tier="bronze"]').count(),1,'showcase meter shows the first bronze star');
+   assert.equal(await detail.locator('.hero-name .stars').getAttribute('aria-label'),'1 of 15 stars');
+   assert.match(await sheet.innerText(),/Fara reached ★1\./);
+   screenshots.star=`${profile.name}-star.png`;await page.screenshot({path:path.join(artifactDir,screenshots.star),fullPage:true});
+   await detail.getByRole('button',{name:'Close Star Up'}).click();await page.waitForFunction(()=>!document.querySelector('#hero-details .sub-panel'));
+   // Resonance: slot 1 open, slot 2 opens at five stars.
+   await detail.locator('.hero-actions').getByRole('button',{name:'Resonance',exact:true}).click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .sub-panel')?.dataset.panel==='resonance');
+   const slots=sheet.locator('.resonance-slot');
+   assert.equal(await slots.count(),2,'two Resonance slots');
+   assert.equal(await slots.nth(1).isDisabled(),true,'slot 2 is locked below five stars');
+   assert.match(await slots.nth(1).innerText(),/Unlocks at ★5/);
+   await slots.nth(0).click();await sheet.locator('.resonance-picker button').first().waitFor();
+   assert.deepEqual(await sheet.locator('.resonance-picker button').allTextContents(),['Hondo +5% ATK','Runa +5% MATK','Kaja +5% HP'],'picker offers the other heroes');
+   await sheetFits('Resonance picker');
+   await sheet.locator('.resonance-picker').getByRole('button',{name:'Hondo +5% ATK'}).click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .resonance-slot')?.dataset.linked==='Huun');
+   assert.equal(await slots.nth(0).innerText().then(text=>text.trim()),'Hondo · Might +5% ATK');
+   await sheetFits('Resonance');
+   screenshots.resonance=`${profile.name}-resonance.png`;await page.screenshot({path:path.join(artifactDir,screenshots.resonance),fullPage:true});
+   await detail.getByRole('button',{name:'Close Resonance'}).click();await page.waitForFunction(()=>!document.querySelector('#hero-details .sub-panel'));
+   // Formation: 4x3 board, tap-to-move, leader, presets.
+   await detail.getByRole('button',{name:'Formation',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#hero-details .sub-panel')?.dataset.panel==='formation');
+   const board=sheet.locator('.formation-board');
+   assert.equal(await board.locator('.formation-cell').count(),12,'4x3 formation board');
+   assert.equal(await board.locator('.formation-cell[data-hero]').count(),4,'four heroes on the board');
+   assert.equal(await board.locator('.formation-cell[data-leader="true"]').getAttribute('data-hero'),'Falie','Fara leads by default');
+   assert.match(await sheet.locator('.formation-total').textContent(),/^Total CP \d+ · Leader Fara$/);
+   await sheetFits('Formation');
+   screenshots.formation=`${profile.name}-formation.png`;await page.screenshot({path:path.join(artifactDir,screenshots.formation),fullPage:true});
+   await board.locator('.formation-cell[data-hero="Runa"]').click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-hero="Runa"]')?.getAttribute('aria-pressed')==='true');
+   await board.locator('.formation-cell[data-cell="4"]').click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-cell="4"]')?.dataset.hero==='Runa');
+   await board.locator('.formation-cell[data-hero="Runa"]').click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-hero="Runa"]')?.getAttribute('aria-pressed')==='true');
+   await sheet.getByRole('button',{name:'Set Runa as leader'}).click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-leader="true"]')?.dataset.hero==='Runa');
+   assert.deepEqual(await page.evaluate(()=>[window.heroQa.globals.HeroFormationLeader,window.heroQa.globals.HeroFormationOrder,JSON.parse(localStorage.getItem('wishfire.heroFormation.v1')).presets[0].leader]),['Runa',['Runa','Fara','Hondo','Kaja'],'Runa'],'leader and succession publish to combat and persist');
+   await sheet.getByRole('button',{name:'Preset 2',exact:true}).click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-leader="true"]')?.dataset.hero==='Falie');
+   await sheet.getByRole('button',{name:'Preset 1',exact:true}).click();
+   await sheet.getByRole('button',{name:'Copy preset 1 to preset 2'}).click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .sheet-row button[aria-label="Preset 2"]')?.getAttribute('aria-pressed')==='true'&&document.querySelector('#hero-details .formation-cell[data-leader="true"]')?.dataset.hero==='Runa');
+   await sheet.getByRole('button',{name:'Auto-Form'}).click();
+   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-cell="4"]')?.dataset.hero!=='Runa');
+   await sheet.getByRole('button',{name:'Preset 1',exact:true}).click();
+   await board.locator('.formation-cell[data-hero="Falie"]').click();
+   await sheet.getByRole('button',{name:'Set Fara as leader'}).click();
+   await page.waitForFunction(()=>window.heroQa.globals.HeroFormationLeader==='Fara');
    await detail.getByRole('button',{name:'Close Formation'}).click();
    // Card selection drives the showcase.
    for(const [cardIndex,hero] of heroes.entries()){

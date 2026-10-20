@@ -17,7 +17,7 @@ export function advanceCombatCamera({ globals = {}, entities = [], seconds = 0 }
   const tuning = resolveCombatMovementTuning(globals);
   const now = Number(globals.time || 0);
   const centroidX = heroes.reduce((sum, hero) => sum + actorFootPoint(hero).x, 0) / heroes.length;
-  const leader = resolveCombatLeader(heroes, tuning.leaderName);
+  const leader = resolveCombatLeader(heroes, tuning.leaderName, tuning.succession);
   const anchorX = tuning.leaderAnchor && leader ? actorFootPoint(leader).x : centroidX;
   const previous = globals.CombatCamera;
   const camera = previous && Number.isFinite(Number(previous.x)) ? { ...previous } : { x: anchorX, lastFocusAt: -Infinity };

@@ -52,17 +52,26 @@ export function sanitizeCombatMovementTuning(input = null) {
   return next;
 }
 
+// The player's Formation leader applies unless a saved dev tuning names one explicitly.
+// `succession` follows the Formation board for KO hand-off.
 export function resolveCombatMovementTuning(globals = {}) {
-  return sanitizeCombatMovementTuning(globals?.DevMovementTuning);
+  const dev = globals?.DevMovementTuning;
+  const tuning = sanitizeCombatMovementTuning(dev?.leaderName ? dev : { ...(dev || {}), leaderName: globals?.HeroFormationLeader });
+  const succession = Array.isArray(globals?.HeroFormationOrder) ? globals.HeroFormationOrder.filter(name => COMBAT_LEADER_NAMES.includes(name)) : [];
+  return succession.length ? { ...tuning, succession } : tuning;
 }
 
 const heroKey = hero => String(hero?.baseHeroName || hero?.name || '').trim().toLowerCase();
 const LEADER_ALIASES = Object.freeze({ fara: ['fara', 'falie'], hondo: ['hondo', 'huun'], runa: ['runa'], kaja: ['kaja', 'kojonn'] });
 
-// The chosen leader leads while living. Otherwise the first living hero in
-// party order takes over, so the anchor never points at a KO actor.
-export function resolveCombatLeader(heroes = [], leaderName = COMBAT_LEADER_NAMES[0]) {
+// The chosen leader leads while living. Otherwise the first living hero in the
+// Formation succession, then party order, takes over, so the anchor never points at a KO actor.
+export function resolveCombatLeader(heroes = [], leaderName = COMBAT_LEADER_NAMES[0], succession = []) {
   const living = (heroes || []).filter(hero => hero && Number(hero.hp || 0) > 0);
-  const aliases = LEADER_ALIASES[String(leaderName || '').toLowerCase()] || [String(leaderName || '').toLowerCase()];
-  return living.find(hero => aliases.includes(heroKey(hero))) || living[0] || null;
+  const byName = name => {
+    const aliases = LEADER_ALIASES[String(name || '').toLowerCase()] || [String(name || '').toLowerCase()];
+    return living.find(hero => aliases.includes(heroKey(hero)));
+  };
+  for (const name of [leaderName, ...(succession || [])]) { const hero = byName(name); if (hero) return hero; }
+  return living[0] || null;
 }

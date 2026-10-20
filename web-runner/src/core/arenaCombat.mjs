@@ -337,7 +337,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   // the leader reaches contact and walks the squad around its target. Boss
   // encounters keep the stage-owned centroid layout.
   const tuning = resolveCombatMovementTuning(globals);
-  const leader = tuning.leaderAnchor && !bossEncounter ? resolveCombatLeader(heroes, tuning.leaderName) : null;
+  const leader = tuning.leaderAnchor && !bossEncounter ? resolveCombatLeader(heroes, tuning.leaderName, tuning.succession) : null;
   const anchorX = leader ? actorFootPoint(leader).x : center;
   const anchorY = leader ? actorFootPoint(leader).y : centerY;
   const now = Number(globals.time || 0);
