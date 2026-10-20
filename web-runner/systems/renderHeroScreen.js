@@ -55,7 +55,6 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details h1{margin:0;width:100%;padding:.12em .5em;text-align:center;font-size:1.3em;letter-spacing:.04em;color:#2a2010;background:linear-gradient(#fff8e4,#ecd7a4);border:2px solid #b88e3c;border-radius:.6em;box-shadow:0 .15em .3em #07172a80}
    #hero-details .stars{display:flex;justify-content:center;gap:.1em;line-height:1}
    #hero-details .stars span{font-size:1.15em;color:#59667a;text-shadow:0 0 1px #0b1626,0 1px 1px #0b1626}
-   #hero-details .stars[data-size=small] span{font-size:.72em}
    #hero-details .stars span[data-tier=bronze]{color:#d0884a} #hero-details .stars span[data-tier=silver]{color:#d9e2ec} #hero-details .stars span[data-tier=gold]{color:#ffcf3f}
    #hero-details .skill-panel{position:absolute;right:.45em;top:2.75em;bottom:.45em;width:43%;z-index:2;display:flex;flex-direction:column;color:#1b2a42;background:#fffdf7;border:2px solid #f2c75c;border-radius:.55em;box-shadow:0 0 0 2px #1b2a42,0 .35em .8em #050b16b0;overflow:hidden}
    #hero-details .skill-panel footer{display:flex;align-items:center;gap:.25em;padding:.3em .35em;background:#1b2a42;color:#fff4d6}
@@ -71,19 +70,19 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .pane{overflow:auto;flex:1;min-height:5em;overflow-wrap:anywhere;background:#fff4df;color:#20304a;border-radius:.45em;padding:.55em .6em}
    #hero-details .pane h2{font-size:1em;margin:0 0 .35em} #hero-details .pane p{margin:.35em 0} #hero-details small{display:block}
    #hero-details .roster{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45em}
-   #hero-details .roster-card{position:relative;display:flex;flex-direction:column;gap:.25em}
+   #hero-details .roster-card{position:relative;display:flex;flex-direction:column;gap:.3em;padding:.2em .2em .3em;border-radius:.55em;background:linear-gradient(#2a3446,#1c2433);box-shadow:0 .1em .2em #0b162655}
    #hero-details .card-select{position:relative;display:block;width:100%;aspect-ratio:1/1.05;padding:0;overflow:hidden;border:2px solid #c9cfd8;border-radius:.5em;background:radial-gradient(ellipse 75% 65% at 50% 38%,#ffffff 0%,#eef2f6 55%,#d5dce5 100%)}
    #hero-details .card-select img{position:absolute;left:-40%;top:-2%;width:180%;height:auto;max-width:none}
-   #hero-details .card-select .stars{position:absolute;left:0;right:0;bottom:.2em}
    #hero-details .roster-card[data-selected=true] .card-select{border-color:#2fb3a6;box-shadow:0 0 0 2px #2fb3a655}
    #hero-details .leader-badge{position:absolute;left:50%;top:-.15em;transform:translateX(-50%);z-index:1;padding:0 .4em;border-radius:.3em;background:#2d7a5f;color:#fff;font-size:.62em;font-weight:700;white-space:nowrap}
    #hero-details .hero-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.4em;margin-top:.6em}
    #hero-details .hero-actions button{min-height:2.2em;font-size:.82em;font-weight:800;background:linear-gradient(#fffaf0,#f1e2bf);color:#1d3150;border:1px solid #b99c66;box-shadow:0 .12em 0 #b99c66}
    #hero-details .hero-actions button:disabled{opacity:1;background:#e3e6ea;color:#7d8794;border-color:#b8bfc8;box-shadow:none}
-   #hero-details .ticket-bar{position:relative;display:flex;align-items:center;height:1.55em;margin-left:.8em;border:2px solid #14213a;border-radius:1em;background:#33435f;box-shadow:inset 0 .15em .2em #0b1626aa}
+   #hero-details .ticket-bar{position:relative;display:flex;align-items:center;height:1.45em;flex:1;margin-left:-.75em;border:2px solid #0e1626;border-radius:1em;background:#33435f;box-shadow:inset 0 .15em .2em #0b1626aa}
    #hero-details .ticket-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:1em;background:linear-gradient(#a6e6ff 0%,#4fb6f2 45%,#2a86d6 100%);box-shadow:inset 0 .12em 0 #ffffff99}
-   #hero-details .ticket-bar span{position:relative;flex:1;text-align:center;font-size:.74em;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #14213a,1px -1px 0 #14213a,-1px 1px 0 #14213a,1px 1px 0 #14213a}
-   #hero-details .ticket-bar .hero-ticket-art{position:relative;z-index:1;width:2.1em;height:1.4em;margin-left:-.95em;flex:none;background-image:url('assets/images/progression/hero-tickets.png');background-size:240% 240%;background-repeat:no-repeat;filter:drop-shadow(0 1px 1px #14213a)}
+   #hero-details .ticket-bar span{position:relative;flex:1;padding-left:.75em;text-align:center;white-space:nowrap;font-size:.66em;letter-spacing:-.02em;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #14213a,1px -1px 0 #14213a,-1px 1px 0 #14213a,1px 1px 0 #14213a}
+   #hero-details .ticket-strip{display:flex;align-items:center;padding:0 .1em}
+   #hero-details .ticket-strip .hero-ticket-art{position:relative;z-index:1;width:1.9em;height:1.27em;flex:none;background-image:url('assets/images/progression/hero-tickets.png');background-size:240% 240%;background-repeat:no-repeat;filter:drop-shadow(0 1px 1px #14213a)}
    #hero-details .hero-ticket-notice{margin-top:.5em;color:#36465c;font-size:.8em}
    #hero-details .sub-panel header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4em}
    #hero-details .sub-panel header h2{margin:0;padding:.1em .8em;border-radius:1em;background:#1b2a42;color:#fff4d6}
@@ -165,12 +164,13 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
     const memberDefinition=heroDefinition(member),selected=memberIndex===index,balance=tickets[member.heroInstanceKey],cost=heroTicketLevelCost(member.currentLevel),memberMaxed=member.currentLevel>=member.maxLevel;
     const card=el('div',null,grid);card.className='roster-card';card.dataset.hero=member.heroInstanceKey;card.dataset.selected=String(selected);
     const pick=button(card,null,()=>selectHero(memberIndex));pick.className='card-select';pick.setAttribute('aria-label',`Select ${memberDefinition.name}, level ${member.currentLevel}`);pick.setAttribute('aria-pressed',String(selected));
-    portrait(member,pick);starMeter(member,pick).dataset.size='small';
+    portrait(member,pick);
     if(memberDefinition.name===leaderName)el('span','Leader',card).className='leader-badge';
-    const bar=el('div',null,card);bar.className='ticket-bar';bar.setAttribute('role','img');
+    const strip=el('div',null,card);strip.className='ticket-strip';
+    const art=el('span',null,strip);art.className='hero-ticket-art';art.style.backgroundPosition=TICKET_QUADRANT[memberDefinition.name]||'0% 0%';
+    const bar=el('div',null,strip);bar.className='ticket-bar';bar.setAttribute('role','img');
     bar.setAttribute('aria-label',memberMaxed?`${memberDefinition.name} at maximum level`:`${balance} of ${cost} ${memberDefinition.name} tickets for the next level`);
     el('i',null,bar).style.width=`${memberMaxed?100:Math.min(100,100*balance/cost)}%`;
-    const art=el('span',null,bar);art.className='hero-ticket-art';art.style.backgroundPosition=TICKET_QUADRANT[memberDefinition.name]||'0% 0%';
     el('span',memberMaxed?'MAX':`${balance}/${cost}`,bar);
    }
    const balance=tickets[hero.heroInstanceKey],cost=heroTicketLevelCost(hero.currentLevel),maxedHero=hero.currentLevel>=hero.maxLevel;

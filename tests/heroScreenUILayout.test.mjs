@@ -205,8 +205,12 @@ test('hero party screen uses saved canonical data and stays contained across por
     const card=cards.nth(cardIndex),definition=heroDefinition(hero),cost=heroTicketLevelCost(hero.currentLevel);
     assert.equal(await card.locator('.card-select img').count(),1,`${definition.name} card shows the hero portrait`);
     assert.equal(await card.locator('.card-level').count(),0,`${definition.name} card has no level counter`);
-    assert.equal(await card.locator('.card-select .stars span').count(),5,`${definition.name} card shows a five-slot star meter`);
-    assert.equal(await card.locator('.card-select .stars span[data-tier]').count(),0,'stars stay grey until Star Up exists');
+    assert.equal(await card.locator('.stars').count(),0,`${definition.name} card carries no stars`);
+    const shell=await card.evaluate(node=>{const c=node.getBoundingClientRect(),b=node.querySelector('.ticket-bar').getBoundingClientRect(),t=node.querySelector('.hero-ticket-art').getBoundingClientRect(),p=node.querySelector('.card-select').getBoundingClientRect();return{bg:getComputedStyle(node).backgroundImage,inside:t.left>=c.left-0.5&&b.right<=c.right+0.5&&b.bottom<=c.bottom+0.5&&b.top>=p.bottom,center:(t.left+b.right)/2-(c.left+c.right)/2};});
+    assert.match(shell.bg,/linear-gradient/,`${definition.name} card sits on a dark backing card`);
+    assert.equal(await card.locator('.ticket-bar span').last().evaluate(node=>node.getClientRects().length===1&&node.scrollWidth<=node.parentElement.clientWidth),true,`${definition.name} ticket count stays on one line`);
+    assert.ok(shell.inside,`${definition.name} ticket icon and bar sit inside the dark card below the portrait`);
+    assert.ok(Math.abs(shell.center)<1.5,`${definition.name} ticket strip is centered (${shell.center})`);
     const crop=await card.locator('.card-select').evaluate(node=>{const box=node.getBoundingClientRect(),img=node.querySelector('img').getBoundingClientRect();return img.height/box.height;});
     assert.ok(crop>1.5,`${definition.name} card crops to the head and shoulders (${crop})`);
     assert.equal(await card.locator('.ticket-bar span').last().textContent(),`0/${cost}`,`${definition.name} card shows hero-ticket progress`);
