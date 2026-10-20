@@ -4,11 +4,18 @@ import {computeCombatPower} from '../src/core/combatPower.mjs';
 import {HERO_DEFINITIONS,heroDefinition,heroSkillUnlocked} from '../src/core/heroDefinitions.mjs';
 import {createHeroProgressStore} from '../src/core/heroProgression.mjs';
 import {heroTicketLevelCost} from '../src/core/combatProgressionRules.mjs';
+import {resolveCombatMovementTuning} from '../src/core/combatMovementTuning.mjs';
 import {heroArtKey} from '../state/heroArtAssets.mjs';
 import {actorAttackReach} from '../../src/core/arenaCombatRules.mjs';
 
-let host,content,lastKey,currentTab='gear',activeSkillIndex=0,activeSkillPage=0,activeHeroIndex=-1,ticketNotice='';
-const TICKET_QUADRANT={Fara:'0% 0%',Hondo:'100% 0%',Kaja:'0% 100%',Runa:'100% 100%'};
+let host,content,lastKey,currentTab='heroes',subPanel='',activeSkillIndex=-1,activeHeroIndex=-1,ticketNotice='';
+const TICKET_QUADRANT={Fara:'5% 6%',Hondo:'95% 6%',Kaja:'5% 94%',Runa:'95% 94%'};
+const STAT_ICONS={ATK:'stat-atk',DEF:'stat-def',MAG:'stat-matk',RES:'stat-res'};
+const SUB_PANELS={
+ formation:{title:'Formation',body:leader=>[`Current leader: ${leader}.`,'The formation board, leader choice and presets arrive in a later update.']},
+ star:{title:'Star Up',body:()=>['Star Up is coming soon.','Stars will add a second progression track alongside hero levels.']},
+ resonance:{title:'Resonance',body:()=>['Resonance is coming soon.','Two passive slots will borrow skills from other heroes as a later progression layer.'],slots:true},
+};
 
 export function hideHeroScreen(){if(host)host.hidden=true;}
 
@@ -18,128 +25,179 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
  const roster=Object.keys(HERO_DEFINITIONS).map(key=>globals.HeroProgress.heroes[key]).filter(Boolean);
  if(!roster.length)return {mode:'details',selectedSkillIndex:0,hitZones:{skillNodes:[]}};
  const index=((Number(gameState.selectedHero)||0)%roster.length+roster.length)%roster.length;
- if(activeHeroIndex!==index){activeHeroIndex=index;activeSkillIndex=0;activeSkillPage=0;ticketNotice='';}
- const saved=roster[index];
- const hero=saved;
- const definition=heroDefinition(hero);
+ const hero=roster[index],definition=heroDefinition(hero),entries=[...definition.actives,null];
+ if(activeHeroIndex!==index){activeHeroIndex=index;activeSkillIndex=definition.actives.length-1;ticketNotice='';}
+ activeSkillIndex=Math.max(0,Math.min(activeSkillIndex,entries.length-1));
  if(!host){
   host=document.createElement('section');host.id='hero-details';host.setAttribute('aria-label','Hero details');
   const style=document.createElement('style');style.textContent=`
-   #hero-details{position:fixed;z-index:30;color:#fff1d1;background:linear-gradient(#173e76,#29324c 70%,#101926);box-sizing:border-box;overflow:hidden;font:14px/1.4 system-ui}
-   #hero-details[hidden]{display:none} #hero-details *{box-sizing:border-box;min-width:0} #hero-details>div{height:100%;display:flex;flex-direction:column;gap:.45em}
-   #hero-details button{background:#192e48;color:inherit;border:1px solid #9eafc2;border-radius:.6em;padding:.35em;min-height:2.5em;font:inherit;cursor:pointer}
-   #hero-details button:focus-visible{outline:3px solid #50cfff;outline-offset:2px} #hero-details button[aria-pressed=true]{background:#fff3d8;color:#163052;border-color:#f5d58d}
-   #hero-details .identity{position:relative;text-align:center;flex:2;min-height:8em;isolation:isolate;background:radial-gradient(ellipse at 50% 78%,#8ee0d570,transparent 57%)}
-   #hero-details .hero-portrait{position:absolute;width:64%;height:calc(100% - 4.3em);object-fit:contain;left:18%;bottom:4.3em;z-index:-1;filter:drop-shadow(0 .3em .2em #07172a80)}
-   #hero-details .hero-name{position:absolute;left:0;top:0;text-align:left} #hero-details h1{margin:0;font-size:1.5em} #hero-details .hero-name p{margin:.15em 0}
-   #hero-details .hero-arrows{position:absolute;inset:44% 0 auto;display:flex;justify-content:space-between;pointer-events:none}
-   #hero-details .hero-arrows button{pointer-events:auto;min-height:0;padding:0 .2em;border:0;background:transparent;color:#9deaff;font-size:3.4em;font-weight:800;line-height:.8;text-shadow:0 1px 5px #07172a}
-   #hero-details .gear-slots{position:absolute;bottom:.25em;left:18%;width:64%;height:3.8em;display:flex;gap:.25em;justify-content:center}
-   #hero-details .gear-slot{position:relative;flex:1;aspect-ratio:1;min-height:0;padding:.2em;border:2px solid var(--rarity);border-radius:.55em;background:linear-gradient(145deg,color-mix(in srgb,var(--rarity) 60%,#122241),#182843);box-shadow:inset 0 1px #fff8,0 .2em .2em #07172a80}
+   #hero-details{position:fixed;z-index:30;color:#fff1d1;background:linear-gradient(#20385c,#1a2840 60%,#121c2c);box-sizing:border-box;overflow:hidden;font:14px/1.35 system-ui}
+   #hero-details[hidden]{display:none} #hero-details *{box-sizing:border-box;min-width:0} #hero-details>div{height:100%;display:flex;flex-direction:column;gap:.4em}
+   #hero-details button{background:#192e48;color:inherit;border:1px solid #9eafc2;border-radius:.5em;padding:.3em;font:inherit;cursor:pointer}
+   #hero-details button:focus-visible{outline:3px solid #50cfff;outline-offset:2px} #hero-details button:disabled{opacity:.5;cursor:default}
+   #hero-details .identity{position:relative;flex:0 0 21em;border-radius:.6em;overflow:hidden;isolation:isolate;background:radial-gradient(ellipse 60% 55% at 28% 52%,#4f7fa8 0%,#2d5079 45%,#1b3150 100%)}
+   #hero-details .identity::after{content:'';position:absolute;left:4%;width:48%;bottom:5.3em;height:1.6em;border-radius:50%;background:radial-gradient(#0b1626aa,transparent 70%);z-index:-1}
+   #hero-details .hero-portrait{position:absolute;left:2%;width:52%;top:.6em;bottom:5.6em;height:calc(100% - 6.2em);object-fit:contain;object-position:50% 100%;z-index:0;filter:drop-shadow(0 .3em .25em #07172a80)}
+   #hero-details .formation-button{position:absolute;left:.4em;top:.4em;z-index:2;width:2.7em;height:2.4em;padding:.3em;display:grid;grid-template-columns:repeat(4,1fr);gap:.12em;background:#132238cc;border-color:#7e93ad}
+   #hero-details .formation-button i{display:block;border-radius:.1em;background:#5d7290} #hero-details .formation-button i.lead{background:#ffd56e}
+   #hero-details .hero-arrows{position:absolute;left:0;width:56%;top:38%;display:flex;justify-content:space-between;pointer-events:none;z-index:2}
+   #hero-details .hero-arrows button{pointer-events:auto;min-height:0;padding:0 .25em;border:0;background:transparent;color:#cfe9ff;font-size:2em;font-weight:800;line-height:1;text-shadow:0 1px 4px #07172a}
+   #hero-details .hero-name{position:absolute;left:3%;width:50%;bottom:.45em;z-index:1;text-align:center}
+   #hero-details h1{margin:0 auto;width:fit-content;max-width:100%;padding:.05em .9em;font-size:1.25em;letter-spacing:.04em;color:#2a2010;background:linear-gradient(#fff6dc,#e9d29b);border:1px solid #b88e3c;border-radius:.35em}
+   #hero-details .hero-name p{margin:.12em 0 0;font-size:.78em;color:#e3ecf7}
+   #hero-details .stars{display:flex;justify-content:center;gap:.12em;font-size:.8em;line-height:1;color:#6f819a}
+   #hero-details .exp-bar{position:relative;height:1.35em;margin-top:.2em;border-radius:.7em;background:#0d1828;border:1px solid #5b7493;overflow:hidden}
+   #hero-details .exp-bar i{position:absolute;inset:0 auto 0 0;background:linear-gradient(#5fd0c1,#2c9c93)}
+   #hero-details .exp-bar span{position:relative;display:block;font-size:.72em;line-height:1.85em;font-weight:700;color:#fff;text-shadow:0 1px 1px #0b1626}
+   #hero-details .skill-panel{position:absolute;right:.45em;top:2.75em;bottom:.45em;width:43%;z-index:2;display:flex;flex-direction:column;color:#1b2a42;background:#fffdf7;border:2px solid #f2c75c;border-radius:.55em;box-shadow:0 0 0 2px #1b2a42,0 .35em .8em #050b16b0;overflow:hidden}
+   #hero-details .skill-panel footer{display:flex;align-items:center;gap:.25em;padding:.3em .35em;background:#1b2a42;color:#fff4d6}
+   #hero-details .skill-panel footer button{min-height:0;padding:0 .3em;border:0;background:transparent;color:#ffd56e;font-size:1.1em;font-weight:800;line-height:1.2}
+   #hero-details .skill-panel footer small{flex:1;text-align:center;font-size:.72em;color:#c9d6e6}
+   #hero-details .skill-panel article{flex:1;overflow:auto;padding:.4em .5em;font-size:.74em;overflow-wrap:anywhere}
+   #hero-details .skill-panel h2{margin:0;font-size:1.3em;line-height:1.15;color:#13213a}
+   #hero-details .skill-panel article>small{display:inline-block;margin:.25em 0;padding:.05em .45em;border-radius:.6em;font-weight:700;background:#dff3ea;color:#1f6a4f}
+   #hero-details .skill-panel article[data-locked=true]>small{background:#eceff3;color:#5b6678}
+   #hero-details .skill-panel p{margin:.3em 0} #hero-details .skill-panel p+p{font-size:.92em} #hero-details .skill-meta{font-weight:650;color:#3a4d6a}
+   #hero-details .tabs{display:flex;flex:none;gap:.3em} #hero-details .tabs button{flex:1;min-height:2.3em;font-weight:700;border-radius:.45em;background:#1d3150;border-color:#3f5675;color:#c8d5e6}
+   #hero-details .tabs button[aria-pressed=true]{background:#fff3d8;color:#163052;border-color:#fff3d8}
+   #hero-details .pane{overflow:auto;flex:1;min-height:5em;overflow-wrap:anywhere;background:#fff4df;color:#20304a;border-radius:.45em;padding:.55em .6em}
+   #hero-details .pane h2{font-size:1em;margin:0 0 .35em} #hero-details .pane p{margin:.35em 0} #hero-details small{display:block}
+   #hero-details .roster{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45em}
+   #hero-details .roster-card{position:relative;display:flex;flex-direction:column;gap:.25em}
+   #hero-details .card-select{position:relative;display:block;width:100%;aspect-ratio:3/4;padding:0;overflow:hidden;border:2px solid #c9cfd8;border-radius:.5em;background:radial-gradient(ellipse 75% 65% at 50% 38%,#ffffff 0%,#eef2f6 55%,#d5dce5 100%)}
+   #hero-details .card-select img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 8%}
+   #hero-details .roster-card[data-selected=true] .card-select{border-color:#2fb3a6;box-shadow:0 0 0 2px #2fb3a655}
+   #hero-details .card-level{position:absolute;right:.2em;bottom:.2em;padding:0 .3em;border-radius:.3em;background:#1b2a42d9;color:#fff;font-size:.7em;font-weight:700}
+   #hero-details .leader-badge{position:absolute;left:50%;top:-.15em;transform:translateX(-50%);z-index:1;padding:0 .4em;border-radius:.3em;background:#2d7a5f;color:#fff;font-size:.62em;font-weight:700;white-space:nowrap}
+   #hero-details .card-actions{position:absolute;left:.25em;right:.25em;bottom:1.75em;display:flex;flex-direction:column;gap:.18em}
+   #hero-details .card-actions button{min-height:0;padding:.15em .1em;font-size:.66em;font-weight:700;line-height:1.3;white-space:nowrap;background:#fff8e8f2;color:#1d3150;border-color:#b99c66}
+   #hero-details .card-actions button:disabled{opacity:1;background:#e3e6ea;color:#7d8794;border-color:#b8bfc8}
+   #hero-details .ticket-bar{position:relative;display:flex;align-items:center;height:1.25em;border-radius:.6em;background:#28344a;overflow:hidden}
+   #hero-details .ticket-bar i{position:absolute;inset:0 auto 0 0;background:linear-gradient(#f5c95b,#cf9a2f)}
+   #hero-details .ticket-bar span{position:relative;flex:1;text-align:center;font-size:.64em;font-weight:700;color:#fff;text-shadow:0 1px 1px #1b2a42}
+   #hero-details .hero-ticket-art{position:relative;z-index:1;width:1.95em;height:1.3em;margin-left:-.15em;flex:none;background-image:url('assets/images/progression/hero-tickets.png');background-size:240% 240%;background-repeat:no-repeat}
+   #hero-details .hero-ticket-notice{margin-top:.5em;color:#36465c;font-size:.8em}
+   #hero-details .sub-panel header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4em}
+   #hero-details .sub-panel header h2{margin:0;padding:.1em .8em;border-radius:1em;background:#1b2a42;color:#fff4d6}
+   #hero-details .sub-panel header button{min-height:0;width:1.9em;height:1.9em;padding:0;background:#5b6678;color:#fff;border:0;font-weight:800}
+   #hero-details .resonance-slots{display:grid;grid-template-columns:1fr 1fr;gap:.5em;margin:.5em 0}
+   #hero-details .resonance-slots span{display:grid;place-items:center;min-height:3.4em;border:2px dashed #b9c1cc;border-radius:.5em;color:#6b778a;font-size:.8em;text-align:center}
+   #hero-details .gear-slots{display:flex;gap:.45em;justify-content:center;height:4.6em;margin-bottom:.35em}
+   #hero-details .gear-slot{position:relative;flex:0 0 4.6em;aspect-ratio:1;min-height:0;padding:.2em;border:2px solid var(--rarity);border-radius:.55em;background:linear-gradient(145deg,color-mix(in srgb,var(--rarity) 60%,#122241),#182843);box-shadow:inset 0 1px #fff8,0 .2em .2em #07172a50}
    #hero-details button.gear-slot{min-height:0;padding:.2em;border:2px solid var(--rarity);background:linear-gradient(145deg,color-mix(in srgb,var(--rarity) 60%,#122241),#182843)}
-   #hero-details .gear-slot[aria-pressed=true]{outline:2px solid #ffe28c;outline-offset:2px} #hero-details .gear-slot small{position:absolute;top:.15em;left:0;width:100%;color:white;font-size:.68em;white-space:nowrap;z-index:1} #hero-details .gear-slot .lamp-art{display:block;width:100%} #hero-details .gear-empty{position:absolute;inset:0;display:grid;place-items:center;font-size:.72em;color:#c3cbd8}
-   #hero-details button.gear-placeholder{cursor:default;color:#d6e1f0;background:#192e48}
-   #hero-details .power-bar{display:flex;justify-content:space-around;gap:.4em;flex:none;padding:.45em .25em;border:1px solid #dcb957;border-radius:.6em;background:linear-gradient(#806d42,#3a372d);font-weight:bold}
-   #hero-details .tabs{display:flex;flex:none;gap:1px;margin-bottom:-.45em;z-index:1} #hero-details .tabs button{flex:1;border-radius:.5em .5em 0 0;font-weight:700}
-   #hero-details .pane{overflow:auto;flex:1;min-height:5em;overflow-wrap:anywhere;background:#fff4df;color:#20304a;border-radius:0 0 .3em .3em;padding:.8em 1em}
-   #hero-details .pane h2{font-size:1.1em;margin:0} #hero-details .pane p{margin:.45em 0} #hero-details small{display:block;color:#536279}
-   #hero-details progress{width:100%;accent-color:#d5a641} #hero-details details{margin:.5em 0} #hero-details summary{cursor:pointer;padding:.5em 0} #hero-details dl{display:grid;grid-template-columns:repeat(3,1fr);gap:.5em;margin:.5em 0} #hero-details dd{margin:0}
-   #hero-details article{border-bottom:1px solid #bdc4ce;padding:.7em 0} #hero-details article:last-child{border:0}
-   #hero-details .skill-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.35em;margin-bottom:.65em}
-   #hero-details .skill-grid.gear-slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));height:3.8em}
-   #hero-details .skill-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.15em;min-width:0;min-height:0;height:100%;padding:.2em;border:1px solid #738eac;background:linear-gradient(145deg,#28496d,#152943);color:#fff1d1;border-radius:.45em;font-size:.7em}
-   #hero-details .skill-card[aria-pressed=true]{background:linear-gradient(145deg,#28496d,#152943);color:#fff1d1;border:2px solid #ffd971;box-shadow:0 0 .55em #e7b94d99}
-   #hero-details .skill-icon{position:relative;width:2.6em;height:2.6em;display:grid;place-items:center}
-   #hero-details .skill-icon img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:.8}
-   #hero-details .skill-icon b{position:relative;color:#fff;font-size:1.4em;line-height:1;text-shadow:0 1px 2px #13223b,1px 0 #13223b,-1px 0 #13223b}
-   #hero-details .skill-card small{width:100%;overflow:hidden;text-align:center;font-size:.85em;line-height:1.15;max-height:2.3em;color:inherit}
-   #hero-details .skill-pages{display:flex;align-items:center;justify-content:space-between;gap:.5em;margin:.2em 0 .5em}
-   #hero-details .skill-pages{font-size:.85em} #hero-details .skill-pages button{min-height:1.8em;padding:.15em .5em;background:#e4e8ed;color:#243653;border-color:#9ba9bb}
-   #hero-details .skill-pages button:disabled{opacity:.45;cursor:default}
-   #hero-details .skill-meta{font-weight:650;color:#374b67}
-   #hero-details .hero-tickets{display:flex;align-items:center;gap:.5em;margin:.5em 0;padding:.45em;border:1px solid #b99c66;border-radius:.5em;background:#fff9eb}
-   #hero-details .hero-ticket-art{width:1.7em;height:1.7em;flex:none;background-image:url('assets/images/progression/hero-tickets.png');background-size:200% 133.333%;background-repeat:no-repeat}
-   #hero-details .hero-level-up{width:100%;font-weight:800}
-   #hero-details .hero-ticket-notice{min-height:1.2em;color:#36465c}
+   #hero-details .gear-slot[aria-pressed=true]{outline:2px solid #e2a92c;outline-offset:2px} #hero-details .gear-slot small{position:absolute;top:.15em;left:0;width:100%;color:white;font-size:.68em;white-space:nowrap;z-index:1} #hero-details .gear-slot .lamp-art{display:block;width:100%} #hero-details .gear-empty{position:absolute;inset:0;display:grid;place-items:center;font-size:.72em;color:#c3cbd8}
+   #hero-details .gear-detail{min-height:2.6em;text-align:center;font-size:.85em} #hero-details .gear-detail h2{margin:0;font-size:1.05em} #hero-details .gear-detail small{color:#536279}
+   #hero-details .stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.35em;margin:.4em 0 0;padding:0}
+   #hero-details .stat-grid div{display:flex;align-items:center;gap:.3em;padding:.3em .4em;border-radius:.4em;background:#1b2a42;color:#fff4d6}
+   #hero-details .stat-grid img,#hero-details .stat-grid b{width:1.4em;height:1.4em;flex:none;object-fit:contain}
+   #hero-details .stat-grid b{display:grid;place-items:center;border-radius:50%;background:#3d5677;font-size:.55em;white-space:nowrap;line-height:1}
+   #hero-details .stat-grid dt{font-size:.68em;color:#b9c8da} #hero-details .stat-grid dd{margin:0 0 0 auto;font-weight:800}
+   #hero-details .orb-placeholder{display:flex;align-items:center;gap:.6em;padding:.7em;border-radius:.5em;background:#1b2a42;color:#fff4d6}
+   #hero-details .orb-placeholder small{color:#b9c8da}
   `;document.head.append(style);content=document.createElement('div');host.append(content);document.body.append(host);
  }
  const rect=canvas.getBoundingClientRect(),scale=rect.width/360;
- Object.assign(host.style,{left:`${rect.left}px`,top:`${rect.top}px`,width:`${rect.width}px`,height:`${rect.height}px`,padding:`${(globals.CombatBossFallbackVisible?96:14)*scale}px ${14*scale}px ${66*scale}px`,fontSize:`${14*scale}px`});
+ Object.assign(host.style,{left:`${rect.left}px`,top:`${rect.top}px`,width:`${rect.width}px`,height:`${rect.height}px`,padding:`${(globals.CombatBossFallbackVisible?96:14)*scale}px ${12*scale}px ${66*scale}px`,fontSize:`${14*scale}px`});
  host.hidden=false;host.dataset.tab=currentTab;
- const ticketBalance=combatProgression?.ticketCount(hero.heroInstanceKey)||0;
- const key=JSON.stringify([index,currentTab,activeSkillIndex,activeSkillPage,hero.currentLevel,hero.currentEXP,hero.hp,hero.maxHP,hero.stats,roster.map(member=>member.currentLevel),globals.Equipment,ticketBalance,ticketNotice]);
+ const tickets=Object.fromEntries(roster.map(member=>[member.heroInstanceKey,combatProgression?.ticketCount(member.heroInstanceKey)||0]));
+ const leaderName=resolveCombatMovementTuning(globals).leaderName;
+ const key=JSON.stringify([index,currentTab,subPanel,activeSkillIndex,leaderName,roster.map(member=>[member.currentLevel,member.currentEXP,member.maxHP,member.stats]),hero.hp,globals.Equipment,tickets,ticketNotice]);
  if(key!==lastKey){
   lastKey=key;
   const focused=content.contains(document.activeElement)?document.activeElement:null;
   const focusLabel=focused?.getAttribute('aria-label')||focused?.textContent;
   content.replaceChildren();
   const el=(tag,text,parent=content)=>{const node=document.createElement(tag);if(text!=null)node.textContent=text;parent.append(node);return node;};
-  const button=(parent,text,action)=>{const node=el('button',text,parent);node.type='button';node.onclick=action;return node;};
-  const portrait=(owner,parent)=>{const image=heroPortraitImages[heroArtKey(owner)];if(image?.src){const img=el('img',null,parent);img.src=image.src;img.alt=heroDefinition(owner).name;}};
-  const identity=el('header');identity.className='identity';portrait(hero,identity);identity.querySelector('img')?.classList.add('hero-portrait');
-  const name=el('div',null,identity);name.className='hero-name';el('h1',definition.name,name);el('p',`Lv. ${hero.currentLevel} · ${definition.role}`,name);el('p',`CP ${computeCombatPower(hero)}`,name);
+  const button=(parent,text,action)=>{const node=el('button',text,parent);node.type='button';node.onclick=()=>{action();lastKey='';};return node;};
+  const portrait=(owner,parent)=>{const image=heroPortraitImages[heroArtKey(owner)];if(image?.src){const img=el('img',null,parent);img.src=image.src;img.alt=heroDefinition(owner).name;return img;}};
+  const selectHero=target=>{gameState.selectedHero=(target+roster.length)%roster.length;};
+
+  const identity=el('header');identity.className='identity';
+  portrait(hero,identity)?.classList.add('hero-portrait');
+  const formation=button(identity,null,()=>{subPanel=subPanel==='formation'?'':'formation';currentTab='heroes';});
+  formation.className='formation-button';formation.setAttribute('aria-label','Formation');
+  for(let cell=0;cell<12;cell++)el('i',null,formation).className=cell===5?'lead':'';
   const arrows=el('nav',null,identity);arrows.className='hero-arrows';arrows.setAttribute('aria-label','Choose hero');
-  const selectHero=(offset)=>{gameState.selectedHero=(index+offset+roster.length)%roster.length;};
-  button(arrows,'❮',()=>selectHero(-1)).setAttribute('aria-label','Previous hero');
-  button(arrows,'❯',()=>selectHero(1)).setAttribute('aria-label','Next hero');
-  let selectedAbility;
-  if(currentTab==='skills'){
-   const abilities=definition.actives,lastStart=Math.max(0,abilities.length-4);
-   const pageStarts=[...new Set(Array.from({length:Math.ceil(abilities.length/4)},(_,page)=>Math.min(page*4,lastStart)))];
-   activeSkillPage=Math.max(0,Math.min(activeSkillPage,pageStarts.length-1));
-   const pageStart=pageStarts[activeSkillPage],visible=abilities.slice(pageStart,pageStart+4);
-   if(!visible.some((ability,offset)=>pageStart+offset===activeSkillIndex))activeSkillIndex=pageStart;
-   const grid=el('div',null,identity);grid.className='skill-grid gear-slots';grid.setAttribute('aria-label','Hero skills');
-   for(const [offset,ability] of visible.entries()){
-    const skillIndex=pageStart+offset,card=button(grid,'',()=>{activeSkillIndex=skillIndex;});
-    card.className='skill-card';card.setAttribute('aria-label',`Inspect ${ability.displayName}`);card.setAttribute('aria-pressed',String(skillIndex===activeSkillIndex));
-    const icon=el('span',null,card);icon.className='skill-icon';icon.setAttribute('aria-hidden','true');
-    const image=el('img',null,icon);image.src=runtimeAssetUrl('images/bufficon1-animation 1-000.png');image.alt='';
-    const glyph=ability.effectSpec.effectId==='shrink'?'↓':({heal:'+',sanctuary:'+',regen:'+',ward:'◇',cover:'◇',brace:'◇',damage:'✦',damagePush:'✦',damageRetreat:'✦',damageDelay:'✦',damageProvoke:'✦',finisher:'✦',split:'✦',chain:'✦',modifier:'↑',quickload:'»',tempo:'»',null:'⊘',blight:'✦',zone:'◉',teleport:'↗',fruit:'+',grow:'↑'})[ability.effectSpec.kind]||'✦';
-    el('b',glyph,icon);el('small',ability.displayName,card);
-   }
-   selectedAbility=abilities[activeSkillIndex];
-  }
-  const pane=el('div');pane.className='pane';pane.setAttribute('aria-label',`${currentTab} view`);
-  if(currentTab!=='skills')renderHeroGear({stage:identity,pane,hero,economy:equipmentProgress,showDetails:currentTab==='gear',onGearTab:()=>{currentTab='gear';}});
-  const power=el('div');power.className='power-bar';el('span',`ATK ${hero.stats.ATK}`,power);el('span',`DEF ${hero.stats.DEF}`,power);el('span',`HP ${hero.maxHP}`,power);
-  const tabs=el('nav');tabs.className='tabs';tabs.setAttribute('aria-label','Hero management');
-  for(const [id,label] of [['orb','Orb'],['gear','Gear'],['skills','Skills']]){const tab=button(tabs,label,()=>{currentTab=id;});tab.setAttribute('aria-pressed',String(currentTab===id));}
-  if(currentTab==='orb'){
-   el('h2','Level progress',pane);
-   const exp=el('progress',null,pane);exp.max=hero.EXPToNextLevel||1;exp.value=hero.currentLevel>=hero.maxLevel?1:hero.currentEXP;exp.setAttribute('aria-label','Level EXP');
-   el('small',hero.currentLevel>=hero.maxLevel?'Maximum level':`${hero.currentEXP} / ${hero.EXPToNextLevel} EXP`,pane);
-   const ticketRow=el('div',null,pane);ticketRow.className='hero-tickets';
-   const ticketArt=el('span',null,ticketRow);ticketArt.className='hero-ticket-art';ticketArt.setAttribute('role','img');ticketArt.setAttribute('aria-label',`${definition.name} tickets`);ticketArt.style.backgroundPosition=TICKET_QUADRANT[definition.name]||'0% 0%';
-   const ticketCopy=el('span',`${ticketBalance} ${definition.name} tickets`,ticketRow);
-   const levelCost=heroTicketLevelCost(hero.currentLevel);
-   const levelUp=button(pane,hero.currentLevel>=hero.maxLevel?'Maximum level':`Level Up · ${levelCost} tickets`,()=>{
-    const result=combatProgression?.spendLevelUp(hero.heroInstanceKey)||{ok:false,reason:'unavailable'};
-    ticketNotice=result.ok?`${definition.name} reached level ${result.level}.`:result.reason==='insufficient_tickets'?`Need ${result.cost} ${definition.name} tickets.`:result.reason==='max_level'?'This hero is at the current level cap.':'Ticket spend could not be saved.';
-    lastKey='';
-   });
-   levelUp.className='hero-level-up';levelUp.disabled=hero.currentLevel>=hero.maxLevel||ticketBalance<levelCost||!combatProgression;
-   if(ticketNotice)el('small',ticketNotice,pane).className='hero-ticket-notice';
-   const details=el('details',null,pane);el('summary','Current stats',details);const stats=el('dl',null,details);
-   for(const [label,value] of Object.entries({HP:hero.maxHP,...hero.stats})){const cell=el('div',null,stats);el('dt',label==='MAG'?'MATK':label,cell);el('dd',String(value),cell);}
-  }else if(currentTab==='skills'){
-   const abilities=definition.actives,lastStart=Math.max(0,abilities.length-4);
-   const pageStarts=[...new Set(Array.from({length:Math.ceil(abilities.length/4)},(_,page)=>Math.min(page*4,lastStart)))];
-   const pages=el('div',null,pane);pages.className='skill-pages';
-   const previous=button(pages,'‹ Skills',()=>{activeSkillPage=Math.max(0,activeSkillPage-1);activeSkillIndex=pageStarts[activeSkillPage];});previous.disabled=activeSkillPage===0;previous.setAttribute('aria-label','Previous skills');
-   el('small',`${activeSkillPage+1} / ${pageStarts.length}`,pages).setAttribute('aria-label','Skill page');
-   const next=button(pages,'Skills ›',()=>{activeSkillPage=Math.min(pageStarts.length-1,activeSkillPage+1);activeSkillIndex=pageStarts[activeSkillPage];});next.disabled=activeSkillPage===pageStarts.length-1;next.setAttribute('aria-label','Next skills');
-   const ability=selectedAbility,detail=el('article',null,pane);detail.dataset.locked=String(!heroSkillUnlocked(hero,ability));el('h2',ability.displayName,detail);
-   el('small',heroSkillUnlocked(hero,ability)?'Unlocked · Lv. '+ability.unlockLevel:'Unlocks at Lv. '+ability.unlockLevel,detail);
+  button(arrows,'‹',()=>selectHero(index-1)).setAttribute('aria-label','Previous hero');
+  button(arrows,'›',()=>selectHero(index+1)).setAttribute('aria-label','Next hero');
+  const name=el('div',null,identity);name.className='hero-name';
+  el('h1',definition.name,name);el('p',`${definition.role} · CP ${computeCombatPower(hero)}`,name);
+  const stars=el('div','★★★★★★',name);stars.className='stars';stars.setAttribute('aria-label','Stars: coming soon');
+  const maxed=hero.currentLevel>=hero.maxLevel,exp=el('div',null,name);exp.className='exp-bar';exp.setAttribute('role','progressbar');exp.setAttribute('aria-label','Level EXP');
+  exp.setAttribute('aria-valuemax',String(hero.EXPToNextLevel||1));exp.setAttribute('aria-valuenow',String(maxed?hero.EXPToNextLevel||1:hero.currentEXP));
+  el('i',null,exp).style.width=`${maxed?100:Math.min(100,100*hero.currentEXP/(hero.EXPToNextLevel||1))}%`;
+  el('span',maxed?`Lv. ${hero.currentLevel} · Maximum level`:`Lv. ${hero.currentLevel} · EXP ${hero.currentEXP} / ${hero.EXPToNextLevel}`,exp);
+
+  const panel=el('aside',null,identity);panel.className='skill-panel';panel.setAttribute('aria-label','Hero skills');
+  const panelNav=document.createElement('footer');
+  const previous=button(panelNav,'‹',()=>{activeSkillIndex=(activeSkillIndex-1+entries.length)%entries.length;});previous.setAttribute('aria-label','Previous skill');
+  el('small',`${activeSkillIndex+1} / ${entries.length}`,panelNav).setAttribute('aria-label','Skill index');
+  const next=button(panelNav,'›',()=>{activeSkillIndex=(activeSkillIndex+1)%entries.length;});next.setAttribute('aria-label','Next skill');
+  const ability=entries[activeSkillIndex],detail=el('article',null,panel);
+  panel.append(panelNav);
+  if(ability){
+   const abilities=definition.actives,unlocked=heroSkillUnlocked(hero,ability);detail.dataset.locked=String(!unlocked);detail.dataset.skill=ability.skillId;
+   el('h2',ability.displayName,detail);
+   el('small',unlocked?'Unlocked · Lv. '+ability.unlockLevel:'Unlocks at Lv. '+ability.unlockLevel,detail);
+   el('p',ability.description.replaceAll('magic-tagged actions','magic skills'),detail);
    el('p',`Range: ${heroSkillRange(ability,hero)} · Cooldown: ${ability.cooldownSeconds}s`,detail).className='skill-meta';
    el('p',`When: ${ability.conditionLabel}`,detail);
-   el('p',ability.description.replaceAll('magic-tagged actions','magic skills'),detail);
-   const basic=el('article',null,pane);el('h2','Basic Attack',basic);el('p',definition.basic.description,basic);
+   detail.setAttribute('aria-label',`Skill ${abilities.indexOf(ability)+1} of ${abilities.length}`);
+  }else{detail.dataset.skill='basic';el('h2','Basic Attack',detail);el('small','Always available',detail);el('p',definition.basic.description,detail);}
+
+  const tabs=el('nav');tabs.className='tabs';tabs.setAttribute('aria-label','Hero management');
+  for(const [id,label] of [['heroes','Heroes'],['gear','Gear'],['orb','Orb']]){const tab=button(tabs,label,()=>{currentTab=id;subPanel='';});tab.setAttribute('aria-pressed',String(currentTab===id));}
+  const pane=el('div');pane.className='pane';pane.setAttribute('aria-label',`${currentTab} view`);
+
+  if(currentTab==='heroes'&&subPanel){
+   const spec=SUB_PANELS[subPanel],sheet=el('section',null,pane);sheet.className='sub-panel';sheet.dataset.panel=subPanel;
+   const head=el('header',null,sheet);el('h2',spec.title,head);button(head,'✕',()=>{subPanel='';}).setAttribute('aria-label','Close '+spec.title);
+   if(spec.slots){const slots=el('div',null,sheet);slots.className='resonance-slots';for(const slot of [1,2])el('span',`Slot ${slot} · Coming soon`,slots);}
+   for(const line of spec.body(leaderName))el('p',line,sheet);
+  }else if(currentTab==='heroes'){
+   const grid=el('div',null,pane);grid.className='roster';grid.setAttribute('aria-label','Party roster');
+   for(const [memberIndex,member] of roster.entries()){
+    const memberDefinition=heroDefinition(member),selected=memberIndex===index,balance=tickets[member.heroInstanceKey],cost=heroTicketLevelCost(member.currentLevel),memberMaxed=member.currentLevel>=member.maxLevel;
+    const card=el('div',null,grid);card.className='roster-card';card.dataset.hero=member.heroInstanceKey;card.dataset.selected=String(selected);
+    const pick=button(card,null,()=>selectHero(memberIndex));pick.className='card-select';pick.setAttribute('aria-label',`Select ${memberDefinition.name}, level ${member.currentLevel}`);pick.setAttribute('aria-pressed',String(selected));
+    portrait(member,pick);el('span','Lv.'+member.currentLevel,pick).className='card-level';
+    if(memberDefinition.name===leaderName)el('span','Leader',card).className='leader-badge';
+    if(selected){
+     const actions=el('div',null,card);actions.className='card-actions';
+     const levelUp=button(actions,'Level Up',()=>{
+      const result=combatProgression?.spendLevelUp(member.heroInstanceKey)||{ok:false,reason:'unavailable'};
+      ticketNotice=result.ok?`${memberDefinition.name} reached level ${result.level}.`:result.reason==='insufficient_tickets'?`Need ${result.cost} ${memberDefinition.name} tickets.`:result.reason==='max_level'?'This hero is at the current level cap.':'Ticket spend could not be saved.';
+     });
+     levelUp.className='hero-level-up';levelUp.disabled=memberMaxed||balance<cost||!combatProgression;
+     levelUp.setAttribute('aria-label',memberMaxed?'Maximum level':`Level Up · ${cost} tickets`);
+     button(actions,'Star Up',()=>{subPanel='star';});
+     button(actions,'Resonance',()=>{subPanel='resonance';});
+    }
+    const bar=el('div',null,card);bar.className='ticket-bar';bar.setAttribute('role','img');
+    bar.setAttribute('aria-label',memberMaxed?`${memberDefinition.name} at maximum level`:`${balance} of ${cost} ${memberDefinition.name} tickets for the next level`);
+    el('i',null,bar).style.width=`${memberMaxed?100:Math.min(100,100*balance/cost)}%`;
+    const art=el('span',null,bar);art.className='hero-ticket-art';art.style.backgroundPosition=TICKET_QUADRANT[memberDefinition.name]||'0% 0%';
+    el('span',memberMaxed?'MAX':`${balance}/${cost}`,bar);
+   }
+   if(ticketNotice)el('small',ticketNotice,pane).className='hero-ticket-notice';
+  }else if(currentTab==='gear'){
+   const slots=el('div',null,pane),itemDetail=el('div',null,pane);itemDetail.className='gear-detail';
+   renderHeroGear({stage:slots,pane:itemDetail,hero,economy:equipmentProgress});
+   slots.replaceWith(...slots.childNodes);
+   const stats=el('dl',null,pane);stats.className='stat-grid';stats.setAttribute('aria-label','Hero stats');
+   for(const [label,value] of Object.entries({HP:hero.maxHP,...hero.stats})){
+    const cell=el('div',null,stats);
+    if(STAT_ICONS[label]){const icon=el('img',null,cell);icon.src=runtimeAssetUrl(`images/progression/${STAT_ICONS[label]}.png`);icon.alt='';}else el('b',label.slice(0,2),cell).setAttribute('aria-hidden','true');
+    el('dt',label==='MAG'?'MATK':label,cell);el('dd',String(value),cell);
+   }
+  }else{
+   const orb=el('div',null,pane);orb.className='orb-placeholder';orb.setAttribute('aria-label','Orb equipment unavailable');
+   const copy=el('div',null,orb);el('h2','Orb slot · Coming soon',copy);el('small','Orb equipment is not available yet.',copy);
   }
-  content.append(power,tabs,pane);
+  content.append(tabs,pane);
   if(focusLabel){const replacement=[...content.querySelectorAll('button')].find(node=>(node.getAttribute('aria-label')||node.textContent)===focusLabel);replacement?.focus({preventScroll:true});}
  }
- return {mode:'details',selectedSkillIndex:activeSkillIndex,hitZones:{skillNodes:[]}};
+ return {mode:'details',selectedSkillIndex:Math.min(activeSkillIndex,definition.actives.length-1),hitZones:{skillNodes:[]}};
 }
 
 function heroSkillRange(ability,hero){

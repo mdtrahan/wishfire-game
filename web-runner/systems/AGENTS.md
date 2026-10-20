@@ -136,7 +136,7 @@
 
 - Active production combat has no SP or FLOW resource gates or gauges. Skill readiness is cooldown-owned.
 
-- `renderHeroScreen.js` consumes canonical hero definitions and owned progression; each hero presents a basic attack and five active skills without unlock/rank/passive categories.
+- `renderHeroScreen.js` consumes canonical hero definitions and owned progression; the signature skill panel steps through every active skill and the basic attack without unlock/rank/passive categories.
 - `questCombatSession.mjs` presents settled progression before allowing the victory return. Queue settlement and EXP computation remain core/module-owned.
 - Player Start enters an endless combat session through `storyEntryFlow.mjs`; it sets `QuestFiniteEncounter` to zero and never inserts Quest Ladder stages or opening dialogue. QA may still reach retained story hooks explicitly.
 
@@ -149,7 +149,7 @@
 
 - Victory results use 80% of the game canvas width and height, centered on that canvas. A separate canvas-sized black shade has 40% opacity; the native modal backdrop is transparent. ResizeObserver keeps panel/shade geometry current and cleanup removes both shade and observer.
 
-- Hero management uses HERO / GEAR / SKILLS with a persistent hero display and roster. Overview shows EXP and full stats through a disclosure control. Skills presents one basic attack and five active skills. Gear uses the canonical equipment economy and loadouts.
+- Hero management is an Archero-style party screen (ORKA-9ee, plan `goals/wishfire-hero-party-screen-plan.md`): a quiet showcase with the hero portrait, name plate, placeholder stars and EXP bar beside a light high-contrast signature skill panel; flat Heroes | Gear | Orb tabs without ornament or art icons; a pane below. Gear uses the canonical equipment economy and loadouts.
 
 - equipmentStorage.mjs owns the v5 lamp/equipment record and Web Lock transactions. Commit exact rolls, assignments, essence and cumulative EXP before projecting onto saved heroes and live actors. Each hero saves lampEXPClaimed to replay a missing grant once. Auto plans across all 12 hero Hat/Body/Boots slots in the same transaction, and dismantling rejects any queued positive total-hero-CP candidate before spending cache contents. Auto remains saved while the cache is full and pauses only its draws; explicit battle exit persists Auto-off before resetting the combat session.
 - Historical pending enemy rewards persist beside HeroProgress until recovery settlement; new KOs record zero EXP/Gold. Persist a Gold settlement receipt before wallet sync, commit the receipt with Gold in equipmentStorage, then clear the HeroProgress outbox after wallet confirmation. The two localStorage records remain separate; receipt replay must stay idempotent across interrupted sync.
@@ -243,11 +243,11 @@
 
 - Hero Gear inspection displays the owned item level beside rarity. Read the existing item record; presentation must never reroll, rescale, reassign or mutate saved gear.
 
-- Hero presentation keeps one centered full-body portrait size across Orb, Gear and Skills. Gear and Orb show a four-slot horizontal Hat/Body/Boots/disabled Orb row; Skills replaces that row with exactly four selectable active-skill icons. Pages expose every canonical active skill, with an overlapping final page when needed to keep four visible. The cream panel shows the selected skill's canonical target geometry or actor reach, cooldown, condition, unlock level and description; Basic Attack remains accessible there. Orb preserves level EXP and current stats while identifying Orb equipment as unavailable. Previous/next controls traverse the four canonical HERO_DEFINITIONS save keys exactly once, excluding combat-instance and retired records; gear cards inspect saved items without mutation. The visible stat bar shows ATK, DEF and HP, and the footer remains reserved.
+- Hero presentation keeps one portrait size across Heroes, Gear and Orb. The skill panel headlines the awakening and steps (wrapping) through every canonical active plus Basic Attack, showing unlock level, description, canonical target geometry or actor reach, cooldown and condition. Heroes shows the four canonical HERO_DEFINITIONS roster cards (portrait on a soft neutral light gradient, level badge, hero-ticket progress; no name, EXP strip or rarity-like backer); the selected card overlays Level Up (existing ticket spend), Star Up and Resonance, whose placeholder sheets and the Formation sheet replace the roster with a titled close control. Gear shows equipped Hat/Body/Boots art, the inspected item and the full HP/ATK/DEF/MATK/RES/SPD sheet; selectable inventory stays in the Bag. Orb shows only its unavailable placeholder. Previous/next and card taps traverse the canonical save keys exactly once, excluding combat-instance and retired records; browsing never mutates saves.
 
 - Hero is a primary shared-navigation destination. Its screen has no Back button; use the existing main navigation to switch destinations.
 
-- Hero identity, portrait scale and equipment/skill stage geometry remain consistent across all three tabs.
+- Star Up, Resonance and the Formation board are presentation placeholders until their own approved beads; the leader badge reads the current movement-tuning leader.
 
 - Preserve canonical hero art, three-column stat comparison and existing geometry. Portrait and cache green markers use shared actual hero CP eligibility; individual unchanged stat rows have no arrow. Manual CP-decreasing overrides are forbidden. Saved CP feedback remains factual and strictly positive for every successful equip.
 

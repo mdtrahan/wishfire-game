@@ -11,6 +11,7 @@ import {equipmentStats} from '../web-runner/src/core/equipment.mjs';
 import {createLampEconomy,generateLampItem} from '../web-runner/src/core/lampGear.mjs';
 import {HERO_DEFINITIONS,heroDefinition,heroSkillUnlocked} from '../web-runner/src/core/heroDefinitions.mjs';
 import {actorAttackReach} from '../src/core/arenaCombatRules.mjs';
+import {heroTicketLevelCost} from '../web-runner/src/core/combatProgressionRules.mjs';
 import {EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
 
 const require=createRequire(import.meta.url);
@@ -21,6 +22,8 @@ const artifactDir=path.join(repoRoot,'test-results/hero-redesign');
 const profiles=[
  {name:'reference',width:360,height:640,dpr:1},
  {name:'compact-retina',width:216,height:384,dpr:2},
+ {name:'live-narrow',width:233,height:452,dpr:2},
+ {name:'natural-preview',width:316,height:452,dpr:2},
  {name:'natural',width:591,height:1223,dpr:1},
 ];
 const mime={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml'};
@@ -114,16 +117,25 @@ const fixtureModule=`
  };
 `;
 
-test('combat copies never appear as unequipped duplicate heroes in the Hero screen',{timeout:60000},async()=>{
+async function mountPage(browser,profile,fixture,url){
+ const context=await browser.newContext({viewport:{width:profile.width,height:profile.height},deviceScaleFactor:profile.dpr}),page=await context.newPage(),pageErrors=[];
+ page.on('pageerror',error=>pageErrors.push(error.message));
+ await page.goto(url);await page.addScriptTag({type:'module',content:fixtureModule});await page.waitForFunction(()=>typeof window.mountHeroRedesignFixture==='function');
+ await page.evaluate(fixture=>window.mountHeroRedesignFixture(fixture),fixture);
+ await page.locator('#hero-details .hero-portrait').waitFor();
+ return{context,page,pageErrors};
+}
+const openTab=async(page,name)=>{await page.locator('#hero-details .tabs').getByRole('button',{name,exact:true}).click();await page.waitForFunction(tab=>document.querySelector('#hero-details')?.dataset.tab===tab,name.toLowerCase());};
+const heading=page=>page.locator('#hero-details .hero-name h1').textContent();
+
+test('combat copies never appear as unequipped duplicate heroes in the Hero screen',{timeout:90000},async()=>{
  await mkdir(artifactDir,{recursive:true});
  const {progress,economy}=makeSavedFixture({shellsFirst:false}),heroes=Object.keys(HERO_DEFINITIONS).map(key=>progress.heroes[key]);
  for(const hero of heroes){const id=hero.heroInstanceKey.toLowerCase()+'#1';progress.heroes[id]={...structuredClone(hero),heroInstanceKey:id};}
  const {server,url}=await startFixtureServer(),browser=await chromium.launch({headless:true,executablePath:detectChromeExecutable()});
  try{
   for(const profile of profiles){
-   const context=await browser.newContext({viewport:{width:profile.width,height:profile.height},deviceScaleFactor:profile.dpr}),page=await context.newPage();
-   await page.goto(url);await page.addScriptTag({type:'module',content:fixtureModule});await page.waitForFunction(()=>typeof window.mountHeroRedesignFixture==='function');
-   await page.evaluate(({progress,economy})=>window.mountHeroRedesignFixture({progress,economy}),{progress,economy});
+   const {context,page}=await mountPage(browser,profile,{progress,economy},url);
    const afterAuto=await page.evaluate(async()=>{
     const {generateLampItem}=await import('/web-runner/src/core/lampGear.mjs'),{createEquipmentStorage}=await import('/web-runner/systems/equipmentStorage.mjs');
     const qa=window.heroQa,item=generateLampItem(qa.equipment.lamp.seed,5000,69);
@@ -134,8 +146,10 @@ test('combat copies never appear as unequipped duplicate heroes in the Hero scre
    });
    assert.equal(afterAuto.changes.length,1,'production Auto assigns the cached upgrade once');assert.ok(afterAuto.changes[0].cpChange>0);
    const detail=page.locator('#hero-details'),before=await page.evaluate(()=>JSON.stringify(window.heroQa.globals.HeroProgress));
+   assert.equal(await detail.locator('.roster-card').count(),4,`${profile.name}: roster shows the four canonical heroes only`);
+   await openTab(page,'Gear');
    for(let step=0;step<8;step++){
-    const hero=heroes[step%4];assert.equal(await detail.locator('h1').textContent(),heroDefinition(hero).name);
+    const hero=heroes[step%4];assert.equal(await heading(page),heroDefinition(hero).name);
     for(const id of Object.values(afterAuto.economy.loadouts[hero.heroInstanceKey])){
      const item=afterAuto.economy.items.find(i=>i.instanceId===id);assert.equal(await detail.getByRole('button',{name:new RegExp('^Inspect .*: '+item.name+',')}).count(),1,`${profile.name}: ${hero.heroInstanceKey} retains ${item.type} on visit ${step}`);
     }
@@ -150,140 +164,125 @@ test('combat copies never appear as unequipped duplicate heroes in the Hero scre
  }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
 });
 
-test('hero redesign uses saved canonical data and stays contained across portrait viewport profiles',{timeout:120000},async()=>{
+test('hero party screen uses saved canonical data and stays contained across portrait viewport profiles',{timeout:240000},async()=>{
  await mkdir(artifactDir,{recursive:true});
  const {progress,economy}=makeSavedFixture(),saved={progress:JSON.stringify(progress),economy:JSON.stringify(economy)};
+ const heroes=Object.keys(HERO_DEFINITIONS).map(key=>progress.heroes[key]);
  const {server,url}=await startFixtureServer(),browser=await chromium.launch({headless:true,executablePath:detectChromeExecutable()}),report=[];
  try{
   for(const profile of profiles){
-   const context=await browser.newContext({viewport:{width:profile.width,height:profile.height},deviceScaleFactor:profile.dpr});
-   const page=await context.newPage(),pageErrors=[];page.on('pageerror',error=>pageErrors.push(error.message));
-   await page.goto(url);await page.addScriptTag({type:'module',content:fixtureModule});
-   await page.waitForFunction(()=>typeof window.mountHeroRedesignFixture==='function');
-   await page.evaluate(({progress,economy})=>window.mountHeroRedesignFixture({progress,economy}),{progress,economy});
-   const detail=page.locator('#hero-details'),portrait=detail.locator('.hero-portrait'),gearRow=detail.locator('.gear-slots');
-   await detail.waitFor({state:'visible'});await portrait.waitFor();
-   const initial=await page.evaluate(()=>{
-    const rect=e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
-    const host=document.querySelector('#hero-details'),identity=host.querySelector('.identity'),image=identity.querySelector('.hero-portrait'),canvas=document.querySelector('#game-screen'),pane=host.querySelector('.pane'),nav=document.querySelector('#game-meta-nav');
-    return{viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},stage:rect(canvas),host:rect(host),identity:rect(identity),portrait:rect(image),portraitNatural:{width:image.naturalWidth,height:image.naturalHeight},gear:rect(host.querySelector('.gear-slots')),power:rect(host.querySelector('.power-bar')),pane:rect(pane),bottomNav:rect(nav),overflow:document.documentElement.scrollWidth>innerWidth||document.body.scrollWidth>innerWidth};
+   const {context,page,pageErrors}=await mountPage(browser,profile,{progress,economy},url);
+   const detail=page.locator('#hero-details'),mainNav=page.locator('#game-meta-nav'),screenshots={};
+   const measure=()=>page.evaluate(()=>{
+    const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
+    const host=document.querySelector('#hero-details'),q=s=>host.querySelector(s);
+    const clipped=[...host.querySelectorAll('button,h1,h2,.ticket-bar span,.card-level,.leader-badge,.exp-bar span,dt,dd')].filter(node=>node.offsetParent&&(node.scrollWidth>node.clientWidth+1)).map(node=>node.textContent);
+    return{viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},stage:rect(document.querySelector('#game-screen')),host:rect(host),identity:rect(q('.identity')),portrait:rect(q('.hero-portrait')),panel:rect(q('.skill-panel')),name:rect(q('.hero-name')),tabs:rect(q('.tabs')),pane:rect(q('.pane')),bottomNav:rect(document.querySelector('#game-meta-nav')),clipped,
+     panelColor:getComputedStyle(q('.skill-panel')).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth||document.body.scrollWidth>innerWidth};
    });
+   const inside=(inner,outer,label)=>assert.ok(inner.left>=outer.left-0.5&&inner.right<=outer.right+0.5&&inner.top>=outer.top-0.5&&inner.bottom<=outer.bottom+0.5,`${profile.name}: ${label} stays inside`);
+   const initial=await measure();
    assert.deepEqual(initial.viewport,{width:profile.width,height:profile.height,dpr:profile.dpr},'browser uses requested viewport and DPR');
    assert.equal(initial.overflow,false,profile.name+' has no horizontal overflow');
-   assert.ok(initial.portraitNatural.width>0&&initial.portraitNatural.height>0,'decoded production portrait asset is rendered');
-   assert.ok(Math.abs((initial.portrait.left+initial.portrait.right)/2-(initial.identity.left+initial.identity.right)/2)<0.75,'portrait stays centered in identity');
-   assert.ok(initial.portrait.height>=initial.identity.height*.55,`portrait uses most of the enlarged identity frame (${initial.portrait.height}/${initial.identity.height})`);
-   assert.equal(await gearRow.locator('[data-slot]').count(),3,'all three supported gear slots appear beside the portrait');
-   assert.equal(await gearRow.locator('.gear-placeholder[aria-label="Orb equipment unavailable"]').count(),1,'Orb remains a separate unavailable slot');
-   assert.ok(initial.gear.left>=initial.stage.left-0.5&&initial.gear.right<=initial.stage.right+0.5,'gear row stays inside the portrait stage');
-   assert.ok(Math.abs((initial.gear.left+initial.gear.right)/2-(initial.identity.left+initial.identity.right)/2)<1,'gear row is centered below the portrait');
-   assert.ok(initial.pane.height>initial.power.height*3,`${profile.name} retains a large details panel (${initial.pane.height}/${initial.power.height})`);
-   assert.ok(initial.pane.bottom<=initial.bottomNav.top+0.5,'details panel clears the bottom navigation reserve');
-   const mainNav=page.locator('#game-meta-nav');
-   assert.equal(await mainNav.locator('button').count(),5,'fixture renders the production shared navigation');
+   inside(initial.identity,initial.stage,'showcase');inside(initial.panel,initial.identity,'skill panel');inside(initial.name,initial.identity,'name plate');
+   assert.ok(initial.portrait.right<=initial.panel.left+2,`${profile.name}: portrait sits beside the skill panel`);
+   assert.ok(initial.portrait.height>=initial.identity.height*.5,'portrait fills the showcase');
+   assert.equal(initial.panelColor,'rgb(255, 253, 247)','skill panel is a light high-contrast card');
+   assert.ok(initial.tabs.top>=initial.identity.bottom-0.5&&initial.pane.top>=initial.tabs.bottom-0.5,'tabs sit between showcase and pane');
+   assert.ok(initial.pane.bottom<=initial.bottomNav.top+0.5,'pane clears the bottom navigation reserve');
+   assert.deepEqual(initial.clipped,[],`${profile.name}: no clipped labels`);
    assert.equal(await mainNav.locator('button[aria-current="page"]').innerText(),'HERO','hero is the active shared-navigation destination');
-   assert.equal(await mainNav.locator('button img').count(),5,'the five production navigation badges use decoded artwork');
-   assert.equal(await mainNav.locator('button img').evaluateAll(images=>images.every(image=>image.complete&&image.naturalWidth>0)),true,'shared navigation artwork is loaded');
-   const heroes=Object.keys(HERO_DEFINITIONS).map(key=>progress.heroes[key]);
-   assert.deepEqual(heroes.map(hero=>heroDefinition(hero).actives.length),[8,8,8,9],'the saved roster contains the complete eight- and nine-skill kits');
-   for(let offset=0;offset<heroes.length;offset++){
-    const index=(offset+heroes.length)%heroes.length,hero=heroes[index],definition=heroDefinition(hero);
-    assert.equal(await detail.locator('h1').textContent(),definition.name,'hero arrow refreshes identity data');
-    for(const stat of ['ATK','DEF'])assert.equal(await detail.locator('.power-bar').getByText(new RegExp('^'+stat+' '+hero.stats[stat]+'$')).count(),1,`${definition.name} ${stat} comes from saved progression and gear`);
-    assert.equal(await detail.locator('.power-bar').getByText('HP '+hero.maxHP,{exact:true}).count(),1,`${definition.name} HP comes from saved progression and gear`);
-    const expectedItems=Object.values(economy.loadouts[hero.heroInstanceKey]);
-    assert.equal(await gearRow.locator('[data-slot]').count(),expectedItems.length,'equipped slot count remains three on each hero');
-    for(const itemId of expectedItems){const item=economy.items.find(entry=>entry.instanceId===itemId);assert.equal(await gearRow.getByRole('button',{name:new RegExp(item.name)}).count(),1,`${definition.name} retains equipped ${item.name}`);}
-    const next=detail.getByRole('button',{name:'Next hero'});await next.click();
-    await page.waitForFunction(expected=>document.querySelector('#hero-details h1')?.textContent===expected,heroDefinition(heroes[(index+1)%heroes.length]).name);
+   assert.deepEqual(await detail.locator('.tabs button').allTextContents(),['Heroes','Gear','Orb'],'flat Heroes | Gear | Orb tabs');
+   assert.equal(await detail.locator('.tabs img, .tabs svg').count(),0,'tabs carry no art icons');
+   assert.equal(await detail.locator('.tabs button[aria-pressed="true"]').innerText(),'Heroes','Heroes is the default tab');
+   assert.equal(await detail.locator('.formation-button').count(),1,'Formation button flanks the hero');
+   assert.equal(await detail.locator('.identity .gear-slots').count(),0,'gear is no longer drawn over the showcase');
+   // Roster cards: portrait, level and ticket progress only.
+   const cards=detail.locator('.roster-card');
+   assert.equal(await cards.count(),4,'roster shows four canonical heroes');
+   for(const [cardIndex,hero] of heroes.entries()){
+    const card=cards.nth(cardIndex),definition=heroDefinition(hero),cost=heroTicketLevelCost(hero.currentLevel);
+    assert.equal(await card.locator('.card-select img').count(),1,`${definition.name} card shows the hero portrait`);
+    assert.equal(await card.locator('.card-level').textContent(),'Lv.'+hero.currentLevel);
+    assert.equal(await card.locator('.ticket-bar span').last().textContent(),`0/${cost}`,`${definition.name} card shows hero-ticket progress`);
+    assert.equal(await card.locator('.card-select').evaluate(node=>node.innerText.includes(node.querySelector('img').alt)),false,`${definition.name} card omits the hero name`);
+    assert.match(await card.locator('.card-select').evaluate(node=>getComputedStyle(node).backgroundImage),/radial-gradient\(.*rgb\(255, 255, 255\)/,'card uses a soft light gradient');
    }
-   const firstName=heroDefinition(heroes[0]).name;
-   assert.equal(await detail.locator('h1').textContent(),firstName,'next arrow wraps across every saved hero instance');
-   await detail.getByRole('button',{name:'Previous hero'}).click();
-   await page.waitForFunction(expected=>document.querySelector('#hero-details h1')?.textContent===expected,heroDefinition(heroes.at(-1)).name);
-   await detail.getByRole('button',{name:'Next hero'}).click();
-   await page.waitForFunction(expected=>document.querySelector('#hero-details h1')?.textContent===expected,firstName);
-   const tabPortraits=[],screenshots={};
-   for(const tab of ['Gear','Orb','Skills']){
-    await detail.getByRole('button',{name:tab,exact:true}).click();
-    await page.waitForFunction(tabName=>document.querySelector('#hero-details')?.dataset.tab===tabName,tab.toLowerCase());
-    const selected=detail.getByRole('button',{name:tab,exact:true});
-    assert.equal(await selected.getAttribute('aria-pressed'),'true',`${tab} is the selected tab`);
-    assert.equal(await selected.evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(255, 243, 216)',`${tab} selected state uses the cream tab color`);
-    tabPortraits.push(await portrait.boundingBox());
-    const pane=await detail.locator('.pane').boundingBox(),nav=await mainNav.boundingBox(),overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth||document.body.scrollWidth>innerWidth);
-    assert.equal(overflow,false,`${tab} view has no horizontal overflow`);
-    assert.ok(pane.height>initial.power.height*3,`${tab} view preserves the large panel`);
-    assert.ok(pane.y+pane.height<=nav.y+0.5,`${tab} panel clears the bottom navigation`);
-    if(tab==='Skills'){
-     const grid=detail.locator('.identity .skill-grid');
-     assert.equal(await grid.count(),1,'four skill cards occupy the identity row below the portrait');
-     assert.equal(await grid.locator('.skill-card').count(),4,'skills identity row has exactly four icons');
-     assert.equal(await grid.locator('.gear-slot, .gear-placeholder').count(),0,'skills identity row has no gear or Orb slots');
-     assert.equal(await detail.locator('.pane .gear-placeholder').count(),0,'skills panel has no Orb equipment button');
-     assert.equal(await grid.locator('.skill-icon img').count(),4,'each skill card contains its existing icon image');
-    }
-    const screenshot=`${profile.name}-${tab.toLowerCase()}.png`;
-    await page.screenshot({path:path.join(artifactDir,screenshot),fullPage:true});screenshots[tab.toLowerCase()]=screenshot;
+   assert.equal(await cards.locator('.leader-badge').count(),1,'one leader badge');
+   assert.equal(await cards.nth(0).locator('.leader-badge').textContent(),'Leader','default leader is Fara');
+   assert.deepEqual(await cards.nth(0).locator('.card-actions button').allTextContents(),['Level Up','Star Up','Resonance'],'selected card exposes its actions');
+   assert.equal(await cards.nth(0).locator('.hero-level-up').isDisabled(),true,'Level Up stays gated by the existing ticket spend');
+   assert.equal(await detail.locator('.card-actions').count(),1,'only the selected card carries actions');
+   screenshots.heroes=`${profile.name}-heroes.png`;await page.screenshot({path:path.join(artifactDir,screenshots.heroes),fullPage:true});
+   for(const [action,panelId,title] of [['Star Up','star','Star Up'],['Resonance','resonance','Resonance']]){
+    await cards.nth(0).getByRole('button',{name:action,exact:true}).click();
+    await page.waitForFunction(id=>document.querySelector('#hero-details .sub-panel')?.dataset.panel===id,panelId);
+    if(panelId==='resonance'){assert.equal(await detail.locator('.resonance-slots span').count(),2,'two Resonance placeholder slots');screenshots.resonance=`${profile.name}-resonance.png`;await page.screenshot({path:path.join(artifactDir,screenshots.resonance),fullPage:true});}
+    assert.deepEqual((await measure()).clipped,[],`${profile.name}: ${title} sheet has no clipped labels`);
+    await detail.getByRole('button',{name:'Close '+title}).click();await page.waitForFunction(()=>!document.querySelector('#hero-details .sub-panel'));
    }
-   for(const bounds of tabPortraits)assert.ok(['x','y','width','height'].every(key=>Math.abs(bounds[key]-tabPortraits[0][key])<0.75),'portrait geometry stays fixed when tabs change');
+   await detail.getByRole('button',{name:'Formation'}).click();await page.waitForFunction(()=>document.querySelector('#hero-details .sub-panel')?.dataset.panel==='formation');
+   assert.match(await detail.locator('.sub-panel').innerText(),/Current leader: Fara\./);
+   await detail.getByRole('button',{name:'Close Formation'}).click();
+   // Card selection drives the showcase.
+   for(const [cardIndex,hero] of heroes.entries()){
+    await cards.nth(cardIndex).locator('.card-select').click({position:{x:4,y:4}});
+    await page.waitForFunction(expected=>document.querySelector('#hero-details h1')?.textContent===expected,heroDefinition(hero).name);
+    assert.equal(await cards.nth(cardIndex).getAttribute('data-selected'),'true');
+    assert.match(await detail.locator('.hero-name').innerText(),new RegExp(`Lv\\. ${hero.currentLevel} · EXP ${hero.currentEXP} / ${hero.EXPToNextLevel}`),'EXP bar reads saved progression');
+   }
+   await cards.nth(0).locator('.card-select').click({position:{x:4,y:4}});await page.waitForFunction(()=>document.querySelector('#hero-details h1')?.textContent==='Fara');
+   // Gear tab: equipped items and the full stat sheet, no inventory.
+   await openTab(page,'Gear');
+   for(const [heroIndex,hero] of heroes.entries()){
+    const definition=heroDefinition(hero);
+    if(heroIndex){await detail.getByRole('button',{name:'Next hero'}).click();await page.waitForFunction(expected=>document.querySelector('#hero-details h1')?.textContent===expected,definition.name);}
+    const gearRow=detail.locator('.pane .gear-slots');
+    assert.equal(await gearRow.locator('[data-slot]').count(),3,'Hat, Body and Boots appear in the Gear tab');
+    assert.equal(await gearRow.locator('.gear-placeholder').count(),0,'Orb is no longer a gear slot');
+    for(const itemId of Object.values(economy.loadouts[hero.heroInstanceKey])){const item=economy.items.find(entry=>entry.instanceId===itemId);assert.equal(await gearRow.getByRole('button',{name:new RegExp(item.name)}).count(),1,`${definition.name} retains equipped ${item.name}`);assert.equal(await gearRow.locator('.lamp-art').count(),3,'equipped item art replaces generic silhouettes');}
+    const stats=Object.entries({HP:hero.maxHP,...hero.stats}).map(([label,value])=>[label==='MAG'?'MATK':label,String(value)]);
+    assert.deepEqual(await detail.locator('.stat-grid div').evaluateAll(cells=>cells.map(cell=>[cell.querySelector('dt').textContent,cell.querySelector('dd').textContent])),stats,`${definition.name} full stats come from saved progression and gear`);
+    assert.equal(await detail.locator('.pane .lamp-results, .pane .lamp-candidate').count(),0,'no selectable inventory in the hero Gear tab');
+    const gearMeasure=await measure();assert.deepEqual(gearMeasure.clipped,[],`${profile.name}: Gear has no clipped labels`);
+    const paneBox=await detail.locator('.pane').evaluate(node=>({scroll:node.scrollHeight,client:node.clientHeight}));
+    assert.ok(paneBox.scroll<=paneBox.client+1,`${profile.name}: Gear content fits without scrolling (${paneBox.scroll}/${paneBox.client})`);
+   }
+   screenshots.gear=`${profile.name}-gear.png`;await page.screenshot({path:path.join(artifactDir,screenshots.gear),fullPage:true});
+   await detail.getByRole('button',{name:'Next hero'}).click();await page.waitForFunction(()=>document.querySelector('#hero-details h1')?.textContent==='Fara');
+   await openTab(page,'Orb');
+   assert.equal(await detail.locator('.pane .orb-placeholder[aria-label="Orb equipment unavailable"]').count(),1,'Orb shows its placeholder');
+   assert.equal(await detail.locator('.pane .stat-grid').count(),0,'stats moved out of the Orb tab');
+   screenshots.orb=`${profile.name}-orb.png`;await page.screenshot({path:path.join(artifactDir,screenshots.orb),fullPage:true});
+   // Signature skill panel reaches every canonical skill and the basic attack.
    const reachedSkills=[];
-   for(let heroIndex=0;heroIndex<heroes.length;heroIndex++){
-    const hero=heroes[heroIndex],definition=heroDefinition(hero),abilities=definition.actives;
-    if(heroIndex){
-     await detail.getByRole('button',{name:'Next hero'}).click();
-     await page.waitForFunction(expected=>document.querySelector('#hero-details h1')?.textContent===expected,definition.name);
-     await page.waitForFunction(()=>document.querySelector('#hero-details [aria-label="Skill page"]')?.textContent?.startsWith('1 /'));
-     assert.equal(await detail.locator('.skill-card[aria-pressed="true"]').getAttribute('aria-label'),`Inspect ${abilities[0].displayName}`,`${definition.name} gets a fresh first-skill selection`);
-    }
-    const pageStarts=abilities.length===9?[0,4,5]:[0,4];
-    const selectedTab=detail.getByRole('button',{name:'Skills',exact:true});
-    assert.equal(await selectedTab.getAttribute('aria-pressed'),'true','Skills remains selected while inspecting skill data');
-    for(let pageIndex=0;pageIndex<pageStarts.length;pageIndex++){
-     if(pageIndex){await detail.getByRole('button',{name:'Next skills'}).click();await page.waitForFunction(expected=>document.querySelector('#hero-details [aria-label="Skill page"]')?.textContent===expected,`${pageIndex+1} / ${pageStarts.length}`);}
-     const start=pageStarts[pageIndex],pageAbilities=abilities.slice(start,start+4),grid=detail.locator('.identity .skill-grid');
-     assert.equal(await grid.locator('.skill-card').count(),4,`${definition.name} page ${pageIndex+1} renders exactly four skills`);
-     assert.deepEqual(await grid.locator('.skill-card').evaluateAll(cards=>cards.map(card=>card.getAttribute('aria-label'))),pageAbilities.map(ability=>`Inspect ${ability.displayName}`),`${definition.name} page ${pageIndex+1} exposes its canonical skill window`);
-     assert.equal(await grid.locator('.skill-icon img').evaluateAll(images=>images.every(image=>image.complete&&image.naturalWidth>0)),true,`${definition.name} page ${pageIndex+1} decodes all four icon assets`);
-     const row=await grid.boundingBox(),portraitBounds=await portrait.boundingBox(),stageBounds=await page.locator('#game-screen').boundingBox();
-     assert.ok(row.x>=stageBounds.x-0.5&&row.x+row.width<=stageBounds.x+stageBounds.width+0.5,`${definition.name} skill row stays inside the stage`);
-     assert.ok(row.y>=portraitBounds.y+portraitBounds.height-8*stageBounds.width/360,`${definition.name} skill row stays below the visible portrait frame`);
-     assert.equal(await grid.locator('.gear-slot, .gear-placeholder').count(),0,`${definition.name} skills row contains no Orb or gear slot`);
-     assert.equal(await detail.locator('.pane .gear-placeholder').count(),0,`${definition.name} skills panel contains no Orb equipment`);
-     for(const ability of pageAbilities){
-      const card=grid.getByRole('button',{name:`Inspect ${ability.displayName}`,exact:true});
-      await card.click();await page.waitForFunction(name=>document.querySelector('#hero-details .pane article h2')?.textContent===name,ability.displayName);
-      assert.equal(await card.getAttribute('aria-pressed'),'true',`${ability.displayName} is the selected icon`);
-      assert.equal(await card.evaluate(node=>getComputedStyle(node).borderTopColor),'rgb(255, 217, 113)',`${ability.displayName} shows the selected gold state`);
-      const detailPanel=detail.locator('.pane article').first();
-      assert.equal(await detailPanel.locator('h2').textContent(),ability.displayName,'selected icon opens matching skill data');
-      assert.equal(await detailPanel.getAttribute('data-locked'),String(!heroSkillUnlocked(hero,ability)),`${ability.displayName} uses its level gate`);
-      assert.equal(await detailPanel.locator('small').textContent(),heroSkillUnlocked(hero,ability)?`Unlocked · Lv. ${ability.unlockLevel}`:`Unlocks at Lv. ${ability.unlockLevel}`,`${ability.displayName} shows its unlock condition`);
-      assert.deepEqual(await detailPanel.locator('p').allTextContents(),[
-       `Range: ${expectedSkillRange(ability,hero)} · Cooldown: ${ability.cooldownSeconds}s`,
-       `When: ${ability.conditionLabel}`,
-       ability.description.replaceAll('magic-tagged actions','magic skills'),
-      ],`${ability.displayName} details come from canonical target, cooldown, condition and description data`);
-      reachedSkills.push(`${hero.heroInstanceKey}:${ability.skillId}`);
-     }
-     assert.equal(await detail.locator('.pane article').last().locator('h2').textContent(),'Basic Attack','Basic Attack remains reachable below the active skill');
-     assert.equal(await detail.locator('.pane article').last().locator('p').textContent(),definition.basic.description,'Basic Attack description is preserved');
-     assert.equal(await detail.locator('[aria-label="Skill page"]').textContent(),`${pageIndex+1} / ${pageStarts.length}`,'current page index matches the rendered skill window');
-     assert.equal(await detail.getByRole('button',{name:'Previous skills'}).isDisabled(),pageIndex===0,'previous-page gate matches the first page');
-     assert.equal(await detail.getByRole('button',{name:'Next skills'}).isDisabled(),pageIndex===pageStarts.length-1,'next-page gate matches the last page');
-    }
-    if(heroIndex===0){
-     await detail.getByRole('button',{name:'Gear',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#hero-details')?.dataset.tab==='gear');
-     await detail.getByRole('button',{name:'Skills',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#hero-details')?.dataset.tab==='skills');
-     assert.equal(await detail.locator('[aria-label="Skill page"]').textContent(),`${pageStarts.length} / ${pageStarts.length}`,'tab changes preserve selected skill page');
-     assert.equal(await detail.locator('.skill-card[aria-pressed="true"]').getAttribute('aria-label'),`Inspect ${abilities.at(-1).displayName}`,'tab changes preserve selected skill');
+   for(const [heroIndex,hero] of heroes.entries()){
+    const definition=heroDefinition(hero),abilities=definition.actives;
+    if(heroIndex){await detail.getByRole('button',{name:'Next hero'}).click();await page.waitForFunction(expected=>document.querySelector('#hero-details h1')?.textContent===expected,definition.name);}
+    const article=detail.locator('.skill-panel article');
+    assert.equal(await article.locator('h2').textContent(),abilities.at(-1).displayName,`${definition.name} headlines the awakening`);
+    for(let step=1;step<=abilities.length+1;step++){
+     const entry=(abilities.length-1+step)%(abilities.length+1),ability=abilities[entry];
+     await detail.getByRole('button',{name:'Next skill'}).click();
+     await page.waitForFunction(expected=>document.querySelector('#hero-details [aria-label="Skill index"]')?.textContent===expected,`${entry+1} / ${abilities.length+1}`);
+     if(!ability){assert.equal(await article.locator('h2').textContent(),'Basic Attack');assert.equal(await article.locator('p').textContent(),definition.basic.description,'Basic Attack description is preserved');continue;}
+     assert.equal(await article.locator('h2').textContent(),ability.displayName,'panel shows the stepped skill');
+     assert.equal(await article.getAttribute('data-locked'),String(!heroSkillUnlocked(hero,ability)),`${ability.displayName} uses its level gate`);
+     assert.equal(await article.locator('small').textContent(),heroSkillUnlocked(hero,ability)?`Unlocked · Lv. ${ability.unlockLevel}`:`Unlocks at Lv. ${ability.unlockLevel}`);
+     assert.deepEqual(await article.locator('p').allTextContents(),[
+      ability.description.replaceAll('magic-tagged actions','magic skills'),
+      `Range: ${expectedSkillRange(ability,hero)} · Cooldown: ${ability.cooldownSeconds}s`,
+      `When: ${ability.conditionLabel}`,
+     ],`${ability.displayName} details come from canonical data`);
+     const fit=await article.evaluate(node=>({scroll:node.scrollHeight,client:node.clientHeight}));
+     assert.ok(fit.scroll<=fit.client+1,`${profile.name}: ${ability.displayName} fits the skill panel (${fit.scroll}/${fit.client})`);
+     reachedSkills.push(`${hero.heroInstanceKey}:${ability.skillId}`);
     }
    }
    assert.equal(new Set(reachedSkills).size,33,'all 33 canonical active skills are reachable');
    assert.equal(await page.evaluate(()=>JSON.stringify([localStorage.getItem('orka.hero_progress.v2'),localStorage.getItem('wishfire.equipment-economy.v5')])),JSON.stringify([saved.progress,saved.economy]),'hero and equipment saves stay byte-identical while browsing');
    assert.deepEqual(await page.evaluate(()=>window.heroQa.globals.HeroProgress),progress,'progression data stays unchanged in memory');
    assert.deepEqual(await page.evaluate(()=>window.heroQa.equipment),economy,'equipped items and loadouts stay unchanged in memory');
-   assert.deepEqual(pageErrors,[],'renderer has no browser exceptions');
    const cpRefresh=await page.evaluate(async()=>{
     const {refreshHeroStats}=await import('/web-runner/src/core/heroProgression.mjs');
     const {computeCombatPower}=await import('/web-runner/src/core/combatPower.mjs');
@@ -301,13 +300,8 @@ test('hero redesign uses saved canonical data and stays contained across portrai
     return results;
    });
    for(const result of cpRefresh){assert.ok(result.visible.includes(result.expected),'next render reads committed CP despite a stale combat actor');assert.notEqual(result.expected,'CP '+result.before,'fixture adds a measurable CP upgrade');}
-   for(const tab of ['Gear','Orb','Skills']){
-    await detail.getByRole('button',{name:tab,exact:true}).click();
-    await page.waitForFunction(tabName=>document.querySelector('#hero-details')?.dataset.tab===tabName,tab.toLowerCase());
-    assert.ok((await detail.locator('.hero-name').textContent()).includes(cpRefresh.at(-1).expected),`${tab} reads the same updated hero CP`);
-   }
-   const filename=`${profile.name}.png`;await page.screenshot({path:path.join(artifactDir,filename),fullPage:true});
-   report.push({fixture:'isolated production hero renderer and shared navigation modules',profile,geometry:initial,heroes:heroes.map(hero=>({id:hero.heroInstanceKey,level:hero.currentLevel,stats:hero.stats,hp:hero.maxHP,loadout:economy.loadouts[hero.heroInstanceKey]})),portraitGeometryByTab:tabPortraits,screenshots,finalScreenshot:filename,reachedSkillCount:reachedSkills.length,pass:true});
+   assert.deepEqual(pageErrors,[],'renderer has no browser exceptions');
+   report.push({fixture:'isolated production hero renderer and shared navigation modules',profile,geometry:initial,screenshots,reachedSkillCount:reachedSkills.length,pass:true});
    await context.close();
   }
  }catch(error){report.push({pass:false,error:error.stack||String(error)});throw error;}

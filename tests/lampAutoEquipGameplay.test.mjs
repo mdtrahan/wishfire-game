@@ -41,6 +41,7 @@ async function guidance(page,target){
 }
 async function heroScreens(page,save,heroes,prefix){
  await page.getByRole('button',{name:'HERO',exact:true}).click();await page.locator('#hero-details').waitFor();
+ await page.locator('#hero-details .tabs').getByRole('button',{name:'Gear',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#hero-details')?.dataset.tab==='gear');
  const rows=[];
  for(const id of owners){
   const identity=page.locator('#hero-details .hero-name');const label=await identity.locator('h1').innerText();

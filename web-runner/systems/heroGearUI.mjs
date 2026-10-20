@@ -23,6 +23,5 @@ export function renderHeroGear({stage,pane,hero,economy,showDetails=true,onGearT
   card.onclick=()=>{if(!showDetails)onGearTab?.();inspect(slot,item);};
   if(showDetails&&slot===selectedSlot)inspect(slot,item);
  }
- const orb=el('button','Orb',slots);orb.type='button';orb.disabled=true;orb.className='gear-slot gear-placeholder';orb.style.setProperty('--rarity','#758597');orb.setAttribute('aria-label','Orb equipment unavailable');
  for(const card of slots.querySelectorAll('[data-slot]'))card.setAttribute('aria-pressed',String(card.dataset.slot===selectedSlot));
 }
