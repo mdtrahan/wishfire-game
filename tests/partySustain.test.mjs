@@ -1,4 +1,4 @@
-import test, { after } from 'node:test';
+import baseTest, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import zlib from 'node:zlib';
@@ -7,7 +7,10 @@ import { spawn } from 'node:child_process';
 import { projectPartyScenario } from '../tools/combat_lab/party_sustain.mjs';
 
 const source = 'output/orka-7l9-knowledge-lab/sample/observed.ndjson.gz';
-const rows = zlib.gunzipSync(fs.readFileSync(source)).toString('utf8').trim().split('\n').map(JSON.parse);
+// Quarantined where the untracked knowledge-lab observations are absent (clean checkouts, worktrees).
+const missing = !fs.existsSync(source) && `missing untracked fixture ${source}`;
+const test = (name, fn) => baseTest(name, { skip: missing }, fn);
+const rows = missing ? [] : zlib.gunzipSync(fs.readFileSync(source)).toString('utf8').trim().split('\n').map(JSON.parse);
 const temp = fs.mkdtempSync('/private/tmp/orka-7l9-party-contract-');
 after(() => fs.rmSync(temp, { recursive: true, force: true }));
 

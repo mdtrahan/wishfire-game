@@ -5,6 +5,7 @@
 
 ## Ownership
 - `serve_web.js` serves the browser runner and writes `web-runner/runtime-fingerprint.js`.
+- `run_test_suite.mjs` is `npm test`: it runs non-browser test files in parallel, then Playwright test files serially, and fails if either pass fails.
 - `balance_harness.js` is the canonical batch game automation path.
 - Balance fixtures preload lamp and `orka.hero_progress.v2` saves before navigation, preserve input/output bytes for provenance, and reject progression saves whose version, roster, identity, level, or HP would normalize on restore.
 - Recovery evidence records observed progression boundaries and ordered post-recovery enemy KOs; skipped polls or event gaps remain unknown rather than inferred.

@@ -49,6 +49,8 @@
 - Prefer focused deterministic tests over broad suite runs during development.
 - Static source assertions are allowed in this repo when they protect architecture boundaries, but avoid adding brittle source-shape checks when behavior can be tested directly.
 - Full `npm test` may include unrelated legacy/static failures; report focused validation scope honestly.
+- `npm test` runs `tools/run_test_suite.mjs`: non-browser files in parallel, then Playwright files one at a time, because concurrent Chromium launches exceed browser test timeouts. Launch Chromium via `detectChromeExecutable()`, never a fixed path. Sample animated VFX at a paused, explicit `currentTime`, not after a wall-clock delay.
+- Tests that read untracked `output/` fixtures (`partySustain`, `sustainTrackerContract`) skip with a named reason when the fixture is absent; they still run in checkouts that hold the knowledge-lab data.
 - Do not weaken an ownership contract to make an implementation pass unless the product/architecture source changed too.
 
 ## Work Guidance
