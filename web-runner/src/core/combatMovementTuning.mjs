@@ -35,6 +35,8 @@ export function defaultCombatMovementTuning() {
   return Object.fromEntries([
     ...COMBAT_MOVEMENT_TUNING_FIELDS.map(field => [field.key, field.value]),
     ['leaderName', COMBAT_LEADER_NAMES[0]],
+    // The dev leader only applies when explicitly enabled; otherwise Formation decides.
+    ['leaderOverride', false],
   ]);
 }
 
@@ -49,14 +51,16 @@ export function sanitizeCombatMovementTuning(input = null) {
   next.leaderAnchor = next.leaderAnchor >= 0.5 ? 1 : 0;
   const leaderName = String(raw.leaderName || '').trim();
   next.leaderName = COMBAT_LEADER_NAMES.find(name => name.toLowerCase() === leaderName.toLowerCase()) || base.leaderName;
+  next.leaderOverride = raw.leaderOverride === true;
   return next;
 }
 
-// The player's Formation leader applies unless a saved dev tuning names one explicitly.
+// The player's Formation leader applies unless the dev tuning enables `leaderOverride`.
+// Dev tunings saved before the flag existed always carried a leader name, so they do not override.
 // `succession` follows the Formation board for KO hand-off.
 export function resolveCombatMovementTuning(globals = {}) {
   const dev = globals?.DevMovementTuning;
-  const tuning = sanitizeCombatMovementTuning(dev?.leaderName ? dev : { ...(dev || {}), leaderName: globals?.HeroFormationLeader });
+  const tuning = sanitizeCombatMovementTuning(dev?.leaderOverride === true ? dev : { ...(dev || {}), leaderName: globals?.HeroFormationLeader });
   const succession = Array.isArray(globals?.HeroFormationOrder) ? globals.HeroFormationOrder.filter(name => COMBAT_LEADER_NAMES.includes(name)) : [];
   return succession.length ? { ...tuning, succession } : tuning;
 }

@@ -16,7 +16,7 @@
 - `simulationCoreShadow.js` owns WASM loading, Rust owner markers, shadow checks, and mismatch diagnostics.
 - `runtimeAssetUrl.mjs` owns document-base asset resolution and embedded offline JSON/WASM payload lookup; hosted runtime loading remains the default path. Hero skill icons use this resolver so the classic offline bundle can open the current Skills screen.
 - `devToolingControls.js` and runtime debug helpers own QA/dev surfaces.
-- `devMovementTuningPanel.mjs` mounts live movement/camera sliders in the dev modal; values persist only under the dev localStorage key and never enter save data.
+- `devMovementTuningPanel.mjs` mounts live movement/camera sliders in the dev modal; values persist only under the dev localStorage key and never enter save data. Its leader select applies only while "Override Formation leader" is ticked; Reset clears the override.
 - Boss HUD fractions and timeout receipts use the stage core's fixed 30-second limit, including old stage objects carrying a prior limit.
 - `renderCombatBossControl.mjs` owns the combat progress rail and manual boss retry group. The group appears only in unobstructed combat at logical Y=42 below resources; non-combat layouts, blocking modals and entry/terminal phases hide it without changing earned readiness. Detect visible dialogs independently of layout because Growth retains the underlying combat layout. An active boss keeps the Canvas timer rail. First approaches enter automatically; latched retries use the guarded summon path without reinitializing combat. Keep DOM and Canvas anchors in the shared 360x640 frame.
 

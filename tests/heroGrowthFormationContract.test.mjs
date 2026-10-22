@@ -4,7 +4,7 @@ import { createCombatProgressionState } from '../web-runner/src/core/combatProgr
 import { starUpHero, setHeroResonance, starUpCost, heroGrowthModifiers, heroGrowthBreakdown, sanitizeHeroGrowth, canonicalGrowthId, STAR_MAX } from '../web-runner/src/core/heroGrowthRules.mjs';
 import { sanitizeHeroFormation, placeFormationHero, setFormationLeader, autoFormActive, copyFormationPresetTo, selectFormationPreset, activeFormationPreset, formationSuccession, formationPlacement, openFormationCells, unlockedFormationGrids, setFormationLocked, FORMATION_SECOND_GRID_LEVEL } from '../web-runner/src/core/heroFormationRules.mjs';
 import { deriveContinuousCombatRecoveryHuddle } from '../web-runner/src/core/arenaCombat.mjs';
-import { resolveCombatMovementTuning, resolveCombatLeader } from '../web-runner/src/core/combatMovementTuning.mjs';
+import { resolveCombatMovementTuning, resolveCombatLeader, sanitizeCombatMovementTuning } from '../web-runner/src/core/combatMovementTuning.mjs';
 import { permanentHeroModifiers } from '../web-runner/src/core/realtimeSkillState.mjs';
 
 const roster = [{ id: 'Falie', name: 'Fara', role: 'Tank' }, { id: 'Huun', name: 'Hondo', role: 'Damage' }, { id: 'Runa', name: 'Runa', role: 'Mage' }, { id: 'Kojonn', name: 'Kaja', role: 'Support' }];
@@ -122,13 +122,20 @@ test('default board reproduces the authored combat formation and mirrors with tr
   assert.ok(x(left, 'Runa') < x(left, 'Falie'), 'moving left, the frontline leads on the left');
 });
 
-test('combat leader follows Formation unless a dev tuning names one, with succession on KO', () => {
+test('combat leader follows Formation unless the dev override is enabled, with succession on KO', () => {
   assert.equal(resolveCombatMovementTuning({}).leaderName, 'Fara');
   const globals = { HeroFormationLeader: 'Runa', HeroFormationOrder: ['Runa', 'Kaja', 'Fara', 'Hondo'] };
   const tuning = resolveCombatMovementTuning(globals);
   assert.equal(tuning.leaderName, 'Runa');
   assert.deepEqual(tuning.succession, ['Runa', 'Kaja', 'Fara', 'Hondo']);
-  assert.equal(resolveCombatMovementTuning({ ...globals, DevMovementTuning: { leaderName: 'Hondo' } }).leaderName, 'Hondo');
+  // Dev tunings saved by the panel always carry a leader name; without the override flag Formation still leads.
+  assert.equal(resolveCombatMovementTuning({ ...globals, DevMovementTuning: { leaderName: 'Hondo', heroOverlap: 0.5 } }).leaderName, 'Runa');
+  assert.equal(resolveCombatMovementTuning({ ...globals, DevMovementTuning: sanitizeCombatMovementTuning({ heroOverlap: 0.5 }) }).leaderName, 'Runa', 'panel defaults and Reset never override');
+  assert.equal(resolveCombatMovementTuning({ ...globals, DevMovementTuning: { leaderName: 'Hondo', leaderOverride: 'yes' } }).leaderName, 'Runa', 'only a literal true enables the override');
+  const overridden = resolveCombatMovementTuning({ ...globals, DevMovementTuning: { leaderName: 'Hondo', leaderOverride: true } });
+  assert.equal(overridden.leaderName, 'Hondo');
+  assert.equal(overridden.leaderOverride, true);
+  assert.equal(resolveCombatMovementTuning({ DevMovementTuning: { leaderName: 'Kaja' } }).leaderName, 'Fara', 'no Formation and no override keeps the default leader');
   const heroes = [{ baseHeroName: 'Falie', hp: 5 }, { baseHeroName: 'Huun', hp: 5 }, { baseHeroName: 'Runa', hp: 0 }, { baseHeroName: 'Kojonn', hp: 5 }];
   assert.equal(resolveCombatLeader(heroes, tuning.leaderName, tuning.succession).baseHeroName, 'Kojonn');
   assert.equal(resolveCombatLeader(heroes, 'Runa').baseHeroName, 'Falie', 'without succession the party order still applies');

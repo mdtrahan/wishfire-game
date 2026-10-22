@@ -38,7 +38,14 @@ export function mountCombatMovementTuningPanel({ container, state, storage = nul
   leaderSelect.dataset.devtoolMovementLeader = '';
   for (const name of COMBAT_LEADER_NAMES) leaderSelect.add(new Option(name, name));
   leaderLabel.appendChild(leaderSelect);
-  fieldset.appendChild(leaderLabel);
+  // Off by default so the player's Formation leader applies; the select only matters when ticked.
+  const overrideLabel = document.createElement('label');
+  overrideLabel.style.cssText = 'display:flex;align-items:center;gap:6px;';
+  const overrideToggle = document.createElement('input');
+  overrideToggle.type = 'checkbox';
+  overrideToggle.dataset.devtoolMovementLeaderOverride = '';
+  overrideLabel.append(overrideToggle, 'Override Formation leader');
+  fieldset.append(overrideLabel, leaderLabel);
 
   const inputs = new Map();
   for (const field of COMBAT_MOVEMENT_TUNING_FIELDS) {
@@ -66,7 +73,9 @@ export function mountCombatMovementTuningPanel({ container, state, storage = nul
   fieldset.appendChild(reset);
 
   const sync = tuning => {
+    overrideToggle.checked = tuning.leaderOverride;
     leaderSelect.value = tuning.leaderName;
+    leaderSelect.disabled = !tuning.leaderOverride;
     for (const { field, input, readout } of inputs.values()) {
       input.value = String(tuning[field.key]);
       readout.textContent = formatValue(field, tuning[field.key]);
@@ -80,9 +89,11 @@ export function mountCombatMovementTuningPanel({ container, state, storage = nul
   };
   const readDom = () => ({
     leaderName: leaderSelect.value,
+    leaderOverride: overrideToggle.checked,
     ...Object.fromEntries([...inputs].map(([key, { input }]) => [key, Number(input.value)])),
   });
   leaderSelect.addEventListener('change', () => apply(readDom()));
+  overrideToggle.addEventListener('change', () => apply(readDom()));
   for (const { input } of inputs.values()) input.addEventListener('input', () => apply(readDom()));
   reset.addEventListener('click', () => apply(defaultCombatMovementTuning()));
   sync(sanitizeCombatMovementTuning(state.globals.DevMovementTuning));

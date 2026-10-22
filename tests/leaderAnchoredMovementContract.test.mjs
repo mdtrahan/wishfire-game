@@ -98,6 +98,7 @@ test('camera centres the leader, not the party centroid', () => {
   advanceCombatCamera({ globals, entities: heroes, seconds: 0.1 });
   assert.equal(resolveCombatCameraCenterX(globals, 1150), 1000);
   globals.DevMovementTuning.leaderName = 'Hondo';
+  globals.DevMovementTuning.leaderOverride = true;
   advanceCombatCamera({ globals, entities: heroes, seconds: 0.1 });
   assert.equal(resolveCombatCameraCenterX(globals, 1150), 1200, 'leader choice moves the camera');
   globals.DevMovementTuning.leaderAnchor = 0;
@@ -155,6 +156,9 @@ test('dev tuning persists under its own dev key and ignores corrupt storage', ()
   const storage = { getItem: key => store.get(key) ?? null };
   assert.equal(loadCombatMovementTuning(storage).heroOverlap, 0.8);
   assert.equal(loadCombatMovementTuning(storage).leaderName, 'Kaja');
+  assert.equal(loadCombatMovementTuning(storage).leaderOverride, false, 'saves from before the flag never override Formation');
+  store.set(COMBAT_MOVEMENT_TUNING_STORAGE_KEY, JSON.stringify({ leaderName: 'Kaja', leaderOverride: true }));
+  assert.equal(loadCombatMovementTuning(storage).leaderOverride, true);
   store.set(COMBAT_MOVEMENT_TUNING_STORAGE_KEY, '{oops');
   assert.equal(loadCombatMovementTuning(storage), null);
   assert.equal(loadCombatMovementTuning(null), null);
