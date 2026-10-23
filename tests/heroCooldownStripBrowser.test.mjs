@@ -71,6 +71,41 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
       assert.ok(Math.abs(parseFloat(paused) - 180) < 3);
       await page.waitForTimeout(150); assert.equal((await read()).slots[0].shade, paused);
       await page.screenshot({ path: `${directory}/${width}-${height}-paused-clock.png` });
+      // Buff signals: one party-wide effect plus own buffs on the first two clocks.
+      await page.evaluate(async () => {
+        const { state } = await import('./modules/state.js'); const g = state.globals;
+        const heroes = state.entities.filter(actor => actor.kind === 'hero' && actor.hp > 0);
+        const until = g.time + 60, effects = g.RealtimeSkillEffects ||= {};
+        for (const actor of heroes) (effects[actor.uid] ||= {}).fixture_party = { sourceUID: heroes[0].uid, expiresAt: until, modifiers: [{ channel: 'SPD', direction: 'up' }, { channel: 'ATK', direction: 'up' }] };
+        effects[heroes[0].uid].fixture_def = { sourceUID: heroes[0].uid, expiresAt: until, damageCutPct: 20 };
+        effects[heroes[0].uid].fixture_mag = { sourceUID: heroes[1].uid, expiresAt: until, modifiers: [{ channel: 'MAG', direction: 'up' }] };
+        effects[heroes[1].uid].fixture_res = { sourceUID: heroes[1].uid, expiresAt: until, modifiers: [{ channel: 'RES', direction: 'up' }, { channel: 'DEF', direction: 'down' }] };
+      });
+      await page.waitForFunction(() => document.querySelectorAll('.hero-buff-party .hero-buff').length === 2);
+      const buffs = await page.evaluate(() => ({
+        party: [...document.querySelectorAll('.hero-buff-party .hero-buff')].map(node => ({ icon: node.dataset.icon, rect: node.getBoundingClientRect().toJSON() })),
+        badges: [...document.querySelectorAll('.hero-cooldown')].map(slot => [...slot.querySelectorAll('.hero-buff')].map(node => ({ icon: node.dataset.icon, rect: node.getBoundingClientRect().toJSON() }))),
+        slots: [...document.querySelectorAll('.hero-cooldown')].map(node => node.getBoundingClientRect().toJSON()),
+        sheetLoaded: getComputedStyle(document.querySelector('.hero-buff')).backgroundImage.includes('buff-signals.png'),
+      }));
+      assert.deepEqual(buffs.party.map(entry => entry.icon), ['party-spd', 'party-atk']);
+      const partyCenter = (buffs.party[0].rect.left + buffs.party.at(-1).rect.right) / 2;
+      assert.ok(Math.abs(partyCenter - (current.row.x + current.row.width / 2)) < 1, 'party icons centered on the eight-slot strip');
+      assert.ok(buffs.party.every(entry => entry.rect.bottom <= current.row.top + .5 && entry.rect.top >= current.quest.top), 'party row sits between quest and strip');
+      assert.deepEqual(buffs.badges.map(list => list.map(entry => entry.icon)), [['hero-offense', 'hero-defense'], ['hero-defense'], [], [], [], [], [], []]);
+      for (const [index, list] of buffs.badges.entries()) list.forEach((entry, order) => {
+        const slot = buffs.slots[index];
+        assert.ok(entry.rect.bottom <= slot.bottom + .5 && entry.rect.bottom >= slot.bottom - slot.height * .1, 'badge bottom-aligned');
+        if (order === 0) assert.ok(entry.rect.left - slot.left < slot.width * .1, 'first badge fills from the left');
+        else assert.ok(entry.rect.left > list[order - 1].rect.right - .5, 'badges fill left to right');
+      });
+      assert.equal(buffs.sheetLoaded, true);
+      await page.screenshot({ path: `${directory}/${width}-${height}-buffs.png` });
+      await page.evaluate(async () => {
+        const { state } = await import('./modules/state.js');
+        for (const effects of Object.values(state.globals.RealtimeSkillEffects || {})) for (const id of Object.keys(effects)) if (id.startsWith('fixture_')) delete effects[id];
+      });
+      await page.waitForFunction(() => !document.querySelector('.hero-buff'));
       await page.evaluate(async () => { const { state } = await import('./modules/state.js'); state.globals.DevToolingPaused = 0; });
       await page.waitForFunction(old => document.querySelector('.hero-cooldown').style.getPropertyValue('--cooldown') !== old, paused);
       const bag = page.locator('#wishfire-lamp [data-action="collect"]');

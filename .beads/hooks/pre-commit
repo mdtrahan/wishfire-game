@@ -58,7 +58,7 @@ if printf '%s\n' "$UI_LOCK_STAGED_FILES" | grep -Eq "$UI_LOCK_OWNER_PATTERN"; th
 fi
 
 # Presentation changes keep the full phone gate; rules also need actual gameplay proof.
-if printf '%s\n' "$UI_LOCK_STAGED_FILES" | grep -Eq '^(web-runner/app\.js|web-runner/systems/(heroCooldownStrip|combatProgressionUI)\.mjs|web-runner/state/heroArtAssets\.mjs|tests/heroCooldownStrip(Browser)?\.test\.mjs)$'; then
+if printf '%s\n' "$UI_LOCK_STAGED_FILES" | grep -Eq '^(web-runner/app\.js|web-runner/systems/(heroCooldownStrip|combatProgressionUI)\.mjs|web-runner/state/heroArtAssets\.mjs|src/core/buffSignalRules\.mjs|web-runner/assets/images/ui/buff-signals\.png|tests/(heroCooldownStrip(Browser)?|buffSignalRules)\.test\.mjs)$'; then
   echo "Hero cooldown HUD changed; running clock and five-viewport containment proof..."
   npm run test:hero-cooldowns
 fi

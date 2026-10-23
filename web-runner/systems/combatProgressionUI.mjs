@@ -112,7 +112,7 @@ export function createCombatProgressionUI({ canvas, onClaim = () => {} }) {
   const rewardImage = document.createElement('div'); rewardImage.setAttribute('role', 'img'); plate.append(rewardImage);
   const rewardCount = document.createElement('div'); rewardCount.className = 'cot-reward-count'; reward.append(plate, rewardCount);
   const cooldownStrip = createHeroCooldownStrip();
-  objective.append(reward, text); host.append(resourceRow, objective, cooldownStrip.element); document.body.append(host);
+  objective.append(reward, text); host.append(resourceRow, objective, cooldownStrip.partyElement, cooldownStrip.element); document.body.append(host);
   const safeProbe = makeSafeAreaProbe();
 
   function update({ layoutId, phase, scale = 1, progression, equipmentProgress, entities = [], globals = {}, goldFixture = 999999999 } = {}) {
