@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 
 test('hero screen reads every accepted kit skill from shared data', () => {
  const source=fs.readFileSync(path.join(__dirname,'../web-runner/systems/renderHeroScreen.js'),'utf8');
- assert.match(source,/heroDefinition/);assert.match(source,/definition.skills/);assert.match(source,/ability.slot/);assert.match(source,/ability.icon/);assert.match(source,/ability.conditionLabel/);assert.match(source,/ability.cooldownSeconds/);
+ assert.match(source,/heroDefinition/);assert.match(source,/definition.skills/);assert.match(source,/ability.slot/);assert.match(source,/ability.icon/);assert.match(source,/heroSkillCopy/);assert.match(source,/ability.cooldownSeconds/);
  assert.doesNotMatch(source,/d.passives|d.special/);
 });
 

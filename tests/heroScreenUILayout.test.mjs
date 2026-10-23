@@ -11,6 +11,7 @@ import {equipmentStats} from '../web-runner/src/core/equipment.mjs';
 import {createLampEconomy,generateLampItem} from '../web-runner/src/core/lampGear.mjs';
 import {HERO_DEFINITIONS,heroDefinition,heroSkillUnlocked} from '../web-runner/src/core/heroDefinitions.mjs';
 import {actorAttackReach} from '../src/core/arenaCombatRules.mjs';
+import {heroBasicSkill,heroSkillCopy} from '../web-runner/systems/heroSkillCopy.mjs';
 import {EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
 
 const require=createRequire(import.meta.url);
@@ -23,6 +24,13 @@ const profiles=[
  {name:'compact-retina',width:216,height:384,dpr:2},
  {name:'natural',width:591,height:1223,dpr:1},
 ];
+
+test('Basic Attack copy reads authored power and damage stat at each progression value',()=>{
+ for(const definition of Object.values(HERO_DEFINITIONS))for(const potency of [1,1.3,2.1]){
+  const basic=heroBasicSkill({...definition,basic:{...definition.basic,effects:[{effectType:'damage',potency,hits:1}]}});
+  assert.deepEqual(heroSkillCopy(basic).lines,[`Deals ${potency*100}% of ${basic.tags.includes('magic')?'MAG':'ATK'} to the current target.`]);
+ }
+});
 const mime={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml'};
 
 function expectedSkillRange(ability,hero){
@@ -219,18 +227,24 @@ test('hero redesign uses saved canonical data and stays contained across portrai
     const screenshot=`${profile.name}-${tab.toLowerCase()}.png`;
     await page.screenshot({path:path.join(artifactDir,screenshot),fullPage:true});screenshots[tab.toLowerCase()]=screenshot;
    }
-   for(const bounds of tabPortraits)assert.ok(['x','y','width','height'].every(key=>Math.abs(bounds[key]-tabPortraits[0][key])<0.75),'portrait geometry stays fixed when tabs change');
+   for(const bounds of tabPortraits.slice(0,2))assert.ok(['x','y','width','height'].every(key=>Math.abs(bounds[key]-tabPortraits[0][key])<0.75),'Gear and Orb portrait geometry stays fixed');
+   assert.ok(tabPortraits[2].height<tabPortraits[0].height,'Skills reserves more height for its readable detail frame');
    const reachedSkills=[];
    for(let heroIndex=0;heroIndex<heroes.length;heroIndex++){
     const hero=heroes[heroIndex],definition=heroDefinition(hero),abilities=definition.skills,slots=['Special','Passive','Resonance 1','Resonance 2'];
     if(heroIndex){
      await detail.getByRole('button',{name:'Next hero'}).click();
      await page.waitForFunction(expected=>document.querySelector('#hero-details h1')?.textContent===expected,definition.name);
-     assert.equal(await detail.locator('.skill-card[aria-pressed="true"]').getAttribute('aria-label'),`Inspect Special: ${abilities[0].displayName}`,`${definition.name} gets a fresh Special selection`);
+     assert.equal(await detail.locator('.skill-card[aria-pressed="true"]').count(),0,`${definition.name} starts with no specific skill selected`);
     }
     const selectedTab=detail.getByRole('button',{name:'Skills',exact:true});
     assert.equal(await selectedTab.getAttribute('aria-pressed'),'true','Skills remains selected while inspecting skill data');
     const grid=detail.locator('.identity .skill-grid');
+    const basicPanel=detail.locator('.skill-frame');
+    assert.equal(await basicPanel.locator('h2').textContent(),'Basic Attack','no selected skill displays Basic Attack in the full frame');
+    assert.deepEqual(await basicPanel.locator('.skill-effect').allTextContents(),heroSkillCopy(heroBasicSkill(definition)).lines,'Basic Attack reads this hero’s authored power and damage stat');
+    const basicHeight=(await basicPanel.boundingBox()).height;
+    reachedSkills.push(`${hero.heroInstanceKey}:basic_attack`);
     assert.deepEqual(await grid.locator('.skill-card').evaluateAll(cards=>cards.map(card=>card.getAttribute('aria-label'))),abilities.map((ability,index)=>`Inspect ${slots[index]}: ${ability.displayName}`),`${definition.name} exposes Special, Passive and both Resonances`);
     const row=await grid.boundingBox(),portraitBounds=await portrait.boundingBox(),stageBounds=await page.locator('#game-screen').boundingBox();
     assert.ok(row.x>=stageBounds.x-0.5&&row.x+row.width<=stageBounds.x+stageBounds.width+0.5,`${definition.name} skill row stays inside the stage`);
@@ -241,21 +255,41 @@ test('hero redesign uses saved canonical data and stays contained across portrai
      assert.equal(await card.getAttribute('aria-pressed'),'true',`${ability.displayName} is the selected icon`);
      assert.equal(await card.evaluate(node=>getComputedStyle(node).borderTopColor),'rgb(255, 217, 113)',`${ability.displayName} shows the selected gold state`);
      const detailPanel=detail.locator('.pane article').first();
+     assert.ok(Math.abs((await detailPanel.boundingBox()).height-basicHeight)<1,'Basic Attack and selected skills use equal frame space');
      assert.equal(await detailPanel.locator('small').textContent(),slots[index]);
      assert.equal(await detailPanel.getAttribute('data-locked'),String(ability.slot==='resonance'),`${ability.displayName} marks late-game resonances`);
-     const meta=ability.slot==='special'?`Range: ${expectedSkillRange(ability,hero)} · Cooldown: ${ability.cooldownSeconds}s${ability.provisionalCooldown?' (provisional)':''}`:ability.slot==='passive'?'Always on while its condition holds · No cooldown':'Late-game resonance · Not yet available';
-     assert.deepEqual(await detailPanel.locator('p').allTextContents(),[meta,`When: ${ability.conditionLabel}`,ability.description],`${ability.displayName} details come from shared skill data`);
+     const copy=heroSkillCopy(ability);
+     assert.deepEqual(await detailPanel.locator('.skill-effect').allTextContents(),copy.lines,`${ability.displayName} uses concise copy with separate effect lines`);
+     assert.deepEqual(await detailPanel.locator('.skill-rules p').allTextContents(),[...(ability.scaffold?['Late-game resonance · Not yet available']:[]),...(copy.rules||[])],`${ability.displayName} preserves its extra rules and availability`);
+     assert.doesNotMatch(await detailPanel.textContent(),/When:|Always on while/,'ordinary triggers are omitted');
+     const metrics=detailPanel.locator('.skill-metrics');
+     if(ability.slot==='special')assert.equal(await metrics.getAttribute('aria-label'),`Range: ${expectedSkillRange(ability,hero)} · Cooldown: ${ability.cooldownSeconds}s${ability.provisionalCooldown?' (provisional)':''}`,'icon metadata preserves range, cooldown and tuning status');
+     const geometry=await detailPanel.evaluate(frame=>{const body=frame.querySelector('.skill-body'),pane=frame.parentElement;return{height:frame.clientHeight,bodyHeight:body.clientHeight,overflow:frame.scrollWidth>frame.clientWidth||body.scrollWidth>body.clientWidth,paneScroll:pane.scrollHeight>pane.clientHeight+1,top:body.scrollTop};});
+     assert.equal(geometry.overflow,false,'skill frame and text have no horizontal overflow');
+     assert.equal(geometry.paneScroll,false,'selected skill never extends the outer pane');
+     assert.ok(geometry.bodyHeight>20,'skill retains a readable scroll area');
+     assert.equal(geometry.top,0,'selecting a skill resets its own scroll position');
+     assert.equal(await detailPanel.locator('.skill-body').evaluate(body=>body.querySelector('.skill-effect:last-of-type').getBoundingClientRect().bottom<=body.getBoundingClientRect().bottom+1),true,'the complete main effect fits before scrolling');
+     await detailPanel.locator('.skill-body').evaluate(body=>body.scrollTop=body.scrollHeight);
+     assert.ok(Math.abs((await detailPanel.boundingBox()).height-geometry.height-2)<1,'scrolling keeps the skill frame height fixed');
+     assert.equal(await detailPanel.locator('.skill-body').evaluate(body=>{const qa=window.heroQa,hero=Object.values(qa.globals.HeroProgress.heroes)[qa.gameState.selectedHero],hp=hero.hp,xp=hero.currentEXP,top=body.scrollTop;hero.hp=hp-1;hero.currentEXP=xp+1;qa.render();const kept=body.isConnected&&body.scrollTop===top;hero.hp=hp;hero.currentEXP=xp;qa.render();return kept;}),true,'damage and EXP ticks preserve the reading node and scroll position');
+     await metrics.click();assert.equal(await detailPanel.locator('.skill-metric-label').isVisible(),true,'touch reveals icon labels');
+     await metrics.click();assert.equal(await detailPanel.locator('.skill-metric-label').isVisible(),false,'labels close again');
      reachedSkills.push(`${hero.heroInstanceKey}:${ability.skillId}`);
+     if(heroIndex===0&&index===0)await page.screenshot({path:path.join(artifactDir,`${profile.name}-special.png`),fullPage:true});
     }
-    assert.equal(await detail.locator('.pane article').last().locator('h2').textContent(),'Basic Attack','Basic Attack remains reachable below the skills');
-    assert.equal(await detail.locator('.pane article').last().locator('p').textContent(),definition.basic.description,'Basic Attack description is preserved');
+    await grid.getByRole('button',{name:`Inspect Resonance 2: ${abilities.at(-1).displayName}`,exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('.skill-frame h2')?.textContent==='Basic Attack');
+    assert.equal(await grid.locator('[aria-pressed="true"]').count(),0,'clicking the selected skill toggles it off and restores Basic Attack');
+    assert.ok(Math.abs((await basicPanel.boundingBox()).height-basicHeight)<1,'toggling back preserves Basic Attack’s equal frame space');
+    await grid.getByRole('button',{name:`Inspect Resonance 2: ${abilities.at(-1).displayName}`,exact:true}).click();
     if(heroIndex===0){
      await detail.getByRole('button',{name:'Gear',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#hero-details')?.dataset.tab==='gear');
      await detail.getByRole('button',{name:'Skills',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#hero-details')?.dataset.tab==='skills');
      assert.equal(await detail.locator('.skill-card[aria-pressed="true"]').getAttribute('aria-label'),`Inspect Resonance 2: ${abilities.at(-1).displayName}`,'tab changes preserve selected skill');
     }
    }
-   assert.equal(new Set(reachedSkills).size,16,'all 16 accepted skills are reachable');
+   assert.equal(new Set(reachedSkills).size,20,'all 16 selected skills and four hero Basic Attacks are reachable');
    assert.equal(await page.evaluate(()=>JSON.stringify([localStorage.getItem('orka.hero_progress.v2'),localStorage.getItem('wishfire.equipment-economy.v5')])),JSON.stringify([saved.progress,saved.economy]),'hero and equipment saves stay byte-identical while browsing');
    assert.deepEqual(await page.evaluate(()=>window.heroQa.globals.HeroProgress),progress,'progression data stays unchanged in memory');
    assert.deepEqual(await page.evaluate(()=>window.heroQa.equipment),economy,'equipped items and loadouts stay unchanged in memory');
