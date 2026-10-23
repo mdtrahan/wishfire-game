@@ -1,27 +1,6 @@
-import { combatModifiers, projectCombatStat, projectCombatMultiplier, modifierCanImprove } from '../../../src/core/combatModifierRules.mjs';
+import { combatModifiers, projectCombatStat, projectCombatMultiplier } from '../../../src/core/combatModifierRules.mjs';
+import { heroPassiveModifiers } from './realtimeHeroPassives.mjs';
 export const rawCombatStat = (actor, stat) => Number(actor?.stats?.[stat] ?? actor?.[stat] ?? 0) || 0;
-export function skillModifiers(id, choice) {
-  const modifier = (channel, direction, magnitude) => ({ channel, direction, magnitude });
-  switch (id) {
-    case 'wishgrant': return ['ATK','MAG'].map(stat => modifier(stat,'up',.35));
-    case 'fortunes_blessing': return [modifier(choice || 'ATK','up',.25)];
-    case 'hex_beacon': return [modifier('RES','down',.25)];
-    case 'shrink': return ['ATK','DEF'].map(stat => modifier(stat,'down',.35));
-    default: return [];
-  }
-}
-export function battleModifiers(globals, actor) {
-  if (actor?.kind !== 'hero') return [];
-  const battle = globals.RealtimeSkillBattleState;
-  const result = [];
-  if (battle?.fruitUIDs?.includes(Number(actor.uid))) result.push({channel:'HP',direction:'up',magnitude:.15});
-  const growTier = Number(battle?.growTiersByUID?.[String(actor.uid)] || 0);
-  if (growTier > 0) {
-    const magnitude = [.08,.14,.20][Math.min(3,growTier)-1];
-    result.push({channel:'HP',direction:'down',magnitude:magnitude*(battle?.fruitUIDs?.includes(Number(actor.uid))?1.15:1)},{channel:'damageAmp',direction:'up',magnitude});
-  }
-  return result;
-}
 export function actorCombatModifiers(globals, actor) {
   const legacy=[];
   for(const stat of ['ATK','DEF','MAG','RES','SPD']) {
@@ -45,7 +24,7 @@ export function actorCombatModifiers(globals, actor) {
       if (base > 0 && levels > 0) legacy.push({ channel: combatStat, direction: 'up', magnitude: Math.min(2, levels * 0.02) });
     }
   }
-  return [...legacy,...combatModifiers(globals.RealtimeSkillEffects?.[String(actor.uid)],Number(globals.time || 0)),...battleModifiers(globals,actor)];
+  return [...legacy,...combatModifiers(globals.RealtimeSkillEffects?.[String(actor.uid)],Number(globals.time || 0)),...heroPassiveModifiers(actor)];
 }
 export function partyTrainingCombatStat(globals, actor, stat, value) {
   if (actor?.kind !== 'hero' || !['ATK', 'DEF', 'MAG', 'RES'].includes(stat)) return Math.max(0, Number(value) || 0);
@@ -60,14 +39,9 @@ export function realtimeCombatStat(globals, actor, stat, base = rawCombatStat(ac
   if (flat && base > 0) modifiers.push({channel:stat,direction:flat > 0 ? 'up':'down',magnitude:Math.abs(flat)/base});
   return projectCombatStat(base,stat,modifiers);
 }
-export function projectedSkillBenefit(globals, actor, effectId, choice) {
-  const proposed = skillModifiers(effectId,choice);
-  if (!proposed.length) return true;
-  return modifierCanImprove(actor.stats || actor,actorCombatModifiers(globals,actor),proposed);
-}
 export function ensureSkillBattle(ctx) {
   const globals = ctx.state.globals;
-  const battle = globals.RealtimeSkillBattleState ||= {attemptId:Number(globals.CombatSessionId || 0),baselinesByUID:{},magicFruitUsed:0,growTier:0,fruitUIDs:[]};
+  const battle = globals.RealtimeSkillBattleState ||= {attemptId:Number(globals.CombatSessionId || 0),baselinesByUID:{}};
   for (const actor of ctx.state.entities.filter(a => a?.kind === 'hero')) {
     const uid = String(actor.uid), signature = JSON.stringify([actor.currentLevel,actor.stats,actor.equipmentStats]);
     let baseline = battle.baselinesByUID[uid];
@@ -82,7 +56,8 @@ export function ensureSkillBattle(ctx) {
   }
   return battle;
 }
-export function resetRealtimeSkillAttempt(globals, entities = []) {
+// keepWard: a boss clear keeps Crimson Ward's pool; every other reset clears it.
+export function resetRealtimeSkillAttempt(globals, entities = [], { keepWard = false } = {}) {
   const battle = globals.RealtimeSkillBattleState;
   for (const hero of entities.filter(actor => actor?.kind === 'hero')) {
     const baseline = battle?.baselinesByUID?.[String(hero.uid)];
@@ -94,6 +69,8 @@ export function resetRealtimeSkillAttempt(globals, entities = []) {
   globals.RealtimeSkillZones = [];
   globals.RealtimeHeroBasicClocks = {};
   globals.RealtimeHeroBasicScheduledActions = {};
+  globals.RealtimePassiveAuraAt = {};
+  if (keepWard) return;
   globals.PartyTempHPShield = 0;
   globals.PartyWardBarrierActive=0;globals.PartyWardBarrierVisualsByUID={};
   delete globals.PartyTempHPShieldSourceUID;

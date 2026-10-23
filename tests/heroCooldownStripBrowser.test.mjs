@@ -71,12 +71,15 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
       assert.ok(Math.abs(parseFloat(paused) - 180) < 3);
       await page.waitForTimeout(150); assert.equal((await read()).slots[0].shade, paused);
       await page.screenshot({ path: `${directory}/${width}-${height}-paused-clock.png` });
-      // Buff signals: one party-wide effect plus own buffs on the first two clocks.
+      // Buff signals: a party-wide Elevate roll plus own buffs on the first two clocks.
+      // HP is pinned at 60% so no passive condition adds badges of its own.
       await page.evaluate(async () => {
         const { state } = await import('./modules/state.js'); const g = state.globals;
         const heroes = state.entities.filter(actor => actor.kind === 'hero' && actor.hp > 0);
-        const until = g.time + 60, effects = g.RealtimeSkillEffects ||= {};
-        for (const actor of heroes) (effects[actor.uid] ||= {}).fixture_party = { sourceUID: heroes[0].uid, expiresAt: until, modifiers: [{ channel: 'SPD', direction: 'up' }, { channel: 'ATK', direction: 'up' }] };
+        for (const actor of heroes) actor.hp = Math.ceil(actor.maxHP * .6);
+        g.PartyTempHPShield = 0; g.RealtimeSkillEffects = {};
+        const until = g.time + 60, effects = g.RealtimeSkillEffects, kaja = heroes.find(actor => /Kojonn|Kaja/.test(actor.name)) || heroes[0];
+        for (const actor of heroes) effects[actor.uid] = { elevate: { sourceUID: kaja.uid, expiresAt: until, data: { set: 'swift' }, modifiers: [{ channel: 'SPD', direction: 'up', magnitude: .05 }, { channel: 'ATK', direction: 'up', magnitude: .05 }] } };
         effects[heroes[0].uid].fixture_def = { sourceUID: heroes[0].uid, expiresAt: until, damageCutPct: 20 };
         effects[heroes[0].uid].fixture_mag = { sourceUID: heroes[1].uid, expiresAt: until, modifiers: [{ channel: 'MAG', direction: 'up' }] };
         effects[heroes[1].uid].fixture_res = { sourceUID: heroes[1].uid, expiresAt: until, modifiers: [{ channel: 'RES', direction: 'up' }, { channel: 'DEF', direction: 'down' }] };
@@ -86,12 +89,13 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
         party: [...document.querySelectorAll('.hero-buff-party .hero-buff')].map(node => ({ icon: node.dataset.icon, rect: node.getBoundingClientRect().toJSON() })),
         badges: [...document.querySelectorAll('.hero-cooldown')].map(slot => [...slot.querySelectorAll('.hero-buff')].map(node => ({ icon: node.dataset.icon, rect: node.getBoundingClientRect().toJSON() }))),
         slots: [...document.querySelectorAll('.hero-cooldown')].map(node => node.getBoundingClientRect().toJSON()),
+        quest: document.querySelector('.cot-objective').getBoundingClientRect().toJSON(),
         sheetLoaded: getComputedStyle(document.querySelector('.hero-buff')).backgroundImage.includes('buff-signals.png'),
       }));
       assert.deepEqual(buffs.party.map(entry => entry.icon), ['party-spd', 'party-atk']);
       const partyCenter = (buffs.party[0].rect.left + buffs.party.at(-1).rect.right) / 2;
       assert.ok(Math.abs(partyCenter - (current.row.x + current.row.width / 2)) < 1, 'party icons centered on the eight-slot strip');
-      assert.ok(buffs.party.every(entry => entry.rect.bottom <= current.row.top + .5 && entry.rect.top >= current.quest.top), 'party row sits between quest and strip');
+      assert.ok(buffs.party.every(entry => entry.rect.bottom <= current.row.top + .5 && entry.rect.top >= buffs.quest.bottom), 'party row sits below the whole mini-quest box and above the strip');
       assert.deepEqual(buffs.badges.map(list => list.map(entry => entry.icon)), [['hero-offense', 'hero-defense'], ['hero-defense'], [], [], [], [], [], []]);
       for (const [index, list] of buffs.badges.entries()) list.forEach((entry, order) => {
         const slot = buffs.slots[index];
@@ -101,9 +105,25 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
       });
       assert.equal(buffs.sheetLoaded, true);
       await page.screenshot({ path: `${directory}/${width}-${height}-buffs.png` });
+      // A party icon owns its hit area and opens its exact Party Skills entry; the quest never receives it.
+      const icon = buffs.party[0].rect, at = { x: icon.left + icon.width / 2, y: icon.top + icon.height / 2 };
+      assert.equal(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.dataset.icon, at), 'party-spd');
+      const questBefore = await page.locator('.cot-objective').textContent();
+      await page.mouse.click(at.x, at.y);
+      await page.locator('#training-ground').waitFor();
+      await page.waitForFunction(() => { const host = document.querySelector('#training-ground'), card = host.querySelector('.tg-skill[data-focused=true]'), list = host.querySelector('.tg-party'); if (!card) return false; const c = card.getBoundingClientRect(), l = list.getBoundingClientRect(); return c.top >= l.top - 1 && c.bottom <= l.bottom + 1 && document.activeElement === card; });
+      const party = await page.evaluate(() => {
+        const host = document.querySelector('#training-ground'), card = host.querySelector('.tg-skill[data-focused=true]'), list = host.querySelector('.tg-party');
+        const c = card?.getBoundingClientRect(), l = list.getBoundingClientRect();
+        return { tab: host.dataset.tab, focused: card?.dataset.partySkill, inView: !!c && c.top >= l.top - 1 && c.bottom <= l.bottom + 1, selected: host.querySelector('.tg-tab[aria-selected=true]').textContent,
+          entries: [...host.querySelectorAll('.tg-skill')].map(node => node.dataset.partySkill), strengthen: host.textContent.includes('Strengthen') };
+      });
+      assert.deepEqual(party, { tab: 'party', focused: 'elevate:swift', inView: true, selected: 'Party Skills', entries: ['crimson_ward', 'elevate:swift', 'elevate:vital', 'elevate:reach'], strengthen: false });
+      assert.equal(await page.locator('.cot-objective').textContent(), questBefore, 'the click never reaches the mini-quest');
+      await page.screenshot({ path: `${directory}/${width}-${height}-party-skills.png` });
+      await page.keyboard.press('Escape'); await page.waitForFunction(() => document.querySelector('#training-ground').hidden);
       await page.evaluate(async () => {
-        const { state } = await import('./modules/state.js');
-        for (const effects of Object.values(state.globals.RealtimeSkillEffects || {})) for (const id of Object.keys(effects)) if (id.startsWith('fixture_')) delete effects[id];
+        const { state } = await import('./modules/state.js'); state.globals.RealtimeSkillEffects = {};
       });
       await page.waitForFunction(() => !document.querySelector('.hero-buff'));
       await page.evaluate(async () => { const { state } = await import('./modules/state.js'); state.globals.DevToolingPaused = 0; });
@@ -121,6 +141,18 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
         await page.waitForFunction(id => JSON.stringify(JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')).loadouts).includes(id), item.instanceId);
         await page.screenshot({ path: `${directory}/360-640-equipped.png` });
       }
+      // A hero clock opens that hero's Hero screen with the Special selected and in view.
+      if (await page.locator('#lamp-overlay').isVisible()) { await page.keyboard.press('Escape'); await page.waitForFunction(() => !document.querySelector('#lamp-overlay') || getComputedStyle(document.querySelector('#lamp-overlay')).display === 'none' || document.querySelector('#lamp-overlay').hidden); }
+      const runa = page.locator('.hero-cooldown').nth(2), runaBox = await runa.boundingBox();
+      await page.mouse.click(runaBox.x + runaBox.width / 2, runaBox.y + runaBox.height / 3);
+      await page.waitForFunction(() => document.querySelector('#hero-details:not([hidden]) h1')?.textContent === 'Runa' && document.querySelector('#hero-details').dataset.tab === 'skills');
+      const special = await page.evaluate(() => {
+        const host = document.querySelector('#hero-details'), card = host.querySelector('.skill-card[aria-pressed=true]'), article = host.querySelector('.pane article[data-slot=special]');
+        const r = article?.getBoundingClientRect();
+        return { card: card?.getAttribute('aria-label'), skill: article?.dataset.skill, visible: !!r && r.top < innerHeight && r.bottom > 0 };
+      });
+      assert.deepEqual(special, { card: 'Inspect Special: Bubble Pop', skill: 'bubble_pop', visible: true });
+      await page.screenshot({ path: `${directory}/${width}-${height}-hero-special.png` });
       assert.deepEqual(errors, []); measurements.push(current);
       await context.close();
     }

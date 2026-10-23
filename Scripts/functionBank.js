@@ -1,5 +1,6 @@
 import { partyTrainingCombatStat } from '../web-runner/src/core/realtimeSkillState.mjs';
 import { realtimeBasicDamageMultiplier } from '../web-runner/src/core/realtimeHeroSkills.mjs';
+import { heroPassiveTargetDEFScale, projectCombatMultiplier, actorCombatModifiers } from '../web-runner/modules/heroCommands.mjs';
 import { effectiveStat } from '../web-runner/src/core/combatRules.mjs';
 import { captureBalanceImpactGeometry, recordBalanceCombatEvent } from '../web-runner/src/core/balanceTelemetry.mjs';
 import { executeHeroCommand, resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat, settleContinuousCombatRewards, emitResolvedHealEvent } from '../web-runner/modules/heroCommands.mjs';
@@ -5593,7 +5594,8 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode, attackMultipl
   const isMagic = mode === 'magic';
   const offenseStat = isHeroAttacker ? (atk.attackType === 'magic' ? 'MAG' : 'ATK') : (isMagic ? 'MAG' : 'ATK');
   const power = GetEffectiveStat(ctx, atk, offenseStat);
-  const resist = GetEffectiveStat(ctx, tgt, isMagic ? 'RES' : 'DEF');
+  // Passives that lower the target's DEF (Hondo's Royalty) apply only to the holder's own hits.
+  const resist = GetEffectiveStat(ctx, tgt, isMagic ? 'RES' : 'DEF') * (isHeroAttacker && !isMagic ? heroPassiveTargetDEFScale(atk) : 1);
   const matchingResistancePct = GetBaseStat(ctx, tgt, isMagic ? 'magicDamageResistancePct' : 'physicalDamageResistancePct');
   const generalResistancePct = GetBaseStat(ctx, tgt, 'damageResistancePct');
   const roll01 = random01(ctx);
@@ -5656,7 +5658,9 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode, attackMultipl
   );
   console.log(`[DMG_AUDIT] chainApplied=${chainApplied} attackerType=${isHeroAttacker ? 'H' : 'E'}`);
   g.LastCalculateDamageRaw = Math.ceil(Math.max(0,power)*Math.max(0,attackMultiplierPct)/100*(jsDecision.didCrit?1.25:1));
-  return isHeroAttacker && Number(g.ContinuousCombatStageLoop || 0)===1 ? Math.ceil(dmg*realtimeBasicDamageMultiplier(g,atk)) : dmg;
+  if (!(isHeroAttacker && Number(g.ContinuousCombatStageLoop || 0)===1)) return dmg;
+  const critDamage = jsDecision.didCrit ? projectCombatMultiplier('critDamage', actorCombatModifiers(g, atk)) : 1;
+  return Math.ceil(dmg*realtimeBasicDamageMultiplier(g,atk)*critDamage);
 }
 
 function absorbPartyTempHPShield(g, dmg) {

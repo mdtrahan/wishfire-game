@@ -524,9 +524,16 @@ export function advanceContinuousCombatStage(stageState) {
   return { done: false, stage: getContinuousCombatStage(state), state };
 }
 
+// Crimson Ward's shared pool is wiped when a boss enters or the party falls; boss clears keep it.
+export function clearCrimsonWardPool(globals) {
+  if (!globals) return;
+  globals.PartyTempHPShield = 0; globals.PartyWardBarrierActive = 0; globals.PartyWardBarrierVisualsByUID = {};
+  delete globals.PartyTempHPShieldSourceUID; delete globals.PartyTempHPShieldTargetUIDs;
+}
 export function armContinuousCombatBoss(globals, entities, call, { wallNowMs = Date.now(), transitionDurationMs = CONTINUOUS_COMBAT_BOSS_ENTRY_WIPE_MS } = {}) {
   const state = globals?.ContinuousCombatStage;
   if (!state || !state.bossAvailable || state.bossActive) return false;
+  clearCrimsonWardPool(globals);
   const livingHeroes = entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
   let squadCenterX = livingHeroes.length
     ? livingHeroes.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? 0), 0) / livingHeroes.length
@@ -585,6 +592,7 @@ export function summonContinuousCombatBoss(globals, entities, call, options = {}
   const now = Number(globals.time || 0);
   if (!heroes.length || heroes.some(hero => Number(hero.hp || 0) <= 0 || isActorRecoveryRevealActive(hero, now))) return false;
   if (!armContinuousCombatBoss(globals, entities, call, options)) return false;
+  clearCrimsonWardPool(globals);
   if (globals.HeroProgress) globals.HeroProgressDirty = true;
   return true;
 }
@@ -1008,7 +1016,7 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
     }
   }
   if (transition.clearedBoss) {
-    resetRealtimeSkillAttempt(globals,entities);
+    resetRealtimeSkillAttempt(globals,entities,{ keepWard: true });
     const heroes = entities.filter(actor => actor?.kind === 'hero');
     const revivedKoHero = heroes.some(hero => Number(hero.hp || 0) <= 0);
     for (const hero of heroes) {

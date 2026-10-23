@@ -10,7 +10,7 @@
     "test:appjs-boundary": "node --test tests/appJsOrchestrationBoundaryContract.test.js",
     "test:hot-file-gate": "bash tools/run_hot_file_regression_gate.sh",
     "test:ui-lock": "node tools/ui_presentation_lock_gate.mjs",
-    "test:hero-cooldowns": "node --test tests/buffSignalRules.test.mjs tests/heroCooldownStrip.test.mjs tests/heroCooldownStripBrowser.test.mjs",
+    "test:hero-cooldowns": "node --test tests/acceptedHeroKitsContract.test.mjs tests/buffSignalRules.test.mjs tests/heroCooldownStrip.test.mjs tests/heroCooldownStripBrowser.test.mjs",
     "storage:audit": "node tools/storage_hygiene.mjs audit",
     "storage:clean": "node tools/storage_hygiene.mjs clean",
     "beads:link-worktree": "node tools/link_beads_worktree.mjs",

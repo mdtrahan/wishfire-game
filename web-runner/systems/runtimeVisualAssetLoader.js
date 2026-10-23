@@ -40,6 +40,16 @@ export async function loadRuntimeImage(url, { resolveRuntimeImageUrl = (value) =
   });
 }
 
+// Hero art is identity-critical: retry transient failures before leaving a portrait blank.
+export async function loadRuntimeImageWithRetry(url, options = {}, { attempts = 3, delayMs = 400 } = {}) {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const image = await loadRuntimeImage(url, options);
+    if (image) return image;
+    if (attempt < attempts) await new Promise(resolve => setTimeout(resolve, delayMs * attempt));
+  }
+  return null;
+}
+
 export async function loadRuntimeVisualAssets({
   types,
   assetUrl,
@@ -160,7 +170,7 @@ export async function loadRuntimeVisualAssets({
   const loadCoreVisuals = async () => {
     const tasks = [];
     const heroPortraitLoads = ['Fara', 'Hondo', 'Runa', 'Kaja'].map(async (heroName) => {
-      heroPortraitImages[heroName] = await loadImage(assetUrl(heroArtPath(heroName)));
+      heroPortraitImages[heroName] = await loadRuntimeImageWithRetry(assetUrl(heroArtPath(heroName)), { resolveRuntimeImageUrl });
     });
     const wardBarrierLoad = (async () => {
       wardBarrierImage = await loadImage(assetUrl('images/falie_ward_84x62.png'));

@@ -31,7 +31,7 @@ test('same stat from different sources is not party-wide; one group badge per he
 test('debuffs and unknown channels never signal', () => {
   const mixed = { key: '9:grow', modifiers: [{ channel: 'HP', direction: 'down' }, { channel: 'mystery', direction: 'up' }] };
   const out = projectBuffSignals([hero(1, [mixed]), hero(2, [mixed])]);
-  assert.deepEqual(out, { party: [], heroes: { 1: [], 2: [] } });
+  assert.deepEqual(out, { party: [], partyRefs: {}, heroes: { 1: [], 2: [] } });
 });
 
 test('KO heroes are excluded and do not block party-wide buffs on the living', () => {
@@ -43,7 +43,7 @@ test('KO heroes are excluded and do not block party-wide buffs on the living', (
 
 test('a lone survivor keeps its buffs on its own clock', () => {
   const out = projectBuffSignals([hero(1, [buff('4:elevate', 'SPD')]), hero(2, [buff('4:elevate', 'SPD')], false)]);
-  assert.deepEqual(out, { party: [], heroes: { 1: ['tempo'] } });
+  assert.deepEqual(out, { party: [], partyRefs: {}, heroes: { 1: ['tempo'] } });
 });
 
 test('hero badges fill left to right by arrival, close up when any one ends, and never exceed three', () => {
@@ -66,24 +66,24 @@ test('party icons also keep arrival order', () => {
   assert.deepEqual(out.party, ['party-res', 'party-spd']);
 });
 
-test('live combat effects translate into channels without mutating combat state', () => {
+test('live combat effects translate into channels and party icons keep their skill route', () => {
   const entities = [
-    { kind: 'hero', name: 'Falie', uid: 1, hp: 50, currentLevel: 1 },
-    { kind: 'hero', name: 'Kojonn', uid: 4, hp: 50, currentLevel: 1, statuses: [{ statusEffect: 'atkUp', duration: 2 }] },
-    { kind: 'hero', name: 'Huun', uid: 2, hp: 0, currentLevel: 1 },
+    { kind: 'hero', name: 'Falie', uid: 1, hp: 30, maxHP: 100, currentLevel: 1 },
+    { kind: 'hero', name: 'Kojonn', uid: 4, hp: 50, maxHP: 100, currentLevel: 1, statuses: [{ statusEffect: 'atkUp', duration: 2 }] },
+    { kind: 'hero', name: 'Huun', uid: 2, hp: 0, maxHP: 100, currentLevel: 1 },
   ];
+  const elevate = { sourceUID: 4, expiresAt: 1e9, modifiers: [{ channel: 'range', direction: 'up', magnitude: .1 }, { channel: 'critDamage', direction: 'up', magnitude: .05 }], data: { set: 'reach' } };
   const globals = {
     time: 10, PartyBuff_DEF: 3, PartyTempHPShield: 40, PartyTempHPShieldTargetUIDs: [1, 4, 2], PartyTempHPShieldSourceUID: 1,
-    RealtimeSkillEffects: {
-      1: { shared_tempo: { sourceUID: 4, expiresAt: 12 }, brace: { sourceUID: 1, expiresAt: 11, damageCutPct: 30 } },
-      4: { shared_tempo: { sourceUID: 4, expiresAt: 12 }, wishgrant: { sourceUID: 4, expiresAt: 9, modifiers: [{ channel: 'ATK', direction: 'up', magnitude: .35 }] } },
-    },
+    RealtimeSkillEffects: { 1: { elevate: { ...elevate } }, 4: { elevate: { ...elevate }, old: { sourceUID: 4, expiresAt: 9, modifiers: [{ channel: 'MAG', direction: 'up' }] } } },
   };
   const before = JSON.stringify({ entities, globals });
   const input = heroBuffSignalInput(entities, globals);
   assert.equal(JSON.stringify({ entities, globals }), before);
   assert.deepEqual(input.map(hero => [hero.uid, hero.alive]), [[1, true], [2, false], [4, true]]);
   const out = projectBuffSignals(input);
-  assert.deepEqual(out.party, ['party-spd', 'party-def', 'party-ward']);
-  assert.deepEqual(out.heroes, { 1: ['defense'], 4: ['offense'] });
+  assert.deepEqual(out.party, ['party-range', 'party-cd', 'party-def', 'party-ward']);
+  assert.deepEqual(out.partyRefs['party-range'], { effectId: 'elevate', set: 'reach' });
+  assert.deepEqual(out.partyRefs['party-ward'], { effectId: 'ward' });
+  assert.deepEqual(out.heroes, { 1: ['defense'], 4: ['offense'] }, 'Smoke Form below 40% HP; Kaja status ATK up');
 });

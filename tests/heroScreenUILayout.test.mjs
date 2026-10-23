@@ -26,16 +26,9 @@ const profiles=[
 const mime={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml'};
 
 function expectedSkillRange(ability,hero){
- const {kind,shape}=ability.targetRule,reach=actorAttackReach({...hero,kind:'hero'});
- if(shape){
-  const extent=shape.kind==='circle'?`radius ${shape.radius} units`:shape.kind==='rectangle'?`${shape.width} × ${shape.height} units`:shape.kind==='horizontalLine'?`${shape.width}-unit line to world X ${shape.toX}`:`${shape.length}-unit cone at ${shape.angleDegrees}°`;
-  return `${extent}${['bestArea','firstArea','eventArea'].includes(kind)?`; anchor within ${reach} units`:''}`;
- }
- if(kind==='self')return 'Self';
- if(kind==='party')return `Allies within ${reach} units; foe trigger within ${reach} units`;
- if(kind==='eventChain')return `${ability.targetRule.minimum} other foes after a basic hit`;
- if(kind==='allEnemies')return 'All attackable foes';
- if(kind==='lowestHPAlly'||kind==='slowestAlly')return `Eligible ally within ${reach} units; foe trigger within ${reach} units`;
+ const {kind}=ability.targetRule,reach=actorAttackReach({...hero,kind:'hero'});
+ if(kind==='party')return 'Whole party';
+ if(kind==='inRangeEnemies')return `Every foe within ${reach} units`;
  return `${reach}-unit actor reach`;
 }
 
@@ -185,7 +178,7 @@ test('hero redesign uses saved canonical data and stays contained across portrai
    assert.equal(await mainNav.locator('button img').count(),5,'the five production navigation badges use decoded artwork');
    assert.equal(await mainNav.locator('button img').evaluateAll(images=>images.every(image=>image.complete&&image.naturalWidth>0)),true,'shared navigation artwork is loaded');
    const heroes=Object.keys(HERO_DEFINITIONS).map(key=>progress.heroes[key]);
-   assert.deepEqual(heroes.map(hero=>heroDefinition(hero).actives.length),[8,8,8,9],'the saved roster contains the complete eight- and nine-skill kits');
+   assert.deepEqual(heroes.map(hero=>heroDefinition(hero).skills.length),[4,4,4,4],'the saved roster contains the accepted four-skill kits');
    for(let offset=0;offset<heroes.length;offset++){
     const index=(offset+heroes.length)%heroes.length,hero=heroes[index],definition=heroDefinition(hero);
     assert.equal(await detail.locator('h1').textContent(),definition.name,'hero arrow refreshes identity data');
@@ -221,7 +214,7 @@ test('hero redesign uses saved canonical data and stays contained across portrai
      assert.equal(await grid.locator('.skill-card').count(),4,'skills identity row has exactly four icons');
      assert.equal(await grid.locator('.gear-slot, .gear-placeholder').count(),0,'skills identity row has no gear or Orb slots');
      assert.equal(await detail.locator('.pane .gear-placeholder').count(),0,'skills panel has no Orb equipment button');
-     assert.equal(await grid.locator('.skill-icon img').count(),4,'each skill card contains its existing icon image');
+     assert.equal(await grid.locator('.skill-icon i').evaluateAll(icons=>icons.filter(icon=>icon.style.backgroundImage.includes('buff-signals.png')).length),4,'each skill card shows its bitmap sheet icon');
     }
     const screenshot=`${profile.name}-${tab.toLowerCase()}.png`;
     await page.screenshot({path:path.join(artifactDir,screenshot),fullPage:true});screenshots[tab.toLowerCase()]=screenshot;
@@ -229,57 +222,40 @@ test('hero redesign uses saved canonical data and stays contained across portrai
    for(const bounds of tabPortraits)assert.ok(['x','y','width','height'].every(key=>Math.abs(bounds[key]-tabPortraits[0][key])<0.75),'portrait geometry stays fixed when tabs change');
    const reachedSkills=[];
    for(let heroIndex=0;heroIndex<heroes.length;heroIndex++){
-    const hero=heroes[heroIndex],definition=heroDefinition(hero),abilities=definition.actives;
+    const hero=heroes[heroIndex],definition=heroDefinition(hero),abilities=definition.skills,slots=['Special','Passive','Resonance 1','Resonance 2'];
     if(heroIndex){
      await detail.getByRole('button',{name:'Next hero'}).click();
      await page.waitForFunction(expected=>document.querySelector('#hero-details h1')?.textContent===expected,definition.name);
-     await page.waitForFunction(()=>document.querySelector('#hero-details [aria-label="Skill page"]')?.textContent?.startsWith('1 /'));
-     assert.equal(await detail.locator('.skill-card[aria-pressed="true"]').getAttribute('aria-label'),`Inspect ${abilities[0].displayName}`,`${definition.name} gets a fresh first-skill selection`);
+     assert.equal(await detail.locator('.skill-card[aria-pressed="true"]').getAttribute('aria-label'),`Inspect Special: ${abilities[0].displayName}`,`${definition.name} gets a fresh Special selection`);
     }
-    const pageStarts=abilities.length===9?[0,4,5]:[0,4];
     const selectedTab=detail.getByRole('button',{name:'Skills',exact:true});
     assert.equal(await selectedTab.getAttribute('aria-pressed'),'true','Skills remains selected while inspecting skill data');
-    for(let pageIndex=0;pageIndex<pageStarts.length;pageIndex++){
-     if(pageIndex){await detail.getByRole('button',{name:'Next skills'}).click();await page.waitForFunction(expected=>document.querySelector('#hero-details [aria-label="Skill page"]')?.textContent===expected,`${pageIndex+1} / ${pageStarts.length}`);}
-     const start=pageStarts[pageIndex],pageAbilities=abilities.slice(start,start+4),grid=detail.locator('.identity .skill-grid');
-     assert.equal(await grid.locator('.skill-card').count(),4,`${definition.name} page ${pageIndex+1} renders exactly four skills`);
-     assert.deepEqual(await grid.locator('.skill-card').evaluateAll(cards=>cards.map(card=>card.getAttribute('aria-label'))),pageAbilities.map(ability=>`Inspect ${ability.displayName}`),`${definition.name} page ${pageIndex+1} exposes its canonical skill window`);
-     assert.equal(await grid.locator('.skill-icon img').evaluateAll(images=>images.every(image=>image.complete&&image.naturalWidth>0)),true,`${definition.name} page ${pageIndex+1} decodes all four icon assets`);
-     const row=await grid.boundingBox(),portraitBounds=await portrait.boundingBox(),stageBounds=await page.locator('#game-screen').boundingBox();
-     assert.ok(row.x>=stageBounds.x-0.5&&row.x+row.width<=stageBounds.x+stageBounds.width+0.5,`${definition.name} skill row stays inside the stage`);
-     assert.ok(row.y>=portraitBounds.y+portraitBounds.height-8*stageBounds.width/360,`${definition.name} skill row stays below the visible portrait frame`);
-     assert.equal(await grid.locator('.gear-slot, .gear-placeholder').count(),0,`${definition.name} skills row contains no Orb or gear slot`);
-     assert.equal(await detail.locator('.pane .gear-placeholder').count(),0,`${definition.name} skills panel contains no Orb equipment`);
-     for(const ability of pageAbilities){
-      const card=grid.getByRole('button',{name:`Inspect ${ability.displayName}`,exact:true});
-      await card.click();await page.waitForFunction(name=>document.querySelector('#hero-details .pane article h2')?.textContent===name,ability.displayName);
-      assert.equal(await card.getAttribute('aria-pressed'),'true',`${ability.displayName} is the selected icon`);
-      assert.equal(await card.evaluate(node=>getComputedStyle(node).borderTopColor),'rgb(255, 217, 113)',`${ability.displayName} shows the selected gold state`);
-      const detailPanel=detail.locator('.pane article').first();
-      assert.equal(await detailPanel.locator('h2').textContent(),ability.displayName,'selected icon opens matching skill data');
-      assert.equal(await detailPanel.getAttribute('data-locked'),String(!heroSkillUnlocked(hero,ability)),`${ability.displayName} uses its level gate`);
-      assert.equal(await detailPanel.locator('small').textContent(),heroSkillUnlocked(hero,ability)?`Unlocked · Lv. ${ability.unlockLevel}`:`Unlocks at Lv. ${ability.unlockLevel}`,`${ability.displayName} shows its unlock condition`);
-      assert.deepEqual(await detailPanel.locator('p').allTextContents(),[
-       `Range: ${expectedSkillRange(ability,hero)} · Cooldown: ${ability.cooldownSeconds}s`,
-       `When: ${ability.conditionLabel}`,
-       ability.description.replaceAll('magic-tagged actions','magic skills'),
-      ],`${ability.displayName} details come from canonical target, cooldown, condition and description data`);
-      reachedSkills.push(`${hero.heroInstanceKey}:${ability.skillId}`);
-     }
-     assert.equal(await detail.locator('.pane article').last().locator('h2').textContent(),'Basic Attack','Basic Attack remains reachable below the active skill');
-     assert.equal(await detail.locator('.pane article').last().locator('p').textContent(),definition.basic.description,'Basic Attack description is preserved');
-     assert.equal(await detail.locator('[aria-label="Skill page"]').textContent(),`${pageIndex+1} / ${pageStarts.length}`,'current page index matches the rendered skill window');
-     assert.equal(await detail.getByRole('button',{name:'Previous skills'}).isDisabled(),pageIndex===0,'previous-page gate matches the first page');
-     assert.equal(await detail.getByRole('button',{name:'Next skills'}).isDisabled(),pageIndex===pageStarts.length-1,'next-page gate matches the last page');
+    const grid=detail.locator('.identity .skill-grid');
+    assert.deepEqual(await grid.locator('.skill-card').evaluateAll(cards=>cards.map(card=>card.getAttribute('aria-label'))),abilities.map((ability,index)=>`Inspect ${slots[index]}: ${ability.displayName}`),`${definition.name} exposes Special, Passive and both Resonances`);
+    const row=await grid.boundingBox(),portraitBounds=await portrait.boundingBox(),stageBounds=await page.locator('#game-screen').boundingBox();
+    assert.ok(row.x>=stageBounds.x-0.5&&row.x+row.width<=stageBounds.x+stageBounds.width+0.5,`${definition.name} skill row stays inside the stage`);
+    assert.ok(row.y>=portraitBounds.y+portraitBounds.height-8*stageBounds.width/360,`${definition.name} skill row stays below the visible portrait frame`);
+    for(const [index,ability] of abilities.entries()){
+     const card=grid.getByRole('button',{name:`Inspect ${slots[index]}: ${ability.displayName}`,exact:true});
+     await card.click();await page.waitForFunction(name=>document.querySelector('#hero-details .pane article h2')?.textContent===name,ability.displayName);
+     assert.equal(await card.getAttribute('aria-pressed'),'true',`${ability.displayName} is the selected icon`);
+     assert.equal(await card.evaluate(node=>getComputedStyle(node).borderTopColor),'rgb(255, 217, 113)',`${ability.displayName} shows the selected gold state`);
+     const detailPanel=detail.locator('.pane article').first();
+     assert.equal(await detailPanel.locator('small').textContent(),slots[index]);
+     assert.equal(await detailPanel.getAttribute('data-locked'),String(ability.slot==='resonance'),`${ability.displayName} marks late-game resonances`);
+     const meta=ability.slot==='special'?`Range: ${expectedSkillRange(ability,hero)} · Cooldown: ${ability.cooldownSeconds}s${ability.provisionalCooldown?' (provisional)':''}`:ability.slot==='passive'?'Always on while its condition holds · No cooldown':'Late-game resonance · Not yet available';
+     assert.deepEqual(await detailPanel.locator('p').allTextContents(),[meta,`When: ${ability.conditionLabel}`,ability.description],`${ability.displayName} details come from shared skill data`);
+     reachedSkills.push(`${hero.heroInstanceKey}:${ability.skillId}`);
     }
+    assert.equal(await detail.locator('.pane article').last().locator('h2').textContent(),'Basic Attack','Basic Attack remains reachable below the skills');
+    assert.equal(await detail.locator('.pane article').last().locator('p').textContent(),definition.basic.description,'Basic Attack description is preserved');
     if(heroIndex===0){
      await detail.getByRole('button',{name:'Gear',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#hero-details')?.dataset.tab==='gear');
      await detail.getByRole('button',{name:'Skills',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#hero-details')?.dataset.tab==='skills');
-     assert.equal(await detail.locator('[aria-label="Skill page"]').textContent(),`${pageStarts.length} / ${pageStarts.length}`,'tab changes preserve selected skill page');
-     assert.equal(await detail.locator('.skill-card[aria-pressed="true"]').getAttribute('aria-label'),`Inspect ${abilities.at(-1).displayName}`,'tab changes preserve selected skill');
+     assert.equal(await detail.locator('.skill-card[aria-pressed="true"]').getAttribute('aria-label'),`Inspect Resonance 2: ${abilities.at(-1).displayName}`,'tab changes preserve selected skill');
     }
    }
-   assert.equal(new Set(reachedSkills).size,33,'all 33 canonical active skills are reachable');
+   assert.equal(new Set(reachedSkills).size,16,'all 16 accepted skills are reachable');
    assert.equal(await page.evaluate(()=>JSON.stringify([localStorage.getItem('orka.hero_progress.v2'),localStorage.getItem('wishfire.equipment-economy.v5')])),JSON.stringify([saved.progress,saved.economy]),'hero and equipment saves stay byte-identical while browsing');
    assert.deepEqual(await page.evaluate(()=>window.heroQa.globals.HeroProgress),progress,'progression data stays unchanged in memory');
    assert.deepEqual(await page.evaluate(()=>window.heroQa.equipment),economy,'equipped items and loadouts stay unchanged in memory');

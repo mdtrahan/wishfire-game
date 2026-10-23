@@ -1955,7 +1955,10 @@ async function main(){
   const equipmentProgress = createEquipmentStorage({ globals: state.globals, getActors: () => state.entities, storage: window.localStorage, persistProgress: () => heroProgressStorage.persistHeroProgressIfDirty({stateGlobals: state.globals}), onGearCollected: result => combatProgression?.record({ id: `gear:${result.item.instanceId}`, type: 'gear_collect' }) });
   combatProgression = createCombatProgression({ globals: state.globals, storage: window.localStorage, equipmentProgress, getHeroes: () => state.entities, persistHeroProgress: () => heroProgressStorage.persistHeroProgressIfDirty({stateGlobals: state.globals}), reportError: console.error });
   combatProgression.reconcileTicketSpends();
-  const combatProgressionUI = createCombatProgressionUI({ canvas, onClaim: objectiveId => combatProgression.claimObjective(objectiveId) });
+  // HUD skill navigation: a hero clock opens that hero's Special; a party icon opens its Party Skills entry.
+  const combatProgressionUI = createCombatProgressionUI({ canvas, onClaim: objectiveId => combatProgression.claimObjective(objectiveId),
+    onHeroSkill: heroKey => { if (renderHeroScreen.focusHeroSpecial(gameState, heroKey)) void storyEntry.navigate('Hero'); },
+    onPartySkill: partySkillId => trainingGroundUI.open({ tab: 'party', partySkillId }) });
   const trainingGroundUI = createTrainingGroundUI({ progression: combatProgression });
   eventBus.on('growth:open', () => trainingGroundUI.open());
   void combatProgression.sync();

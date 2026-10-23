@@ -32,25 +32,31 @@ function arrivalOrder(previous = [], active, canonical) {
   return [...kept, ...canonical.filter(id => active.has(id) && !kept.includes(id))];
 }
 
-// heroes: [{ uid, alive, buffs: [{ key, modifiers: [{ channel, direction }] }] }]
+// heroes: [{ uid, alive, buffs: [{ key, modifiers: [{ channel, direction }], ref? }] }]
 // key identifies one effect from one source; the same key on every living hero is party-wide.
+// ref is opaque detail-view routing kept for the first buff behind each party icon.
 export function projectBuffSignals(heroes = [], previous = {}) {
   const living = heroes.filter(hero => hero?.alive && hero.uid != null);
   const keysOf = hero => new Set((hero.buffs || []).filter(buff => signalled(buff).length).map(buff => String(buff.key)));
   const heroKeys = living.map(keysOf);
   const partyKeys = living.length < 2 ? new Set()
     : new Set([...heroKeys[0]].filter(key => heroKeys.every(keys => keys.has(key))));
-  const partyIcons = new Set(), groupsByUID = {};
+  const partyIcons = new Set(), partyRefs = {}, groupsByUID = {};
   for (const hero of living) {
     const groups = new Set();
     for (const buff of hero.buffs || []) {
       const party = partyKeys.has(String(buff.key));
-      for (const [icon, group] of signalled(buff)) (party ? partyIcons.add(icon) : groups.add(group));
+      for (const [icon, group] of signalled(buff)) {
+        if (!party) { groups.add(group); continue; }
+        partyIcons.add(icon);
+        if (buff.ref && !partyRefs[icon]) partyRefs[icon] = buff.ref;
+      }
     }
     groupsByUID[String(hero.uid)] = groups;
   }
   return {
     party: arrivalOrder(previous.party, partyIcons, PARTY_ICON_ORDER),
+    partyRefs,
     heroes: Object.fromEntries(Object.entries(groupsByUID)
       .map(([uid, groups]) => [uid, arrivalOrder(previous.heroes?.[uid], groups, HERO_BUFF_GROUPS)])),
   };

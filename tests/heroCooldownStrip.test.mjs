@@ -14,21 +14,18 @@ test('only deployed canonical heroes occupy slots, in roster order, with no dupl
   assert.equal(heroCooldownSlots([hero('Runa', 3)])[0].path, 'images/Runa.png');
 });
 
-test('radial fraction follows the earliest unlocked active clock and ignores basics and locked skills', () => {
-  const g = globals(10, { challenge_bolt: 14, iron_resolve: 11, basic_attack: 10 });
+test('radial fraction follows the Special clock and ignores the basic attack', () => {
+  const g = globals(10, { crimson_ward: 14, basic_attack: 10 });
   const slot = heroCooldownSlots([hero()], g)[0];
   assert.equal(slot.remaining, 4);
-  assert.equal(slot.fraction, 4 / 7);
+  assert.equal(slot.fraction, 4 / 50);
   assert.equal(slot.status, 'cooldown');
-  const unlocked = heroCooldownSlots([hero('Falie', 1, { currentLevel: 5 })], g)[0];
-  assert.equal(unlocked.remaining, 1);
-  assert.equal(unlocked.fraction, 1 / 12);
+  assert.equal(slot.heroKey, 'Falie');
 });
 
 test('missing and expired clocks show cooldown-ready without promising eligible casting', () => {
   assert.equal(heroCooldownSlots([hero()])[0].status, 'ready');
-  assert.equal(heroCooldownSlots([hero()], globals(14, { challenge_bolt: 14 }))[0].fraction, 0);
-  assert.equal(heroCooldownSlots([hero('Falie', 1, { currentLevel: 5 })], globals(10, { challenge_bolt: 14 }))[0].status, 'ready');
+  assert.equal(heroCooldownSlots([hero()], globals(14, { crimson_ward: 14 }))[0].fraction, 0);
 });
 
 test('KO and locked actors retain identity and never advertise readiness', () => {
@@ -37,7 +34,7 @@ test('KO and locked actors retain identity and never advertise readiness', () =>
 });
 
 test('projection freezes at unchanged combat time, advances with it and never mutates combat state', () => {
-  const actors = [hero()], g = globals(10, { challenge_bolt: 14 });
+  const actors = [hero()], g = globals(10, { crimson_ward: 14 });
   const before = JSON.stringify({ actors, g });
   const first = heroCooldownSlots(actors, g);
   assert.deepEqual(heroCooldownSlots(actors, g), first);

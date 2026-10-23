@@ -3,11 +3,15 @@ import {recordActorPuppetDefeat} from '../systems/actorPuppetDefeats.mjs';
 import {actionCapacity} from '../src/core/actionSelection.mjs';
 import {settleBattleEXP} from '../src/core/heroProgression.mjs';
 import {heroDefinition,PROGRESSION} from '../src/core/heroDefinitions.mjs';
-import {realtimeBasicFollowups} from '../src/core/realtimeHeroSkills.mjs';
+import {heroPassiveBasicMultiplier} from '../src/core/realtimeHeroPassives.mjs';
+// Damage-seam helpers the function bank reads through this bridge.
+export {heroPassiveTargetDEFScale} from '../src/core/realtimeHeroPassives.mjs';
+export {projectCombatMultiplier} from '../../src/core/combatModifierRules.mjs';
+export {actorCombatModifiers} from '../src/core/realtimeSkillState.mjs';
 import {capContinuousHostileHit} from '../src/core/routineEnemyScaling.mjs';
 import {recordBalanceCombatEvent} from '../src/core/balanceTelemetry.mjs';
 import {isActorRanged,isActorTargetInRange} from '../../src/core/heroAttackTargetingRules.mjs';
-export {castRealtimeHeroSkill,tickRealtimeHeroSkillZones,realtimeBasicInterval,realtimeCombatStat,realtimeBasicDamageMultiplier,cleanupRealtimeSkillActors,realtimeProvokeTarget,realtimeCoverTarget,realtimeIncomingDamage,realtimeMagicBlocked,realtimeRetaliation} from '../src/core/realtimeHeroSkills.mjs';
+export {castRealtimeHeroSkill,tickRealtimeHeroSkillZones,realtimeBasicInterval,realtimeCombatStat,realtimeBasicDamageMultiplier,cleanupRealtimeSkillActors,realtimeIncomingDamage} from '../src/core/realtimeHeroSkills.mjs';
 import {getHeroFlowState,getHeroSkillOptions,recordFlowThreshold,resolveRoleFlowAward} from '../src/core/personalFlow.mjs';
 import {applyStatus,legalSkill,validTargets,resolveSkill,turnStart,turnEnd} from '../src/core/combatRules.mjs';
 import {derivePresentationTurnBarrier} from '../src/core/turnGateController.mjs';
@@ -164,12 +168,12 @@ export function resolveRealtimeBasicImpact(ctx,hit={}){
  if(!source||!target||Number(target.hp||0)<=0||Number(ctx.state.globals.ContinuousCombatStageLoop||0)===1&&!isActorRanged(rangeSource)&&!isActorTargetInRange(rangeSource,target))return {resolved:false,damage:0,targetUID};
  const events=[],rules=rulesContext(ctx,events),mode=String(hit.heroType||source.attackType||'melee');
  const baseDamage=Math.max(0,Number(hit.finalDmg??hit.dmg)||0);
- const boostedDamage=baseDamage;
+ // Basic-only passives (Hondo's Royalty) multiply the committed basic hit.
+ const boostedDamage=Number(ctx.state.globals.ContinuousCombatStageLoop||0)===1?Math.ceil(baseDamage*heroPassiveBasicMultiplier(source)):baseDamage;
  const skill={skillId:'realtime_basic',targetType:'enemy',tags:[mode==='magic'?'magic':'physical'],effects:[{effectType:'damage',fixedDamage:boostedDamage}]};
  const resolved=resolveSkill(rules,source,skill,[targetUID],{realtimeBasic:true,allowSourceKO:true,suppressPartySkillHitHooks:Number(hit.suppressPartySkillHitHooks||0)});
  const damageEvents=events.filter(event=>event.type==='damage'&&Number(event.sourceUID||0)===sourceUID);
  const damage=damageEvents.reduce((sum,event)=>sum+Math.max(0,Number(event.delta)||0),0);
- if(Number(ctx.state.globals.ContinuousCombatStageLoop||0)===1)realtimeBasicFollowups(ctx,source,target,damage,Number(hit.rawDamage || 0));
  if(!ctx.state.entities.some(actor=>actor?.kind==='hero'&&Number(actor.hp||0)>0))settleDefeat(ctx);
  else if(ctx.state.globals.NativeBattleEnded)settleVictory(ctx);
  return {resolved,damage,targetUID:Number(damageEvents[0]?.targetUID||targetUID)};

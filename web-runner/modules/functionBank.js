@@ -61,9 +61,9 @@ import {
 } from '../src/core/dynamicInitiativeRules.mjs';
 import { realtimeCooldownSeconds, scheduleRealtimeActions, selectRealtimeReadyActor } from '../src/core/realtimeCooldown.mjs';
 import { selectRealtimeHeroSkillTarget, filterContinuousEncounterEnemies } from '../src/core/realtimeHeroTargeting.mjs';
-import { castRealtimeHeroSkill, tickRealtimeHeroSkillZones, realtimeBasicInterval, realtimeCombatStat,realtimeBasicDamageMultiplier,cleanupRealtimeSkillActors, realtimeProvokeTarget, realtimeCoverTarget, realtimeIncomingDamage, realtimeMagicBlocked, realtimeRetaliation } from './heroCommands.mjs';
+import { castRealtimeHeroSkill, tickRealtimeHeroSkillZones, realtimeBasicInterval, realtimeCombatStat,realtimeBasicDamageMultiplier,cleanupRealtimeSkillActors, realtimeIncomingDamage, heroPassiveTargetDEFScale, projectCombatMultiplier, actorCombatModifiers } from './heroCommands.mjs';
 import { heroDefinition, heroSkillUnlocked } from '../src/core/heroDefinitions.mjs';
-import { pushContinuousCombatEnemy, reverseContinuousCombatEnemy, teleportContinuousCombatEnemy } from '../src/core/continuousCombatStage.mjs';
+import { pushContinuousCombatEnemy, reverseContinuousCombatEnemy } from '../src/core/continuousCombatStage.mjs';
 import { resetActorPresentationAfterRestore } from '../src/core/actorPresentationState.mjs';
 import { selectContinuousEnemyTarget } from '../src/core/arenaCombat.mjs';
 import { isActorTargetInRange } from '../../src/core/arenaCombatRules.mjs';
@@ -5687,7 +5687,8 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode, attackMultipl
   const isMagic = mode === 'magic';
   const offenseStat = isHeroAttacker ? (atk.attackType === 'magic' ? 'MAG' : 'ATK') : (isMagic ? 'MAG' : 'ATK');
   const power = GetEffectiveStat(ctx, atk, offenseStat);
-  const resist = GetEffectiveStat(ctx, tgt, isMagic ? 'RES' : 'DEF');
+  // Passives that lower the target's DEF (Hondo's Royalty) apply only to the holder's own hits.
+  const resist = GetEffectiveStat(ctx, tgt, isMagic ? 'RES' : 'DEF') * (isHeroAttacker && !isMagic ? heroPassiveTargetDEFScale(atk) : 1);
   const matchingResistancePct = GetBaseStat(ctx, tgt, isMagic ? 'magicDamageResistancePct' : 'physicalDamageResistancePct');
   const generalResistancePct = GetBaseStat(ctx, tgt, 'damageResistancePct');
   const roll01 = random01(ctx);
@@ -5750,7 +5751,9 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode, attackMultipl
   );
   console.log(`[DMG_AUDIT] chainApplied=${chainApplied} attackerType=${isHeroAttacker ? 'H' : 'E'}`);
   g.LastCalculateDamageRaw = Math.ceil(Math.max(0,power)*Math.max(0,attackMultiplierPct)/100*(jsDecision.didCrit?1.25:1));
-  return isHeroAttacker && Number(g.ContinuousCombatStageLoop || 0)===1 ? Math.ceil(dmg*realtimeBasicDamageMultiplier(g,atk)) : dmg;
+  if (!(isHeroAttacker && Number(g.ContinuousCombatStageLoop || 0)===1)) return dmg;
+  const critDamage = jsDecision.didCrit ? projectCombatMultiplier('critDamage', actorCombatModifiers(g, atk)) : 1;
+  return Math.ceil(dmg*realtimeBasicDamageMultiplier(g,atk)*critDamage);
 }
 
 // Explicit raw skill budgets bypass another potency or critical roll, then mitigate once.
@@ -6060,7 +6063,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   if (!t || Number(t.hp ?? 0) <= 0) return 0;
   const source = GetActorByUID(ctx, g.LastDamageSourceUID);
   if (source?.kind === 'enemy' && t.kind === 'hero' && !opts.nativeResolved) {
-    const recipient = opts.singleTarget ? realtimeCoverTarget(ctx, t) : t;
+    const recipient = t;
     const before = recipient.hp;
     resolveIncomingNativeHit(ctx, source, recipient, Math.max(0, Number(dmg) || 0), opts);
     return Math.max(0, before - recipient.hp);
@@ -6133,7 +6136,6 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
     // restored KO actor look like it had no terminal pose.
     t.actionStateUntil = afterHP <= 0 ? now + 86_400 : now + 0.22;
   }
-  if (appliedDamage > 0 && source?.kind === 'enemy' && t.kind === 'hero') realtimeRetaliation(ctx, t, source.uid, {}, appliedDamage);
   if (chainStrikeIIHit) recordAstralFlowChainStrikeIIHit(g, { targetUID: Number(uid || 0), preHP: beforeHP, postHP: afterHP, damage: appliedDamage, coefficient: Number(chainStrikeIIHit.chainStrikeDamagePct || 396), primary: Number(chainStrikeIIHit.chainStrikeIIPrimary || 0) === 1 });
   g.LastDamageSourceUID = source?.uid || g.LastDamageSourceUID;
 
@@ -6470,8 +6472,7 @@ function pickEnemyTargetHero(ctx, enemyUID = 0) {
       : null,
   });
   g.LastEnemyTargetBias = result.trace;
-  const target = realtimeProvokeTarget(ctx, enemy, result.target);
-  return target;
+  return result.target;
 }
 
 export function ResolveEnemyActionTarget(ctx, enemyUID, preferredTargetUID = 0) {
@@ -7308,7 +7309,7 @@ export function TickRealtimeHeroBasics(ctx) {
     const skill = heroDefinition(hero)?.actives.find(entry => entry.skillId === skillId);
     const selection = skill && skillSelection(hero, skill);
     return selection ? castRealtimeHeroSkill(ctx, hero.uid, skill, selection, {
-      push: pushContinuousCombatEnemy, reverse: reverseContinuousCombatEnemy, teleport: teleportContinuousCombatEnemy,
+      push: pushContinuousCombatEnemy, reverse: reverseContinuousCombatEnemy,
     }) : false;
   };
   const fireBasic = heroUID => {
@@ -10400,7 +10401,6 @@ function createEnemyActionState(ctx, enemyUID, target, { continuousCombat = fals
   if (enemy.y == null) enemy.y = enemy.originY;
   const targetUID = target ? target.uid : 0;
   const skillId = PickEnemySkill(ctx, enemyUID);
-  if (continuousCombat && /^Enemy_MAG_/.test(String(skillId)) && realtimeMagicBlocked(g, enemy)) return;
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
   const decision = resolveStartEnemyActionCompat({
     source,

@@ -1,13 +1,22 @@
 import {renderHeroGear} from './heroGearUI.mjs';
 import {runtimeAssetUrl} from './runtimeAssetUrl.mjs';
 import {computeCombatPower} from '../src/core/combatPower.mjs';
-import {HERO_DEFINITIONS,heroDefinition,heroSkillUnlocked} from '../src/core/heroDefinitions.mjs';
+import {HERO_DEFINITIONS,heroDefinition} from '../src/core/heroDefinitions.mjs';
 import {createHeroProgressStore} from '../src/core/heroProgression.mjs';
 import {heroTicketLevelCost} from '../src/core/combatProgressionRules.mjs';
-import {heroArtKey} from '../state/heroArtAssets.mjs';
+import {heroArtKey,heroArtPath} from '../state/heroArtAssets.mjs';
+import {BUFF_SIGNAL_FRAMES,BUFF_SIGNAL_SHEET} from '../../src/core/buffSignalRules.mjs';
 import {actorAttackReach} from '../../src/core/arenaCombatRules.mjs';
 
-let host,content,lastKey,currentTab='gear',activeSkillIndex=0,activeSkillPage=0,activeHeroIndex=-1,ticketNotice='';
+let host,content,lastKey,currentTab='gear',activeSkillIndex=0,activeHeroIndex=-1,ticketNotice='',revealSkill=false;
+const SLOT_LABELS=['Special','Passive','Resonance 1','Resonance 2'];
+// Open a hero's Skills tab with the Special selected and brought into view (cooldown-strip navigation).
+export function focusHeroSpecial(gameState,heroKey){
+ const index=Object.keys(HERO_DEFINITIONS).indexOf(heroKey);
+ if(index<0)return false;
+ gameState.selectedHero=index;activeHeroIndex=index;currentTab='skills';activeSkillIndex=0;revealSkill=true;lastKey=null;return true;
+}
+const iconStyle=id=>{const frame=BUFF_SIGNAL_FRAMES[id];return frame?`background-image:url('${runtimeAssetUrl('images/ui/buff-signals.png')}');background-size:${BUFF_SIGNAL_SHEET.columns*100}% ${BUFF_SIGNAL_SHEET.rows*100}%;background-position:${frame.column/(BUFF_SIGNAL_SHEET.columns-1)*100}% ${frame.row/(BUFF_SIGNAL_SHEET.rows-1)*100}%`:'';};
 const TICKET_QUADRANT={Fara:'0% 0%',Hondo:'100% 0%',Kaja:'0% 100%',Runa:'100% 100%'};
 
 export function hideHeroScreen(){if(host)host.hidden=true;}
@@ -18,7 +27,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
  const roster=Object.keys(HERO_DEFINITIONS).map(key=>globals.HeroProgress.heroes[key]).filter(Boolean);
  if(!roster.length)return {mode:'details',selectedSkillIndex:0,hitZones:{skillNodes:[]}};
  const index=((Number(gameState.selectedHero)||0)%roster.length+roster.length)%roster.length;
- if(activeHeroIndex!==index){activeHeroIndex=index;activeSkillIndex=0;activeSkillPage=0;ticketNotice='';}
+ if(activeHeroIndex!==index){activeHeroIndex=index;activeSkillIndex=0;ticketNotice='';}
  const saved=roster[index];
  const hero=saved;
  const definition=heroDefinition(hero);
@@ -50,7 +59,9 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .skill-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.15em;min-width:0;min-height:0;height:100%;padding:.2em;border:1px solid #738eac;background:linear-gradient(145deg,#28496d,#152943);color:#fff1d1;border-radius:.45em;font-size:.7em}
    #hero-details .skill-card[aria-pressed=true]{background:linear-gradient(145deg,#28496d,#152943);color:#fff1d1;border:2px solid #ffd971;box-shadow:0 0 .55em #e7b94d99}
    #hero-details .skill-icon{position:relative;width:2.6em;height:2.6em;display:grid;place-items:center}
-   #hero-details .skill-icon img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:.8}
+   #hero-details .skill-icon i{position:absolute;inset:0;background-repeat:no-repeat;border-radius:.25em}
+   #hero-details .skill-card[data-scaffold=true]{opacity:.62}
+   #hero-details .skill-slot{font-weight:650;color:#374b67}
    #hero-details .skill-icon b{position:relative;color:#fff;font-size:1.4em;line-height:1;text-shadow:0 1px 2px #13223b,1px 0 #13223b,-1px 0 #13223b}
    #hero-details .skill-card small{width:100%;overflow:hidden;text-align:center;font-size:.85em;line-height:1.15;max-height:2.3em;color:inherit}
    #hero-details .skill-pages{display:flex;align-items:center;justify-content:space-between;gap:.5em;margin:.2em 0 .5em}
@@ -67,7 +78,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
  Object.assign(host.style,{left:`${rect.left}px`,top:`${rect.top}px`,width:`${rect.width}px`,height:`${rect.height}px`,padding:`${(globals.CombatBossFallbackVisible?96:14)*scale}px ${14*scale}px ${66*scale}px`,fontSize:`${14*scale}px`});
  host.hidden=false;host.dataset.tab=currentTab;
  const ticketBalance=combatProgression?.ticketCount(hero.heroInstanceKey)||0;
- const key=JSON.stringify([index,currentTab,activeSkillIndex,activeSkillPage,hero.currentLevel,hero.currentEXP,hero.hp,hero.maxHP,hero.stats,roster.map(member=>member.currentLevel),globals.Equipment,ticketBalance,ticketNotice]);
+ const key=JSON.stringify([index,currentTab,activeSkillIndex,hero.currentLevel,hero.currentEXP,hero.hp,hero.maxHP,hero.stats,roster.map(member=>member.currentLevel),globals.Equipment,ticketBalance,ticketNotice]);
  if(key!==lastKey){
   lastKey=key;
   const focused=content.contains(document.activeElement)?document.activeElement:null;
@@ -75,7 +86,8 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
   content.replaceChildren();
   const el=(tag,text,parent=content)=>{const node=document.createElement(tag);if(text!=null)node.textContent=text;parent.append(node);return node;};
   const button=(parent,text,action)=>{const node=el('button',text,parent);node.type='button';node.onclick=action;return node;};
-  const portrait=(owner,parent)=>{const image=heroPortraitImages[heroArtKey(owner)];if(image?.src){const img=el('img',null,parent);img.src=image.src;img.alt=heroDefinition(owner).name;}};
+  // Preloaded art when available; otherwise load directly so one failed preload never blanks the hero.
+  const portrait=(owner,parent)=>{const image=heroPortraitImages?.[heroArtKey(owner)],img=el('img',null,parent);img.src=image?.src||runtimeAssetUrl(heroArtPath(owner));img.alt=heroDefinition(owner).name;};
   const identity=el('header');identity.className='identity';portrait(hero,identity);identity.querySelector('img')?.classList.add('hero-portrait');
   const name=el('div',null,identity);name.className='hero-name';el('h1',definition.name,name);el('p',`Lv. ${hero.currentLevel} · ${definition.role}`,name);el('p',`CP ${computeCombatPower(hero)}`,name);
   const arrows=el('nav',null,identity);arrows.className='hero-arrows';arrows.setAttribute('aria-label','Choose hero');
@@ -84,19 +96,14 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
   button(arrows,'❯',()=>selectHero(1)).setAttribute('aria-label','Next hero');
   let selectedAbility;
   if(currentTab==='skills'){
-   const abilities=definition.actives,lastStart=Math.max(0,abilities.length-4);
-   const pageStarts=[...new Set(Array.from({length:Math.ceil(abilities.length/4)},(_,page)=>Math.min(page*4,lastStart)))];
-   activeSkillPage=Math.max(0,Math.min(activeSkillPage,pageStarts.length-1));
-   const pageStart=pageStarts[activeSkillPage],visible=abilities.slice(pageStart,pageStart+4);
-   if(!visible.some((ability,offset)=>pageStart+offset===activeSkillIndex))activeSkillIndex=pageStart;
+   const abilities=definition.skills;activeSkillIndex=Math.max(0,Math.min(activeSkillIndex,abilities.length-1));
    const grid=el('div',null,identity);grid.className='skill-grid gear-slots';grid.setAttribute('aria-label','Hero skills');
-   for(const [offset,ability] of visible.entries()){
-    const skillIndex=pageStart+offset,card=button(grid,'',()=>{activeSkillIndex=skillIndex;});
-    card.className='skill-card';card.setAttribute('aria-label',`Inspect ${ability.displayName}`);card.setAttribute('aria-pressed',String(skillIndex===activeSkillIndex));
+   for(const [skillIndex,ability] of abilities.entries()){
+    const card=button(grid,'',()=>{activeSkillIndex=skillIndex;});
+    card.className='skill-card';card.dataset.slot=ability.slot;card.dataset.scaffold=String(!!ability.scaffold);
+    card.setAttribute('aria-label',`Inspect ${SLOT_LABELS[skillIndex]}: ${ability.displayName}`);card.setAttribute('aria-pressed',String(skillIndex===activeSkillIndex));
     const icon=el('span',null,card);icon.className='skill-icon';icon.setAttribute('aria-hidden','true');
-    const image=el('img',null,icon);image.src=runtimeAssetUrl('images/bufficon1-animation 1-000.png');image.alt='';
-    const glyph=ability.effectSpec.effectId==='shrink'?'↓':({heal:'+',sanctuary:'+',regen:'+',ward:'◇',cover:'◇',brace:'◇',damage:'✦',damagePush:'✦',damageRetreat:'✦',damageDelay:'✦',damageProvoke:'✦',finisher:'✦',split:'✦',chain:'✦',modifier:'↑',quickload:'»',tempo:'»',null:'⊘',blight:'✦',zone:'◉',teleport:'↗',fruit:'+',grow:'↑'})[ability.effectSpec.kind]||'✦';
-    el('b',glyph,icon);el('small',ability.displayName,card);
+    el('i',null,icon).style.cssText=iconStyle(ability.icon);el('small',ability.displayName,card);
    }
    selectedAbility=abilities[activeSkillIndex];
   }
@@ -123,35 +130,23 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    const details=el('details',null,pane);el('summary','Current stats',details);const stats=el('dl',null,details);
    for(const [label,value] of Object.entries({HP:hero.maxHP,...hero.stats})){const cell=el('div',null,stats);el('dt',label==='MAG'?'MATK':label,cell);el('dd',String(value),cell);}
   }else if(currentTab==='skills'){
-   const abilities=definition.actives,lastStart=Math.max(0,abilities.length-4);
-   const pageStarts=[...new Set(Array.from({length:Math.ceil(abilities.length/4)},(_,page)=>Math.min(page*4,lastStart)))];
-   const pages=el('div',null,pane);pages.className='skill-pages';
-   const previous=button(pages,'‹ Skills',()=>{activeSkillPage=Math.max(0,activeSkillPage-1);activeSkillIndex=pageStarts[activeSkillPage];});previous.disabled=activeSkillPage===0;previous.setAttribute('aria-label','Previous skills');
-   el('small',`${activeSkillPage+1} / ${pageStarts.length}`,pages).setAttribute('aria-label','Skill page');
-   const next=button(pages,'Skills ›',()=>{activeSkillPage=Math.min(pageStarts.length-1,activeSkillPage+1);activeSkillIndex=pageStarts[activeSkillPage];});next.disabled=activeSkillPage===pageStarts.length-1;next.setAttribute('aria-label','Next skills');
-   const ability=selectedAbility,detail=el('article',null,pane);detail.dataset.locked=String(!heroSkillUnlocked(hero,ability));el('h2',ability.displayName,detail);
-   el('small',heroSkillUnlocked(hero,ability)?'Unlocked · Lv. '+ability.unlockLevel:'Unlocks at Lv. '+ability.unlockLevel,detail);
-   el('p',`Range: ${heroSkillRange(ability,hero)} · Cooldown: ${ability.cooldownSeconds}s`,detail).className='skill-meta';
+   const ability=selectedAbility,detail=el('article',null,pane);detail.dataset.skill=ability.skillId;detail.dataset.slot=ability.slot;detail.dataset.locked=String(!!ability.scaffold);
+   el('small',SLOT_LABELS[activeSkillIndex],detail).className='skill-slot';el('h2',ability.displayName,detail);
+   el('p',ability.slot==='special'?`Range: ${heroSkillRange(ability,hero)} · Cooldown: ${ability.cooldownSeconds}s${ability.provisionalCooldown?' (provisional)':''}`:ability.slot==='passive'?'Always on while its condition holds · No cooldown':'Late-game resonance · Not yet available',detail).className='skill-meta';
    el('p',`When: ${ability.conditionLabel}`,detail);
-   el('p',ability.description.replaceAll('magic-tagged actions','magic skills'),detail);
+   el('p',ability.description,detail);
    const basic=el('article',null,pane);el('h2','Basic Attack',basic);el('p',definition.basic.description,basic);
   }
   content.append(power,tabs,pane);
+  if(revealSkill&&currentTab==='skills'){revealSkill=false;const card=content.querySelector('.skill-card[data-slot=special]');card?.focus({preventScroll:true});pane.querySelector('article[data-slot=special]')?.scrollIntoView({block:'nearest'});}
   if(focusLabel){const replacement=[...content.querySelectorAll('button')].find(node=>(node.getAttribute('aria-label')||node.textContent)===focusLabel);replacement?.focus({preventScroll:true});}
  }
  return {mode:'details',selectedSkillIndex:activeSkillIndex,hitZones:{skillNodes:[]}};
 }
 
 function heroSkillRange(ability,hero){
- const {kind,shape}=ability.targetRule,reach=actorAttackReach({...hero,kind:'hero'});
- if(shape){
-  const extent=shape.kind==='circle'?`radius ${shape.radius} units`:shape.kind==='rectangle'?`${shape.width} × ${shape.height} units`:shape.kind==='horizontalLine'?`${shape.width}-unit line to world X ${shape.toX}`:`${shape.length}-unit cone at ${shape.angleDegrees}°`;
-  return `${extent}${['bestArea','firstArea','eventArea'].includes(kind)?`; anchor within ${reach} units`:''}`;
- }
- if(kind==='self')return 'Self';
- if(kind==='party')return `Allies within ${reach} units; foe trigger within ${reach} units`;
- if(kind==='eventChain')return `${ability.targetRule.minimum} other foes after a basic hit`;
- if(kind==='allEnemies')return 'All attackable foes';
- if(kind==='lowestHPAlly'||kind==='slowestAlly')return `Eligible ally within ${reach} units; foe trigger within ${reach} units`;
+ const {kind}=ability.targetRule,reach=actorAttackReach({...hero,kind:'hero'});
+ if(kind==='party')return 'Whole party';
+ if(kind==='inRangeEnemies')return `Every foe within ${reach} units`;
  return `${reach}-unit actor reach`;
 }
