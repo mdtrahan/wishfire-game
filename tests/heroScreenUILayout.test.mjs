@@ -205,7 +205,7 @@ test('hero redesign uses saved canonical data and stays contained across portrai
    await page.waitForFunction(expected=>document.querySelector('#hero-details h1')?.textContent===expected,heroDefinition(heroes.at(-1)).name);
    await detail.getByRole('button',{name:'Next hero'}).click();
    await page.waitForFunction(expected=>document.querySelector('#hero-details h1')?.textContent===expected,firstName);
-   const tabPortraits=[],screenshots={};
+   const tabPortraits=[],tabShells=[],screenshots={};
    for(const tab of ['Gear','Orb','Skills']){
     await detail.getByRole('button',{name:tab,exact:true}).click();
     await page.waitForFunction(tabName=>document.querySelector('#hero-details')?.dataset.tab===tabName,tab.toLowerCase());
@@ -213,6 +213,7 @@ test('hero redesign uses saved canonical data and stays contained across portrai
     assert.equal(await selected.getAttribute('aria-pressed'),'true',`${tab} is the selected tab`);
     assert.equal(await selected.evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(255, 243, 216)',`${tab} selected state uses the cream tab color`);
     tabPortraits.push(await portrait.boundingBox());
+    tabShells.push(await detail.evaluate(host=>['.identity','.power-bar','.tabs','.pane'].map(selector=>{const r=host.querySelector(selector).getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height};})));
     const pane=await detail.locator('.pane').boundingBox(),nav=await mainNav.boundingBox(),overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth||document.body.scrollWidth>innerWidth);
     assert.equal(overflow,false,`${tab} view has no horizontal overflow`);
     assert.ok(pane.height>initial.power.height*3,`${tab} view preserves the large panel`);
@@ -228,8 +229,8 @@ test('hero redesign uses saved canonical data and stays contained across portrai
     const screenshot=`${profile.name}-${tab.toLowerCase()}.png`;
     await page.screenshot({path:path.join(artifactDir,screenshot),fullPage:true});screenshots[tab.toLowerCase()]=screenshot;
    }
-   for(const bounds of tabPortraits.slice(0,2))assert.ok(['x','y','width','height'].every(key=>Math.abs(bounds[key]-tabPortraits[0][key])<0.75),'Gear and Orb portrait geometry stays fixed');
-   assert.ok(tabPortraits[2].height<tabPortraits[0].height,'Skills reserves more height for its readable detail frame');
+   for(const bounds of tabPortraits)assert.ok(['x','y','width','height'].every(key=>Math.abs(bounds[key]-tabPortraits[0][key])<0.75),'portrait geometry stays fixed across Gear, Orb and Skills');
+   for(const shell of tabShells)for(const [index,bounds] of shell.entries())assert.ok(['x','y','width','height'].every(key=>Math.abs(bounds[key]-tabShells[0][index][key])<0.75),'identity, power bar, tabs and pane retain the same geometry across all tabs');
    const reachedSkills=[];
    for(let heroIndex=0;heroIndex<heroes.length;heroIndex++){
     const hero=heroes[heroIndex],definition=heroDefinition(hero),abilities=definition.skills,slots=['Special','Passive','Resonance 1','Resonance 2'];
@@ -246,6 +247,7 @@ test('hero redesign uses saved canonical data and stays contained across portrai
     assert.deepEqual(await basicPanel.locator('.skill-effect').allTextContents(),heroSkillCopy(heroBasicSkill(definition)).lines,'Basic Attack reads this hero’s authored power and damage stat');
     assert.match(await basicPanel.locator('.skill-metrics').getAttribute('aria-label'),/Cooldown: 0s/,'Basic displays zero cooldown rather than omitting it');
     assert.equal(await basicPanel.locator('.skill-metrics svg').count(),2,'Basic displays range and cooldown icons');
+    assert.equal(await basicPanel.locator('.skill-body').evaluate(body=>body.querySelector('.skill-effect').getBoundingClientRect().bottom<=body.getBoundingClientRect().bottom+1),true,'Basic Attack remains fully readable inside the original detail area');
     const basicHeight=(await basicPanel.boundingBox()).height;
     const basicStyle=await basicPanel.evaluate(frame=>{const css=getComputedStyle(frame);return{font:css.fontSize,radius:css.borderRadius,padding:getComputedStyle(frame.querySelector('.skill-heading')).padding};});
     assert.equal(await basicPanel.evaluate(frame=>{const body=frame.querySelector('.skill-body');return body.clientHeight<=body.scrollHeight+1&&Math.abs(frame.getBoundingClientRect().bottom-body.getBoundingClientRect().bottom)<=2;}),true,'Basic Attack ends at its content, without an empty lower panel');
@@ -274,8 +276,8 @@ test('hero redesign uses saved canonical data and stays contained across portrai
      assert.equal(geometry.paneScroll,false,'selected skill never extends the outer pane');
      assert.ok(geometry.bodyHeight>20,'skill retains a readable scroll area');
      assert.equal(geometry.top,0,'selecting a skill resets its own scroll position');
-     assert.equal(await detailPanel.locator('.skill-body').evaluate(body=>body.querySelector('.skill-effect:last-of-type').getBoundingClientRect().bottom<=body.getBoundingClientRect().bottom+1),true,'the complete main effect fits before scrolling');
      await detailPanel.locator('.skill-body').evaluate(body=>body.scrollTop=body.scrollHeight);
+     assert.equal(await detailPanel.locator('.skill-body').evaluate(body=>body.lastElementChild.getBoundingClientRect().bottom<=body.getBoundingClientRect().bottom+1),true,'the final skill rule remains reachable inside the original pane');
      assert.ok(Math.abs((await detailPanel.boundingBox()).height-geometry.height-2)<1,'scrolling keeps the skill frame height fixed');
      assert.equal(await detailPanel.locator('.skill-body').evaluate(body=>{const qa=window.heroQa,hero=Object.values(qa.globals.HeroProgress.heroes)[qa.gameState.selectedHero],hp=hero.hp,xp=hero.currentEXP,top=body.scrollTop;hero.hp=hp-1;hero.currentEXP=xp+1;qa.render();const kept=body.isConnected&&body.scrollTop===top;hero.hp=hp;hero.currentEXP=xp;qa.render();return kept;}),true,'damage and EXP ticks preserve the reading node and scroll position');
      await metrics.click();assert.equal(await detailPanel.locator('.skill-metric-label').isVisible(),true,'touch reveals icon labels');

@@ -69,10 +69,9 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .skill-pages{font-size:.85em} #hero-details .skill-pages button{min-height:1.8em;padding:.15em .5em;background:#e4e8ed;color:#243653;border-color:#9ba9bb}
    #hero-details .skill-pages button:disabled{opacity:.45;cursor:default}
    #hero-details .skill-meta{font-weight:650;color:#374b67}
-   #hero-details[data-tab=skills] .identity{flex:.75;min-height:9em}
-   #hero-details[data-tab=skills] .pane{display:flex;flex-direction:column;gap:.5em;flex:1.5;overflow:hidden;color:#372d20}
-   #hero-details article.skill-frame{display:flex;flex-direction:column;flex:0 1 auto;min-height:0;max-height:100%;overflow:hidden;padding:0;border:1px solid #a28b61;border-radius:.7em;background:linear-gradient(#fff6df,#eddfbd);font-size:clamp(12px,calc(16px * var(--hero-scale)),16px)}
-   #hero-details .skill-heading{display:flex;align-items:center;gap:.5em;padding:.6em;border-bottom:1px solid #ccb991;flex:none}
+   #hero-details[data-tab=skills] .pane{display:flex;flex-direction:column;gap:.5em;overflow:hidden;color:#372d20}
+   #hero-details article.skill-frame{display:flex;flex-direction:column;flex:0 1 auto;min-height:0;max-height:100%;overflow:hidden;padding:0;border:1px solid #a28b61;border-radius:.7em;background:linear-gradient(#fff6df,#eddfbd);font-size:clamp(12px,calc(14px * var(--hero-scale)),16px)}
+   #hero-details .skill-heading{display:flex;align-items:center;gap:.5em;padding:0 .6em;border-bottom:1px solid #ccb991;flex:none}
    #hero-details .skill-heading>.skill-icon{flex:none;width:2em;height:2em}
    #hero-details .skill-heading .skill-slot{font-size:.75em;color:#786348}
    #hero-details .skill-heading h2{font-size:1.1em;color:#372d20;line-height:1.2}
@@ -80,9 +79,10 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .skill-metrics span{display:flex;align-items:center;gap:.3em;line-height:1.6}
    #hero-details .skill-metrics svg{width:1.1em;height:1.1em;fill:none;stroke:currentColor;stroke-width:1.7}
    #hero-details .skill-metric-label{flex:none;margin:0;padding:.4em .7em;font-size:.75em;color:#59482e;background:#f1e0bb}
-   #hero-details .skill-body{min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#bda36d #f4e6c8;padding:.7em;line-height:1.4}
+   #hero-details .skill-body{min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#bda36d #f4e6c8;padding:.5em .7em;line-height:1.35}
    #hero-details .skill-body:focus-visible{outline:2px solid #8d672a;outline-offset:-3px}
    #hero-details .skill-body .skill-effect{margin:0 0 .35em}
+   #hero-details .skill-body .skill-effect:last-child{margin-bottom:0}
    #hero-details .skill-rules{border-top:1px dotted #ab9367;margin-top:.7em;padding-top:.4em;font-size:.875em;color:#5a4a33}
    #hero-details .hero-tickets{display:flex;align-items:center;gap:.5em;margin:.5em 0;padding:.45em;border:1px solid #b99c66;border-radius:.5em;background:#fff9eb}
    #hero-details .hero-ticket-art{width:1.7em;height:1.7em;flex:none;background-image:url('assets/images/progression/hero-tickets.png');background-size:200% 133.333%;background-repeat:no-repeat}
