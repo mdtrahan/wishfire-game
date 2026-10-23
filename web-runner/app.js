@@ -2632,7 +2632,7 @@ async function main(){
     }
     const result = renderRuntime.renderRuntime(runtimeScope);
     renderExistingNavigation(ctx, { worldToCanvas, layoutScale, gameState, layoutState, eventBus });
-    combatProgressionUI.update({ layoutId: activeLayoutId, phase: gameState.storyEntry.phase, scale: layoutScale, progression: combatProgression.state(), equipmentProgress: { essence: Number(state.globals.Equipment?.lamp?.essence || 0) } });
+    combatProgressionUI.update({ layoutId: activeLayoutId, phase: gameState.storyEntry.phase, scale: layoutScale, progression: combatProgression.state(), equipmentProgress: { essence: Number(state.globals.Equipment?.lamp?.essence || 0) }, entities: state.entities, globals: state.globals });
     if (result && result.overlayData) {
       state.globals.LastCombatOverlayData = result.overlayData;
     }

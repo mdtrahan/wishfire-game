@@ -1,6 +1,7 @@
 import {MODAL_CLOSE_MARK,installModalCloseStyles,paintModalClose} from './modalClose.mjs';
 import { combatObjectivePresentation, combatObjectiveReward, TRAINING_STATS, trainingCost, TRAINING_BONUS_PER_LEVEL } from '../src/core/combatProgressionRules.mjs';
 import { positionRewardReceipt, showRewardReceipt } from './rewardReceiptUI.mjs';
+import { createHeroCooldownStrip, HERO_COOLDOWN_LAYOUT } from './heroCooldownStrip.mjs';
 
 const RESOURCE_ICONS = Object.freeze({
   incense: 'assets/images/progression/incense.png',
@@ -110,10 +111,11 @@ export function createCombatProgressionUI({ canvas, onClaim = () => {} }) {
   const plate = document.createElement('div'); plate.className = 'cot-reward-plate';
   const rewardImage = document.createElement('div'); rewardImage.setAttribute('role', 'img'); plate.append(rewardImage);
   const rewardCount = document.createElement('div'); rewardCount.className = 'cot-reward-count'; reward.append(plate, rewardCount);
-  objective.append(reward, text); host.append(resourceRow, objective); document.body.append(host);
+  const cooldownStrip = createHeroCooldownStrip();
+  objective.append(reward, text); host.append(resourceRow, objective, cooldownStrip.element); document.body.append(host);
   const safeProbe = makeSafeAreaProbe();
 
-  function update({ layoutId, phase, scale = 1, progression, equipmentProgress, goldFixture = 999999999 } = {}) {
+  function update({ layoutId, phase, scale = 1, progression, equipmentProgress, entities = [], globals = {}, goldFixture = 999999999 } = {}) {
     positionRewardReceipt(canvas);
     const visible = layoutId === 'combat' && phase === 'combat';
     host.hidden = !visible;
@@ -151,7 +153,8 @@ export function createCombatProgressionUI({ canvas, onClaim = () => {} }) {
     reward.setAttribute('aria-label', rewardPreview ? `${rewardPreview.amount} ${rewardName}` : 'COT reward unavailable');
     objective.setAttribute('aria-label', ready ? `Claim ${rewardPreview?.amount || 0} ${rewardName || ''}`.trim() : `${view.challenge} ${view.count}`);
     const hostOffset = Math.max(0, safeTop - rect.top) / scale + 8;
-    objective.style.left = '8px'; objective.style.top = `${426 - hostOffset}px`;
+    objective.style.left = '0px'; objective.style.top = `${HERO_COOLDOWN_LAYOUT.questTop - hostOffset}px`;
+    cooldownStrip.update(entities, globals, hostOffset);
   }
 
   return { update, destroy() { safeProbe.remove(); host.remove(); } };

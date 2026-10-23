@@ -5,6 +5,8 @@
 - Keep presentation and browser integration out of deterministic rule ownership.
 
 ## Ownership
+
+- `heroCooldownStrip.mjs` owns the read-only eight-slot portrait row above equipment: centered 344px width, 41.28px height at logical Y441.6. Mini-quest starts at Y389.6 with an 8px stage inset. Fill canonical deployed heroes left to right, retain visible empty slots, and preserve Bag/conveyor hit areas. Shading reads the earliest unlocked active-skill clock in combat time; ready shading promises neither a valid target nor a cast. No skill, save or timer state is written here. `npm run test:hero-cooldowns` enforces geometry, pause behavior and Bag access at five viewport/DPR settings.
 - `render*.js` files own Canvas/UI presentation for combat, HUD, map, overlays, and progression shells.
 - `heroGearUI.mjs` renders equipped gear levels with the shared lower-right `.lamp-level` badge inside the art; empty slots retain their slot label and filled slots omit the redundant top label.
 - Hero-screen navigation selects canonical roster records from `HERO_DEFINITIONS`, matching equipment ownership. Combat `*#1` progression copies remain saved but must never appear as duplicate heroes with empty loadouts. Equipped gear stays with its hero until a cached positive-CP replacement changes that same slot; it cannot transfer to another hero.
