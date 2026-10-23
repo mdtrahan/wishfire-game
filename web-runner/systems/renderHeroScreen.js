@@ -71,7 +71,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .skill-meta{font-weight:650;color:#374b67}
    #hero-details[data-tab=skills] .identity{flex:.75;min-height:9em}
    #hero-details[data-tab=skills] .pane{display:flex;flex-direction:column;gap:.5em;flex:1.5;overflow:hidden;color:#372d20}
-   #hero-details article.skill-frame{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;padding:0;border:1px solid #a28b61;border-radius:.7em;background:linear-gradient(#fff6df,#eddfbd);font-size:clamp(12px,calc(16px * var(--hero-scale)),16px)}
+   #hero-details article.skill-frame{display:flex;flex-direction:column;flex:0 1 auto;min-height:0;max-height:100%;overflow:hidden;padding:0;border:1px solid #a28b61;border-radius:.7em;background:linear-gradient(#fff6df,#eddfbd);font-size:clamp(12px,calc(16px * var(--hero-scale)),16px)}
    #hero-details .skill-heading{display:flex;align-items:center;gap:.5em;padding:.6em;border-bottom:1px solid #ccb991;flex:none}
    #hero-details .skill-heading>.skill-icon{flex:none;width:2em;height:2em}
    #hero-details .skill-heading .skill-slot{font-size:.75em;color:#786348}
@@ -154,11 +154,11 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    const title=el('div',null,heading);el('small',activeSkillIndex<0?'Basic':SLOT_LABELS[activeSkillIndex],title).className='skill-slot';el('h2',ability.displayName,title);
    const targeted=ability.slot==='special'||ability.slot==='basic';
    const scope=targeted?heroSkillRange(ability,hero):ability.skillId==='ethereal_aura'?`Foes within ${actorAttackReach({...hero,kind:'hero'})} units`:'Self';
-   const metricLabel=`Range: ${scope}${ability.cooldownSeconds?` · Cooldown: ${ability.cooldownSeconds}s${ability.provisionalCooldown?' (provisional)':''}`:''}`;
+   const metricLabel=`Range: ${scope}${ability.cooldownSeconds!=null?` · Cooldown: ${ability.cooldownSeconds}s${ability.provisionalCooldown?' (provisional)':''}`:''}`;
    const metrics=button(heading,'',()=>{label.hidden=!label.hidden;metrics.setAttribute('aria-expanded',String(!label.hidden));});metrics.className='skill-metrics';metrics.title=metricLabel;metrics.setAttribute('aria-label',metricLabel);metrics.setAttribute('aria-expanded','false');
    const metric=(path,value)=>{const row=el('span',null,metrics),svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');const mark=document.createElementNS(svg.namespaceURI,'path');mark.setAttribute('d',path);svg.append(mark);row.append(svg,document.createTextNode(value));};
    metric('M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M12 0v7m0 10v7M0 12h7m10 0h7',targeted?(ability.targetRule.kind==='party'?'Party':`${actorAttackReach({...hero,kind:'hero'})}`):ability.skillId==='ethereal_aura'?`${actorAttackReach({...hero,kind:'hero'})}`:'Self');
-   if(ability.cooldownSeconds)metric('M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M12 6v6l4 2',`${ability.cooldownSeconds}s${ability.provisionalCooldown?'†':''}`);
+   if(ability.cooldownSeconds!=null)metric('M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M12 6v6l4 2',`${ability.cooldownSeconds}s${ability.provisionalCooldown?'†':''}`);
    const label=el('div',metricLabel,detail);label.className='skill-metric-label';label.hidden=true;
    const body=el('div',null,detail);body.className='skill-body';body.tabIndex=0;body.setAttribute('role','region');body.setAttribute('aria-label',`${ability.displayName} effect and rules`);
    const copy=heroSkillCopy(ability);

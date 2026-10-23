@@ -50,6 +50,7 @@ test('every hero carries exactly Special, Passive and two Resonances from the ac
     assert.deepEqual(definition.skills.map(skill => skill.slot), ['special', 'passive', 'resonance', 'resonance']);
     assert.deepEqual(definition.actives, [definition.special], 'only the Special owns a clock');
     assert.ok(definition.special.cooldownSeconds > 0 && definition.special.unlockLevel === 1);
+    assert.equal(definition.basic.cooldownSeconds, 0, 'Basic has an explicit zero skill cooldown; attack cadence remains separate');
     assert.equal(definition.passive.cooldownSeconds, undefined);
     assert.ok(definition.resonances.every(skill => skill.scaffold && skill.cooldownSeconds === undefined && !skill.passive), 'resonances are display-only scaffolding');
     assert.ok(definition.skills.every(skill => BUFF_SIGNAL_FRAMES[skill.icon] && skill.description && skill.conditionLabel));

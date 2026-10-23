@@ -10,6 +10,7 @@
 - Browser-specific copies of shared rule modules when the runtime cannot import the root `src/core/` file directly.
 
 ## Local Contracts
+- Basic Attack has `cooldownSeconds: 0`, distinct from missing cooldown metadata. Its normal attack cadence remains scheduler-owned; Special retains the only positive skill cooldown clock.
 - Party-wide Specials (Crimson Ward, Elevate) reach every living hero regardless of distance. Contact formation and noncombat waypoints use explicit destinations independent of attack stopping distance; frontline contact remains 46 units before formation offsets.
 - Ordinary roaming is leader-anchored (bd-ORKA-6i3): `combatMovementTuning.mjs` owns defaults, ranges, legacy values and leader fallback; `combatCamera.mjs` owns the stage-ticked leader camera (dead zone, smoothing, rate-limited non-leader cast pull, large-jump cut). Approach vectors stay centroid-based because a leader-relative vector orbits targets at contact. Bosses keep the centroid layout and full hero spacing. Tests asserting the old shared-target formation pin `LEGACY_COMBAT_MOVEMENT_TUNING`.
 - `ContinuousCombatStage.ordinaryWaveClears` and `.defeatRecoveries` are ephemeral balance-harness measurements; checkpoint serialization must omit them.

@@ -28,6 +28,7 @@ const profiles=[
 test('Basic Attack copy reads authored power and damage stat at each progression value',()=>{
  for(const definition of Object.values(HERO_DEFINITIONS))for(const potency of [1,1.3,2.1]){
   const basic=heroBasicSkill({...definition,basic:{...definition.basic,effects:[{effectType:'damage',potency,hits:1}]}});
+  assert.equal(basic.cooldownSeconds,0,'Basic has a zero cooldown value');
   assert.deepEqual(heroSkillCopy(basic).lines,[`Deals ${potency*100}% of ${basic.tags.includes('magic')?'MAG':'ATK'} to the current target.`]);
  }
 });
@@ -243,7 +244,11 @@ test('hero redesign uses saved canonical data and stays contained across portrai
     const basicPanel=detail.locator('.skill-frame');
     assert.equal(await basicPanel.locator('h2').textContent(),'Basic Attack','no selected skill displays Basic Attack in the full frame');
     assert.deepEqual(await basicPanel.locator('.skill-effect').allTextContents(),heroSkillCopy(heroBasicSkill(definition)).lines,'Basic Attack reads this hero’s authored power and damage stat');
+    assert.match(await basicPanel.locator('.skill-metrics').getAttribute('aria-label'),/Cooldown: 0s/,'Basic displays zero cooldown rather than omitting it');
+    assert.equal(await basicPanel.locator('.skill-metrics svg').count(),2,'Basic displays range and cooldown icons');
     const basicHeight=(await basicPanel.boundingBox()).height;
+    const basicStyle=await basicPanel.evaluate(frame=>{const css=getComputedStyle(frame);return{font:css.fontSize,radius:css.borderRadius,padding:getComputedStyle(frame.querySelector('.skill-heading')).padding};});
+    assert.equal(await basicPanel.evaluate(frame=>{const body=frame.querySelector('.skill-body');return body.clientHeight<=body.scrollHeight+1&&Math.abs(frame.getBoundingClientRect().bottom-body.getBoundingClientRect().bottom)<=2;}),true,'Basic Attack ends at its content, without an empty lower panel');
     reachedSkills.push(`${hero.heroInstanceKey}:basic_attack`);
     assert.deepEqual(await grid.locator('.skill-card').evaluateAll(cards=>cards.map(card=>card.getAttribute('aria-label'))),abilities.map((ability,index)=>`Inspect ${slots[index]}: ${ability.displayName}`),`${definition.name} exposes Special, Passive and both Resonances`);
     const row=await grid.boundingBox(),portraitBounds=await portrait.boundingBox(),stageBounds=await page.locator('#game-screen').boundingBox();
@@ -255,7 +260,7 @@ test('hero redesign uses saved canonical data and stays contained across portrai
      assert.equal(await card.getAttribute('aria-pressed'),'true',`${ability.displayName} is the selected icon`);
      assert.equal(await card.evaluate(node=>getComputedStyle(node).borderTopColor),'rgb(255, 217, 113)',`${ability.displayName} shows the selected gold state`);
      const detailPanel=detail.locator('.pane article').first();
-     assert.ok(Math.abs((await detailPanel.boundingBox()).height-basicHeight)<1,'Basic Attack and selected skills use equal frame space');
+     assert.deepEqual(await detailPanel.evaluate(frame=>{const css=getComputedStyle(frame);return{font:css.fontSize,radius:css.borderRadius,padding:getComputedStyle(frame.querySelector('.skill-heading')).padding};}),basicStyle,'Basic Attack and selected skills use equal presentation treatment');
      assert.equal(await detailPanel.locator('small').textContent(),slots[index]);
      assert.equal(await detailPanel.getAttribute('data-locked'),String(ability.slot==='resonance'),`${ability.displayName} marks late-game resonances`);
      const copy=heroSkillCopy(ability);
@@ -281,7 +286,7 @@ test('hero redesign uses saved canonical data and stays contained across portrai
     await grid.getByRole('button',{name:`Inspect Resonance 2: ${abilities.at(-1).displayName}`,exact:true}).click();
     await page.waitForFunction(()=>document.querySelector('.skill-frame h2')?.textContent==='Basic Attack');
     assert.equal(await grid.locator('[aria-pressed="true"]').count(),0,'clicking the selected skill toggles it off and restores Basic Attack');
-    assert.ok(Math.abs((await basicPanel.boundingBox()).height-basicHeight)<1,'toggling back preserves Basic Attack’s equal frame space');
+    assert.ok(Math.abs((await basicPanel.boundingBox()).height-basicHeight)<1,'toggling back restores Basic Attack’s content-sized frame');
     await grid.getByRole('button',{name:`Inspect Resonance 2: ${abilities.at(-1).displayName}`,exact:true}).click();
     if(heroIndex===0){
      await detail.getByRole('button',{name:'Gear',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#hero-details')?.dataset.tab==='gear');

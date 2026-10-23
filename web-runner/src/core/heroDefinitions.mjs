@@ -10,7 +10,7 @@ export const FLOW_MODES = Object.freeze({ Stoic: 'Take hostile HP damage.', Warr
 export const heroSkillUnlocked = (hero, skill) => Number(hero?.currentLevel || 1) >= Number(skill?.unlockLevel || 1);
 const leaf = (key, args = {}) => ({key,...args});
 const count = (value, group = 'attackableEnemies', filter) => leaf('actors.count',{group,operator:'gte',value,...(filter?{filter}:{})});
-const basic = magic => Object.freeze({skillId:'basic_attack',displayName:'Attack',targetType:'enemy',tags:[magic?'magic':'physical'],effects:[{effectType:'damage',potency:1,hits:1}],description:'Attack the first living enemy in range.'});
+const basic = magic => Object.freeze({skillId:'basic_attack',displayName:'Attack',targetType:'enemy',cooldownSeconds:0,tags:[magic?'magic':'physical'],effects:[{effectType:'damage',potency:1,hits:1}],description:'Attack the first living enemy in range.'});
 // Accepted kits (owner, 2026-10-23): Basic + Special (the only clock) + Passive (no clock,
 // no lingering) + two Resonances. Resonances are late-game scaffolding: data and Hero
 // screen only, no runtime. Special cooldowns marked provisional await owner tuning.
