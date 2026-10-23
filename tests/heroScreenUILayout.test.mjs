@@ -271,19 +271,23 @@ test('hero redesign uses saved canonical data and stays contained across portrai
      assert.doesNotMatch(await detailPanel.textContent(),/When:|Always on while/,'ordinary triggers are omitted');
      const metrics=detailPanel.locator('.skill-metrics');
      if(ability.slot==='special')assert.equal(await metrics.getAttribute('aria-label'),`Range: ${expectedSkillRange(ability,hero)} · Cooldown: ${ability.cooldownSeconds}s${ability.provisionalCooldown?' (provisional)':''}`,'icon metadata preserves range, cooldown and tuning status');
-     const geometry=await detailPanel.evaluate(frame=>{const body=frame.querySelector('.skill-body'),pane=frame.parentElement;return{height:frame.clientHeight,bodyHeight:body.clientHeight,overflow:frame.scrollWidth>frame.clientWidth||body.scrollWidth>body.clientWidth,paneScroll:pane.scrollHeight>pane.clientHeight+1,top:body.scrollTop};});
+     const geometry=await detailPanel.evaluate(frame=>{const body=frame.querySelector('.skill-body'),main=frame.querySelector('.skill-main'),reading=frame.querySelector('.skill-rules')||main,pane=frame.parentElement,header=frame.querySelector('.skill-heading').getBoundingClientRect(),effect=main.getBoundingClientRect(),css=getComputedStyle(frame);return{height:frame.getBoundingClientRect().height,bodyHeight:reading.clientHeight,overflow:frame.scrollWidth>frame.clientWidth||reading.scrollWidth>reading.clientWidth,paneScroll:pane.scrollHeight>pane.clientHeight+1,top:reading.scrollTop,fixed:[header.top,header.bottom,effect.top,effect.bottom],mainVisible:effect.bottom<=body.getBoundingClientRect().bottom+1,border:css.borderTopWidth,radius:css.borderRadius,background:css.backgroundImage};});
      assert.equal(geometry.overflow,false,'skill frame and text have no horizontal overflow');
      assert.equal(geometry.paneScroll,false,'selected skill never extends the outer pane');
-     assert.ok(geometry.bodyHeight>20,'skill retains a readable scroll area');
+     assert.ok(geometry.bodyHeight>0,'additional rules retain a visible reading area');
+     assert.equal(geometry.mainVisible,true,'the main effect stays visible above additional rules');
+     assert.deepEqual([geometry.border,geometry.radius,geometry.background],['0px','0px','none'],'skill presentation uses the tab directly without an inset card');
      assert.equal(geometry.top,0,'selecting a skill resets its own scroll position');
-     await detailPanel.locator('.skill-body').evaluate(body=>body.scrollTop=body.scrollHeight);
-     assert.equal(await detailPanel.locator('.skill-body').evaluate(body=>body.lastElementChild.getBoundingClientRect().bottom<=body.getBoundingClientRect().bottom+1),true,'the final skill rule remains reachable inside the original pane');
-     assert.ok(Math.abs((await detailPanel.boundingBox()).height-geometry.height-2)<1,'scrolling keeps the skill frame height fixed');
-     assert.equal(await detailPanel.locator('.skill-body').evaluate(body=>{const qa=window.heroQa,hero=Object.values(qa.globals.HeroProgress.heroes)[qa.gameState.selectedHero],hp=hero.hp,xp=hero.currentEXP,top=body.scrollTop;hero.hp=hp-1;hero.currentEXP=xp+1;qa.render();const kept=body.isConnected&&body.scrollTop===top;hero.hp=hp;hero.currentEXP=xp;qa.render();return kept;}),true,'damage and EXP ticks preserve the reading node and scroll position');
+     await detailPanel.evaluate(frame=>{const rules=frame.querySelector('.skill-rules');if(rules)rules.scrollTop=rules.scrollHeight;});
+     const scrolled=await detailPanel.evaluate(frame=>{const reading=frame.querySelector('.skill-rules')||frame.querySelector('.skill-main'),header=frame.querySelector('.skill-heading').getBoundingClientRect(),main=frame.querySelector('.skill-main').getBoundingClientRect();return{reachable:reading.lastElementChild.getBoundingClientRect().bottom<=reading.getBoundingClientRect().bottom+1,fixed:[header.top,header.bottom,main.top,main.bottom]};});
+     assert.equal(scrolled.reachable,true,'the final additional rule remains reachable');
+     assert.deepEqual(scrolled.fixed,geometry.fixed,'scrolling additional rules never moves the header or main effect');
+     assert.ok(Math.abs((await detailPanel.boundingBox()).height-geometry.height)<1,'scrolling keeps the presentation height fixed');
+     assert.equal(await detailPanel.evaluate(frame=>{const body=frame.querySelector('.skill-rules')||frame.querySelector('.skill-main'),qa=window.heroQa,hero=Object.values(qa.globals.HeroProgress.heroes)[qa.gameState.selectedHero],hp=hero.hp,xp=hero.currentEXP,top=body.scrollTop;hero.hp=hp-1;hero.currentEXP=xp+1;qa.render();const kept=body.isConnected&&body.scrollTop===top;hero.hp=hp;hero.currentEXP=xp;qa.render();return kept;}),true,'damage and EXP ticks preserve the reading node and scroll position');
      await metrics.click();assert.equal(await detailPanel.locator('.skill-metric-label').isVisible(),true,'touch reveals icon labels');
      await metrics.click();assert.equal(await detailPanel.locator('.skill-metric-label').isVisible(),false,'labels close again');
      reachedSkills.push(`${hero.heroInstanceKey}:${ability.skillId}`);
-     if(heroIndex===0&&index===0)await page.screenshot({path:path.join(artifactDir,`${profile.name}-special.png`),fullPage:true});
+     if(heroIndex===0&&index===0){await detailPanel.locator('.skill-rules').evaluate(rules=>rules.scrollTop=0);await page.screenshot({path:path.join(artifactDir,`${profile.name}-special.png`),fullPage:true});}
     }
     await grid.getByRole('button',{name:`Inspect Resonance 2: ${abilities.at(-1).displayName}`,exact:true}).click();
     await page.waitForFunction(()=>document.querySelector('.skill-frame h2')?.textContent==='Basic Attack');
