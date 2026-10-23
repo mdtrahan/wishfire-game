@@ -3,9 +3,9 @@ import {recordActorPuppetDefeat} from '../systems/actorPuppetDefeats.mjs';
 import {actionCapacity} from '../src/core/actionSelection.mjs';
 import {settleBattleEXP} from '../src/core/heroProgression.mjs';
 import {heroDefinition,PROGRESSION} from '../src/core/heroDefinitions.mjs';
-import {heroPassiveBasicMultiplier} from '../src/core/realtimeHeroPassives.mjs';
+import {applyHeroPassiveOnHit,heroPassiveBasicMultiplier} from '../src/core/realtimeHeroPassives.mjs';
 // Damage-seam helpers the function bank reads through this bridge.
-export {heroPassiveTargetDEFScale} from '../src/core/realtimeHeroPassives.mjs';
+export {heroWardHP,absorbHeroWard} from '../src/core/heroWard.mjs';
 export {projectCombatMultiplier} from '../../src/core/combatModifierRules.mjs';
 export {actorCombatModifiers} from '../src/core/realtimeSkillState.mjs';
 import {capContinuousHostileHit} from '../src/core/routineEnemyScaling.mjs';
@@ -174,6 +174,7 @@ export function resolveRealtimeBasicImpact(ctx,hit={}){
  const resolved=resolveSkill(rules,source,skill,[targetUID],{realtimeBasic:true,allowSourceKO:true,suppressPartySkillHitHooks:Number(hit.suppressPartySkillHitHooks||0)});
  const damageEvents=events.filter(event=>event.type==='damage'&&Number(event.sourceUID||0)===sourceUID);
  const damage=damageEvents.reduce((sum,event)=>sum+Math.max(0,Number(event.delta)||0),0);
+ if(damage>0)applyHeroPassiveOnHit(ctx.state.globals,source,ctx.state.entities.find(actor=>Number(actor?.uid)===Number(targetUID)));
  if(!ctx.state.entities.some(actor=>actor?.kind==='hero'&&Number(actor.hp||0)>0))settleDefeat(ctx);
  else if(ctx.state.globals.NativeBattleEnded)settleVictory(ctx);
  return {resolved,damage,targetUID:Number(damageEvents[0]?.targetUID||targetUID)};

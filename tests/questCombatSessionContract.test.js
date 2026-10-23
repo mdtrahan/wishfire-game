@@ -344,12 +344,12 @@ test('ordinary KO captures cleared sectors before removing enemies and respawns 
 test('new battle clears combat conditions and retired Flow state while retaining gold and progression', async () => {
  const {resetCombatSessionConditions}=await import('../web-runner/systems/combatSessionReset.mjs');
  const g={goldTotal:321,HeroGemUsage:{RED:9},AstralFlowAmpPoints:12,AstralFlowAmpReady:1,
- PartyBuff_ATK:8,BuffTurns_ATK:3,PartyTempHPShield:40,PowerAmpByUID:{1:{}},
+ PartyBuff_ATK:8,BuffTurns_ATK:3,PartyTempHPShield:40,HeroWardHPByUID:{1:9},PowerAmpByUID:{1:{}},
  EnemyDebuffs:{2:{DEF:8}},EnemyDamageOverTime:[{}],PartyRegens:[{}],TaintedGroundZones:[{}]};
  const ui={partyHpTextRoll:{displayHp:1}}; resetCombatSessionConditions(g,ui);
  assert.equal(g.goldTotal,321);assert.deepEqual(g.HeroGemUsage,{RED:9});
  assert.equal(g.AstralFlowAmpPoints,undefined);assert.equal(g.AstralFlowAmpReady,undefined);
- for(const key of ['PartyBuff_ATK','BuffTurns_ATK','PartyTempHPShield','PowerAmpByUID']) assert.equal(g[key],undefined);
+ for(const key of ['PartyBuff_ATK','BuffTurns_ATK','PartyTempHPShield','HeroWardHPByUID','PowerAmpByUID']) assert.equal(g[key],undefined);
  assert.deepEqual(g.EnemyDebuffs,{});assert.deepEqual(g.EnemyDamageOverTime,[]);
  assert.deepEqual(g.PartyRegens,[]);assert.deepEqual(g.TaintedGroundZones,[]);
  assert.equal(ui.partyHpTextRoll,undefined);

@@ -77,7 +77,7 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
         const { state } = await import('./modules/state.js'); const g = state.globals;
         const heroes = state.entities.filter(actor => actor.kind === 'hero' && actor.hp > 0);
         for (const actor of heroes) actor.hp = Math.ceil(actor.maxHP * .6);
-        g.PartyTempHPShield = 0; g.RealtimeSkillEffects = {};
+        g.HeroWardHPByUID = {}; g.RealtimeSkillEffects = {};
         const until = g.time + 60, effects = g.RealtimeSkillEffects, kaja = heroes.find(actor => /Kojonn|Kaja/.test(actor.name)) || heroes[0];
         for (const actor of heroes) effects[actor.uid] = { elevate: { sourceUID: kaja.uid, expiresAt: until, data: { set: 'swift' }, modifiers: [{ channel: 'SPD', direction: 'up', magnitude: .05 }, { channel: 'ATK', direction: 'up', magnitude: .05 }] } };
         effects[heroes[0].uid].fixture_def = { sourceUID: heroes[0].uid, expiresAt: until, damageCutPct: 20 };

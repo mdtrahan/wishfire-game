@@ -88,7 +88,7 @@ test('app heal path plays a ten-frame green swirl with Faze-style front motes', 
   assert.match(renderSrc, /`if \(images\.CombatHealMotes && stage\.progress > 0\.34\) \{\n\s*const moteT[\s\S]*const width = Math\.max\(34 \* combatWorldVfxScale, 46 \* combatWorldVfxScale\);/);
   assert.match(renderSrc, /"const width = Math\.max\(54, 72 \* layoutScale\);",[\s\S]*"const width = Math\.max\(38 \* combatWorldVfxScale, 48 \* combatWorldVfxScale\);"/);
   assert.match(renderSrc, /const combatWorldVfxScale = layoutScale \* COMBAT_BATTLEFIELD_ZOOM;/);
-  assert.match(renderSrc, /renderRealtimeSkillGroundVfx\(ctx, \{ state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: combatWorldVfxScale \}\);/);
+  assert.doesNotMatch(renderSrc, /renderRealtimeSkillGroundVfx\(ctx, \{ state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: combatWorldVfxScale \}\);/);
   assert.match(renderSrc, /const bloomStage = \(bloom\) => \{/);
   assert.doesNotMatch(renderSrc, /images\.CombatHealBloom/);
   assert.doesNotMatch(renderSrc, /ctx\.fillRect\(-arm \/ 2, -length \/ 2, arm, length\);/);

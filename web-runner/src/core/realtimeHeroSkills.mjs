@@ -3,6 +3,7 @@ import { selectRealtimeHeroSkillTarget } from './realtimeHeroTargeting.mjs';
 import { isActorTargetInRange } from '../../../src/core/heroAttackTargetingRules.mjs';
 import { activeCombatEffect, clamp, COMBAT_MODIFIER_LIMITS, incomingReduction, resolveBasicInterval, projectCombatStat, projectCombatMultiplier } from '../../../src/core/combatModifierRules.mjs';
 import { heroPassive, heroPassiveIncomingCut, tickHeroPassiveAuras } from './realtimeHeroPassives.mjs';
+import { dropHeroWard, grantHeroWard } from './heroWard.mjs';
 import { ensureSkillBattle, realtimeCombatStat, actorCombatModifiers, rawCombatStat } from './realtimeSkillState.mjs';
 export { realtimeCombatStat } from './realtimeSkillState.mjs';
 const nowOf = g => Number(g.time || 0);
@@ -45,17 +46,14 @@ export function realtimeIncomingDamage(ctx,target,source,amount) {
   const cut=Math.min(.6,Math.max(incomingReduction(effects(g)[String(target.uid)] || {},nowOf(g)),heroPassiveIncomingCut(target)));
   return Math.max(0,Math.floor(amount*(1-cut)));
 }
-// Crimson Ward: one shared temporary-HP pool covering every hero, capped at 50% of original party max HP.
+// Crimson Ward: every hero gains its own ward, capped at 50% of that hero's original max HP.
 function castCrimsonWard(ctx,g,source,targets) {
   const battle=ensureSkillBattle(ctx);
   const original=hero=>Number(battle.baselinesByUID?.[String(hero.uid)]?.maxHP || hero.maxHP || 0);
-  const add=Math.floor(targets.reduce((sum,a)=>sum+Number(a.maxHP || 0),0)*CRIMSON_WARD.wardPctMaxHP/100);
-  const cap=Math.floor(targets.reduce((sum,a)=>sum+original(a),0)*CRIMSON_WARD.capPctMaxHP/100);
-  const before=Math.max(0,Number(g.PartyTempHPShield || 0)), after=Math.min(cap,before+add);
-  if(after<=before)return false;
-  g.PartyTempHPShield=after;
-  g.PartyTempHPShieldTargetUIDs=[...new Set([...(before>0?g.PartyTempHPShieldTargetUIDs || []:[]),...targets.map(a=>Number(a.uid))])];
-  g.PartyTempHPShieldSourceUID=source.uid; ctx.callFunction('StartRealtimeWardPresentation');
+  let gained=0;
+  for(const hero of targets)gained+=grantHeroWard(g,hero,Math.floor(Number(hero.maxHP || 0)*CRIMSON_WARD.wardPctMaxHP/100),Math.floor(original(hero)*CRIMSON_WARD.capPctMaxHP/100));
+  if(!(gained>0))return false;
+  g.HeroWardSourceUID=source.uid;
   return true;
 }
 export function castRealtimeHeroSkill(ctx,heroUID,skill,selection,displacement={}) {
@@ -104,6 +102,7 @@ export function castRealtimeHeroSkill(ctx,heroUID,skill,selection,displacement={
 // Effects owned by a fallen source end with it; the ward pool persists (see Crimson Ward rules).
 export function cleanupRealtimeSkillActors(ctx) {
   const g=ctx.state.globals;
+  for(const hero of ctx.state.entities.filter(a=>a?.kind==='hero'&&!living(a)))dropHeroWard(g,hero);
   for(const [uid,entries] of Object.entries(effects(g))) {
     if(!living(actor(ctx,uid))) { delete effects(g)[uid]; continue; }
     for(const [id,entry] of Object.entries(entries))if(id==='elevate'&&!living(actor(ctx,entry.sourceUID)))delete entries[id];

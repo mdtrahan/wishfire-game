@@ -16,8 +16,8 @@ import { drawCombatProgressHud } from './renderCombatBossControl.mjs';
 import { drawCombatHealthBar } from './combatHealthBarPresentation.mjs';
 import { drawCombatArenaBackground } from './combatArenaBackground.mjs';
 import { drawActorPuppetFrame } from './actorPuppetPresentation.mjs';
+import { drawHeroWardBubble } from './heroWardBubble.mjs';
 import { combatEnemiesForPresentation } from './actorPuppetDefeats.mjs';
-import { renderRealtimeSkillGroundVfx } from './realtimeSkillGroundPresentation.mjs';
 import { resolveCombatCameraCenterX } from '../src/core/combatCamera.mjs';
 import { createEnemyActivationFade, paintWithActivationAlpha } from './enemyActivationFadePresentation.mjs';
 import { isActorTargetInRange } from '../../src/core/heroAttackTargetingRules.mjs';
@@ -137,7 +137,7 @@ effectiveBody = effectiveBody
   .replace('const point = worldToCanvas(line.value, 0);\n        ctx.fillText(String(line.value)', 'const point = projectCombatActorWorldToCanvas(line.value, 0);\n        if (point.x < topLeft.x || point.x > bottomRight.x) return;\n        ctx.fillText(String(line.value)')
   .replace('const point = worldToCanvas(0, line.value);\n        ctx.fillText(String(line.value)', 'const point = projectCombatActorWorldToCanvas(0, line.value);\n        ctx.fillText(String(line.value)')
   .replace('renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layoutScale });', 'renderCombatAttackVfx(ctx, { state, images, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: combatWorldVfxScale, viewportLeft: layoutOffsetX, viewportRight: layoutOffsetX + layoutW * layoutScale });')
-  .replace('renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale });', 'renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: combatWorldVfxScale });')
+  .replace('renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale });', '')
   .replaceAll('const enemyH = (g.EnemySize || 40) * layoutScale;', 'const enemyH = (g.EnemySize || 40) * layoutScale * COMBAT_BATTLEFIELD_ZOOM;')
   .replaceAll('const drawY = pos.y - enemyH / 2;', "const drawY = pos.y - (enemy.combatRank === 'boss' ? enemyH : enemyH / 2);")
   .replaceAll('const scaledW = w * heroScale * 1.55;', 'const scaledW = w * heroScale * 1.55 * COMBAT_BATTLEFIELD_ZOOM;')
@@ -213,13 +213,19 @@ effectiveBody = replaceRequired(
   '        const barY = Math.round(enemyFootY + (4 * layoutScale));',
   'enemy bar position',
 );
+// Crimson Ward: replace the offset shield bitmap with a red bubble around each warded hero sprite.
+replaceBetween(
+  '          if (hero && wardBarrierImage) {',
+  '\n\n          const ampShowsBadge',
+  () => "          if (hero) { // hero front overlay\n            drawHeroWardBubble(ctx, { globals: g, uid: hero.uid, centerX: pos.x, centerY: footY - scaledH * 0.42, radiusX: scaledH * 0.36, radiusY: scaledH * 0.5 });\n          }",
+);
 replaceBetween(
   '          const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0), activeCombatOrientation);',
-  '\n          if (hero && wardBarrierImage) {',
+  '\n          if (hero) { // hero front overlay',
   body => `          const heroSpriteFadeAlpha = getEnemyActivationFadeAlpha(hero, Number(g.time || 0));\n          const paintHeroActor = () => paintWithActivationAlpha(ctx, heroSpriteFadeAlpha, () => { ${body}\n          });\n          actorPaintQueue.push({ footY: Number(footY), uid: Number(hero?.uid || 0), paint: paintHeroActor });\n`,
 );
 replaceBetween(
-  '          if (hero && wardBarrierImage) {',
+  '          if (hero) { // hero front overlay',
   '\n\n        }\n        presentationPatches.HeroPortraitPosByIndex',
   body => `          const heroOverlayFadeAlpha = getEnemyActivationFadeAlpha(hero, Number(g.time || 0));\n          const paintHeroFrontOverlay = () => paintWithActivationAlpha(ctx, heroOverlayFadeAlpha, () => { ${body.replace('continue;', 'return;')}\n          });\n          actorFrontOverlayQueue.push(paintHeroFrontOverlay);`,
 );
@@ -234,7 +240,6 @@ effectiveBody = replaceRequired(
   'hero amp badge condition',
 );
 removeBlock('if (ampShowsBadge) {');
-effectiveBody = effectiveBody.replace('    actorPaintQueue.sort(', '    renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: combatWorldVfxScale });\n    actorPaintQueue.sort(');
   return effectiveBody;
 }
 
@@ -261,8 +266,8 @@ export function renderRuntime(deps) {
   deps.drawCombatProgressHud = drawCombatProgressHud;
   deps.drawCombatHealthBar = drawCombatHealthBar;
   deps.drawActorPuppetFrame = drawActorPuppetFrame;
+  deps.drawHeroWardBubble = drawHeroWardBubble;
   deps.combatEnemiesForPresentation = combatEnemiesForPresentation;
-  deps.renderRealtimeSkillGroundVfx = renderRealtimeSkillGroundVfx;
   deps.getEnemyActivationFadeAlpha = enemyActivationFadeAlpha;
   deps.paintWithActivationAlpha = paintWithActivationAlpha;
   deps.isActorTargetInRange = isActorTargetInRange;

@@ -1,4 +1,5 @@
 import { resetRealtimeSkillAttempt } from './realtimeSkillState.mjs';
+import { clearHeroWards } from './heroWard.mjs';
 import { computeCombatPower } from './combatPower.mjs';
 import { deriveCombatArenaBounds, deriveCombatWorldBounds, deriveCombatWorldStartFormation, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
 import { cleanseDebuffs } from './combatRules.mjs';
@@ -524,12 +525,8 @@ export function advanceContinuousCombatStage(stageState) {
   return { done: false, stage: getContinuousCombatStage(state), state };
 }
 
-// Crimson Ward's shared pool is wiped when a boss enters or the party falls; boss clears keep it.
-export function clearCrimsonWardPool(globals) {
-  if (!globals) return;
-  globals.PartyTempHPShield = 0; globals.PartyWardBarrierActive = 0; globals.PartyWardBarrierVisualsByUID = {};
-  delete globals.PartyTempHPShieldSourceUID; delete globals.PartyTempHPShieldTargetUIDs;
-}
+// Crimson Ward is wiped when a boss enters or the party falls; boss clears keep it.
+export const clearCrimsonWardPool = clearHeroWards;
 export function armContinuousCombatBoss(globals, entities, call, { wallNowMs = Date.now(), transitionDurationMs = CONTINUOUS_COMBAT_BOSS_ENTRY_WIPE_MS } = {}) {
   const state = globals?.ContinuousCombatStage;
   if (!state || !state.bossAvailable || state.bossActive) return false;

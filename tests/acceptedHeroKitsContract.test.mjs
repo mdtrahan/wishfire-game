@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { reverseContinuousCombatEnemy, armContinuousCombatBoss, resetContinuousCombatAfterDefeat } from '../web-runner/src/core/continuousCombatStage.mjs';
 import { HERO_DEFINITIONS, ELEVATE_SETS, PROVISIONAL_SPECIAL_COOLDOWNS } from '../web-runner/src/core/heroDefinitions.mjs';
 import { castRealtimeHeroSkill, cleanupRealtimeSkillActors, realtimeBasicInterval, realtimeCombatStat, realtimeIncomingDamage, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
-import { heroPassive, heroPassiveBasicMultiplier, heroPassiveSignals, heroPassiveTargetDEFScale } from '../web-runner/src/core/realtimeHeroPassives.mjs';
+import { applyHeroPassiveOnHit, heroPassive, heroPassiveBasicMultiplier, heroPassiveSignals } from '../web-runner/src/core/realtimeHeroPassives.mjs';
+import { absorbHeroWard } from '../web-runner/src/core/heroWard.mjs';
 import { resetRealtimeSkillAttempt } from '../web-runner/src/core/realtimeSkillState.mjs';
 import { actorAttackReach } from '../src/core/arenaCombatRules.mjs';
 import { BUFF_SIGNAL_FRAMES } from '../src/core/buffSignalRules.mjs';
@@ -58,33 +59,40 @@ test('every hero carries exactly Special, Passive and two Resonances from the ac
   assert.ok(Object.values(HERO_DEFINITIONS).every(d => d.special.provisionalCooldown === PROVISIONAL_SPECIAL_COOLDOWNS.includes(d.special.skillId)));
 });
 
-test('Crimson Ward stacks shared temporary HP on every hero up to 50% of original max HP', () => {
-  const { g, heroes, cast, calls } = combat();
+const wards = g => Object.fromEntries(Object.entries(g.HeroWardHPByUID || {}).map(([uid, hp]) => [Number(uid), hp]));
+
+test('Crimson Ward gives each hero its own ward, capped at 50% of that hero\'s original max HP', () => {
+  const { g, heroes, cast } = combat();
   heroes[3].footX = 900; // far from Fara: still covered
+  heroes[1].maxHP = 200; // per-hero sizing
   assert.equal(cast('Falie'), true);
-  assert.equal(g.PartyTempHPShield, 72); // 18% of 400 party max HP
-  assert.deepEqual(g.PartyTempHPShieldTargetUIDs, [1, 2, 3, 4]);
-  assert.ok(calls.includes('StartRealtimeWardPresentation'));
+  assert.deepEqual(wards(g), { 1: 18, 2: 36, 3: 18, 4: 18 });
   for (let i = 0; i < 3; i += 1) cast('Falie');
-  assert.equal(g.PartyTempHPShield, 200, 'capped at 50% of original party max HP');
-  assert.equal(cast('Falie'), false, 'a capped pool cannot recast');
+  assert.deepEqual(wards(g), { 1: 50, 2: 100, 3: 50, 4: 50 }, 'each hero caps at half its own max HP');
+  assert.equal(cast('Falie'), false, 'capped wards cannot recast');
+  assert.equal(absorbHeroWard(g, heroes[2], 30), 30);
+  assert.deepEqual(wards(g), { 1: 50, 2: 100, 3: 20, 4: 50 }, 'a hit drains only the struck hero');
+  assert.equal(absorbHeroWard(g, heroes[2], 45), 20, 'overflow passes to HP');
+  assert.equal(g.HeroWardHPByUID[3], undefined);
+  assert.equal(cast('Falie'), true, 'one drained hero lets Fara recast');
+  assert.deepEqual(wards(g), { 1: 50, 2: 100, 3: 18, 4: 50 });
   heroes[0].hp = 0; cleanupRealtimeSkillActors({ state: { globals: g, entities: heroes } });
-  assert.equal(g.PartyTempHPShield, 200, 'the pool outlives Fara');
+  assert.deepEqual(wards(g), { 2: 100, 3: 18, 4: 50 }, 'a fallen hero loses its own ward; others keep theirs');
 });
 
 test('Crimson Ward survives a boss clear and clears on boss entry or party defeat', () => {
   const { g, heroes, cast } = combat();
   cast('Falie');
   resetRealtimeSkillAttempt(g, heroes, { keepWard: true });
-  assert.equal(g.PartyTempHPShield, 72);
+  assert.deepEqual(wards(g), { 1: 18, 2: 18, 3: 18, 4: 18 });
   g.ContinuousCombatStage = { bossAvailable: true, bossActive: false, region: 1, stage: 1 };
   armContinuousCombatBoss(g, heroes, () => {});
-  assert.equal(g.PartyTempHPShield, 0);
+  assert.deepEqual(wards(g), {});
   cast('Falie'); g.ContinuousCombatStage = { region: 1, stage: 1, wave: 1, clearedPackMask: 0 };
   resetContinuousCombatAfterDefeat(g);
-  assert.equal(g.PartyTempHPShield, 0);
+  assert.deepEqual(wards(g), {});
   cast('Falie'); resetRealtimeSkillAttempt(g, heroes);
-  assert.equal(g.PartyTempHPShield, 0);
+  assert.deepEqual(wards(g), {});
 });
 
 test('Shadow hits the first foe in range for 240% damage', () => {
@@ -137,11 +145,25 @@ test('passives switch on and off with their HP condition and leave nothing behin
   fara.hp = 41; assert.equal(realtimeIncomingDamage(ctx, fara, enemies[0], 100), 100);
   fara.hp = 39; assert.equal(realtimeIncomingDamage(ctx, fara, enemies[0], 100), 50, 'Smoke Form halves damage below 40%');
   hondo.hp = 50; assert.equal(heroPassiveBasicMultiplier(hondo), 1);
-  hondo.hp = 49; assert.equal(heroPassiveBasicMultiplier(hondo), 2); assert.equal(heroPassiveTargetDEFScale(hondo), .95);
+  hondo.hp = 49; assert.equal(heroPassiveBasicMultiplier(hondo), 2);
   runa.hp = 80; assert.equal(realtimeCombatStat(g, runa, 'MAG'), 100);
   runa.hp = 81; assert.equal(realtimeCombatStat(g, runa, 'MAG'), 105); assert.equal(realtimeCombatStat(g, runa, 'RES'), 10.5);
   runa.hp = 0; assert.equal(heroPassive(runa), null, 'a KO hero has no passive');
   assert.deepEqual(g.RealtimeSkillEffects || {}, {}, 'passives store no effect records');
+});
+
+test('Royalty marks the struck foe with DEF -5% for 4s; every hero reads it and a repeat hit refreshes it', () => {
+  const { g, heroes, enemies } = combat();
+  const [fara, hondo] = heroes, foe = enemies[0];
+  hondo.hp = 50; assert.equal(applyHeroPassiveOnHit(g, hondo, foe), false, 'no mark at or above 50% HP');
+  hondo.hp = 49; assert.equal(applyHeroPassiveOnHit(g, hondo, foe), true);
+  assert.equal(realtimeCombatStat(g, foe, 'DEF'), 28.5);
+  assert.equal(applyHeroPassiveOnHit(g, fara, foe), false, 'only Royalty marks');
+  g.time = 12; applyHeroPassiveOnHit(g, hondo, foe);
+  assert.equal(realtimeCombatStat(g, foe, 'DEF'), 28.5, 'refresh, not stack');
+  hondo.hp = 80; g.time = 15.9;
+  assert.equal(realtimeCombatStat(g, foe, 'DEF'), 28.5, 'the mark outlives Royalty until its timer ends');
+  g.time = 16; assert.equal(realtimeCombatStat(g, foe, 'DEF'), 30);
 });
 
 test('Ethereal Aura deals Faze damage each second to foes in Kaja range only while she stands', () => {
@@ -150,8 +172,10 @@ test('Ethereal Aura deals Faze damage each second to foes in Kaja range only whi
   tickRealtimeHeroSkillZones(ctx);
   g.time = 12.5; tickRealtimeHeroSkillZones(ctx);
   assert.deepEqual(enemies.map(e => e.hp), [998, 998, 1000]);
+  g.ContinuousCombatStage = { region: 3 }; g.time = 13.5; tickRealtimeHeroSkillZones(ctx);
+  assert.deepEqual(enemies.map(e => e.hp), [995, 995, 1000], 'damage scales with the chapter');
   heroes[3].hp = 0; g.time = 20; tickRealtimeHeroSkillZones(ctx);
-  assert.deepEqual(enemies.map(e => e.hp), [998, 998, 1000]);
+  assert.deepEqual(enemies.map(e => e.hp), [995, 995, 1000]);
 });
 
 test('active passives raise hero buff signals; auras do not', () => {

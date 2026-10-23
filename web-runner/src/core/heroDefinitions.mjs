@@ -37,7 +37,7 @@ const kit = (key,name,role,baseStats,growth,baseAttackInterval,{special,passive,
 export const HERO_DEFINITIONS = Object.freeze({
  Falie:kit('Falie','Fara','Tank',{HP:75,ATK:7,DEF:12,MAG:4,RES:8,SPD:8},{HP:8,ATK:.8,DEF:1.8,MAG:.4,RES:1.1,SPD:.15},1.8,{
   special:special('crimson_ward','Crimson Ward','party-ward',50,count(1),'A foe in range',party(),{kind:'ward'},
-   'Every hero gains temporary HP worth 18% of max HP. Stacks up to 50% of original max HP. Kept between waves and after a boss clear; cleared when a boss enters or the party falls.',
+   'Every hero gains its own temporary HP worth 18% of its max HP, stacking up to 50% of its original max HP. Hits drain only the struck hero’s ward. Kept between waves and after a boss clear; cleared when a boss enters or the party falls.',
    {wardPctMaxHP:CRIMSON_WARD.wardPctMaxHP,capPctMaxHP:CRIMSON_WARD.capPctMaxHP,partyWide:true}),
   passive:passive('smoke_form','Smoke Form','party-dr','Own HP below 40%',{hpBelow:.4,incomingCutPct:50},'Below 40% HP, Fara takes 50% less damage.'),
   resonances:[
@@ -47,7 +47,7 @@ export const HERO_DEFINITIONS = Object.freeze({
  }),
  Huun:kit('Huun','Hondo','Damage',{HP:60,ATK:16,DEF:5,MAG:3,RES:4,SPD:12},{HP:6,ATK:2.1,DEF:.7,MAG:.3,RES:.6,SPD:.35},1.2,{
   special:special('shadow','Shadow','party-special',20,count(1),'A foe in range',enemy(),{kind:'damageBlink',damagePct:240},'Jump behind a foe and hit it for 240% damage.',{damagePct:240}),
-  passive:passive('royalty','Royalty','party-atk','Own HP below 50%',{hpBelow:.5,basicDamageMultiplier:2,targetDEFDownPct:5},'Below 50% HP, Hondo’s basic attacks deal double damage and his hits treat enemy DEF as 5% lower.'),
+  passive:passive('royalty','Royalty','party-atk','Own HP below 50%',{hpBelow:.5,basicDamageMultiplier:2,targetDebuff:{channel:'DEF',magnitude:.05,durationSeconds:4}},'Below 50% HP, Hondo’s basic attacks deal double damage and lower the struck enemy’s DEF by 5% for 4s (provisional), helping every hero.'),
   resonances:[
    resonance('chase','Chase','party-atk','Exactly one foe in range','Against a lone foe in range, deal +160% damage.'),
    resonance('weaken','Weaken','party-cr','Three or more foes in range','When surrounded by three or more foes, crit rate +5% and crit damage +5%.'),
@@ -65,7 +65,7 @@ export const HERO_DEFINITIONS = Object.freeze({
   special:special('elevate','Elevate','party-spd',20,count(1,'livingHeroes'),'Fight start, then each time the clock fills',party(),{kind:'elevate'},
    'Roll one party set until the next roll: SPD +5% and ATK +5%, max HP +20% and MAG +5%, or attack range +10% and crit damage +5%. Ends if Kaja falls.',
    {randomStats:Object.keys(ELEVATE_SETS),partyWide:true}),
-  passive:passive('ethereal_aura','Ethereal Aura','party-mag','Foes in range',{aura:{rawDamage:1,intervalSeconds:1}},'Foes in Kaja’s range take Faze damage every second.'),
+  passive:passive('ethereal_aura','Ethereal Aura','party-mag','Foes in range',{aura:{rawDamagePerChapter:1,intervalSeconds:1}},'Foes in Kaja’s range take Faze damage every second, rising with each chapter.'),
   resonances:[
    resonance('cornered','Cornered','party-def','Three or more foes in range','When surrounded by three or more foes, DEF +8% and RES +8%.'),
    resonance('timeless','Timeless','party-special','Own HP below 55%','Below 55% HP, every special deals +20% damage and crit rate rises 1%.'),

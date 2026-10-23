@@ -7,7 +7,7 @@ export const PARTY_SKILLS = Object.freeze([
   Object.freeze({
     id: 'crimson_ward', skillId: 'crimson_ward', hero: owner('crimson_ward').name, name: 'Crimson Ward', icons: Object.freeze(['party-ward']),
     effect: owner('crimson_ward').special.description,
-    values: Object.freeze([`Temporary HP +${CRIMSON_WARD.wardPctMaxHP}% of max HP per cast`, `Stack cap ${CRIMSON_WARD.capPctMaxHP}% of original max HP`, `Cooldown ${owner('crimson_ward').special.cooldownSeconds}s`]),
+    values: Object.freeze([`Each hero: temporary HP +${CRIMSON_WARD.wardPctMaxHP}% of own max HP per cast`, `Stacks to ${CRIMSON_WARD.capPctMaxHP}% of own original max HP`, `Cooldown ${owner('crimson_ward').special.cooldownSeconds}s`]),
   }),
   ...Object.entries(ELEVATE_SETS).map(([set, entry]) => Object.freeze({
     id: `elevate:${set}`, skillId: 'elevate', set, hero: owner('elevate').name, name: `Elevate · ${entry.label}`, icons: Object.freeze([...entry.icons]),

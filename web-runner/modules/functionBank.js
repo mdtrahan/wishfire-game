@@ -61,7 +61,7 @@ import {
 } from '../src/core/dynamicInitiativeRules.mjs';
 import { realtimeCooldownSeconds, scheduleRealtimeActions, selectRealtimeReadyActor } from '../src/core/realtimeCooldown.mjs';
 import { selectRealtimeHeroSkillTarget, filterContinuousEncounterEnemies } from '../src/core/realtimeHeroTargeting.mjs';
-import { castRealtimeHeroSkill, tickRealtimeHeroSkillZones, realtimeBasicInterval, realtimeCombatStat,realtimeBasicDamageMultiplier,cleanupRealtimeSkillActors, realtimeIncomingDamage, heroPassiveTargetDEFScale, projectCombatMultiplier, actorCombatModifiers } from './heroCommands.mjs';
+import { castRealtimeHeroSkill, tickRealtimeHeroSkillZones, realtimeBasicInterval, realtimeCombatStat,realtimeBasicDamageMultiplier,cleanupRealtimeSkillActors, realtimeIncomingDamage, projectCombatMultiplier, actorCombatModifiers, heroWardHP, absorbHeroWard } from './heroCommands.mjs';
 import { heroDefinition, heroSkillUnlocked } from '../src/core/heroDefinitions.mjs';
 import { pushContinuousCombatEnemy, reverseContinuousCombatEnemy } from '../src/core/continuousCombatStage.mjs';
 import { resetActorPresentationAfterRestore } from '../src/core/actorPresentationState.mjs';
@@ -5688,7 +5688,7 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode, attackMultipl
   const offenseStat = isHeroAttacker ? (atk.attackType === 'magic' ? 'MAG' : 'ATK') : (isMagic ? 'MAG' : 'ATK');
   const power = GetEffectiveStat(ctx, atk, offenseStat);
   // Passives that lower the target's DEF (Hondo's Royalty) apply only to the holder's own hits.
-  const resist = GetEffectiveStat(ctx, tgt, isMagic ? 'RES' : 'DEF') * (isHeroAttacker && !isMagic ? heroPassiveTargetDEFScale(atk) : 1);
+  const resist = GetEffectiveStat(ctx, tgt, isMagic ? 'RES' : 'DEF');
   const matchingResistancePct = GetBaseStat(ctx, tgt, isMagic ? 'magicDamageResistancePct' : 'physicalDamageResistancePct');
   const generalResistancePct = GetBaseStat(ctx, tgt, 'damageResistancePct');
   const roll01 = random01(ctx);
@@ -5866,12 +5866,6 @@ function refreshCrimsonWardBarrierVisuals(ctx) {
   g.PartyWardBarrierBaseAlpha = CRIMSON_WARD_BARRIER_BASE_ALPHA;
   g.PartyWardBarrierFadeOutUntil = 0;
   return true;
-}
-
-export function StartRealtimeWardPresentation(ctx) {
-  const g=getGlobals(ctx),maxHP=getHeroes(ctx).reduce((sum,hero)=>sum+Number(hero.maxHP || 0),0);
-  Object.assign(g,{PartyTempHPShieldStacks:1,PartyTempHPShieldRatio:g.PartyTempHPShield/Math.max(1,maxHP),PartyTempHPShieldMax:maxHP,PartyTempHPShieldColor:CRIMSON_WARD_SHIELD_COLOR,PartyTempHPShieldSource:'realtime_crimson_ward'});
-  return refreshCrimsonWardBarrierVisuals(ctx);
 }
 
 function activateCrimsonWardSkill(ctx) {
@@ -6077,8 +6071,8 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   const impactGeometry = g.DevBalanceCapture === true && source?.kind === 'enemy' && t.kind === 'hero'
     ? captureBalanceImpactGeometry(source, getEntities(ctx).filter((actor) => actor?.kind === 'hero')) : null;
   let incomingDamage = realtimeIncomingDamage(ctx, t, source, Math.max(0, Number(dmg || 0)));
-  const wardApplies = t.kind === 'hero' && (!g.PartyTempHPShieldTargetUIDs || g.PartyTempHPShieldTargetUIDs.includes(Number(t.uid)));
-  const shieldBefore = wardApplies ? Math.max(0, Number(g.PartyTempHPShield || 0)) : 0;
+  const wardApplies = t.kind === 'hero';
+  const shieldBefore = wardApplies ? heroWardHP(g, t) : 0;
   const jsShieldAbsorbed = t.kind === 'hero' ? Math.min(shieldBefore, incomingDamage) : 0;
   const jsDamageToHP = Math.max(0, incomingDamage - jsShieldAbsorbed);
   const jsAfterHp = Math.max(0, beforeHP - jsDamageToHP);
@@ -6098,15 +6092,8 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   let damageToHP = incomingDamage;
   let shieldAbsorbed = 0;
   if (wardApplies) {
-    const shieldResult = absorbPartyTempHPShield(g, damageToHP);
-    damageToHP = shieldResult.damageAfterShield;
-    shieldAbsorbed = shieldResult.absorbed;
-    if (shieldAbsorbed > 0) {
-      markPartyWardBarrierHit(ctx, t, shieldAbsorbed);
-      if (Number(g.PartyTempHPShield || 0) <= 0) {
-        startPartyWardBarrierFadeOut(ctx);
-      }
-    }
+    shieldAbsorbed = absorbHeroWard(g, t, damageToHP);
+    damageToHP -= shieldAbsorbed;
   }
   if (ownedHit && String(ownedHit.owner || '') === 'rust') {
     t.hp = Math.max(0, Number(ownedHit.afterHp || 0));

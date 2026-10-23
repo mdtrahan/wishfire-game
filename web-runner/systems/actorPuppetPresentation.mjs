@@ -1,5 +1,5 @@
 import { sampleActorClip } from './actorClipPlayback.mjs';
-import { combatActorVisualScale, shouldMirrorCombatActorSprite } from './combatActorSpritePresentation.mjs';
+import { shouldMirrorCombatActorSprite } from './combatActorSpritePresentation.mjs';
 
 const ACTOR_KEYS = Object.freeze({
   Fara: 'fara', Falie: 'fara', Hondo: 'hondo', Huun: 'hondo', Runa: 'runa', Kaja: 'kaja', Kojonn: 'kaja',
@@ -122,16 +122,14 @@ export function createActorPuppetPresentation({ loadClip }) {
   };
 }
 
-export function drawActorPuppetFrame(ctx, presentation, { footX, footY, height, actorUID, effects, now = 0 } = {}) {
+export function drawActorPuppetFrame(ctx, presentation, { footX, footY, height } = {}) {
   const clip = presentation?.clip;
   if (!ctx || !presentation?.frame || !clip || !Number.isFinite(footX) || !Number.isFinite(footY) || !Number.isFinite(height) || height <= 0) return null;
-  const visualScale = combatActorVisualScale({ actorUID, effects, now });
-  const scaledHeight = height * visualScale;
-  const scale = scaledHeight / (clip.canvas.referenceHeight ?? clip.canvas.height);
+  const scale = height / (clip.canvas.referenceHeight ?? clip.canvas.height);
   const width = clip.canvas.width * scale;
   const imageHeight = clip.canvas.height * scale;
   const drawX = footX - clip.footOrigin.x * scale;
   const drawY = footY - clip.footOrigin.y * scale;
   ctx.drawImage(presentation.frame, drawX, drawY, width, imageHeight);
-  return { drawX, drawY, width, height: imageHeight, visualScale };
+  return { drawX, drawY, width, height: imageHeight };
 }

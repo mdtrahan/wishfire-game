@@ -1,4 +1,5 @@
 import { combatModifiers, projectCombatStat, projectCombatMultiplier } from '../../../src/core/combatModifierRules.mjs';
+import { clearHeroWards } from './heroWard.mjs';
 import { heroPassiveModifiers } from './realtimeHeroPassives.mjs';
 export const rawCombatStat = (actor, stat) => Number(actor?.stats?.[stat] ?? actor?.[stat] ?? 0) || 0;
 export function actorCombatModifiers(globals, actor) {
@@ -71,8 +72,5 @@ export function resetRealtimeSkillAttempt(globals, entities = [], { keepWard = f
   globals.RealtimeHeroBasicScheduledActions = {};
   globals.RealtimePassiveAuraAt = {};
   if (keepWard) return;
-  globals.PartyTempHPShield = 0;
-  globals.PartyWardBarrierActive=0;globals.PartyWardBarrierVisualsByUID={};
-  delete globals.PartyTempHPShieldSourceUID;
-  delete globals.PartyTempHPShieldTargetUIDs;
+  clearHeroWards(globals);
 }

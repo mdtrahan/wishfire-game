@@ -35,7 +35,6 @@ const up = channel => ({ channel, direction: 'up' });
 // Read-only translation of live combat buffs into signal input; the projection owns the rules.
 export function heroBuffSignalInput(entities = [], globals = {}) {
   const now = Number(globals.time || 0);
-  const wardUIDs = Number(globals.PartyTempHPShield || 0) > 0 ? (globals.PartyTempHPShieldTargetUIDs || []).map(Number) : [];
   return heroCooldownSlots(entities, globals).filter(Boolean).map(slot => {
     const actor = entities.find(candidate => candidate?.kind === 'hero' && candidate.uid === slot.uid);
     const uid = Number(slot.uid), buffs = [];
@@ -45,7 +44,7 @@ export function heroBuffSignalInput(entities = [], globals = {}) {
       if (Number(record.damageCutPct) > 0) modifiers.push(up('damageReduction'));
       buffs.push({ key: `${record.sourceUID}:${id}`, modifiers, ref: { effectId: id, set: record.data?.set } });
     }
-    if (wardUIDs.includes(uid)) buffs.push({ key: `${globals.PartyTempHPShieldSourceUID}:ward`, modifiers: [up('ward')], ref: { effectId: 'ward' } });
+    if (Number(globals.HeroWardHPByUID?.[uid] || 0) > 0) buffs.push({ key: `${globals.HeroWardSourceUID}:ward`, modifiers: [up('ward')], ref: { effectId: 'ward' } });
     buffs.push(...heroPassiveSignals(actor));
     for (const stat of ['ATK', 'DEF', 'MAG', 'RES', 'SPD']) if (Number(globals[`PartyBuff_${stat}`] || 0) > 0) buffs.push({ key: `board:${stat}`, modifiers: [up(stat)] });
     for (const status of actor?.statuses || []) {

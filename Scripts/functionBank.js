@@ -1,6 +1,6 @@
 import { partyTrainingCombatStat } from '../web-runner/src/core/realtimeSkillState.mjs';
 import { realtimeBasicDamageMultiplier } from '../web-runner/src/core/realtimeHeroSkills.mjs';
-import { heroPassiveTargetDEFScale, projectCombatMultiplier, actorCombatModifiers } from '../web-runner/modules/heroCommands.mjs';
+import { projectCombatMultiplier, actorCombatModifiers } from '../web-runner/modules/heroCommands.mjs';
 import { effectiveStat } from '../web-runner/src/core/combatRules.mjs';
 import { captureBalanceImpactGeometry, recordBalanceCombatEvent } from '../web-runner/src/core/balanceTelemetry.mjs';
 import { executeHeroCommand, resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat, settleContinuousCombatRewards, emitResolvedHealEvent } from '../web-runner/modules/heroCommands.mjs';
@@ -5595,7 +5595,7 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode, attackMultipl
   const offenseStat = isHeroAttacker ? (atk.attackType === 'magic' ? 'MAG' : 'ATK') : (isMagic ? 'MAG' : 'ATK');
   const power = GetEffectiveStat(ctx, atk, offenseStat);
   // Passives that lower the target's DEF (Hondo's Royalty) apply only to the holder's own hits.
-  const resist = GetEffectiveStat(ctx, tgt, isMagic ? 'RES' : 'DEF') * (isHeroAttacker && !isMagic ? heroPassiveTargetDEFScale(atk) : 1);
+  const resist = GetEffectiveStat(ctx, tgt, isMagic ? 'RES' : 'DEF');
   const matchingResistancePct = GetBaseStat(ctx, tgt, isMagic ? 'magicDamageResistancePct' : 'physicalDamageResistancePct');
   const generalResistancePct = GetBaseStat(ctx, tgt, 'damageResistancePct');
   const roll01 = random01(ctx);

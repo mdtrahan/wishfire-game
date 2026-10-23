@@ -43,7 +43,7 @@ export function selectRealtimeHeroSkillTarget({skill,hero,heroes=[],enemies=[],e
     effectChoice = skill.randomStats[Math.floor(previewSeededRng(globals.RuntimeRandomSeed,globals.RuntimeRandomDraws || 0)*skill.randomStats.length)];
   }
   const context = {self:hero,candidate:null,groups:{livingHeroes,deployedHeroes:heroes,attackableEnemies:inRange},effects,zones,now,event,
-    stat:read,attackable:target=>isActorTargetInRange(hero,target),battle:globals.RealtimeSkillBattleState || {},resources:{wardHP:Number(globals.PartyTempHPShield || 0)},
+    stat:read,attackable:target=>isActorTargetInRange(hero,target),battle:globals.RealtimeSkillBattleState || {},resources:{wardHP:Object.values(globals.HeroWardHPByUID || {}).reduce((sum,hp)=>sum+Number(hp || 0),0)},
     shapeTargets:()=>[]};
   const matches = candidate => evaluateSkillCondition(skill.conditions,{...context,candidate});
   let anchor, targets;

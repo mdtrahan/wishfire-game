@@ -74,7 +74,7 @@ test('live combat effects translate into channels and party icons keep their ski
   ];
   const elevate = { sourceUID: 4, expiresAt: 1e9, modifiers: [{ channel: 'range', direction: 'up', magnitude: .1 }, { channel: 'critDamage', direction: 'up', magnitude: .05 }], data: { set: 'reach' } };
   const globals = {
-    time: 10, PartyBuff_DEF: 3, PartyTempHPShield: 40, PartyTempHPShieldTargetUIDs: [1, 4, 2], PartyTempHPShieldSourceUID: 1,
+    time: 10, PartyBuff_DEF: 3, HeroWardHPByUID: { 1: 20, 4: 20 }, HeroWardSourceUID: 1,
     RealtimeSkillEffects: { 1: { elevate: { ...elevate } }, 4: { elevate: { ...elevate }, old: { sourceUID: 4, expiresAt: 9, modifiers: [{ channel: 'MAG', direction: 'up' }] } } },
   };
   const before = JSON.stringify({ entities, globals });
