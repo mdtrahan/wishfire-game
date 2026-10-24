@@ -122,14 +122,17 @@ export function createActorPuppetPresentation({ loadClip }) {
   };
 }
 
-export function drawActorPuppetFrame(ctx, presentation, { footX, footY, height } = {}) {
+// Canvas rect of a puppet frame anchored at its feet; shared by the sprite and its overlays.
+export function actorPuppetFrameRect(presentation, { footX, footY, height } = {}) {
   const clip = presentation?.clip;
-  if (!ctx || !presentation?.frame || !clip || !Number.isFinite(footX) || !Number.isFinite(footY) || !Number.isFinite(height) || height <= 0) return null;
+  if (!presentation?.frame || !clip || !Number.isFinite(footX) || !Number.isFinite(footY) || !Number.isFinite(height) || height <= 0) return null;
   const scale = height / (clip.canvas.referenceHeight ?? clip.canvas.height);
-  const width = clip.canvas.width * scale;
-  const imageHeight = clip.canvas.height * scale;
-  const drawX = footX - clip.footOrigin.x * scale;
-  const drawY = footY - clip.footOrigin.y * scale;
-  ctx.drawImage(presentation.frame, drawX, drawY, width, imageHeight);
-  return { drawX, drawY, width, height: imageHeight };
+  return { drawX: footX - clip.footOrigin.x * scale, drawY: footY - clip.footOrigin.y * scale, width: clip.canvas.width * scale, height: clip.canvas.height * scale };
+}
+
+export function drawActorPuppetFrame(ctx, presentation, options = {}) {
+  const rect = ctx ? actorPuppetFrameRect(presentation, options) : null;
+  if (!rect) return null;
+  ctx.drawImage(presentation.frame, rect.drawX, rect.drawY, rect.width, rect.height);
+  return rect;
 }

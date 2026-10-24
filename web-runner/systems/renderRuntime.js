@@ -16,7 +16,7 @@ import { drawCombatProgressHud } from './renderCombatBossControl.mjs';
 import { drawCombatHealthBar } from './combatHealthBarPresentation.mjs';
 import { drawCombatArenaBackground } from './combatArenaBackground.mjs';
 import { drawActorPuppetFrame } from './actorPuppetPresentation.mjs';
-import { drawHeroWardBubble } from './heroWardBubble.mjs';
+import { drawHeroWardAura } from './heroWardAura.mjs';
 import { heroWardShare } from '../src/core/heroWard.mjs';
 import { combatEnemiesForPresentation } from './actorPuppetDefeats.mjs';
 import { resolveCombatCameraCenterX } from '../src/core/combatCamera.mjs';
@@ -214,11 +214,11 @@ effectiveBody = replaceRequired(
   '        const barY = Math.round(enemyFootY + (4 * layoutScale));',
   'enemy bar position',
 );
-// Crimson Ward: replace the offset shield bitmap with a red bubble around each warded hero sprite.
+// Crimson Ward draws behind the sprite (heroWardAura); the old offset shield bitmap is retired.
 replaceBetween(
   '          if (hero && wardBarrierImage) {',
   '\n\n          const ampShowsBadge',
-  () => "          if (hero) { // hero front overlay\n            drawHeroWardBubble(ctx, { globals: g, uid: hero.uid, centerX: pos.x, centerY: footY - scaledH * 0.46, radiusX: scaledH * 0.36, radiusY: scaledH * 0.46 });\n          }",
+  () => '          if (hero) { // hero front overlay\n          }',
 );
 replaceBetween(
   '          const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0), activeCombatOrientation);',
@@ -267,7 +267,7 @@ export function renderRuntime(deps) {
   deps.drawCombatProgressHud = drawCombatProgressHud;
   deps.drawCombatHealthBar = drawCombatHealthBar;
   deps.drawActorPuppetFrame = drawActorPuppetFrame;
-  deps.drawHeroWardBubble = drawHeroWardBubble;
+  deps.drawHeroWardAura = drawHeroWardAura;
   deps.heroWardShare = heroWardShare;
   deps.combatEnemiesForPresentation = combatEnemiesForPresentation;
   deps.getEnemyActivationFadeAlpha = enemyActivationFadeAlpha;
@@ -627,7 +627,7 @@ export function renderRuntime(deps) {
       )
       .replace(
         "drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation, facing: hero.facing, nativeFacing: 'right' });",
-        "const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0), activeCombatOrientation);\n\t          const drawHeroSprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY, height: scaledH, actorUID: hero.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }) : null;\n\t          drawHeroSprite();",
+        "const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0), activeCombatOrientation);\n\t          const drawHeroSprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY, height: scaledH, actorUID: hero.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }) : null;\n\t          if (puppet && hero) drawHeroWardAura(ctx, { globals: g, uid: hero.uid, puppet, footX: pos.x, footY, height: scaledH });\n\t          drawHeroSprite();",
       )
       .replace(
         "renderHitFlashOverlay(() => drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation, facing: hero.facing, nativeFacing: 'right' }), getHitFlashTone(hero.uid));",
