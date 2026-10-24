@@ -77,4 +77,3 @@ test('raw magic adapters mitigate independently once, never reroll critical dama
  target.hp=100;source.hp=0;source.footX=1000;source.x=1000;assert.equal(apply(ctx,1,10,66,'magic'),46);
  target.hp=100;ctx.state.entities.splice(0,1);assert.equal(apply(ctx,1,10,66,'magic'),46);
 });
-
