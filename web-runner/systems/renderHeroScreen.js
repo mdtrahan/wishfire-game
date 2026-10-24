@@ -1,3 +1,4 @@
+import {heroBasicSkill,heroSkillCopy} from './heroSkillCopy.mjs';
 import {renderHeroGear} from './heroGearUI.mjs';
 import {runtimeAssetUrl} from './runtimeAssetUrl.mjs';
 import {computeCombatPower} from '../src/core/combatPower.mjs';
@@ -32,6 +33,11 @@ function starMeter(stars,parent){
  parent.append(meter);return meter;
 }
 
+export function focusHeroSpecial(gameState,heroKey){
+ const index=Object.keys(HERO_DEFINITIONS).indexOf(heroKey);
+ if(index<0)return false;
+ gameState.selectedHero=index;activeHeroIndex=index;currentTab='heroes';activeSkillIndex=0;lastKey=null;return true;
+}
 export function hideHeroScreen(){if(host)host.hidden=true;}
 
 export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gameState,fnContext,heroPortraitImages}){
@@ -40,8 +46,8 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
  const roster=Object.keys(HERO_DEFINITIONS).map(key=>globals.HeroProgress.heroes[key]).filter(Boolean);
  if(!roster.length)return {mode:'details',selectedSkillIndex:0,hitZones:{skillNodes:[]}};
  const index=((Number(gameState.selectedHero)||0)%roster.length+roster.length)%roster.length;
- const hero=roster[index],definition=heroDefinition(hero),entries=[...definition.actives,null];
- if(activeHeroIndex!==index){activeHeroIndex=index;activeSkillIndex=definition.actives.length-1;ticketNotice='';resonancePick=-1;sheetNotice='';}
+ const hero=roster[index],definition=heroDefinition(hero),entries=[...definition.skills,null];
+ if(activeHeroIndex!==index){activeHeroIndex=index;activeSkillIndex=entries.length-1;ticketNotice='';resonancePick=-1;sheetNotice='';}
  activeSkillIndex=Math.max(0,Math.min(activeSkillIndex,entries.length-1));
  if(!host){
   host=document.createElement('section');host.id='hero-details';host.setAttribute('aria-label','Hero details');
@@ -224,15 +230,13 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
   const next=button(panelNav,'›',()=>{activeSkillIndex=(activeSkillIndex+1)%entries.length;});next.setAttribute('aria-label','Next skill');
   const ability=entries[activeSkillIndex],detail=el('article',null,panel);
   panel.append(panelNav);
-  if(ability){
-   const abilities=definition.actives,unlocked=heroSkillUnlocked(hero,ability);detail.dataset.locked=String(!unlocked);detail.dataset.skill=ability.skillId;
-   el('h2',ability.displayName,detail);
-   el('small',unlocked?'Unlocked · Lv. '+ability.unlockLevel:'Unlocks at Lv. '+ability.unlockLevel,detail);
-   el('p',ability.description.replaceAll('magic-tagged actions','magic skills'),detail);
-   el('p',`Range: ${heroSkillRange(ability,hero)} · Cooldown: ${ability.cooldownSeconds}s`,detail).className='skill-meta';
-   el('p',`When: ${ability.conditionLabel}`,detail);
-   detail.setAttribute('aria-label',`Skill ${abilities.indexOf(ability)+1} of ${abilities.length}`);
-  }else{detail.dataset.skill='basic';el('h2','Basic Attack',detail);el('small','Always available',detail);el('p',definition.basic.description,detail);}
+  const selectedAbility=ability||heroBasicSkill(definition);
+  detail.dataset.skill=selectedAbility.skillId;detail.dataset.locked=String(!!selectedAbility.scaffold);
+  el('h2',selectedAbility.displayName,detail);
+  el('small',selectedAbility.scaffold?'Late-game resonance · Not yet available':selectedAbility.slot==='passive'?'Passive':selectedAbility.slot==='basic'?'Always available':'Special',detail);
+  for(const line of heroSkillCopy(selectedAbility).lines)el('p',line,detail);
+  if(selectedAbility.cooldownSeconds!=null)el('p',`Range: ${heroSkillRange(selectedAbility,hero)} · Cooldown: ${selectedAbility.cooldownSeconds}s`,detail).className='skill-meta';
+  for(const rule of heroSkillCopy(selectedAbility).rules||[])el('p',rule,detail);
 
   function openFormation(){
    if(!formationDraft&&formationStore){formationDraft=structuredClone(formationStore.state());formationHistory=[];}
@@ -360,7 +364,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    const sheet=el('section',null,pane);sheet.className='sub-panel';sheet.dataset.panel=subPanel;
    const head=el('header',null,sheet);el('h2',SHEET_TITLES[subPanel],head);button(head,'✕',()=>{subPanel='';sheetNotice='';}).setAttribute('aria-label','Close '+SHEET_TITLES[subPanel]);
    if(subPanel==='star')renderStarSheet(sheet);
-   else renderResonanceSheet(sheet);
+
    if(sheetNotice)el('p',sheetNotice,sheet).className='sheet-note';
 
    function renderStarSheet(sheet){
@@ -369,7 +373,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
     const top=el('div',null,sheet);top.className='sheet-row';starMeter(stars,top);el('span',`${stars} / ${STAR_MAX}`,top);
     const lines=el('dl',null,sheet);lines.className='growth-lines';
     el('dt','Now',lines);el('dd',`+${pct(breakdown.own)} HP ATK DEF MATK RES`,lines);
-    el('dt','Next',lines);el('dd',maxed?'All stars earned':`+${pct(breakdown.own+STAR_STAT_BONUS)}${(stars+1)%STAR_TIER_SIZE===0?` · [All] party +${pct(STAR_TIER_PARTY_BONUS)}`:''}${stars+1===RESONANCE_SLOT_STARS[1]?' · Resonance slot 2':''}`,lines);
+    el('dt','Next',lines);el('dd',maxed?'All stars earned':`+${pct(breakdown.own+STAR_STAT_BONUS)}${(stars+1)%STAR_TIER_SIZE===0?` · [All] party +${pct(STAR_TIER_PARTY_BONUS)}`:''}`,lines);
     el('dt','[All]',lines);el('dd',`Party +${pct(breakdown.party)} from every hero's completed tiers`,lines);
     const row=el('div',null,sheet);row.className='sheet-row';
     el('span',maxed?'Max stars':`${balance}/${cost} ${definition.name} tickets`,row).className='star-cost';
@@ -378,29 +382,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
     action.setAttribute('aria-label',maxed?'Maximum stars':`Star Up · ${cost} tickets`);
    }
 
-   function renderResonanceSheet(sheet){
-    const id=hero.heroInstanceKey,slots=resonanceSlots(growth,id),nameOf=key=>heroDefinition(globals.HeroProgress.heroes[key]||{baseHeroName:key}).name;
-    el('p',`Other heroes lend ${definition.name} a passive echo of their signature stat.`,sheet).className='sheet-note';
-    const grid=el('div',null,sheet);grid.className='resonance-slots';
-    slots.forEach((linked,slot)=>{
-     const unlocked=resonanceSlotUnlocked(growth,id,slot),echo=linked&&resonanceEcho(growth,linked);
-     const node=button(grid,null,()=>{resonancePick=resonancePick===slot?-1:slot;sheetNotice='';});
-     node.className='resonance-slot';node.disabled=!unlocked;node.setAttribute('aria-pressed',String(resonancePick===slot));
-     const face=el('i',null,node);face.className='slot-face';
-     if(echo){node.dataset.linked=linked;const member=globals.HeroProgress.heroes[linked];if(member)portrait(member,face);}
-     const text=!unlocked?`Slot ${slot+1} · Unlocks at ★${RESONANCE_SLOT_STARS[slot]}`:echo?`${nameOf(linked)} · ${echo.label} +${pct(echo.magnitude)} ${STAT_NAMES[echo.stat]}`:`Slot ${slot+1} · Empty`;
-     el('span',text,node);node.setAttribute('aria-label',`Resonance slot ${slot+1}: ${text}`);
-    });
-    if(resonancePick>=0){
-     const picker=el('div',null,sheet);picker.className='resonance-picker';picker.setAttribute('aria-label',`Choose a hero for slot ${resonancePick+1}`);
-     for(const other of Object.keys(RESONANCE_ECHOES).filter(key=>key!==id&&globals.HeroProgress.heroes[key])){
-      const echo=resonanceEcho(growth,other);
-      const choice=button(picker,`${nameOf(other)} +${pct(echo.magnitude)} ${STAT_NAMES[echo.stat]}`,()=>{const result=combatProgression.setResonance(id,resonancePick,other);sheetNotice=result.ok?'':notice(result.reason);resonancePick=-1;});
-      choice.className='sheet-action';choice.setAttribute('aria-pressed',String(slots[resonancePick]===other));
-     }
-     if(slots[resonancePick])button(picker,'Clear',()=>{const result=combatProgression.setResonance(id,resonancePick,'');sheetNotice=result.ok?'':notice(result.reason);resonancePick=-1;}).className='sheet-action';
-    }else if(!sheetNotice)el('p',`Slot 2 opens at ★${RESONANCE_SLOT_STARS[1]}. Echoes grow with the lending hero's stars.`,sheet).className='sheet-note';
-   }
+
   }else if(currentTab==='heroes'){
    const grid=el('div',null,pane);grid.className='roster';grid.setAttribute('aria-label','Party roster');
    for(const [memberIndex,member] of roster.entries()){
@@ -425,7 +407,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    levelUp.className='hero-level-up';levelUp.disabled=maxedHero||balance<cost||!combatProgression;
    levelUp.setAttribute('aria-label',maxedHero?'Maximum level':`Level Up · ${cost} tickets`);
    button(actions,'Star Up',()=>{subPanel='star';sheetNotice='';});
-   button(actions,'Resonance',()=>{subPanel='resonance';resonancePick=-1;sheetNotice='';});
+   const resonance=button(actions,'Resonance',()=>{});resonance.disabled=true;resonance.title='Late-game resonance · Not yet available';
    if(ticketNotice)el('small',ticketNotice,pane).className='hero-ticket-notice';
   }else if(currentTab==='gear'){
    const slots=el('div',null,pane),itemDetail=el('div',null,pane);itemDetail.className='gear-detail';
@@ -450,15 +432,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
 }
 
 function heroSkillRange(ability,hero){
- const {kind,shape}=ability.targetRule,reach=actorAttackReach({...hero,kind:'hero'});
- if(shape){
-  const extent=shape.kind==='circle'?`radius ${shape.radius} units`:shape.kind==='rectangle'?`${shape.width} × ${shape.height} units`:shape.kind==='horizontalLine'?`${shape.width}-unit line to world X ${shape.toX}`:`${shape.length}-unit cone at ${shape.angleDegrees}°`;
-  return `${extent}${['bestArea','firstArea','eventArea'].includes(kind)?`; anchor within ${reach} units`:''}`;
- }
- if(kind==='self')return 'Self';
- if(kind==='party')return `Allies within ${reach} units; foe trigger within ${reach} units`;
- if(kind==='eventChain')return `${ability.targetRule.minimum} other foes after a basic hit`;
- if(kind==='allEnemies')return 'All attackable foes';
- if(kind==='lowestHPAlly'||kind==='slowestAlly')return `Eligible ally within ${reach} units; foe trigger within ${reach} units`;
- return `${reach}-unit actor reach`;
+ if(!ability.targetRule)return 'Self';
+ const reach=actorAttackReach({...hero,kind:'hero'});
+ return ability.targetRule.kind==='party'?'Whole party':ability.targetRule.kind==='inRangeEnemies'?`Every foe within ${reach} units`:`${reach}-unit actor reach`;
 }

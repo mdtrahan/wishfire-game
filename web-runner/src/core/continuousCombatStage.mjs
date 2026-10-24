@@ -1,4 +1,5 @@
 import { resetRealtimeSkillAttempt } from './realtimeSkillState.mjs';
+import { clearHeroWards } from './heroWard.mjs';
 import { computeCombatPower } from './combatPower.mjs';
 import { deriveCombatArenaBounds, deriveCombatWorldBounds, deriveCombatWorldStartFormation, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
 import { cleanseDebuffs } from './combatRules.mjs';
@@ -589,9 +590,11 @@ export function summonContinuousCombatBoss(globals, entities, call, options = {}
   return true;
 }
 
+// Crimson Ward carries into a boss fight and survives a boss clear; any failed attempt wipes it.
 export function resetContinuousCombatAfterDefeat(globals) {
   const state = globals?.ContinuousCombatStage;
   if (!state) return false;
+  clearHeroWards(globals);
   const recordedPackMask = normalizeContinuousCombatPackMask(state.clearedPackMask);
   const finalWaveClear = !state.bossActive && Number(state.wave || 1) >= continuousCombatWavesForStage(state.region, state.stage)
     && (recordedPackMask & activePackMask(state.region)) === activePackMask(state.region);
@@ -1008,7 +1011,7 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
     }
   }
   if (transition.clearedBoss) {
-    resetRealtimeSkillAttempt(globals,entities);
+    resetRealtimeSkillAttempt(globals,entities,{ keepWard: true });
     const heroes = entities.filter(actor => actor?.kind === 'hero');
     const revivedKoHero = heroes.some(hero => Number(hero.hp || 0) <= 0);
     for (const hero of heroes) {

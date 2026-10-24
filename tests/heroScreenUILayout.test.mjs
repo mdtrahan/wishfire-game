@@ -12,6 +12,7 @@ import {createLampEconomy,generateLampItem} from '../web-runner/src/core/lampGea
 import {HERO_DEFINITIONS,heroDefinition,heroSkillUnlocked} from '../web-runner/src/core/heroDefinitions.mjs';
 import {actorAttackReach} from '../src/core/arenaCombatRules.mjs';
 import {heroTicketLevelCost} from '../web-runner/src/core/combatProgressionRules.mjs';
+import {heroBasicSkill,heroSkillCopy} from '../web-runner/systems/heroSkillCopy.mjs';
 import {EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
 
 const require=createRequire(import.meta.url);
@@ -29,17 +30,9 @@ const profiles=[
 const mime={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml'};
 
 function expectedSkillRange(ability,hero){
- const {kind,shape}=ability.targetRule,reach=actorAttackReach({...hero,kind:'hero'});
- if(shape){
-  const extent=shape.kind==='circle'?`radius ${shape.radius} units`:shape.kind==='rectangle'?`${shape.width} × ${shape.height} units`:shape.kind==='horizontalLine'?`${shape.width}-unit line to world X ${shape.toX}`:`${shape.length}-unit cone at ${shape.angleDegrees}°`;
-  return `${extent}${['bestArea','firstArea','eventArea'].includes(kind)?`; anchor within ${reach} units`:''}`;
- }
- if(kind==='self')return 'Self';
- if(kind==='party')return `Allies within ${reach} units; foe trigger within ${reach} units`;
- if(kind==='eventChain')return `${ability.targetRule.minimum} other foes after a basic hit`;
- if(kind==='allEnemies')return 'All attackable foes';
- if(kind==='lowestHPAlly'||kind==='slowestAlly')return `Eligible ally within ${reach} units; foe trigger within ${reach} units`;
- return `${reach}-unit actor reach`;
+ if(!ability.targetRule)return 'Self';
+ const reach=actorAttackReach({...hero,kind:'hero'});
+ return ability.targetRule.kind==='party'?'Whole party':ability.targetRule.kind==='inRangeEnemies'?`Every foe within ${reach} units`:`${reach}-unit actor reach`;
 }
 
 function makeSavedFixture({shellsFirst=true}={}){
@@ -92,7 +85,8 @@ const fixtureModule=`
  import {equipmentStats} from '/web-runner/src/core/equipment.mjs';
  import {heroDefinition} from '/web-runner/src/core/heroDefinitions.mjs';
  import {heroArtKey} from '/web-runner/state/heroArtAssets.mjs';
- import {EQUIPMENT_SAVE_KEY} from '/web-runner/systems/equipmentStorage.mjs';
+ import {heroBasicSkill,heroSkillCopy} from '../web-runner/systems/heroSkillCopy.mjs';
+import {EQUIPMENT_SAVE_KEY} from '/web-runner/systems/equipmentStorage.mjs';
  import {HERO_PROGRESS_SAVE_KEY} from '/web-runner/systems/heroProgressStorage.js';
  import {createHeroFormationStore} from '/web-runner/systems/heroFormationStore.mjs';
  import {starUpHero,setHeroResonance} from '/web-runner/src/core/heroGrowthRules.mjs';
@@ -265,22 +259,8 @@ test('hero party screen uses saved canonical data and stays contained across por
    assert.match(await sheet.innerText(),/Fara reached ★1\./);
    screenshots.star=`${profile.name}-star.png`;await page.screenshot({path:path.join(artifactDir,screenshots.star),fullPage:true});
    await detail.getByRole('button',{name:'Close Star Up'}).click();await page.waitForFunction(()=>!document.querySelector('#hero-details .sub-panel'));
-   // Resonance: slot 1 open, slot 2 opens at five stars.
-   await detail.locator('.hero-actions').getByRole('button',{name:'Resonance',exact:true}).click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .sub-panel')?.dataset.panel==='resonance');
-   const slots=sheet.locator('.resonance-slot');
-   assert.equal(await slots.count(),2,'two Resonance slots');
-   assert.equal(await slots.nth(1).isDisabled(),true,'slot 2 is locked below five stars');
-   assert.match(await slots.nth(1).innerText(),/Unlocks at ★5/);
-   await slots.nth(0).click();await sheet.locator('.resonance-picker button').first().waitFor();
-   assert.deepEqual(await sheet.locator('.resonance-picker button').allTextContents(),['Hondo +5% ATK','Runa +5% MATK','Kaja +5% HP'],'picker offers the other heroes');
-   await sheetFits('Resonance picker');
-   await sheet.locator('.resonance-picker').getByRole('button',{name:'Hondo +5% ATK'}).click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .resonance-slot')?.dataset.linked==='Huun');
-   assert.equal(await slots.nth(0).innerText().then(text=>text.trim()),'Hondo · Might +5% ATK');
-   await sheetFits('Resonance');
-   screenshots.resonance=`${profile.name}-resonance.png`;await page.screenshot({path:path.join(artifactDir,screenshots.resonance),fullPage:true});
-   await detail.getByRole('button',{name:'Close Resonance'}).click();await page.waitForFunction(()=>!document.querySelector('#hero-details .sub-panel'));
+   assert.equal(await detail.locator('.hero-actions').getByRole('button',{name:'Resonance',exact:true}).isDisabled(),true,'accepted Resonances remain display-only');
+
    // Formation: full-screen modal, two 2x2 grids in one row; the right grid opens first with the frontline rightmost.
    const openFormationModal=async()=>{await detail.locator('.identity').getByRole('button',{name:'Formation',exact:true}).click();await page.waitForFunction(()=>!!document.querySelector('#hero-details .formation-modal'));};
    await openFormationModal();
@@ -453,29 +433,23 @@ test('hero party screen uses saved canonical data and stays contained across por
    // Signature skill panel reaches every canonical skill and the basic attack.
    const reachedSkills=[];
    for(const [heroIndex,hero] of heroes.entries()){
-    const definition=heroDefinition(hero),abilities=definition.actives;
+    const definition=heroDefinition(hero),abilities=definition.skills;
     if(heroIndex){await detail.getByRole('button',{name:'Next hero'}).click();await page.waitForFunction(expected=>document.querySelector('#hero-details h1')?.textContent===expected,definition.name);}
     const article=detail.locator('.skill-panel article');
-    assert.equal(await article.locator('h2').textContent(),abilities.at(-1).displayName,`${definition.name} headlines the awakening`);
+    assert.equal(await article.locator('h2').textContent(),'Basic Attack');
     for(let step=1;step<=abilities.length+1;step++){
-     const entry=(abilities.length-1+step)%(abilities.length+1),ability=abilities[entry];
+     const entry=(abilities.length+step)%(abilities.length+1),ability=abilities[entry];
      await detail.getByRole('button',{name:'Next skill'}).click();
      await page.waitForFunction(expected=>document.querySelector('#hero-details [aria-label="Skill index"]')?.textContent===expected,`${entry+1} / ${abilities.length+1}`);
-     if(!ability){assert.equal(await article.locator('h2').textContent(),'Basic Attack');assert.equal(await article.locator('p').textContent(),definition.basic.description,'Basic Attack description is preserved');continue;}
+     if(!ability){assert.equal(await article.locator('h2').textContent(),'Basic Attack');assert.deepEqual(await article.locator('p').allTextContents(),[...heroSkillCopy(heroBasicSkill(definition)).lines,`Range: ${expectedSkillRange(heroBasicSkill(definition),hero)} · Cooldown: 0s`,...(heroSkillCopy(heroBasicSkill(definition)).rules||[])]);continue;}
      assert.equal(await article.locator('h2').textContent(),ability.displayName,'panel shows the stepped skill');
-     assert.equal(await article.getAttribute('data-locked'),String(!heroSkillUnlocked(hero,ability)),`${ability.displayName} uses its level gate`);
-     assert.equal(await article.locator('small').textContent(),heroSkillUnlocked(hero,ability)?`Unlocked · Lv. ${ability.unlockLevel}`:`Unlocks at Lv. ${ability.unlockLevel}`);
-     assert.deepEqual(await article.locator('p').allTextContents(),[
-      ability.description.replaceAll('magic-tagged actions','magic skills'),
-      `Range: ${expectedSkillRange(ability,hero)} · Cooldown: ${ability.cooldownSeconds}s`,
-      `When: ${ability.conditionLabel}`,
-     ],`${ability.displayName} details come from canonical data`);
-     const fit=await article.evaluate(node=>({scroll:node.scrollHeight,client:node.clientHeight}));
-     assert.ok(fit.scroll<=fit.client+1,`${profile.name}: ${ability.displayName} fits the skill panel (${fit.scroll}/${fit.client})`);
+     assert.equal(await article.getAttribute('data-locked'),String(!!ability.scaffold));
+     const copy=heroSkillCopy(ability);
+     assert.deepEqual(await article.locator('p').allTextContents(),[...copy.lines,...(ability.cooldownSeconds!=null?[`Range: ${expectedSkillRange(ability,hero)} · Cooldown: ${ability.cooldownSeconds}s`]:[]),...(copy.rules||[])]);
      reachedSkills.push(`${hero.heroInstanceKey}:${ability.skillId}`);
     }
    }
-   assert.equal(new Set(reachedSkills).size,33,'all 33 canonical active skills are reachable');
+   assert.equal(new Set(reachedSkills).size,16,'all accepted skills are reachable');
    assert.equal(await page.evaluate(()=>JSON.stringify([localStorage.getItem('orka.hero_progress.v2'),localStorage.getItem('wishfire.equipment-economy.v5')])),JSON.stringify([saved.progress,saved.economy]),'hero and equipment saves stay byte-identical while browsing');
    assert.deepEqual(await page.evaluate(()=>window.heroQa.globals.HeroProgress),progress,'progression data stays unchanged in memory');
    assert.deepEqual(await page.evaluate(()=>window.heroQa.equipment),economy,'equipped items and loadouts stay unchanged in memory');

@@ -32,13 +32,13 @@ test('Star Up spends the hero\'s own tickets with a rising cost and caps at 15',
   assert.equal(starUpHero(withTickets({ Ghost: 999 }), 'Ghost').reason, 'hero_unavailable');
 });
 
-test('stars, completed tiers and resonance echoes combine into permanent bonuses', () => {
+test('stars and completed tiers grant bonuses; legacy resonance links grant none', () => {
   const growth = sanitizeHeroGrowth({ stars: { Huun: 5, Runa: 2 }, resonance: { Huun: ['Runa', 'Falie'] } });
   const breakdown = heroGrowthBreakdown(growth, 'Huun');
   assert.equal(breakdown.own, 0.1);
   assert.equal(breakdown.party, 0.01);
-  assert.deepEqual(breakdown.echoes.map(echo => [echo.from, echo.stat, echo.magnitude]), [['Runa', 'MAG', 0.06], ['Falie', 'DEF', 0.05]]);
-  assert.deepEqual(Object.fromEntries(heroGrowthModifiers(growth, 'huun#1').map(row => [row.channel, row.magnitude])), { HP: 0.11, ATK: 0.11, DEF: 0.16, MAG: 0.17, RES: 0.11 });
+  assert.deepEqual(breakdown.echoes.map(echo => [echo.from, echo.stat, echo.magnitude]), []);
+  assert.deepEqual(Object.fromEntries(heroGrowthModifiers(growth, 'huun#1').map(row => [row.channel, row.magnitude])), { HP: 0.11, ATK: 0.11, DEF: 0.11, MAG: 0.11, RES: 0.11 });
   assert.deepEqual(heroGrowthModifiers(growth, 'huun#2'), [], 'later combat copies do not inherit growth');
   assert.equal(canonicalGrowthId('kojonn#1'), 'Kojonn');
 });
@@ -50,17 +50,9 @@ test('party training and growth stack into one permanent modifier per stat', () 
   assert.equal(mods.HP, 0.02);
 });
 
-test('Resonance slots respect star unlocks, exclude self and never duplicate a lender', () => {
-  const base = withTickets({});
-  assert.equal(setHeroResonance(base, 'Falie', 1, 'Huun').reason, 'slot_locked');
-  assert.equal(setHeroResonance(base, 'Falie', 0, 'Falie').reason, 'invalid_link');
-  let result = setHeroResonance(base, 'Falie', 0, 'Huun');
-  assert.deepEqual(result.state.growth.resonance, { Falie: ['Huun', ''] });
-  const starred = { ...result.state, growth: { ...result.state.growth, stars: { Falie: 5 } } };
-  result = setHeroResonance(starred, 'Falie', 1, 'Huun');
-  assert.deepEqual(result.state.growth.resonance.Falie, ['', 'Huun'], 'moving a lender clears its old slot');
-  result = setHeroResonance(result.state, 'Falie', 1, '');
-  assert.equal(result.state.growth.resonance?.Falie, undefined);
+test('accepted resonance scaffolds reject legacy stat-link writes', () => {
+ const base=withTickets({});
+ assert.deepEqual(setHeroResonance(base,'Falie',0,'Huun'),{state:base,ok:false,reason:'unavailable'});
 });
 
 test('formation board is two 2x2 grids in one row; the right grid opens first with the frontline rightmost', () => {

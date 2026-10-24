@@ -7,6 +7,9 @@ playwright-*.png
 .netlify/
 
 # Legacy / archive directories
+/history/retained-docs/
+/history/retained-source/
+/history/wishfire-original/
 /_archive/
 /project_C3_conversion/
 /_legacy/

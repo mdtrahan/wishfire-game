@@ -69,7 +69,7 @@ export function partyStarBonus(growth) {
 export function heroGrowthBreakdown(growth, heroId) {
   const id = canonicalGrowthId(heroId);
   const stars = heroStars(growth, id);
-  const echoes = resonanceSlots(growth, id).map((linked, slot) => resonanceSlotUnlocked(growth, id, slot) ? resonanceEcho(growth, linked) : null).filter(Boolean);
+  const echoes = []; // Accepted Resonances are display-only; retained saves grant no link bonuses.
   return { stars, own: stars * STAR_STAT_BONUS, party: partyStarBonus(growth), echoes };
 }
 
@@ -105,15 +105,6 @@ export function starUpHero(state, heroId) {
 }
 
 export function setHeroResonance(state, hostId, slot, linkedId = '') {
-  const host = safeId(hostId), linked = safeId(linkedId), index = Math.floor(Number(slot));
-  if (!RESONANCE_ECHOES[host]) return { state, ok: false, reason: 'hero_unavailable' };
-  if (!(index >= 0 && index < RESONANCE_SLOT_STARS.length)) return { state, ok: false, reason: 'invalid_slot' };
-  const growth = growthOf(state);
-  if (!resonanceSlotUnlocked(growth, host, index)) return { state, ok: false, reason: 'slot_locked', stars: RESONANCE_SLOT_STARS[index] };
-  if (linked && (!RESONANCE_ECHOES[linked] || linked === host)) return { state, ok: false, reason: 'invalid_link' };
-  const slots = resonanceSlots(growth, host);
-  if (linked && slots.some((value, other) => other !== index && value === linked)) slots[slots.indexOf(linked)] = '';
-  slots[index] = linked;
-  growth.resonance[host] = slots;
-  return { state: withGrowth(state, growth), ok: true };
+  return { state, ok: false, reason: 'unavailable' };
+
 }

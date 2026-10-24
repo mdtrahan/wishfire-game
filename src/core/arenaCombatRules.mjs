@@ -13,7 +13,8 @@ export function actorFootPoint(actor) {
 }
 
 export function actorAttackReach(actor) {
-  return actor?.kind === 'hero' ? 92 : Math.max(isActorRanged(actor) ? 146 : 46, 46 * actorFootprintRadius(actor) / 18);
+  // Hero reach scales with the per-frame attack-range projection (for example Elevate's Reach set).
+  return actor?.kind === 'hero' ? 92 * (Number(actor.attackRangeMultiplier) > 0 ? Number(actor.attackRangeMultiplier) : 1) : Math.max(isActorRanged(actor) ? 146 : 46, 46 * actorFootprintRadius(actor) / 18);
 }
 
 export function isActorRanged(actor) {

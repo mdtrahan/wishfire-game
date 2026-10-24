@@ -16,8 +16,9 @@ import { drawCombatProgressHud } from './renderCombatBossControl.mjs';
 import { drawCombatHealthBar } from './combatHealthBarPresentation.mjs';
 import { drawCombatArenaBackground } from './combatArenaBackground.mjs';
 import { drawActorPuppetFrame } from './actorPuppetPresentation.mjs';
+import { drawHeroWardAura } from './heroWardAura.mjs';
+import { heroWardShare } from '../src/core/heroWard.mjs';
 import { combatEnemiesForPresentation } from './actorPuppetDefeats.mjs';
-import { renderRealtimeSkillGroundVfx } from './realtimeSkillGroundPresentation.mjs';
 import { resolveCombatCameraCenterX } from '../src/core/combatCamera.mjs';
 import { createEnemyActivationFade, paintWithActivationAlpha } from './enemyActivationFadePresentation.mjs';
 import { isActorTargetInRange } from '../../src/core/heroAttackTargetingRules.mjs';
@@ -137,7 +138,7 @@ effectiveBody = effectiveBody
   .replace('const point = worldToCanvas(line.value, 0);\n        ctx.fillText(String(line.value)', 'const point = projectCombatActorWorldToCanvas(line.value, 0);\n        if (point.x < topLeft.x || point.x > bottomRight.x) return;\n        ctx.fillText(String(line.value)')
   .replace('const point = worldToCanvas(0, line.value);\n        ctx.fillText(String(line.value)', 'const point = projectCombatActorWorldToCanvas(0, line.value);\n        ctx.fillText(String(line.value)')
   .replace('renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layoutScale });', 'renderCombatAttackVfx(ctx, { state, images, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: combatWorldVfxScale, viewportLeft: layoutOffsetX, viewportRight: layoutOffsetX + layoutW * layoutScale });')
-  .replace('renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale });', 'renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: combatWorldVfxScale });')
+  .replace('renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale });', '')
   .replaceAll('const enemyH = (g.EnemySize || 40) * layoutScale;', 'const enemyH = (g.EnemySize || 40) * layoutScale * COMBAT_BATTLEFIELD_ZOOM;')
   .replaceAll('const drawY = pos.y - enemyH / 2;', "const drawY = pos.y - (enemy.combatRank === 'boss' ? enemyH : enemyH / 2);")
   .replaceAll('const scaledW = w * heroScale * 1.55;', 'const scaledW = w * heroScale * 1.55 * COMBAT_BATTLEFIELD_ZOOM;')
@@ -150,7 +151,7 @@ effectiveBody = effectiveBody.replace(
 removeBetween('    const beginIconPresentation = (target, key) => {', '    const rouletteTargetFrame');
 effectiveBody = effectiveBody.replace(
   '    // Render enemies (use Enemy_Sprite animations)',
-  '    const actorPaintQueue = [];\n    const actorFrontOverlayQueue = [];\n    const addActorPaint = (uid, paint) => { const actor = actorPaintQueue.find(entry => Number(entry.uid || 0) === Number(uid || 0)); if (!actor) return; const drawActor = actor.paint; actor.paint = () => { drawActor(); paint(); }; };\n\n    // Render enemies (use Enemy_Sprite animations)',
+  '    const actorPaintQueue = [];\n    const actorFrontOverlayQueue = [];\n    const heroAuraQueue = [];\n    const addActorPaint = (uid, paint) => { const actor = actorPaintQueue.find(entry => Number(entry.uid || 0) === Number(uid || 0)); if (!actor) return; const drawActor = actor.paint; actor.paint = () => { drawActor(); paint(); }; };\n\n    // Render enemies (use Enemy_Sprite animations)',
 );
 replaceBetween(
   '        if (sprite) {',
@@ -213,13 +214,21 @@ effectiveBody = replaceRequired(
   '        const barY = Math.round(enemyFootY + (4 * layoutScale));',
   'enemy bar position',
 );
-replaceBetween(
-  '          const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0), activeCombatOrientation);',
-  '\n          if (hero && wardBarrierImage) {',
-  body => `          const heroSpriteFadeAlpha = getEnemyActivationFadeAlpha(hero, Number(g.time || 0));\n          const paintHeroActor = () => paintWithActivationAlpha(ctx, heroSpriteFadeAlpha, () => { ${body}\n          });\n          actorPaintQueue.push({ footY: Number(footY), uid: Number(hero?.uid || 0), paint: paintHeroActor });\n`,
-);
+// Crimson Ward auras paint as one layer under every actor, so the aura of a front hero never hides the
+// heroes behind it; the old offset shield bitmap is retired.
+effectiveBody = effectiveBody.replace('    for (const entry of actorPaintQueue) entry.paint();', '    for (const paint of heroAuraQueue) paint();\n    for (const entry of actorPaintQueue) entry.paint();');
 replaceBetween(
   '          if (hero && wardBarrierImage) {',
+  '\n\n          const ampShowsBadge',
+  () => '          if (hero) { // hero front overlay\n          }',
+);
+replaceBetween(
+  '          const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0), activeCombatOrientation);',
+  '\n          if (hero) { // hero front overlay',
+  body => `          if (hero) { const auraPuppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0), activeCombatOrientation); if (auraPuppet) heroAuraQueue.push(() => drawHeroWardAura(ctx, { globals: g, uid: hero.uid, puppet: auraPuppet, footX: pos.x, footY, height: scaledH })); }\n          const heroSpriteFadeAlpha = getEnemyActivationFadeAlpha(hero, Number(g.time || 0));\n          const paintHeroActor = () => paintWithActivationAlpha(ctx, heroSpriteFadeAlpha, () => { ${body}\n          });\n          actorPaintQueue.push({ footY: Number(footY), uid: Number(hero?.uid || 0), paint: paintHeroActor });\n`,
+);
+replaceBetween(
+  '          if (hero) { // hero front overlay',
   '\n\n        }\n        presentationPatches.HeroPortraitPosByIndex',
   body => `          const heroOverlayFadeAlpha = getEnemyActivationFadeAlpha(hero, Number(g.time || 0));\n          const paintHeroFrontOverlay = () => paintWithActivationAlpha(ctx, heroOverlayFadeAlpha, () => { ${body.replace('continue;', 'return;')}\n          });\n          actorFrontOverlayQueue.push(paintHeroFrontOverlay);`,
 );
@@ -234,7 +243,6 @@ effectiveBody = replaceRequired(
   'hero amp badge condition',
 );
 removeBlock('if (ampShowsBadge) {');
-effectiveBody = effectiveBody.replace('    actorPaintQueue.sort(', '    renderRealtimeSkillGroundVfx(ctx, { state, worldToCanvas: projectCombatActorWorldToCanvas, layoutScale: combatWorldVfxScale });\n    actorPaintQueue.sort(');
   return effectiveBody;
 }
 
@@ -261,8 +269,9 @@ export function renderRuntime(deps) {
   deps.drawCombatProgressHud = drawCombatProgressHud;
   deps.drawCombatHealthBar = drawCombatHealthBar;
   deps.drawActorPuppetFrame = drawActorPuppetFrame;
+  deps.drawHeroWardAura = drawHeroWardAura;
+  deps.heroWardShare = heroWardShare;
   deps.combatEnemiesForPresentation = combatEnemiesForPresentation;
-  deps.renderRealtimeSkillGroundVfx = renderRealtimeSkillGroundVfx;
   deps.getEnemyActivationFadeAlpha = enemyActivationFadeAlpha;
   deps.paintWithActivationAlpha = paintWithActivationAlpha;
   deps.isActorTargetInRange = isActorTargetInRange;
@@ -455,7 +464,7 @@ export function renderRuntime(deps) {
       const barX = Math.round(pos.x - baseW / 2);
       const barY = Math.round(footPos.y + 4 * layoutScale);
       const heroBarFadeAlpha = getEnemyActivationFadeAlpha(hero, Number(state.globals.time || 0));
-      addActorPaint(uid, () => paintWithActivationAlpha(ctx, heroBarFadeAlpha, () => drawCombatHealthBar(ctx, { x: barX, y: barY, width: baseW, height: baseH, fillWidth: barState.fillW, trailWidth: barState.yellowW, team: 'hero' })));
+      addActorPaint(uid, () => paintWithActivationAlpha(ctx, heroBarFadeAlpha, () => drawCombatHealthBar(ctx, { x: barX, y: barY, width: baseW, height: baseH, fillWidth: barState.fillW, trailWidth: barState.yellowW, wardWidth: baseW * heroWardShare(state.globals, uid), team: 'hero' })));
     }
 
     actorPaintQueue.sort((a, b) => Number(a.footY || 0) - Number(b.footY || 0) || Number(a.uid || 0) - Number(b.uid || 0));

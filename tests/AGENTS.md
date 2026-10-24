@@ -1,4 +1,5 @@
 # Tests DOX
+- `heroCooldownStrip.test.mjs` covers deployed identity, unlocked active readiness and immutable combat-time projection. `heroCooldownStripBrowser.test.mjs` locks eight centered slots, quest inset, equipment separation, pause/resume shading and cache access at reference, compact, narrow and natural-size viewports; clock fixtures stay separate from normal-combat screenshots.
 - `combatArenaBackground.test.mjs` covers chapter 1–4 asset availability, chapter 5+ grid retention, undecoded-image fallback and camera orientation without changing vertical framing.
 - `balanceTelemetryContract.test.mjs` protects opt-in capture, bounded event retention and pre-hit range geometry and enemy-tier attribution; `balanceHarnessEntryContract.test.js` protects exact-event use alongside sampled HP, including bounded impact samples and per-tier totals, ordered first-hero casualty aggregation, labeled post-recovery gear/stat samples, fail-closed uninterrupted ordinary acceptance and CSV output.
 - `balanceHarnessEntryContract.test.js` also keeps the synthetic ordinary-KO probe opt-in and routed through production damage; integrated proof still requires recovery events and a later wave clear.
@@ -231,3 +232,5 @@
 - lampAutoEquipGameplay runs the full game in isolated contexts through cache/item controls, Auto receipts, Hero screens and reload. Its red-promise test fails on main 5d7910f9 after an actual Auto click. Fixed golden gains and a separate stat-projection oracle check allocation; lampRoster covers all 120 five-record orders and atomic guards. Both browser files run in test:lamp-ui.
 
 - Auto gameplay proof asserts every pending, discarded and held leftover is nonpositive for every canonical owner. Negative controls must demonstrate failure for a positive item in each queue. The commit guard runs this browser file and lampRoster for CP/equipment/roster changes even when presentation files are untouched.
+
+- Hero party-layout proof preserves the Formation modal and Star Up while enumerating the accepted four-skill kit plus Basic; Resonances remain display-only.
