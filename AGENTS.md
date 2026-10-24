@@ -83,6 +83,15 @@ Support ├── `agents/` (retired)
 - Use `governance/execution/validation.md` for focused proof and `governance/execution/integration.md` for merge readiness.
 - Lamp presentation owners run `test:lamp-ui` through the commit hook; four-phone checks enforce helper and overlay containment. CP, equipment, roster and proof-owner changes also trigger the real gameplay/roster suite when presentation is unchanged.
 
+## Investigation and experiments
+
+Before debugging, tuning or running an experiment, state in no more than three plain-language sentences:
+- What you expect and why, separating verified facts from assumptions.
+- The smallest comparison that can test it, including the key measurement.
+- What result would change your mind.
+
+Describe expected behavior, not a list of tools or activities. Skip this brief for routine, well-specified edits. Proceed unless approval is required or the user requested a pause. If evidence changes the hypothesis or requires broader scope, explain before expanding. Conclude with what happened versus what you predicted, and the smallest justified next step. Inconclusive is a valid result.
+
 ## Escalation
 - Follow the Escalation section in `governance/execution/implementation-gate.md`.
 - Do not write outside the repo without approval.
