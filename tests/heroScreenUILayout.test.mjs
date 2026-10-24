@@ -271,6 +271,7 @@ test('hero redesign uses saved canonical data and stays contained across portrai
      assert.doesNotMatch(await detailPanel.textContent(),/When:|Always on while/,'ordinary triggers are omitted');
      const metrics=detailPanel.locator('.skill-metrics');
      if(ability.slot==='special')assert.equal(await metrics.getAttribute('aria-label'),`Range: ${expectedSkillRange(ability,hero)} · Cooldown: ${ability.cooldownSeconds}s${ability.provisionalCooldown?' (provisional)':''}`,'icon metadata preserves range, cooldown and tuning status');
+     if(ability.scaffold||copy.rules?.length){const edge=await detailPanel.locator('.skill-rules').evaluate(rules=>({gap:rules.closest('.pane').getBoundingClientRect().right-rules.getBoundingClientRect().right,bar:getComputedStyle(rules).scrollbarWidth}));assert.ok(Math.abs(edge.gap-5)<.75,'rules use the pane width to within 5px of its right edge');assert.equal(edge.bar,'none','rules scroll without a visible scrollbar');}
      const geometry=await detailPanel.evaluate(frame=>{const body=frame.querySelector('.skill-body'),main=frame.querySelector('.skill-main'),reading=frame.querySelector('.skill-rules')||main,pane=frame.parentElement,header=frame.querySelector('.skill-heading').getBoundingClientRect(),effect=main.getBoundingClientRect(),css=getComputedStyle(frame);return{height:frame.getBoundingClientRect().height,bodyHeight:reading.clientHeight,overflow:frame.scrollWidth>frame.clientWidth||reading.scrollWidth>reading.clientWidth,paneScroll:pane.scrollHeight>pane.clientHeight+1,top:reading.scrollTop,fixed:[header.top,header.bottom,effect.top,effect.bottom],mainVisible:effect.bottom<=body.getBoundingClientRect().bottom+1,border:css.borderTopWidth,radius:css.borderRadius,background:css.backgroundImage};});
      assert.equal(geometry.overflow,false,'skill frame and text have no horizontal overflow');
      assert.equal(geometry.paneScroll,false,'selected skill never extends the outer pane');
@@ -294,11 +295,13 @@ test('hero redesign uses saved canonical data and stays contained across portrai
       await rules.evaluate(region=>region.addEventListener('wheel',event=>region.dataset.wheelProbe=JSON.stringify({trusted:event.isTrusted,prevented:event.defaultPrevented}),{once:true,passive:true}));
       await page.mouse.move(x,y);await page.mouse.wheel(0,80);
       await page.waitForFunction(()=>document.querySelector('.skill-rules').scrollTop>0,{},{timeout:2000}).catch(async()=>{throw Error('Native wheel proof: '+JSON.stringify(await rules.evaluate((region,{x,y})=>({top:region.scrollTop,height:region.clientHeight,scrollHeight:region.scrollHeight,wheel:region.dataset.wheelProbe,hit:document.elementFromPoint(x,y)?.outerHTML.slice(0,160),rect:region.getBoundingClientRect().toJSON(),pane:region.closest('.pane').getBoundingClientRect().toJSON()}),{x,y})));});
+      assert.equal(await rules.evaluate(region=>JSON.parse(region.dataset.wheelProbe).trusted),true,'wheel proof uses a real browser input event');
       await rules.evaluate(region=>region.scrollTop=0);
       await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x,y-60,{steps:8});await page.mouse.up();
       assert.ok(await rules.evaluate(region=>region.scrollTop)>0,'dragging the rules text scrolls without a scrollbar');
       await rules.evaluate(region=>region.scrollTop=0);await rules.focus();await page.keyboard.press('End');
-      await page.waitForFunction(()=>document.querySelector('.skill-rules').scrollTop>0,{},{timeout:2000});
+      await page.waitForFunction(()=>{const r=document.querySelector('.skill-rules');return r.scrollTop>=r.scrollHeight-r.clientHeight-1;},{},{timeout:2000});
+      assert.deepEqual(await rules.evaluate(region=>{const s=getComputedStyle(region);return {outline:s.outlineStyle,left:s.borderLeftWidth,right:s.borderRightWidth,bottom:s.borderBottomWidth,background:s.backgroundColor};}),{outline:'none',left:'0px',right:'0px',bottom:'0px',background:'rgba(0, 0, 0, 0)'},'focused rules remain open text without a rectangular frame');
       if(profile.dpr===2){
        await rules.evaluate(region=>region.scrollTop=0);
        const cdp=await context.newCDPSession(page);await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1});

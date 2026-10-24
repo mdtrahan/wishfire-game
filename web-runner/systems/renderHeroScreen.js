@@ -70,8 +70,8 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .skill-pages button:disabled{opacity:.45;cursor:default}
    #hero-details .skill-meta{font-weight:650;color:#374b67}
    #hero-details[data-tab=skills] .pane{display:flex;flex-direction:column;gap:.5em;overflow:hidden;color:#372d20}
-   #hero-details article.skill-frame{position:relative;display:flex;flex-direction:column;flex:0 1 auto;min-height:0;max-height:100%;overflow:hidden;padding:0;border:0;border-radius:0;background:none;font-size:min(calc(14px * var(--hero-scale)),16px)}
-   #hero-details .skill-heading{display:flex;align-items:center;gap:.5em;padding:0;flex:none}
+   #hero-details article.skill-frame{--rules-bleed:max(0px,calc(14px * var(--hero-scale) - 5px));position:relative;display:flex;flex-direction:column;flex:0 1 auto;min-height:0;max-height:100%;overflow:hidden;padding:0;margin-right:calc(-1 * var(--rules-bleed));border:0;border-radius:0;background:none;font-size:min(calc(14px * var(--hero-scale)),16px)}
+   #hero-details .skill-heading{display:flex;align-items:center;gap:.5em;padding:0 var(--rules-bleed) 0 0;flex:none}
    #hero-details .skill-heading>.skill-icon{flex:none;width:2em;height:2em}
    #hero-details .skill-heading .skill-slot{font-size:.75em;color:#786348}
    #hero-details .skill-heading h2{font-size:1.1em;color:#372d20;line-height:1.2}
@@ -80,11 +80,12 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .skill-metrics svg{width:1.1em;height:1.1em;fill:none;stroke:currentColor;stroke-width:1.7}
    #hero-details .skill-metric-label{position:absolute;z-index:1;top:2.8em;right:0;max-width:100%;margin:0;padding:.4em .7em;font-size:.75em;color:#59482e;background:#f1e0bb}
    #hero-details .skill-body{display:flex;flex-direction:column;flex:0 1 auto;min-height:0;overflow:hidden;line-height:1.35}
-   #hero-details .skill-main{flex:none;padding:.45em 0}
+   #hero-details .skill-main{flex:none;padding:.45em var(--rules-bleed) .45em 0}
    #hero-details .skill-body .skill-effect{margin:0 0 .35em}
    #hero-details .skill-body .skill-effect:last-child{margin-bottom:0}
-   #hero-details .skill-rules{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#bda36d #f4e6c8;border-top:1px solid #ab9367;padding:.5em 0 .2em;font-size:.875em;color:#5a4a33}
-   #hero-details .skill-rules:focus-visible{outline:2px solid #8d672a;outline-offset:-3px}
+   #hero-details .skill-rules{flex:0 1 auto;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;touch-action:none;user-select:none;cursor:grab;border-top:1px solid #ab9367;padding:.5em 0 .2em;font-size:.875em;color:#5a4a33}
+   #hero-details .skill-rules::-webkit-scrollbar{display:none}
+   #hero-details .skill-rules:focus-visible{outline:none;border-top-color:#6d4c17}
    #hero-details .skill-rules p:first-child{margin-top:0}
    #hero-details .skill-rules p:last-child{margin-bottom:0}
    #hero-details .hero-tickets{display:flex;align-items:center;gap:.5em;margin:.5em 0;padding:.45em;border:1px solid #b99c66;border-radius:.5em;background:#fff9eb}
@@ -167,7 +168,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    const main=el('div',null,body);main.className='skill-main';
    const copy=heroSkillCopy(ability);
    for(const line of copy.lines){const effect=el('p',null,main);effect.className='skill-effect';for(const part of line.split(/(\d+(?:\.\d+)?(?:%|s|\+)?)/g)){if(/^\d/.test(part))el('strong',part,effect);else effect.append(document.createTextNode(part));}}
-   if(ability.scaffold||copy.rules?.length){const rules=el('div',null,body);rules.className='skill-rules';rules.tabIndex=0;rules.setAttribute('role','region');rules.setAttribute('aria-label',`${ability.displayName} additional rules`);if(ability.scaffold)el('p','Late-game resonance · Not yet available',rules);for(const rule of copy.rules||[])el('p',rule,rules);}
+   if(ability.scaffold||copy.rules?.length){const rules=el('div',null,body);rules.className='skill-rules';rules.tabIndex=0;rules.setAttribute('role','region');rules.setAttribute('aria-label',`${ability.displayName} additional rules`);if(ability.scaffold)el('p','Late-game resonance · Not yet available',rules);for(const rule of copy.rules||[])el('p',rule,rules);attachSkillRuleScrolling(rules);}
   }
   content.append(power,tabs,pane);
   if(revealSkill&&currentTab==='skills'){revealSkill=false;const card=content.querySelector('.skill-card[data-slot=special]');card?.focus({preventScroll:true});pane.querySelector('article[data-slot=special]')?.scrollIntoView({block:'nearest'});}
@@ -181,4 +182,22 @@ function heroSkillRange(ability,hero){
  if(kind==='party')return 'Whole party';
  if(kind==='inRangeEnemies')return `Every foe within ${reach} units`;
  return `${reach}-unit actor reach`;
+}
+
+function attachSkillRuleScrolling(rules){
+ let drag;
+ rules.addEventListener('wheel',event=>{
+  if(event.ctrlKey||!event.deltaY||rules.scrollHeight<=rules.clientHeight)return;
+  event.preventDefault();
+  const unit=event.deltaMode===1?parseFloat(getComputedStyle(rules).lineHeight):event.deltaMode===2?rules.clientHeight:1;
+  rules.scrollTop+=event.deltaY*unit;
+ },{passive:false});
+ rules.onpointerdown=event=>{
+  if(!event.isPrimary||event.button!==0||rules.scrollHeight<=rules.clientHeight)return;
+  event.preventDefault();rules.focus({preventScroll:true});
+  drag={id:event.pointerId,y:event.clientY,top:rules.scrollTop};
+  rules.setPointerCapture(event.pointerId);rules.style.cursor='grabbing';
+ };
+ rules.onpointermove=event=>{if(drag?.id===event.pointerId){event.preventDefault();rules.scrollTop=drag.top+drag.y-event.clientY;}};
+ rules.onpointerup=rules.onpointercancel=rules.onlostpointercapture=()=>{drag=null;rules.style.cursor='';};
 }
