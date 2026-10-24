@@ -17,3 +17,8 @@ test('Crimson Ward aura fades in, flares on an absorbed hit, peels for 0.3 s on 
   g.time = 10.44; assert.ok(Math.abs(heroWardAuraState(g, 7).u - .5) < 1e-9);
   g.time = 10.6; assert.equal(heroWardAuraState(g, 7), null, 'nothing lingers after the break');
 });
+
+test('the GPU aura reports unavailable without a DOM so the 2D fallback draws instead', async () => {
+  const { drawHeroWardShader } = await import('../web-runner/systems/heroWardShader.mjs');
+  assert.equal(drawHeroWardShader({ drawImage() { throw new Error('must not draw'); } }, { frame: {}, rect: { drawX: 0, drawY: 0, width: 10, height: 10 }, k: 1, pad: 4, time: 0 }), false);
+});

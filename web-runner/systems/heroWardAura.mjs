@@ -1,27 +1,39 @@
-// Crimson Ward presentation: restrained crimson energy hugging each warded hero's own silhouette,
-// drawn behind the sprite from the current puppet frame. Pure presentation: it reads the hero's
+// Crimson Ward presentation: glowing crimson energy rising off each warded hero's own silhouette,
+// drawn behind the sprite from the current puppet frame. The WebGL shader (heroWardShader) is the
+// production look; the 2D layers below are the fallback when WebGL is unavailable. Glow is a cheap bloom: silhouettes are
+// blurred by down/up-sampling. Everything is normal-alpha: additive light turns red to salmon on
+// bright sand, so the glow reads from a deep crimson falloff around a hot orange-red core. Pure presentation: it reads the hero's
 // ward and timestamps and never changes them. Rim masks are cached per frame image and size in a
 // small LRU so memory stays bounded on phones.
 import { actorPuppetFrameRect } from './actorPuppetPresentation.mjs';
 import { runtimeAssetUrl } from './runtimeAssetUrl.mjs';
+import { drawHeroWardShader } from './heroWardShader.mjs';
 
-const FADE_IN = .12, HIT = .15, BREAK = .3, PAD = 7;
-const CRIMSON = '#BE122E', HOT = '#EE253E', FLASH = '#FFE6BC', EMBER = 'rgba(255,123,80,';
+const FADE_IN = .12, HIT = .15, BREAK = .3, PAD = 14;
+const CRIMSON = '#B4001F', HOT = '#FF4A2E', FLASH = '#FFD9A8';
 const TILE_PATH = 'images/vfx_crimson_energy_tile.png';
 const MASK_CACHE_LIMIT = 64, masks = new Map(), scratch = new Map();
-let tile = null;
+let tile = null, flameMask = null;
 
-function energyTile() {
-  if (tile || typeof Image === 'undefined') return tile?.complete && tile.naturalWidth ? tile : null;
-  tile = new Image();
-  tile.src = runtimeAssetUrl(TILE_PATH);
-  return null;
+// High-contrast flame mask from the authored energy tile (alpha pushed through a steep curve).
+function energyMask() {
+  if (flameMask) return flameMask;
+  if (!tile && typeof Image !== 'undefined') { tile = new Image(); tile.src = runtimeAssetUrl(TILE_PATH); }
+  if (!tile?.complete || !tile.naturalWidth) return null;
+  const c = canvas(tile.naturalWidth, tile.naturalHeight), x = c.getContext('2d');
+  x.drawImage(tile, 0, 0);
+  const image = x.getImageData(0, 0, c.width, c.height), d = image.data;
+  for (let i = 3; i < d.length; i += 4) { const v = Math.min(1, Math.max(0, (d[i] / 255 - .42) / .3)); d[i] = Math.round(255 * v * v * (3 - 2 * v)); }
+  x.putImageData(image, 0, 0);
+  return (flameMask = c);
 }
 
 const canvas = (w, h) => {
+  w = Math.max(1, Math.ceil(w)); h = Math.max(1, Math.ceil(h));
   if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h);
   const c = document.createElement('canvas'); c.width = w; c.height = h; return c;
 };
+const smooth = x => { x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; return x; };
 
 // Solid silhouette of the frame, tinted, at device resolution.
 function tinted(frame, w, h, pad, color) {
@@ -30,42 +42,63 @@ function tinted(frame, w, h, pad, color) {
   x.globalCompositeOperation = 'source-in'; x.fillStyle = color; x.fillRect(0, 0, c.width, c.height);
   return c;
 }
-// Ring dilation: stamp the silhouette around a circle; alpha per ring gives a soft falloff.
-function dilate(src, rings) {
+// Cheap blur: halve repeatedly, then scale back up with smoothing (approximates a Gaussian).
+function blur(src, radius) {
+  let level = src;
+  for (let size = 1; size * 4 <= radius; size *= 2) {
+    const next = canvas(level.width / 2, level.height / 2);
+    smooth(next.getContext('2d')).drawImage(level, 0, 0, next.width, next.height);
+    level = next;
+  }
+  const out = canvas(src.width, src.height);
+  smooth(out.getContext('2d')).drawImage(level, 0, 0, out.width, out.height);
+  return out;
+}
+// Thin ring dilation for the hot edge.
+function dilate(src, radius) {
   const c = canvas(src.width, src.height), x = c.getContext('2d');
-  for (const [radius, alpha] of rings) {
-    x.globalAlpha = alpha;
-    for (let i = 0; i < 12; i += 1) {
-      const a = i * Math.PI / 6;
-      x.drawImage(src, Math.round(Math.cos(a) * radius), Math.round(Math.sin(a) * radius));
-    }
+  for (let i = 0; i < 12; i += 1) {
+    const a = i * Math.PI / 6;
+    x.drawImage(src, Math.round(Math.cos(a) * radius), Math.round(Math.sin(a) * radius));
   }
   return c;
-}
-// Upper-facing contour points where wisps rise (top 65% of the body only).
-function contourTops(src, pad, h, step) {
-  const data = src.getContext('2d').getImageData(0, 0, src.width, src.height).data, tops = [];
-  for (let col = 0; col < src.width; col += step) {
-    for (let row = 0; row < src.height; row += 1) {
-      if (data[(row * src.width + col) * 4 + 3] > 100) { if (row < pad + h * .65) tops.push([col, row]); break; }
-    }
-  }
-  return tops;
 }
 
 function frameMasks(frame, w, h, k) {
   const key = `${w}x${h}`, cached = masks.get(frame);
   if (cached?.key === key) { masks.delete(frame); masks.set(frame, cached); return cached.entry; }
-  const pad = Math.ceil(PAD * k), base = tinted(frame, w, h, pad, CRIMSON), hotBase = tinted(frame, w, h, pad, HOT);
+  const pad = Math.ceil(PAD * k), base = tinted(frame, w, h, pad, CRIMSON), hot = tinted(frame, w, h, pad, HOT);
   const entry = {
-    pad,
-    glow: dilate(base, [[4 * k / 3, .16], [3 * k / 3, .24], [2 * k / 3, .34]]),
-    hot: dilate(hotBase, [[k / 3, .9]]),
-    tops: contourTops(base, pad, h, Math.max(2, Math.round(2.3 * k))),
+    pad, base,
+    halo: blur(dilate(base, 2 * k), 5 * k),               // soft crimson falloff
+    inner: blur(dilate(base, 1.5 * k), 2 * k),             // dense crimson glow at the body
+    bloom: blur(dilate(hot, k), 2 * k),                    // hot orange-red core light
+    rim: blur(dilate(hot, Math.max(1, .5 * k)), k),        // soft bright contour, never a hard line
   };
   masks.delete(frame); masks.set(frame, { key, entry });
   if (masks.size > MASK_CACHE_LIMIT) masks.delete(masks.keys().next().value);
   return entry;
+}
+
+// Flame tongues: the silhouette smeared upward at low resolution, cut by the scrolling energy
+// texture, then upscaled so the tongues come out soft and glowing.
+function flames(uid, m, k, t, rise, strength) {
+  const q = 4, wq = Math.ceil(m.base.width / q), hq = Math.ceil(m.base.height / q);
+  let small = scratch.get(uid);
+  if (small?.width !== wq || small?.height !== hq) { small = canvas(wq, hq); scratch.set(uid, small); }
+  const x = smooth(small.getContext('2d'));
+  x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = 'source-over'; x.clearRect(0, 0, wq, hq);
+  for (let i = 1; i <= 10; i += 1) {
+    x.globalAlpha = Math.min(1, strength * (1.15 - i / 11));
+    x.drawImage(m.base, 0, -(i * rise * k) / q, small.width, small.height);
+  }
+  const mask = energyMask();
+  if (mask) {
+    x.globalAlpha = 1; x.globalCompositeOperation = 'destination-in';
+    const size = 40 * k / q, offset = ((t * 30 * k / q) % size + size) % size, sway = Math.sin(t * 1.7) * size * .2;
+    for (let ty = -offset - size; ty < small.height; ty += size) for (let tx = -size + sway; tx < small.width + size; tx += size) x.drawImage(mask, tx, ty, size, size);
+  }
+  return small;
 }
 
 // 0..1 ward visibility and state for this hero right now.
@@ -88,66 +121,34 @@ export function drawHeroWardAura(ctx, { globals, uid, puppet, footX, footY, heig
   if (!rect) return false;
   const k = Math.max(1, Math.abs(ctx.getTransform?.().a || 1));
   const w = Math.max(1, Math.round(rect.width * k)), h = Math.max(1, Math.round(rect.height * k));
+  const live = state.phase === 'live', u = live ? 0 : state.u;
+  if (drawHeroWardShader(ctx, { frame: puppet.frame, rect, k, pad: Math.ceil(PAD * k), time: state.now, hit: live ? state.hit : 0, breakU: u, alpha: live ? state.alpha : 1 })) return true;
   const m = frameMasks(puppet.frame, w, h, k), t = state.now;
-  const out = scratch.get(uid)?.width === w + 2 * m.pad && scratch.get(uid)?.height === h + 2 * m.pad
-    ? scratch.get(uid) : canvas(w + 2 * m.pad, h + 2 * m.pad);
-  scratch.set(uid, out);
-  const x = out.getContext('2d');
-  x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
-  x.clearRect(0, 0, out.width, out.height);
-
-  if (state.phase === 'live') {
-    const breathe = .72 + .2 * Math.sin(t * 7), boost = 1 + state.hit * 2.2;
-    x.globalAlpha = Math.min(1, breathe * boost); x.drawImage(m.glow, 0, 0);
-    // Energy texture drifts upward through the glow, so the rim reads as rising energy.
-    const image = energyTile();
-    if (image) {
-      x.globalCompositeOperation = 'source-atop'; x.globalAlpha = .55;
-      const size = 128 * k / 3, offset = ((t * 40 * k / 3) % size + size) % size;
-      for (let ty = -offset; ty < out.height; ty += size) for (let tx = 0; tx < out.width; tx += size) x.drawImage(image, tx, ty, size, size);
-      x.globalCompositeOperation = 'source-over';
-    }
-    x.globalAlpha = Math.min(1, (.55 + .25 * Math.sin(t * 9)) * boost); x.drawImage(m.hot, 0, 0);
-    // Slender curved wisps lift off the upper contour and flicker.
-    m.tops.forEach(([cx, cy], j) => {
-      const phase = (t * 2.5 + j * .317) % 1, flicker = .3 + .7 * Math.max(0, Math.sin(t * 9 + j * 2));
-      const length = (2 + 2.7 * (.5 + .5 * Math.sin(t * 11 + j * 2.8))) * k * (.65 + .35 * Math.sin(Math.PI * phase));
-      const drift = Math.sin(t * 8 + j) * .6 * k, half = .45 * k;
-      x.globalAlpha = (.37 + .43 * Math.sin(Math.PI * phase)) * flicker;
-      x.fillStyle = CRIMSON; x.beginPath();
-      // Rounded, curling tip so wisps read as energy rather than spikes.
-      const tipX = cx + drift, tipY = cy - length, tip = half * .55;
-      x.moveTo(cx - half, cy + k / 3);
-      x.quadraticCurveTo(cx - half * .9 + drift * .3, cy - length * .5, tipX - tip, tipY + tip);
-      x.arc(tipX, tipY + tip, tip, Math.PI, 0);
-      x.quadraticCurveTo(cx + half * .9 + drift * .3, cy - length * .5, cx + half, cy + k / 3);
-      x.closePath(); x.fill();
-    });
-    if (state.hit > 0) {
-      x.globalAlpha = state.hit; x.fillStyle = 'rgba(255,206,142,1)';
-      for (let i = 0; i < 3; i += 1) {
-        const px = out.width * (.78 + i * .05), py = out.height * (.35 + i * .1) - (1 - state.hit) * 3 * k, r = (.35 + .3 * state.hit) * k;
-        x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fill();
-      }
-    }
-  } else {
-    const u = state.u;
-    if (u < .11) {
-      x.drawImage(m.hot, 0, 0);
-      x.globalCompositeOperation = 'source-in'; x.fillStyle = FLASH; x.fillRect(0, 0, out.width, out.height);
-    } else {
-      // The rim peels upward and dissolves, shedding a few embers.
-      x.globalAlpha = Math.pow(1 - u, .8); x.drawImage(m.glow, 0, -u * 6.3 * k);
-      m.tops.slice(0, 5).forEach(([cx, cy], i) => {
-        const r = Math.max(.05, (1 - u) * .27) * k;
-        x.globalAlpha = .75 * (1 - u); x.fillStyle = `${EMBER}1)`;
-        x.beginPath(); x.ellipse(cx + Math.sin(i + t * 4) * .7 * k, cy - u * (3.3 + i / 3) * k, r, r * 2, 0, 0, Math.PI * 2); x.fill();
-      });
-    }
-  }
+  const boost = live ? 1 + state.hit * 1.5 : 0, breathe = .85 + .15 * Math.sin(t * 6);
+  const fade = live ? state.alpha : Math.pow(1 - u, .7);
+  const at = (layer, dy = 0) => ctx.drawImage(layer, rect.drawX - m.pad / k, rect.drawY - m.pad / k + dy, layer.width / k, layer.height / k);
   ctx.save();
-  ctx.globalAlpha *= state.phase === 'live' ? state.alpha : 1;
-  ctx.drawImage(out, rect.drawX - m.pad / k, rect.drawY - m.pad / k, out.width / k, out.height / k);
+  ctx.imageSmoothingEnabled = true;
+  // 1. Wide crimson falloff, then the rising flame tongues, then a dense crimson glow.
+  ctx.globalAlpha = fade * .6 * breathe;
+  at(m.halo, -u * 4);
+  const fl = flames(uid, m, k, t, live ? 1.4 : 1.4 + u * 3, live ? Math.min(1.5, boost) : 1);
+  ctx.globalAlpha = fade;
+  ctx.drawImage(fl, rect.drawX - m.pad / k, rect.drawY - m.pad / k - u * 4, m.base.width / k, m.base.height / k);
+  ctx.globalAlpha = fade * Math.min(1, .7 * boost);
+  at(m.inner, -u * 4);
+  // 2. Hot core: soft orange-red light and a thin bright contour; both pulse and flare on a hit.
+  ctx.globalAlpha = fade * Math.min(1, (.6 + .2 * Math.sin(t * 9)) * boost);
+  at(m.bloom, -u * 4);
+  ctx.globalAlpha = fade * Math.min(1, (live ? .45 : .9) * boost || .9);
+  at(m.rim);
+  if (!live && u < .2) {
+    // Break: one hot flash along the contour before the energy peels away.
+    ctx.globalAlpha = 1 - u / .2;
+    const flash = canvas(m.rim.width, m.rim.height), fx = flash.getContext('2d');
+    fx.drawImage(m.rim, 0, 0); fx.globalCompositeOperation = 'source-in'; fx.fillStyle = FLASH; fx.fillRect(0, 0, flash.width, flash.height);
+    at(flash);
+  }
   ctx.restore();
   return true;
 }
