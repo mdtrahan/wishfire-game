@@ -215,7 +215,7 @@
 
 - Chapter quest-band coverage checks inclusive endpoints, seeded enemy/gear generation, capped late chapters, frozen active targets and 40-count save reloads.
 - Mini-quest presentation coverage hides counters only for chapter-clear/boss milestones; equipment collection and every other objective retain pending/completed single-target and multi-target counters.
-- `bagUpgradePresentation.test.mjs` drives production UI/storage in an isolated component fixture at four phone sizes and the natural desktop size. Guard reference pill colors, cell/close containment, disabled/ready/MAX states, failed-save suppression, capacity-only reward and detached X hit testing. Keep this component evidence separate from full-app native proof.
+- `bagUpgradePresentation.test.mjs` drives production UI/storage in an isolated component fixture at four phone sizes and the natural desktop size. Guard pill colors against shared equipment `RARITIES.color`, cell/close containment, disabled/ready/MAX states, failed-save suppression, capacity-only reward and detached X hit testing. Keep this component evidence separate from full-app native proof.
 
 - Bag component proof locks the sample meter to a straight-ended 17.28px track at reference scale, 43px rotated badge bounds, 18px level labels and 13.2px parenthesized progress text across all five profiles; retain existing palette and save checks.
 
@@ -235,4 +235,4 @@
 
 - `bagCombatProgress.test.mjs` runs the production ticker, KO hook, HeroProgress outbox and equipment saver:61 active seconds produce4 points, ordinary kills0 and boss5, pause/background/menu guards freeze accrual, reload resumes indices without replay, failed saves retain awards and MAX emits no ticks. Partial seconds carry across continuous battle changes and may reset on reload.
 
-- Compact Bag count tests lock threshold boundaries, downward rounding, invalid inputs and exact near-threshold readiness. Five-profile Bag component proof renders4,770,374 /4,770,375 at level99, requiring one contained line and a disabled upgrade, including216x384. Measure painted glyph bounds plus stroke using a DOM baseline probe and Canvas text metrics; unused font leading is not painted overflow. Allow the existing 0.5 CSS-pixel geometry tolerance for Canvas/CSS raster metric rounding.
+- Compact Bag count tests lock K starting at1,000, the `(111/8.4K)` level-bar case, threshold boundaries, downward rounding, invalid inputs and exact near-threshold readiness. Five-profile Bag component proof renders4,770,374 /4,770,375 at level99, requiring one contained line and a disabled upgrade, including216x384. Measure painted glyph bounds plus stroke using a DOM baseline probe and Canvas text metrics; unused font leading is not painted overflow. Allow the existing 0.5 CSS-pixel geometry tolerance for Canvas/CSS raster metric rounding.

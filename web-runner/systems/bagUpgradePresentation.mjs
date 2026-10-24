@@ -4,8 +4,7 @@ import {RARITIES} from '../src/core/equipment.mjs';
 import {runtimeAssetUrl} from './runtimeAssetUrl.mjs';
 import {formatCompactCount} from '../src/core/formatCompactCount.mjs';
 
-// Owner PNG's embedded Display profile converted to CSS sRGB; equipment frames keep their own palette.
-export const BAG_UPGRADE_PILLS=Object.freeze({common:'#666666',uncommon:'#018a54',rare:'#1c8fa9',epic:'#d7673d',legendary:'#b83241'});
+export const BAG_UPGRADE_PILLS=Object.freeze(Object.fromEntries(Object.entries(RARITIES).map(([key,rarity])=>[key,rarity.color])));
 const rate=n=>(Math.ceil(n*10)/10).toFixed(1)+'%';
 const exact=n=>new Intl.NumberFormat('en').format(n);
 export const renderBagModalClose=()=>'<button class="game-modal-close bag-modal-close" data-action="close" aria-label="Close bag modal">'+MODAL_CLOSE_MARK+'</button>';

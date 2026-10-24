@@ -1,6 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
+import {RARITIES} from '../web-runner/src/core/equipment.mjs';
+const rarityColors=Object.values(RARITIES).map(({color})=>'rgb('+color.slice(1).match(/../g).map(v=>parseInt(v,16)).join(', ')+')');
 import {createRequire} from 'node:module';
 import {spawn} from 'node:child_process';
 import {createServer} from 'node:net';
@@ -174,7 +176,7 @@ test('continuous equipment lifecycle: four phones, full-cache pause, concurrent 
    await upgradeWithoutScroll(page);
    const upgradeLayout={...await containment(page),noScroll:await upgradeWithoutScroll(page)};
    const pills=await dialog.locator('.lamp-odds tbody tr').evaluateAll(rows=>rows.map(row=>({name:row.querySelector('th').textContent,color:getComputedStyle(row).backgroundColor})));
-   assert.deepEqual(pills.map(p=>p.name),['Common','Uncommon','Rare','Epic','Legendary']);assert.deepEqual(pills.map(p=>p.color),['rgb(102, 102, 102)','rgb(1, 138, 84)','rgb(28, 143, 169)','rgb(215, 103, 61)','rgb(184, 50, 65)']);
+   assert.deepEqual(pills.map(p=>p.name),['Common','Uncommon','Rare','Epic','Legendary']);assert.deepEqual(pills.map(p=>p.color),rarityColors);
    assert.equal(await dialog.locator('.lamp-stage-slots,.lamp-countdown,[data-action=speed-up]').count(),0);
    await page.screenshot({path:`${directory}/${width}-bag-upgrade.png`});
    await dialog.locator('[data-action=upgrade]').click();await page.waitForFunction(()=>document.querySelector('#lamp-dialog').dataset.view==='upgrade-complete');

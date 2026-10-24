@@ -135,4 +135,4 @@
 
 - Bag progress receipts (enemy boss UIDs and combat tick indices) retain the newest `LAMP_CONFIG.killReceiptDomains` (64) battle domains by insertion order. Updating a retained domain never refreshes its age. Validation accepts and trims larger saved domain sets without changing points, Essence or level; the retained window guards the equipment/HeroProgress acknowledgement gap.
 
-- `formatCompactCount` owns Bag count text: exact separated integers below10,000, then floored one-decimal K/M/B with trailing .0 trimmed; negative or invalid inputs display0. Keep readiness and numeric accessibility values exact.
+- `formatCompactCount` owns Bag count text: exact integers below1,000, then floored one-decimal K/M/B with trailing .0 trimmed; negative or invalid inputs display0. Keep readiness and numeric accessibility values exact.

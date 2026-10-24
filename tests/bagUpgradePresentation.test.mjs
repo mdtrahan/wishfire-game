@@ -1,6 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
+import {RARITIES} from '../web-runner/src/core/equipment.mjs';
+const rarityColors=Object.values(RARITIES).map(({color})=>'rgb('+color.slice(1).match(/../g).map(v=>parseInt(v,16)).join(', ')+')');
 import {createRequire} from 'node:module';
 import {spawn} from 'node:child_process';
 import {createServer} from 'node:net';
@@ -38,7 +40,7 @@ test('Bag and Training Ground preserve approved UI, saved upgrades and shared ce
    const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:dpr}),page=await context.newPage(),errors=[];page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
    try{
     const origin=new URL(url).origin;await page.route('**/bag-upgrade-fixture',route=>route.fulfill({contentType:'text/html',body:fixture}));await page.goto(origin+'/bag-upgrade-fixture');await page.waitForFunction(()=>window.fixtureReady);
-    await page.waitForFunction(()=>getComputedStyle(document.querySelector('.lamp-odds tbody tr')).backgroundColor==='rgb(102, 102, 102)');await dialogImageReady();
+    await page.waitForFunction(color=>getComputedStyle(document.querySelector('.lamp-odds tbody tr')).backgroundColor===color,rarityColors[0]);await dialogImageReady();
     async function dialogImageReady(){await page.locator('.bag-tier-emblem img').evaluate(img=>img.decode());}
     const dialog=page.locator('#lamp-dialog');assert.equal(await dialog.locator('[data-action=upgrade]').isEnabled(),false);assert.equal(await dialog.locator('.bag-upgrade-progress').getAttribute('aria-valuenow'),'106');assert.equal(await dialog.locator('.bag-upgrade-progress').getAttribute('aria-valuemax'),'2050');
     assert.equal(await dialog.locator('.bag-upgrade-progress').getAttribute('aria-label'),'Bag progress');
@@ -49,8 +51,8 @@ test('Bag and Training Ground preserve approved UI, saved upgrades and shared ce
     const disabledStyle=await dialog.locator('.bag-level-up').evaluate(n=>{const s=getComputedStyle(n);return{opacity:s.opacity,filter:s.filter,blend:s.mixBlendMode,color:s.color,fill:s.backgroundImage};});assert.deepEqual(disabledStyle,{opacity:'1',filter:'none',blend:'normal',color:'rgb(193, 209, 205)',fill:'linear-gradient(rgb(116, 133, 129), rgb(99, 119, 116))'});
     const emblem=await dialog.locator('.bag-tier-emblem').evaluate(n=>{const a=n.getBoundingClientRect(),b=n.firstElementChild.getBoundingClientRect();return Math.abs(a.x+a.width/2-b.x-b.width/2)+Math.abs(a.y+a.height/2-b.y-b.height/2);});assert.ok(emblem<1,'medallion crop stays centered');
     const progressShape=await dialog.evaluate(d=>{const p=d.querySelector('.bag-upgrade-progress'),b=d.querySelector('.bag-progress-level'),text=p.querySelector('b'),s=getComputedStyle(p),badge=b.getBoundingClientRect(),bar=p.getBoundingClientRect(),label=getComputedStyle(b.querySelector('b')),scale=parseFloat(getComputedStyle(d).getPropertyValue('--bag-scale'))||parseFloat(getComputedStyle(d).fontSize)/16;return{radius:parseFloat(s.borderRadius),height:bar.height/scale,diamond:badge.width/scale,label:parseFloat(label.fontSize)/scale,readout:parseFloat(getComputedStyle(text).fontSize)/scale,stroke:parseFloat(getComputedStyle(text).webkitTextStrokeWidth)/scale};});
-    assert.equal(await dialog.locator('.bag-upgrade-progress').innerText(),'(106/2,050)');
-    await page.evaluate(()=>window.fixtureProgress(1));await page.waitForFunction(()=>document.querySelector('.bag-upgrade-progress').textContent==='(107/2,050)');
+    assert.equal(await dialog.locator('.bag-upgrade-progress').innerText(),'(106/2K)');
+    await page.evaluate(()=>window.fixtureProgress(1));await page.waitForFunction(()=>document.querySelector('.bag-upgrade-progress').textContent==='(107/2K)');
     assert.equal(await dialog.locator('.bag-upgrade-progress').getAttribute('aria-valuenow'),'107');
     assert.equal(progressShape.radius,0,'reference meter has straight ends');assert.ok(Math.abs(progressShape.height-17.28)<.1);assert.ok(progressShape.diamond>=42&&progressShape.diamond<=44,'reference-size flanking diamonds');assert.ok(Math.abs(progressShape.label-18)<1);assert.ok(Math.abs(progressShape.readout-13.2)<1);assert.ok(Math.abs(progressShape.stroke-4)<.1,'2px outer outline, reduced by 1px');
     const arrowRatios=await dialog.locator('.bag-odds-arrow,.bag-level-transition>[aria-hidden]').evaluateAll(nodes=>nodes.map(n=>parseFloat(getComputedStyle(n).fontSize)/parseFloat(getComputedStyle(n.parentElement).fontSize)));assert.equal(arrowRatios.length,6);assert.ok(arrowRatios.every(n=>Math.abs(n-1.2)<.001),'all six Bag arrows are enlarged 20%');
@@ -64,7 +66,7 @@ test('Bag and Training Ground preserve approved UI, saved upgrades and shared ce
     assert.equal(await closePaintCentered(),true,'menu X painted bounds are centered');
     const menu=await inspect();await writeFile(`${directory}/${width}-menu-metrics.json`,JSON.stringify(menu,null,2));assert.equal(menu.horizontal,false);assert.equal(menu.contained,true);assert.equal(menu.closeHit,true);assert.equal(menu.notches,0);assert.equal(menu.cellsFit,true);assert.ok(menu.gap>8);
     assert.equal(await dialog.locator('tbody').evaluate(n=>[...n.querySelectorAll('th,td')].every(c=>getComputedStyle(c).backgroundColor==='rgba(0, 0, 0, 0)')&&n.querySelectorAll('img,svg,canvas').length===0),true,'pill rows use one continuous CSS surface with transparent cells');
-    assert.deepEqual(menu.pills.map(p=>p.name),['Common','Uncommon','Rare','Epic','Legendary']);assert.deepEqual(menu.pills.map(p=>p.color),['rgb(102, 102, 102)','rgb(1, 138, 84)','rgb(28, 143, 169)','rgb(215, 103, 61)','rgb(184, 50, 65)']);
+    assert.deepEqual(menu.pills.map(p=>p.name),['Common','Uncommon','Rare','Epic','Legendary']);assert.deepEqual(menu.pills.map(p=>p.color),rarityColors);
     await page.screenshot({path:`${directory}/${width}-menu.png`});await dialog.locator('[data-action=close]').click();await page.waitForFunction(()=>document.querySelector('#lamp-overlay').hidden);
     await page.evaluate(async()=>{await window.fixtureProgress(1);await window.fixtureProgress(5);await window.fixtureStore.awardCombatEssence('qa:bag-progress',1937);await window.fixtureUI.open(null,true);});await page.waitForFunction(()=>!document.querySelector('.bag-level-up').disabled);assert.ok((await dialog.locator('.bag-level-up').evaluate(n=>getComputedStyle(n).backgroundImage)).includes('rgb(0, 170, 148)'),'enabled button retains its original teal palette');
     const before=await page.evaluate(()=>localStorage.getItem('wishfire.equipment-economy.v5')),heroes=await page.evaluate(()=>JSON.stringify(window.fixtureHeroes));await page.evaluate(()=>window.fixtureFail=true);await dialog.locator('[data-action=upgrade]').click();await dialog.getByText('Test save failure',{exact:true}).waitFor();
@@ -74,6 +76,10 @@ test('Bag and Training Ground preserve approved UI, saved upgrades and shared ce
     assert.equal(await dialog.locator('.bag-modal-close img').count(),0);assert.equal(await dialog.locator('.bag-modal-close canvas').count(),1);assert.equal(await closePaintCentered(),true,'reward X painted bounds are centered');
     const reward=await inspect();assert.equal(reward.horizontal,false);assert.equal(reward.contained,true);assert.equal(reward.closeHit,true);assert.ok(reward.gap>8);assert.equal(await dialog.locator('button').count(),1);assert.equal(await dialog.locator('.bag-reward-capacity').innerText(),'Bag Capacity 167 > 205');assert.equal(await dialog.getByText(/Rare or better|Continue/).count(),0);
     const bottomSpace=await dialog.evaluate(d=>d.querySelector('.bag-upgrade-complete').getBoundingClientRect().bottom-d.querySelector('.bag-reward-capacity').getBoundingClientRect().bottom);assert.ok(bottomSpace<=30);await page.screenshot({path:`${directory}/${width}-complete.png`});
+    await dialog.locator('[data-action=close]').click();await page.waitForFunction(()=>document.querySelector('#lamp-overlay').hidden);
+    await page.evaluate(async()=>{const k='wishfire.equipment-economy.v5',saved=JSON.parse(localStorage.getItem(k));saved.lamp.capacityTier=11;saved.lamp.killPoints=111;saved.lamp.essence=0;localStorage.setItem(k,JSON.stringify(saved));await window.fixtureStore.refresh();await window.fixtureUI.open(null,true);});
+    assert.equal(await dialog.locator('.bag-upgrade-progress').innerText(),'(111/8.4K)');
+    if(width===360){await page.screenshot({path:`${directory}/upgrade-window-360x640.png`});await dialog.locator('.bag-progress-group').screenshot({path:`${directory}/level-bar-360x640.png`});}
     await dialog.locator('[data-action=close]').click();await page.waitForFunction(()=>document.querySelector('#lamp-overlay').hidden);
     await page.evaluate(async()=>{const k='wishfire.equipment-economy.v5',saved=JSON.parse(localStorage.getItem(k));saved.lamp.capacityTier=98;saved.lamp.killPoints=4770374;saved.lamp.essence=0;localStorage.setItem(k,JSON.stringify(saved));await window.fixtureStore.refresh();await window.fixtureUI.open(null,true);});
     assert.equal(await dialog.locator('.bag-upgrade-progress').innerText(),'(4.7M/4.7M)');assert.equal(await dialog.locator('[data-action=upgrade]').isEnabled(),false);assert.equal(await dialog.locator('.bag-upgrade-progress').getAttribute('aria-valuenow'),'4770374');assert.equal(await dialog.locator('.bag-upgrade-progress').getAttribute('aria-valuemax'),'4770375');

@@ -237,7 +237,7 @@
 
 - The strip disc displays the earned Bag level; its smooth meter follows banked kill points plus Essence divided by the full next-level cost, capped visually at 100%, or MAX. It has no intermediate notches. Overflow remains in the bank after Level Up.
 
-- Bag upgrade preview uses full-cost kill-point plus Essence progress and Current/Next odds with Common/Uncommon/Rare/Epic/Legendary labels. Preserve the owner reference's gray/green/teal/orange/red pills independently of equipment rarity frames. A stale expected tier rejects before spending; a failed write shows no promotion or reward.
+- Bag upgrade preview uses full-cost kill-point plus Essence progress and Current/Next odds with Common/Uncommon/Rare/Epic/Legendary labels. Pills reference the shared equipment `RARITIES.color` palette and retain outlined white text (owner, 2026-10-24). Visible Bag progress and shortfalls share `formatCompactCount`, with K starting at1,000. A stale expected tier rejects before spending; a failed write shows no promotion or reward.
 
 - The lamp helper extends the15-second idle threshold through draw, collection, Hondo comparison, equip, dismantle and free/affordable upgrade preview. Retarget disabled controls to useful enabled actions; hide during reward banners and after a completed upgrade loop outside review. Any input dismisses it. Guide receipts persist once through the existing locked equipment transaction.
 
