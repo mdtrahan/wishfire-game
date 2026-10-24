@@ -78,7 +78,7 @@ export function createHeroCooldownStrip({ onHero = () => {}, onPartySkill = () =
       .hero-cooldowns{position:absolute;left:0;width:344px;height:41.28px;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px;align-items:center;pointer-events:none}
       .hero-cooldown{position:relative;box-sizing:border-box;pointer-events:auto;cursor:pointer;width:100%;aspect-ratio:1;overflow:hidden;border:1px solid #c4a775;border-radius:3px;background:radial-gradient(#667277,#253039);box-shadow:inset 0 0 0 1px #151618,0 1px 3px #0008}
       .hero-cooldown img{position:absolute;width:235%;height:auto;max-width:none;left:-67.5%;top:-22%}
-      .hero-cooldown::after{content:'';position:absolute;inset:0;background:conic-gradient(from 0deg,#0a10178f 0deg var(--cooldown,0deg),transparent var(--cooldown,0deg) 360deg)}
+      .hero-cooldown::after{content:'';position:absolute;inset:0;background:#1010108f;backdrop-filter:grayscale(1);mask-image:conic-gradient(from 0deg,transparent 0deg calc(360deg - var(--cooldown,0deg)),#000 calc(360deg - var(--cooldown,0deg)) 360deg)}
       .hero-cooldown[data-state=empty]{pointer-events:none;cursor:default;border-color:#a58d66;background:linear-gradient(#34332d9c,#252722b5);box-shadow:inset 0 0 0 1px #17191955}
       .hero-cooldown[data-state=ko] img,.hero-cooldown[data-state=locked] img{filter:grayscale(1);opacity:.45}
       .hero-buff{display:block;flex:none;background:url('${runtimeAssetUrl(BUFF_SHEET_PATH)}') no-repeat;background-size:${BUFF_SIGNAL_SHEET.columns * 100}% ${BUFF_SIGNAL_SHEET.rows * 100}%;image-rendering:auto}
