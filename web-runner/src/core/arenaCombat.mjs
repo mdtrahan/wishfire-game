@@ -65,11 +65,31 @@ function slotFor(hero, index, placement) {
   const placed = placement?.[String(hero?.heroInstanceKey || '').replace(/#1$/, '').toLowerCase()] || placement?.[heroName(hero)];
   return HERO_FORMATION_SLOTS[placed?.cell] || HERO_FORMATION_SLOTS[index % HERO_FORMATION_SLOTS.length];
 }
+function formationSlots(heroes, placement) {
+  const occupied = new Set();
+  const slots = heroes.map((hero, index) => {
+    const copy = /#(\d+)$/.exec(String(hero.heroInstanceKey || ''));
+    if (copy && Number(copy[1]) !== 1) return null;
+    const slot = slotFor(hero, index, placement);
+    if (occupied.has(slot.cell)) return null;
+    occupied.add(slot.cell);
+    return slot;
+  });
+  return slots.map((slot, index) => {
+    if (slot) return slot;
+    const preferred = HERO_FORMATION_SLOTS[index];
+    const free = preferred && !occupied.has(preferred.cell) ? preferred : HERO_FORMATION_SLOTS.find(candidate => !occupied.has(candidate.cell));
+    if (!free) throw new RangeError('Formation has only eight slots');
+    occupied.add(free.cell);
+    return free;
+  });
+}
 export function deriveContinuousCombatRecoveryHuddle(heroes = [], heading = 1, placement = null) {
   const { centerX } = deriveCombatWorldStartFormation(heroes.length);
   const patrol = deriveCombatOrdinaryPatrolBounds(), centerY = (patrol.minY + patrol.maxY) / 2;
+  const slots = formationSlots(heroes, placement);
   return heroes.map((hero, index) => {
-    const slot = slotFor(hero, index, placement);
+    const slot = slots[index];
     return { hero, x: centerX + slot.x, y: centerY + slot.y };
   });
 }
@@ -145,7 +165,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   const world = deriveCombatWorldBounds(), patrol = deriveCombatOrdinaryPatrolBounds(), vertical = deriveCombatWorldVerticalBounds();
   const stage = globals.ContinuousCombatStage, bossEncounter = !!stage?.bossActive;
   const now = Number(globals.time || 0), dt = Math.max(0, Number(seconds) || 0);
-  const slots = roster.map((hero, index) => slotFor(hero, index, globals.HeroFormationPlacement));
+  const slots = formationSlots(roster, globals.HeroFormationPlacement);
   let center = globals.ContinuousCombatFormation;
   const initializing = !center || !Number.isFinite(center.x) || !Number.isFinite(center.y);
   if (initializing) {

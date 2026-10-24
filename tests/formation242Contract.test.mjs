@@ -111,3 +111,14 @@ test('enemy actors may share the same space while hero slots remain separate',()
  advanceContinuousCombatArena({globals:g,entities:[h,a,b],seconds:0});
  assert.deepEqual(actorFootPoint(a),actorFootPoint(b));
 });
+
+test('deployed hero copies receive distinct spare slots without displacing canonical saved placements',()=>{
+ const globals={time:1};createHeroFormationStore({globals,storage:storage()});
+ const canonical=roster.map((row,i)=>({...hero(i+1),baseHeroName:row.id,heroInstanceKey:row.id.toLowerCase()+'#1'}));
+ const copies=[{...hero(10),baseHeroName:'Huun',heroInstanceKey:'huun#2'},{...hero(11),baseHeroName:'Falie',heroInstanceKey:'falie#2'}];
+ const heroes=[...copies,...canonical];placeContinuousCombatHeroesInRecoveryHuddle({globals,heroes,now:-1});
+ delete globals.ContinuousCombatInitialRoam;
+ for(const [index,h] of canonical.entries()){assert.ok(Math.abs(h.formationSlotX-1080-HERO_FORMATION_SLOTS[index].x)<1e-9);assert.ok(Math.abs(h.formationSlotY-370-HERO_FORMATION_SLOTS[index].y)<1e-9);}
+ const initial=heroes.map(h=>[h.footX,h.footY]);advanceContinuousCombatArena({globals,entities:heroes,seconds:0});assert.deepEqual(heroes.map(h=>[h.footX,h.footY]),initial);
+ for(const [index,h] of heroes.entries())for(const ally of heroes.slice(index+1))assert.ok(Math.hypot(h.footX-ally.footX,h.footY-ally.footY)>=32-1e-9);
+});
