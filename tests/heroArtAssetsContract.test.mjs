@@ -41,7 +41,7 @@ test('battlefield uses puppet frames independently of static hero portraits', ()
   assert.doesNotMatch(assembledBody, /ampShowsBadge|badgeBottomY/);
   assert.match(assembledBody, /drawCombatHealthBar\(ctx, \{ x: barX, y: barY,[^}]*team: 'hero' \}\)/);
   assert.doesNotMatch(assembledBody, /wardBarrierImage/);
-  assert.match(assembledBody, /drawHeroWardBubble\(ctx, \{ globals: g, uid: hero\.uid, centerX: pos\.x, centerY: footY - scaledH/);
+  assert.match(assembledBody, /drawHeroWardBubble\(ctx, \{ globals: g, uid: hero\.uid, centerX: pos\.x, centerY: footY - scaledH \* 0\.46/);
   assert.match(assembledBody, /renderHeroRegenShimmer\(drawX, drawY, scaledW, scaledH, hero\.uid\)/);
   assert.deepEqual(resolveHeroArtSourceRect({ width: 100, height: 200 }, heroArtAsset('Fara').combat), {
     sourceX: 0, sourceY: 0, sourceWidth: 100, sourceHeight: 200,

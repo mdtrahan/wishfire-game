@@ -4,7 +4,7 @@ import { reverseContinuousCombatEnemy, armContinuousCombatBoss, resetContinuousC
 import { HERO_DEFINITIONS, ELEVATE_SETS, PROVISIONAL_SPECIAL_COOLDOWNS } from '../web-runner/src/core/heroDefinitions.mjs';
 import { castRealtimeHeroSkill, cleanupRealtimeSkillActors, realtimeBasicInterval, realtimeCombatStat, realtimeIncomingDamage, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
 import { applyHeroPassiveOnHit, heroPassive, heroPassiveBasicMultiplier, heroPassiveSignals } from '../web-runner/src/core/realtimeHeroPassives.mjs';
-import { absorbHeroWard } from '../web-runner/src/core/heroWard.mjs';
+import { absorbHeroWard, heroWardShare } from '../web-runner/src/core/heroWard.mjs';
 import { resetRealtimeSkillAttempt } from '../web-runner/src/core/realtimeSkillState.mjs';
 import { actorAttackReach } from '../src/core/arenaCombatRules.mjs';
 import { BUFF_SIGNAL_FRAMES } from '../src/core/buffSignalRules.mjs';
@@ -68,8 +68,10 @@ test('Crimson Ward gives each hero its own 8% ward, capped at 50% of that hero\'
   heroes[1].maxHP = 200; // per-hero sizing
   assert.equal(cast('Falie'), true);
   assert.deepEqual(wards(g), { 1: 8, 2: 16, 3: 8, 4: 8 });
+  assert.equal(heroWardShare(g, 1), .16, 'the HP bar strip measures against the 50% cap, not max HP');
   for (let i = 0; i < 6; i += 1) assert.equal(cast('Falie'), true);
   assert.deepEqual(wards(g), { 1: 50, 2: 100, 3: 50, 4: 50 }, 'each hero caps at half its own max HP');
+  assert.equal(heroWardShare(g, 2), 1, 'a capped ward fills the whole bar');
   assert.equal(cast('Falie'), false, 'capped wards cannot recast');
   assert.equal(absorbHeroWard(g, heroes[2], 30), 30);
   assert.deepEqual(wards(g), { 1: 50, 2: 100, 3: 20, 4: 50 }, 'a hit drains only the struck hero');

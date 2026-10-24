@@ -93,7 +93,7 @@ test('combat progress HUD shows the current chapter and region-sized wave progre
 test('actor HP bars follow their owners in the shared depth-sorted paint queue', () => {
   const renderer = fs.readFileSync(path.join(root, 'web-runner/systems/renderRuntime.js'), 'utf8');
   assert.match(renderer, /addActorPaint\(enemy\.uid, \(\) => \{ ctx\.save\(\); ctx\.globalAlpha \*= enemyFadeAlpha; drawCombatHealthBar\(ctx, \{ x: barX, y: barY, width: drawBarW, height: drawBarH, fillWidth: drawFillW, trailWidth: drawYellowW, team: \\?'enemy\\?' \}\); ctx\.restore\(\); \}\)/);
-  assert.match(renderer, /addActorPaint\(uid, \(\) => paintWithActivationAlpha\(ctx, heroBarFadeAlpha, \(\) => drawCombatHealthBar\(ctx, \{ x: barX, y: barY, width: baseW, height: baseH, fillWidth: barState\.fillW, trailWidth: barState\.yellowW, wardWidth: baseW \* Math\.min\(1, Number\(state\.globals\.HeroWardHPByUID\?\.\[uid\] \|\| 0\) \/ Math\.max\(1, Number\(hero\.maxHP \|\| 0\)\)\), team: \\?'hero\\?' \}\)\)\)/);
+  assert.match(renderer, /addActorPaint\(uid, \(\) => paintWithActivationAlpha\(ctx, heroBarFadeAlpha, \(\) => drawCombatHealthBar\(ctx, \{ x: barX, y: barY, width: baseW, height: baseH, fillWidth: barState\.fillW, trailWidth: barState\.yellowW, wardWidth: baseW \* heroWardShare\(state\.globals, uid\), team: \\?'hero\\?' \}\)\)\)/);
   assert.match(renderer, /const enemyFootY = Number\(pos\.y\)/);
   assert.match(renderer, /actorPaintQueue\.push\(\{ footY: enemyFootY/);
   assert.match(renderer, /const barY = Math\.round\(enemyFootY \+ \(4 \* layoutScale\)\)/);

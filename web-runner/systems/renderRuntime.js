@@ -17,6 +17,7 @@ import { drawCombatHealthBar } from './combatHealthBarPresentation.mjs';
 import { drawCombatArenaBackground } from './combatArenaBackground.mjs';
 import { drawActorPuppetFrame } from './actorPuppetPresentation.mjs';
 import { drawHeroWardBubble } from './heroWardBubble.mjs';
+import { heroWardShare } from '../src/core/heroWard.mjs';
 import { combatEnemiesForPresentation } from './actorPuppetDefeats.mjs';
 import { resolveCombatCameraCenterX } from '../src/core/combatCamera.mjs';
 import { createEnemyActivationFade, paintWithActivationAlpha } from './enemyActivationFadePresentation.mjs';
@@ -217,7 +218,7 @@ effectiveBody = replaceRequired(
 replaceBetween(
   '          if (hero && wardBarrierImage) {',
   '\n\n          const ampShowsBadge',
-  () => "          if (hero) { // hero front overlay\n            drawHeroWardBubble(ctx, { globals: g, uid: hero.uid, centerX: pos.x, centerY: footY - scaledH * 0.42, radiusX: scaledH * 0.36, radiusY: scaledH * 0.5 });\n          }",
+  () => "          if (hero) { // hero front overlay\n            drawHeroWardBubble(ctx, { globals: g, uid: hero.uid, centerX: pos.x, centerY: footY - scaledH * 0.46, radiusX: scaledH * 0.36, radiusY: scaledH * 0.46 });\n          }",
 );
 replaceBetween(
   '          const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0), activeCombatOrientation);',
@@ -267,6 +268,7 @@ export function renderRuntime(deps) {
   deps.drawCombatHealthBar = drawCombatHealthBar;
   deps.drawActorPuppetFrame = drawActorPuppetFrame;
   deps.drawHeroWardBubble = drawHeroWardBubble;
+  deps.heroWardShare = heroWardShare;
   deps.combatEnemiesForPresentation = combatEnemiesForPresentation;
   deps.getEnemyActivationFadeAlpha = enemyActivationFadeAlpha;
   deps.paintWithActivationAlpha = paintWithActivationAlpha;
@@ -460,7 +462,7 @@ export function renderRuntime(deps) {
       const barX = Math.round(pos.x - baseW / 2);
       const barY = Math.round(footPos.y + 4 * layoutScale);
       const heroBarFadeAlpha = getEnemyActivationFadeAlpha(hero, Number(state.globals.time || 0));
-      addActorPaint(uid, () => paintWithActivationAlpha(ctx, heroBarFadeAlpha, () => drawCombatHealthBar(ctx, { x: barX, y: barY, width: baseW, height: baseH, fillWidth: barState.fillW, trailWidth: barState.yellowW, wardWidth: baseW * Math.min(1, Number(state.globals.HeroWardHPByUID?.[uid] || 0) / Math.max(1, Number(hero.maxHP || 0))), team: 'hero' })));
+      addActorPaint(uid, () => paintWithActivationAlpha(ctx, heroBarFadeAlpha, () => drawCombatHealthBar(ctx, { x: barX, y: barY, width: baseW, height: baseH, fillWidth: barState.fillW, trailWidth: barState.yellowW, wardWidth: baseW * heroWardShare(state.globals, uid), team: 'hero' })));
     }
 
     actorPaintQueue.sort((a, b) => Number(a.footY || 0) - Number(b.footY || 0) || Number(a.uid || 0) - Number(b.uid || 0));
