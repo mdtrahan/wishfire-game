@@ -145,19 +145,6 @@ test('a delayed defeat clip gets its full duration and committed facing on the p
   assert.equal(presentation.frameFor(actor, 2.2).facing, 'left');
 });
 
-test('puppet Shrink uses the shared visual scale and keeps its semantic foot fixed', () => {
-  const ctx = { drawImage() {} };
-  const presentation = { frame: {}, clip };
-  const active = drawActorPuppetFrame(ctx, presentation, { footX: 100, footY: 200, height: 100, actorUID: 10, effects: { 10: { shrink: { expiresAt: 5 } } }, now: 1 });
-  assert.equal(active.visualScale, 0.7);
-  assert.equal(active.height, 70);
-  assert.equal(active.drawY + active.height * (clip.footOrigin.y / clip.canvas.height), 200);
-  const expired = drawActorPuppetFrame(ctx, presentation, { footX: 100, footY: 200, height: 100, actorUID: 10, effects: { 10: { shrink: { expiresAt: 5 } } }, now: 5 });
-  assert.equal(expired.visualScale, 1);
-  assert.equal(expired.height, 100);
-  assert.equal(expired.drawY + expired.height * (clip.footOrigin.y / clip.canvas.height), 200);
-});
-
 test('transparent overscan preserves body scale and foot anchoring', () => {
   const draws = [];
   const ctx = { drawImage: (...args) => draws.push(args) };

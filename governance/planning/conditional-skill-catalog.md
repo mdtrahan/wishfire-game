@@ -1,5 +1,7 @@
 # Gambit-style skill conditions
 
+**Retired 2026-10-23 (bd-ORKA-jyz): the 33-skill kit below was deleted from runtime. The accepted four-skill kits live in `web-runner/src/core/heroDefinitions.mjs`.**
+
 **Approved kits: 33 skills, including the original 24, 8 restored legacy skills and Shrink; each hero retains 1 role-defining awakening; the candidate runtime implements this catalog; human QA and integration remain pending.**
 
 No skill requires another skill to activate or generates a named follow-up skill; each effect belongs to its own cast.

@@ -1,6 +1,10 @@
 import {MODAL_CLOSE_MARK,installModalCloseStyles,paintModalClose} from './modalClose.mjs';
 import { combatObjectivePresentation, combatObjectiveReward, TRAINING_STATS, trainingCost, TRAINING_BONUS_PER_LEVEL } from '../src/core/combatProgressionRules.mjs';
 import { positionRewardReceipt, showRewardReceipt } from './rewardReceiptUI.mjs';
+import { createHeroCooldownStrip, HERO_COOLDOWN_LAYOUT } from './heroCooldownStrip.mjs';
+import { PARTY_SKILLS } from '../src/core/partySkillCatalog.mjs';
+import { BUFF_SIGNAL_FRAMES, BUFF_SIGNAL_SHEET } from '../../src/core/buffSignalRules.mjs';
+import { runtimeAssetUrl } from './runtimeAssetUrl.mjs';
 
 const RESOURCE_ICONS = Object.freeze({
   incense: 'assets/images/progression/incense.png',
@@ -72,6 +76,19 @@ function installStyle() {
     #training-ground .tg-tab{min-width:0;padding:.5556cqw .5cqw;border:.2778cqw solid #62634f;background:#17313b;color:#b9ae94;font:700 2.5cqw/1 system-ui;white-space:nowrap}
     #training-ground .tg-tab[aria-selected=true]{color:#2e2417;background:linear-gradient(#ffe49d,#ca984f);border-color:#fff0bc}
     #training-ground .tg-tab:disabled{opacity:1;cursor:default}
+    #training-ground[data-tab=party] :is(.tg-balance,.tg-status,.tg-stats){display:none}
+    #training-ground:not([data-tab=party]) .tg-party{display:none}
+    #training-ground .tg-party{position:absolute;z-index:3;left:3.8889cqw;top:91.5cqw;width:92.2222cqw;height:56.5cqw;margin:0;padding:0 .8cqw 0 0;list-style:none;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:1.6cqw;scrollbar-width:thin}
+    #training-ground .tg-skill{position:relative;flex:none;padding:2cqw 2.4cqw 2cqw 13cqw;border:.2778cqw solid #866a44;border-radius:2.2222cqw;background:linear-gradient(180deg,#fff7df,#ead9b6);box-shadow:0 .5556cqw 1.3889cqw #49351733;color:#2b2116;scroll-margin:1cqw}
+    #training-ground .tg-skill[data-focused=true]{border-color:#c9922e;box-shadow:0 0 0 .6cqw #ffd971,0 .5556cqw 1.3889cqw #49351733}
+    #training-ground .tg-skill-icons{position:absolute;left:2.2cqw;top:2.2cqw;width:8.6cqw;display:flex;flex-wrap:wrap;gap:.6cqw}
+    #training-ground .tg-skill-icons i{width:8.6cqw;height:8.6cqw;background-repeat:no-repeat;border-radius:1cqw}
+    #training-ground .tg-skill-icons i+i{width:4cqw;height:4cqw}
+    #training-ground .tg-skill h3{margin:0;font-size:3.1cqw;line-height:1.2}
+    #training-ground .tg-skill h3 small{margin-left:1.4cqw;color:#6c5a3d;font-size:2.3cqw;font-weight:650}
+    #training-ground .tg-skill p{margin:.8cqw 0 0;font-size:2.45cqw;line-height:1.35;color:#3e3020}
+    #training-ground .tg-skill ul{margin:.9cqw 0 0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:.8cqw}
+    #training-ground .tg-skill li{padding:.3cqw 1.2cqw;border:.2cqw solid #a98b5a;border-radius:1.2cqw;background:#f4dfb5;color:#5d513c;font:700 2.1cqw/1.3 system-ui}
   `;
   document.head.append(style);
 }
@@ -83,7 +100,7 @@ function makeSafeAreaProbe() {
   return node;
 }
 
-export function createCombatProgressionUI({ canvas, onClaim = () => {} }) {
+export function createCombatProgressionUI({ canvas, onClaim = () => {}, onHeroSkill = () => {}, onPartySkill = () => {} }) {
   installStyle();
   const host = document.createElement('div'); host.id = 'combat-progression-ui'; host.hidden = true;
   const resourceRow = document.createElement('div'); resourceRow.className = 'cot-resources';
@@ -110,10 +127,11 @@ export function createCombatProgressionUI({ canvas, onClaim = () => {} }) {
   const plate = document.createElement('div'); plate.className = 'cot-reward-plate';
   const rewardImage = document.createElement('div'); rewardImage.setAttribute('role', 'img'); plate.append(rewardImage);
   const rewardCount = document.createElement('div'); rewardCount.className = 'cot-reward-count'; reward.append(plate, rewardCount);
-  objective.append(reward, text); host.append(resourceRow, objective); document.body.append(host);
+  const cooldownStrip = createHeroCooldownStrip({ onHero: onHeroSkill, onPartySkill });
+  objective.append(reward, text); host.append(resourceRow, objective, cooldownStrip.partyElement, cooldownStrip.element); document.body.append(host);
   const safeProbe = makeSafeAreaProbe();
 
-  function update({ layoutId, phase, scale = 1, progression, equipmentProgress, goldFixture = 999999999 } = {}) {
+  function update({ layoutId, phase, scale = 1, progression, equipmentProgress, entities = [], globals = {}, goldFixture = 999999999 } = {}) {
     positionRewardReceipt(canvas);
     const visible = layoutId === 'combat' && phase === 'combat';
     host.hidden = !visible;
@@ -151,7 +169,8 @@ export function createCombatProgressionUI({ canvas, onClaim = () => {} }) {
     reward.setAttribute('aria-label', rewardPreview ? `${rewardPreview.amount} ${rewardName}` : 'COT reward unavailable');
     objective.setAttribute('aria-label', ready ? `Claim ${rewardPreview?.amount || 0} ${rewardName || ''}`.trim() : `${view.challenge} ${view.count}`);
     const hostOffset = Math.max(0, safeTop - rect.top) / scale + 8;
-    objective.style.left = '8px'; objective.style.top = `${426 - hostOffset}px`;
+    objective.style.left = '0px'; objective.style.top = `${HERO_COOLDOWN_LAYOUT.questTop - hostOffset}px`;
+    cooldownStrip.update(entities, globals, hostOffset);
   }
 
   return { update, destroy() { safeProbe.remove(); host.remove(); } };
@@ -169,11 +188,39 @@ export function createTrainingGroundUI({ progression }) {
   const close = document.createElement('button'); close.className = 'game-modal-close tg-close'; close.type = 'button'; close.innerHTML=MODAL_CLOSE_MARK; close.setAttribute('aria-label', 'Close Growth'); close.onclick = dismiss; panel.append(close);
   const scene = makeImage('assets/images/progression/training-scene.png', 'Approved training courtyard with four training stations', 328); scene.className = 'tg-scene'; content.append(scene);
   const tabs = document.createElement('nav'); tabs.className = 'tg-tabs'; tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', 'Growth sections');
-  for (const [label, active] of [['Training Ground', true], ['Strengthen', false], ['Aquafarm', false], ['Hatchery', false]]) {
+  // Training Ground and Party Skills are live; the remaining tabs are placeholders.
+  const tabButtons = {};
+  for (const [id, label, active] of [['training', 'Training Ground', true], ['party', 'Party Skills', true], ['aquafarm', 'Aquafarm', false], ['hatchery', 'Hatchery', false]]) {
     const tab = document.createElement('button'); tab.className = 'tg-tab'; tab.type = 'button'; tab.textContent = label; tab.setAttribute('role', 'tab');
-    tab.disabled = !active; tab.setAttribute('aria-selected', String(active)); tabs.append(tab);
+    tab.disabled = !active; tab.setAttribute('aria-selected', 'false'); tabs.append(tab);
+    if (active) { tabButtons[id] = tab; tab.addEventListener('click', () => selectTab(id)); }
   }
   content.append(tabs);
+  // One scroll list built from the shared party-skill catalog (same source as the HUD icons).
+  const partyList = document.createElement('ul'); partyList.className = 'tg-party'; partyList.setAttribute('aria-label', 'Party skills');
+  const partyCards = {};
+  const sheetUrl = runtimeAssetUrl('images/ui/buff-signals.png');
+  for (const entry of PARTY_SKILLS) {
+    const card = document.createElement('li'); card.className = 'tg-skill'; card.dataset.partySkill = entry.id; card.tabIndex = -1;
+    const icons = document.createElement('span'); icons.className = 'tg-skill-icons'; icons.setAttribute('aria-hidden', 'true');
+    for (const id of entry.icons) {
+      const frame = BUFF_SIGNAL_FRAMES[id], icon = document.createElement('i');
+      icon.style.cssText = `background-image:url('${sheetUrl}');background-size:${BUFF_SIGNAL_SHEET.columns * 100}% ${BUFF_SIGNAL_SHEET.rows * 100}%;background-position:${frame.column / (BUFF_SIGNAL_SHEET.columns - 1) * 100}% ${frame.row / (BUFF_SIGNAL_SHEET.rows - 1) * 100}%`;
+      icons.append(icon);
+    }
+    const heading = document.createElement('h3'); heading.textContent = entry.name;
+    const owner = document.createElement('small'); owner.textContent = `${entry.hero} · Lv. 1`; heading.append(owner);
+    const effect = document.createElement('p'); effect.textContent = entry.effect;
+    const values = document.createElement('ul'); values.setAttribute('aria-label', `${entry.name} values`);
+    for (const value of entry.values) { const item = document.createElement('li'); item.textContent = value; values.append(item); }
+    card.append(icons, heading, effect, values); partyList.append(card); partyCards[entry.id] = card;
+  }
+  content.append(partyList);
+  function selectTab(id) {
+    host.dataset.tab = id;
+    for (const [key, tab] of Object.entries(tabButtons)) tab.setAttribute('aria-selected', String(key === id));
+  }
+  selectTab('training');
   const balance = document.createElement('div'); balance.className = 'tg-balance';
   balance.append(makeImage(RESOURCE_ICONS.incense, 'Incense', 22));
   const balanceValue = document.createElement('span'); balanceValue.setAttribute('aria-label', 'Incense balance'); balance.append(balanceValue); content.append(balance);
@@ -219,7 +266,14 @@ export function createTrainingGroundUI({ progression }) {
       else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
     }
   });
-  function open(){if(host.hidden)lastFocus=document.activeElement;refresh();host.hidden=false;layoutClose();void document.fonts.ready.then(layoutClose);close.focus();}
+  // open({ tab: 'party', partySkillId }) lands on Party Skills with that entry scrolled into view and marked.
+  function open({ tab = 'training', partySkillId = null } = {}){
+    if(host.hidden)lastFocus=document.activeElement;refresh();host.hidden=false;selectTab(tab);layoutClose();void document.fonts.ready.then(layoutClose);
+    for (const card of Object.values(partyCards)) delete card.dataset.focused;
+    const card = tab === 'party' && partyCards[partySkillId];
+    if (card) { card.dataset.focused = 'true'; requestAnimationFrame(() => { card.scrollIntoView({ block: 'nearest' }); card.focus({ preventScroll: true }); }); }
+    else close.focus();
+  }
   document.body.append(host);
   new ResizeObserver(()=>requestAnimationFrame(layoutClose)).observe(panel);
   return { open, close:dismiss, refresh, isOpen: () => !host.hidden };

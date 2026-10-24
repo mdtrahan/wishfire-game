@@ -60,19 +60,14 @@ test('elemental frames load only when requested and are cached per effect', asyn
 });
 
 test('approved hero skill IDs resolve to their source-thread element slugs', () => {
-  const mapping = {
-    challenge_bolt: 'mark', cover: 'light', brace: 'metal', retaliation_burst: 'earth', shield_slam: 'wind',
-    ambush: 'dark', cheap_shot: 'metal', razor_sweep: 'wind', piercing_throw: 'metal', finish_the_job: 'blood',
-    frost_reversal: 'ice', hex_beacon: 'dark', burn_sigil: 'fire', null_field: 'void', return_gate: 'arcane',
-    wishgrant: 'light', quickload: 'lightning', shared_tempo: 'wind', patchwork: 'bloom', fortunes_blessing: 'mark',
-  };
+  const mapping = { crimson_ward: 'blood', shadow: 'dark', bubble_pop: 'water', elevate: 'light' };
   for (const [skillId, slug] of Object.entries(mapping)) assert.equal(elementalImpactSlugForSkill(skillId), slug);
-  assert.equal(elementalImpactSlugForSkill('frost_reversal', 'wind'), 'wind');
+  assert.equal(elementalImpactSlugForSkill('bubble_pop', 'wind'), 'wind');
   assert.equal(elementalImpactSlugForSkill('unmapped'), '');
 });
 
 test('impact requests play one centered one-shot flipbook using manifest frame holds', () => {
-  const frames = Array.from({ length: 7 }, (_, index) => ({ id: `ice-${index + 1}`, width: 627, height: 627 }));
+  const frames = Array.from({ length: 7 }, (_, index) => ({ id: `water-${index + 1}`, width: 627, height: 627 }));
   const draws = [];
   const ctx = {
     save() {}, restore() {}, translate() {}, scale() {},
@@ -81,24 +76,24 @@ test('impact requests play one centered one-shot flipbook using manifest frame h
   const state = {
     globals: {
       time: 0,
-      CombatImpactRequests: [{ at: 0, heroUID: 1, targetUID: 2, point: { x: 91, y: 103 }, skillId: 'frost_reversal', damage: 20 }],
+      CombatImpactRequests: [{ at: 0, heroUID: 1, targetUID: 2, point: { x: 91, y: 103 }, skillId: 'bubble_pop', damage: 20 }],
     },
     entities: [
       { uid: 1, kind: 'hero', name: 'Fara', x: 40, y: 103 },
       { uid: 2, kind: 'enemy', name: 'Gobloc', x: 100, y: 103, maxHP: 100 },
     ],
   };
-  const images = { ElementalImpactFrames: { ice: { frames, frameHoldMs: [100, 67, 100, 67, 100, 67, 100], totalDurationMs: 601 } } };
+  const images = { ElementalImpactFrames: { water: { frames, frameHoldMs: [100, 67, 100, 67, 100, 67, 100], totalDurationMs: 601 } } };
   const draw = () => renderCombatAttackVfx(ctx, { state, images, worldToCanvas: (x, y) => ({ x, y }), layoutScale: 1 });
 
   draw();
   assert.deepEqual(state.globals.CombatImpactRequests, []);
-  assert.equal(state.globals.CombatImpactVisuals[0].elementalSlug, 'ice');
+  assert.equal(state.globals.CombatImpactVisuals[0].elementalSlug, 'water');
   assert.equal(state.globals.CombatImpactVisuals[0].targetUID, 2);
-  assert.deepEqual([draws[0].id, draws[0].x, draws[0].y, draws[0].width, draws[0].height], ['ice-1', 65, 77, 52, 52]);
+  assert.deepEqual([draws[0].id, draws[0].x, draws[0].y, draws[0].width, draws[0].height], ['water-1', 65, 77, 52, 52]);
   state.globals.time = 0.12;
   draw();
-  assert.equal(draws.at(-1).id, 'ice-2');
+  assert.equal(draws.at(-1).id, 'water-2');
   assert.equal(draws.at(-1).width, 52);
   state.globals.time = 0.601;
   draw();

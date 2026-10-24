@@ -11,10 +11,6 @@ export function shouldMirrorCombatActorSprite(orientation, facing = null, native
   return rightWise;
 }
 
-export function combatActorVisualScale({ actorUID, effects, now = 0 } = {}) {
-  return Number(effects?.[String(actorUID)]?.shrink?.expiresAt) > now ? 0.7 : 1;
-}
-
 export function drawCombatActorSprite(ctx, image, {
   drawX,
   drawY,
@@ -26,15 +22,10 @@ export function drawCombatActorSprite(ctx, image, {
   sourceY,
   sourceWidth,
   sourceHeight,
-  actorUID, effects, now = 0,
   facing, nativeFacing,
 } = {}) {
   if (!ctx || !image) return null;
-  const shrink = combatActorVisualScale({ actorUID, effects, now });
-  const x = Number(drawX)+(Number(width)*(1-shrink)/2);
-  const y = Number(drawY)+Number(height)*(1-shrink);
-  const w = Number(width)*shrink;
-  const h = Number(height)*shrink;
+  const x = Number(drawX), y = Number(drawY), w = Number(width), h = Number(height);
   const pivot = Number(pivotX);
   if (![x, y, w, h, pivot].every(Number.isFinite)) return null;
   const sourceRect = [sourceX, sourceY, sourceWidth, sourceHeight].map(Number);

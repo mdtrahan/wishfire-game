@@ -7,7 +7,6 @@ import { advanceContinuousCombatArena, selectContinuousEnemyTarget } from '../we
 import { isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
 import { activateContinuousCombatSpawnedEnemy } from '../web-runner/src/core/continuousCombatStage.mjs';
 import { realtimeCooldownSeconds } from '../web-runner/src/core/realtimeCooldown.mjs';
-import { realtimeProvokeTarget } from '../web-runner/src/core/realtimeHeroSkills.mjs';
 
 const functionBank = fs.readFileSync(new URL('../web-runner/modules/functionBank.js', import.meta.url), 'utf8');
 const scriptsFunctionBank = fs.readFileSync(new URL('../Scripts/functionBank.js', import.meta.url), 'utf8');

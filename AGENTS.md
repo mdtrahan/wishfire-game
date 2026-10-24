@@ -99,7 +99,7 @@ Describe expected behavior, not a list of tools or activities. Skip this brief f
 ## Combat Migration Specification
 - `LAMP_EQUIPMENT_MVP.md` owns the approved lamp replacement; `goals/approved-bag-upgrades.md` owns the smooth full-cost Bag upgrade and reward contract; `goals/wishfire-lamp-progression.md` separates delivered paid progression from proposed quality tiers and pacing assumptions.
 - `COMBAT_ENGINE_CLEANUP_PLAN.md` owns the realtime foundation. Approved conditional-skill definitions and their progression supersede its earlier five-active kit contract. `COMBAT_MIGRATION_PLAN.md` retains the earlier hero-command contract as history; SP/FLOW, hidden Pals and playable turns are retired.
-- `governance/planning/conditional-skill-catalog.md` owns the 33 conditional skill definitions and effect guards; `COMBAT_MIGRATION_PLAN.md` links this current kit contract.
+- `web-runner/src/core/heroDefinitions.mjs` owns the accepted hero kits (owner, 2026-10-23): Basic + Special (the only clock) + Passive (no clock, no lingering) + two late-game Resonances (display-only scaffolding). Special cooldowns flagged provisional await owner tuning. `governance/planning/conditional-skill-catalog.md` is retired history for the deleted 33-skill kit.
 
 
 ## Child DOX Index
