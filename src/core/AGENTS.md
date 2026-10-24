@@ -15,14 +15,16 @@
 - SimulationCore packet shapes must exclude browser-owned presentation/storage state.
 - If Rust owns a rule family, JS code should preserve packet/diagnostic compatibility and avoid acting as final authority.
 - Damage packets carry attack percentage plus matching and general resistance percentages. The shared base rule subtracts applicable defense, permits zero damage, applies resistance, then preserves crit and final modifier order; keep the browser copy and Rust/WASM export in parity.
-- `heroAttackTargetingRules.mjs` owns the continuous party's persistent first-living focus inside the current X attack range and the legacy random HERO_SINGLE fallback. Manual target ownership remains in functionBank.
+- `heroAttackTargetingRules.mjs` owns per-hero nearest enemy selection and screen-width basic reach. Enemy target and damage owners stay unchanged. `heroFormationGeometry.mjs` owns fixed 2-4-2 offsets (width 105.6, pitch 35.2), 32-unit slot circles and 1.6-unit bounded drift.
 - CJS mirrors such as `simulationCorePacket.cjs`, `gameStateEnvelopeRules.cjs`, and `combatRuntimeGateway.cjs` must stay aligned with their intended test/runtime consumers.
 - `combatOrientation.mjs` owns presentation-only left/right normalization, static formation projection, and wide-world camera projection. Right-wise static formation geometry reflects then translates both formations `-40` logical X; the wide-world camera reflects without that offset so the hero's 40-unit world-edge margin remains visible. Heroes keep Y while enemies receive one derived block-Y offset aligning team formation midpoints. Derive that enemy offset from the fixed slot grid, never the currently living roster, so death and refill cannot move survivors. Do not put orientation in SimulationCore packets or mutate canonical actor coordinates.
 - `arenaCombatRules.mjs` scales the boss footprint with its 4x linear sprite size and adds that boss body radius to boss-origin contact reach; ordinary actors retain foot-to-target reach.
+- Hero native spatial reach is 92 world units before modifiers. Basics use visible screen width; Specials floor at 211.2 from each slot. Passives and enemy delivery retain their own geometry.
 - `advanceActorToward` keeps logical facing aligned with nonzero world-space horizontal travel. Browser fallback presentation applies that facing relative to each actor's native sprite direction and the camera reflection.
 - `deriveCombatFormationAnchors` reserves an 18-unit hero buff-icon row plus a 2-unit gap above HP bars. `deriveCombatWorldVerticalBounds` separately maps the camera's HUD-safe viewport interval back into world feet bounds; continuous pack centers span that interval rather than following the static four-slot hero anchors.
 
 - `deriveCombatOrdinaryPatrolBounds` owns ordinary Hero feet X520..1640/Y290..450 independently of full enemy/world bounds and boss-local constraints. Camera zoom and projection remain presentation-only.
+- `buffSignalRules.mjs` owns buff-signal projection. One effect key (source plus effect) active on every living hero, with at least two alive, is party-wide and shows once as a stat icon. Other up-direction channels collapse into the Tempo, Offense and Defense hero groups. Debuffs, unknown channels and KO heroes never signal. Order is stable by arrival. New skills plug in by emitting channels listed in `BUFF_SIGNAL_CHANNELS`.
 
 ## Work Guidance
 - Add fixture rows for deterministic behavior with meaningful edge cases.

@@ -1,3 +1,4 @@
+import { sanitizeHeroGrowth } from './heroGrowthRules.mjs';
 import { MILESTONE_REWARDS, questFamily, milestoneCandidates, reconcileQuestMilestones, milestonePresentation, validMilestoneObjective } from './questMilestones.mjs';
 export const COMBAT_PROGRESSION_VERSION = 1;
 export const COMBAT_PROGRESSION_SAVE_KEY = 'orka.combat_progression.v1';
@@ -35,6 +36,7 @@ export function createCombatProgressionState(snapshot, seed = 0x43544f) {
     ...(['hero_upgrade', 'hero_level'].includes(raw.objective.type) && raw.objective.heroName ? { heroName: String(raw.objective.heroName).slice(0, 32) } : {}),
     ...(raw.objective.type === 'training_upgrade' && raw.objective.rewardHeroName ? { rewardHeroName: String(raw.objective.rewardHeroName).slice(0, 32) } : {}),
   } : null;
+  const growth = sanitizeHeroGrowth(raw.growth);
   return {
     version: COMBAT_PROGRESSION_VERSION,
     seed: Number.isSafeInteger(raw.seed) ? raw.seed >>> 0 : Number(seed) >>> 0,
@@ -43,8 +45,6 @@ export function createCombatProgressionState(snapshot, seed = 0x43544f) {
     lastFamily: ['equipment','battle','training','heroes'].includes(raw.lastFamily) ? raw.lastFamily : '',
     claimedMilestones: Array.isArray(raw.claimedMilestones) ? [...new Set(raw.claimedMilestones.map(safeId).filter(Boolean))] : [],
     chaptersCleared: clampCount(raw.chaptersCleared),
-    survivalChapters: Array.isArray(raw.survivalChapters) ? [...new Set(raw.survivalChapters.map(clampCount).filter(Boolean))] : [],
-    chapterObservation: raw.chapterObservation && typeof raw.chapterObservation === 'object' ? { chapter: clampCount(raw.chapterObservation.chapter), bossActive: raw.chapterObservation.bossActive === true, failed: raw.chapterObservation.failed !== false } : null,
     wallet: { incense: clampCount(raw.wallet?.incense), ticketsByHero: Object.fromEntries(Object.entries(raw.wallet?.ticketsByHero || {}).map(([id, amount]) => [safeId(id), clampCount(amount)]).filter(([id]) => id)) },
     training: Object.fromEntries(TRAINING_STATS.map(stat => [stat, Math.max(0, Math.min(100, Math.floor(Number(raw.training?.[stat]) || 0)))])),
     processedEvents: Array.isArray(raw.processedEvents) ? [...new Set(raw.processedEvents.map(safeId).filter(Boolean))].slice(-512) : [],
@@ -58,6 +58,7 @@ export function createCombatProgressionState(snapshot, seed = 0x43544f) {
       count: clampCount(raw.lastReward.count), shownAt: Math.max(0, Number(raw.lastReward.shownAt) || 0), receiptId: safeId(raw.lastReward.receiptId),
       ...(raw.lastReward.heroId ? { heroId: safeId(raw.lastReward.heroId), heroName: String(raw.lastReward.heroName || '').slice(0, 32) } : {}),
     } : null,
+    ...(growth ? { growth } : {}),
   };
 }
 
@@ -94,7 +95,6 @@ export function ensureCombatObjective(state, heroes = [], context = {}) {
   const next = reconcileQuestMilestones(createCombatProgressionState(state), heroes, context);
   const chapter = Math.max(Number(context.chapter) || 1, next.chaptersCleared + 1);
   if (next.objective && next.objective.progress >= next.objective.target) return next;
-  if (next.objective?.type === 'chapter_survive' && !next.survivalChapters.includes(next.objective.chapter) && (next.chaptersCleared >= next.objective.chapter || (next.chapterObservation?.failed && next.chapterObservation.chapter === next.objective.chapter))) next.objective = null;
   const canTrain = TRAINING_STATS.some(stat => next.training[stat] < 100 && trainingCost(next, stat) <= next.wallet.incense);
   if (next.objective?.type === 'training_level' && next.objective.progress < next.objective.target && next.wallet.incense < trainingCost(next, next.objective.stat)) next.objective = null;
   if (next.objective?.type === 'hero_level' && next.objective.progress < next.objective.target) {
@@ -172,9 +172,11 @@ export function combatObjectivePresentation(objective) {
   };
   const [category, baseChallenge] = labels[objective.type] || labels.enemy_defeat;
   const milestone = milestonePresentation(objective);
-  if (milestone) return { ...milestone, count: `${Math.min(objective.progress, objective.target)}/${objective.target}` };
+  const count = ['chapter_clear', 'boss_defeat'].includes(objective.type)
+    ? '' : `${Math.min(objective.progress, objective.target)}/${objective.target}`;
+  if (milestone) return { ...milestone, count };
   const challenge = objective.type === 'hero_upgrade' && objective.heroName ? `${baseChallenge}: ${objective.heroName}` : baseChallenge;
-  return { category, challenge, count: `${Math.min(objective.progress, objective.target)}/${objective.target}` };
+  return { category, challenge, count };
 }
 
 export function combatObjectiveReward(objective) {

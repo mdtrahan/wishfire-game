@@ -1,17 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { actorFootprintRadius, isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
-import { advanceContinuousCombatArena, deriveContinuousCombatRecoveryHuddle, selectContinuousEnemyTarget } from '../web-runner/src/core/arenaCombat.mjs';
+import { HERO_FORMATION_SLOTS } from '../src/core/heroFormationGeometry.mjs';
+import { actorAttackReach, actorFootprintRadius, isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
+import { placeContinuousCombatHeroesInRecoveryHuddle, advanceContinuousCombatArena, deriveContinuousCombatRecoveryHuddle, selectContinuousEnemyTarget } from '../web-runner/src/core/arenaCombat.mjs';
+import { LEGACY_COMBAT_MOVEMENT_TUNING as LEGACY } from '../web-runner/src/core/combatMovementTuning.mjs';
 import { activateContinuousCombatSpawnedEnemy, pushContinuousCombatEnemy } from '../web-runner/src/core/continuousCombatStage.mjs';
 import { actorPuppetState } from '../web-runner/systems/actorPuppetPresentation.mjs';
 import { deriveCombatWorldVerticalBounds } from '../src/core/combatOrientation.mjs';
 
-test('actor reach uses initialized feet and preserves delivery-specific range', () => {
+test('hero reach uses initialized feet and a shared base range', () => {
   const melee = { kind: 'hero', hp: 10, footX: 100, footY: 200, attackType: 'melee', arenaEnabled: true };
   const mage = { kind: 'hero', hp: 10, footX: 100, footY: 200, attackType: 'magic', arenaEnabled: true };
   const enemy = { kind: 'enemy', hp: 10, footX: 210, footY: 200, streamState: 'in_range' };
-  assert.equal(isActorTargetInRange(melee, enemy), false);
+  assert.equal(isActorTargetInRange(melee, enemy), true);
   assert.equal(isActorTargetInRange(mage, enemy), true);
+  enemy.footX = 210.001;
+  assert.equal(isActorTargetInRange(melee, enemy), false);
+  assert.equal(isActorTargetInRange(mage, enemy), false);
+  for (const name of ['Fara', 'Hondo', 'Runa', 'Kaja']) {
+    for (const currentLevel of [1, 100]) assert.equal(actorAttackReach({kind:'hero',name,currentLevel}),92);
+  }
+  assert.equal(actorAttackReach({kind:'enemy',streamDelivery:'melee'}),46);
+  assert.equal(actorAttackReach({kind:'enemy',streamDelivery:'ranged'}),146);
+  assert.equal(actorAttackReach({kind:'enemy',combatRank:'boss'}),184);
 });
 
 test('arena advances both factions to contact with bounded semantic actor state', () => {
@@ -35,24 +46,13 @@ test('arena advances both factions to contact with bounded semantic actor state'
   }
 });
 
-test('missing-feet party fallback tightens its authored horizontal spread by twenty percent', () => {
+test('missing-feet party fallback uses the fixed slot span of its occupied cells', () => {
   const heroes = [200, 240, 280, 320].map((footY, index) => ({ uid: index + 1, kind: 'hero', hp: 100, footY }));
   advanceContinuousCombatArena({ globals: {}, entities: heroes, seconds: 0 });
   const spread = Math.max(...heroes.map(hero => hero.footX)) - Math.min(...heroes.map(hero => hero.footX));
   const center = (Math.max(...heroes.map(hero => hero.footX)) + Math.min(...heroes.map(hero => hero.footX))) / 2;
-  assert.ok(Math.abs(spread - 52.8) < 1e-9, 'the tightened startup spread remains 52.8 units');
-  assert.ok(Math.abs(center - 1080) < 1e-9, 'fresh continuous combat starts in the center third');
-});
-
-test('straggler regroup begins at the tightened 144-unit squad leash', () => {
-  const heroes = [
-    { uid: 1, name: 'Fara', kind: 'hero', hp: 100, attackType: 'physical', footX: 900, footY: 290 },
-    { uid: 2, name: 'Hondo', kind: 'hero', hp: 100, attackType: 'physical', footX: 910, footY: 330 },
-    { uid: 3, name: 'Runa', kind: 'hero', hp: 100, attackType: 'magic', footX: 920, footY: 370 },
-    { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: 1120, footY: 410 },
-  ];
-  advanceContinuousCombatArena({ globals: {}, entities: heroes, seconds: 0.1 });
-  assert.ok(heroes[3].footX < 1120, 'a 150-plus unit outlier starts moving toward the party before the old 180-unit leash');
+  assert.ok(Math.abs(spread - 70.4) < 1e-9, 'first four occupied slot centers span 70.4 units');
+  assert.ok(Math.abs(heroes[0].formationSlotX-HERO_FORMATION_SLOTS[0].x - 1080) < 1e-9, 'fresh continuous combat starts in the center third');
 });
 
 test('four heroes retain stable targets and separate crowded footprints', () => {
@@ -62,13 +62,13 @@ test('four heroes retain stable targets and separate crowded footprints', () => 
     { uid: 11, kind: 'enemy', hp: 100, streamState: 'in_range', footX: 978, footY: 340, streamDelivery: 'melee', arenaEnabled: true },
   ];
   const entities = [...heroes, ...enemies];
-  advanceContinuousCombatArena({ globals: { time: 1 }, entities, seconds: 0.1 });
+  advanceContinuousCombatArena({ globals: { DevMovementTuning: LEGACY, time: 1 }, entities, seconds: 0.1 });
   const targets = heroes.map(hero => hero.arenaTargetUID);
-  advanceContinuousCombatArena({ globals: { time: 1.1 }, entities, seconds: 0.1 });
+  advanceContinuousCombatArena({ globals: { DevMovementTuning: LEGACY, time: 1.1 }, entities, seconds: 0.1 });
   assert.deepEqual(heroes.map(hero => hero.arenaTargetUID), targets, 'small distance changes stay inside hysteresis');
-  for (let index = 0; index < entities.length; index += 1) for (let other = index + 1; other < entities.length; other += 1) {
-    const a = entities[index], b = entities[other];
-    assert.ok(Math.hypot(a.footX - b.footX, a.footY - b.footY) >= 35, `${a.uid}/${b.uid} footprints separate`);
+  for (let index = 0; index < heroes.length; index += 1) for (let other = index + 1; other < heroes.length; other += 1) {
+    const a = heroes[index], b = heroes[other];
+    assert.ok(Math.hypot(a.footX - b.footX, a.footY - b.footY) >= 32-1e-9, `${a.uid}/${b.uid} footprints separate`);
   }
 });
 
@@ -112,28 +112,6 @@ test('contact cancellation settles both tanks to idle without aging locomotion e
   movingGlobals.time = 10.1;
   advanceContinuousCombatArena({ globals: movingGlobals, entities: [mover, distantEnemy], seconds: 0.1 });
   assert.equal(mover.locomotionStartedAt, 10, 'continued movement does not restart the walk clip');
-});
-
-test('Fara and Hondo lead while Runa and Kaja keep ranged support spacing in either travel direction', () => {
-  for (const enemyX of [1450, 880]) {
-    const direction = enemyX > 1100 ? 1 : -1;
-    const heroStartX = enemyX > 1100 ? 920 : 1120;
-    const heroes = [
-      { uid: 1, name: 'Fara', kind: 'hero', hp: 100, attackType: 'physical', footX: heroStartX, footY: 340 },
-      { uid: 2, name: 'Hondo', kind: 'hero', hp: 100, attackType: 'physical', footX: heroStartX, footY: 380 },
-      { uid: 3, name: 'Runa', kind: 'hero', hp: 100, attackType: 'magic', footX: heroStartX - direction * 10, footY: 340 },
-      { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: heroStartX - direction * 10, footY: 380 },
-    ];
-    const enemy = { uid: 20, name: 'Gobloc', kind: 'enemy', hp: 1000, streamState: 'in_range', streamWalkSpeed: 34, streamDelivery: 'melee', footX: enemyX, footY: 360 };
-    const entities = [...heroes, enemy];
-    for (let tick = 0; tick < 180; tick += 1) advanceContinuousCombatArena({ globals: { time: tick / 10 }, entities, seconds: 0.1 });
-    const frontX = (heroes[0].footX + heroes[1].footX) / 2;
-    const rearX = (heroes[2].footX + heroes[3].footX) / 2;
-    assert.ok((frontX - rearX) * direction > 24, `front heroes should lead toward ${direction}`);
-    assert.ok(heroes.every(hero => isActorTargetInRange(hero, enemy)), 'front melee and rear ranged heroes retain authored reach');
-    const xs = heroes.map(hero => hero.footX);
-    assert.ok(Math.max(...xs) - Math.min(...xs) < 150, 'four actors remain a compact band');
-  }
 });
 
 test('the squad detects one local pack together and leaves distant packs idle', () => {
@@ -216,102 +194,6 @@ test('six seeded packs occupy the full HUD-safe world height with compact huddle
   assert.ok(centers.every((center, index) => Math.abs(center - replayCenters[index]) < 1e-9), 'the same seed reproduces pack vertical placement');
 });
 
-test('frontline roles follow diagonal target reversals while ranged supports stay behind', () => {
-  const heroes = [
-    { uid: 1, name: 'Fara', kind: 'hero', hp: 100, attackType: 'physical', footX: 1000, footY: 330 },
-    { uid: 2, name: 'Hondo', kind: 'hero', hp: 100, attackType: 'physical', footX: 990, footY: 350 },
-    { uid: 3, name: 'Runa', kind: 'hero', hp: 100, attackType: 'magic', footX: 980, footY: 330 },
-    { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: 970, footY: 350 },
-  ];
-  const first = { uid: 20, kind: 'enemy', hp: 50, footX: 1400, footY: 340, streamState: 'roaming', streamSectorIndex: 0 };
-  const second = { uid: 30, kind: 'enemy', hp: 50, footX: 600, footY: 430, streamState: 'roaming', streamSectorIndex: 1 };
-  const globals = { time: 0 };
-  const checkOrder = (target, sign, expectRegroup = true) => {
-    let regroupTicks = 0;
-    for (let tick = 0; tick < 30; tick += 1) {
-      const beforeCenter = heroes.reduce((sum, hero) => ({ x: sum.x + hero.footX / 4, y: sum.y + hero.footY / 4 }), { x: 0, y: 0 });
-      const beforeVector = { x: target.footX - beforeCenter.x, y: target.footY - beforeCenter.y };
-      const beforeLength = Math.hypot(beforeVector.x, beforeVector.y);
-      const beforeProgress = hero => ((hero.footX - beforeCenter.x) * beforeVector.x + (hero.footY - beforeCenter.y) * beforeVector.y) / beforeLength;
-      const regrouping = Math.min(...heroes.slice(0, 2).map(beforeProgress)) <= Math.max(...heroes.slice(2).map(beforeProgress)) + 6.4;
-      const supportProgress = heroes.slice(2).map(beforeProgress);
-      advanceContinuousCombatArena({ globals, entities: [...heroes, first, second], seconds: 0.1 });
-      if (regrouping) {
-        regroupTicks += 1;
-        const afterSupportProgress = heroes.slice(2).map(hero => ((hero.footX - beforeCenter.x) * beforeVector.x + (hero.footY - beforeCenter.y) * beforeVector.y) / beforeLength);
-        assert.ok(afterSupportProgress.every((value, index) => value <= supportProgress[index] + 4),
-          `supports do not advance more than collision separation during ${sign} regroup: ${supportProgress.map(value => value.toFixed(1))} -> ${afterSupportProgress.map(value => value.toFixed(1))}`);
-      }
-    }
-    if (expectRegroup) assert.ok(regroupTicks > 0, `${sign} reversal exercises a compact regroup phase`);
-    const center = heroes.reduce((sum, hero) => ({ x: sum.x + hero.footX / 4, y: sum.y + hero.footY / 4 }), { x: 0, y: 0 });
-    const vector = { x: target.footX - center.x, y: target.footY - center.y };
-    const length = Math.hypot(vector.x, vector.y);
-    const progress = hero => ((hero.footX - center.x) * vector.x + (hero.footY - center.y) * vector.y) / length;
-    const frontline = heroes.slice(0, 2).map(progress);
-    const support = heroes.slice(2).map(progress);
-    assert.ok(frontline[0] > frontline[1] + 1.5,
-      `Fara remains foremost with Hondo behind during ${sign}; ${frontline.map(value => value.toFixed(1))}`);
-    assert.ok(Math.min(...frontline) > Math.max(...support) + 6.4,
-      `each frontline hero leads each support along target direction ${sign}; ${frontline.map(value => value.toFixed(1))} vs ${support.map(value => value.toFixed(1))}`);
-    assert.equal(heroes[1].facing, sign.startsWith('right') ? 'right' : 'left', 'Hondo faces the actual horizontal travel/target direction');
-    assert.ok(Math.max(...heroes.map(hero => Math.hypot(hero.footX - center.x, hero.footY - center.y))) < 80, 'party stays within the tightened cohort envelope through the turn');
-  };
-  checkOrder(first, 'right/up', false);
-  first.hp = 0;
-  checkOrder(second, 'left/down');
-  first.hp = 50;
-  second.hp = 0;
-  checkOrder(first, 'right/up again', false);
-});
-
-test('Fara leads Hondo and the compact support row across all eight travel headings', () => {
-  for (let octant = 0; octant < 8; octant += 1) {
-    const angle = octant * Math.PI / 4;
-    const direction = { x: Math.cos(angle), y: Math.sin(angle) };
-    const perpendicular = { x: -direction.y, y: direction.x };
-    const position = (along, side) => ({
-      footX: 1080 + direction.x * along + perpendicular.x * side,
-      footY: 370 + direction.y * along + perpendicular.y * side,
-    });
-    const heroes = [
-      { uid: 1, baseHeroName: 'Falie', name: 'Fara', kind: 'hero', hp: 100, ...position(18, -8) },
-      { uid: 2, baseHeroName: 'Huun', name: 'Hondo', kind: 'hero', hp: 100, ...position(6, 8) },
-      { uid: 3, baseHeroName: 'Runa', name: 'Runa', kind: 'hero', hp: 100, ...position(-12, -8) },
-      { uid: 4, baseHeroName: 'Kojonn', name: 'Kaja', kind: 'hero', hp: 100, ...position(-12, 8) },
-    ];
-    const enemy = {
-      uid: 20, kind: 'enemy', hp: 100,
-      footX: 1080 + direction.x * 100,
-      footY: 370 + direction.y * 100,
-      streamState: 'roaming', streamSectorIndex: octant,
-    };
-    const globals = { time: 0 };
-    for (let tick = 0; tick < 8; tick += 1) {
-      advanceContinuousCombatArena({ globals, entities: [...heroes, enemy], seconds: 0.1 });
-    }
-    const center = heroes.reduce((sum, hero) => ({ x: sum.x + hero.footX / 4, y: sum.y + hero.footY / 4 }), { x: 0, y: 0 });
-    const progress = hero => (hero.footX - center.x) * direction.x + (hero.footY - center.y) * direction.y;
-    const fara = progress(heroes[0]), hondo = progress(heroes[1]);
-    const rear = heroes.slice(2).map(progress);
-    assert.ok(fara > hondo + 4, `octant ${octant}: Fara leads Hondo (${fara.toFixed(1)} vs ${hondo.toFixed(1)})`);
-    assert.ok(hondo > Math.max(...rear) + 4, `octant ${octant}: Hondo leads the rear row (${hondo.toFixed(1)} vs ${rear.map(value => value.toFixed(1))})`);
-  }
-});
-
-test('the legacy frontline formation remains when no living Fara is present', () => {
-  const heroes = [
-    { uid: 1, baseHeroName: 'Huun', name: 'Hondo', kind: 'hero', hp: 100 },
-    { uid: 2, baseHeroName: 'Runa', name: 'Runa', kind: 'hero', hp: 100 },
-    { uid: 3, baseHeroName: 'Kojonn', name: 'Kaja', kind: 'hero', hp: 100 },
-    { uid: 4, baseHeroName: 'Falie', name: 'Fara', kind: 'hero', hp: 0 },
-  ];
-  const huddle = deriveContinuousCombatRecoveryHuddle(heroes, 1);
-  assert.ok(huddle[0].x > huddle[1].x && huddle[0].x > huddle[2].x,
-    'Hondo remains the existing frontline lead when Fara is KO');
-  assert.equal(huddle[0].x, huddle[3].x, 'a KO Fara record does not activate the living-Fara formation');
-});
-
 test('remaining ranged heroes can finish a local encounter and regroup without a tank', () => {
   const heroes = [
     { uid: 1, name: 'Fara', kind: 'hero', hp: 0, footX: 100, footY: 220 },
@@ -329,84 +211,23 @@ test('remaining ranged heroes can finish a local encounter and regroup without a
   assert.ok(heroes.slice(2).every(hero => hero.arenaTargetUID === 0 || hero.footX < next.footX), 'support-only party resumes roaming toward the next sector');
 });
 
-test('rear supports retain authored reach while both tanks lead in close contact', () => {
-  const heroes = [
-    { uid: 1, name: 'Fara', kind: 'hero', hp: 100, attackType: 'physical', footX: 1020, footY: 300 },
-    { uid: 2, name: 'Hondo', kind: 'hero', hp: 100, attackType: 'physical', footX: 1010, footY: 320 },
-    { uid: 3, name: 'Runa', kind: 'hero', hp: 100, attackType: 'magic', footX: 1120, footY: 300 },
-    { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: 1130, footY: 320 },
-  ];
-  const enemy = { uid: 20, kind: 'enemy', hp: 100, footX: 1180, footY: 310, streamState: 'engaged', streamSectorIndex: 0 };
-  const globals = { time: 0, ContinuousCombatStage: {} };
-  globals.ContinuousCombatStage.activeEncounterGroupId = 0;
-  assert.ok(heroes.slice(2).every(hero => Math.hypot(hero.footX - enemy.footX, hero.footY - enemy.footY) <= 64),
-    'the committed-contact reversal starts with both supports inside melee-stop distance');
-  for (let tick = 0; tick < 48; tick += 1) advanceContinuousCombatArena({ globals, entities: [...heroes, enemy], seconds: 0.1 });
-  const assertFormation = direction => {
-    const center = heroes.reduce((sum, hero) => ({ x: sum.x + hero.footX / 4, y: sum.y + hero.footY / 4 }), { x: 0, y: 0 });
-    const vector = { x: (enemy.footX - center.x) * direction, y: (enemy.footY - center.y) * direction };
-    const length = Math.hypot(vector.x, vector.y);
-    const progress = hero => ((hero.footX - center.x) * vector.x + (hero.footY - center.y) * vector.y) / length;
-    assert.ok(Math.min(...heroes.slice(0, 2).map(progress)) > Math.max(...heroes.slice(2).map(progress)) + 6.4,
-      'both frontline heroes lead both supports during the committed contact turn');
-    assert.ok(progress(heroes[0]) > progress(heroes[1]) + 1.5,
-      'Fara retains the foremost contact position while Hondo remains close enough to attack');
-    assert.ok(heroes.slice(0, 2).every(hero => isActorTargetInRange(hero, enemy)),
-      'both melee heroes stay within their authored attack reach at dense contact');
-    assert.ok(heroes.slice(2).every(hero => isActorTargetInRange(hero, enemy)), 'rear ranged heroes remain inside their authored contact range');
-    assert.ok(heroes.every(hero => Math.hypot(hero.footX - center.x, hero.footY - center.y) < 80),
-      `all four remain inside the tightened cohort envelope during close-contact regrouping (${heroes.map(hero => Math.hypot(hero.footX - center.x, hero.footY - center.y).toFixed(1))})`);
-  };
-  assertFormation(1);
-  enemy.footX = 945;
-  enemy.footY = 400;
-  const reversalCenter = heroes.reduce((sum, hero) => ({ x: sum.x + hero.footX / 4, y: sum.y + hero.footY / 4 }), { x: 0, y: 0 });
-  assert.ok(enemy.footX < reversalCenter.x && enemy.footY > reversalCenter.y, 'the same committed pack reverses to a left/down approach');
-  for (let tick = 0; tick < 48; tick += 1) advanceContinuousCombatArena({ globals: { ...globals, time: 4.8 + tick / 10 }, entities: [...heroes, enemy], seconds: 0.1 });
-  assertFormation(1);
-});
-
-test('frontline ordering follows pure vertical approaches without injecting horizontal travel', () => {
-  const heroes = [
-    { uid: 1, name: 'Fara', kind: 'hero', hp: 100, attackType: 'physical', footX: 900, footY: 420 },
-    { uid: 2, name: 'Hondo', kind: 'hero', hp: 100, attackType: 'physical', footX: 920, footY: 410 },
-    { uid: 3, name: 'Runa', kind: 'hero', hp: 100, attackType: 'magic', footX: 900, footY: 400 },
-    { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: 920, footY: 390 },
-  ];
-  const target = { uid: 40, kind: 'enemy', hp: 50, footX: 910, footY: 90, streamState: 'roaming', streamSectorIndex: 7 };
-  const globals = { time: 0 };
-  for (let tick = 0; tick < 30; tick += 1) advanceContinuousCombatArena({ globals, entities: [...heroes, target], seconds: 0.1 });
-  assert.ok(heroes.every(hero => hero.footY < 420), 'zero horizontal delta stays vertical');
-  const centerY = heroes.reduce((sum, hero) => sum + hero.footY / heroes.length, 0);
-  const frontAdvance = heroes.slice(0, 2).map(hero => centerY - hero.footY);
-  const supportAdvance = heroes.slice(2).map(hero => centerY - hero.footY);
-  assert.ok(Math.min(...frontAdvance) > Math.max(...supportAdvance) + 6.4,
-    `both tanks lead both supports on vertical travel; ${frontAdvance.map(value => value.toFixed(1))} vs ${supportAdvance.map(value => value.toFixed(1))}`);
-});
-
 test('target death sends the whole squad toward the next pack within world bounds', () => {
   const heroes = Array.from({ length: 4 }, (_, index) => ({ uid: index + 1, kind: 'hero', hp: 100, footX: 560 + index * 6, footY: 240 + index * 18 }));
   const enemies = [
     { uid: 20, kind: 'enemy', hp: 0, footX: 560, footY: 272, streamState: 'engaged', streamSectorIndex: 0 },
     { uid: 30, kind: 'enemy', hp: 100, footX: 1440, footY: 272, streamState: 'roaming', streamSectorIndex: 1 },
   ];
-  advanceContinuousCombatArena({ globals: { time: 2 }, entities: [...heroes, ...enemies], seconds: 1 });
+  advanceContinuousCombatArena({ globals: { DevMovementTuning: LEGACY, time: 2 }, entities: [...heroes, ...enemies], seconds: 1 });
   assert.ok(heroes.every(hero => hero.footX > 40 && hero.footX < 2120), 'formation rear slots remain inside world bounds before the squad center advances');
   assert.ok(heroes.reduce((sum, hero) => sum + hero.footX / heroes.length, 0) > 560, 'the squad advances toward the next sector as a group');
-  assert.ok(heroes.every(hero => hero.arenaTargetUID === 0));
+  assert.ok(heroes.every(hero => hero.arenaTargetUID === 30));
   assert.equal(enemies[1].footX, 1440);
-  heroes[3].footX = 950;
-  const leftBeforeRegroup = heroes[0].footX;
-  advanceContinuousCombatArena({ globals: { time: 2.5 }, entities: [...heroes, ...enemies], seconds: 1 });
-  assert.ok(heroes[3].footX < 950);
-  assert.ok(heroes[0].footX > leftBeforeRegroup);
-  assert.ok(heroes.every(hero => hero.arenaTargetUID === 0));
   for (const hero of heroes) {
     hero.footX = 2115;
     hero.arenaTargetUID = 30;
   }
   enemies[1].footX = 2155;
-  advanceContinuousCombatArena({ globals: { time: 3 }, entities: [...heroes, ...enemies], seconds: 2 });
+  advanceContinuousCombatArena({ globals: { DevMovementTuning: LEGACY, time: 3 }, entities: [...heroes, ...enemies], seconds: 2 });
   assert.ok(heroes.every(hero => hero.footX <= 2120));
   assert.ok(enemies[1].footX <= 2160);
 });
@@ -461,6 +282,9 @@ test('enemy contact uses an in-reach target when a Provoke source is outside del
   const provoker = { uid: 2, kind: 'hero', hp: 100, attackType: 'melee', footX: 906, footY: 440, arenaEnabled: true };
   const enemy = { uid: 10, kind: 'enemy', hp: 100, footX: 1030, footY: 300, streamState: 'engaged', arenaInReach: true, streamDelivery: 'melee' };
   const globals = { time: 1, EnemySize: 40, RealtimeSkillEffects: { 10: { provoke: { sourceUID: 2, expiresAt: 5 } } } };
+  placeContinuousCombatHeroesInRecoveryHuddle({globals,heroes:[nearby,provoker],now:-1});
+  delete globals.ContinuousCombatInitialRoam;
+  enemy.footX=nearby.footX-60;enemy.footY=nearby.footY;
   advanceContinuousCombatArena({ globals, entities: [nearby, provoker, enemy], seconds: 0.1 });
   assert.equal(enemy.arenaTargetUID, nearby.uid);
   assert.equal(enemy.arenaInReach, true);

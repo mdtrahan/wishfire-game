@@ -146,7 +146,7 @@ test('boss entry wipe freezes combat scheduling without mutating the user orient
     } }, entities: [] };
     assert.equal(shouldFreezeCombatSimulation(state), true);
     const body = effectiveRendererBody();
-    assert.match(body, /bossPresentationActive[\s\S]*activeCombatOrientation = bossPresentationActive \? 'left-wise'/);
+    assert.match(body, /bossPresentationActive[\s\S]*activeCombatOrientation = \(bossPresentationActive \|\| Number\(state\.globals\.ContinuousCombatStageLoop\) === 1\) \? 'left-wise'/);
     assert.match(body, /cameraCenterX = bossPresentationActive[\s\S]*bossCameraCenterX/);
     assert.match(body, /combatRank === 'boss' \? 4/);
     assert.match(body, /bossTransitionEndsAtMs[\s\S]*curtainWidth/);

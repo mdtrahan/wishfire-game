@@ -1,3 +1,4 @@
+import { previewSeededRng } from '../src/core/seededRngRules.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -7,7 +8,7 @@ import { resetCombatSessionConditions } from '../web-runner/systems/combatSessio
 import { HERO_DEFINITIONS } from '../web-runner/src/core/heroDefinitions.mjs';
 import { heroDefinition, heroSkillUnlocked } from '../web-runner/src/core/heroDefinitions.mjs';
 import { filterContinuousEncounterEnemies, selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
-import { castRealtimeHeroSkill, realtimeBasicInterval, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
+import { castRealtimeHeroSkill, realtimeBasicInterval, realtimeSpecialCooldown, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
 import { advancePassiveHeroRegen } from '../web-runner/src/core/heroSustainRules.mjs';
 import { recordBalanceCombatEvent } from '../web-runner/src/core/balanceTelemetry.mjs';
 import { saveHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
@@ -22,7 +23,7 @@ function loadTickRealtimeHeroBasics() {
     'getGlobals', 'getEnemies', 'resolveHeroAttackTarget', 'isHeroBasicTargetInRange', 'getEntities',
     'GetEffectiveStat', 'realtimeCooldownSeconds', 'selectRealtimeReadyActor', 'scheduleRealtimeActions',
     'HeroAttackSingle', 'GetActorByUID', 'tickRealtimeHeroSkillZones', 'heroDefinition', 'heroSkillUnlocked',
-    'selectRealtimeHeroSkillTarget', 'filterContinuousEncounterEnemies', 'castRealtimeHeroSkill', 'realtimeBasicInterval',
+    'selectRealtimeHeroSkillTarget', 'filterContinuousEncounterEnemies', 'castRealtimeHeroSkill', 'realtimeBasicInterval', 'realtimeSpecialCooldown',
     'advancePassiveHeroRegen', 'recordBalanceCombatEvent', 'saveHeroProgress', 'UpdateHeroHPUI',
     'pushContinuousCombatEnemy', 'reverseContinuousCombatEnemy', 'teleportContinuousCombatEnemy',
     `${body}; return TickRealtimeHeroBasics;`,
@@ -39,7 +40,7 @@ function loadTickRealtimeHeroBasics() {
       ctx.state.globals.PendingHeroHits.push({ at: ctx.state.globals.time + 0.52, heroUID, targetUID });
     },
     (ctx, uid) => ctx.state.entities.find(entity => Number(entity.uid) === Number(uid)) || null,
-    tickRealtimeHeroSkillZones, heroDefinition, heroSkillUnlocked, selectRealtimeHeroSkillTarget, filterContinuousEncounterEnemies, castRealtimeHeroSkill, realtimeBasicInterval,
+    tickRealtimeHeroSkillZones, heroDefinition, heroSkillUnlocked, selectRealtimeHeroSkillTarget, filterContinuousEncounterEnemies, castRealtimeHeroSkill, realtimeBasicInterval, realtimeSpecialCooldown,
     advancePassiveHeroRegen, recordBalanceCombatEvent, saveHeroProgress, () => {},
     () => false, () => false, () => false,
   );
@@ -108,19 +109,16 @@ test('hero basics and conditional skills can target every active local sector wh
   globals.ContinuousCombatStage = { activeEncounterGroupId: 10 };
   const localTargets = filterContinuousEncounterEnemies([committed, nearerNextPack, remotePack, preActivation], globals, actors);
   assert.deepEqual(localTargets.map(enemy => enemy.uid), [90, 91, 93]);
-  assert.equal(resolveHeroAttackTarget({ enemies: localTargets, focusUID: 90, inRange: enemy => isHeroBasicTargetInRange(actors[0], enemy) })?.uid, 90,
-    'a living in-reach focus remains sticky across sector identity');
-  assert.equal(resolveHeroAttackTarget({ enemies: localTargets, focusUID: 93, inRange: enemy => isHeroBasicTargetInRange(actors[0], enemy) })?.uid, 93,
-    'a roaming actor already inside hero reach is a valid target before arena state catches up');
-  const ambush = HERO_DEFINITIONS.Huun.actives.find(skill => skill.skillId === 'ambush');
-  const skillSelection = selectRealtimeHeroSkillTarget({ skill: ambush, hero: actors[0], heroes: actors, enemies: [committed, nearerNextPack], globals, now: globals.time });
-  assert.equal(skillSelection?.targetUID, 90, 'the authored skill ordering still chooses the lower-health local target');
+  assert.equal(resolveHeroAttackTarget({ hero:actors[0], enemies:localTargets, inRange:enemy=>isHeroBasicTargetInRange(enemy,actors[0]) })?.uid,93,'each hero acquires its closest living foe');
+  const shadow = HERO_DEFINITIONS.Huun.special;
+  const skillSelection = selectRealtimeHeroSkillTarget({ skill: shadow, hero: actors[0], heroes: actors, enemies: [committed, nearerNextPack], globals, now: globals.time });
+  assert.equal(skillSelection?.targetUID, 91, 'the Special targets the nearest local foe in reach');
   assert.equal(tick(ctx), 1);
-  assert.equal(globals.PendingHeroHits[0].targetUID, 90, 'the retained living focus remains stable while other local sectors are eligible');
+  assert.equal(globals.PendingHeroHits[0].targetUID, 93, 'basic acquisition uses the nearest living foe regardless of sector');
 });
 
 test('no in-range target preserves an overdue attack for the next eligible target', () => {
-  const outOfRange = { uid: 90, kind: 'enemy', hp: 20, x: 500, streamState: 'in_range' };
+  const outOfRange = { uid: 90, kind: 'enemy', hp: 20, x: 1000, streamState: 'in_range' };
   const { ctx, globals, tick } = fixture({ time: 100, heroes: [1], readyAt: { 1: 5 }, enemies: [outOfRange] });
   assert.equal(tick(ctx), 0);
   assert.equal(globals.RealtimeHeroBasicReadyAt['1'], 5);
@@ -151,8 +149,8 @@ test('scheduled basic dispatch validates range again and restores dueAt when its
   tick(ctx);
   const action = globals.RealtimeHeroBasicScheduledActions['2'];
   assert.ok(action);
-  target.x = 500;
-  target.footX = 500;
+  target.x = 1000;
+  target.footX = 1000;
   globals.time += 1 / 60;
   assert.equal(tick(ctx), 0);
   assert.equal(globals.RealtimeHeroBasicScheduledActions['2'], undefined);
@@ -211,25 +209,39 @@ test('fresh session reset discards pending clocks before hero UIDs repeat', () =
 });
 
 
-test('the real scheduler filters locked skills even when every skill clock is ready',()=>{
+test('the real scheduler casts only the Special; passives and resonances never take a clock',()=>{
  const {ctx,globals,actors,tick}=fixture({heroes:[1],enemies:[{uid:90,kind:'enemy',hp:1000,maxHP:1000,x:220,y:200,streamState:'engaged'}]});
  Object.assign(actors[0],{baseHeroName:'Huun',currentLevel:1});
  ctx.callFunction=()=>0;
  const used=new Set();
  for(let n=0;n<1800;n++){globals.time=n/30;tick(ctx);if(globals.LastRealtimeHeroSkill)used.add(globals.LastRealtimeHeroSkill.skillId);globals.PendingHeroHits=[];}
- assert.deepEqual([...used],['ambush']);
- actors[0].currentLevel=5;globals.RealtimeHeroBasicClocks={};globals.RealtimeHeroBasicScheduledActions={};
- for(let n=1800;n<2400;n++){globals.time=n/30;tick(ctx);if(globals.LastRealtimeHeroSkill)used.add(globals.LastRealtimeHeroSkill.skillId);globals.PendingHeroHits=[];}
- assert.deepEqual([...used].sort(),['ambush','cheap_shot']);
+ assert.deepEqual([...used],['shadow']);
+ assert.deepEqual(Object.keys(globals.RealtimeHeroBasicClocks[1].skillReadyAt),['shadow']);
 });
 
-test('the live scheduler lets Sanctuary see KO allies while preserving the caster cooldowns',()=>{
+test('the live scheduler reserves the star-reduced Special cooldown without changing basic cadence',()=>{
+ for(const stars of [0,2,4,8]){
+  const {ctx,globals,actors,tick}=fixture({heroes:[1],enemies:[{uid:90,kind:'enemy',hp:1000,maxHP:1000,x:220,y:200,streamState:'engaged'}]});
+  Object.assign(actors[0],{baseHeroName:'Huun',currentLevel:1,maxHP:100,hp:100});
+  globals.HeroGrowth={stars:{Huun:stars}};
+  globals.RealtimeHeroBasicClocks={1:{basicReadyAt:20,skillReadyAt:{shadow:0}}};
+  ctx.callFunction=()=>0;
+  tick(ctx);
+  assert.equal(globals.LastRealtimeHeroSkill.skillId,'shadow');
+  assert.equal(globals.RealtimeHeroBasicClocks[1].skillReadyAt.shadow,20*(stars>=2?.92:1));
+  assert.equal(globals.RealtimeHeroBasicClocks[1].basicReadyAt,20);
+ }
+});
+
+test('the live scheduler casts party-wide Elevate while preserving every other clock',()=>{
  const {ctx,globals,actors,tick}=fixture({time:10,heroes:[1,2],enemies:[{uid:90,kind:'enemy',hp:1000,maxHP:1000,x:220,y:200,streamState:'engaged'}]});
- Object.assign(actors[0],{baseHeroName:'Falie',maxHP:100,hp:0,currentLevel:100});Object.assign(actors[1],{baseHeroName:'Kojonn',maxHP:100,hp:100,currentLevel:100});
- globals.RealtimeHeroBasicClocks={1:{basicReadyAt:20,skillReadyAt:{cover:100}},2:{basicReadyAt:100,skillReadyAt:Object.fromEntries(heroDefinition(actors[1]).actives.map(skill=>[skill.skillId,skill.skillId==='sanctuary'?0:100]))}};
- ctx.callFunction=(name,sourceUID,targetUID,pct,revive)=>{if(name==='HealRealtimeActor'){const target=ctx.state.entities.find(a=>a.uid===targetUID);if(revive&&target.hp===0){target.hp=Math.floor(target.maxHP*pct/100);return target.hp;}}return 0;};
- assert.equal(tick(ctx),1);assert.equal(actors[0].hp,30);assert.equal(globals.LastRealtimeHeroSkill.skillId,'sanctuary');assert.equal(globals.RealtimeHeroBasicClocks[1].skillReadyAt.cover,100);
- assert.equal(globals.RealtimeHeroBasicClocks[2].skillReadyAt.sanctuary,75);
+ Object.assign(actors[0],{baseHeroName:'Falie',maxHP:100,hp:100,currentLevel:1,footX:900,x:900});Object.assign(actors[1],{baseHeroName:'Kojonn',maxHP:100,hp:100,currentLevel:1});
+ Object.assign(globals,{RuntimeRandomSeed:12,RuntimeRandomDraws:0});globals.RuntimeRandom=()=>previewSeededRng(globals.RuntimeRandomSeed,globals.RuntimeRandomDraws++);
+ globals.RealtimeHeroBasicClocks={1:{basicReadyAt:20,skillReadyAt:{crimson_ward:100}},2:{basicReadyAt:100,skillReadyAt:{elevate:0}}};
+ ctx.callFunction=()=>0;
+ tick(ctx);assert.equal(globals.LastRealtimeHeroSkill.skillId,'elevate');assert.ok(globals.RealtimeSkillEffects[1].elevate,'distant allies still receive Elevate');
+ assert.equal(globals.RealtimeHeroBasicClocks[1].skillReadyAt.crimson_ward,100);
+ assert.ok(Math.abs(globals.RealtimeHeroBasicClocks[2].skillReadyAt.elevate-30)<.1);
 });
 test('a cancelled skill refunds its due time if its caster KOs before commitment',()=>{
  const {ctx,globals,actors,tick}=fixture({time:10,heroes:[1],enemies:[{uid:90,kind:'enemy',hp:1000,maxHP:1000,x:220,y:200,streamState:'engaged'}]});

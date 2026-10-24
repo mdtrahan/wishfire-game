@@ -30,7 +30,7 @@ async function withStorage(run) {
 test('pending kill rewards settle on reload before fresh session IDs can reuse enemy UIDs', () => withStorage(async values => {
   const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) };
   const locks = { request: (_key, callback) => callback() };
-  await createEquipmentStorage({ globals: { goldTotal: 2 }, storage, locks, seed: () => 3, now: () => 1000, reportError() {} }).sync();
+  await createEquipmentStorage({ globals: { goldTotal: 2, HeroProgress: createHeroProgressStore() }, storage, locks, seed: () => 3, now: () => 1000, reportError() {} }).sync();
   const globals = {
     HeroProgress: createHeroProgressStore(),
     ProgressionBattle: { id: 'mid-battle', participants: ['Falie'], defeated: { 9: 7 }, defeatedGold: { 9: 4 }, settled: false },
@@ -196,14 +196,14 @@ test('role skill, counter and DoT KOs reach the shared reward callback', () => {
 test('wallet first sync commits recovered Gold and retries a saved receipt without duplicating it', async () => withStorage(async values => {
   const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) };
   const locks = { request: (_key, callback) => callback() };
-  const initial = createEquipmentStorage({ globals: { goldTotal: 0 }, storage, locks, seed: () => 3, now: () => 1000, reportError() {} });
+  const initial = createEquipmentStorage({ globals: { goldTotal: 0, HeroProgress: createHeroProgressStore() }, storage, locks, seed: () => 3, now: () => 1000, reportError() {} });
   await initial.sync();
-  const globals = { goldTotal: 4, PendingGoldSettlements: { recovered: 4 } };
+  const globals = { goldTotal: 4, PendingGoldSettlements: { recovered: 4 }, HeroProgress: createHeroProgressStore() };
   const wallet = createEquipmentStorage({ globals, storage, locks, seed: () => 3, now: () => 1000, reportError() {} });
   await wallet.sync();
   assert.equal(wallet.data.gold, 4);
   assert.deepEqual(globals.PendingGoldSettlements, {});
-  const retryGlobals = { goldTotal: 0, PendingGoldSettlements: { recovered: 4 } };
+  const retryGlobals = { goldTotal: 0, PendingGoldSettlements: { recovered: 4 }, HeroProgress: createHeroProgressStore() };
   const retry = createEquipmentStorage({ globals: retryGlobals, storage, locks, seed: () => 8, now: () => 2000, reportError() {} });
   await retry.sync();
   assert.equal(retry.data.gold, 4);
@@ -211,12 +211,12 @@ test('wallet first sync commits recovered Gold and retries a saved receipt witho
   assert.deepEqual(retryGlobals.PendingGoldSettlements, {});
   const freshValues = new Map();
   const freshStorage = { getItem: key => freshValues.get(key) ?? null, setItem: (key, value) => freshValues.set(key, String(value)) };
-  const firstSave = createEquipmentStorage({ globals: { goldTotal: 4, PendingGoldSettlements: { fresh: 4 } }, storage: freshStorage, locks, seed: () => 5, now: () => 3000, reportError() {} });
+  const firstSave = createEquipmentStorage({ globals: { goldTotal: 4, PendingGoldSettlements: { fresh: 4 }, HeroProgress: createHeroProgressStore() }, storage: freshStorage, locks, seed: () => 5, now: () => 3000, reportError() {} });
   await firstSave.sync();
   assert.equal(firstSave.data.gold, 4);
   const failedValues = new Map();
   const failedStorage = { getItem: key => failedValues.get(key) ?? null, setItem: (key, value) => failedValues.set(key, String(value)) };
-  const blocked = createEquipmentStorage({ globals: { goldTotal: 4, PendingGoldSettlements: { unsaved: 4 }, HeroProgressStorageError: 'quota' }, storage: failedStorage, locks, seed: () => 6, now: () => 4000, reportError() {} });
+  const blocked = createEquipmentStorage({ globals: { goldTotal: 4, PendingGoldSettlements: { unsaved: 4 }, HeroProgress: createHeroProgressStore(), HeroProgressStorageError: 'quota' }, storage: failedStorage, locks, seed: () => 6, now: () => 4000, reportError() {} });
   await assert.rejects(blocked.sync(), /saved HeroProgress receipt/);
   assert.equal(failedStorage.getItem('wishfire.equipment-economy.v1'), null);
 }));
@@ -224,7 +224,7 @@ test('wallet first sync commits recovered Gold and retries a saved receipt witho
 test('a reload between HeroProgress settlement and wallet sync replays its durable Gold outbox once', async () => withStorage(async values => {
   const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) };
   const locks = { request: (_key, callback) => callback() };
-  const seedWallet = createEquipmentStorage({ globals: { goldTotal: 2 }, storage, locks, seed: () => 3, now: () => 1000, reportError() {} });
+  const seedWallet = createEquipmentStorage({ globals: { goldTotal: 2, HeroProgress: createHeroProgressStore() }, storage, locks, seed: () => 3, now: () => 1000, reportError() {} });
   await seedWallet.sync();
   const seedProgress = createHeroProgressStore();
   seedProgress.pendingBattleRewards = { id: 'interrupted', participants: ['Falie'], defeated: { 9: 7 }, defeatedGold: { 9: 4 } };

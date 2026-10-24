@@ -1,8 +1,9 @@
+import {lampHeroRoster} from '../web-runner/src/core/lampHeroRoster.mjs';
 import {RARITIES} from '../web-runner/src/core/equipment.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {LAMP_CONFIG,LAMP_CAPACITY_TIERS,generateLampItem,createLampEconomy,activateLamp,lampStoredCount,lampCapacity,lampItemCPGain,lampGearCP,sortedLampItems,selectLampUpgrades,lampReviewCandidates,planLampAutoEquip,finishLampReview,lampUpgradeCost,lampUpgradeProgress,upgradeLamp,restorePaidLampUpgrade,validateLampEconomy,compareLampItem,selectAutoEquipHero,equipLampItem,dismantleLampItems,migrateLegacyEquipment,migrateLampEconomy,migrateFourStatLamp,migrateDraftLamp,salvageValue,GEAR_ARCHETYPES} from '../web-runner/src/core/lampGear.mjs';
+import {LAMP_CONFIG,LAMP_CAPACITY_TIERS,lampTierUpgradeCost,awardLampKillPoints,generateLampItem,createLampEconomy,activateLamp,lampStoredCount,lampCapacity,lampItemCPGain,lampGearCP,sortedLampItems,selectLampUpgrades,lampReviewCandidates,planLampAutoEquip,finishLampReview,lampUpgradeCost,lampUpgradeProgress,upgradeLamp,restorePaidLampUpgrade,validateLampEconomy,compareLampItem,selectAutoEquipHero,equipLampItem,dismantleLampItems,migrateLegacyEquipment,migrateLampEconomy,migrateFourStatLamp,migrateDraftLamp,salvageValue,GEAR_ARCHETYPES} from '../web-runner/src/core/lampGear.mjs';
 import {createEquipmentStorage,EQUIPMENT_SAVE_KEY,BAG_UPGRADE_BACKUP_KEY} from '../web-runner/systems/equipmentStorage.mjs';
 import {createHeroProgressStore,newHeroProgress} from '../web-runner/src/core/heroProgression.mjs';
 import {computeCombatPower} from '../web-runner/src/core/combatPower.mjs';
@@ -33,7 +34,7 @@ test('canonical equipped gear reaches the deployed hero instance',async()=>{
  assert.equal(restored.maxHP,actor.maxHP);
 });
 
-test('instance loadouts override canonical gear and duplicate clones do not share it',async()=>{
+test('combat copies cannot receive lamp gear and existing instance loadouts stay isolated',async()=>{
  const first={...newHeroProgress('Falie','falie#1'),kind:'hero',uid:1};
  const second={...newHeroProgress('Falie','falie#2'),kind:'hero',uid:2};
  const f=fixture({}, {getActors:()=>[first,second]});
@@ -46,11 +47,15 @@ test('instance loadouts override canonical gear and duplicate clones do not shar
  assert.deepEqual(second.equipmentStats??{},{});
  f.setClock(3001);
  const instanceItem=await f.store.generate();
- await f.store.equip('falie#1',instanceItem.instanceId);
- assert.deepEqual(first.equipmentStats,instanceItem.stats);
+ const before=structuredClone(f.store.data);
+ await assert.rejects(f.store.equip('falie#1',instanceItem.instanceId),/not a lamp equipment owner/);
+ assert.deepEqual(f.store.data,before);
+ assert.deepEqual(first.equipmentStats,canonicalItem.stats);
  assert.deepEqual(second.equipmentStats??{},{});
  const saved=structuredClone(f.store.data);
  saved.loadouts['falie#1']={};
+ // Moving a still-cached item requires removing its old queue membership.
+ saved.lamp.pending=saved.lamp.pending.filter(id=>id!==instanceItem.instanceId);
  saved.lamp.discarded.push(instanceItem.instanceId);
  f.values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(saved));
  await f.store.refresh();
@@ -110,22 +115,22 @@ test('one full-cost Bag upgrade commits once and preserves gear, heroes and over
  f.setFail(true);await assert.rejects(f.store.upgrade(0),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),saved);assert.equal(f.store.data.lamp.essence,450);
  f.setFail(false);const purchases=await Promise.allSettled([f.store.upgrade(0),f.store.upgrade(0)]);
  assert.equal(purchases.filter(r=>r.status==='fulfilled').length,1);assert.match(purchases.find(r=>r.status==='rejected').reason.message,/level changed/);
- assert.deepEqual(purchases.find(r=>r.status==='fulfilled').value,{levelBefore:1,levelAfter:2,capacityBefore:20,capacityAfter:30,cost:400});
- assert.equal(f.store.data.lamp.essence,50);assert.equal(f.store.data.lamp.capacityTier,1);assert.equal(f.store.data.lamp.upgradeStage,undefined);assert.equal(f.store.data.lamp.upgradeEndsAt,undefined);
+ assert.deepEqual(purchases.find(r=>r.status==='fulfilled').value,{levelBefore:1,levelAfter:2,capacityBefore:20,capacityAfter:30,cost:100});
+ assert.equal(f.store.data.lamp.essence,350);assert.equal(f.store.data.lamp.capacityTier,1);assert.equal(f.store.data.lamp.upgradeStage,undefined);assert.equal(f.store.data.lamp.upgradeEndsAt,undefined);
  const restarted=createEquipmentStorage({globals:f.globals,storage:f.storage,locks:f.locks,now:()=>11000,reportError:()=>{}});await restarted.sync();
- assert.equal(restarted.data.lamp.capacityTier,1);assert.equal(restarted.data.lamp.essence,50);assert.deepEqual(restarted.data.items,gear);assert.deepEqual(f.globals.HeroProgress.heroes,heroes);assert.equal(restarted.data.partyEXP,0);
- const poor=fixture();await poor.store.sync();const before=JSON.stringify(poor.store.data);await assert.rejects(poor.store.upgrade(0),/Need 400 more Essence/);assert.equal(JSON.stringify(poor.store.data),before);
+ assert.equal(restarted.data.lamp.capacityTier,1);assert.equal(restarted.data.lamp.essence,350);assert.deepEqual(restarted.data.items,gear);assert.deepEqual(f.globals.HeroProgress.heroes,heroes);assert.equal(restarted.data.partyEXP,0);
+ const poor=fixture();await poor.store.sync();const before=JSON.stringify(poor.store.data);await assert.rejects(poor.store.upgrade(0),/Need 100 more Bag progress/);assert.equal(JSON.stringify(poor.store.data),before);
  const max=createLampEconomy(42);max.lamp.capacityTier=LAMP_CONFIG.lampLevels-1;assert.throws(()=>upgradeLamp(max),/fully upgraded/);
 });
 
 test('paid v5 installments and construction become exact bank credit once with a source backup',async()=>{
  for(const tier of [0,6,98])for(let stage=0;stage<=4;stage++){
-  const data=createLampEconomy(42);data.lamp.capacityTier=tier;data.lamp.essence=27;data.lamp.upgradeStage=stage;
+  const data=createLampEconomy(42);data.lamp.capacityTier=tier;data.lamp.essence=27;data.lamp.killPoints=13;data.lamp.upgradeStage=stage;
   if(stage===4)data.lamp.upgradeEndsAt=100000;
   data.lamp.speedUpTickets=12;
   const raw=JSON.stringify(data),f=fixture({[EQUIPMENT_SAVE_KEY]:raw});await f.store.sync();
   const expected=27+Math.floor(LAMP_CAPACITY_TIERS[tier].cost*stage/4);
-  assert.equal(f.store.data.lamp.essence,expected);assert.equal(f.store.data.lamp.capacityTier,tier);assert.equal(f.store.data.lamp.speedUpTickets,12);
+  assert.equal(f.store.data.lamp.essence,expected);assert.equal(f.store.data.lamp.killPoints,13);assert.equal(f.store.data.lamp.capacityTier,tier);assert.equal(f.store.data.lamp.speedUpTickets,12);
   assert.equal(f.store.data.lamp.upgradeStage,undefined);assert.equal(f.store.data.lamp.upgradeEndsAt,undefined);assert.equal(f.values.get(BAG_UPGRADE_BACKUP_KEY),raw);
   const next=createEquipmentStorage({globals:f.globals,storage:f.storage,locks:f.locks,now:()=>200000,reportError:()=>{}});await next.sync();assert.equal(next.data.lamp.essence,expected);assert.equal(f.values.get(BAG_UPGRADE_BACKUP_KEY),raw);
  }
@@ -138,7 +143,7 @@ test('paid-save conversion failures and simultaneous writers preserve the origin
  const raw=JSON.stringify(initial),f=fixture({[EQUIPMENT_SAVE_KEY]:raw});f.setFail(true);
  await assert.rejects(f.store.sync(),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),raw);assert.equal(f.store.data,undefined);
  f.setFail(false);const other=createEquipmentStorage({globals:f.globals,storage:f.storage,locks:f.locks,reportError:()=>{}});
- await Promise.all([f.store.sync(),other.sync()]);assert.equal(f.store.data.lamp.essence,317);assert.equal(other.data.lamp.essence,317);assert.equal(f.values.get(BAG_UPGRADE_BACKUP_KEY),raw);
+ await Promise.all([f.store.sync(),other.sync()]);assert.equal(f.store.data.lamp.essence,92);assert.equal(other.data.lamp.essence,92);assert.equal(f.values.get(BAG_UPGRADE_BACKUP_KEY),raw);
  const broken=createLampEconomy(42);broken.lamp.upgradeStage=2;broken.lamp.upgradeEndsAt=123;
  const invalid=fixture({[EQUIPMENT_SAVE_KEY]:JSON.stringify(broken)});await assert.rejects(invalid.store.sync(),/invalid/);assert.equal(invalid.values.get(EQUIPMENT_SAVE_KEY),JSON.stringify(broken));
 });
@@ -298,7 +303,7 @@ test('full-cache legacy migrations retain an enabled Auto preference',()=>{
 
 test('dismantling essence buys saved capacity upgrades; upgrade never grants EXP or resumes Auto',async()=>{
  const initial=createLampEconomy(42);for(const hero of Object.values(createHeroProgressStore().heroes))for(const type of ['hat','body','boots']){const base=GEAR_ARCHETYPES.find(entry=>entry.type===type),id='strong:'+hero.heroInstanceKey+':'+type;initial.items.push({...base,instanceId:id,rarity:'common',level:1,sequence:0,ordinal:0,stats:{ATK:10000,DEF:10000,MAG:10000,RES:10000,HP:10000}});(initial.loadouts[hero.heroInstanceKey]||={})[type]=id;}
- const f=fixture({[EQUIPMENT_SAVE_KEY]:JSON.stringify(initial)});await f.store.sync();await assert.rejects(f.store.upgrade(),/Essence/);
+ const f=fixture({[EQUIPMENT_SAVE_KEY]:JSON.stringify(initial)});await f.store.sync();await assert.rejects(f.store.upgrade(),/Bag progress/);
  while(f.store.data.lamp.essence<LAMP_CAPACITY_TIERS[0].cost){for(let i=0;i<LAMP_CONFIG.capacity;i++){f.setClock(f.store.time()+2000);await f.store.generate({});}await f.store.dismantle(preview(f.store.data));}const exp=f.store.data.partyEXP;
  await f.store.upgrade(0);
  assert.equal(f.store.data.lamp.capacityTier,1);assert.equal(f.store.data.partyEXP,exp);assert.equal(f.store.data.lamp.autoEnabled,false);
@@ -406,7 +411,7 @@ test('explicit dismantle rejects positive upgrades and preserves the cache',asyn
 
 test('earned batch Auto Equip uses actual hero CP gains and preserves accurate receipts',async()=>{
  const captured=JSON.parse(readFileSync(new URL('./fixtures/lamp-auto-earned-69.json',import.meta.url)));
- const data=structuredClone(captured.economy),heroes=Object.values(captured.heroes.heroes).slice(0,4);
+ const data=structuredClone(captured.economy),heroes=lampHeroRoster(captured.heroes);
  const eligible=sortedLampItems(data).filter(i=>heroes.some(h=>lampItemCPGain(data,i,h)>0));
  assert.equal(eligible.length,21);
  assert.deepEqual(new Set(selectLampUpgrades(data,heroes).map(i=>i.instanceId)),new Set(eligible.map(i=>i.instanceId)));
@@ -417,8 +422,8 @@ test('earned batch Auto Equip uses actual hero CP gains and preserves accurate r
  const receipts=await f.store.autoEquip();assert.ok(receipts.length>0&&receipts.length<=4);
  assert.equal(new Set(receipts.map(r=>r.heroId)).size,receipts.length);assert.ok(receipts.every(receipt=>receipt.slots.length>0&&receipt.items.length===receipt.slots.length));
  for(const receipt of receipts){const hero=heroes.find(h=>h.heroInstanceKey===receipt.heroId);assert.equal(Math.round((receipt.cpAfter-receipt.cpBefore)*10)/10,receipt.cpChange);assert.ok(receipt.slots.every((slot,index)=>f.store.data.loadouts[receipt.heroId][slot]===receipt.items[index].instanceId));assert.ok(hero);}
- const totalBefore=heroes.reduce((sum,hero)=>sum+computeCombatPower(hero),0),totalAfter=Object.values(f.globals.HeroProgress.heroes).slice(0,4).reduce((sum,hero)=>sum+computeCombatPower(hero),0);assert.ok(totalAfter>totalBefore);
- assert.equal(f.store.data.partyEXP,exp);assert.deepEqual(Object.values(f.globals.HeroProgress.heroes).slice(0,4).map(h=>[h.currentLevel,h.currentEXP,h.lampEXPClaimed]),progress);assert.equal(f.store.data.lamp.pending.length,0);assert.ok(f.store.data.lamp.discarded.length>0);assert.ok(lampReviewCandidates(f.store.data,Object.values(f.globals.HeroProgress.heroes).slice(0,4)).every(candidate=>candidate.queue==='discarded'&&candidate.bestGain<=0));
+ const totalBefore=heroes.reduce((sum,hero)=>sum+computeCombatPower(hero),0),totalAfter=lampHeroRoster(f.globals.HeroProgress).reduce((sum,hero)=>sum+computeCombatPower(hero),0);assert.ok(totalAfter>totalBefore);
+ assert.equal(f.store.data.partyEXP,exp);assert.deepEqual(lampHeroRoster(f.globals.HeroProgress).map(h=>[h.currentLevel,h.currentEXP,h.lampEXPClaimed]),progress);assert.equal(f.store.data.lamp.pending.length,0);assert.ok(f.store.data.lamp.discarded.length>0);assert.ok(lampReviewCandidates(f.store.data,lampHeroRoster(f.globals.HeroProgress)).every(candidate=>candidate.queue==='discarded'&&candidate.bestGain<=0));
 });
 
 test('full-cost Bag curve retains fractional odds and all 100 earned levels',()=>{
@@ -429,11 +434,11 @@ test('full-cost Bag curve retains fractional odds and all 100 earned levels',()=
   assert.equal(data.lamp.essence,0);total+=original;assert.equal(data.lamp.capacityTier,tier+1);
   for(const key of Object.keys(RARITIES))assert.ok(Math.abs(LAMP_CAPACITY_TIERS[tier+1].rarityWeights[key]-LAMP_CAPACITY_TIERS[tier].rarityWeights[key])<.56);
  }
- assert.equal(data.lamp.capacityTier,99);assert.equal(total,138029955534);assert.equal(lampUpgradeProgress(data).max,true);assert.equal(lampUpgradeCost(data),null);
+ assert.equal(data.lamp.capacityTier,99);assert.equal(total,123488225);assert.equal(lampUpgradeProgress(data).max,true);assert.equal(lampUpgradeCost(data),null);
  assert.equal(1+LAMP_CONFIG.maxOrdinal*LAMP_CONFIG.mapStatGrowth,5.95);
 });
 
-test('Bag capacity accelerates and full-level cost preserves its existing geometric curve',()=>{
+test('Bag capacity accelerates and full-level cost follows the approved wave curve',()=>{
  assert.deepEqual(LAMP_CAPACITY_TIERS.slice(0,5).map(tier=>tier.capacity),[20,30,48,72,100]);
  for(let n=0;n<LAMP_CAPACITY_TIERS.length;n++){
   const tier=LAMP_CAPACITY_TIERS[n];assert.ok(Number.isSafeInteger(tier.capacity));
@@ -444,7 +449,7 @@ test('Bag capacity accelerates and full-level cost preserves its existing geomet
   if(n)assert.ok(tier.cost>LAMP_CAPACITY_TIERS[n-1].cost);
  }
  const blockGains=[0,10,20,30,40,50,60,70,80].map(n=>LAMP_CAPACITY_TIERS[n+10].capacity-LAMP_CAPACITY_TIERS[n].capacity);assert.ok(blockGains.every((gain,n)=>!n||gain>blockGains[n-1]));
- const data=createLampEconomy(7);assert.equal(lampUpgradeCost(data),400);data.lamp.capacityTier=1;assert.equal(lampUpgradeCost(data),480);
+ const data=createLampEconomy(7);assert.equal(lampUpgradeCost(data),100);data.lamp.capacityTier=1;assert.equal(lampUpgradeCost(data),300);
 });
 
 test('cache groups all rarity tiers before descending CP within each tier without mutating saved queues',()=>{
@@ -467,3 +472,101 @@ test('cache groups all rarity tiers before descending CP within each tier withou
  for(let i=0;i<12;i++){f.setClock(f.store.time()+2000);await store.generate();}
  const receipts=await store.autoEquip();assert.ok(receipts.length);verify();for(const receipt of receipts)assert.equal(receipt.cpAfter,computeCombatPower(f.globals.HeroProgress.heroes[receipt.heroId]));
  });
+
+
+test('approved wavy costs match owner references with strictly increasing flat level costs',()=>{
+ const references={1:100,2:300,3:525,4:775,5:1100,6:1525,7:2050,8:2725,10:4875,11:6450,15:16000,20:36125,21:42900,31:141550,51:653850,71:1800150,91:3837250,99:4770375};
+ for(const[level,cost]of Object.entries(references))assert.equal(LAMP_CAPACITY_TIERS[Number(level)-1].cost,cost,`L${level}`);
+ const costs=LAMP_CAPACITY_TIERS.slice(0,99).map(t=>t.cost);
+ assert.ok(costs.every(Number.isSafeInteger));assert.ok(costs.every(cost=>cost%25===0));
+ assert.ok(LAMP_CAPACITY_TIERS.slice(0,99).every(tier=>tier.cost>=5*tier.capacity));
+ assert.equal(Math.min(...costs.slice(1).map((cost,i)=>cost-costs[i])),200);
+ assert.ok(costs.every((cost,i)=>!i||cost>costs[i-1]));assert.equal(LAMP_CAPACITY_TIERS[99].cost,null);
+ assert.equal(costs.slice(0,20).reduce((sum,cost)=>sum+cost,0),205900);
+ const data=createLampEconomy(1);for(const essence of [0,50,100,10000]){data.lamp.essence=essence;assert.equal(lampUpgradeCost(data),100);}
+});
+
+test('kills and Essence fill combined progress and spend kill points first with surplus',async()=>{
+ for(const[points,essence,leftPoints,leftEssence]of [[60,50,0,10],[130,50,30,50],[100,0,0,0]]){
+  const data=createLampEconomy(1);data.lamp.killPoints=points;data.lamp.essence=essence;
+  assert.deepEqual(lampUpgradeProgress(data),{current:points+essence,required:100,max:false,fraction:1});
+  const f=fixture({[EQUIPMENT_SAVE_KEY]:JSON.stringify(data)});await f.store.sync();const before=f.values.get(EQUIPMENT_SAVE_KEY);
+  f.setFail(true);await assert.rejects(f.store.upgrade(0),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),before);assert.equal(f.store.data.lamp.killPoints,points);
+  f.setFail(false);const result=await Promise.allSettled([f.store.upgrade(0),f.store.upgrade(0)]);assert.equal(result.filter(r=>r.status==='fulfilled').length,1);
+  assert.equal(f.store.data.lamp.killPoints,leftPoints);assert.equal(f.store.data.lamp.essence,leftEssence);
+ }
+ const data=createLampEconomy(1);data.lamp.killPoints=20;data.lamp.essence=30;
+ assert.equal(lampUpgradeProgress(data).fraction,.5);assert.throws(()=>upgradeLamp(data),/Need 50 more Bag progress/);
+});
+
+test('kill points normalize missing or corrupt saved values without changing earned level or Essence',async()=>{
+ for(const points of [undefined,null,-1,1.5,'5',NaN,Infinity,Number.MAX_SAFE_INTEGER+1]){
+  const data=createLampEconomy(42);data.lamp.capacityTier=6;data.lamp.essence=37;data.lamp.killPoints=points;
+  const f=fixture({[EQUIPMENT_SAVE_KEY]:JSON.stringify(data)});await f.store.sync();assert.equal(f.store.data.lamp.killPoints,0);assert.equal(f.store.data.lamp.essence,37);assert.equal(f.store.data.lamp.capacityTier,6);
+ }
+});
+
+test('durable KO outbox awards only bosses while preserving pack and lone ledgers across reload and failed saves',async()=>{
+ const {recordEnemyDefeatReward}=await import('../web-runner/modules/heroCommands.mjs');
+ const {attachHeroProgress,settleBattleEXP}=await import('../web-runner/src/core/heroProgression.mjs');
+ const source=readFileSync(new URL('../web-runner/systems/heroProgressStorage.js',import.meta.url),'utf8');
+ const restore=storage=>new Function('window','attachHeroProgress','createHeroProgressStore','settleBattleEXP',source.replace(/^import .*\n/gm,'').replace(/export /g,'')+';return restoreHeroProgressFromStorage;')({localStorage:storage},attachHeroProgress,createHeroProgressStore,settleBattleEXP);
+ const f=fixture();await f.store.sync();
+ f.globals.ProgressionBattle={id:'kill-battle',participants:[],defeated:{},defeatedGold:{}};
+ restore(f.storage)({fnContext:{state:{globals:f.globals,entities:[]}}});
+ for(const actor of [{uid:1,kind:'enemy',enemyRole:'fodder'},{uid:2,kind:'enemy',isSolo:true},{uid:3,kind:'enemy',enemyRole:'boss'}]){
+  assert.equal(recordEnemyDefeatReward(f.globals.ProgressionBattle,actor),true);assert.equal(recordEnemyDefeatReward(f.globals.ProgressionBattle,actor),false);
+ }
+ const heroRaw=f.values.get('orka.hero_progress.v2');assert.deepEqual(JSON.parse(heroRaw).pendingBagKillRewards,{'enemy:kill-battle:3':5});assert.equal(Object.keys(JSON.parse(heroRaw).pendingBattleRewards.defeated).length,3);
+ const saved=f.values.get(EQUIPMENT_SAVE_KEY);f.setFail(true);await assert.rejects(f.store.sync(),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),saved);assert.equal(Object.keys(f.globals.HeroProgress.pendingBagKillRewards).length,1);
+ f.setFail(false);await f.store.sync();assert.equal(f.store.data.lamp.killPoints,5);assert.equal(f.store.data.lamp.essence,0);assert.deepEqual(f.globals.HeroProgress.pendingBagKillRewards,{});
+ const reloaded=fixture(Object.fromEntries(f.values));
+ // Simulate interruption after equipment commit and before HeroProgress acknowledges it.
+ reloaded.globals.HeroProgress=createHeroProgressStore(JSON.parse(heroRaw));await reloaded.store.sync();assert.equal(reloaded.store.data.lamp.killPoints,5);
+ assert.equal(reloaded.store.data.lamp.essence,0);await reloaded.store.sync();assert.equal(reloaded.store.data.lamp.killPoints,5);
+});
+
+test('unsaved HeroProgress blocks kill consumption; MAX and overflow cannot accrue points',async()=>{
+ const f=fixture();await f.store.sync();f.globals.HeroProgress.pendingBagKillRewards={'enemy:b:1':1};f.globals.HeroProgressStorageError='disk full';
+ await assert.rejects(f.store.sync(),/saved HeroProgress receipt/);assert.equal(f.store.data.lamp.killPoints,0);
+ delete f.globals.HeroProgressStorageError;await f.store.sync();assert.equal(f.store.data.lamp.killPoints,1);
+ const max=createLampEconomy(1);max.lamp.capacityTier=99;max.lamp.killPoints=17;
+ const capped=fixture({[EQUIPMENT_SAVE_KEY]:JSON.stringify(max)});capped.globals.HeroProgress.pendingBagKillRewards={'enemy:max:1':5};await capped.store.sync();assert.equal(capped.store.data.lamp.killPoints,17);assert.equal(capped.store.data.lamp.essence,0);
+ const full=createLampEconomy(1);full.lamp.killPoints=Number.MAX_SAFE_INTEGER;assert.throws(()=>awardLampKillPoints(full,'enemy:overflow:1',1),/safe save limit/);assert.equal(full.lamp.killPoints,Number.MAX_SAFE_INTEGER);
+ // Receipt retention also protects a delayed duplicate beyond the Essence receipt window.
+ const many=createLampEconomy(1);for(let n=1;n<=600;n++)awardLampKillPoints(many,`enemy:long:${n}`,1);
+ assert.equal(awardLampKillPoints(many,'enemy:long:1',1).duplicate,true);assert.equal(many.lamp.killPoints,600);assert.deepEqual(many.settledBagKillRewards,{'enemy:long':[[1,600]]});
+ for(const uid of [1000,999,800,1001,801,802,998,803])awardLampKillPoints(many,`enemy:long:${uid}`,1);
+ assert.deepEqual(many.settledBagKillRewards['enemy:long'],[[1,600],[800,803],[998,1001]]);validateLampEconomy(many);
+ assert.equal(awardLampKillPoints(many,'enemy:next-battle:1',1).applied,true,'reused actor numbers in a later battle still award');
+ assert.equal(many.lamp.killPoints,609);
+});
+
+
+test('kill receipts retain the newest 64 battle domains and trim oversized saves without changing points',async()=>{
+ const data=createLampEconomy(42);let points=0;
+ assert.equal(LAMP_CONFIG.killReceiptDomains,64);
+ for(let battle=0;battle<70;battle++){
+  const amount=battle%5===0?5:1;points+=amount;
+  awardLampKillPoints(data,`enemy:battle-${battle}:1`,amount);
+ }
+ const retained=Array.from({length:64},(_,n)=>`enemy:battle-${n+6}`);
+ assert.deepEqual(Object.keys(data.settledBagKillRewards),retained);assert.equal(data.lamp.killPoints,points);assert.equal(points,126);
+ assert.equal(awardLampKillPoints(data,'enemy:battle-6:1',1).duplicate,true);assert.equal(data.lamp.killPoints,points);
+ awardLampKillPoints(data,'enemy:battle-6:2',5);points+=5;
+ assert.deepEqual(Object.keys(data.settledBagKillRewards),retained,'updating a domain preserves insertion order');
+ awardLampKillPoints(data,'enemy:battle-70:1',1);points++;
+ assert.deepEqual(Object.keys(data.settledBagKillRewards),[...retained.slice(1),'enemy:battle-70']);assert.equal(data.lamp.killPoints,points);
+ const oversized=createLampEconomy(42);oversized.lamp.killPoints=126;oversized.lamp.essence=37;oversized.lamp.capacityTier=6;
+ oversized.settledBagKillRewards=Object.fromEntries(Array.from({length:70},(_,n)=>[`enemy:battle-${n}`,[[1,1]]]));
+ const f=fixture({[EQUIPMENT_SAVE_KEY]:JSON.stringify(oversized)});await f.store.sync();
+ assert.deepEqual(Object.keys(f.store.data.settledBagKillRewards),retained);assert.equal(f.store.data.lamp.killPoints,126);assert.equal(f.store.data.lamp.essence,37);assert.equal(f.store.data.lamp.capacityTier,6);
+ assert.equal(Object.keys(JSON.parse(f.values.get(EQUIPMENT_SAVE_KEY)).settledBagKillRewards).length,64);
+ assert.equal(awardLampKillPoints(f.store.data,'enemy:battle-6:1',1).duplicate,true);assert.equal(f.store.data.lamp.killPoints,126);
+});
+
+test('Bag cost capacity floor rounds up and binds for artificially large capacity',()=>{
+ assert.equal(LAMP_CONFIG.upgradeCostCapacityFloor,5);assert.equal(lampTierUpgradeCost(0,20),100);
+ assert.equal(lampTierUpgradeCost(0,1001),5025);assert.equal(lampTierUpgradeCost(0,1001)%25,0);assert.ok(lampTierUpgradeCost(0,1001)>=5*1001);
+ assert.equal(lampTierUpgradeCost(99,1001),null);
+});

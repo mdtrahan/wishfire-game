@@ -6,15 +6,15 @@ test('progress records retain the four internal hero keys without retired combat
  const store=createHeroProgressStore();assert.deepEqual(Object.keys(store.heroes),['Falie','Huun','Runa','Kojonn']);
  for(const hero of Object.values(store.heroes))for(const field of ['actionSlotsPerTurn','sp','spMax','flow','flowMode'])assert.equal(Object.hasOwn(hero,field),false,`${field} is not progression state`);
 });
-test('each internal hero key has eight or nine conditional skills with progressive unlocks and no ranks',()=>{
+test('each internal hero key has one Special clock, a passive and two resonances, with no ranks',()=>{
  assert.equal(PROGRESSION.maxLevel,100);
  for(const [key,definition] of Object.entries(HERO_DEFINITIONS)){
   assert.equal(newHeroProgress(key).baseHeroName,key);
-  assert.equal(definition.actives.length,key==='Kojonn'?9:8,`${key} active skill count`);
-  for(const field of ['special','passives','actionSlotsPerTurn','startingSP','maxSP','flowMode'])assert.equal(Object.hasOwn(definition,field),false,`${key}.${field} is retired`);
+  assert.equal(definition.actives.length,1,`${key} active skill count`);
+  for(const field of ['passives','actionSlotsPerTurn','startingSP','maxSP','flowMode'])assert.equal(Object.hasOwn(definition,field),false,`${key}.${field} is retired`);
   for(const skill of definition.actives){
    for(const field of ['rank','ranks','skillRank'])assert.equal(Object.hasOwn(skill,field),false,`${skill.skillId}.${field} is retired`);
-   assert.ok([1,5,10,15,25,35,50,60,75].includes(skill.unlockLevel));assert.ok(skill.description);assert.ok(skill.cooldownSeconds>=0);assert.ok(skill.durationSeconds>=0);assert.ok(skill.targetType);
+   assert.equal(skill.unlockLevel,1);assert.ok(skill.description);assert.ok(skill.cooldownSeconds>=0);assert.ok(skill.durationSeconds>=0);assert.ok(skill.targetType);
   }
  }
 });

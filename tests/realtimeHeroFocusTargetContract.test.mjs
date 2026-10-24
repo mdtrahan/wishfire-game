@@ -10,11 +10,11 @@ test('a basic attack acquires and retargets only enemies already inside the firi
     { uid: 3, hp: 10, x: 280, streamState: 'engaged' },
   ];
   const hero = { kind: 'hero', hp: 10, footX: 230, footY: 0, attackType: 'magic' };
-  const pick = focusUID => resolveHeroAttackTarget({ enemies, focusUID, inRange: enemy => isHeroBasicTargetInRange(enemy, hero) });
-  assert.equal(pick(1), enemies[1]);
-  enemies[1].hp = 0;
-  assert.equal(pick(2), enemies[2]);
+  const pick = () => resolveHeroAttackTarget({ hero, enemies, inRange: enemy => isHeroBasicTargetInRange(enemy, hero) });
+  assert.equal(pick(1), enemies[2]);
   enemies[2].hp = 0;
+  assert.equal(pick(2), enemies[1]);
+  enemies[1].hp = 0;
   assert.equal(pick(3), null);
   enemies[0].x = 289;
   enemies[0].footX = 289;
@@ -22,29 +22,20 @@ test('a basic attack acquires and retargets only enemies already inside the firi
   assert.equal(pick(3), enemies[0]);
 });
 
-test('continuous hero basics keep one focus until death, then follow encounter order', () => {
-  const enemies = [11, 12, 13].map(uid => ({ uid, hp: 10 }));
-  const neverRandom = () => { throw new Error('continuous basics must not draw a random target'); };
-  const choose = focusUID => resolveHeroAttackTarget({ enemies, focusUID, randomPick: neverRandom });
-
-  assert.equal(choose(0), enemies[0]);
-  enemies.push({ uid: 14, hp: 10 });
-  assert.equal(choose(11), enemies[0]);
-  enemies[0].hp = 0;
-  assert.equal(choose(11), enemies[1]);
-  enemies[1].hp = 0;
-  assert.equal(choose(12), enemies[2]);
-  enemies[2].hp = 0;
-  enemies[3].hp = 0;
-  assert.equal(choose(13), null);
+test('continuous heroes choose their own closest living foe, including behind the party', () => {
+ const left={uid:11,hp:10,footX:0,footY:0},right={uid:12,hp:10,footX:100,footY:0},enemies=[right,left];
+ const neverRandom=()=>{throw Error('nearest targeting does not draw RNG');};
+ assert.equal(resolveHeroAttackTarget({hero:{footX:10,footY:0},enemies,randomPick:neverRandom}),left);
+ assert.equal(resolveHeroAttackTarget({hero:{footX:90,footY:0},enemies,randomPick:neverRandom}),right);
+ left.hp=0;assert.equal(resolveHeroAttackTarget({hero:{footX:10,footY:0},enemies}),right);
+ right.hp=0;assert.equal(resolveHeroAttackTarget({hero:{footX:10,footY:0},enemies}),null);
 });
 
-test('runtime keeps shared focus while each Hero can use a reachable fallback', () => {
+test('runtime sends each Hero to nearest targeting and keeps per-actor range validation', () => {
   const source = readFileSync(new URL('../web-runner/modules/functionBank.js', import.meta.url), 'utf8');
   const basics = source.slice(source.indexOf('export function TickRealtimeHeroBasics('), source.indexOf('function HeroAttackSplit('));
-  assert.match(basics, /focusUID: Number\(g\.RealtimeHeroFocusTargetUID \|\| 0\)/);
-  assert.match(basics, /inRange: enemy => heroes\.some\(hero => isHeroBasicTargetInRange\(enemy, hero\)\)/);
-  assert.match(basics, /g\.RealtimeHeroFocusTargetUID = Number\(focusTarget\?\.uid \|\| 0\)/);
+  assert.match(basics, /hero, enemies, inRange: enemy => isHeroBasicTargetInRange\(enemy, hero\)/);
+  assert.doesNotMatch(basics, /focusTarget|RealtimeHeroFocusTargetUID/);
   assert.match(basics, /scheduleRealtimeActions\(\{ actors, clocks, now, frameSeconds: 1 \/ 60 \}\)/);
   assert.match(basics, /inRange: enemy => isHeroBasicTargetInRange\(enemy, hero\)/);
   assert.match(basics, /fireBasic\(hero\.uid\)/);

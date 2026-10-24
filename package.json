@@ -4,12 +4,13 @@
   "description": "This repository contains process docs (ATLAS/GOTCHA). The workspace has been initialized with a minimal GOTCHA layout and a sample deterministic tool.",
   "main": "index.js",
   "scripts": {
-    "test": "node --test",
+    "test": "node tools/run_test_suite.mjs",
     "eval:target-selector-sync": "node tools/eval_target_selector_sync.mjs",
     "eval:yellow-coin-accounting": "node tools/eval_yellow_coin_accounting.mjs",
     "test:appjs-boundary": "node --test tests/appJsOrchestrationBoundaryContract.test.js",
     "test:hot-file-gate": "bash tools/run_hot_file_regression_gate.sh",
     "test:ui-lock": "node tools/ui_presentation_lock_gate.mjs",
+    "test:hero-cooldowns": "node --test tests/acceptedHeroKitsContract.test.mjs tests/heroWardAura.test.mjs tests/buffSignalRules.test.mjs tests/heroCooldownStrip.test.mjs tests/heroCooldownStripBrowser.test.mjs",
     "storage:audit": "node tools/storage_hygiene.mjs audit",
     "storage:clean": "node tools/storage_hygiene.mjs clean",
     "beads:link-worktree": "node tools/link_beads_worktree.mjs",
@@ -20,7 +21,7 @@
     "chrome:cdp": "node tools/chrome_cdp_bootstrap.js",
     "playwright:doctor": "node tools/playwright_doctor.js",
     "playwright:launch-matrix": "node tools/playwright_launch_matrix.js",
-    "test:lamp-ui": "node --test --test-concurrency=1 tests/lampPresentation.test.mjs tests/bagUpgradePresentation.test.mjs"
+    "test:lamp-ui": "node --test --test-concurrency=1 tests/lampPresentation.test.mjs tests/lampAutoEquipGameplay.test.mjs tests/bagUpgradePresentation.test.mjs"
   },
   "keywords": [],
   "author": "",

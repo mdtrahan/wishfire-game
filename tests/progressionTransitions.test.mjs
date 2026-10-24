@@ -6,7 +6,7 @@ import {HERO_DEFINITIONS,heroSkillUnlocked} from '../web-runner/src/core/heroDef
 import {attachHeroProgress,createHeroProgressStore,setHeroProgressLevel,awardHeroEXP} from '../web-runner/src/core/heroProgression.mjs';
 import {createLampEconomy,validateLampEconomy,LAMP_CONFIG,upgradeLamp} from '../web-runner/src/core/lampGear.mjs';
 import {createEquipmentStorage,EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
-import {castRealtimeHeroSkill,realtimeRetaliation} from '../web-runner/src/core/realtimeHeroSkills.mjs';
+import {castRealtimeHeroSkill} from '../web-runner/src/core/realtimeHeroSkills.mjs';
 import {continuousCombatWaveClearEventId,buildContinuousCombatSpawnPlan,configureContinuousCombatProduction,deriveContinuousCombatWavePackProgress,maybeAdvanceContinuousCombatStage,resetContinuousCombatAfterDefeat,summonContinuousCombatBoss} from '../web-runner/src/core/continuousCombatStage.mjs';
 import {resetCombatSessionConditions} from '../web-runner/systems/combatSessionReset.mjs';
 
@@ -23,7 +23,7 @@ function fixture(){
  const storage={get length(){return values.size;},key:i=>[...values.keys()][i],getItem:k=>values.get(k)??null,setItem(k,v){if(fail)throw Error('disk full');values.set(k,v);},removeItem:k=>values.delete(k)};
  const locks={request:(key,fn)=>{const result=chain.then(fn);chain=result.catch(()=>{});return result;}};
  const globals={goldTotal:0,HeroProgress:createHeroProgressStore()};
- const data=createLampEconomy(42);data.lamp.essence=400;values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(data));
+ const data=createLampEconomy(42);data.lamp.essence=100;values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(data));
  const options={globals,storage,locks,now:()=>clock,reportError:()=>{}};
  return{globals,storage,locks,values,options,store:createEquipmentStorage(options),setClock:v=>clock=v,setFail:v=>fail=v};
 }
@@ -83,24 +83,20 @@ test('failed and concurrent level-up clicks keep spending and promotion atomic',
  f.setFail(true);await assert.rejects(f.store.upgrade(0),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),before);assert.equal(f.store.data.lamp.capacityTier,0);f.setFail(false);
  const results=await Promise.allSettled([f.store.upgrade(0),f.store.upgrade(0)]);assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
  assert.equal(f.store.data.lamp.capacityTier,1);assert.equal(f.store.data.lamp.essence,0);await assert.rejects(f.store.upgrade(0),/level changed/);
- const insufficient=createLampEconomy(4);assert.throws(()=>upgradeLamp(insufficient),/Need 400 more Essence/);
+ const insufficient=createLampEconomy(4);assert.throws(()=>upgradeLamp(insufficient),/Need 100 more Bag progress/);
 });
 
-test('fresh heroes gate every skill at the authoritative milestone including direct casts and retaliation',()=>{
+test('fresh heroes own their Special from level 1 and a skill above their level cannot cast',()=>{
  const store=createHeroProgressStore();
  for(const [key,d] of Object.entries(HERO_DEFINITIONS)){
   const h=store.heroes[key];h.uid=1;h.kind='hero';const target={uid:2,kind:'enemy',hp:1000,maxHP:1000,x:220,y:200,streamState:'engaged'};
   const ctx={state:{globals:{time:100,RuntimeRandom:()=>.5,RealtimeHeroBasicClocks:{1:{skillReadyAt:{}}}},entities:[h,target]},callFunction:()=>0};
-  assert.deepEqual(d.actives.map(s=>s.unlockLevel),key==='Kojonn'?[1,5,10,15,25,35,50,60,75]:[1,5,10,15,25,35,50,75]);assert.equal(h.currentLevel,1);assert.equal(h.currentEXP,0);
-  for(const skill of d.actives){
-   h.currentLevel=skill.unlockLevel-1;if(h.currentLevel<1)continue;
-   assert.equal(heroSkillUnlocked(h,skill),false);const snapshot=JSON.stringify(ctx.state);
-   assert.equal(castRealtimeHeroSkill(ctx,1,skill,{targetUID:2,targetUIDs:[1],point:{x:220,y:200}}),false);assert.equal(JSON.stringify(ctx.state),snapshot);
-   h.currentLevel=skill.unlockLevel;assert.equal(heroSkillUnlocked(h,skill),true);
-  }
-  h.currentLevel=1;if(key==='Falie')assert.equal(realtimeRetaliation(ctx,h,target),false);
+  assert.deepEqual(d.actives.map(s=>s.unlockLevel),[1]);assert.equal(h.currentLevel,1);assert.equal(h.currentEXP,0);
+  assert.equal(heroSkillUnlocked(h,d.special),true);
+  const locked={...d.special,unlockLevel:2},snapshot=JSON.stringify(ctx.state);
+  assert.equal(heroSkillUnlocked(h,locked),false);assert.equal(castRealtimeHeroSkill(ctx,1,locked,{targetUID:2,targetUIDs:[1],point:{x:220,y:200}}),false);assert.equal(JSON.stringify(ctx.state),snapshot);
  }
- const h=store.heroes.Huun;h.currentLevel=4;h.currentEXP=0;h.maxLevel=100;awardHeroEXP(h,800);assert.equal(h.currentLevel,5);assert.equal(heroSkillUnlocked(h,HERO_DEFINITIONS.Huun.actives[1]),true);
+ const h=store.heroes.Huun;h.currentLevel=4;h.currentEXP=0;h.maxLevel=100;awardHeroEXP(h,800);assert.equal(h.currentLevel,5);assert.equal(heroSkillUnlocked(h,HERO_DEFINITIONS.Huun.special),true);
 });
 
 test('developer presets save real levels, stats, EXP and receipt baselines without changing equipment',async()=>{
@@ -115,7 +111,7 @@ test('developer presets save real levels, stats, EXP and receipt baselines witho
   for(const actor of state.entities){
    const h=saved.heroes[actor.heroInstanceKey];assert.equal(actor.currentLevel,level);assert.equal(h.currentLevel,level);assert.equal(h.currentEXP,0);assert.equal(h.lampEXPClaimed,0);assert.equal(h.maxLevel,100);
    assert.deepEqual(actor.stats,h.stats);assert.equal(actor.maxHP,h.maxHP);assert.equal(actor.EXPToNextLevel,h.EXPToNextLevel);
-   assert.equal(HERO_DEFINITIONS[actor.baseHeroName].actives.filter(s=>heroSkillUnlocked(actor,s)).length,level===1?1:level===5?2:level===25?5:actor.baseHeroName==='Kojonn'?9:8);
+   assert.equal(heroSkillUnlocked(actor,HERO_DEFINITIONS[actor.baseHeroName].special),true);
   }
   await f.store.sync();assert.ok(state.entities.every(h=>h.currentLevel===level&&h.currentEXP===0));assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),gear);
  }

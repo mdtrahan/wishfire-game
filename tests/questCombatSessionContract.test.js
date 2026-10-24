@@ -344,12 +344,12 @@ test('ordinary KO captures cleared sectors before removing enemies and respawns 
 test('new battle clears combat conditions and retired Flow state while retaining gold and progression', async () => {
  const {resetCombatSessionConditions}=await import('../web-runner/systems/combatSessionReset.mjs');
  const g={goldTotal:321,HeroGemUsage:{RED:9},AstralFlowAmpPoints:12,AstralFlowAmpReady:1,
- PartyBuff_ATK:8,BuffTurns_ATK:3,PartyTempHPShield:40,PowerAmpByUID:{1:{}},
+ PartyBuff_ATK:8,BuffTurns_ATK:3,PartyTempHPShield:40,HeroWardHPByUID:{1:9},PowerAmpByUID:{1:{}},
  EnemyDebuffs:{2:{DEF:8}},EnemyDamageOverTime:[{}],PartyRegens:[{}],TaintedGroundZones:[{}]};
  const ui={partyHpTextRoll:{displayHp:1}}; resetCombatSessionConditions(g,ui);
  assert.equal(g.goldTotal,321);assert.deepEqual(g.HeroGemUsage,{RED:9});
  assert.equal(g.AstralFlowAmpPoints,undefined);assert.equal(g.AstralFlowAmpReady,undefined);
- for(const key of ['PartyBuff_ATK','BuffTurns_ATK','PartyTempHPShield','PowerAmpByUID']) assert.equal(g[key],undefined);
+ for(const key of ['PartyBuff_ATK','BuffTurns_ATK','PartyTempHPShield','HeroWardHPByUID','PowerAmpByUID']) assert.equal(g[key],undefined);
  assert.deepEqual(g.EnemyDebuffs,{});assert.deepEqual(g.EnemyDamageOverTime,[]);
  assert.deepEqual(g.PartyRegens,[]);assert.deepEqual(g.TaintedGroundZones,[]);
  assert.equal(ui.partyHpTextRoll,undefined);
@@ -357,13 +357,14 @@ test('new battle clears combat conditions and retired Flow state while retaining
 
 test('gold persists gains and spending across reloads without writing unchanged balances', async () => {
  const {createEquipmentStorage}=await import('../web-runner/systems/equipmentStorage.mjs');
+ const {createHeroProgressStore}=await import('../web-runner/src/core/heroProgression.mjs');
  const locks={request:async(k,fn)=>fn()},seed=()=>1,now=()=>100000;
  const values=new Map();let writes=0;
  const storage={getItem:k=>values.get(k)??null,setItem(k,v){values.set(k,v);writes++;}};
- const globals={goldTotal:27};const wallet=createEquipmentStorage({globals,storage,locks,seed,now});
+ const globals={goldTotal:27,HeroProgress:createHeroProgressStore()};const wallet=createEquipmentStorage({globals,storage,locks,seed,now});
  await wallet.sync();await wallet.sync();assert.equal(writes,1);
  globals.goldTotal=19;await wallet.sync();
- const reloaded={goldTotal:0};await createEquipmentStorage({globals:reloaded,storage,locks,seed,now}).sync();
+ const reloaded={goldTotal:0,HeroProgress:createHeroProgressStore()};await createEquipmentStorage({globals:reloaded,storage,locks,seed,now}).sync();
  assert.equal(reloaded.goldTotal,19);assert.equal(writes,3);
 });
 

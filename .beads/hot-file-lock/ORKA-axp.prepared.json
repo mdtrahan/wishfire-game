@@ -1,0 +1,12 @@
+{
+  "hot_files": {
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "refreshCrimsonWardBarrierVisuals",
+        "ApplyDamageToTarget"
+      ],
+      "staged_blob": "47f1732aabddf70087e8c5c10cd8bbab61e3cbdb"
+    }
+  },
+  "issue_id": "ORKA-axp"
+}

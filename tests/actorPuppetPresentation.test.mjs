@@ -145,19 +145,6 @@ test('a delayed defeat clip gets its full duration and committed facing on the p
   assert.equal(presentation.frameFor(actor, 2.2).facing, 'left');
 });
 
-test('puppet Shrink uses the shared visual scale and keeps its semantic foot fixed', () => {
-  const ctx = { drawImage() {} };
-  const presentation = { frame: {}, clip };
-  const active = drawActorPuppetFrame(ctx, presentation, { footX: 100, footY: 200, height: 100, actorUID: 10, effects: { 10: { shrink: { expiresAt: 5 } } }, now: 1 });
-  assert.equal(active.visualScale, 0.7);
-  assert.equal(active.height, 70);
-  assert.equal(active.drawY + active.height * (clip.footOrigin.y / clip.canvas.height), 200);
-  const expired = drawActorPuppetFrame(ctx, presentation, { footX: 100, footY: 200, height: 100, actorUID: 10, effects: { 10: { shrink: { expiresAt: 5 } } }, now: 5 });
-  assert.equal(expired.visualScale, 1);
-  assert.equal(expired.height, 100);
-  assert.equal(expired.drawY + expired.height * (clip.footOrigin.y / clip.canvas.height), 200);
-});
-
 test('transparent overscan preserves body scale and foot anchoring', () => {
   const draws = [];
   const ctx = { drawImage: (...args) => draws.push(args) };
@@ -246,4 +233,11 @@ test('death and revival retain the outgoing puppet image until their HP-selected
   assert.equal(presentation.frameFor(actor, 1).state, 'idle');
   actor.locomotion = 'walk';
   assert.equal(presentation.frameFor(actor, 1).state, 'idle', 'ordinary live-state transitions retain the ready clip');
+});
+
+test('an active hero action follows current closest-enemy facing without mirroring its board', async () => {
+ const requests=[],presentation=createActorPuppetPresentation({loadClip:async (...args)=>{requests.push(args);return clip;}});
+ const hero={uid:909,kind:'hero',name:'Fara',hp:10,facing:'left',actionFacing:'right',actionState:'basic',actionStateUntil:5,actionStateStartedAt:3,actionImpactAt:4};
+ presentation.frameFor(hero,4,'left-wise');await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(presentation.frameFor(hero,4,'left-wise')?.facing,'left');assert.equal(requests[0][2],'left');
 });

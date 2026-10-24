@@ -4,10 +4,21 @@ export function installModalCloseStyles(){
  if(document.getElementById('shared-modal-close-style'))return;
  const style=document.createElement('style');style.id='shared-modal-close-style';
  style.textContent=`.game-modal-close canvas{display:block;background:transparent;aspect-ratio:auto;filter:drop-shadow(0 2px 1px #172326)}
-:is(#lamp-overlay,#training-ground) .game-modal-close{display:grid;place-items:center;flex-shrink:0;align-self:center;width:max(44px,calc(72px * var(--modal-close-scale,1)));height:max(44px,calc(66px * var(--modal-close-scale,1)));margin:calc(24px * var(--modal-close-scale,1)) 0 0;padding:0;border:0;background:transparent;box-shadow:none}
+:is(#lamp-overlay,#training-ground,#hero-details) .game-modal-close{display:grid;place-items:center;flex-shrink:0;align-self:center;width:max(44px,calc(72px * var(--modal-close-scale,1)));height:max(44px,calc(66px * var(--modal-close-scale,1)));margin:calc(24px * var(--modal-close-scale,1)) 0 0;padding:0;border:0;background:transparent;box-shadow:none}
 .game-modal-close>span{display:grid;place-items:center;width:calc(44px * var(--modal-close-scale,1));height:calc(44px * var(--modal-close-scale,1));border:2px solid #b8c5c9;border-radius:calc(8px * var(--modal-close-scale,1));background:linear-gradient(#58656b,#30383c);box-shadow:inset 0 1px 0 #ffffff50,0 3px 0 #151e22;color:#fff;font-size:calc(32px * var(--modal-close-scale,1));font-weight:800;line-height:1;text-shadow:0 2px 1px #172326}
 .game-modal-close:focus-visible{outline:2px solid #75e4dd;outline-offset:1px}`;
  document.head.append(style);
+}
+
+export function bindModalCloseKeys(container, close, dismiss){
+ container.onkeydown=event=>{
+  if(event.key==='Escape'){event.preventDefault();event.stopPropagation();dismiss();return;}
+  if(event.key!=='Tab')return;
+  const controls=[...container.querySelectorAll('button,[href],input,select,textarea,[tabindex]')].filter(node=>!node.disabled&&!node.closest('[inert]')&&node.tabIndex>=0&&node.getClientRects().length);
+  const first=controls[0]||close,last=controls.at(-1)||close;
+  if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+  else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+ };
 }
 
 // Crop the existing X glyph to its actual painted pixels before centering it.

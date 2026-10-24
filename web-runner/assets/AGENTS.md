@@ -10,6 +10,7 @@
 - `images/`, `gems/`, and `fonts/` are presentation assets referenced by render/runtime code and tests.
 
 ## Local Contracts
+- Equipment dialog portraits, CP arrows, tiles and controls stay fully opaque, including disabled controls. Eligibility stays enforced through disabled state and CP checks.
 - `arenas/` owns muted original Genielands panoramas for chapters 1–4 and their generation prompts. Keep open combat ground, scenery at edges, and UI independent. Chapter 5 onward has no arena art assignment.
 - `images/lamp/ART.md` records original gear/device atlas hashes and grid order. Rarity is conveyed separately through white/green/blue/purple/gold frames/glow. Collector cells are unused; only the shared lamp appears in acquisition UI.
 - The `.lamp-level` badge is shared by lamp equipment and equipped hero gear art; keep its lower-right placement and legibility sizing consistent across both.

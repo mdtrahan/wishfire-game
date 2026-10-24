@@ -1,4 +1,6 @@
 import {test} from 'node:test';
+import {createRequire} from 'node:module';
+const {detectChromeExecutable}=createRequire(import.meta.url)('../tools/playwright_support.js');
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 import {spawn} from 'node:child_process';
@@ -12,7 +14,7 @@ test('bag count and pulse acknowledge only saved current arrivals, without cache
  const server=spawn(process.execPath,['tools/serve_web.js','--port',String(port),'--host','127.0.0.1'],{stdio:'ignore'}),base=`http://127.0.0.1:${port}`;let browser;
  try{
   for(let n=0;n<50;n++){try{if((await fetch(base+'/web-runner/index.html')).ok)break;}catch{}if(n===49)throw Error('Count QA server failed');await delay(100);}
-  await mkdir(directory,{recursive:true});browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_BIN||'/usr/bin/chromium'});
+  await mkdir(directory,{recursive:true});browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_BIN||detectChromeExecutable()});
   const page=await browser.newPage({viewport:{width:360,height:640}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/__count-qa',route=>route.fulfill({contentType:'text/html',body:`<base href="${base}/web-runner/"><link rel="stylesheet" href="assets/lampEquipmentUI.css"><section id="wishfire-lamp" style="left:0;top:488px;width:360px;height:92px;font-size:11px"></section>`}));
   await page.goto(base+'/__count-qa');

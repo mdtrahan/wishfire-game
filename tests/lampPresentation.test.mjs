@@ -1,6 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
+import {RARITIES} from '../web-runner/src/core/equipment.mjs';
+const rarityColors=Object.values(RARITIES).map(({color})=>'rgb('+color.slice(1).match(/../g).map(v=>parseInt(v,16)).join(', ')+')');
 import {createRequire} from 'node:module';
 import {spawn} from 'node:child_process';
 import {createServer} from 'node:net';
@@ -38,6 +40,7 @@ async function movement(page,id,{paused=false}={}){
  await page.waitForFunction(before=>window.__codexGame.globals.time>before,combatBefore,{timeout:3000});const combatAfter=await page.evaluate(()=>window.__codexGame.globals.time);assert.ok(combatAfter>combatBefore,'combat continues during cache review');assert.equal(after.same,true);assert.equal(after.running,paused?'paused':'running');assert.equal(after.beltObject,false,'item motion has no literal belt object');if(paused)assert.ok(Math.abs(after.x-before)<.1,'cache freezes equipment in place');else assert.ok(after.x>before+2,'equipment moves left to right without restarting its node');return{before,...after,combatBefore,combatAfter};
 }
 async function containment(page){
+ assert.equal(await page.locator('#lamp-dialog button').evaluateAll(ns=>ns.every(n=>getComputedStyle(n).opacity==='1')),true,'equipment dialog controls, portraits, arrows and tiles stay fully opaque at every phone size');
  const result=await page.evaluate(()=>{const d=document.querySelector('#lamp-dialog'),m=document.querySelector('#lamp-overlay'),s=document.querySelector('#wishfire-lamp'),c=document.querySelector('canvas'),r=d.getBoundingClientRect(),sr=s.getBoundingClientRect(),cr=c.getBoundingClientRect();return{viewport:[innerWidth,innerHeight,devicePixelRatio],horizontal:document.documentElement.scrollWidth>innerWidth,dialogHorizontal:d.scrollWidth>d.clientWidth+1,contained:r.left>=-.5&&r.right<=innerWidth+.5&&r.top>=-.5&&r.bottom<=innerHeight+.5,conveyorAccessible:m.getBoundingClientRect().bottom<sr.top,stripY:(sr.top-cr.top)/(cr.width/360),stripHeight:sr.height/(cr.width/360),portraits:[...d.querySelectorAll('.lamp-hero img')].every(i=>i.complete&&i.naturalWidth>0),stats:d.querySelectorAll('.lamp-item-stats dd').length,primaryVisible:[...d.querySelectorAll('.lamp-review-actions button,#lamp-dialog[data-view=dismantle]>.lamp-actions button')].every(b=>{const t=b.getBoundingClientRect();return t.top>=r.top&&t.bottom<=r.bottom&&t.height>=43;}),identityFits:[...d.querySelectorAll('.lamp-quality-band>*')].every(n=>{const t=n.getBoundingClientRect(),p=n.closest('.lamp-candidate').getBoundingClientRect();return t.top>=p.top&&t.bottom<=p.bottom;}),buttons:[...d.querySelectorAll('button')].every(b=>{const t=b.getBoundingClientRect();return t.left>=r.left-.5&&t.right<=r.right+.5;})};});
  assert.equal(result.horizontal,false);assert.equal(result.dialogHorizontal,false);assert.equal(result.contained,true);assert.equal(result.conveyorAccessible,await page.locator('#lamp-dialog').getAttribute('data-view')!=='upgrade'&&await page.locator('#lamp-dialog').getAttribute('data-view')!=='upgrade-complete');assert.equal(result.portraits,true);assert.equal(result.buttons,true);assert.equal(result.primaryVisible,true);assert.equal(result.identityFits,true);assert.ok(Math.abs(result.stripY-488)<.5);assert.ok(Math.abs(result.stripHeight-92)<.5);return result;
 }
@@ -95,18 +98,18 @@ test('one actual CP invariant controls arrows, equip and disposal across four ph
    try{
     await page.addInitScript(({save,heroes})=>{save.lamp.lastActivationAt=Date.now();localStorage.setItem('wishfire.equipment-economy.v5',JSON.stringify(save));localStorage.setItem('orka.hero_progress.v2',JSON.stringify(heroes));},{save,heroes});
     await enter(page,url);const dialog=page.locator('#lamp-dialog');await page.locator('#wishfire-lamp .lamp-collect').click();await dialog.waitFor();
-    if(!useful)await dialog.locator(`.lamp-tile[data-id="${candidate.instanceId}"]`).click();
+    await dialog.locator(`.lamp-tile[data-id="${candidate.instanceId}"]`).click();
     await page.waitForFunction(()=>document.querySelector('#lamp-dialog').dataset.view==='equip');
     const arrows=await dialog.locator('.lamp-hero').evaluateAll(ns=>ns.map(n=>({hero:n.dataset.id,gain:Number(n.dataset.cpChange),up:!!n.querySelector('.lamp-cp-direction.up'),down:!!n.querySelector('.lamp-cp-direction.down')})));
     assert.equal(arrows.length,4);assert.ok(arrows.every((a,n)=>a.gain===expectedGains[n]&&a.up===(expectedGains[n]>0)&&a.down===(expectedGains[n]<=0)));
     assert.equal(await dialog.locator('[data-action="queue-disposal"]').isEnabled(),!useful);
     await dialog.locator('.lamp-hero').first().click();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')).lamp.guide&2);await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
     assert.equal(await dialog.locator('[data-action="equip"]').isEnabled(),expectedGains[0]>0);
-    const auto=dialog.getByRole('button',{name:'Auto-Equip',exact:true});assert.equal(await auto.isEnabled(),useful);
+    assert.equal(await dialog.locator('[data-action="auto-equip"]').count(),0);
     if(useful)assert.equal(await dialog.locator('[data-action="disposal"]').isEnabled(),false,'Done cannot send a remaining upgrade to disposal');
     const layout=await containment(page);await page.screenshot({path:`${directory}/${width}-cp-${scenario}.png`});
     if(useful){
-     await auto.click();await page.locator('.lamp-cp-feedback').waitFor();
+     await dialog.getByRole('button',{name:'Back to cache',exact:true}).click();await dialog.getByRole('button',{name:'Auto-Equip',exact:true}).click();await page.locator('.lamp-cp-feedback').waitFor();
      const feedback=await page.locator('.lamp-cp-feedback').evaluateAll(ns=>ns.map(n=>({hero:n.dataset.hero,before:+n.dataset.before,after:+n.dataset.after,change:+n.dataset.change})));
      assert.equal(feedback.length,1);assert.equal(feedback[0].change,Math.max(...expectedGains));assert.ok(feedback[0].after>feedback[0].before);
      if(scenario==='increase')assert.equal(feedback[0].hero,'Huun');
@@ -139,14 +142,14 @@ test('continuous equipment lifecycle: four phones, full-cache pause, concurrent 
    assert.equal(await page.evaluate(()=>window.lampPassageBounces.length),0,'full cache cannot bounce');
    await strip.locator('.lamp-collect').click();await dialog.waitFor();
    const movingReview=await movement(page,pausedId,{paused:true}),reviewLayout=await containment(page),passageBounce={fullCacheBounce:false};
-   assert.equal(await dialog.locator('.lamp-hero-current-cp').count(),4);assert.equal(await dialog.locator('.lamp-review-actions button').count(),2);assert.equal(await dialog.getByText(/^Revealed /).count(),0);
+   assert.equal(await dialog.locator('.lamp-hero-current-cp').count(),4);assert.equal(await dialog.locator('.lamp-actions button').count(),2);assert.equal(await dialog.getByText(/^Revealed /).count(),0);
    const mainIds=await dialog.locator('[aria-label="Actionable upgrades"] .lamp-tile').evaluateAll(ns=>ns.map(n=>({id:n.dataset.id,gain:Number(n.dataset.bestGain),arrow:!!n.querySelector('.lamp-review-arrow')})));assert.equal(mainIds.length,3);assert.ok(mainIds.every(n=>n.gain>0&&n.arrow));
-   await page.evaluate(()=>{const original=performance.now.bind(performance);performance.now=()=>original()+15100;});await page.locator('.lamp-idle-helper').waitFor();assert.equal(await page.locator('.lamp-idle-helper').getAttribute('data-target'),'Huun');
+   await page.evaluate(()=>{const original=performance.now.bind(performance);performance.now=()=>original()+15100;});await page.locator('.lamp-idle-helper').waitFor();assert.equal(await page.locator('.lamp-idle-helper').getAttribute('data-target'),'auto-equip');
    const helperContained=await page.evaluate(async()=>{const h=document.querySelector('.lamp-idle-helper');for(let frame=0;frame<12;frame++){await new Promise(requestAnimationFrame);for(const n of h.querySelectorAll('img,span')){const r=n.getBoundingClientRect();if(r.left<-.5||r.right>innerWidth+.5||r.top<-.5||r.bottom>innerHeight+.5)return false;}}return true;});assert.equal(helperContained,true);
 
    const beforeAuto=await assertSave(page);
    await dialog.getByRole('button',{name:'Auto-Equip',exact:true}).click();await page.locator('.lamp-cp-feedback').first().waitFor();
-   assert.equal(await dialog.getAttribute('data-view'),'equip','Auto waits for saved CP feedback before disposal');
+   assert.equal(await dialog.getAttribute('data-view'),'cache','Auto waits for saved CP feedback before disposal');
    const feedback=await page.locator('.lamp-cp-feedback').evaluateAll(ns=>ns.map(n=>({hero:n.dataset.hero,before:+n.dataset.before,after:+n.dataset.after,change:+n.dataset.change})));
    assert.ok(feedback.length>0);assert.ok(feedback.every(n=>n.after>n.before&&Math.abs(n.after-n.before-n.change)<.11));
    await page.waitForFunction(()=>!document.querySelector('.lamp-cp-feedback'));assert.equal(await dialog.getAttribute('data-view'),'dismantle');
@@ -173,11 +176,13 @@ test('continuous equipment lifecycle: four phones, full-cache pause, concurrent 
    await upgradeWithoutScroll(page);
    const upgradeLayout={...await containment(page),noScroll:await upgradeWithoutScroll(page)};
    const pills=await dialog.locator('.lamp-odds tbody tr').evaluateAll(rows=>rows.map(row=>({name:row.querySelector('th').textContent,color:getComputedStyle(row).backgroundColor})));
-   assert.deepEqual(pills.map(p=>p.name),['Common','Uncommon','Rare','Epic','Legendary']);assert.deepEqual(pills.map(p=>p.color),['rgb(102, 102, 102)','rgb(1, 138, 84)','rgb(28, 143, 169)','rgb(215, 103, 61)','rgb(184, 50, 65)']);
+   assert.deepEqual(pills.map(p=>p.name),['Common','Uncommon','Rare','Epic','Legendary']);assert.deepEqual(pills.map(p=>p.color),rarityColors);
    assert.equal(await dialog.locator('.lamp-stage-slots,.lamp-countdown,[data-action=speed-up]').count(),0);
    await page.screenshot({path:`${directory}/${width}-bag-upgrade.png`});
    await dialog.locator('[data-action=upgrade]').click();await page.waitForFunction(()=>document.querySelector('#lamp-dialog').dataset.view==='upgrade-complete');
-   saved=await assertSave(page);assert.equal(saved.lamp.essence,beforeUpgrade.lamp.essence-400);assert.equal(saved.partyEXP,beforeUpgrade.partyEXP);assert.deepEqual(saved.items,beforeUpgrade.items);assert.equal(saved.lamp.capacityTier,1);assert.equal(saved.lamp.upgradeEndsAt,undefined);
+   saved=await assertSave(page);const killCount=data=>Object.values(data.settledBagKillRewards||{}).flat().reduce((sum,[lo,hi])=>sum+hi-lo+1,0);
+   // Ordinary combat keeps earning points while the upgrade menu is open.
+   const earnedKills=killCount(saved)-killCount(beforeUpgrade);assert.equal(saved.lamp.essence+saved.lamp.killPoints,beforeUpgrade.lamp.essence+(beforeUpgrade.lamp.killPoints||0)+earnedKills-100);assert.equal(saved.partyEXP,beforeUpgrade.partyEXP);assert.deepEqual(saved.items,beforeUpgrade.items);assert.equal(saved.lamp.capacityTier,1);assert.equal(saved.lamp.upgradeEndsAt,undefined);
    assert.equal(await dialog.locator('button').count(),1);assert.equal(await dialog.locator('.bag-reward-capacity').innerText(),'Bag Capacity 20 > 30');assert.equal(await dialog.getByText(/Rare or better|Continue/).count(),0);
    const rewardLayout=await dialog.evaluate(d=>{const panel=d.querySelector('.bag-upgrade-complete').getBoundingClientRect(),text=d.querySelector('.bag-reward-capacity').getBoundingClientRect(),close=d.querySelector('.bag-modal-close').getBoundingClientRect();return{gap:close.top-panel.bottom,bottomSpace:panel.bottom-text.bottom,contained:close.bottom<=innerHeight&&close.top>=0,centerOffset:Math.abs(close.x+close.width/2-panel.x-panel.width/2)};});
    assert.ok(rewardLayout.gap>=8);assert.ok(rewardLayout.bottomSpace<=30);assert.ok(rewardLayout.contained);assert.ok(rewardLayout.centerOffset<1);upgradeLayout.reward=rewardLayout;

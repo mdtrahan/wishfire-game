@@ -14,7 +14,7 @@ export function resetCombatSessionConditions(globals, gameState, entities = []) 
     'LastAstralFlowChainStrikeII', 'AstralFlowMagicFruitLast', 'AstralFlowDestinyRegensByUID',
   ]) delete globals[key];
   for (const key of Object.keys(globals)) {
-    if (/^(PartyBuff_|BuffTurns_|BuffExpire_|BuffRoll|BuffIconPop|BuffProg|PartyTempHPShield|PartyWardBarrier|PowerAmp)/.test(key)) delete globals[key];
+    if (/^(PartyBuff_|BuffTurns_|BuffExpire_|BuffRoll|BuffIconPop|BuffProg|PartyTempHPShield|PartyWardBarrier|HeroWard|PowerAmp)/.test(key)) delete globals[key];
   }
   Object.assign(globals, {
     PartyRegens: [], TrackBuffs: [], PartyBuffSlots: [],
@@ -40,6 +40,9 @@ export function resetCombatSessionConditions(globals, gameState, entities = []) 
     superGems: [], refillBounce: null, gemMergeFx: null, yellowCasino: null,
     heroCommandsMenuOpen: false,
   });
+  delete globals.ContinuousCombatFormation;
+  delete globals.ContinuousCombatFormationFacing;
+  delete globals.ContinuousCombatPatrolReturn;
   delete globals.HeroAction;
   delete globals.EnemyAction;
   delete globals.RealtimeHeroBasicReadyAt;

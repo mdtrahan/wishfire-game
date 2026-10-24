@@ -1,3 +1,4 @@
+import {lampHeroRoster} from '../src/core/lampHeroRoster.mjs';
 import {installModalCloseStyles,paintModalClose} from './modalClose.mjs';
 import {conveyorReviewCandidates} from '../src/core/lampConveyor.mjs';
 import {updateLampConveyor,acknowledgeConveyorItem} from './lampConveyorPresentation.mjs';
@@ -16,7 +17,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
  let upgradeReceipt=null;
  let strip,modal,dialog,helper,lastInteraction=performance.now(),open=false,upgradeOpen=false,selectedItem=null,selectedHero=null,busy=false,opening=false,closeRequested=false,pendingAction=Promise.resolve(),gearReady,feedbacks=new Set(),notice='',lastKey='',lastEmissionFrame=null,emissionElapsed=0,creationActive=false,lastFocus,disposalView=false,disposalPreview=null,emissionPending=false,arrivalPending=false,autoTransitionAfterFeedback=false;
  const fontMeasure=document.createElement('canvas').getContext('2d');
- const heroes=()=>Object.values(globals.HeroProgress?.heroes||{}).slice(0,4);
+ const heroes=()=>lampHeroRoster(globals.HeroProgress);
 
  const otherMenuOpen=()=>[...document.querySelectorAll('[role="dialog"],[role="alertdialog"],dialog[open],[aria-modal="true"]')].some(n=>n!==dialog&&n.getClientRects().length>0);
  const context=()=>globals.ContinuousCombatStage||{region:1,stage:1};
@@ -65,7 +66,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
  }
  async function openCollection(id,upgrades=false){
   if(opening)return;opening=true;
-  try{onBeforeOpen();init();await pendingAction;await Promise.all([economy.sync(),gearReady]);if(!upgrades&&!lampStoredCount(economy.data)&&!economy.data.lamp.reviewHold)return close();resetHelper();lastFocus=document.activeElement;closeRequested=false;open=true;upgradeOpen=upgrades;upgradeReceipt=null;disposalView=false;disposalPreview=null;selectedItem=upgrades?null:id||conveyorReviewCandidates(economy.data,heroes()).find(c=>c.bestGain>0)?.item.instanceId||null;selectedHero=null;notice='';lastKey='';if(!upgrades&&!conveyorReviewCandidates(economy.data,heroes()).some(c=>c.bestGain>0))reviewDisposal();render();dialog.focus();const step=upgrades?'preview':'storage';if(!(economy.data.lamp.guide&LAMP_GUIDE[step]))await economy.markGuide(step);}
+  try{onBeforeOpen();init();await pendingAction;await Promise.all([economy.sync(),gearReady]);if(!upgrades&&!lampStoredCount(economy.data)&&!economy.data.lamp.reviewHold)return close();resetHelper();lastFocus=document.activeElement;closeRequested=false;open=true;upgradeOpen=upgrades;upgradeReceipt=null;disposalView=false;disposalPreview=null;selectedItem=upgrades?null:id||null;selectedHero=null;notice='';lastKey='';if(!upgrades&&!selectedItem&&!conveyorReviewCandidates(economy.data,heroes()).some(c=>c.bestGain>0))reviewDisposal();render();dialog.focus();const step=upgrades?'preview':'storage';if(!(economy.data.lamp.guide&LAMP_GUIDE[step]))await economy.markGuide(step);}
   catch(e){notice=e.message;lastKey='';render();}finally{opening=false;}
  }
  function close(){if(feedbacks.size){closeRequested=true;return;}closeRequested=false;resetHelper();open=false;upgradeReceipt=null;modal.hidden=true;lastKey='';lastFocus?.focus?.();}
@@ -81,14 +82,14 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   if(kind==='collect')return openCollection();
   if(kind==='lamp-upgrades')return openCollection(null,true);
   if(kind==='hero'){closeRequested=false;selectedHero=id;lastKey='';render();if(!(economy.data.lamp.guide&LAMP_GUIDE.comparison))return void action(()=>economy.markGuide('comparison'));return;}
-  if(kind==='skip'){selectedItem=null;selectedHero=null;lastKey='';return render();}
+  if(kind==='cache'){selectedItem=null;selectedHero=null;disposalView=false;disposalPreview=null;lastKey='';return render();}
   if(kind==='queue'&&item(id)){selectedItem=id;selectedHero=null;lastKey='';return render();}
   if(kind==='equip'&&selectedHero&&selectedItem)return void action(async()=>{dialog.scrollTop=0;const result=await economy.equip(selectedHero,selectedItem),name=heroDefinition(heroes().find(h=>h.heroInstanceKey===result.heroId)).name,anchor=dialog.querySelector('[data-action="hero"][data-id="'+result.heroId+'"]').getBoundingClientRect();showEquipFeedback(result,name,anchor);selectedItem=null;selectedHero=null;});
-  if(kind==='auto-equip')return void action(async()=>{dialog.scrollTop=0;const anchors=new Map(heroes().flatMap(h=>{const portrait=dialog.querySelector('[data-action="hero"][data-id="'+h.heroInstanceKey+'"]');return portrait?[[h.heroInstanceKey,portrait.getBoundingClientRect()]]:[];})),results=await economy.autoEquip();results.forEach(r=>{const anchor=anchors.get(r.heroId);if(anchor)showEquipFeedback(r,heroDefinition(heroes().find(h=>h.heroInstanceKey===r.heroId)).name,anchor);});selectedItem=null;selectedHero=null;autoTransitionAfterFeedback=feedbacks.size>0;if(!autoTransitionAfterFeedback)reviewDisposal();});
+  if(kind==='auto-equip'&&!selectedItem)return void action(async()=>{dialog.scrollTop=0;const anchors=new Map(heroes().flatMap(h=>{const portrait=dialog.querySelector('[data-action="hero"][data-id="'+h.heroInstanceKey+'"]');return portrait?[[h.heroInstanceKey,portrait.getBoundingClientRect()]]:[];})),results=await economy.autoEquip();results.forEach(r=>{const anchor=anchors.get(r.heroId);if(anchor)showEquipFeedback(r,heroDefinition(heroes().find(h=>h.heroInstanceKey===r.heroId)).name,anchor);});selectedItem=null;selectedHero=null;autoTransitionAfterFeedback=feedbacks.size>0;if(!autoTransitionAfterFeedback)reviewDisposal();});
   if(kind==='upgrade')return void action(async()=>{upgradeReceipt=await economy.upgrade(Number(b.dataset.tier));});
   if(kind==='dismantle')return void action(async()=>{const r=await economy.dismantle(disposalPreview);document.querySelectorAll('.lamp-party-exp').forEach(n=>n.remove());notice='';selectedItem=null;selectedHero=null;close();showDismantleReward(r);});
  }
- function reviewDisposal(){const upgrade=conveyorReviewCandidates(economy.data,heroes()).find(c=>c.bestGain>0);if(upgrade){selectedItem=upgrade.item.instanceId;selectedHero=null;disposalView=false;disposalPreview=null;notice='';return;}selectedItem=null;selectedHero=null;disposalPreview=economy.disposalPreview();notice='';disposalView=!!(disposalPreview.ids.length||economy.data.lamp.salvage.count);if(!disposalView)close();}
+ function reviewDisposal(){const upgrade=conveyorReviewCandidates(economy.data,heroes()).find(c=>c.bestGain>0);if(upgrade){selectedItem=null;selectedHero=null;disposalView=false;disposalPreview=null;notice='';return;}selectedItem=null;selectedHero=null;disposalPreview=economy.disposalPreview();notice='';disposalView=!!(disposalPreview.ids.length||economy.data.lamp.salvage.count);if(!disposalView)close();}
  function startEmission(){lastKey='';render();}
  function showDismantleReward(result){
   showRewardReceipt(canvas,{resource:'essence',amount:result.essence},'DISMANTLED',2000);position();
@@ -99,7 +100,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   if(strip.hidden||busy||opening||document.hidden||isRewardReceiptVisible()||performance.now()-lastInteraction<15000){helper.hidden=true;return;}
   const data=economy.data,l=data?.lamp;if(!l){helper.hidden=true;return;}
   let selectors;
-  if(open)selectors=upgradeOpen?['[data-action="upgrade"]','[data-action="close"]']:selectedItem?(selectedHero?['[data-action="auto-equip"]','[data-action="equip"]','[data-action="skip"]']:['[data-action="hero"][data-id="Huun"]','[data-action="hero"]']):(disposalView?['[data-action="dismantle"]','[data-action="close"]']:['[data-action="auto-equip"]','[data-action="disposal"]','[data-action="close"]']);
+  if(open)selectors=upgradeOpen?['[data-action="upgrade"]','[data-action="close"]']:selectedItem?(selectedHero?['[data-action="equip"]','[data-action="cache"]']:['[data-action="hero"][data-id="Huun"]:has(.lamp-cp-direction.up)','[data-action="hero"]:has(.lamp-cp-direction.up)','[data-action="cache"]']):(disposalView?['[data-action="dismantle"]','[data-action="close"]']:['[data-action="auto-equip"]','[data-action="disposal"]','[data-action="close"]']);
   else if(l.capacityTier===0)selectors=lampStoredCount(data)?['[data-action="collect"]']:(!(l.guide&LAMP_GUIDE.preview)&&l.essence>0||l.essence>=lampUpgradeCost(data))?['[data-action="lamp-upgrades"]']:['[data-action="collect"]'];
   const scope=open?dialog:strip,target=selectors?.map(s=>scope.querySelector(s+':not(:disabled)')).find(Boolean);
   if(!target){helper.hidden=true;return;}
@@ -134,7 +135,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   if(feedbacks.size&&open&&(autoTransitionAfterFeedback||closeRequested))return;
   if(disposalView&&reviewCandidates.some(c=>c.bestGain>0))reviewDisposal();
   if(selectedItem&&!reviewCandidates.some(c=>c.item.instanceId===selectedItem)){selectedItem=null;selectedHero=null;}
-  const key=upgradeOpen?JSON.stringify([open,busy,notice,l.capacityTier,l.essence,upgradeReceipt,window.innerWidth,window.innerHeight,window.devicePixelRatio]):JSON.stringify([l.pending,l.discarded,l.salvage,l.sequence,data.gold,data.loadouts,l.capacityTier,l.essence,roster.map(h=>[h.currentLevel,h.currentEXP,h.EXPToNextLevel]),selectedItem,selectedHero,disposalView,l.reviewHold,l.disposalRequested,open,upgradeOpen,busy,notice,window.innerWidth,window.innerHeight,window.devicePixelRatio]);
+  const key=upgradeOpen?JSON.stringify([open,busy,notice,l.capacityTier,l.essence,l.killPoints,upgradeReceipt,window.innerWidth,window.innerHeight,window.devicePixelRatio]):JSON.stringify([l.pending,l.discarded,l.salvage,l.sequence,data.gold,data.loadouts,l.capacityTier,l.essence,roster.map(h=>[h.currentLevel,h.currentEXP,h.EXPToNextLevel]),selectedItem,selectedHero,disposalView,l.reviewHold,l.disposalRequested,open,upgradeOpen,busy,notice,window.innerWidth,window.innerHeight,window.devicePixelRatio]);
   if(key===lastKey)return;lastKey=key;
   const reviewScroll=dialog.querySelector('.lamp-review-body')?.scrollTop||0,dialogScroll=dialog.scrollTop,queueScroll=dialog.querySelector('.lamp-queue')?.scrollTop||0;
   const focused=document.activeElement,focusAction=focused?.dataset.action,focusId=focused?.dataset.id,focusParent=dialog.contains(focused)?dialog:strip.contains(focused)?strip:null;
@@ -162,7 +163,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
    body+='<div class="lamp-queue" aria-label="'+(disposalView?'Equipment candidates':'Actionable upgrades')+'">'+reviewCandidates.filter(c=>disposalView||c.bestGain>0&&!l.disposalRequested?.includes(c.item.instanceId)).map(c=>tile(c.item,'queue',c)).join('')+'</div>';
    body+='<button class="lamp-disposal-link lamp-item-disposal" data-action="queue-disposal" '+(roster.some(h=>lampItemCPGain(data,candidate,h)>0)?'disabled':'')+'>Send selected item to disposal</button></div>';
    if(notice)body+='<p class="lamp-modal-notice" role="status">'+escape(notice)+'</p>';
-   body+='<div class="lamp-actions lamp-review-actions"><button class="primary" data-action="equip" '+(!selectedHero||busy||!roster.some(h=>h.heroInstanceKey===selectedHero&&lampItemCPGain(data,candidate,h)>0)?'disabled':'')+'>Equip</button><button data-action="auto-equip" '+(busy||!reviewCandidates.some(c=>c.bestGain>0)?'disabled':'')+'>Auto-Equip</button></div>';
+   body+='<div class="lamp-actions lamp-review-actions"><button class="primary" data-action="equip" '+(!selectedHero||busy||!roster.some(h=>h.heroInstanceKey===selectedHero&&lampItemCPGain(data,candidate,h)>0)?'disabled':'')+'>Equip</button><button data-action="cache" '+(busy?'disabled':'')+'>Back to cache</button></div>';
   }else{
    const useful=reviewCandidates.filter(c=>c.bestGain>0),inferior=reviewCandidates.filter(c=>c.bestGain<=0);
    if(disposalView){

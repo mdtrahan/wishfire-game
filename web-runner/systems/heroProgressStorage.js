@@ -73,7 +73,8 @@ function bindRewardPersistence(g) {
   Object.defineProperty(battle, 'persistPendingRewards', {
     configurable: true,
     enumerable: false,
-    value: () => {
+    value: kill => {
+      if(kill)(g.HeroProgress.pendingBagKillRewards||={})[kill.id]=kill.amount;
       g.HeroProgressDirty = true;
       capturePendingBattleRewards(g);
       capturePendingGoldSettlements(g);

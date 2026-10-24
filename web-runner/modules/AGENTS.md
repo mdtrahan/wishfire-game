@@ -23,10 +23,10 @@
 - Use `CanPickGems` through numeric readiness helpers such as `isCanPickGemsReady`; do not rely on strict boolean checks.
 - Continuous production uses deterministic readiness and cooldowns. Combat-card acquisition, offers, and proc entrypoints are retired; stale data must not block combat.
 - Continuous hero basics schedule independently from each SPD-derived cooldown. Opening readiness starts on first in-range acquisition with the existing UID phase; staged starts wait for their scheduled time, and fresh-session reset clears pending basic clocks so reused actor UIDs do not inherit old actions.
-- Continuous basics prefer shared focus for each Hero, then use another reachable encounter enemy when that Hero cannot reach focus. Retargeted in-flight basics follow the same per-Hero reach rule.
+- Continuous basics and pending death-retargets select the closest living enemy separately for each hero through the shared targeting rule; the scheduler retains independent clocks.
 - Continuous enemy actions use independent UID clocks and action states. They share the legacy action-state builder, while `StartEnemyAction` and `ProcessTurn` remain the story/QA path; continuous actions do not use the global `ActionInProgress` lane. Revalidate target at impact and leave readiness available when no eligible target remains.
 - Ordinary continuous `HeroAttackSingle` packets keep launch-computed `finalDmg`, then resolve through `heroCommands` and `combatRules` at impact. The resolver preserves on-hit hooks, counter/KO effects, and committed projectiles after source KO; Split, Incinerate, Chain Strike, and Arcane Pulse keep their existing effect-specific queues.
-- Continuous hero basics share one in-range enemy focus UID until that enemy dies, then choose the first living in-range enemy in encounter order. Their candidates include every actor in activated local sectors and any roaming actor already in hero reach; distant roaming sectors remain dormant. Engaged enemies acquire only heroes inside their own delivery reach; area-skill target sets remain effect-owned.
+- Continuous hero basics reach one visible-screen width in every direction. Per-hero selection replaces shared focus, including impact revalidation. Specials retain their own slot-based range; enemy attack eligibility remains delivery-owned.
 - Continuous stage owns roaming-pack spawn and settlement. Continuous stage maps one stage/checkpoint to each chapter, with one boss at chapter end. Chapter 1 has 10 ordinary waves and Chapter 2 has 15; Chapters 3 onward have 20 except every fifth chapter, which has 5. Three packs/sectors and 1.5x enemy HP in five-wave chapters are provisional candidates. The legacy death-window respawn owner must not refill slots while `ContinuousCombatStageLoop` is active; ordinary factory spawns and noncontinuous encounter respawns keep their existing paths.
 - Native wards, Cover, Reprisal, Rally and weakness are actor-owned combat effects; card-session records cannot activate them.
 - HERO_SINGLE keeps a valid owner-matched manual enemy selection; its automatic fallback delegates to the shared role-targeting rule.
@@ -73,7 +73,7 @@
 - `heroCommands.mjs` reserves a legal sequence once, revalidates each action, refunds only unexecuted costs, and settles victory before progression. Ordinary counters never own a turn.
 - Native hero actions remain session and turn serial scoped. Automatic production actions resolve through readiness and cooldowns, then hand off to the shared lunge, targeting, damage, and healing seams. Narrative quest cards remain owned by `storyEntryFlow`, outside the combat action path.
 
-- Enemy KO uses one per-enemy reward ledger shared by direct damage and role-rule callbacks. The active battle binds an immediate HeroProgress flush at that shared seam; reload recovery settles any durable pending ledger before a fresh session reuses enemy UIDs.
+- Enemy KO uses one per-enemy reward ledger shared by direct damage and role-rule callbacks. The active battle binds an immediate HeroProgress flush at that shared seam, saving a per-kill Bag outbox receipt with authoritative boss identity; reload recovery settles any durable pending ledger before a fresh session reuses enemy UIDs.
 
 - Victory and non-continuous defeat settle each earned enemy EXP and Gold reward once. Gold settlement receipts remain in HeroProgress until equipmentStorage confirms the wallet commit; continuous defeat pays the pending ledger during retry recovery.
 - In continuous production combat, party KO settles earned kills, clears transient combat state, disarms boss progression, fully heals the party, and restarts Wave 1 of the current stage without a resource cost or defeat menu. Other modes retain the native defeat terminal path.
@@ -89,6 +89,7 @@
 
 - Lamp progression: manual/Auto draws grant all four heroes saved EXP, with cumulative receipts and per-hero lampEXPClaimed replay. Enemy rewards grant zero new EXP/Gold. Auto requires all four Lv5; capacity pauses draws while preserving Auto, and clearing space resumes it. Only explicit Auto-off or exiting combat clears the preference. Dismantling essence buys 20/30/40/50 capacity tiers; the combat-only strip carries item levels and a collection bubble above Auto.
 
+- Realtime hero skill scheduling reads the star-adjusted Special cooldown from core; basic cadence remains independent. Royalty reads the same HeroGrowth state for its basic multiplier and on-hit mark.
 - Realtime hero skill scheduling filters the canonical unlock level before reserving a cooldown; shared cast validation rechecks it at impact, including reactive skills. Level presets clear stale scheduled actions and effects.
 
 - Conditional skills execute through the live realtime scheduler and UID damage/heal adapters. Scheduled commits revalidate targets; cancelled casts refund readiness. Deployed KO heroes remain visible to Sanctuary and retain cooldowns; only living heroes take actions. Retaliation and Chain evaluate immediate damage/basic events once, without recursive skill triggers.
@@ -96,3 +97,5 @@
 - Browser KO seams record an ephemeral puppet-defeat copy before simulation removal, including native rules onKO. This presentation-only bridge intentionally stays out of the retired Scripts mirror; mirrored removal/reward functions retain parity.
 
 - Browser `ApplyDamageToTarget` reports resolved hero-to-enemy HP loss to standalone DPS accounting. This diagnostic bridge intentionally stays outside the retired Scripts mirror and does not alter damage or targeting.
+
+- The authoritative enemy KO hook persists ordinary reward ledgers without Bag points. Only boss-tagged deaths enqueue the configured boss participation points; combat-time ticks own routine Bag progress.

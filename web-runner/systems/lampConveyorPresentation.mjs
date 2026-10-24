@@ -1,11 +1,13 @@
 import {CONVEYOR_TRAVEL_MS,conveyorItemAge} from '../src/core/lampConveyor.mjs';
 import {lampItemCPGain,lampCapacity,lampStoredCount,LAMP_CONFIG,lampUpgradeProgress} from '../src/core/lampGear.mjs';
 import {beginLampBagWishRing,watchLampBagBounceCrest} from './lampBagWishRing.mjs';
+import {formatCompactCount} from '../src/core/formatCompactCount.mjs';
 
 const passageAnimations=new WeakMap();
 const bagEffects=new WeakMap();
 const crestWatches=new WeakMap();
 const bagRecords=new WeakMap();
+const conveyorAnimations=new WeakMap();
 function updateBagCount(strip){
  const data=bagRecords.get(strip);if(!data)return;
  const l=data.lamp,stored=lampStoredCount(data),collect=strip.querySelector('.lamp-collect'),count=strip.querySelector('.lamp-count');
@@ -40,7 +42,7 @@ function bounceBag(strip){
 export function updateLampConveyor({strip,data,heroes,now,activeMs=data.lamp.conveyorActiveMs,paused=false,tile,gearBounds=[],error=''}){
  strip.dataset.conveyorPaused=String(paused);
  const reconstructing=!strip.querySelector('.lamp-conveyor');
- if(reconstructing)strip.innerHTML='<div class="lamp-strip-body"><div class="lamp-results lamp-conveyor" aria-label="Moving equipment conveyor"></div><div class="lamp-side"><button class="lamp-collect lamp-bag" data-action="collect" aria-label="Open equipment cache"><img class="lamp-bag-art" src="assets/images/lamp/equipment-bag.png" alt=""><span class="lamp-count"></span></button><button class="lamp-tier-badge" data-action="lamp-upgrades" aria-label="Bag upgrades"><span class="lamp-progress" role="progressbar" aria-label="Bag upgrade progress"><span></span><small class="lamp-exp-value"></small></span><span class="lamp-level-disc"><b></b><small>Bag</small></span></button></div></div>';
+ if(reconstructing)strip.innerHTML='<div class="lamp-strip-body"><div class="lamp-results lamp-conveyor" aria-label="Moving equipment conveyor"></div><div class="lamp-side"><button class="lamp-collect lamp-bag" data-action="collect" aria-label="Open equipment cache"><img class="lamp-bag-art" src="assets/images/lamp/equipment-bag.png" alt=""><span class="lamp-count"></span></button><button class="lamp-tier-badge" data-action="lamp-upgrades" aria-label="Bag upgrades"><span class="lamp-progress" role="progressbar" aria-label="Bag progress"><span></span><small class="lamp-exp-value"></small></span><span class="lamp-level-disc"><b></b><small>Bag</small></span></button></div></div>';
  bagRecords.set(strip,data);
  const l=data.lamp,lane=strip.querySelector('.lamp-conveyor'),live=new Set();
  let status=strip.querySelector('.lamp-conveyor-notice');
@@ -70,15 +72,16 @@ export function updateLampConveyor({strip,data,heroes,now,activeMs=data.lamp.con
   const bestGain=Math.max(0,...heroes.map(h=>lampItemCPGain(data,e.item,h)));
   if(!node){
    const template=document.createElement('template');template.innerHTML=tile(e.item,'conveyor');node=template.content.firstElementChild;node.classList.add('lamp-conveyor-item');
-   node.style.animationDelay=`-${age/1000}s`;
    // Replayed previews already past the bag are hidden without replaying feedback.
    if(age>=duration*1000){node.hidden=true;node.style.display='none';node.dataset.collectionAttempted='true';node.dataset.countReceived='true';}
    node.addEventListener('animationend',event=>{if(event.animationName!=='lamp-conveyor-travel'||event.target!==node||node.hidden)return;node.dataset.arrived='true';node.dataset.countPending='true';if(node.dataset.collected==='true')acknowledgeConveyorItem(strip,node.dataset.id);});lane.append(node);
   }
-  // Anchor the paused CSS position to the durable active clock for reloads.
-  if(paused&&node.dataset.clockPaused!=='true'){
-   const motion=node.getAnimations()[0];
-   if(motion?.currentTime!=null)node.style.animationDelay=`${(motion.currentTime-age)/1000}s`;
+  // Hiding the strip discards CSS animations even when its DOM nodes survive.
+  // Seek replacements and gate transitions from the same active clock as issuance.
+  const motion=node.getAnimations().find(a=>a.animationName==='lamp-conveyor-travel');
+  if(motion&&(conveyorAnimations.get(node)!==motion||node.dataset.clockPaused!==String(paused))){
+   motion.currentTime=age;
+   conveyorAnimations.set(node,motion);
   }
   node.dataset.clockPaused=String(paused);
   node.dataset.bestGain=bestGain;node.dataset.collected=String(e.collected);
@@ -88,5 +91,5 @@ export function updateLampConveyor({strip,data,heroes,now,activeMs=data.lamp.con
  for(const node of lane.querySelectorAll('.lamp-conveyor-item'))if(!live.has(node.dataset.id))node.remove();
  updateBagCount(strip);
  const level=l.capacityTier+1,{current,required,max,fraction}=lampUpgradeProgress(data),p=strip.querySelector('.lamp-progress');
- p.setAttribute('aria-valuenow',String(max?1:Math.min(current,required)));p.setAttribute('aria-valuemax',String(required??1));p.firstElementChild.style.width=fraction*100+'%';p.querySelector('small').textContent=max?'MAX':Math.floor(fraction*100)+'%';strip.querySelector('.lamp-level-disc b').textContent=level;
+ p.setAttribute('aria-valuenow',String(max?1:Math.min(current,required)));p.setAttribute('aria-valuemax',String(required??1));p.setAttribute('aria-valuetext',max?'Maximum bag level':formatCompactCount(current)+' of '+formatCompactCount(required)+' Bag progress');p.title=max?'MAX':current.toLocaleString('en-US')+' / '+required.toLocaleString('en-US');p.firstElementChild.style.width=fraction*100+'%';p.querySelector('small').textContent=max?'MAX':formatCompactCount(Math.floor(fraction*100))+'%';strip.querySelector('.lamp-level-disc b').textContent=level;
 }

@@ -1,4 +1,5 @@
 # Tests DOX
+- `heroCooldownStrip.test.mjs` covers deployed identity, unlocked active readiness and immutable combat-time projection. `heroCooldownStripBrowser.test.mjs` locks eight centered slots, quest inset, equipment separation, pause/resume shading and cache access at reference, compact, narrow and natural-size viewports; clock fixtures stay separate from normal-combat screenshots.
 - `combatArenaBackground.test.mjs` covers chapter 1–4 asset availability, chapter 5+ grid retention, undecoded-image fallback and camera orientation without changing vertical framing.
 - `balanceTelemetryContract.test.mjs` protects opt-in capture, bounded event retention and pre-hit range geometry and enemy-tier attribution; `balanceHarnessEntryContract.test.js` protects exact-event use alongside sampled HP, including bounded impact samples and per-tier totals, ordered first-hero casualty aggregation, labeled post-recovery gear/stat samples, fail-closed uninterrupted ordinary acceptance and CSV output.
 - `balanceHarnessEntryContract.test.js` also keeps the synthetic ordinary-KO probe opt-in and routed through production damage; integrated proof still requires recovery events and a later wave clear.
@@ -25,6 +26,9 @@
 - `fixtures/` owns deterministic CSV cases shared by JS and Rust/WASM tests.
 
 ## Local Contracts
+- Scheduler fixtures must place support casters, required foes and recipients inside current reach before asserting that every conditional skill casts.
+- Equipment-service fixtures initialize HeroProgress with createHeroProgressStore unless they explicitly test missing-owner rejection. Retain reward, quota and persistence assertions when repairing setup.
+- Lamp browser proofs check full opacity in cache and selected-item views, including unavailable Equip actions, while retaining disabled overview selection and equip eligibility.
 - Boss progress proof executes the production tick: each chapter's final ordinary wave enters once and saves readiness before the wipe; ordinary recovery preserves wave and sector-mask progress, boss defeat saves full readiness, and both survive reload without duplicate packs. HP depth checks preserve puppet-foot anchors during clip loading. Hit-flash contracts inspect assembled puppet callbacks. Keep chapter/rail centering and dynamic notch geometry measured independently.
 - Manual retry proof keeps first clean boss entry automatic, latches every stage KO and boss defeat through checkpoint reload, loops ready fodder at 100%, blocks summon during KO/recovery reveal, and verifies explicit summon uses the existing arm path. Boss victory clears the retry latch; a single KO during the boss still follows the whole-party defeat rule.
 - Arena engagement proof advances the real arena owner and enemy scheduler together: all living actors in local sectors can enter independent melee/ranged actions in one tick, out-of-reach actors remain unscheduled, and remote roaming packs remain dormant.
@@ -46,6 +50,8 @@
 - Prefer focused deterministic tests over broad suite runs during development.
 - Static source assertions are allowed in this repo when they protect architecture boundaries, but avoid adding brittle source-shape checks when behavior can be tested directly.
 - Full `npm test` may include unrelated legacy/static failures; report focused validation scope honestly.
+- `npm test` runs `tools/run_test_suite.mjs`: non-browser files in parallel, then Playwright files one at a time, because concurrent Chromium launches exceed browser test timeouts. Launch Chromium via `detectChromeExecutable()`, never a fixed path. Sample animated VFX at a paused, explicit `currentTime`, not after a wall-clock delay.
+- Tests that read untracked `output/` fixtures (`partySustain`, `sustainTrackerContract`) skip with a named reason when the fixture is absent; they still run in checkouts that hold the knowledge-lab data.
 - Do not weaken an ownership contract to make an implementation pass unless the product/architecture source changed too.
 
 ## Work Guidance
@@ -81,7 +87,7 @@
 - `realtimeEnemyActionSchedulingContract` exercises independent concurrent enemy actions, later wave entrants, stable target revalidation at impact, no-target readiness, tier-scoped melee/ranged/boss intervals, bounded per-tick service, and start-to-start cooldown cadence.
 - `realtimeBasicCombatRulesContract` proves launch damage parity and impact-time Blind, damageCut/barrier, counter, KO reward, source-KO projectile continuity during a boss attempt with a surviving ally, ordinary first-KO interruption, target-range revalidation and impact VFX through the shared resolver.
 - Combat simulation tick coverage executes pending hits, damage-text expiry, HeroAction, refill, YellowCasino progression/payout, BlueBuff, buff-icon, and merge transitions without relying on draw calls; assembled-renderer checks protect boss camera/orientation/scale/wipe and the remaining presentation-only seams for those flows. YellowCasino tests also preserve ghost drawing through `renderBoard.js` and guard one-shot Gold/gate settlement.
-- Shared-focus coverage keeps all continuous hero basics on one living enemy until death, then advances in encounter order without random selection. Legacy HERO_SINGLE random fallback and effect-owned area targeting remain separate.
+- Per-hero targeting proof checks nearest living enemies in any direction, visible-screen basic reach, slot-based 211.2 minimum Special reach and unlimited boss eligibility. Manual and enemy target ownership keep their separate contracts.
 - Enemy-stream coverage fixes the single-X staggered emitter, bounded varied Y homes, Y-based sprite depth, three-second post-range-entry cadence, seeded per-sector CP padding from two-or-three base actors up to six, shallow linear CP rise, survivor overlap, role-shaped attack motion and boss clear gate.
 
 - Migration coverage uses `combatRulesMigration`, `heroProgressionMigration` and `continuousCombatStageContract` for canonical effects, growth, infinite stage wrapping, and immediate no-reward enemy removal. VM function-bank harnesses must inject the real core/module imports.
@@ -171,7 +177,7 @@
 
 - `actorClipPlayback.test.mjs` compares Hondo/Kaja normalized native XML to Fara across all seven states and both facings, preserving cadence and foot origins while checking every frame exists. It also checks every loaded actor's basic/cast torso source in both facings, including the forward 0.6-amplitude curves and untouched zero/recoil channels.
 
-- Bag curve tests preserve all 100 accelerating capacities, full-level geometric Essence costs and fractional rarity odds. Retired installment fields are tested only as supported save imports.
+- Bag curve tests preserve all 100 accelerating capacities, owner-approved wavy full-level costs and combined kill-point/Essence progress and fractional rarity odds. Retired installment fields are tested only as supported save imports.
 
 - `heroScreenUILayout.test.mjs` serves the production Hero renderer, shared gear CSS/atlas and navigation in isolated browser contexts. Check portrait/row/tab/footer geometry at reference, compact Retina and natural sizes, all canonical active skills through four-card pages, actual metadata and unlock gates, hero/tab selection, and byte-identical saved/in-memory progression and loadouts. Keep isolated fixture proof distinct from native full-app captures.
 
@@ -187,6 +193,7 @@
 - `continuousCombatStageContract` keeps ordinary-wave respite separate from boss-clear restoration. A Hero KO blocks ordinary settlement; surviving Hero HP must persist through HeroProgress JSON reload after either clear path.
 
 - Lamp conveyor checks cover active-time pause/collection/restore, malformed clocks, failed checkpoint preservation, synchronous same-tab restore when exit transactions are lost, session checkpoint identity/number validation, and supported wall-clock saves. Bag presentation measures 40% tighter artwork-edge gaps at 360/450 and compact widths with travel below 27 seconds; production emitter QA holds full cache, equipment/disposal, native dialog and unrelated alertdialog states beyond the emission cadence and compares retained positions, ages, count, sequence and bounce totals. Saved-only feedback checks cover the last slot, duplicates, failed saves and lock-queued modal gates.
+- `lampConveyorPause.test.mjs` retains real gear nodes through repeated CSS display-none menu exits and modal pause cycles at four phone sizes; restored positions and ordering must match the saved active age after the browser replaces its animations.
 
 - Auto-Equip phone coverage checks that consuming the final cache item closes after feedback without displaying empty disposal; saved legacy salvage still opens an enabled confirmation.
 
@@ -206,10 +213,11 @@
 - `lampCPInvariant.test.mjs` supersedes the rejected standalone-slot tests. It protects one actual CP predicate, the Hondo +15 example, repeated full-cache reassessment, illegal zero/negative equips, green disposal rejection, stale-preview protection after another legal equip, and the valid case where a better equipped item makes the leftover red.
 - Equipment ownership regressions replay Auto assignments against all twelve equipped slots and reject cross-hero transfers even when the foreign item would increase CP. Hero-screen browser proof includes canonical heroes plus combat-copy progression, cycles twice through the four canonical heroes, and checks unchanged saves and equipped slots at reference, compact Retina and natural sizes.
 - Extracted app-tick fixtures provide the progression observation hook while testing checkpoint persistence independently.
-- questMilestones.test.mjs protects saved per-slot equipment coverage, level steps of five, at-or-above rarity/level credit, family diversity across reloads, stale/duplicate claims, and witnessed zero-KO chapter clears including revival and unknown-history refusal.
+- questMilestones.test.mjs protects saved per-slot equipment coverage, level steps of five, at-or-above rarity/level credit, family diversity across reloads, stale/duplicate claims, and chapter completion regardless of KOs. Pending/completed retired zero-KO saves must get persistent supported replacements without changing balances or earned rewards.
 
 - Chapter quest-band coverage checks inclusive endpoints, seeded enemy/gear generation, capped late chapters, frozen active targets and 40-count save reloads.
-- `bagUpgradePresentation.test.mjs` drives production UI/storage in an isolated component fixture at four phone sizes and the natural desktop size. Guard reference pill colors, cell/close containment, disabled/ready/MAX states, failed-save suppression, capacity-only reward and detached X hit testing. Keep this component evidence separate from full-app native proof.
+- Mini-quest presentation coverage hides counters only for chapter-clear/boss milestones; equipment collection and every other objective retain pending/completed single-target and multi-target counters.
+- `bagUpgradePresentation.test.mjs` drives production UI/storage in an isolated component fixture at four phone sizes and the natural desktop size. Guard pill colors against shared equipment `RARITIES.color`, cell/close containment, disabled/ready/MAX states, failed-save suppression, capacity-only reward and detached X hit testing. Keep this component evidence separate from full-app native proof.
 
 - Bag component proof locks the sample meter to a straight-ended 17.28px track at reference scale, 43px rotated badge bounds, 18px level labels and 13.2px parenthesized progress text across all five profiles; retain existing palette and save checks.
 
@@ -220,3 +228,17 @@
 - Both Bag close glyphs must crop to nontransparent painted pixels and center that cropped raster within the square (under0.1px). Keep the Canvas CSS background transparent and preserve existing frame colors.
 
 - The five-profile Bag component guard also covers Training Ground: exactly one shared floating close outside the sheet, 24px scaled gap below tabs, full hit-area containment, exact visible-block vertical centering, resize recentering, close/Escape/focus return and keyboard wrap. Closing cannot purchase training or mutate its fixture state.
+
+- lampAutoEquipGameplay runs the full game in isolated contexts through cache/item controls, Auto receipts, Hero screens and reload. Its red-promise test fails on main 5d7910f9 after an actual Auto click. Fixed golden gains and a separate stat-projection oracle check allocation; lampRoster covers all 120 five-record orders and atomic guards. Both browser files run in test:lamp-ui.
+
+- Auto gameplay proof asserts every pending, discarded and held leftover is nonpositive for every canonical owner. Negative controls must demonstrate failure for a positive item in each queue. The commit guard runs this browser file and lampRoster for CP/equipment/roster changes even when presentation files are untouched.
+
+- Accepted-kit contracts verify bonus-only Royalty scaling (2.3x at four stars), direct percent/flat scaling and eight-star Boast stacking (+16% own stats plus +6.5% MAG/RES), alongside exact 0/2/4/8-star multipliers, unchanged passive thresholds/timers, per-hero growth ownership and inert empty Resonance entries. Scheduler and cooldown-strip tests exercise the reduced Special clock; browser fixtures await their complete rendered badge signature because an existing Elevate icon count can match before the new frame; Hero UI checks each effect label across phone profiles.
+- Hero party-layout proof preserves the Formation modal, accepted kits and eight-star table. `formation242Contract.test.mjs` locks the 105.6 width, v3-to-v4 migration, free occupancy, rigid offsets, canonical/copy slot assignment, 1.6-unit drift and ally separation, facing, range and moving boss bounds. Browser proof covers all four phone profiles, pointer drag, draft Save, empty Accessory and two empty Resonance slots. All Hero dialogs assert exactly one visible X, a close center within 2 CSS pixels of the panel center and positive vertical gap below the panel, including nested Formation dialogs. Star Up covers Tab wrapping, Escape and opener focus; Resonance checks visible icon boxes, exact crystal copy and the star-five display gate. Clockwise cooldown proof reads the transparent-first half-mask and grayscale filter.
+
+- Run `node --test --test-concurrency=1 tests/heroScreenUILayout.test.mjs tests/formation242Browser.test.mjs` for the Formation visual lock. The first drives modal geometry and persistence on all phone sizes; the second enters production combat with a disclosed placement save and fixed encounter seed 7, checks moving slots, captures video/screenshots and measures actual puppet alpha widths. Read-only in-page sampling begins before START so delayed driver polls cannot miss the opening walk. Evidence stays under `output/ORKA-bti/`.
+- Bag progress proof exercises the real KO hook and HeroProgress flush, then the locked equipment outbox consumer across failed writes, reload replay, delayed duplicates, MAX, corrupt/missing points, spend order, 64-domain insertion-order eviction, oversized-save trimming and unchanged Essence. Curve references include the first20 total205900 and minimum cost step200; every payable cost is a safe integer, a multiple of25 and at least5x capacity, with a pure artificial-capacity case that binds the rounded-up floor. Live-combat navigation comparisons allow ambient Bag point/receipt growth while retaining exact inventory/Essence equality and rejecting point spending.
+
+- `bagCombatProgress.test.mjs` runs the production ticker, KO hook, HeroProgress outbox and equipment saver:61 active seconds produce4 points, ordinary kills0 and boss5, pause/background/menu guards freeze accrual, reload resumes indices without replay, failed saves retain awards and MAX emits no ticks. Partial seconds carry across continuous battle changes and may reset on reload.
+
+- Compact Bag count tests lock K starting at1,000, the `(111/8.4K)` level-bar case, threshold boundaries, downward rounding, invalid inputs and exact near-threshold readiness. Five-profile Bag component proof renders4,770,374 /4,770,375 at level99, requiring one contained line and a disabled upgrade, including216x384. Measure painted glyph bounds plus stroke using a DOM baseline probe and Canvas text metrics; unused font leading is not painted overflow. Allow the existing 0.5 CSS-pixel geometry tolerance for Canvas/CSS raster metric rounding.

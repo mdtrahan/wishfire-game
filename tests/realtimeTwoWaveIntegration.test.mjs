@@ -7,7 +7,7 @@ import { HERO_DEFINITIONS, heroSkillUnlocked } from '../web-runner/src/core/hero
 import { isHeroBasicTargetInRange, resolveHeroAttackTarget } from '../src/core/heroAttackTargetingRules.mjs';
 import { realtimeCooldownSeconds, scheduleRealtimeActions, selectRealtimeReadyActor } from '../web-runner/src/core/realtimeCooldown.mjs';
 import { filterContinuousEncounterEnemies, selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
-import { castRealtimeHeroSkill, realtimeBasicInterval, realtimeProvokeTarget, realtimeRetaliation, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
+import { castRealtimeHeroSkill, realtimeBasicInterval, realtimeSpecialCooldown, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
 import { advancePassiveHeroRegen } from '../web-runner/src/core/heroSustainRules.mjs';
 import { recordBalanceCombatEvent } from '../web-runner/src/core/balanceTelemetry.mjs';
 import { saveHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
@@ -51,7 +51,7 @@ function makeTickBasics(ctx) {
     'getGlobals', 'getEnemies', 'resolveHeroAttackTarget', 'isHeroBasicTargetInRange', 'getEntities', 'GetEffectiveStat',
     'realtimeCooldownSeconds', 'selectRealtimeReadyActor', 'scheduleRealtimeActions', 'HeroAttackSingle', 'GetActorByUID',
     'tickRealtimeHeroSkillZones', 'heroDefinition', 'heroSkillUnlocked', 'selectRealtimeHeroSkillTarget', 'filterContinuousEncounterEnemies', 'castRealtimeHeroSkill',
-    'realtimeBasicInterval', 'advancePassiveHeroRegen', 'recordBalanceCombatEvent', 'saveHeroProgress', 'UpdateHeroHPUI',
+    'realtimeBasicInterval', 'realtimeSpecialCooldown', 'advancePassiveHeroRegen', 'recordBalanceCombatEvent', 'saveHeroProgress', 'UpdateHeroHPUI',
     'pushContinuousCombatEnemy', 'reverseContinuousCombatEnemy', 'teleportContinuousCombatEnemy',
   ], [
     c => c.state.globals,
@@ -62,7 +62,7 @@ function makeTickBasics(ctx) {
     (c, heroUID, targetUID) => (c.state.globals.PendingHeroHits ||= []).push({ at: c.state.globals.time + 0.52, heroUID, targetUID, dmg: 1, finalDmg: 1, heroType: 'melee', combatRulesBasic: 1, realtimeBasic: 1, retargetOnDeath: 1 }),
     (c, uid) => c.state.entities.find(e => Number(e.uid) === Number(uid)) || null,
     tickRealtimeHeroSkillZones, actor => HERO_DEFINITIONS[actor.baseHeroName], heroSkillUnlocked, selectRealtimeHeroSkillTarget, filterContinuousEncounterEnemies,
-    castRealtimeHeroSkill, realtimeBasicInterval, advancePassiveHeroRegen, recordBalanceCombatEvent, saveHeroProgress, () => {},
+    castRealtimeHeroSkill, realtimeBasicInterval, realtimeSpecialCooldown, advancePassiveHeroRegen, recordBalanceCombatEvent, saveHeroProgress, () => {},
     () => 0, () => 0, (_target,distance) => distance,
   ]);
 }
@@ -70,7 +70,7 @@ function makeTickBasics(ctx) {
 function productionEnemyTargets(ctx, uid) {
   const enemy = ctx.state.entities.find(actor => actor.kind === 'enemy' && Number(actor.uid) === Number(uid));
   const heroes = ctx.state.entities.filter(actor => actor.kind === 'hero' && actor.hp > 0);
-  return realtimeProvokeTarget(ctx, enemy, pickEnemyTargetHeroFromRoster({ enemy, heroes }).target);
+  return pickEnemyTargetHeroFromRoster({ enemy, heroes }).target;
 }
 
 function makeTickEnemies(ctx, actionEvents) {
@@ -118,14 +118,6 @@ function makeTickEnemies(ctx, actionEvents) {
           const before = target.hp; target.hp = Math.max(0, target.hp - 1);
           const event = actionEvents[String(enemyUID)];
           if (event) Object.assign(event, { actionId: skillId, impactAt: now, targetUID: target.uid, hpBefore: before, hpAfter: target.hp });
-          if (source && target.kind === 'hero') {
-            const prior = g.CombatImpactRequests.length;
-            realtimeRetaliation(ctx, target, source.uid);
-            for (const request of g.CombatImpactRequests.slice(prior)) actionEvents[`skill-${request.heroUID}-${request.skillId}-${request.at}`] = {
-              actorUID: request.heroUID, actionId: request.skillId, dueAt: request.at, castAt: request.at, impactAt: request.at,
-              targetUID: request.targetUID, hpBefore: null, hpAfter: null, kind: 'skill',
-            };
-          }
           return before - target.hp;
         }
         return 0;
@@ -137,7 +129,7 @@ function makeTickEnemies(ctx, actionEvents) {
   };
 }
 
-const makeHero = (uid, key, hp, maxHP) => ({ uid, kind: 'hero', x:145, y:180+(uid-1)*35, footX:145, footY:180+(uid-1)*35, currentLevel:25, heroInstanceKey: `hero-${uid}`, baseHeroName: key, name: key, hp, maxHP, stats: { ...HERO_DEFINITIONS[key].baseStats }, attackType: key === 'Runa' || key === 'Kojonn' ? 'magic' : 'melee', heroDisplaySlot: uid - 1 });
+const makeHero = (uid, key, hp, maxHP) => ({ uid, kind: 'hero', x:145, y:180+(uid-1)*20, footX:145, footY:180+(uid-1)*20, currentLevel:25, heroInstanceKey: `hero-${uid}`, baseHeroName: key, name: key, hp, maxHP, stats: { ...HERO_DEFINITIONS[key].baseStats }, attackType: key === 'Runa' || key === 'Kojonn' ? 'magic' : 'melee', heroDisplaySlot: uid - 1 });
 const makeEnemy = (uid, name, x, y, hp = 1_000_000, maxHP = 1_000_000, extra = {}) => ({ uid, kind: 'enemy', name, hp, maxHP, x, y, footX:x, footY:y, originX: x, originY: y, streamEngageX: x, streamState: 'engaged', arenaTargetUID: 1, enemyRole: 'fodder', ATK: 1, stats: { ATK: 1, MAG: 2, RES: 1 }, ...extra });
 
 function createTwoWaveFixture() {
@@ -222,6 +214,7 @@ function createTwoWaveFixture() {
 test('two-wave fixture records real hero scheduler actions, active skills, basics and impact timing', () => {
   const fixture = createTwoWaveFixture();
   const { state, actionLog } = fixture;
+  assert.ok(fixture.waveOne.every(enemy => isHeroBasicTargetInRange(enemy, fixture.heroes[3])), 'Kaja starts within reach of both foes required by support conditions');
   for (let frame = 0; frame <= 1100; frame += 1) {
     const now = frame * 0.05;
     if (frame === 500) {
@@ -235,9 +228,7 @@ test('two-wave fixture records real hero scheduler actions, active skills, basic
   }
   const observed = new Set(actionLog.filter(event => event.kind === 'skill').map(event => `${state.entities.find(actor => actor.uid === event.actorUID)?.baseHeroName}:${event.actionId}`));
   const expected = Object.entries(HERO_DEFINITIONS).flatMap(([key, definition]) => definition.actives.filter(skill=>skill.unlockLevel<=25).map(skill => `${key}:${skill.skillId}`));
-  assert.deepEqual([...observed].sort(), expected.sort(), 'all twenty level-25 skills cast when the fixture supplies their current conditions');
-  assert.ok(actionLog.filter(event => event.actorUID === 1 && event.actionId === 'retaliation_burst').length >= 2,
-    'Fara retaliation recurs on eligible hostile impacts after its cooldown');
+  assert.deepEqual([...observed].sort(), expected.sort(), 'every Special casts when the fixture supplies its current conditions');
   const firstBasicDue = fixture.heroes.map(hero => actionLog.find(event => event.actorUID === hero.uid && event.kind === 'basic')?.dueAt);
   assert.equal(new Set(firstBasicDue).size, fixture.heroes.length, 'each hero keeps an independently phased opening basic clock');
   const meleeEnemyLogs = actionLog.filter(event => event.kind === 'enemy' && event.actorUID === 20);
@@ -254,14 +245,14 @@ test('two-wave fixture records real hero scheduler actions, active skills, basic
     assert.ok(basics.length >= 2, `${hero.baseHeroName} basic is not starved by its ready skills`);
     assert.ok(new Set(basics.slice(0, 4).map(event => event.dueAt)).size > 1, `${hero.baseHeroName} advances its own readiness clock`);
   }
-  const steadyTriggers=new Set(['challenge_bolt','cheap_shot','hex_beacon','shared_tempo']);
+  const steadyTriggers=new Set(['shadow','bubble_pop']);
   for(const [key,definition] of Object.entries(HERO_DEFINITIONS))for(const skill of definition.actives.filter(skill=>skill.unlockLevel<=25)) {
     const times=[...new Set(actionLog.filter(event=>event.kind==='skill'&&event.actionId===skill.skillId&&fixture.heroes.find(hero=>hero.uid===event.actorUID)?.baseHeroName===key).map(event=>event.castAt))].sort((a,b)=>a-b);
     if(steadyTriggers.has(skill.skillId))assert.ok(times.length>=2,`${key}: ready skills with sustained conditions recur`);
     for(let i=1;i<times.length;i++)assert.ok(times[i]-times[i-1]>=skill.cooldownSeconds-1e-8,`${key}: cooldown cannot be bypassed`);
   }
   assert.ok(actionLog.some(event => event.actorUID === 4 && event.actionId === 'basic_attack'), 'Kaja continues to use its basic attack');
-  assert.ok(actionLog.some(event => event.actorUID === 1 && event.actionId === 'challenge_bolt' && event.castAt > 0), 'useful effects recur after their cooldown');
+  assert.ok(actionLog.some(event => event.actorUID === 2 && event.actionId === 'shadow' && event.castAt > 0), 'useful effects recur after their cooldown');
   assert.ok(actionLog.some(event => event.actorUID === 2 && event.actionId === 'basic_attack' && event.dueAt <= event.castAt && event.impactAt > event.castAt && event.targetUID > 0 && event.hpBefore > event.hpAfter), 'basic packets retain actor, target, due/cast/impact time and HP evidence');
   assert.ok(actionLog.some(event => event.castAt >= 25 && event.targetUID === 22), 'the later wave joins live combat while the earlier wave survives');
 });
