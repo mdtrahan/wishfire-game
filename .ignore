@@ -1,4 +1,5 @@
 # Ordinary repository search and index scope: current checkout only.
+/history/
 .worktrees/
 test-results/
 output/
