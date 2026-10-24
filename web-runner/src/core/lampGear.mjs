@@ -2,7 +2,7 @@ import {EQUIPMENT,RARITIES,EQUIPMENT_SLOTS,equipmentDefinition,equipmentStats,is
 import {refreshHeroStats} from './heroProgression.mjs';
 import {computeCombatPower} from './combatPower.mjs';
 
-export const LAMP_CONFIG=Object.freeze({capacity:20,drawEXP:0,minEmissionIntervalMs:2000,autoIntervalMs:5000,autoUnlockLevel:5,maxOrdinal:990,mapStatGrowth:.005,lampLevels:100,upgradeBaseCost:100,upgradeCostB:Math.log(1.1),upgradeCostA:.8,upgradeCostPeriod:10,killReceiptDomains:64,});
+export const LAMP_CONFIG=Object.freeze({capacity:20,drawEXP:0,minEmissionIntervalMs:2000,autoIntervalMs:5000,autoUnlockLevel:5,maxOrdinal:990,mapStatGrowth:.005,lampLevels:100,upgradeBaseCost:100,upgradeCostB:Math.log(1.07),upgradeCostA:.8,upgradeCostPeriod:10,killReceiptDomains:64,});
 export const LAMP_GUIDE=Object.freeze({storage:1,comparison:2,preview:4});
 export function markLampGuide(data,step){if(!Object.hasOwn(LAMP_GUIDE,step))throw new Error('Unknown lamp guide step.');if(step!=='preview'&&!lampStoredCount(data)&&!data.lamp.reviewHold)throw new Error('Open stored equipment first.');if(step==='comparison'&&!data.lamp.pending.length&&!data.lamp.discarded?.length&&!data.lamp.reviewHold)throw new Error('Choose equipment first.');return data.lamp.guide=(data.lamp.guide||0)|LAMP_GUIDE[step];}
 export const LAMP_CAPACITY_TIERS=Object.freeze(Array.from({length:LAMP_CONFIG.lampLevels},(_,n)=>{

@@ -434,7 +434,7 @@ test('full-cost Bag curve retains fractional odds and all 100 earned levels',()=
   assert.equal(data.lamp.essence,0);total+=original;assert.equal(data.lamp.capacityTier,tier+1);
   for(const key of Object.keys(RARITIES))assert.ok(Math.abs(LAMP_CAPACITY_TIERS[tier+1].rarityWeights[key]-LAMP_CAPACITY_TIERS[tier].rarityWeights[key])<.56);
  }
- assert.equal(data.lamp.capacityTier,99);assert.equal(total,10985837);assert.equal(lampUpgradeProgress(data).max,true);assert.equal(lampUpgradeCost(data),null);
+ assert.equal(data.lamp.capacityTier,99);assert.equal(total,1056009);assert.equal(lampUpgradeProgress(data).max,true);assert.equal(lampUpgradeCost(data),null);
  assert.equal(1+LAMP_CONFIG.maxOrdinal*LAMP_CONFIG.mapStatGrowth,5.95);
 });
 
@@ -449,7 +449,7 @@ test('Bag capacity accelerates and full-level cost follows the approved wave cur
   if(n)assert.ok(tier.cost>LAMP_CAPACITY_TIERS[n-1].cost);
  }
  const blockGains=[0,10,20,30,40,50,60,70,80].map(n=>LAMP_CAPACITY_TIERS[n+10].capacity-LAMP_CAPACITY_TIERS[n].capacity);assert.ok(blockGains.every((gain,n)=>!n||gain>blockGains[n-1]));
- const data=createLampEconomy(7);assert.equal(lampUpgradeCost(data),100);data.lamp.capacityTier=1;assert.equal(lampUpgradeCost(data),107);
+ const data=createLampEconomy(7);assert.equal(lampUpgradeCost(data),100);data.lamp.capacityTier=1;assert.equal(lampUpgradeCost(data),105);
 });
 
 test('cache groups all rarity tiers before descending CP within each tier without mutating saved queues',()=>{
@@ -475,12 +475,12 @@ test('cache groups all rarity tiers before descending CP within each tier withou
 
 
 test('approved wavy costs match owner references with strictly increasing flat level costs',()=>{
- const references={1:100,2:107,5:118,10:230,11:259,15:305,20:598,21:673,31:1745,51:11739,71:78975,91:531302,99:1047289};
+ const references={1:100,2:105,5:112,10:181,11:197,15:221,20:356,21:387,31:761,51:2946,71:11399,91:44110,99:71410};
  for(const[level,cost]of Object.entries(references))assert.equal(LAMP_CAPACITY_TIERS[Number(level)-1].cost,cost,`L${level}`);
  const costs=LAMP_CAPACITY_TIERS.slice(0,99).map(t=>t.cost);
- assert.equal(Math.min(...costs.slice(1).map((cost,i)=>cost-costs[i])),3);
+ assert.equal(Math.min(...costs.slice(1).map((cost,i)=>cost-costs[i])),1);
  assert.ok(costs.every((cost,i)=>!i||cost>costs[i-1]));assert.equal(LAMP_CAPACITY_TIERS[99].cost,null);
- assert.equal(costs.slice(0,20).reduce((sum,cost)=>sum+cost,0),5075);
+ assert.equal(costs.slice(0,20).reduce((sum,cost)=>sum+cost,0),3759);
  const data=createLampEconomy(1);for(const essence of [0,50,100,10000]){data.lamp.essence=essence;assert.equal(lampUpgradeCost(data),100);}
 });
 
