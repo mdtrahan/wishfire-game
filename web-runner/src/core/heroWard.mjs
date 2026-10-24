@@ -5,15 +5,16 @@ const wards = globals => globals.HeroWardHPByUID ||= {};
 const visuals = globals => globals.HeroWardVisualByUID ||= {};
 
 export const heroWardHP = (globals, hero) => n(globals?.HeroWardHPByUID?.[String(hero?.uid)]);
-// Share of the hero's ward cap still held (0-1); the HP bar strip shows this, so a full ward fills the bar.
-export const heroWardShare = (globals, uid) => Math.min(1, n(globals?.HeroWardHPByUID?.[String(uid)]) / Math.max(1, n(globals?.HeroWardCapByUID?.[String(uid)])));
+// Share of the ward left since the latest cast (0-1): every cast refills the HP bar strip to full,
+// whatever the new total, and hits shrink it from there.
+export const heroWardShare = (globals, uid) => Math.min(1, n(globals?.HeroWardHPByUID?.[String(uid)]) / Math.max(1, n(globals?.HeroWardPeakByUID?.[String(uid)])));
 
 // Add ward to one hero up to its cap; returns the amount gained.
 export function grantHeroWard(globals, hero, amount, cap) {
   const key = String(hero.uid), before = heroWardHP(globals, hero), after = Math.min(n(cap), before + n(amount));
   if (after <= before) return 0;
   wards(globals)[key] = after;
-  (globals.HeroWardCapByUID ||= {})[key] = n(cap);
+  (globals.HeroWardPeakByUID ||= {})[key] = after;
   if (!(before > 0)) visuals(globals)[key] = { startedAt: n(globals.time), hitAt: null, endedAt: null };
   return after - before;
 }
@@ -38,6 +39,6 @@ export function dropHeroWard(globals, hero) {
 
 export function clearHeroWards(globals) {
   if (!globals) return;
-  globals.HeroWardHPByUID = {}; globals.HeroWardVisualByUID = {}; globals.HeroWardCapByUID = {};
+  globals.HeroWardHPByUID = {}; globals.HeroWardVisualByUID = {}; globals.HeroWardPeakByUID = {};
   delete globals.HeroWardSourceUID;
 }
