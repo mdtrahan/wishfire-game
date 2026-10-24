@@ -582,3 +582,15 @@ test('COT UI exposes a claim action only for ready objectives and uses the two-r
   assert.match(ui, /if \(result\?\.ok && result\.receipt\) present\(canvas, result\.receipt, 'Reward Obtained', 1500\)/);
   assert.match(app, /onClaim: objectiveId => combatProgression\.claimObjective\(objectiveId\)/);
 });
+
+
+test('quest description and progress presentation never carries a rarity color', () => {
+  for (const type of Object.keys(COMBAT_REWARD_BUNDLES)) {
+    for (const rarity of ['common', 'uncommon', 'rare', 'epic', 'legendary']) {
+      for (const progress of [0, 3, 4]) {
+        const view = combatObjectivePresentation({type, rarity, target:4, progress, slot:'hat', threshold:5, chapter:1});
+        assert.equal(view.color, undefined, `${type}:${rarity}:${progress}`);
+      }
+    }
+  }
+});

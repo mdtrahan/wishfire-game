@@ -92,7 +92,15 @@ export function eligibleHeroUpgradeTargets(state, heroes = []) {
 }
 
 export function ensureCombatObjective(state, heroes = [], context = {}) {
-  const next = reconcileQuestMilestones(createCombatProgressionState(state), heroes, context);
+  const next = createCombatProgressionState(state);
+  // Completed retired rarity quests keep their single claim, even if gear has changed.
+  if (next.objective?.type === 'equip_rarity' && ['epic', 'legendary'].includes(next.objective.rarity)) {
+    const { id, key, progress, target } = next.objective;
+    const claimed = next.claimedMilestones.includes(key) || next.rewardReceipts.some(row => row.id === `cot-reward:${id}`);
+    if (!claimed && progress >= target) return next;
+    next.objective = null;
+  }
+  reconcileQuestMilestones(next, heroes, context);
   const chapter = Math.max(Number(context.chapter) || 1, next.chaptersCleared + 1);
   if (next.objective && next.objective.progress >= next.objective.target) return next;
   const canTrain = TRAINING_STATS.some(stat => next.training[stat] < 100 && trainingCost(next, stat) <= next.wallet.incense);

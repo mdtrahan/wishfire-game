@@ -34,7 +34,7 @@ test('level milestones use multiples of five and rarity goals require an availab
   const state = createCombatProgressionState({cursor:5});
   const rows = milestoneCandidates(state,heroes,context);
   assert.deepEqual(rows.filter(r=>r.type==='equip_level').map(r=>r.threshold),[5,10,15]);
-  assert.deepEqual(rows.filter(r=>r.type==='equip_rarity').map(r=>r.rarity),['uncommon','rare','epic']);
+  assert.deepEqual(rows.filter(r=>r.type==='equip_rarity').map(r=>r.rarity),['uncommon','rare']);
   const early = equipment(1,'common'); early.lamp.highestOrdinal=0;
   assert.equal(milestoneCandidates(state,heroes,{equipment:early}).some(r=>r.type==='equip_level'||r.type==='equip_rarity'),false);
 });
@@ -189,5 +189,94 @@ test('type selection and target roll allow every action type to reach both band 
       values[next.objective.type]?.add(next.objective.target);
     }
     for(const type of Object.keys(values)) {assert.ok(values[type].has(low),`${type}:${chapter}:low`);assert.ok(values[type].has(high),`${type}:${chapter}:high`);}
+  }
+});
+
+
+test('equipment coverage never schedules Epic or Legendary and retains Green and Blue', () => {
+  for (const rarity of ['common','uncommon','rare','epic','legendary']) {
+    for (let tier = 0; tier < 100; tier++) {
+      const state = createCombatProgressionState({cursor:5});
+      const data = equipment(10, rarity); data.lamp.capacityTier = tier;
+      const rows = milestoneCandidates(state, heroes, {equipment:data}).filter(row=>row.type === 'equip_rarity');
+      const expected = rarity === 'common' ? [] : rarity === 'uncommon' ? ['uncommon'] : ['uncommon','rare'];
+      assert.deepEqual(rows.map(row=>row.rarity), expected);
+      state.claimedMilestones = ['equip_rarity:epic:', 'equip_rarity:legendary:'];
+      assert.deepEqual(milestoneCandidates(state, heroes, {equipment:data}).filter(row=>row.type === 'equip_rarity').map(row=>row.rarity), expected);
+    }
+  }
+});
+
+test('unfinished removed Epic and Legendary saves load and reschedule without spending or granting rewards', () => {
+  for (const rarity of ['epic', 'legendary']) {
+    const data = equipment(10, rarity);
+    delete data.loadouts.Kaja.hat;
+    const saved = objective('equip_rarity', {rarity, key:`equip_rarity:${rarity}:`, progress:3});
+    saved.wallet.incense = 77;
+    saved.claimedMilestones = ['equip_rarity:uncommon:', 'equip_rarity:rare:'];
+    saved.rewardReceipts = [{id:'earned', resource:'incense', amount:5}];
+    const values = new Map([['orka.combat_progression.v1', JSON.stringify(saved)]]);
+    const storage = {getItem:k=>values.get(k)||null, setItem:(k,v)=>values.set(k,v)};
+    const make = () => createCombatProgression({globals:{}, storage, getHeroes:()=>heroes, equipmentProgress:{data}, reportError:()=>{}});
+    const service = make(), next = service.state();
+    assert.notEqual(next.objective.id, saved.objective.id);
+    assert.deepEqual(next.wallet, saved.wallet);
+    assert.deepEqual(next.rewardReceipts, saved.rewardReceipts);
+    assert.deepEqual(next.claimedMilestones, saved.claimedMilestones);
+    assert.equal(next.cursor, saved.cursor);
+    assert.equal(make().state().objective.id, next.objective.id);
+    assert.equal(service.claimObjective(saved.objective.id).ok, false);
+    assert.ok(!['epic','legendary'].includes(next.objective.rarity));
+  }
+});
+
+test('completed and claimed legacy rarity quests retain exactly one reward across reloads', () => {
+  for (const rarity of ['epic', 'legendary']) {
+    const data = equipment(1, 'common');
+    const saved = objective('equip_rarity', {rarity, key:`equip_rarity:${rarity}:`, progress:4});
+    saved.wallet.incense = 77;
+    const values = new Map([['orka.combat_progression.v1', JSON.stringify(saved)]]);
+    const storage = {getItem:k=>values.get(k)||null, setItem:(k,v)=>values.set(k,v)};
+    const make = () => createCombatProgression({globals:{}, storage, getHeroes:()=>heroes, equipmentProgress:{data}, reportError:()=>{}});
+    const service = make();
+    assert.equal(service.state().objective.id, 'objective');
+    assert.equal(service.claimObjective('objective').ok, true);
+    const reloaded = make();
+    assert.equal(reloaded.claimObjective('objective').ok, false);
+    assert.equal(reloaded.state().wallet.incense, 82);
+    assert.equal(reloaded.state().rewardReceipts.filter(row=>row.id === 'cot-reward:objective').length, 1);
+    data.lamp.capacityTier = 99;
+    assert.equal(milestoneCandidates(reloaded.state(), heroes, {equipment:data}).some(row=>row.key === saved.objective.key), false);
+  }
+});
+
+
+test('removed incomplete rarity saves cannot become claims through currently qualifying gear or missing context', () => {
+  for (const rarity of ['epic','legendary']) {
+    for (const context of [{}, {equipment:equipment(10,'legendary')}]) {
+      const saved = objective('equip_rarity', {rarity, key:`equip_rarity:${rarity}:`, progress:0});
+      const next = ensureCombatObjective(saved, heroes, context);
+      assert.notEqual(next.objective.id, 'objective');
+      assert.equal(claimCombatObjectiveReward(saved, 'objective', heroes, 0, context).ok, false);
+      assert.equal(next.rewardReceipts.length, 0);
+    }
+  }
+});
+
+
+test('stale completed removed objectives with a claimed key or receipt cannot grant a second reward', () => {
+  for (const rarity of ['epic','legendary']) {
+    for (const proof of ['key','receipt']) {
+      const saved = objective('equip_rarity', {rarity, key:`equip_rarity:${rarity}:`, progress:4});
+      saved.wallet.incense = 82;
+      if (proof === 'key') saved.claimedMilestones.push(saved.objective.key);
+      else saved.rewardReceipts.push({id:'cot-reward:objective', resource:'incense', amount:5});
+      const next = ensureCombatObjective(JSON.parse(JSON.stringify(saved)), heroes);
+      assert.notEqual(next.objective.id, 'objective');
+      assert.equal(claimCombatObjectiveReward(saved, 'objective', heroes).ok, false);
+      assert.deepEqual(next.wallet, saved.wallet);
+      assert.deepEqual(next.rewardReceipts, saved.rewardReceipts);
+      assert.deepEqual(next.claimedMilestones, saved.claimedMilestones);
+    }
   }
 });

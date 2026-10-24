@@ -59,7 +59,7 @@ export function milestoneCandidates(state, heroes, context = {}) {
     const availableLevel = Math.max(1, positive(context.equipment.lamp?.highestOrdinal) + 1, ...context.equipment.items.map(item => positive(item.level)));
     for (let threshold = 5; threshold <= Math.min(nextLevel, availableLevel); threshold += 5) add({ type: 'equip_level', threshold, target: heroes.length });
     const availableRarity = Math.max(0, ...context.equipment.items.map(item => rarities.indexOf(item.rarity)));
-    for (let index = 1; index <= availableRarity; index++) add({ type: 'equip_rarity', rarity: rarities[index], target: heroes.length });
+    for (let index = 1; index <= Math.min(availableRarity, rarities.indexOf('rare')); index++) add({ type: 'equip_rarity', rarity: rarities[index], target: heroes.length });
   }
   const chapter = Math.max(1, positive(context.chapter));
   for (const type of ['chapter_clear', 'boss_defeat']) {
@@ -93,7 +93,7 @@ export function milestonePresentation(objective) {
     hero_level: `Reach Level ${threshold} with ${heroName}`, party_level: `Reach Level ${threshold} with all heroes`,
     training_level: `Train ${stat} to Level ${threshold}`,
   };
-  return labels[type] ? { category: questFamily(type) === 'equipment' ? 'Equipment' : 'Milestone', challenge: labels[type], ...(type === 'equip_rarity' ? { color: RARITIES[rarity]?.color } : {}) } : null;
+  return labels[type] ? { category: questFamily(type) === 'equipment' ? 'Equipment' : 'Milestone', challenge: labels[type] } : null;
 }
 
 export function observeChapterMilestones(state, _heroes, stage) {
