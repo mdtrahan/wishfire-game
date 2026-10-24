@@ -132,3 +132,5 @@
 - Only chapter-clear and chapter-boss milestones omit counters. Collection and other quests retain all counters, including `0/1` and `1/1`; saved completion/reward requirements stay intact.
 
 - ORKA-9ln (owner 2026-10-24) fixes Bag cost at `round(100*exp(b*n-K*(1-cos(2*pi*n/10))))`, with `b=ln(1.1)`, `K=.8*b*10/(2*pi)`, `n=level-1` through98; tier99 is MAX/null. Keep cost flat within a level. `lampKillPoints` normalizes missing/corrupt values to zero; kills award1, bosses5, MAX0. Upgrade spends points first, carries surplus, then spends Essence. Kill points never fund other purchases. Paid-stage v5 imports use the new cost without changing earned levels.
+
+- Bag kill receipts retain the newest `LAMP_CONFIG.killReceiptDomains` (64) battle domains by insertion order. Updating a retained domain never refreshes its age. Validation accepts and trims larger saved domain sets without changing points, Essence or level; the retained window guards the equipment/HeroProgress acknowledgement gap.

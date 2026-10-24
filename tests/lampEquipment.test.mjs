@@ -539,3 +539,26 @@ test('unsaved HeroProgress blocks kill consumption; MAX and overflow cannot accr
  assert.equal(awardLampKillPoints(many,'enemy:next-battle:1',1).applied,true,'reused actor numbers in a later battle still award');
  assert.equal(many.lamp.killPoints,609);
 });
+
+
+test('kill receipts retain the newest 64 battle domains and trim oversized saves without changing points',async()=>{
+ const data=createLampEconomy(42);let points=0;
+ assert.equal(LAMP_CONFIG.killReceiptDomains,64);
+ for(let battle=0;battle<70;battle++){
+  const amount=battle%5===0?5:1;points+=amount;
+  awardLampKillPoints(data,`enemy:battle-${battle}:1`,amount);
+ }
+ const retained=Array.from({length:64},(_,n)=>`enemy:battle-${n+6}`);
+ assert.deepEqual(Object.keys(data.settledBagKillRewards),retained);assert.equal(data.lamp.killPoints,points);assert.equal(points,126);
+ assert.equal(awardLampKillPoints(data,'enemy:battle-6:1',1).duplicate,true);assert.equal(data.lamp.killPoints,points);
+ awardLampKillPoints(data,'enemy:battle-6:2',5);points+=5;
+ assert.deepEqual(Object.keys(data.settledBagKillRewards),retained,'updating a domain preserves insertion order');
+ awardLampKillPoints(data,'enemy:battle-70:1',1);points++;
+ assert.deepEqual(Object.keys(data.settledBagKillRewards),[...retained.slice(1),'enemy:battle-70']);assert.equal(data.lamp.killPoints,points);
+ const oversized=createLampEconomy(42);oversized.lamp.killPoints=126;oversized.lamp.essence=37;oversized.lamp.capacityTier=6;
+ oversized.settledBagKillRewards=Object.fromEntries(Array.from({length:70},(_,n)=>[`enemy:battle-${n}`,[[1,1]]]));
+ const f=fixture({[EQUIPMENT_SAVE_KEY]:JSON.stringify(oversized)});await f.store.sync();
+ assert.deepEqual(Object.keys(f.store.data.settledBagKillRewards),retained);assert.equal(f.store.data.lamp.killPoints,126);assert.equal(f.store.data.lamp.essence,37);assert.equal(f.store.data.lamp.capacityTier,6);
+ assert.equal(Object.keys(JSON.parse(f.values.get(EQUIPMENT_SAVE_KEY)).settledBagKillRewards).length,64);
+ assert.equal(awardLampKillPoints(f.store.data,'enemy:battle-6:1',1).duplicate,true);assert.equal(f.store.data.lamp.killPoints,126);
+});

@@ -2,7 +2,7 @@ import {EQUIPMENT,RARITIES,EQUIPMENT_SLOTS,equipmentDefinition,equipmentStats,is
 import {refreshHeroStats} from './heroProgression.mjs';
 import {computeCombatPower} from './combatPower.mjs';
 
-export const LAMP_CONFIG=Object.freeze({capacity:20,drawEXP:0,minEmissionIntervalMs:2000,autoIntervalMs:5000,autoUnlockLevel:5,maxOrdinal:990,mapStatGrowth:.005,lampLevels:100,upgradeBaseCost:100,upgradeCostB:Math.log(1.1),upgradeCostA:.8,upgradeCostPeriod:10,});
+export const LAMP_CONFIG=Object.freeze({capacity:20,drawEXP:0,minEmissionIntervalMs:2000,autoIntervalMs:5000,autoUnlockLevel:5,maxOrdinal:990,mapStatGrowth:.005,lampLevels:100,upgradeBaseCost:100,upgradeCostB:Math.log(1.1),upgradeCostA:.8,upgradeCostPeriod:10,killReceiptDomains:64,});
 export const LAMP_GUIDE=Object.freeze({storage:1,comparison:2,preview:4});
 export function markLampGuide(data,step){if(!Object.hasOwn(LAMP_GUIDE,step))throw new Error('Unknown lamp guide step.');if(step!=='preview'&&!lampStoredCount(data)&&!data.lamp.reviewHold)throw new Error('Open stored equipment first.');if(step==='comparison'&&!data.lamp.pending.length&&!data.lamp.discarded?.length&&!data.lamp.reviewHold)throw new Error('Choose equipment first.');return data.lamp.guide=(data.lamp.guide||0)|LAMP_GUIDE[step];}
 export const LAMP_CAPACITY_TIERS=Object.freeze(Array.from({length:LAMP_CONFIG.lampLevels},(_,n)=>{
@@ -15,6 +15,9 @@ export const lampCapacity=data=>LAMP_CAPACITY_TIERS[data.lamp.capacityTier||0].c
 export const lampUpgradeCost=data=>LAMP_CAPACITY_TIERS[data.lamp.capacityTier].cost;
 export const lampKillPoints=data=>Number.isSafeInteger(data.lamp.killPoints)&&data.lamp.killPoints>=0?data.lamp.killPoints:0;
 export const enemyBagKillPoints=actor=>String(actor.enemyRole||actor.role||'').toLowerCase()==='boss'?5:1;
+function trimKillReceiptDomains(receipts){
+ for(const domain of Object.keys(receipts).slice(0,-LAMP_CONFIG.killReceiptDomains))delete receipts[domain];
+}
 export function awardLampKillPoints(data,id,amount){
  const split=typeof id==='string'?id.lastIndexOf(':'):-1,session=id?.slice?.(0,split),uid=Number(id?.slice?.(split+1));
  if(!session?.startsWith('enemy:')||session.length>164||id.length>180||!Number.isSafeInteger(uid)||uid<1||String(uid)!==id.slice(split+1)||![1,5].includes(amount))throw new Error('Invalid Bag kill receipt.');
@@ -31,6 +34,7 @@ export function awardLampKillPoints(data,id,amount){
   if(last&&lo<=last[1]+1)last[1]=Math.max(last[1],hi);else merged.push([lo,hi]);
  }
  data.lamp.killPoints=total;(data.settledBagKillRewards||={})[session]=merged;
+ trimKillReceiptDomains(data.settledBagKillRewards);
  return{applied:true,killPoints:total};
 }
 export function lampUpgradeProgress(data){
@@ -111,6 +115,7 @@ export function validateLampEconomy(data,version=5){
   for(const[session,ranges]of Object.entries(receipts)){
    if(!session.startsWith('enemy:')||session.length>164||!Array.isArray(ranges)||ranges.some((range,i)=>!Array.isArray(range)||range.length!==2||range.some(n=>!Number.isSafeInteger(n)||n<1)||range[0]>range[1]||i>0&&range[0]<=ranges[i-1][1]+1))bad();
   }
+  trimKillReceiptDomains(receipts);
  }
  const ids=new Set();
  for(const i of data.items){if(!i||typeof i.instanceId!=='string'||!i.instanceId||typeof i.name!=='string'||!i.name||i.name.length>100||!Number.isSafeInteger(i.level)||i.level<1||i.level>LAMP_CONFIG.maxOrdinal+1||ids.has(i.instanceId)||!EQUIPMENT_SLOTS[i.type]||!RARITIES[i.rarity]||!i.stats||!Number.isInteger(i.art)||i.art<0||i.art>8||!Object.keys(i.stats).length||(version!==2&&(version===3?GEAR_STATS.filter(k=>k!=='HP'):GEAR_STATS).some(k=>!Object.hasOwn(i.stats,k)))||Object.entries(i.stats).some(([k,v])=>!(version===2?['HP','ATK','DEF','MAG','RES','SPD']:version===3?GEAR_STATS.filter(k=>k!=='HP'):GEAR_STATS).includes(k)||!Number.isSafeInteger(v)||v<0||v>100000))bad();ids.add(i.instanceId);}
