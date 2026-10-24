@@ -61,9 +61,9 @@ import {
 } from '../src/core/dynamicInitiativeRules.mjs';
 import { realtimeCooldownSeconds, scheduleRealtimeActions, selectRealtimeReadyActor } from '../src/core/realtimeCooldown.mjs';
 import { selectRealtimeHeroSkillTarget, filterContinuousEncounterEnemies } from '../src/core/realtimeHeroTargeting.mjs';
-import { castRealtimeHeroSkill, tickRealtimeHeroSkillZones, realtimeBasicInterval, realtimeCombatStat,realtimeBasicDamageMultiplier,cleanupRealtimeSkillActors, realtimeProvokeTarget, realtimeCoverTarget, realtimeIncomingDamage, realtimeMagicBlocked, realtimeRetaliation } from './heroCommands.mjs';
+import { castRealtimeHeroSkill, tickRealtimeHeroSkillZones, realtimeBasicInterval, realtimeCombatStat,realtimeBasicDamageMultiplier,cleanupRealtimeSkillActors, realtimeIncomingDamage, projectCombatMultiplier, actorCombatModifiers, heroWardHP, absorbHeroWard } from './heroCommands.mjs';
 import { heroDefinition, heroSkillUnlocked } from '../src/core/heroDefinitions.mjs';
-import { pushContinuousCombatEnemy, reverseContinuousCombatEnemy, teleportContinuousCombatEnemy } from '../src/core/continuousCombatStage.mjs';
+import { pushContinuousCombatEnemy, reverseContinuousCombatEnemy } from '../src/core/continuousCombatStage.mjs';
 import { resetActorPresentationAfterRestore } from '../src/core/actorPresentationState.mjs';
 import { selectContinuousEnemyTarget } from '../src/core/arenaCombat.mjs';
 import { isActorTargetInRange } from '../../src/core/arenaCombatRules.mjs';
@@ -5687,6 +5687,7 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode, attackMultipl
   const isMagic = mode === 'magic';
   const offenseStat = isHeroAttacker ? (atk.attackType === 'magic' ? 'MAG' : 'ATK') : (isMagic ? 'MAG' : 'ATK');
   const power = GetEffectiveStat(ctx, atk, offenseStat);
+  // Passives that lower the target's DEF (Hondo's Royalty) apply only to the holder's own hits.
   const resist = GetEffectiveStat(ctx, tgt, isMagic ? 'RES' : 'DEF');
   const matchingResistancePct = GetBaseStat(ctx, tgt, isMagic ? 'magicDamageResistancePct' : 'physicalDamageResistancePct');
   const generalResistancePct = GetBaseStat(ctx, tgt, 'damageResistancePct');
@@ -5750,7 +5751,9 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode, attackMultipl
   );
   console.log(`[DMG_AUDIT] chainApplied=${chainApplied} attackerType=${isHeroAttacker ? 'H' : 'E'}`);
   g.LastCalculateDamageRaw = Math.ceil(Math.max(0,power)*Math.max(0,attackMultiplierPct)/100*(jsDecision.didCrit?1.25:1));
-  return isHeroAttacker && Number(g.ContinuousCombatStageLoop || 0)===1 ? Math.ceil(dmg*realtimeBasicDamageMultiplier(g,atk)) : dmg;
+  if (!(isHeroAttacker && Number(g.ContinuousCombatStageLoop || 0)===1)) return dmg;
+  const critDamage = jsDecision.didCrit ? projectCombatMultiplier('critDamage', actorCombatModifiers(g, atk)) : 1;
+  return Math.ceil(dmg*realtimeBasicDamageMultiplier(g,atk)*critDamage);
 }
 
 // Explicit raw skill budgets bypass another potency or critical roll, then mitigate once.
@@ -5828,7 +5831,7 @@ const CRIMSON_WARD_BARRIER_HEIGHT = 62;
 function refreshCrimsonWardBarrierVisuals(ctx) {
   const g = getGlobals(ctx);
   const now = Number(g.time || 0);
-  const heroes = getHeroes(ctx);
+  const heroes = getHeroes(ctx).filter(hero => !g.PartyTempHPShieldTargetUIDs || g.PartyTempHPShieldTargetUIDs.includes(Number(hero.uid)));
   if (!heroes.length) return false;
   const visuals = g.PartyWardBarrierVisualsByUID && typeof g.PartyWardBarrierVisualsByUID === 'object'
     ? g.PartyWardBarrierVisualsByUID
@@ -5863,12 +5866,6 @@ function refreshCrimsonWardBarrierVisuals(ctx) {
   g.PartyWardBarrierBaseAlpha = CRIMSON_WARD_BARRIER_BASE_ALPHA;
   g.PartyWardBarrierFadeOutUntil = 0;
   return true;
-}
-
-export function StartRealtimeWardPresentation(ctx) {
-  const g=getGlobals(ctx),maxHP=getHeroes(ctx).reduce((sum,hero)=>sum+Number(hero.maxHP || 0),0);
-  Object.assign(g,{PartyTempHPShieldStacks:1,PartyTempHPShieldRatio:g.PartyTempHPShield/Math.max(1,maxHP),PartyTempHPShieldMax:maxHP,PartyTempHPShieldColor:CRIMSON_WARD_SHIELD_COLOR,PartyTempHPShieldSource:'realtime_crimson_ward'});
-  return refreshCrimsonWardBarrierVisuals(ctx);
 }
 
 function activateCrimsonWardSkill(ctx) {
@@ -6060,7 +6057,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   if (!t || Number(t.hp ?? 0) <= 0) return 0;
   const source = GetActorByUID(ctx, g.LastDamageSourceUID);
   if (source?.kind === 'enemy' && t.kind === 'hero' && !opts.nativeResolved) {
-    const recipient = opts.singleTarget ? realtimeCoverTarget(ctx, t) : t;
+    const recipient = t;
     const before = recipient.hp;
     resolveIncomingNativeHit(ctx, source, recipient, Math.max(0, Number(dmg) || 0), opts);
     return Math.max(0, before - recipient.hp);
@@ -6074,7 +6071,8 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   const impactGeometry = g.DevBalanceCapture === true && source?.kind === 'enemy' && t.kind === 'hero'
     ? captureBalanceImpactGeometry(source, getEntities(ctx).filter((actor) => actor?.kind === 'hero')) : null;
   let incomingDamage = realtimeIncomingDamage(ctx, t, source, Math.max(0, Number(dmg || 0)));
-  const shieldBefore = t.kind === 'hero' ? Math.max(0, Number(g.PartyTempHPShield || 0)) : 0;
+  const wardApplies = t.kind === 'hero';
+  const shieldBefore = wardApplies ? heroWardHP(g, t) : 0;
   const jsShieldAbsorbed = t.kind === 'hero' ? Math.min(shieldBefore, incomingDamage) : 0;
   const jsDamageToHP = Math.max(0, incomingDamage - jsShieldAbsorbed);
   const jsAfterHp = Math.max(0, beforeHP - jsDamageToHP);
@@ -6093,16 +6091,9 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   }
   let damageToHP = incomingDamage;
   let shieldAbsorbed = 0;
-  if (t.kind === 'hero') {
-    const shieldResult = absorbPartyTempHPShield(g, damageToHP);
-    damageToHP = shieldResult.damageAfterShield;
-    shieldAbsorbed = shieldResult.absorbed;
-    if (shieldAbsorbed > 0) {
-      markPartyWardBarrierHit(ctx, t, shieldAbsorbed);
-      if (Number(g.PartyTempHPShield || 0) <= 0) {
-        startPartyWardBarrierFadeOut(ctx);
-      }
-    }
+  if (wardApplies) {
+    shieldAbsorbed = absorbHeroWard(g, t, damageToHP);
+    damageToHP -= shieldAbsorbed;
   }
   if (ownedHit && String(ownedHit.owner || '') === 'rust') {
     t.hp = Math.max(0, Number(ownedHit.afterHp || 0));
@@ -6132,7 +6123,6 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
     // restored KO actor look like it had no terminal pose.
     t.actionStateUntil = afterHP <= 0 ? now + 86_400 : now + 0.22;
   }
-  if (appliedDamage > 0 && source?.kind === 'enemy' && t.kind === 'hero') realtimeRetaliation(ctx, t, source.uid, {}, appliedDamage);
   if (chainStrikeIIHit) recordAstralFlowChainStrikeIIHit(g, { targetUID: Number(uid || 0), preHP: beforeHP, postHP: afterHP, damage: appliedDamage, coefficient: Number(chainStrikeIIHit.chainStrikeDamagePct || 396), primary: Number(chainStrikeIIHit.chainStrikeIIPrimary || 0) === 1 });
   g.LastDamageSourceUID = source?.uid || g.LastDamageSourceUID;
 
@@ -6469,8 +6459,7 @@ function pickEnemyTargetHero(ctx, enemyUID = 0) {
       : null,
   });
   g.LastEnemyTargetBias = result.trace;
-  const target = realtimeProvokeTarget(ctx, enemy, result.target);
-  return target;
+  return result.target;
 }
 
 export function ResolveEnemyActionTarget(ctx, enemyUID, preferredTargetUID = 0) {
@@ -7307,7 +7296,7 @@ export function TickRealtimeHeroBasics(ctx) {
     const skill = heroDefinition(hero)?.actives.find(entry => entry.skillId === skillId);
     const selection = skill && skillSelection(hero, skill);
     return selection ? castRealtimeHeroSkill(ctx, hero.uid, skill, selection, {
-      push: pushContinuousCombatEnemy, reverse: reverseContinuousCombatEnemy, teleport: teleportContinuousCombatEnemy,
+      push: pushContinuousCombatEnemy, reverse: reverseContinuousCombatEnemy,
     }) : false;
   };
   const fireBasic = heroUID => {
@@ -10399,7 +10388,6 @@ function createEnemyActionState(ctx, enemyUID, target, { continuousCombat = fals
   if (enemy.y == null) enemy.y = enemy.originY;
   const targetUID = target ? target.uid : 0;
   const skillId = PickEnemySkill(ctx, enemyUID);
-  if (continuousCombat && /^Enemy_MAG_/.test(String(skillId)) && realtimeMagicBlocked(g, enemy)) return;
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
   const decision = resolveStartEnemyActionCompat({
     source,

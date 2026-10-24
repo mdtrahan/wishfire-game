@@ -1,4 +1,5 @@
 # Tests DOX
+- `heroCooldownStrip.test.mjs` covers deployed identity, unlocked active readiness and immutable combat-time projection. `heroCooldownStripBrowser.test.mjs` locks eight centered slots, quest inset, equipment separation, pause/resume shading and cache access at reference, compact, narrow and natural-size viewports; clock fixtures stay separate from normal-combat screenshots.
 - `combatArenaBackground.test.mjs` covers chapter 1–4 asset availability, chapter 5+ grid retention, undecoded-image fallback and camera orientation without changing vertical framing.
 - `balanceTelemetryContract.test.mjs` protects opt-in capture, bounded event retention and pre-hit range geometry and enemy-tier attribution; `balanceHarnessEntryContract.test.js` protects exact-event use alongside sampled HP, including bounded impact samples and per-tier totals, ordered first-hero casualty aggregation, labeled post-recovery gear/stat samples, fail-closed uninterrupted ordinary acceptance and CSV output.
 - `balanceHarnessEntryContract.test.js` also keeps the synthetic ordinary-KO probe opt-in and routed through production damage; integrated proof still requires recovery events and a later wave clear.
@@ -25,6 +26,9 @@
 - `fixtures/` owns deterministic CSV cases shared by JS and Rust/WASM tests.
 
 ## Local Contracts
+- Scheduler fixtures must place support casters, required foes and recipients inside current reach before asserting that every conditional skill casts.
+- Equipment-service fixtures initialize HeroProgress with createHeroProgressStore unless they explicitly test missing-owner rejection. Retain reward, quota and persistence assertions when repairing setup.
+- Lamp browser proofs check full opacity in cache and selected-item views, including unavailable Equip actions, while retaining disabled overview selection and equip eligibility.
 - Boss progress proof executes the production tick: each chapter's final ordinary wave enters once and saves readiness before the wipe; ordinary recovery preserves wave and sector-mask progress, boss defeat saves full readiness, and both survive reload without duplicate packs. HP depth checks preserve puppet-foot anchors during clip loading. Hit-flash contracts inspect assembled puppet callbacks. Keep chapter/rail centering and dynamic notch geometry measured independently.
 - Manual retry proof keeps first clean boss entry automatic, latches every stage KO and boss defeat through checkpoint reload, loops ready fodder at 100%, blocks summon during KO/recovery reveal, and verifies explicit summon uses the existing arm path. Boss victory clears the retry latch; a single KO during the boss still follows the whole-party defeat rule.
 - Arena engagement proof advances the real arena owner and enemy scheduler together: all living actors in local sectors can enter independent melee/ranged actions in one tick, out-of-reach actors remain unscheduled, and remote roaming packs remain dormant.
@@ -187,6 +191,7 @@
 - `continuousCombatStageContract` keeps ordinary-wave respite separate from boss-clear restoration. A Hero KO blocks ordinary settlement; surviving Hero HP must persist through HeroProgress JSON reload after either clear path.
 
 - Lamp conveyor checks cover active-time pause/collection/restore, malformed clocks, failed checkpoint preservation, synchronous same-tab restore when exit transactions are lost, session checkpoint identity/number validation, and supported wall-clock saves. Bag presentation measures 40% tighter artwork-edge gaps at 360/450 and compact widths with travel below 27 seconds; production emitter QA holds full cache, equipment/disposal, native dialog and unrelated alertdialog states beyond the emission cadence and compares retained positions, ages, count, sequence and bounce totals. Saved-only feedback checks cover the last slot, duplicates, failed saves and lock-queued modal gates.
+- `lampConveyorPause.test.mjs` retains real gear nodes through repeated CSS display-none menu exits and modal pause cycles at four phone sizes; restored positions and ordering must match the saved active age after the browser replaces its animations.
 
 - Auto-Equip phone coverage checks that consuming the final cache item closes after feedback without displaying empty disposal; saved legacy salvage still opens an enabled confirmation.
 
@@ -206,9 +211,10 @@
 - `lampCPInvariant.test.mjs` supersedes the rejected standalone-slot tests. It protects one actual CP predicate, the Hondo +15 example, repeated full-cache reassessment, illegal zero/negative equips, green disposal rejection, stale-preview protection after another legal equip, and the valid case where a better equipped item makes the leftover red.
 - Equipment ownership regressions replay Auto assignments against all twelve equipped slots and reject cross-hero transfers even when the foreign item would increase CP. Hero-screen browser proof includes canonical heroes plus combat-copy progression, cycles twice through the four canonical heroes, and checks unchanged saves and equipped slots at reference, compact Retina and natural sizes.
 - Extracted app-tick fixtures provide the progression observation hook while testing checkpoint persistence independently.
-- questMilestones.test.mjs protects saved per-slot equipment coverage, level steps of five, at-or-above rarity/level credit, family diversity across reloads, stale/duplicate claims, and witnessed zero-KO chapter clears including revival and unknown-history refusal.
+- questMilestones.test.mjs protects saved per-slot equipment coverage, level steps of five, at-or-above rarity/level credit, family diversity across reloads, stale/duplicate claims, and chapter completion regardless of KOs. Pending/completed retired zero-KO saves must get persistent supported replacements without changing balances or earned rewards.
 
 - Chapter quest-band coverage checks inclusive endpoints, seeded enemy/gear generation, capped late chapters, frozen active targets and 40-count save reloads.
+- Mini-quest presentation coverage hides counters only for chapter-clear/boss milestones; equipment collection and every other objective retain pending/completed single-target and multi-target counters.
 - `bagUpgradePresentation.test.mjs` drives production UI/storage in an isolated component fixture at four phone sizes and the natural desktop size. Guard reference pill colors, cell/close containment, disabled/ready/MAX states, failed-save suppression, capacity-only reward and detached X hit testing. Keep this component evidence separate from full-app native proof.
 
 - Bag component proof locks the sample meter to a straight-ended 17.28px track at reference scale, 43px rotated badge bounds, 18px level labels and 13.2px parenthesized progress text across all five profiles; retain existing palette and save checks.
@@ -220,3 +226,7 @@
 - Both Bag close glyphs must crop to nontransparent painted pixels and center that cropped raster within the square (under0.1px). Keep the Canvas CSS background transparent and preserve existing frame colors.
 
 - The five-profile Bag component guard also covers Training Ground: exactly one shared floating close outside the sheet, 24px scaled gap below tabs, full hit-area containment, exact visible-block vertical centering, resize recentering, close/Escape/focus return and keyboard wrap. Closing cannot purchase training or mutate its fixture state.
+
+- lampAutoEquipGameplay runs the full game in isolated contexts through cache/item controls, Auto receipts, Hero screens and reload. Its red-promise test fails on main 5d7910f9 after an actual Auto click. Fixed golden gains and a separate stat-projection oracle check allocation; lampRoster covers all 120 five-record orders and atomic guards. Both browser files run in test:lamp-ui.
+
+- Auto gameplay proof asserts every pending, discarded and held leftover is nonpositive for every canonical owner. Negative controls must demonstrate failure for a positive item in each queue. The commit guard runs this browser file and lampRoster for CP/equipment/roster changes even when presentation files are untouched.

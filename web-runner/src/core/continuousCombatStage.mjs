@@ -1,9 +1,11 @@
 import { resetRealtimeSkillAttempt } from './realtimeSkillState.mjs';
+import { clearHeroWards } from './heroWard.mjs';
 import { computeCombatPower } from './combatPower.mjs';
 import { deriveCombatArenaBounds, deriveCombatWorldBounds, deriveCombatWorldStartFormation, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
 import { cleanseDebuffs } from './combatRules.mjs';
 import { saveHeroProgress } from './heroProgression.mjs';
 import { advanceContinuousCombatArena, beginContinuousCombatPatrolReturn, deriveContinuousCombatSpawnMoat, placeContinuousCombatHeroesInRecoveryHuddle } from './arenaCombat.mjs';
+import { advanceCombatCamera } from './combatCamera.mjs';
 import { isActorRecoveryRevealActive, resetActorPresentationAfterRestore } from './actorPresentationState.mjs';
 import { previewSeededRng } from '../../../src/core/seededRngRules.mjs';
 import { actorFootprintRadius } from '../../../src/core/arenaCombatRules.mjs';
@@ -588,9 +590,11 @@ export function summonContinuousCombatBoss(globals, entities, call, options = {}
   return true;
 }
 
+// Crimson Ward carries into a boss fight and survives a boss clear; any failed attempt wipes it.
 export function resetContinuousCombatAfterDefeat(globals) {
   const state = globals?.ContinuousCombatStage;
   if (!state) return false;
+  clearHeroWards(globals);
   const recordedPackMask = normalizeContinuousCombatPackMask(state.clearedPackMask);
   const finalWaveClear = !state.bossActive && Number(state.wave || 1) >= continuousCombatWavesForStage(state.region, state.stage)
     && (recordedPackMask & activePackMask(state.region)) === activePackMask(state.region);
@@ -945,8 +949,10 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   const now = Number(globals.time || 0);
   if (stageState.bossActive && stageState.bossTimerStartedAt == null) stageState.bossTimerStartedAt = now;
   const newlyAvailable = updateApproachingEnemies(globals, entities, now);
-  const newlyEngaged = advanceContinuousCombatArena({ globals, entities, seconds: Math.max(0, Math.min(0.1, now - Number(stageState.lastArenaUpdatedAt ?? now))) });
+  const arenaSeconds = Math.max(0, Math.min(0.1, now - Number(stageState.lastArenaUpdatedAt ?? now)));
+  const newlyEngaged = advanceContinuousCombatArena({ globals, entities, seconds: arenaSeconds });
   stageState.lastArenaUpdatedAt = now;
+  advanceCombatCamera({ globals, entities, seconds: arenaSeconds });
   if (globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) call('TickRealtimeHeroBasics');
   if ((newlyAvailable > 0 || newlyEngaged > 0 || entities?.some(enemy => enemy?.kind === 'enemy' && Number(enemy.hp || 0) > 0 && enemy.streamState === 'engaged'))
     && globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) {
@@ -1005,7 +1011,7 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
     }
   }
   if (transition.clearedBoss) {
-    resetRealtimeSkillAttempt(globals,entities);
+    resetRealtimeSkillAttempt(globals,entities,{ keepWard: true });
     const heroes = entities.filter(actor => actor?.kind === 'hero');
     const revivedKoHero = heroes.some(hero => Number(hero.hp || 0) <= 0);
     for (const hero of heroes) {

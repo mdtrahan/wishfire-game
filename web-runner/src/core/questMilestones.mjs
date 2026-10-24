@@ -3,10 +3,10 @@ import { RARITIES } from './equipment.mjs';
 
 export const MILESTONE_REWARDS = Object.freeze(Object.fromEntries([
   'equip_slot', 'equip_all', 'equip_level', 'equip_rarity', 'chapter_clear', 'boss_defeat',
-  'chapter_survive', 'hero_level', 'party_level', 'training_level',
+  'hero_level', 'party_level', 'training_level',
 ].map(type => [type, Object.freeze({ resource: 'incense', amount: 5 })])));
 export const questFamily = type => type.startsWith('equip_') || type === 'gear_collect' ? 'equipment'
-  : ['chapter_clear', 'boss_defeat', 'chapter_survive', 'wave_clear', 'enemy_defeat'].includes(type) ? 'battle'
+  : ['chapter_clear', 'boss_defeat', 'wave_clear', 'enemy_defeat'].includes(type) ? 'battle'
   : ['training_upgrade', 'training_level'].includes(type) ? 'training' : 'heroes';
 const slots = ['hat', 'body', 'boots'];
 const rarityColors = { common:'White', uncommon:'Green', rare:'Blue', epic:'Purple', legendary:'Gold' };
@@ -41,7 +41,6 @@ export function reconcileQuestMilestones(state, heroes, context = {}) {
     case 'party_level': progress = heroes.filter(hero => positive(hero.currentLevel) >= objective.threshold).length; break;
     case 'training_level': progress = positive(state.training[objective.stat]) >= objective.threshold ? 1 : 0; break;
     case 'chapter_clear': case 'boss_defeat': progress = positive(state.chaptersCleared) >= objective.chapter ? 1 : 0; break;
-    case 'chapter_survive': progress = (state.survivalChapters || []).includes(objective.chapter) ? 1 : 0; break;
   }
   // Equipment/levels describe the current saved party, and are rechecked at claim time.
   objective.progress = Math.min(objective.target, progress);
@@ -68,11 +67,6 @@ export function milestoneCandidates(state, heroes, context = {}) {
     const targetChapter = Math.min(chapter, Math.max(0, ...claimed) + 1);
     add({ type, chapter: targetChapter, target: 1 });
   }
-  if (context.chapter) {
-    // Only offer survival for an attainable next boss, or a witnessed clean clear.
-    const clean = state.survivalChapters.find(n => !state.claimedMilestones.includes(`chapter_survive::${n}`));
-    add({ type: 'chapter_survive', chapter: clean || (state.chapterObservation?.failed ? chapter + 1 : chapter), target: 1 });
-  }
   for (const stat of ['ATK', 'DEF', 'MATK', 'RES']) {
     const level = positive(state.training[stat]);
     const threshold = state.wallet.incense >= 20 + level * 10 && level < 100 ? level + 1 : level;
@@ -96,25 +90,16 @@ export function milestonePresentation(objective) {
     equip_level: `Equip Lv. ${threshold}+ in all heroes’ slots`,
     equip_rarity: `Equip ${rarityColors[rarity] || rarity}+ in all heroes’ slots`,
     chapter_clear: `Clear Chapter ${chapter}`, boss_defeat: `Defeat Chapter ${chapter} boss`,
-    chapter_survive: `Clear Chapter ${chapter} with zero hero KOs`,
     hero_level: `Reach Level ${threshold} with ${heroName}`, party_level: `Reach Level ${threshold} with all heroes`,
     training_level: `Train ${stat} to Level ${threshold}`,
   };
   return labels[type] ? { category: questFamily(type) === 'equipment' ? 'Equipment' : 'Milestone', challenge: labels[type], ...(type === 'equip_rarity' ? { color: RARITIES[rarity]?.color } : {}) } : null;
 }
 
-export function observeChapterMilestones(state, heroes, stage) {
+export function observeChapterMilestones(state, _heroes, stage) {
   if (!stage || !Number.isSafeInteger(stage.region) || stage.region < 1) return state;
-  const prior = state.chapterObservation;
   const chapter = stage.region;
   state.chaptersCleared = Math.max(state.chaptersCleared, chapter - 1);
-  const ko = heroes.some(hero => Number(hero.hp) <= 0);
-  if (prior?.bossActive && chapter > prior.chapter && !prior.failed && !ko && !state.survivalChapters.includes(prior.chapter)) state.survivalChapters.push(prior.chapter);
-  const sameChapter = prior?.chapter === chapter;
-  state.chapterObservation = {
-    chapter, bossActive: stage.bossActive === true,
-    failed: sameChapter ? prior.failed || ko : ko || stage.bossSummonRequired === true || Number(stage.wave || 1) > 1 || stage.bossActive === true,
-  };
   return state;
 }
 
@@ -124,6 +109,6 @@ export function validMilestoneObjective(row) {
   if (row.type === 'equip_rarity') return rarities.includes(row.rarity);
   if (row.type === 'equip_level') return Number.isSafeInteger(row.threshold) && row.threshold >= 5 && row.threshold <= 990 && row.threshold % 5 === 0;
   if (['hero_level','party_level','training_level'].includes(row.type)) return Number.isSafeInteger(row.threshold) && row.threshold > 0 && row.threshold <= 100 && (row.type !== 'hero_level' || !!row.heroId) && (row.type !== 'training_level' || ['ATK','DEF','MATK','RES'].includes(row.stat));
-  if (['chapter_clear','boss_defeat','chapter_survive'].includes(row.type)) return Number.isSafeInteger(row.chapter) && row.chapter > 0;
+  if (['chapter_clear','boss_defeat'].includes(row.type)) return Number.isSafeInteger(row.chapter) && row.chapter > 0;
   return true;
 }

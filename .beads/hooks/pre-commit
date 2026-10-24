@@ -57,8 +57,24 @@ if printf '%s\n' "$UI_LOCK_STAGED_FILES" | grep -Eq "$UI_LOCK_OWNER_PATTERN"; th
   npm run test:ui-lock
 fi
 
-# The lamp hand and rings share one measured Canvas-adjacent scale owner.
-if printf '%s\n' "$UI_LOCK_STAGED_FILES" | grep -Eq '^(web-runner/systems/lampEquipmentUI\.mjs|web-runner/assets/lampEquipmentUI\.css|tests/lampPresentation\.test\.mjs|web-runner/systems/modalClose\.mjs|web-runner/systems/combatProgressionUI\.mjs|web-runner/systems/bagUpgradePresentation\.mjs|web-runner/assets/bagUpgradeUI\.css|web-runner/systems/lampConveyorPresentation\.mjs|web-runner/assets/images/ui/bag-tier-medallion\.png|tests/bagUpgradePresentation\.test\.mjs)$'; then
+# Presentation changes keep the full phone gate; rules also need actual gameplay proof.
+if printf '%s\n' "$UI_LOCK_STAGED_FILES" | grep -Eq '^(web-runner/app\.js|web-runner/systems/(heroCooldownStrip|combatProgressionUI)\.mjs|web-runner/state/heroArtAssets\.mjs|src/core/buffSignalRules\.mjs|web-runner/src/core/(heroDefinitions|realtimeHeroPassives|partySkillCatalog)\.mjs|web-runner/assets/images/ui/buff-signals\.png|tests/(heroCooldownStrip(Browser)?|buffSignalRules)\.test\.mjs)$'; then
+  echo "Hero cooldown HUD changed; running clock and five-viewport containment proof..."
+  npm run test:hero-cooldowns
+fi
+
+if printf '%s\n' "$UI_LOCK_STAGED_FILES" | grep -Eq '^(web-runner/systems/(renderHeroScreen\.js|heroSkillCopy\.mjs)|web-runner/src/core/heroDefinitions\.mjs|tests/heroScreenUILayout\.test\.mjs)$'; then
+  echo "Hero skill detail owner changed; running bounded-frame and reading-state proof..."
+  node --test tests/heroScreenUILayout.test.mjs
+fi
+
+LAMP_PRESENTATION_OWNER_PATTERN='^(web-runner/systems/lampEquipmentUI\.mjs|web-runner/assets/lampEquipmentUI\.css|tests/lampPresentation\.test\.mjs|web-runner/systems/modalClose\.mjs|web-runner/systems/combatProgressionUI\.mjs|web-runner/systems/bagUpgradePresentation\.mjs|web-runner/assets/bagUpgradeUI\.css|web-runner/systems/lampConveyorPresentation\.mjs|web-runner/assets/images/ui/bag-tier-medallion\.png|tests/bagUpgradePresentation\.test\.mjs)$'
+LAMP_GAMEPLAY_OWNER_PATTERN='^(\.beads/hooks/pre-commit|package\.json|web-runner/app\.js|web-runner/src/core/(lampGear|lampConveyor|lampHeroRoster|equipment|heroProgression|heroDefinitions|combatPower)\.mjs|web-runner/systems/(equipmentStorage\.mjs|renderHeroScreen\.js|heroGearUI\.mjs)|tests/(lampAutoEquipGameplay|lampRoster|lampCPInvariant|lampConveyor|lampEquipment)\.test\.mjs|tests/fixtures/lampTrust\.mjs)$'
+if printf '%s\n' "$UI_LOCK_STAGED_FILES" | grep -Eq "$LAMP_PRESENTATION_OWNER_PATTERN"; then
   echo "Lamp presentation owner changed; running phone geometry and guide lock..."
   npm run test:lamp-ui
+  node --test tests/lampRoster.test.mjs
+elif printf '%s\n' "$UI_LOCK_STAGED_FILES" | grep -Eq "$LAMP_GAMEPLAY_OWNER_PATTERN"; then
+  echo "Lamp rules or ownership changed; running gameplay and roster proof..."
+  node --test --test-concurrency=1 tests/lampAutoEquipGameplay.test.mjs tests/lampRoster.test.mjs
 fi

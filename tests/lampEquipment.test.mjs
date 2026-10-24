@@ -1,3 +1,4 @@
+import {lampHeroRoster} from '../web-runner/src/core/lampHeroRoster.mjs';
 import {RARITIES} from '../web-runner/src/core/equipment.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -33,7 +34,7 @@ test('canonical equipped gear reaches the deployed hero instance',async()=>{
  assert.equal(restored.maxHP,actor.maxHP);
 });
 
-test('instance loadouts override canonical gear and duplicate clones do not share it',async()=>{
+test('combat copies cannot receive lamp gear and existing instance loadouts stay isolated',async()=>{
  const first={...newHeroProgress('Falie','falie#1'),kind:'hero',uid:1};
  const second={...newHeroProgress('Falie','falie#2'),kind:'hero',uid:2};
  const f=fixture({}, {getActors:()=>[first,second]});
@@ -46,11 +47,15 @@ test('instance loadouts override canonical gear and duplicate clones do not shar
  assert.deepEqual(second.equipmentStats??{},{});
  f.setClock(3001);
  const instanceItem=await f.store.generate();
- await f.store.equip('falie#1',instanceItem.instanceId);
- assert.deepEqual(first.equipmentStats,instanceItem.stats);
+ const before=structuredClone(f.store.data);
+ await assert.rejects(f.store.equip('falie#1',instanceItem.instanceId),/not a lamp equipment owner/);
+ assert.deepEqual(f.store.data,before);
+ assert.deepEqual(first.equipmentStats,canonicalItem.stats);
  assert.deepEqual(second.equipmentStats??{},{});
  const saved=structuredClone(f.store.data);
  saved.loadouts['falie#1']={};
+ // Moving a still-cached item requires removing its old queue membership.
+ saved.lamp.pending=saved.lamp.pending.filter(id=>id!==instanceItem.instanceId);
  saved.lamp.discarded.push(instanceItem.instanceId);
  f.values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(saved));
  await f.store.refresh();
@@ -406,7 +411,7 @@ test('explicit dismantle rejects positive upgrades and preserves the cache',asyn
 
 test('earned batch Auto Equip uses actual hero CP gains and preserves accurate receipts',async()=>{
  const captured=JSON.parse(readFileSync(new URL('./fixtures/lamp-auto-earned-69.json',import.meta.url)));
- const data=structuredClone(captured.economy),heroes=Object.values(captured.heroes.heroes).slice(0,4);
+ const data=structuredClone(captured.economy),heroes=lampHeroRoster(captured.heroes);
  const eligible=sortedLampItems(data).filter(i=>heroes.some(h=>lampItemCPGain(data,i,h)>0));
  assert.equal(eligible.length,21);
  assert.deepEqual(new Set(selectLampUpgrades(data,heroes).map(i=>i.instanceId)),new Set(eligible.map(i=>i.instanceId)));
@@ -417,8 +422,8 @@ test('earned batch Auto Equip uses actual hero CP gains and preserves accurate r
  const receipts=await f.store.autoEquip();assert.ok(receipts.length>0&&receipts.length<=4);
  assert.equal(new Set(receipts.map(r=>r.heroId)).size,receipts.length);assert.ok(receipts.every(receipt=>receipt.slots.length>0&&receipt.items.length===receipt.slots.length));
  for(const receipt of receipts){const hero=heroes.find(h=>h.heroInstanceKey===receipt.heroId);assert.equal(Math.round((receipt.cpAfter-receipt.cpBefore)*10)/10,receipt.cpChange);assert.ok(receipt.slots.every((slot,index)=>f.store.data.loadouts[receipt.heroId][slot]===receipt.items[index].instanceId));assert.ok(hero);}
- const totalBefore=heroes.reduce((sum,hero)=>sum+computeCombatPower(hero),0),totalAfter=Object.values(f.globals.HeroProgress.heroes).slice(0,4).reduce((sum,hero)=>sum+computeCombatPower(hero),0);assert.ok(totalAfter>totalBefore);
- assert.equal(f.store.data.partyEXP,exp);assert.deepEqual(Object.values(f.globals.HeroProgress.heroes).slice(0,4).map(h=>[h.currentLevel,h.currentEXP,h.lampEXPClaimed]),progress);assert.equal(f.store.data.lamp.pending.length,0);assert.ok(f.store.data.lamp.discarded.length>0);assert.ok(lampReviewCandidates(f.store.data,Object.values(f.globals.HeroProgress.heroes).slice(0,4)).every(candidate=>candidate.queue==='discarded'&&candidate.bestGain<=0));
+ const totalBefore=heroes.reduce((sum,hero)=>sum+computeCombatPower(hero),0),totalAfter=lampHeroRoster(f.globals.HeroProgress).reduce((sum,hero)=>sum+computeCombatPower(hero),0);assert.ok(totalAfter>totalBefore);
+ assert.equal(f.store.data.partyEXP,exp);assert.deepEqual(lampHeroRoster(f.globals.HeroProgress).map(h=>[h.currentLevel,h.currentEXP,h.lampEXPClaimed]),progress);assert.equal(f.store.data.lamp.pending.length,0);assert.ok(f.store.data.lamp.discarded.length>0);assert.ok(lampReviewCandidates(f.store.data,lampHeroRoster(f.globals.HeroProgress)).every(candidate=>candidate.queue==='discarded'&&candidate.bestGain<=0));
 });
 
 test('full-cost Bag curve retains fractional odds and all 100 earned levels',()=>{

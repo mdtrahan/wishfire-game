@@ -6,6 +6,9 @@
 - Do not log routine execution history, file lists, or status chatter.
 
 ## Operating Constraints
+- Equipment-service test setup uses the production hero-store factory. Empty stores cause the ownership guard to reject reward and Gold transactions before those contracts can be exercised.
+- Equipment review communicates eligibility through CP arrows while retaining full color for portraits, tiles and controls. Keep disabled semantics separate from opacity, and test computed ancestor opacity when changing interaction scope.
+- Mini-quest counter suppression follows objective semantics: hide counters only for chapter-clear/boss milestones. Collection and other quests retain `0/1` and `1/1`; saved requirements and rewards stay intact. Zero-KO quests are retired.
 - Beads are the sole work authorization channel.
 - Use one lane at a time; mirror deterministic rule edits in both runtime mirrors when required.
 - When a problem appears, check this file for prior fixes before expanding scope.
@@ -659,3 +662,6 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 
 - Equipment CP invariant: use actual hero CP after matching-slot replacement minus before for arrows, ranking, manual/Auto eligibility and destructive guards. Standalone item score is not a slot contribution to hero CP. Every equip must raise actual CP; recompute the entire remaining cache after each assignment. A green item becomes disposable only after an equip makes it red for every hero. Recheck stale previews under the save lock; tests must forbid manual downgrades and explicit destruction of upgrades.
 - HeroProgress is a persistence ledger containing canonical owned heroes and combat-instance snapshots. Player Hero navigation must enumerate canonical definition keys, preserving hidden snapshots and selecting the same loadout IDs as equipment transactions. Test interleaved saved identities with differing levels and gear.
+- Equipment trust needs a rendered action-scope test: cache opening must not silently select one item while adjacent Auto acts on all items. Capture arrows before the actual click, compare recipients with that scope, inspect Hero CP/gear, then reload without reseeding. A passing allocation helper cannot prove that UI promise.
+- A retained DOM node can lose its CSS animation under display:none. Resume motion by seeking the replacement animation from the authoritative active clock; reusing delay offsets from a discarded timeline can restart items and collapse emission spacing. Regression proof must return from the hidden menu, then repeat the cycle.
+- Attack-range changes can move formation stops and stall short regroup walks when locomotion subtracts attack reach from a waypoint. Use explicit contact destinations with compensated travel; verify both role order after reversals and target-death regrouping.

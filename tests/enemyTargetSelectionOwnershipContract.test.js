@@ -78,7 +78,6 @@ test('continuous engagement selects only heroes within the attacking enemy reach
 test('no eligible target leaves the enemy attack lane ready', async () => {
   const vm = require('node:vm');
   const { resolveEnemyTargetHero } = await import(pathToFileURL(rulesPath));
-  const { realtimeProvokeTarget } = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'realtimeHeroSkills.mjs')));
   const { selectContinuousEnemyTarget } = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'arenaCombat.mjs')));
   const source = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'modules', 'functionBank.js'), 'utf8');
   const pickerStart = source.indexOf('function pickEnemyTargetHero(ctx, enemyUID = 0)');
@@ -96,7 +95,6 @@ test('no eligible target leaves the enemy attack lane ready', async () => {
     getHeroes: () => [hero],
     getRandomSource: () => neverRandom,
     resolveEnemyTargetHero,
-    realtimeProvokeTarget,
     selectContinuousEnemyTarget,
   };
   vm.createContext(context);

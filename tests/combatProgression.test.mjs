@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   createCombatProgressionState, ensureCombatObjective, recordCombatObjectiveEvent, claimCombatObjectiveReward, combatObjectivePresentation, combatObjectiveReward,
-  COMBAT_PROGRESSION_SAVE_KEY, purchasePartyTraining, trainingCost, TRAINING_STATS, spendHeroTickets, settleHeroTicketSpend, heroTicketLevelCost,
+  COMBAT_PROGRESSION_SAVE_KEY, COMBAT_REWARD_BUNDLES, purchasePartyTraining, trainingCost, TRAINING_STATS, spendHeroTickets, settleHeroTicketSpend, heroTicketLevelCost,
 } from '../web-runner/src/core/combatProgressionRules.mjs';
 import { awardHeroEXP, createHeroProgressStore, newHeroProgress, saveHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
 import { partyTrainingCombatStat, realtimeCombatStat } from '../web-runner/src/core/realtimeSkillState.mjs';
@@ -32,6 +32,21 @@ test('objective generation is deterministic and freezes a bounded target', () =>
   assert.equal(first.objective.type, 'gear_collect');
   assert.equal(first.objective.target, 1);
   assert.deepEqual(TRAINING_STATS, ['ATK', 'DEF', 'MATK', 'RES']);
+});
+
+test('only chapter milestones omit counters; collection and other quests keep single-target progress', () => {
+  assert.equal(combatObjectivePresentation(null).count, '0/1');
+  for (const type of Object.keys(COMBAT_REWARD_BUNDLES)) {
+    for (const progress of [0, 1, 3]) {
+      const objective = { type, target: 1, progress, chapter: 1, threshold: 5, heroName: 'Hondo', stat: 'ATK', slot: 'hat', rarity: 'rare' };
+      const chapterMilestone = ['chapter_clear', 'boss_defeat'].includes(type);
+      assert.equal(combatObjectivePresentation(objective).count, chapterMilestone ? '' : `${Math.min(progress, 1)}/1`, `${type}:${progress}`);
+      assert.equal(combatObjectivePresentation({ ...objective, target: 4 }).count, chapterMilestone ? '' : `${progress}/4`, type);
+    }
+  }
+  assert.equal(combatObjectivePresentation({ type: 'boss_defeat', chapter: 1, target: 1, progress: 1 }).challenge, 'Defeat Chapter 1 boss');
+  assert.deepEqual(combatObjectivePresentation({ type: 'gear_collect', target: 1, progress: 1 }), { category: 'Supplies', challenge: 'Collect equipment', count: '1/1' });
+  assert.equal(combatObjectivePresentation({ type: 'chapter_clear', chapter: 2, target: 1, progress: 1 }).challenge, 'Clear Chapter 2');
 });
 
 test('legacy over-target progress normalizes to ready without exceeding the frozen target', () => {
@@ -385,7 +400,7 @@ test('pending ticket settlement reloads idempotently after HeroProgress receipt 
 test('saved Essence reward receipt prevents duplicate wallet payment across service reload', async () => {
   const storage = new MemoryStorage();
   storage.setItem('orka.combat_progression.v1', JSON.stringify({ seed: 99, objective: { id: 'fixed-gear', type: 'gear_collect', target: 1, progress: 0, seed: 99 } }));
-  const globals = { goldTotal: 0, HeroProgress: { heroes: {} } };
+  const globals = { goldTotal: 0, HeroProgress: createHeroProgressStore() };
   const equipment = createEquipmentStorage({ globals, storage, getActors: () => [], locks: { request: async (_key, callback) => callback() }, seed: () => 1, now: () => 1000 });
   const progression = createCombatProgression({ globals, storage, equipmentProgress: equipment, getHeroes: () => heroes, now: () => 1000 });
   const objective = { ...progression.state().objective };
@@ -473,7 +488,7 @@ test('accepted lethal receipts advance and notify COT progress before visual dea
 test('manual gear collection records the committed event and settles its Essence payout', async () => {
   const storage = new MemoryStorage();
   storage.setItem('orka.combat_progression.v1', JSON.stringify({ seed: 12, objective: { id: 'collect-gear', type: 'gear_collect', target: 1, progress: 0, seed: 12 } }));
-  const globals = { goldTotal: 0, HeroProgress: { heroes: {} } };
+  const globals = { goldTotal: 0, HeroProgress: createHeroProgressStore() };
   let progression;
   const equipment = createEquipmentStorage({
     globals, storage, getActors: () => [], locks: { request: async (_key, callback) => callback() },
@@ -496,7 +511,7 @@ test('manual gear collection records the committed event and settles its Essence
 test('automatic gear collection retries a failed COT save after service reload', async () => {
   const storage = new MemoryStorage();
   storage.setItem(COMBAT_PROGRESSION_SAVE_KEY, JSON.stringify({ seed: 12, objective: { id: 'collect-auto-gear', type: 'gear_collect', target: 2, progress: 0, seed: 12 } }));
-  const globals = { goldTotal: 0, HeroProgress: { heroes: {} } };
+  const globals = { goldTotal: 0, HeroProgress: createHeroProgressStore() };
   let progression;
   let clock = 100000;
   const equipmentOptions = { globals, storage, getActors: () => [], locks: { request: async (_key, callback) => callback() }, seed: () => 1, now: () => clock, reportError: () => {}, onGearCollected: result => progression.record({ id: `gear:${result.item.instanceId}`, type: 'gear_collect' }) };

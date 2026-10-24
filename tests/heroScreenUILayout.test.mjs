@@ -11,6 +11,7 @@ import {equipmentStats} from '../web-runner/src/core/equipment.mjs';
 import {createLampEconomy,generateLampItem} from '../web-runner/src/core/lampGear.mjs';
 import {HERO_DEFINITIONS,heroDefinition,heroSkillUnlocked} from '../web-runner/src/core/heroDefinitions.mjs';
 import {actorAttackReach} from '../src/core/arenaCombatRules.mjs';
+import {heroBasicSkill,heroSkillCopy} from '../web-runner/systems/heroSkillCopy.mjs';
 import {EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
 
 const require=createRequire(import.meta.url);
@@ -23,19 +24,20 @@ const profiles=[
  {name:'compact-retina',width:216,height:384,dpr:2},
  {name:'natural',width:591,height:1223,dpr:1},
 ];
+
+test('Basic Attack copy reads authored power and damage stat at each progression value',()=>{
+ for(const definition of Object.values(HERO_DEFINITIONS))for(const potency of [1,1.3,2.1]){
+  const basic=heroBasicSkill({...definition,basic:{...definition.basic,effects:[{effectType:'damage',potency,hits:1}]}});
+  assert.equal(basic.cooldownSeconds,0,'Basic has a zero cooldown value');
+  assert.deepEqual(heroSkillCopy(basic).lines,[`Deals ${potency*100}% of ${basic.tags.includes('magic')?'MAG':'ATK'} to the current target.`]);
+ }
+});
 const mime={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml'};
 
 function expectedSkillRange(ability,hero){
- const {kind,shape}=ability.targetRule,reach=actorAttackReach({...hero,attackType:heroDefinition(hero).basic.tags.includes('magic')?'magic':'physical'});
- if(shape){
-  const extent=shape.kind==='circle'?`radius ${shape.radius} units`:shape.kind==='rectangle'?`${shape.width} × ${shape.height} units`:shape.kind==='horizontalLine'?`${shape.width}-unit line to world X ${shape.toX}`:`${shape.length}-unit cone at ${shape.angleDegrees}°`;
-  return `${extent}${['bestArea','firstArea','eventArea'].includes(kind)?`; anchor within ${reach} units`:''}`;
- }
- if(kind==='self')return 'Self';
- if(kind==='party')return `Party; foe trigger within ${reach} units`;
- if(kind==='eventChain')return `${ability.targetRule.minimum} other foes after a basic hit`;
- if(kind==='allEnemies')return 'All attackable foes';
- if(kind==='lowestHPAlly'||kind==='slowestAlly')return `Eligible ally; foe trigger within ${reach} units`;
+ const {kind}=ability.targetRule,reach=actorAttackReach({...hero,kind:'hero'});
+ if(kind==='party')return 'Whole party';
+ if(kind==='inRangeEnemies')return `Every foe within ${reach} units`;
  return `${reach}-unit actor reach`;
 }
 
@@ -69,7 +71,7 @@ function makeSavedFixture({shellsFirst=true}={}){
 }
 
 function startFixtureServer(){
- const html='<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/web-runner/assets/lampEquipmentUI.css"><style>html,body{margin:0;width:100%;height:100%}#game-screen{position:fixed;display:block}</style></head><body><canvas id="game-screen"></canvas></body></html>';
+ const html='<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/web-runner/assets/lampEquipmentUI.css"><style>html,body{margin:0;width:100%;height:100%}body{touch-action:none}#game-screen{position:fixed;display:block}</style></head><body><canvas id="game-screen"></canvas></body></html>';
  const server=http.createServer(async(req,res)=>{
   const pathname=new URL(req.url,'http://localhost').pathname;
   if(pathname==='/web-runner/__hero_redesign_qa__'){res.writeHead(200,{'content-type':'text/html; charset=utf-8'});res.end(html);return;}
@@ -185,7 +187,7 @@ test('hero redesign uses saved canonical data and stays contained across portrai
    assert.equal(await mainNav.locator('button img').count(),5,'the five production navigation badges use decoded artwork');
    assert.equal(await mainNav.locator('button img').evaluateAll(images=>images.every(image=>image.complete&&image.naturalWidth>0)),true,'shared navigation artwork is loaded');
    const heroes=Object.keys(HERO_DEFINITIONS).map(key=>progress.heroes[key]);
-   assert.deepEqual(heroes.map(hero=>heroDefinition(hero).actives.length),[8,8,8,9],'the saved roster contains the complete eight- and nine-skill kits');
+   assert.deepEqual(heroes.map(hero=>heroDefinition(hero).skills.length),[4,4,4,4],'the saved roster contains the accepted four-skill kits');
    for(let offset=0;offset<heroes.length;offset++){
     const index=(offset+heroes.length)%heroes.length,hero=heroes[index],definition=heroDefinition(hero);
     assert.equal(await detail.locator('h1').textContent(),definition.name,'hero arrow refreshes identity data');
@@ -203,7 +205,7 @@ test('hero redesign uses saved canonical data and stays contained across portrai
    await page.waitForFunction(expected=>document.querySelector('#hero-details h1')?.textContent===expected,heroDefinition(heroes.at(-1)).name);
    await detail.getByRole('button',{name:'Next hero'}).click();
    await page.waitForFunction(expected=>document.querySelector('#hero-details h1')?.textContent===expected,firstName);
-   const tabPortraits=[],screenshots={};
+   const tabPortraits=[],tabShells=[],screenshots={};
    for(const tab of ['Gear','Orb','Skills']){
     await detail.getByRole('button',{name:tab,exact:true}).click();
     await page.waitForFunction(tabName=>document.querySelector('#hero-details')?.dataset.tab===tabName,tab.toLowerCase());
@@ -211,6 +213,7 @@ test('hero redesign uses saved canonical data and stays contained across portrai
     assert.equal(await selected.getAttribute('aria-pressed'),'true',`${tab} is the selected tab`);
     assert.equal(await selected.evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(255, 243, 216)',`${tab} selected state uses the cream tab color`);
     tabPortraits.push(await portrait.boundingBox());
+    tabShells.push(await detail.evaluate(host=>['.identity','.power-bar','.tabs','.pane'].map(selector=>{const r=host.querySelector(selector).getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height};})));
     const pane=await detail.locator('.pane').boundingBox(),nav=await mainNav.boundingBox(),overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth||document.body.scrollWidth>innerWidth);
     assert.equal(overflow,false,`${tab} view has no horizontal overflow`);
     assert.ok(pane.height>initial.power.height*3,`${tab} view preserves the large panel`);
@@ -221,65 +224,110 @@ test('hero redesign uses saved canonical data and stays contained across portrai
      assert.equal(await grid.locator('.skill-card').count(),4,'skills identity row has exactly four icons');
      assert.equal(await grid.locator('.gear-slot, .gear-placeholder').count(),0,'skills identity row has no gear or Orb slots');
      assert.equal(await detail.locator('.pane .gear-placeholder').count(),0,'skills panel has no Orb equipment button');
-     assert.equal(await grid.locator('.skill-icon img').count(),4,'each skill card contains its existing icon image');
+     assert.equal(await grid.locator('.skill-icon i').evaluateAll(icons=>icons.filter(icon=>icon.style.backgroundImage.includes('buff-signals.png')).length),4,'each skill card shows its bitmap sheet icon');
     }
     const screenshot=`${profile.name}-${tab.toLowerCase()}.png`;
     await page.screenshot({path:path.join(artifactDir,screenshot),fullPage:true});screenshots[tab.toLowerCase()]=screenshot;
    }
-   for(const bounds of tabPortraits)assert.ok(['x','y','width','height'].every(key=>Math.abs(bounds[key]-tabPortraits[0][key])<0.75),'portrait geometry stays fixed when tabs change');
+   for(const bounds of tabPortraits)assert.ok(['x','y','width','height'].every(key=>Math.abs(bounds[key]-tabPortraits[0][key])<0.75),'portrait geometry stays fixed across Gear, Orb and Skills');
+   for(const shell of tabShells)for(const [index,bounds] of shell.entries())assert.ok(['x','y','width','height'].every(key=>Math.abs(bounds[key]-tabShells[0][index][key])<0.75),'identity, power bar, tabs and pane retain the same geometry across all tabs');
    const reachedSkills=[];
    for(let heroIndex=0;heroIndex<heroes.length;heroIndex++){
-    const hero=heroes[heroIndex],definition=heroDefinition(hero),abilities=definition.actives;
+    const hero=heroes[heroIndex],definition=heroDefinition(hero),abilities=definition.skills,slots=['Special','Passive','Resonance 1','Resonance 2'];
     if(heroIndex){
      await detail.getByRole('button',{name:'Next hero'}).click();
      await page.waitForFunction(expected=>document.querySelector('#hero-details h1')?.textContent===expected,definition.name);
-     await page.waitForFunction(()=>document.querySelector('#hero-details [aria-label="Skill page"]')?.textContent?.startsWith('1 /'));
-     assert.equal(await detail.locator('.skill-card[aria-pressed="true"]').getAttribute('aria-label'),`Inspect ${abilities[0].displayName}`,`${definition.name} gets a fresh first-skill selection`);
+     assert.equal(await detail.locator('.skill-card[aria-pressed="true"]').count(),0,`${definition.name} starts with no specific skill selected`);
     }
-    const pageStarts=abilities.length===9?[0,4,5]:[0,4];
     const selectedTab=detail.getByRole('button',{name:'Skills',exact:true});
     assert.equal(await selectedTab.getAttribute('aria-pressed'),'true','Skills remains selected while inspecting skill data');
-    for(let pageIndex=0;pageIndex<pageStarts.length;pageIndex++){
-     if(pageIndex){await detail.getByRole('button',{name:'Next skills'}).click();await page.waitForFunction(expected=>document.querySelector('#hero-details [aria-label="Skill page"]')?.textContent===expected,`${pageIndex+1} / ${pageStarts.length}`);}
-     const start=pageStarts[pageIndex],pageAbilities=abilities.slice(start,start+4),grid=detail.locator('.identity .skill-grid');
-     assert.equal(await grid.locator('.skill-card').count(),4,`${definition.name} page ${pageIndex+1} renders exactly four skills`);
-     assert.deepEqual(await grid.locator('.skill-card').evaluateAll(cards=>cards.map(card=>card.getAttribute('aria-label'))),pageAbilities.map(ability=>`Inspect ${ability.displayName}`),`${definition.name} page ${pageIndex+1} exposes its canonical skill window`);
-     assert.equal(await grid.locator('.skill-icon img').evaluateAll(images=>images.every(image=>image.complete&&image.naturalWidth>0)),true,`${definition.name} page ${pageIndex+1} decodes all four icon assets`);
-     const row=await grid.boundingBox(),portraitBounds=await portrait.boundingBox(),stageBounds=await page.locator('#game-screen').boundingBox();
-     assert.ok(row.x>=stageBounds.x-0.5&&row.x+row.width<=stageBounds.x+stageBounds.width+0.5,`${definition.name} skill row stays inside the stage`);
-     assert.ok(row.y>=portraitBounds.y+portraitBounds.height-8*stageBounds.width/360,`${definition.name} skill row stays below the visible portrait frame`);
-     assert.equal(await grid.locator('.gear-slot, .gear-placeholder').count(),0,`${definition.name} skills row contains no Orb or gear slot`);
-     assert.equal(await detail.locator('.pane .gear-placeholder').count(),0,`${definition.name} skills panel contains no Orb equipment`);
-     for(const ability of pageAbilities){
-      const card=grid.getByRole('button',{name:`Inspect ${ability.displayName}`,exact:true});
-      await card.click();await page.waitForFunction(name=>document.querySelector('#hero-details .pane article h2')?.textContent===name,ability.displayName);
-      assert.equal(await card.getAttribute('aria-pressed'),'true',`${ability.displayName} is the selected icon`);
-      assert.equal(await card.evaluate(node=>getComputedStyle(node).borderTopColor),'rgb(255, 217, 113)',`${ability.displayName} shows the selected gold state`);
-      const detailPanel=detail.locator('.pane article').first();
-      assert.equal(await detailPanel.locator('h2').textContent(),ability.displayName,'selected icon opens matching skill data');
-      assert.equal(await detailPanel.getAttribute('data-locked'),String(!heroSkillUnlocked(hero,ability)),`${ability.displayName} uses its level gate`);
-      assert.equal(await detailPanel.locator('small').textContent(),heroSkillUnlocked(hero,ability)?`Unlocked · Lv. ${ability.unlockLevel}`:`Unlocks at Lv. ${ability.unlockLevel}`,`${ability.displayName} shows its unlock condition`);
-      assert.deepEqual(await detailPanel.locator('p').allTextContents(),[
-       `Range: ${expectedSkillRange(ability,hero)} · Cooldown: ${ability.cooldownSeconds}s`,
-       `When: ${ability.conditionLabel}`,
-       ability.description.replaceAll('magic-tagged actions','magic skills'),
-      ],`${ability.displayName} details come from canonical target, cooldown, condition and description data`);
-      reachedSkills.push(`${hero.heroInstanceKey}:${ability.skillId}`);
+    const grid=detail.locator('.identity .skill-grid');
+    const basicPanel=detail.locator('.skill-frame');
+    assert.equal(await basicPanel.locator('h2').textContent(),'Basic Attack','no selected skill displays Basic Attack in the full frame');
+    assert.deepEqual(await basicPanel.locator('.skill-effect').allTextContents(),heroSkillCopy(heroBasicSkill(definition)).lines,'Basic Attack reads this hero’s authored power and damage stat');
+    assert.match(await basicPanel.locator('.skill-metrics').getAttribute('aria-label'),/Cooldown: 0s/,'Basic displays zero cooldown rather than omitting it');
+    assert.equal(await basicPanel.locator('.skill-metrics svg').count(),2,'Basic displays range and cooldown icons');
+    assert.equal(await basicPanel.locator('.skill-body').evaluate(body=>body.querySelector('.skill-effect').getBoundingClientRect().bottom<=body.getBoundingClientRect().bottom+1),true,'Basic Attack remains fully readable inside the original detail area');
+    const basicHeight=(await basicPanel.boundingBox()).height;
+    const basicStyle=await basicPanel.evaluate(frame=>{const css=getComputedStyle(frame);return{font:css.fontSize,radius:css.borderRadius,padding:getComputedStyle(frame.querySelector('.skill-heading')).padding};});
+    assert.equal(await basicPanel.evaluate(frame=>{const body=frame.querySelector('.skill-body');return body.clientHeight<=body.scrollHeight+1&&Math.abs(frame.getBoundingClientRect().bottom-body.getBoundingClientRect().bottom)<=2;}),true,'Basic Attack ends at its content, without an empty lower panel');
+    reachedSkills.push(`${hero.heroInstanceKey}:basic_attack`);
+    assert.deepEqual(await grid.locator('.skill-card').evaluateAll(cards=>cards.map(card=>card.getAttribute('aria-label'))),abilities.map((ability,index)=>`Inspect ${slots[index]}: ${ability.displayName}`),`${definition.name} exposes Special, Passive and both Resonances`);
+    const row=await grid.boundingBox(),portraitBounds=await portrait.boundingBox(),stageBounds=await page.locator('#game-screen').boundingBox();
+    assert.ok(row.x>=stageBounds.x-0.5&&row.x+row.width<=stageBounds.x+stageBounds.width+0.5,`${definition.name} skill row stays inside the stage`);
+    assert.ok(row.y>=portraitBounds.y+portraitBounds.height-8*stageBounds.width/360,`${definition.name} skill row stays below the visible portrait frame`);
+    for(const [index,ability] of abilities.entries()){
+     const card=grid.getByRole('button',{name:`Inspect ${slots[index]}: ${ability.displayName}`,exact:true});
+     await card.click();await page.waitForFunction(name=>document.querySelector('#hero-details .pane article h2')?.textContent===name,ability.displayName);
+     assert.equal(await card.getAttribute('aria-pressed'),'true',`${ability.displayName} is the selected icon`);
+     assert.equal(await card.evaluate(node=>getComputedStyle(node).borderTopColor),'rgb(255, 217, 113)',`${ability.displayName} shows the selected gold state`);
+     const detailPanel=detail.locator('.pane article').first();
+     assert.deepEqual(await detailPanel.evaluate(frame=>{const css=getComputedStyle(frame);return{font:css.fontSize,radius:css.borderRadius,padding:getComputedStyle(frame.querySelector('.skill-heading')).padding};}),basicStyle,'Basic Attack and selected skills use equal presentation treatment');
+     assert.equal(await detailPanel.locator('small').textContent(),slots[index]);
+     assert.equal(await detailPanel.getAttribute('data-locked'),String(ability.slot==='resonance'),`${ability.displayName} marks late-game resonances`);
+     const copy=heroSkillCopy(ability);
+     assert.deepEqual(await detailPanel.locator('.skill-effect').allTextContents(),copy.lines,`${ability.displayName} uses concise copy with separate effect lines`);
+     assert.deepEqual(await detailPanel.locator('.skill-rules p').allTextContents(),[...(ability.scaffold?['Late-game resonance · Not yet available']:[]),...(copy.rules||[])],`${ability.displayName} preserves its extra rules and availability`);
+     assert.doesNotMatch(await detailPanel.textContent(),/When:|Always on while/,'ordinary triggers are omitted');
+     const metrics=detailPanel.locator('.skill-metrics');
+     if(ability.slot==='special')assert.equal(await metrics.getAttribute('aria-label'),`Range: ${expectedSkillRange(ability,hero)} · Cooldown: ${ability.cooldownSeconds}s${ability.provisionalCooldown?' (provisional)':''}`,'icon metadata preserves range, cooldown and tuning status');
+     if(ability.scaffold||copy.rules?.length){const edge=await detailPanel.locator('.skill-rules').evaluate(rules=>({gap:rules.closest('.pane').getBoundingClientRect().right-rules.getBoundingClientRect().right,bar:getComputedStyle(rules).scrollbarWidth}));assert.ok(Math.abs(edge.gap-5)<.75,'rules use the pane width to within 5px of its right edge');assert.equal(edge.bar,'none','rules scroll without a visible scrollbar');}
+     const geometry=await detailPanel.evaluate(frame=>{const body=frame.querySelector('.skill-body'),main=frame.querySelector('.skill-main'),reading=frame.querySelector('.skill-rules')||main,pane=frame.parentElement,header=frame.querySelector('.skill-heading').getBoundingClientRect(),effect=main.getBoundingClientRect(),css=getComputedStyle(frame);return{height:frame.getBoundingClientRect().height,bodyHeight:reading.clientHeight,overflow:frame.scrollWidth>frame.clientWidth||reading.scrollWidth>reading.clientWidth,paneScroll:pane.scrollHeight>pane.clientHeight+1,top:reading.scrollTop,fixed:[header.top,header.bottom,effect.top,effect.bottom],mainVisible:effect.bottom<=body.getBoundingClientRect().bottom+1,border:css.borderTopWidth,radius:css.borderRadius,background:css.backgroundImage};});
+     assert.equal(geometry.overflow,false,'skill frame and text have no horizontal overflow');
+     assert.equal(geometry.paneScroll,false,'selected skill never extends the outer pane');
+     assert.ok(geometry.bodyHeight>0,'additional rules retain a visible reading area');
+     assert.equal(geometry.mainVisible,true,'the main effect stays visible above additional rules');
+     assert.deepEqual([geometry.border,geometry.radius,geometry.background],['0px','0px','none'],'skill presentation uses the tab directly without an inset card');
+     assert.equal(geometry.top,0,'selecting a skill resets its own scroll position');
+     await detailPanel.evaluate(frame=>{const rules=frame.querySelector('.skill-rules');if(rules)rules.scrollTop=rules.scrollHeight;});
+     const scrolled=await detailPanel.evaluate(frame=>{const reading=frame.querySelector('.skill-rules')||frame.querySelector('.skill-main'),header=frame.querySelector('.skill-heading').getBoundingClientRect(),main=frame.querySelector('.skill-main').getBoundingClientRect();return{reachable:reading.lastElementChild.getBoundingClientRect().bottom<=reading.getBoundingClientRect().bottom+1,fixed:[header.top,header.bottom,main.top,main.bottom]};});
+     assert.equal(scrolled.reachable,true,'the final additional rule remains reachable');
+     assert.deepEqual(scrolled.fixed,geometry.fixed,'scrolling additional rules never moves the header or main effect');
+     assert.ok(Math.abs((await detailPanel.boundingBox()).height-geometry.height)<1,'scrolling keeps the presentation height fixed');
+     assert.equal(await detailPanel.evaluate(frame=>{const body=frame.querySelector('.skill-rules')||frame.querySelector('.skill-main'),qa=window.heroQa,hero=Object.values(qa.globals.HeroProgress.heroes)[qa.gameState.selectedHero],hp=hero.hp,xp=hero.currentEXP,top=body.scrollTop;hero.hp=hp-1;hero.currentEXP=xp+1;qa.render();const kept=body.isConnected&&body.scrollTop===top;hero.hp=hp;hero.currentEXP=xp;qa.render();return kept;}),true,'damage and EXP ticks preserve the reading node and scroll position');
+     await metrics.click();assert.equal(await detailPanel.locator('.skill-metric-label').isVisible(),true,'touch reveals icon labels');
+     await metrics.click();assert.equal(await detailPanel.locator('.skill-metric-label').isVisible(),false,'labels close again');
+     reachedSkills.push(`${hero.heroInstanceKey}:${ability.skillId}`);
+     if(heroIndex===0&&index===0){
+      const rules=detailPanel.locator('.skill-rules');
+      const originalCount=await rules.evaluate(region=>{const count=region.children.length;for(let n=0;n<12&&region.scrollHeight<region.clientHeight+80;n++)region.append(region.firstElementChild.cloneNode(true));region.scrollTop=0;return count;});
+      const box=await rules.boundingBox(),x=box.x+box.width/2,y=box.y+box.height-3;
+      await rules.evaluate(region=>region.addEventListener('wheel',event=>region.dataset.wheelProbe=JSON.stringify({trusted:event.isTrusted,prevented:event.defaultPrevented}),{once:true,passive:true}));
+      await page.mouse.move(x,y);await page.mouse.wheel(0,80);
+      await page.waitForFunction(()=>document.querySelector('.skill-rules').scrollTop>0,{},{timeout:2000}).catch(async()=>{throw Error('Native wheel proof: '+JSON.stringify(await rules.evaluate((region,{x,y})=>({top:region.scrollTop,height:region.clientHeight,scrollHeight:region.scrollHeight,wheel:region.dataset.wheelProbe,hit:document.elementFromPoint(x,y)?.outerHTML.slice(0,160),rect:region.getBoundingClientRect().toJSON(),pane:region.closest('.pane').getBoundingClientRect().toJSON()}),{x,y})));});
+      assert.equal(await rules.evaluate(region=>JSON.parse(region.dataset.wheelProbe).trusted),true,'wheel proof uses a real browser input event');
+      await rules.evaluate(region=>region.scrollTop=0);
+      await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x,y-60,{steps:8});await page.mouse.up();
+      assert.ok(await rules.evaluate(region=>region.scrollTop)>0,'dragging the rules text scrolls without a scrollbar');
+      await rules.evaluate(region=>region.scrollTop=0);await rules.focus();await page.keyboard.press('End');
+      await page.waitForFunction(()=>{const r=document.querySelector('.skill-rules');return r.scrollTop>=r.scrollHeight-r.clientHeight-1;},{},{timeout:2000});
+      assert.deepEqual(await rules.evaluate(region=>{const s=getComputedStyle(region);return {outline:s.outlineStyle,left:s.borderLeftWidth,right:s.borderRightWidth,bottom:s.borderBottomWidth,background:s.backgroundColor};}),{outline:'none',left:'0px',right:'0px',bottom:'0px',background:'rgba(0, 0, 0, 0)'},'focused rules remain open text without a rectangular frame');
+      if(profile.dpr===2){
+       await rules.evaluate(region=>region.scrollTop=0);
+       const cdp=await context.newCDPSession(page);await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1});
+       await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
+       for(let step=1;step<=8;step++){await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y-step*8}]});await page.waitForTimeout(16);}
+       await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+       await page.waitForFunction(()=>document.querySelector('.skill-rules').scrollTop>0,{},{timeout:2000});
+       await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:false});await cdp.detach();
+      }
+      assert.deepEqual(await detailPanel.evaluate(frame=>{const header=frame.querySelector('.skill-heading').getBoundingClientRect(),main=frame.querySelector('.skill-main').getBoundingClientRect();return[header.top,header.bottom,main.top,main.bottom];}),geometry.fixed,'real scrolling gestures leave the header and main effect fixed');
+      await rules.evaluate((region,count)=>{while(region.children.length>count)region.lastElementChild.remove();region.scrollTop=0;},originalCount);
+      await page.screenshot({path:path.join(artifactDir,`${profile.name}-special.png`),fullPage:true});
      }
-     assert.equal(await detail.locator('.pane article').last().locator('h2').textContent(),'Basic Attack','Basic Attack remains reachable below the active skill');
-     assert.equal(await detail.locator('.pane article').last().locator('p').textContent(),definition.basic.description,'Basic Attack description is preserved');
-     assert.equal(await detail.locator('[aria-label="Skill page"]').textContent(),`${pageIndex+1} / ${pageStarts.length}`,'current page index matches the rendered skill window');
-     assert.equal(await detail.getByRole('button',{name:'Previous skills'}).isDisabled(),pageIndex===0,'previous-page gate matches the first page');
-     assert.equal(await detail.getByRole('button',{name:'Next skills'}).isDisabled(),pageIndex===pageStarts.length-1,'next-page gate matches the last page');
     }
+    await grid.getByRole('button',{name:`Inspect Resonance 2: ${abilities.at(-1).displayName}`,exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('.skill-frame h2')?.textContent==='Basic Attack');
+    assert.equal(await grid.locator('[aria-pressed="true"]').count(),0,'clicking the selected skill toggles it off and restores Basic Attack');
+    assert.ok(Math.abs((await basicPanel.boundingBox()).height-basicHeight)<1,'toggling back restores Basic Attack’s content-sized frame');
+    await grid.getByRole('button',{name:`Inspect Resonance 2: ${abilities.at(-1).displayName}`,exact:true}).click();
     if(heroIndex===0){
      await detail.getByRole('button',{name:'Gear',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#hero-details')?.dataset.tab==='gear');
      await detail.getByRole('button',{name:'Skills',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#hero-details')?.dataset.tab==='skills');
-     assert.equal(await detail.locator('[aria-label="Skill page"]').textContent(),`${pageStarts.length} / ${pageStarts.length}`,'tab changes preserve selected skill page');
-     assert.equal(await detail.locator('.skill-card[aria-pressed="true"]').getAttribute('aria-label'),`Inspect ${abilities.at(-1).displayName}`,'tab changes preserve selected skill');
+     assert.equal(await detail.locator('.skill-card[aria-pressed="true"]').getAttribute('aria-label'),`Inspect Resonance 2: ${abilities.at(-1).displayName}`,'tab changes preserve selected skill');
     }
    }
-   assert.equal(new Set(reachedSkills).size,33,'all 33 canonical active skills are reachable');
+   assert.equal(new Set(reachedSkills).size,20,'all 16 selected skills and four hero Basic Attacks are reachable');
    assert.equal(await page.evaluate(()=>JSON.stringify([localStorage.getItem('orka.hero_progress.v2'),localStorage.getItem('wishfire.equipment-economy.v5')])),JSON.stringify([saved.progress,saved.economy]),'hero and equipment saves stay byte-identical while browsing');
    assert.deepEqual(await page.evaluate(()=>window.heroQa.globals.HeroProgress),progress,'progression data stays unchanged in memory');
    assert.deepEqual(await page.evaluate(()=>window.heroQa.equipment),economy,'equipped items and loadouts stay unchanged in memory');

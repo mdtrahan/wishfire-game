@@ -24,13 +24,13 @@ export function validateSkillCondition(node) {
   const traits={lifeState:['alive','ko'],combatRank:['ordinary','subboss','boss'],magicThreat:[true,false]};
   if(node.key==='actor.trait' && Array.isArray(node.in) && node.in.some(value=>!traits[node.field]?.includes(value)))throw new Error('Unknown trait value');
   if(node.key==='actor.trait' && (!['lifeState','combatRank','magicThreat'].includes(node.field)||!Array.isArray(node.in)||!node.in.length))throw new Error('Unknown trait');
-  if(['actor.effect_active','zone.active','modifier.can_improve'].includes(node.key) && !['provoke','brace','destiny','cover','hex_beacon','burn_sigil','null_field','blight','wishgrant','quickload','shared_tempo','fortunes_blessing','shrink'].includes(node.effectId))throw new Error('Unknown effect ID');
+  if(['actor.effect_active','zone.active','modifier.can_improve'].includes(node.key) && !['elevate'].includes(node.effectId))throw new Error('Unknown effect ID');
   if(node.key==='geometry.count' && !['circle','rectangle','horizontalLine','cone'].includes(node.shape?.kind))throw new Error('Unknown shape');
   if(node.key==='geometry.count') {
     const shape=node.shape;
     if(shape.kind==='circle' && !(shape.radius>0) || shape.kind==='rectangle' && !(shape.width>0 && shape.height>0) || shape.kind==='horizontalLine' && !(shape.width>0 && Number.isFinite(shape.toX)) || shape.kind==='cone' && !(shape.length>0 && shape.angleDegrees>0 && shape.angleDegrees<=180))throw new Error('Invalid shape parameters');
   }
-  if(node.key==='battle.flag' && !['magicFruitUsed','growTier'].includes(node.name))throw new Error('Unknown battle flag');
+  if(node.key==='battle.flag' && ![].includes(node.name))throw new Error('Unknown battle flag');
   if(node.key==='battle.resource' && node.name!=='wardHP')throw new Error('Unknown battle resource');
   if(comparisons.includes(node.key) && node.key!=='actor.stat_compare' && !Number.isFinite(node.value))throw new Error('Invalid threshold');
   return true;

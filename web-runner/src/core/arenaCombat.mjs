@@ -2,6 +2,7 @@ import { advanceActorToward, actorAttackReach, actorFootPoint, actorFootprintRad
 import { COMBAT_BATTLEFIELD_ZOOM, deriveCombatFormationAnchors, deriveCombatOrdinaryPatrolBounds, deriveCombatWorldBounds, deriveCombatWorldStartFormation, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
 import { previewSeededRng } from '../../../src/core/seededRngRules.mjs';
 import { isActorRecoveryRevealActive, resetActorPresentationAfterRestore } from './actorPresentationState.mjs';
+import { resolveCombatLeader, resolveCombatMovementTuning } from './combatMovementTuning.mjs';
 
 const isLiving = actor => actor && Number(actor.hp || 0) > 0;
 const distance = (actor, target) => {
@@ -52,9 +53,20 @@ export function selectContinuousEnemyTarget({ enemy = null, heroes = [], globals
   return stableNearest(enemy, candidates);
 }
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+// Each hero weighs its own nearest threat against the leader's target. Bias 1
+// always returns the shared target (legacy dog-pile); bias 0 is pure own-nearest.
+// A short hysteresis keeps a hero from flickering between equal candidates.
+export function selectHeroMovementTarget(hero, candidates = [], sharedTarget = null, bias = 1) {
+  const living = candidates.filter(isLiving);
+  if (!living.length) return null;
+  if (bias >= 1 && sharedTarget && living.includes(sharedTarget)) return sharedTarget;
+  const score = enemy => distance(hero, enemy) * (enemy === sharedTarget ? 1 - Math.max(0, Math.min(1, bias)) : 1);
+  const ordered = living.slice().sort((a, b) => score(a) - score(b) || Number(a.uid || 0) - Number(b.uid || 0));
+  const current = living.find(enemy => Number(enemy.uid || 0) === Number(hero.arenaTargetUID || 0));
+  return current && score(current) <= score(ordered[0]) + 24 ? current : ordered[0];
+}
 export const CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS = 460;
 const RECOVERY_MOAT_DIAMETER_SCREEN_PX = 150;
-const SQUAD_STRAGGLE_RADIUS = 144;
 const SEARCH_SPEED = 78;
 const SEARCH_STANDOFF = 130;
 const TRAVEL_FRONT_OFFSET = 22.4;
@@ -65,6 +77,7 @@ const SUPPORT_STEP_BACK = 12.8;
 const INITIAL_ROAM_WALK_DISTANCE = 200;
 const INITIAL_ROAM_SEED_DRAW = 0x764;
 const CONTACT_INSET = 6.4;
+const FRONTLINE_CONTACT_DISTANCE = 46;
 const FARA_TRAVEL_OFFSET = 16;
 const HONDO_TRAVEL_OFFSET = 4;
 const SUPPORT_TRAVEL_OFFSET = -10;
@@ -195,7 +208,7 @@ export function beginContinuousCombatPatrolReturn(globals, heroes) {
     globals.ContinuousCombatPatrolReturn = targets.map(({ uid, footX, footY }) => ({ uid, footX, footY }));
   }
 }
-function separateFootprints(actors, bounds) {
+function separateFootprints(actors, bounds, { heroSpacing = 1 } = {}) {
   const actorXBounds = actor => actor?.kind === 'hero'
     ? { min: bounds.heroMinX, max: bounds.heroMaxX }
     : String(actor?.combatRank || actor?.enemyRole || actor?.role || '').toLowerCase() === 'boss'
@@ -211,7 +224,9 @@ function separateFootprints(actors, bounds) {
   // cannot leave them stacked.
   for (let pass = 0; pass < 4; pass += 1) for (let index = 0; index < ordered.length; index += 1) for (let otherIndex = index + 1; otherIndex < ordered.length; otherIndex += 1) {
     const first = ordered[index], second = ordered[otherIndex], a = actorFootPoint(first), b = actorFootPoint(second);
-    const minDistance = actorFootprintRadius(first) + actorFootprintRadius(second);
+    // Heroes may stack on a shared target (StoneAge); hero-enemy contact keeps full spacing.
+    const minDistance = (actorFootprintRadius(first) + actorFootprintRadius(second))
+      * (first.kind === 'hero' && second.kind === 'hero' ? heroSpacing : 1);
     const currentDistance = Math.hypot(b.x - a.x, b.y - a.y);
     if (currentDistance >= minDistance) continue;
     const dx = currentDistance > 0.001 ? (b.x - a.x) / currentDistance : 0;
@@ -317,6 +332,14 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   if (!heroes.length) return 0;
   const center = heroes.reduce((sum, hero) => sum + actorFootPoint(hero).x, 0) / heroes.length;
   const centerY = heroes.reduce((sum, hero) => sum + actorFootPoint(hero).y, 0) / heroes.length;
+  // The leader picks the shared target and anchors the leash and regroup point.
+  // Approach vectors stay centroid-based: a leader-relative vector rotates as
+  // the leader reaches contact and walks the squad around its target. Boss
+  // encounters keep the stage-owned centroid layout.
+  const tuning = resolveCombatMovementTuning(globals);
+  const leader = tuning.leaderAnchor && !bossEncounter ? resolveCombatLeader(heroes, tuning.leaderName) : null;
+  const anchorX = leader ? actorFootPoint(leader).x : center;
+  const anchorY = leader ? actorFootPoint(leader).y : centerY;
   const now = Number(globals.time || 0);
   const motionStart = new Map([...heroes, ...enemies].map(actor => [actor, {
     ...actorFootPoint(actor), locomotion: actor.locomotion, locomotionStartedAt: actor.locomotionStartedAt,
@@ -351,7 +374,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
     const footprint = actorFootprintRadius({ kind: 'enemy' });
     for (const enemy of enemies) {
       if (!enemy.streamSolo || enemy.streamState !== 'roaming' || now < Number(enemy.actionStateUntil || 0)) continue;
-      if (Math.hypot(actorFootPoint(enemy).x - center, actorFootPoint(enemy).y - centerY) <= CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS) continue;
+      if (Math.hypot(actorFootPoint(enemy).x - center, actorFootPoint(enemy).y - centerY) <= tuning.detectionRadius) continue;
       const anchorX = Number(enemy.streamSoloAnchorX ?? enemy.footX);
       const anchorY = Number(enemy.streamSoloAnchorY ?? enemy.footY);
       const side = anchorX < moat.centerX ? -1 : 1;
@@ -397,7 +420,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
       }
     }
   }
-  const hasStragglers = heroes.some(hero => Math.hypot(actorFootPoint(hero).x - center, actorFootPoint(hero).y - centerY) > SQUAD_STRAGGLE_RADIUS);
+  const hasStragglers = heroes.some(hero => Math.hypot(actorFootPoint(hero).x - anchorX, actorFootPoint(hero).y - anchorY) > tuning.combatLeash);
   const groups = new Map();
   for (const enemy of enemies) {
     const groupId = Number(enemy.streamEngagementGroupId ?? enemy.streamSectorIndex ?? enemy.streamPackIndex ?? 0);
@@ -415,7 +438,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   };
   const approachingPatrol = new Set();
   const isWithinLocalDetectionRange = enemy => approachingPatrol.has(enemy)
-    || heroes.some(hero => distance(hero, enemy) <= CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS);
+    || heroes.some(hero => distance(hero, enemy) <= tuning.detectionRadius);
   const orderedGroups = [...groups.entries()].sort((a, b) => groupDistance(a[1]) - groupDistance(b[1]));
   const activeStates = new Set(['in_range', 'engaged', 'retreating']);
   const localGroups = orderedGroups.filter(([, group]) => group.some(enemy =>
@@ -449,7 +472,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
     if (locallyDetected && nearestGroupId != null) stage.activeEncounterGroupId = Number(nearestGroupId);
     else delete stage.activeEncounterGroupId;
   }
-  const sharedTarget = focusedEnemies.length ? nearest({ footX: center, footY: centerY }, focusedEnemies) : null;
+  const sharedTarget = focusedEnemies.length ? nearest({ footX: anchorX, footY: anchorY }, focusedEnemies) : null;
   const targetPoint = sharedTarget ? actorFootPoint(sharedTarget) : null;
   const travelPoint = patrolPoint(targetPoint || nearestGroupCenter || { x: center + 1, y: centerY });
   const travelDeltaX = travelPoint.x - center, travelDeltaY = travelPoint.y - centerY;
@@ -465,7 +488,8 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
     const point = actorFootPoint(actor);
     return (point.x - center) * directionX + (point.y - centerY) * directionY;
   };
-  const regrouping = !bossEncounter && frontline.length > 0 && supports.length > 0
+  const sharedTargeting = tuning.leaderTargetBias >= 1;
+  const regrouping = !bossEncounter && (sharedTargeting || !sharedTarget) && frontline.length > 0 && supports.length > 0
     && Math.min(...frontline.map(progress)) <= Math.max(...supports.map(progress)) + FRONTLINE_LEAD_GAP;
   const fara = faraLeads ? heroes.find(isFara) : null;
   const hondo = faraLeads ? heroes.find(isHondo) : null;
@@ -480,7 +504,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
     const formation = formations[index];
     if ((regrouping && !formation.frontline) || (hondoYielding && formation.hondo)) {
       const point = actorFootPoint(hero);
-      if (Math.hypot(point.x - center, point.y - centerY) > SQUAD_STRAGGLE_RADIUS) {
+      if (Math.hypot(point.x - center, point.y - centerY) > tuning.combatLeash) {
         const regroupTarget = {
           footX: center - directionX * REGROUP_BACK_OFFSET - directionY * formation.rowOffset,
           footY: centerY - directionY * REGROUP_BACK_OFFSET + directionX * formation.rowOffset,
@@ -505,36 +529,46 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
       if (Math.abs(directionX) > 1e-6) hero.facing = directionX > 0 ? 'right' : 'left';
       continue;
     }
-    const target = initialRoamActive ? null : sharedTarget;
+    const heroPoint = actorFootPoint(hero);
+    const leashed = !initialRoamActive && sharedTarget && leader && hero !== leader && !sharedTargeting
+      && Math.hypot(heroPoint.x - anchorX, heroPoint.y - anchorY) > tuning.combatLeash;
+    const target = initialRoamActive || leashed ? null : selectHeroMovementTarget(hero, focusedEnemies, sharedTarget, tuning.leaderTargetBias);
     if (target) {
       hero.arenaTargetUID = Number(target.uid || 0);
-      const alongOffset = formation.contactOffset;
+      // The shared target keeps the squad's approach vector; an independent
+      // pick approaches along the hero's own line to it.
+      const ownPoint = actorFootPoint(target);
+      const ownDx = ownPoint.x - heroPoint.x, ownDy = ownPoint.y - heroPoint.y, ownLength = Math.hypot(ownDx, ownDy);
+      const independent = target !== sharedTarget && ownLength > 1e-6;
+      const contactDirX = independent ? ownDx / ownLength : directionX, contactDirY = independent ? ownDy / ownLength : directionY;
+      const contactReach = Math.min(actorAttackReach(hero), formation.frontline ? FRONTLINE_CONTACT_DISTANCE : Infinity) + actorFootprintRadius(target);
+      const alongOffset = formation.contactOffset - contactReach;
       const contactTarget = {
         ...target,
-        footX: targetPoint.x + directionX * alongOffset - directionY * formation.rowOffset,
-        footY: targetPoint.y + directionY * alongOffset + directionX * formation.rowOffset,
+        footX: ownPoint.x + contactDirX * alongOffset - contactDirY * formation.rowOffset,
+        footY: ownPoint.y + contactDirY * alongOffset + contactDirX * formation.rowOffset,
       };
-      advanceActorToward(hero, contactTarget, { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
+      advanceActorToward(hero, compensateActorTravelTarget(hero, contactTarget), { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
       preserveActionState: Number(hero.actionStateUntil || 0) > Number(globals.time || 0) });
     } else {
-    const nextPoint = hasStragglers ? { x: center, y: centerY }
+    const nextPoint = hasStragglers || leashed ? { x: anchorX, y: anchorY }
         : initialRoamActive ? { x: Number(initialRoam.targetX), y: centerY }
           : nearestGroupCenter ? patrolPoint(nearestGroupCenter) : { x: clamp(center + 160, bounds.heroMinX, bounds.heroMaxX), y: centerY };
       const deltaX = nextPoint.x - center, deltaY = nextPoint.y - centerY;
       const deltaLength = Math.hypot(deltaX, deltaY) || 1;
       const directionX = deltaLength > 1e-6 ? deltaX / deltaLength : targetDirection;
       const directionY = deltaLength > 1e-6 ? deltaY / deltaLength : 0;
-      const approachDistance = initialRoamActive || hasStragglers || locallyDetected ? 0 : SEARCH_STANDOFF;
+      const approachDistance = initialRoamActive || hasStragglers || leashed || locallyDetected ? 0 : SEARCH_STANDOFF;
       const approachX = nextPoint.x - directionX * approachDistance;
       const approachY = nextPoint.y - directionY * approachDistance;
-      const frontOffset = formation.travelOffset;
-      const sideOffset = formation.rowOffset;
+      const frontOffset = formation.travelOffset * tuning.travelSpacing;
+      const sideOffset = formation.rowOffset * tuning.travelSpacing;
       const searchTarget = {
         footX: clamp(approachX + directionX * frontOffset - directionY * sideOffset, bounds.heroMinX, bounds.heroMaxX),
       footY: clamp(approachY + directionY * frontOffset + directionX * sideOffset, minY, maxY),
       };
       hero.arenaTargetUID = Number(sharedTarget?.uid || 0);
-      advanceActorToward(hero, initialRoamActive ? compensateActorTravelTarget(hero, searchTarget) : searchTarget, { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
+      advanceActorToward(hero, compensateActorTravelTarget(hero, searchTarget), { seconds, speed: SEARCH_SPEED, now: Number(globals.time || 0), minX: bounds.heroMinX, maxX: bounds.heroMaxX, minY, maxY,
         preserveActionState: Number(hero.actionStateUntil || 0) > Number(globals.time || 0) });
     }
   }
@@ -557,7 +591,8 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
     advanceActorToward(enemy, approachTarget, { seconds, speed: Math.max(34, Number(enemy.streamWalkSpeed || 40)), now: Number(globals.time || 0), minX: isBoss ? bounds.bossMinX : worldBounds.heroMinX, maxX: isBoss ? bounds.bossMaxX : bounds.maxX, minY: isBoss ? bounds.bossMinY : bounds.visibleTopY, maxY: isBoss ? bounds.bossMaxY : bounds.visibleBottomY,
       preserveActionState: Number(enemy.actionStateUntil || 0) > Number(globals.time || 0) });
   }
-  separateFootprints([...heroes, ...enemies], bounds);
+  // StoneAge melee lines up along a boss's front edge instead of stacking.
+  separateFootprints([...heroes, ...enemies], bounds, { heroSpacing: bossEncounter ? 1 : tuning.heroOverlap });
   for (const enemy of enemies) {
     if (enemy.streamState === 'retreating') continue;
     const target = selectContinuousEnemyTarget({ enemy, heroes, globals, requireInReach: true });

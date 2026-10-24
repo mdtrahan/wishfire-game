@@ -68,6 +68,7 @@ import {
   orientCombatWorldOffsetX,
   readCombatOrientationFromSearch,
 } from '../src/core/combatOrientation.mjs';
+import { resolveCombatCameraCenterX } from './src/core/combatCamera.mjs';
 import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
 import { createHealBloom } from './src/core/healBloomAnimation.mjs';
 import { createCombatOutcomeSimulationPacket } from './src/core/combatOutcomeRules.mjs';
@@ -1954,7 +1955,10 @@ async function main(){
   const equipmentProgress = createEquipmentStorage({ globals: state.globals, getActors: () => state.entities, storage: window.localStorage, persistProgress: () => heroProgressStorage.persistHeroProgressIfDirty({stateGlobals: state.globals}), onGearCollected: result => combatProgression?.record({ id: `gear:${result.item.instanceId}`, type: 'gear_collect' }) });
   combatProgression = createCombatProgression({ globals: state.globals, storage: window.localStorage, equipmentProgress, getHeroes: () => state.entities, persistHeroProgress: () => heroProgressStorage.persistHeroProgressIfDirty({stateGlobals: state.globals}), reportError: console.error });
   combatProgression.reconcileTicketSpends();
-  const combatProgressionUI = createCombatProgressionUI({ canvas, onClaim: objectiveId => combatProgression.claimObjective(objectiveId) });
+  // HUD skill navigation: a hero clock opens that hero's Special; a party icon opens its Party Skills entry.
+  const combatProgressionUI = createCombatProgressionUI({ canvas, onClaim: objectiveId => combatProgression.claimObjective(objectiveId),
+    onHeroSkill: heroKey => { if (renderHeroScreen.focusHeroSpecial(gameState, heroKey)) void storyEntry.navigate('Hero'); },
+    onPartySkill: partySkillId => trainingGroundUI.open({ tab: 'party', partySkillId }) });
   const trainingGroundUI = createTrainingGroundUI({ progression: combatProgression });
   eventBus.on('growth:open', () => trainingGroundUI.open());
   void combatProgression.sync();
@@ -2140,7 +2144,9 @@ async function main(){
 
   function combatActorWorldToCanvas(wx, wy, actorKind = '') {
     const heroes = state.entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
-    const centerX = heroes.length ? heroes.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? layoutW / 2), 0) / heroes.length : layoutW / 2;
+    const squadCenterX = heroes.length ? heroes.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? layoutW / 2), 0) / heroes.length : layoutW / 2;
+    const stage = state.globals.ContinuousCombatStage;
+    const centerX = stage?.bossActive === true ? Number(stage.bossCameraCenterX ?? squadCenterX) : resolveCombatCameraCenterX(state.globals, squadCenterX);
     const world = deriveCombatWorldBounds(layoutW, COMBAT_BATTLEFIELD_ZOOM);
     const projection = createCombatCameraProjection({ viewportWidth: layoutW, worldWidth: world.worldWidth, zoom: COMBAT_BATTLEFIELD_ZOOM, centerX, orientation: state.globals.CombatOrientation });
     const point = projection.project(wx, wy, actorKind);
@@ -2629,7 +2635,7 @@ async function main(){
     }
     const result = renderRuntime.renderRuntime(runtimeScope);
     renderExistingNavigation(ctx, { worldToCanvas, layoutScale, gameState, layoutState, eventBus });
-    combatProgressionUI.update({ layoutId: activeLayoutId, phase: gameState.storyEntry.phase, scale: layoutScale, progression: combatProgression.state(), equipmentProgress: { essence: Number(state.globals.Equipment?.lamp?.essence || 0) } });
+    combatProgressionUI.update({ layoutId: activeLayoutId, phase: gameState.storyEntry.phase, scale: layoutScale, progression: combatProgression.state(), equipmentProgress: { essence: Number(state.globals.Equipment?.lamp?.essence || 0) }, entities: state.entities, globals: state.globals });
     if (result && result.overlayData) {
       state.globals.LastCombatOverlayData = result.overlayData;
     }

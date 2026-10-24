@@ -1,17 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { actorFootprintRadius, isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
+import { actorAttackReach, actorFootprintRadius, isActorTargetInRange } from '../src/core/arenaCombatRules.mjs';
 import { advanceContinuousCombatArena, deriveContinuousCombatRecoveryHuddle, selectContinuousEnemyTarget } from '../web-runner/src/core/arenaCombat.mjs';
+import { LEGACY_COMBAT_MOVEMENT_TUNING as LEGACY } from '../web-runner/src/core/combatMovementTuning.mjs';
 import { activateContinuousCombatSpawnedEnemy, pushContinuousCombatEnemy } from '../web-runner/src/core/continuousCombatStage.mjs';
 import { actorPuppetState } from '../web-runner/systems/actorPuppetPresentation.mjs';
 import { deriveCombatWorldVerticalBounds } from '../src/core/combatOrientation.mjs';
 
-test('actor reach uses initialized feet and preserves delivery-specific range', () => {
+test('hero reach uses initialized feet and a shared base range', () => {
   const melee = { kind: 'hero', hp: 10, footX: 100, footY: 200, attackType: 'melee', arenaEnabled: true };
   const mage = { kind: 'hero', hp: 10, footX: 100, footY: 200, attackType: 'magic', arenaEnabled: true };
   const enemy = { kind: 'enemy', hp: 10, footX: 210, footY: 200, streamState: 'in_range' };
-  assert.equal(isActorTargetInRange(melee, enemy), false);
+  assert.equal(isActorTargetInRange(melee, enemy), true);
   assert.equal(isActorTargetInRange(mage, enemy), true);
+  enemy.footX = 210.001;
+  assert.equal(isActorTargetInRange(melee, enemy), false);
+  assert.equal(isActorTargetInRange(mage, enemy), false);
+  for (const name of ['Fara', 'Hondo', 'Runa', 'Kaja']) {
+    for (const currentLevel of [1, 100]) assert.equal(actorAttackReach({kind:'hero',name,currentLevel}),92);
+  }
+  assert.equal(actorAttackReach({kind:'enemy',streamDelivery:'melee'}),46);
+  assert.equal(actorAttackReach({kind:'enemy',streamDelivery:'ranged'}),146);
+  assert.equal(actorAttackReach({kind:'enemy',combatRank:'boss'}),184);
 });
 
 test('arena advances both factions to contact with bounded semantic actor state', () => {
@@ -62,9 +72,9 @@ test('four heroes retain stable targets and separate crowded footprints', () => 
     { uid: 11, kind: 'enemy', hp: 100, streamState: 'in_range', footX: 978, footY: 340, streamDelivery: 'melee', arenaEnabled: true },
   ];
   const entities = [...heroes, ...enemies];
-  advanceContinuousCombatArena({ globals: { time: 1 }, entities, seconds: 0.1 });
+  advanceContinuousCombatArena({ globals: { DevMovementTuning: LEGACY, time: 1 }, entities, seconds: 0.1 });
   const targets = heroes.map(hero => hero.arenaTargetUID);
-  advanceContinuousCombatArena({ globals: { time: 1.1 }, entities, seconds: 0.1 });
+  advanceContinuousCombatArena({ globals: { DevMovementTuning: LEGACY, time: 1.1 }, entities, seconds: 0.1 });
   assert.deepEqual(heroes.map(hero => hero.arenaTargetUID), targets, 'small distance changes stay inside hysteresis');
   for (let index = 0; index < entities.length; index += 1) for (let other = index + 1; other < entities.length; other += 1) {
     const a = entities[index], b = entities[other];
@@ -225,7 +235,8 @@ test('frontline roles follow diagonal target reversals while ranged supports sta
   ];
   const first = { uid: 20, kind: 'enemy', hp: 50, footX: 1400, footY: 340, streamState: 'roaming', streamSectorIndex: 0 };
   const second = { uid: 30, kind: 'enemy', hp: 50, footX: 600, footY: 430, streamState: 'roaming', streamSectorIndex: 1 };
-  const globals = { time: 0 };
+  // Legacy shared-target formation contract (dev toggle).
+  const globals = { time: 0, DevMovementTuning: LEGACY };
   const checkOrder = (target, sign, expectRegroup = true) => {
     let regroupTicks = 0;
     for (let tick = 0; tick < 30; tick += 1) {
@@ -286,7 +297,7 @@ test('Fara leads Hondo and the compact support row across all eight travel headi
       footY: 370 + direction.y * 100,
       streamState: 'roaming', streamSectorIndex: octant,
     };
-    const globals = { time: 0 };
+    const globals = { time: 0, DevMovementTuning: LEGACY };
     for (let tick = 0; tick < 8; tick += 1) {
       advanceContinuousCombatArena({ globals, entities: [...heroes, enemy], seconds: 0.1 });
     }
@@ -374,7 +385,7 @@ test('frontline ordering follows pure vertical approaches without injecting hori
     { uid: 4, name: 'Kaja', kind: 'hero', hp: 100, attackType: 'magic', footX: 920, footY: 390 },
   ];
   const target = { uid: 40, kind: 'enemy', hp: 50, footX: 910, footY: 90, streamState: 'roaming', streamSectorIndex: 7 };
-  const globals = { time: 0 };
+  const globals = { time: 0, DevMovementTuning: LEGACY };
   for (let tick = 0; tick < 30; tick += 1) advanceContinuousCombatArena({ globals, entities: [...heroes, target], seconds: 0.1 });
   assert.ok(heroes.every(hero => hero.footY < 420), 'zero horizontal delta stays vertical');
   const centerY = heroes.reduce((sum, hero) => sum + hero.footY / heroes.length, 0);
@@ -390,14 +401,14 @@ test('target death sends the whole squad toward the next pack within world bound
     { uid: 20, kind: 'enemy', hp: 0, footX: 560, footY: 272, streamState: 'engaged', streamSectorIndex: 0 },
     { uid: 30, kind: 'enemy', hp: 100, footX: 1440, footY: 272, streamState: 'roaming', streamSectorIndex: 1 },
   ];
-  advanceContinuousCombatArena({ globals: { time: 2 }, entities: [...heroes, ...enemies], seconds: 1 });
+  advanceContinuousCombatArena({ globals: { DevMovementTuning: LEGACY, time: 2 }, entities: [...heroes, ...enemies], seconds: 1 });
   assert.ok(heroes.every(hero => hero.footX > 40 && hero.footX < 2120), 'formation rear slots remain inside world bounds before the squad center advances');
   assert.ok(heroes.reduce((sum, hero) => sum + hero.footX / heroes.length, 0) > 560, 'the squad advances toward the next sector as a group');
   assert.ok(heroes.every(hero => hero.arenaTargetUID === 0));
   assert.equal(enemies[1].footX, 1440);
   heroes[3].footX = 950;
   const leftBeforeRegroup = heroes[0].footX;
-  advanceContinuousCombatArena({ globals: { time: 2.5 }, entities: [...heroes, ...enemies], seconds: 1 });
+  advanceContinuousCombatArena({ globals: { DevMovementTuning: LEGACY, time: 2.5 }, entities: [...heroes, ...enemies], seconds: 1 });
   assert.ok(heroes[3].footX < 950);
   assert.ok(heroes[0].footX > leftBeforeRegroup);
   assert.ok(heroes.every(hero => hero.arenaTargetUID === 0));
@@ -406,7 +417,7 @@ test('target death sends the whole squad toward the next pack within world bound
     hero.arenaTargetUID = 30;
   }
   enemies[1].footX = 2155;
-  advanceContinuousCombatArena({ globals: { time: 3 }, entities: [...heroes, ...enemies], seconds: 2 });
+  advanceContinuousCombatArena({ globals: { DevMovementTuning: LEGACY, time: 3 }, entities: [...heroes, ...enemies], seconds: 2 });
   assert.ok(heroes.every(hero => hero.footX <= 2120));
   assert.ok(enemies[1].footX <= 2160);
 });

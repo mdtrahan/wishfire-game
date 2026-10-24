@@ -19,10 +19,12 @@
 - CJS mirrors such as `simulationCorePacket.cjs`, `gameStateEnvelopeRules.cjs`, and `combatRuntimeGateway.cjs` must stay aligned with their intended test/runtime consumers.
 - `combatOrientation.mjs` owns presentation-only left/right normalization, static formation projection, and wide-world camera projection. Right-wise static formation geometry reflects then translates both formations `-40` logical X; the wide-world camera reflects without that offset so the hero's 40-unit world-edge margin remains visible. Heroes keep Y while enemies receive one derived block-Y offset aligning team formation midpoints. Derive that enemy offset from the fixed slot grid, never the currently living roster, so death and refill cannot move survivors. Do not put orientation in SimulationCore packets or mutate canonical actor coordinates.
 - `arenaCombatRules.mjs` scales the boss footprint with its 4x linear sprite size and adds that boss body radius to boss-origin contact reach; ordinary actors retain foot-to-target reach.
+- Hero attack reach is 92 world units at every current level. Enemy delivery and boss footprint reach remain separate; hero EXP does not yet increase reach.
 - `advanceActorToward` keeps logical facing aligned with nonzero world-space horizontal travel. Browser fallback presentation applies that facing relative to each actor's native sprite direction and the camera reflection.
 - `deriveCombatFormationAnchors` reserves an 18-unit hero buff-icon row plus a 2-unit gap above HP bars. `deriveCombatWorldVerticalBounds` separately maps the camera's HUD-safe viewport interval back into world feet bounds; continuous pack centers span that interval rather than following the static four-slot hero anchors.
 
 - `deriveCombatOrdinaryPatrolBounds` owns ordinary Hero feet X520..1640/Y290..450 independently of full enemy/world bounds and boss-local constraints. Camera zoom and projection remain presentation-only.
+- `buffSignalRules.mjs` owns buff-signal projection. One effect key (source plus effect) active on every living hero, with at least two alive, is party-wide and shows once as a stat icon. Other up-direction channels collapse into the Tempo, Offense and Defense hero groups. Debuffs, unknown channels and KO heroes never signal. Order is stable by arrival. New skills plug in by emitting channels listed in `BUFF_SIGNAL_CHANNELS`.
 
 ## Work Guidance
 - Add fixture rows for deterministic behavior with meaningful edge cases.
