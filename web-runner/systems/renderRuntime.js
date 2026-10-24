@@ -151,7 +151,7 @@ effectiveBody = effectiveBody.replace(
 removeBetween('    const beginIconPresentation = (target, key) => {', '    const rouletteTargetFrame');
 effectiveBody = effectiveBody.replace(
   '    // Render enemies (use Enemy_Sprite animations)',
-  '    const actorPaintQueue = [];\n    const actorFrontOverlayQueue = [];\n    const addActorPaint = (uid, paint) => { const actor = actorPaintQueue.find(entry => Number(entry.uid || 0) === Number(uid || 0)); if (!actor) return; const drawActor = actor.paint; actor.paint = () => { drawActor(); paint(); }; };\n\n    // Render enemies (use Enemy_Sprite animations)',
+  '    const actorPaintQueue = [];\n    const actorFrontOverlayQueue = [];\n    const heroAuraQueue = [];\n    const addActorPaint = (uid, paint) => { const actor = actorPaintQueue.find(entry => Number(entry.uid || 0) === Number(uid || 0)); if (!actor) return; const drawActor = actor.paint; actor.paint = () => { drawActor(); paint(); }; };\n\n    // Render enemies (use Enemy_Sprite animations)',
 );
 replaceBetween(
   '        if (sprite) {',
@@ -214,7 +214,9 @@ effectiveBody = replaceRequired(
   '        const barY = Math.round(enemyFootY + (4 * layoutScale));',
   'enemy bar position',
 );
-// Crimson Ward draws behind the sprite (heroWardAura); the old offset shield bitmap is retired.
+// Crimson Ward auras paint as one layer under every actor, so the aura of a front hero never hides the
+// heroes behind it; the old offset shield bitmap is retired.
+effectiveBody = effectiveBody.replace('    for (const entry of actorPaintQueue) entry.paint();', '    for (const paint of heroAuraQueue) paint();\n    for (const entry of actorPaintQueue) entry.paint();');
 replaceBetween(
   '          if (hero && wardBarrierImage) {',
   '\n\n          const ampShowsBadge',
@@ -223,7 +225,7 @@ replaceBetween(
 replaceBetween(
   '          const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0), activeCombatOrientation);',
   '\n          if (hero) { // hero front overlay',
-  body => `          const heroSpriteFadeAlpha = getEnemyActivationFadeAlpha(hero, Number(g.time || 0));\n          const paintHeroActor = () => paintWithActivationAlpha(ctx, heroSpriteFadeAlpha, () => { ${body}\n          });\n          actorPaintQueue.push({ footY: Number(footY), uid: Number(hero?.uid || 0), paint: paintHeroActor });\n`,
+  body => `          if (hero) { const auraPuppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0), activeCombatOrientation); if (auraPuppet) heroAuraQueue.push(() => drawHeroWardAura(ctx, { globals: g, uid: hero.uid, puppet: auraPuppet, footX: pos.x, footY, height: scaledH })); }\n          const heroSpriteFadeAlpha = getEnemyActivationFadeAlpha(hero, Number(g.time || 0));\n          const paintHeroActor = () => paintWithActivationAlpha(ctx, heroSpriteFadeAlpha, () => { ${body}\n          });\n          actorPaintQueue.push({ footY: Number(footY), uid: Number(hero?.uid || 0), paint: paintHeroActor });\n`,
 );
 replaceBetween(
   '          if (hero) { // hero front overlay',
@@ -627,7 +629,7 @@ export function renderRuntime(deps) {
       )
       .replace(
         "drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation, facing: hero.facing, nativeFacing: 'right' });",
-        "const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0), activeCombatOrientation);\n\t          const drawHeroSprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY, height: scaledH, actorUID: hero.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }) : null;\n\t          if (puppet && hero) drawHeroWardAura(ctx, { globals: g, uid: hero.uid, puppet, footX: pos.x, footY, height: scaledH });\n\t          drawHeroSprite();",
+        "const puppet = actorPuppetPresentation?.frameFor(hero, Number(g.time || 0), activeCombatOrientation);\n\t          const drawHeroSprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY, height: scaledH, actorUID: hero.uid, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }) : null;\n\t          drawHeroSprite();",
       )
       .replace(
         "renderHitFlashOverlay(() => drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation, facing: hero.facing, nativeFacing: 'right' }), getHitFlashTone(hero.uid));",

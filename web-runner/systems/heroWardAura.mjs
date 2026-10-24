@@ -9,7 +9,7 @@ import { actorPuppetFrameRect } from './actorPuppetPresentation.mjs';
 import { runtimeAssetUrl } from './runtimeAssetUrl.mjs';
 import { drawHeroWardShader } from './heroWardShader.mjs';
 
-const FADE_IN = .12, HIT = .15, BREAK = .3, PAD = 14;
+const FADE_IN = .12, HIT = .15, BREAK = .3, PAD = 14, SHADER_PAD = 28;
 const CRIMSON = '#B4001F', HOT = '#FF4A2E', FLASH = '#FFD9A8';
 const TILE_PATH = 'images/vfx_crimson_energy_tile.png';
 const MASK_CACHE_LIMIT = 64, masks = new Map(), scratch = new Map();
@@ -122,7 +122,7 @@ export function drawHeroWardAura(ctx, { globals, uid, puppet, footX, footY, heig
   const k = Math.max(1, Math.abs(ctx.getTransform?.().a || 1));
   const w = Math.max(1, Math.round(rect.width * k)), h = Math.max(1, Math.round(rect.height * k));
   const live = state.phase === 'live', u = live ? 0 : state.u;
-  if (drawHeroWardShader(ctx, { frame: puppet.frame, rect, k, pad: Math.ceil(PAD * k), time: state.now, hit: live ? state.hit : 0, breakU: u, alpha: live ? state.alpha : 1 })) return true;
+  if (drawHeroWardShader(ctx, { frame: puppet.frame, rect, k, pad: Math.ceil(SHADER_PAD * k), time: state.now, hit: live ? state.hit : 0, breakU: u, alpha: live ? state.alpha : 1 })) return true;
   const m = frameMasks(puppet.frame, w, h, k), t = state.now;
   const boost = live ? 1 + state.hit * 1.5 : 0, breathe = .85 + .15 * Math.sin(t * 6);
   const fade = live ? state.alpha : Math.pow(1 - u, .7);
