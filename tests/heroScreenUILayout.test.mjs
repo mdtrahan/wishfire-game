@@ -71,7 +71,7 @@ function makeSavedFixture({shellsFirst=true}={}){
 }
 
 function startFixtureServer(){
- const html='<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/web-runner/assets/lampEquipmentUI.css"><style>html,body{margin:0;width:100%;height:100%}#game-screen{position:fixed;display:block}</style></head><body><canvas id="game-screen"></canvas></body></html>';
+ const html='<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/web-runner/assets/lampEquipmentUI.css"><style>html,body{margin:0;width:100%;height:100%}body{touch-action:none}#game-screen{position:fixed;display:block}</style></head><body><canvas id="game-screen"></canvas></body></html>';
  const server=http.createServer(async(req,res)=>{
   const pathname=new URL(req.url,'http://localhost').pathname;
   if(pathname==='/web-runner/__hero_redesign_qa__'){res.writeHead(200,{'content-type':'text/html; charset=utf-8'});res.end(html);return;}
@@ -287,7 +287,31 @@ test('hero redesign uses saved canonical data and stays contained across portrai
      await metrics.click();assert.equal(await detailPanel.locator('.skill-metric-label').isVisible(),true,'touch reveals icon labels');
      await metrics.click();assert.equal(await detailPanel.locator('.skill-metric-label').isVisible(),false,'labels close again');
      reachedSkills.push(`${hero.heroInstanceKey}:${ability.skillId}`);
-     if(heroIndex===0&&index===0){await detailPanel.locator('.skill-rules').evaluate(rules=>rules.scrollTop=0);await page.screenshot({path:path.join(artifactDir,`${profile.name}-special.png`),fullPage:true});}
+     if(heroIndex===0&&index===0){
+      const rules=detailPanel.locator('.skill-rules');
+      const originalCount=await rules.evaluate(region=>{const count=region.children.length;for(let n=0;n<12&&region.scrollHeight<region.clientHeight+80;n++)region.append(region.firstElementChild.cloneNode(true));region.scrollTop=0;return count;});
+      const box=await rules.boundingBox(),x=box.x+box.width/2,y=box.y+box.height-3;
+      await rules.evaluate(region=>region.addEventListener('wheel',event=>region.dataset.wheelProbe=JSON.stringify({trusted:event.isTrusted,prevented:event.defaultPrevented}),{once:true,passive:true}));
+      await page.mouse.move(x,y);await page.mouse.wheel(0,80);
+      await page.waitForFunction(()=>document.querySelector('.skill-rules').scrollTop>0,{},{timeout:2000}).catch(async()=>{throw Error('Native wheel proof: '+JSON.stringify(await rules.evaluate((region,{x,y})=>({top:region.scrollTop,height:region.clientHeight,scrollHeight:region.scrollHeight,wheel:region.dataset.wheelProbe,hit:document.elementFromPoint(x,y)?.outerHTML.slice(0,160),rect:region.getBoundingClientRect().toJSON(),pane:region.closest('.pane').getBoundingClientRect().toJSON()}),{x,y})));});
+      await rules.evaluate(region=>region.scrollTop=0);
+      await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x,y-60,{steps:8});await page.mouse.up();
+      assert.ok(await rules.evaluate(region=>region.scrollTop)>0,'dragging the rules text scrolls without a scrollbar');
+      await rules.evaluate(region=>region.scrollTop=0);await rules.focus();await page.keyboard.press('End');
+      await page.waitForFunction(()=>document.querySelector('.skill-rules').scrollTop>0,{},{timeout:2000});
+      if(profile.dpr===2){
+       await rules.evaluate(region=>region.scrollTop=0);
+       const cdp=await context.newCDPSession(page);await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1});
+       await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
+       for(let step=1;step<=8;step++){await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y-step*8}]});await page.waitForTimeout(16);}
+       await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+       await page.waitForFunction(()=>document.querySelector('.skill-rules').scrollTop>0,{},{timeout:2000});
+       await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:false});await cdp.detach();
+      }
+      assert.deepEqual(await detailPanel.evaluate(frame=>{const header=frame.querySelector('.skill-heading').getBoundingClientRect(),main=frame.querySelector('.skill-main').getBoundingClientRect();return[header.top,header.bottom,main.top,main.bottom];}),geometry.fixed,'real scrolling gestures leave the header and main effect fixed');
+      await rules.evaluate((region,count)=>{while(region.children.length>count)region.lastElementChild.remove();region.scrollTop=0;},originalCount);
+      await page.screenshot({path:path.join(artifactDir,`${profile.name}-special.png`),fullPage:true});
+     }
     }
     await grid.getByRole('button',{name:`Inspect Resonance 2: ${abilities.at(-1).displayName}`,exact:true}).click();
     await page.waitForFunction(()=>document.querySelector('.skill-frame h2')?.textContent==='Basic Attack');

@@ -55,20 +55,20 @@ test('every hero carries exactly Special, Passive and two Resonances from the ac
     assert.ok(definition.resonances.every(skill => skill.scaffold && skill.cooldownSeconds === undefined && !skill.passive), 'resonances are display-only scaffolding');
     assert.ok(definition.skills.every(skill => BUFF_SIGNAL_FRAMES[skill.icon] && skill.description && skill.conditionLabel));
   }
-  assert.equal(HERO_DEFINITIONS.Falie.special.cooldownSeconds, 50);
+  assert.equal(HERO_DEFINITIONS.Falie.special.cooldownSeconds, 120);
   assert.deepEqual(PROVISIONAL_SPECIAL_COOLDOWNS, ['shadow', 'bubble_pop', 'elevate']);
   assert.ok(Object.values(HERO_DEFINITIONS).every(d => d.special.provisionalCooldown === PROVISIONAL_SPECIAL_COOLDOWNS.includes(d.special.skillId)));
 });
 
 const wards = g => Object.fromEntries(Object.entries(g.HeroWardHPByUID || {}).map(([uid, hp]) => [Number(uid), hp]));
 
-test('Crimson Ward gives each hero its own ward, capped at 50% of that hero\'s original max HP', () => {
+test('Crimson Ward gives each hero its own 8% ward, capped at 50% of that hero\'s original max HP', () => {
   const { g, heroes, cast } = combat();
   heroes[3].footX = 900; // far from Fara: still covered
   heroes[1].maxHP = 200; // per-hero sizing
   assert.equal(cast('Falie'), true);
-  assert.deepEqual(wards(g), { 1: 18, 2: 36, 3: 18, 4: 18 });
-  for (let i = 0; i < 3; i += 1) cast('Falie');
+  assert.deepEqual(wards(g), { 1: 8, 2: 16, 3: 8, 4: 8 });
+  for (let i = 0; i < 6; i += 1) assert.equal(cast('Falie'), true);
   assert.deepEqual(wards(g), { 1: 50, 2: 100, 3: 50, 4: 50 }, 'each hero caps at half its own max HP');
   assert.equal(cast('Falie'), false, 'capped wards cannot recast');
   assert.equal(absorbHeroWard(g, heroes[2], 30), 30);
@@ -76,24 +76,26 @@ test('Crimson Ward gives each hero its own ward, capped at 50% of that hero\'s o
   assert.equal(absorbHeroWard(g, heroes[2], 45), 20, 'overflow passes to HP');
   assert.equal(g.HeroWardHPByUID[3], undefined);
   assert.equal(cast('Falie'), true, 'one drained hero lets Fara recast');
-  assert.deepEqual(wards(g), { 1: 50, 2: 100, 3: 18, 4: 50 });
+  assert.deepEqual(wards(g), { 1: 50, 2: 100, 3: 8, 4: 50 });
   heroes[0].hp = 0; cleanupRealtimeSkillActors({ state: { globals: g, entities: heroes } });
-  assert.deepEqual(wards(g), { 2: 100, 3: 18, 4: 50 }, 'a fallen hero loses its own ward; others keep theirs');
+  assert.deepEqual(wards(g), { 2: 100, 3: 8, 4: 50 }, 'a fallen hero loses its own ward; others keep theirs');
 });
 
-test('Crimson Ward survives a boss clear and clears on boss entry or party defeat', () => {
+test('Crimson Ward carries into a boss fight and past a boss clear; party defeat or a failed boss attempt wipes it', () => {
   const { g, heroes, cast } = combat();
   cast('Falie');
   resetRealtimeSkillAttempt(g, heroes, { keepWard: true });
-  assert.deepEqual(wards(g), { 1: 18, 2: 18, 3: 18, 4: 18 });
+  assert.deepEqual(wards(g), { 1: 8, 2: 8, 3: 8, 4: 8 }, 'boss clear keeps it');
   g.ContinuousCombatStage = { bossAvailable: true, bossActive: false, region: 1, stage: 1 };
   armContinuousCombatBoss(g, heroes, () => {});
-  assert.deepEqual(wards(g), {});
-  cast('Falie'); g.ContinuousCombatStage = { region: 1, stage: 1, wave: 1, clearedPackMask: 0 };
+  assert.deepEqual(wards(g), { 1: 8, 2: 8, 3: 8, 4: 8 }, 'boss entry keeps it');
+  g.ContinuousCombatStage = { ...g.ContinuousCombatStage, bossActive: true };
   resetContinuousCombatAfterDefeat(g);
-  assert.deepEqual(wards(g), {});
-  cast('Falie'); resetRealtimeSkillAttempt(g, heroes);
-  assert.deepEqual(wards(g), {});
+  assert.deepEqual(wards(g), {}, 'failed boss attempt wipes it');
+  heroes.forEach(hero => { hero.x = hero.footX = 155; }); // boss entry repositions the squad
+  cast('Falie'); assert.deepEqual(wards(g), { 1: 8, 2: 8, 3: 8, 4: 8 });
+  resetRealtimeSkillAttempt(g, heroes);
+  assert.deepEqual(wards(g), {}, 'party defeat wipes it');
 });
 
 test('Shadow hits the first foe in range for 240% damage', () => {

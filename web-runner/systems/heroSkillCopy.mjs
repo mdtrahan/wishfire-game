@@ -10,7 +10,7 @@ export function heroSkillCopy(skill) {
  const copy = {
   crimson_ward: {
    lines: [`Grants each hero temporary HP equal to ${skill.wardPctMaxHP}% of max HP.`, `Stacks to ${skill.capPctMaxHP}% of original max HP.`],
-   rules: ['Each hero has a separate ward. Hits drain only the struck hero’s ward.', 'Persists between waves and after boss clears.', 'Clears when a boss enters or the party falls. A fallen hero loses its ward.'],
+   rules: ['Each hero has a separate ward. Hits drain only the struck hero’s ward.', 'Persists between waves, into boss fights and after boss clears.', 'Clears when the party falls or a boss attempt fails. A fallen hero loses its ward.'],
   },
   smoke_form: {lines: ['Below 40% HP, takes 50% less damage.']},
   phoenix_soul: {lines: ['Below 15% HP, each basic attack heals 6% of max HP.']},

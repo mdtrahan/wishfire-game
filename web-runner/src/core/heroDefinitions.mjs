@@ -29,15 +29,15 @@ export const ELEVATE_SETS = Object.freeze({
  vital:Object.freeze({label:'Vital',icons:['party-hp','party-mag'],modifiers:[{channel:'HP',direction:'up',magnitude:.2},{channel:'MAG',direction:'up',magnitude:.05}],summary:'Max HP +20%, MAG +5%'}),
  reach:Object.freeze({label:'Reach',icons:['party-range','party-cd'],modifiers:[{channel:'range',direction:'up',magnitude:.1},{channel:'critDamage',direction:'up',magnitude:.05}],summary:'Attack range +10%, crit damage +5%'}),
 });
-export const CRIMSON_WARD = Object.freeze({wardPctMaxHP:18,capPctMaxHP:50});
+export const CRIMSON_WARD = Object.freeze({wardPctMaxHP:8,capPctMaxHP:50});
 const enemy = (order='first') => ({kind:'enemy',order});
 const party = () => ({kind:'party'});
 const kit = (key,name,role,baseStats,growth,baseAttackInterval,{special,passive,resonances},magic=false) => Object.freeze({key,name,role,baseStats,growth,baseAttackInterval,maxLevel:PROGRESSION.maxLevel,basic:basic(magic),
  special,passive,resonances:Object.freeze(resonances),skills:Object.freeze([special,passive,...resonances]),actives:Object.freeze([special])});
 export const HERO_DEFINITIONS = Object.freeze({
  Falie:kit('Falie','Fara','Tank',{HP:75,ATK:7,DEF:12,MAG:4,RES:8,SPD:8},{HP:8,ATK:.8,DEF:1.8,MAG:.4,RES:1.1,SPD:.15},1.8,{
-  special:special('crimson_ward','Crimson Ward','party-ward',50,count(1),'A foe in range',party(),{kind:'ward'},
-   'Every hero gains its own temporary HP worth 18% of its max HP, stacking up to 50% of its original max HP. Hits drain only the struck hero’s ward. Kept between waves and after a boss clear; cleared when a boss enters or the party falls.',
+  special:special('crimson_ward','Crimson Ward','party-ward',120,count(1),'A foe in range',party(),{kind:'ward'},
+   'Every hero gains its own temporary HP worth 8% of its max HP, stacking up to 50% of its original max HP. Hits drain only the struck hero’s ward. Kept between waves, into a boss fight and after a boss clear; cleared when the party falls or a boss attempt fails.',
    {wardPctMaxHP:CRIMSON_WARD.wardPctMaxHP,capPctMaxHP:CRIMSON_WARD.capPctMaxHP,partyWide:true}),
   passive:passive('smoke_form','Smoke Form','party-dr','Own HP below 40%',{hpBelow:.4,incomingCutPct:50},'Below 40% HP, Fara takes 50% less damage.'),
   resonances:[

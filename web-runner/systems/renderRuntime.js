@@ -460,7 +460,7 @@ export function renderRuntime(deps) {
       const barX = Math.round(pos.x - baseW / 2);
       const barY = Math.round(footPos.y + 4 * layoutScale);
       const heroBarFadeAlpha = getEnemyActivationFadeAlpha(hero, Number(state.globals.time || 0));
-      addActorPaint(uid, () => paintWithActivationAlpha(ctx, heroBarFadeAlpha, () => drawCombatHealthBar(ctx, { x: barX, y: barY, width: baseW, height: baseH, fillWidth: barState.fillW, trailWidth: barState.yellowW, team: 'hero' })));
+      addActorPaint(uid, () => paintWithActivationAlpha(ctx, heroBarFadeAlpha, () => drawCombatHealthBar(ctx, { x: barX, y: barY, width: baseW, height: baseH, fillWidth: barState.fillW, trailWidth: barState.yellowW, wardWidth: baseW * Math.min(1, Number(state.globals.HeroWardHPByUID?.[uid] || 0) / Math.max(1, Number(hero.maxHP || 0))), team: 'hero' })));
     }
 
     actorPaintQueue.sort((a, b) => Number(a.footY || 0) - Number(b.footY || 0) || Number(a.uid || 0) - Number(b.uid || 0));

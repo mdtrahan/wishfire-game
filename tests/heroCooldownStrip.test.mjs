@@ -18,7 +18,7 @@ test('radial fraction follows the Special clock and ignores the basic attack', (
   const g = globals(10, { crimson_ward: 14, basic_attack: 10 });
   const slot = heroCooldownSlots([hero()], g)[0];
   assert.equal(slot.remaining, 4);
-  assert.equal(slot.fraction, 4 / 50);
+  assert.equal(slot.fraction, 4 / 120);
   assert.equal(slot.status, 'cooldown');
   assert.equal(slot.heroKey, 'Falie');
 });

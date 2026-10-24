@@ -525,12 +525,9 @@ export function advanceContinuousCombatStage(stageState) {
   return { done: false, stage: getContinuousCombatStage(state), state };
 }
 
-// Crimson Ward is wiped when a boss enters or the party falls; boss clears keep it.
-export const clearCrimsonWardPool = clearHeroWards;
 export function armContinuousCombatBoss(globals, entities, call, { wallNowMs = Date.now(), transitionDurationMs = CONTINUOUS_COMBAT_BOSS_ENTRY_WIPE_MS } = {}) {
   const state = globals?.ContinuousCombatStage;
   if (!state || !state.bossAvailable || state.bossActive) return false;
-  clearCrimsonWardPool(globals);
   const livingHeroes = entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
   let squadCenterX = livingHeroes.length
     ? livingHeroes.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? 0), 0) / livingHeroes.length
@@ -589,14 +586,15 @@ export function summonContinuousCombatBoss(globals, entities, call, options = {}
   const now = Number(globals.time || 0);
   if (!heroes.length || heroes.some(hero => Number(hero.hp || 0) <= 0 || isActorRecoveryRevealActive(hero, now))) return false;
   if (!armContinuousCombatBoss(globals, entities, call, options)) return false;
-  clearCrimsonWardPool(globals);
   if (globals.HeroProgress) globals.HeroProgressDirty = true;
   return true;
 }
 
+// Crimson Ward carries into a boss fight and survives a boss clear; any failed attempt wipes it.
 export function resetContinuousCombatAfterDefeat(globals) {
   const state = globals?.ContinuousCombatStage;
   if (!state) return false;
+  clearHeroWards(globals);
   const recordedPackMask = normalizeContinuousCombatPackMask(state.clearedPackMask);
   const finalWaveClear = !state.bossActive && Number(state.wave || 1) >= continuousCombatWavesForStage(state.region, state.stage)
     && (recordedPackMask & activePackMask(state.region)) === activePackMask(state.region);

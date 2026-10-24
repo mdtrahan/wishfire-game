@@ -1,5 +1,5 @@
-// Crimson Ward presentation: a semi-translucent red bubble around each warded hero. It reads
-// the hero's own ward and timestamps only, so it always sits on the hero it protects.
+// Crimson Ward presentation: a red ring-like bubble around each warded hero; the clear centre
+// keeps the hero visible. It reads only the hero's own ward and timestamps.
 const FADE_IN = .12, FADE_OUT = .28, HIT_PULSE = .18;
 
 export function heroWardBubbleAlpha(globals, uid) {
@@ -22,8 +22,8 @@ export function drawHeroWardBubble(ctx, { globals, uid, centerX, centerY, radius
   ctx.translate(centerX, centerY);
   ctx.scale(1, ry / rx);
   const fill = ctx.createRadialGradient(-rx * .3, -rx * .35, rx * .1, 0, 0, rx);
-  fill.addColorStop(0, `rgba(255, 150, 150, ${.12 + hitT * .12})`);
-  fill.addColorStop(.7, `rgba(220, 30, 50, ${.16 + hitT * .14})`);
+  fill.addColorStop(0, `rgba(255, 150, 150, ${.096 + hitT * .096})`);
+  fill.addColorStop(.7, `rgba(220, 30, 50, ${.128 + hitT * .112})`);
   fill.addColorStop(1, `rgba(200, 20, 40, ${.34 + hitT * .2})`);
   ctx.fillStyle = fill;
   ctx.beginPath(); ctx.arc(0, 0, rx, 0, Math.PI * 2); ctx.fill();

@@ -3,7 +3,8 @@ const PALETTE = {
   enemy: { fill: '#E98824', trail: '#A95817', edge: '#FFC47E' },
 };
 
-export function drawCombatHealthBar(ctx, { x, y, width, height, fillWidth, trailWidth, team }) {
+// wardWidth overlays Crimson Ward temporary HP from the left edge; it shrinks leftward as the ward drains.
+export function drawCombatHealthBar(ctx, { x, y, width, height, fillWidth, trailWidth, wardWidth = 0, team }) {
   if (!(width > 0 && height > 0)) return;
   const color = PALETTE[team] || PALETTE.enemy;
   const capsule = (w) => {
@@ -21,6 +22,14 @@ export function drawCombatHealthBar(ctx, { x, y, width, height, fillWidth, trail
     capsule(w);
     ctx.fillStyle = shade;
     ctx.fill();
+  }
+  const ward = Math.max(0, Math.min(width, Number(wardWidth) || 0));
+  if (ward > 0) {
+    capsule(ward);
+    ctx.fillStyle = 'rgba(232, 48, 72, 0.9)';
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255, 190, 196, 0.7)';
+    ctx.fillRect(x, y, ward, Math.max(1, height * .3));
   }
   ctx.restore();
   ctx.save();
