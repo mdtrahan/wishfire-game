@@ -1,3 +1,4 @@
+import { HERO_FORMATION_WIDTH } from './heroFormationGeometry.mjs';
 const finite = value => Number.isFinite(Number(value));
 const number = value => finite(value) ? Number(value) : 0;
 
@@ -35,9 +36,21 @@ function actorBodyReach(actor) {
     : 0;
 }
 
+export function heroSpecialReach(actor) {
+  return Math.max(2 * HERO_FORMATION_WIDTH, actorAttackReach(actor));
+}
+export function isHeroSpecialTargetInRange(actor, target) {
+  if (!actor || !target || number(actor.hp) <= 0 || number(target.hp) <= 0 || target.streamState === 'approaching') return false;
+  if (String(target.combatRank || target.enemyRole || target.role || '').toLowerCase() === 'boss') return true;
+  const source = { x: number(actor.formationSlotX ?? actor.footX ?? actor.x), y: number(actor.formationSlotY ?? actor.footY ?? actor.y) };
+  const destination = actorFootPoint(target);
+  return Math.hypot(destination.x-source.x,destination.y-source.y) <= Math.max(2 * HERO_FORMATION_WIDTH, actorAttackReach(actor) + actorFootprintRadius(target)) + 1e-9;
+}
+
 export function isActorTargetInRange(actor, target) {
   if (!actor || !target || number(actor.hp) <= 0 || number(target.hp) <= 0) return false;
   if (target.streamState === 'approaching') return false;
+  if (actor.kind === 'hero' && String(target.combatRank || target.enemyRole || target.role || '').toLowerCase() === 'boss') return true;
   const source = actorFootPoint(actor), destination = actorFootPoint(target);
   return Math.hypot(destination.x - source.x, destination.y - source.y) <= actorAttackReach(actor) + actorBodyReach(actor) + actorFootprintRadius(target);
 }

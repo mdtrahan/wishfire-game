@@ -7232,12 +7232,10 @@ export function TickRealtimeHeroBasics(ctx) {
   const heroes = getEntities(ctx).filter(hero => hero?.kind === 'hero' && Number(hero.hp || 0) > 0)
     .map(hero => ({ ...hero, type: 0, speed: GetEffectiveStat(ctx, hero, 'SPD') }));
   const enemies = filterContinuousEncounterEnemies(getEnemies(ctx), g, heroes);
-  const focusTarget = resolveHeroAttackTarget({ enemies, focusUID: Number(g.RealtimeHeroFocusTargetUID || 0), inRange: enemy => heroes.some(hero => isHeroBasicTargetInRange(enemy, hero)) });
-  g.RealtimeHeroFocusTargetUID = Number(focusTarget?.uid || 0);
   const basicTargetForHero = hero => resolveHeroAttackTarget({
-    enemies, focusUID: Number(focusTarget?.uid || 0),
-    inRange: enemy => isHeroBasicTargetInRange(enemy, hero),
+    hero, enemies, inRange: enemy => isHeroBasicTargetInRange(enemy, hero),
   });
+  const hasBasicTargets = heroes.some(hero => !!basicTargetForHero(hero));
   for (const hit of g.PendingHeroHits || []) {
     if (!hit?.realtimeBasic || !hit.retargetOnDeath) continue;
     const target = GetActorByUID(ctx, hit.targetUID);
@@ -7272,7 +7270,7 @@ export function TickRealtimeHeroBasics(ctx) {
     };
   }
 
-  if (focusTarget && heroes.some(hero => !Number.isFinite(Number(clocks[String(hero.uid)].basicReadyAt)))) {
+  if (hasBasicTargets && heroes.some(hero => !Number.isFinite(Number(clocks[String(hero.uid)].basicReadyAt)))) {
     const seeded = selectRealtimeReadyActor({
       actors: heroes,
       readyAt: Object.fromEntries(heroes.filter(hero => Number.isFinite(Number(clocks[String(hero.uid)].basicReadyAt))).map(hero => [String(hero.uid), Number(clocks[String(hero.uid)].basicReadyAt)])),
@@ -7318,7 +7316,7 @@ export function TickRealtimeHeroBasics(ctx) {
     const key = String(hero.uid);
     const action = scheduled[key];
     if (!action) continue;
-    if (!focusTarget) {
+    if (!hasBasicTargets) {
       if (action.kind === 'skill') (clocks[key].skillReadyAt ||= {})[action.skillId] = action.dueAt;
       else clocks[key].basicReadyAt = Math.min(Number(clocks[key].basicReadyAt || action.dueAt), Number(action.dueAt));
       clocks[key].castUntil = 0;
@@ -7333,7 +7331,7 @@ export function TickRealtimeHeroBasics(ctx) {
     delete scheduled[key];
   }
 
-  if (focusTarget) {
+  if (hasBasicTargets) {
     const actors = heroes.map(hero => ({
       ...hero,
       basicIntervalSeconds: realtimeBasicInterval(g, hero, realtimeCooldownSeconds(hero)),

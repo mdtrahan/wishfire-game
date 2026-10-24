@@ -10,7 +10,7 @@ export {projectCombatMultiplier} from '../../src/core/combatModifierRules.mjs';
 export {actorCombatModifiers} from '../src/core/realtimeSkillState.mjs';
 import {capContinuousHostileHit} from '../src/core/routineEnemyScaling.mjs';
 import {recordBalanceCombatEvent} from '../src/core/balanceTelemetry.mjs';
-import {isActorRanged,isActorTargetInRange} from '../../src/core/heroAttackTargetingRules.mjs';
+import {isHeroBasicTargetInRange} from '../../src/core/heroAttackTargetingRules.mjs';
 export {castRealtimeHeroSkill,tickRealtimeHeroSkillZones,realtimeBasicInterval,realtimeCombatStat,realtimeBasicDamageMultiplier,cleanupRealtimeSkillActors,realtimeIncomingDamage} from '../src/core/realtimeHeroSkills.mjs';
 import {getHeroFlowState,getHeroSkillOptions,recordFlowThreshold,resolveRoleFlowAward} from '../src/core/personalFlow.mjs';
 import {applyStatus,legalSkill,validTargets,resolveSkill,turnStart,turnEnd} from '../src/core/combatRules.mjs';
@@ -165,7 +165,7 @@ export function resolveRealtimeBasicImpact(ctx,hit={}){
  const source=ctx.state.entities.find(actor=>actor?.kind==='hero'&&Number(actor.uid||0)===sourceUID);
  const target=ctx.state.entities.find(actor=>actor?.kind==='enemy'&&Number(actor.uid||0)===targetUID);
  const rangeSource=hit.allowSourceKO&&Number(source?.hp||0)<=0?{...source,hp:1}:source;
- if(!source||!target||Number(target.hp||0)<=0||Number(ctx.state.globals.ContinuousCombatStageLoop||0)===1&&!isActorRanged(rangeSource)&&!isActorTargetInRange(rangeSource,target))return {resolved:false,damage:0,targetUID};
+ if(!source||!target||Number(target.hp||0)<=0||Number(ctx.state.globals.ContinuousCombatStageLoop||0)===1&&!isHeroBasicTargetInRange(target,rangeSource))return {resolved:false,damage:0,targetUID};
  const events=[],rules=rulesContext(ctx,events),mode=String(hit.heroType||source.attackType||'melee');
  const baseDamage=Math.max(0,Number(hit.finalDmg??hit.dmg)||0);
  // Basic-only passives (Hondo's Royalty) multiply the committed basic hit.

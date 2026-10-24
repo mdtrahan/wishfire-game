@@ -1,5 +1,5 @@
-import { isActorTargetInRange } from '../../../src/core/heroAttackTargetingRules.mjs';
-import { actorAttackReach } from '../../../src/core/arenaCombatRules.mjs';
+import { isHeroBasicTargetInRange } from '../../../src/core/heroAttackTargetingRules.mjs';
+import { actorAttackReach, heroSpecialReach, isHeroSpecialTargetInRange } from '../../../src/core/arenaCombatRules.mjs';
 import { evaluateSkillCondition, livingCombatActor as alive } from '../../../src/core/skillConditionRules.mjs';
 import { realtimeCombatStat } from './realtimeSkillState.mjs';
 import { previewSeededRng } from '../../../src/core/seededRngRules.mjs';
@@ -7,15 +7,15 @@ import { previewSeededRng } from '../../../src/core/seededRngRules.mjs';
 // presentation consumers, but target geometry reads the semantic source.
 const point = actor => ({x:Number(actor?.footX ?? actor?.x ?? 0),y:Number(actor?.footY ?? actor?.y ?? 0)});
 export function isHeroSupportTargetInRange(hero, target) {
-  const source = point(hero), destination = point(target);
-  return Math.hypot(destination.x - source.x, destination.y - source.y) <= actorAttackReach(hero);
+  const source = { x:Number(hero.formationSlotX ?? hero.footX ?? hero.x ?? 0), y:Number(hero.formationSlotY ?? hero.footY ?? hero.y ?? 0) }, destination = point(target);
+  return Math.hypot(destination.x - source.x, destination.y - source.y) <= heroSpecialReach(hero);
 }
 export function filterContinuousEncounterEnemies(enemies = [], globals = {}, heroes = []) {
   const targetable = (enemies || []).filter(actor => alive(actor) && actor?.streamState !== 'approaching');
   if (Number(globals?.ContinuousCombatStageLoop || 0) !== 1) return targetable;
   return targetable.filter(actor => ['in_range', 'engaged', 'retreating'].includes(actor.streamState)
     || actor.arenaInReach === true
-    || heroes.some(hero => alive(hero) && isActorTargetInRange(hero, actor)));
+    || heroes.some(hero => alive(hero) && isHeroBasicTargetInRange(actor, hero)));
 }
 export function enemiesInSkillShape(enemies, shape) {
   return (enemies || []).filter(a=>alive(a) && a?.streamState !== 'approaching').filter(enemy => {
@@ -33,7 +33,8 @@ export function enemiesInSkillShape(enemies, shape) {
 }
 export function selectRealtimeHeroSkillTarget({skill,hero,heroes=[],enemies=[],effects={},zones=[],now=0,globals={},event=null,statReader}={}) {
   if (!skill || !alive(hero)) return null;
-  const livingHeroes = heroes.filter(alive), targetableEnemies = filterContinuousEncounterEnemies(enemies, globals, heroes), inRange = targetableEnemies.filter(a=>isActorTargetInRange(hero, a));
+  const livingHeroes = heroes.filter(alive), targetableEnemies = filterContinuousEncounterEnemies(enemies, globals, heroes), inRange = targetableEnemies.filter(a=>isHeroSpecialTargetInRange(hero, a));
+  inRange.sort((a,b)=>{const origin={x:Number(hero.formationSlotX ?? hero.footX ?? hero.x ?? 0),y:Number(hero.formationSlotY ?? hero.footY ?? hero.y ?? 0)},pa=point(a),pb=point(b);return Math.hypot(pa.x-origin.x,pa.y-origin.y)-Math.hypot(pb.x-origin.x,pb.y-origin.y)||Number(a.uid)-Number(b.uid);});
   const read = statReader || ((actor,stat)=>realtimeCombatStat({...globals,time:now,RealtimeSkillEffects:effects},actor,stat));
   const rule = skill.targetRule;
   if (!rule) throw new Error(`Missing target rule: ${skill.skillId}`);
@@ -43,7 +44,7 @@ export function selectRealtimeHeroSkillTarget({skill,hero,heroes=[],enemies=[],e
     effectChoice = skill.randomStats[Math.floor(previewSeededRng(globals.RuntimeRandomSeed,globals.RuntimeRandomDraws || 0)*skill.randomStats.length)];
   }
   const context = {self:hero,candidate:null,groups:{livingHeroes,deployedHeroes:heroes,attackableEnemies:inRange},effects,zones,now,event,
-    stat:read,attackable:target=>isActorTargetInRange(hero,target),battle:globals.RealtimeSkillBattleState || {},resources:{wardHP:Object.values(globals.HeroWardHPByUID || {}).reduce((sum,hp)=>sum+Number(hp || 0),0)},
+    stat:read,attackable:target=>isHeroSpecialTargetInRange(hero,target),battle:globals.RealtimeSkillBattleState || {},resources:{wardHP:Object.values(globals.HeroWardHPByUID || {}).reduce((sum,hp)=>sum+Number(hp || 0),0)},
     shapeTargets:()=>[]};
   const matches = candidate => evaluateSkillCondition(skill.conditions,{...context,candidate});
   let anchor, targets;

@@ -1,3 +1,4 @@
+import { HERO_FORMATION_SLOTS } from '../src/core/heroFormationGeometry.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { COMBAT_BATTLEFIELD_ZOOM, createCombatCameraProjection, deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldVerticalBounds } from '../src/core/combatOrientation.mjs';
@@ -297,7 +298,8 @@ test('solo enemies patrol within a small safe radius and engage normally on dete
   const beforePatrol = new Map(solos.map(enemy => [enemy.uid, { x: enemy.footX, y: enemy.footY }]));
   for (let tick = 0; tick < 48; tick += 1) {
     globals.time = 2.5 + tick * 0.25;
-    heroes.forEach((hero, index) => { hero.footX = 1080 + index; hero.footY = 319.5 + index; });
+    globals.ContinuousCombatFormation={x:1080,y:370};
+    heroes.forEach((hero,index)=>{hero.footX=hero.formationSlotX=1080+HERO_FORMATION_SLOTS[index].x;hero.footY=hero.formationSlotY=370+HERO_FORMATION_SLOTS[index].y;});
     advanceContinuousCombatArena({ globals, entities: [...heroes, ...enemies], seconds: 0.25 });
   }
   assert.ok(solos.every(enemy => {
@@ -787,7 +789,7 @@ test('ordinary waves grant capped respite while a boss clear restores and cleans
       assert.deepEqual(heroes.map(hero => [hero.footX, hero.footY]), huddle.map(({ x, y }) => [x, y]), 'the revived party snaps to role-based huddle coordinates');
       assert.ok(heroes.every(hero => hero.recoveryFadeStartedAt === 10), 'all revived heroes share one fade start');
     } else {
-      assert.deepEqual([heroes[1].footX, heroes[1].footY], [520, 290], 'living out-of-bounds restore is normalized before ordinary settlement');
+      assert.ok(heroes.every(hero=>hero.footX>=520&&hero.footX<=1640&&hero.footY>=290&&hero.footY<=450),'restored rigid slots fit inside the ordinary patrol');
     }
     if (clearedBoss) {
       assert.equal(globals.ContinuousCombatStage.bossSummonRequired, false, 'boss victory clears the retry latch for the new stage');
@@ -1332,8 +1334,8 @@ test('recovery reveal holds the party at section B center, then the nearest spac
   const moat = deriveContinuousCombatSpawnMoat();
   const camera = createCombatCameraProjection({ viewportWidth: 360, worldWidth: 2160, zoom: 0.5, centerX: moat.centerX });
   const huddle = deriveContinuousCombatRecoveryHuddle(heroes);
-  assert.equal(huddle.reduce((sum, point) => sum + point.x / huddle.length, 0), moat.centerX);
-  assert.equal(huddle.reduce((sum, point) => sum + camera.project(point.x, point.y).x / huddle.length, 0), 180);
+  assert.equal(globals.ContinuousCombatFormation.x, moat.centerX);
+  assert.equal(camera.project(globals.ContinuousCombatFormation.x,globals.ContinuousCombatFormation.y).x,180);
 
   const enemies = Array.from({ length: CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, sectorIndex) => [0, 1].map(entryOrder =>
     activateContinuousCombatSpawnedEnemy(globals, { uid: 20 + sectorIndex * 2 + entryOrder, kind: 'enemy', hp: 100 }, { packIndex: 0, sectorIndex, entryOrder, sectorSize: 2 }))).flat();
@@ -1561,16 +1563,16 @@ test('queryless production centers only the fresh continuous party in B and disa
   const entities = [...heroes, ...enemies];
   assert.equal(finalizeContinuousCombatProduction(globals, entities), true);
   assert.ok(heroes.every(hero => hero.flow === 0));
-  assert.equal(heroes.reduce((sum, hero) => sum + hero.footX, 0) / heroes.length, 1080);
+  assert.equal(globals.ContinuousCombatFormation.x,1080);
   assert.ok(heroes.every(hero => hero.footX >= 720 && hero.footX <= 1440));
-  assert.ok(Math.abs(Math.max(...heroes.map(hero => hero.footX)) - Math.min(...heroes.map(hero => hero.footX)) - 44.8) < 1e-9);
+  assert.ok(Math.abs(Math.max(...heroes.map(hero => hero.footX)) - Math.min(...heroes.map(hero => hero.footX)) - 70.4) < 1e-9);
   assert.ok(enemies.every(enemy => enemy.streamState === 'roaming'));
   assert.ok(Math.max(...enemies.map(enemy => enemy.x)) - Math.min(...enemies.map(enemy => enemy.x)) <= 116,
     'the production finalizer routes existing enemies through the shared clustered placement owner');
   assert.equal(globals.ContinuousCombatStage.nextEmissionAt, 3);
   advanceContinuousCombatArena({ globals, entities: heroes, seconds: 0 });
   assert.ok(heroes.every(hero => Number.isFinite(hero.footY)), 'first arena tick completes finite world feet from the same fresh-entry fixture');
-  assert.equal(heroes.reduce((sum, hero) => sum + hero.footX, 0) / heroes.length, 1080);
+  assert.equal(globals.ContinuousCombatFormation.x,1080);
 });
 
 test('production finalization preserves an already-positioned continuous party', () => {
@@ -1590,7 +1592,7 @@ test('production finalization preserves an already-positioned continuous party',
   assert.ok(heroes.every(hero => Math.abs(hero.footX - 1080) < 30 && Math.abs(hero.footY - 370) < 40));
 });
 
-test('fresh production and full recovery choose a stable seeded opening heading with tanks in front', () => {
+test('fresh production and recovery choose seeded headings while preserving fixed board offsets', () => {
   let left = 0;
   let right = 0;
   for (let seed = 1; seed <= 64; seed += 1) {
@@ -1629,11 +1631,7 @@ test('fresh production and full recovery choose a stable seeded opening heading 
     assert.equal(first.targetX, 1080 + first.direction * 200);
     assert.ok(enemies.some(enemy => enemy.streamState === 'roaming'), 'test uses the real multi-sector production pack layout');
     const positions = heroes.map(hero => hero.footX);
-    assert.ok(heroes[0].footX * first.direction > heroes[2].footX * first.direction, 'Fara leads Runa');
-    assert.ok(heroes[1].footX * first.direction > heroes[3].footX * first.direction, 'Hondo leads Kaja');
-    assert.ok(heroes[0].footX * first.direction > heroes[1].footX * first.direction
-      && heroes[1].footX * first.direction > Math.max(heroes[2].footX * first.direction, heroes[3].footX * first.direction),
-    'the fresh huddle places Fara foremost, Hondo behind her and Runa/Kaja in the rear row');
+    assert.deepEqual(heroes.map(hero=>[hero.footX,hero.footY]),HERO_FORMATION_SLOTS.slice(0,4).map(slot=>[1080+slot.x,370+slot.y]));
     const firstSnapshot = { ...first };
     assert.deepEqual(globals.ContinuousCombatInitialRoam, firstSnapshot, 'reading the attempt does not redraw its heading');
 
@@ -1658,9 +1656,7 @@ test('fresh production and full recovery choose a stable seeded opening heading 
   assert.equal(recovered.targetX, 1080 + recovered.direction * 200);
   assert.ok(heroes.every(hero => hero.footX >= 720 && hero.footX <= 1440 && hero.footY < 680),
     'recovery first relocates offscreen actors into the centered huddle');
-  assert.ok(heroes[0].footX * recovered.direction > heroes[1].footX * recovered.direction
-    && heroes[1].footX * recovered.direction > Math.max(heroes[2].footX * recovered.direction, heroes[3].footX * recovered.direction),
-  'recovery retains Fara foremost and Hondo directly behind through either seeded heading');
+  assert.deepEqual(heroes.map(hero=>[hero.footX,hero.footY]),HERO_FORMATION_SLOTS.slice(0,4).map(slot=>[1080+slot.x,370+slot.y]));
   globals.ContinuousCombatStageLoop = 1;
   const openingDirection = recovered.direction;
   let elapsed = 0;
@@ -1693,10 +1689,8 @@ test('opening roam releases pursuit when the formation reaches its waypoint', ()
       time: 1,
       ContinuousCombatInitialRoam: { direction, originX: 1080, targetX: 1080 + direction * 200, distance: 200 },
     };
-    const heroes = [16, 4, -10, -10].map((offset, index) => ({
-      uid: index + 1, kind: 'hero', baseHeroName: ['Fara', 'Hondo', 'Runa', 'Kaja'][index],
-      hp: 100, footX: 1080 + direction * (184 + offset), footY: 319.5,
-    }));
+    globals.ContinuousCombatFormation={x:globals.ContinuousCombatInitialRoam.targetX-direction*.5,y:370};
+    const heroes=HERO_FORMATION_SLOTS.slice(0,4).map((slot,index)=>({uid:index+1,kind:'hero',hp:100,footX:globals.ContinuousCombatFormation.x+slot.x,footY:370+slot.y}));
     advanceContinuousCombatArena({ globals, entities: heroes, seconds: 0.1 });
     assert.equal(globals.ContinuousCombatInitialRoam, undefined, 'formation offset cannot hold pursuit disabled');
   }
@@ -1749,13 +1743,9 @@ test('opening roam keeps its seeded direction when the nearest detected enemy st
       EnemyData: rows,
       ContinuousCombatInitialRoam: { direction, originX: 1080, targetX: 1080 + direction * 200, distance: 200, attempt: 0 },
     };
-    const heroes = [
-      { uid: 1, kind: 'hero', baseHeroName: 'Fara', hp: 100, footX: 1080 + direction * 22.4, footY: 299.5 },
-      { uid: 2, kind: 'hero', baseHeroName: 'Hondo', hp: 100, footX: 1080 + direction * 22.4, footY: 339.5 },
-      { uid: 3, kind: 'hero', baseHeroName: 'Runa', hp: 100, footX: 1080 - direction * 22.4, footY: 299.5 },
-      { uid: 4, kind: 'hero', baseHeroName: 'Kaja', hp: 100, footX: 1080 - direction * 22.4, footY: 339.5 },
-    ];
-    const enemy = { uid: 55, kind: 'enemy', hp: 100, maxHP: 100, footX: 1080 - direction * 250, footY: 319.5, streamSectorIndex: 0, streamState: 'roaming' };
+    const heroes=HERO_FORMATION_SLOTS.slice(0,4).map((slot,index)=>({uid:index+1,kind:'hero',hp:100,footX:1080+slot.x,footY:370+slot.y}));
+    globals.ContinuousCombatFormation={x:1080,y:370};
+    const enemy = { uid: 55, kind: 'enemy', hp: 100, maxHP: 100, footX: 1080 - direction * 250, footY: 370, streamSectorIndex: 0, streamState: 'roaming' };
     const entities = [...heroes, enemy];
     const startingX = heroes.map(hero => hero.footX);
     for (let tick = 0; tick < 3; tick += 1) {

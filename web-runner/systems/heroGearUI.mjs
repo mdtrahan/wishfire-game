@@ -10,12 +10,12 @@ export function renderHeroGear({stage,pane,hero,economy,showDetails=true,onGearT
  const inspect=(slot,item)=>{
   selectedSlot=slot;pane.replaceChildren();
   for(const card of slots.querySelectorAll('[data-slot]'))card.setAttribute('aria-pressed',String(card.dataset.slot===slot));
-  el('h2',item?.name||EQUIPMENT_SLOTS[slot]+' · Empty',pane);
+  el('h2',item?.name||(slot==='accessory'?'Accessory':EQUIPMENT_SLOTS[slot])+' · Empty',pane);
   if(item){el('small',RARITIES[item.rarity].label+' · Lv. '+item.level,pane);el('p',Object.entries(item.stats).map(([key,value])=>(key==='MAG'?'MATK':key)+' +'+value).join(' · '),pane);}
-  else el('p','Inspect lamp results to equip this slot.',pane);
+  else el('p',slot==='accessory'?'Orb · No source available yet.':'Inspect lamp results to equip this slot.',pane);
  };
- for(const [index,[slot,label]] of Object.entries(EQUIPMENT_SLOTS).entries()){
-  const id=data.loadouts[hero.heroInstanceKey]?.[slot],item=equipmentDefinition(data.items.find(entry=>entry.instanceId===id));
+ for(const [index,[slot,label]] of Object.entries({...EQUIPMENT_SLOTS,accessory:'Accessory'}).entries()){
+  const id=slot==='accessory'?null:data.loadouts[hero.heroInstanceKey]?.[slot],item=id?equipmentDefinition(data.items.find(entry=>entry.instanceId===id)):null;
   const card=el('button',null,slots);card.type='button';card.className='gear-slot';card.dataset.slot=slot;card.style.setProperty('--rarity',item?RARITIES[item.rarity].color:'#758597');
   card.setAttribute('aria-label',`Inspect ${label}: ${item?item.name+', '+RARITIES[item.rarity].label+', level '+item.level:'Empty'}`);
   if(item){const art=el('span',null,card);art.className='lamp-art';art.style.setProperty('--col',item.art%3);art.style.setProperty('--row',Math.floor(item.art/3));art.setAttribute('aria-hidden','true');el('span','Lv.'+item.level,art).className='lamp-level';}

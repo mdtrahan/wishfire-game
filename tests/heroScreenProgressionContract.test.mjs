@@ -6,8 +6,8 @@ const source = readFileSync(new URL('../web-runner/systems/renderHeroScreen.js',
 
 test('hero screen renders the basic attack and accepted skill descriptions without retired resources', () => {
   assert.match(source, /heroBasicSkill\(definition\)/);
-  assert.match(source, /abilities=definition\.skills/);
-  assert.match(source, /heroSkillCopy\(ability\)/);
+  assert.match(source, /entries=\[\.\.\.definition\.skills,null\]/);
+  assert.match(source, /heroSkillCopy\(/);
   assert.match(source, /currentLevel/);assert.match(source, /Late-game resonance/);assert.match(source, /provisionalCooldown/);
   assert.match(source, /currentEXP/);
   assert.match(source, /renderHeroGear/);
@@ -18,7 +18,7 @@ test('hero party screen preserves the canonical roster and exposes the approved 
   assert.match(source, /Object\.keys\(HERO_DEFINITIONS\)\.map\(key=>globals\.HeroProgress\.heroes\[key\]\)\.filter\(Boolean\)/);
   assert.match(source, /Previous hero/);
   assert.match(source, /Next hero/);
-  assert.match(source, /\['heroes','Heroes'\].*\['gear','Gear'\].*\['orb','Orb'\]/);
+  assert.match(source, /\['heroes','Heroes'\].*\['gear','Gear'\].*\['resonance','Resonance'\]/);
   assert.match(source, /className='roster'/);
   assert.match(source, /\{HP:hero\.maxHP,\.\.\.hero\.stats\}/);
   assert.match(source, /hero-ticket-art/);

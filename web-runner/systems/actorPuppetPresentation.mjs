@@ -73,7 +73,7 @@ export function createActorPuppetPresentation({ loadClip }) {
       if (!actorKey) { protect(); return null; }
       const state = actorPuppetState(actor, now);
       const activeAction = actor?.actionStateUntil > now && (actor?.actionState !== 'ko' || state === 'ko');
-      const worldFacing = (activeAction ? actor?.actionFacing : actor?.facing) === 'left' ? 'left' : 'right';
+      const worldFacing = (activeAction && actor?.kind !== 'hero' ? actor?.actionFacing : actor?.facing) === 'left' ? 'left' : 'right';
       const facing = actorScreenFacing(worldFacing, orientation);
       const key = `${actorKey}/${state}/${facing}`;
       // Runtime UIDs identify instances; simple preview callers share their actor key.

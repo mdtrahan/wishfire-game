@@ -10,7 +10,7 @@ import {createHeroProgressStore,refreshHeroStats,newHeroProgress} from '../web-r
 import {equipmentStats} from '../web-runner/src/core/equipment.mjs';
 import {createLampEconomy,generateLampItem} from '../web-runner/src/core/lampGear.mjs';
 import {HERO_DEFINITIONS,heroDefinition,heroSkillUnlocked} from '../web-runner/src/core/heroDefinitions.mjs';
-import {actorAttackReach} from '../src/core/arenaCombatRules.mjs';
+import {heroSpecialReach} from '../src/core/arenaCombatRules.mjs';
 import {heroTicketLevelCost} from '../web-runner/src/core/combatProgressionRules.mjs';
 import {heroBasicSkill,heroSkillCopy} from '../web-runner/systems/heroSkillCopy.mjs';
 import {EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
@@ -19,7 +19,7 @@ const require=createRequire(import.meta.url);
 const {detectChromeExecutable}=require('../tools/playwright_support.js');
 const HERO_PROGRESS_SAVE_KEY='orka.hero_progress.v2';
 const repoRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const artifactDir=path.join(repoRoot,'test-results/hero-redesign');
+const artifactDir=path.join(repoRoot,'output/ORKA-bti/hero-ui');
 const profiles=[
  {name:'reference',width:360,height:640,dpr:1},
  {name:'compact-retina',width:216,height:384,dpr:2},
@@ -30,8 +30,9 @@ const profiles=[
 const mime={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml'};
 
 function expectedSkillRange(ability,hero){
+ if(ability.slot==='basic')return 'Screen width';
  if(!ability.targetRule)return 'Self';
- const reach=actorAttackReach({...hero,kind:'hero'});
+ const reach=heroSpecialReach({...hero,kind:'hero'});
  return ability.targetRule.kind==='party'?'Whole party':ability.targetRule.kind==='inRangeEnemies'?`Every foe within ${reach} units`:`${reach}-unit actor reach`;
 }
 
@@ -130,7 +131,7 @@ async function mountPage(browser,profile,fixture,url){
  return{context,page,pageErrors};
 }
 const openTab=async(page,name)=>{await page.locator('#hero-details .tabs').getByRole('button',{name,exact:true}).click();await page.waitForFunction(tab=>document.querySelector('#hero-details')?.dataset.tab===tab,name.toLowerCase());};
-const plateText=hero=>heroDefinition(hero).name+'★★★★★';
+const plateText=hero=>heroDefinition(hero).name+'★★★★★★★★';
 const p_scale=profile=>Math.min(profile.width/360,profile.height/640);
 const heading=page=>page.locator('#hero-details .hero-name h1').textContent();
 
@@ -198,7 +199,7 @@ test('hero party screen uses saved canonical data and stays contained across por
    assert.ok(initial.pane.bottom<=initial.bottomNav.top+0.5,'pane clears the bottom navigation reserve');
    assert.deepEqual(initial.clipped,[],`${profile.name}: no clipped labels`);
    assert.equal(await mainNav.locator('button[aria-current="page"]').innerText(),'HERO','hero is the active shared-navigation destination');
-   assert.deepEqual(await detail.locator('.tabs button').allTextContents(),['Heroes','Gear','Orb'],'flat Heroes | Gear | Orb tabs');
+   assert.deepEqual(await detail.locator('.tabs button').allTextContents(),['Heroes','Gear','Resonance'],'Heroes | Gear | Resonance tabs');
    assert.equal(await detail.locator('.tabs img, .tabs svg').count(),0,'tabs carry no art icons');
    assert.equal(await detail.locator('.tabs button[aria-pressed="true"]').innerText(),'Heroes','Heroes is the default tab');
    assert.equal(await detail.locator('.formation-button').count(),1,'Formation button flanks the hero');
@@ -234,7 +235,7 @@ test('hero party screen uses saved canonical data and stays contained across por
    assert.equal(await cards.locator('.leader-badge').count(),1,'one leader badge');
    assert.equal(await cards.nth(0).locator('.leader-badge').textContent(),'Leader','default leader is Fara');
    const actions=detail.locator('.hero-actions');
-   assert.deepEqual(await actions.locator('button').allTextContents(),['Level Up','Star Up','Resonance'],'selected hero exposes its actions');
+   assert.deepEqual(await actions.locator('button').allTextContents(),['Level Up','Star Up'],'selected hero exposes its actions');
    assert.equal(await actions.getAttribute('aria-label'),'Fara actions','actions follow the selected hero');
    assert.equal(await actions.locator('.hero-level-up').isDisabled(),true,'Level Up stays gated by the existing ticket spend');
    assert.equal(await cards.locator('button').count(),4,'cards keep faces clear of action buttons');
@@ -250,159 +251,61 @@ test('hero party screen uses saved canonical data and stays contained across por
    await page.waitForFunction(()=>document.querySelector('#hero-details .sub-panel')?.dataset.panel==='star');
    assert.equal(await sheet.locator('.star-up').isDisabled(),true,'Star Up waits for enough tickets');
    assert.equal(await sheet.locator('.star-cost').textContent(),'0/50 Fara tickets');
+   assert.equal(await sheet.locator('.star-effects li').count(),8);
+   assert.deepEqual(await sheet.locator('.star-effects li').evaluateAll(nodes=>nodes.map(node=>node.dataset.skill)),['special','special','passive','passive','resonance1','resonance1','resonance2','resonance2']);
    await sheetFits('Star Up');
    await page.evaluate(()=>{window.heroQa.tickets={Falie:60};window.heroQa.render();});
    await sheet.getByRole('button',{name:'Star Up · 50 tickets'}).click();
    await page.waitForFunction(()=>document.querySelector('#hero-details .star-cost')?.textContent==='10/100 Fara tickets');
    assert.equal(await detail.locator('.hero-name .stars span[data-tier="bronze"]').count(),1,'showcase meter shows the first bronze star');
-   assert.equal(await detail.locator('.hero-name .stars').getAttribute('aria-label'),'1 of 15 stars');
+   assert.equal(await detail.locator('.hero-name .stars').getAttribute('aria-label'),'1 of 8 stars');
    assert.match(await sheet.innerText(),/Fara reached ★1\./);
    screenshots.star=`${profile.name}-star.png`;await page.screenshot({path:path.join(artifactDir,screenshots.star),fullPage:true});
    await detail.getByRole('button',{name:'Close Star Up'}).click();await page.waitForFunction(()=>!document.querySelector('#hero-details .sub-panel'));
-   assert.equal(await detail.locator('.hero-actions').getByRole('button',{name:'Resonance',exact:true}).isDisabled(),true,'accepted Resonances remain display-only');
 
-   // Formation: full-screen modal, two 2x2 grids in one row; the right grid opens first with the frontline rightmost.
+
+   // Every slot is available at level 1. Edits stay in a draft until Save.
    const openFormationModal=async()=>{await detail.locator('.identity').getByRole('button',{name:'Formation',exact:true}).click();await page.waitForFunction(()=>!!document.querySelector('#hero-details .formation-modal'));};
+   await page.evaluate(()=>{for(const hero of Object.values(window.heroQa.globals.HeroProgress.heroes))hero.currentLevel=1;window.heroQa.render();});
    await openFormationModal();
    const modal=detail.locator('.formation-modal'),board=modal.locator('.formation-field');
-   const cellHero=cell=>page.evaluate(cell=>document.querySelector(`#hero-details .formation-cell[data-cell="${cell}"]`)?.dataset.hero||'',cell);
-   const modalFits=async label=>{
-    const fit=await page.evaluate(()=>{
-     const host=document.querySelector('#hero-details'),modal=host.querySelector('.formation-modal'),h=host.getBoundingClientRect(),m=modal.getBoundingClientRect(),nav=document.querySelector('#game-meta-nav').getBoundingClientRect();
-     const top=document.elementFromPoint(nav.left+nav.width/2,nav.top+nav.height/2);
-     const field=modal.querySelector('.formation-field').getBoundingClientRect(),cell=modal.querySelector('.formation-cell').getBoundingClientRect();
-     const parts=[...modal.querySelectorAll(':scope>header,.formation-top,.formation-field,.formation-roster-bar,.formation-roster,.formation-note,.formation-actions,.formation-grid,.formation-card')];
-     const inside=parts.every(node=>{const r=node.getBoundingClientRect();return r.left>=m.left-0.5&&r.right<=m.right+0.5&&r.top>=m.top-0.5&&r.bottom<=m.bottom+0.5;});
-     const grids=[...modal.querySelectorAll('.formation-grid')].map(node=>node.getBoundingClientRect());
-     const overlap=grids.some((r,i)=>grids.some((o,j)=>j>i&&r.left<o.right-0.5&&o.left<r.right-0.5&&r.top<o.bottom-0.5&&o.top<r.bottom-0.5));
-     const close=modal.querySelector('.game-modal-close').getBoundingClientRect();
-     return{full:Math.abs(m.width-h.width)<1&&Math.abs(m.height-h.height)<1,coversNav:modal.contains(top),inside,overlap,aligned:Math.abs(grids[0].top-grids[1].top)<1&&Math.abs(grids[0].height-grids[1].height)<1,closeInside:close.right<=m.right+0.5&&close.top>=m.top-0.5,cellShare:cell.width/m.width,scroll:modal.scrollHeight-modal.clientHeight};
-    });
-    assert.ok(fit.full&&fit.coversNav,`${profile.name}: ${label} is a full-screen modal over the navigation (${JSON.stringify(fit)})`);
-    assert.ok(fit.inside&&!fit.overlap&&fit.aligned&&fit.closeInside&&fit.scroll<=1,`${profile.name}: ${label} lines both grids up in one contained row (${JSON.stringify(fit)})`);
-    assert.ok(fit.cellShare>.15,`${profile.name}: ${label} keeps tiles readable (${JSON.stringify(fit)})`);
-    assert.deepEqual((await measure()).clipped,[],`${profile.name}: ${label} has no clipped labels`);
-   };
-   assert.equal(await modal.locator('.game-modal-close').count(),1,'Formation uses the shared modal close');
-   // Fixture heroes reach level 42, so both grids are open; the left one stays empty by default.
-   assert.equal(await board.locator('.formation-grid').count(),2,'both grids render');
-   assert.deepEqual(await board.locator('.formation-grid[data-grid="1"] .formation-cell').evaluateAll(nodes=>nodes.map(node=>[node.dataset.cell,node.dataset.hero||''])),[['2','Runa'],['3','Falie'],['6','Kojonn'],['7','Huun']],'tanks hold the rightmost frontline column, ranged the column beside it');
-   assert.equal(await board.locator('.formation-grid[data-grid="0"] .formation-cell[data-hero]').count(),0,'heroes fill the right grid before the left');
-   const gridRects=()=>board.evaluate(node=>[...node.querySelectorAll('.formation-grid')].map(grid=>{const r=grid.getBoundingClientRect();return[Math.round(r.left),Math.round(r.top),Math.round(r.width),Math.round(r.height)];}));
-   const openRects=await gridRects();
-   const levels=await page.evaluate(()=>Object.fromEntries(Object.entries(window.heroQa.globals.HeroProgress.heroes).map(([id,hero])=>[id,hero.currentLevel])));
-   await page.evaluate(()=>{for(const hero of Object.values(window.heroQa.globals.HeroProgress.heroes))hero.currentLevel=Math.min(hero.currentLevel,29);window.heroQa.render();});
-   // Leaving and reopening picks up the new unlock state.
-   await modal.locator('.game-modal-close').click();await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-modal'));await openFormationModal();
-   await board.locator('.formation-grid[data-locked="true"]').waitFor();
-   assert.equal(await board.locator('.formation-grid[data-locked="true"]').getAttribute('data-grid'),'0','the left back grid is the locked one');
-   assert.equal(await board.locator('.formation-grid[data-locked="true"] .formation-cell').evaluateAll(nodes=>nodes.every(node=>node.tagName==='DIV')),true,'locked tiles are not slots');
-   assert.equal(await board.locator('.formation-lock').textContent(),'🔒 Lv. 30');
-   await board.locator('.formation-lock').click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-note')?.textContent==='This grid unlocks when a hero reaches Lv. 30.');
-   assert.deepEqual(await gridRects(),openRects,'locking changes no layout');
-   await modalFits('Locked formation');
-   screenshots.formationLocked=`${profile.name}-formation-locked.png`;await page.screenshot({path:path.join(artifactDir,screenshots.formationLocked),fullPage:true});
-   await page.evaluate(levels=>{for(const [id,level] of Object.entries(levels))window.heroQa.globals.HeroProgress.heroes[id].currentLevel=level;window.heroQa.render();},levels);
-   await modal.locator('.game-modal-close').click();await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-modal'));await openFormationModal();
-   await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-grid[data-locked]'));
-   assert.equal(await board.locator('.formation-cell[data-leader="true"]').getAttribute('data-hero'),'Falie','Fara leads by default');
-   assert.match(await modal.locator('.formation-total').textContent(),/^\d+$/);
-   await modalFits('Formation');
+   assert.equal(await board.locator('.formation-cell').count(),8);
+   assert.equal(await modal.locator('[data-locked],.formation-lock,.formation-tools .lock').count(),0);
+   assert.deepEqual(await board.locator('.formation-cell').evaluateAll(nodes=>nodes.map(node=>[+node.style.gridColumn,+node.style.gridRow])),[[2,1],[3,1],[1,2],[2,2],[3,2],[4,2],[2,3],[3,3]]);
+   const fit=await modal.evaluate(node=>{
+    const m=node.getBoundingClientRect(),rect=e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height};};
+    const outside=[...node.querySelectorAll('button,.formation-grid,.formation-roster')].filter(e=>{const r=e.getBoundingClientRect();return r.left<m.left-.5||r.right>m.right+.5||r.top<m.top-.5||r.bottom>m.bottom+.5;}).map(e=>e.getAttribute('aria-label')||e.className);
+    const canvas=document.querySelector('canvas');return{viewport:[innerWidth,innerHeight,devicePixelRatio],modal:rect(node),canvas:rect(canvas),backing:[canvas.width,canvas.height],outside,overflow:node.scrollWidth>node.clientWidth+1||node.scrollHeight>node.clientHeight+1};
+   });
+   assert.deepEqual(fit.outside,[],`${profile.name}: Formation controls contained`);assert.equal(fit.overflow,false);
+   assert.deepEqual((await measure()).clipped,[],`${profile.name}: Formation labels fit`);
    screenshots.formation=`${profile.name}-formation.png`;await page.screenshot({path:path.join(artifactDir,screenshots.formation),fullPage:true});
-   // Roster with sort and filter.
-   const rosterOrder=()=>modal.locator('.formation-card').evaluateAll(nodes=>nodes.map(node=>node.dataset.hero));
-   assert.equal(await modal.locator('.formation-count').textContent(),'4/4');
-   assert.deepEqual(await rosterOrder(),['Kojonn','Runa','Huun','Falie'],'roster sorts by level, highest first');
-   await modal.getByRole('button',{name:'Sort descending'}).click();await page.waitForFunction(()=>document.querySelector('#hero-details .formation-card')?.dataset.hero==='Falie');
-   await modal.getByRole('button',{name:'Sort and filter heroes'}).click();const sortSheet=modal.locator('.formation-sort');await sortSheet.waitFor();
-   await sortSheet.getByRole('button',{name:'Tank',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('#hero-details .formation-card').length===1);
-   assert.deepEqual(await rosterOrder(),['Falie'],'role filter narrows the roster');
-   await sortSheet.getByRole('button',{name:'Done'}).click();await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-sort'));
-   await modal.getByRole('button',{name:'Reset sort and filter'}).click();
-   await page.waitForFunction(()=>document.querySelectorAll('#hero-details .formation-card').length===4&&document.querySelector('#hero-details .formation-card')?.dataset.hero==='Kojonn');
-   assert.equal(await modal.getByRole('button',{name:'Sort descending'}).count(),1,'reset restores Level, highest first, no filter');
-   // Move from the roster, undo, redo on the board, then Save.
-   const savedBefore=await page.evaluate(()=>localStorage.getItem('wishfire.heroFormation.v3'));
-   assert.equal(await modal.getByRole('button',{name:'Formation saved'}).isDisabled(),true,'Save waits for changes');
-   await modal.locator('.formation-card[data-hero="Runa"] .formation-card-pick').click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-card[data-hero="Runa"]')?.dataset.selected==='true');
-   assert.equal(await board.evaluate(node=>[...node.querySelectorAll('.formation-grid:not([data-locked]) .formation-cell')].filter(cell=>getComputedStyle(cell).borderTopColor==='rgb(80, 207, 255)').length),7,'a picked hero highlights every other open slot');
-   await board.locator('.formation-cell[data-cell="3"]').click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-cell="3"]')?.dataset.hero==='Runa');
-   assert.equal(await cellHero(2),'Falie','occupied target swaps');
-   assert.equal(await modal.locator('.formation-note').textContent(),'Unsaved changes.');
-   assert.equal(await page.evaluate(()=>localStorage.getItem('wishfire.heroFormation.v3')),savedBefore,'moves stay in the draft until Save');
-   await modal.getByRole('button',{name:'Undo'}).click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-cell="3"]')?.dataset.hero==='Falie');
-   assert.equal(await modal.getByRole('button',{name:'Undo'}).isDisabled(),true,'undo history empties');
-   await board.locator('.formation-cell[data-hero="Runa"]').click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-hero="Runa"]')?.getAttribute('aria-pressed')==='true');
-   await board.locator('.formation-cell[data-cell="3"]').click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-cell="3"]')?.dataset.hero==='Runa');
-   await board.locator('.formation-cell[data-hero="Runa"]').click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-hero="Runa"]')?.getAttribute('aria-pressed')==='true');
-   await modal.getByRole('button',{name:'Set Runa as leader'}).click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-leader="true"]')?.dataset.hero==='Runa');
+   const original=await page.evaluate(()=>localStorage.getItem('wishfire.heroFormation.v4'));
+   await board.locator('.formation-cell[data-hero="Falie"]').click();
+   await board.locator('.formation-cell[data-cell="7"]').click();
+   await page.waitForFunction(()=>document.querySelector('.formation-cell[data-cell="7"]')?.dataset.hero==='Falie');
+   assert.equal(await page.evaluate(()=>localStorage.getItem('wishfire.heroFormation.v4')),original);
+   await modal.getByRole('button',{name:'Undo',exact:true}).click();
+   await page.waitForFunction(()=>document.querySelector('.formation-cell[data-cell="0"]')?.dataset.hero==='Falie');
+   // Actual pointer drag from the roster into an empty bottom slot.
+   await modal.locator('.formation-card[data-hero="Runa"] .formation-card-pick').dragTo(board.locator('.formation-cell[data-cell="6"]'));
+   await page.waitForFunction(()=>document.querySelector('.formation-cell[data-cell="6"]')?.dataset.hero==='Runa');
    await modal.getByRole('button',{name:'Save formation'}).click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-note')?.textContent==='Formation saved.');
-   assert.deepEqual(await page.evaluate(()=>[window.heroQa.globals.HeroFormationLeader,window.heroQa.globals.HeroFormationOrder,JSON.parse(localStorage.getItem('wishfire.heroFormation.v3')).presets[0].leader]),['Runa',['Runa','Hondo','Fara','Kaja'],'Runa'],'Save publishes the leader and succession to combat and persists');
-   // Lock commits and blocks edits until unlocked.
-   await modal.getByRole('button',{name:'Lock formation'}).click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-tools .lock')?.getAttribute('aria-pressed')==='true');
-   assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.heroFormation.v3')).presets[0].locked),true,'lock persists');
-   assert.equal(await modal.getByRole('button',{name:'Auto-Form'}).isDisabled(),true,'Auto-Form is disabled while locked');
-   await board.locator('.formation-cell[data-hero="Falie"]').click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-note')?.textContent==='Unlock the formation to make changes.');
-   await modal.getByRole('button',{name:'Unlock formation'}).click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-tools .lock')?.getAttribute('aria-pressed')==='false');
-   // Presets and Copy edit the draft.
-   await modal.getByRole('button',{name:'Preset 2',exact:true}).click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-leader="true"]')?.dataset.hero==='Falie');
-   await modal.getByRole('button',{name:'Preset 1',exact:true}).click();
-   await modal.getByRole('button',{name:'Copy preset 1'}).click();const copySheet=modal.locator('.formation-copy');await copySheet.waitFor();
-   assert.equal(await copySheet.getByRole('button',{name:'Copy',exact:true}).isDisabled(),true,'Copy waits for a destination');
-   await copySheet.getByRole('button',{name:'Select All'}).click();
-   await page.waitForFunction(()=>[...document.querySelectorAll('#hero-details .formation-copy .sort-options button')].filter(node=>node.getAttribute('aria-pressed')==='true').length===3);
-   await copySheet.getByRole('button',{name:'Copy',exact:true}).click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-note')?.textContent==='Copied to 2 presets.');
-   await modal.getByRole('button',{name:'Preset 2',exact:true}).click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-tools button[aria-label="Preset 2"]')?.getAttribute('aria-pressed')==='true'&&document.querySelector('#hero-details .formation-cell[data-leader="true"]')?.dataset.hero==='Runa');
-   await modal.getByRole('button',{name:'Auto-Form'}).click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-cell="3"]')?.dataset.hero==='Falie');
-   // Closing with unsaved changes asks to save or discard; Discard keeps the saved formation.
-   await modal.locator('.game-modal-close').click();
-   const confirm=modal.locator('.formation-confirm');await confirm.waitFor();
-   await confirm.getByRole('button',{name:'Discard'}).click();await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-modal'));
-   assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.heroFormation.v3')).active),0,'discarded draft never saves');
-   // The magnifier opens that hero's screen and returns to the same Formation draft.
-   await openFormationModal();
-   await board.locator('.formation-cell[data-hero="Kojonn"]').click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-hero="Kojonn"]')?.getAttribute('aria-pressed')==='true');
-   await board.locator('.formation-cell[data-cell="2"]').click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-cell="2"]')?.dataset.hero==='Kojonn');
-   await modal.getByRole('button',{name:"Open Kaja's hero screen"}).click();
-   await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-modal')&&document.querySelector('#hero-details h1')?.textContent==='Kaja');
-   await detail.getByRole('button',{name:'Back to Formation'}).click();await page.waitForFunction(()=>!!document.querySelector('#hero-details .formation-modal'));
-   assert.equal(await cellHero(2),'Kojonn','returning keeps the unsaved draft');
-   await modal.locator('.game-modal-close').click();await confirm.waitFor();await confirm.getByRole('button',{name:'Discard'}).click();
-   await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-modal'));
-   // Restore Fara as leader for the remaining checks; Escape closes a clean modal.
-   await cards.nth(0).locator('.card-select').click();await page.waitForFunction(()=>document.querySelector('#hero-details h1')?.textContent==='Fara');
-   await openFormationModal();
-   await board.locator('.formation-cell[data-hero="Falie"]').click();
-   await page.waitForFunction(()=>document.querySelector('#hero-details .formation-cell[data-hero="Falie"]')?.getAttribute('aria-pressed')==='true');
-   await modal.getByRole('button',{name:'Set Fara as leader'}).click();await modal.getByRole('button',{name:'Save formation'}).click();
-   await page.waitForFunction(()=>window.heroQa.globals.HeroFormationLeader==='Fara');
-   await page.keyboard.press('Escape');
-   await page.waitForFunction(()=>!document.querySelector('#hero-details .formation-modal'));
+   await page.waitForFunction(()=>JSON.parse(localStorage.getItem('wishfire.heroFormation.v4'))?.presets[0].cells.Runa===6);
+   assert.equal(await page.evaluate(()=>window.heroQa.globals.HeroFormationPlacement.runa.cell),6);
+   await modal.getByRole('button',{name:'Close Formation'}).click();
+   await page.waitForFunction(()=>!document.querySelector('.formation-modal'));
+   await openFormationModal();assert.equal(await board.locator('.formation-cell[data-cell="6"]').getAttribute('data-hero'),'Runa');
+   await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('.formation-modal'));
+   // Restore progression levels used by the unchanged gear/stat oracle.
+   await page.evaluate(levels=>{for(const [id,level] of Object.entries(levels))window.heroQa.globals.HeroProgress.heroes[id].currentLevel=level;window.heroQa.render();},Object.fromEntries(Object.entries(progress.heroes).map(([id,h])=>[id,h.currentLevel])));
    // Card selection drives the showcase.
    for(const [cardIndex,hero] of heroes.entries()){
     await cards.nth(cardIndex).locator('.card-select').click();
     await page.waitForFunction(expected=>document.querySelector('#hero-details h1')?.textContent===expected,heroDefinition(hero).name);
     assert.equal(await cards.nth(cardIndex).getAttribute('data-selected'),'true');
     assert.equal(await detail.locator('.hero-name').innerText().then(text=>text.replace(/\s+/g,'')),plateText(hero),'showcase shows only the wide name plate and stars');
-    assert.equal(await detail.locator('.hero-name .stars span').count(),5,'showcase star meter replaces the EXP readout');
+    assert.equal(await detail.locator('.hero-name .stars span').count(),8,'showcase star meter replaces the EXP readout');
    }
    await cards.nth(0).locator('.card-select').click();await page.waitForFunction(()=>document.querySelector('#hero-details h1')?.textContent==='Fara');
    // Gear tab: equipped items and the full stat sheet, no inventory.
@@ -411,8 +314,9 @@ test('hero party screen uses saved canonical data and stays contained across por
     const definition=heroDefinition(hero);
     if(heroIndex){await detail.getByRole('button',{name:'Next hero'}).click();await page.waitForFunction(expected=>document.querySelector('#hero-details h1')?.textContent===expected,definition.name);}
     const gearRow=detail.locator('.pane .gear-slots');
-    assert.equal(await gearRow.locator('[data-slot]').count(),3,'Hat, Body and Boots appear in the Gear tab');
-    assert.equal(await gearRow.locator('.gear-placeholder').count(),0,'Orb is no longer a gear slot');
+    assert.equal(await gearRow.locator('[data-slot]').count(),4,'Hat, Body, Boots and Accessory appear in the Gear tab');
+    assert.equal(await gearRow.locator('[data-slot=accessory] .lamp-art').count(),0,'Accessory always stays empty');
+    assert.equal(await gearRow.locator('[data-slot=accessory]').getAttribute('aria-label'),'Inspect Accessory: Empty');
     for(const itemId of Object.values(economy.loadouts[hero.heroInstanceKey])){const item=economy.items.find(entry=>entry.instanceId===itemId);assert.equal(await gearRow.getByRole('button',{name:new RegExp(item.name)}).count(),1,`${definition.name} retains equipped ${item.name}`);assert.equal(await gearRow.locator('.lamp-art').count(),3,'equipped item art replaces generic silhouettes');}
     const stats=Object.entries({HP:hero.maxHP,...hero.stats}).map(([label,value])=>[label==='MAG'?'MATK':label,String(value)]);
     assert.deepEqual(await detail.locator('.stat-grid div').evaluateAll(cells=>cells.map(cell=>[cell.querySelector('dt').textContent,cell.querySelector('dd').textContent])),stats,`${definition.name} full stats come from saved progression and gear`);
@@ -426,10 +330,11 @@ test('hero party screen uses saved canonical data and stays contained across por
    }
    screenshots.gear=`${profile.name}-gear.png`;await page.screenshot({path:path.join(artifactDir,screenshots.gear),fullPage:true});
    await detail.getByRole('button',{name:'Next hero'}).click();await page.waitForFunction(()=>document.querySelector('#hero-details h1')?.textContent==='Fara');
-   await openTab(page,'Orb');
-   assert.equal(await detail.locator('.pane .orb-placeholder[aria-label="Orb equipment unavailable"]').count(),1,'Orb shows its placeholder');
-   assert.equal(await detail.locator('.pane .stat-grid').count(),0,'stats moved out of the Orb tab');
-   screenshots.orb=`${profile.name}-orb.png`;await page.screenshot({path:path.join(artifactDir,screenshots.orb),fullPage:true});
+   await openTab(page,'Resonance');
+   assert.equal(await detail.locator('.pane .resonance-slot').count(),2,'two empty crystal placeholders');
+   assert.deepEqual(await detail.locator('.pane .resonance-slot span').allTextContents(),['Empty','Empty']);
+   assert.equal(await detail.locator('.pane .stat-grid').count(),0,'stats moved out of the Resonance tab');
+   screenshots.resonance=`${profile.name}-resonance.png`;await page.screenshot({path:path.join(artifactDir,screenshots.resonance),fullPage:true});
    // Signature skill panel reaches every canonical skill and the basic attack.
    const reachedSkills=[];
    for(const [heroIndex,hero] of heroes.entries()){
@@ -445,7 +350,7 @@ test('hero party screen uses saved canonical data and stays contained across por
      assert.equal(await article.locator('h2').textContent(),ability.displayName,'panel shows the stepped skill');
      assert.equal(await article.getAttribute('data-locked'),String(!!ability.scaffold));
      const copy=heroSkillCopy(ability);
-     assert.deepEqual(await article.locator('p').allTextContents(),[...copy.lines,...(ability.cooldownSeconds!=null?[`Range: ${expectedSkillRange(ability,hero)} · Cooldown: ${ability.cooldownSeconds}s`]:[]),...(copy.rules||[])]);
+     assert.deepEqual(await article.locator('p').allTextContents(),[...copy.lines,...(ability.cooldownSeconds!=null?[`Range: ${expectedSkillRange(ability,hero)} · Cooldown: ${ability.cooldownSeconds}s${ability.provisionalCooldown?' (provisional)':''}`]:[]),...(copy.rules||[])]);
      reachedSkills.push(`${hero.heroInstanceKey}:${ability.skillId}`);
     }
    }
@@ -485,7 +390,7 @@ test('hero party screen uses saved canonical data and stays contained across por
    }
    screenshots.tickets=`${profile.name}-tickets.png`;await page.screenshot({path:path.join(artifactDir,screenshots.tickets),fullPage:true});
    assert.deepEqual(pageErrors,[],'renderer has no browser exceptions');
-   report.push({fixture:'isolated production hero renderer and shared navigation modules',profile,geometry:initial,screenshots,reachedSkillCount:reachedSkills.length,pass:true});
+   report.push({fixture:'isolated production hero renderer and shared navigation modules',profile,geometry:initial,formationGeometry:fit,screenshots,reachedSkillCount:reachedSkills.length,pass:true});
    await context.close();
   }
  }catch(error){report.push({pass:false,error:error.stack||String(error)});throw error;}

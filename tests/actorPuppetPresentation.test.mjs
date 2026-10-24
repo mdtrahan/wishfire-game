@@ -234,3 +234,10 @@ test('death and revival retain the outgoing puppet image until their HP-selected
   actor.locomotion = 'walk';
   assert.equal(presentation.frameFor(actor, 1).state, 'idle', 'ordinary live-state transitions retain the ready clip');
 });
+
+test('an active hero action follows current closest-enemy facing without mirroring its board', async () => {
+ const requests=[],presentation=createActorPuppetPresentation({loadClip:async (...args)=>{requests.push(args);return clip;}});
+ const hero={uid:909,kind:'hero',name:'Fara',hp:10,facing:'left',actionFacing:'right',actionState:'basic',actionStateUntil:5,actionStateStartedAt:3,actionImpactAt:4};
+ presentation.frameFor(hero,4,'left-wise');await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(presentation.frameFor(hero,4,'left-wise')?.facing,'left');assert.equal(requests[0][2],'left');
+});

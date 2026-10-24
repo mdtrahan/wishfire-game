@@ -125,7 +125,7 @@ effectiveBody = effectiveBody.replace(
 effectiveBody = effectiveBody
   .replace(
     'const activeCombatOrientation = normalizeCombatOrientation(state.globals.CombatOrientation);',
-    "const bossPresentationActive = state.globals.ContinuousCombatStage?.bossActive === true;\n    const activeCombatOrientation = bossPresentationActive ? 'left-wise' : normalizeCombatOrientation(state.globals.CombatOrientation);",
+    "const bossPresentationActive = state.globals.ContinuousCombatStage?.bossActive === true;\n    const activeCombatOrientation = (bossPresentationActive || Number(state.globals.ContinuousCombatStageLoop) === 1) ? 'left-wise' : normalizeCombatOrientation(state.globals.CombatOrientation);",
   )
   .replace(
     'const combatFormationProjection = createCombatFormationProjection({ orientation: activeCombatOrientation, layoutW, ...combatFormationAnchors });\n    const projectCombatActorWorldToCanvas = (x, y, actorKind = \'\') => { const point = combatFormationProjection.project(x, y, actorKind); return worldToCanvas(point.x, point.y); };',

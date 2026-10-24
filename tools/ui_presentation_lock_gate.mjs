@@ -10,7 +10,6 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { resolveHeroAttackTarget, isHeroBasicTargetInRange } from '../src/core/heroAttackTargetingRules.mjs';
-import { filterContinuousEncounterEnemies } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
 
 const require = createRequire(import.meta.url);
 const { classifyPlaywrightFailure, detectChromeExecutable } = require('./playwright_support.js');
@@ -48,23 +47,15 @@ function invariant(name, pass, measured, allowed) {
   return { name, pass: Boolean(pass), measured, allowed };
 }
 
-export function evaluateCombatFocusInvariant(targeting = {}) {
+export function evaluateCombatTargetInvariant(targeting = {}) {
   const heroes = Array.isArray(targeting.heroes) ? targeting.heroes.filter(hero => Number(hero?.hp || 0) > 0) : [];
-  const enemies = filterContinuousEncounterEnemies(targeting.enemies || [], targeting.globals || {});
-  const currentUID = Number(targeting.focusTargetUID || 0);
-  const expected = resolveHeroAttackTarget({
-    enemies,
-    focusUID: currentUID,
-    inRange: enemy => heroes.some(hero => isHeroBasicTargetInRange(enemy, hero)),
+  const enemies = (targeting.enemies || []).filter(enemy => Number(enemy?.hp || 0) > 0 && enemy.streamState !== 'approaching');
+  const actors = heroes.map(hero => {
+    const expected = resolveHeroAttackTarget({ hero, enemies });
+    return { heroUID: Number(hero.uid || 0), targetUID: Number(hero.arenaTargetUID || 0), expectedTargetUID: Number(expected?.uid || 0),
+      eligibleInRangeEnemyUIDs: enemies.filter(enemy => isHeroBasicTargetInRange(enemy, hero)).map(enemy => Number(enemy.uid || 0)) };
   });
-  const expectedUID = Number(expected?.uid || 0);
-  const inRangeUIDs = enemies.filter(enemy => heroes.some(hero => isHeroBasicTargetInRange(enemy, hero))).map(enemy => Number(enemy.uid || 0));
-  return {
-    pass: currentUID === expectedUID,
-    expectedFocusTargetUID: expectedUID,
-    eligibleInRangeEnemyUIDs: inRangeUIDs,
-    livingHeroCount: heroes.length,
-  };
+  return { pass: actors.every(actor => actor.targetUID === actor.expectedTargetUID), actors, livingHeroCount: heroes.length };
 }
 
 function between(value, minimum, maximum) {
@@ -520,16 +511,15 @@ async function captureCombat(page, viewport, artifactDir) {
     const enemies = game.state.entities.filter((entity) => entity?.kind === 'enemy' && Number(entity.hp || 0) > 0);
     game.stepFrames(2);
     return {
-      focusTargetUID: Number(globals.RealtimeHeroFocusTargetUID || 0),
       livingEnemyUIDs: enemies.map((enemy) => Number(enemy.uid || 0)),
-      heroes: game.state.entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0).map(actor => ({ kind: actor.kind, hp: actor.hp, attackType: actor.attackType, footX: actor.footX, footY: actor.footY, x: actor.x, y: actor.y })),
+      heroes: game.state.entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0).map(actor => ({ uid: actor.uid, arenaTargetUID: actor.arenaTargetUID, kind: actor.kind, hp: actor.hp, attackType: actor.attackType, footX: actor.footX, footY: actor.footY, x: actor.x, y: actor.y })),
       enemies: enemies.map(actor => ({ kind: actor.kind, uid: actor.uid, hp: actor.hp, streamState: actor.streamState, streamSectorIndex: actor.streamSectorIndex, streamPackIndex: actor.streamPackIndex, combatRank: actor.combatRank, enemyRole: actor.enemyRole, footX: actor.footX, footY: actor.footY, x: actor.x, y: actor.y })),
       globals: { ContinuousCombatStageLoop: globals.ContinuousCombatStageLoop, ContinuousCombatStage: globals.ContinuousCombatStage ? { activeEncounterGroupId: globals.ContinuousCombatStage.activeEncounterGroupId, bossActive: globals.ContinuousCombatStage.bossActive } : null },
       basicClockCount: Object.keys(globals.RealtimeHeroBasicClocks || {}).length,
       scheduledBasics: Object.keys(globals.RealtimeHeroBasicScheduledActions || {}).length,
     };
   });
-  const focusGuard = evaluateCombatFocusInvariant(targeting);
+  const targetGuard = evaluateCombatTargetInvariant(targeting);
   const targetTrace = await readTrace(page);
   const targetSelector = latestImage(targetTrace, /heroselect|selector/i);
   await page.screenshot({ path: path.join(artifactDir, `${viewport.name}-06-target-state.png`) });
@@ -631,7 +621,7 @@ async function captureCombat(page, viewport, artifactDir) {
     invariant('boss-summon-contained', boss.group.left>=boss.canvas.left-.5 && boss.group.right<=boss.canvas.right+.5 && boss.pageWidth<=boss.viewportWidth, boss, {horizontalOverflow:0}),
     ...commandInvariants,
     invariant('battlefield-selectors-absent', !heroSelector && !targetSelector, { heroSelector, targetSelector }, { count: 0 }),
-    invariant('automatic-focus-matches-eligible-target', focusGuard.pass, { focusTargetUID: targeting.focusTargetUID, livingEnemyUIDs: targeting.livingEnemyUIDs, expectedFocusTargetUID: focusGuard.expectedFocusTargetUID, eligibleInRangeEnemyUIDs: focusGuard.eligibleInRangeEnemyUIDs, livingHeroCount: focusGuard.livingHeroCount }, { zeroOnlyWhenNoEligibleInRangeTarget: true, nonzeroMustMatchCanonicalSelector: true }),
+    invariant('each-hero-targets-nearest-living-foe', targetGuard.pass, targetGuard, { perHeroCanonicalSelector: true }),
     invariant('realtime-basic-clocks-present', targeting.basicClockCount > 0, targeting, { minimum: 1 }),
     invariant('damage-text-scale', within(damage.fontPx, expectedDamageFontPx, 0.1) && within(damage.rect?.width, expectedDamageWidth, 1) && within(damage.rect?.height, expectedDamageHeight, 1), { ...damage, fontRatio: damageRatio }, { fontPx: expectedDamageFontPx, cssWidth: expectedDamageWidth, cssHeight: expectedDamageHeight }),
     invariant('damage-text-density', between(damageDensity, viewport.dpr * 0.98, viewport.dpr * 1.02), { density: damageDensity, dpr: viewport.dpr, ...damage }, { density: [viewport.dpr * 0.98, viewport.dpr * 1.02] }),

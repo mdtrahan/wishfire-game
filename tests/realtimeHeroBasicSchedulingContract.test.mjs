@@ -109,19 +109,16 @@ test('hero basics and conditional skills can target every active local sector wh
   globals.ContinuousCombatStage = { activeEncounterGroupId: 10 };
   const localTargets = filterContinuousEncounterEnemies([committed, nearerNextPack, remotePack, preActivation], globals, actors);
   assert.deepEqual(localTargets.map(enemy => enemy.uid), [90, 91, 93]);
-  assert.equal(resolveHeroAttackTarget({ enemies: localTargets, focusUID: 90, inRange: enemy => isHeroBasicTargetInRange(actors[0], enemy) })?.uid, 90,
-    'a living in-reach focus remains sticky across sector identity');
-  assert.equal(resolveHeroAttackTarget({ enemies: localTargets, focusUID: 93, inRange: enemy => isHeroBasicTargetInRange(actors[0], enemy) })?.uid, 93,
-    'a roaming actor already inside hero reach is a valid target before arena state catches up');
+  assert.equal(resolveHeroAttackTarget({ hero:actors[0], enemies:localTargets, inRange:enemy=>isHeroBasicTargetInRange(enemy,actors[0]) })?.uid,93,'each hero acquires its closest living foe');
   const shadow = HERO_DEFINITIONS.Huun.special;
   const skillSelection = selectRealtimeHeroSkillTarget({ skill: shadow, hero: actors[0], heroes: actors, enemies: [committed, nearerNextPack], globals, now: globals.time });
-  assert.equal(skillSelection?.targetUID, 90, 'the Special targets the first local foe in reach');
+  assert.equal(skillSelection?.targetUID, 91, 'the Special targets the nearest local foe in reach');
   assert.equal(tick(ctx), 1);
-  assert.equal(globals.PendingHeroHits[0].targetUID, 90, 'the retained living focus remains stable while other local sectors are eligible');
+  assert.equal(globals.PendingHeroHits[0].targetUID, 93, 'basic acquisition uses the nearest living foe regardless of sector');
 });
 
 test('no in-range target preserves an overdue attack for the next eligible target', () => {
-  const outOfRange = { uid: 90, kind: 'enemy', hp: 20, x: 500, streamState: 'in_range' };
+  const outOfRange = { uid: 90, kind: 'enemy', hp: 20, x: 1000, streamState: 'in_range' };
   const { ctx, globals, tick } = fixture({ time: 100, heroes: [1], readyAt: { 1: 5 }, enemies: [outOfRange] });
   assert.equal(tick(ctx), 0);
   assert.equal(globals.RealtimeHeroBasicReadyAt['1'], 5);
@@ -152,8 +149,8 @@ test('scheduled basic dispatch validates range again and restores dueAt when its
   tick(ctx);
   const action = globals.RealtimeHeroBasicScheduledActions['2'];
   assert.ok(action);
-  target.x = 500;
-  target.footX = 500;
+  target.x = 1000;
+  target.footX = 1000;
   globals.time += 1 / 60;
   assert.equal(tick(ctx), 0);
   assert.equal(globals.RealtimeHeroBasicScheduledActions['2'], undefined);

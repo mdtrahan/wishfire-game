@@ -12,7 +12,7 @@
 - Recovery loadouts and Hero stats are sampled at the first post-transition poll and labeled as such; they are not exact event-time state.
 - Ordinary acceptance requires an exact runtime wave counter, ordered events, zero Hero KOs/recoveries and no gaps; total clears remain a separate count.
 - `ui_presentation_lock_gate.mjs` is the canonical fail-closed rendered presentation gate for approved responsive UI seams. It also renders the manual boss retry group and guards its combat Y anchor, resource separation and horizontal containment, then checks modal/menu hiding with readiness preserved; its renderer is a pre-commit UI owner.
-- UI-lock startup waits for realtime basic clocks, then its automatic-focus check uses the shared encounter filter and basic-target selector. Focus may be zero only when no living hero can reach a living eligible enemy in the committed encounter; nonzero focus must match the canonical selector.
+- UI-lock startup waits for realtime basic clocks, then verifies each living hero arena target against that hero nearest living foe. Empty fields allow target zero; pursuit can face a foe outside basic reach. Per-hero basic eligibility is recorded separately. Shared focus is retired.
 - Playwright doctor, launch matrix, and Chrome CDP helpers diagnose browser startup/control issues.
 - Rust build helper generates the browser WASM artifact.
 - `build_offline_release.mjs` reuses hosted runtime staging, embeds startup JSON, the optional elemental impact manifest, and SimulationCore WASM, and emits the portable file:// artifact with relative frame assets; it must leave the Netlify release path unchanged.

@@ -6,14 +6,14 @@ import {HERO_DEFINITIONS,heroDefinition,heroSkillUnlocked} from '../src/core/her
 import {createHeroProgressStore} from '../src/core/heroProgression.mjs';
 import {heroTicketLevelCost} from '../src/core/combatProgressionRules.mjs';
 import {resolveCombatMovementTuning} from '../src/core/combatMovementTuning.mjs';
-import {STAR_MAX,STAR_TIER_SIZE,STAR_STAT_BONUS,STAR_TIER_PARTY_BONUS,RESONANCE_SLOT_STARS,RESONANCE_ECHOES,starUpCost,heroStars,heroGrowthBreakdown,resonanceSlots,resonanceSlotUnlocked,resonanceEcho} from '../src/core/heroGrowthRules.mjs';
-import {FORMATION_ROWS,FORMATION_GRIDS,FORMATION_GRID_SIZE,FORMATION_PRESETS,FORMATION_SECOND_GRID_LEVEL,formationCell,formationGridOpen,sanitizeHeroFormation,activeFormationPreset,formationOccupant,placeFormationHero,setFormationLeader,autoFormActive,selectFormationPreset,copyFormationPresetTo,setFormationLocked} from '../src/core/heroFormationRules.mjs';
+import {STAR_MAX,STAR_EFFECTS,STAR_STAT_BONUS,RESONANCE_SLOTS,starUpCost,heroStars,heroGrowthBreakdown} from '../src/core/heroGrowthRules.mjs';
+import {FORMATION_SLOTS,FORMATION_PRESETS,sanitizeHeroFormation,activeFormationPreset,formationOccupant,placeFormationHero,setFormationLeader,autoFormActive,selectFormationPreset,copyFormationPresetTo} from '../src/core/heroFormationRules.mjs';
 import {MODAL_CLOSE_MARK,installModalCloseStyles,paintModalClose} from './modalClose.mjs';
 import {heroArtKey} from '../state/heroArtAssets.mjs';
-import {actorAttackReach} from '../../src/core/arenaCombatRules.mjs';
+import {heroSpecialReach} from '../../src/core/arenaCombatRules.mjs';
 
 let host,content,lastKey,currentTab='heroes',subPanel='',activeSkillIndex=-1,activeHeroIndex=-1,ticketNotice='',formationPick='',resonancePick=-1,sheetNotice='';
-// Formation modal: edits a draft (committed on Save/Lock), with undo history, roster sort and a return path from the hero screen.
+// Formation modal: edits a draft (committed on Save), with undo history, roster sort and a return path from the hero screen.
 let formationCopyOpen=false,formationCopyTargets=[],formationEscape=null,formationFocus=false,formationDraft=null,formationHistory=[],formationConfirm=false,formationSortOpen=false,formationReturn=false,closeMeasure=null;
 const formationSort={key:'level',descending:true,role:''};
 const SORT_KEYS=[['level','Level'],['cp','CP'],['HP','HP'],['ATK','ATK'],['DEF','DEF'],['MAG','MATK'],['role','Role']];
@@ -24,12 +24,10 @@ const SHEET_TITLES={formation:'Formation',star:'Star Up',resonance:'Resonance'};
 const STAT_NAMES={HP:'HP',ATK:'ATK',DEF:'DEF',MAG:'MATK',RES:'RES'};
 const pct=value=>`${Math.round(value*1000)/10}%`;
 
-// Tiers fill five slots: bronze 1-5, silver 6-10, gold 11-15; grey when incomplete.
-const STAR_TIERS=['bronze','silver','gold'];
 function starMeter(stars,parent){
- const count=Math.max(0,Math.min(STAR_MAX,Math.floor(Number(stars)||0))),tier=Math.max(0,Math.ceil(count/5)-1),filled=count?count-tier*5:0;
+ const count=stars;
  const meter=document.createElement('div');meter.className='stars';meter.setAttribute('role','img');meter.setAttribute('aria-label',count?`${count} of ${STAR_MAX} stars`:'No stars yet');
- for(let slot=0;slot<5;slot++){const star=document.createElement('span');star.textContent='★';if(slot<filled)star.dataset.tier=STAR_TIERS[tier];else if(tier>0)star.dataset.tier=STAR_TIERS[tier-1];meter.append(star);}
+ for(let slot=0;slot<STAR_MAX;slot++){const star=document.createElement('span');star.textContent='★';if(slot<count)star.dataset.tier='bronze';meter.append(star);}
  parent.append(meter);return meter;
 }
 
@@ -59,7 +57,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .identity{position:relative;flex:0 0 21em;border-radius:.6em;overflow:hidden;isolation:isolate;background:radial-gradient(ellipse 60% 55% at 28% 52%,#4f7fa8 0%,#2d5079 45%,#1b3150 100%)}
    #hero-details .identity::after{content:'';position:absolute;left:4%;width:48%;bottom:5.3em;height:1.6em;border-radius:50%;background:radial-gradient(#0b1626aa,transparent 70%);z-index:-1}
    #hero-details .hero-portrait{position:absolute;left:2%;width:52%;top:.6em;bottom:5.6em;height:calc(100% - 6.2em);object-fit:contain;object-position:50% 100%;z-index:0;filter:drop-shadow(0 .3em .25em #07172a80)}
-   #hero-details .formation-button{position:absolute;left:.4em;top:.4em;z-index:2;width:2.4em;height:2.4em;padding:.35em;display:grid;grid-template-columns:repeat(2,1fr);gap:.15em;background:#132238cc;border-color:#7e93ad}
+   #hero-details .formation-button{position:absolute;left:.4em;top:.4em;z-index:2;width:2.4em;height:2.4em;padding:.35em;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(3,1fr);gap:.15em;background:#132238cc;border-color:#7e93ad}
    #hero-details .formation-button i{display:block;border-radius:.1em;background:#3a4c66} #hero-details .formation-button i.filled{background:#9fb3cc} #hero-details .formation-button i.lead{background:#ffd56e}
    #hero-details .hero-arrows{position:absolute;left:0;width:56%;top:38%;display:flex;justify-content:space-between;pointer-events:none;z-index:2}
    #hero-details .hero-arrows button{pointer-events:auto;min-height:0;padding:0 .25em;border:0;background:transparent;color:#cfe9ff;font-size:2em;font-weight:800;line-height:1;text-shadow:0 1px 4px #07172a}
@@ -121,16 +119,14 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .formation-tools button{width:2.4em;height:2.4em;min-height:0;padding:0;border-radius:50%;font-weight:800;background:#192e48;border:2px solid #9eafc2;color:#fff1d1}
    #hero-details .formation-tools button[aria-pressed=true]{background:#fff3d8;color:#163052;border-color:#fff3d8}
    #hero-details .formation-tools button.copy{font-size:.72em;width:3.33em;height:3.33em}
-   #hero-details .formation-tools button.lock[aria-pressed=true]{background:#e59a3a;border-color:#ffcf7a}
-   #hero-details .formation-field[data-picking=true] .formation-grid:not([data-locked]) .formation-cell:not([aria-pressed=true]){border-color:#50cfff;box-shadow:0 0 0 2px #50cfff88,inset 0 -.25em 0 #cdb98f}
-   #hero-details .formation-lock{cursor:pointer;min-height:0}
+   #hero-details .star-effects{display:grid;grid-template-columns:1fr 1fr;gap:.35em .6em;padding:0;list-style:none;margin:.35em 0;font-size:.76em}
+   #hero-details .star-effects li{white-space:normal;color:#354b66}
+   #hero-details .star-effects li[data-earned=true]{color:#744016;font-weight:700}
+   #hero-details .resonance-panel{text-align:center}
+   #hero-details .formation-field[data-picking=true] .formation-grid .formation-cell:not([aria-pressed=true]){border-color:#50cfff;box-shadow:0 0 0 2px #50cfff88,inset 0 -.25em 0 #cdb98f}
    #hero-details .formation-sort button:disabled{opacity:.5}
    #hero-details .formation-facing{position:absolute;right:.6em;top:.4em;font-size:.78em;font-weight:800;color:#cfe9ff}
-   #hero-details .formation-grid{display:grid;grid-template-columns:repeat(${FORMATION_GRID_SIZE},4.7em);grid-auto-rows:4.7em;gap:1em .3em;padding:.9em .3em .3em;border-radius:.6em;background:#0e1a2c66}
-   #hero-details .formation-field[data-locked=true] .formation-grid:not([data-locked]){box-shadow:0 0 0 2px #e59a3a}
-   #hero-details .formation-grid[data-locked=true]{position:relative}
-   #hero-details .formation-grid[data-locked=true] .formation-cell{opacity:.45;filter:grayscale(.6)}
-   #hero-details .formation-lock{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;display:flex;align-items:center;gap:.3em;padding:.25em .7em;border-radius:1em;background:#1b2a42ee;border:1px solid #7e93ad;color:#fff1d1;font-size:.85em;font-weight:800;white-space:nowrap}
+   #hero-details .formation-grid{display:grid;grid-template-columns:repeat(4,4.7em);grid-template-rows:repeat(3,4.7em);gap:.3em;padding:.3em;border-radius:.6em;background:#0e1a2c66}
    #hero-details .formation-cell{position:relative;min-height:0;padding:0;overflow:visible;border:2px solid #d8c9a6;border-radius:.45em;background:linear-gradient(#fff8ea,#ecdcbc);box-shadow:inset 0 -.25em 0 #cdb98f}
    #hero-details .formation-cell[aria-pressed=true]{border-color:#2fb3a6;box-shadow:0 0 0 3px #2fb3a6aa,inset 0 -.25em 0 #cdb98f}
    #hero-details .formation-cell .cell-face{position:absolute;left:0;right:0;bottom:1.05em;height:118%;display:flex;justify-content:center;align-items:flex-end;pointer-events:none}
@@ -169,12 +165,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .growth-lines{display:grid;grid-template-columns:auto 1fr;gap:.1em .5em;margin:0;font-size:.92em} #hero-details .growth-lines dt{font-weight:800;color:#36465c} #hero-details .growth-lines dd{margin:0}
    #hero-details .resonance-slots{display:grid;grid-template-columns:1fr 1fr;gap:.4em}
    #hero-details .resonance-slot{display:flex;align-items:center;gap:.35em;min-height:3em;padding:.25em .35em;text-align:left;border:2px dashed #b9c1cc;border-radius:.5em;background:#f7f8fa;color:#36465c}
-   #hero-details .resonance-slot[data-linked]{border:2px solid #6b8590;background:#fff}
-   #hero-details .resonance-slot[aria-pressed=true]{border-color:#2fb3a6;box-shadow:0 0 0 2px #2fb3a655}
    #hero-details .resonance-slot span{flex:1;font-size:.82em;line-height:1.2}
-   #hero-details .resonance-slot .slot-face{position:relative;flex:none;width:2.3em;height:2.3em;overflow:hidden;border-radius:.3em;background:#eef2f6}
-   #hero-details .resonance-slot .slot-face img{position:absolute;left:-15%;top:-6%;width:130%;height:auto;max-width:none}
-   #hero-details .resonance-picker{display:flex;flex-wrap:wrap;gap:.3em}
    #hero-details .gear-slots{display:flex;gap:.45em;justify-content:center;height:4.1em;margin-bottom:.3em}
    #hero-details .gear-slot{position:relative;flex:0 0 4.1em;aspect-ratio:1;min-height:0;padding:.2em;border:2px solid var(--rarity);border-radius:.55em;background:linear-gradient(145deg,color-mix(in srgb,var(--rarity) 60%,#122241),#182843);box-shadow:inset 0 1px #fff8,0 .2em .2em #07172a50}
    #hero-details button.gear-slot{min-height:0;padding:.2em;border:2px solid var(--rarity);background:linear-gradient(145deg,color-mix(in srgb,var(--rarity) 60%,#122241),#182843)}
@@ -187,8 +178,6 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .stat-grid img,#hero-details .stat-grid b{width:1.4em;height:1.4em;flex:none;object-fit:contain}
    #hero-details .stat-grid b{display:grid;place-items:center;border-radius:50%;background:#3d5677;font-size:.55em;white-space:nowrap;line-height:1}
    #hero-details .stat-grid dt{font-size:.68em;color:#b9c8da} #hero-details .stat-grid dd{margin:0 0 0 auto;font-weight:800}
-   #hero-details .orb-placeholder{display:flex;align-items:center;gap:.6em;padding:.7em;border-radius:.5em;background:#1b2a42;color:#fff4d6}
-   #hero-details .orb-placeholder small{color:#b9c8da}
   `;document.head.append(style);
   document.addEventListener('keydown',event=>{if(event.key==='Escape'&&host&&!host.hidden&&subPanel==='formation'&&formationEscape){event.preventDefault();formationEscape();}});
   content=document.createElement('div');host.append(content);document.body.append(host);
@@ -215,7 +204,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
   const formation=button(identity,null,()=>openFormation());
   formation.className='formation-button';formation.setAttribute('aria-label','Formation');
   const miniPreset=formationState&&activeFormationPreset(formationState);
-  for(let row=0;row<FORMATION_ROWS;row++)for(let column=0;column<FORMATION_GRID_SIZE;column++){const occupant=miniPreset?formationOccupant(miniPreset,formationCell(row,column)):'';el('i',null,formation).className=occupant&&occupant===miniPreset.leader?'lead':occupant?'filled':'';}
+  for(const slot of FORMATION_SLOTS){const occupant=miniPreset?formationOccupant(miniPreset,slot.cell):'',dot=el('i',null,formation);dot.style.gridColumn=slot.column+1;dot.style.gridRow=slot.row+1;dot.className=occupant&&occupant===miniPreset.leader?'lead':occupant?'filled':'';}
   const arrows=el('nav',null,identity);arrows.className='hero-arrows';arrows.setAttribute('aria-label','Choose hero');
   button(arrows,'‹',()=>selectHero(index-1)).setAttribute('aria-label','Previous hero');
   button(arrows,'›',()=>selectHero(index+1)).setAttribute('aria-label','Next hero');
@@ -235,7 +224,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
   el('h2',selectedAbility.displayName,detail);
   el('small',selectedAbility.scaffold?'Late-game resonance · Not yet available':selectedAbility.slot==='passive'?'Passive':selectedAbility.slot==='basic'?'Always available':'Special',detail);
   for(const line of heroSkillCopy(selectedAbility).lines)el('p',line,detail);
-  if(selectedAbility.cooldownSeconds!=null)el('p',`Range: ${heroSkillRange(selectedAbility,hero)} · Cooldown: ${selectedAbility.cooldownSeconds}s`,detail).className='skill-meta';
+  if(selectedAbility.cooldownSeconds!=null)el('p',`Range: ${heroSkillRange(selectedAbility,hero)} · Cooldown: ${selectedAbility.cooldownSeconds}s${selectedAbility.provisionalCooldown?' (provisional)':''}`,detail).className='skill-meta';
   for(const rule of heroSkillCopy(selectedAbility).rules||[])el('p',rule,detail);
 
   function openFormation(){
@@ -245,8 +234,6 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
   // Formation opens as a full-screen modal over the hero screen and shared navigation (StoneAge Set Party / Edit Party).
   function renderFormationModal(){
    const modal=document.createElement('section');modal.className='formation-modal';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','Formation');
-   // The back grid unlocks with hero level; carry that into an open draft without marking it unsaved.
-   if(formationDraft&&formationState&&formationDraft.unlockedGrids!==formationState.unlockedGrids)formationDraft=sanitizeHeroFormation(formationDraft,formationStore.roster,formationState.unlockedGrids);
    const saved=formationState,draft=formationDraft||saved,dirty=!!saved&&JSON.stringify(draft)!==JSON.stringify(saved);
    const finish=()=>{subPanel='';formationPick='';sheetNotice='';formationDraft=null;formationHistory=[];formationConfirm=false;formationSortOpen=false;formationCopyOpen=false;};
    const requestClose=()=>{if(formationDraft&&JSON.stringify(formationDraft)!==JSON.stringify(formationStore.state()))formationConfirm=true;else finish();};
@@ -259,41 +246,62 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    const top=el('div',null,modal);top.className='formation-top';
    const power=el('div',null,top);power.className='formation-power';el('small','Total CP',power);el('b',String(totalCP),power).className='formation-total';
    if(!saved){el('p',`Current leader: ${leaderName}.`,modal);content.append(modal);return;}
-   const preset=activeFormationPreset(draft),locked=!!preset.locked,nameOf=id=>heroDefinition(globals.HeroProgress.heroes[id]||{baseHeroName:id}).name;
+   const preset=activeFormationPreset(draft),nameOf=id=>heroDefinition(globals.HeroProgress.heroes[id]||{baseHeroName:id}).name;
    const tools=el('div',null,top);tools.className='formation-tools';tools.setAttribute('aria-label','Formation presets');
    for(let slot=0;slot<FORMATION_PRESETS;slot++){const tab=button(tools,String(slot+1),()=>{edit(selectFormationPreset(formationDraft,slot));formationPick='';});tab.setAttribute('aria-pressed',String(draft.active===slot));tab.setAttribute('aria-label',`Preset ${slot+1}`);}
    const copy=button(tools,'Copy',()=>{formationCopyOpen=true;formationCopyTargets=[];formationPick='';formationSortOpen=false;});copy.className='copy';copy.setAttribute('aria-label',`Copy preset ${draft.active+1}`);
    const undo=button(tools,'↩',()=>{formationDraft=formationHistory.pop()||formationDraft;formationPick='';sheetNotice='';});undo.className='undo';undo.setAttribute('aria-label','Undo');undo.disabled=!formationHistory.length;
-   const lock=button(tools,locked?'🔒':'🔓',()=>{formationPick='';if(commit(setFormationLocked(formationDraft,!locked)))sheetNotice=locked?'Formation unlocked.':'Formation locked.';});
-   lock.className='lock';lock.setAttribute('aria-pressed',String(locked));lock.setAttribute('aria-label',locked?'Unlock formation':'Lock formation');
-   // Two 2x2 grids in one row; the board faces right, so the rightmost column is the frontline. The right grid opens first.
-   const field=el('div',null,modal);field.className='formation-field';field.dataset.locked=String(locked);field.dataset.picking=String(!!formationPick);field.setAttribute('aria-label','Formation board, front on the right');
-   el('span','Front ▶',field).className='formation-facing';
-   const pick=id=>{if(locked){sheetNotice='Unlock the formation to make changes.';return;}formationPick=formationPick===id?'':id;sheetNotice='';};
-   for(let grid=0;grid<FORMATION_GRIDS;grid++){
-    const cells=el('div',null,field);cells.className='formation-grid';cells.dataset.grid=String(grid);
-    if(!formationGridOpen(grid,draft.unlockedGrids)){
-     cells.dataset.locked='true';cells.setAttribute('aria-label',`Back formation grid locked until a hero reaches level ${FORMATION_SECOND_GRID_LEVEL}`);
-     for(let slot=0;slot<FORMATION_GRID_SIZE*FORMATION_ROWS;slot++)el('div',null,cells).className='formation-cell';
-     const lockBadge=button(cells,`🔒 Lv. ${FORMATION_SECOND_GRID_LEVEL}`,()=>{formationPick='';sheetNotice=`This grid unlocks when a hero reaches Lv. ${FORMATION_SECOND_GRID_LEVEL}.`;});
-     lockBadge.className='formation-lock';lockBadge.setAttribute('aria-label',`Locked until a hero reaches level ${FORMATION_SECOND_GRID_LEVEL}`);
-     continue;
-    }
-    for(let row=0;row<FORMATION_ROWS;row++)for(let offset=0;offset<FORMATION_GRID_SIZE;offset++){
-     const column=grid*FORMATION_GRID_SIZE+offset,cell=formationCell(row,column),occupant=formationOccupant(preset,cell),line=column===FORMATION_GRIDS*FORMATION_GRID_SIZE-1?'front':'back';
-     const node=button(cells,null,()=>{
-      if(formationPick&&formationPick!==occupant){edit(placeFormationHero(formationDraft,formationPick,cell));formationPick='';sheetNotice='';}
-      else if(occupant)pick(occupant);
-     });
-     node.className='formation-cell';node.dataset.cell=String(cell);node.setAttribute('aria-pressed',String(!!occupant&&occupant===formationPick));
-     if(occupant){
-      const member=globals.HeroProgress.heroes[occupant];node.dataset.hero=occupant;node.dataset.leader=String(occupant===preset.leader);
-      const face=el('i',null,node);face.className='cell-face';if(member)portrait(member,face);el('em',occupant===preset.leader?`★ ${nameOf(occupant)}`:nameOf(occupant),node);
-      node.setAttribute('aria-label',`${nameOf(occupant)}, ${line} line${occupant===preset.leader?', leader':''}`);
-     }else node.setAttribute('aria-label',`Empty ${line} slot${formationPick?`; move ${nameOf(formationPick)} here`:''}`);
-    }
+   const field=el('div',null,modal);field.className='formation-field';field.dataset.picking=String(!!formationPick);field.setAttribute('aria-label','Eight-slot 2-4-2 Formation board');
+   const pick=id=>{formationPick=formationPick===id?'':id;sheetNotice='';};
+   const cells=el('div',null,field);cells.className='formation-grid';
+   for(const slot of FORMATION_SLOTS){
+    const cell=slot.cell,occupant=formationOccupant(preset,cell);
+    const node=button(cells,null,()=>{
+     if(formationPick&&formationPick!==occupant){edit(placeFormationHero(formationDraft,formationPick,cell));formationPick='';sheetNotice='';}
+     else if(occupant)pick(occupant);
+    });
+    node.className='formation-cell';node.dataset.cell=String(cell);node.style.gridColumn=slot.column+1;node.style.gridRow=slot.row+1;
+    node.setAttribute('aria-pressed',String(!!occupant&&occupant===formationPick));
+    const position=`row ${slot.row+1}, column ${slot.column+1}`;
+    if(occupant){
+     node.dataset.hero=occupant;node.dataset.leader=String(occupant===preset.leader);
+     node.setAttribute('aria-label',`${nameOf(occupant)}, ${position}${occupant===preset.leader?', leader':''}`);
+     const face=el('i',null,node);face.className='cell-face';const member=globals.HeroProgress.heroes[occupant];if(member)portrait(member,face);
+     el('em',nameOf(occupant),node);attachFormationDrag(node,occupant);
+    }else node.setAttribute('aria-label',`Empty slot, ${position}`);
    }
-   // Roster (Edit Party): every owned hero with sort, filter, undo and a magnifier into the hero screen.
+   function attachFormationDrag(handle,id){
+    let start=null,ghost=null,suppressClick=false;
+    handle.style.touchAction='none';
+    handle.ondragstart=event=>event.preventDefault();
+    handle.addEventListener('click',event=>{if(suppressClick){event.preventDefault();event.stopImmediatePropagation();suppressClick=false;}},true);
+    const clear=()=>{ghost?.remove();ghost=null;start=null;};
+    handle.onpointerdown=event=>{
+     if(event.button!==0)return;
+     start={x:event.clientX,y:event.clientY,id:event.pointerId};
+     handle.setPointerCapture(event.pointerId);
+    };
+    handle.onpointermove=event=>{
+     if(!start||event.pointerId!==start.id)return;
+     if(!ghost&&Math.hypot(event.clientX-start.x,event.clientY-start.y)>5){
+      const rect=handle.getBoundingClientRect();ghost=handle.cloneNode(true);
+      ghost.removeAttribute('id');ghost.setAttribute('aria-hidden','true');
+      Object.assign(ghost.style,{position:'fixed',width:rect.width+'px',height:rect.height+'px',margin:'0',pointerEvents:'none',zIndex:'1000',opacity:'.8'});
+      document.body.append(ghost);
+     }
+     if(ghost){event.preventDefault();ghost.style.left=(event.clientX-ghost.offsetWidth/2)+'px';ghost.style.top=(event.clientY-ghost.offsetHeight/2)+'px';}
+    };
+    handle.onpointerup=event=>{
+     if(!start)return;
+     if(ghost){
+      const target=document.elementFromPoint(event.clientX,event.clientY)?.closest('.formation-cell[data-cell]');
+      if(target&&cells.contains(target)){edit(placeFormationHero(formationDraft,id,Number(target.dataset.cell)));formationPick='';sheetNotice='';lastKey='';}
+      suppressClick=true;
+     }
+     clear();
+    };
+    handle.onpointercancel=clear;
+   }
    const bar=el('div',null,modal);bar.className='formation-roster-bar';
    const placed=roster.filter(member=>member.heroInstanceKey in preset.cells).length;
    el('span',`${placed}/${roster.length}`,bar).className='formation-count';
@@ -307,7 +315,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    for(const member of shown){
     const id=member.heroInstanceKey,memberDefinition=heroDefinition(member);
     const card=el('div',null,list);card.className='formation-card';card.dataset.hero=id;card.dataset.selected=String(formationPick===id);
-    const choose=button(card,null,()=>pick(id));choose.className='formation-card-pick';choose.setAttribute('aria-pressed',String(formationPick===id));
+    const choose=button(card,null,()=>pick(id));choose.className='formation-card-pick';attachFormationDrag(choose,id);choose.setAttribute('aria-pressed',String(formationPick===id));
     choose.setAttribute('aria-label',`${memberDefinition.name}, level ${member.currentLevel}, ${memberDefinition.role}${id===preset.leader?', leader':''}`);
     const face=el('i',null,choose);face.className='card-face';portrait(member,face);
     el('b',`Lv.${member.currentLevel}`,choose).className='card-lv';
@@ -317,11 +325,11 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
     const zoom=button(card,'🔍',()=>{gameState.selectedHero=roster.indexOf(member);subPanel='';currentTab='heroes';formationReturn=true;formationPick='';formationSortOpen=false;});
     zoom.className='card-zoom';zoom.setAttribute('aria-label',`Open ${memberDefinition.name}'s hero screen`);
    }
-   el('p',sheetNotice||(locked?'Formation locked · Unlock to make changes.':formationPick?`Tap a slot to move ${nameOf(formationPick)}.`:dirty?'Unsaved changes.':`Leader ${nameOf(preset.leader)} · Tap a hero, then a slot.`),modal).className='formation-note';
+   el('p',sheetNotice||(formationPick?`Tap a slot to move ${nameOf(formationPick)}.`:dirty?'Unsaved changes.':`Leader ${nameOf(preset.leader)} · Tap a hero, then a slot.`),modal).className='formation-note';
    const actions=el('div',null,modal);actions.className='formation-actions';
    const lead=button(actions,'Set Leader',()=>{edit(setFormationLeader(formationDraft,formationPick));formationPick='';});
-   lead.disabled=locked||!formationPick||formationPick===preset.leader;lead.setAttribute('aria-label',formationPick?`Set ${nameOf(formationPick)} as leader`:'Set Leader');
-   const auto=button(actions,'Auto-Form',()=>{edit(autoFormActive(formationDraft,formationStore.roster));formationPick='';});auto.disabled=locked;
+   lead.disabled=!formationPick||formationPick===preset.leader;lead.setAttribute('aria-label',formationPick?`Set ${nameOf(formationPick)} as leader`:'Set Leader');
+   const auto=button(actions,'Auto-Form',()=>{edit(autoFormActive(formationDraft,formationStore.roster));formationPick='';});
    const save=button(actions,'Save',()=>commit(formationDraft));save.className='primary';save.disabled=!dirty;save.setAttribute('aria-label',dirty?'Save formation':'Formation saved');
    if(formationSortOpen){
     const sheet=el('div',null,modal);sheet.className='formation-sort';sheet.setAttribute('role','dialog');sheet.setAttribute('aria-label','Sort and filter');
@@ -336,10 +344,10 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
     el('h3',`Copy preset ${draft.active+1} to`,sheet);const targets=el('div',null,sheet);targets.className='sort-options';
     const others=[...Array(FORMATION_PRESETS).keys()].filter(slot=>slot!==draft.active);
     for(const slot of others){
-     const target=draft.presets[slot],option=button(targets,`${target.locked?'🔒 ':''}Preset ${slot+1}`,()=>{formationCopyTargets=formationCopyTargets.includes(slot)?formationCopyTargets.filter(value=>value!==slot):[...formationCopyTargets,slot];});
-     option.setAttribute('aria-pressed',String(formationCopyTargets.includes(slot)));option.disabled=!!target.locked;
+     const target=draft.presets[slot],option=button(targets,`Preset ${slot+1}`,()=>{formationCopyTargets=formationCopyTargets.includes(slot)?formationCopyTargets.filter(value=>value!==slot):[...formationCopyTargets,slot];});
+     option.setAttribute('aria-pressed',String(formationCopyTargets.includes(slot)));
     }
-    const open=others.filter(slot=>!draft.presets[slot].locked);
+    const open=others;
     button(targets,'Select All',()=>{formationCopyTargets=formationCopyTargets.length===open.length?[]:open;}).setAttribute('aria-pressed',String(open.length>0&&formationCopyTargets.length===open.length));
     const go=button(sheet,'Copy',()=>{const count=formationCopyTargets.length;if(edit(copyFormationPresetTo(formationDraft,formationCopyTargets)))sheetNotice=`Copied to ${count} preset${count===1?'':'s'}.`;formationCopyOpen=false;});
     go.className='sort-done';go.disabled=!formationCopyTargets.length;
@@ -355,7 +363,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    if(formationFocus){formationFocus=false;close.focus({preventScroll:true});}
   }
   const tabs=el('nav');tabs.className='tabs';tabs.setAttribute('aria-label','Hero management');
-  for(const [id,label] of [['heroes','Heroes'],['gear','Gear'],['orb','Orb']]){const tab=button(tabs,label,()=>{currentTab=id;subPanel='';});tab.setAttribute('aria-pressed',String(currentTab===id));}
+  for(const [id,label] of [['heroes','Heroes'],['gear','Gear'],['resonance','Resonance']]){const tab=button(tabs,label,()=>{currentTab=id;subPanel='';});tab.setAttribute('aria-pressed',String(currentTab===id));}
   const pane=el('div');pane.className='pane';pane.dataset.view=currentTab;pane.setAttribute('aria-label',`${currentTab} view`);
 
   const notice=reason=>reason==='insufficient_tickets'?'Not enough tickets yet.':reason==='slot_locked'?'That slot is still locked.':reason==='max_stars'?'All stars earned.':'The change could not be saved.';
@@ -373,8 +381,12 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
     const top=el('div',null,sheet);top.className='sheet-row';starMeter(stars,top);el('span',`${stars} / ${STAR_MAX}`,top);
     const lines=el('dl',null,sheet);lines.className='growth-lines';
     el('dt','Now',lines);el('dd',`+${pct(breakdown.own)} HP ATK DEF MATK RES`,lines);
-    el('dt','Next',lines);el('dd',maxed?'All stars earned':`+${pct(breakdown.own+STAR_STAT_BONUS)}${(stars+1)%STAR_TIER_SIZE===0?` · [All] party +${pct(STAR_TIER_PARTY_BONUS)}`:''}`,lines);
-    el('dt','[All]',lines);el('dd',`Party +${pct(breakdown.party)} from every hero's completed tiers`,lines);
+    el('dt','Next',lines);el('dd',maxed?'All stars earned':`+${pct(breakdown.own+STAR_STAT_BONUS)} hero stats`,lines);
+    const effects=el('ol',null,sheet);effects.className='star-effects';effects.setAttribute('aria-label','Star effects');
+    const skillName=slot=>slot==='special'?definition.actives[0].displayName:slot==='passive'?definition.skills[1].displayName:definition.skills[slot==='resonance1'?2:3].displayName;
+    for(const [index,slots] of Object.entries(STAR_EFFECTS))for(const [skillSlot,effect] of Object.entries(slots)){
+     const item=el('li',`★${index} · ${skillName(skillSlot)} · +${pct(effect.statBonus)} stats`,effects);item.dataset.skill=skillSlot;item.dataset.earned=String(Number(index)<=stars);
+    }
     const row=el('div',null,sheet);row.className='sheet-row';
     el('span',maxed?'Max stars':`${balance}/${cost} ${definition.name} tickets`,row).className='star-cost';
     const action=button(row,'Star Up',()=>{const result=combatProgression.starUp(id);sheetNotice=result.ok?`${definition.name} reached ★${result.stars}.`:notice(result.reason);});
@@ -407,7 +419,6 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    levelUp.className='hero-level-up';levelUp.disabled=maxedHero||balance<cost||!combatProgression;
    levelUp.setAttribute('aria-label',maxedHero?'Maximum level':`Level Up · ${cost} tickets`);
    button(actions,'Star Up',()=>{subPanel='star';sheetNotice='';});
-   const resonance=button(actions,'Resonance',()=>{});resonance.disabled=true;resonance.title='Late-game resonance · Not yet available';
    if(ticketNotice)el('small',ticketNotice,pane).className='hero-ticket-notice';
   }else if(currentTab==='gear'){
    const slots=el('div',null,pane),itemDetail=el('div',null,pane);itemDetail.className='gear-detail';
@@ -422,17 +433,21 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
     el('dt',label==='MAG'?'MATK':label,cell);el('dd',String(value),cell);
    }
   }else{
-   const orb=el('div',null,pane);orb.className='orb-placeholder';orb.setAttribute('aria-label','Orb equipment unavailable');
-   const copy=el('div',null,orb);el('h2','Orb slot · Coming soon',copy);el('small','Orb equipment is not available yet.',copy);
+   const panel=el('section',null,pane);panel.className='resonance-panel';panel.setAttribute('aria-label','Resonance crystals');
+   el('h2','Resonance',panel);el('p','Future crystals',panel);
+   const slots=el('div',null,panel);slots.className='resonance-slots';
+   for(let index=0;index<RESONANCE_SLOTS;index++){const slot=el('div',null,slots);slot.className='resonance-slot';slot.setAttribute('aria-label',`Resonance slot ${index+1}: Empty`);el('b','◇',slot);el('span','Empty',slot);}
+
   }
   content.append(tabs,pane);
   if(focusLabel){const replacement=[...content.querySelectorAll('button')].find(node=>(node.getAttribute('aria-label')||node.textContent)===focusLabel);replacement?.focus({preventScroll:true});}
  }
- return {mode:'details',selectedSkillIndex:Math.min(activeSkillIndex,definition.actives.length-1),hitZones:{skillNodes:[]}};
+ return {mode:'details',selectedSkillIndex:Math.min(activeSkillIndex,definition.skills.length-1),hitZones:{skillNodes:[]}};
 }
 
 function heroSkillRange(ability,hero){
+ if(ability.slot==='basic'||ability.skillId==='basic_attack')return 'Screen width';
  if(!ability.targetRule)return 'Self';
- const reach=actorAttackReach({...hero,kind:'hero'});
+ const reach=heroSpecialReach({...hero,kind:'hero'});
  return ability.targetRule.kind==='party'?'Whole party':ability.targetRule.kind==='inRangeEnemies'?`Every foe within ${reach} units`:`${reach}-unit actor reach`;
 }

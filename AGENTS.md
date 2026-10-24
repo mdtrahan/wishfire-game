@@ -62,7 +62,7 @@ After startup, execution policy is governed by:
 - `goals/chatgpt-cloud-migration-plan.md` owns cloud preparation; `goals/current-stack-integration-report.md` records the merged local stack and deferred hero repair. Cloud cutover requires separate owner approval.
 - Cloud pilots use disposable snapshots with pinned source hashes. Live Beads retains its existing owner until tracker migration is verified; `goals/cloud-combat-pilot-report.md` records the isolated combat trial.
 - Keep one implementation bead per bead-scoped branch/worktree; include the bead id in branch and worktree names.
-- ORKA-9ee is owner-parked: retain its existing branch/worktree and defer implementation or integration until the owner resumes it.
+- ORKA-9ee was owner-resumed on 2026-10-24 as the retained base for ORKA-bti. Preserve its original branch/worktree; implement the 2-4-2 formation and reconciliation only in the ORKA-bti lane.
 - Never merge without validation, current Integration Ready evidence, and a rollback checkpoint.
 - QA PASS certifies feature quality only; Integration Ready certifies merge readiness against current `main`.
 

@@ -40,6 +40,9 @@ export function resetCombatSessionConditions(globals, gameState, entities = []) 
     superGems: [], refillBounce: null, gemMergeFx: null, yellowCasino: null,
     heroCommandsMenuOpen: false,
   });
+  delete globals.ContinuousCombatFormation;
+  delete globals.ContinuousCombatFormationFacing;
+  delete globals.ContinuousCombatPatrolReturn;
   delete globals.HeroAction;
   delete globals.EnemyAction;
   delete globals.RealtimeHeroBasicReadyAt;
