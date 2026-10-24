@@ -6,6 +6,7 @@
 - Do not log routine execution history, file lists, or status chatter.
 
 ## Operating Constraints
+- Retiring a quest requires filtering new candidates and safely replacing unfinished saved objectives. Preserve completed legacy claims, claimed keys and reward receipts; changing only the candidate pool leaves existing players stuck.
 - Equipment-service test setup uses the production hero-store factory. Empty stores cause the ownership guard to reject reward and Gold transactions before those contracts can be exercised.
 - Equipment review communicates eligibility through CP arrows while retaining full color for portraits, tiles and controls. Keep disabled semantics separate from opacity, and test computed ancestor opacity when changing interaction scope.
 - Mini-quest counter suppression follows objective semantics: hide counters only for chapter-clear/boss milestones. Collection and other quests retain `0/1` and `1/1`; saved requirements and rewards stay intact. Zero-KO quests are retired.
