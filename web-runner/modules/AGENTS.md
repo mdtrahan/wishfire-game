@@ -96,3 +96,5 @@
 - Browser KO seams record an ephemeral puppet-defeat copy before simulation removal, including native rules onKO. This presentation-only bridge intentionally stays out of the retired Scripts mirror; mirrored removal/reward functions retain parity.
 
 - Browser `ApplyDamageToTarget` reports resolved hero-to-enemy HP loss to standalone DPS accounting. This diagnostic bridge intentionally stays outside the retired Scripts mirror and does not alter damage or targeting.
+
+- The authoritative enemy KO hook persists ordinary reward ledgers without Bag points. Only boss-tagged deaths enqueue the configured boss participation points; combat-time ticks own routine Bag progress.

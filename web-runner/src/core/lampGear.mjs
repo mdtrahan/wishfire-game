@@ -1,31 +1,55 @@
 import {EQUIPMENT,RARITIES,EQUIPMENT_SLOTS,equipmentDefinition,equipmentStats,isEquipmentUpgrade} from './equipment.mjs';
 import {refreshHeroStats} from './heroProgression.mjs';
+import {formatCompactCount} from './formatCompactCount.mjs';
 import {computeCombatPower} from './combatPower.mjs';
 
-export const LAMP_CONFIG=Object.freeze({capacity:20,drawEXP:0,minEmissionIntervalMs:2000,autoIntervalMs:5000,autoUnlockLevel:5,maxOrdinal:990,mapStatGrowth:.005,lampLevels:100,upgradeBaseCost:100,upgradeCostB:Math.log(1.07),upgradeCostA:.8,upgradeCostPeriod:10,killReceiptDomains:64,});
+export const LAMP_CONFIG=Object.freeze({capacity:20,drawEXP:0,minEmissionIntervalMs:2000,autoIntervalMs:5000,autoUnlockLevel:5,maxOrdinal:990,mapStatGrowth:.005,lampLevels:100,upgradeCostBase:100,upgradeCostLinear:200,upgradeCostQuad:-10,upgradeCostCubic:5.35,upgradeCostWave:.04,upgradeCostPeriod:10,upgradeCostRound:25,upgradeCostCapacityFloor:5,killReceiptDomains:64,tickSeconds:15,tickPoints:1,bossKillPoints:5,});
+export function lampTierUpgradeCost(n,capacity){
+ if(n===LAMP_CONFIG.lampLevels-1)return null;
+ const c=LAMP_CONFIG,trend=c.upgradeCostBase+c.upgradeCostLinear*n+c.upgradeCostQuad*n**2+c.upgradeCostCubic*n**3;
+ const wave=1+c.upgradeCostWave*Math.sin(2*Math.PI*n/c.upgradeCostPeriod),unit=c.upgradeCostRound;
+ return Math.max(Math.round(trend*wave/unit)*unit,Math.ceil(c.upgradeCostCapacityFloor*capacity/unit)*unit);
+}
 export const LAMP_GUIDE=Object.freeze({storage:1,comparison:2,preview:4});
 export function markLampGuide(data,step){if(!Object.hasOwn(LAMP_GUIDE,step))throw new Error('Unknown lamp guide step.');if(step!=='preview'&&!lampStoredCount(data)&&!data.lamp.reviewHold)throw new Error('Open stored equipment first.');if(step==='comparison'&&!data.lamp.pending.length&&!data.lamp.discarded?.length&&!data.lamp.reviewHold)throw new Error('Choose equipment first.');return data.lamp.guide=(data.lamp.guide||0)|LAMP_GUIDE[step];}
 export const LAMP_CAPACITY_TIERS=Object.freeze(Array.from({length:LAMP_CONFIG.lampLevels},(_,n)=>{
  const p=n/(LAMP_CONFIG.lampLevels-1),round=v=>Math.round(v*1000)/1000;
  const rarityWeights={common:0,uncommon:round(25+10*p),rare:round(30*p),epic:round(14*p),legendary:round(p)};
  rarityWeights.common=round(100-rarityWeights.uncommon-rarityWeights.rare-rarityWeights.epic-rarityWeights.legendary);
- return Object.freeze({capacity:LAMP_CONFIG.capacity+Math.round(10*n**1.5),cost:n===LAMP_CONFIG.lampLevels-1?null:Math.round(LAMP_CONFIG.upgradeBaseCost*Math.exp(LAMP_CONFIG.upgradeCostB*n-LAMP_CONFIG.upgradeCostA*LAMP_CONFIG.upgradeCostB*LAMP_CONFIG.upgradeCostPeriod/(2*Math.PI)*(1-Math.cos(2*Math.PI*n/LAMP_CONFIG.upgradeCostPeriod)))),rarityWeights:Object.freeze(rarityWeights)});
+ const capacity=LAMP_CONFIG.capacity+Math.round(10*n**1.5);
+ return Object.freeze({capacity,cost:lampTierUpgradeCost(n,capacity),rarityWeights:Object.freeze(rarityWeights)});
 }));
 export const lampCapacity=data=>LAMP_CAPACITY_TIERS[data.lamp.capacityTier||0].capacity;
 export const lampUpgradeCost=data=>LAMP_CAPACITY_TIERS[data.lamp.capacityTier].cost;
 export const lampKillPoints=data=>Number.isSafeInteger(data.lamp.killPoints)&&data.lamp.killPoints>=0?data.lamp.killPoints:0;
-export const enemyBagKillPoints=actor=>String(actor.enemyRole||actor.role||'').toLowerCase()==='boss'?5:1;
+export const enemyBagKillPoints=actor=>String(actor.enemyRole||actor.role||'').toLowerCase()==='boss'?LAMP_CONFIG.bossKillPoints:0;
+// Partial seconds stay in memory; completed indices recover from the saved
+// equipment receipts or HeroProgress outbox after reload.
+export function advanceLampCombatProgress(clock,{battleId,seconds,data,pending={}}){
+ if(!battleId||!data?.lamp||lampUpgradeCost(data)===null||!Number.isFinite(seconds)||seconds<=0)return{clock:null,rewards:[]};
+ const domain=`tick:${battleId}`;
+ if(clock?.battleId!==battleId){
+  let index=data.settledBagKillRewards?.[domain]?.at(-1)?.[1]||0;
+  for(const id of Object.keys(pending))if(id.startsWith(domain+':')){
+   const n=Number(id.slice(domain.length+1));if(Number.isSafeInteger(n)&&n>index)index=n;
+  }
+  clock={battleId,index,seconds:clock?.seconds||0};
+ }
+ const elapsed=clock.seconds+seconds,count=Math.floor((elapsed+1e-9)/LAMP_CONFIG.tickSeconds),index=clock.index+count;
+ if(!Number.isSafeInteger(index))throw new Error('Bag tick index exceeds the safe save limit.');
+ return{clock:{battleId,index,seconds:Math.max(0,elapsed-count*LAMP_CONFIG.tickSeconds)},rewards:Array.from({length:count},(_,n)=>({id:`${domain}:${clock.index+n+1}`,amount:LAMP_CONFIG.tickPoints}))};
+}
 function trimKillReceiptDomains(receipts){
  for(const domain of Object.keys(receipts).slice(0,-LAMP_CONFIG.killReceiptDomains))delete receipts[domain];
 }
 export function awardLampKillPoints(data,id,amount){
  const split=typeof id==='string'?id.lastIndexOf(':'):-1,session=id?.slice?.(0,split),uid=Number(id?.slice?.(split+1));
- if(!session?.startsWith('enemy:')||session.length>164||id.length>180||!Number.isSafeInteger(uid)||uid<1||String(uid)!==id.slice(split+1)||![1,5].includes(amount))throw new Error('Invalid Bag kill receipt.');
+ if(!/^(enemy|tick):/.test(session||'')||session.length>164||id.length>180||!Number.isSafeInteger(uid)||uid<1||String(uid)!==id.slice(split+1)||![LAMP_CONFIG.tickPoints,LAMP_CONFIG.bossKillPoints].includes(amount))throw new Error('Invalid Bag progress receipt.');
  const receipts=data.settledBagKillRewards||{},ranges=receipts[session]||[];
  if(ranges.some(([lo,hi])=>uid>=lo&&uid<=hi))return{applied:false,duplicate:true};
  if(lampUpgradeCost(data)===null)return{applied:false,max:true};
  const total=lampKillPoints(data)+amount;
- if(!Number.isSafeInteger(total))throw new Error('Bag kill points exceed the safe save limit.');
+ if(!Number.isSafeInteger(total))throw new Error('Bag progress points exceed the safe save limit.');
  // Coalesce adjacent KO UIDs within each battle. Recovery can reset actor
  // numbers, so each later battle retains its own receipt domain.
  const merged=[];
@@ -56,7 +80,7 @@ export function upgradeLamp(data,expectedTier=data.lamp.capacityTier){
  const cost=lampUpgradeCost(data);
  if(cost===null)throw new Error('Bag is fully upgraded.');
  const points=lampKillPoints(data),current=points+l.essence;
- if(current<cost)throw new Error('Need '+(cost-current)+' more Bag progress (kills or Essence).');
+ if(current<cost)throw new Error('Need '+formatCompactCount(cost-current)+' more Bag progress.');
  const before=l.capacityTier;
  const spentPoints=Math.min(points,cost);
  l.killPoints=points-spentPoints;l.essence-=cost-spentPoints;l.capacityTier++;
@@ -113,7 +137,7 @@ export function validateLampEconomy(data,version=5){
   const receipts=data.settledBagKillRewards;
   if(!receipts||typeof receipts!=='object'||Array.isArray(receipts))bad();
   for(const[session,ranges]of Object.entries(receipts)){
-   if(!session.startsWith('enemy:')||session.length>164||!Array.isArray(ranges)||ranges.some((range,i)=>!Array.isArray(range)||range.length!==2||range.some(n=>!Number.isSafeInteger(n)||n<1)||range[0]>range[1]||i>0&&range[0]<=ranges[i-1][1]+1))bad();
+   if(!/^(enemy|tick):/.test(session)||session.length>164||!Array.isArray(ranges)||ranges.some((range,i)=>!Array.isArray(range)||range.length!==2||range.some(n=>!Number.isSafeInteger(n)||n<1)||range[0]>range[1]||i>0&&range[0]<=ranges[i-1][1]+1))bad();
   }
   trimKillReceiptDomains(receipts);
  }

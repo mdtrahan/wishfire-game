@@ -1,3 +1,4 @@
+import { advanceLampCombatProgress } from '../src/core/lampGear.mjs';
 import {
   combatVfxProfileForActor as defaultCombatVfxProfileForActor,
   queueCombatAttackImpactVfx as defaultQueueCombatAttackImpactVfx,
@@ -211,8 +212,12 @@ export function processPendingHeroHits({
   Object.assign(state.globals, visualControlPatches);
 }
 
-export function createCombatSimulationTicker() {
-  let lastNowMs = null;
+function bagProgressBlockedByMenu() {
+  return typeof document !== 'undefined' && (document.hidden || [...document.querySelectorAll('[role="dialog"],[role="alertdialog"],dialog[open],[aria-modal="true"]')].some(node => node.getClientRects().length > 0));
+}
+
+export function createCombatSimulationTicker({isBagProgressBlocked=bagProgressBlockedByMenu}={}) {
+  let lastNowMs = null, bagClock = null;
   return {
     reset() { lastNowMs = null; },
     tick({
@@ -262,6 +267,12 @@ export function createCombatSimulationTicker() {
       lastNowMs = now;
       const dt = base * Math.max(0.25, Number(state.globals.DevCombatSpeedMultiplier || 1));
       state.globals.time = Number(state.globals.time || 0) + dt;
+      const battle = state.globals.ProgressionBattle;
+      if (battle?.persistPendingRewards && !battle.settled && !isBagProgressBlocked()) {
+        const progress = advanceLampCombatProgress(bagClock, { battleId: battle.id, seconds: dt, data: state.globals.Equipment, pending: state.globals.HeroProgress?.pendingBagKillRewards });
+        bagClock = progress.clock;
+        for (const reward of progress.rewards) battle.persistPendingRewards(reward);
+      }
       if ((state.entities || []).some(actor => actor?.kind === 'hero' && isActorRecoveryRevealActive(actor, state.globals.time))) return dt;
       const damageTexts = state.globals.DamageTexts || [];
       for (let i = damageTexts.length - 1; i >= 0; i--) {

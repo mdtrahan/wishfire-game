@@ -25,7 +25,8 @@ export function recordEnemyDefeatReward(battle, actor){
  if(!hasExp)battle.defeated[key]=0;
  if(!hasGold)battle.defeatedGold[key]=0;
  const changed=!hasExp||!hasGold;
- if(changed)battle.persistPendingRewards?.({id:`enemy:${battle.id}:${key}`,amount:enemyBagKillPoints(actor)});
+ const amount=enemyBagKillPoints(actor);
+ if(changed)battle.persistPendingRewards?.(amount?{id:`enemy:${battle.id}:${key}`,amount}:undefined);
  return changed;
 }
 function queueSettlementGold(g,battleId,amount){
