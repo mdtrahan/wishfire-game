@@ -8,13 +8,13 @@ import {heroTicketLevelCost} from '../src/core/combatProgressionRules.mjs';
 import {resolveCombatMovementTuning} from '../src/core/combatMovementTuning.mjs';
 import {STAR_MAX,STAR_EFFECTS,STAR_STAT_BONUS,RESONANCE_SLOTS,starUpCost,heroStars,heroGrowthBreakdown} from '../src/core/heroGrowthRules.mjs';
 import {FORMATION_SLOTS,FORMATION_PRESETS,sanitizeHeroFormation,activeFormationPreset,formationOccupant,placeFormationHero,setFormationLeader,autoFormActive,selectFormationPreset,copyFormationPresetTo} from '../src/core/heroFormationRules.mjs';
-import {MODAL_CLOSE_MARK,installModalCloseStyles,paintModalClose} from './modalClose.mjs';
+import {MODAL_CLOSE_MARK,installModalCloseStyles,paintModalClose,bindModalCloseKeys} from './modalClose.mjs';
 import {heroArtKey} from '../state/heroArtAssets.mjs';
 import {heroSpecialReach} from '../../src/core/arenaCombatRules.mjs';
 
 let host,content,lastKey,currentTab='heroes',subPanel='',activeSkillIndex=-1,activeHeroIndex=-1,ticketNotice='',formationPick='',resonancePick=-1,sheetNotice='';
 // Formation modal: edits a draft (committed on Save), with undo history, roster sort and a return path from the hero screen.
-let formationCopyOpen=false,formationCopyTargets=[],formationEscape=null,formationFocus=false,formationDraft=null,formationHistory=[],formationConfirm=false,formationSortOpen=false,formationReturn=false,closeMeasure=null;
+let formationCopyOpen=false,formationCopyTargets=[],formationDraft=null,formationHistory=[],formationConfirm=false,formationSortOpen=false,formationReturn=false,closeMeasure=null,returnFocus='';
 const formationSort={key:'level',descending:true,role:''};
 const SORT_KEYS=[['level','Level'],['cp','CP'],['HP','HP'],['ATK','ATK'],['DEF','DEF'],['MAG','MATK'],['role','Role']];
 const ROLE_ORDER=['Tank','Damage','Mage','Support'];
@@ -105,11 +105,13 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .sheet-row button[aria-pressed=true]{background:#1b2a42;color:#fff4d6;border-color:#1b2a42;box-shadow:none}
    #hero-details .sheet-action:disabled{opacity:1;background:#e3e6ea;color:#7d8794;border-color:#b8bfc8;box-shadow:none}
    #hero-details .sheet-note{margin:0;color:#36465c;font-size:.9em}
-   #hero-details[data-modal=formation]{z-index:40}
-   #hero-details .formation-modal{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;gap:.5em;padding:.8em .7em .9em;background:linear-gradient(#20385c,#1a2840 60%,#121c2c);color:#fff1d1}
-   #hero-details .formation-modal>header{position:relative;display:flex;justify-content:center;align-items:center;min-height:2.6em}
-   #hero-details .formation-modal>header h2{margin:0;padding:.2em 1.6em;font-size:1.3em;letter-spacing:.04em;color:#2a2010;background:linear-gradient(#fff8e4,#ecd7a4);border:2px solid #b88e3c;border-radius:.6em;box-shadow:0 .15em .3em #07172a80}
-   #hero-details .formation-modal>header .formation-close{position:absolute;right:0;top:50%;transform:translateY(-50%);display:grid;place-items:center;min-height:0;padding:0;border:0;background:transparent;box-shadow:none}
+   #hero-details[data-modal]{z-index:40}
+   #hero-details .hero-modal{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:.85em;background:#10213aeb;color:#fff1d1}
+   #hero-details .hero-modal>.game-modal-close[hidden]{display:none}
+   #hero-details .hero-modal>.sub-panel{flex:none;width:100%;padding:.55em .6em;border-radius:.45em;background:#fff4df;color:#20304a}
+   #hero-details .formation-panel{display:flex;flex-direction:column;gap:.5em;flex:1;min-height:0;width:100%;padding:.8em .7em .9em;border-radius:.7em;background:linear-gradient(#20385c,#1a2840 60%,#121c2c)}
+   #hero-details .formation-panel>header{display:flex;justify-content:center;align-items:center;min-height:2.6em}
+   #hero-details .formation-panel>header h2{margin:0;padding:.2em 1.6em;font-size:1.3em;letter-spacing:.04em;color:#2a2010;background:linear-gradient(#fff8e4,#ecd7a4);border:2px solid #b88e3c;border-radius:.6em;box-shadow:0 .15em .3em #07172a80}
    #hero-details .formation-return{position:absolute;left:3.2em;top:.55em;z-index:3;min-height:0;padding:.25em .6em;font-size:.8em;font-weight:800;background:#fff3d8;color:#163052;border-color:#fff3d8}
    #hero-details .formation-top{display:flex;align-items:center;justify-content:space-between;gap:.5em}
    #hero-details .formation-power{display:flex;flex-direction:column;padding:.2em 1.4em .25em .7em;border-radius:0 1em 1em 0;margin-left:-.7em;background:linear-gradient(90deg,#b26a2c,#d98a3d);box-shadow:0 .1em .2em #07172a80;line-height:1.1}
@@ -123,7 +125,11 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .star-effects{display:grid;grid-template-columns:1fr 1fr;gap:.1em .6em;padding:0;list-style:none;margin:0;font-size:.76em}
    #hero-details .star-effects li{white-space:normal;color:#354b66}
    #hero-details .star-effects li[data-earned=true]{color:#744016;font-weight:700}
-   #hero-details .resonance-panel{text-align:center}
+   #hero-details .resonance-panel{display:flex;flex-direction:column;gap:.65em;font-size:.85em;text-align:left}
+   #hero-details .resonance-panel header h2{display:inline-block;margin:0;padding:.1em .8em;border-radius:1em;background:#1b2a42;color:#fff4d6}
+   #hero-details .resonance-panel p{margin:0}
+   #hero-details .resonance-slot[data-locked=true]{opacity:.45}
+   #hero-details .resonance-slot .slot-face{display:block;flex:none;width:2.3em;height:2.3em;overflow:hidden;border-radius:.3em;background:#eef2f6}
    #hero-details .formation-field[data-picking=true] .formation-grid .formation-cell:not([aria-pressed=true]){border-color:#50cfff;box-shadow:0 0 0 2px #50cfff88,inset 0 -.25em 0 #cdb98f}
    #hero-details .formation-sort button:disabled{opacity:.5}
    #hero-details .formation-facing{position:absolute;right:.6em;top:.4em;font-size:.78em;font-weight:800;color:#cfe9ff}
@@ -148,8 +154,8 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .formation-card-pick .card-leader{position:absolute;left:.25em;top:.05em;color:#ffcf3f;font-size:.9em;text-shadow:0 0 2px #14213a}
    #hero-details .formation-card-pick em{position:absolute;left:0;right:0;bottom:0;font-style:normal;font-size:.68em;font-weight:800;color:#fff;background:#1b2a42e6;white-space:nowrap}
    #hero-details .card-zoom{position:absolute;right:-.2em;bottom:1.1em;z-index:1;width:1.7em;height:1.7em;min-height:0;padding:0;border-radius:50%;font-size:.8em;background:#fff3d8;border:1px solid #b99c66}
-   #hero-details .formation-sort,#hero-details .formation-confirm{position:absolute;left:1em;right:1em;z-index:6;padding:.8em;border-radius:.7em;background:#fff4df;color:#20304a;border:2px solid #b88e3c;box-shadow:0 .4em 1em #050b16b0}
-   #hero-details .formation-sort{top:7em} #hero-details .formation-confirm{top:40%;text-align:center}
+   #hero-details .formation-sort,#hero-details .formation-confirm{width:100%;padding:.8em;border-radius:.7em;background:#fff4df;color:#20304a;border:2px solid #b88e3c;box-shadow:0 .4em 1em #050b16b0}
+   #hero-details .formation-confirm{text-align:center}
    #hero-details .formation-sort h3{margin:.1em 0 .35em;font-size:.95em;text-align:center}
    #hero-details .formation-sort .sort-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.35em;margin-bottom:.5em}
    #hero-details .formation-sort .sort-options button,#hero-details .formation-confirm button{min-height:2.1em;font-weight:800;background:linear-gradient(#fffaf0,#f1e2bf);color:#1d3150;border:1px solid #b99c66}
@@ -180,12 +186,12 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .stat-grid b{display:grid;place-items:center;border-radius:50%;background:#3d5677;font-size:.55em;white-space:nowrap;line-height:1}
    #hero-details .stat-grid dt{font-size:.68em;color:#b9c8da} #hero-details .stat-grid dd{margin:0 0 0 auto;font-weight:800}
   `;document.head.append(style);
-  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&host&&!host.hidden&&subPanel==='formation'&&formationEscape){event.preventDefault();formationEscape();}});
+  installModalCloseStyles();
   content=document.createElement('div');host.append(content);document.body.append(host);
  }
  const rect=canvas.getBoundingClientRect(),scale=rect.width/360;
  Object.assign(host.style,{left:`${rect.left}px`,top:`${rect.top}px`,width:`${rect.width}px`,height:`${rect.height}px`,padding:`${(globals.CombatBossFallbackVisible?96:14)*scale}px ${12*scale}px ${66*scale}px`,fontSize:`${14*scale}px`});
- host.hidden=false;host.dataset.tab=currentTab;if(subPanel==='formation')host.dataset.modal='formation';else delete host.dataset.modal;
+ host.hidden=false;host.dataset.tab=currentTab;if(subPanel)host.dataset.modal=subPanel;else delete host.dataset.modal;
  const tickets=Object.fromEntries(roster.map(member=>[member.heroInstanceKey,combatProgression?.ticketCount(member.heroInstanceKey)||0]));
  const leaderName=resolveCombatMovementTuning(globals).leaderName;
  const growth=combatProgression?.heroGrowth?.()||null,formationStore=combatProgression?.formation||null,formationState=formationStore?.state()||null;
@@ -197,6 +203,14 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
   content.replaceChildren();
   const el=(tag,text,parent=content)=>{const node=document.createElement(tag);if(text!=null)node.textContent=text;parent.append(node);return node;};
   const button=(parent,text,action)=>{const node=el('button',text,parent);node.type='button';node.onclick=()=>{action();lastKey='';};return node;};
+  const modalSheet=(parent,label,panelClass,dismiss)=>{
+   const shell=el('div',null,parent);shell.className='hero-modal';shell.setAttribute('role','dialog');shell.setAttribute('aria-modal','true');shell.setAttribute('aria-label',label);shell.style.setProperty('--modal-close-scale',String(scale));
+   const panel=el('section',null,shell);panel.className=panelClass;
+   const close=button(shell,null,dismiss);close.className='game-modal-close';close.innerHTML=MODAL_CLOSE_MARK;close.setAttribute('aria-label','Close '+label);
+   closeMeasure||=document.createElement('canvas').getContext('2d',{willReadFrequently:true});paintModalClose(close,closeMeasure);
+   bindModalCloseKeys(shell,close,()=>{dismiss();lastKey='';});
+   return {shell,panel,close};
+  };
   const portrait=(owner,parent)=>{const image=heroPortraitImages[heroArtKey(owner)];if(image?.src){const img=el('img',null,parent);img.src=image.src;img.alt=heroDefinition(owner).name;return img;}};
   const selectHero=target=>{gameState.selectedHero=(target+roster.length)%roster.length;};
 
@@ -230,23 +244,21 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
 
   function openFormation(){
    if(!formationDraft&&formationStore){formationDraft=structuredClone(formationStore.state());formationHistory=[];}
-   subPanel='formation';formationReturn=false;formationPick='';formationConfirm=false;formationSortOpen=false;sheetNotice='';formationFocus=true;
+   subPanel='formation';formationReturn=false;formationPick='';formationConfirm=false;formationSortOpen=false;sheetNotice='';
   }
   // Formation opens as a full-screen modal over the hero screen and shared navigation (StoneAge Set Party / Edit Party).
   function renderFormationModal(){
-   const modal=document.createElement('section');modal.className='formation-modal';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','Formation');
    const saved=formationState,draft=formationDraft||saved,dirty=!!saved&&JSON.stringify(draft)!==JSON.stringify(saved);
-   const finish=()=>{subPanel='';formationPick='';sheetNotice='';formationDraft=null;formationHistory=[];formationConfirm=false;formationSortOpen=false;formationCopyOpen=false;};
+   const finish=()=>{subPanel='';formationPick='';sheetNotice='';formationDraft=null;formationHistory=[];formationConfirm=false;formationSortOpen=false;formationCopyOpen=false;returnFocus='Formation';};
    const requestClose=()=>{if(formationDraft&&JSON.stringify(formationDraft)!==JSON.stringify(formationStore.state()))formationConfirm=true;else finish();};
+   const {shell,panel:modal,close}=modalSheet(content,'Formation','formation-panel',requestClose);shell.classList.add('formation-modal');close.classList.add('formation-close');
    const edit=next=>{if(next===formationDraft||JSON.stringify(next)===JSON.stringify(formationDraft))return false;formationHistory.push(formationDraft);formationHistory=formationHistory.slice(-30);formationDraft=next;return true;};
    const commit=next=>{const result=formationStore.save(next);if(result.ok){formationDraft=structuredClone(formationStore.state());formationHistory=[];sheetNotice='Formation saved.';}else sheetNotice=notice(result.reason);return result.ok;};
-   formationEscape=()=>{if(formationConfirm)formationConfirm=false;else if(formationCopyOpen)formationCopyOpen=false;else if(formationSortOpen)formationSortOpen=false;else requestClose();lastKey='';};
    const head=el('header',null,modal);el('h2','Formation',head);
-   const close=button(head,null,requestClose);close.className='game-modal-close formation-close';close.innerHTML=MODAL_CLOSE_MARK;close.setAttribute('aria-label','Close Formation');
    const totalCP=Math.round(roster.reduce((sum,member)=>sum+computeCombatPower(member),0));
    const top=el('div',null,modal);top.className='formation-top';
    const power=el('div',null,top);power.className='formation-power';el('small','Total CP',power);el('b',String(totalCP),power).className='formation-total';
-   if(!saved){el('p',`Current leader: ${leaderName}.`,modal);content.append(modal);return;}
+   if(!saved){el('p',`Current leader: ${leaderName}.`,modal);return;}
    const preset=activeFormationPreset(draft),nameOf=id=>heroDefinition(globals.HeroProgress.heroes[id]||{baseHeroName:id}).name;
    const tools=el('div',null,top);tools.className='formation-tools';tools.setAttribute('aria-label','Formation presets');
    for(let slot=0;slot<FORMATION_PRESETS;slot++){const tab=button(tools,String(slot+1),()=>{edit(selectFormationPreset(formationDraft,slot));formationPick='';});tab.setAttribute('aria-pressed',String(draft.active===slot));tab.setAttribute('aria-label',`Preset ${slot+1}`);}
@@ -333,15 +345,14 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    const auto=button(actions,'Auto-Form',()=>{edit(autoFormActive(formationDraft,formationStore.roster));formationPick='';});
    const save=button(actions,'Save',()=>commit(formationDraft));save.className='primary';save.disabled=!dirty;save.setAttribute('aria-label',dirty?'Save formation':'Formation saved');
    if(formationSortOpen){
-    const sheet=el('div',null,modal);sheet.className='formation-sort';sheet.setAttribute('role','dialog');sheet.setAttribute('aria-label','Sort and filter');
+    const {panel:sheet}=modalSheet(shell,'Sort and filter','formation-sort',()=>{formationSortOpen=false;returnFocus='Sort and filter heroes';});
     el('h3','Sort',sheet);const keys=el('div',null,sheet);keys.className='sort-options';
     for(const [key,label] of SORT_KEYS){const option=button(keys,label,()=>{formationSort.key=key;});option.setAttribute('aria-pressed',String(formationSort.key===key));}
     el('h3','Filter',sheet);const roles=el('div',null,sheet);roles.className='sort-options';
     for(const role of ['',...ROLE_ORDER]){const option=button(roles,role||'All',()=>{formationSort.role=role;});option.setAttribute('aria-pressed',String(formationSort.role===role));}
-    button(sheet,'Done',()=>{formationSortOpen=false;}).className='sort-done';
    }
    if(formationCopyOpen){
-    const sheet=el('div',null,modal);sheet.className='formation-sort formation-copy';sheet.setAttribute('role','dialog');sheet.setAttribute('aria-label','Copy preset');
+    const {panel:sheet}=modalSheet(shell,'Copy preset','formation-sort formation-copy',()=>{formationCopyOpen=false;returnFocus=`Copy preset ${draft.active+1}`;});
     el('h3',`Copy preset ${draft.active+1} to`,sheet);const targets=el('div',null,sheet);targets.className='sort-options';
     const others=[...Array(FORMATION_PRESETS).keys()].filter(slot=>slot!==draft.active);
     for(const slot of others){
@@ -354,14 +365,11 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
     go.className='sort-done';go.disabled=!formationCopyTargets.length;
    }
    if(formationConfirm){
-    const confirm=el('div',null,modal);confirm.className='formation-confirm';confirm.setAttribute('role','alertdialog');confirm.setAttribute('aria-label','Unsaved formation changes');
+    const {shell:prompt,panel:confirm}=modalSheet(shell,'Unsaved formation changes','formation-confirm',()=>{formationConfirm=false;returnFocus='Close Formation';});prompt.setAttribute('role','alertdialog');
     el('p','Save your formation changes?',confirm);const row=el('div',null,confirm);
     button(row,'Discard',finish);const keep=button(row,'Save',()=>{if(commit(formationDraft))finish();});keep.className='primary';
    }
-   content.append(modal);
-   installModalCloseStyles();close.style.setProperty('--modal-close-scale',String(rect.width/360));
-   closeMeasure||=document.createElement('canvas').getContext('2d',{willReadFrequently:true});paintModalClose(close,closeMeasure);
-   if(formationFocus){formationFocus=false;close.focus({preventScroll:true});}
+   if(formationSortOpen||formationCopyOpen||formationConfirm){modal.inert=true;close.hidden=true;shell.removeAttribute('aria-modal');}
   }
   const tabs=el('nav');tabs.className='tabs';tabs.setAttribute('aria-label','Hero management');
   for(const [id,label] of [['heroes','Heroes'],['gear','Gear'],['resonance','Resonance']]){const tab=button(tabs,label,()=>{currentTab=id;subPanel='';});tab.setAttribute('aria-pressed',String(currentTab===id));}
@@ -370,8 +378,8 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
   const notice=reason=>reason==='insufficient_tickets'?'Not enough tickets yet.':reason==='slot_locked'?'That slot is still locked.':reason==='max_stars'?'All stars earned.':'The change could not be saved.';
   if(subPanel==='formation')renderFormationModal();
   if(currentTab==='heroes'&&subPanel&&subPanel!=='formation'){
-   const sheet=el('section',null,pane);sheet.className='sub-panel';sheet.dataset.panel=subPanel;
-   const head=el('header',null,sheet);el('h2',SHEET_TITLES[subPanel],head);button(head,'✕',()=>{subPanel='';sheetNotice='';}).setAttribute('aria-label','Close '+SHEET_TITLES[subPanel]);
+   const {panel:sheet}=modalSheet(content,SHEET_TITLES[subPanel],'sub-panel',()=>{returnFocus=SHEET_TITLES[subPanel];subPanel='';sheetNotice='';});sheet.dataset.panel=subPanel;
+   const head=el('header',null,sheet);el('h2',SHEET_TITLES[subPanel],head);
    if(subPanel==='star')renderStarSheet(sheet);
 
    if(sheetNotice)el('p',sheetNotice,sheet).className='sheet-note';
@@ -435,13 +443,23 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    }
   }else{
    const panel=el('section',null,pane);panel.className='resonance-panel';panel.setAttribute('aria-label','Resonance crystals');
-   el('h2','Resonance',panel);el('p','Future crystals',panel);
+   const head=el('header',null,panel);el('h2','Resonance',head);el('p','Socket Resonance crystals to empower this hero.',panel);
    const slots=el('div',null,panel);slots.className='resonance-slots';
-   for(let index=0;index<RESONANCE_SLOTS;index++){const slot=el('div',null,slots);slot.className='resonance-slot';slot.setAttribute('aria-label',`Resonance slot ${index+1}: Empty`);el('b','◇',slot);el('span','Empty',slot);}
+   for(let index=0;index<RESONANCE_SLOTS;index++){
+    const locked=index===1&&heroStars(growth,hero.heroInstanceKey)<5,slot=el('div',null,slots);slot.className='resonance-slot';slot.dataset.locked=String(locked);slot.setAttribute('aria-disabled','true');
+    const text=`Slot ${index+1} · ${locked?'Unlocks at ★5':'Empty'}`;slot.setAttribute('aria-label',`Resonance slot ${index+1}: ${text}`);el('i',null,slot).className='slot-face';el('span',text,slot);
+   }
+   el('p','Slot 2 opens at ★5. Crystals are coming soon.',panel).className='sheet-note';
 
   }
   content.append(tabs,pane);
+  const dialogs=[...content.querySelectorAll('.hero-modal')],activeDialog=dialogs.at(-1);
+  if(activeDialog){
+   const primary=dialogs[0];for(const sibling of content.children)if(sibling!==primary)sibling.inert=true;
+  }
   if(focusLabel){const replacement=[...content.querySelectorAll('button')].find(node=>(node.getAttribute('aria-label')||node.textContent)===focusLabel);replacement?.focus({preventScroll:true});}
+  if(returnFocus){[...content.querySelectorAll('button')].find(node=>(node.getAttribute('aria-label')||node.textContent)===returnFocus&&!node.closest('[inert]'))?.focus({preventScroll:true});returnFocus='';}
+  if(activeDialog&&!activeDialog.contains(document.activeElement))activeDialog.querySelector(':scope>.game-modal-close').focus({preventScroll:true});
  }
  return {mode:'details',selectedSkillIndex:Math.min(activeSkillIndex,definition.skills.length-1),hitZones:{skillNodes:[]}};
 }

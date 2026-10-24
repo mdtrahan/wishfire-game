@@ -118,7 +118,7 @@ import {EQUIPMENT_SAVE_KEY} from '/web-runner/systems/equipmentStorage.mjs';
    setResonance:(id,slot,linked)=>growthResult(setHeroResonance({...growthState,wallet:wallet()},id,slot,linked))};
   const render=()=>{renderHeroScreen({equipmentProgress:{data:equipment},combatProgression,canvas,gameState,fnContext,heroPortraitImages:portraits});const scale=canvas.getBoundingClientRect().width/360;renderExistingNavigation({canvas},{worldToCanvas:(x,y)=>({x:x*scale,y:y*scale}),layoutScale:scale,gameState,layoutState,eventBus});};
   const frame=()=>{render();window.heroQaFrame=requestAnimationFrame(frame);};render();window.heroQaFrame=requestAnimationFrame(frame);
-  window.heroQa={globals,gameState,equipment,fnContext,render};
+  window.heroQa={globals,gameState,equipment,fnContext,render,setGrowth:growth=>{growthState={...growthState,growth};render();}};
  };
 `;
 
@@ -179,7 +179,20 @@ test('hero party screen uses saved canonical data and stays contained across por
  try{
   for(const profile of profiles){
    const {context,page,pageErrors}=await mountPage(browser,profile,{progress,economy},url);
-   const detail=page.locator('#hero-details'),mainNav=page.locator('#game-meta-nav'),screenshots={};
+   const detail=page.locator('#hero-details'),mainNav=page.locator('#game-meta-nav'),screenshots={},modalContracts=[];
+   const modalContract=async(dialog,label)=>{
+    const metric=await dialog.evaluate(node=>{
+     const panel=node.querySelector(':scope>section'),close=node.querySelector(':scope>.game-modal-close'),rect=element=>element.getBoundingClientRect().toJSON();
+     return{panel:rect(panel),close:rect(close),viewport:[innerWidth,innerHeight,devicePixelRatio],activeModals:document.querySelectorAll('#hero-details [aria-modal=true]').length,visibleCloses:[...document.querySelectorAll('#hero-details .game-modal-close')].filter(button=>button.getClientRects().length).length,overflow:node.scrollWidth>node.clientWidth+1||node.scrollHeight>node.clientHeight+1};
+    });
+    assert.equal(metric.visibleCloses,1,`${profile.name}: ${label} has one visible close`);
+    assert.equal(metric.activeModals,1,`${profile.name}: ${label} has one active modal`);
+    assert.ok(Math.abs(metric.close.x+metric.close.width/2-metric.panel.x-metric.panel.width/2)<=2,`${profile.name}: ${label} close centered`);
+    assert.ok(metric.close.top>metric.panel.bottom,`${profile.name}: ${label} close detached below panel`);
+    assert.ok(metric.close.bottom<=profile.height&&metric.panel.top>=0,`${profile.name}: ${label} fits viewport`);
+    assert.equal(metric.overflow,false,`${profile.name}: ${label} has no modal overflow`);
+    modalContracts.push({label,...metric});
+   };
    const measure=()=>page.evaluate(()=>{
     const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
     const host=document.querySelector('#hero-details'),q=s=>host.querySelector(s);
@@ -241,8 +254,7 @@ test('hero party screen uses saved canonical data and stays contained across por
    assert.equal(await cards.locator('button').count(),4,'cards keep faces clear of action buttons');
    screenshots.heroes=`${profile.name}-heroes.png`;await page.screenshot({path:path.join(artifactDir,screenshots.heroes),fullPage:true});
    const sheetFits=async label=>{
-    const fit=await page.evaluate(()=>{const pane=document.querySelector('#hero-details .pane'),sheet=pane.querySelector('.sub-panel');const p=pane.getBoundingClientRect(),r=sheet.getBoundingClientRect();return{scroll:pane.scrollHeight-pane.clientHeight,inside:r.bottom<=p.bottom+0.5&&r.right<=p.right+0.5};});
-    assert.ok(fit.scroll<=1&&fit.inside,`${profile.name}: ${label} sheet fits the pane without scrolling (${JSON.stringify(fit)})`);
+    await modalContract(detail.getByRole('dialog',{name:'Star Up',exact:true}),label);
     assert.deepEqual((await measure()).clipped,[],`${profile.name}: ${label} sheet has no clipped labels`);
    };
    const sheet=detail.locator('.sub-panel');
@@ -261,6 +273,10 @@ test('hero party screen uses saved canonical data and stays contained across por
    for(const text of starTexts)assert.match(text,/\+2% stats/);
    await sheetFits('Star Up');
    await page.evaluate(()=>{window.heroQa.tickets={Falie:60};window.heroQa.render();});
+   await page.waitForFunction(()=>!document.querySelector('.star-up').disabled);
+   await detail.getByRole('button',{name:'Close Star Up'}).focus();await page.keyboard.press('Tab');
+   assert.equal(await sheet.locator('.star-up').evaluate(node=>node===document.activeElement),true,'Tab wraps from the close to the enabled purchase');
+   await page.keyboard.press('Shift+Tab');assert.equal(await detail.getByRole('button',{name:'Close Star Up'}).evaluate(node=>node===document.activeElement),true,'Shift+Tab wraps back to the detached close');
    await sheet.getByRole('button',{name:'Star Up · 50 tickets'}).click();
    await page.waitForFunction(()=>document.querySelector('#hero-details .star-cost')?.textContent==='10/100 Fara tickets');
    assert.equal(await detail.locator('.hero-name .stars span[data-tier="bronze"]').count(),1,'showcase meter shows the first bronze star');
@@ -269,6 +285,11 @@ test('hero party screen uses saved canonical data and stays contained across por
    await sheetFits('earned Star Up');
    screenshots.star=`${profile.name}-star.png`;await page.screenshot({path:path.join(artifactDir,screenshots.star),fullPage:true});
    await detail.getByRole('button',{name:'Close Star Up'}).click();await page.waitForFunction(()=>!document.querySelector('#hero-details .sub-panel'));
+   assert.equal(await detail.locator('.hero-actions button').nth(1).evaluate(node=>node===document.activeElement),true,'Star Up restores its opening focus');
+   await actions.getByRole('button',{name:'Star Up',exact:true}).click();await page.waitForFunction(()=>!!document.querySelector('.star-sheet'));
+   await page.keyboard.press('Tab');await page.keyboard.press('Shift+Tab');
+   assert.equal(await detail.getByRole('button',{name:'Close Star Up'}).evaluate(node=>node===document.activeElement),true,'Star Up traps keyboard focus');
+   await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('.star-sheet'));
 
 
    // Every slot is available at level 1. Edits stay in a draft until Save.
@@ -287,11 +308,24 @@ test('hero party screen uses saved canonical data and stays contained across por
    assert.deepEqual(fit.outside,[],`${profile.name}: Formation controls contained`);assert.equal(fit.overflow,false);
    assert.deepEqual((await measure()).clipped,[],`${profile.name}: Formation labels fit`);
    screenshots.formation=`${profile.name}-formation.png`;await page.screenshot({path:path.join(artifactDir,screenshots.formation),fullPage:true});
+   await modalContract(modal,'Formation');
+   await modal.getByRole('button',{name:'Sort and filter heroes',exact:true}).click();await page.waitForFunction(()=>!!document.querySelector('.formation-sort'));
+   await modalContract(detail.getByRole('dialog',{name:'Sort and filter',exact:true}),'Sort and filter');
+   await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('.formation-sort'));
+   assert.equal(await modal.getByRole('button',{name:'Sort and filter heroes',exact:true}).evaluate(node=>node===document.activeElement),true,'sort restores its opener');
+   await modal.getByRole('button',{name:'Copy preset 1',exact:true}).click();await page.waitForFunction(()=>!!document.querySelector('.formation-copy'));
+   await modalContract(detail.getByRole('dialog',{name:'Copy preset',exact:true}),'Copy preset');
+   await detail.getByRole('button',{name:'Close Copy preset',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('.formation-copy'));
+   assert.equal(await modal.getByRole('button',{name:'Copy preset 1',exact:true}).evaluate(node=>node===document.activeElement),true,'copy restores its opener');
    const original=await page.evaluate(()=>localStorage.getItem('wishfire.heroFormation.v4'));
    await board.locator('.formation-cell[data-hero="Falie"]').click();
    await board.locator('.formation-cell[data-cell="7"]').click();
    await page.waitForFunction(()=>document.querySelector('.formation-cell[data-cell="7"]')?.dataset.hero==='Falie');
    assert.equal(await page.evaluate(()=>localStorage.getItem('wishfire.heroFormation.v4')),original);
+   await modal.getByRole('button',{name:'Close Formation',exact:true}).click();await page.waitForFunction(()=>!!document.querySelector('.formation-confirm'));
+   await modalContract(detail.getByRole('alertdialog',{name:'Unsaved formation changes',exact:true}),'Unsaved formation changes');
+   await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('.formation-confirm'));
+   assert.equal(await modal.getByRole('button',{name:'Close Formation',exact:true}).evaluate(node=>node===document.activeElement),true,'cancelled confirmation restores the Formation close');
    await modal.getByRole('button',{name:'Undo',exact:true}).click();
    await page.waitForFunction(()=>document.querySelector('.formation-cell[data-cell="0"]')?.dataset.hero==='Falie');
    // Actual pointer drag from the roster into an empty bottom slot.
@@ -339,9 +373,20 @@ test('hero party screen uses saved canonical data and stays contained across por
    await detail.getByRole('button',{name:'Next hero'}).click();await page.waitForFunction(()=>document.querySelector('#hero-details h1')?.textContent==='Fara');
    await openTab(page,'Resonance');
    assert.equal(await detail.locator('.pane .resonance-slot').count(),2,'two empty crystal placeholders');
-   assert.deepEqual(await detail.locator('.pane .resonance-slot span').allTextContents(),['Empty','Empty']);
+   assert.deepEqual(await detail.locator('.pane .resonance-slot span').allTextContents(),['Slot 1 · Empty','Slot 2 · Unlocks at ★5']);
+   assert.equal(await detail.locator('.resonance-panel header h2').textContent(),'Resonance');
+   assert.equal(await detail.locator('.resonance-panel>p').first().textContent(),'Socket Resonance crystals to empower this hero.');
+   assert.equal(await detail.locator('.resonance-panel>p').last().textContent(),'Slot 2 opens at ★5. Crystals are coming soon.');
+   assert.equal(await detail.locator('.resonance-slot .slot-face').count(),2);
+   for(const slot of await detail.locator('.resonance-slot').all())assert.equal(await slot.evaluate(node=>{const face=node.querySelector('.slot-face').getBoundingClientRect(),label=node.querySelector('span').getBoundingClientRect();return face.width>0&&Math.abs(face.width-face.height)<1&&label.left>=face.right;}),true,'each crystal card has a visible square icon box beside its label');
+   assert.equal(await detail.locator('.resonance-slot').nth(1).evaluate(node=>getComputedStyle(node).opacity),'0.45');
+   assert.equal(await detail.locator('.resonance-panel button').count(),0,'empty crystal cards remain inert');
    assert.equal(await detail.locator('.pane .stat-grid').count(),0,'stats moved out of the Resonance tab');
    screenshots.resonance=`${profile.name}-resonance.png`;await page.screenshot({path:path.join(artifactDir,screenshots.resonance),fullPage:true});
+   await page.evaluate(()=>window.heroQa.setGrowth({stars:{Falie:5}}));
+   await page.waitForFunction(()=>document.querySelectorAll('.resonance-slot span')[1]?.textContent==='Slot 2 · Empty');
+   assert.equal(await detail.locator('.resonance-slot').nth(1).evaluate(node=>getComputedStyle(node).opacity),'1');
+   await page.evaluate(()=>window.heroQa.setGrowth({stars:{Falie:1}}));
    // Signature skill panel reaches every canonical skill and the basic attack.
    const reachedSkills=[];
    for(const [heroIndex,hero] of heroes.entries()){
@@ -397,7 +442,7 @@ test('hero party screen uses saved canonical data and stays contained across por
    }
    screenshots.tickets=`${profile.name}-tickets.png`;await page.screenshot({path:path.join(artifactDir,screenshots.tickets),fullPage:true});
    assert.deepEqual(pageErrors,[],'renderer has no browser exceptions');
-   report.push({fixture:'isolated production hero renderer and shared navigation modules',profile,geometry:initial,formationGeometry:fit,screenshots,reachedSkillCount:reachedSkills.length,pass:true});
+   report.push({fixture:'isolated production hero renderer and shared navigation modules',profile,geometry:initial,formationGeometry:fit,modalContracts,screenshots,reachedSkillCount:reachedSkills.length,pass:true});
    await context.close();
   }
  }catch(error){report.push({pass:false,error:error.stack||String(error)});throw error;}

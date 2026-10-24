@@ -66,9 +66,12 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
         const clock = clocks[actor.uid] ||= { skillReadyAt: {} };
         (clock.skillReadyAt ||= {})[skill.skillId] = state.globals.time + skill.cooldownSeconds / 2;
       });
-      await page.waitForFunction(() => document.querySelector('.hero-cooldown').dataset.state === 'cooldown');
+      await page.waitForFunction(() => {const node=document.querySelector('.hero-cooldown');return node.dataset.state==='cooldown'&&Math.abs(parseFloat(node.style.getPropertyValue('--cooldown'))-180)<.01;});
       const paused = (await read()).slots[0].shade;
       assert.ok(Math.abs(parseFloat(paused) - 180) < 3);
+      const reveal=await page.locator('.hero-cooldown').first().evaluate(node=>{const style=getComputedStyle(node,'::after');return{mask:style.maskImage,filter:style.backdropFilter};});
+      assert.equal(reveal.mask,'conic-gradient(rgba(0, 0, 0, 0) 0deg, rgba(0, 0, 0, 0) 180deg, rgb(0, 0, 0) 180deg, rgb(0, 0, 0) 360deg)','the colored half reveals clockwise from twelve o’clock');
+      assert.equal(reveal.filter,'grayscale(1)','the remaining cooldown wedge is grayscale');
       await page.waitForTimeout(150); assert.equal((await read()).slots[0].shade, paused);
       await page.screenshot({ path: `${directory}/${width}-${height}-paused-clock.png` });
       // Buff signals: a party-wide Elevate roll plus own buffs on the first two clocks.
