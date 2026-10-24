@@ -61,7 +61,7 @@ import {
 } from '../src/core/dynamicInitiativeRules.mjs';
 import { realtimeCooldownSeconds, scheduleRealtimeActions, selectRealtimeReadyActor } from '../src/core/realtimeCooldown.mjs';
 import { selectRealtimeHeroSkillTarget, filterContinuousEncounterEnemies } from '../src/core/realtimeHeroTargeting.mjs';
-import { castRealtimeHeroSkill, tickRealtimeHeroSkillZones, realtimeBasicInterval, realtimeCombatStat,realtimeBasicDamageMultiplier,cleanupRealtimeSkillActors, realtimeIncomingDamage, projectCombatMultiplier, actorCombatModifiers, heroWardHP, absorbHeroWard } from './heroCommands.mjs';
+import { castRealtimeHeroSkill, tickRealtimeHeroSkillZones, realtimeBasicInterval, realtimeSpecialCooldown, realtimeCombatStat,realtimeBasicDamageMultiplier,cleanupRealtimeSkillActors, realtimeIncomingDamage, projectCombatMultiplier, actorCombatModifiers, heroWardHP, absorbHeroWard } from './heroCommands.mjs';
 import { heroDefinition, heroSkillUnlocked } from '../src/core/heroDefinitions.mjs';
 import { pushContinuousCombatEnemy, reverseContinuousCombatEnemy } from '../src/core/continuousCombatStage.mjs';
 import { resetActorPresentationAfterRestore } from '../src/core/actorPresentationState.mjs';
@@ -7339,7 +7339,7 @@ export function TickRealtimeHeroBasics(ctx) {
       projectileFlightSeconds: 0.52,
       basicEligible: !scheduled[String(hero.uid)] && !servicedUIDs.has(Number(hero.uid)) && !!basicTargetForHero(hero),
       skills: (heroDefinition(hero)?.actives || []).filter(skill => skill.trigger === 'poll' && heroSkillUnlocked(hero, skill)).map(skill => ({
-        id: skill.skillId, cooldownSeconds: skill.cooldownSeconds,
+        id: skill.skillId, cooldownSeconds: realtimeSpecialCooldown(g, hero, skill),
         eligible: !scheduled[String(hero.uid)] && !servicedUIDs.has(Number(hero.uid)) && !!skillSelection(hero, skill),
       })),
     }));

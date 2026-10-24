@@ -8,7 +8,7 @@ import { resetCombatSessionConditions } from '../web-runner/systems/combatSessio
 import { HERO_DEFINITIONS } from '../web-runner/src/core/heroDefinitions.mjs';
 import { heroDefinition, heroSkillUnlocked } from '../web-runner/src/core/heroDefinitions.mjs';
 import { filterContinuousEncounterEnemies, selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
-import { castRealtimeHeroSkill, realtimeBasicInterval, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
+import { castRealtimeHeroSkill, realtimeBasicInterval, realtimeSpecialCooldown, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
 import { advancePassiveHeroRegen } from '../web-runner/src/core/heroSustainRules.mjs';
 import { recordBalanceCombatEvent } from '../web-runner/src/core/balanceTelemetry.mjs';
 import { saveHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
@@ -23,7 +23,7 @@ function loadTickRealtimeHeroBasics() {
     'getGlobals', 'getEnemies', 'resolveHeroAttackTarget', 'isHeroBasicTargetInRange', 'getEntities',
     'GetEffectiveStat', 'realtimeCooldownSeconds', 'selectRealtimeReadyActor', 'scheduleRealtimeActions',
     'HeroAttackSingle', 'GetActorByUID', 'tickRealtimeHeroSkillZones', 'heroDefinition', 'heroSkillUnlocked',
-    'selectRealtimeHeroSkillTarget', 'filterContinuousEncounterEnemies', 'castRealtimeHeroSkill', 'realtimeBasicInterval',
+    'selectRealtimeHeroSkillTarget', 'filterContinuousEncounterEnemies', 'castRealtimeHeroSkill', 'realtimeBasicInterval', 'realtimeSpecialCooldown',
     'advancePassiveHeroRegen', 'recordBalanceCombatEvent', 'saveHeroProgress', 'UpdateHeroHPUI',
     'pushContinuousCombatEnemy', 'reverseContinuousCombatEnemy', 'teleportContinuousCombatEnemy',
     `${body}; return TickRealtimeHeroBasics;`,
@@ -40,7 +40,7 @@ function loadTickRealtimeHeroBasics() {
       ctx.state.globals.PendingHeroHits.push({ at: ctx.state.globals.time + 0.52, heroUID, targetUID });
     },
     (ctx, uid) => ctx.state.entities.find(entity => Number(entity.uid) === Number(uid)) || null,
-    tickRealtimeHeroSkillZones, heroDefinition, heroSkillUnlocked, selectRealtimeHeroSkillTarget, filterContinuousEncounterEnemies, castRealtimeHeroSkill, realtimeBasicInterval,
+    tickRealtimeHeroSkillZones, heroDefinition, heroSkillUnlocked, selectRealtimeHeroSkillTarget, filterContinuousEncounterEnemies, castRealtimeHeroSkill, realtimeBasicInterval, realtimeSpecialCooldown,
     advancePassiveHeroRegen, recordBalanceCombatEvent, saveHeroProgress, () => {},
     () => false, () => false, () => false,
   );
@@ -217,6 +217,20 @@ test('the real scheduler casts only the Special; passives and resonances never t
  for(let n=0;n<1800;n++){globals.time=n/30;tick(ctx);if(globals.LastRealtimeHeroSkill)used.add(globals.LastRealtimeHeroSkill.skillId);globals.PendingHeroHits=[];}
  assert.deepEqual([...used],['shadow']);
  assert.deepEqual(Object.keys(globals.RealtimeHeroBasicClocks[1].skillReadyAt),['shadow']);
+});
+
+test('the live scheduler reserves the star-reduced Special cooldown without changing basic cadence',()=>{
+ for(const stars of [0,2,4,8]){
+  const {ctx,globals,actors,tick}=fixture({heroes:[1],enemies:[{uid:90,kind:'enemy',hp:1000,maxHP:1000,x:220,y:200,streamState:'engaged'}]});
+  Object.assign(actors[0],{baseHeroName:'Huun',currentLevel:1,maxHP:100,hp:100});
+  globals.HeroGrowth={stars:{Huun:stars}};
+  globals.RealtimeHeroBasicClocks={1:{basicReadyAt:20,skillReadyAt:{shadow:0}}};
+  ctx.callFunction=()=>0;
+  tick(ctx);
+  assert.equal(globals.LastRealtimeHeroSkill.skillId,'shadow');
+  assert.equal(globals.RealtimeHeroBasicClocks[1].skillReadyAt.shadow,20*(stars>=2?.92:1));
+  assert.equal(globals.RealtimeHeroBasicClocks[1].basicReadyAt,20);
+ }
 });
 
 test('the live scheduler casts party-wide Elevate while preserving every other clock',()=>{

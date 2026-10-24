@@ -23,6 +23,13 @@ test('radial fraction follows the Special clock and ignores the basic attack', (
   assert.equal(slot.heroKey, 'Falie');
 });
 
+test('the Special radial fraction uses the earned star cooldown', () => {
+  const g = { ...globals(10, { crimson_ward: 65.2 }), HeroGrowth: { stars: { Falie: 2 } } };
+  const slot = heroCooldownSlots([hero('Falie', 1, { baseHeroName: 'Falie' })], g)[0];
+  assert.equal(slot.remaining, 55.2);
+  assert.equal(slot.fraction, .5);
+});
+
 test('missing and expired clocks show cooldown-ready without promising eligible casting', () => {
   assert.equal(heroCooldownSlots([hero()])[0].status, 'ready');
   assert.equal(heroCooldownSlots([hero()], globals(14, { crimson_ward: 14 }))[0].fraction, 0);

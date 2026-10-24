@@ -5,6 +5,7 @@ import { activeCombatEffect } from '../../src/core/combatModifierRules.mjs';
 import { BUFF_SIGNAL_FRAMES, BUFF_SIGNAL_SHEET, projectBuffSignals } from '../../src/core/buffSignalRules.mjs';
 import { heroPassiveSignals } from '../src/core/realtimeHeroPassives.mjs';
 import { partySkillFor } from '../src/core/partySkillCatalog.mjs';
+import { realtimeSpecialCooldown } from '../src/core/realtimeHeroSkills.mjs';
 
 // questTop keeps the mini-quest's whole box above the party buff row (row top = top - 14).
 export const HERO_COOLDOWN_LAYOUT = Object.freeze({ slots: 8, width: 344, height: 41.28, top: 441.6, questTop: 370 });
@@ -23,7 +24,7 @@ export function heroCooldownSlots(entities = [], globals = {}) {
     const status = Number(actor.hp) <= 0 ? 'ko' : !next ? 'locked' : next.remaining > 0 ? 'cooldown' : 'ready';
     return [{ uid: actor.uid, heroKey: definition.key, name: definition.name, path: heroArtPath(actor), status,
       remaining: next?.remaining || 0,
-      fraction: status === 'cooldown' ? Math.min(1, next.remaining / next.skill.cooldownSeconds) : 0 }];
+      fraction: status === 'cooldown' ? Math.min(1, next.remaining / realtimeSpecialCooldown(globals, actor, next.skill)) : 0 }];
   });
   return Array.from({ length: HERO_COOLDOWN_LAYOUT.slots }, (_, index) => heroes[index] || null);
 }
@@ -45,7 +46,7 @@ export function heroBuffSignalInput(entities = [], globals = {}) {
       buffs.push({ key: `${record.sourceUID}:${id}`, modifiers, ref: { effectId: id, set: record.data?.set } });
     }
     if (Number(globals.HeroWardHPByUID?.[uid] || 0) > 0) buffs.push({ key: `${globals.HeroWardSourceUID}:ward`, modifiers: [up('ward')], ref: { effectId: 'ward' } });
-    buffs.push(...heroPassiveSignals(actor));
+    buffs.push(...heroPassiveSignals(actor,globals));
     for (const stat of ['ATK', 'DEF', 'MAG', 'RES', 'SPD']) if (Number(globals[`PartyBuff_${stat}`] || 0) > 0) buffs.push({ key: `board:${stat}`, modifiers: [up(stat)] });
     for (const status of actor?.statuses || []) {
       const stat = /^(atk|def|mag|res|spd)Up$/.exec(status?.statusEffect || '')?.[1];

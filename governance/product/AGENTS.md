@@ -47,4 +47,4 @@
 
 - Owner-approved smooth Bag upgrades supersede the player guide's older paid-stage/construction wording. Preserve the supplied menu pill palette and floating close placement; the completion reward contains bag level/capacity only. The player guide retains its older text until the owner requests a guide edit.
 
-- ORKA-bti owns the free 2-4-2 board, independent screen-wide basics, slot-based Special reach and moving bosses. Star Up caps at eight with +2% own stats per entry; per-skill effects remain an owner decision. Accessory and both crystal slots are empty without a faucet.
+- ORKA-bti owns the free 2-4-2 board, independent screen-wide basics, slot-based Special reach and moving bosses. Star Up caps at eight with +2% own stats per entry; star 1 grants +10% Special damage/healing, star 2 reduces Special cooldown by 8%, and stars 3–4 each add 15% Passive magnitude with conditions unchanged. Stars 5–8 await Resonance crystals. Accessory and both crystal slots are empty without a faucet.

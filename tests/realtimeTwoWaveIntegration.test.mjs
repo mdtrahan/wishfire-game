@@ -7,7 +7,7 @@ import { HERO_DEFINITIONS, heroSkillUnlocked } from '../web-runner/src/core/hero
 import { isHeroBasicTargetInRange, resolveHeroAttackTarget } from '../src/core/heroAttackTargetingRules.mjs';
 import { realtimeCooldownSeconds, scheduleRealtimeActions, selectRealtimeReadyActor } from '../web-runner/src/core/realtimeCooldown.mjs';
 import { filterContinuousEncounterEnemies, selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
-import { castRealtimeHeroSkill, realtimeBasicInterval, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
+import { castRealtimeHeroSkill, realtimeBasicInterval, realtimeSpecialCooldown, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
 import { advancePassiveHeroRegen } from '../web-runner/src/core/heroSustainRules.mjs';
 import { recordBalanceCombatEvent } from '../web-runner/src/core/balanceTelemetry.mjs';
 import { saveHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
@@ -51,7 +51,7 @@ function makeTickBasics(ctx) {
     'getGlobals', 'getEnemies', 'resolveHeroAttackTarget', 'isHeroBasicTargetInRange', 'getEntities', 'GetEffectiveStat',
     'realtimeCooldownSeconds', 'selectRealtimeReadyActor', 'scheduleRealtimeActions', 'HeroAttackSingle', 'GetActorByUID',
     'tickRealtimeHeroSkillZones', 'heroDefinition', 'heroSkillUnlocked', 'selectRealtimeHeroSkillTarget', 'filterContinuousEncounterEnemies', 'castRealtimeHeroSkill',
-    'realtimeBasicInterval', 'advancePassiveHeroRegen', 'recordBalanceCombatEvent', 'saveHeroProgress', 'UpdateHeroHPUI',
+    'realtimeBasicInterval', 'realtimeSpecialCooldown', 'advancePassiveHeroRegen', 'recordBalanceCombatEvent', 'saveHeroProgress', 'UpdateHeroHPUI',
     'pushContinuousCombatEnemy', 'reverseContinuousCombatEnemy', 'teleportContinuousCombatEnemy',
   ], [
     c => c.state.globals,
@@ -62,7 +62,7 @@ function makeTickBasics(ctx) {
     (c, heroUID, targetUID) => (c.state.globals.PendingHeroHits ||= []).push({ at: c.state.globals.time + 0.52, heroUID, targetUID, dmg: 1, finalDmg: 1, heroType: 'melee', combatRulesBasic: 1, realtimeBasic: 1, retargetOnDeath: 1 }),
     (c, uid) => c.state.entities.find(e => Number(e.uid) === Number(uid)) || null,
     tickRealtimeHeroSkillZones, actor => HERO_DEFINITIONS[actor.baseHeroName], heroSkillUnlocked, selectRealtimeHeroSkillTarget, filterContinuousEncounterEnemies,
-    castRealtimeHeroSkill, realtimeBasicInterval, advancePassiveHeroRegen, recordBalanceCombatEvent, saveHeroProgress, () => {},
+    castRealtimeHeroSkill, realtimeBasicInterval, realtimeSpecialCooldown, advancePassiveHeroRegen, recordBalanceCombatEvent, saveHeroProgress, () => {},
     () => 0, () => 0, (_target,distance) => distance,
   ]);
 }

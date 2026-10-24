@@ -253,6 +253,12 @@ test('hero party screen uses saved canonical data and stays contained across por
    assert.equal(await sheet.locator('.star-cost').textContent(),'0/50 Fara tickets');
    assert.equal(await sheet.locator('.star-effects li').count(),8);
    assert.deepEqual(await sheet.locator('.star-effects li').evaluateAll(nodes=>nodes.map(node=>node.dataset.skill)),['special','special','passive','passive','resonance1','resonance1','resonance2','resonance2']);
+   const starTexts=await sheet.locator('.star-effects li').allTextContents();
+   assert.match(starTexts[0],/\+10% Special damage\/healing/);
+   assert.match(starTexts[1],/-8% Special cooldown/);
+   for(const text of starTexts.slice(2,4))assert.match(text,/\+15% Passive magnitude/);
+   for(const text of starTexts.slice(4))assert.match(text,/Unlocks with Resonance crystals/);
+   for(const text of starTexts)assert.match(text,/\+2% stats/);
    await sheetFits('Star Up');
    await page.evaluate(()=>{window.heroQa.tickets={Falie:60};window.heroQa.render();});
    await sheet.getByRole('button',{name:'Star Up · 50 tickets'}).click();
@@ -260,6 +266,7 @@ test('hero party screen uses saved canonical data and stays contained across por
    assert.equal(await detail.locator('.hero-name .stars span[data-tier="bronze"]').count(),1,'showcase meter shows the first bronze star');
    assert.equal(await detail.locator('.hero-name .stars').getAttribute('aria-label'),'1 of 8 stars');
    assert.match(await sheet.innerText(),/Fara reached ★1\./);
+   await sheetFits('earned Star Up');
    screenshots.star=`${profile.name}-star.png`;await page.screenshot({path:path.join(artifactDir,screenshots.star),fullPage:true});
    await detail.getByRole('button',{name:'Close Star Up'}).click();await page.waitForFunction(()=>!document.querySelector('#hero-details .sub-panel'));
 

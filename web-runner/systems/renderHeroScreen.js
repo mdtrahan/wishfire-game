@@ -119,7 +119,8 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
    #hero-details .formation-tools button{width:2.4em;height:2.4em;min-height:0;padding:0;border-radius:50%;font-weight:800;background:#192e48;border:2px solid #9eafc2;color:#fff1d1}
    #hero-details .formation-tools button[aria-pressed=true]{background:#fff3d8;color:#163052;border-color:#fff3d8}
    #hero-details .formation-tools button.copy{font-size:.72em;width:3.33em;height:3.33em}
-   #hero-details .star-effects{display:grid;grid-template-columns:1fr 1fr;gap:.35em .6em;padding:0;list-style:none;margin:.35em 0;font-size:.76em}
+   #hero-details .star-sheet{gap:0}
+   #hero-details .star-effects{display:grid;grid-template-columns:1fr 1fr;gap:.1em .6em;padding:0;list-style:none;margin:0;font-size:.76em}
    #hero-details .star-effects li{white-space:normal;color:#354b66}
    #hero-details .star-effects li[data-earned=true]{color:#744016;font-weight:700}
    #hero-details .resonance-panel{text-align:center}
@@ -385,7 +386,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
     const effects=el('ol',null,sheet);effects.className='star-effects';effects.setAttribute('aria-label','Star effects');
     const skillName=slot=>slot==='special'?definition.actives[0].displayName:slot==='passive'?definition.skills[1].displayName:definition.skills[slot==='resonance1'?2:3].displayName;
     for(const [index,slots] of Object.entries(STAR_EFFECTS))for(const [skillSlot,effect] of Object.entries(slots)){
-     const item=el('li',`★${index} · ${skillName(skillSlot)} · +${pct(effect.statBonus)} stats`,effects);item.dataset.skill=skillSlot;item.dataset.earned=String(Number(index)<=stars);
+     const item=el('li',`★${index} · ${skillName(skillSlot)} · +${pct(effect.statBonus)} stats · ${effect.skillEffect?.text || 'Unlocks with Resonance crystals'}`,effects);item.dataset.skill=skillSlot;item.dataset.earned=String(Number(index)<=stars);
     }
     const row=el('div',null,sheet);row.className='sheet-row';
     el('span',maxed?'Max stars':`${balance}/${cost} ${definition.name} tickets`,row).className='star-cost';

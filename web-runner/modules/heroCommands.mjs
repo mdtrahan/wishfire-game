@@ -11,7 +11,7 @@ export {actorCombatModifiers} from '../src/core/realtimeSkillState.mjs';
 import {capContinuousHostileHit} from '../src/core/routineEnemyScaling.mjs';
 import {recordBalanceCombatEvent} from '../src/core/balanceTelemetry.mjs';
 import {isHeroBasicTargetInRange} from '../../src/core/heroAttackTargetingRules.mjs';
-export {castRealtimeHeroSkill,tickRealtimeHeroSkillZones,realtimeBasicInterval,realtimeCombatStat,realtimeBasicDamageMultiplier,cleanupRealtimeSkillActors,realtimeIncomingDamage} from '../src/core/realtimeHeroSkills.mjs';
+export {castRealtimeHeroSkill,tickRealtimeHeroSkillZones,realtimeBasicInterval,realtimeSpecialCooldown,realtimeCombatStat,realtimeBasicDamageMultiplier,cleanupRealtimeSkillActors,realtimeIncomingDamage} from '../src/core/realtimeHeroSkills.mjs';
 import {getHeroFlowState,getHeroSkillOptions,recordFlowThreshold,resolveRoleFlowAward} from '../src/core/personalFlow.mjs';
 import {applyStatus,legalSkill,validTargets,resolveSkill,turnStart,turnEnd} from '../src/core/combatRules.mjs';
 import {derivePresentationTurnBarrier} from '../src/core/turnGateController.mjs';
@@ -169,7 +169,7 @@ export function resolveRealtimeBasicImpact(ctx,hit={}){
  const events=[],rules=rulesContext(ctx,events),mode=String(hit.heroType||source.attackType||'melee');
  const baseDamage=Math.max(0,Number(hit.finalDmg??hit.dmg)||0);
  // Basic-only passives (Hondo's Royalty) multiply the committed basic hit.
- const boostedDamage=Number(ctx.state.globals.ContinuousCombatStageLoop||0)===1?Math.ceil(baseDamage*heroPassiveBasicMultiplier(source)):baseDamage;
+ const boostedDamage=Number(ctx.state.globals.ContinuousCombatStageLoop||0)===1?Math.ceil(baseDamage*heroPassiveBasicMultiplier(source,ctx.state.globals)):baseDamage;
  const skill={skillId:'realtime_basic',targetType:'enemy',tags:[mode==='magic'?'magic':'physical'],effects:[{effectType:'damage',fixedDamage:boostedDamage}]};
  const resolved=resolveSkill(rules,source,skill,[targetUID],{realtimeBasic:true,allowSourceKO:true,suppressPartySkillHitHooks:Number(hit.suppressPartySkillHitHooks||0)});
  const damageEvents=events.filter(event=>event.type==='damage'&&Number(event.sourceUID||0)===sourceUID);

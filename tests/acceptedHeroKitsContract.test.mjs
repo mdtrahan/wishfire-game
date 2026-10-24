@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { reverseContinuousCombatEnemy, armContinuousCombatBoss, resetContinuousCombatAfterDefeat } from '../web-runner/src/core/continuousCombatStage.mjs';
 import { HERO_DEFINITIONS, ELEVATE_SETS, PROVISIONAL_SPECIAL_COOLDOWNS } from '../web-runner/src/core/heroDefinitions.mjs';
-import { castRealtimeHeroSkill, cleanupRealtimeSkillActors, realtimeBasicInterval, realtimeCombatStat, realtimeIncomingDamage, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
+import { castRealtimeHeroSkill, cleanupRealtimeSkillActors, realtimeBasicInterval, realtimeSpecialCooldown, realtimeCombatStat, realtimeIncomingDamage, tickRealtimeHeroSkillZones } from '../web-runner/src/core/realtimeHeroSkills.mjs';
 import { applyHeroPassiveOnHit, heroPassive, heroPassiveBasicMultiplier, heroPassiveSignals } from '../web-runner/src/core/realtimeHeroPassives.mjs';
 import { absorbHeroWard, heroWardShare } from '../web-runner/src/core/heroWard.mjs';
 import { resetRealtimeSkillAttempt } from '../web-runner/src/core/realtimeSkillState.mjs';
@@ -10,6 +10,7 @@ import { actorAttackReach } from '../src/core/arenaCombatRules.mjs';
 import { BUFF_SIGNAL_FRAMES } from '../src/core/buffSignalRules.mjs';
 import { previewSeededRng } from '../src/core/seededRngRules.mjs';
 import { calculateDamageFromJs } from '../src/core/calculateDamageRules.mjs';
+import { heroStarSkillMultipliers, heroGrowthBreakdown, STAR_EFFECTS } from '../web-runner/src/core/heroGrowthRules.mjs';
 
 // Accepted kits (owner, 2026-10-23). Values below are the owner's numbers, not tuning.
 const ACCEPTED = {
@@ -193,4 +194,69 @@ test('active passives raise hero buff signals; auras do not', () => {
   assert.deepEqual(heroPassiveSignals(heroes[3]), []);
   heroes[2].hp = 90;
   assert.deepEqual(heroPassiveSignals(heroes[2])[0].modifiers.map(m => m.channel), ['MAG', 'RES']);
+});
+
+for (const [stars, specialMagnitude, specialCooldown, passiveMagnitude] of [[0, 1, 1, 1], [2, 1.1, .92, 1], [4, 1.1, .92, 1.3], [8, 1.1, .92, 1.3]]) {
+  test(`${stars} stars apply exact skill multipliers and retain 2% own stats per star`, () => {
+    const growth = { stars: { Huun: stars } };
+    assert.deepEqual(heroStarSkillMultipliers(growth, 'Huun'), { specialMagnitude, specialCooldown, passiveMagnitude });
+    assert.equal(heroGrowthBreakdown(growth, 'Huun').own, stars * .02);
+    const { ctx, g, heroes, cast } = combat(), source = heroes[1], percentages = [];
+    g.HeroGrowth = growth;
+    const original = ctx.callFunction;
+    ctx.callFunction = (name, ...args) => {
+      if (name === 'CalculateDamage') percentages.push(args[3]);
+      return original(name, ...args);
+    };
+    assert.equal(cast('Huun'), true);
+    assert.deepEqual(percentages, [240 * specialMagnitude], 'scaled potency enters the existing damage owner once');
+    assert.equal(realtimeSpecialCooldown(g, source, HERO_DEFINITIONS.Huun.special), HERO_DEFINITIONS.Huun.special.cooldownSeconds * specialCooldown);
+    source.hp = source.maxHP * .49;
+    assert.equal(heroPassiveBasicMultiplier(source, g), 2 * passiveMagnitude);
+  });
+}
+
+test('passive stars scale every magnitude while preserving thresholds, durations and aura cadence', () => {
+  const { ctx, g, heroes, enemies } = combat();
+  g.HeroGrowth = { stars: Object.fromEntries(heroes.map(hero => [hero.baseHeroName, 4])) };
+  const [fara, hondo, runa, kaja] = heroes;
+  fara.hp = 39; hondo.hp = 49; runa.hp = 81;
+  const smoke = heroPassive(fara, g).spec, royalty = heroPassive(hondo, g).spec, boast = heroPassive(runa, g).spec, aura = heroPassive(kaja, g).spec.aura;
+  assert.equal(smoke.incomingCutPct, 65); assert.equal(smoke.hpBelow, .4);
+  assert.equal(royalty.basicDamageMultiplier, 2.6); assert.equal(royalty.hpBelow, .5);
+  assert.equal(royalty.targetDebuff.magnitude, .065); assert.equal(royalty.targetDebuff.durationSeconds, 4);
+  assert.deepEqual(boast.modifiers.map(m => m.magnitude), [.065, .065]); assert.equal(boast.hpAbove, .8);
+  assert.equal(realtimeCombatStat(g, runa, 'MAG'), 108, 'the existing strongest-up rule keeps the 8% permanent bonus over the 6.5% passive');
+  assert.equal(aura.rawDamagePerChapter, 1.3); assert.equal(aura.intervalSeconds, 1);
+  assert.equal(applyHeroPassiveOnHit(g, hondo, enemies[0]), true);
+  assert.equal(g.RealtimeSkillEffects[enemies[0].uid].royalty.modifiers[0].magnitude, .065);
+  assert.equal(g.RealtimeSkillEffects[enemies[0].uid].royalty.expiresAt, g.time + 4);
+  const auraHits = [];
+  const original = ctx.callFunction;
+  ctx.callFunction = (name, ...args) => { if (name === 'ApplyRealtimeRawDamage') auraHits.push(args[2]); return original(name, ...args); };
+  tickRealtimeHeroSkillZones(ctx); g.time += 1; tickRealtimeHeroSkillZones(ctx);
+  assert.deepEqual(auraHits, [1.3, 1.3, 1.3]);
+  assert.equal(realtimeIncomingDamage(ctx, fara, enemies[0], 100), 40, 'existing 60% mitigation cap still applies');
+  for (const [hero, boundary] of [[fara, .4], [hondo, .5], [runa, .8]]) { hero.hp = hero.maxHP * boundary; assert.equal(heroPassive(hero, g), null); }
+  assert.equal(HERO_DEFINITIONS.Huun.passive.passive.basicDamageMultiplier, 2, 'authored specs remain immutable');
+});
+
+test('empty Resonance stars add no skill effects, and growth follows canonical instance ownership', () => {
+  for (let star = 5; star <= 8; star++) for (const effect of Object.values(STAR_EFFECTS[star])) assert.equal(effect.skillEffect, null);
+  const growth = { stars: { Huun: 8 } }, expected = { specialMagnitude: 1.1, specialCooldown: .92, passiveMagnitude: 1.3 };
+  for (let stars = 4; stars <= 8; stars++) assert.deepEqual(heroStarSkillMultipliers({ stars: { Huun: stars } }, 'Huun'), expected);
+  assert.deepEqual(heroStarSkillMultipliers(growth, 'huun#1'), expected);
+  assert.deepEqual(heroStarSkillMultipliers(growth, 'huun#2'), { specialMagnitude: 1, specialCooldown: 1, passiveMagnitude: 1 });
+  assert.equal(heroStarSkillMultipliers({ stars: { Huun: 1 } }, 'Huun').specialCooldown, 1);
+  assert.equal(heroStarSkillMultipliers({ stars: { Huun: 3 } }, 'Huun').passiveMagnitude, 1.15);
+});
+
+test('Bubble Pop forwards star-scaled magic potency for each foe without changing its displacement duration', () => {
+  const { ctx, g, cast } = combat(), damageInputs = [], reversals = [];
+  g.HeroGrowth = { stars: { Runa: 2 } };
+  const original = ctx.callFunction;
+  ctx.callFunction = (name, ...args) => { if (name === 'CalculateDamage') damageInputs.push(args.slice(2)); return original(name, ...args); };
+  assert.equal(cast('Runa', { reverse: (...args) => reversals.push(args[2]) }), true);
+  assert.deepEqual(damageInputs, Array.from({ length: 3 }, () => ['magic', 180 * 1.1]));
+  assert.deepEqual(reversals, [2, 2, 2]);
 });

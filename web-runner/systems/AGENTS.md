@@ -248,7 +248,7 @@
 
 - Hero Gear inspection displays the owned item level beside rarity. Read the existing item record; presentation must never reroll, rescale, reassign or mutate saved gear.
 
-- Hero presentation keeps one portrait size across Heroes, Gear and Resonance. Heroes retains canonical roster cards, Level Up and Star Up. The eight-star sheet lists each skill assignment and +2% stat bonus. Gear retains Hat/Body/Boots and adds an always-empty Accessory (Orb). Resonance has two empty future crystal placeholders. Browsing preserves saves.
+- Hero presentation keeps one portrait size across Heroes, Gear and Resonance. Heroes retains canonical roster cards, Level Up and Star Up. The eight-star sheet lists each skill assignment, +2% stat bonus and table-owned skill effect text. Empty Resonance stars say “Unlocks with Resonance crystals”. Special radial fill uses the effective star-reduced cooldown. Gear retains Hat/Body/Boots and adds an always-empty Accessory (Orb). Resonance has two empty future crystal placeholders. Browsing preserves saves.
 
 - Hero is a primary shared-navigation destination. Its screen has no Back button; use the existing main navigation to switch destinations.
 

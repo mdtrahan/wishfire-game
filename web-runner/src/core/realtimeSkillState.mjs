@@ -20,7 +20,7 @@ export function actorCombatModifiers(globals, actor) {
     }
   }
   if (actor?.kind === 'hero') legacy.push(...permanentHeroModifiers(globals, actor));
-  return [...legacy,...combatModifiers(globals.RealtimeSkillEffects?.[String(actor.uid)],Number(globals.time || 0)),...heroPassiveModifiers(actor)];
+  return [...legacy,...combatModifiers(globals.RealtimeSkillEffects?.[String(actor.uid)],Number(globals.time || 0)),...heroPassiveModifiers(actor,globals)];
 }
 export function permanentHeroModifiers(globals, actor) {
   const totals = {};

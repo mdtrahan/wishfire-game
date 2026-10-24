@@ -5,6 +5,7 @@ import { activeCombatEffect, clamp, COMBAT_MODIFIER_LIMITS, incomingReduction, r
 import { heroPassive, heroPassiveIncomingCut, tickHeroPassiveAuras } from './realtimeHeroPassives.mjs';
 import { dropHeroWard, grantHeroWard } from './heroWard.mjs';
 import { ensureSkillBattle, realtimeCombatStat, actorCombatModifiers, rawCombatStat } from './realtimeSkillState.mjs';
+import { heroStarSkillMultipliers } from './heroGrowthRules.mjs';
 export { realtimeCombatStat } from './realtimeSkillState.mjs';
 const nowOf = g => Number(g.time || 0);
 const living = a => Number(a?.hp || 0)>0;
@@ -34,6 +35,9 @@ const rawDamage = (ctx,source,target,raw,mode)=>{
 export const REALTIME_SKILL_ELEMENTS = Object.freeze({crimson_ward:'blood',shadow:'dark',bubble_pop:'water',elevate:'light'});
 // Elevate's buff lasts until replaced by the next roll or until Kaja falls.
 const UNTIL_REPLACED_SECONDS = 1e6;
+export function realtimeSpecialCooldown(g, hero, skill) {
+  return skill.cooldownSeconds * heroStarSkillMultipliers(g.HeroGrowth, hero.heroInstanceKey || hero.baseHeroName).specialCooldown;
+}
 // SPD buffs scale the basic interval by the clamped effective/base SPD ratio before Tempo-style effects.
 export function realtimeBasicInterval(g,hero,ordinary) {
   const base=rawCombatStat(hero,'SPD'), effective=realtimeCombatStat(g,hero,'SPD');
@@ -43,7 +47,7 @@ export function realtimeBasicInterval(g,hero,ordinary) {
 export function realtimeIncomingDamage(ctx,target,source,amount) {
   const g=ctx.state.globals;
   if(Number(g.ContinuousCombatStageLoop)!==1||target?.kind!=='hero'||source?.kind!=='enemy')return amount;
-  const cut=Math.min(.6,Math.max(incomingReduction(effects(g)[String(target.uid)] || {},nowOf(g)),heroPassiveIncomingCut(target)));
+  const cut=Math.min(.6,Math.max(incomingReduction(effects(g)[String(target.uid)] || {},nowOf(g)),heroPassiveIncomingCut(target,g)));
   return Math.max(0,Math.floor(amount*(1-cut)));
 }
 // Crimson Ward: every hero gains its own ward, capped at 50% of that hero's original max HP.
@@ -71,14 +75,15 @@ export function castRealtimeHeroSkill(ctx,heroUID,skill,selection,displacement={
   source.actionStateUntil=now+0.42;
   const targets=fresh.targetUIDs.map(uid=>actor(ctx,uid)).filter(Boolean), target=actor(ctx,fresh.targetUID);
   const spec=skill.effectSpec, mode=heroKey(source)==='Runa'?'magic':'melee';
+  const damagePct=(spec.damagePct || 0) * heroStarSkillMultipliers(g.HeroGrowth,source.heroInstanceKey || source.baseHeroName).specialMagnitude;
   let feedback='';
   switch(spec.kind) {
     case 'damageBlink':
-      damage(ctx,source,target,spec.damagePct,mode);
+      damage(ctx,source,target,damagePct,mode);
       displacement.blinkBehind?.(source,target,now); break;
     case 'damageRetreat':
       for(const victim of targets) {
-        damage(ctx,source,victim,spec.damagePct,'magic');
+        damage(ctx,source,victim,damagePct,'magic');
         if(living(victim) && victim.combatRank!=='boss')displacement.reverse?.(victim,now,skill.durationSeconds,source);
       }
       break;
@@ -95,7 +100,7 @@ export function castRealtimeHeroSkill(ctx,heroUID,skill,selection,displacement={
     default: throw new Error(`Unknown skill effect: ${spec.kind}`);
   }
   g.LastRealtimeHeroSkill={heroUID:source.uid,skillId:skill.skillId,at:now,targetUID:target?.uid || 0,feedback};
-  for(const recipient of targets)(g.CombatImpactRequests ||= []).push({at:now,heroUID:source.uid,targetUID:recipient.uid,...(recipient.kind==='enemy'?{point:point(recipient)}:{}),skillId:skill.skillId,elementalSlug:REALTIME_SKILL_ELEMENTS[skill.skillId],damage:spec.damagePct || 0});
+  for(const recipient of targets)(g.CombatImpactRequests ||= []).push({at:now,heroUID:source.uid,targetUID:recipient.uid,...(recipient.kind==='enemy'?{point:point(recipient)}:{}),skillId:skill.skillId,elementalSlug:REALTIME_SKILL_ELEMENTS[skill.skillId],damage:damagePct || 0});
   ctx.callFunction('LogCombat',`${heroDefinition(source).name}: ${skill.displayName}${feedback}`);
   return true;
 }

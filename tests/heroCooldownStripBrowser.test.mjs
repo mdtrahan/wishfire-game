@@ -84,7 +84,14 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
         effects[heroes[0].uid].fixture_mag = { sourceUID: heroes[1].uid, expiresAt: until, modifiers: [{ channel: 'MAG', direction: 'up' }] };
         effects[heroes[1].uid].fixture_res = { sourceUID: heroes[1].uid, expiresAt: until, modifiers: [{ channel: 'RES', direction: 'up' }, { channel: 'DEF', direction: 'down' }] };
       });
-      await page.waitForFunction(() => document.querySelectorAll('.hero-buff-party .hero-buff').length === 2);
+      // Elevate may already show two party icons before this fixture renders. Wait for
+      // the own-buff signature too, so the following read cannot sample the old frame.
+      await page.waitForFunction(() => {
+        const slots = [...document.querySelectorAll('.hero-cooldown')];
+        const icons = index => [...slots[index].querySelectorAll('.hero-buff')].map(node => node.dataset.icon).join(',');
+        return document.querySelectorAll('.hero-buff-party .hero-buff').length === 2 &&
+          icons(0) === 'hero-offense,hero-defense' && icons(1) === 'hero-defense' && icons(2) === '';
+      });
       const buffs = await page.evaluate(() => ({
         party: [...document.querySelectorAll('.hero-buff-party .hero-buff')].map(node => ({ icon: node.dataset.icon, rect: node.getBoundingClientRect().toJSON() })),
         badges: [...document.querySelectorAll('.hero-cooldown')].map(slot => [...slot.querySelectorAll('.hero-buff')].map(node => ({ icon: node.dataset.icon, rect: node.getBoundingClientRect().toJSON() }))),

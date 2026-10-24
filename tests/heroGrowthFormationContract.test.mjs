@@ -57,7 +57,7 @@ test('accepted resonance scaffolds reject legacy stat-link writes', () => {
 
 test('eight stars map in pairs to accepted skill slots and clamp legacy saves', () => {
  assert.equal(STAR_MAX,8);
- assert.deepEqual(Object.values(STAR_EFFECTS).map(slots=>{const [skillSlot,effect]=Object.entries(slots)[0];return[skillSlot,effect.statBonus,effect.skillEffect];}), ['special','special','passive','passive','resonance1','resonance1','resonance2','resonance2'].map(slot=>[slot,.02,null]));
+ assert.deepEqual(Object.values(STAR_EFFECTS).map(slots=>{const [skillSlot,effect]=Object.entries(slots)[0];return[skillSlot,effect.statBonus];}), ['special','special','passive','passive','resonance1','resonance1','resonance2','resonance2'].map(slot=>[slot,.02]));
  assert.deepEqual(sanitizeHeroGrowth({stars:{Falie:15,Huun:99,Runa:'bad',Kojonn:-2},resonance:{Falie:['Huun','Runa']}}),{stars:{Falie:8,Huun:8}});
  assert.equal(heroGrowthBreakdown({stars:{Falie:8}},'Falie').own,.16);
  for(const raw of [null,[],{},'bad',{stars:null},{stars:{Falie:Infinity}}])assert.equal(sanitizeHeroGrowth(raw),null);
