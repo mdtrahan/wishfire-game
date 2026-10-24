@@ -1,6 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
+import {RARITIES} from '../web-runner/src/core/equipment.mjs';
+const rarityColors=Object.values(RARITIES).map(({color})=>'rgb('+color.slice(1).match(/../g).map(v=>parseInt(v,16)).join(', ')+')');
 import {createRequire} from 'node:module';
 import {spawn} from 'node:child_process';
 import {createServer} from 'node:net';
@@ -174,11 +176,13 @@ test('continuous equipment lifecycle: four phones, full-cache pause, concurrent 
    await upgradeWithoutScroll(page);
    const upgradeLayout={...await containment(page),noScroll:await upgradeWithoutScroll(page)};
    const pills=await dialog.locator('.lamp-odds tbody tr').evaluateAll(rows=>rows.map(row=>({name:row.querySelector('th').textContent,color:getComputedStyle(row).backgroundColor})));
-   assert.deepEqual(pills.map(p=>p.name),['Common','Uncommon','Rare','Epic','Legendary']);assert.deepEqual(pills.map(p=>p.color),['rgb(102, 102, 102)','rgb(1, 138, 84)','rgb(28, 143, 169)','rgb(215, 103, 61)','rgb(184, 50, 65)']);
+   assert.deepEqual(pills.map(p=>p.name),['Common','Uncommon','Rare','Epic','Legendary']);assert.deepEqual(pills.map(p=>p.color),rarityColors);
    assert.equal(await dialog.locator('.lamp-stage-slots,.lamp-countdown,[data-action=speed-up]').count(),0);
    await page.screenshot({path:`${directory}/${width}-bag-upgrade.png`});
    await dialog.locator('[data-action=upgrade]').click();await page.waitForFunction(()=>document.querySelector('#lamp-dialog').dataset.view==='upgrade-complete');
-   saved=await assertSave(page);assert.equal(saved.lamp.essence,beforeUpgrade.lamp.essence-400);assert.equal(saved.partyEXP,beforeUpgrade.partyEXP);assert.deepEqual(saved.items,beforeUpgrade.items);assert.equal(saved.lamp.capacityTier,1);assert.equal(saved.lamp.upgradeEndsAt,undefined);
+   saved=await assertSave(page);const killCount=data=>Object.values(data.settledBagKillRewards||{}).flat().reduce((sum,[lo,hi])=>sum+hi-lo+1,0);
+   // Ordinary combat keeps earning points while the upgrade menu is open.
+   const earnedKills=killCount(saved)-killCount(beforeUpgrade);assert.equal(saved.lamp.essence+saved.lamp.killPoints,beforeUpgrade.lamp.essence+(beforeUpgrade.lamp.killPoints||0)+earnedKills-100);assert.equal(saved.partyEXP,beforeUpgrade.partyEXP);assert.deepEqual(saved.items,beforeUpgrade.items);assert.equal(saved.lamp.capacityTier,1);assert.equal(saved.lamp.upgradeEndsAt,undefined);
    assert.equal(await dialog.locator('button').count(),1);assert.equal(await dialog.locator('.bag-reward-capacity').innerText(),'Bag Capacity 20 > 30');assert.equal(await dialog.getByText(/Rare or better|Continue/).count(),0);
    const rewardLayout=await dialog.evaluate(d=>{const panel=d.querySelector('.bag-upgrade-complete').getBoundingClientRect(),text=d.querySelector('.bag-reward-capacity').getBoundingClientRect(),close=d.querySelector('.bag-modal-close').getBoundingClientRect();return{gap:close.top-panel.bottom,bottomSpace:panel.bottom-text.bottom,contained:close.bottom<=innerHeight&&close.top>=0,centerOffset:Math.abs(close.x+close.width/2-panel.x-panel.width/2)};});
    assert.ok(rewardLayout.gap>=8);assert.ok(rewardLayout.bottomSpace<=30);assert.ok(rewardLayout.contained);assert.ok(rewardLayout.centerOffset<1);upgradeLayout.reward=rewardLayout;

@@ -85,14 +85,14 @@
 - Combat presentation consumes simulation events; it does not grant actor readiness or advance the combat clock.
 - A fresh session enters with the restored party and deterministic actor cooldown state. Defeat recovery remains owned by the encounter session.
 
-- equipment.mjs owns supported slots, rarity presentation and loadout math. lampGear.mjs owns deterministic rolls, cache capacity, essence upgrades and EXP receipts; the equipment shop is retired.
+- equipment.mjs owns supported slots, rarity presentation and loadout math. lampGear.mjs owns deterministic rolls, cache capacity, combined kill-point/Essence upgrades and EXP receipts; the equipment shop is retired.
 - Equipment stats are a derived projection used by levelStats, not a second inventory. Persist the projection with hero HP so loading HP above unequipped max does not truncate it before the authoritative equipment record reapplies.
 
 - `isEquipmentUpgrade` inspects componentwise stat dominance only. It never decides lamp CP eligibility. A stat tradeoff is equipable only when `lampItemCPGain` proves a strict increase in actual hero CP.
 
 - Auto-Equip chooses the greatest current positive actual hero CP gain across all remaining items and heroes. Equal recipient gain favors lower current hero CP, then party order. Apply one assignment, re-sort and recompute the full remaining cache, and stop only when every remaining item is red for every hero. Never use standalone item score as equip eligibility.
 
-- Bag draws grant zero new EXP and retain earned saved EXP. Essence buys one full-cost Bag level through an explicit saved upgrade; bank growth alone never grants a level.
+- Bag draws grant zero new EXP and retain earned saved EXP. Kill points plus Essence buy one full-cost Bag level through an explicit saved upgrade; bank growth alone never grants a level.
 
 - Raw emissions retain exact rolls and recent snapshots. Review ranks actual replacement CP gains before deterministic rarity/item-score ties; recompute after every assignment. Any currently useful saved disposal request returns to pending. All-red items remain inspectable; manual equip still requires positive actual hero CP. Disposal and locked conversion reject green items. Later arrivals remain outside a confirmed disposal snapshot; capacity includes stored and legacy salvage records.
 
@@ -100,7 +100,7 @@
 
 - Dismantling grants Essence only for reviewed all-red gear. Replaced equipped gear is destroyed without Essence. COT Hero tickets fund individual level-ups.
 
-- Bag upgrade preview uses full-cost Essence progress and Current/Next odds with Common/Uncommon/Rare/Epic/Legendary labels. Preserve the owner reference's gray/green/teal/orange/red pills independently of equipment rarity frames. A stale expected tier rejects before spending; a failed write shows no promotion or reward.
+- Bag upgrade preview uses full-cost kill-point plus Essence progress and Current/Next odds with Common/Uncommon/Rare/Epic/Legendary labels. Preserve the owner reference's gray/green/teal/orange/red pills independently of equipment rarity frames. A stale expected tier rejects before spending; a failed write shows no promotion or reward.
 
 - Lamp guidance stores validated optional v5 bits for actual storage/comparison/preview actions. They are monotonic receipts with no currency, EXP, gear or tier effect; existing earned draw/equip/dismantle/tier records own the other milestones.
 
@@ -132,3 +132,9 @@
 
 - lampHeroRoster selects only canonical authored equipment owners in definition order. Save enumeration and combat copies never define the lamp roster. requireComplete rejects missing/mismatched owner records; existing copy loadouts remain preserved for the separate identity repair.
 - Only chapter-clear and chapter-boss milestones omit counters. Collection and other quests retain all counters, including `0/1` and `1/1`; saved completion/reward requirements stay intact.
+
+- ORKA-9ln (owner 2026-10-24) sets current Bag cost to `max(round25((100+200*n-10*n^2+5.35*n^3)*(1+.04*sin(2*pi*n/10))),ceil(5*capacity(n)/25)*25)` for `n=level-1` through98; tier99 is MAX/null. Named tuning constants remain owner-adjustable. The floor is minimum5x capacity per level, with owner guidance5-7x; surplus-item dismantling supplies plentiful Essence. Keep cost flat within a level. `lampKillPoints` normalizes missing/corrupt values to zero; active combat grants1 point per15 seconds, bosses5, ordinary kills0 and MAX0. Partial seconds may reset on reload; tick indices resume from saved receipts or the pending outbox. Upgrade spends points first, carries surplus, then spends Essence. Bag progress points never fund other purchases. Paid-stage v5 imports use the new cost without changing earned levels.
+
+- Bag progress receipts (enemy boss UIDs and combat tick indices) retain the newest `LAMP_CONFIG.killReceiptDomains` (64) battle domains by insertion order. Updating a retained domain never refreshes its age. Validation accepts and trims larger saved domain sets without changing points, Essence or level; the retained window guards the equipment/HeroProgress acknowledgement gap.
+
+- `formatCompactCount` owns Bag count text: exact integers below1,000, then floored one-decimal K/M/B with trailing .0 trimmed; negative or invalid inputs display0. Keep readiness and numeric accessibility values exact.

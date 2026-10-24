@@ -58,6 +58,7 @@ export function createHeroProgressStore(snapshot){
   const pending=snapshot.pendingBattleRewards;
   if(pending&&typeof pending.id==='string'&&pending.id&&Array.isArray(pending.participants))store.pendingBattleRewards={id:pending.id,participants:pending.participants.filter(id=>typeof id==='string'),defeated:sanitizeRewardLedger(pending.defeated),defeatedGold:sanitizeRewardLedger(pending.defeatedGold)};
   store.pendingGoldSettlements=sanitizeRewardLedger(snapshot.pendingGoldSettlements);
+  store.pendingBagKillRewards=Object.fromEntries(Object.entries(snapshot.pendingBagKillRewards||{}).filter(([id,amount])=>id&&id.length<=180&&[1,5].includes(amount)));
   store.settledTicketSpends=Array.isArray(snapshot.settledTicketSpends)?[...new Set(snapshot.settledTicketSpends.filter(id=>typeof id==='string'&&id.length<=180))].slice(-256):[];
   const stage=normalizeContinuousStageCheckpoint(snapshot.continuousStage);
   if(stage)store.continuousStage=stage;

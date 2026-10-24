@@ -135,7 +135,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   if(feedbacks.size&&open&&(autoTransitionAfterFeedback||closeRequested))return;
   if(disposalView&&reviewCandidates.some(c=>c.bestGain>0))reviewDisposal();
   if(selectedItem&&!reviewCandidates.some(c=>c.item.instanceId===selectedItem)){selectedItem=null;selectedHero=null;}
-  const key=upgradeOpen?JSON.stringify([open,busy,notice,l.capacityTier,l.essence,upgradeReceipt,window.innerWidth,window.innerHeight,window.devicePixelRatio]):JSON.stringify([l.pending,l.discarded,l.salvage,l.sequence,data.gold,data.loadouts,l.capacityTier,l.essence,roster.map(h=>[h.currentLevel,h.currentEXP,h.EXPToNextLevel]),selectedItem,selectedHero,disposalView,l.reviewHold,l.disposalRequested,open,upgradeOpen,busy,notice,window.innerWidth,window.innerHeight,window.devicePixelRatio]);
+  const key=upgradeOpen?JSON.stringify([open,busy,notice,l.capacityTier,l.essence,l.killPoints,upgradeReceipt,window.innerWidth,window.innerHeight,window.devicePixelRatio]):JSON.stringify([l.pending,l.discarded,l.salvage,l.sequence,data.gold,data.loadouts,l.capacityTier,l.essence,roster.map(h=>[h.currentLevel,h.currentEXP,h.EXPToNextLevel]),selectedItem,selectedHero,disposalView,l.reviewHold,l.disposalRequested,open,upgradeOpen,busy,notice,window.innerWidth,window.innerHeight,window.devicePixelRatio]);
   if(key===lastKey)return;lastKey=key;
   const reviewScroll=dialog.querySelector('.lamp-review-body')?.scrollTop||0,dialogScroll=dialog.scrollTop,queueScroll=dialog.querySelector('.lamp-queue')?.scrollTop||0;
   const focused=document.activeElement,focusAction=focused?.dataset.action,focusId=focused?.dataset.id,focusParent=dialog.contains(focused)?dialog:strip.contains(focused)?strip:null;

@@ -73,7 +73,7 @@
 - `heroCommands.mjs` reserves a legal sequence once, revalidates each action, refunds only unexecuted costs, and settles victory before progression. Ordinary counters never own a turn.
 - Native hero actions remain session and turn serial scoped. Automatic production actions resolve through readiness and cooldowns, then hand off to the shared lunge, targeting, damage, and healing seams. Narrative quest cards remain owned by `storyEntryFlow`, outside the combat action path.
 
-- Enemy KO uses one per-enemy reward ledger shared by direct damage and role-rule callbacks. The active battle binds an immediate HeroProgress flush at that shared seam; reload recovery settles any durable pending ledger before a fresh session reuses enemy UIDs.
+- Enemy KO uses one per-enemy reward ledger shared by direct damage and role-rule callbacks. The active battle binds an immediate HeroProgress flush at that shared seam, saving a per-kill Bag outbox receipt with authoritative boss identity; reload recovery settles any durable pending ledger before a fresh session reuses enemy UIDs.
 
 - Victory and non-continuous defeat settle each earned enemy EXP and Gold reward once. Gold settlement receipts remain in HeroProgress until equipmentStorage confirms the wallet commit; continuous defeat pays the pending ledger during retry recovery.
 - In continuous production combat, party KO settles earned kills, clears transient combat state, disarms boss progression, fully heals the party, and restarts Wave 1 of the current stage without a resource cost or defeat menu. Other modes retain the native defeat terminal path.
@@ -97,3 +97,5 @@
 - Browser KO seams record an ephemeral puppet-defeat copy before simulation removal, including native rules onKO. This presentation-only bridge intentionally stays out of the retired Scripts mirror; mirrored removal/reward functions retain parity.
 
 - Browser `ApplyDamageToTarget` reports resolved hero-to-enemy HP loss to standalone DPS accounting. This diagnostic bridge intentionally stays outside the retired Scripts mirror and does not alter damage or targeting.
+
+- The authoritative enemy KO hook persists ordinary reward ledgers without Bag points. Only boss-tagged deaths enqueue the configured boss participation points; combat-time ticks own routine Bag progress.

@@ -1,7 +1,7 @@
 import {lampHeroRoster} from '../src/core/lampHeroRoster.mjs';
 import {CONVEYOR_TRAVEL_MS,conveyorItemAge,validateConveyorState,emitConveyorItem,collectConveyorItem,classifyConveyorCache,equipConveyorItem,planConveyorAutoEquip,queueConveyorDisposal,conveyorDisposalPreview,dismantleConveyorItems} from '../src/core/lampConveyor.mjs';
 import {equipmentStats} from '../src/core/equipment.mjs';
-import {markLampGuide,createLampEconomy,lampStoredCount,migrateLegacyEquipment,migrateDraftLamp,migrateFourStatLamp,migrateLampEconomy,lampCapacity,upgradeLamp,restorePaidLampUpgrade,LAMP_CONFIG,progressionOrdinal} from '../src/core/lampGear.mjs';
+import {awardLampKillPoints,markLampGuide,createLampEconomy,lampStoredCount,migrateLegacyEquipment,migrateDraftLamp,migrateFourStatLamp,migrateLampEconomy,lampCapacity,upgradeLamp,restorePaidLampUpgrade,LAMP_CONFIG,progressionOrdinal} from '../src/core/lampGear.mjs';
 import {refreshHeroStats,awardHeroEXP} from '../src/core/heroProgression.mjs';
 import {fillGearMaxHpGrowth} from '../src/core/heroSustainRules.mjs';
 import {computeCombatPower} from '../src/core/combatPower.mjs';
@@ -82,7 +82,7 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,checkpo
   if(globals.HeroProgressDirty)persistProgress();
  }
  async function transact(change){
-  if(globals.HeroProgressStorageError&&Object.keys(globals.PendingGoldSettlements||{}).length)throw new Error('Pending Gold needs a saved HeroProgress receipt.');
+  if(globals.HeroProgressStorageError&&(Object.keys(globals.PendingGoldSettlements||{}).length||Object.keys(globals.HeroProgress?.pendingBagKillRewards||{}).length))throw new Error('Pending rewards need a saved HeroProgress receipt.');
   if(!locks)throw new Error('This browser cannot safely save lamp changes.');
   return locks.request(EQUIPMENT_SAVE_KEY,async()=>{
    // Guard every writer before read/migration/backup; classification is not the safety gate.
@@ -98,12 +98,17 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,checkpo
     if(receipts.has(id)){if(appliedGold!==undefined)delta-=amount;continue;}
     receipts.add(id);next.settledGoldRewards.push(id);if(appliedGold===undefined)delta+=amount;
    }
+   const kills=Object.entries(globals.HeroProgress?.pendingBagKillRewards||{});
+   for(const[id,amount]of kills)awardLampKillPoints(next,id,amount);
    const t=time();saveConveyorClock(next);
    next.gold+=delta;
    classifyConveyorCache(next,roster);
    const result=change?.(next,t);classifyConveyorCache(next,roster);validateConveyorState(next);
    // One durable record owns spending, rolls, assignments and salvage receipts.
-   storage.setItem(EQUIPMENT_SAVE_KEY,JSON.stringify(next));classifiedHeroes=heroClassificationKey();apply(next);return result;
+   storage.setItem(EQUIPMENT_SAVE_KEY,JSON.stringify(next));
+   for(const[id]of kills)delete globals.HeroProgress.pendingBagKillRewards[id];
+   if(kills.length)globals.HeroProgressDirty=true;
+   classifiedHeroes=heroClassificationKey();apply(next);return result;
   }).catch(error=>{globals.LampStorageError=error.message;reportError('Lamp save failed',error);throw error;});
  }
  function commitEquip(next,heroId,id){
@@ -137,7 +142,7 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,checkpo
  return{
   get data(){return record;},time,setConveyorActive,
   conveyorTime(){return Math.max(conveyorClock??record?.lamp.conveyorActiveMs??time(),record?.lamp.conveyorActiveMs??0);},
-  sync(){if(loading)return loading;if(record&&classifiedHeroes===heroClassificationKey()&&Number(globals.goldTotal)===appliedGold&&!dirty){apply(record);return flushGearCollections();}dirty=false;loading=transact().then(flushGearCollections).finally(()=>loading=null);return loading;},
+  sync(){if(loading)return loading;if(record&&classifiedHeroes===heroClassificationKey()&&Number(globals.goldTotal)===appliedGold&&!dirty&&!Object.keys(globals.HeroProgress?.pendingBagKillRewards||{}).length){apply(record);return flushGearCollections();}dirty=false;loading=transact().then(flushGearCollections).finally(()=>loading=null);return loading;},
   refresh(){dirty=true;return this.sync();},
   generate(context={}){return transact((next,t)=>{
    const item=emitConveyorItem(next,context,t),receipt=collectConveyorItem(next,item.instanceId,t,{automatic:true});
