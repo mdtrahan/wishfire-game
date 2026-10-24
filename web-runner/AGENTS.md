@@ -37,6 +37,9 @@
 - For runtime/manual QA, start `npm run serve:qa` and use the Codex in-app Browser when a visual check is needed.
 - For batch game automation, prefer the repo-owned `npm run balance-harness` path.
 
+## Modal Contract
+- Owner hard rule: every modal, overlay or sheet presents its content panel above one centered close button (rounded square with an X) at the bottom center, detached below the panel with a clear gap. No top-corner or alternate close positions. The Bag upgrade window's detached X is the reference; reuse its shared shape, keyboard focus and Escape behavior.
+
 ## Viewport QA Contract
 - Read this file from the exact checkout being served before release QA. Guidance in another branch or worktree does not certify the current checkout.
 - Treat the in-app Browser's natural CSS viewport as variable across Codex and Browser-plugin releases. Measure each visual pass; screenshot pixel dimensions are not viewport dimensions.
