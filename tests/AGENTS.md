@@ -175,7 +175,7 @@
 
 - `actorClipPlayback.test.mjs` compares Hondo/Kaja normalized native XML to Fara across all seven states and both facings, preserving cadence and foot origins while checking every frame exists. It also checks every loaded actor's basic/cast torso source in both facings, including the forward 0.6-amplitude curves and untouched zero/recoil channels.
 
-- Bag curve tests preserve all 100 accelerating capacities, full-level geometric Essence costs and fractional rarity odds. Retired installment fields are tested only as supported save imports.
+- Bag curve tests preserve all 100 accelerating capacities, owner-approved wavy full-level costs and combined kill-point/Essence progress and fractional rarity odds. Retired installment fields are tested only as supported save imports.
 
 - `heroScreenUILayout.test.mjs` serves the production Hero renderer, shared gear CSS/atlas and navigation in isolated browser contexts. Check portrait/row/tab/footer geometry at reference, compact Retina and natural sizes, all canonical active skills through four-card pages, actual metadata and unlock gates, hero/tab selection, and byte-identical saved/in-memory progression and loadouts. Keep isolated fixture proof distinct from native full-app captures.
 
@@ -230,3 +230,5 @@
 - lampAutoEquipGameplay runs the full game in isolated contexts through cache/item controls, Auto receipts, Hero screens and reload. Its red-promise test fails on main 5d7910f9 after an actual Auto click. Fixed golden gains and a separate stat-projection oracle check allocation; lampRoster covers all 120 five-record orders and atomic guards. Both browser files run in test:lamp-ui.
 
 - Auto gameplay proof asserts every pending, discarded and held leftover is nonpositive for every canonical owner. Negative controls must demonstrate failure for a positive item in each queue. The commit guard runs this browser file and lampRoster for CP/equipment/roster changes even when presentation files are untouched.
+
+- Bag kill proof exercises the real KO hook and HeroProgress flush, then the locked equipment outbox consumer across failed writes, reload replay, delayed duplicates, MAX, corrupt/missing points, spend order and unchanged Essence. Curve references include the first20 total5075 and minimum cost step3. Live-combat navigation comparisons allow ambient kill-point/receipt growth while retaining exact inventory/Essence equality and rejecting point spending.

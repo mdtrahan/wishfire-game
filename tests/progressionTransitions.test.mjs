@@ -23,7 +23,7 @@ function fixture(){
  const storage={get length(){return values.size;},key:i=>[...values.keys()][i],getItem:k=>values.get(k)??null,setItem(k,v){if(fail)throw Error('disk full');values.set(k,v);},removeItem:k=>values.delete(k)};
  const locks={request:(key,fn)=>{const result=chain.then(fn);chain=result.catch(()=>{});return result;}};
  const globals={goldTotal:0,HeroProgress:createHeroProgressStore()};
- const data=createLampEconomy(42);data.lamp.essence=400;values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(data));
+ const data=createLampEconomy(42);data.lamp.essence=100;values.set(EQUIPMENT_SAVE_KEY,JSON.stringify(data));
  const options={globals,storage,locks,now:()=>clock,reportError:()=>{}};
  return{globals,storage,locks,values,options,store:createEquipmentStorage(options),setClock:v=>clock=v,setFail:v=>fail=v};
 }
@@ -83,7 +83,7 @@ test('failed and concurrent level-up clicks keep spending and promotion atomic',
  f.setFail(true);await assert.rejects(f.store.upgrade(0),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),before);assert.equal(f.store.data.lamp.capacityTier,0);f.setFail(false);
  const results=await Promise.allSettled([f.store.upgrade(0),f.store.upgrade(0)]);assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
  assert.equal(f.store.data.lamp.capacityTier,1);assert.equal(f.store.data.lamp.essence,0);await assert.rejects(f.store.upgrade(0),/level changed/);
- const insufficient=createLampEconomy(4);assert.throws(()=>upgradeLamp(insufficient),/Need 400 more Essence/);
+ const insufficient=createLampEconomy(4);assert.throws(()=>upgradeLamp(insufficient),/Need 100 more Bag progress/);
 });
 
 test('fresh heroes own their Special from level 1 and a skill above their level cannot cast',()=>{

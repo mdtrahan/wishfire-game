@@ -235,9 +235,9 @@
 
 - CP receipt lifetime never holds the durable action lock or freezes ordinary recipient/item selection. Track concurrent receipt elements; only final review/close waits for all receipts, keeping feedback inside the modal. Collection entry awaits any in-flight transaction, storage sync and decoded shared gear atlas, then renders the full sorted cache together. Auto generation pauses while collection is opening/open and resumes afterward when enabled.
 
-- The strip disc displays the earned Bag level; its smooth meter follows banked Essence divided by the full next-level cost, capped visually at 100%, or MAX. It has no intermediate notches. Overflow remains in the bank after Level Up.
+- The strip disc displays the earned Bag level; its smooth meter follows banked kill points plus Essence divided by the full next-level cost, capped visually at 100%, or MAX. It has no intermediate notches. Overflow remains in the bank after Level Up.
 
-- Bag upgrade preview uses full-cost Essence progress and Current/Next odds with Common/Uncommon/Rare/Epic/Legendary labels. Preserve the owner reference's gray/green/teal/orange/red pills independently of equipment rarity frames. A stale expected tier rejects before spending; a failed write shows no promotion or reward.
+- Bag upgrade preview uses full-cost kill-point plus Essence progress and Current/Next odds with Common/Uncommon/Rare/Epic/Legendary labels. Preserve the owner reference's gray/green/teal/orange/red pills independently of equipment rarity frames. A stale expected tier rejects before spending; a failed write shows no promotion or reward.
 
 - The lamp helper extends the15-second idle threshold through draw, collection, Hondo comparison, equip, dismantle and free/affordable upgrade preview. Retarget disabled controls to useful enabled actions; hide during reward banners and after a completed upgrade loop outside review. Any input dismisses it. Guide receipts persist once through the existing locked equipment transaction.
 
@@ -306,3 +306,5 @@
 - `modalClose.mjs` owns the shared slate rounded-square frame, mark and alpha-cropped X painting for Bag and Training Ground. Both consumers supply their Canvas-relative close scale; maintain one style source. Training Ground has one floating close below all window tabs, restores opening focus on click/Escape/programmatic closure and traps Tab while open. Its visible ribbon-to-close-frame block is vertically centered after opening, fonts and resize; preserve all internal training geometry and state.
 
 - Cache opening and disposal recovery show aggregate arrows with full-cache Auto. Explicit item review shows per-item arrows, manual Equip and Back to cache; its controls never invoke full-cache Auto. All lamp readers use lampHeroRoster in authored definition order, and transactions reject incomplete owner records before any save or backup write.
+
+- Bag kill awards use the authoritative KO receipt hook: HeroProgress durably writes `pendingBagKillRewards` keyed by battle and enemy UID before equipmentStorage consumes them under its Web Lock. Save points and deduplication receipts together, then acknowledge the source outbox. Coalesce adjacent actor UIDs into saved ranges per battle so delayed replay cannot award again; never derive awards from actor removal or recompute combat outcomes. Include killPoints in the upgrade render key.

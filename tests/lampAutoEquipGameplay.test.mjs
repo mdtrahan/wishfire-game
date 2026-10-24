@@ -81,7 +81,10 @@ test('player-visible cache arrows, item review, Auto receipts and Hero gear agre
    const itemArrows=await arrows(page,owners.map(id=>gain(save,heroes.heroes[id],selected)));
    assert.equal(await dialog.locator('[data-action="auto-equip"]').count(),0,'selected-item arrows must never sit beside full-cache Auto');
    if(scenario==='mixed'){await guidance(page,'Falie');await dialog.locator('[data-action="hero"][data-id="Falie"]').click();await guidance(page,'equip');}
-   await page.screenshot({path:`${directory}/${scenario}-item.png`});const beforeBack=await read(page);await dialog.getByRole('button',{name:'Back to cache',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#lamp-dialog').dataset.view==='cache');assert.deepEqual(await read(page),beforeBack,'Back changes no save field');
+   await page.screenshot({path:`${directory}/${scenario}-item.png`});const beforeBack=await read(page);await dialog.getByRole('button',{name:'Back to cache',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#lamp-dialog').dataset.view==='cache');const afterBack=await read(page);assert.ok(afterBack.lamp.killPoints>=(beforeBack.lamp.killPoints||0),'Back never spends kill points');
+   // Combat may save a KO while Back changes only the inspected view.
+   for(const snapshot of [beforeBack,afterBack]){delete snapshot.lamp.killPoints;delete snapshot.settledBagKillRewards;}
+   assert.deepEqual(afterBack,beforeBack,'Back changes no inventory, Essence or other save field');
    await arrows(page,cacheArrows.map(a=>a.gain));const before=await read(page);
    await dialog.getByRole('button',{name:'Auto-Equip',exact:true}).click();await page.locator('.lamp-cp-feedback').first().waitFor();
    const receipts=await page.locator('.lamp-cp-feedback').evaluateAll(ns=>ns.map(n=>({id:n.dataset.hero,before:Number(n.dataset.before),after:Number(n.dataset.after),gain:Number(n.dataset.change)}))),after=await read(page);

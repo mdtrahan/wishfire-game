@@ -2,19 +2,39 @@ import {EQUIPMENT,RARITIES,EQUIPMENT_SLOTS,equipmentDefinition,equipmentStats,is
 import {refreshHeroStats} from './heroProgression.mjs';
 import {computeCombatPower} from './combatPower.mjs';
 
-export const LAMP_CONFIG=Object.freeze({capacity:20,drawEXP:0,minEmissionIntervalMs:2000,autoIntervalMs:5000,autoUnlockLevel:5,maxOrdinal:990,mapStatGrowth:.005,lampLevels:100,upgradeBaseCost:400,upgradeCostGrowth:1.2,});
+export const LAMP_CONFIG=Object.freeze({capacity:20,drawEXP:0,minEmissionIntervalMs:2000,autoIntervalMs:5000,autoUnlockLevel:5,maxOrdinal:990,mapStatGrowth:.005,lampLevels:100,upgradeBaseCost:100,upgradeCostB:Math.log(1.1),upgradeCostA:.8,upgradeCostPeriod:10,});
 export const LAMP_GUIDE=Object.freeze({storage:1,comparison:2,preview:4});
 export function markLampGuide(data,step){if(!Object.hasOwn(LAMP_GUIDE,step))throw new Error('Unknown lamp guide step.');if(step!=='preview'&&!lampStoredCount(data)&&!data.lamp.reviewHold)throw new Error('Open stored equipment first.');if(step==='comparison'&&!data.lamp.pending.length&&!data.lamp.discarded?.length&&!data.lamp.reviewHold)throw new Error('Choose equipment first.');return data.lamp.guide=(data.lamp.guide||0)|LAMP_GUIDE[step];}
 export const LAMP_CAPACITY_TIERS=Object.freeze(Array.from({length:LAMP_CONFIG.lampLevels},(_,n)=>{
  const p=n/(LAMP_CONFIG.lampLevels-1),round=v=>Math.round(v*1000)/1000;
  const rarityWeights={common:0,uncommon:round(25+10*p),rare:round(30*p),epic:round(14*p),legendary:round(p)};
  rarityWeights.common=round(100-rarityWeights.uncommon-rarityWeights.rare-rarityWeights.epic-rarityWeights.legendary);
- return Object.freeze({capacity:LAMP_CONFIG.capacity+Math.round(10*n**1.5),cost:n===LAMP_CONFIG.lampLevels-1?null:Math.round(LAMP_CONFIG.upgradeBaseCost*LAMP_CONFIG.upgradeCostGrowth**n),rarityWeights:Object.freeze(rarityWeights)});
+ return Object.freeze({capacity:LAMP_CONFIG.capacity+Math.round(10*n**1.5),cost:n===LAMP_CONFIG.lampLevels-1?null:Math.round(LAMP_CONFIG.upgradeBaseCost*Math.exp(LAMP_CONFIG.upgradeCostB*n-LAMP_CONFIG.upgradeCostA*LAMP_CONFIG.upgradeCostB*LAMP_CONFIG.upgradeCostPeriod/(2*Math.PI)*(1-Math.cos(2*Math.PI*n/LAMP_CONFIG.upgradeCostPeriod)))),rarityWeights:Object.freeze(rarityWeights)});
 }));
 export const lampCapacity=data=>LAMP_CAPACITY_TIERS[data.lamp.capacityTier||0].capacity;
 export const lampUpgradeCost=data=>LAMP_CAPACITY_TIERS[data.lamp.capacityTier].cost;
+export const lampKillPoints=data=>Number.isSafeInteger(data.lamp.killPoints)&&data.lamp.killPoints>=0?data.lamp.killPoints:0;
+export const enemyBagKillPoints=actor=>String(actor.enemyRole||actor.role||'').toLowerCase()==='boss'?5:1;
+export function awardLampKillPoints(data,id,amount){
+ const split=typeof id==='string'?id.lastIndexOf(':'):-1,session=id?.slice?.(0,split),uid=Number(id?.slice?.(split+1));
+ if(!session?.startsWith('enemy:')||session.length>164||id.length>180||!Number.isSafeInteger(uid)||uid<1||String(uid)!==id.slice(split+1)||![1,5].includes(amount))throw new Error('Invalid Bag kill receipt.');
+ const receipts=data.settledBagKillRewards||{},ranges=receipts[session]||[];
+ if(ranges.some(([lo,hi])=>uid>=lo&&uid<=hi))return{applied:false,duplicate:true};
+ if(lampUpgradeCost(data)===null)return{applied:false,max:true};
+ const total=lampKillPoints(data)+amount;
+ if(!Number.isSafeInteger(total))throw new Error('Bag kill points exceed the safe save limit.');
+ // Coalesce adjacent KO UIDs within each battle. Recovery can reset actor
+ // numbers, so each later battle retains its own receipt domain.
+ const merged=[];
+ for(const[lo,hi]of [...ranges,[uid,uid]].sort((a,b)=>a[0]-b[0])){
+  const last=merged.at(-1);
+  if(last&&lo<=last[1]+1)last[1]=Math.max(last[1],hi);else merged.push([lo,hi]);
+ }
+ data.lamp.killPoints=total;(data.settledBagKillRewards||={})[session]=merged;
+ return{applied:true,killPoints:total};
+}
 export function lampUpgradeProgress(data){
- const required=lampUpgradeCost(data),current=data.lamp.essence;
+ const required=lampUpgradeCost(data),current=lampKillPoints(data)+data.lamp.essence;
  return{current,required,max:required===null,fraction:required===null?1:Math.min(1,current/required)};
 }
 // Import supported paid-stage saves once; new records never write stages or deadlines.
@@ -31,9 +51,11 @@ export function upgradeLamp(data,expectedTier=data.lamp.capacityTier){
  if(l.capacityTier!==expectedTier)throw new Error('Bag level changed. Review the updated upgrade.');
  const cost=lampUpgradeCost(data);
  if(cost===null)throw new Error('Bag is fully upgraded.');
- if(l.essence<cost)throw new Error('Need '+(cost-l.essence)+' more Essence.');
+ const points=lampKillPoints(data),current=points+l.essence;
+ if(current<cost)throw new Error('Need '+(cost-current)+' more Bag progress (kills or Essence).');
  const before=l.capacityTier;
- l.essence-=cost;l.capacityTier++;
+ const spentPoints=Math.min(points,cost);
+ l.killPoints=points-spentPoints;l.essence-=cost-spentPoints;l.capacityTier++;
  return{levelBefore:before+1,levelAfter:l.capacityTier+1,capacityBefore:LAMP_CAPACITY_TIERS[before].capacity,capacityAfter:lampCapacity(data),cost};
 }
 export const GEAR_STATS=Object.freeze(['ATK','DEF','MAG','RES','HP']);
@@ -71,7 +93,7 @@ export function generateLampItem(seed,sequence,ordinal,weights=Object.fromEntrie
  return {instanceId:`lamp:${seed}:${sequence}`,equipmentId:a.id,name:a.name,type:a.type,art:a.art,rarity,level:ordinal+1,stats,sequence,ordinal};
 }
 export function salvageValue(item){return Math.min(7,1+Object.keys(RARITIES).indexOf(item.rarity));}
-export function createLampEconomy(seed,gold=0){return{version:5,partyEXP:0,gold:Math.max(0,Math.floor(gold)),items:[],loadouts:{},settledGoldRewards:[],lamp:{capacityTier:0,essence:0,seed:seed>>>0,sequence:0,pending:[],discarded:[],recent:[],salvage:{count:0,gold:0},autoEnabled:false,highestOrdinal:0,lastActivationAt:0},migration:{}};}
+export function createLampEconomy(seed,gold=0){return{version:5,partyEXP:0,gold:Math.max(0,Math.floor(gold)),items:[],loadouts:{},settledGoldRewards:[],lamp:{capacityTier:0,essence:0,killPoints:0,seed:seed>>>0,sequence:0,pending:[],discarded:[],recent:[],salvage:{count:0,gold:0},autoEnabled:false,highestOrdinal:0,lastActivationAt:0},migration:{}};}
 export function validateLampEconomy(data,version=5){
  const bad=()=>{throw new Error('Lamp save is invalid. Original data is preserved.');};
  if((version===5&&(!Number.isSafeInteger(data?.partyEXP)||data.partyEXP<0))||data?.version!==version||!Number.isSafeInteger(data.gold)||data.gold<0||!Array.isArray(data.items)||!data.loadouts||Array.isArray(data.loadouts)||!Array.isArray(data.settledGoldRewards))bad();
@@ -82,6 +104,14 @@ export function validateLampEconomy(data,version=5){
  if(l?.speedUpTickets!==undefined&&(!Number.isSafeInteger(l.speedUpTickets)||l.speedUpTickets<0))bad();
  if(version===5&&(!l||!Number.isInteger(l.capacityTier)||l.capacityTier<0||l.capacityTier>=LAMP_CAPACITY_TIERS.length||!Number.isSafeInteger(l.essence)||l.essence<0))bad();
  if(!l||!Number.isInteger(l.seed)||l.seed<0||l.seed>4294967295||!Number.isSafeInteger(l.sequence)||l.sequence<0||!Number.isSafeInteger(l.highestOrdinal)||l.highestOrdinal<0||l.highestOrdinal>LAMP_CONFIG.maxOrdinal||!Number.isFinite(l.lastActivationAt)||typeof l.autoEnabled!=='boolean'||!Array.isArray(l.pending)||!Number.isSafeInteger(l.salvage?.count)||l.salvage.count<0||!Number.isSafeInteger(l.salvage.gold)||l.salvage.gold<0||l.pending.length>(version===5?lampCapacity(data):LAMP_CONFIG.capacity))bad();
+ if(version===5)l.killPoints=lampKillPoints(data);
+ if(data.settledBagKillRewards!==undefined){
+  const receipts=data.settledBagKillRewards;
+  if(!receipts||typeof receipts!=='object'||Array.isArray(receipts))bad();
+  for(const[session,ranges]of Object.entries(receipts)){
+   if(!session.startsWith('enemy:')||session.length>164||!Array.isArray(ranges)||ranges.some((range,i)=>!Array.isArray(range)||range.length!==2||range.some(n=>!Number.isSafeInteger(n)||n<1)||range[0]>range[1]||i>0&&range[0]<=ranges[i-1][1]+1))bad();
+  }
+ }
  const ids=new Set();
  for(const i of data.items){if(!i||typeof i.instanceId!=='string'||!i.instanceId||typeof i.name!=='string'||!i.name||i.name.length>100||!Number.isSafeInteger(i.level)||i.level<1||i.level>LAMP_CONFIG.maxOrdinal+1||ids.has(i.instanceId)||!EQUIPMENT_SLOTS[i.type]||!RARITIES[i.rarity]||!i.stats||!Number.isInteger(i.art)||i.art<0||i.art>8||!Object.keys(i.stats).length||(version!==2&&(version===3?GEAR_STATS.filter(k=>k!=='HP'):GEAR_STATS).some(k=>!Object.hasOwn(i.stats,k)))||Object.entries(i.stats).some(([k,v])=>!(version===2?['HP','ATK','DEF','MAG','RES','SPD']:version===3?GEAR_STATS.filter(k=>k!=='HP'):GEAR_STATS).includes(k)||!Number.isSafeInteger(v)||v<0||v>100000))bad();ids.add(i.instanceId);}
  const assigned=new Set();
