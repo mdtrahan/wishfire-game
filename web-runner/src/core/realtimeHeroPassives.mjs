@@ -15,7 +15,8 @@ export function heroPassive(actor, globals = {}) {
   const multiplier = heroStarSkillMultipliers(globals.HeroGrowth, actor.heroInstanceKey || actor.baseHeroName).passiveMagnitude;
   if (multiplier === 1) return { skill, spec };
   const scaled = { ...spec };
-  for (const key of ['incomingCutPct', 'basicDamageMultiplier']) if (spec[key] != null) scaled[key] *= multiplier;
+  if (spec.incomingCutPct != null) scaled.incomingCutPct *= multiplier;
+  if (spec.basicDamageMultiplier != null) scaled.basicDamageMultiplier = 1 + (spec.basicDamageMultiplier - 1) * multiplier;
   if (spec.modifiers) scaled.modifiers = spec.modifiers.map(modifier => ({ ...modifier, magnitude: modifier.magnitude * multiplier }));
   if (spec.targetDebuff) scaled.targetDebuff = { ...spec.targetDebuff, magnitude: spec.targetDebuff.magnitude * multiplier };
   if (spec.aura) scaled.aura = { ...spec.aura, rawDamagePerChapter: spec.aura.rawDamagePerChapter * multiplier };

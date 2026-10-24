@@ -20,7 +20,14 @@ export function actorCombatModifiers(globals, actor) {
     }
   }
   if (actor?.kind === 'hero') legacy.push(...permanentHeroModifiers(globals, actor));
-  return [...legacy,...combatModifiers(globals.RealtimeSkillEffects?.[String(actor.uid)],Number(globals.time || 0)),...heroPassiveModifiers(actor,globals)];
+  const modifiers = [...legacy,...combatModifiers(globals.RealtimeSkillEffects?.[String(actor.uid)],Number(globals.time || 0))];
+  // Boast adds its full magnitude after the existing strongest-up pool; the
+  // shared projection still owns channel caps and the strongest opposing cut.
+  for (const passive of heroPassiveModifiers(actor,globals)) {
+    const strongest = Math.max(0,...modifiers.filter(entry=>entry.channel===passive.channel&&entry.direction===passive.direction).map(entry=>Number(entry.magnitude)).filter(Number.isFinite));
+    modifiers.push({...passive,magnitude:strongest+passive.magnitude});
+  }
+  return modifiers;
 }
 export function permanentHeroModifiers(globals, actor) {
   const totals = {};

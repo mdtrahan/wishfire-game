@@ -212,7 +212,7 @@ for (const [stars, specialMagnitude, specialCooldown, passiveMagnitude] of [[0, 
     assert.deepEqual(percentages, [240 * specialMagnitude], 'scaled potency enters the existing damage owner once');
     assert.equal(realtimeSpecialCooldown(g, source, HERO_DEFINITIONS.Huun.special), HERO_DEFINITIONS.Huun.special.cooldownSeconds * specialCooldown);
     source.hp = source.maxHP * .49;
-    assert.equal(heroPassiveBasicMultiplier(source, g), 2 * passiveMagnitude);
+    assert.equal(heroPassiveBasicMultiplier(source, g), 1 + passiveMagnitude, 'only the basic multiplier bonus scales');
   });
 }
 
@@ -223,10 +223,10 @@ test('passive stars scale every magnitude while preserving thresholds, durations
   fara.hp = 39; hondo.hp = 49; runa.hp = 81;
   const smoke = heroPassive(fara, g).spec, royalty = heroPassive(hondo, g).spec, boast = heroPassive(runa, g).spec, aura = heroPassive(kaja, g).spec.aura;
   assert.equal(smoke.incomingCutPct, 65); assert.equal(smoke.hpBelow, .4);
-  assert.equal(royalty.basicDamageMultiplier, 2.6); assert.equal(royalty.hpBelow, .5);
+  assert.equal(royalty.basicDamageMultiplier, 2.3); assert.equal(royalty.hpBelow, .5);
   assert.equal(royalty.targetDebuff.magnitude, .065); assert.equal(royalty.targetDebuff.durationSeconds, 4);
   assert.deepEqual(boast.modifiers.map(m => m.magnitude), [.065, .065]); assert.equal(boast.hpAbove, .8);
-  assert.equal(realtimeCombatStat(g, runa, 'MAG'), 108, 'the existing strongest-up rule keeps the 8% permanent bonus over the 6.5% passive');
+  assert.ok(Math.abs(realtimeCombatStat(g, runa, 'MAG') - 114.5) < 1e-9, 'the 8% permanent bonus and full 6.5% Boast bonus add');
   assert.equal(aura.rawDamagePerChapter, 1.3); assert.equal(aura.intervalSeconds, 1);
   assert.equal(applyHeroPassiveOnHit(g, hondo, enemies[0]), true);
   assert.equal(g.RealtimeSkillEffects[enemies[0].uid].royalty.modifiers[0].magnitude, .065);
@@ -239,6 +239,25 @@ test('passive stars scale every magnitude while preserving thresholds, durations
   assert.equal(realtimeIncomingDamage(ctx, fara, enemies[0], 100), 40, 'existing 60% mitigation cap still applies');
   for (const [hero, boundary] of [[fara, .4], [hondo, .5], [runa, .8]]) { hero.hp = hero.maxHP * boundary; assert.equal(heroPassive(hero, g), null); }
   assert.equal(HERO_DEFINITIONS.Huun.passive.passive.basicDamageMultiplier, 2, 'authored specs remain immutable');
+});
+
+test('eight-star Boast adds its full scaled MAG and RES bonus alongside star stats', () => {
+  const { ctx, g, heroes } = combat(), runa = heroes[2];
+  g.HeroGrowth = { stars: { Runa: 8 } };
+  tickRealtimeHeroSkillZones(ctx);
+  runa.hp = runa.maxHP * .9;
+  assert.equal(heroGrowthBreakdown(g.HeroGrowth, 'Runa').own, .16);
+  assert.deepEqual(heroPassive(runa, g).spec.modifiers.map(modifier=>modifier.magnitude), [.065, .065]);
+  assert.ok(Math.abs(realtimeCombatStat(g, runa, 'MAG') - 122.5) < 1e-9, '100 MAG receives +16% stars and +6.5% Boast');
+  assert.ok(Math.abs(realtimeCombatStat(g, runa, 'RES') - 12.25) < 1e-9, '10 RES receives the same additive bonuses');
+  g.PartyBuff_MAG = 40;
+  assert.ok(Math.abs(realtimeCombatStat(g, runa, 'MAG') - 146.5) < 1e-9, 'Boast also adds above a stronger temporary stat bonus');
+  g.PartyBuff_MAG = 100;
+  assert.equal(realtimeCombatStat(g, runa, 'MAG'), 175, 'the existing stat-channel cap still applies');
+  delete g.PartyBuff_MAG;
+  runa.hp = runa.maxHP * .8;
+  assert.equal(heroPassive(runa, g), null, 'Boast still requires HP strictly above 80%');
+  assert.ok(Math.abs(realtimeCombatStat(g, runa, 'MAG') - 116) < 1e-9, 'only permanent stars remain when Boast switches off');
 });
 
 test('empty Resonance stars add no skill effects, and growth follows canonical instance ownership', () => {
