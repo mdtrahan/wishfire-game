@@ -103,6 +103,7 @@ Metadata-only conflicts in `.beads/interactions.jsonl` or `ai-memory/insights.md
 Report conflict class separately from state: `none`, `Metadata Conflict`, `Mechanical Conflict`, or `Semantic Conflict`.
 
 ## Merge And Cleanup
+- Cleanup applies to every lane, including experiments that never merge. Run `npm run footprint:close -- --task <id>` after the final commit; resolve or justify reported leftovers. Justified leftovers may stay. Footprint reports do not require deletion before close; all retirement remains under existing `storage:clean` and lifecycle rules.
 - Only Integration Ready beads may be merged.
 - Use `$bead-worktree-lifecycle` for QA PASS cleanup, safe merge, worktree removal, and merged branch deletion.
 - At closeout, run `npm run storage:audit`. A CLOSED Bead with a clean worktree whose commit is on `main` is a retirement candidate; remove its worktree through the approved lifecycle after reviewing ignored evidence. Its branch may remain.

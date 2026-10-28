@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { footprintHook } from './storage_hygiene.mjs';
 
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
 const checkout = realpathSync(git('rev-parse', '--show-toplevel'));
@@ -8,6 +9,7 @@ const commonGit = realpathSync(git('rev-parse', '--path-format=absolute', '--git
 const authoritative = dirname(commonGit);
 const beads = join(checkout, '.beads');
 const redirect = join(beads, 'redirect');
+footprintHook('link-start');
 
 if (checkout === authoritative) {
   console.log('Authoritative Beads checkout; no redirect needed.');

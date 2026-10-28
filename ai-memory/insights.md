@@ -25,6 +25,7 @@
 - Reframe before implementation when acceptance language implies persistent timed stat stacks (`ORKA-9ri`, `ORKA-zih`, residual wording in `ORKA-69r`).
 
 ## Regression Triggers
+- Task resource ownership needs a checkout creation identity; reused paths and repository-wide ref changes require explicit attribution. Optional synchronous hooks need an outer deadline that also bounds filesystem work.
 - A Hero screen that cycles over all progression records can display combat `*#1` copies as duplicate unequipped heroes. Resolve the canonical player roster before reading loadouts; verify a second full navigation cycle with real combat copies present. Auto must preserve every existing hero/slot except its positive-CP replacement, and equipped gear never becomes another hero's candidate.
 - Before starting combat-system beads, scan acceptance + code for: `buff`, `debuff`, `duration`, `turns`, `stack`.
 - AF timing belongs at the resolved-action and enemy-death transfer seams: role awards mutate only the acting hero immediately, while a killed enemy's blue transfer mutates its assigned living recipient only on arrival. Keep threshold signals append-only until the session queue owner consumes them.
@@ -666,3 +667,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Equipment trust needs a rendered action-scope test: cache opening must not silently select one item while adjacent Auto acts on all items. Capture arrows before the actual click, compare recipients with that scope, inspect Hero CP/gear, then reload without reseeding. A passing allocation helper cannot prove that UI promise.
 - A retained DOM node can lose its CSS animation under display:none. Resume motion by seeking the replacement animation from the authoritative active clock; reusing delay offsets from a discarded timeline can restart items and collapse emission spacing. Regression proof must return from the hidden menu, then repeat the cycle.
 - Attack-range changes can move formation stops and stall short regroup walks when locomotion subtracts attack reach from a waypoint. Use explicit contact destinations with compensated travel; verify both role order after reversals and target-death regrouping.
+
+- A worker timeout must stop its own subprocess group. Bind a planned checkout only after its branch proves task ownership, and persist identity when linking resumes the baseline.

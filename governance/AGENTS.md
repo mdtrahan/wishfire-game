@@ -11,7 +11,7 @@
 - `execution/` owns process guidance and active execution directives.
 
 ## Local Contracts
-- `execution/integration.md` owns storage closeout: audit candidates at Bead closeout and preserve ignored evidence until reviewed.
+- `execution/integration.md` owns storage closeout for every lane: report task footprint, justify retained resources, audit retirement candidates and preserve ignored evidence until reviewed.
 - Governance docs can guide implementation but do not by themselves authorize runtime edits outside the active bead scope.
 - Product docs outrank code when deciding intended gameplay, but code/tests show current implementation reality.
 - Planning docs that say "contract only" or "does not authorize implementation" must not be treated as permission to change code.

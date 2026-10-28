@@ -34,6 +34,8 @@ Implement
 Validate
     ↓
 Integration Ready
+    ↓
+Closeout: footprint report; leftovers resolved or justified
 
 ## Startup
 1. Run `pwd` and read the applicable `AGENTS.md` chain.
@@ -58,6 +60,7 @@ After startup, execution policy is governed by:
 - If scope changes, stop and clarify, reopen the bead, or create a new bead.
 
 ## Worktree Discipline
+- Lane tools record footprint; agents do not hand-measure.
 - Follow `governance/execution/integration.md` for lane creation, branch disposition, merge, cleanup, and deletion rules.
 - `goals/chatgpt-cloud-migration-plan.md` owns cloud preparation; `goals/current-stack-integration-report.md` records the merged local stack and deferred hero repair. Cloud cutover requires separate owner approval.
 - Cloud pilots use disposable snapshots with pinned source hashes. Live Beads retains its existing owner until tracker migration is verified; `goals/cloud-combat-pilot-report.md` records the isolated combat trial.

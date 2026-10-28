@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { createHash, randomUUID } from 'node:crypto';
 
 const generated = [
   '.beads/backup', 'web-runner/assets', 'test-results', 'output',
@@ -23,6 +24,7 @@ function protectedIgnored(paths = []) {
 function run(command, args, cwd) {
   return spawnSync(command, args, {
     cwd, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024,
+    ...(process.env.TASK_FOOTPRINT_HOOK === '1' ? { timeout: 200, killSignal: 'SIGKILL' } : {}),
     env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' },
   });
 }
@@ -244,7 +246,366 @@ function clean(root, entries, main, args) {
   console.log('No worktree, file, branch, backup, or Git history was changed.');
 }
 
+const MiB = 1024 * 1024;
+const inside = (parent, child) => child === parent || child.startsWith(`${parent}${path.sep}`);
+const forbidden = target => target.split(path.sep).some(part => ['history', '.git', '.beads'].includes(part));
+const bytesLabel = bytes => bytes == null ? 'unknown' : Math.abs(bytes) < 1024 ? `${bytes} B`
+  : Math.abs(bytes) < MiB ? `${(bytes / 1024).toFixed(1)} KiB` : size(bytes / 1024);
+const isRebuildable = target => /(?:^|\/)(?:target|node_modules|dist(?:-offline)?|__pycache__)$/.test(target) || target.endsWith('/.serena/cache');
+
+// Bound the entire optional hook, including synchronous filesystem work. Only its
+// dedicated measurement process group is stopped; application servers are untouched.
+export function footprintHook(mode, args = [], cwd = process.cwd()) {
+  const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), `footprint:${mode}`, ...args], {
+    cwd, encoding: 'utf8', detached: true, timeout: 1000, killSignal: 'SIGKILL', maxBuffer: MiB,
+    env: { ...process.env, TASK_FOOTPRINT_HOOK: '1' },
+  });
+  // The worker may die while a synchronous subprocess is still running.
+  if (result.pid) {
+    try { process.kill(-result.pid, 'SIGKILL'); }
+    catch (error) { if (error.code !== 'ESRCH') result.error = error; }
+  }
+  if (result.error || result.status !== 0) console.warn('Footprint warning: check unavailable or timed out; workflow continues.');
+  else process.stdout.write(result.stdout);
+}
+
+function footprintTask(branch) {
+  return beadId(branch) || /^refs\/heads\/experiment\/(ORKA-[a-z0-9]+(?:\.\d+)?)(?:-|$)/.exec(branch || '')?.[1];
+}
+
+function refs(cwd) {
+  return Object.fromEntries(required(git(cwd, 'for-each-ref', '--format=%(refname) %(objectname)', 'refs/heads', 'refs/tags'), 'ref map')
+    .split('\n').filter(Boolean).map(line => line.split(' ')));
+}
+
+// No directory traversal at commit time: sizes come from the index's existing objects.
+export function footprintIndex(cwd) {
+  const entries = required(git(cwd, 'ls-files', '--stage', '-z'), 'index').split('\0').filter(Boolean).map(line => {
+    const [mode, oid, stage] = line.slice(0, line.indexOf('\t')).split(' ');
+    if (stage !== '0') throw new Error('unmerged index; tracked-tree size unknown');
+    return { mode, oid, name: line.slice(line.indexOf('\t') + 1) };
+  });
+  const staged = new Set(required(git(cwd, 'diff', '--cached', '--name-only', '-z', '--diff-filter=ACMR'), 'staged paths').split('\0'));
+  const result = spawnSync('git', ['cat-file', '--batch-check=%(objectsize)'], {
+    cwd, input: entries.map(entry => entry.oid).join('\n') + '\n', encoding: 'utf8', maxBuffer: 16 * MiB,
+    ...(process.env.TASK_FOOTPRINT_HOOK === '1' ? { timeout: 200, killSignal: 'SIGKILL' } : {}),
+  });
+  const sizes = required(result, 'index object sizes').split('\n');
+  let tracked = 0, stagedBytes = 0;
+  entries.forEach((entry, index) => {
+    const bytes = entry.mode === '160000' ? 0 : Number(sizes[index]);
+    if (!Number.isFinite(bytes)) throw new Error('index object size unknown');
+    tracked += bytes;
+    if (staged.has(entry.name)) stagedBytes += bytes;
+  });
+  return { stagedBytes, trackedBytes: tracked, headroomBytes: 384 * MiB - tracked };
+}
+
+export function footprintListeners() {
+  const listing = run('lsof', ['-nP', '-iTCP', '-sTCP:LISTEN', '-Fpn']);
+  if (listing.status !== 0 && (listing.status !== 1 || listing.stdout || listing.stderr))
+    return { servers: [], unknown: 'listener inventory unavailable' };
+  const servers = [];
+  let pid;
+  for (const line of listing.stdout.split('\n')) {
+    if (line.startsWith('p')) pid = Number(line.slice(1));
+    if (line.startsWith('n') && /:\d+$/.test(line)) servers.push({ pid, address: line.slice(1), port: Number(line.match(/:(\d+)$/)[1]) });
+  }
+  const pids = [...new Set(servers.map(server => server.pid))];
+  if (!pids.length) return { servers };
+  const starts = run('ps', ['-p', pids.join(','), '-o', 'pid=,lstart=']);
+  const times = new Map(starts.stdout.trim().split('\n').map(line => {
+    const match = /^\s*(\d+)\s+(.+)$/.exec(line);
+    return match ? [Number(match[1]), match[2].trim()] : [];
+  }));
+  const dirs = run('lsof', ['-a', '-p', pids.join(','), '-d', 'cwd', '-Fpn']);
+  const cwds = new Map();
+  for (const line of dirs.stdout.split('\n')) {
+    if (line.startsWith('p')) pid = Number(line.slice(1));
+    if (line.startsWith('n')) cwds.set(pid, line.slice(1));
+  }
+  for (const server of servers) Object.assign(server, { startTime: times.get(server.pid), cwd: cwds.get(server.pid) });
+  return { servers, unknown: starts.status !== 0 || dirs.status !== 0 || servers.some(server => !server.startTime || !server.cwd)
+    ? 'some server identities or working directories unavailable' : undefined };
+}
+
+function footprintSystem(cwd) {
+  const volume = fs.statfsSync(cwd);
+  const swap = run('sysctl', ['-n', 'vm.swapusage']);
+  const counts = Object.fromEntries(required(git(cwd, 'count-objects', '-v'), 'common Git object size').split('\n').map(line => line.split(': ')));
+  return { freeBytes: volume.bavail * volume.bsize, swap: swap.status === 0 ? swap.stdout.trim() : 'unknown',
+    commonGit: { looseBytes: Number(counts.size) * 1024, packBytes: Number(counts['size-pack']) * 1024 },
+    ...footprintListeners() };
+}
+
+function resourceKey(resource) {
+  return resource.kind === 'server' ? `server:${resource.pid}:${resource.startTime}:${resource.port}` : `${resource.kind}:${resource.path}`;
+}
+
+function registerResource(record, resource) {
+  const key = resourceKey(resource);
+  const existing = record.resources.find(item => resourceKey(item) === key);
+  if (!existing) record.resources.push(resource);
+  else if (resource.source === 'registered') existing.reason = resource.reason;
+}
+
+function ownedPaths(record) {
+  return record.resources.filter(item => item.kind !== 'server' && !item.excluded).map(item => item.path);
+}
+
+function checkoutIdentity(target) {
+  if (!fs.existsSync(target)) return null;
+  const directory = required(git(target, 'rev-parse', '--absolute-git-dir'), 'checkout identity');
+  const stamp = name => {
+    const stat = fs.statSync(name);
+    return [stat.dev, stat.ino, stat.birthtimeMs];
+  };
+  return { gitDir: fs.realpathSync(directory), directory: stamp(target), git: stamp(directory) };
+}
+
+function reconcile(record, cwd) {
+  const inventory = footprintListeners();
+  record.inventoryUnknown = inventory.unknown;
+  const registered = linkedWorktrees(cwd);
+  const checkouts = record.resources.filter(item => item.kind === 'worktree');
+  for (const item of checkouts) {
+    const exists = fs.existsSync(item.path);
+    const entry = registered.find(entry => entry.worktree === item.path);
+    let identity = null;
+    if (exists && entry) {
+      try { identity = checkoutIdentity(item.path); }
+      catch { /* Unreadable/replaced checkouts cannot establish ownership. */ }
+    }
+    if (item.pendingCreation && identity && footprintTask(entry.branch) === record.task) {
+      item.identity = identity;
+      item.pendingCreation = false;
+    }
+    item.excluded = Boolean(exists && (!identity || !item.identity || JSON.stringify(identity) !== JSON.stringify(item.identity)));
+    if (identity && !item.excluded && beadId(entry.branch) === record.task)
+      (record.ownedRefs ||= {})[entry.branch] ||= entry.HEAD;
+  }
+  for (const item of record.resources.filter(item => item.kind !== 'worktree')) {
+    item.excluded = checkouts.some(checkout => checkout.excluded && inside(checkout.path, item.path || item.cwd || ''));
+  }
+  const paths = ownedPaths(record);
+  const foreign = registered.map(entry => entry.worktree).filter(target => !paths.includes(target) && paths.some(parent => inside(parent, target)));
+  for (const server of inventory.servers) {
+    if (server.startTime && server.cwd && paths.some(target => inside(target, server.cwd)) &&
+        !foreign.some(target => inside(target, server.cwd)) && !forbidden(server.cwd))
+      registerResource(record, { kind: 'server', ...server, source: 'discovered', reason: 'listening under owned path' });
+  }
+  for (const item of checkouts.filter(item => !item.excluded && fs.existsSync(item.path))) {
+    if (!registered.some(entry => entry.worktree === item.path)) continue;
+    for (const flags of [['--others', '--ignored', '--exclude-standard'], ['--others', '--exclude-standard']]) {
+      const result = git(item.path, 'ls-files', ...flags, '--directory', '-z');
+      if (result.status !== 0) { record.inventoryUnknown = 'directory discovery unavailable'; continue; }
+      for (const name of result.stdout.split('\0').filter(name => name.endsWith('/'))) {
+        const target = path.resolve(item.path, name);
+        if (forbidden(target) || name.split('/').includes('.worktrees') || foreign.some(other => inside(other, target))) continue;
+        registerResource(record, { kind: 'directory', path: target, source: 'discovered',
+          rebuildable: isRebuildable(target),
+          reason: 'untracked or ignored directory under owned checkout' });
+      }
+    }
+  }
+  for (const resource of record.resources) resource.present = resource.excluded ? false : resource.kind === 'server'
+    ? inventory.servers.some(server => resourceKey({ kind: 'server', ...server }) === resourceKey(resource)) || (inventory.unknown ? null : false)
+    : fs.existsSync(resource.path);
+  if (checkouts.some(item => item.excluded)) record.inventoryUnknown = 'replacement checkout or unknown checkout identity excluded';
+  if (process.env.TASK_FOOTPRINT_HOOK === '1' && record.inventoryUnknown) throw new Error(record.inventoryUnknown);
+}
+
+// Count each inode once across disjoint owned paths. Never follow symlinks or enter another checkout.
+export function footprintMeasure(resources, excluded = [], { onBuild, maxEntries = 100000 } = {}) {
+  const seen = new Map();
+  const errors = [];
+  let bytes = 0, rebuildableBytes = 0;
+  const paths = resources.filter(item => item.kind !== 'server').map(item => item.path).sort((a, b) => a.length - b.length);
+  const roots = paths.filter((target, index) => !paths.slice(0, index).some(parent => inside(parent, target)));
+  const builds = resources.filter(item => item.rebuildable).map(item => item.path);
+  let entries = 0;
+  function visit(target, build = false, depth = 0) {
+    if (++entries > maxEntries || depth > 128) throw new Error('owned-path scan limit exceeded');
+    if (forbidden(target) || excluded.some(other => inside(other, target))) return;
+    try {
+      const stat = fs.lstatSync(target);
+      if (stat.isSymbolicLink()) return;
+      if (stat.isDirectory()) {
+        if (path.basename(target) === '.worktrees') return;
+        build ||= isRebuildable(target);
+        if (build && isRebuildable(target)) onBuild?.(target);
+        const directory = fs.opendirSync(target);
+        try {
+          let entry;
+          while ((entry = directory.readSync())) visit(path.join(target, entry.name), build, depth + 1);
+        } finally { directory.closeSync(); }
+      } else if (stat.isFile()) {
+        const key = `${stat.dev}:${stat.ino}`;
+        const rebuildable = build || builds.some(build => inside(build, target));
+        if (!seen.has(key)) bytes += stat.size;
+        if (rebuildable && !seen.get(key)) rebuildableBytes += stat.size;
+        seen.set(key, rebuildable || seen.get(key) || false);
+      }
+    } catch (error) {
+      if (!error.code) throw error;
+      errors.push(`${target}: ${error.code}`);
+    }
+  }
+  try { for (const root of roots) visit(root); }
+  catch (error) { errors.push(error.message); }
+  return { bytes, rebuildableBytes, errors };
+}
+
+function measureRun(record, cwd) {
+  const owned = new Set(ownedPaths(record));
+  const excluded = linkedWorktrees(cwd).map(entry => entry.worktree)
+    .filter(target => !owned.has(target) && [...owned].some(parent => inside(parent, target)));
+  const measurement = footprintMeasure(record.resources.filter(resource => resource.present !== false), excluded, {
+    onBuild: target => registerResource(record, { kind: 'directory', path: target, source: 'discovered',
+      rebuildable: true, present: true, reason: 'build directory under owned path' }),
+  });
+  if (!measurement.errors.length) record.peakBytes = Math.max(record.peakBytes || 0, measurement.bytes);
+  return measurement;
+}
+
+function objectEstimate(cwd, tips, excluded) {
+  if (!tips.length) return { bytes: 0, objects: 0 };
+  const revisions = [...new Set(tips), '--not', ...new Set(excluded)];
+  const objects = required(git(cwd, 'rev-list', '--objects', '--no-object-names', ...revisions), 'reachability');
+  if (!objects) return { bytes: 0, objects: 0 };
+  const result = spawnSync('git', ['cat-file', '--batch-check=%(objectsize:disk)'], {
+    cwd, input: objects + '\n', encoding: 'utf8', maxBuffer: 32 * MiB,
+  });
+  const sizes = required(result, 'reachable object sizes').split('\n').map(Number);
+  if (sizes.some(bytes => !Number.isFinite(bytes))) throw new Error('reachable object sizes unknown');
+  return { bytes: sizes.reduce((sum, bytes) => sum + bytes, 0), objects: sizes.length };
+}
+
+export function footprintReachability(cwd, baseline, ownedRefs = {}) {
+  if (!baseline?.refs || !baseline.head) return { delivered: null, rollback: null, changedRefs: [], sharedRefs: [] };
+  const head = required(git(cwd, 'rev-parse', 'HEAD'), 'HEAD');
+  const current = refs(cwd);
+  const changed = Object.keys(current).filter(ref => baseline.refs[ref] !== current[ref]);
+  const changedRefs = changed.filter(ref => ownedRefs[ref] === current[ref]);
+  const sharedRefs = changed.filter(ref => !changedRefs.includes(ref));
+  const before = [...Object.values(baseline.refs), baseline.head];
+  return { delivered: objectEstimate(cwd, [head], before),
+    rollback: objectEstimate(cwd, changedRefs.map(ref => current[ref]), [...before, head]), changedRefs, sharedRefs };
+}
+
+function footprintOptions(args, cwd, mode) {
+  const options = {};
+  for (let index = 0; index < args.length; index += 2) {
+    if (!['--task', '--run', '--worktree', '--directory', '--ref', '--reason'].includes(args[index]) || !args[index + 1])
+      throw new Error('footprint: use --task <name> [--run <id>] [--worktree <path> | --directory <path> | --ref <full-ref>] [--reason <text>]');
+    options[args[index].slice(2)] = args[index + 1];
+  }
+  options.task ||= beadId(required(git(cwd, 'symbolic-ref', '--quiet', 'HEAD'), 'task branch'));
+  if (!options.task || !/^[\w.-]+$/.test(options.task) || ['.', '..'].includes(options.task)) throw new Error('footprint: valid --task required');
+  options.run ||= createHash('sha256').update(mode === 'start' ? path.resolve(options.worktree || cwd) : cwd).digest('hex').slice(0, 12);
+  if (!/^[\w-]+$/.test(options.run)) throw new Error('footprint: invalid run id');
+  return options;
+}
+
+function writeRun(filename, record) {
+  fs.mkdirSync(path.dirname(filename), { recursive: true });
+  const temporary = `${filename}.${randomUUID()}.tmp`;
+  fs.writeFileSync(temporary, JSON.stringify(record) + '\n', { mode: 0o600, flag: 'wx' });
+  fs.renameSync(temporary, filename);
+}
+
+export function footprintCommand(mode, args = [], cwd = process.cwd()) {
+  cwd = fs.realpathSync(cwd);
+  const options = footprintOptions(args, cwd, mode);
+  const common = required(git(cwd, 'rev-parse', '--path-format=absolute', '--git-common-dir'), 'common Git directory');
+  const repoId = createHash('sha256').update(fs.realpathSync(common)).digest('hex').slice(0, 16);
+  const filename = path.join(os.homedir(), '.cache/task-footprint', repoId, options.task, `${options.run}.json`);
+  let record = fs.existsSync(filename) ? JSON.parse(fs.readFileSync(filename, 'utf8')) : null;
+  if (mode === 'start') {
+    if (!record) {
+      const target = path.resolve(options.worktree || cwd);
+      if (forbidden(target)) throw new Error('footprint: protected owned path');
+      record = { version: 1, task: options.task, run: options.run, cwd, startedAt: new Date().toISOString(),
+        status: 'incomplete', baseline: { label: fs.existsSync(target) ? 'baseline after creation' : 'baseline before creation',
+          head: required(git(cwd, 'rev-parse', 'HEAD'), 'baseline HEAD'), refs: refs(cwd), system: footprintSystem(cwd) },
+        resources: [{ kind: 'worktree', path: target, source: 'registered', reason: 'task checkout',
+          identity: checkoutIdentity(target), pendingCreation: !fs.existsSync(target) }] };
+      reconcile(record, cwd);
+      record.baseline.paths = process.env.TASK_FOOTPRINT_HOOK === '1' ? null : measureRun(record, cwd);
+      record.baseline.resourceKeys = record.resources.map(resourceKey);
+    } else reconcile(record, cwd);
+    record.status = 'incomplete';
+    console.log(`footprint: ${record.baseline?.label || 'baseline unknown'}; run ${options.run}`);
+  } else if (mode === 'check') {
+    const index = footprintIndex(cwd);
+    if (record) {
+      reconcile(record, cwd);
+      const current = refs(cwd);
+      record.lastCheck = { at: new Date().toISOString(), ...index,
+        changedRefs: Object.keys(current).filter(ref => record.baseline?.refs?.[ref] !== current[ref]) };
+    }
+    const added = record?.resources.filter(resource => resource.present && !record.baseline?.resourceKeys?.includes(resourceKey(resource))).length || 0;
+    console.log(`footprint: staged ${bytesLabel(index.stagedBytes)}, tracked-tree headroom ${bytesLabel(index.headroomBytes)} / 384 MiB; ${record?.baseline?.label || 'baseline unknown'}; new leftovers ${added}, changed refs ${record?.lastCheck.changedRefs.length ?? 'unknown'}; directory growth requires peak/close${record?.inventoryUnknown ? `; ${record.inventoryUnknown}` : ''}`);
+  } else {
+    if (!record && mode === 'close') record = { version: 1, task: options.task, run: options.run, cwd,
+      status: 'incomplete', baseline: null, resources: [{ kind: 'worktree', path: cwd, source: 'discovered',
+        identity: checkoutIdentity(cwd), reason: 'baseline unknown' }] };
+    if (!record) throw new Error('footprint: baseline unknown; run footprint:start before allocation');
+    if (mode === 'register') {
+      if (options.ref) {
+        if (!/^refs\/(heads|tags)\/.+/.test(options.ref)) throw new Error('footprint: full branch or tag ref required');
+        const checkout = record.resources.find(item => item.kind === 'worktree' && item.path === cwd);
+        if (!checkout?.identity || JSON.stringify(checkout.identity) !== JSON.stringify(checkoutIdentity(cwd)))
+          throw new Error('footprint: register refs from the owned checkout');
+        (record.ownedRefs ||= {})[options.ref] = required(git(cwd, 'rev-parse', '--verify', options.ref), 'registered ref');
+      } else {
+        const target = path.resolve(options.directory || options.worktree || '');
+        if ((!options.directory && !options.worktree) || forbidden(target)) throw new Error('footprint: explicit unprotected resource path required');
+        registerResource(record, { kind: options.directory ? 'directory' : 'worktree', path: target, source: 'registered',
+          ...(options.worktree ? { identity: checkoutIdentity(target), pendingCreation: !fs.existsSync(target) } : {}),
+          rebuildable: Boolean(options.directory && isRebuildable(target)), reason: options.reason || 'task resource' });
+      }
+    } else if (!['peak', 'close'].includes(mode)) throw new Error(`footprint: unknown mode ${mode}`);
+    reconcile(record, cwd);
+    if (mode === 'peak' || mode === 'close') {
+      const measured = measureRun(record, cwd);
+      record.lastMeasurement = measured;
+      if (mode === 'peak') console.log(`footprint: peak observed ${bytesLabel(record.peakBytes)}`);
+      else {
+        const reachability = footprintReachability(cwd, record.baseline, record.ownedRefs);
+        const provisional = required(git(cwd, 'status', '--porcelain', '-z', '--untracked-files=all'), 'final worktree status')
+          .split('\0').filter(Boolean).some(line => !/^\?\? \.beads\/commit-check\/[\w.-]+\.json$/.test(line));
+        record.final = { at: new Date().toISOString(), head: required(git(cwd, 'rev-parse', 'HEAD'), 'final HEAD'),
+          ...reachability, provisional, system: footprintSystem(cwd), rebuildableBytes: measured.errors.length ? null : measured.rebuildableBytes,
+          ownedGrowthBytes: record.baseline?.paths ? measured.bytes - record.baseline.paths.bytes : null,
+          rebuildableGrowthBytes: record.baseline?.paths ? measured.rebuildableBytes - record.baseline.paths.rebuildableBytes : null,
+          unknown: ['APFS clone sharing, hardlinks outside owned paths, concurrent changes and TM snapshots unknown',
+            'owned-path sizes are apparent bytes, deduplicated by device/inode; exclusive allocation unknown',
+            `reachability/disk representations are estimates; unowned changed refs: ${reachability.sharedRefs.join(', ') || 'none'}`,
+            'peak is max observed, not an unsampled high-water mark', record.inventoryUnknown, ...measured.errors].filter(Boolean) };
+        record.status = provisional || !record.baseline || measured.errors.length ? 'incomplete' : 'complete';
+        const leftovers = record.resources.filter(resource => resource.present !== false).map(resource => resource.kind === 'server'
+          ? `${resource.address} pid ${resource.pid} (${resource.reason})` : `${resource.path} (${resource.reason})`);
+        record.final.line = `footprint: delivered ${bytesLabel(reachability.delivered?.bytes)}, rollback ${bytesLabel(reachability.rollback?.bytes)}, rebuildable ${bytesLabel(record.final.rebuildableBytes)}, peak ${bytesLabel(record.peakBytes)}, leftovers: ${leftovers.join('; ') || 'none'}`;
+        console.log(record.final.line);
+        console.log(`Shared/unknown: ${record.final.unknown.join('; ')}. Baseline: ${record.baseline?.label || 'unknown'}; pre-existing resources included, growth ${bytesLabel(record.final.ownedGrowthBytes)}. ${provisional ? 'Provisional: finalize after commit. ' : ''}Rollback refs: ${reachability.changedRefs.join(', ') || 'none'}`);
+      }
+    }
+  }
+  if (record) writeRun(filename, record);
+  return { filename, record };
+}
+
 function main() {
+  if (['footprint:hook-check', 'footprint:hook-start'].includes(process.argv[2]))
+    return footprintHook(process.argv[2].slice(15), process.argv.slice(3));
+  if (process.argv[2] === 'footprint:link-start') {
+    const branch = required(git(process.cwd(), 'rev-parse', '--symbolic-full-name', 'HEAD'), 'task branch');
+    const task = footprintTask(branch);
+    if (task) return footprintCommand('start', ['--task', task]);
+    return;
+  }
+  if (process.argv[2]?.startsWith('footprint:')) return footprintCommand(process.argv[2].slice(10), process.argv.slice(3));
   const root = commonRoot();
   const entries = linkedWorktrees(root);
   const main = required(git(root, 'rev-parse', 'main'), 'main commit');
