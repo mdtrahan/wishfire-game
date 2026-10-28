@@ -394,7 +394,7 @@ function measureRun(record, cwd) {
   const owned = new Set(ownedPaths(record));
   const excluded = linkedWorktrees(cwd).map(entry => entry.worktree)
     .filter(target => !owned.has(target) && [...owned].some(parent => inside(parent, target)));
-  const measurement = footprintMeasure(record.resources, excluded);
+  const measurement = footprintMeasure(record.resources.filter(resource => resource.present !== false), excluded);
   if (!measurement.errors.length) record.peakBytes = Math.max(record.peakBytes || 0, measurement.bytes);
   return measurement;
 }

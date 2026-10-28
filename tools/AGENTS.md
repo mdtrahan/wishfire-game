@@ -64,6 +64,7 @@
 - `combat_lab/model.mjs` shadow-1 retains its historical 18-second boss assumption for archived sample provenance; current runtime boss timeout is fixed at 30 game seconds.
 
 ## Work Guidance
+- Footprint closeout treats absent resources as resolved and retains their observed peak; it never removes them.
 - Keep command output bounded and failure messages classifiable.
 - For browser automation failures, distinguish browser startup/attach failure from game behavior failure.
 - For Beads/Git helpers, preserve unrelated dirty files and avoid destructive cleanup without explicit approval.

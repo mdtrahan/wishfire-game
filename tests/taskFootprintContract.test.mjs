@@ -136,6 +136,24 @@ test('commit-prep metadata permits finalization while untracked source keeps the
   assert.equal(call('close').record.status, 'incomplete');
 });
 
+test('resources removed by the existing lifecycle are resolved while their peak evidence remains', t => {
+  const { cwd, call } = fixture(t);
+  call('start');
+  const target = path.join(cwd, 'target');
+  fs.mkdirSync(target);
+  fs.writeFileSync(path.join(target, 'binary'), Buffer.alloc(16384));
+  call('register', ['--directory', target]);
+  const peak = call('peak').record.peakBytes;
+  fs.rmSync(target, { recursive: true }); // Only this test's owned fixture.
+  const final = call('close').record;
+  assert.equal(final.status, 'complete');
+  assert.equal(final.final.rebuildableBytes, 0);
+  assert.equal(final.resources.find(item => item.path === target).present, false);
+  assert.equal(final.final.line.includes(target), false);
+  assert.equal(final.peakBytes, peak);
+  assert.deepEqual(final.lastMeasurement.errors, []);
+});
+
 test('nested lane discovery excludes another registered checkout without excluding its own builds', t => {
   const { cwd, git, call } = fixture(t);
   const lane = path.join(cwd, 'lane');
