@@ -12,7 +12,7 @@ if [[ -z "$ISSUE_ID" ]]; then
 fi
 shift || true
 
-node "$ROOT/tools/storage_hygiene.mjs" footprint:check --task "$ISSUE_ID" || echo 'Footprint warning: check unavailable; commit preparation continues.' >&2
+node "$ROOT/tools/storage_hygiene.mjs" footprint:hook-check --task "$ISSUE_ID" || echo 'Footprint warning: check unavailable; commit preparation continues.' >&2
 
 STAGED="$(git diff --cached --name-only --diff-filter=ACMR)"
 if grep -Eq '^(web-runner/modules/functionBank\.js|Scripts/functionBank\.js|web-runner/app\.js|web-runner/systems/renderRuntime\.js)$' <<<"$STAGED"; then

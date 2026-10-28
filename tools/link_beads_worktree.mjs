@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { beadId, footprintCommand } from './storage_hygiene.mjs';
+import { beadId, footprintHook } from './storage_hygiene.mjs';
 
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
 const checkout = realpathSync(git('rev-parse', '--show-toplevel'));
@@ -12,8 +12,7 @@ const redirect = join(beads, 'redirect');
 const branch = git('rev-parse', '--symbolic-full-name', 'HEAD');
 const task = beadId(branch) || /^refs\/heads\/experiment\/(ORKA-[a-z0-9]+(?:\.\d+)?)(?:-|$)/.exec(branch)?.[1];
 if (task) {
-  try { footprintCommand('start', ['--task', task]); }
-  catch (error) { console.warn(`Footprint warning: ${error.message}`); }
+  footprintHook('start', ['--task', task]);
 }
 
 if (checkout === authoritative) {

@@ -65,6 +65,7 @@
 
 ## Work Guidance
 - Footprint closeout treats absent resources as resolved and retains their observed peak; it never removes them.
+- Footprint hooks allow 1 second total and 200 ms per subprocess, warn once and preserve workflow exits; automatic start skips deep measurement. Scans stop at 100,000 entries/128 levels. Checkout identity includes Git directory and creation/inode stamps; replacements stay excluded. Register rollback refs with `footprint:register --ref refs/tags/<name>` from the owned checkout; later external moves remain shared/unknown. Peak/close discover nested build directories; expected commit-check JSON receipts are exempt.
 - Keep command output bounded and failure messages classifiable.
 - For browser automation failures, distinguish browser startup/attach failure from game behavior failure.
 - For Beads/Git helpers, preserve unrelated dirty files and avoid destructive cleanup without explicit approval.

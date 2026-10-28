@@ -80,6 +80,20 @@ test('check reports unknown baselines without inventing them and uses indexed bl
   assert.equal(index.headroomBytes, 384 * 1024 * 1024 - index.trackedBytes);
 });
 
+test('automatic start keeps recursive baseline size unknown and completes quickly', t => {
+  const { cwd, call } = fixture(t);
+  const started = performance.now();
+  const result = spawnSync(process.execPath, [tool, 'footprint:hook-start', '--task', 'ORKA-test'], {
+    cwd, encoding: 'utf8', timeout: 3000,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, '');
+  const elapsed = performance.now() - started;
+  assert.ok(elapsed < 1800);
+  assert.equal(call('start').record.baseline.paths, null);
+  t.diagnostic(`normal automatic start: ${elapsed.toFixed(0)} ms`);
+});
+
 test('discovery records owned builds, observes peaks and keeps dirty close provisional', t => {
   const { cwd, git, call } = fixture(t);
   const start = call('start');
@@ -131,7 +145,13 @@ test('commit-prep metadata permits finalization while untracked source keeps the
   call('start');
   fs.mkdirSync(path.join(cwd, '.beads/commit-check'), { recursive: true });
   fs.writeFileSync(path.join(cwd, '.beads/commit-check/ORKA-test.json'), '{}');
-  assert.equal(call('close').record.status, 'complete');
+  const closed = call('close').record;
+  assert.equal(closed.status, 'complete');
+  assert.equal(closed.resources.some(item => item.path?.includes('commit-check')), false);
+  assert.equal(closed.final.line.includes('commit-check'), false);
+  fs.writeFileSync(path.join(cwd, '.beads/commit-check/unexpected'), 'preserve');
+  assert.equal(call('close').record.status, 'incomplete');
+  fs.rmSync(path.join(cwd, '.beads/commit-check/unexpected'));
   fs.writeFileSync(path.join(cwd, 'pending-source'), 'uncommitted');
   assert.equal(call('close').record.status, 'incomplete');
 });
@@ -180,21 +200,168 @@ test('rollback estimates deduplicate new/moved refs and exclude baseline and del
   const retained = git('rev-parse', 'HEAD');
   git('branch', '-f', 'rollback', retained);
   git('checkout', '--detach', head);
-  const first = footprintReachability(cwd, baseline);
+  const owned = { 'refs/heads/main': retained, 'refs/heads/rollback': retained };
+  const first = footprintReachability(cwd, baseline, owned);
   assert.ok(first.rollback.bytes > 0);
   assert.equal(first.delivered.bytes, 0);
   git('branch', 'duplicate', retained);
-  assert.deepEqual(footprintReachability(cwd, baseline).rollback, first.rollback);
+  owned['refs/heads/duplicate'] = retained;
+  assert.deepEqual(footprintReachability(cwd, baseline, owned).rollback, first.rollback);
   git('tag', '-a', 'checkpoint', '-m', 'retained', retained);
-  assert.ok(footprintReachability(cwd, baseline).rollback.bytes >= first.rollback.bytes);
+  owned['refs/tags/checkpoint'] = git('rev-parse', 'refs/tags/checkpoint');
+  assert.ok(footprintReachability(cwd, baseline, owned).rollback.bytes >= first.rollback.bytes);
   git('checkout', '-b', 'delivered', head);
   fs.writeFileSync(path.join(cwd, 'source'), 'delivered unique');
   git('add', '.');
   git('commit', '-m', 'delivered');
-  const both = footprintReachability(cwd, baseline);
+  const both = footprintReachability(cwd, baseline, owned);
   assert.ok(both.delivered.bytes > 0);
   assert.ok(both.rollback.bytes > 0);
-  assert.deepEqual(footprintReachability(cwd, null), { delivered: null, rollback: null, changedRefs: [] });
+  assert.deepEqual(footprintReachability(cwd, null), { delivered: null, rollback: null, changedRefs: [], sharedRefs: [] });
+});
+
+test('unowned concurrent refs and externally moved registered refs stay shared/unknown', t => {
+  const { cwd, git, call } = fixture(t);
+  call('start');
+  const original = git('rev-parse', 'HEAD');
+  fs.writeFileSync(path.join(cwd, 'source'), 'task rollback');
+  git('add', 'source');
+  git('commit', '-m', 'task checkpoint');
+  git('tag', 'owned');
+  call('register', ['--ref', 'refs/tags/owned']);
+  git('checkout', '--detach', original);
+  const other = path.join(cwd, 'other');
+  git('worktree', 'add', '-b', 'other-task', other);
+  fs.writeFileSync(path.join(other, 'source'), 'other task commit');
+  git('-C', other, 'add', 'source');
+  git('-C', other, 'commit', '-m', 'other task');
+  git('-C', other, 'tag', 'other-tag');
+  const final = call('close').record.final;
+  assert.ok(final.rollback.bytes > 0);
+  assert.deepEqual(final.changedRefs, ['refs/tags/owned']);
+  assert.ok(final.sharedRefs.includes('refs/heads/other-task'));
+  assert.ok(final.sharedRefs.includes('refs/tags/other-tag'));
+  assert.match(final.unknown.join(' '), /other-task/);
+  git('-C', other, 'tag', '-f', 'owned');
+  const moved = call('close').record.final;
+  assert.equal(moved.rollback.bytes, 0);
+  assert.ok(moved.sharedRefs.includes('refs/tags/owned'));
+});
+
+test('peak/close find nested build directories and bound traversal', t => {
+  const { cwd, call } = fixture(t);
+  fs.writeFileSync(path.join(cwd, '.git/info/exclude'), 'slice/\n');
+  call('start');
+  const slice = path.join(cwd, 'slice');
+  const target = path.join(slice, 'target');
+  fs.mkdirSync(target, { recursive: true });
+  fs.writeFileSync(path.join(slice, 'source'), 'retain');
+  fs.writeFileSync(path.join(target, 'binary'), Buffer.alloc(12345));
+  assert.equal(call('check').record.resources.some(item => item.path === target), false);
+  const peak = call('peak').record;
+  assert.ok(peak.resources.some(item => item.path === target && item.rebuildable));
+  assert.equal(peak.lastMeasurement.rebuildableBytes, 12345);
+  assert.equal(call('close').record.final.rebuildableBytes, 12345);
+  const bounded = footprintMeasure([{ kind: 'directory', path: slice }], [], { maxEntries: 2 });
+  assert.deepEqual(bounded.errors, ['owned-path scan limit exceeded']);
+});
+
+test('replacement checkout at the same path contributes no files or servers', t => {
+  const { cwd, git, call } = fixture(t);
+  const lane = path.join(cwd, 'lane');
+  git('worktree', 'add', '--detach', lane);
+  const bin = path.join(cwd, 'bin');
+  fs.mkdirSync(bin);
+  const listing = path.join(bin, 'listeners');
+  fs.writeFileSync(listing, '');
+  fs.writeFileSync(path.join(bin, 'lsof'), `#!/bin/sh\ncase " $* " in\n*" -iTCP "*) cat '${listing}';;\n*) printf 'p123\\nn${lane}\\np456\\nn${lane}\\n';;\nesac\n`, { mode: 0o755 });
+  fs.writeFileSync(path.join(bin, 'ps'), '#!/bin/sh\nprintf "123 original\\n456 replacement\\n"\n', { mode: 0o755 });
+  const originalPath = process.env.PATH;
+  process.env.PATH = `${bin}:${originalPath}`;
+  t.after(() => { process.env.PATH = originalPath; });
+  const args = ['--run', 'identity'];
+  call('start', [...args, '--worktree', lane]);
+  fs.mkdirSync(path.join(lane, 'target'));
+  fs.writeFileSync(path.join(lane, 'target/old'), 'original');
+  fs.writeFileSync(listing, 'p123\nn127.0.0.1:12345\n');
+  const peak = call('peak', args).record.peakBytes;
+  git('worktree', 'remove', '--force', lane); // Only this test's fixture.
+  git('worktree', 'add', '--detach', lane);
+  fs.mkdirSync(path.join(lane, 'target'));
+  fs.writeFileSync(path.join(lane, 'target/new'), Buffer.alloc(100000));
+  fs.writeFileSync(listing, 'p456\nn127.0.0.1:23456\n');
+  const final = call('close', args).record;
+  assert.equal(final.lastMeasurement.bytes, 0);
+  assert.equal(final.final.rebuildableBytes, 0);
+  assert.equal(final.peakBytes, peak);
+  assert.equal(final.resources.find(item => item.kind === 'worktree').excluded, true);
+  assert.equal(final.resources.find(item => item.pid === 123).present, false);
+  assert.equal(final.resources.some(item => item.pid === 456), false);
+  assert.match(final.final.unknown.join(' '), /replacement checkout/);
+});
+
+test('both hook flows warn once on stalled inventories and preserve their gates', t => {
+  const { cwd, git, call } = fixture(t);
+  fs.mkdirSync(path.join(cwd, '.beads/dolt'), { recursive: true });
+  fs.writeFileSync(path.join(cwd, '.beads/config.yaml'), 'test: true\n');
+  git('add', '-f', '.beads/config.yaml');
+  git('commit', '-m', 'beads fixture');
+  const lane = path.join(cwd, 'lane');
+  git('worktree', 'add', '-b', 'bead/ORKA-test-lane', lane);
+  const bin = path.join(cwd, 'bin');
+  fs.mkdirSync(bin);
+  call('start');
+  fs.writeFileSync(path.join(cwd, 'source'), 'staged');
+  git('add', 'source');
+  fs.writeFileSync(path.join(bin, 'lsof'), '#!/bin/sh\nwhile :; do :; done\n', { mode: 0o755 });
+  for (const [command, args, location] of [
+    [process.execPath, [linker], lane], ['bash', [prepare, 'ORKA-test'], cwd],
+  ]) {
+    const started = performance.now();
+    const result = spawnSync(command, args, { cwd: location, encoding: 'utf8', timeout: 3000,
+      env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, HOT_FILE_SCOPE_REPO_ROOT: location } });
+    const elapsed = performance.now() - started;
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal((result.stderr.match(/Footprint warning:/g) || []).length, 1);
+    assert.ok(elapsed < 1800, `hook elapsed ${elapsed.toFixed(0)} ms`);
+    t.diagnostic(`${command === process.execPath ? 'link' : 'prepare'} stalled lsof: ${elapsed.toFixed(0)} ms`);
+  }
+  assert.ok(fs.existsSync(path.join(lane, '.beads/redirect')));
+  assert.ok(fs.existsSync(path.join(cwd, '.beads/commit-check/ORKA-test.json')));
+  fs.mkdirSync(path.join(lane, '.beads/dolt'));
+  const refused = spawnSync(process.execPath, [linker], { cwd: lane, encoding: 'utf8',
+    env: { ...process.env, PATH: `${bin}:${process.env.PATH}` } });
+  assert.notEqual(refused.status, 0);
+  assert.match(refused.stderr, /lane-local Dolt/);
+});
+
+test('hook deadline bounds a stalled synchronous worker and stalled git', t => {
+  const { cwd, run, call } = fixture(t);
+  call('start');
+  const realGit = run('which', ['git']);
+  const bin = path.join(cwd, 'bin');
+  fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, 'lsof'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+  const stall = encodeURIComponent("if(process.argv[2]==='footprint:check')Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0)");
+  const started = performance.now();
+  const result = spawnSync(process.execPath, [tool, 'footprint:hook-check', '--task', 'ORKA-test'], {
+    cwd, encoding: 'utf8', timeout: 3000, env: { ...process.env,
+      NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --import=data:text/javascript,${stall}` },
+  });
+  const elapsed = performance.now() - started;
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal((result.stderr.match(/Footprint warning:/g) || []).length, 1);
+  assert.ok(elapsed >= 950 && elapsed < 1800, `hook elapsed ${elapsed.toFixed(0)} ms`);
+  t.diagnostic(`outer timeout: ${elapsed.toFixed(0)} ms`);
+  fs.writeFileSync(path.join(bin, 'git'), `#!/bin/sh\ncase " $* " in\n*" ls-files "*) while :; do :; done;;\nesac\nexec '${realGit}' "$@"\n`, { mode: 0o755 });
+  const stalledAt = performance.now();
+  const stalled = spawnSync(process.execPath, [tool, 'footprint:hook-check', '--task', 'ORKA-test'], {
+    cwd, encoding: 'utf8', timeout: 3000, env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
+  });
+  assert.equal(stalled.status, 0, stalled.stderr);
+  assert.equal((stalled.stderr.match(/Footprint warning:/g) || []).length, 1);
+  assert.ok(performance.now() - stalledAt < 1800);
+  t.diagnostic(`stalled git: ${(performance.now() - stalledAt).toFixed(0)} ms`);
 });
 
 test('server discovery uses owned cwd, port and start time, and handles PID reuse without stopping anything', t => {
@@ -240,6 +407,10 @@ test('prepare keeps compliance preparation working when footprint fails', t => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stderr, /Footprint warning: check unavailable/);
   assert.ok(fs.existsSync(path.join(cwd, '.beads/commit-check/ORKA-test.json')));
+  fs.writeFileSync(path.join(bin, 'python3'), '#!/bin/sh\nexit 23\n', { mode: 0o755 });
+  const complianceFailure = spawnSync('bash', [prepare, 'ORKA-test'], { cwd, encoding: 'utf8',
+    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, HOT_FILE_SCOPE_REPO_ROOT: cwd } });
+  assert.equal(complianceFailure.status, 23);
   const missing = spawnSync('bash', [prepare], { cwd, encoding: 'utf8' });
   assert.equal(missing.status, 1);
   assert.match(missing.stderr, /usage:/);

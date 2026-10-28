@@ -25,6 +25,7 @@
 - Reframe before implementation when acceptance language implies persistent timed stat stacks (`ORKA-9ri`, `ORKA-zih`, residual wording in `ORKA-69r`).
 
 ## Regression Triggers
+- Task resource ownership needs a checkout creation identity; reused paths and repository-wide ref changes require explicit attribution. Optional synchronous hooks need an outer deadline that also bounds filesystem work.
 - A Hero screen that cycles over all progression records can display combat `*#1` copies as duplicate unequipped heroes. Resolve the canonical player roster before reading loadouts; verify a second full navigation cycle with real combat copies present. Auto must preserve every existing hero/slot except its positive-CP replacement, and equipped gear never becomes another hero's candidate.
 - Before starting combat-system beads, scan acceptance + code for: `buff`, `debuff`, `duration`, `turns`, `stack`.
 - AF timing belongs at the resolved-action and enemy-death transfer seams: role awards mutate only the acting hero immediately, while a killed enemy's blue transfer mutates its assigned living recipient only on arrival. Keep threshold signals append-only until the session queue owner consumes them.
