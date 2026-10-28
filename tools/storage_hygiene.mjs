@@ -254,14 +254,23 @@ const bytesLabel = bytes => bytes == null ? 'unknown' : Math.abs(bytes) < 1024 ?
 const isRebuildable = target => /(?:^|\/)(?:target|node_modules|dist(?:-offline)?|__pycache__)$/.test(target) || target.endsWith('/.serena/cache');
 
 // Bound the entire optional hook, including synchronous filesystem work. Only its
-// measurement child is subject to the deadline; application servers are untouched.
+// dedicated measurement process group is stopped; application servers are untouched.
 export function footprintHook(mode, args = [], cwd = process.cwd()) {
   const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), `footprint:${mode}`, ...args], {
-    cwd, encoding: 'utf8', timeout: 1000, killSignal: 'SIGKILL', maxBuffer: MiB,
+    cwd, encoding: 'utf8', detached: true, timeout: 1000, killSignal: 'SIGKILL', maxBuffer: MiB,
     env: { ...process.env, TASK_FOOTPRINT_HOOK: '1' },
   });
-  if (result.status !== 0) console.warn('Footprint warning: check unavailable or timed out; workflow continues.');
+  // The worker may die while a synchronous subprocess is still running.
+  if (result.pid) {
+    try { process.kill(-result.pid, 'SIGKILL'); }
+    catch (error) { if (error.code !== 'ESRCH') result.error = error; }
+  }
+  if (result.error || result.status !== 0) console.warn('Footprint warning: check unavailable or timed out; workflow continues.');
   else process.stdout.write(result.stdout);
+}
+
+function footprintTask(branch) {
+  return beadId(branch) || /^refs\/heads\/experiment\/(ORKA-[a-z0-9]+(?:\.\d+)?)(?:-|$)/.exec(branch || '')?.[1];
 }
 
 function refs(cwd) {
@@ -367,7 +376,7 @@ function reconcile(record, cwd) {
       try { identity = checkoutIdentity(item.path); }
       catch { /* Unreadable/replaced checkouts cannot establish ownership. */ }
     }
-    if (item.pendingCreation && identity) {
+    if (item.pendingCreation && identity && footprintTask(entry.branch) === record.task) {
       item.identity = identity;
       item.pendingCreation = false;
     }
@@ -524,7 +533,7 @@ export function footprintCommand(mode, args = [], cwd = process.cwd()) {
       reconcile(record, cwd);
       record.baseline.paths = process.env.TASK_FOOTPRINT_HOOK === '1' ? null : measureRun(record, cwd);
       record.baseline.resourceKeys = record.resources.map(resourceKey);
-    }
+    } else reconcile(record, cwd);
     record.status = 'incomplete';
     console.log(`footprint: ${record.baseline?.label || 'baseline unknown'}; run ${options.run}`);
   } else if (mode === 'check') {
@@ -590,6 +599,12 @@ export function footprintCommand(mode, args = [], cwd = process.cwd()) {
 function main() {
   if (['footprint:hook-check', 'footprint:hook-start'].includes(process.argv[2]))
     return footprintHook(process.argv[2].slice(15), process.argv.slice(3));
+  if (process.argv[2] === 'footprint:link-start') {
+    const branch = required(git(process.cwd(), 'rev-parse', '--symbolic-full-name', 'HEAD'), 'task branch');
+    const task = footprintTask(branch);
+    if (task) return footprintCommand('start', ['--task', task]);
+    return;
+  }
   if (process.argv[2]?.startsWith('footprint:')) return footprintCommand(process.argv[2].slice(10), process.argv.slice(3));
   const root = commonRoot();
   const entries = linkedWorktrees(root);

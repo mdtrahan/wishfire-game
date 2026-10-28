@@ -55,6 +55,9 @@ test('start before allocation survives automatic lane linking, resume and finali
   git('worktree', 'add', '-b', `bead/${task}-lane`, lane);
   const output = run(process.execPath, [linker], { cwd: lane });
   assert.match(output, /baseline before creation/);
+  const linked = JSON.parse(fs.readFileSync(start.filename, 'utf8'));
+  assert.ok(linked.resources[0].identity, 'link persists the allocated checkout identity');
+  assert.equal(linked.resources[0].pendingCreation, false);
   const resumed = call('start', [], lane);
   assert.equal(resumed.filename, start.filename);
   assert.deepEqual(resumed.record.baseline, JSON.parse(JSON.stringify(start.record.baseline)));
@@ -62,6 +65,24 @@ test('start before allocation survives automatic lane linking, resume and finali
   assert.equal(call('start', [], lane).record.status, 'incomplete');
   assert.equal(fs.readdirSync(path.dirname(start.filename)).filter(name => name.endsWith('.json')).length, 1);
   assert.equal(fs.readdirSync(path.dirname(start.filename)).some(name => name.endsWith('.tmp')), false);
+});
+
+test('pending checkout rejects a different task on check and repeated start', t => {
+  const { cwd, git, call } = fixture(t);
+  const lane = path.join(cwd, 'lane');
+  const start = call('start', ['--worktree', lane]);
+  git('worktree', 'add', '-b', 'bead/ORKA-other-lane', lane);
+  fs.mkdirSync(path.join(lane, 'target'));
+  fs.writeFileSync(path.join(lane, 'target/foreign'), Buffer.alloc(12345));
+  for (const mode of ['start', 'check', 'close']) {
+    const record = call(mode, ['--run', start.record.run, '--worktree', lane]).record;
+    assert.equal(record.resources[0].identity, null);
+    assert.equal(record.resources[0].pendingCreation, true);
+    assert.equal(record.resources[0].excluded, true);
+    assert.match(record.inventoryUnknown, /unknown checkout identity/);
+    assert.equal(record.resources.some(item => item.path === path.join(lane, 'target')), false);
+    if (mode === 'close') assert.equal(record.lastMeasurement.bytes, 0);
+  }
 });
 
 test('check reports unknown baselines without inventing them and uses indexed blob sizes', t => {
@@ -362,6 +383,82 @@ test('hook deadline bounds a stalled synchronous worker and stalled git', t => {
   assert.equal((stalled.stderr.match(/Footprint warning:/g) || []).length, 1);
   assert.ok(performance.now() - stalledAt < 1800);
   t.diagnostic(`stalled git: ${(performance.now() - stalledAt).toFixed(0)} ms`);
+});
+
+test('outer deadline kills overlapping lsof/git subprocesses and their children', async t => {
+  const { cwd, run, call } = fixture(t);
+  call('start');
+  const realGit = run('which', ['git']);
+  const bin = path.join(cwd, 'bin');
+  fs.mkdirSync(bin);
+  for (const command of ['lsof', 'git']) {
+    const pidFile = path.join(bin, `${command}.pids`);
+    const stall = `echo $$ >> '${pidFile}'\n/bin/sh -c 'echo $$ >> "${pidFile}"; while :; do :; done' &\nwhile :; do :; done\n`;
+    fs.writeFileSync(path.join(bin, 'lsof'), command === 'lsof' ? `#!/bin/sh\n${stall}` : '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+    fs.writeFileSync(path.join(bin, 'git'), command === 'git'
+      ? `#!/bin/sh\ncase " $* " in\n*" ls-files "*) ${stall};;\nesac\nexec '${realGit}' "$@"\n`
+      : `#!/bin/sh\nexec '${realGit}' "$@"\n`, { mode: 0o755 });
+    // Force the subprocess deadline to overlap the worker's 1 s deadline.
+    const preload = `import cp from 'node:child_process';
+      import {syncBuiltinESMExports} from 'node:module';
+      if(process.argv[2]==='footprint:check') {
+        const original=cp.spawnSync;
+        cp.spawnSync=(name,args,options)=>original(name,args,
+          name===${JSON.stringify(command)} && (name==='lsof'||args.includes('ls-files'))
+            ? {...options,timeout:2000} : options);
+        syncBuiltinESMExports();
+      }`;
+    const pids = () => fs.existsSync(pidFile) ? fs.readFileSync(pidFile, 'utf8').trim().split('\n').map(Number) : [];
+    const alive = pid => { try { process.kill(pid, 0); return true; } catch (error) { if (error.code === 'ESRCH') return false; throw error; } };
+    try {
+      const started = performance.now();
+      const result = spawnSync(process.execPath, [tool, 'footprint:hook-check', '--task', 'ORKA-test'], {
+        cwd, encoding: 'utf8', timeout: 3000, env: { ...process.env, PATH: `${bin}:${process.env.PATH}`,
+          NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --import=data:text/javascript,${encodeURIComponent(preload)}` },
+      });
+      const elapsed = performance.now() - started;
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal((result.stderr.match(/Footprint warning:/g) || []).length, 1);
+      assert.ok(elapsed >= 950 && elapsed < 1800, `hook elapsed ${elapsed.toFixed(0)} ms`);
+      assert.equal(pids().length, 2, 'inner subprocess and descendant both started');
+      for (let retry = 0; retry < 25 && pids().some(alive); retry++)
+        await new Promise(resolve => setTimeout(resolve, 20));
+      assert.deepEqual(pids().filter(alive), [], 'no measurement orphan survives');
+      t.diagnostic(`overlapping ${command} deadline: ${elapsed.toFixed(0)} ms; no orphan remained`);
+    } finally {
+      for (const pid of pids().filter(alive)) process.kill(pid, 'SIGKILL');
+    }
+  }
+});
+
+test('link branch lookup failures and stalls warn once and preserve linking gates', t => {
+  const { cwd, run, git, call } = fixture(t);
+  fs.mkdirSync(path.join(cwd, '.beads/dolt'), { recursive: true });
+  fs.writeFileSync(path.join(cwd, '.beads/config.yaml'), 'test: true\n');
+  git('add', '-f', '.beads/config.yaml');
+  git('commit', '-m', 'beads fixture');
+  const lane = path.join(cwd, 'lane');
+  git('worktree', 'add', '-b', 'bead/ORKA-test-lane', lane);
+  call('start', ['--worktree', lane]);
+  const realGit = run('which', ['git']);
+  const bin = path.join(cwd, 'bin');
+  fs.mkdirSync(bin);
+  for (const failure of ['exit 7', 'while :; do :; done']) {
+    fs.writeFileSync(path.join(bin, 'git'), `#!/bin/sh\ncase " $* " in\n*" --symbolic-full-name "*) ${failure};;\nesac\nexec '${realGit}' "$@"\n`, { mode: 0o755 });
+    const started = performance.now();
+    const result = spawnSync(process.execPath, [linker], { cwd: lane, encoding: 'utf8', timeout: 3000,
+      env: { ...process.env, PATH: `${bin}:${process.env.PATH}` } });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal((result.stderr.match(/Footprint warning:/g) || []).length, 1);
+    assert.ok(performance.now() - started < 1800);
+    assert.ok(fs.existsSync(path.join(lane, '.beads/redirect')));
+    fs.mkdirSync(path.join(lane, '.beads/dolt'));
+    const refused = spawnSync(process.execPath, [linker], { cwd: lane, encoding: 'utf8', timeout: 3000,
+      env: { ...process.env, PATH: `${bin}:${process.env.PATH}` } });
+    assert.equal(refused.status, 1, refused.stderr);
+    assert.match(refused.stderr, /lane-local Dolt/);
+    fs.rmdirSync(path.join(lane, '.beads/dolt'));
+  }
 });
 
 test('server discovery uses owned cwd, port and start time, and handles PID reuse without stopping anything', t => {
