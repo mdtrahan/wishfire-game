@@ -82,7 +82,7 @@ Recovery bias:
 - Create or update a bead when a blocker represents follow-up work rather than a local transient issue.
 
 ## Reporting
-Report files inspected, files changed, validation performed, unresolved uncertainty, and any retrieval receipt required by `governance/execution/retrieval.md`.
+Record files inspected, files changed, validation performed, unresolved uncertainty, and any retrieval receipt required by `governance/execution/retrieval.md` in the bead or task artifact. Owner-facing replies follow the reply rule in `integration.md` § Own the blocker: ≤100 words unless a report was requested.
 
 ## Subagents
 - Use subagents only when they improve retrieval, implementation, QA/review, or docs/API verification.

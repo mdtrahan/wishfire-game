@@ -13,7 +13,23 @@
 - Never mix multiple implementation beads in one worktree.
 - Do not block new bead work solely because many bead worktrees exist; assess ownership, overlap, and repo-state risk directly.
 - Make periodic commits for historical safety when work is long-lived.
-- Preserve unrelated dirty files; do not stage, reset, clean, or remove them.
+- Preserve unrelated dirty files; do not stage, reset, clean, or remove them. Exception: a listed generated path per § Own the blocker.
+
+## Own the blocker
+Mechanical blockers are the agent's job: apply the matching row, note it in one line, continue. Anything not listed: coordinate with the owning thread's lead; if unresolved, one owner question per the reply rule (≤60 words, "I recommend …").
+
+| Symptom | Action |
+|---|---|
+| A generated path below is dirty, its index entry is unchanged, no Git operation is in progress, and every changed byte is that generator's output | `git restore --source=HEAD --worktree -- <path>`, continue, rerun the generator. Never rerun a generator to classify unexplained dirt. |
+| Any other dirty or untracked file blocks the merge | Do not move it; coordinate with its owner as above. |
+| Target branch is checked out in another worktree | `git -C <that worktree> merge --ff-only <validated lane>` |
+| Target advanced after validation | Merge target into the lane, rerun tests/parity, then ff. |
+| Golden/baseline hash conflict | Re-pin only after behaviour tests and parity pass on the merged tree and the change is the expected one. |
+| Doc/AGENTS bullet conflict | Keep both unless they contradict; then the newer owner decision wins. |
+| Guard denies a lead's code/patch work | The delegate commits on its branch; the lead reviews and ff/merges. |
+| Commit hook or storage guard fails | Fix the named cause in-lane; never `--no-verify`; never delete uncertain assets. |
+
+Generated paths (nobody hand-edits): `web-runner/assets/simulation_core.wasm` (tools/build_simulation_core_wasm.js; ORKA-ee6s). The Rust slice keeps `web/index.html` static (ORKA-6jh1.26).
 
 ## Branch Disposition Gate
 During branch, release, or integration audits, every in-scope branch, worktree, or PR must receive an explicit owner-facing disposition. Do not leave branches in an ambiguous "maybe merge later" state.

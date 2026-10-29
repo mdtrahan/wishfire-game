@@ -83,7 +83,7 @@ Support ├── `agents/` (retired)
 
 ## Implementation Rules
 - Edit the minimum necessary files; avoid unrelated refactors; resolve conflicts locally.
-- Inspect unexpected tracked changes; preserve unrelated dirt and edit only clean or explicitly owned paths. Pause affected edits if ownership remains unclear. Keep one ownership lane per bead unless authorized.
+- Inspect unexpected tracked changes; preserve unrelated dirt and edit only clean or explicitly owned paths. Pause affected edits if ownership remains unclear (playbook-listed generated output is not unclear ownership: `governance/execution/integration.md` § Own the blocker). Keep one ownership lane per bead unless authorized.
 - Prefer deterministic shared logic in `src/` or Rust-owned SimulationCore seams over new browser-shell logic.
 - Keep `web-runner/app.js` orchestration-only; detailed ownership rules live in `governance/execution/implementation-gate.md`.
 - Use `governance/execution/validation.md` for focused proof and `governance/execution/integration.md` for merge readiness.
