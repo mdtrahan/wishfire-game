@@ -2,12 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createCombatProgressionState } from '../web-runner/src/core/combatProgressionRules.mjs';
 import { starUpHero, setHeroResonance, starUpCost, heroGrowthModifiers, heroGrowthBreakdown, sanitizeHeroGrowth, canonicalGrowthId, STAR_MAX, STAR_EFFECTS } from '../web-runner/src/core/heroGrowthRules.mjs';
-import { sanitizeHeroFormation, placeFormationHero, setFormationLeader, autoFormActive, copyFormationPresetTo, selectFormationPreset, activeFormationPreset, formationSuccession, formationPlacement, openFormationCells } from '../web-runner/src/core/heroFormationRules.mjs';
-import { deriveContinuousCombatRecoveryHuddle } from '../web-runner/src/core/arenaCombat.mjs';
-import { resolveCombatMovementTuning, resolveCombatLeader, sanitizeCombatMovementTuning } from '../web-runner/src/core/combatMovementTuning.mjs';
+import { resolveCombatMovementTuning, resolveCombatAnchor } from '../web-runner/src/core/combatMovementTuning.mjs';
 import { permanentHeroModifiers } from '../web-runner/src/core/realtimeSkillState.mjs';
 
-const roster = [{ id: 'Falie', name: 'Fara', role: 'Tank' }, { id: 'Huun', name: 'Hondo', role: 'Damage' }, { id: 'Runa', name: 'Runa', role: 'Mage' }, { id: 'Kojonn', name: 'Kaja', role: 'Support' }];
 const withTickets = tickets => createCombatProgressionState({ wallet: { ticketsByHero: tickets } });
 
 test('untouched progression saves carry no growth field', () => {
@@ -63,21 +60,15 @@ test('eight stars map in pairs to accepted skill slots and clamp legacy saves', 
  for(const raw of [null,[],{},'bad',{stars:null},{stars:{Falie:Infinity}}])assert.equal(sanitizeHeroGrowth(raw),null);
 });
 
-test('combat leader follows Formation unless the dev override is enabled, with succession on KO', () => {
-  assert.equal(resolveCombatMovementTuning({}).leaderName, 'Fara');
-  const globals = { HeroFormationLeader: 'Runa', HeroFormationOrder: ['Runa', 'Kaja', 'Fara', 'Hondo'] };
+test('retired leader choices cannot change the first living party anchor', () => {
+  const globals = { HeroFormationLeader: 'Runa', HeroFormationOrder: ['Runa', 'Kaja'], DevMovementTuning: { leaderName: 'Kaja', leaderOverride: true, heroOverlap: 0.5 } };
   const tuning = resolveCombatMovementTuning(globals);
-  assert.equal(tuning.leaderName, 'Runa');
-  assert.deepEqual(tuning.succession, ['Runa', 'Kaja', 'Fara', 'Hondo']);
-  // Dev tunings saved by the panel always carry a leader name; without the override flag Formation still leads.
-  assert.equal(resolveCombatMovementTuning({ ...globals, DevMovementTuning: { leaderName: 'Hondo', heroOverlap: 0.5 } }).leaderName, 'Runa');
-  assert.equal(resolveCombatMovementTuning({ ...globals, DevMovementTuning: sanitizeCombatMovementTuning({ heroOverlap: 0.5 }) }).leaderName, 'Runa', 'panel defaults and Reset never override');
-  assert.equal(resolveCombatMovementTuning({ ...globals, DevMovementTuning: { leaderName: 'Hondo', leaderOverride: 'yes' } }).leaderName, 'Runa', 'only a literal true enables the override');
-  const overridden = resolveCombatMovementTuning({ ...globals, DevMovementTuning: { leaderName: 'Hondo', leaderOverride: true } });
-  assert.equal(overridden.leaderName, 'Hondo');
-  assert.equal(overridden.leaderOverride, true);
-  assert.equal(resolveCombatMovementTuning({ DevMovementTuning: { leaderName: 'Kaja' } }).leaderName, 'Fara', 'no Formation and no override keeps the default leader');
-  const heroes = [{ baseHeroName: 'Falie', hp: 5 }, { baseHeroName: 'Huun', hp: 5 }, { baseHeroName: 'Runa', hp: 0 }, { baseHeroName: 'Kojonn', hp: 5 }];
-  assert.equal(resolveCombatLeader(heroes, tuning.leaderName, tuning.succession).baseHeroName, 'Kojonn');
-  assert.equal(resolveCombatLeader(heroes, 'Runa').baseHeroName, 'Falie', 'without succession the party order still applies');
+  assert.equal(tuning.heroOverlap, 0.5);
+  for (const field of ['leaderName', 'leaderOverride', 'succession']) assert.equal(field in tuning, false);
+  const heroes = [{ baseHeroName: 'Huun', hp: 5 }, { baseHeroName: 'Falie', hp: 5 }, { baseHeroName: 'Runa', hp: 5 }];
+  assert.equal(resolveCombatAnchor(heroes), heroes[0]);
+  heroes[0].hp = 0;
+  assert.equal(resolveCombatAnchor(heroes), heroes[1]);
+  heroes[1].hp = heroes[2].hp = 0;
+  assert.equal(resolveCombatAnchor(heroes), null);
 });

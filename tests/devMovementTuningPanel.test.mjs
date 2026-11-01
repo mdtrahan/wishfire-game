@@ -7,8 +7,8 @@ import {spawn} from 'node:child_process';
 import {createServer} from 'node:net';
 import {setTimeout as delay} from 'node:timers/promises';
 
-// The dev leader select only overrides Formation while its checkbox is ticked; panel edits and Reset never do.
-test('dev movement panel overrides the Formation leader only when explicitly enabled',async()=>{
+// Retired leader saves cannot restore controls or influence the neutral party anchor.
+test('dev movement panel discards saved leader choices while retaining numeric tuning',async()=>{
  const socket=createServer();await new Promise(r=>socket.listen(0,'127.0.0.1',r));const port=socket.address().port;await new Promise(r=>socket.close(r));
  const server=spawn(process.execPath,['tools/serve_web.js','--port',String(port),'--host','127.0.0.1'],{stdio:'ignore'}),base=`http://127.0.0.1:${port}`;let browser;
  try{
@@ -23,25 +23,17 @@ test('dev movement panel overrides the Formation leader only when explicitly ena
    const storage={getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,v)};
    const state={globals:{HeroFormationLeader:'Runa',DevMovementTuning:panel.loadCombatMovementTuning(storage)}};
    panel.mountCombatMovementTuningPanel({container:document.querySelector('#host'),state,storage});
-   window.qa={leader:()=>tuning.resolveCombatMovementTuning(state.globals).leaderName,saved:()=>JSON.parse(store.get(tuning.COMBAT_MOVEMENT_TUNING_STORAGE_KEY))};
+   window.qa={tuning:()=>tuning.resolveCombatMovementTuning(state.globals),saved:()=>JSON.parse(store.get(tuning.COMBAT_MOVEMENT_TUNING_STORAGE_KEY))};
   });
-  const toggle=page.locator('[data-devtool-movement-leader-override]'),select=page.locator('[data-devtool-movement-leader]'),leader=()=>page.evaluate(()=>window.qa.leader());
-  assert.equal(await toggle.isChecked(),false,'a pre-flag saved leader loads unticked');
-  assert.equal(await select.isDisabled(),true);
-  assert.equal(await leader(),'Runa','Formation leads despite the saved dev leader name');
+  assert.equal(await page.locator('[data-devtool-movement-leader-override],[data-devtool-movement-leader]').count(),0);
+  assert.doesNotMatch(await page.locator('fieldset').innerText(),/leader|formation/i);
+  const tuning=await page.evaluate(()=>window.qa.tuning());
+  assert.equal(tuning.heroOverlap,0.5);assert.equal('leaderName' in tuning,false);assert.equal('leaderOverride' in tuning,false);
   await page.locator('[data-devtool-movement-key=heroOverlap]').fill('0.75');
-  assert.equal(await leader(),'Runa','moving a slider never overrides Formation');
-  await toggle.check();
-  assert.equal(await select.isDisabled(),false);
-  await select.selectOption('Kaja');
-  assert.equal(await leader(),'Kaja');
-  assert.deepEqual((({leaderName,leaderOverride})=>({leaderName,leaderOverride}))(await page.evaluate(()=>window.qa.saved())),{leaderName:'Kaja',leaderOverride:true},'the override persists under the dev key');
-  await toggle.uncheck();
-  assert.equal(await leader(),'Runa');
-  await toggle.check();await page.locator('[data-devtool-movement-reset]').click();
-  assert.equal(await toggle.isChecked(),false,'Reset returns to Formation');
-  assert.equal(await select.isDisabled(),true);
-  assert.equal(await leader(),'Runa');
+  const saved=await page.evaluate(()=>window.qa.saved());
+  assert.equal(saved.heroOverlap,0.75);assert.equal('leaderName' in saved,false);assert.equal('leaderOverride' in saved,false);
+  await page.locator('[data-devtool-movement-reset]').click();
+  assert.equal((await page.evaluate(()=>window.qa.saved())).heroOverlap,0.25);
   assert.deepEqual(errors,[]);
  }finally{await browser?.close();server.kill();}
 });

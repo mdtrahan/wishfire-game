@@ -14,7 +14,7 @@
 
 ## Local Contracts
 - The player guide changes only when the user asks for it to change.
-- The approved combat contract has four heroes in a tight roaming formation with independent basic attacks and five auto-active skills each. Actors act on independent cooldowns; effects use seconds. There are no playable turns, action slots, gem matches, SP or FLOW in supported combat. The root combat cleanup plan owns the approved skill tables during migration.
+- The approved combat contract has a party of four heroes using slice placement in combat with independent basic attacks and five auto-active skills each. Actors act on independent cooldowns; effects use seconds. There are no playable turns, action slots, gem matches, SP or FLOW in supported combat. The root combat cleanup plan owns the approved skill tables during migration.
 - Ordinary waves carry hero HP and KO state forward. Clearing a boss fully restores and revives the party, removes harmful statuses and keeps beneficial effects.
 - The player guide describes the approved player-facing combat. Runtime migration remains in progress. Historical hero-and-party skill documents retain paused content only.
 - Affinity is passive and progression-facing. It is not a combat meter or separate in-battle progression track.
@@ -47,4 +47,4 @@
 
 - Owner-approved smooth Bag upgrades supersede the player guide's older paid-stage/construction wording. Preserve the supplied menu pill palette and floating close placement; the completion reward contains bag level/capacity only. The player guide retains its older text until the owner requests a guide edit.
 
-- ORKA-bti owns the free 2-4-2 board, independent screen-wide basics, slot-based Special reach and moving bosses. Star Up caps at eight with +2% own stats per entry; star 1 grants +10% Special damage/healing, star 2 reduces Special cooldown by 8%, and stars 3–4 each add 15% Passive magnitude with conditions unchanged. Passive multipliers scale their bonus above 1; Boast adds its scaled value alongside permanent star stats. Existing caps remain. Stars 5–8 await Resonance crystals. Accessory and both crystal slots are empty without a faucet.
+- The owner retired the formation editor, presets and camera Leader. A party of four uses slice placement in combat; camera succession follows living deployment order. Independent screen-wide basics, slot-based Special reach and moving bosses remain. Star Up caps at eight with +2% own stats per entry; star 1 grants +10% Special damage/healing, star 2 reduces Special cooldown by 8%, and stars 3–4 each add 15% Passive magnitude with conditions unchanged. Passive multipliers scale their bonus above 1; Boast adds its scaled value alongside permanent star stats. Existing caps remain. Stars 5–8 await Resonance crystals. Accessory and both crystal slots are empty without a faucet.
