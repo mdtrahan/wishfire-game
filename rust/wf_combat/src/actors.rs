@@ -367,7 +367,7 @@ impl crate::Sim {
         self.actors.push(Actor::new(
             id,
             kind,
-            crate::math::floor_point(
+            self.floor.point(
                 pos,
                 if is_boss(kind) {
                     BOSS_BODY_RADIUS

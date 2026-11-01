@@ -51,6 +51,8 @@ impl Hash {
 }
 impl Sim {
     pub fn refresh_snapshot(&mut self) {
+        self.snapshot.arena_min = self.floor.min;
+        self.snapshot.arena_max = self.floor.max;
         self.snapshot.step = self.step_number;
         self.snapshot.time = self.step_number as f64 / SIM_HZ as f64;
         self.snapshot.combat_time = self.combat_steps as f64 / SIM_HZ as f64;
@@ -121,6 +123,13 @@ impl Sim {
     pub fn hash_with_host(&self, mut host: impl FnMut(u8, &mut Hash)) -> u64 {
         let mut h = Hash(0xcbf29ce484222325);
         h.u(self.cfg.seed);
+        // Preserve the reference hash for its unchanged floor.
+        if self.floor.min != crate::tuning::ARENA_MIN || self.floor.max != crate::tuning::ARENA_MAX
+        {
+            h.u(0x464c4f4f52);
+            h.v(self.floor.min);
+            h.v(self.floor.max);
+        }
         h.v(self.cfg.arena_size);
         h.f(self.cfg.visible_width);
         h.f(self.cfg.visible_height);

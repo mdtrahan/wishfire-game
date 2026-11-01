@@ -103,7 +103,7 @@ impl Sim {
             })
             .map(|(t, _)| t)?;
         let p = self.actors[t].view.pos;
-        let spot = crate::math::floor_point(
+        let spot = self.floor.point(
             p + (a.view.pos - p).normalized() * REVIVE_APPROACH_RANGE,
             a.view.radius,
         );
@@ -273,7 +273,7 @@ impl Sim {
             let delta = goal - pos;
             let desired = delta.normalized() * a.speed().min(delta.length() * 5.);
             (velocity, heading) = crate::math::steer(desired, velocity, heading, a.speed());
-            pos = crate::math::floor_point(pos + velocity * SIM_DT, a.view.radius);
+            pos = self.floor.point(pos + velocity * SIM_DT, a.view.radius);
             if !h.hits(pos, h.hit_radius(a.view.radius)) {
                 return (step + 1) as f32 * SIM_DT;
             }
@@ -361,7 +361,7 @@ impl Sim {
             let mut distance = 8.;
             while distance <= 2400. {
                 let next = p + ray * distance;
-                if next != crate::math::floor_point(next, a.view.radius) {
+                if next != self.floor.point(next, a.view.radius) {
                     break;
                 }
                 if !h.hits(next, padding)
@@ -393,12 +393,12 @@ impl Sim {
             // allowing less than the full comfort/arrival margin when boxed in.
             let bomb = h.view.kind == HazardKind::LizardoDrop;
             let point = if bomb {
-                crate::math::floor_point(point, a.view.radius)
+                self.floor.point(point, a.view.radius)
             } else {
                 point
             };
             // Other hazards retain their existing wall and rim rejection.
-            if point != crate::math::floor_point(point, a.view.radius)
+            if point != self.floor.point(point, a.view.radius)
                 || h.hits(
                     point,
                     if bomb {
@@ -474,14 +474,14 @@ impl Sim {
                     (
                         p.x,
                         ray.x,
-                        ARENA_MIN.x + a.view.radius,
-                        ARENA_MAX.x - a.view.radius - 0.001,
+                        self.floor.min.x + a.view.radius,
+                        self.floor.max.x - a.view.radius - 0.001,
                     ),
                     (
                         p.y,
                         ray.y,
-                        ARENA_MIN.y + a.view.radius,
-                        ARENA_MAX.y - a.view.radius - 0.001,
+                        self.floor.min.y + a.view.radius,
+                        self.floor.max.y - a.view.radius - 0.001,
                     ),
                 ] {
                     if dir > 0. {
@@ -506,7 +506,7 @@ impl Sim {
                 }
             }
             let point = p + ray * distance;
-            if point != crate::math::floor_point(point, a.view.radius) {
+            if point != self.floor.point(point, a.view.radius) {
                 continue;
             }
             let overlap = self.path_overlap(i, point, Some(h.view.id));
@@ -518,7 +518,7 @@ impl Sim {
             };
             let cost = if targeted { -distance } else { distance } - continuity
                 + point.distance(self.centroid()) * 0.015
-                - crate::math::floor_ray(point, ray, 500.) * 0.01
+                - self.floor.ray(point, ray, 500.) * 0.01
                 + self.boss_standoff_cost(i, point);
             let covered = self
                 .hazards
@@ -655,7 +655,7 @@ impl Sim {
                 || a.dodge_hazard != Some(id)
                 || h.hits(a.destination, h.hit_radius(a.view.radius))
                 || a.view.pos.distance(a.destination) < 3.
-                || a.destination != crate::math::floor_point(a.destination, a.view.radius)
+                || a.destination != self.floor.point(a.destination, a.view.radius)
                 || self.hazards.iter().any(|other| {
                     self.known_threat(i, other)
                         && other.hits(a.destination, other.hit_radius(a.view.radius))
@@ -703,7 +703,7 @@ impl Sim {
             self.actors[i].destination = if a.view.pos.distance(p) <= REVIVE_APPROACH_RANGE + 5. {
                 a.view.pos
             } else {
-                crate::math::floor_point(
+                self.floor.point(
                     p + (a.view.pos - p).normalized() * REVIVE_APPROACH_RANGE,
                     a.view.radius,
                 )
@@ -766,8 +766,9 @@ impl Sim {
                                 strafe
                             }
                         };
-                    self.actors[i].destination =
-                        crate::math::floor_point(p + direction(angle) * reach * 0.8, a.view.radius);
+                    self.actors[i].destination = self
+                        .floor
+                        .point(p + direction(angle) * reach * 0.8, a.view.radius);
                     self.actors[i].goal_target_pos = p;
                     self.actors[i].goal_cd = GOAL_HOLD;
                 }
@@ -777,7 +778,7 @@ impl Sim {
                     self.actors[i].destination = a.view.pos;
                     let mut best = f32::INFINITY;
                     for n in 0..32 {
-                        let candidate = crate::math::floor_point(
+                        let candidate = self.floor.point(
                             p + direction(n as f32 * TAU / 32.) * reach * 0.9,
                             a.view.radius,
                         );
@@ -834,9 +835,9 @@ impl Sim {
                 self.actors[i].velocity = Vec2::default();
                 self.actors[i].view.ai_intent = AiIntent::None;
             } else {
-                let advance = ARENA_CENTRE;
+                let advance = (self.floor.min + self.floor.max) * 0.5;
                 self.actors[i].destination =
-                    crate::math::floor_point(advance + TRAVEL_SLOTS[k], a.view.radius);
+                    self.floor.point(advance + TRAVEL_SLOTS[k], a.view.radius);
                 self.actors[i].goal_cd = GOAL_HOLD;
             }
         }
@@ -986,7 +987,7 @@ impl Sim {
                 for n in 0..32 {
                     let candidate = direction(n as f32 * TAU / 32.) * speed;
                     let next = a.view.pos + candidate * SIM_DT;
-                    if next != crate::math::floor_point(next, a.view.radius)
+                    if next != self.floor.point(next, a.view.radius)
                         || self.path_enters_threat(i, next, None)
                         || !body_safe(next)
                     {
@@ -1005,12 +1006,14 @@ impl Sim {
             crate::bound::movement(
                 i,
                 movement * SIM_DT,
-                crate::math::floor_point(a.view.pos + movement * SIM_DT, a.view.radius)
+                self.floor
+                    .point(a.view.pos + movement * SIM_DT, a.view.radius)
                     - (a.view.pos + movement * SIM_DT),
             );
             self.actors[i].velocity = movement;
-            self.actors[i].view.pos =
-                crate::math::floor_point(a.view.pos + movement * SIM_DT, a.view.radius);
+            self.actors[i].view.pos = self
+                .floor
+                .point(a.view.pos + movement * SIM_DT, a.view.radius);
             if movement.length() > 1. {
                 if movement.x.abs() > 18. {
                     self.actors[i].view.facing = if movement.x < 0. {
@@ -1061,7 +1064,7 @@ impl Sim {
         // screen bound clamps each hero independently around the current camera.
         for a in &mut self.actors {
             let before = a.view.pos;
-            a.view.pos = crate::math::floor_point(a.view.pos, a.view.radius);
+            a.view.pos = self.floor.point(a.view.pos, a.view.radius);
             #[cfg(feature = "bound-diagnostics")]
             crate::bound::correction(a.view.id as usize - 1, 2, a.view.pos - before);
             #[cfg(not(feature = "bound-diagnostics"))]
@@ -1113,7 +1116,7 @@ impl Sim {
                                 for n in 0..64 {
                                     let p = self.actors[b].view.pos
                                         + direction(n as f32 * TAU / 64.) * (minimum + 0.01);
-                                    if p != crate::math::floor_point(p, self.actors[i].view.radius)
+                                    if p != self.floor.point(p, self.actors[i].view.radius)
                                         || self.actors.iter().enumerate().any(|(j, a)| {
                                             j != i
                                                 && a.view.team == Team::Hero
@@ -1145,8 +1148,7 @@ impl Sim {
                                 Vec2::new(1., 0.)
                             };
                             let raw = self.actors[i].view.pos + dir * minimum;
-                            let mut point =
-                                crate::math::floor_point(raw, self.actors[b].view.radius);
+                            let mut point = self.floor.point(raw, self.actors[b].view.radius);
                             if point != raw
                                 || self.actors.iter().any(|a| {
                                     a.view.team == Team::Hero
@@ -1160,10 +1162,7 @@ impl Sim {
                                     let candidate = self.actors[i].view.pos
                                         + direction(n as f32 * TAU / 32.) * (minimum + 0.01);
                                     if candidate
-                                        != crate::math::floor_point(
-                                            candidate,
-                                            self.actors[b].view.radius,
-                                        )
+                                        != self.floor.point(candidate, self.actors[b].view.radius)
                                     {
                                         continue;
                                     }

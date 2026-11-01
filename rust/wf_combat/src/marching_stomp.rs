@@ -1,5 +1,5 @@
 //! Locked, forward-marching Troll circles. All geometry decisions use fixed storage.
-use crate::{api::*, math::floor_point, tuning::*, Sim};
+use crate::{api::*, tuning::*, Sim};
 impl Sim {
     pub fn stomp_radius(&self, i: usize) -> f32 {
         let a = &self.actors[i];
@@ -30,7 +30,7 @@ impl Sim {
         let mut count = 0;
         for (k, centre) in centres.iter_mut().enumerate() {
             let p = a.view.pos + aim * (first + STOMP_SPACING * k as f32);
-            if floor_point(p, radius) != p {
+            if self.floor.point(p, radius) != p {
                 break;
             }
             *centre = p;

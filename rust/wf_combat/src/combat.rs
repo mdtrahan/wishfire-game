@@ -272,7 +272,7 @@ impl Sim {
     }
     pub fn place_faze(&mut self, i: usize, target: Vec2) {
         let a = &self.actors[i];
-        let center = crate::math::floor_point(target, FAZE_RADIUS);
+        let center = self.floor.point(target, FAZE_RADIUS);
         self.hazard(
             HazardKind::FazePool,
             a.view.id,
@@ -438,7 +438,7 @@ impl Sim {
                 .and_then(|id| self.actor_index(id))
                 .filter(|&i| self.actors[i].tangible() && self.actors[i].view.team == Team::Enemy)
             {
-                let center = crate::math::floor_point(self.actors[t].view.pos, BUBBLE_RADIUS);
+                let center = self.floor.point(self.actors[t].view.pos, BUBBLE_RADIUS);
                 self.hazard(HazardKind::BubblePop, id, target, center, Vec2::new(1., 0.));
             }
         }
@@ -703,7 +703,7 @@ impl Sim {
                 } else {
                     a.target
                 },
-                crate::math::floor_point(a.action_target_pos, ARCANE_PULSE_RADIUS),
+                self.floor.point(a.action_target_pos, ARCANE_PULSE_RADIUS),
                 Vec2::new(1., 0.),
             );
         } else if a.action_extra && a.view.archetype == Archetype::Fara {
@@ -1039,10 +1039,10 @@ impl Sim {
             spotlight.is_some_and(|s| !s.advances_projectile(p))
                 || p.fuse_hazard.is_some()
                 || (p.age < PROJECTILE_LIFETIME
-                    && p.view.pos.x >= ARENA_MIN.x - PROJECTILE_MARGIN
-                    && p.view.pos.x <= ARENA_MAX.x + PROJECTILE_MARGIN
-                    && p.view.pos.y >= ARENA_MIN.y - PROJECTILE_MARGIN
-                    && p.view.pos.y <= ARENA_MAX.y + PROJECTILE_MARGIN)
+                    && p.view.pos.x >= self.floor.min.x - PROJECTILE_MARGIN
+                    && p.view.pos.x <= self.floor.max.x + PROJECTILE_MARGIN
+                    && p.view.pos.y >= self.floor.min.y - PROJECTILE_MARGIN
+                    && p.view.pos.y <= self.floor.max.y + PROJECTILE_MARGIN)
         });
     }
     /// A landed bomb lies on the ground while its drop counts down; it vanishes in the

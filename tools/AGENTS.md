@@ -63,6 +63,8 @@
 - `combat_lab/sustain_tracker.mjs` runs one-Hero MODEL diagnostics; post-hit shields use whole-HP damage and cannot stand in for DEF. `combat_lab/party_sustain.mjs` grades all Heroes over 20 observed waves per seed, with immediate farming KO failure, whole-HP regen/refund payout, credits cleared at full HP, separate boss-timeout checks and explicit synthetic pressure. Keep shared receipts compact and hash-deduplicated. Refund, regen and gear-growth healing are hypothetical design settings until live integration proves them.
 - `combat_lab/model.mjs` shadow-1 retains its historical 18-second boss assumption for archived sample provenance; current runtime boss timeout is fixed at 30 game seconds.
 
+- WASM builds honor `CARGO_TARGET_DIR`; provenance hashes both SimulationCore and wf_combat sources/manifests/locks plus the generated binary.
+
 ## Work Guidance
 - Footprint closeout treats absent resources as resolved and retains their observed peak; it never removes them.
 - Footprint hooks allow 1 second total and 200 ms per subprocess, warn once and preserve workflow exits; automatic start skips deep measurement. The worker owns a dedicated process group; teardown stops its measurement descendants. Link-time branch lookup stays inside that deadline. Pending checkouts bind only to their task branch; repeated start reconciles and saves identity. Scans stop at 100,000 entries/128 levels. Checkout identity includes Git directory and creation/inode stamps; replacements stay excluded. Register rollback refs with `footprint:register --ref refs/tags/<name>` from the owned checkout; later external moves remain shared/unknown. Peak/close discover nested build directories; expected commit-check JSON receipts are exempt.

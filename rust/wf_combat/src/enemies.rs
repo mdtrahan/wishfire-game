@@ -38,11 +38,15 @@ impl Sim {
         }
         let Some(t) = self.enemy_target(i) else {
             let a = &mut self.actors[i];
-            let center = crate::math::floor_point((ARENA_MIN + ARENA_MAX) * 0.5, a.view.radius);
+            let center = self
+                .floor
+                .point((self.floor.min + self.floor.max) * 0.5, a.view.radius);
             a.destination = center;
             let delta = center - a.view.pos;
             a.velocity = delta.normalized() * a.speed().min(delta.length() / SIM_DT);
-            a.view.pos = crate::math::floor_point(a.view.pos + a.velocity * SIM_DT, a.view.radius);
+            a.view.pos = self
+                .floor
+                .point(a.view.pos + a.velocity * SIM_DT, a.view.radius);
             a.target = None;
             a.view.ai_intent = AiIntent::Regroup;
             a.relocate_left = 0.;
@@ -74,7 +78,7 @@ impl Sim {
             let mut best = None;
             let mut score = f32::INFINITY;
             for k in 0..16 {
-                let candidate = crate::math::floor_point(
+                let candidate = self.floor.point(
                     p + direction(angle + side * (MIREWING_SIDESTEP + k as f32 * TAU / 16.))
                         * radius,
                     self.actors[i].view.radius,
@@ -104,7 +108,7 @@ impl Sim {
         }
         let a = &self.actors[i];
         let delta = a.destination - start;
-        let next = crate::math::floor_point(
+        let next = self.floor.point(
             start + delta.normalized() * (a.speed() * SIM_DT).min(delta.length()),
             a.view.radius,
         );
@@ -307,8 +311,9 @@ impl Sim {
                 } else {
                     let a = &mut self.actors[i];
                     a.velocity = (p - a.view.pos).normalized() * a.speed();
-                    a.view.pos =
-                        crate::math::floor_point(a.view.pos + a.velocity * SIM_DT, a.view.radius);
+                    a.view.pos = self
+                        .floor
+                        .point(a.view.pos + a.velocity * SIM_DT, a.view.radius);
                     a.state(ActorState::Walk, 0., 0.);
                 }
                 continue;
@@ -349,8 +354,9 @@ impl Sim {
                 let delta = a.destination - a.view.pos;
                 let time = a.relocate_left.max(SIM_DT);
                 a.velocity = delta * (a.movement_scale() / time);
-                a.view.pos =
-                    crate::math::floor_point(a.view.pos + a.velocity * SIM_DT, a.view.radius);
+                a.view.pos = self
+                    .floor
+                    .point(a.view.pos + a.velocity * SIM_DT, a.view.radius);
                 a.relocate_left -= SIM_DT * a.movement_scale();
                 a.state(ActorState::Walk, 0., 0.);
                 if a.relocate_left <= 0. {
@@ -414,10 +420,9 @@ impl Sim {
                                 aim,
                             ) {
                                 self.actors[i].velocity = aim * a.speed();
-                                self.actors[i].view.pos = crate::math::floor_point(
-                                    a.view.pos + aim * a.speed() * SIM_DT,
-                                    a.view.radius,
-                                );
+                                self.actors[i].view.pos = self
+                                    .floor
+                                    .point(a.view.pos + aim * a.speed() * SIM_DT, a.view.radius);
                                 self.actors[i].state(ActorState::Walk, 0., 0.);
                                 continue;
                             }
@@ -442,10 +447,9 @@ impl Sim {
                             aim,
                         ) {
                             self.actors[i].velocity = aim * a.speed();
-                            self.actors[i].view.pos = crate::math::floor_point(
-                                a.view.pos + aim * a.speed() * SIM_DT,
-                                a.view.radius,
-                            );
+                            self.actors[i].view.pos = self
+                                .floor
+                                .point(a.view.pos + aim * a.speed() * SIM_DT, a.view.radius);
                             self.actors[i].state(ActorState::Walk, 0., 0.);
                             continue;
                         }
@@ -532,7 +536,7 @@ impl Sim {
                                         }
                                     } else {
                                         self.actors[i].velocity = aim * a.speed();
-                                        self.actors[i].view.pos = crate::math::floor_point(
+                                        self.actors[i].view.pos = self.floor.point(
                                             a.view.pos + aim * a.speed() * SIM_DT,
                                             a.view.radius,
                                         );
@@ -590,8 +594,9 @@ impl Sim {
                 }
             }
             self.actors[i].velocity = movement;
-            self.actors[i].view.pos =
-                crate::math::floor_point(a.view.pos + movement * SIM_DT, a.view.radius);
+            self.actors[i].view.pos = self
+                .floor
+                .point(a.view.pos + movement * SIM_DT, a.view.radius);
             self.actors[i].state(
                 if movement.length() > 0. {
                     ActorState::Walk

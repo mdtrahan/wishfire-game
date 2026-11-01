@@ -293,7 +293,7 @@ impl Sim {
                                     } else {
                                         1.
                                     };
-                            crate::math::floor_point(a.view.pos, pad) == a.view.pos
+                            self.floor.point(a.view.pos, pad) == a.view.pos
                         })))
         };
         if eligible(preferred) {

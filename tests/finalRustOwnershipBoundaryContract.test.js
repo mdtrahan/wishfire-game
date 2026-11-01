@@ -86,6 +86,17 @@ test('Rust simulation core exports the full deterministic boundary used by JS', 
   assert.doesNotMatch(rustSrc, /extern "C" fn (?:turn_|enemy_turn_flow_|hero_turn_entry_|round_pointer_|gem_action_)/);
 });
 
+test('headless combat ABI adds exports without replacing supported scalar exports', () => {
+  const source = fs.readFileSync(path.join(repoRoot, 'rust/simulation_core/src/combat_abi.rs'), 'utf8');
+  const module = new WebAssembly.Module(fs.readFileSync(path.join(repoRoot, 'web-runner/assets/simulation_core.wasm')));
+  const names = new Set(WebAssembly.Module.exports(module).map(item => item.name));
+  for (const name of [...requiredRustExports, 'wf_combat_abi_version', 'wf_input_alloc', 'wf_input_free',
+    'wf_combat_call', 'wf_response_ptr', 'wf_response_len', 'wf_response_free']) {
+    assert.ok(names.has(name), name);
+    if (name.startsWith('wf_')) assert.match(source, new RegExp(`extern "C" fn ${name}\\b`));
+  }
+});
+
 test('SimulationCore packets normalize GameState and exclude browser-owned state', () => {
   const packetSrc = fs.readFileSync(packetPath, 'utf8');
   assert.match(packetSrc, /normalizeGameStateEnvelope/);

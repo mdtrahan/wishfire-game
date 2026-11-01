@@ -1,10 +1,5 @@
 //! Chimerilass's committed bomb packages; all positions are locked before the first throw.
-use crate::{
-    api::*,
-    math::{direction, floor_point},
-    tuning::*,
-    Sim,
-};
+use crate::{api::*, math::direction, tuning::*, Sim};
 impl Sim {
     pub fn boss_recharge_duration(&self, i: usize) -> f32 {
         let a = &self.actors[i];
@@ -32,7 +27,7 @@ impl Sim {
         planned: &[Vec2],
         planned_radius: f32,
     ) -> bool {
-        floor_point(p, radius) == p
+        self.floor.point(p, radius) == p
             && self
                 .actors
                 .iter()
@@ -62,12 +57,12 @@ impl Sim {
         planned_radius: f32,
     ) -> Option<Vec2> {
         for _ in 0..64 {
-            let p = floor_point(
+            let p = self.floor.point(
                 Vec2::new(
                     self.spawn_rng
-                        .range(ARENA_MIN.x + radius, ARENA_MAX.x - radius - 0.001),
+                        .range(self.floor.min.x + radius, self.floor.max.x - radius - 0.001),
                     self.spawn_rng
-                        .range(ARENA_MIN.y + radius, ARENA_MAX.y - radius - 0.001),
+                        .range(self.floor.min.y + radius, self.floor.max.y - radius - 0.001),
                 ),
                 radius,
             );
@@ -76,10 +71,10 @@ impl Sim {
             }
         }
         // Crowded floors still get a deterministic search, before accepting any part of the package.
-        let mut y = ARENA_MIN.y + radius;
-        while y < ARENA_MAX.y - radius - 0.001 {
-            let mut x = ARENA_MIN.x + radius;
-            while x < ARENA_MAX.x - radius - 0.001 {
+        let mut y = self.floor.min.y + radius;
+        while y < self.floor.max.y - radius - 0.001 {
+            let mut x = self.floor.min.x + radius;
+            while x < self.floor.max.x - radius - 0.001 {
                 let p = Vec2::new(x, y);
                 if self.bomb_spot_open(p, radius, planned, planned_radius) {
                     return Some(p);
@@ -93,7 +88,7 @@ impl Sim {
     pub fn prepare_fortress(&mut self, i: usize) -> bool {
         let a = &self.actors[i];
         let pad = a.view.radius + CHIMERA_FORTRESS_GAP + self.bomb_radius(i);
-        let goal = floor_point(a.view.pos, pad);
+        let goal = self.floor.point(a.view.pos, pad);
         let delta = goal - a.view.pos;
         if delta.length() <= 0.00001 {
             return false;
@@ -101,7 +96,9 @@ impl Sim {
         let travel = (a.speed() * SIM_DT).min(delta.length());
         let a = &mut self.actors[i];
         a.velocity = delta.normalized() * (travel / SIM_DT);
-        a.view.pos = floor_point(a.view.pos + a.velocity * SIM_DT, a.view.radius);
+        a.view.pos = self
+            .floor
+            .point(a.view.pos + a.velocity * SIM_DT, a.view.radius);
         a.heading = delta.normalized();
         a.state(ActorState::Walk, 0., 0.);
         true
@@ -120,7 +117,7 @@ impl Sim {
         let origin = a.view.pos;
         let ring = a.view.radius + CHIMERA_FORTRESS_GAP;
         // Make room before committing; the accepted ring is never compressed at a wall.
-        if mode == 2 && floor_point(origin, ring + radius) != origin {
+        if mode == 2 && self.floor.point(origin, ring + radius) != origin {
             return None;
         }
         let aim = (self.actors[t].view.pos - origin).normalized();
@@ -128,11 +125,12 @@ impl Sim {
         let heroes: [usize; 4] = core::array::from_fn(|k| ranked[k].unwrap_or(t));
         for b in 0..count {
             if mode == 2 {
-                points[b] =
-                    floor_point(origin + direction(TAU * b as f32 / count as f32) * ring, 0.);
+                points[b] = self
+                    .floor
+                    .point(origin + direction(TAU * b as f32 / count as f32) * ring, 0.);
             } else if mode == 0 && b < count - 1 {
                 let victim = heroes[b];
-                points[b] = floor_point(
+                points[b] = self.floor.point(
                     self.actors[victim].view.pos
                         + direction(self.spawn_rng.range(0., TAU))
                             * self.spawn_rng.range(0., BOMB_SCATTER),

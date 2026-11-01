@@ -52,6 +52,8 @@
 - When a target enters range after an empty lane, each hero waits for its own cooldown plus a deterministic stagger within 1.5 seconds before its first attack. Engaged enemies are ready on arrival and retain start-to-start cooldown cadence independently of animation length.
 - Continuous enemy actions use per-enemy clocks. Real-time skills and their effects use simulation seconds; pause and background state freeze those clocks.
 
+- `combatBridge.mjs` is the headless ABI 1.0 transport. It preserves decimal-string u64s, reacquires WASM memory after allocation, and frees input/response buffers in `finally`; production does not import it yet.
+
 ## Work Guidance
 - Prefer extracting deterministic decisions here or in root `src/core/` instead of adding branches to `app.js` or render modules.
 - When duplicating between root `src/core/` and `web-runner/src/core/`, update both copies and their tests in the same bead unless explicitly scoped otherwise.
