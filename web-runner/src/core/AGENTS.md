@@ -10,6 +10,8 @@
 - Browser-specific copies of shared rule modules when the runtime cannot import the root `src/core/` file directly.
 
 ## Local Contracts
+- `combatAuthorityDriver.mjs` admits bounded foreground time at 30 Hz, consumes each completed step before the next, and deduplicates `(encounter_id, sequence)`. Gaps, collisions and transport errors stop and destroy the world; host callbacks route recovery. Pauses discard wall-time debt.
+- `maybeAdvanceContinuousCombatStage` retains host guards and boss/clear settlement; its injected `combatTick` defaults to `tickContinuousCombatStageJS`. Keep the default movement, camera, basics, enemy actions and settlement order unchanged.
 - Basic Attack has `cooldownSeconds: 0`, distinct from missing cooldown metadata. Its normal attack cadence remains scheduler-owned; Special retains the only positive skill cooldown clock.
 - Party-wide Specials (Crimson Ward, Elevate) reach every living hero. Other Specials use at least 211.2 world units from the hero slot center; larger authored reach survives. Boss targets are always reachable. Basics use one visible-screen width from each hero foot.
 - Ordinary roaming is leader-anchored (bd-ORKA-6i3): `combatMovementTuning.mjs` owns defaults, ranges, legacy values and leader fallback; `combatCamera.mjs` owns the stage-ticked leader camera (dead zone, smoothing, rate-limited non-leader cast pull, large-jump cut). Approach vectors stay centroid-based because a leader-relative vector orbits targets at contact. Bosses keep the centroid layout and full hero spacing. Tests asserting the old shared-target formation pin `LEGACY_COMBAT_MOVEMENT_TUNING`.

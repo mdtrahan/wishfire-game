@@ -218,8 +218,34 @@ function bagProgressBlockedByMenu() {
 
 export function createCombatSimulationTicker({isBagProgressBlocked=bagProgressBlockedByMenu}={}) {
   let lastNowMs = null, bagClock = null;
+  function advanceHostTime({ state, dt, activeSeconds = dt, presentationSeconds = dt }) {
+      state.globals.time = Number(state.globals.time || 0) + dt;
+      const battle = state.globals.ProgressionBattle;
+      if (battle?.persistPendingRewards && !battle.settled && !isBagProgressBlocked()) {
+        const progress = advanceLampCombatProgress(bagClock, { battleId: battle.id, seconds: activeSeconds, data: state.globals.Equipment, pending: state.globals.HeroProgress?.pendingBagKillRewards });
+        bagClock = progress.clock;
+        for (const reward of progress.rewards) battle.persistPendingRewards(reward);
+      }
+      if ((state.entities || []).some(actor => actor?.kind === 'hero' && isActorRecoveryRevealActive(actor, state.globals.time))) return false;
+      const damageTexts = state.globals.DamageTexts || [];
+      for (let i = damageTexts.length - 1; i >= 0; i--) {
+        const text = damageTexts[i];
+        if (Number(text.notBefore || 0) > state.globals.time) continue;
+        text.age = Number(text.age || 0) + presentationSeconds;
+        text.phase = Number(text.phase || 0);
+        const durations = [Math.max(0.001, Number(text.riseInSec || 0.18)), Number(text.holdSec || 0.7), Math.max(0.001, Number(text.fadeSec || 0.45))];
+        while (text.phase <= 2 && text.age >= durations[text.phase]) {
+          text.age -= durations[text.phase];
+          text.phase += 1;
+        }
+        if (text.phase > 2) damageTexts.splice(i, 1);
+      }
+      state.globals.TextAnimating = damageTexts.length > 0 || state.globals.time < Number(state.globals.TextAnimEndAt || 0) ? 1 : 0;
+      return true;
+  }
   return {
     reset() { lastNowMs = null; },
+    advanceHostTime,
     tick({
       state,
       gameState = {},
@@ -266,28 +292,7 @@ export function createCombatSimulationTicker({isBagProgressBlocked=bagProgressBl
       const base = lastNowMs == null ? 0.001 : Math.min(0.05, Math.max(0.001, (now - lastNowMs) / 1000));
       lastNowMs = now;
       const dt = base * Math.max(0.25, Number(state.globals.DevCombatSpeedMultiplier || 1));
-      state.globals.time = Number(state.globals.time || 0) + dt;
-      const battle = state.globals.ProgressionBattle;
-      if (battle?.persistPendingRewards && !battle.settled && !isBagProgressBlocked()) {
-        const progress = advanceLampCombatProgress(bagClock, { battleId: battle.id, seconds: dt, data: state.globals.Equipment, pending: state.globals.HeroProgress?.pendingBagKillRewards });
-        bagClock = progress.clock;
-        for (const reward of progress.rewards) battle.persistPendingRewards(reward);
-      }
-      if ((state.entities || []).some(actor => actor?.kind === 'hero' && isActorRecoveryRevealActive(actor, state.globals.time))) return dt;
-      const damageTexts = state.globals.DamageTexts || [];
-      for (let i = damageTexts.length - 1; i >= 0; i--) {
-        const text = damageTexts[i];
-        if (Number(text.notBefore || 0) > state.globals.time) continue;
-        text.age = Number(text.age || 0) + dt;
-        text.phase = Number(text.phase || 0);
-        const durations = [Math.max(0.001, Number(text.riseInSec || 0.18)), Number(text.holdSec || 0.7), Math.max(0.001, Number(text.fadeSec || 0.45))];
-        while (text.phase <= 2 && text.age >= durations[text.phase]) {
-          text.age -= durations[text.phase];
-          text.phase += 1;
-        }
-        if (text.phase > 2) damageTexts.splice(i, 1);
-      }
-      state.globals.TextAnimating = damageTexts.length > 0 || state.globals.time < Number(state.globals.TextAnimEndAt || 0) ? 1 : 0;
+      if (!advanceHostTime({ state, dt })) return dt;
       advanceBattleStartSimulation({ state, runCombatStep });
       processPendingHeroHits({ state, fnContext, callFunctionWithContext, animationMath });
       if (hasContinuousOrdinaryHeroKO(state)) {
