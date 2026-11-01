@@ -16,10 +16,12 @@ export function createSliceCombatCamera() {
       const floor=s.geometry.floor,halfX=360,halfY=640/(2*.5*.75);
       cx=floor.max.x-floor.min.x<halfX*2?(floor.min.x+floor.max.x)/2:clamp(cx,floor.min.x+halfX,floor.max.x-halfX);
       cy=floor.max.y-floor.min.y<halfY*2?(floor.min.y+floor.max.y)/2:clamp(cy,floor.min.y+halfY,floor.max.y-halfY);
-      // The original full-screen 52..576 fit cannot cover WFM's fixed HUD. Preserve its band.
-      const lowX=maxX-344,highX=minX+344,lowY=maxY-(478-286.5)/.375,highY=minY+(286.5-95)/.375;
-      if(lowX<=highX){const fit=clamp(cx,lowX,highX);if(fit!==cx)vx=0;cx=fit;}
-      if(lowY<=highY){const fit=clamp(cy,lowY,highY);if(fit!==cy)vy=0;cy=fit;}
+      // Keep the same source body bounds and party fallback inside WFM's existing HUD band.
+      const heroMinX=minX,heroMaxX=maxX,heroMinY=minY,heroMaxY=maxY;
+      for(const a of s.actors)if(a.team==='enemy'&&a.hp>0&&a.kind.startsWith('boss')){minX=Math.min(minX,a.pos.x-160);maxX=Math.max(maxX,a.pos.x+160);minY=Math.min(minY,a.pos.y-370);maxY=Math.max(maxY,a.pos.y+40);break;}
+      const lowX=maxX-344,highX=minX+344,lowY=maxY-(478-286.5)/.375,highY=minY+(286.5-155)/.375;
+      {const lo=heroMaxX-344,hi=heroMinX+344,fit=lowX<=highX?clamp(cx,lowX,highX):lo<=hi?clamp((lowX+highX)/2,lo,hi):(lo+hi)/2;if(fit!==cx)vx=0;cx=fit;}
+      {const lo=heroMaxY-(478-286.5)/.375,hi=heroMinY+(286.5-155)/.375,fit=lowY<=highY?clamp(cy,lowY,highY):lo<=hi?clamp((lowY+highY)/2,lo,hi):(lo+hi)/2;if(fit!==cy)vy=0;cy=fit;}
     },
     x(x){return(x-cx)*camera.zoom+180+camera.offsetX;},
     y(y){return(y-cy)*camera.zoom*.75+286.5+camera.offsetY;},

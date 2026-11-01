@@ -65,3 +65,7 @@ test('Arcane Pulse keeps five fixed paths, 8-12 beams, first arrival at 900ms an
 test('ground projection uses .75 squash, preserves fixed zoom and leaves snapshots untouched',()=>{
  const s=snapshot(),before=structuredClone(s),cam=createSliceCombatCamera();cam.update(s,1);const dx=cam.x(1100)-cam.x(1000),dy=cam.y(400)-cam.y(300);assert.equal(dx,50);assert.equal(dy,37.5);assert.deepEqual(s,before);
 });
+
+test('flag camera keeps the Troll body below the existing WFM boss HUD',()=>{
+ const cam=createSliceCombatCamera(),s=snapshot();s.actors[1]={...enemy,pos:{x:1050,y:180}};cam.update(s,1);assert.ok(cam.y(180-370)>=155-1e-6);assert.ok(cam.y(hero.pos.y+30)<=478+1e-6);
+});
