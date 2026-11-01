@@ -12,6 +12,7 @@
 - `sessionLevelUpSettlementPresentation.mjs` owns the visible XP settlement presentation. It has no offer or card-selection path.
 
 ## Local Contracts
+- `consumeCombatKillEvent` consumes immutable enemy metadata into the once-per-UID WFM reward ledger. It performs no traits, scheduling, damage or removal; JS callbacks retain presentation and removal order. Quest counters observe the same ledger; stage clearance remains stage-owned.
 - `state.globals` is the live runtime envelope. New fields need a clear owner, reset/init behavior, tests, and debug/proof visibility when user-facing.
 - `Scripts/functionBank.js` mirrors selected high-risk functions. Do not drift mirrored functions without a test and explicit bead scope.
 - `CalculateDamage` uses each hero's primary ATK or MAG regardless of attack delivery, enemy offense by delivery type, and target DEF or RES by delivery type. Forward skill percentage and target resistance fields through both Rust owner and single-hit shadow packets.

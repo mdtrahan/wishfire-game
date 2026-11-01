@@ -28,6 +28,7 @@
 - `fixtures/` owns deterministic CSV cases shared by JS and Rust/WASM tests.
 
 ## Local Contracts
+- `combatHostSeams.test.mjs` pins the default stage call order, independent lifecycle admission and event-only kill receipts; extracting combat authority must preserve flag-off behavior.
 - Scheduler fixtures must place support casters, required foes and recipients inside current reach before asserting that every conditional skill casts.
 - Equipment-service fixtures initialize HeroProgress with createHeroProgressStore unless they explicitly test missing-owner rejection. Retain reward, quota and persistence assertions when repairing setup.
 - Lamp browser proofs check full opacity in cache and selected-item views, including unavailable Equip actions, while retaining disabled overview selection and equip eligibility.

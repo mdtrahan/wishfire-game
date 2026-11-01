@@ -18,7 +18,7 @@ import {applyStatus,legalSkill,validTargets,resolveSkill,turnStart,turnEnd} from
 import {derivePresentationTurnBarrier} from '../src/core/turnGateController.mjs';
 import {beginSessionLevelUpSettlement,updateSessionLevelUpSettlement} from './sessionLevelUpSettlementPresentation.mjs';
 export {getHeroFlowState,getHeroSkillOptions};
-export function recordEnemyDefeatReward(battle, actor){
+export function consumeCombatKillEvent(battle, { enemy: actor } = {}){
  if(!battle||!actor||actor.kind!=='enemy')return false;
  battle.defeated||={};battle.defeatedGold||={};
  const key=String(actor.uid),hasExp=Object.prototype.hasOwnProperty.call(battle.defeated,key),hasGold=Object.prototype.hasOwnProperty.call(battle.defeatedGold,key);
@@ -28,6 +28,10 @@ export function recordEnemyDefeatReward(battle, actor){
  const amount=enemyBagKillPoints(actor);
  if(changed)battle.persistPendingRewards?.(amount?{id:`enemy:${battle.id}:${key}`,amount}:undefined);
  return changed;
+}
+// Supported JS damage callbacks use the same event-only WFM ledger.
+export function recordEnemyDefeatReward(battle, actor){
+ return consumeCombatKillEvent(battle, { enemy: actor });
 }
 function queueSettlementGold(g,battleId,amount){
  const gold=Math.max(0,Math.floor(Number(amount)||0));

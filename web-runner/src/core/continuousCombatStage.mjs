@@ -933,7 +933,22 @@ export function shouldExpireContinuousCombatBoss(stageState, entities, now) {
     && (entities || []).some(actor => actor?.kind === 'enemy' && Number(actor.uid || 0) === Number(stageState.bossUID || 0) && Number(actor.hp || 0) > 0);
 }
 
-export function maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier, call, runCombatStep, onBossTimeout, onBossClear } = {}) {
+export function tickContinuousCombatStageJS({ globals, entities, call, now }) {
+  const stageState = globals.ContinuousCombatStage;
+  const newlyAvailable = updateApproachingEnemies(globals, entities, now);
+  const arenaSeconds = Math.max(0, Math.min(0.1, now - Number(stageState.lastArenaUpdatedAt ?? now)));
+  const newlyEngaged = advanceContinuousCombatArena({ globals, entities, seconds: arenaSeconds });
+  stageState.lastArenaUpdatedAt = now;
+  advanceCombatCamera({ globals, entities, seconds: arenaSeconds });
+  if (globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) call('TickRealtimeHeroBasics');
+  if ((newlyAvailable > 0 || newlyEngaged > 0 || entities?.some(enemy => enemy?.kind === 'enemy' && Number(enemy.hp || 0) > 0 && enemy.streamState === 'engaged'))
+    && globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) {
+    globals.NativeBattleEnded = false;
+    call('TickRealtimeEnemyActions');
+  }
+}
+
+export function maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier, call, runCombatStep, onBossTimeout, onBossClear, combatTick = tickContinuousCombatStageJS } = {}) {
   if (!globals || Number(globals.ContinuousCombatStageLoop || 0) !== 1) return false;
   if (globals.DevToolingPaused || globals.QaScenarioPaused || globals.QaFixtureHoldTurn) return false;
   const stageState = globals.ContinuousCombatStage;
@@ -948,17 +963,7 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   }
   const now = Number(globals.time || 0);
   if (stageState.bossActive && stageState.bossTimerStartedAt == null) stageState.bossTimerStartedAt = now;
-  const newlyAvailable = updateApproachingEnemies(globals, entities, now);
-  const arenaSeconds = Math.max(0, Math.min(0.1, now - Number(stageState.lastArenaUpdatedAt ?? now)));
-  const newlyEngaged = advanceContinuousCombatArena({ globals, entities, seconds: arenaSeconds });
-  stageState.lastArenaUpdatedAt = now;
-  advanceCombatCamera({ globals, entities, seconds: arenaSeconds });
-  if (globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) call('TickRealtimeHeroBasics');
-  if ((newlyAvailable > 0 || newlyEngaged > 0 || entities?.some(enemy => enemy?.kind === 'enemy' && Number(enemy.hp || 0) > 0 && enemy.streamState === 'engaged'))
-    && globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) {
-    globals.NativeBattleEnded = false;
-    call('TickRealtimeEnemyActions');
-  }
+  combatTick({ globals, entities, call, now });
   if (!stageState.bossActive && (entities || []).some(actor => actor?.kind === 'hero' && Number(actor.hp || 0) <= 0)) return false;
   if (globals.GamePhase !== 'RUNTIME' || globals.BattleStartActive) return false;
 
