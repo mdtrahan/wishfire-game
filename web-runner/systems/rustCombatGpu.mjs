@@ -17,6 +17,7 @@ export class SliceGpu {
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
     gl.useProgram(program);
     this.data = new Float32Array(13 * 12288); this.count = 0;
+    this.uploadViews = Array.from({length:4097},(_,triangles)=>new Float32Array(this.data.buffer,0,triangles*39));
     this.buffer = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer); gl.bufferData(gl.ARRAY_BUFFER, this.data.byteLength, gl.DYNAMIC_DRAW);
     for (const [name, size, offset] of [['position',3,0],['texcoord',2,3],['color0',4,5],['normal',4,9]]) {
       const index = gl.getAttribLocation(program, name); gl.enableVertexAttribArray(index); gl.vertexAttribPointer(index,size,gl.FLOAT,false,52,offset*4);
@@ -61,7 +62,7 @@ export class SliceGpu {
     if(texture){gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);}
   }
   flush() {
-    if(!this.count)return;const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);gl.bufferSubData(gl.ARRAY_BUFFER,0,this.data);gl.drawArrays(gl.TRIANGLES,0,this.count);this.count=0;
+    if(!this.count)return;const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);gl.bufferSubData(gl.ARRAY_BUFFER,0,this.uploadViews[this.count/3]);gl.drawArrays(gl.TRIANGLES,0,this.count);this.count=0;
   }
   vertex(x,y,z,u,v,color,alpha,nx=0,ny=0,nz=0,nw=1) {
     if(this.count===12288)this.flush();let i=this.count++*13;const a=this.data;
