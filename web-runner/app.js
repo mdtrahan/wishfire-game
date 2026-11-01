@@ -1,4 +1,5 @@
 import { updateCombatDpsOverlay } from './systems/renderCombatDps.mjs';
+import { installRustCombatShadow } from './systems/rustCombatShadow.mjs';
 import { createEquipmentStorage } from './systems/equipmentStorage.mjs';
 import { createCombatProgression } from './systems/combatProgression.mjs';
 import { createCombatProgressionUI, createTrainingGroundUI } from './systems/combatProgressionUI.mjs';
@@ -1969,6 +1970,7 @@ async function main(){
   const storyEntry = createStoryEntryFlow({ gameState, layoutState, isReady: () => freshCombatBootstrapped, getEnemies: () => enemyRows, prepareEncounter: questCombat.prepare, resurrect: questCombat.resurrect, closeTransientSurface: () => lampEquipment.close(), canCloseTransientSurface: () => lampEquipment.state().canLeave, recordQaPauseSnapshot: qaPauseSnapshotEnabled ? stage => gameState.publishQaPauseSnapshot?.(stage) : undefined, onBossActivityResumed: () => summonContinuousCombatBoss(state.globals, state.entities, (name, ...args) => callFunctionWithContext(fnContext, name, ...args)), energyGlobals: state.globals, enterCombat: createCombatEntryTransition(canvas, { onComplete: () => releaseCombatStartToScheduler(state.globals) }), onCombatEnd: finishCombatEnd, onCombatQuit: finishCombatQuit, isCombatPauseEligible: () => state.globals.NativeBattleEnded !== true && state.globals.ProgressionBattle?.outcome !== 'victory' && state.globals.ProgressionBattle?.outcome !== 'defeat' });
   requireDevToolingRuntime().setBossResumeHandler(() => storyEntry.resumeBossActivity());
   const questUI = createQuestLadderUI({ canvas, gameState, layoutState, flow: storyEntry, getGold: () => state.globals.goldTotal || 0, getPuppetPresentation: () => actorPuppetPresentation });
+  const rustCombatShadow = installRustCombatShadow({ state, gameState, getLayout: () => layoutState.getActiveLayoutId(), getEnemyRows: () => enemyRows });
   registerRuntimeLayouts(layoutState, {
     storyEntry,
     combatLayout,
@@ -3254,6 +3256,7 @@ function getStoryCardLiveLineState() {
   // per-frame tick loop with animation cycling
   let frameCount = 0;
   function tick(){
+    rustCombatShadow?.update();
     frameCount++;
     if (document.hidden) {
       surrenderBossForDeparture();

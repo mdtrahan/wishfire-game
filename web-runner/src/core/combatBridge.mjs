@@ -1,4 +1,4 @@
-// Headless transport. Runtime adoption belongs to a later bead.
+// Headless transport, used by the opt-in developer shadow only.
 export function createCombatBridge(instance) {
   const wasm = instance.exports;
   const names = ['wf_combat_abi_version', 'wf_input_alloc', 'wf_input_free',
@@ -46,6 +46,7 @@ export function createCombatBridge(instance) {
     create: config => call({ kind: 'create', data: { config } }),
     step: (world, request) => call({ kind: 'step', data: { world, request } }),
     inspect: (world, events_after = '0') => call({ kind: 'inspect', data: { world, events_after } }),
+    spawn: (world, encounter_id, enemies) => call({ kind: 'spawn', data: { world, encounter_id, enemies } }),
     destroy: world => call({ kind: 'destroy', data: { world } }),
   });
 }

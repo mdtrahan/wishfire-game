@@ -1,0 +1,65 @@
+// Shadow-only bases from rust/wf_combat/src/tuning.rs, not WFM balance inputs.
+const heroSpeed = 78 * 1.6698;
+const base = (hp, atk, def, speed, reach, interval, evade = 0, special = 0) =>
+  Object.freeze({ hp, atk, def, speed, reach, interval, evade, special });
+export const SHADOW_DEFINITIONS = Object.freeze({
+  Falie: { id: 'slice.hero.fara', channel: 'physical', stats: base(420, 26.4, 28, heroSpeed, 100, 1.8, .09, 30) },
+  Huun: { id: 'slice.hero.hondo', channel: 'physical', stats: base(300, 40.8, 14, heroSpeed * 1.1, 45, 1.2, .12, 8) },
+  Runa: { id: 'slice.hero.runa', channel: 'magic', stats: base(260, 36, 10, heroSpeed * .95, 270, 1.4, .05, 10) },
+  Kojonn: { id: 'slice.hero.kaja', channel: 'magic', stats: base(280, 21.6, 16, heroSpeed * .95, 235, 1.6, .05, 16) },
+  Troll: { id: 'slice.boss.troll_brute', channel: 'physical', stats: base(1500, 165, 0, 40, 100, 4.5) },
+  Gobloc: { id: 'slice.enemy.gobloc', channel: 'physical', stats: base(140, 10, 0, 55, 40, 2.6) },
+});
+
+function number(value, name, positive = false) {
+  if (!Number.isFinite(value) || (positive ? value <= 0 : value < 0)) throw new Error(`Invalid shadow ${name}`);
+  return value;
+}
+
+export function projectShadowStats(resolved, reference, definition) {
+  if (!definition) throw new Error('Unsupported shadow combatant');
+  const c = definition.stats;
+  // Owner-approved ORKA-53mz limitation: ABI 1.0 has one atk/def pair.
+  // Project the authored primary channel only. Full physical/magic mitigation
+  // and mixed-channel skills belong to TDD-A A12, the later stat/modifier bead.
+  const [power, defense] = definition.channel === 'magic' ? ['MAG', 'RES'] : ['ATK', 'DEF'];
+  const ratio = key => number(resolved[key], key, key === 'HP' || key === 'SPD') / number(reference[key], `reference ${key}`, true);
+  return {
+    ...c,
+    hp: Math.max(1, Math.floor(c.hp * ratio('HP'))),
+    atk: c.atk * ratio(power),
+    def: c.def === 0 ? 0 : c.def * ratio(defense),
+    // ABI cadence bounds; SPD never changes movement or reach.
+    interval: Math.max(1 / 30, Math.min(1_000_000, c.interval / ratio('SPD'))),
+  };
+}
+
+function entryHP(hp, hostMax, shadowMax) {
+  number(hp, 'entry HP');
+  return Math.min(shadowMax, hp / number(hostMax, 'host max HP', true) * shadowMax);
+}
+
+export function shadowHero({ identity, key, slot, position, resolved, reference, hp, hostMaxHP }, origin) {
+  const definition = SHADOW_DEFINITIONS[key];
+  const stats = projectShadowStats(resolved, reference, definition);
+  return { instance_id: identity, definition_id: definition.id, slot,
+    formation_offset: { x: position.x - origin.x, y: position.y - origin.y }, stats,
+    hp: entryHP(hp, hostMaxHP, stats.hp) };
+}
+
+export function shadowEnemy({ identity, key, position, resolved, reference, hp, hostMaxHP }) {
+  const definition = SHADOW_DEFINITIONS[key];
+  const stats = projectShadowStats(resolved, reference, definition);
+  return { spawn_key: identity, definition_id: definition.id, position: { ...position }, stats,
+    hp: entryHP(hp, hostMaxHP, stats.hp) };
+}
+
+export function createShadowConfig({ encounterId, seed, geometry, heroes, enemies, summon }) {
+  return { encounter_id: encounterId, seed: String(seed), geometry: structuredClone(geometry),
+    heroes: heroes.map(hero => shadowHero(hero, geometry.formation_origin)),
+    enemies: enemies.map(enemy => ({ ...shadowEnemy(enemy),
+      // Troll's children require a final host-resolved Gobloc template.
+      summon_profiles: enemy.key === 'Troll' ? [{ definition_id: SHADOW_DEFINITIONS.Gobloc.id,
+        stats: projectShadowStats(summon.resolved, summon.reference, SHADOW_DEFINITIONS.Gobloc) }] : [] })),
+  };
+}
