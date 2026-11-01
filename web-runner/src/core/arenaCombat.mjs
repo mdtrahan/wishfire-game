@@ -60,34 +60,12 @@ const SEARCH_SPEED = 78;
 const INITIAL_ROAM_WALK_DISTANCE = 200;
 const INITIAL_ROAM_SEED_DRAW = 0x764;
 const RECOVERY_MOAT_DIAMETER_SCREEN_PX = 150;
-const heroName = hero => String(hero?.baseHeroName || hero?.name || '').trim().toLowerCase();
-function slotFor(hero, index, placement) {
-  const placed = placement?.[String(hero?.heroInstanceKey || '').replace(/#1$/, '').toLowerCase()] || placement?.[heroName(hero)];
-  return HERO_FORMATION_SLOTS[placed?.cell] || HERO_FORMATION_SLOTS[index % HERO_FORMATION_SLOTS.length];
-}
-export function formationSlots(heroes, placement) {
-  const occupied = new Set();
-  const slots = heroes.map((hero, index) => {
-    const copy = /#(\d+)$/.exec(String(hero.heroInstanceKey || ''));
-    if (copy && Number(copy[1]) !== 1) return null;
-    const slot = slotFor(hero, index, placement);
-    if (occupied.has(slot.cell)) return null;
-    occupied.add(slot.cell);
-    return slot;
-  });
-  return slots.map((slot, index) => {
-    if (slot) return slot;
-    const preferred = HERO_FORMATION_SLOTS[index];
-    const free = preferred && !occupied.has(preferred.cell) ? preferred : HERO_FORMATION_SLOTS.find(candidate => !occupied.has(candidate.cell));
-    if (!free) throw new RangeError('Formation has only eight slots');
-    occupied.add(free.cell);
-    return free;
-  });
-}
-export function deriveContinuousCombatRecoveryHuddle(heroes = [], heading = 1, placement = null) {
+// Fixed slots follow deployment order. Saved editor placements have no effect.
+const formationSlots = heroes => heroes.map((_, index) => HERO_FORMATION_SLOTS[index]);
+export function deriveContinuousCombatRecoveryHuddle(heroes = [], heading = 1) {
   const { centerX } = deriveCombatWorldStartFormation(heroes.length);
   const patrol = deriveCombatOrdinaryPatrolBounds(), centerY = (patrol.minY + patrol.maxY) / 2;
-  const slots = formationSlots(heroes, placement);
+  const slots = formationSlots(heroes);
   return heroes.map((hero, index) => {
     const slot = slots[index];
     return { hero, x: centerX + slot.x, y: centerY + slot.y };
@@ -129,7 +107,7 @@ export function placeContinuousCombatHeroesInRecoveryHuddle({ globals = {}, hero
   Object.assign(globals, { HeroLungeOffsetByUID: {}, HeroRestBasePosByUID: {}, HeroRestFeetPosByUID: {}, HeroIconPosByIndex: [],
     RealtimeHeroBasicScheduledActions: {}, RealtimeHeroFocusTargetUID: 0 });
   const direction = setContinuousCombatInitialRoam({ globals, attempt: Number(globals.ContinuousCombatRoamAttempt ?? -1) + 1 });
-  for (const { hero, x, y } of deriveContinuousCombatRecoveryHuddle(heroes, direction, globals.HeroFormationPlacement)) {
+  for (const { hero, x, y } of deriveContinuousCombatRecoveryHuddle(heroes, direction)) {
     hero.x = hero.footX = hero.formationSlotX = x;
     hero.y = hero.footY = hero.formationSlotY = y;
     hero.arenaEnabled = true; hero.arenaTargetUID = 0;
@@ -165,7 +143,7 @@ export function advanceContinuousCombatArena({ globals = {}, entities = [], seco
   const world = deriveCombatWorldBounds(), patrol = deriveCombatOrdinaryPatrolBounds(), vertical = deriveCombatWorldVerticalBounds();
   const stage = globals.ContinuousCombatStage, bossEncounter = !!stage?.bossActive;
   const now = Number(globals.time || 0), dt = Math.max(0, Number(seconds) || 0);
-  const slots = formationSlots(roster, globals.HeroFormationPlacement);
+  const slots = formationSlots(roster);
   let center = globals.ContinuousCombatFormation;
   const initializing = !center || !Number.isFinite(center.x) || !Number.isFinite(center.y);
   if (initializing) {

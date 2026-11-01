@@ -1,8 +1,7 @@
-// Dev-panel sliders for leader-anchored movement and camera (bd-ORKA-6i3).
+// Dev-panel sliders for party-anchored movement and camera (bd-ORKA-6i3).
 // Changes apply live to state.globals.DevMovementTuning and persist in a
 // dev-only localStorage key; they never enter save data.
 import {
-  COMBAT_LEADER_NAMES,
   COMBAT_MOVEMENT_TUNING_FIELDS,
   COMBAT_MOVEMENT_TUNING_STORAGE_KEY,
   defaultCombatMovementTuning,
@@ -31,22 +30,6 @@ export function mountCombatMovementTuningPanel({ container, state, storage = nul
   legend.textContent = 'Movement & camera lab (live)';
   fieldset.appendChild(legend);
 
-  const leaderLabel = document.createElement('label');
-  leaderLabel.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
-  leaderLabel.textContent = 'Leader';
-  const leaderSelect = document.createElement('select');
-  leaderSelect.dataset.devtoolMovementLeader = '';
-  for (const name of COMBAT_LEADER_NAMES) leaderSelect.add(new Option(name, name));
-  leaderLabel.appendChild(leaderSelect);
-  // Off by default so the player's Formation leader applies; the select only matters when ticked.
-  const overrideLabel = document.createElement('label');
-  overrideLabel.style.cssText = 'display:flex;align-items:center;gap:6px;';
-  const overrideToggle = document.createElement('input');
-  overrideToggle.type = 'checkbox';
-  overrideToggle.dataset.devtoolMovementLeaderOverride = '';
-  overrideLabel.append(overrideToggle, 'Override Formation leader');
-  fieldset.append(overrideLabel, leaderLabel);
-
   const inputs = new Map();
   for (const field of COMBAT_MOVEMENT_TUNING_FIELDS) {
     const label = document.createElement('label');
@@ -73,9 +56,6 @@ export function mountCombatMovementTuningPanel({ container, state, storage = nul
   fieldset.appendChild(reset);
 
   const sync = tuning => {
-    overrideToggle.checked = tuning.leaderOverride;
-    leaderSelect.value = tuning.leaderName;
-    leaderSelect.disabled = !tuning.leaderOverride;
     for (const { field, input, readout } of inputs.values()) {
       input.value = String(tuning[field.key]);
       readout.textContent = formatValue(field, tuning[field.key]);
@@ -88,12 +68,8 @@ export function mountCombatMovementTuningPanel({ container, state, storage = nul
     sync(next);
   };
   const readDom = () => ({
-    leaderName: leaderSelect.value,
-    leaderOverride: overrideToggle.checked,
     ...Object.fromEntries([...inputs].map(([key, { input }]) => [key, Number(input.value)])),
   });
-  leaderSelect.addEventListener('change', () => apply(readDom()));
-  overrideToggle.addEventListener('change', () => apply(readDom()));
   for (const { input } of inputs.values()) input.addEventListener('input', () => apply(readDom()));
   reset.addEventListener('click', () => apply(defaultCombatMovementTuning()));
   sync(sanitizeCombatMovementTuning(state.globals.DevMovementTuning));

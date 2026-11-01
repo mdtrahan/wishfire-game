@@ -1,4 +1,4 @@
-// bd-ORKA-6i3: StoneAge-style leader-anchored movement and camera.
+// bd-ORKA-6i3: StoneAge-style party-anchored movement and camera.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -9,7 +9,7 @@ import {
   COMBAT_MOVEMENT_TUNING_STORAGE_KEY,
   LEGACY_COMBAT_MOVEMENT_TUNING,
   defaultCombatMovementTuning,
-  resolveCombatLeader,
+  resolveCombatAnchor,
   sanitizeCombatMovementTuning,
 } from '../web-runner/src/core/combatMovementTuning.mjs';
 import { loadCombatMovementTuning } from '../web-runner/systems/devMovementTuningPanel.mjs';
@@ -18,25 +18,25 @@ const hero = (uid, name, footX, footY, extra = {}) => ({ uid, name, kind: 'hero'
 const enemy = (uid, footX, footY, extra = {}) => ({ uid, kind: 'enemy', hp: 100, footX, footY, streamState: 'in_range', streamSectorIndex: 0, streamDelivery: 'melee', ...extra });
 const gap = (a, b) => Math.hypot(a.footX - b.footX, a.footY - b.footY);
 
-test('tuning sanitizes every slider into its range and keeps a named leader', () => {
+test('tuning sanitizes every slider into its range and discards retired leader choices', () => {
   const wild = Object.fromEntries(COMBAT_MOVEMENT_TUNING_FIELDS.map(field => [field.key, field.max * 10 + 5]));
   const clamped = sanitizeCombatMovementTuning({ ...wild, leaderName: 'nobody' });
   for (const field of COMBAT_MOVEMENT_TUNING_FIELDS) assert.ok(clamped[field.key] <= field.max && clamped[field.key] >= field.min, field.key);
-  assert.equal(clamped.leaderName, 'Fara');
-  assert.equal(sanitizeCombatMovementTuning({ leaderName: 'runa' }).leaderName, 'Runa');
+  assert.equal('leaderName' in clamped, false);
+  assert.equal('leaderOverride' in sanitizeCombatMovementTuning({ leaderName: 'runa', leaderOverride: true }), false);
   assert.deepEqual(sanitizeCombatMovementTuning(null), defaultCombatMovementTuning());
-  assert.equal(sanitizeCombatMovementTuning(LEGACY_COMBAT_MOVEMENT_TUNING).leaderTargetBias, 1);
+  assert.equal(sanitizeCombatMovementTuning(LEGACY_COMBAT_MOVEMENT_TUNING).partyTargetBias, 1);
 });
 
-test('the chosen leader leads while living and the first living hero takes over otherwise', () => {
+test('the first living party slot anchors through KO and empty parties', () => {
   const party = [hero(1, 'Hondo', 0, 0), hero(2, 'Falie', 0, 0), hero(3, 'Runa', 0, 0)];
-  assert.equal(resolveCombatLeader(party, 'Fara').uid, 2, 'canonical alias resolves');
-  party[1].hp = 0;
-  assert.equal(resolveCombatLeader(party, 'Fara').uid, 1, 'KO leader falls back to party order');
-  assert.equal(resolveCombatLeader([], 'Fara'), null);
+  assert.equal(resolveCombatAnchor(party).uid, 1);
+  party[0].hp = 0;
+  assert.equal(resolveCombatAnchor(party).uid, 2);
+  assert.equal(resolveCombatAnchor([]), null);
 });
 
-test('leader-target bias spans own-nearest to the legacy shared target', () => {
+test('party-target bias spans own-nearest to the legacy shared target', () => {
   const near = enemy(10, 100, 0), shared = enemy(11, 200, 0);
   const actor = hero(1, 'Hondo', 0, 0);
   assert.equal(selectHeroMovementTarget({ ...actor }, [near, shared], shared, 0).uid, 10);
@@ -57,7 +57,7 @@ const splitScene = tuning => {
 };
 
 test('heroes split across nearby enemies by default and dog-pile under the legacy toggle', () => {
-  assert.ok(new Set(splitScene({ leaderTargetBias: 0.35 }).map(h => h.arenaTargetUID)).size >= 2, 'independent targets');
+  assert.ok(new Set(splitScene({ partyTargetBias: 0.35 }).map(h => h.arenaTargetUID)).size >= 2, 'independent targets');
   assert.equal(new Set(splitScene(LEGACY_COMBAT_MOVEMENT_TUNING).map(h => h.arenaTargetUID)).size, 1, 'legacy shared target');
 });
 
@@ -93,20 +93,20 @@ const cameraScene = (overrides = {}) => {
   return { heroes, globals };
 };
 
-test('camera centres the leader, not the party centroid', () => {
+test('camera follows party order and ignores retired leader saves', () => {
   const { heroes, globals } = cameraScene();
   advanceCombatCamera({ globals, entities: heroes, seconds: 0.1 });
   assert.equal(resolveCombatCameraCenterX(globals, 1150), 1000);
   globals.DevMovementTuning.leaderName = 'Hondo';
   globals.DevMovementTuning.leaderOverride = true;
   advanceCombatCamera({ globals, entities: heroes, seconds: 0.1 });
-  assert.equal(resolveCombatCameraCenterX(globals, 1150), 1200, 'leader choice moves the camera');
-  globals.DevMovementTuning.leaderAnchor = 0;
+  assert.equal(resolveCombatCameraCenterX(globals, 1150), 1000, 'retired leader choice cannot move the camera');
+  globals.DevMovementTuning.partyAnchor = 0;
   advanceCombatCamera({ globals, entities: heroes, seconds: 0.1 });
   assert.equal(resolveCombatCameraCenterX(globals, 0), 1150, 'centroid toggle restores the legacy anchor');
 });
 
-test('camera holds inside the dead zone and eases toward the leader outside it', () => {
+test('camera holds inside the dead zone and eases toward the party anchor outside it', () => {
   const { heroes, globals } = cameraScene({ cameraDeadZone: 30, cameraSmoothing: 0.25 });
   advanceCombatCamera({ globals, entities: heroes, seconds: 0.1 });
   heroes[0].footX = 1020;
@@ -155,10 +155,10 @@ test('dev tuning persists under its own dev key and ignores corrupt storage', ()
   const store = new Map([[COMBAT_MOVEMENT_TUNING_STORAGE_KEY, JSON.stringify({ heroOverlap: 0.8, leaderName: 'Kaja' })]]);
   const storage = { getItem: key => store.get(key) ?? null };
   assert.equal(loadCombatMovementTuning(storage).heroOverlap, 0.8);
-  assert.equal(loadCombatMovementTuning(storage).leaderName, 'Kaja');
-  assert.equal(loadCombatMovementTuning(storage).leaderOverride, false, 'saves from before the flag never override Formation');
+  assert.equal('leaderName' in loadCombatMovementTuning(storage), false);
+  assert.equal('leaderOverride' in loadCombatMovementTuning(storage), false);
   store.set(COMBAT_MOVEMENT_TUNING_STORAGE_KEY, JSON.stringify({ leaderName: 'Kaja', leaderOverride: true }));
-  assert.equal(loadCombatMovementTuning(storage).leaderOverride, true);
+  assert.equal('leaderOverride' in loadCombatMovementTuning(storage), false);
   store.set(COMBAT_MOVEMENT_TUNING_STORAGE_KEY, '{oops');
   assert.equal(loadCombatMovementTuning(storage), null);
   assert.equal(loadCombatMovementTuning(null), null);

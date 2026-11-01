@@ -90,7 +90,6 @@ const fixtureModule=`
  import {heroBasicSkill,heroSkillCopy} from '../web-runner/systems/heroSkillCopy.mjs';
 import {EQUIPMENT_SAVE_KEY} from '/web-runner/systems/equipmentStorage.mjs';
  import {HERO_PROGRESS_SAVE_KEY} from '/web-runner/systems/heroProgressStorage.js';
- import {createHeroFormationStore} from '/web-runner/systems/heroFormationStore.mjs';
  import {starUpHero,setHeroResonance} from '/web-runner/src/core/heroGrowthRules.mjs';
  window.mountHeroRedesignFixture=async({progress,economy})=>{
   localStorage.setItem(HERO_PROGRESS_SAVE_KEY,JSON.stringify(progress));
@@ -109,12 +108,12 @@ import {EQUIPMENT_SAVE_KEY} from '/web-runner/systems/equipmentStorage.mjs';
   const gameState={selectedHero:0,storyEntry:{phase:'hero'}};
   const fnContext={state:{globals,entities:[]}};
   const layoutState={getActiveLayoutId:()=> 'heroLayout'},eventBus={emit(){}};
-  // Growth runs through the real rules against an in-memory wallet; Formation uses the real store.
+  // Growth runs through the real rules against an in-memory wallet.
   let growthState={wallet:{ticketsByHero:{}}};
   const wallet=()=>({ticketsByHero:{...(window.heroQa?.tickets||{})}});
   const growthResult=result=>{if(result.ok){growthState=result.state;window.heroQa.tickets={...result.state.wallet.ticketsByHero};}return result;};
   const combatProgression={ticketCount:id=>window.heroQa?.tickets?.[id]||0,spendLevelUp:()=>({ok:false,reason:'unavailable'}),
-   heroGrowth:()=>growthState.growth||null,formation:createHeroFormationStore({globals,storage:localStorage}),
+   heroGrowth:()=>growthState.growth||null,
    starUp:id=>growthResult(starUpHero({...growthState,wallet:wallet()},id)),
    setResonance:(id,slot,linked)=>growthResult(setHeroResonance({...growthState,wallet:wallet()},id,slot,linked))};
   const render=()=>{renderHeroScreen({equipmentProgress:{data:equipment},combatProgression,canvas,gameState,fnContext,heroPortraitImages:portraits});const scale=canvas.getBoundingClientRect().width/360;renderExistingNavigation({canvas},{worldToCanvas:(x,y)=>({x:x*scale,y:y*scale}),layoutScale:scale,gameState,layoutState,eventBus});};
@@ -216,7 +215,7 @@ test('hero party screen uses saved canonical data and stays contained across por
    assert.deepEqual(await detail.locator('.tabs button').allTextContents(),['Heroes','Gear','Resonance'],'Heroes | Gear | Resonance tabs');
    assert.equal(await detail.locator('.tabs img, .tabs svg').count(),0,'tabs carry no art icons');
    assert.equal(await detail.locator('.tabs button[aria-pressed="true"]').innerText(),'Heroes','Heroes is the default tab');
-   assert.equal(await detail.locator('.formation-button').count(),1,'Formation button flanks the hero');
+   assert.equal(await detail.locator('.formation-button,.formation-return,.leader-badge').count(),0,'retired Formation and Leader controls are absent');
    assert.equal(await detail.locator('.identity .gear-slots').count(),0,'gear is no longer drawn over the showcase');
    // Roster cards: portrait, level and ticket progress only.
    const cards=detail.locator('.roster-card');
@@ -246,8 +245,6 @@ test('hero party screen uses saved canonical data and stays contained across por
     assert.equal(await card.locator('.card-select').evaluate(node=>node.innerText.includes(node.querySelector('img').alt)),false,`${definition.name} card omits the hero name`);
     assert.match(await card.locator('.card-select').evaluate(node=>getComputedStyle(node).backgroundImage),/radial-gradient\(.*rgb\(255, 255, 255\)/,'card uses a soft light gradient');
    }
-   assert.equal(await cards.locator('.leader-badge').count(),1,'one leader badge');
-   assert.equal(await cards.nth(0).locator('.leader-badge').textContent(),'Leader','default leader is Fara');
    const actions=detail.locator('.hero-actions');
    assert.deepEqual(await actions.locator('button').allTextContents(),['Level Up','Star Up'],'selected hero exposes its actions');
    assert.equal(await actions.getAttribute('aria-label'),'Fara actions','actions follow the selected hero');
@@ -293,54 +290,6 @@ test('hero party screen uses saved canonical data and stays contained across por
    await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('.star-sheet'));
 
 
-   // Every slot is available at level 1. Edits stay in a draft until Save.
-   const openFormationModal=async()=>{await detail.locator('.identity').getByRole('button',{name:'Formation',exact:true}).click();await page.waitForFunction(()=>!!document.querySelector('#hero-details .formation-modal'));};
-   await page.evaluate(()=>{for(const hero of Object.values(window.heroQa.globals.HeroProgress.heroes))hero.currentLevel=1;window.heroQa.render();});
-   await openFormationModal();
-   const modal=detail.locator('.formation-modal'),board=modal.locator('.formation-field');
-   assert.equal(await board.locator('.formation-cell').count(),8);
-   assert.equal(await modal.locator('[data-locked],.formation-lock,.formation-tools .lock').count(),0);
-   assert.deepEqual(await board.locator('.formation-cell').evaluateAll(nodes=>nodes.map(node=>[+node.style.gridColumn,+node.style.gridRow])),[[2,1],[3,1],[1,2],[2,2],[3,2],[4,2],[2,3],[3,3]]);
-   const fit=await modal.evaluate(node=>{
-    const m=node.getBoundingClientRect(),rect=e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height};};
-    const outside=[...node.querySelectorAll('button,.formation-grid,.formation-roster')].filter(e=>{const r=e.getBoundingClientRect();return r.left<m.left-.5||r.right>m.right+.5||r.top<m.top-.5||r.bottom>m.bottom+.5;}).map(e=>e.getAttribute('aria-label')||e.className);
-    const canvas=document.querySelector('canvas');return{viewport:[innerWidth,innerHeight,devicePixelRatio],modal:rect(node),canvas:rect(canvas),backing:[canvas.width,canvas.height],outside,overflow:node.scrollWidth>node.clientWidth+1||node.scrollHeight>node.clientHeight+1};
-   });
-   assert.deepEqual(fit.outside,[],`${profile.name}: Formation controls contained`);assert.equal(fit.overflow,false);
-   assert.deepEqual((await measure()).clipped,[],`${profile.name}: Formation labels fit`);
-   screenshots.formation=`${profile.name}-formation.png`;await page.screenshot({path:path.join(artifactDir,screenshots.formation),fullPage:true});
-   await modalContract(modal,'Formation');
-   await modal.getByRole('button',{name:'Sort and filter heroes',exact:true}).click();await page.waitForFunction(()=>!!document.querySelector('.formation-sort'));
-   await modalContract(detail.getByRole('dialog',{name:'Sort and filter',exact:true}),'Sort and filter');
-   await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('.formation-sort'));
-   assert.equal(await modal.getByRole('button',{name:'Sort and filter heroes',exact:true}).evaluate(node=>node===document.activeElement),true,'sort restores its opener');
-   await modal.getByRole('button',{name:'Copy preset 1',exact:true}).click();await page.waitForFunction(()=>!!document.querySelector('.formation-copy'));
-   await modalContract(detail.getByRole('dialog',{name:'Copy preset',exact:true}),'Copy preset');
-   await detail.getByRole('button',{name:'Close Copy preset',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('.formation-copy'));
-   assert.equal(await modal.getByRole('button',{name:'Copy preset 1',exact:true}).evaluate(node=>node===document.activeElement),true,'copy restores its opener');
-   const original=await page.evaluate(()=>localStorage.getItem('wishfire.heroFormation.v4'));
-   await board.locator('.formation-cell[data-hero="Falie"]').click();
-   await board.locator('.formation-cell[data-cell="7"]').click();
-   await page.waitForFunction(()=>document.querySelector('.formation-cell[data-cell="7"]')?.dataset.hero==='Falie');
-   assert.equal(await page.evaluate(()=>localStorage.getItem('wishfire.heroFormation.v4')),original);
-   await modal.getByRole('button',{name:'Close Formation',exact:true}).click();await page.waitForFunction(()=>!!document.querySelector('.formation-confirm'));
-   await modalContract(detail.getByRole('alertdialog',{name:'Unsaved formation changes',exact:true}),'Unsaved formation changes');
-   await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('.formation-confirm'));
-   assert.equal(await modal.getByRole('button',{name:'Close Formation',exact:true}).evaluate(node=>node===document.activeElement),true,'cancelled confirmation restores the Formation close');
-   await modal.getByRole('button',{name:'Undo',exact:true}).click();
-   await page.waitForFunction(()=>document.querySelector('.formation-cell[data-cell="0"]')?.dataset.hero==='Falie');
-   // Actual pointer drag from the roster into an empty bottom slot.
-   await modal.locator('.formation-card[data-hero="Runa"] .formation-card-pick').dragTo(board.locator('.formation-cell[data-cell="6"]'));
-   await page.waitForFunction(()=>document.querySelector('.formation-cell[data-cell="6"]')?.dataset.hero==='Runa');
-   await modal.getByRole('button',{name:'Save formation'}).click();
-   await page.waitForFunction(()=>JSON.parse(localStorage.getItem('wishfire.heroFormation.v4'))?.presets[0].cells.Runa===6);
-   assert.equal(await page.evaluate(()=>window.heroQa.globals.HeroFormationPlacement.runa.cell),6);
-   await modal.getByRole('button',{name:'Close Formation'}).click();
-   await page.waitForFunction(()=>!document.querySelector('.formation-modal'));
-   await openFormationModal();assert.equal(await board.locator('.formation-cell[data-cell="6"]').getAttribute('data-hero'),'Runa');
-   await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('.formation-modal'));
-   // Restore progression levels used by the unchanged gear/stat oracle.
-   await page.evaluate(levels=>{for(const [id,level] of Object.entries(levels))window.heroQa.globals.HeroProgress.heroes[id].currentLevel=level;window.heroQa.render();},Object.fromEntries(Object.entries(progress.heroes).map(([id,h])=>[id,h.currentLevel])));
    // Card selection drives the showcase.
    for(const [cardIndex,hero] of heroes.entries()){
     await cards.nth(cardIndex).locator('.card-select').click();
@@ -443,7 +392,7 @@ test('hero party screen uses saved canonical data and stays contained across por
    }
    screenshots.tickets=`${profile.name}-tickets.png`;await page.screenshot({path:path.join(artifactDir,screenshots.tickets),fullPage:true});
    assert.deepEqual(pageErrors,[],'renderer has no browser exceptions');
-   report.push({fixture:'isolated production hero renderer and shared navigation modules',profile,geometry:initial,formationGeometry:fit,modalContracts,screenshots,reachedSkillCount:reachedSkills.length,pass:true});
+   report.push({fixture:'isolated production hero renderer and shared navigation modules',profile,geometry:initial,modalContracts,screenshots,reachedSkillCount:reachedSkills.length,pass:true});
    await context.close();
   }
  }catch(error){report.push({pass:false,error:error.stack||String(error)});throw error;}

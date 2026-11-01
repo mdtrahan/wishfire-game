@@ -6,8 +6,8 @@ import { isHeroBasicTargetInRange, resolveHeroAttackTarget } from '../src/core/h
 import { advanceContinuousCombatArena, placeContinuousCombatHeroesInRecoveryHuddle, deriveContinuousCombatRecoveryHuddle } from '../web-runner/src/core/arenaCombat.mjs';
 import { selectRealtimeHeroSkillTarget } from '../web-runner/src/core/realtimeHeroTargeting.mjs';
 import { HERO_DEFINITIONS } from '../web-runner/src/core/heroDefinitions.mjs';
-import { createHeroFormationStore } from '../web-runner/systems/heroFormationStore.mjs';
-import { FORMATION_SAVE_KEY, FORMATION_LEGACY_SAVE_KEY, sanitizeHeroFormation, activeFormationPreset, formationPlacement, placeFormationHero, selectFormationPreset, copyFormationPresetTo, autoFormActive } from '../web-runner/src/core/heroFormationRules.mjs';
+import { createCombatProgression } from '../web-runner/systems/combatProgression.mjs';
+import { COMBAT_PROGRESSION_SAVE_KEY, createCombatProgressionState } from '../web-runner/src/core/combatProgressionRules.mjs';
 const roster=Object.values(HERO_DEFINITIONS).map(def=>({id:def.key,name:def.name,role:def.role}));
 const hero=(uid,x=1080,y=370)=>({uid,kind:'hero',hp:100,maxHP:100,footX:x,footY:y,stats:{ATK:10,DEF:10,MAG:10,RES:10}});
 const foe=(uid,x,y,extra={})=>({uid,kind:'enemy',hp:100,maxHP:100,footX:x,footY:y,streamState:'in_range',...extra});
@@ -20,35 +20,36 @@ test('eight immutable slots form centered 2-4-2 rows across exactly 105.6 world 
  assert.equal(HERO_FORMATION_SLOT_DIAMETER,32);assert.equal(HERO_FORMATION_LEASH_RADIUS,1.6);
  assert.ok(HERO_FORMATION_PITCH>=HERO_FORMATION_SLOT_DIAMETER+2*HERO_FORMATION_LEASH_RADIUS-1e-9);
 });
-test('v3 migration retains presets and distinct occupancy, removes all locks, preserves source bytes',()=>{
- const raw=JSON.stringify({version:3,active:2,unlockedGrids:1,presets:[{leader:'Runa',locked:true,cells:{Falie:3,Huun:7,Runa:2,Kojonn:6}}]});
- const disk=storage({[FORMATION_LEGACY_SAVE_KEY]:raw}),globals={};
- const store=createHeroFormationStore({storage:disk,globals});
- assert.equal(store.state().version,4);assert.equal(store.state().active,2);assert.equal(store.state().presets[0].leader,'Runa');
- assert.equal(store.state().presets[0].locked,undefined);assert.deepEqual(store.state().presets[0].cells,{Falie:5,Huun:4,Runa:1,Kojonn:7});
- assert.equal(disk.getItem(FORMATION_LEGACY_SAVE_KEY),raw);assert.ok(disk.getItem(FORMATION_SAVE_KEY));
- for(let cell=0;cell<8;cell++){assert.equal(store.place('Falie',cell).ok,true);assert.equal(activeFormationPreset(store.state()).cells.Falie,cell);}
- const again=createHeroFormationStore({storage:disk,globals:{}});assert.deepEqual(again.state(),store.state());
- assert.equal(Object.keys(activeFormationPreset(store.state()).cells).length,4);
-});
-test('missing and corrupt formation data repair; failed writes preserve live and saved state',()=>{
- for(const raw of [undefined,'{','null','[]','{"active":1e400,"presets":[{"cells":{"Falie":0,"Huun":0,"Runa":99}}]}']){
-  const disk=storage({[FORMATION_SAVE_KEY]:raw}),store=createHeroFormationStore({storage:disk,globals:{},reportError(){}});
-  const cells=activeFormationPreset(store.state()).cells;assert.equal(new Set(Object.values(cells)).size,4);
-  const before=store.state();disk.setItem=()=>{throw Error('disk full');};assert.equal(store.place('Falie',7).ok,false);assert.equal(store.state(),before);
+test('old formation and leader saves stay untouched while supported progression loads and saves',()=>{
+ for(const raw of ['{',JSON.stringify({version:4,active:2,presets:[{leader:'Runa',cells:{Falie:7}}]})]){
+  const progress={...createCombatProgressionState({wallet:{ticketsByHero:{Falie:1000}},training:{ATK:3}}),leader:'Runa',formation:{active:2}};
+  const disk=storage({'wishfire.heroFormation.v3':'{','wishfire.heroFormation.v4':raw,[COMBAT_PROGRESSION_SAVE_KEY]:JSON.stringify(progress)}),globals={};
+  const reads=[],get=disk.getItem.bind(disk);disk.getItem=key=>{reads.push(key);return get(key);};
+  const controller=createCombatProgression({globals,storage:disk});
+  assert.equal(controller.ticketCount('Falie'),1000);assert.equal(globals.PartyTrainingLevels.ATK,3);
+  assert.equal(controller.starUp('Falie').ok,true);
+  assert.equal(controller.ticketCount('Falie'),950);
+  assert.equal(disk.values['wishfire.heroFormation.v4'],raw);assert.equal(disk.values['wishfire.heroFormation.v3'],'{');
+  assert.equal(reads.some(key=>key.includes('heroFormation')),false);
+  assert.equal('formation' in controller,false);
+  assert.equal(Object.keys(globals).some(key=>key.startsWith('HeroFormation')),false);
+  const again=createCombatProgression({globals:{},storage:disk});assert.equal(again.ticketCount('Falie'),950);assert.equal(again.heroGrowth().stars.Falie,1);
  }
 });
-test('saved placement is an unchanged world-space offset through heading reversal and recovery',()=>{
- let state=sanitizeHeroFormation(null,roster);state=placeFormationHero(state,'Falie',7);
- const placement=Object.fromEntries(Object.entries(formationPlacement(activeFormationPreset(state))).map(([id,slot])=>[id.toLowerCase(),slot]));
+test('fixed party order ignores retired placement through heading reversal and recovery',()=>{
  const heroes=roster.map((row,index)=>({...hero(index+1),baseHeroName:row.id}));
- const a=deriveContinuousCombatRecoveryHuddle(heroes,1,placement),b=deriveContinuousCombatRecoveryHuddle(heroes,-1,placement);
+ const globals={HeroFormationPlacement:{falie:{cell:7},runa:{cell:0}}};
+ placeContinuousCombatHeroesInRecoveryHuddle({globals,heroes,now:-1});
+ const a=deriveContinuousCombatRecoveryHuddle(heroes,1),b=deriveContinuousCombatRecoveryHuddle(heroes,-1);
  assert.deepEqual(a,b);
- for(const row of a){assert.ok(Math.abs(row.x-1080-placement[row.hero.baseHeroName.toLowerCase()].x)<1e-9);assert.ok(Math.abs(row.y-370-placement[row.hero.baseHeroName.toLowerCase()].y)<1e-9);}
+ for(const [index,row] of a.entries()){
+  assert.ok(Math.abs(row.x-1080-HERO_FORMATION_SLOTS[index].x)<1e-9);assert.ok(Math.abs(row.y-370-HERO_FORMATION_SLOTS[index].y)<1e-9);
+  assert.equal(row.hero.formationSlotX,row.x);assert.equal(row.hero.formationSlotY,row.y);
+ }
 });
 test('moving formation retains every slot and bounded drift without ally overlap in four directions',()=>{
  for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
-  const heroes=Array.from({length:8},(_,i)=>hero(i+1));const globals={time:1};
+  const heroes=Array.from({length:4},(_,i)=>hero(i+1));const globals={time:1};
   placeContinuousCombatHeroesInRecoveryHuddle({globals,heroes,now:-2});delete globals.ContinuousCombatInitialRoam;
   const center={...globals.ContinuousCombatFormation},enemy=foe(20,center.x+dx*600,center.y+dy*600);
   for(let step=0;step<30;step++){
@@ -99,26 +100,17 @@ test('boss is always reachable and moves inside existing boss bounds without dis
  assert.ok(positions.size>10);
 });
 
-test('free presets copy by value, select and auto-fill without locking any slot',()=>{
- const original=sanitizeHeroFormation(null,roster),moved=placeFormationHero(original,'Falie',7);
- const copied=copyFormationPresetTo(moved,[1,2]);assert.equal(activeFormationPreset(original).cells.Falie,0);
- assert.deepEqual(copied.presets[1],copied.presets[0]);assert.notEqual(copied.presets[1].cells,copied.presets[0].cells);
- const selected=selectFormationPreset(copied,2);assert.equal(selected.active,2);assert.equal(selectFormationPreset(selected,Infinity),selected);
- const auto=autoFormActive(selected,roster);assert.deepEqual(activeFormationPreset(auto).cells,{Falie:0,Huun:1,Runa:2,Kojonn:3});
-});
 test('enemy actors may share the same space while hero slots remain separate',()=>{
  const h=hero(1),a=foe(2,1000,370),b=foe(3,1000,370),g={time:1};
  advanceContinuousCombatArena({globals:g,entities:[h,a,b],seconds:0});
  assert.deepEqual(actorFootPoint(a),actorFootPoint(b));
 });
 
-test('deployed hero copies receive distinct spare slots without displacing canonical saved placements',()=>{
- const globals={time:1};createHeroFormationStore({globals,storage:storage()});
- const canonical=roster.map((row,i)=>({...hero(i+1),baseHeroName:row.id,heroInstanceKey:row.id.toLowerCase()+'#1'}));
- const copies=[{...hero(10),baseHeroName:'Huun',heroInstanceKey:'huun#2'},{...hero(11),baseHeroName:'Falie',heroInstanceKey:'falie#2'}];
- const heroes=[...copies,...canonical];placeContinuousCombatHeroesInRecoveryHuddle({globals,heroes,now:-1});
- delete globals.ContinuousCombatInitialRoam;
- for(const [index,h] of canonical.entries()){assert.ok(Math.abs(h.formationSlotX-1080-HERO_FORMATION_SLOTS[index].x)<1e-9);assert.ok(Math.abs(h.formationSlotY-370-HERO_FORMATION_SLOTS[index].y)<1e-9);}
+test('deployed copies occupy fixed slots in party order without a saved canonical reservation',()=>{
+ const globals={time:1,HeroFormationPlacement:{falie:{cell:7}}};
+ const heroes=[{...hero(10),baseHeroName:'Huun',heroInstanceKey:'huun#2'},...roster.slice(0,3).map((row,i)=>({...hero(i+1),baseHeroName:row.id,heroInstanceKey:row.id.toLowerCase()+'#1'}))];
+ placeContinuousCombatHeroesInRecoveryHuddle({globals,heroes,now:-1});delete globals.ContinuousCombatInitialRoam;
+ for(const [index,h] of heroes.entries()){assert.ok(Math.abs(h.formationSlotX-1080-HERO_FORMATION_SLOTS[index].x)<1e-9);assert.ok(Math.abs(h.formationSlotY-370-HERO_FORMATION_SLOTS[index].y)<1e-9);}
  const initial=heroes.map(h=>[h.footX,h.footY]);advanceContinuousCombatArena({globals,entities:heroes,seconds:0});assert.deepEqual(heroes.map(h=>[h.footX,h.footY]),initial);
  for(const [index,h] of heroes.entries())for(const ally of heroes.slice(index+1))assert.ok(Math.hypot(h.footX-ally.footX,h.footY-ally.footY)>=32-1e-9);
 });

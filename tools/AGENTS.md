@@ -114,3 +114,5 @@
 - Shared `modalClose.mjs` and Training Ground `combatProgressionUI.mjs` changes route through the existing lamp/Training five-profile presentation guard. Preserve Bag coverage when extending the shared close consumer set.
 
 - `qa_rust_combat_playtest2.mjs` connects to QA_PORT (default8797), isolates browser state and captures full-height Rust combat at native DPR2. Fixtures use the existing three-part QA pause contract before presenting snapshots; inspect all frames before accepting the result.
+
+- `build_runtime_release.mjs` packages tracked runtime files that exist in the current worktree, excluding pending deletions even before commit. Keep the tracked-entry guard and manifest hashes; imported missing modules still fail the offline bundle.
