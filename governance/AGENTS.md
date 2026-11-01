@@ -16,6 +16,7 @@
 - Product docs outrank code when deciding intended gameplay, but code/tests show current implementation reality.
 - Planning docs that say "contract only" or "does not authorize implementation" must not be treated as permission to change code.
 - Keep unresolved mechanics visible as blocked stubs, drift notes, or explicit open questions instead of burying them.
+- Rust-only combat cutover must preserve live equipment, level and Training revisions in the existing world. Verify the shipped ABI accepts permanent-input revisions before retiring JS stat/HP consumers; recreating a world resets combat commitments and cannot substitute for that contract.
 - For gameplay/content bead creation, check `product/player-living-guide.md` for player-facing drift.
 
 ## Work Guidance
