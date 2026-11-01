@@ -19,7 +19,7 @@ export async function preloadRustCombatAssets({ fetchAsset = fetch, ImageClass =
     const canvas=document.createElement('canvas');canvas.width=entry.frame_size[0];canvas.height=entry.frame_size[1];const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0);const rgba=ctx.getImageData(0,0,canvas.width,canvas.height).data;let x0=canvas.width,x1=0;
     for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++)if(rgba[(y*canvas.width+x)*4+3]>12){x0=Math.min(x0,x);x1=Math.max(x1,x);}
     const centered=entry.file.startsWith('telegraph/')||entry.file.startsWith('projectiles/')||entry.file.startsWith('elevate/')||entry.file.startsWith('vfx/resurrect/');
-    entries.set(id, { ...entry, image, centered, boundsX:x0+.5,boundsWidth:Math.max(1,x1-x0) });
+    entries.set(id, { ...entry, image, centered, duration:entry.frame_ms.reduce((a,b)=>a+b,0)/1000, boundsX:x0+.5,boundsWidth:Math.max(1,x1-x0) });
   }));
   const font = new FontClass('SliceBungee', `url("${root}${manifest.font}")`);
   await font.load(); fonts.add(font);

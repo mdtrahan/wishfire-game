@@ -54,12 +54,16 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
       }
       if (!actor) continue;
       hosts.set(view.actor_id, actor);
+      const heldCharge=snapshot.spotlight?.phase==='charge'&&snapshot.spotlight.caster===view.actor_id;
+      const visual=g.RustCombatPresentation?.pose(view);
+      const shownState=heldCharge?'cast':visual?.poseState??view.state,shownAge=heldCharge?0:visual?.poseState?visual.poseAge:view.state_age;
+      const shownFacing=g.RustCombatPresentation?.motion.records.get(view.actor_id)?.facing??view.facing;
       Object.assign(actor, { x: view.pos.x, y: view.pos.y, footX: view.pos.x, footY: view.pos.y,
         originX: view.pos.x, originY: view.pos.y, hp: view.hp, maxHP: view.max_hp,
-        isAlive: view.hp > 0, facing: view.facing, rustActorId: view.actor_id, rustState: view.state,
+        isAlive: view.hp > 0, facing: shownFacing, rustActorId: view.actor_id, rustState: view.state,
         streamState: 'engaged', locomotion: view.state === 'walk' ? 'walk' : 'idle',
-        actionState: view.state, actionFacing: view.facing, actionStateStartedAt: g.time - view.state_age,
-        actionStateUntil: g.time - view.state_age + view.state_duration, actionImpactAt: g.time - view.state_age + view.impact_at });
+        actionState: shownState, actionFacing: shownFacing, actionStateStartedAt: g.time - shownAge,
+        actionStateUntil: g.time - shownAge + view.state_duration, actionImpactAt: g.time - shownAge + view.impact_at });
     }
   }
   function consume(snapshot, events) {
@@ -69,6 +73,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
     g.time = baseTime + snapshot.combat_time;
     lastCombatTime = snapshot.combat_time; lastPresentationTime = snapshot.time;
     let bossKilled = false;
+    present(snapshot, events);
     project(snapshot);
     if (g.ContinuousCombatStage?.bossActive) g.ContinuousCombatStage.bossCameraCenterX = snapshot.camera_focus.x;
     for (const event of events) {
@@ -110,7 +115,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
         state.entities.splice(0, state.entities.length, ...state.entities.filter(a => a.kind === 'hero'));
         g.EnemySlots.fill(0); g.EnemyIDs?.fill(0);
       }
-    } else present(snapshot, events);
+    }
     if (stageOptions) {
       advanced = maybeAdvanceContinuousCombatStage({ ...stageOptions, entities: state.entities, presentationBarrier: { lanes: {} }, combatTick() {},
         onBossTimeout() { g.RustCombatReceipt.outcome = 'timeout'; stop(); stageOptions.onBossTimeout?.(); } }) || advanced;

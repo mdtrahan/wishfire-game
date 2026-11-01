@@ -24,6 +24,7 @@ export class SliceGpu {
     }
     this.modeUniform = gl.getUniformLocation(program,'mode'); this.clockUniform = gl.getUniformLocation(program,'clock');
     this.snapUniform = gl.getUniformLocation(program,'snap'); this.sizeUniform = gl.getUniformLocation(program,'snapSize'); this.sampleUniform = gl.getUniformLocation(program,'sampleSize');
+    this.lightModeUniform=gl.getUniformLocation(program,'ActorLightMode');this.hueUniform=gl.getUniformLocation(program,'HueStrength');this.tintUniform=gl.getUniformLocation(program,'ActorTint');this.liftUniform=gl.getUniformLocation(program,'ActorLift');this.actorTextures=new Map();
     this.mode = -1; this.blend = ''; this.texture = null; this.clock = 0;
     this.assets = assets.entries;
     this.textures = new Map(); this.resources = [];
@@ -37,7 +38,7 @@ export class SliceGpu {
     const noise=(x,y)=>{const ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy,u=fx*fx*(3-2*fx),v=fy*fy*(3-2*fy);return(hash(ix,iy)*(1-u)+hash(ix+1,iy)*u)*(1-v)+(hash(ix,iy+1)*(1-u)+hash(ix+1,iy+1)*u)*v;};
     for(let y=0;y<64;y++)for(let x=0;x<64;x++){const n=.65*noise(x/15,y/15)+.25*noise(x/7+13,y/7+9)+.10*noise(x/3+27,y/3+31),p=palette[Math.round(Math.max(0,Math.min(1,(n-.25)/.5))*6)],i=(y*64+x)*4;stone[i]=p>>16;stone[i+1]=p>>8;stone[i+2]=p;stone[i+3]=255;}
     for(const [name,unit] of [['Pattern',1],['Mask',2],['Stone',3]]) {
-      gl.activeTexture(gl.TEXTURE0+unit); const texture=gl.createTexture(); this.resources.push(texture);gl.bindTexture(gl.TEXTURE_2D,texture);
+      gl.activeTexture(gl.TEXTURE0+unit); const texture=gl.createTexture(); if(name==='Mask')this.maskTexture=texture; this.resources.push(texture);gl.bindTexture(gl.TEXTURE_2D,texture);
       gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,64,64,0,gl.RGBA,gl.UNSIGNED_BYTE,name==='Stone'?stone:name==='Mask'?mask:pixels);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);gl.uniform1i(gl.getUniformLocation(program,name),unit);
     }
     gl.activeTexture(gl.TEXTURE0); gl.uniform1i(gl.getUniformLocation(program,'Texture'),0); gl.enable(gl.BLEND);
@@ -96,9 +97,18 @@ export class SliceGpu {
     this.vertex(x+left*c-top*s,y+left*s+top*c,0,ua,v0,color,alpha);this.vertex(x+right*c-top*s,y+right*s+top*c,0,ub,v0,color,alpha);this.vertex(x+right*c-bottom*s,y+right*s+bottom*c,0,ub,v1,color,alpha);
     this.vertex(x+left*c-top*s,y+left*s+top*c,0,ua,v0,color,alpha);this.vertex(x+right*c-bottom*s,y+right*s+bottom*c,0,ub,v1,color,alpha);this.vertex(x+left*c-bottom*s,y+left*s+bottom*c,0,ua,v1,color,alpha);
   }
+  mask(canvas){const gl=this.gl;this.flush();gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,this.maskTexture);if(this.maskWidth!==canvas.width||this.maskHeight!==canvas.height){gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,canvas);this.maskWidth=canvas.width;this.maskHeight=canvas.height;}else gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,canvas);gl.activeTexture(gl.TEXTURE0);}
+  actor(image,x,y,w,h,alpha,hue,strength,tr,tg,tb,lift=0,blend='alpha',angle=0,px=x+w/2,py=y+h,lightMode=-1){
+    let texture=this.actorTextures.get(image);if(!texture){this.flush();texture=this.upload(image,true);this.actorTextures.set(image,texture);this.texture=null;}
+    this.use(lightMode<0?-4:-5,blend,texture);this.flush();const gl=this.gl;
+    gl.uniform4f(this.hueUniform,(hue>>16&255)/255,(hue>>8&255)/255,(hue&255)/255,strength);gl.uniform3f(this.tintUniform,tr,tg,tb);gl.uniform1f(this.liftUniform,lift);gl.uniform1f(this.lightModeUniform,lightMode);
+    const co=Math.cos(angle),si=Math.sin(angle),lx=x-px,rx=x+w-px,ty=y-py,by=y+h-py,ax=px+lx*co-ty*si,ay=py+lx*si+ty*co,bx=px+rx*co-ty*si,by0=py+rx*si+ty*co,cx=px+rx*co-by*si,cy=py+rx*si+by*co,dx=px+lx*co-by*si,dy=py+lx*si+by*co;
+    this.vertex(ax,ay,0,0,0,0xffffff,alpha);this.vertex(bx,by0,0,1,0,0xffffff,alpha);this.vertex(cx,cy,0,1,1,0xffffff,alpha);
+    this.vertex(ax,ay,0,0,0,0xffffff,alpha);this.vertex(cx,cy,0,1,1,0xffffff,alpha);this.vertex(dx,dy,0,0,1,0xffffff,alpha);this.flush();
+  }
   strip(id,x,y,qx,qy,height,alpha=1,color=0xffffff){const e=this.assets.get(id),dx=qx-x,dy=qy-y,length=Math.hypot(dx,dy);if(length<.001)return;const width=length*e.frame_size[0]/e.boundsWidth,offset=(e.pivot[0]-e.boundsX)/e.frame_size[0]*width;this.bitmap(id,0,x+dx/length*offset,y+dy/length*offset,width,height,Math.atan2(dy,dx),alpha,color);}
   once(id,age,x,y,w=0,h=0,rotation=0,alpha=1,color=0xffffff,mirror=false) {const e=this.assets.get(id);if(!e)throw new Error(`Missing slice effect: ${id}`);const frame=sampleRustVfx(e,age);if(frame>=0)this.bitmap(id,frame,x,y,w,h,rotation,alpha*rustVfxFrameAlpha(e,age,frame),color,mirror);}
   blit(){if(!this.hasDraw)return;const ctx=this.ctx;ctx.save();ctx.globalCompositeOperation=this.groupOp;ctx.drawImage(this.canvas,this.offsetX,this.offsetY,360*this.scale,640*this.scale);ctx.restore();this.gl.clear(this.gl.COLOR_BUFFER_BIT);this.hasDraw=false;}
   composite(){this.flush();this.blit();}
-  dispose() {const gl=this.gl;for(const t of this.resources)gl.deleteTexture(t);gl.deleteBuffer(this.buffer);gl.deleteProgram(this.program);gl.getExtension('WEBGL_lose_context')?.loseContext();this.assets.clear();}
+  dispose() {const gl=this.gl;for(const t of this.resources)gl.deleteTexture(t);gl.deleteBuffer(this.buffer);gl.deleteProgram(this.program);gl.getExtension('WEBGL_lose_context')?.loseContext();this.assets.clear();this.actorTextures.clear();}
 }

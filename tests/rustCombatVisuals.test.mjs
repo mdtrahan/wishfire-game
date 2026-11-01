@@ -69,3 +69,54 @@ test('ground projection uses .75 squash, preserves fixed zoom and leaves snapsho
 test('flag camera keeps the Troll body below the existing WFM boss HUD',()=>{
  const cam=createSliceCombatCamera(),s=snapshot();s.actors[1]={...enemy,pos:{x:1050,y:180}};cam.update(s,1);assert.ok(cam.y(180-370)>=155-1e-6);assert.ok(cam.y(hero.pos.y+30)<=478+1e-6);
 });
+
+const {SliceActor,poisonStrength,castStrength,CAST_PURPLE,CAST_BLUE}=await import('../web-runner/systems/rustCombatActor.mjs');
+const {chargeLines}=await import('../web-runner/systems/rustCombatSprites.mjs');
+const {createPoundModel,drawPound}=await import('../web-runner/systems/rustCombatPound.mjs');
+const {SliceSpotlightCamera}=await import('../web-runner/systems/rustCombatSpotlightCamera.mjs');
+test('utility casts retain source hue strengths, release curves and party-only Elevate flash',()=>{
+ const motion=new SliceActor(),s=snapshot(0);s.actors=[{...hero,kind:'kaja',actor_id:1,state:'cast',state_age:0,impact_at:1.875,state_duration:2.5}, {...hero,kind:'fara',actor_id:3},enemy];
+ motion.observe(s,[present('skill_started',{id:1,skill:'elevate'})]);assert.equal(motion.records.get(1).strength,0);
+ motion.observe({...s,time:1.875,combat_time:1.875,actors:s.actors.map(a=>a.actor_id===1?{...a,state_age:1.875}:a)},[present('groove_activated',{hero:1,groove:'power'})]);
+ assert.equal(motion.records.get(1).hue,CAST_PURPLE);assert.equal(motion.records.get(1).strength,.55);assert.equal(motion.records.get(3).strength,.4);assert.equal(motion.records.get(2).strength,0);
+ assert.equal(castStrength(1.5,1.5),1);assert.equal(castStrength(2.25,1.5),.5);assert.equal(castStrength(3,1.5),0);
+ const fara={...s,actors:[{...hero,kind:'fara',state:'cast',state_age:1.5,impact_at:1.5,state_duration:2}]};motion.observe({...fara,encounter_id:'ward'},[present('skill_started',{id:1,skill:'taunt'}),present('ward_gained',{target:1})]);assert.equal(motion.records.get(1).hue,CAST_BLUE);assert.equal(motion.records.get(1).strength,.55);
+});
+test('poison ramps over 1.5s, retains Gaussian ticks and decays for 1.5s on combat time',()=>{
+ const infection={since:0,end:null,from:0};assert.ok(poisonStrength(infection,0)<1e-9);assert.equal(poisonStrength(infection,2.5),.45+.20*Math.exp(-((.5/.105)**2)));assert.equal(poisonStrength(infection,3),.65);
+ infection.end=3;assert.equal(poisonStrength(infection,3),.65);assert.equal(poisonStrength(infection,4.5),0);
+ const motion=new SliceActor();motion.observe({...snapshot(0),actors:[{...hero,poisoned:3},enemy]},[]);motion.observe({...snapshot(1),combat_time:0,actors:[{...hero,poisoned:3},enemy]},[]);assert.ok(motion.records.get(1).dark<1e-9);
+});
+test('hit stop removes frozen time from presentation; Healing Spring cannot inherit camera punch',()=>{
+ const m=new SliceActor(),s=snapshot(1);m.observe(s,[]);m.observe({...s,time:2,hit_stop:{cause:'healingspring'}},[]);const frozen=m.observe({...s,time:2+1/30,hit_stop:{cause:'healingspring'}},[]);assert.equal(frozen.time,2);
+ const cam=createSliceCombatCamera();cam.update(s,1);m.impact={kind:'boss',born:2};m.observe({...s,time:2.1,hit_stop:{cause:'healingspring'}},[]);m.applyCamera(cam,m.observe({...s,time:2.2},[]));assert.equal(cam.zoom,.5);assert.equal(cam.offsetX,0);assert.equal(cam.offsetY,0);
+});
+test('charge admits once, holds its source clock and releases its echoes after 150ms',()=>{
+ const m=new SliceActor(),base=snapshot(0),spotlight={caster:1,started:0,phase:'charge',participants:[1,2],co_casters:[],hazards:[],projectiles:[]};
+ m.observe({...base,spotlight},[]);const q=m.charge;m.observe({...base,time:.6,spotlight},[]);assert.equal(m.charge,q);m.observe({...base,time:1.2,spotlight:{...spotlight,phase:'performing'}},[]);assert.equal(q.end,1.2);m.observe({...base,time:1.36,spotlight:{...spotlight,phase:'performing'}},[]);assert.equal(m.charge,null);
+ const lines=chargeLines(1,.5);assert.deepEqual(lines,chargeLines(1,.5));assert.notDeepEqual(lines,chargeLines(2,.5));for(const line of lines){assert.ok(line.life>=.12&&line.life<=.18);assert.ok(line.start>=3.5&&line.start<=5);}
+ for(const id of ['charge-ground','charge-gather','charge-flare'])assert.ok(manifest.effects[id],id);
+});
+test('Ground Pound emits moving translucent billboards with exact authored lifetime and spin',()=>{
+ const h={origin:{x:1000,y:300},dir:{x:1,y:0},shape:{kind:'line',length:240,width:60}},m=createPoundModel(h),cam=createSliceCombatCamera();cam.update(snapshot(0),1);const calls=[],g={quad(...args){if(args[8]==='gas')calls.push(args);},use(){},vertex(){},ring(){},glow(){}};
+ drawPound(g,m,h,cam,1.9,true);const first=m.puffs.find(p=>p.visible),x=first.x,y=first.y;assert.equal(m.puffs.length,92);assert.ok(first.alpha>0&&first.alpha<=.36);assert.ok(calls.length>0);for(const q of calls)assert.ok(q[6]<=.36);
+ drawPound(g,m,h,cam,2.1,true);assert.ok(first.x!==x||first.y!==y);calls.length=0;drawPound(g,m,h,cam,2.92,true);assert.equal(calls.length,0);
+});
+test('subunit healing accumulates for the source window rather than painting one popup per tick',()=>{
+ const fx=createRustEffectState();for(let i=0;i<15;i++)fx.ingest(snapshot(i/30),[present('healed',{target:1,amount:.1,source:{kind:'breather'}})]);assert.equal(fx.popups.length,0);fx.ingest(snapshot(.8),[]);assert.equal(fx.popups.length,1);assert.equal(fx.popups[0].text,'+2');
+});
+test('cast models survive their windup and keep a single source seed through resolution',()=>{
+ const fx=createRustEffectState(),s=snapshot(0);s.actors[0]={...hero,state_duration:1.5};fx.ingest(s,[present('skill_started',{id:1,skill:'arcane_pulse'})]);fx.ingest({...s,time:1.2},[]);assert.equal(fx.effects.find(f=>f.type==='cast').data.seed,effectSeed(1,0));
+});
+test('Marching Stomp has no encasement mapping; Bubble Pop film comes only from actor encased state',()=>{
+ const fx=createRustEffectState(),h={id:9,kind:'boss_stomp_step',origin:enemy.pos,shape:{kind:'circle',radius:70},phase:'locked',progress:.5};fx.ingest(snapshot(1,[h]),[present('hazard_spawned',{id:9,kind:h.kind})]);assert.ok(!fx.effects.some(f=>f.type==='bubble_pop'));assert.equal(fx.snapshot.actors[1].encased,undefined);
+});
+test('participant camera eases inside WFM lane and returns over 500ms without changing arena bounds',()=>{
+ const s=snapshot(0),before=structuredClone(s),cam=createSliceCombatCamera(),spot=new SliceSpotlightCamera(manifest.actor_boxes);cam.update(s,1);const v={caster:1,started:0,participants:[1,2],hazards:[],co_casters:[],projectiles:[]};spot.apply(cam,{...s,spotlight:v},false);assert.ok(cam.zoom>=.5&&cam.zoom<=.8);spot.apply(cam,{...s,time:1.2,spotlight:v},false);spot.apply(cam,{...s,time:1.3},false);spot.apply(cam,{...s,time:1.81},false);assert.equal(spot.current,null);assert.deepEqual(s,before);
+});
+test('Shadow eases the source-to-landing pose for 180ms before its authored hit beat',()=>{
+ const state=createRustEffectState(),s=snapshot(0);state.ingest(s,[present('blink',{hero:1,target:2,from:{x:800,y:300},to:{x:1100,y:300}}),damage({})]);const motion=new SliceActor();motion.observe(s,[]);motion.pose(s,state.effects);assert.equal(motion.records.get(1).visualX,800);assert.equal(motion.records.get(1).poseState,'cast');motion.observe({...s,time:.09,combat_time:.09},[]);motion.pose({...s,time:.09},state.effects);assert.equal(motion.records.get(1).visualX,1062.5);motion.observe({...s,time:.3,combat_time:.3},[]);motion.pose({...s,time:.3},state.effects);assert.equal(motion.records.get(1).poseState,'basic');
+});
+test('revive immunity keeps four alternating source sprite copies for two combat seconds',()=>{
+ const m=new SliceActor(),s=snapshot(0);m.observe(s,[present('revive_burst',{hero:1,pos:hero.pos,radius:100})]);assert.equal(m.records.get(1).immuneAt,0);m.observe({...s,time:1,combat_time:0},[]);assert.equal(m.records.get(1).immuneAt,0);m.observe({...s,time:2.1,combat_time:2.1},[]);assert.ok(2.1-m.records.get(1).immuneAt>=2);
+});

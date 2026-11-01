@@ -13,9 +13,9 @@ export function sliceEvent(record) {
   return body.kind === 'presentation' ? body.data.event : body;
 }
 export function createRustEffectState() {
-  const effects = [], popups = [], hazards = new Map(), markers = new Map(), actors = new Map(), projectiles = new Map();
+  const effects = [], popups = [], hazards = new Map(), markers = new Map(), actors = new Map(), projectiles = new Map(), healingBuckets = new Map();
   let snapshot = null, previous = null, encounter = null;
-  function clear() { effects.length = 0; popups.length = 0; hazards.clear(); markers.clear(); actors.clear(); projectiles.clear(); snapshot = previous = null; encounter = null; }
+  function clear() { healingBuckets.clear(); effects.length = 0; popups.length = 0; hazards.clear(); markers.clear(); actors.clear(); projectiles.clear(); snapshot = previous = null; encounter = null; }
   function effect(type, data, born, life) { const item = { type, data, born, life }; effects.push(item); return item; }
   function popup(data, now, tone = 'damage') {
     const target = actors.get(data.target); if (!target || data.amount <= 0) return;
@@ -48,10 +48,11 @@ export function createRustEffectState() {
       for(const a of next.actors)if(a.team===p.team&&(a.kind==='runa'||a.kind==='kaja')&&a.state==='basic'&&a.impact_at>0&&a.state_age>=a.impact_at&&a.state_age-a.impact_at<window&&Math.hypot(a.pos.x-p.pos.x,a.pos.y-p.pos.y)<100){source=a;count++;}
       projectiles.set(p.id,{origin:p.pos,source:count===1?source:null});
     }
+    for(const [id,b]of healingBuckets)if(now-b.born>=.75||now-b.last>=.2||!(actors.get(id)?.hp>0)){popup(b,now,'heal');healingBuckets.delete(id);}
     // Ownership must precede Hit irrespective of batch order.
     for (const record of records) {
       const { kind, data: d } = sliceEvent(record);
-      if (kind === 'blink') effect('shadow', { ...d, caster: actors.get(d.hero), targetActor: actors.get(d.target) }, now, 1.5);
+      if (kind === 'blink') effect('shadow', { ...d, caster: actors.get(d.hero), targetActor: actors.get(d.target), before: previous?.actors.find(a=>a.actor_id===d.target) }, now, 1.5);
       if (kind === 'split_strike') effect('split', { ...d, caster: actors.get(d.hero), targets: d.targets.map(id => ({ actor: actors.get(id), landed: records.some(r => r.body.kind === 'damage' && r.body.data.source === d.hero && r.body.data.target === id && r.body.data.amount > 0) })) }, now, .505);
     }
     for (const record of records) {
@@ -64,7 +65,7 @@ export function createRustEffectState() {
         if (shadow) { shadow.data.hit = true; shadow.data.impact = born; }
         else if (!split && d.amount > 0) effect('hit', { ...d, actor: actors.get(d.target), sourceActor: actors.get(d.source) }, now, d.crit ? .22 : .18);
       } else if (kind === 'healed' && d.amount > 0) {
-        popup(d, now, 'heal');
+        if(d.amount>=1)popup(d, now, 'heal');else{const b=healingBuckets.get(d.target);if(b){b.amount+=d.amount;b.last=now;}else healingBuckets.set(d.target,{target:d.target,amount:d.amount,born:now,last:now});}
         if (d.source?.kind === 'healing_spring') effect('healing', { ...d, seed: effectSeed(d.target, now) }, now, 3.2);
         else if (d.source && ['mend','breather','revive','phoenix','spring_tick'].includes(d.source.kind)) effect('green_aura', { ...d }, next.combat_time, .45);
       }
@@ -79,10 +80,11 @@ export function createRustEffectState() {
         const h = hazards.get(d.id)?.hazard;
         for (let i = effects.length - 1; i >= 0; i--) if (effects[i].type === 'resolved' && effects[i].data.hazard.id === d.id) effects.splice(i, 1);
         if (h) effect('cancelled', { hazard: h, shell: {...h,shape:{kind:'ring',inner:0,outer:0}}, rim:{...h,shape:{kind:'circle',radius:0}} }, now, .12);
-      } else if(kind==='revive_burst') effect('phoenix_burst',{...d},next.combat_time,.5);
+      } else if(kind==='knockback_resisted'||kind==='boss_staggered')effect('boss_push',{...d,resisted:kind==='knockback_resisted'},now,.18);
+      else if(kind==='revive_burst') effect('phoenix_burst',{...d,combatBorn:next.combat_time},now,.5);
       else if (kind === 'revived') effect('revive', { actor: actors.get(d.hero) }, now, .75);
       else if (kind === 'resurrect_interrupted' || kind === 'phoenix_cancelled') effect('revive_cancel', { actor: actors.get(d.target ?? d.hero) }, now, .28);
-      else if (kind === 'skill_started') effect('cast', { ...d, actor: actors.get(d.id), seed: effectSeed(d.id, now) }, now, .5);
+      else if (kind === 'skill_started') effect('cast', { ...d, actor: actors.get(d.id), seed: effectSeed(d.id, now) }, now, (actors.get(d.id)?.state_duration??.5)+2.6);
       else if (kind === 'hazard_spawned' && d.kind === 'faze_pool') {
         const h = hazards.get(d.id)?.hazard; if (h) effect('faze_splash', { hazard: h }, now, .3);
       }

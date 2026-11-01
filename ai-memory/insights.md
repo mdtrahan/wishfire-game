@@ -670,3 +670,6 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Attack-range changes can move formation stops and stall short regroup walks when locomotion subtracts attack reach from a waypoint. Use explicit contact destinations with compensated travel; verify both role order after reversals and target-death regrouping.
 
 - A worker timeout must stop its own subprocess group. Bind a planned checkout only after its branch proves task ownership, and persist identity when linking resumes the baseline.
+
+- VFX comparisons must share the same ordered simulation snapshots/events and effect-relative clock; matching effect names across independent fights cannot establish visual parity. Pin the trial constructor seed as well as replay packets.
+- Ground dust that overlaps actors needs the renderer’s actual silhouette mask and source alpha blend. Verify soft billboard drift and retirement across frames before adjusting opacity.

@@ -268,6 +268,11 @@ removeBlock('if (ampShowsBadge) {');
     '    for (const paint of actorFrontOverlayQueue) paint();',
     '    for (const paint of actorFrontOverlayQueue) paint();\n    state.globals.RustCombatPresentation?.front(ctx, layoutScale, layoutOffsetX, layoutOffsetY);',
   );
+  effectiveBody=effectiveBody.replace("const enemyH = (g.EnemySize || 40) * layoutScale * COMBAT_BATTLEFIELD_ZOOM * (enemy.combatRank === 'boss' ? 4 : 1);", "const enemyH = state.globals.RustCombatPresentation?.height(enemy, (g.EnemySize || 40) * layoutScale * COMBAT_BATTLEFIELD_ZOOM * (enemy.combatRank === 'boss' ? 4 : 1), layoutScale) ?? (g.EnemySize || 40) * layoutScale * COMBAT_BATTLEFIELD_ZOOM * (enemy.combatRank === 'boss' ? 4 : 1);");
+  effectiveBody=effectiveBody.replace('const scaledH = h * heroScale * 1.55 * COMBAT_BATTLEFIELD_ZOOM;', 'const scaledH = state.globals.RustCombatPresentation?.height(hero, h * heroScale * 1.55 * COMBAT_BATTLEFIELD_ZOOM, layoutScale) ?? h * heroScale * 1.55 * COMBAT_BATTLEFIELD_ZOOM;');
+  // The flag painter consumes the existing sampled sprite.
+  effectiveBody = effectiveBody.replaceAll('actorUID: enemy.uid,', 'actorUID: enemy.uid, rustActorId: enemy.rustActorId,');
+  effectiveBody = effectiveBody.replaceAll('actorUID: hero.uid,', 'actorUID: hero.uid, rustActorId: hero.rustActorId,');
   return effectiveBody;
 }
 
@@ -293,7 +298,7 @@ export function renderRuntime(deps) {
   deps.renderCombatAttackVfx = renderCombatAttackVfx;
   deps.drawCombatProgressHud = drawCombatProgressHud;
   deps.drawCombatHealthBar = drawCombatHealthBar;
-  deps.drawActorPuppetFrame = drawActorPuppetFrame;
+  deps.drawActorPuppetFrame = deps.state.globals.RustCombatPresentation?.sprite ?? drawActorPuppetFrame;
   deps.drawHeroWardAura = drawHeroWardAura;
   deps.heroWardShare = heroWardShare;
   deps.combatEnemiesForPresentation = combatEnemiesForPresentation;
