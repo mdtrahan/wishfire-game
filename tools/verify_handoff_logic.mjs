@@ -74,9 +74,49 @@ export function quantiles(values) {
   const a = values.filter(Number.isFinite).sort((x, y) => x - y);
   return a.length ? { count: a.length, p50: a[Math.floor((a.length - 1) * .5)], p95: a[Math.floor((a.length - 1) * .95)], max: a.at(-1) } : null;
 }
-export function perfDiff(base, head) {
-  return Object.fromEntries(Object.keys(head).map(key => {
-    const b = base[key], h = head[key], deltaPct = Number.isFinite(b) && Number.isFinite(h) ? (b === 0 ? (h === 0 ? 0 : Infinity) : (h - b) / Math.abs(b) * 100) : null;
-    return [key, { base: b, head: h, deltaPct: deltaPct === Infinity ? 'Infinity' : deltaPct, regression: deltaPct === null || deltaPct > 10 }];
+export const PERF_THRESHOLDS = Object.freeze({
+  pageLoadMs: { relativePct: 10, absolute: 50, repeated: true },
+  frameP95: { relativePct: 10, absolute: 2, repeated: true },
+  stepP95: { relativePct: 10, absolute: .2 },
+  heapGrowthBytes: { relativePct: 10, absolute: 5 * 1024 * 1024 },
+  wasmBytes: { relativePct: 10, absolute: 64 * 1024 },
+});
+
+export function medianSpread(values) {
+  if (values.length !== 3 || !values.every(Number.isFinite)) return null;
+  const samples = [...values].sort((a, b) => a - b);
+  return { median: samples[1], min: samples[0], max: samples[2], samples };
+}
+
+export function summarizeMetrics(runs) {
+  const keys = new Set([...Object.keys(PERF_THRESHOLDS), ...runs.flatMap(r => Object.keys(r.metrics))]);
+  const spreads = Object.fromEntries([...keys].map(key => [key, medianSpread(runs.map(r => r.metrics[key]))]));
+  return { metrics: Object.fromEntries([...keys].map(key => [key, spreads[key]?.median ?? null])), spreads };
+}
+
+export function perfDiff(base, head, baseSpreads = {}, headSpreads = {}) {
+  return Object.fromEntries(Object.entries(PERF_THRESHOLDS).map(([key, threshold]) => {
+    const b = base[key], h = head[key], delta = Number.isFinite(b) && Number.isFinite(h) ? h - b : null;
+    const deltaPct = delta === null ? null : b === 0 ? (h === 0 ? 0 : Infinity) : delta / Math.abs(b) * 100;
+    const bs = baseSpreads[key], hs = headSpreads[key];
+    const validSpreads = !threshold.repeated || (bs && hs && bs.median === b && hs.median === h);
+    const overlap = threshold.repeated && validSpreads && bs.min <= hs.max && hs.min <= bs.max;
+    const status = delta === null || !validSpreads ? 'FAIL' : overlap ? 'INCONCLUSIVE'
+      : h > b + Math.abs(b) * threshold.relativePct / 100 && h > b + threshold.absolute ? 'FAIL' : 'PASS';
+    return [key, { base: b ?? null, head: h ?? null, delta, deltaPct: deltaPct === Infinity ? 'Infinity' : deltaPct,
+      threshold, spread: threshold.repeated ? { base: bs ?? null, head: hs ?? null } : undefined,
+      status, regression: status === 'FAIL' }];
   }));
+}
+
+export function selectBaseCache(cache, sha, scenario, crates) {
+  if (cache?.schema !== 1 || cache.sha !== sha || !Array.isArray(cache.npm?.failures)
+      || !cache.npm.failures.every(f => typeof f === 'string' && !f.endsWith('UNPARSED_SUITE_FAILURE'))
+      || !Number.isInteger(cache.npm.step?.status) || (cache.npm.step.status !== 0 && !cache.npm.failures.length)) return null;
+  const result = cache.result;
+  const reusable = result && JSON.stringify(result.scenario) === JSON.stringify(scenario)
+    && JSON.stringify(result.crates) === JSON.stringify(crates) && result.probes?.runs?.length === 3
+    && result.probes.coverage.complete && !result.probes.errors.length
+    && result.suites.steps.every(s => s.status === 0 || /^(npm-test|cargo-)/.test(s.name));
+  return { ...cache, result: reusable ? result : null };
 }

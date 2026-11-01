@@ -22,7 +22,7 @@
 - Make historically fragile behavior explicit and repeatable.
 
 ## Ownership
-- `verifyHandoff.test.mjs` guards stable npm/Cargo failure identities, failure-set comparisons, diff line attribution, test-change review, duplicate-block heuristics and performance gate boundaries, including missing/zero baseline measurements.
+- `verifyHandoff.test.mjs` guards stable npm/Cargo failure identities, failure-set comparisons, diff line attribution, test-change review, duplicate-block heuristics and performance gate boundaries, strict relative-plus-absolute thresholds, three-run medians/spread overlap, missing/zero baseline measurements and SHA/scenario-bound base-cache reuse.
 - `*.test.js` files use Node's built-in test runner for contracts and static/runtime checks.
 - `*.spec.js` files cover browser-style flows where present.
 - `offlineBundleContract.test.js` protects the portable file:// release shape, embedded startup and elemental impact manifests, relative frame assets, manifest hashes, and separation from the hosted release.

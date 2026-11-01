@@ -3,9 +3,9 @@ import { createServer } from 'node:net';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
-import { writeFile, stat } from 'node:fs/promises';
+import { mkdir, writeFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { quantiles } from './verify_handoff_logic.mjs';
+import { quantiles, summarizeMetrics } from './verify_handoff_logic.mjs';
 const require = createRequire(import.meta.url);
 const { detectChromeExecutable, classifyPlaywrightFailure, waitForJsonEndpoint } = require('./playwright_support.js');
 
@@ -149,6 +149,12 @@ export async function combatProbe(root, out, seconds, seed) {
     page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
     await page.addInitScript(()=>localStorage.clear()); // Each engine attempt starts with the same fresh save.
     await page.addInitScript(installObservers);
+    const enterBoss=async()=>{
+      await page.evaluate(seed=>__codexGame.setEncounterRequest({seed}),seed);
+      await page.getByRole('button',{name:'Open developer tooling modal',exact:true}).click();
+      await page.locator('[data-devtool-boss-chapter]').fill('1');await page.locator('[data-devtool-launch-boss]').click();
+      await page.waitForFunction(()=>JSON.parse(render_game_to_text()).quest.phase==='combat');
+    };
     let legacyFlag=false,loadMs;
     for(const suffix of ['', '?rustCombat=1']) {
       console.log(`probe: load ${suffix?'legacy opt-in':'default engine'}`);
@@ -157,9 +163,7 @@ export async function combatProbe(root, out, seconds, seed) {
       await page.evaluate(seed=>__codexGame.setEncounterRequest({seed}),seed);
       await page.waitForTimeout(2000);
       // Canonical Chapter 1 boss entry reused from qa_rust_combat_playtest2.mjs.
-      await page.getByRole('button',{name:'Open developer tooling modal',exact:true}).click();
-      await page.locator('[data-devtool-boss-chapter]').fill('1');await page.locator('[data-devtool-launch-boss]').click();
-      await page.waitForFunction(()=>JSON.parse(render_game_to_text()).quest.phase==='combat');
+      await enterBoss();
       console.log('probe: combat entered; checking Rust authority');
       await page.waitForFunction(()=>__codexGame.globals.RustCombatPresentation?.state.snapshot?.actors.length,{},{timeout:10000}).catch(()=>{});
       const engine=await page.evaluate(()=>!!__codexGame.globals.RustCombatPresentation?.state.snapshot);
@@ -169,7 +173,14 @@ export async function combatProbe(root, out, seconds, seed) {
     const cdp=await context.newCDPSession(page);await cdp.send('Performance.enable');
     const heap=async()=> (await cdp.send('Runtime.getHeapUsage')).usedSize;
     const heapStart=await heap(),identity=await page.evaluate(()=>({seed:__codexGame.globals.ContinuousCombatStage.seed,chapter:__codexGame.globals.ContinuousCombatStage.region,viewport:[innerWidth,innerHeight,devicePixelRatio]}));
-    console.log(`probe: recording ${seconds}s`);await page.evaluate(()=>handoffProbe.start());await delay(seconds*1000);await page.evaluate(()=>handoffProbe.stop());
+    console.log(`probe: recording ${seconds}s`);await page.evaluate(()=>handoffProbe.start());
+    const deadline=performance.now()+seconds*1000;let reentries=0;
+    while(performance.now()<deadline){
+      await delay(Math.min(1000,Math.max(0,deadline-performance.now())));
+      const active=await page.evaluate(()=>JSON.parse(render_game_to_text()).quest.phase==='combat'&&!!__codexGame.globals.RustCombatPresentation?.state.snapshot);
+      if(!active&&deadline-performance.now()>2000){console.log('probe: re-entering seeded Chapter 1 boss');await enterBoss();reentries++;}
+    }
+    await page.evaluate(()=>handoffProbe.stop());
     const heapEnd=await heap(),q=await page.evaluate(()=>handoffProbe);
     await writeFile(join(out,'trace.json'),JSON.stringify({...q,identity,errors}));
     const actors=q.samples.flatMap(s=>s.actors.map(a=>({...a,floor:s.floor})));
@@ -180,11 +191,30 @@ export async function combatProbe(root, out, seconds, seed) {
     const claims=Object.fromEntries(Object.entries(violations).map(([id,value])=>[id,{status:complete&&value===0?'PASS':'FAIL',measured:value,evidence: {samples:q.samples.length,draws:q.draws,effects:q.observedEffects,buffs:q.buffs.length}}]));
     if(!q.observedEffects)claims.noLingeringEffects.status='FAIL';
     if(!q.buffs.length)claims.buffsAllowedSides.status='FAIL';
-    return {engine:'Rust (live snapshots + measured WASM calls)',legacyFlag,identity,claims,coverage:{complete:!!complete,activeSeconds,samples:q.samples.length,effects:q.observedEffects,buffs:q.buffs.length},metrics:{frameP50:frame?.p50??null,frameP95:frame?.p95??null,frameMax:frame?.max??null,stepP50:step?.p50??null,stepP95:step?.p95??null,stepMax:step?.max??null,heapStart,heapEnd,longTasks:q.longTasks.length,longTaskMs:q.longTasks.reduce((a,b)=>a+b,0),wasmBytes:(await stat(join(root,'web-runner/assets/simulation_core.wasm'))).size,pageLoadMs:loadMs},errors:[...errors,...q.errors]};
+    return {trace:join(out,'trace.json'),reentries,engine:'Rust (live snapshots + measured WASM calls)',legacyFlag,identity,claims,coverage:{complete:!!complete,activeSeconds,samples:q.samples.length,effects:q.observedEffects,buffs:q.buffs.length},metrics:{frameP50:frame?.p50??null,frameP95:frame?.p95??null,frameMax:frame?.max??null,stepP50:step?.p50??null,stepP95:step?.p95??null,stepMax:step?.max??null,heapStart,heapEnd,heapGrowthBytes:heapEnd-heapStart,longTasks:q.longTasks.length,longTaskMs:q.longTasks.reduce((a,b)=>a+b,0),wasmBytes:(await stat(join(root,'web-runner/assets/simulation_core.wasm'))).size,pageLoadMs:loadMs},errors:[...errors,...q.errors]};
   } catch(error) {return {error:String(error.stack),classification:classifyPlaywrightFailure(error),errors,claims:{},metrics:{}};}
   finally {
     console.log('probe: releasing owned browser/server');
     if(browserServer){let timer;try{await Promise.race([browser?.close(),new Promise(resolve=>{timer=setTimeout(()=>{browserServer.process().kill('SIGKILL');resolve();},10000);})]);}finally{clearTimeout(timer);await browserServer.kill();}}
     if(server.exitCode===null&&server.signalCode===null){const stopped=once(server,'exit');server.kill('SIGTERM');await stopped;}
   }
+}
+
+export async function combatProbes(root, out, seconds, seed) {
+  const runs = [];
+  for (let i = 1; i <= 3; i++) {
+    const dir = join(out, `run-${i}`);
+    await mkdir(dir, { recursive: true });
+    console.log(`probe: run ${i}/3`);
+    runs.push(await combatProbe(root, dir, seconds, seed));
+  }
+  return {
+    ...summarizeMetrics(runs), runs,
+    coverage: { complete: runs.every(r => r.coverage?.complete) },
+    claims: Object.fromEntries(Object.keys(runs[0].claims).map(id => [id, {
+      status: runs.every(r => r.claims[id]?.status === 'PASS') ? 'PASS' : 'FAIL',
+      measured: runs.reduce((sum, r) => sum + (r.claims[id]?.measured ?? Infinity), 0),
+    }])),
+    errors: runs.flatMap(r => [...r.errors, ...(r.error ? [r.error] : [])]),
+  };
 }

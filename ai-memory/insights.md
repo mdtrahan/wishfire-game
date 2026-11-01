@@ -685,3 +685,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - An authoritative actor can disappear before its effect timer reaches zero. Reconcile encasement on death/removal as well as timer expiry, and release live combat objects when their Rust world is destroyed before a presentation tail ends.
 
 - Combat floor boundaries define movement; HUD rectangles define paint order. Clipping a combat pass to an unobstructed HUD gap crops procedural spells and moving actors. Deferred spawn markers must reserve host identities and count toward cadence, clear gates, capacity and deterministic hashes until emergence. Chest admission belongs to the host; movement and opening belong to combat, with reward mutation separately excluded.
+
+- Performance regression gates need metric-specific absolute floors alongside relative thresholds. Repeated page/frame samples expose noise through median and min/max overlap; incomplete evidence must still fail closed. Cache baseline failures by exact source SHA and pin probe reuse to the measured scenario.
