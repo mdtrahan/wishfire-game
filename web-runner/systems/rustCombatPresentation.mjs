@@ -70,7 +70,7 @@ export async function createRustCombatPresentation(globals) {
   function groundPass(ctx,s,ox,oy){
     if(!state.snapshot)return;begin(ctx,s,ox,oy);sprites.beginFrame(density,s,ox,oy);const now=state.snapshot.time,z=camera.zoom/.5;sprites.chargeArt(false,now);
     for(const m of state.markers.values()){const age=now-m.born,fade=m.ended===null?1:c(1-(now-m.ended)/.15),id=age<.2?'spawn-marker-appear':'spawn-marker',frame=age<.2?Math.floor(age*20):Math.floor((age-.2)*10+1e-9)%6,e=assets.entries.get(id);gpu.bitmap(id,frame,camera.x(m.pos.x),camera.y(m.pos.y),e.screen_size_px[0]*z,e.screen_size_px[1]*z,0,fade);}
-    for(const h of state.snapshot.hazards){const x=camera.x(h.origin.x),y=camera.y(h.origin.y),r=h.shape.radius??0;
+    for(const h of state.groundItems){const x=camera.x(h.origin.x),y=camera.y(h.origin.y),r=h.shape.radius??0;
       if((h.kind==='ward_ring'||h.kind==='elevate_ring')&&h.phase==='active'){const age=(1-h.progress)*(h.kind==='ward_ring'?5:6);if(age<.3)gpu.bitmap('support-cast-pulse',Math.min(2,Math.floor(age/.3*3)),x,y,42*z,31.5*z,0,1-age/.3,h.kind==='ward_ring'?0x59b3ff:0x59ffa6);}
       else if(h.kind==='faze_pool'&&h.phase!=='resolved'){
         const age=(1-c(h.progress))*5,fade=Math.min(age/.1,1)*c((5-age)/.35);gpu.bitmap('faze-pool',0,x,y,r*2*camera.zoom,r*2*camera.zoom*.75,0,fade);
@@ -79,7 +79,7 @@ export async function createRustCombatPresentation(globals) {
       }else if(h.kind==='resurrect'&&h.phase!=='resolved'){
         const breath=.92+.08*Math.sin(now*3);gpu.bitmap('resurrect/light-column',0,x,y-76.25,40,160,0,.32*breath,0xffc74d);gpu.bitmap('resurrect/ground-ring',0,x,y,52,39,0,.26,0xffc747);
         // Slice draws its channel clock as geometry; its surrounding light remains bitmap art.
-        const n=Math.ceil(80*c(h.progress));for(let i=0;i<n;i++){const a=-Math.PI/2+i/80*TAU,b=-Math.PI/2+Math.min((i+1)/80,h.progress)*TAU;gpu.line(x+Math.cos(a)*23,y+Math.sin(a)*23*.75,x+Math.cos(b)*23,y+Math.sin(b)*23*.75,1.8,0xffd461,.85);}
+        const n=Math.ceil(80*c(h.progress));for(let i=0;i<n;i++){const a=-Math.PI/2+i/80*TAU,b=-Math.PI/2+Math.min((i+1)/80,h.progress)*TAU;gpu.solidLine(x+Math.cos(a)*23,y+Math.sin(a)*23*.75,x+Math.cos(b)*23,y+Math.sin(b)*23*.75,1.8,0xffd461,.85);}
       }
     }
     for(const f of state.effects)if(f.type==='faze_splash'){const h=f.data.hazard,r=h.shape.radius;gpu.once('faze-splash',now-f.born,camera.x(h.origin.x),camera.y(h.origin.y),2*r*camera.zoom,2*r*camera.zoom*.75);}
@@ -118,28 +118,28 @@ export async function createRustCombatPresentation(globals) {
   }
   function procedural(back){
     const now=state.snapshot.time,z=camera.zoom/.5;
-    for(const h of state.snapshot.hazards)if(h.kind==='ground_pound'&&h.phase!=='resolved'){const model=state.hazards.get(h.id)?.model;if(model)drawPound(gpu,model,h,camera,h.progress*1.3,!back);}
+    for(const h of state.snapshot.hazards)if(h.kind==='ground_pound'&&h.phase!=='resolved'){const model=state.hazards.get(h.id)?.model;if(model){gpu.postMode(true);drawPound(gpu,model,h,camera,h.progress*1.3,!back);gpu.postMode(false);}}
     for(const h of state.snapshot.hazards)if(h.kind==='arcane_pulse'&&h.phase!=='resolved'){
-      const model=state.hazards.get(h.id)?.model,a=state.actors.get(h.owner),p=a?.pos??h.origin;if(model)drawArcane(gpu,model,camera.x(p.x),camera.y(p.y)-58*.72*z,camera.x(h.origin.x),camera.y(h.origin.y),h.progress*.9,z,back);
+      const model=state.hazards.get(h.id)?.model,a=state.actors.get(h.owner),p=a?.pos??h.origin;if(model){gpu.postMode(true);drawArcane(gpu,model,camera.x(p.x),camera.y(p.y)-58*.72*z,camera.x(h.origin.x),camera.y(h.origin.y),h.progress*.9,z,back);gpu.postMode(false);}
     }
-    for(const f of state.effects){const d=f.data;if(f.type==='ground_pound'&&d.model)drawPound(gpu,d.model,d.hazard,camera,1.3+(now-f.born)*13/6,!back);else if(f.type==='arcane_pulse'&&d.model)drawArcane(gpu,d.model,camera.x(d.source.x),camera.y(d.source.y)-58*.72*z,camera.x(d.hazard.origin.x),camera.y(d.hazard.origin.y),.9+now-f.born,z,back);
-      else if(f.type==='healing'&&d.model){const a=state.actors.get(d.target);if(a?.hp>0)drawHealing(gpu,d.model,camera.x(a.pos.x),camera.y(a.pos.y),now-f.born,z,!back);}
+    for(const f of state.effects){const d=f.data;if(f.type==='ground_pound'&&d.model){gpu.postMode(true);drawPound(gpu,d.model,d.hazard,camera,1.3+(now-f.born)*13/6,!back);gpu.postMode(false);}else if(f.type==='arcane_pulse'&&d.model){gpu.postMode(true);drawArcane(gpu,d.model,camera.x(d.source.x),camera.y(d.source.y)-58*.72*z,camera.x(d.hazard.origin.x),camera.y(d.hazard.origin.y),.9+now-f.born,z,back);gpu.postMode(false);}
+      else if(f.type==='healing'&&d.model){const a=state.actors.get(d.target);if(a?.hp>0){gpu.postMode(true);drawHealing(gpu,d.model,camera.x(a.pos.x),camera.y(a.pos.y),now-f.born,z,!back);gpu.postMode(false);}}
     }
   }
   function frontPass(ctx,s,ox,oy){
     if(!state.snapshot)return;begin(ctx,s,ox,oy);const snapshot=state.snapshot,now=snapshot.time,z=camera.zoom/.5;
     gpu.mask(sprites.mask);procedural(false);sprites.chargeArt(true,now);
     for(const a of snapshot.actors)if(a.enraged&&a.hp>0){const pulse=.5+.5*Math.sin(now*TAU*.9),unit=a.scale*camera.zoom;gpu.bitmap('flash',0,camera.x(a.pos.x),camera.y(a.pos.y)-62*unit,120*unit*(1+.06*pulse),150*unit*(1+.06*pulse),0,.16+.12*pulse,0xff140f);}
-    for(const h of snapshot.hazards)if(h.kind==='bubble_pop'&&h.phase!=='resolved')drawBubbleShell(gpu,sphere,camera.x(h.origin.x),camera.y(h.origin.y),h.progress*.35,h.shape.radius/140*z);
+    for(const h of snapshot.hazards)if(h.kind==='bubble_pop'&&h.phase!=='resolved'){gpu.postMode(true);drawBubbleShell(gpu,sphere,camera.x(h.origin.x),camera.y(h.origin.y),h.progress*.35,h.shape.radius/140*z);gpu.postMode(false);}
     for(const f of state.effects){const age=now-f.born,d=f.data;
       if(f.type==='shadow')shadow(f,now,z);else if(f.type==='split')split(f,now,z);
-      else if(f.type==='bubble_pop'&&d.model)drawBubbleRelease(gpu,d.model,camera.x(d.hazard.origin.x),camera.y(d.hazard.origin.y),age,d.hazard.shape.radius/140*z);
+      else if(f.type==='bubble_pop'&&d.model){gpu.postMode(true);drawBubbleRelease(gpu,d.model,camera.x(d.hazard.origin.x),camera.y(d.hazard.origin.y),age,d.hazard.shape.radius/140*z);gpu.postMode(false);}
       else if(f.type==='boss_push'){const a=state.actors.get(d.id);if(a){const x=camera.x(a.pos.x),y=camera.y(a.pos.y);if(d.resisted)gpu.once('blast-smoke',age*.48/.18,x,y,42*z,22*z,0,.65*(1-age/.18));else gpu.once('hit-physical',age,x,y-sliceChest(a)*camera.zoom,(d.interrupted?48:36)*z,(d.interrupted?48:36)*z);}}
       else if(f.type==='hit'){const a=d.actor,source=d.sourceActor;if(!a)continue;let dx=(source?.pos.x??a.pos.x)-a.pos.x,dy=((source?.pos.y??a.pos.y)-a.pos.y)*.75;const length=Math.hypot(dx,dy);if(length){dx/=length;dy/=length;}const element=d.element==='physical'?'physical':d.element==='poison'?'poison':'arcane',id=d.spriteId;if(assets.entries.has(id))gpu.once(id,age,camera.x(a.pos.x)+dx*6*z,camera.y(a.pos.y)-sliceChest(a)*camera.zoom+dy*6*z,(d.crit?38:d.element==='poison'?12:24)*z,(d.crit?38:d.element==='poison'?12:24)*z,Math.atan2(-dy,-dx));}
       else if(f.type==='phoenix_burst'){const t=c((snapshot.combat_time-d.combatBorn)/.5),radius=d.radius*camera.zoom*(1-(1-t)**3);gpu.bitmap('wave_band',0,camera.x(d.pos.x),camera.y(d.pos.y),radius*2,radius*2*.75,0,(1-t)*.85,0xffcc44);}
       else if(f.type==='revive'||f.type==='revive_cancel'){const a=d.actor;if(!a)continue;const interrupted=f.type==='revive_cancel',t=c(age/(interrupted?.28:.75)),size=interrupted?1-t*.65:.65+t,x=camera.x(a.pos.x),y=camera.y(a.pos.y);gpu.bitmap(interrupted?'resurrect/channel-glow':'resurrect/burst',0,x,y-23,85*size,112*size,0,(1-t)*(interrupted?.3:.95),0xffd159);if(!interrupted)gpu.bitmap('resurrect/ground-ring',0,x,y,86*(.3+t),86*.75*(.3+t),0,(1-t)*.9,0xffcc52);}
     }
-    for(const h of snapshot.hazards)if(h.kind==='resurrect'&&h.phase!=='resolved'){const x=camera.x(h.origin.x),y=camera.y(h.origin.y);for(let i=0;i<9;i++){const phase=(now*.36+i*.113)%1,px=x+Math.sin(i*2.4+phase*3)*(10+phase*8),py=y-10-phase*115,size=15*(1-phase*.4);gpu.bitmap('resurrect/motes',(Math.floor(now*8)+i)%4,px,py,size,size,0,(1-phase)*.85,0xffd666);}const owner=state.actors.get(h.owner);if(owner?.hp>0)gpu.bitmap('resurrect/channel-glow',0,camera.x(owner.pos.x),camera.y(owner.pos.y)-19,43,58,0,.3*(.92+.08*Math.sin(now*3)),0xffba38);}
+    for(const h of state.channels){const x=camera.x(h.origin.x),y=camera.y(h.origin.y);for(let i=0;i<9;i++){const phase=(now*.36+i*.113)%1,px=x+Math.sin(i*2.4+phase*3)*(10+phase*8),py=y-10-phase*115,size=15*(1-phase*.4);gpu.bitmap('resurrect/motes',(Math.floor(now*8)+i)%4,px,py,size,size,0,(1-phase)*.85,0xffd666);}const owner=state.actors.get(h.owner);if(owner?.hp>0)gpu.bitmap('resurrect/channel-glow',0,camera.x(owner.pos.x),camera.y(owner.pos.y)-19,43,58,0,.3*(.92+.08*Math.sin(now*3)),0xffba38);}
     for(const h of snapshot.hazards)if(h.kind==='boss_charge'&&h.phase==='active'){
       const a=state.actors.get(h.owner),entry=state.hazards.get(h.id);if(!a||a.hp<=0)continue;const age=snapshot.combat_time-(entry.chargeBorn??snapshot.combat_time),unit=(a.scale??2.2)/2.2,mirror=h.dir.x<0,rotation=Math.atan2(h.dir.y*.75,h.dir.x)-(mirror?Math.PI:0),x=camera.x(a.pos.x),y=camera.y(a.pos.y)-38*unit;gpu.bitmap('charge-lines',(Math.floor(age*24)+2)%6,x,y,128*unit,96*unit,rotation,1,0xffffff,mirror);gpu.bitmap('charge-shell',Math.floor(age*18)%6,x,y,128*unit,96*unit,rotation,1,0xffffff,mirror);
     }

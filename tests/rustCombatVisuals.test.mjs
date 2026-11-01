@@ -120,3 +120,13 @@ test('Shadow eases the source-to-landing pose for 180ms before its authored hit 
 test('revive immunity keeps four alternating source sprite copies for two combat seconds',()=>{
  const m=new SliceActor(),s=snapshot(0);m.observe(s,[present('revive_burst',{hero:1,pos:hero.pos,radius:100})]);assert.equal(m.records.get(1).immuneAt,0);m.observe({...s,time:1,combat_time:0},[]);assert.equal(m.records.get(1).immuneAt,0);m.observe({...s,time:2.1,combat_time:2.1},[]);assert.ok(2.1-m.records.get(1).immuneAt>=2);
 });
+test('Kaja aura damage accumulates by source hazard and flushes after the current tick',()=>{
+ const fx=createRustEffectState(),h={id:18,kind:'kaja_aura',owner:1,origin:hero.pos,shape:{kind:'circle',radius:100},phase:'active'};
+ for(let i=0;i<=23;i++)fx.ingest(snapshot(i/30,[h]),[damage({amount:.2,element:'nature'})]);assert.equal(fx.popups.length,1);assert.equal(fx.popups[0].text,'5');assert.equal(fx.popups[0].amount,Array.from({length:24},()=>.2).reduce((a,b)=>a+b,0));assert.ok(fx.effects.filter(f=>f.type==='hit').length<=2);
+});
+test('a short fractional-heal bucket retires without inventing a full point of healing',()=>{
+ const fx=createRustEffectState();fx.ingest(snapshot(0),[present('healed',{target:1,amount:.2,source:{kind:'breather'}})]);fx.ingest(snapshot(.25),[]);assert.equal(fx.popups.length,0);
+});
+test('Phoenix channel consumes its read-only observation and takes precedence over a colocated resurrect hazard',()=>{
+ const s=snapshot(1,[{kind:'resurrect',phase:'active',owner:3,origin:hero.pos,progress:.2}]),fx=createRustEffectState(),original=structuredClone(s);fx.ingest({...s,phoenix_cooldown:0,phoenix_channel:{hero:1,progress:.6}},[]);assert.equal(fx.channels.length,1);assert.equal(fx.channels[0].owner,null);assert.equal(fx.channels[0].progress,.6);assert.deepEqual(s,original);fx.ingest({...s,hit_stop:{cause:'healingspring'},phoenix_channel:{hero:1,progress:.6}},[]);assert.equal(fx.channels.length,1);assert.equal(fx.channels[0].owner,3);
+});

@@ -245,5 +245,5 @@ test('wrapper reacquires wasm memory after growth and frees on decode/operation 
 });
 
 test('combat snapshots expose presentation suspension and poison observations without changing input contracts',()=>{
- const {bridge}=setup(),created=bridge.create(config());try{assert.ok(Object.hasOwn(created.snapshot,'hit_stop'));assert.ok(Object.hasOwn(created.snapshot,'spotlight'));for(const a of created.snapshot.actors)assert.equal(typeof a.poisoned,'number');}finally{bridge.destroy(created.world);}
+ const {bridge}=setup(),created=bridge.create(config());try{assert.ok(Object.hasOwn(created.snapshot,'hit_stop'));assert.ok(Object.hasOwn(created.snapshot,'spotlight'));assert.ok(Object.hasOwn(created.snapshot,'phoenix_channel'));assert.equal(typeof created.snapshot.phoenix_cooldown,'number');for(const a of created.snapshot.actors)assert.equal(typeof a.poisoned,'number');}finally{bridge.destroy(created.world);}
 });

@@ -23,7 +23,7 @@ export class SliceSprites {
   if(!r.rect)r.rect={drawX:0,drawY:0,width:0,height:0};const rect=r.rect;
   const px=x+r.dx*poseUnit,py=y-r.lift*poseUnit-(a.team==='enemy'&&a.encased>0?(6+2*Math.sin(frame.combat_time*3+a.actor_id))*this.camera.zoom/.5:0),dx=-p.clip.footOrigin.x*unit,dy=-p.clip.footOrigin.y*unit*r.sy,w=p.clip.canvas.width*unit,hh=p.clip.canvas.height*unit*r.sy;
   rect.drawX=ox+(px+dx)*s;rect.drawY=oy+(py+dy)*s;rect.width=w*s;rect.height=hh*s;
-  const opacity=this.motion.featured(a)?1:1-this.motion.scrimAlpha;
+  const opacity=(this.motion.featured(a)?1:1-this.motion.scrimAlpha)*(a.state==='dead'?1-c((a.state_age-1)/.42):1);
   const g=this.gpu;g.begin((window.devicePixelRatio||1)*s,ctx,s,ox,oy);
   const charge=this.charge,reduced=this.reduced;
   if(charge?.id===a.actor_id){if(!charge.image)charge.image=p.frame;this.echoes(charge,px,py,body,dx,dy,w,hh,frame.time,reduced);}

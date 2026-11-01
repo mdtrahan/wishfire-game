@@ -673,3 +673,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 
 - VFX comparisons must share the same ordered simulation snapshots/events and effect-relative clock; matching effect names across independent fights cannot establish visual parity. Pin the trial constructor seed as well as replay packets.
 - Ground dust that overlaps actors needs the renderer’s actual silhouette mask and source alpha blend. Verify soft billboard drift and retirement across frames before adjusting opacity.
+
+- Settle authoritative death receipts before retaining a renderer tail. Advance only presentation snapshots through hit-stop and KO/fade, keep host clock accrual live, and test the exact visual-transition boundary independently of world teardown.

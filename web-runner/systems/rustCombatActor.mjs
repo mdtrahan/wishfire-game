@@ -62,7 +62,7 @@ export class SliceActor {
  featured(a){const v=this.scrimView;return !v||a.actor_id===v.caster||v.co_casters.includes(a.actor_id)||a.team==='enemy'&&v.participants.includes(a.actor_id);}
  pose(frame,effects,reduced=false){
   for(const f of effects){const age=frame.time-f.born,d=f.data;
-   if(f.type==='shadow'&&age>=0&&age<1.5){const r=this.records.get(d.hero);if(!r)continue;if(age<.18){const t=reduced?1:1-(1-c(age/.18))**3;r.visualX=d.from.x+(d.to.x-d.from.x)*t;r.visualY=d.from.y+(d.to.y-d.from.y)*t;r.poseState='cast';r.poseAge=0;r.poseDuration=.4;r.poseImpact=0;}else if(age<.52){r.poseState='basic';r.poseAge=.18+Math.max(0,age-.3);r.poseDuration=.4;r.poseImpact=.18;}}
+   if(f.type==='shadow'&&age>=0&&age<.75){const r=this.records.get(d.hero);if(!r)continue;if(age<.18){const t=reduced?1:1-(1-c(age/.18))**3;r.visualX=d.from.x+(d.to.x-d.from.x)*t;r.visualY=d.from.y+(d.to.y-d.from.y)*t;r.poseState='cast';r.poseAge=0;r.poseDuration=.4;r.poseImpact=0;}else if(age<.52){r.poseState='basic';r.poseAge=.18+Math.max(0,age-.3);r.poseDuration=.4;r.poseImpact=.18;}else{r.poseState='idle';r.poseAge=age-.52;r.poseDuration=0;r.poseImpact=0;}if(age<.28&&d.before){const target=this.records.get(d.target);if(target){target.poseState=d.before.state;target.poseAge=d.before.state_age;target.poseDuration=d.before.state_duration;target.poseImpact=d.before.impact_at;}}}
    if(f.type==='boss_push'&&!d.resisted&&!reduced&&age>=0&&age<.1){const r=this.records.get(d.id);if(r)r.visualX+=Math.sin(age/.1*Math.PI*4)*(1-age/.1)*3;}
   }
  }

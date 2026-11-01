@@ -13,9 +13,9 @@ export function sliceEvent(record) {
   return body.kind === 'presentation' ? body.data.event : body;
 }
 export function createRustEffectState() {
-  const effects = [], popups = [], hazards = new Map(), markers = new Map(), actors = new Map(), projectiles = new Map(), healingBuckets = new Map();
+  const effects = [], popups = [], groundItems=[], channels=[], phoenixChannel={kind:'resurrect',phase:'active',owner:null,origin:null,shape:{},progress:0}, hazards = new Map(), markers = new Map(), actors = new Map(), projectiles = new Map(), healingBuckets = new Map(), damageBuckets = new Map();
   let snapshot = null, previous = null, encounter = null;
-  function clear() { healingBuckets.clear(); effects.length = 0; popups.length = 0; hazards.clear(); markers.clear(); actors.clear(); projectiles.clear(); snapshot = previous = null; encounter = null; }
+  function clear() { groundItems.length=channels.length=0; healingBuckets.clear(); damageBuckets.clear(); effects.length = 0; popups.length = 0; hazards.clear(); markers.clear(); actors.clear(); projectiles.clear(); snapshot = previous = null; encounter = null; }
   function effect(type, data, born, life) { const item = { type, data, born, life }; effects.push(item); return item; }
   function popup(data, now, tone = 'damage') {
     const target = actors.get(data.target); if (!target || data.amount <= 0) return;
@@ -48,11 +48,12 @@ export function createRustEffectState() {
       for(const a of next.actors)if(a.team===p.team&&(a.kind==='runa'||a.kind==='kaja')&&a.state==='basic'&&a.impact_at>0&&a.state_age>=a.impact_at&&a.state_age-a.impact_at<window&&Math.hypot(a.pos.x-p.pos.x,a.pos.y-p.pos.y)<100){source=a;count++;}
       projectiles.set(p.id,{origin:p.pos,source:count===1?source:null});
     }
-    for(const [id,b]of healingBuckets)if(now-b.born>=.75||now-b.last>=.2||!(actors.get(id)?.hp>0)){popup(b,now,'heal');healingBuckets.delete(id);}
+    groundItems.length=channels.length=0;for(const h of next.hazards){groundItems.push(h);if(h.kind==='resurrect'&&h.phase!=='resolved')channels.push(h);}
+    const phoenix=next.phoenix_channel;if(phoenix&&!(next.phoenix_cooldown>0)&&!next.spotlight&&!next.hit_stop){const a=actors.get(phoenix.hero);if(a){phoenixChannel.origin=a.pos;phoenixChannel.progress=phoenix.progress;groundItems.push(phoenixChannel);for(let i=channels.length-1;i>=0;i--)if(Math.abs(channels[i].origin.x-a.pos.x)<=4&&Math.abs(channels[i].origin.y-a.pos.y)<=4)channels.splice(i,1);for(let i=groundItems.length-1;i>=0;i--){const h=groundItems[i];if(h!==phoenixChannel&&h.kind==='resurrect'&&Math.abs(h.origin.x-a.pos.x)<=4&&Math.abs(h.origin.y-a.pos.y)<=4)groundItems.splice(i,1);}channels.push(phoenixChannel);}}
     // Ownership must precede Hit irrespective of batch order.
     for (const record of records) {
       const { kind, data: d } = sliceEvent(record);
-      if (kind === 'blink') effect('shadow', { ...d, caster: actors.get(d.hero), targetActor: actors.get(d.target), before: previous?.actors.find(a=>a.actor_id===d.target) }, now, 1.5);
+      if (kind === 'blink') effect('shadow', { ...d, caster: actors.get(d.hero), targetActor: actors.get(d.target), before: previous?.actors.find(a=>a.actor_id===d.target) }, now, .75);
       if (kind === 'split_strike') effect('split', { ...d, caster: actors.get(d.hero), targets: d.targets.map(id => ({ actor: actors.get(id), landed: records.some(r => r.body.kind === 'damage' && r.body.data.source === d.hero && r.body.data.target === id && r.body.data.amount > 0) })) }, now, .505);
     }
     for (const record of records) {
@@ -61,9 +62,11 @@ export function createRustEffectState() {
         const shadow = effects.find(f => f.type === 'shadow' && f.data.hero === d.source && f.data.target === d.target && !f.data.hit);
         const split = effects.find(f => f.type === 'split' && f.born === now && f.data.hero === d.source && f.data.targets.some(t => actorId(t.actor ?? {}) === d.target));
         const born = shadow ? shadow.born + .28 : now;
-        popup(d, born);
+        let continuous=null;
+        if(!d.crit&&d.element==='nature'){for(const h of hazards.values())if(h.hazard.owner===d.source&&['kaja_aura','lizardo_drop'].includes(h.hazard.kind)){continuous=h.hazard.kind;break;}const source=actors.get(d.source);continuous??=source?.kind==='marid'?'kaja_aura':source?.kind==='lizardo'?'lizardo_drop':null;}
+        if(continuous&&d.amount>0){const key=continuous+':'+d.target,b=damageBuckets.get(key);if(b){b.amount+=d.amount;b.blocked||=d.blocked;b.last=now;}else damageBuckets.set(key,{...d,born:now,last:now});}else popup(d,born);
         if (shadow) { shadow.data.hit = true; shadow.data.impact = born; }
-        else if (!split && d.amount > 0) effect('hit', { ...d, actor: actors.get(d.target), sourceActor: actors.get(d.source) }, now, d.crit ? .22 : .18);
+        else if(!split&&d.amount>0){const old=effects.find(f=>f.type==='hit'&&f.data.source===d.source&&f.data.target===d.target&&f.data.element===d.element&&now-f.born<.08);if(old){if(d.crit&&!old.data.crit){old.data.crit=true;old.data.spriteId=undefined;old.born=now;old.life=.22;}}else effect('hit',{...d,actor:actors.get(d.target),sourceActor:actors.get(d.source)},now,d.crit?.22:.18);}
       } else if (kind === 'healed' && d.amount > 0) {
         if(d.amount>=1)popup(d, now, 'heal');else{const b=healingBuckets.get(d.target);if(b){b.amount+=d.amount;b.last=now;}else healingBuckets.set(d.target,{target:d.target,amount:d.amount,born:now,last:now});}
         if (d.source?.kind === 'healing_spring') effect('healing', { ...d, seed: effectSeed(d.target, now) }, now, 3.2);
@@ -89,6 +92,8 @@ export function createRustEffectState() {
         const h = hazards.get(d.id)?.hazard; if (h) effect('faze_splash', { hazard: h }, now, .3);
       }
     }
+    for(const [id,b]of healingBuckets)if(now-b.born>=.75||now-b.last>=.2||!(actors.get(id)?.hp>0)){if(b.amount>=1)popup(b,now,'heal');healingBuckets.delete(id);}
+    for(const [key,b]of damageBuckets)if(now-b.born>=.75||now-b.last>=.2||!(actors.get(b.target)?.hp>0)){popup(b,now);damageBuckets.delete(key);}
   }
-  return { effects, popups, hazards, markers, actors, projectiles, ingest, clear, get snapshot() { return snapshot; }, get previous() { return previous; } };
+  return { effects, popups, groundItems, channels, hazards, markers, actors, projectiles, ingest, clear, get snapshot() { return snapshot; }, get previous() { return previous; } };
 }
