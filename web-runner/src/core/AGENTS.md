@@ -145,6 +145,6 @@
 
 - Quest descriptions and counters never carry rarity colors; category labels keep their yellow presentation. Equipment rarity coverage stops at Blue/Rare. Epic (`equip_rarity:epic:`) and Legendary (`equip_rarity:legendary:`) coverage are retired: drop unfinished saved objectives without rewards, preserve completed objectives for one claim, and retain claimed keys/receipts.
 
-- Party deployment caps at four. Saved formation remains a Hero-screen UI contract; Rust combat ignores it and derives compact party-order slots and source travel offsets. Shared/runtime party-slot normalization clamps requested capacity to four.
+- Party deployment caps at four. Formation and Leader are retired (owner, 2026-11-01): no UI, meta or save contract remains; old saved formation/leader fields load and are ignored. Rust combat derives compact party-order slots and source travel offsets. Shared/runtime party-slot normalization clamps requested capacity to four.
 
 - `continuousCombatSubwaves.mjs` owns stage/wave/subwave `{key,count}` authoring and cohort cadence. Chapter 1 resolves all ten waves from existing seeded stage plans, preserving compositions, CP extras and checkpoint exclusions. Batches contain 3–5 enemies; a partial checkpoint may contain fewer. Queue state is encounter-local.
