@@ -22,7 +22,19 @@ The initial focused run passed 65 tests. A follow-up preserves authored WFM MAG/
 
 ## Full validation
 
-PENDING_FINAL_VALIDATION
+Runtime source: `9fa3b887718c1feefc3fd7cf06099e59f7bc1bda` (with `2aaf038599deb5e1f68e0a5692e739905b836411`). All three Cargo crates pass: SimulationCore 34 (33 library + 1 contract), wf_combat 35, frozen harness 537; **606 passed, 10 ignored**. The harness’s unchanged `baseline-trace.tsv` matches every-step hash folds and ordered events for seeds 1/7/42, spotlight off/on, through 27,000 steps. Bound-diagnostics compilation also passes. The last full harness took 265.84 seconds under load; it completed.
+
+The final focused JS/WASM/boundary suite passes **66 tests**. The shipped WASM and source/binary provenance were rebuilt. `npm run build:offline` passes on the clean runtime commit.
+
+Final `npm test -- --test-concurrency=4 --test-timeout=120000`: unit phase **1482 tests, 1461 passed, 18 failed, 3 skipped**. Exact failure names match the supplied verifier’s clean baseline: **added 0, removed 0**. That baseline was not rerun in another checkout. The earlier 2aaf0385 unit phase also matched all 18 names (1481/1460/18/3), before the final WFM base-stat test was added; its browser phase was deliberately interrupted for that correction. Both attempts are retained.
+
+Final browser batch: **27 reported tests, 23 passed, 3 failed, 1 skipped**. The natural Hero-screen failure is the supplied baseline’s exact `pendingBagKillRewards: {}` save-shape mismatch at `heroScreenUILayout.test.mjs:411`. DPS timed out waiting for `#combat-dps-overlay` at `combatDpsOverlay.test.mjs:32`; one isolated retry also timed out. The test uses the flag-off URL. This remains an unresolved browser check, with no broad browser PASS or assertion change claimed.
+
+All six Auto-Equip gameplay cases passed on the final runtime. `lampPresentation` completed its first actual-CP invariant across four phones, then its owned process tree was stopped at the **180-second file time box** with no cleanup errors. The remaining four cases are **unverified**: continuous equipment lifecycle; emitter pause/cadence; trash-only dismantling; Auto-Equip empty disposal/legacy salvage. Their interrupted remainder is not a product-failure verdict. The final npm run completed in 535.22 seconds with exit 1.
+
+The initial implementation commit’s required gameplay/roster hook passed all 10 tests. Both runtime commits used `tools/prepare_commit_check.sh ORKA-kx5y` and normal hooks; neither bypassed verification. The first rejected UI-lock attempt is retained separately below. Final Boss HUD, formation, cooldown strip and the other completed browser cases retain their individual outcomes in the batch log.
+
+Evidence: `test-results/ORKA-kx5y/final-verifier-fixes/summary.json`, `failure-set.json`, `kx5y-final-{simulation_core,wf_combat,wf_slice_harness}.log`, `kx5y-focused-full.log`, `kx5y-npm-test.log`, `kx5y-dps-retry.log`, build/commit logs and the first-attempt logs. The DPS retry’s bounded failure needs a separate startup/START-readiness investigation; that follow-up was not folded into this stat-revision bead.
 
 ## Exact inherited unit failure set
 
@@ -50,4 +62,4 @@ The 18 baseline failure names are:
 
 ## Limits and retained evidence
 
-The first commit attempt stopped at the broad UI lock’s inherited nearest-target invariant. Its unchanged assertions and report are retained in `test-results/ui-lock/2026-11-01T20-42-21-767Z/`. The final reset guard lives in the shared combat session owner; developer UI source is unchanged. No visual review or release acceptance is claimed. Native and WASM evidence covers the named fixtures rather than every possible state. Full-suite logs and browser time boxes must be reported explicitly. Temporary Cargo caches and logs use `/tmp/kx5y-*` and `/tmp/ORKA-kx5y-*`; offline outputs and ignored test artifacts remain in this worktree for review. Integration Ready against newer main is outside this commit-only delivery.
+The first commit attempt stopped at the broad UI lock’s nearest-target invariant. Its unchanged assertions and report are retained in `test-results/ui-lock/2026-11-01T20-42-21-767Z/`. The final reset guard lives in the shared combat session owner; developer UI source is unchanged. No visual review or release acceptance is claimed. Native and WASM evidence covers the named fixtures rather than every possible state. Full-suite failures and browser time boxes are reported above. Temporary Cargo caches and logs use `/tmp/kx5y-*` and `/tmp/ORKA-kx5y-*`; offline outputs and ignored test artifacts remain in this worktree for review. Integration Ready against newer main is outside this commit-only delivery.
