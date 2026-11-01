@@ -135,6 +135,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
         born: snapshot.time, combatBorn: snapshot.combat_time, picture: bossPicture,
         // actors.rs: 12 KO frames at 12 fps + .42 fade; impact_stop.rs: .32 camera.
         duration: freeze + Math.max(BOSS_KO_SECONDS + CORPSE_FADE, DEATH_CAMERA_SECONDS) };
+      present(visual, []); project(visual, true);
       return;
     }
     if (stageOptions && !hostTransition) {

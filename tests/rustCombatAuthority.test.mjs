@@ -18,10 +18,11 @@ const noLeaks = bridge => assert.deepEqual(bridge.describe().resources, { worlds
 function fixture({ lose = false, fault = false, deathObjects = false } = {}) {
   const realBridge = createCombatBridge(new WebAssembly.Instance(wasm));
   const spawns = [];
-  let presented;
+  let presented, deathObjectSnapshots=0;
   const bridge = { ...realBridge, step(...args) {
     const next=realBridge.step(...args);
     if(deathObjects && next.events.some(e=>e.body.kind==='died')) {
+      deathObjectSnapshots++;
       next.snapshot.projectiles.push({id:999,kind:'bomb',team:'enemy',pos:{x:456,y:430},height:0,dir:{x:1,y:0}});
       next.snapshot.hazards.push({id:998,kind:'lizardo_drop',phase:'locked'});
       next.snapshot.actors[0].encased=1;
@@ -69,7 +70,7 @@ function fixture({ lose = false, fault = false, deathObjects = false } = {}) {
   function run() {
     for (let frame = 0; frame < 1500 && g.ContinuousCombatStage.bossActive; frame++) runtime.tick({ ...options, entities: state.entities, nowMs: frame * 1000 / 30 });
   }
-  return { get presented(){return presented;}, runtime, bridge: realBridge, g, state, rewards, calls, routes, warnings, run, options, spawns };
+  return { get deathObjectSnapshots(){return deathObjectSnapshots;}, get presented(){return presented;}, runtime, bridge: realBridge, g, state, rewards, calls, routes, warnings, run, options, spawns };
 }
 
 test('real Rust boss death clears the WFM stage with one boss receipt and no JS combat entrypoints', () => {
@@ -256,7 +257,9 @@ test('boss rewards settle at death and stage advance waits exactly for the sourc
 test('destroyed Rust world cannot carry bombs, hazards or stun film into its boss presentation tail', () => {
  const f=fixture({deathObjects:true});let frame=0;
  for(;frame<1500&&f.g.RustCombatReceipt?.outcome!=='ended';frame++) f.runtime.tick({...f.options,nowMs:frame*1000/30});
- assert.equal(f.runtime.read().active,false);assert.ok(f.presented.projectiles.some(p=>p.kind==='bomb'));
+ assert.equal(f.runtime.read().active,false);assert.ok(f.deathObjectSnapshots>0,'pre-end Rust snapshot held a live bomb');
+ assert.deepEqual(f.runtime.read().snapshot.projectiles,[],'EndEncounter removed its projectiles');
+ assert.deepEqual(f.presented.projectiles,[]);assert.deepEqual(f.presented.hazards,[]);
  f.runtime.tick({...f.options,nowMs:frame*1000/30});
  assert.deepEqual(f.presented.projectiles,[]);assert.deepEqual(f.presented.hazards,[]);
  assert.ok(f.presented.actors.every(a=>a.encased===0));f.runtime.dispose();
