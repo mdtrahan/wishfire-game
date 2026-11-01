@@ -60,8 +60,8 @@ export async function createRustCombatPresentation(globals) {
     for(const [id,record]of encased)if(record.ended!==null&&snapshot.time-record.ended>=.35)encased.delete(id);
     globals.RustCombatPresentation=api;
   }
-  function begin(ctx,s,ox,oy){scale=s;offsetX=ox;offsetY=oy;const nextDensity=(window.devicePixelRatio||1)*s;if(density!==nextDensity){density=nextDensity;for(const p of state.popups)rasterPopup(p);}gpu.begin(density);ctx.save();ctx.beginPath();ctx.rect(ox,oy+95*s,360*s,383*s);ctx.clip();}
-  function finish(ctx){gpu.composite(ctx,scale,offsetX,offsetY);ctx.restore();}
+  function begin(ctx,s,ox,oy){scale=s;offsetX=ox;offsetY=oy;const nextDensity=(window.devicePixelRatio||1)*s;if(density!==nextDensity){density=nextDensity;for(const p of state.popups)rasterPopup(p);}gpu.begin(density,ctx,s,ox,oy);ctx.save();ctx.beginPath();ctx.rect(ox,oy+95*s,360*s,383*s);ctx.clip();}
+  function finish(ctx){gpu.composite();ctx.restore();}
   function groundPass(ctx,s,ox,oy){
     if(!state.snapshot)return;begin(ctx,s,ox,oy);const now=state.snapshot.time,z=camera.zoom/.5;
     for(const m of state.markers.values()){const age=now-m.born,fade=m.ended===null?1:c(1-(now-m.ended)/.15),id=age<.2?'spawn-marker-appear':'spawn-marker',frame=age<.2?Math.floor(age*20):Math.floor((age-.2)*10+1e-9)%6,e=assets.entries.get(id);gpu.bitmap(id,frame,camera.x(m.pos.x),camera.y(m.pos.y),e.screen_size_px[0]*z,e.screen_size_px[1]*z,0,fade);}

@@ -47,7 +47,8 @@ export class SliceGpu {
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,image);
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,linear?gl.LINEAR:gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,linear?gl.LINEAR:gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return texture;
   }
-  begin(density) {
+  begin(density,ctx,scale,offsetX,offsetY) {
+    this.ctx=ctx;this.scale=scale;this.offsetX=offsetX;this.offsetY=offsetY;this.groupOp='source-over';this.hasDraw=false;
     const gl=this.gl, w=Math.max(1,Math.round(360*density)),h=Math.max(1,Math.round(640*density));
     if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;}
     gl.viewport(0,0,w,h);gl.depthMask(true);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);this.count=0;this.texture=null;this.mode=-99;this.blend='';
@@ -55,14 +56,14 @@ export class SliceGpu {
   }
   use(mode, blend='alpha', texture=null, clock=0) {
     if(this.mode===mode&&this.blend===blend&&this.texture===texture&&this.clock===clock)return;
-    this.flush();const gl=this.gl;this.mode=mode;this.blend=blend;this.texture=texture;this.clock=clock;
+    this.flush();const operation=blend==='additive'?'lighter':'source-over';if(operation!==this.groupOp){this.blit();this.groupOp=operation;}const gl=this.gl;this.mode=mode;this.blend=blend;this.texture=texture;this.clock=clock;
     gl.uniform1f(this.modeUniform,mode);gl.uniform1f(this.clockUniform,clock);gl.uniform1f(this.snapUniform,mode>=0?1:0);
     if(blend==='solid'||blend==='gas'){gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.depthMask(blend==='solid');}else{gl.disable(gl.DEPTH_TEST);gl.depthMask(false);}
     gl.blendFuncSeparate(gl.SRC_ALPHA,blend==='additive'?gl.ONE:gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
     if(texture){gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);}
   }
   flush() {
-    if(!this.count)return;const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);gl.bufferSubData(gl.ARRAY_BUFFER,0,this.uploadViews[this.count/3]);gl.drawArrays(gl.TRIANGLES,0,this.count);this.count=0;
+    if(!this.count)return;const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);gl.bufferSubData(gl.ARRAY_BUFFER,0,this.uploadViews[this.count/3]);gl.drawArrays(gl.TRIANGLES,0,this.count);this.count=0;this.hasDraw=true;
   }
   vertex(x,y,z,u,v,color,alpha,nx=0,ny=0,nz=0,nw=1) {
     if(this.count===12288)this.flush();let i=this.count++*13;const a=this.data;
@@ -89,7 +90,7 @@ export class SliceGpu {
     if(w===0&&h===0){w=e.screen_size_px[0];h=e.screen_size_px[1];}
     const fw=e.frame_size[0],fh=e.frame_size[1],ix=Math.min(frame,e.frame_count-1),texture=this.textures.get(e.image);
     this.use(id.startsWith('charge-')||id==='crit-poison'?-2:-1,e.blend,texture);
-    const px=e.pivot[0]/fw*w,py=e.pivot[1]/fh*h,c=Math.cos(rotation),s=Math.sin(rotation),left=-px,right=w-px,top=-py,bottom=h-py;
+    const px=e.centered?w*.5:e.pivot[0]/fw*w,py=e.centered?h*.5:e.pivot[1]/fh*h,c=Math.cos(rotation),s=Math.sin(rotation),left=-px,right=w-px,top=-py,bottom=h-py;
     const u0=(ix*fw+.5)/e.image.width,u1=((ix+1)*fw-.5)/e.image.width,v0=.5/fh,v1=1-.5/fh;
     const ua=mirror?u1:u0,ub=mirror?u0:u1;
     this.vertex(x+left*c-top*s,y+left*s+top*c,0,ua,v0,color,alpha);this.vertex(x+right*c-top*s,y+right*s+top*c,0,ub,v0,color,alpha);this.vertex(x+right*c-bottom*s,y+right*s+bottom*c,0,ub,v1,color,alpha);
@@ -97,6 +98,7 @@ export class SliceGpu {
   }
   strip(id,x,y,qx,qy,height,alpha=1,color=0xffffff){const e=this.assets.get(id),dx=qx-x,dy=qy-y,length=Math.hypot(dx,dy);if(length<.001)return;const width=length*e.frame_size[0]/e.boundsWidth,offset=(e.pivot[0]-e.boundsX)/e.frame_size[0]*width;this.bitmap(id,0,x+dx/length*offset,y+dy/length*offset,width,height,Math.atan2(dy,dx),alpha,color);}
   once(id,age,x,y,w=0,h=0,rotation=0,alpha=1,color=0xffffff,mirror=false) {const e=this.assets.get(id);if(!e)throw new Error(`Missing slice effect: ${id}`);const frame=sampleRustVfx(e,age);if(frame>=0)this.bitmap(id,frame,x,y,w,h,rotation,alpha*rustVfxFrameAlpha(e,age,frame),color,mirror);}
-  composite(ctx,scale,offsetX,offsetY) {this.flush();ctx.drawImage(this.canvas,offsetX,offsetY,360*scale,640*scale);}
+  blit(){if(!this.hasDraw)return;const ctx=this.ctx;ctx.save();ctx.globalCompositeOperation=this.groupOp;ctx.drawImage(this.canvas,this.offsetX,this.offsetY,360*this.scale,640*this.scale);ctx.restore();this.gl.clear(this.gl.COLOR_BUFFER_BIT);this.hasDraw=false;}
+  composite(){this.flush();this.blit();}
   dispose() {const gl=this.gl;for(const t of this.resources)gl.deleteTexture(t);gl.deleteBuffer(this.buffer);gl.deleteProgram(this.program);gl.getExtension('WEBGL_lose_context')?.loseContext();this.assets.clear();}
 }
