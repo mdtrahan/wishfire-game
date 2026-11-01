@@ -1,0 +1,18 @@
+{
+  "image": "oasis-corridor.png",
+  "size": [
+    960,
+    2200
+  ],
+  "walkable": {
+    "x0": 96,
+    "y0": 40,
+    "x1": 864,
+    "y1": 1592
+  },
+  "boss_court_center": [
+    480,
+    320
+  ],
+  "notes": "Walkable rectangle uses half-open bounds [96,864) \u00d7 [40,1592). Boss-court center measured from the subtle upper paving field at (480,320); no circular inlay remains. Side ledges, water, and planting stay beyond the floor bounds; the top threshold stays at y 40; painted floor continues below the playable bottom at y 1592."
+}
