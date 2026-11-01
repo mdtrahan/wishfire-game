@@ -16,6 +16,7 @@
 - Playwright doctor, launch matrix, and Chrome CDP helpers diagnose browser startup/control issues.
 - Rust build helper generates the browser WASM artifact.
 - `build_offline_release.mjs` reuses hosted runtime staging, embeds startup JSON, the optional elemental impact manifest, and SimulationCore WASM, and emits the portable file:// artifact with relative frame assets; it must leave the Netlify release path unchanged.
+- `build_runtime_release.mjs` packages the tracked runtime inventory and fails on missing files; committed removals leave that inventory through Git.
 - Offline builds must validate dependencies before touching `dist-offline`, assemble in a sibling candidate directory, and replace the prior playable artifact only after the bundle and manifest are complete.
 - Hot-file, cleanup, archive, and Beads/Git visibility helpers support repo workflow. Generated review/export output belongs in an explicit temporary directory outside current main.
 
@@ -114,5 +115,3 @@
 - Shared `modalClose.mjs` and Training Ground `combatProgressionUI.mjs` changes route through the existing lamp/Training five-profile presentation guard. Preserve Bag coverage when extending the shared close consumer set.
 
 - `qa_rust_combat_playtest2.mjs` connects to QA_PORT (default8797), isolates browser state and captures full-height Rust combat at native DPR2. Fixtures use the existing three-part QA pause contract before presenting snapshots; inspect all frames before accepting the result.
-
-- `build_runtime_release.mjs` packages tracked runtime files that exist in the current worktree, excluding pending deletions even before commit. Keep the tracked-entry guard and manifest hashes; imported missing modules still fail the offline bundle.

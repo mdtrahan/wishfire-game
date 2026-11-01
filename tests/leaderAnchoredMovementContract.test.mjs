@@ -78,13 +78,13 @@ test('boss encounters keep full hero spacing along the front edge', () => {
   for (let i = 0; i < 4; i += 1) for (let j = i + 1; j < 4; j += 1) assert.ok(gap(heroes[i], heroes[j]) >= 35.9, `${heroes[i].name}/${heroes[j].name}`);
 });
 
-test('a hero beyond the combat leash walks back toward the leader', () => {
+test('a hero beyond the combat leash walks back toward the party anchor', () => {
   const heroes = [hero(1, 'Fara', 900, 340), hero(2, 'Hondo', 1200, 340)];
   const foe = enemy(10, 960, 340);
   const globals = { time: 1, DevMovementTuning: { combatLeash: 100 }, ContinuousCombatStage: {} };
   const before = gap(heroes[1], heroes[0]);
   for (let tick = 0; tick < 5; tick += 1) advanceContinuousCombatArena({ globals, entities: [...heroes, foe], seconds: 0.1 });
-  assert.ok(gap(heroes[1], heroes[0]) < before, 'leashed hero closes on the leader');
+  assert.ok(gap(heroes[1], heroes[0]) < before, 'leashed hero closes on the party anchor');
 });
 
 const cameraScene = (overrides = {}) => {
@@ -111,7 +111,7 @@ test('camera holds inside the dead zone and eases toward the party anchor outsid
   advanceCombatCamera({ globals, entities: heroes, seconds: 0.1 });
   heroes[0].footX = 1020;
   advanceCombatCamera({ globals, entities: heroes, seconds: 0.1 });
-  assert.equal(globals.CombatCamera.x, 1000, 'small leader motion inside the dead zone holds framing');
+  assert.equal(globals.CombatCamera.x, 1000, 'small party-anchor motion inside the dead zone holds framing');
   heroes[0].footX = 1200;
   let previous = globals.CombatCamera.x;
   for (let tick = 0; tick < 30; tick += 1) {
@@ -120,10 +120,10 @@ test('camera holds inside the dead zone and eases toward the party anchor outsid
     assert.ok(globals.CombatCamera.x >= previous, 'monotone ease');
     previous = globals.CombatCamera.x;
   }
-  assert.ok(Math.abs(globals.CombatCamera.x - 1170) < 2, 'settles one dead zone behind the leader');
+  assert.ok(Math.abs(globals.CombatCamera.x - 1170) < 2, 'settles one dead zone behind the party anchor');
 });
 
-test('a non-leader cast pulls the camera toward the caster, returns, and respects the cooldown', () => {
+test('a cast away from the party anchor pulls the camera toward the caster, returns, and respects the cooldown', () => {
   const { heroes, globals } = cameraScene({ skillFocus: 0.5, skillFocusHold: 1, skillFocusCooldown: 5 });
   advanceCombatCamera({ globals, entities: heroes, seconds: 0.1 });
   Object.assign(heroes[2], { actionState: 'cast', actionStateStartedAt: 0 });
@@ -131,14 +131,14 @@ test('a non-leader cast pulls the camera toward the caster, returns, and respect
   assert.equal(globals.CombatCamera.x, 1100, 'half-way toward Runa');
   globals.time = 1.5;
   advanceCombatCamera({ globals, entities: heroes, seconds: 0.1 });
-  assert.equal(globals.CombatCamera.x, 1000, 'returns to the leader after the hold');
+  assert.equal(globals.CombatCamera.x, 1000, 'returns to the party anchor after the hold');
   Object.assign(heroes[3], { actionState: 'cast', actionStateStartedAt: 1.5 });
   advanceCombatCamera({ globals, entities: heroes, seconds: 0.1 });
   assert.equal(globals.CombatCamera.x, 1000, 'cooldown suppresses the next pull');
   Object.assign(heroes[0], { actionState: 'cast', actionStateStartedAt: 6 });
   globals.time = 6;
   advanceCombatCamera({ globals, entities: heroes, seconds: 0.1 });
-  assert.equal(globals.CombatCamera.x, 1000, 'the leader casting needs no pan');
+  assert.equal(globals.CombatCamera.x, 1000, 'the party anchor casting needs no pan');
 });
 
 test('large jumps cut instead of sliding, and other combat modes keep the centroid', () => {
