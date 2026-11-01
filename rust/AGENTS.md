@@ -22,6 +22,7 @@
 - Keep Rust functions small and numeric/JSON-compatible at the WASM boundary.
 - Preserve JS rounding/normalization semantics when tests encode them.
 - Rebuild WASM after Rust changes that affect browser behavior.
+- SimulationCore release builds optimize WASM size with `opt-level = "z"`, LTO, one codegen unit, stripped symbols and aborting panics; preserve floating-point results and every supported export when changing build settings.
 - `single_hit_damage_shadow` takes attack percentage, matching resistance, and general resistance after its existing eight arguments. Keep zero-floor damage and modifier order aligned with both JavaScript rule copies and rebuild the checked-in WASM after edits.
 
 ## Verification

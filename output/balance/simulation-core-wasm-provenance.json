@@ -5,7 +5,7 @@
   "sources": {
     "rust/simulation_core/src/combat_abi.rs": "b0a23c02d49b4d4dddf752ccec54aaf70f632cf441bb8eb6c1250e354d2eb0ae",
     "rust/simulation_core/src/lib.rs": "6f0c716a09038af90f6f0fd23d62fa46e49428e7c5d800b283902c27480d58f6",
-    "rust/simulation_core/Cargo.toml": "a022e5f970a108405b5f258b1a5751698a5fe68c27addeab5fd8233f5388e30d",
+    "rust/simulation_core/Cargo.toml": "f054cead0315b3aa9ebab3ce055e0442ceb50930ab974bf0ecdb7d36a6666858",
     "rust/simulation_core/Cargo.lock": "29e6ef77306922df52ec854db1d8ce4caee8cc5a000e108c85529bba911b89c8",
     "rust/wf_combat/src/actors.rs": "36202703daa1a0f91392b03f6da36b81a0da4e1b3a043a9991c6270f6a445d74",
     "rust/wf_combat/src/ai.rs": "6267764ae5886666e6d1a784cc27f5562ca674b065a0858537ee48a6e8548e39",
@@ -47,5 +47,5 @@
     "rust/wf_combat/Cargo.lock": "3c5857ea04d81e81c50722826ff4e97999da2db395e55c74b71e40a539974c2f"
   },
   "binary": "web-runner/assets/simulation_core.wasm",
-  "binarySha256": "035eb943ec9532f87642d0a00527f83f15eea02206af85e89744b6cb09668b2f"
+  "binarySha256": "05bc4fb752fd5d750f5c41a88cc9d5772c299dcb5fde38f8c7320fe8677a3fe3"
 }
