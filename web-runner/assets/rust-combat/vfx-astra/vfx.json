@@ -1,0 +1,1619 @@
+{
+  "version": 1,
+  "date": "2026-10-25",
+  "status": "art and integration specification; not runtime integrated",
+  "coordinate_contract": {
+    "logical_viewport": [
+      360,
+      640
+    ],
+    "dpr": 2,
+    "reference_zoom": 0.5,
+    "ground_squash": 0.75,
+    "size_units": "logical pixels, whole transparent frame; [0,0] means placement formula",
+    "angle": "atan2(dir.y*.75,dir.x)",
+    "rgba": "straight alpha, sRGB, linear filtering, clamp-to-edge, no mipmaps",
+    "sheet_layout": "horizontal strip; source rect=[frame_index*frame_w,0,frame_w,frame_h]"
+  },
+  "effects": [
+    {
+      "id": "boundary-dot",
+      "file": "boundary-dot.png",
+      "frame_size": [256, 256],
+      "frame_count": 1,
+      "frame_ms": [0],
+      "pivot": [128, 128],
+      "blend": "alpha",
+      "screen_size_px": [20, 20]
+    },
+    {
+      "id": "hit-physical",
+      "file": "hit-physical.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        25,
+        40,
+        55,
+        60
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        24
+      ],
+      "layer": "under actors",
+      "trigger": "Event::Hit amount>0, element Physical, crit=false; after special ownership filter",
+      "placement": "frozen contact at target chest offset toward attacker by6px; max40px even on bosses",
+      "opacity": 1.0,
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "bacc9cae90758f96dd6ed31b63eb976252bbc1c75f24d2694dcc400fa5d73dc6"
+    },
+    {
+      "id": "crit-physical",
+      "file": "crit-physical.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        25,
+        45,
+        65,
+        85
+      ],
+      "pivot": [
+        64,
+        64
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        38,
+        38
+      ],
+      "layer": "under actors",
+      "trigger": "Event::Hit amount>0, element Physical, crit=true; after special ownership filter",
+      "placement": "frozen contact at target chest offset toward attacker by6px; max40px even on bosses",
+      "opacity": 1.0,
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "b90cb48b83868b1ea8dda09303290a854da33ce927a57e23317bc6d65279b41a"
+    },
+    {
+      "id": "hit-fire",
+      "file": "hit-fire.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        25,
+        40,
+        55,
+        60
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        24
+      ],
+      "layer": "under actors",
+      "trigger": "Event::Hit amount>0, element Fire, crit=false; after special ownership filter",
+      "placement": "frozen contact at target chest offset toward attacker by6px; max40px even on bosses",
+      "opacity": 1.0,
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "58406d212714110c5a61be59bfd4feb3a239a537f7b1af204c84c828a6eaafc1"
+    },
+    {
+      "id": "crit-fire",
+      "file": "crit-fire.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        25,
+        45,
+        65,
+        85
+      ],
+      "pivot": [
+        64,
+        64
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        38,
+        38
+      ],
+      "layer": "under actors",
+      "trigger": "Event::Hit amount>0, element Fire, crit=true; after special ownership filter",
+      "placement": "frozen contact at target chest offset toward attacker by6px; max40px even on bosses",
+      "opacity": 1.0,
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "6b46779214f83a82e120b4e7734fc2738e3f4612208f2695f89247d17efd82a2"
+    },
+    {
+      "id": "hit-ice",
+      "file": "hit-ice.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        25,
+        40,
+        55,
+        60
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        24
+      ],
+      "layer": "under actors",
+      "trigger": "Event::Hit amount>0, element Ice, crit=false; after special ownership filter",
+      "placement": "frozen contact at target chest offset toward attacker by6px; max40px even on bosses",
+      "opacity": 1.0,
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "ec90d1203ef3a2b49c31568e7bfdd796379a8e5599a46c1a14550ca2099eb980"
+    },
+    {
+      "id": "crit-ice",
+      "file": "crit-ice.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        25,
+        45,
+        65,
+        85
+      ],
+      "pivot": [
+        64,
+        64
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        38,
+        38
+      ],
+      "layer": "under actors",
+      "trigger": "Event::Hit amount>0, element Ice, crit=true; after special ownership filter",
+      "placement": "frozen contact at target chest offset toward attacker by6px; max40px even on bosses",
+      "opacity": 1.0,
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "7e5b6005eb9ed260c4d72cf4d9c991dd3e8b014f7040167e9d7aa28abfdb6dee"
+    },
+    {
+      "id": "hit-arcane",
+      "file": "hit-arcane.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        25,
+        40,
+        55,
+        60
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        24
+      ],
+      "layer": "under actors",
+      "trigger": "Event::Hit amount>0, element Arcane, crit=false; after special ownership filter",
+      "placement": "frozen contact at target chest offset toward attacker by6px; max40px even on bosses",
+      "opacity": 1.0,
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "e9ebcde45aea8b8d1940e3792161bcf24125e75f6d0ad3c7f6667f1a14433b09"
+    },
+    {
+      "id": "crit-arcane",
+      "file": "crit-arcane.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        25,
+        45,
+        65,
+        85
+      ],
+      "pivot": [
+        64,
+        64
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        38,
+        38
+      ],
+      "layer": "under actors",
+      "trigger": "Event::Hit amount>0, element Arcane, crit=true; after special ownership filter",
+      "placement": "frozen contact at target chest offset toward attacker by6px; max40px even on bosses",
+      "opacity": 1.0,
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "a7354ffc63ce4e61797d066c9d06a9124f2566670a52a6e4ac8aa131d781f8c7"
+    },
+    {
+      "id": "hit-nature",
+      "file": "hit-nature.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        25,
+        40,
+        55,
+        60
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        24
+      ],
+      "layer": "under actors",
+      "trigger": "Event::Hit amount>0, element Nature, crit=false; after special ownership filter",
+      "placement": "frozen contact at target chest offset toward attacker by6px; max40px even on bosses",
+      "opacity": 1.0,
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "cc9010a180eaca5c652329282a351dc4e427ecfccde273a338d4789019991d43"
+    },
+    {
+      "id": "crit-nature",
+      "file": "crit-nature.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        25,
+        45,
+        65,
+        85
+      ],
+      "pivot": [
+        64,
+        64
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        38,
+        38
+      ],
+      "layer": "under actors",
+      "trigger": "Event::Hit amount>0, element Nature, crit=true; after special ownership filter",
+      "placement": "frozen contact at target chest offset toward attacker by6px; max40px even on bosses",
+      "opacity": 1.0,
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "b311e1c8427f7409403dd2e6e51bf048266a22c747092299e2f3d30e888fd93b"
+    },
+    {
+      "id": "hit-poison",
+      "file": "hit-poison.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        25,
+        40,
+        55,
+        60
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        24
+      ],
+      "layer": "under actors",
+      "trigger": "Event::Hit amount>0, element Poison, crit=false; after special ownership filter",
+      "placement": "frozen contact at target chest offset toward attacker by6px; max40px even on bosses",
+      "opacity": 1.0,
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "9637aa633ed65f62fb2aa5318775a72741562aa0898379b4bcf37631137d6fd2"
+    },
+    {
+      "id": "crit-poison",
+      "file": "crit-poison.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        25,
+        45,
+        65,
+        85
+      ],
+      "pivot": [
+        64,
+        64
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        38,
+        38
+      ],
+      "layer": "under actors",
+      "trigger": "Event::Hit amount>0, element Poison, crit=true; after special ownership filter",
+      "placement": "frozen contact at target chest offset toward attacker by6px; max40px even on bosses",
+      "opacity": 1.0,
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "5a8e4d457a0cff6b66b403c8ad0472df6ff9669b51349d78d32e2f1012f9e1bd"
+    },
+    {
+      "id": "bomb-fireball",
+      "file": "bomb-fireball.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        35,
+        65,
+        100,
+        140
+      ],
+      "pivot": [
+        64.0,
+        122
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        0,
+        0
+      ],
+      "layer": "under actors",
+      "trigger": "Event::HazardResolved kind LobberDrop or ExploderBlast",
+      "placement": "D=2*radius*zoom; 1.12D square (regular cap 112*z); Fizzmite D capped at 160*z, padded quad fit inside portrait with 4px gutter; z=zoom/0.5; foot at projected origin",
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "6fcf5623f99dd0cabec6f4cc2c4df2f86a59018ce417213b46993548c64e5717"
+    },
+    {
+      "id": "blast-smoke",
+      "file": "blast-smoke.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        65,
+        100,
+        140,
+        175
+      ],
+      "pivot": [
+        64.0,
+        122
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        0,
+        0
+      ],
+      "layer": "under actors",
+      "trigger": "Same explosion, starts +70ms",
+      "placement": "width .90D, height .64D; Fizzmite D capped at 160*z and padded quad fit inside portrait with 4px gutter; z=zoom/0.5; foot at origin; opacity <=.38",
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "9606faae241b7d208263fb99470df6d77a87feb59a85beb88b79a89e58e8fb5f"
+    },
+    {
+      "id": "ko-puff",
+      "file": "ko-puff.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        65,
+        100,
+        140,
+        175
+      ],
+      "pivot": [
+        64.0,
+        122
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        30,
+        30
+      ],
+      "layer": "under actors",
+      "trigger": "Event::Died for Enemy only, after KO clip completes",
+      "placement": "height min(.70*body_height,42); no puff on Downed/SceneReset",
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "4c7656295143161fe8fdedda67cc39c4d740b88fd219c6a81405bcff10323dfb"
+    },
+    {
+      "id": "cast-flash",
+      "file": "cast-flash.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        30,
+        35,
+        45,
+        50
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        20,
+        20
+      ],
+      "layer": "under actors",
+      "trigger": "ActionStarted Basic/Cast, latch until ActorView.state_age crosses impact_at",
+      "placement": "muzzle: projected chest + facing/travel direction *8px",
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "20fcce8d70d187dc5bd33cf95b4a646591e42f2936580632910c1556c8f25e64"
+    },
+    {
+      "id": "orb-head",
+      "file": "orb-head.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        12,
+        12
+      ],
+      "layer": "under actors",
+      "trigger": "Snapshot.projectiles kind Orb",
+      "placement": "anchor camera.project(pos)-height*zoom; frame1 held",
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "hold frame1 for projectile lifetime",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "1a51efae862c15dabd2fb2e45f6bd60d5998ff6b59000a6a94bfaa5677f20d08"
+    },
+    {
+      "id": "orb-head-kaja",
+      "file": "orb-head-kaja.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        12,
+        12
+      ],
+      "layer": "under actors",
+      "trigger": "Snapshot.projectiles kind Orb",
+      "placement": "anchor camera.project(pos)-height*zoom; frame1 held",
+      "tint_policy": "multiply WHITE; Pillow +70 degree hue shift of orb-head.png for Kaja",
+      "playback": "hold frame1 for projectile lifetime",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "ca8b6a35534a887bf1ad51d572433ad0bb123cfea9670f2eec8ceab0c2fcfb72"
+    },
+    {
+      "id": "bolt-head",
+      "file": "bolt-head.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        23,
+        8
+      ],
+      "layer": "under actors",
+      "trigger": "Snapshot.projectiles kind Bolt",
+      "placement": "rotate along projected dir, frame1 held",
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "hold frame1 for projectile lifetime",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "9937aa37975bee39bfca108d189a286f4fb0eac597e20d13883d4c57df17298d"
+    },
+    {
+      "id": "fuse-spark",
+      "file": "fuse-spark.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "additive",
+      "screen_size_px": [
+        8,
+        8
+      ],
+      "layer": "under actors",
+      "trigger": "Snapshot.projectiles kind Bomb",
+      "placement": "17px existing bomb retained; spark at rotated fuse tip (+3,-7)px",
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "loop four frames; 60ms/frame flying, 35ms/frame in last30% landed fuse",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "0f13d21a9c9f4b5b18bee38504976fdc4dde7acf4d2df96bca38e05aa3ea8c9a"
+    },
+    {
+      "id": "chest-sparkle",
+      "file": "chest-sparkle.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        100,
+        150,
+        150,
+        200
+      ],
+      "pivot": [
+        64.0,
+        122
+      ],
+      "blend": "additive",
+      "screen_size_px": [
+        44,
+        44
+      ],
+      "layer": "under actors",
+      "trigger": "Event::ChestOpened",
+      "placement": "foot at chest lip; never offset the chest asset pivot",
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "78398637b2573a1ef194a96dfeaf024972d6b123474d2278e98884e51918f39a"
+    },
+    {
+      "id": "buff-ribbons",
+      "file": "buff-ribbons.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        100,
+        150,
+        150,
+        200
+      ],
+      "pivot": [
+        64.0,
+        122
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        22,
+        38
+      ],
+      "layer": "under actors",
+      "trigger": "Event::ChestOpened (party reward)",
+      "placement": "one on each living hero; follows foot; stagger 35ms*hero index",
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "16e13414bc3008d2f6da539de4b2e4905147504e9e3e55ff2e019a2b75dcf489"
+    },
+    {
+      "id": "scorch",
+      "file": "scorch.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        64.0,
+        64.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        0,
+        0
+      ],
+      "layer": "ground",
+      "trigger": "Explosion +70ms",
+      "placement": "width .85D, height .85D*.75; tint [75,52,38], opacity.30",
+      "tint_policy": "multiply specified dark warm tint; alpha blend",
+      "playback": "static; duration and opacity envelope in INTEGRATION.md",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "8271016c83bac74e94904788bdf5bff255e82e0c4f7f7a61c35855d209ae785c"
+    },
+    {
+      "id": "orb-trail",
+      "file": "orb-trail.png",
+      "frame_size": [
+        256,
+        64
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        128.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        6
+      ],
+      "layer": "under actors",
+      "trigger": "Orb projectile survives current snapshot",
+      "placement": "tip 4px behind head; grow from0 to24px during first60ms",
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "static; duration and opacity envelope in INTEGRATION.md",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "6d66e8fb8e2a34b0f2238f876ce7a0e6d60d200e945d7219fa65c09d3bfa7b29"
+    },
+    {
+      "id": "orb-trail-kaja",
+      "file": "orb-trail-kaja.png",
+      "frame_size": [
+        256,
+        64
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        128.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        6
+      ],
+      "layer": "under actors",
+      "trigger": "Orb projectile survives current snapshot",
+      "placement": "tip 4px behind head; grow from0 to24px during first60ms",
+      "tint_policy": "multiply WHITE; Pillow +70 degree hue shift of orb-trail.png for Kaja",
+      "playback": "static; duration and opacity envelope in INTEGRATION.md",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "0e672914926f9955b8938dd5261ba459b7035f4c6e5b29e193e63f8bd3c9ba86"
+    },
+    {
+      "id": "bolt-trail",
+      "file": "bolt-trail.png",
+      "frame_size": [
+        256,
+        64
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        128.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        34,
+        4
+      ],
+      "layer": "under actors",
+      "trigger": "Bolt projectile survives current snapshot",
+      "placement": "tip 7px behind head; clip at shot origin",
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "static; duration and opacity envelope in INTEGRATION.md",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "f5082198f5778d56620f73a11ab1b3f1388cc511f1b9242ee4f54a52104814e4"
+    },
+    {
+      "id": "ward-shell",
+      "file": "ward-shell.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        64.0,
+        64.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        35
+      ],
+      "layer": "under actors",
+      "trigger": "ActorView.ward transitions from0 to positive or WardGained",
+      "placement": "200ms per gain, >=250ms debounce; no permanent bubble",
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "static; duration and opacity envelope in INTEGRATION.md",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "7adb83ec7a0276286675f089a10082485624d24b0b0a893d04607cb6c4a03549"
+    },
+    {
+      "id": "telegraph-rim",
+      "file": "telegraph-rim.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        64.0,
+        64.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        0,
+        0
+      ],
+      "layer": "ground",
+      "trigger": "Hostile HazardView Tracking/Locked",
+      "placement": "draw at exact simulation boundary with 1.5px uniform rim; use textured boundary mesh for arbitrary size",
+      "tint_policy": "hostile [255,55,75]; last150ms rim to [255,145,150]; alpha blend only",
+      "playback": "static; duration and opacity envelope in INTEGRATION.md",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "1eb60106d15278a58997a928c2057eca9ab3a1933e4f626cc8e5745163a66db9"
+    },
+    {
+      "id": "telegraph-fill",
+      "file": "telegraph-fill.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        64.0,
+        64.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        0,
+        0
+      ],
+      "layer": "ground",
+      "trigger": "Hostile HazardView Tracking/Locked/Resolved",
+      "placement": "UV map authored disc; base .12, progress .34; exact shape clip; no easing progress",
+      "tint_policy": "hostile [255,55,75]; last150ms rim to [255,145,150]; alpha blend only",
+      "playback": "static; duration and opacity envelope in INTEGRATION.md",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "fdca1128634c8d1c92147ffa44a8f11c21aa7d41e026fffe184da70986ab0879"
+    },
+    {
+      "id": "telegraph-edge",
+      "file": "telegraph-edge.png",
+      "frame_size": [
+        256,
+        64
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        128.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        0,
+        1.5
+      ],
+      "layer": "ground",
+      "trigger": "Hostile HazardView Tracking/Locked/Resolved",
+      "placement": "white raster mapped to exact circle/cone/line boundary at fixed1.5px",
+      "tint_policy": "hostile [255,55,75]; last150ms rim to [255,145,150]; alpha blend only",
+      "playback": "static; duration and opacity envelope in INTEGRATION.md",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "7bb0ec5efb7955d0518ad7398ad9d834b466fb38a2e761eaef88c15a44dae431"
+    },
+    {
+      "id": "shadow",
+      "file": "shadow.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        64.0,
+        64.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        8
+      ],
+      "layer": "ground",
+      "trigger": "Live projectile, actor or chest",
+      "placement": "neutral texture tint [30,23,19]; alpha .30; use existing shadow if desired",
+      "tint_policy": "multiply specified dark warm tint; alpha blend",
+      "playback": "static; duration and opacity envelope in INTEGRATION.md",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "25a870b15f04269d5e397ae36f2f4355ec6bd709415292d2ac465295e7b9cb32"
+    },
+    {
+      "id": "cast-flash-neutral",
+      "file": "cast-flash-neutral.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        30,
+        35,
+        45,
+        50
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        20,
+        20
+      ],
+      "layer": "under actors",
+      "trigger": "ActionStarted Basic/Cast, latch until ActorView.state_age crosses impact_at",
+      "placement": "muzzle: projected chest + facing/travel direction *8px",
+      "tint_policy": "neutral maximum-channel RGB; multiply hero=[160,225,255], enemy=[255,130,160]; boss energy=[255,174,65]; cast support=[175,255,205]",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "34eb70677e039ed270b723368966d403ca407c20de1795089cb55263d74575ac"
+    },
+    {
+      "id": "orb-head-neutral",
+      "file": "orb-head-neutral.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        12,
+        12
+      ],
+      "layer": "under actors",
+      "trigger": "Snapshot.projectiles kind Orb",
+      "placement": "anchor camera.project(pos)-height*zoom; frame1 held",
+      "tint_policy": "neutral maximum-channel RGB; multiply hero=[160,225,255], enemy=[255,130,160]; boss energy=[255,174,65]; cast support=[175,255,205]",
+      "playback": "hold frame1 for projectile lifetime",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "fa581f1df89c956d1f98a6039fefd7e70248638ae4bacc9f5052cd146ea65ea0"
+    },
+    {
+      "id": "orb-trail-neutral",
+      "file": "orb-trail-neutral.png",
+      "frame_size": [
+        256,
+        64
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        128.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        6
+      ],
+      "layer": "under actors",
+      "trigger": "Orb projectile survives current snapshot",
+      "placement": "tip 4px behind head; grow from0 to24px during first60ms",
+      "tint_policy": "neutral maximum-channel RGB; multiply hero=[160,225,255], enemy=[255,130,160]; boss energy=[255,174,65]; cast support=[175,255,205]",
+      "playback": "static; duration and opacity envelope in INTEGRATION.md",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "84013eff6cddf588595c8c0217e38fa01f582fdccb04b3ea5db099e0633b642e"
+    },
+    {
+      "id": "bolt-head-neutral",
+      "file": "bolt-head-neutral.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        23,
+        8
+      ],
+      "layer": "under actors",
+      "trigger": "Snapshot.projectiles kind Bolt",
+      "placement": "rotate along projected dir, frame1 held",
+      "tint_policy": "neutral maximum-channel RGB; multiply hero=[160,225,255], enemy=[255,130,160]; boss energy=[255,174,65]; cast support=[175,255,205]",
+      "playback": "hold frame1 for projectile lifetime",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "7f0ee56f51bf08cc506a89176dcb9574322080f10c3667f7124ca7e7ceccfd96"
+    },
+    {
+      "id": "bolt-trail-neutral",
+      "file": "bolt-trail-neutral.png",
+      "frame_size": [
+        256,
+        64
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        128.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        34,
+        4
+      ],
+      "layer": "under actors",
+      "trigger": "Bolt projectile survives current snapshot",
+      "placement": "tip 7px behind head; clip at shot origin",
+      "tint_policy": "neutral maximum-channel RGB; multiply hero=[160,225,255], enemy=[255,130,160]; boss energy=[255,174,65]; cast support=[175,255,205]",
+      "playback": "static; duration and opacity envelope in INTEGRATION.md",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "f13d4eea18097e4770494c4fb4b6e34fe1fffbe7addce96c8287a8a43d328975"
+    },
+    {
+      "id": "chest-sparkle-neutral",
+      "file": "chest-sparkle-neutral.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        100,
+        150,
+        150,
+        200
+      ],
+      "pivot": [
+        64.0,
+        122
+      ],
+      "blend": "additive",
+      "screen_size_px": [
+        44,
+        44
+      ],
+      "layer": "under actors",
+      "trigger": "Event::ChestOpened",
+      "placement": "foot at chest lip; never offset the chest asset pivot",
+      "tint_policy": "neutral maximum-channel RGB; multiply hero=[160,225,255], enemy=[255,130,160]; boss energy=[255,174,65]; cast support=[175,255,205]",
+      "playback": "once, then remove; no last-frame hold",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "6f9ea91229da254587a4d95419573f960f6c375af96ba113331b9dc41a96ecdf"
+    },
+    {
+      "id": "muzzle-flash",
+      "file": "cast-flash-neutral.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        30,
+        35,
+        45,
+        50
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        16,
+        10
+      ],
+      "layer": "under actors",
+      "trigger": "New Bolt projectile id at first observed position",
+      "placement": "muzzle: projected chest + facing/travel direction *8px",
+      "tint_policy": "neutral maximum-channel RGB; multiply hero=[160,225,255], enemy=[255,130,160]; boss energy=[255,174,65]; cast support=[175,255,205]",
+      "playback": "once160ms; local +x aligned projected dir",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "34eb70677e039ed270b723368966d403ca407c20de1795089cb55263d74575ac",
+      "reuses": "cast-flash-neutral"
+    },
+    {
+      "id": "resurrect-ring",
+      "file": "telegraph-rim.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        64.0,
+        64.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        40,
+        30
+      ],
+      "layer": "ground",
+      "trigger": "Resurrect hazard exists, progress controls clockwise reveal",
+      "placement": "draw at exact simulation boundary with 1.5px uniform rim; use textured boundary mesh for arbitrary size",
+      "tint_policy": "gold [255,211,128], never hostile red",
+      "playback": "alpha.30 base ring + gold progress arc; 2 textured mesh draws",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "1eb60106d15278a58997a928c2057eca9ab3a1933e4f626cc8e5745163a66db9",
+      "reuses": "telegraph-rim"
+    },
+    {
+      "id": "resurrect-motes",
+      "file": "chest-sparkle.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        100,
+        150,
+        150,
+        200
+      ],
+      "pivot": [
+        64.0,
+        122
+      ],
+      "blend": "additive",
+      "screen_size_px": [
+        18,
+        18
+      ],
+      "layer": "under actors",
+      "trigger": "Active resurrect channel",
+      "placement": "foot at chest lip; never offset the chest asset pivot",
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "3 copies frame3, rise60px over850ms with evenly offset phases, alpha<=.32",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "78398637b2573a1ef194a96dfeaf024972d6b123474d2278e98884e51918f39a",
+      "reuses": "chest-sparkle"
+    },
+    {
+      "id": "support-cast-pulse",
+      "file": "spawn-portal-neutral.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        100,
+        150,
+        150,
+        200
+      ],
+      "pivot": [
+        64.0,
+        64.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        42,
+        31.5
+      ],
+      "layer": "ground",
+      "trigger": "WardRing/ElevateRing first Active snapshot",
+      "placement": "project ground once; frame0->1->2 over countdown; frame3 200ms at Spawned",
+      "tint_policy": "Ward blue [125,200,255], Elevate green [165,240,195]; use neutralized sprite if recoloring",
+      "playback": "frames1,2,3 over300ms; fixed42px ornamental pulse, no persistent range circle",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "74a761af33aaaebcb349d34de5e0a8a6530ac223a32b40e44bb428a31f23429f",
+      "reuses": "spawn-portal-neutral"
+    },
+    {
+      "id": "heal-glint",
+      "file": "chest-sparkle-neutral.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        100,
+        150,
+        150,
+        200
+      ],
+      "pivot": [
+        64.0,
+        122
+      ],
+      "blend": "additive",
+      "screen_size_px": [
+        18,
+        24
+      ],
+      "layer": "under actors",
+      "trigger": "Healed amount>0",
+      "placement": "foot at chest lip; never offset the chest asset pivot",
+      "tint_policy": "neutral maximum-channel RGB; multiply hero=[160,225,255], enemy=[255,130,160]; boss energy=[255,174,65]; cast support=[175,255,205]",
+      "playback": "200ms once; at most1 per target per200ms, alpha<=.6",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "6f9ea91229da254587a4d95419573f960f6c375af96ba113331b9dc41a96ecdf",
+      "reuses": "chest-sparkle-neutral"
+    },
+    {
+      "id": "bubble-pop",
+      "file": "hit-ice.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        25,
+        40,
+        55,
+        60
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        28,
+        28
+      ],
+      "layer": "under actors",
+      "trigger": "BubblePop HazardResolved victims, if this legacy kind is still emitted",
+      "placement": "frozen contact at target chest offset toward attacker by6px; max40px even on bosses",
+      "opacity": 1.0,
+      "tint_policy": "multiply WHITE; preserve authored RGB",
+      "playback": "one180ms impact per victim; no permanent radius display",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "ec90d1203ef3a2b49c31568e7bfdd796379a8e5599a46c1a14550ca2099eb980",
+      "reuses": "hit-ice"
+    },
+    {
+      "id": "hostile-resolve-flash",
+      "file": "telegraph-fill.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        64.0,
+        64.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        0,
+        0
+      ],
+      "layer": "ground",
+      "trigger": "HazardResolved other than sniper active shot",
+      "placement": "UV map authored disc; base .12, progress .34; exact shape clip; no easing progress",
+      "tint_policy": "hostile [255,55,75]; last150ms rim to [255,145,150]; alpha blend only",
+      "playback": "80ms at full exact footprint; alpha .18*(1-t), no larger radius",
+      "origin": "frame-local pixels; +x right, +y down",
+      "sha256": "fdca1128634c8d1c92147ffa44a8f11c21aa7d41e026fffe184da70986ab0879",
+      "reuses": "telegraph-fill"
+    },
+    {
+      "id": "damage-float",
+      "file": null,
+      "frame_size": [
+        0,
+        0
+      ],
+      "frame_count": 0,
+      "frame_ms": [],
+      "pivot": [
+        0,
+        0
+      ],
+      "blend": "alpha",
+      "tint_policy": "existing text/UI palette; poison floats purple; scene fade black",
+      "screen_size_px": [
+        16,
+        16
+      ],
+      "layer": "UI",
+      "trigger": "Hit amount>0",
+      "playback": "existing renderer; life 0.75s where positive",
+      "origin": "existing renderer anchor"
+    },
+    {
+      "id": "critical-float",
+      "file": null,
+      "frame_size": [
+        0,
+        0
+      ],
+      "frame_count": 0,
+      "frame_ms": [],
+      "pivot": [
+        0,
+        0
+      ],
+      "blend": "alpha",
+      "tint_policy": "existing text/UI palette; poison floats purple; scene fade black",
+      "screen_size_px": [
+        20,
+        20
+      ],
+      "layer": "UI",
+      "trigger": "Hit crit=true",
+      "playback": "existing renderer; life 0.75s where positive",
+      "origin": "existing renderer anchor"
+    },
+    {
+      "id": "heal-float",
+      "file": null,
+      "frame_size": [
+        0,
+        0
+      ],
+      "frame_count": 0,
+      "frame_ms": [],
+      "pivot": [
+        0,
+        0
+      ],
+      "blend": "alpha",
+      "tint_policy": "existing text/UI palette; poison floats purple; scene fade black",
+      "screen_size_px": [
+        16,
+        16
+      ],
+      "layer": "UI",
+      "trigger": "Healed amount>0",
+      "playback": "existing renderer; life 0.75s where positive",
+      "origin": "existing renderer anchor"
+    },
+    {
+      "id": "miss-float",
+      "file": null,
+      "frame_size": [
+        0,
+        0
+      ],
+      "frame_count": 0,
+      "frame_ms": [],
+      "pivot": [
+        0,
+        0
+      ],
+      "blend": "alpha",
+      "tint_policy": "existing text/UI palette; poison floats purple; scene fade black",
+      "screen_size_px": [
+        14,
+        14
+      ],
+      "layer": "UI",
+      "trigger": "Evaded",
+      "playback": "existing renderer; life 0.65s where positive",
+      "origin": "existing renderer anchor"
+    },
+    {
+      "id": "scene-fade",
+      "file": null,
+      "frame_size": [
+        0,
+        0
+      ],
+      "frame_count": 0,
+      "frame_ms": [],
+      "pivot": [
+        0,
+        0
+      ],
+      "blend": "alpha",
+      "tint_policy": "existing text/UI palette; poison floats purple; scene fade black",
+      "screen_size_px": [
+        0,
+        0
+      ],
+      "layer": "UI",
+      "trigger": "Snapshot.stage.fade",
+      "playback": "existing renderer; life 0s where positive",
+      "origin": "existing renderer anchor"
+    },
+    {
+      "id": "chest-body",
+      "file": null,
+      "frame_size": [
+        0,
+        0
+      ],
+      "frame_count": 0,
+      "frame_ms": [],
+      "pivot": [
+        0,
+        0
+      ],
+      "blend": "alpha",
+      "tint_policy": "existing text/UI palette; poison floats purple; scene fade black",
+      "screen_size_px": [
+        32,
+        32
+      ],
+      "layer": "under actors",
+      "trigger": "ChestDropped and ChestState",
+      "playback": "existing renderer; life 0s where positive",
+      "origin": "existing renderer anchor"
+    },
+    {
+      "id": "reward-banner",
+      "file": null,
+      "frame_size": [
+        0,
+        0
+      ],
+      "frame_count": 0,
+      "frame_ms": [],
+      "pivot": [
+        0,
+        0
+      ],
+      "blend": "alpha",
+      "tint_policy": "existing text/UI palette; poison floats purple; scene fade black",
+      "screen_size_px": [
+        20,
+        20
+      ],
+      "layer": "UI",
+      "trigger": "ChestOpened",
+      "playback": "existing renderer; life 2s where positive",
+      "origin": "existing renderer anchor"
+    },
+    {
+      "id": "notice-cue",
+      "file": null,
+      "frame_size": [
+        0,
+        0
+      ],
+      "frame_count": 0,
+      "frame_ms": [],
+      "pivot": [
+        0,
+        0
+      ],
+      "blend": "alpha",
+      "tint_policy": "existing text/UI palette; poison floats purple; scene fade black",
+      "screen_size_px": [
+        14,
+        14
+      ],
+      "layer": "UI",
+      "trigger": "Noticed and debug enabled",
+      "playback": "existing renderer; life 0.3s where positive",
+      "origin": "existing renderer anchor"
+    },
+    {
+      "id": "warcry-shell-back",
+      "file": "warcry-shell-back.png",
+      "frame_size": [
+        128,
+        192
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        64.0,
+        96.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        35
+      ],
+      "layer": "under actors",
+      "trigger": "Living Fara warcry_shield with ward > 0",
+      "placement": "body-height fit 0.82 x 1.18; centre 0.48 body height above feet",
+      "tint_policy": "multiply WHITE; preserve sky-blue gradient and clear centre",
+      "playback": "static soft gradient; client 1.35 s density pulse"
+    },
+    {
+      "id": "warcry-shell-front",
+      "file": "warcry-shell-front.png",
+      "frame_size": [
+        128,
+        192
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        64.0,
+        96.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        35
+      ],
+      "layer": "over actors",
+      "trigger": "Living Fara warcry_shield with ward > 0",
+      "placement": "body-height fit 0.82 x 1.18; centre 0.48 body height above feet",
+      "tint_policy": "multiply WHITE; preserve sky-blue gradient and clear centre",
+      "playback": "static soft gradient; client 1.35 s density pulse"
+    }
+  ]
+}

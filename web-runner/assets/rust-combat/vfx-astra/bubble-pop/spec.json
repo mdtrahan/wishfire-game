@@ -1,0 +1,224 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-25",
+  "author": "GPT Astra, Bubble Pop art task",
+  "art_director": "Claude",
+  "authority": "Owner update: Runa conjures one giant bubble around her TARGET ENEMY. ORKA-6jh1 art-only handoff.",
+  "status": "Generated raster artwork, packed and visually inspected; runtime integration and combat playback unverified.",
+  "coordinates": {
+    "logical_viewport_px": [
+      360,
+      640
+    ],
+    "zoom": 0.5,
+    "actor_reference_height_px": 32,
+    "ground_y_squash": 0.5,
+    "frame_uv": "[i/count,0,(i+1)/count,1]",
+    "billboard_note": "All five strips face the screen. Apply zoom to both dimensions; ground_squash=1 for artwork. Bubble remains round and stands above the target ground contact.",
+    "ground_note": "Owner-specified radius 140 u projects to a 140 x 70 px ground footprint at zoom .5 and ground squash .5. This footprint describes hit membership; no ellipse/telegraph texture is supplied. Older reference specs used .75; this art handoff follows the current owner brief."
+  },
+  "sampling": {
+    "format": "PNG RGBA8, straight/unassociated alpha",
+    "filter": "linear",
+    "wrap": "clamp",
+    "tint": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "transparent_pixels_rgb": "zero",
+    "alpha_blend": {
+      "rgb_src": "SrcAlpha",
+      "rgb_dst": "OneMinusSrcAlpha"
+    },
+    "mipmaps": false,
+    "atlas_padding_texels": 3
+  },
+  "assets": [
+    {
+      "file": "bubble-swell.png",
+      "frame_size_px": [
+        192,
+        192
+      ],
+      "frame_count": 6,
+      "layout": "horizontal-left-to-right",
+      "fps": 17.142857142857142,
+      "ms_per_frame": 58.333333333333336,
+      "pivot_px": [
+        96,
+        189
+      ],
+      "pivot_normalized": [
+        0.5,
+        0.984375
+      ],
+      "blend": "alpha",
+      "on_screen_quad_px_at_zoom_0_5": [
+        149.33333333333334,
+        149.33333333333334
+      ],
+      "world_quad_units_before_projection": [
+        298.6666666666667,
+        298.6666666666667
+      ],
+      "ground_squash": 1,
+      "duration_s": 0.35,
+      "loop": false,
+      "placement_notes": "Target feet. Visible settled bubble 140 x 140 px; 184px overshoot gives 143.1px width. No extra vertical squash.",
+      "bytes": 170915,
+      "sha256": "cf627f0a951a04b483adf636b4038c71e891ec3e3f773195716e53f0c7a23da8"
+    },
+    {
+      "file": "bubble-pop.png",
+      "frame_size_px": [
+        256,
+        256
+      ],
+      "frame_count": 8,
+      "layout": "horizontal-left-to-right",
+      "fps": 25.0,
+      "ms_per_frame": 40,
+      "pivot_px": [
+        128,
+        253
+      ],
+      "pivot_normalized": [
+        0.5,
+        0.98828125
+      ],
+      "blend": "alpha",
+      "on_screen_quad_px_at_zoom_0_5": [
+        199.11111111111111,
+        199.11111111111111
+      ],
+      "world_quad_units_before_projection": [
+        398.22222222222223,
+        398.22222222222223
+      ],
+      "ground_squash": 1,
+      "duration_s": 0.32,
+      "loop": false,
+      "placement_notes": "Same target feet and source-pixel density as swell. Frame 0 is identical final swell artwork translated +32,+64; transition preserves exact content. Fade global opacity from 1 to 0 over the final 40ms; authored last-frame alpha already falls to 18%.",
+      "bytes": 257390,
+      "sha256": "16a4da69ee24a8194e4ba79f0a4657f7c039be64cfe7f7834e8bfad099992b1a"
+    },
+    {
+      "file": "bubble-suds.png",
+      "frame_size_px": [
+        64,
+        64
+      ],
+      "frame_count": 6,
+      "layout": "horizontal-left-to-right",
+      "fps": 25.0,
+      "ms_per_frame": 40,
+      "pivot_px": [
+        32,
+        32
+      ],
+      "pivot_normalized": [
+        0.5,
+        0.5
+      ],
+      "blend": "alpha",
+      "on_screen_quad_px_at_zoom_0_5": [
+        28,
+        28
+      ],
+      "world_quad_units_before_projection": [
+        56,
+        56
+      ],
+      "ground_squash": 1,
+      "duration_s": 0.24,
+      "loop": false,
+      "placement_notes": "Each affected enemy torso at knockback onset; follow body for 0.24s. Screen-facing. Fade final frame to zero.",
+      "bytes": 20898,
+      "sha256": "1be675cbb5e920c38aec7370215e7742e95ae3a22595c4cef2eeeaf96c761d3d"
+    },
+    {
+      "file": "bubble-droplets.png",
+      "frame_size_px": [
+        24,
+        24
+      ],
+      "frame_count": 4,
+      "layout": "horizontal-left-to-right",
+      "fps": 0,
+      "ms_per_frame": 0,
+      "pivot_px": [
+        12,
+        12
+      ],
+      "pivot_normalized": [
+        0.5,
+        0.5
+      ],
+      "blend": "alpha",
+      "on_screen_quad_px_at_zoom_0_5": [
+        10,
+        10
+      ],
+      "world_quad_units_before_projection": [
+        20,
+        20
+      ],
+      "ground_squash": 1,
+      "duration_s": null,
+      "loop": false,
+      "placement_notes": "Four independent particle variants, not a flipbook. Suggested quad range 8-12px.",
+      "bytes": 3571,
+      "sha256": "5224bb029f023575065776d1a0c84964f6149fa89d24c8722dbf4c1406b1f896"
+    },
+    {
+      "file": "bubble-cast.png",
+      "frame_size_px": [
+        48,
+        48
+      ],
+      "frame_count": 6,
+      "layout": "horizontal-left-to-right",
+      "fps": 20.0,
+      "ms_per_frame": 50,
+      "pivot_px": [
+        24,
+        24
+      ],
+      "pivot_normalized": [
+        0.5,
+        0.5
+      ],
+      "blend": "alpha",
+      "on_screen_quad_px_at_zoom_0_5": [
+        18,
+        18
+      ],
+      "world_quad_units_before_projection": [
+        36,
+        36
+      ],
+      "ground_squash": 1,
+      "duration_s": 0.3,
+      "loop": false,
+      "placement_notes": "Runa staff tip or hands only. Start with target swell; cue lasts 0.30s. No travel projectile. Fade final frame to zero.",
+      "bytes": 10152,
+      "sha256": "25b206a8fb4a47d73e32290a31b367c2fcfabdc7c6dc558f1ffd1393e5f170e2"
+    }
+  ],
+  "sequence": {
+    "anchor": "Selected enemy ground contact, never Runa. Track target through swell, then latch pop origin at resolve.",
+    "swell_duration_s": 0.35,
+    "pop_start_s": 0.35,
+    "snap_frame": 2,
+    "snap_time_s_from_cast": 0.43,
+    "timing_note": "Pop frames 0 and 1 hold 40ms each; bright snap starts at 430ms from cast. Align existing combat resolve/knockback to that beat in integration; this art task changes no sim timing.",
+    "radius_world_units": 140,
+    "knockback_world_units": 70,
+    "knockback_origin": "Latched target ground position. Nearby victims travel radially away from this point. Sim owns centre-overlap direction and eligibility.",
+    "draw_order": "Actors first, clear film over target; cast at Runa hand/staff; victim suds over each struck body. One bubble instance per cast.",
+    "boss_scale": "Uniformly multiply quad and pivot offset by up to 2.0 to enclose a large boss; maintain round sphere and stable ground contact. Cosmetic scale must not silently change radius or knockback.",
+    "droplets": "Choose a variant once per particle. Scatter 3-5 particles from ruptured bubble, drift 0.3-0.65s, fade alpha. No radial rays."
+  }
+}

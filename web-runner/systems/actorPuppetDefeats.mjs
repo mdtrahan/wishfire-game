@@ -16,10 +16,12 @@ export function recordActorPuppetDefeat(globals, actor) {
   const actors = session(globals).actors;
   if (actors.has(actor.uid)) return;
   const now = Number(globals.time || 0);
-  actors.set(actor.uid, { ...actor, hp: 0, isAlive: false, isPuppetDefeat: true,
+  const picture = { ...actor, hp: 0, isAlive: false, isPuppetDefeat: true,
     actionState: 'ko', actionFacing: actor.actionFacing || actor.facing,
     actionStateStartedAt: now, actionStateUntil: now + KO_DURATION_SEC,
-    puppetDefeatEndsAt: now + KO_DURATION_SEC });
+    puppetDefeatEndsAt: now + KO_DURATION_SEC };
+  actors.set(actor.uid, picture);
+  return picture;
 }
 
 export function resetActorPuppetDefeats(globals) {

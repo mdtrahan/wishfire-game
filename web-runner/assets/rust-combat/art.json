@@ -1,0 +1,130 @@
+{
+  "assets": [
+    {
+      "path": "elevate/sword.png",
+      "size": [
+        128,
+        384
+      ],
+      "pivot": [
+        64,
+        192
+      ],
+      "tintable": false,
+      "tiling_axis": null,
+      "intended_use": "Elevate painted sword, hilt up and blade down"
+    },
+    {
+      "path": "elevate/winged_boots.png",
+      "size": [
+        128,
+        128
+      ],
+      "pivot": [
+        64,
+        64
+      ],
+      "tintable": false,
+      "tiling_axis": null,
+      "intended_use": "Elevate painted winged boot"
+    },
+    {
+      "path": "elevate/wings.png",
+      "size": [
+        128,
+        128
+      ],
+      "pivot": [
+        64,
+        64
+      ],
+      "tintable": false,
+      "tiling_axis": null,
+      "intended_use": "Elevate painted paired wings"
+    },
+    {
+      "path": "telegraph/wave_band.png",
+      "size": [
+        512,
+        512
+      ],
+      "pivot": [
+        256,
+        256
+      ],
+      "tintable": true,
+      "tiling_axis": null,
+      "intended_use": "repeating loop radiation wave"
+    },
+    {
+      "path": "telegraph/flash.png",
+      "size": [
+        512,
+        512
+      ],
+      "pivot": [
+        256,
+        256
+      ],
+      "tintable": true,
+      "tiling_axis": null,
+      "intended_use": "resolve/impact flash"
+    },
+    {
+      "path": "icons/warn.png",
+      "size": [
+        64,
+        64
+      ],
+      "pivot": [
+        32,
+        32
+      ],
+      "tintable": true,
+      "tiling_axis": null,
+      "intended_use": "warn status/effect marker"
+    },
+    {
+      "path": "projectiles/bomb.png",
+      "size": [
+        48,
+        48
+      ],
+      "pivot": [
+        24,
+        24
+      ],
+      "tintable": false,
+      "tiling_axis": null,
+      "intended_use": "fused bomb projectile"
+    },
+    {
+      "path": "projectiles/bolt.png",
+      "size": [
+        64,
+        16
+      ],
+      "pivot": [
+        32,
+        8
+      ],
+      "tintable": false,
+      "tiling_axis": null,
+      "intended_use": "right-facing cel-shaded bolt"
+    },
+    {
+      "path": "projectiles/shadow.png",
+      "size": [
+        48,
+        24
+      ],
+      "pivot": [
+        24,
+        12
+      ],
+      "tintable": false,
+      "tiling_axis": null,
+      "intended_use": "soft black ground shadow"
+    }
+  ]
+}

@@ -7,27 +7,30 @@ import { consumeCombatKillEvent } from '../modules/heroCommands.mjs';
 import { maybeAdvanceContinuousCombatStage } from '../src/core/continuousCombatStage.mjs';
 import { runtimeAssetUrl, getEmbeddedWasmBytes } from './runtimeAssetUrl.mjs';
 import { recordActorPuppetDefeat } from './actorPuppetDefeats.mjs';
-import { createRustHazardOverlay } from './rustCombatPresentation.mjs';
+import { createRustCombatPresentation } from './rustCombatPresentation.mjs';
 import { isRustCombatStage } from './rustCombat.mjs';
+
+// Pinned slice Boss KO: 12 frames at 12 fps; actors.rs fade and impact_stop.rs camera.
+const BOSS_KO_SECONDS = 1, CORPSE_FADE = .42, DEATH_CAMERA_SECONDS = .32;
 
 // Kept injectable for headless proof using the real WASM and WFM lifecycle.
 export function createRustCombatRuntime({ state, globals: g = state.globals, bridge, session, call,
   progression, getEnemyRows, advanceHostTime, present = () => {}, warn = console.warn }) {
   let attempt = null, serial = 0, baseTime = 0, lastCombatTime = 0, lastPresentationTime = 0;
-  let stageOptions, advanced = false, failed = false, introNow = null;
+  let stageOptions, advanced = false, failed = false, introNow = null, tail = null;
   const hosts = new Map(), seenSpawns = new Set(), hostHeroes = new Map();
-  function restoreHostHeroes() {
+  function restoreHostHeroes(keepVisuals = false) {
     for (const [actor, original] of hostHeroes) {
       const ratio = actor.maxHP > 0 ? actor.hp / actor.maxHP : 0;
       actor.maxHP = original.maxHP;
       actor.hp = Math.max(0, Math.min(actor.maxHP, actor.maxHP * ratio));
       actor.isAlive = actor.hp > 0;
-      delete actor.rustActorId; delete actor.rustState;
+      if (!keepVisuals) { delete actor.rustActorId; delete actor.rustState; }
     }
-    hostHeroes.clear();
+    if (!keepVisuals) hostHeroes.clear();
   }
   function stop() {
-    driver.stop(); restoreHostHeroes(); attempt = null; introNow = null; hosts.clear(); seenSpawns.clear();
+    driver.stop(); restoreHostHeroes(); attempt = null; introNow = null; tail = null; hosts.clear(); seenSpawns.clear();
     present(null);
   }
   function finishFailure(error) {
@@ -38,7 +41,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
     present(null); warn('[rustCombat] encounter ended:', error);
     session.surrenderBossAttempt('rust_bridge_error');
   }
-  function project(snapshot) {
+  function project(snapshot, visualOnly = false) {
     for (const view of snapshot.actors) {
       let actor = hosts.get(view.actor_id);
       if (!actor && view.host_id != null) {
@@ -54,12 +57,16 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
       }
       if (!actor) continue;
       hosts.set(view.actor_id, actor);
+      const heldCharge=snapshot.spotlight?.phase==='charge'&&snapshot.spotlight.caster===view.actor_id;
+      const visual=g.RustCombatPresentation?.pose(view);
+      const shownState=heldCharge?'cast':visual?.poseState??view.state,shownAge=heldCharge?0:visual?.poseState?visual.poseAge:view.state_age;
+      const shownFacing=g.RustCombatPresentation?.motion.records.get(view.actor_id)?.facing??view.facing;
+      if (!visualOnly) Object.assign(actor, { hp: view.hp, maxHP: view.max_hp, isAlive: view.hp > 0 });
       Object.assign(actor, { x: view.pos.x, y: view.pos.y, footX: view.pos.x, footY: view.pos.y,
-        originX: view.pos.x, originY: view.pos.y, hp: view.hp, maxHP: view.max_hp,
-        isAlive: view.hp > 0, facing: view.facing, rustActorId: view.actor_id, rustState: view.state,
+        originX: view.pos.x, originY: view.pos.y, facing: shownFacing, rustActorId: view.actor_id, rustState: view.state,
         streamState: 'engaged', locomotion: view.state === 'walk' ? 'walk' : 'idle',
-        actionState: view.state, actionFacing: view.facing, actionStateStartedAt: g.time - view.state_age,
-        actionStateUntil: g.time - view.state_age + view.state_duration, actionImpactAt: g.time - view.state_age + view.impact_at });
+        actionState: shownState, actionFacing: shownFacing, actionStateStartedAt: g.time - shownAge,
+        actionStateUntil: g.time - shownAge + (visual?.poseState ? visual.poseDuration : view.state_duration), actionImpactAt: g.time - shownAge + (visual?.poseState ? visual.poseImpact : view.impact_at) });
     }
   }
   function consume(snapshot, events) {
@@ -68,7 +75,8 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
     advanceHostTime?.({ state, dt: combatDelta, activeSeconds: presentationDelta, presentationSeconds: presentationDelta });
     g.time = baseTime + snapshot.combat_time;
     lastCombatTime = snapshot.combat_time; lastPresentationTime = snapshot.time;
-    let bossKilled = false;
+    let bossKilled = false, bossPicture;
+    present(snapshot, events);
     project(snapshot);
     if (g.ContinuousCombatStage?.bossActive) g.ContinuousCombatStage.bossCameraCenterX = snapshot.camera_focus.x;
     for (const event of events) {
@@ -77,7 +85,8 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
         const enemy = hosts.get(data.actor);
         if (enemy?.kind === 'enemy') {
           if (Number(enemy.uid) === Number(g.ContinuousCombatStage?.bossUID)) bossKilled = true;
-          recordActorPuppetDefeat(g, enemy);
+          const picture = recordActorPuppetDefeat(g, enemy);
+          if (bossKilled && Number(enemy.uid) === Number(g.ContinuousCombatStage?.bossUID)) bossPicture = picture;
           consumeCombatKillEvent(g.ProgressionBattle, { enemy });
           if (g.HeroProgressStorageError) throw new Error(g.HeroProgressStorageError);
           const index = state.entities.indexOf(enemy);
@@ -88,7 +97,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
         }
       } else if (kind === 'damage') {
         const target = hosts.get(data.target);
-        if (target && data.amount > 0) call('SpawnDamageText', Math.round(data.amount), target.x, target.y, data.crit ? 'critical' : 'damage', target.kind);
+        // The slice presentation consumes the same ordered Rust damage event.
       } else if (!['spawned', 'downed', 'revived', 'all_down', 'ended', 'presentation'].includes(kind)) {
         throw new Error(`Unknown Rust gameplay event: ${kind}`);
       }
@@ -101,20 +110,49 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
     if (!bossKilled && snapshot.state === 'all_down') {
       stop(); session.surrenderBossAttempt('rust_all_down'); return;
     }
-    if (bossKilled || snapshot.state === 'ended') {
-      // Release the combat world before WFM restores/persists its own stat scale.
-      stop();
-      // Boss death completes WFM's objective. Remaining summons are despawned
-      // after world destruction, with no synthetic kills or rewards.
-      if (bossKilled) {
-        state.entities.splice(0, state.entities.length, ...state.entities.filter(a => a.kind === 'hero'));
-        g.EnemySlots.fill(0); g.EnemyIDs?.fill(0);
-      }
-    } else present(snapshot);
+    if (bossKilled) {
+      // Rewards and world destruction happen at death. Only the visual transition waits.
+      driver.stop(); restoreHostHeroes(true);
+      state.entities.splice(0, state.entities.length, ...state.entities.filter(a => a.kind === 'hero'));
+      g.EnemySlots.fill(0); g.EnemyIDs?.fill(0);
+      stageOptions.onBossClear?.();
+      call('SettleContinuousCombatRewards');
+      const freeze = Math.max(0, snapshot.hit_stop?.remaining || 0);
+      const visual = structuredClone(snapshot);
+      visual.hit_stop = null;
+      tail = { visual, spare: structuredClone(visual), ages: snapshot.actors.map(a => a.state_age), freeze, elapsed: 0, previousNow: stageOptions.nowMs,
+        born: snapshot.time, combatBorn: snapshot.combat_time, picture: bossPicture,
+        // actors.rs: 12 KO frames at 12 fps + .42 fade; impact_stop.rs: .32 camera.
+        duration: freeze + Math.max(BOSS_KO_SECONDS + CORPSE_FADE, DEATH_CAMERA_SECONDS) };
+      return;
+    }
+    if (snapshot.state === 'ended') stop();
     if (stageOptions) {
       advanced = maybeAdvanceContinuousCombatStage({ ...stageOptions, entities: state.entities, presentationBarrier: { lanes: {} }, combatTick() {},
         onBossTimeout() { g.RustCombatReceipt.outcome = 'timeout'; stop(); stageOptions.onBossTimeout?.(); } }) || advanced;
     }
+  }
+  function advanceTail(options) {
+    const dt = tail.previousNow === null ? 0 : Math.max(0, (options.nowMs - tail.previousNow) / 1000);
+    tail.previousNow = options.nowMs;
+    tail.elapsed += dt;
+    // Host clocks, Bag accrual and receipts keep their normal timing during presentation.
+    advanceHostTime?.({ state, dt, activeSeconds: dt, presentationSeconds: dt });
+    const age = Math.max(0, Math.min(tail.duration, tail.elapsed) - tail.freeze);
+    const visual = tail.spare; tail.spare = tail.visual; tail.visual = visual;
+    visual.time = tail.born + age; visual.combat_time = tail.combatBorn + age;
+    for (let i = 0; i < visual.actors.length; i++) visual.actors[i].state_age = tail.ages[i] + age;
+    present(visual, []); project(visual, true);
+    if (tail.picture) {
+      tail.picture.actionStateStartedAt = g.time - age;
+      tail.picture.actionStateUntil = g.time - age + BOSS_KO_SECONDS;
+      tail.picture.puppetDefeatEndsAt = g.time + Math.max(0, tail.duration - tail.elapsed);
+    }
+    if (tail.elapsed + 1e-9 < tail.duration) return false;
+    stop();
+    return maybeAdvanceContinuousCombatStage({ ...options, entities: state.entities,
+      presentationBarrier: { lanes: {} }, combatTick() {}, onBossClear: undefined,
+      call(name, ...args) { if (name !== 'SettleContinuousCombatRewards') return options.call(name, ...args); } });
   }
   const driver = createCombatAuthorityDriver({ bridge, consume, onError: finishFailure });
   function tickFrame(options) {
@@ -122,6 +160,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
     if (failed) { session.surrenderBossAttempt('rust_bridge_error'); return false; }
     if (!isRustCombatStage(g)) { if (attempt) stop(); return false; }
     const stage = g.ContinuousCombatStage;
+    if (tail) return advanceTail(options);
     if (g.BattleStartActive) {
       const dt = introNow === null ? .001 : Math.max(0, Math.min(.05, (options.nowMs - introNow) / 1000));
       introNow = options.nowMs;
@@ -154,7 +193,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
     try { return tickFrame(options); }
     catch (error) { try { stop(); } finally { finishFailure(error); } return false; }
   }
-  return { tick, stop, pause() { introNow = null; driver.advance(0, true); }, dispose: stop, read: driver.read };
+  return { tick, stop, pause() { introNow = null; if (tail) tail.previousNow = null; driver.advance(0, true); }, dispose: stop, read: driver.read };
 }
 
 export async function mountRustCombat(options) {
@@ -164,8 +203,8 @@ export async function mountRustCombat(options) {
     return response.arrayBuffer();
   });
   const { instance } = await WebAssembly.instantiate(bytes, {});
-  const overlay = createRustHazardOverlay(options.canvas, options.globals);
-  const runtime = createRustCombatRuntime({ ...options, bridge: createCombatBridge(instance), present: overlay.draw });
+  const overlay = await createRustCombatPresentation(options.globals);
+  const runtime = createRustCombatRuntime({ ...options, bridge: createCombatBridge(instance), present: overlay.present });
   const dispose = () => { runtime.dispose(); overlay.dispose(); window.removeEventListener('pagehide', dispose); };
   window.addEventListener('pagehide', dispose);
   return { ...runtime, dispose };

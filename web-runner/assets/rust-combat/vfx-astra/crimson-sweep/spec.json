@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-25",
+  "author": "GPT Astra; art director Claude",
+  "authority": "Crimson Sweep art delivery for Fara in ORKA-6jh1; owner brief.",
+  "status": "Art-only deliverable. Export checks and scale composites verified; engine integration and playback unverified.",
+  "coordinates": {
+    "logical_viewport_px": [
+      360,
+      640
+    ],
+    "zoom": 0.5,
+    "actor_visible_height_px": 32,
+    "ground_y_squash": 0.75,
+    "frame_uv": "[i/count,0,(i+1)/count,1]",
+    "billboard_note": "All three clips use screen-facing quads. Quad dimensions below already include zoom; do not apply ground squash again. Arc is a stylized weapon sweep, not a diagram of the 140-degree hit cone."
+  },
+  "sampling": {
+    "format": "PNG RGBA8, straight/unassociated alpha",
+    "filter": "linear",
+    "wrap": "clamp",
+    "tint": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "transparent_pixels_rgb": "zero",
+    "alpha_blend": {
+      "rgb_src": "SrcAlpha",
+      "rgb_dst": "OneMinusSrcAlpha"
+    },
+    "additive_blend": {
+      "rgb_src": "SrcAlpha",
+      "rgb_dst": "One",
+      "note": "Optional windup only. With One/One shaders, premultiply RGB by texture alpha first."
+    },
+    "mipmaps": false,
+    "atlas_padding_texels": 3
+  },
+  "assets": [
+    {
+      "file": "crimson-sweep-arc.png",
+      "frame_size_px": [
+        256,
+        192
+      ],
+      "frame_count": 8,
+      "layout": "horizontal-left-to-right",
+      "fps": 25,
+      "ms_per_frame": 40,
+      "pivot_px": [
+        16,
+        96
+      ],
+      "pivot_normalized": [
+        0.0625,
+        0.5
+      ],
+      "blend": "alpha",
+      "on_screen_quad_px_at_zoom_0_5": [
+        84,
+        72
+      ],
+      "world_quad_units_before_projection": [
+        168,
+        144
+      ],
+      "ground_squash": 1,
+      "duration_s": 0.32,
+      "loop": false,
+      "notes": "Native opening and attack direction RIGHT (+X). Anchor pivot at Fara's spear origin. Rotate around this pivot toward target using the projected screen-space direction; never rotate about quad centre. Preserve transparent opening. Peak painted forward reach (243-16)*84/256 = 74.48 screen px. Full cone membership remains sim-owned; raster is not a hit-area mask.",
+      "bytes": 186799,
+      "sha256": "f344b70d95fd4f6bf34e13db30a60cb3df1cc0123c4122a7dd6345b31f5d13de"
+    },
+    {
+      "file": "crimson-sweep-impact.png",
+      "frame_size_px": [
+        96,
+        96
+      ],
+      "frame_count": 6,
+      "layout": "horizontal-left-to-right",
+      "fps": 30,
+      "ms_per_frame": 33.333333,
+      "pivot_px": [
+        48,
+        48
+      ],
+      "pivot_normalized": [
+        0.5,
+        0.5
+      ],
+      "blend": "alpha",
+      "on_screen_quad_px_at_zoom_0_5": [
+        28,
+        28
+      ],
+      "world_quad_units_before_projection": [
+        56,
+        56
+      ],
+      "ground_squash": 1,
+      "duration_s": 0.2,
+      "loop": false,
+      "notes": "Centre at each resolved victim torso at hit event, above actor draw. Keep the painted diagonal cut screen-facing, or rotate consistently with attack direction. Spawn once per victim; leave knockback authority to sim.",
+      "bytes": 24036,
+      "sha256": "7ff6e23f81b12e28f7f5e29fcc7831740bc051813d225b490f82adff556c8a67"
+    },
+    {
+      "file": "crimson-sweep-windup.png",
+      "frame_size_px": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "layout": "horizontal-left-to-right",
+      "fps": 13.333333,
+      "ms_per_frame": 75,
+      "pivot_px": [
+        32,
+        32
+      ],
+      "pivot_normalized": [
+        0.5,
+        0.5
+      ],
+      "blend": "alpha",
+      "optional_blend": "additive at same size; alpha is approved preview baseline",
+      "on_screen_quad_px_at_zoom_0_5": [
+        16,
+        16
+      ],
+      "world_quad_units_before_projection": [
+        32,
+        32
+      ],
+      "ground_squash": 1,
+      "duration_s": 0.3,
+      "loop": false,
+      "notes": "Attach centre to spear-tip socket throughout countdown. Stretch four frames evenly over actual remaining countdown if its duration differs. Remove on resolve or cancellation. Keep glint compact.",
+      "bytes": 9504,
+      "sha256": "0e4f8dc2a486598d7942710ee32157720ceee7c2aff035bb4207351f04b16d4b"
+    }
+  ],
+  "crimson_sweep": {
+    "cone_length_world": 150,
+    "cone_angle_degrees": 140,
+    "half_angle_degrees": 70,
+    "forward_reach_px_at_zoom_0_5": 75,
+    "timeline_origin": "Cast impact is t=0 per owner brief. Resolution is approximately t=0.300 s, or actual authoritative sim event.",
+    "windup": {
+      "file": "crimson-sweep-windup.png",
+      "start_s": 0,
+      "end_s": 0.3
+    },
+    "arc": {
+      "file": "crimson-sweep-arc.png",
+      "start_s": 0.22,
+      "end_s": 0.54,
+      "peak_frame_zero_based": 2,
+      "peak_start_s": 0.3
+    },
+    "impact": {
+      "file": "crimson-sweep-impact.png",
+      "start_s": 0.3,
+      "end_s": 0.5
+    },
+    "timing_note": "Synchronize arc frame 2 and each victim impact with actual resolve event. Never delay or schedule damage from animation. Short knockback is sim-owned; no magnitude or duration is invented here.",
+    "draw_order": [
+      "actors",
+      "windup/arc alpha",
+      "victim impact alpha"
+    ],
+    "placement_note": "Origin and tip are distinct sockets. Preview places arc pivot 23 screen pixels right of Fara's left edge at torso height; illustrative offset only. Integration should use the attack pose's real spear origin. Compute screen angle atan2(dy*0.75,dx) for a world direction, since world ground Y is squashed."
+  }
+}

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import { createCombatBridge } from '../web-runner/src/core/combatBridge.mjs';
 import { createCombatAuthorityDriver } from '../web-runner/src/core/combatAuthorityDriver.mjs';
+import { settleContinuousCombatRewards } from '../web-runner/modules/heroCommands.mjs';
 import { createRustCombatRuntime } from '../web-runner/systems/rustCombatRuntime.mjs';
 import { installRustCombat, isRustCombatStage } from '../web-runner/systems/rustCombat.mjs';
 import { createQuestCombatSession } from '../web-runner/systems/questCombatSession.mjs';
@@ -30,13 +31,17 @@ function fixture({ lose = false, fault = false } = {}) {
   const stage = { ...createContinuousCombatStageState(42), bossActive: true, bossAvailable: true, bossArmed: true, bossUID: 90 };
   const g = { ContinuousCombatStageLoop: 1, ContinuousCombatStage: stage, CombatSessionId: 'proof', GamePhase: 'RUNTIME', time: 0,
     HeroProgress: createHeroProgressStore(), EnemyData: rows, EnemySlots: [91], EnemyIDs: [90], NextUID: 91,
-    ProgressionBattle: { id: 'proof', defeated: {}, defeatedGold: {} } };
-  const rewards = [], calls = [], routes = [], warnings = [];
+    ProgressionBattle: { id: 'proof', participants: heroes.map(h => h.heroInstanceKey), defeated: {}, defeatedGold: {} } };
+  const rewards = [], calls = [], routes = [], warnings = [], canonicalMaxHP = heroes.map(h => h.maxHP);
   g.ProgressionBattle.persistPendingRewards = reward => { if (reward) rewards.push(reward); };
   const state = { globals: g, entities: [...heroes, boss] };
   function call(name, ...args) {
     assert.ok(!/TickRealtime|ApplyDamage|KillEnemy|AwardMonster|ProcessTurn|CalculateDamage/.test(name), `JS combat call ${name}`);
     calls.push(name);
+    if (name === 'SettleContinuousCombatRewards') {
+      assert.deepEqual(heroes.map(h => h.maxHP), canonicalMaxHP, 'reward settlement sees WFM stat scale');
+      return settleContinuousCombatRewards({ state });
+    }
     if (name === 'SpawnEnemy') {
       const [row, slotIndex] = args;
       const actor = { uid: g.NextUID++, kind: 'enemy', name: row.name, stats: { ...row }, enemyRole: row.enemyRole,
@@ -192,7 +197,7 @@ test('executable app tick calls only the selected combat owner and keeps JS outc
 });
 
 
-test('boss death clears immediately with living summons; cleanup never creates kill receipts', () => {
+test('boss death retains its bounded tail with living summons; cleanup never creates kill receipts', () => {
   const f = fixture(), row = f.g.EnemyData[0];
   f.state.entities.push({ uid: 201, kind: 'enemy', name: 'Gobloc', slotIndex: 1, x: 1700, y: 350,
     maxHP: 1000000, hp: 1000000, stats: { ...row, HP: 1000000 } });
@@ -202,4 +207,38 @@ test('boss death clears immediately with living summons; cleanup never creates k
   assert.equal(Object.hasOwn(f.g.ProgressionBattle.defeated, '201'), false);
   assert.deepEqual(f.rewards, [{ id: 'enemy:proof:90', amount: 5 }]);
   noLeaks(f.bridge);
+});
+
+
+test('boss rewards settle at death and stage advance waits exactly for the source tail', () => {
+  const f = fixture();
+  let deathAt;
+  for (let frame = 0; frame < 1500; frame++) {
+    const nowMs = frame * 1000 / 30;
+    f.runtime.tick({ ...f.options, nowMs });
+    if (f.g.RustCombatReceipt?.outcome === 'ended') { deathAt = nowMs; break; }
+  }
+  assert.ok(Number.isFinite(deathAt));
+  const snapshot = f.runtime.read().snapshot;
+  const duration = snapshot.hit_stop.remaining + Math.max(1 + .42, .32);
+  const reward = [{ id: 'enemy:proof:90', amount: 5 }];
+  assert.deepEqual(f.rewards, reward);
+  assert.equal(f.g.ContinuousCombatStage.region, 1);
+  assert.equal(f.runtime.read().active, false); noLeaks(f.bridge);
+  assert.equal(f.calls.filter(x => x === 'boss_clear').length, 1);
+  assert.equal(f.calls.filter(x => x === 'SettleContinuousCombatRewards').length, 1);
+  assert.deepEqual(f.g.HeroProgress.settledBattles, ['proof']);
+  assert.equal(f.g.ProgressionBattle.id, 'proof-continuous-1');
+  const timeAtDeath = f.g.time;
+  const before = deathAt + duration * 1000 - .001;
+  assert.equal(f.runtime.tick({ ...f.options, nowMs: before }), false);
+  assert.equal(f.g.ContinuousCombatStage.region, 1);
+  assert.ok(Math.abs(f.g.time - timeAtDeath - (before - deathAt) / 1000) < 1e-8);
+  assert.deepEqual(f.rewards, reward);
+  assert.equal(f.runtime.tick({ ...f.options, nowMs: deathAt + duration * 1000 }), true);
+  assert.equal(f.g.ContinuousCombatStage.region, 2);
+  assert.deepEqual(f.g.HeroProgress.settledBattles, ['proof']);
+  assert.equal(f.calls.filter(x => x === 'boss_clear').length, 1);
+  assert.deepEqual(f.rewards, reward);
+  assert.equal(f.calls.filter(x => x === 'SettleContinuousCombatRewards').length, 1);
 });

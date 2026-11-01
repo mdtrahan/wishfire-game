@@ -9,7 +9,7 @@
 - `web-runner/assets/simulation_core.wasm` is the generated browser artifact, but the source owner is this Rust crate.
 
 ## Local Contracts
-- Combat ABI 1.0 snapshots additionally expose host identities, pose/facing, ward, clocks, hazard outlines and camera focus. These are observations of the existing sim; preserve scalar exports, mechanics and snapshot/event order. Rebuild the shipped artifact and provenance after boundary changes.
+- Combat ABI 1.0 snapshots additionally expose host identities, pose/facing, ward, clocks, full hazard presentation fields, projectiles and camera focus. Actor effect observations include shield, poison, encasement, Elevate and cast state. Read-only hit-stop, spotlight and Phoenix channel/cooldown fields supply presentation clocks and revival observations. These are observations of the existing sim; preserve scalar exports, mechanics and snapshot/event order. Rebuild the shipped artifact and provenance after boundary changes.
 - Rust owns deterministic simulation slices named in `governance/planning/simulation-core-rust-final-audit.md`.
 - Rust must not depend on DOM, Canvas, audio, storage APIs, Netlify, browser globals, or presentation timing.
 - Public shadow export names are part of the JS/WASM contract and are asserted by tests.

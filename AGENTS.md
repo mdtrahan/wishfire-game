@@ -108,6 +108,8 @@ Describe expected behavior, not a list of tools or activities. Skip this brief f
 - `web-runner/src/core/heroDefinitions.mjs` owns the accepted hero kits (owner, 2026-10-23): Basic + Special (the only clock) + Passive (no clock, no lingering) + two late-game Resonances (display-only scaffolding). Special cooldowns flagged provisional await owner tuning. `governance/planning/conditional-skill-catalog.md` is retired history for the deleted 33-skill kit.
 
 
+- `docs/vfx-3d/` carries the pinned slice’s complete, unchanged presentation specs, reference code and provider-neutral skill. Every combat integration keeps that package intact.
+
 ## Child DOX Index
 - `history/AGENTS.md` - explicit opt-in boundary for preserved legacy material.
 - `Scripts/AGENTS.md` - Construct-style runtime mirror and high-risk function parity.

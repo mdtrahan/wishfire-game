@@ -1,0 +1,375 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-25",
+  "author": "Astra task 2",
+  "authority": "Authoritative Split and Faze artwork for ORKA-6jh1; supersedes overlapping broad-audit versions.",
+  "status": "Art deliverable; runtime integration and engine playback remain unverified.",
+  "coordinates": {
+    "logical_viewport_px": [
+      360,
+      640
+    ],
+    "zoom": 0.5,
+    "actor_visible_height_px": 32,
+    "ground_y_squash": 0.75,
+    "frame_uv": "[i/count,0,(i+1)/count,1]",
+    "ground_note": "Pool/splash world quads are 276 x 276. Project once to 138 x 103.5. Map full rectangular texture UV into that quad; do not preserve source aspect and then squash again. Do not add an elliptical clip mask: painted contour owns shape; gameplay radius owns membership.",
+    "billboard_note": "Slash, shard, impact, bubbles, fumes and tick use screen-facing quads. Their vertical size is zoomed without ground squash."
+  },
+  "sampling": {
+    "format": "PNG RGBA8, straight/unassociated alpha",
+    "filter": "linear",
+    "wrap": "clamp",
+    "tint": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "transparent_pixels_rgb": "zero",
+    "alpha_blend": {
+      "rgb_src": "SrcAlpha",
+      "rgb_dst": "OneMinusSrcAlpha"
+    },
+    "additive_blend": {
+      "rgb_src": "SrcAlpha",
+      "rgb_dst": "One",
+      "note": "If engine uses One/One, premultiply RGB by texture alpha in shader first. Global opacity must multiply the premultiplied result. Never add raw RGB of transparent texels."
+    },
+    "mipmaps": false,
+    "atlas_padding_texels": 2
+  },
+  "assets": [
+    {
+      "file": "split-shard.png",
+      "frame_size_px": [
+        32,
+        32
+      ],
+      "frame_count": 1,
+      "layout": "horizontal-left-to-right",
+      "fps": 0,
+      "pivot_px": [
+        16,
+        16
+      ],
+      "pivot_normalized": [
+        0.5,
+        0.5
+      ],
+      "blend": "alpha",
+      "on_screen_quad_px_at_zoom_0_5": [
+        20,
+        20
+      ],
+      "world_quad_units_before_projection": [
+        40,
+        40
+      ],
+      "ground_squash": 1,
+      "duration_s": null,
+      "bytes": 853,
+      "sha256": "751e1553e31b83cc16e2732ad9b74484a593e5240d17c1d0a435ef0951640ea8",
+      "loop": false
+    },
+    {
+      "file": "faze-pool.png",
+      "frame_size_px": [
+        512,
+        384
+      ],
+      "frame_count": 1,
+      "layout": "horizontal-left-to-right",
+      "fps": 0,
+      "pivot_px": [
+        256,
+        192
+      ],
+      "pivot_normalized": [
+        0.5,
+        0.5
+      ],
+      "blend": "alpha",
+      "on_screen_quad_px_at_zoom_0_5": [
+        138,
+        103.5
+      ],
+      "world_quad_units_before_projection": [
+        276,
+        276
+      ],
+      "ground_squash": 0.75,
+      "duration_s": null,
+      "bytes": 290187,
+      "sha256": "9fa522841e9401db0ede60e269a4a3a2ddf5aec799c9ff3023a17ef3904fbe8b",
+      "loop": false
+    },
+    {
+      "file": "faze-bubbles.png",
+      "frame_size_px": [
+        64,
+        64
+      ],
+      "frame_count": 8,
+      "layout": "horizontal-left-to-right",
+      "fps": 12,
+      "pivot_px": [
+        32,
+        55
+      ],
+      "pivot_normalized": [
+        0.5,
+        0.859375
+      ],
+      "blend": "alpha",
+      "on_screen_quad_px_at_zoom_0_5": [
+        12,
+        12
+      ],
+      "world_quad_units_before_projection": [
+        24,
+        24
+      ],
+      "ground_squash": 1,
+      "duration_s": 0.666667,
+      "bytes": 23598,
+      "sha256": "b8fa6b73c7f895b5d5be8dfc90bd53f96256889da170d78966d8b45ab652c1de",
+      "loop": true
+    },
+    {
+      "file": "faze-fumes.png",
+      "frame_size_px": [
+        64,
+        96
+      ],
+      "frame_count": 8,
+      "layout": "horizontal-left-to-right",
+      "fps": 8,
+      "pivot_px": [
+        32,
+        90
+      ],
+      "pivot_normalized": [
+        0.5,
+        0.9375
+      ],
+      "blend": "additive",
+      "on_screen_quad_px_at_zoom_0_5": [
+        14,
+        21
+      ],
+      "world_quad_units_before_projection": [
+        28,
+        42
+      ],
+      "ground_squash": 1,
+      "duration_s": 1.0,
+      "bytes": 21948,
+      "sha256": "3a06bbd68ff4a6165762ac75bb66ebdd03416f884f32e3fd30f4f5f1b2de7a33",
+      "loop": true
+    },
+    {
+      "file": "faze-splash.png",
+      "frame_size_px": [
+        256,
+        192
+      ],
+      "frame_count": 6,
+      "layout": "horizontal-left-to-right",
+      "fps": 20,
+      "pivot_px": [
+        128,
+        165
+      ],
+      "pivot_normalized": [
+        0.5,
+        0.859375
+      ],
+      "blend": "alpha",
+      "on_screen_quad_px_at_zoom_0_5": [
+        138,
+        103.5
+      ],
+      "world_quad_units_before_projection": [
+        276,
+        276
+      ],
+      "ground_squash": 0.75,
+      "duration_s": 0.3,
+      "bytes": 231741,
+      "sha256": "26b5533bcc7f84d8bd1e676429fbba6083c6078da1df0317c274e4b2f555749f",
+      "loop": false
+    },
+    {
+      "file": "faze-tick.png",
+      "frame_size_px": [
+        64,
+        64
+      ],
+      "frame_count": 5,
+      "layout": "horizontal-left-to-right",
+      "fps": 24,
+      "pivot_px": [
+        32,
+        32
+      ],
+      "pivot_normalized": [
+        0.5,
+        0.5
+      ],
+      "blend": "alpha",
+      "on_screen_quad_px_at_zoom_0_5": [
+        12,
+        12
+      ],
+      "world_quad_units_before_projection": [
+        24,
+        24
+      ],
+      "ground_squash": 1,
+      "duration_s": 0.208333,
+      "bytes": 18036,
+      "sha256": "c468ce695cceeb5643df6fbb2201937cdfeed05decae3e47d4da586cd09c2a14",
+      "loop": false
+    }
+  ],
+  "split": {
+    "total_damage_atk_percent": 300,
+    "damage_rule": "Divide total damage evenly among N eligible enemies inside 140 world units of struck target; lone target receives all.",
+    "radius_world": 140,
+    "initial_slash": {
+      "at_s": 0,
+      "position": "struck target torso",
+      "clip": "split-slash.png"
+    },
+    "division_at_s": 0.125,
+    "shards": {
+      "file": "split-shard.png",
+      "flight_s": 0.18,
+      "direction": "native points +X; rotate to recipient vector",
+      "spawn": "At division_at_s, emit one visual share for each recipient. Struck recipient gets a short inward shard plus local impact; remaining shares travel from strike position to recipient torso.",
+      "scale": "All recipients have equal shard size. Use a 20 x 20 px quad, including transparent padding.",
+      "motion": "Straight travel to recipients, with two faint copies behind at opacity 0.13 and 0.22; copies reuse painted shard. No drawn connector lines.",
+      "lone_target": "Keep full slash and local implosion; omit outbound travel."
+    },
+    "impact": {
+      "file": "split-impact.png",
+      "at": "visual shard arrival",
+      "duration_s": 0.2
+    },
+    "rim": {
+      "file": "split-slash-rim.png",
+      "optional": true,
+      "opacity": 0.35,
+      "phase": "same frame and transform as slash"
+    },
+    "timing_note": "Animation represents allocation. Keep sim damage timing authoritative; visual arrival must never reschedule damage.",
+    "draw_order": [
+      "actors",
+      "slash alpha",
+      "optional slash rim additive",
+      "shards alpha",
+      "impact alpha"
+    ]
+  },
+  "faze": {
+    "radius_world": 138,
+    "duration_s": 5,
+    "damage_interval_s": 1,
+    "color": "purple poison/blight",
+    "pool": {
+      "file": "faze-pool.png",
+      "position": "ground center",
+      "opacity": 1,
+      "alpha_note": "Interior is already about 48-66 percent opaque; wet banks are stronger. Render below every actor.",
+      "fade_in_s": 0.1,
+      "fade_out_s": 0.35,
+      "fade_out_starts_s": 4.65
+    },
+    "placement_splash": {
+      "file": "faze-splash.png",
+      "start_s": 0,
+      "duration_s": 0.3,
+      "draw": "ground layer below actors",
+      "crossfade": "Pool fades in underneath while splash settles; final splash frame is transparent."
+    },
+    "bubbles": {
+      "file": "faze-bubbles.png",
+      "instances": 5,
+      "screen_size_range_px": [
+        9,
+        12
+      ],
+      "lifetime_s": 0.6666666666666666,
+      "respawn_pause_s": [
+        0.15,
+        0.65
+      ],
+      "scatter": "Inside 0.82 normalized pool radius, ellipse y factor .75; distribute asymmetrically, stagger initial phases. Render below actors.",
+      "stop_spawning_at_s": 4.3
+    },
+    "fumes": {
+      "file": "faze-fumes.png",
+      "instances": 3,
+      "lifetime_s": 1,
+      "respawn_pause_s": [
+        0.25,
+        0.7
+      ],
+      "screen_size_px": [
+        14,
+        21
+      ],
+      "scatter": "At irregular perimeter points inside 0.9 normalized radius; stagger phases; avoid actor face locations.",
+      "draw": "above actors at existing baked low alpha, additive",
+      "max_baked_alpha": 0.24,
+      "stop_spawning_at_s": 4
+    },
+    "tick": {
+      "file": "faze-tick.png",
+      "duration_s": 0.20833333333333334,
+      "on": "each actual 1-second poison damage event",
+      "anchor": "recipient lower torso/ankles",
+      "screen_quad_px": [
+        12,
+        12
+      ]
+    },
+    "draw_order": [
+      "arena",
+      "pool",
+      "placement splash",
+      "bubbles",
+      "actors",
+      "fumes additive",
+      "damage tick"
+    ]
+  },
+  "preview": {
+    "file": "preview.jpg",
+    "size_px": [
+      720,
+      640
+    ],
+    "left_crop_px": [
+      0,
+      0,
+      360,
+      640
+    ],
+    "right_crop_px": [
+      360,
+      0,
+      360,
+      640
+    ],
+    "scale": "Each half is 360 x 640 logical pixels with 32px actors. Static art composite, no runtime screenshot claim.",
+    "source_arena": "art/arena/oasis-corridor.png",
+    "source_actor_atlas": "gen/assets.json + atlas pages",
+    "split_goblin_count": 5,
+    "faze_goblin_count": 3,
+    "faze_hero": "Kaja",
+    "split_capture": "Composed division beat with five painted shard shares and a local target impact; transient trails are illustrative.",
+    "faze_capture": "Settled pool with staggered bubbles and faint fumes"
+  }
+}

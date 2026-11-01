@@ -1,0 +1,74 @@
+{
+  "assets": [
+    {
+      "path": "light-column.png",
+      "size": [
+        128,
+        512
+      ],
+      "pivot": [
+        64,
+        500
+      ],
+      "blend": "additive",
+      "intended_use": "5-second resurrection channel; draw at about 40x160, anchored to the fallen hero, behind the hero sprite"
+    },
+    {
+      "path": "motes.png",
+      "size": [
+        256,
+        64
+      ],
+      "frame_size": [
+        64,
+        64
+      ],
+      "frames": 4,
+      "pivot": [
+        32,
+        32
+      ],
+      "blend": "additive",
+      "intended_use": "loopable rising light motes during the channel; advance one 64x64 frame at a time"
+    },
+    {
+      "path": "ground-ring.png",
+      "size": [
+        256,
+        256
+      ],
+      "pivot": [
+        128,
+        128
+      ],
+      "blend": "additive",
+      "intended_use": "ground circle under the fallen hero; squash to 0.75 height and reveal/fill with channel progress"
+    },
+    {
+      "path": "burst.png",
+      "size": [
+        512,
+        512
+      ],
+      "pivot": [
+        256,
+        256
+      ],
+      "blend": "additive",
+      "intended_use": "completion flash when resurrection resolves"
+    },
+    {
+      "path": "channel-glow.png",
+      "size": [
+        128,
+        128
+      ],
+      "pivot": [
+        64,
+        64
+      ],
+      "blend": "additive",
+      "intended_use": "soft warm halo centered on the channelling hero"
+    }
+  ]
+}

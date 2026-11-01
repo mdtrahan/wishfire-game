@@ -243,6 +243,36 @@ effectiveBody = replaceRequired(
   'hero amp badge condition',
 );
 removeBlock('if (ampShowsBadge) {');
+  // Slice presentation is installed only by the lazy rustCombat flag runtime.
+  effectiveBody = effectiveBody.replace(
+    "const point = combatCameraProjection.project(x, y, actorKind); return worldToCanvas(point.x, point.y);",
+    "const point = state.globals.RustCombatPresentation ? state.globals.RustCombatPresentation.project(x, y) : combatCameraProjection.project(x, y, actorKind); return worldToCanvas(point.x, point.y);",
+  );
+  effectiveBody = effectiveBody.replace(
+    '    const actorPaintQueue = [];',
+    '    state.globals.RustCombatPresentation?.ground(ctx, layoutScale, layoutOffsetX, layoutOffsetY);\n    const actorPaintQueue = [];',
+  );
+  effectiveBody = effectiveBody.replace(
+    '          drawEnemySprite();',
+    '          g.RustCombatPresentation?.actor(ctx, enemy, pos.x, pos.y, enemyH, false, layoutScale, layoutOffsetX, layoutOffsetY);\n          drawEnemySprite();\n          g.RustCombatPresentation?.actor(ctx, enemy, pos.x, pos.y, enemyH, true, layoutScale, layoutOffsetX, layoutOffsetY);',
+  );
+  effectiveBody = effectiveBody.replace(
+    'drawHeroSprite();',
+    'state.globals.RustCombatPresentation?.actor(ctx, hero, pos.x, footY, scaledH, false, layoutScale, layoutOffsetX, layoutOffsetY);\n          drawHeroSprite();\n          state.globals.RustCombatPresentation?.actor(ctx, hero, pos.x, footY, scaledH, true, layoutScale, layoutOffsetX, layoutOffsetY);',
+  );
+  effectiveBody = effectiveBody.replace(
+    'const footY = pos.y + h * 1.55 * COMBAT_BATTLEFIELD_ZOOM / 2;',
+    'const footY = state.globals.RustCombatPresentation && hero ? projectCombatActorWorldToCanvas(hero.footX, hero.footY).y : pos.y + h * 1.55 * COMBAT_BATTLEFIELD_ZOOM / 2;',
+  );
+  effectiveBody = effectiveBody.replace(
+    '    for (const paint of actorFrontOverlayQueue) paint();',
+    '    for (const paint of actorFrontOverlayQueue) paint();\n    state.globals.RustCombatPresentation?.front(ctx, layoutScale, layoutOffsetX, layoutOffsetY);',
+  );
+  effectiveBody=effectiveBody.replace("const enemyH = (g.EnemySize || 40) * layoutScale * COMBAT_BATTLEFIELD_ZOOM * (enemy.combatRank === 'boss' ? 4 : 1);", "const enemyH = state.globals.RustCombatPresentation?.height(enemy, (g.EnemySize || 40) * layoutScale * COMBAT_BATTLEFIELD_ZOOM * (enemy.combatRank === 'boss' ? 4 : 1), layoutScale) ?? (g.EnemySize || 40) * layoutScale * COMBAT_BATTLEFIELD_ZOOM * (enemy.combatRank === 'boss' ? 4 : 1);");
+  effectiveBody=effectiveBody.replace('const scaledH = h * heroScale * 1.55 * COMBAT_BATTLEFIELD_ZOOM;', 'const scaledH = state.globals.RustCombatPresentation?.height(hero, h * heroScale * 1.55 * COMBAT_BATTLEFIELD_ZOOM, layoutScale) ?? h * heroScale * 1.55 * COMBAT_BATTLEFIELD_ZOOM;');
+  // The flag painter consumes the existing sampled sprite.
+  effectiveBody = effectiveBody.replaceAll('actorUID: enemy.uid,', 'actorUID: enemy.uid, rustActorId: enemy.rustActorId,');
+  effectiveBody = effectiveBody.replaceAll('actorUID: hero.uid,', 'actorUID: hero.uid, rustActorId: hero.rustActorId,');
   return effectiveBody;
 }
 
@@ -268,7 +298,7 @@ export function renderRuntime(deps) {
   deps.renderCombatAttackVfx = renderCombatAttackVfx;
   deps.drawCombatProgressHud = drawCombatProgressHud;
   deps.drawCombatHealthBar = drawCombatHealthBar;
-  deps.drawActorPuppetFrame = drawActorPuppetFrame;
+  deps.drawActorPuppetFrame = deps.state.globals.RustCombatPresentation?.sprite ?? drawActorPuppetFrame;
   deps.drawHeroWardAura = drawHeroWardAura;
   deps.heroWardShare = heroWardShare;
   deps.combatEnemiesForPresentation = combatEnemiesForPresentation;

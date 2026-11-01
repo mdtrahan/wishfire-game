@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "bead": "ORKA-6jh1",
+  "revision": 2,
+  "status": "Art only; second lead review pending; no runtime integration",
+  "owner_correction": "Pass2: emissive red disc, fuzzy pink-red halo, subtle turning bands,52x34px",
+  "format": "RGBA8 straight alpha",
+  "blend": "SrcAlpha / OneMinusSrcAlpha",
+  "filter": "linear",
+  "wrap": "clamp",
+  "pivot": "Ground ellipse centre",
+  "ground_squash_baked": 0.6538461538461539,
+  "do_not_apply_ground_squash_again": true,
+  "draw_order": "Ground then spawn marker then actors",
+  "animation": {
+    "direction": "clockwise",
+    "degrees_per_cel": 30,
+    "symmetry": "Two-fold; six cels complete 180 degrees, identical at 360 degrees",
+    "full_turn_s": 1.2,
+    "pulse_scale_range": [
+      0.97,
+      1
+    ],
+    "pulse_opacity_range": [
+      0.94,
+      1
+    ],
+    "appear": "Play four cels once over 0.2s, then loop cel 0; first appear cel is fully transparent",
+    "loop_seam": "Last cel 150deg -> next cel equivalent 180deg/0deg; no duplicated endpoint"
+  },
+  "assets": [
+    {
+      "file": "spawn-marker.png",
+      "frame_size_px": [
+        144,
+        104
+      ],
+      "frame_count": 6,
+      "layout": "horizontal-left-to-right",
+      "fps": 10,
+      "duration_s": 0.6,
+      "loop": true,
+      "pivot_px": [
+        72,
+        52
+      ],
+      "pivot_normalized": [
+        0.5,
+        0.5
+      ],
+      "on_screen_quad_px_at_zoom_0_5": [
+        72,
+        52
+      ],
+      "visible_marker_footprint_px_at_peak": [
+        52,
+        34
+      ],
+      "sha256": "77284c931d16d9d55345c583f4dd0260cc8dbeb54007c01dca1b6966350072d7",
+      "bytes": 60048
+    },
+    {
+      "file": "spawn-marker-appear.png",
+      "frame_size_px": [
+        144,
+        104
+      ],
+      "frame_count": 4,
+      "layout": "horizontal-left-to-right",
+      "fps": 20,
+      "duration_s": 0.2,
+      "loop": false,
+      "pivot_px": [
+        72,
+        52
+      ],
+      "pivot_normalized": [
+        0.5,
+        0.5
+      ],
+      "on_screen_quad_px_at_zoom_0_5": [
+        72,
+        52
+      ],
+      "visible_marker_footprint_px_at_peak": [
+        52,
+        34
+      ],
+      "sha256": "5fbe1d8475d4ac84e4439115504eee212e6865c34b09192a65302883c3ecfdfc",
+      "bytes": 21162
+    }
+  ],
+  "notes": [
+    "52x34 includes diffuse glow at low alpha; body is smaller than halo footprint.",
+    "At zoom 0.5 unprojected world quad would be 144x104, already ground-shaped; place in screen plane.",
+    "Spotlight mock draws marker above 80% black ground scrim; integration draw order is lead decision.",
+    "Review mock uses existing atlas hero art resized to exactly32px high."
+  ]
+}
