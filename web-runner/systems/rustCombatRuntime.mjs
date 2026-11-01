@@ -3,13 +3,14 @@ import { continuousCombatWavesForStage } from '../src/core/continuousCombatProgr
 import { advanceBattleStartSimulation } from './combatSimulationTick.mjs';
 import { createCombatBridge } from '../src/core/combatBridge.mjs';
 import { createCombatAuthorityDriver } from '../src/core/combatAuthorityDriver.mjs';
-import { createWfmCombatConfig, wfmEnemyInput } from './wfmCombatConfig.mjs';
+import { createWfmCombatConfig, wfmEnemyInput, wfmHeroPermanentInputs } from './wfmCombatConfig.mjs';
 import { shadowEnemy } from '../../src/core/combatShadowAdapter.mjs';
 import { consumeCombatKillEvent } from '../modules/heroCommands.mjs';
 import { maybeAdvanceContinuousCombatStage, buildChapterOneSubwaveStages, getContinuousCombatPartyCP } from '../src/core/continuousCombatStage.mjs';
 import { runtimeAssetUrl, getEmbeddedWasmBytes } from './runtimeAssetUrl.mjs';
 import { recordActorPuppetDefeat } from './actorPuppetDefeats.mjs';
 import { createRustCombatPresentation } from './rustCombatPresentation.mjs';
+import { bindHeroPermanentInputs } from '../src/core/heroPermanentInputs.mjs';
 import { saveHeroProgress } from '../src/core/heroProgression.mjs';
 import { isActorRecoveryRevealActive } from '../src/core/actorPresentationState.mjs';
 import { isRustCombatStage } from './rustCombat.mjs';
@@ -25,9 +26,24 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
   let hostTransition = false, subwaves = [], previousSubwave = [], subwaveStarted = 0;
   let stageOptions, advanced = false, failed = false, introNow = null, tail = null;
   const hosts = new Map(), seenSpawns = new Set(), hostHeroes = new Map();
+  function queuePermanentInputs(heroId) {
+    if (!driver.read().active) return;
+    for (const [actor, original] of hostHeroes) {
+      if (heroId && String(actor.heroInstanceKey) !== heroId) continue;
+      const source = g.HeroProgress?.heroes?.[actor.heroInstanceKey];
+      if (source) for (const key of ['currentLevel', 'currentEXP', 'equipmentStats', 'lampEXPClaimed', 'EXPToNextLevel']) actor[key] = source[key];
+      const inputs = wfmHeroPermanentInputs(g, actor);
+      original.maxHP = inputs.host_max_hp;
+      driver.replacePermanentInputs(String(actor.heroInstanceKey), inputs);
+    }
+  }
+  g.RustCombatPermanentInputs = queuePermanentInputs;
   function restoreHostHeroes(keepVisuals = false) {
     for (const [actor, original] of hostHeroes) {
       const ratio = actor.maxHP > 0 ? actor.hp / actor.maxHP : 0;
+      original.unbind?.();
+      const source = g.HeroProgress?.heroes?.[actor.heroInstanceKey];
+      if (source) Object.assign(actor, { stats: { ...source.stats }, combatBaseMaxHP: source.maxHP });
       actor.maxHP = original.maxHP;
       actor.hp = Math.max(0, Math.min(actor.maxHP, actor.maxHP * ratio));
       actor.isAlive = actor.hp > 0;
@@ -110,7 +126,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
       } else if (kind === 'damage') {
         const target = hosts.get(data.target);
         // The slice presentation consumes the same ordered Rust damage event.
-      } else if (!['spawned', 'downed', 'revived', 'all_down', 'ended', 'despawned', 'presentation'].includes(kind)) {
+      } else if (!['spawned', 'downed', 'revived', 'all_down', 'ended', 'despawned', 'presentation', 'permanent_inputs_applied'].includes(kind)) {
         throw new Error(`Unknown Rust gameplay event: ${kind}`);
       }
     }
@@ -173,7 +189,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
           onOrdinaryClear(cleared) {
             driver.ordinaryClear(`${cleared.region}:${cleared.stage}:${cleared.wave}:${cleared.transitions}`);
             if (g.HeroProgress) {
-              for (const [hero, original] of hostHeroes) saveHeroProgress({ ...hero, hp: hero.hp / hero.maxHP * original.maxHP, maxHP: original.maxHP }, g.HeroProgress);
+              for (const hero of hostHeroes.keys()) saveHeroProgress(hero, g.HeroProgress);
               g.HeroProgressDirty = true;
             }
           },
@@ -275,6 +291,17 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
         if (stage.bossActive && !config.enemies.some(enemy => enemy.spawn_key === String(stage.bossUID))) throw new Error('Missing WFM boss spawn');
         for (const enemy of config.enemies) seenSpawns.add(enemy.spawn_key);
         driver.start(config);
+        if (driver.read().active) for (const [hero, original] of hostHeroes) {
+          const fallback = structuredClone(hero);
+          original.unbind = bindHeroPermanentInputs(hero, {
+            read: () => g.HeroProgress?.heroes?.[hero.heroInstanceKey] || fallback,
+            commit(draft) {
+              if (g.HeroProgress) { saveHeroProgress(draft, g.HeroProgress); g.HeroProgressDirty = true; }
+              else Object.assign(fallback, draft);
+              queuePermanentInputs(String(hero.heroInstanceKey));
+            },
+          });
+        }
       } catch (error) { finishFailure(error); return false; }
     }
     spawnAdditions();
@@ -285,7 +312,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
     try { return tickFrame(options); }
     catch (error) { try { stop(); } finally { finishFailure(error); } return false; }
   }
-  return { tick, stop, pause() { introNow = null; if (tail) tail.previousNow = null; driver.advance(0, true); }, dispose() { stop(); delete g.RustCombatAuthority; }, read: driver.read };
+  return { tick, stop, pause() { introNow = null; if (tail) tail.previousNow = null; driver.advance(0, true); }, dispose() { stop(); delete g.RustCombatAuthority; delete g.RustCombatPermanentInputs; }, read: driver.read };
 }
 
 export async function mountRustCombat(options) {

@@ -527,7 +527,7 @@ impl Sim {
         }
         let base_duration = duration;
         let duration = countdown(kind, shape, base_duration);
-        let damage = source.map(|i| self.actors[i].stats.atk).unwrap_or(0.)
+        let damage = source.map(|i| self.actors[i].committed_stats().atk).unwrap_or(0.)
             * if matches!(
                 kind,
                 HazardKind::BubbleAura | HazardKind::HealingSpring | HazardKind::RallyAura
@@ -554,6 +554,8 @@ impl Sim {
             } else {
                 1.
             };
+        let damage = damage * source.filter(|&i| self.actors[i].view.team == Team::Hero)
+            .map_or(1., |i| self.actors[i].committed_potency());
         let base_damage = damage;
         let damage = damage * (duration / base_duration).max(1.);
         let phase = if tracking > 0. {

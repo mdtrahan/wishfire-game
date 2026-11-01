@@ -39,7 +39,7 @@ impl Sim {
                 _ => None,
             };
             if let Some((seconds, cap)) = passive {
-                a.view.meter = (a.view.meter + SIM_DT / seconds).min(cap);
+                a.view.meter = (a.view.meter + SIM_DT * a.meter_rate / seconds).min(cap);
             }
             if a.alive() && a.view.archetype == Archetype::Kaja {
                 a.view.groove_active = if a.view.groove_active <= SIM_DT + 0.00001 {

@@ -72,12 +72,15 @@ export function createCombatProgression({ globals, storage, equipmentProgress, g
     })().finally(() => { essenceSyncPromise = null; });
     return essenceSyncPromise;
   }
-  function notify(reason) { for (const listener of listeners) listener(reason, state); }
+  function notify(reason) {
+    if (['training', 'star-up', 'ticket-spend'].includes(reason)) globals.RustCombatPermanentInputs?.();
+    for (const listener of listeners) listener(reason, state);
+  }
 
   function persistHeroLevelSpend(spend) {
     const store = globals.HeroProgress;
     const savedHero = store?.heroes?.[spend.heroId];
-    const hero = heroes().find(candidate => candidate.heroInstanceKey === spend.heroId) || savedHero;
+    const hero = globals.RustCombatAuthority ? savedHero : heroes().find(candidate => candidate.heroInstanceKey === spend.heroId) || savedHero;
     if (!savedHero || !hero) return false;
     store.settledTicketSpends ||= [];
     if (!store.settledTicketSpends.includes(spend.id)) {
@@ -91,7 +94,9 @@ export function createCombatProgression({ globals, storage, equipmentProgress, g
       store.settledTicketSpends = store.settledTicketSpends.slice(-256);
     }
     globals.HeroProgressDirty = true;
-    return persistHeroProgress();
+    const persisted = persistHeroProgress();
+    if (persisted) globals.RustCombatPermanentInputs?.(spend.heroId);
+    return persisted;
   }
 
   function reconcileTicketSpends() {

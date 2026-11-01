@@ -264,3 +264,55 @@ test('destroyed Rust world cannot carry bombs, hazards or stun film into its bos
  assert.deepEqual(f.presented.projectiles,[]);assert.deepEqual(f.presented.hazards,[]);
  assert.ok(f.presented.actors.every(a=>a.encased===0));f.runtime.dispose();
 });
+
+test('mid-fight HP equipment, EXP and Training commits revise Rust without mutating live JS stats', async () => {
+  const { createEquipmentStorage, EQUIPMENT_SAVE_KEY } = await import('../web-runner/systems/equipmentStorage.mjs');
+  const { createLampEconomy, generateLampItem } = await import('../web-runner/src/core/lampGear.mjs');
+  const { createCombatProgression } = await import('../web-runner/systems/combatProgression.mjs');
+  const { awardHeroEXP, expToNextLevel, saveHeroProgress } = await import('../web-runner/src/core/heroProgression.mjs');
+  const f = fixture(), hero = f.state.entities.find(a => a.kind === 'hero');
+  for (const actor of f.state.entities.filter(a => a.kind === 'hero')) {
+    actor.currentLevel = 1; refreshHeroStats(actor); actor.hp = actor.maxHP;
+  }
+  f.state.entities.find(a => a.kind === 'enemy').stats.ATK = 0;
+  const item = generateLampItem(42, 1, 1); item.stats.HP = 50;
+  const economy = createLampEconomy(42, 0); economy.items.push(item); economy.lamp.pending.push(item.instanceId);
+  const values = new Map([[EQUIPMENT_SAVE_KEY, JSON.stringify(economy)]]);
+  const storage = { getItem:k => values.get(k) ?? null, setItem:(k,v) => values.set(k,v) };
+  const equipment = createEquipmentStorage({ globals:f.g, storage, getActors:() => f.state.entities,
+    locks:{ request:async (_key,fn) => fn() }, now:() => 1000, seed:() => 42, persistProgress:() => true });
+  await equipment.sync(); f.runtime.tick({ ...f.options, nowMs:0 });
+  const before = { hp:hero.hp, maxHP:hero.maxHP, stats:{ ...hero.stats } };
+  assert.equal(before.maxHP,420);
+  f.runtime.pause(); await equipment.equip('Falie',item.instanceId);
+  assert.deepEqual({ hp:hero.hp,maxHP:hero.maxHP,stats:hero.stats },before);
+  assert.equal(f.g.HeroProgress.heroes.Falie.maxHP,125); assert.equal(f.runtime.read().pendingRevisions,1);
+  // A reload before acknowledgement constructs from durable meta, never an old live snapshot.
+  const { createWfmCombatConfig } = await import('../web-runner/systems/wfmCombatConfig.mjs');
+  const reloadHero={ ...structuredClone(f.g.HeroProgress.heroes.Falie),kind:'hero',uid:1 };
+  const reload = createWfmCombatConfig({ globals:f.g,entities:[reloadHero],enemyRows:f.g.EnemyData,encounterId:'reload-before-ack' });
+  assert.equal(reload.heroes[0].stats.hp,700);
+  f.runtime.tick({ ...f.options,nowMs:1000 }); f.runtime.tick({ ...f.options,nowMs:1034 });
+  assert.equal(hero.maxHP,700); assert.equal(hero.hp,700); assert.equal(f.runtime.read().pendingRevisions,0);
+  assert.deepEqual(hero.stats,before.stats);
+  saveHeroProgress(hero,f.g.HeroProgress);
+  assert.equal(f.g.HeroProgress.heroes.Falie.maxHP,125);
+  assert.deepEqual(f.g.HeroProgress.heroes.Falie.equipmentStats,item.stats);
+  awardHeroEXP(hero,expToNextLevel(1));
+  const canonical=f.g.HeroProgress.heroes.Falie;
+  assert.equal(canonical.currentLevel,2); assert.equal(hero.maxHP,700);
+  const { wfmHeroPermanentInputs }=await import('../web-runner/systems/wfmCombatConfig.mjs');
+  const afterLevel=wfmHeroPermanentInputs(f.g,hero);
+  f.runtime.tick({ ...f.options,nowMs:1068 }); assert.equal(hero.maxHP,afterLevel.stats.hp);
+  storage.setItem('orka.combat_progression.v1',JSON.stringify({ wallet:{incense:20,ticketsByHero:{Falie:1000}} }));
+  const progression=createCombatProgression({ globals:f.g,storage,getHeroes:() => f.state.entities,persistHeroProgress:() => true });
+  assert.equal(progression.spendLevelUp('Falie').ok,true);
+  assert.equal(f.g.HeroProgress.heroes.Falie.currentLevel,3); assert.equal(hero.currentLevel,3);
+  f.runtime.tick({ ...f.options,nowMs:1102 });
+  const priorHP=hero.hp,priorStats={...hero.stats};
+  assert.equal(progression.train('ATK').ok,true); assert.deepEqual(hero.stats,priorStats); assert.equal(hero.hp,priorHP);
+  assert.equal(f.runtime.read().pendingRevisions,2);
+  f.runtime.tick({ ...f.options,nowMs:1136 }); assert.equal(f.runtime.read().pendingRevisions,0);
+  assert.equal(f.runtime.read().failed,false); assert.deepEqual(f.warnings,[]);
+  f.runtime.dispose(); noLeaks(f.bridge);
+});

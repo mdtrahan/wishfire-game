@@ -19,3 +19,5 @@
 - Production `contain_bodies` constrains actor spawn, planning, travel, separation and displacement through `actor_floor`/`spawn_floor`, reserving the slice camera body bounds plus side gutters. Default false preserves the frozen reference hash and behaviour; include the enabled constraint in gameplay hashes. Hazard/ray geometry still uses the actual world floor.
 
 - `chest.rs` ports the slice side approach, footprint avoidance, nearest living opener, 0.6-second open and 2-second post-open beat. The host decides admission; chest code grants no rewards and imports no director. Default-empty chest state preserves frozen harness hashes.
+
+- `permanent.rs` owns atomic hero input replacement with expected/current revisions and R1 HP growth/clamp; downed HP stays zero. Preserve clocks, targets, ward, statuses and RNG. Committed action stats, source/recipient maximum HP and potency survive revisions; later actions use the replacement. Hash revision state without changing unrevised harness hashes. R6 changes passive meter refill only, preserving earned meter and hit gains.

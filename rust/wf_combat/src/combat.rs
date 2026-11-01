@@ -149,7 +149,7 @@ impl Sim {
     pub fn grant_ward(&mut self, i: usize) {
         let a = &mut self.actors[i];
         let amount =
-            (a.view.max_hp * WARD_FRACTION).min((a.view.max_hp * WARD_CAP - a.view.ward).max(0.));
+            (a.committed_max_hp() * WARD_FRACTION).min((a.committed_max_hp() * WARD_CAP - a.view.ward).max(0.));
         a.view.ward += amount;
         self.events.push(Event::WardGained {
             target: a.view.id,
@@ -253,9 +253,9 @@ impl Sim {
         }
         self.events.split(hero, center, start);
         let a = &self.actors[i];
-        let raw = a.stats.atk
-            * SPLIT_POTENCY
-            * if a.view.elevate == Some(ElevateVariant::Sword) {
+        let raw = a.committed_stats().atk
+            * SPLIT_POTENCY * a.committed_potency()
+            * if a.committed_elevate() == Some(ElevateVariant::Sword) {
                 1. + ELEVATE_BONUS
             } else {
                 1.
@@ -326,6 +326,8 @@ impl Sim {
         if let Some(t) = target.and_then(|id| self.actor_index(id)) {
             self.actors[index].action_target_pos = self.actors[t].view.pos;
             self.actors[index].action_target_radius = self.actors[t].view.radius;
+            self.actors[index].action_target_revision = self.actors[t].permanent_revision;
+            self.actors[index].action_target_max_hp = self.actors[t].view.max_hp;
         }
         self.actors[index].action_target_teleported = false;
         self.actors[index].target = target;
@@ -337,6 +339,11 @@ impl Sim {
         a.action_done = false;
         a.action_heal = false;
         a.action_epoch += 1;
+        a.action_revision = a.permanent_revision;
+        a.action_stats = a.stats;
+        a.action_max_hp = a.view.max_hp;
+        a.action_potency = a.special_potency;
+        a.action_elevate = a.view.elevate;
         a.action_special = special;
         a.action_extra = extra;
         a.action_pulse = pulse;
@@ -711,7 +718,7 @@ impl Sim {
         } else if a.action_extra && a.view.archetype == Archetype::Fara {
             self.taunt(i);
             let a = &mut self.actors[i];
-            let ward = a.view.ward.max(a.view.max_hp * WARCRY_WARD_FRACTION);
+            let ward = a.view.ward.max(a.committed_max_hp() * WARCRY_WARD_FRACTION);
             let amount = ward - a.view.ward;
             a.view.ward = ward;
             a.self_ward_steps = 0;
@@ -788,9 +795,9 @@ impl Sim {
                         let landed = self.damage(
                             a.view.id,
                             t,
-                            a.stats.atk
-                                * SHADOW_POTENCY
-                                * if a.view.elevate == Some(ElevateVariant::Sword) {
+                            a.committed_stats().atk
+                                * SHADOW_POTENCY * a.committed_potency()
+                                * if a.committed_elevate() == Some(ElevateVariant::Sword) {
                                     1. + ELEVATE_BONUS
                                 } else {
                                     1.
@@ -801,7 +808,7 @@ impl Sim {
                         );
                         if landed > 0. {
                             let hondo = &mut self.actors[i];
-                            let amount = hondo.view.max_hp * SHADOW_WARD_FRACTION;
+                            let amount = a.committed_max_hp() * SHADOW_WARD_FRACTION;
                             hondo.view.ward = amount;
                             hondo.self_ward_steps = (SHADOW_WARD_SECONDS * SIM_HZ as f32) as u32;
                             self.events.push(Event::WardGained {
@@ -816,8 +823,8 @@ impl Sim {
         } else if is_boss(a.view.archetype) {
             self.boss_basic_impact(i);
         } else if let Some(t) = target.filter(|t| self.actors[*t].alive()) {
-            let raw = a.stats.atk
-                * if a.view.elevate == Some(ElevateVariant::Sword) {
+            let raw = a.committed_stats().atk
+                * if a.committed_elevate() == Some(ElevateVariant::Sword) {
                     1. + ELEVATE_BONUS
                 } else {
                     1.

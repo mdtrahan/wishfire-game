@@ -47,3 +47,5 @@
 - Combat admits at most four heroes with party-order slots 0..3. Phoenix selects the lowest downed party slot; saved formation cells never enter the Rust host adapter. `geometry.contain_bodies` reserves source body bounds inside the host viewport without changing collision radii or reach.
 
 - Combat ABI `wave_chest` requires an empty continuous field and returns chest state with empty rewards. Spawn rejects an unfinished chest pause. Opt-in `spawn_markers` reserves exact host enemy profiles through the slice countdown and emergence clip; pending entries count toward limits, live-enemy observations and gameplay hashes. Snapshots expose Groove and meter without recomputing them in JS.
+
+- Combat schema 1.1 adds `replace_permanent_inputs_v1` negotiation and ordered `ReplacePermanentInputs` step commands. Validate the entire batch before mutation, acknowledge applied revisions in the ordered event stream, and retain host max-HP units for ordinary-clear rounding. Raw ABI layout remains 1.0; schema 1.0 requests remain supported.

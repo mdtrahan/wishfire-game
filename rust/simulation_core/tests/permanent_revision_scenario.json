@@ -1,0 +1,82 @@
+{
+  "config": {
+    "continuous": true,
+    "encounter_id": "permanent-parity",
+    "seed": "42",
+    "geometry": {
+      "floor": {
+        "min": {
+          "x": 96,
+          "y": 40
+        },
+        "max": {
+          "x": 864,
+          "y": 1592
+        }
+      },
+      "viewport_world": {
+        "x": 720,
+        "y": 1280
+      },
+      "formation_origin": {
+        "x": 480,
+        "y": 800
+      },
+      "screen_bound": false
+    },
+    "heroes": [
+      {
+        "instance_id": "Falie",
+        "definition_id": "slice.hero.fara",
+        "slot": 0,
+        "formation_offset": {
+          "x": 0,
+          "y": 0
+        },
+        "stats": {
+          "hp": 420,
+          "atk": 26.4,
+          "def": 28,
+          "speed": 100,
+          "reach": 100,
+          "interval": 1.8,
+          "evade": 0,
+          "special": 30
+        },
+        "host_max_hp": 75,
+        "hp": 200
+      }
+    ],
+    "enemies": []
+  },
+  "commands": [
+    {
+      "encounter_id": "permanent-parity",
+      "step": "1",
+      "sequence": "1",
+      "body": {
+        "kind": "replace_permanent_inputs",
+        "data": {
+          "actor": 1,
+          "expected_revision": "0",
+          "revision": "2",
+          "host_max_hp": 125,
+          "stats": {
+            "hp": 700,
+            "atk": 40,
+            "def": 28,
+            "speed": 100,
+            "reach": 100,
+            "interval": 1.8,
+            "evade": 0,
+            "special": 30
+          },
+          "skill_modifiers": {
+            "special_potency": 1.1,
+            "meter_rate": 1.0869565217391304
+          }
+        }
+      }
+    }
+  ]
+}

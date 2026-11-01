@@ -1,6 +1,16 @@
 use crate::{api::*, rng::Rng, tuning::*};
 #[derive(Clone, Debug)]
 pub struct Actor {
+    pub permanent_revision: u64,
+    pub special_potency: f32,
+    pub meter_rate: f32,
+    pub action_revision: u64,
+    pub action_target_revision: u64,
+    pub action_target_max_hp: f32,
+    pub action_stats: Stats,
+    pub action_max_hp: f32,
+    pub action_potency: f32,
+    pub action_elevate: Option<ElevateVariant>,
     pub view: ActorView,
     pub stats: Stats,
     pub wfm_magic: f32,
@@ -92,6 +102,14 @@ pub struct Actor {
     pub elevate_choice: Option<ElevateVariant>,
 }
 impl Actor {
+    pub fn revised_action(&self) -> bool {
+        self.action_revision != self.permanent_revision && matches!(self.view.state, ActorState::Basic | ActorState::Cast)
+    }
+    pub fn committed_stats(&self) -> Stats { if self.revised_action() { self.action_stats } else { self.stats } }
+    pub fn committed_max_hp(&self) -> f32 { if self.revised_action() { self.action_max_hp } else { self.view.max_hp } }
+    pub fn committed_potency(&self) -> f32 { if self.revised_action() { self.action_potency } else { self.special_potency } }
+    pub fn committed_elevate(&self) -> Option<ElevateVariant> { if self.revised_action() { self.action_elevate } else { self.view.elevate } }
+
     pub fn enemy_poison_damage(&self) -> f32 {
         ENEMY_POISON_TICK_DAMAGE * self.poison_potency
     }
@@ -109,6 +127,8 @@ impl Actor {
             Vec2::default()
         };
         let mut actor = Self {
+            permanent_revision: 0, special_potency: 1., meter_rate: 1., action_revision: 0,
+            action_target_revision: 0, action_target_max_hp: 0., action_stats: stats, action_max_hp: stats.hp, action_potency: 1., action_elevate: None,
             wfm_magic: stats.atk,
             wfm_action: 0,
             view: ActorView {

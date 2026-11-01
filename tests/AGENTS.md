@@ -261,3 +261,5 @@
 - Rust combat regressions cover party-order Phoenix despite sparse saved formation, four-hero admission/deployment, body containment in the full-height floor under UI, hero-only Elevate, encasement removal/death/expiry and source pop duration, snapshot-exact bomb removal and cleared boss-tail objects. Stationary world Y and draw Y must remain equal across another hero's movement in the fixed camera.
 
 - Rust subwave proof checks all Chapter 1 compositions, exact cohort thresholds, checkpoint identities, pending marker reservations and source emergence. Chest tests reject early ABI spawn, verify approach/open/post-open timing and assert unchanged reward receipts and hero stats. Native-DPR capture runs through `tools/qa_rust_combat_playtest2.mjs`.
+
+- `combatPermanentInputs.test.mjs` compares native/WASM revision traces and checks atomic rejection, coalescing, ordered acks, pause, HP growth/shrink and downed state. `rustCombatAuthority.test.mjs` reproduces live HP gear (75→125 host, 420→700 Rust), reload before ack, raw-meta saving, EXP, ticket-funded levels and Training without live JS HP/stat writes.

@@ -17,7 +17,7 @@ struct Version {
     major: u16,
     minor: u16,
 }
-const SCHEMA: Version = Version { major: 1, minor: 0 };
+const SCHEMA: Version = Version { major: 1, minor: 1 };
 #[derive(Clone, Copy, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 struct Point {
@@ -89,9 +89,42 @@ impl StatInput {
             && self.evade <= 1.
     }
 }
+fn one() -> f32 { 1. }
+#[derive(Clone, Copy, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SkillModifiers {
+    #[serde(default = "one")]
+    special_potency: f32,
+    #[serde(default = "one")]
+    meter_rate: f32,
+}
+impl Default for SkillModifiers { fn default() -> Self { Self { special_potency: 1., meter_rate: 1. } } }
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PermanentCommand {
+    encounter_id: String,
+    step: String,
+    sequence: String,
+    body: PermanentBody,
+}
+#[derive(Deserialize)]
+#[serde(tag = "kind", content = "data", rename_all = "snake_case", deny_unknown_fields)]
+enum PermanentBody {
+    ReplacePermanentInputs {
+        actor: u32,
+        expected_revision: String,
+        revision: String,
+        stats: StatInput,
+        host_max_hp: f32,
+        #[serde(default)]
+        skill_modifiers: SkillModifiers,
+    },
+}
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct HeroInput {
+    #[serde(default)]
+    skill_modifiers: SkillModifiers,
     instance_id: String,
     definition_id: String,
     slot: u8,
@@ -152,6 +185,8 @@ impl EndReason {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct StepRequest {
+    #[serde(default)]
+    commands: Vec<PermanentCommand>,
     #[serde(default)]
     end_encounter: Option<EndReason>,
     encounter_id: String,
@@ -262,6 +297,7 @@ impl<T> Registry<T> {
 }
 struct World {
     sim: Sim,
+    command_sequence: u64,
     encounter_id: String,
     state: &'static str,
     continuous: bool,
@@ -289,7 +325,7 @@ impl Transport {
     fn execute(&mut self, op: Operation) -> Result<Value, Value> {
         match op {
             Operation::Describe {} => Ok(json!({"abi_version":VERSION,"schema":SCHEMA,"hz":SIM_HZ,
-                "capabilities":["headless_slice_v1","initial_enemies","events_after","spawn_enemies","end_encounter","wfm_enemies","autonomous_phoenix","wave_chest"],
+                "capabilities":["headless_slice_v1","initial_enemies","events_after","spawn_enemies","end_encounter","wfm_enemies","autonomous_phoenix","wave_chest","replace_permanent_inputs_v1"],
                 "limits":{"request_bytes":MAX_REQUEST,"response_bytes":MAX_RESPONSE,"worlds":2,"responses":8,"inputs":8,"heroes":4,"enemies":MAX_ENEMIES,"hazards":MAX_EFFECTS,"projectiles":MAX_EFFECTS,"retained_events":MAX_EVENTS,"event_step_reserve":MAX_EVENTS/2,"floor_min_extent":256,"floor_max_extent":16384},
                 "resources":{"worlds":self.worlds.count(),"responses":self.responses.count(),"inputs":self.inputs.len()}})),
             Operation::Create { config } => {
@@ -409,6 +445,7 @@ impl Transport {
                         Some(w.sim.step_number),
                     ));
                 }
+                let revisions = w.validate_revisions(&request)?;
                 if let Some(reason) = request.end_encounter {
                     if w.state == "host_ended" {
                         return Err(error(
@@ -454,6 +491,10 @@ impl Transport {
                     ));
                 }
                 let after = w.events.len();
+                w.sim.replace_permanent_inputs(&revisions.iter().map(|r| r.0).collect::<Vec<_>>())
+                    .map_err(|message| error("revision_conflict", "request.commands", message, Some(w.sim.step_number)))?;
+                for (input, host_max) in &revisions { w.host_max_hp.insert(input.actor, *host_max); }
+                w.command_sequence += revisions.len() as u64;
                 if w.continuous {
                     // Actors were created in party-slot order, never saved formation-cell order.
                     if let Some(id) = w
@@ -480,6 +521,10 @@ impl Transport {
                     }
                 }
                 w.sim.step();
+                for (index, (input, _)) in revisions.iter().enumerate() {
+                    w.event(json!({"kind":"permanent_inputs_applied","data":{"actor":input.actor,
+                        "revision":input.revision.to_string(),"sequence":(w.command_sequence - revisions.len() as u64 + index as u64 + 1).to_string()}}));
+                }
                 for (marker, kind, id, point, stats, hp, magic) in std::mem::take(&mut w.pending_spawns) {
                     if w.sim.hazards.iter().any(|h| h.view.id == marker && h.view.phase != HazardPhase::Resolved) {
                         w.pending_spawns.push((marker, kind, id, point, stats, hp, magic));
@@ -715,6 +760,12 @@ impl World {
         }
         let mut host_max_hp = BTreeMap::new();
         for (actor, hero) in sim.actors.iter_mut().zip(&heroes) {
+            let modifiers = hero.skill_modifiers;
+            let check = permanent::PermanentInputs { actor: actor.view.id, expected_revision: 0, revision: 1,
+                stats: hero.stats.resolved(), special_potency: modifiers.special_potency, meter_rate: modifiers.meter_rate };
+            if !check.valid() { return Err(invalid("config.heroes.skill_modifiers")); }
+            actor.special_potency = modifiers.special_potency;
+            actor.meter_rate = modifiers.meter_rate;
             host_max_hp.insert(actor.view.id, hero.host_max_hp.unwrap_or(hero.stats.hp));
             actor.formation_offset = hero.formation_offset.into();
         }
@@ -736,6 +787,7 @@ impl World {
         sim.refresh_snapshot();
         let mut w = Self {
             sim,
+            command_sequence: 0,
             encounter_id: c.encounter_id,
             state: "running",
             continuous: c.continuous,
@@ -749,6 +801,21 @@ impl World {
         };
         w.collect();
         Ok(w)
+    }
+    fn validate_revisions(&self, request: &StepRequest) -> Result<Vec<(permanent::PermanentInputs, f32)>, Value> {
+        let invalid = || error("invalid_input", "request.commands", "invalid permanent-input command batch", Some(self.sim.step_number));
+        if request.commands.len() > 4 || (request.end_encounter.is_some() && !request.commands.is_empty()) { return Err(invalid()); }
+        request.commands.iter().enumerate().map(|(index, command)| {
+            if command.encounter_id != self.encounter_id
+                || decimal(&command.step, "command.step")? != self.sim.step_number + 1
+                || decimal(&command.sequence, "command.sequence")? != self.command_sequence + index as u64 + 1 { return Err(invalid()); }
+            let PermanentBody::ReplacePermanentInputs { actor, expected_revision, revision, stats, host_max_hp, skill_modifiers } = &command.body;
+            if !stats.valid() || !host_max_hp.is_finite() || *host_max_hp <= 0. || *host_max_hp > 1_000_000. { return Err(invalid()); }
+            Ok((permanent::PermanentInputs { actor: *actor,
+                expected_revision: decimal(expected_revision, "command.expected_revision")?,
+                revision: decimal(revision, "command.revision")?, stats: stats.resolved(),
+                special_potency: skill_modifiers.special_potency, meter_rate: skill_modifiers.meter_rate }, *host_max_hp))
+        }).collect()
     }
     fn spawn(&mut self, encounter_id: &str, enemies: Vec<EnemyInput>) -> Result<Value, Value> {
         if !self.sim.chests.is_empty() && !self.sim.wave_chest_ready() {
@@ -924,7 +991,7 @@ impl World {
         hash.0
     }
     fn result(&self, after: usize) -> Value {
-        let actors:Vec<_> = self.sim.actors.iter().map(|a|json!({"actor_id":a.view.id,"host_id":self.host_ids.get(&a.view.id),"state":format!("{:?}",a.view.state).to_lowercase(),"state_age":a.view.state_age,"state_duration":a.view.state_duration,"impact_at":a.view.impact_at,"facing":format!("{:?}",a.view.facing).to_lowercase(),"ward":a.view.ward,"warcry_shield":a.view.warcry_shield,"energy":a.view.energy,"enraged":a.view.enraged,"radius":a.view.radius,"target":a.view.target,"encased":a.view.encased,"poisoned":a.view.poisoned,"slowed":a.view.slowed,"taunted_by":a.view.taunted_by,"groove_active":a.view.groove_active,"groove":a.view.groove.map(|g|format!("{g:?}").to_lowercase()),"meter":a.view.meter,"special_casting":a.view.special_casting,"elevate":a.view.elevate.map(|v| format!("{v:?}").to_lowercase()),"scale":a.view.scale,"kind":a.view.archetype,"team":if a.view.team==Team::Hero {"hero"} else {"enemy"},"pos":{"x":a.view.pos.x,"y":a.view.pos.y},"hp":a.view.hp,"max_hp":a.view.max_hp,"downed":a.view.state==ActorState::Downed})).collect();
+        let actors:Vec<_> = self.sim.actors.iter().map(|a|json!({"actor_id":a.view.id,"permanent_revision":a.permanent_revision.to_string(),"host_id":self.host_ids.get(&a.view.id),"state":format!("{:?}",a.view.state).to_lowercase(),"state_age":a.view.state_age,"state_duration":a.view.state_duration,"impact_at":a.view.impact_at,"facing":format!("{:?}",a.view.facing).to_lowercase(),"ward":a.view.ward,"warcry_shield":a.view.warcry_shield,"energy":a.view.energy,"enraged":a.view.enraged,"radius":a.view.radius,"target":a.view.target,"encased":a.view.encased,"poisoned":a.view.poisoned,"slowed":a.view.slowed,"taunted_by":a.view.taunted_by,"groove_active":a.view.groove_active,"groove":a.view.groove.map(|g|format!("{g:?}").to_lowercase()),"meter":a.view.meter,"special_casting":a.view.special_casting,"elevate":a.view.elevate.map(|v| format!("{v:?}").to_lowercase()),"scale":a.view.scale,"kind":a.view.archetype,"team":if a.view.team==Team::Hero {"hero"} else {"enemy"},"pos":{"x":a.view.pos.x,"y":a.view.pos.y},"hp":a.view.hp,"max_hp":a.view.max_hp,"downed":a.view.state==ActorState::Downed})).collect();
         let hazards: Vec<_> = self.sim.snapshot().hazards.iter().map(|h| {
             let shape = match h.shape {
                 Shape::Circle { radius } => json!({"kind":"circle","radius":radius}),
@@ -982,7 +1049,7 @@ pub extern "C" fn wf_combat_call(ptr: u32, len: u32) -> u32 {
             let value:Value=serde_json::from_str(utf8).map_err(|_|error("invalid_json","input","input is not JSON",None))?;
             request_id=value.get("request_id").and_then(Value::as_str).map(str::to_owned);
             let envelope:Envelope=serde_json::from_value(value).map_err(|e|error("invalid_input","envelope",&e.to_string(),None))?;
-            if envelope.schema.major!=1 || envelope.schema.minor!=0 { return Err(error("unsupported_schema","schema","expected version 1.0",None)); }
+            if envelope.schema.major!=1 || envelope.schema.minor>1 { return Err(error("unsupported_schema","schema","expected schema 1.0 or 1.1",None)); }
             request_id=Some(envelope.request_id);
             if let Operation::Step { world, .. } = &envelope.operation { stepping=Some(*world); }
             let result=t.execute(envelope.operation)?;
@@ -1026,6 +1093,51 @@ pub extern "C" fn wf_response_free(response: u32) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn native_revision_trace() {
+        let fixture: Value = serde_json::from_str(include_str!("../tests/permanent_revision_scenario.json")).unwrap();
+        let mut transport = Transport::new();
+        let created = transport.execute(serde_json::from_value(json!({"kind":"create","data":{"config":fixture["config"]}})).unwrap()).unwrap();
+        let world = created["world"].as_u64().unwrap();
+        let mut trace = vec![created];
+        for step in 0..12 {
+            let result = transport.execute(serde_json::from_value(json!({"kind":"step","data":{"world":world,"request":{
+                "encounter_id":"permanent-parity","expected_previous_step":step.to_string(),
+                "commands":if step==0 { fixture["commands"].clone() } else { json!([]) }
+            }}})).unwrap()).unwrap();
+            trace.push(result);
+        }
+        assert_eq!(trace[1]["snapshot"]["actors"][0]["max_hp"],700.);
+        assert_eq!(trace[1]["snapshot"]["actors"][0]["hp"],480.);
+        if let Ok(path) = std::env::var("WF_REVISION_PARITY_OUTPUT") {
+            std::fs::write(path,serde_json::to_vec(&trace).unwrap()).unwrap();
+        }
+    }
+    #[test]
+    fn revision_batch_validation_is_atomic_before_step_or_rng() {
+        let fixture: Value = serde_json::from_str(include_str!("../tests/permanent_revision_scenario.json")).unwrap();
+        let mut t=Transport::new();
+        let created=t.execute(serde_json::from_value(json!({"kind":"create","data":{"config":fixture["config"]}})).unwrap()).unwrap();
+        let world=created["world"].as_u64().unwrap() as u32;
+        let before=t.worlds.get(world).unwrap().result(0);
+        let good=fixture["commands"][0].clone();
+        for failure in ["duplicate","actor","step","sequence","host_max","revision"] {
+            let mut bad=good.clone();
+            match failure {
+                "actor"=>bad["body"]["data"]["actor"]=json!(999),
+                "step"=>bad["step"]=json!("2"),
+                "sequence"=>bad["sequence"]=json!("2"),
+                "host_max"=>bad["body"]["data"]["host_max_hp"]=json!(0),
+                "revision"=>bad["body"]["data"]["revision"]=json!("0"),
+                _=>{},
+            }
+            let commands=if failure=="duplicate" { json!([good,bad]) } else { json!([bad]) };
+            let result=t.execute(serde_json::from_value(json!({"kind":"step","data":{"world":world,"request":{
+                "encounter_id":"permanent-parity","expected_previous_step":"0","commands":commands
+            }}})).unwrap());
+            assert!(result.is_err(),"{failure}"); assert_eq!(t.worlds.get(world).unwrap().result(0),before,"{failure}");
+        }
+    }
     #[test]
     fn generation_rejects_stale_and_double_free() {
         let mut r = Registry::new(1);

@@ -2,6 +2,7 @@
 pub mod api;
 pub use api::*;
 pub mod actors;
+pub mod permanent;
 pub mod ai;
 pub mod barrage;
 pub mod boss_commit;
