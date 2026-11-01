@@ -130,3 +130,7 @@ test('a short fractional-heal bucket retires without inventing a full point of h
 test('Phoenix channel consumes its read-only observation and takes precedence over a colocated resurrect hazard',()=>{
  const s=snapshot(1,[{kind:'resurrect',phase:'active',owner:3,origin:hero.pos,progress:.2}]),fx=createRustEffectState(),original=structuredClone(s);fx.ingest({...s,phoenix_cooldown:0,phoenix_channel:{hero:1,progress:.6}},[]);assert.equal(fx.channels.length,1);assert.equal(fx.channels[0].owner,null);assert.equal(fx.channels[0].progress,.6);assert.deepEqual(s,original);fx.ingest({...s,hit_stop:{cause:'healingspring'},phoenix_channel:{hero:1,progress:.6}},[]);assert.equal(fx.channels.length,1);assert.equal(fx.channels[0].owner,3);
 });
+
+test('enemy death owns its authored KO puff after the one-second clip; downed heroes do not',()=>{
+ const fx=createRustEffectState(),s=snapshot(0);fx.ingest(s,[{body:{kind:'died',data:{actor:2}}},{body:{kind:'downed',data:{actor:1}}}]);assert.equal(fx.effects.filter(f=>f.type==='corpse').length,1);assert.equal(fx.effects.find(f=>f.type==='corpse').life,1.48);fx.ingest(snapshot(1.48),[]);assert.equal(fx.effects.filter(f=>f.type==='corpse').length,0);assert.equal(manifest.effects['ko-puff'].blend,'alpha');
+});

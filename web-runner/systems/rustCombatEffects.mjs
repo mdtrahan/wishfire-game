@@ -53,6 +53,7 @@ export function createRustEffectState() {
     // Ownership must precede Hit irrespective of batch order.
     for (const record of records) {
       const { kind, data: d } = sliceEvent(record);
+      if (kind === 'died') {const a=actors.get(d.actor);if(a?.team==='enemy')effect('corpse',{actor:a},now,1.48);}
       if (kind === 'blink') effect('shadow', { ...d, caster: actors.get(d.hero), targetActor: actors.get(d.target), before: previous?.actors.find(a=>a.actor_id===d.target) }, now, .75);
       if (kind === 'split_strike') effect('split', { ...d, caster: actors.get(d.hero), targets: d.targets.map(id => ({ actor: actors.get(id), landed: records.some(r => r.body.kind === 'damage' && r.body.data.source === d.hero && r.body.data.target === id && r.body.data.amount > 0) })) }, now, .505);
     }

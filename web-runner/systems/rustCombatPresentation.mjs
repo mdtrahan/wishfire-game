@@ -82,6 +82,7 @@ export async function createRustCombatPresentation(globals) {
         const n=Math.ceil(80*c(h.progress));for(let i=0;i<n;i++){const a=-Math.PI/2+i/80*TAU,b=-Math.PI/2+Math.min((i+1)/80,h.progress)*TAU;gpu.solidLine(x+Math.cos(a)*23,y+Math.sin(a)*23*.75,x+Math.cos(b)*23,y+Math.sin(b)*23*.75,1.8,0xffd461,.85);}
       }
     }
+    for(const f of state.effects)if(f.type==='corpse'){const a=f.data.actor,age=now-f.born-1;if(age>=0){const height=-(assets.manifest.actor_boxes[a.kind]?.idle[1]??-114)*a.scale*(a.kind.startsWith('boss')?1:.6)*camera.zoom,size=Math.min(.70*height,a.kind.startsWith('boss')?42:30);gpu.once('ko-puff',age,camera.x(a.pos.x),camera.y(a.pos.y),size,size);}}
     for(const f of state.effects)if(f.type==='faze_splash'){const h=f.data.hazard,r=h.shape.radius;gpu.once('faze-splash',now-f.born,camera.x(h.origin.x),camera.y(h.origin.y),2*r*camera.zoom,2*r*camera.zoom*.75);}
     procedural(true);ground.hostile(state);finish(ctx);
     if(motion.scrimAlpha>0){ctx.save();ctx.fillStyle='#000';ctx.globalAlpha=motion.scrimAlpha;ctx.fillRect(ox,oy+174*s,360*s,192*s);ctx.restore();}

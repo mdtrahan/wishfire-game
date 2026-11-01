@@ -1303,6 +1303,29 @@
         0
       ],
       "file": "vfx-astra/blast-smoke.png"
+    },
+    "ko-puff": {
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        65,
+        100,
+        140,
+        175
+      ],
+      "pivot": [
+        64.0,
+        122
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        30,
+        30
+      ],
+      "file": "vfx-astra/ko-puff.png"
     }
   },
   "sha256": {
@@ -1382,7 +1405,8 @@
     "vfx-astra/charge-up/charge-gather.png": "a885b0b4253ab4b95f3c7ad1fd482afbe391021011ae9fa41f8cda3c5b639f29",
     "vfx-astra/charge-up/charge-ground.png": "4e97a74420519fb5c9a60865dd10e2c290fcdce292171f0481df7a51e967e338",
     "vfx-astra/charge-up/charge-flare.png": "7099c37fe57607a6ebf631fb8876afe9b0ba2393a96bf7d33034d1571a492d0a",
-    "vfx-astra/blast-smoke.png": "9606faae241b7d208263fb99470df6d77a87feb59a85beb88b79a89e58e8fb5f"
+    "vfx-astra/blast-smoke.png": "9606faae241b7d208263fb99470df6d77a87feb59a85beb88b79a89e58e8fb5f",
+    "vfx-astra/ko-puff.png": "4c7656295143161fe8fdedda67cc39c4d740b88fd219c6a81405bcff10323dfb"
   },
   "font": "fonts/Bungee-Regular.ttf",
   "existing_arcane_impact": "../images/vfx_impact_g03_purple.png",
