@@ -1,4 +1,4 @@
-//! Headless JSON transport only. The game does not call this bridge yet.
+//! Headless JSON transport. Only the opt-in developer shadow calls this in-game.
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{cell::RefCell, collections::BTreeMap};
@@ -138,10 +138,25 @@ struct StepRequest {
 )]
 enum Operation {
     Describe {},
-    Create { config: EncounterConfig },
-    Step { world: u32, request: StepRequest },
-    Inspect { world: u32, events_after: String },
-    Destroy { world: u32 },
+    Create {
+        config: EncounterConfig,
+    },
+    Step {
+        world: u32,
+        request: StepRequest,
+    },
+    Inspect {
+        world: u32,
+        events_after: String,
+    },
+    Spawn {
+        world: u32,
+        encounter_id: String,
+        enemies: Vec<EnemyInput>,
+    },
+    Destroy {
+        world: u32,
+    },
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -216,6 +231,7 @@ struct World {
     encounter_id: String,
     state: &'static str,
     events: Vec<Value>,
+    identities: std::collections::BTreeSet<String>,
 }
 struct Transport {
     inputs: BTreeMap<u32, Box<[u8]>>,
@@ -233,7 +249,7 @@ impl Transport {
     fn execute(&mut self, op: Operation) -> Result<Value, Value> {
         match op {
             Operation::Describe {} => Ok(json!({"abi_version":VERSION,"schema":SCHEMA,"hz":SIM_HZ,
-                "capabilities":["headless_slice_v1","initial_enemies","events_after"],
+                "capabilities":["headless_slice_v1","initial_enemies","events_after","spawn_enemies"],
                 "limits":{"request_bytes":MAX_REQUEST,"response_bytes":MAX_RESPONSE,"worlds":2,"responses":8,"inputs":8,"heroes":4,"enemies":MAX_ENEMIES,"hazards":MAX_EFFECTS,"projectiles":MAX_EFFECTS,"retained_events":MAX_EVENTS,"event_step_reserve":MAX_EVENTS/2,"floor_min_extent":256,"floor_max_extent":16384},
                 "resources":{"worlds":self.worlds.count(),"responses":self.responses.count(),"inputs":self.inputs.len()}})),
             Operation::Create { config } => {
@@ -256,6 +272,14 @@ impl Transport {
             Operation::Destroy { world } => {
                 self.worlds.remove(world).ok_or_else(bad_world)?;
                 Ok(json!({"destroyed":true}))
+            }
+            Operation::Spawn {
+                world,
+                encounter_id,
+                enemies,
+            } => {
+                let w = self.worlds.get_mut(world).ok_or_else(bad_world)?;
+                w.spawn(&encounter_id, enemies)
             }
             Operation::Inspect {
                 world,
@@ -445,7 +469,7 @@ impl World {
             };
             if id.is_empty()
                 || id.len() > 256
-                || !identities.insert(*id)
+                || !identities.insert((*id).to_owned())
                 || !stats.valid()
                 || !hp.is_finite()
                 || *hp < 0.
@@ -510,9 +534,99 @@ impl World {
             encounter_id: c.encounter_id,
             state: "running",
             events: Vec::new(),
+            identities,
         };
         w.collect();
         Ok(w)
+    }
+    fn spawn(&mut self, encounter_id: &str, enemies: Vec<EnemyInput>) -> Result<Value, Value> {
+        let invalid = || {
+            error(
+                "invalid_input",
+                "spawn.enemies",
+                "invalid enemy spawn batch",
+                Some(self.sim.step_number),
+            )
+        };
+        if encounter_id != self.encounter_id {
+            return Err(error(
+                "step_conflict",
+                "encounter_id",
+                "encounter differs",
+                Some(self.sim.step_number),
+            ));
+        }
+        if self.state != "running" && self.state != "ended" {
+            return Err(error(
+                "terminal",
+                "world",
+                "encounter cannot accept spawns",
+                Some(self.sim.step_number),
+            ));
+        }
+        if enemies.is_empty()
+            || self.sim.actors.len() + enemies.len() > MAX_ENEMIES + 4
+            || self.events.len() >= MAX_EVENTS / 2
+        {
+            return Err(error(
+                "resource_limit",
+                "spawn.enemies",
+                "spawn capacity exhausted",
+                Some(self.sim.step_number),
+            ));
+        }
+        // Validate the entire batch before consuming IDs or emitting events.
+        let mut identities = self.identities.clone();
+        let mut batch = Vec::new();
+        for e in &enemies {
+            let k = kind(&e.definition_id)
+                .filter(|k| hero_index(*k).is_none())
+                .ok_or_else(invalid)?;
+            let p = Vec2::from(e.position);
+            let radius = if tuning::is_boss(k) {
+                tuning::BOSS_BODY_RADIUS
+            } else {
+                tuning::BODY_RADIUS
+            };
+            if e.spawn_key.is_empty()
+                || e.spawn_key.len() > 256
+                || !identities.insert(e.spawn_key.clone())
+                || !e.stats.valid()
+                || !e.hp.is_finite()
+                || e.hp < 0.
+                || e.hp > e.stats.hp
+                || !p.x.is_finite()
+                || !p.y.is_finite()
+                || self.sim.floor.point(p, radius) != p
+                || !e.summon_profiles.is_empty()
+            {
+                return Err(invalid());
+            }
+            let required: &[Archetype] = match k {
+                Archetype::Boss => &[Archetype::Gobloc],
+                Archetype::BossMarksman => &[Archetype::Sniper, Archetype::Lizardo],
+                _ => &[],
+            };
+            if required
+                .iter()
+                .any(|required| !self.sim.spawn_profiles.iter().any(|(k, _)| k == required))
+            {
+                return Err(invalid());
+            }
+            batch.push((k, p, e.stats.resolved(), e.hp));
+        }
+        self.identities = identities;
+        self.state = "running";
+        self.sim.encounter.complete = false;
+        let after = self.events.len();
+        for (k, p, stats, hp) in batch {
+            self.sim.spawn_actor(k, p, stats);
+            self.sim.actors.last_mut().unwrap().view.hp = hp;
+        }
+        self.sim.deaths();
+        self.sim.refresh_snapshot();
+        self.collect();
+        Ok(self.result(after))
     }
     fn event(&mut self, body: Value) {
         self.events.push(json!({"schema":SCHEMA,"encounter_id":self.encounter_id,"step":self.sim.step_number.to_string(),"combat_step":self.sim.combat_steps.to_string(),"sequence":(self.events.len() as u64+1).to_string(),"body":body}));

@@ -16,7 +16,7 @@
 - Fixture-driven behavior must match `tests/fixtures/*.csv` and JS packet expectations.
 - Do not flip ownership of a new rule family without updating Rust, JS packet routing, shadow markers, WASM, fixtures, and tests together.
 
-- `simulation_core/src/combat_abi.rs` owns the headless `wf_combat_call` JSON bridge and independent input/response/world registries. Existing scalar exports and production routing stay unchanged.
+- `simulation_core/src/combat_abi.rs` owns the headless `wf_combat_call` JSON bridge and independent input/response/world registries. Its additive `spawn` operation atomically validates enemy batches, retains host identities and permits the host's next wave after an empty field. Existing scalar exports and production routing stay unchanged.
 
 ## Work Guidance
 - Keep Rust functions small and numeric/JSON-compatible at the WASM boundary.

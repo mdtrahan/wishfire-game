@@ -59,6 +59,7 @@
 - `combatBridge.test.mjs` instantiates the rebuilt WASM in Node and proves deterministic fights, exact step rejection, host bounds, handle generations, malformed inputs, capacity limits and zero retained input/response/world allocations after teardown.
 
 ## Work Guidance
+- `combatShadowAdapter.test.mjs` pins slice bases, primary-channel ABI limits, WFM-resolved progression, cadence and checkpoint HP. `combatShadowDriver.test.mjs` drives real WASM through frozen host observations, batched spawns, pause/error/end teardown and flag-off lazy-loading refusal. Extracted app-tick fixtures supply the optional shadow controller.
 - Name new tests after the behavior or contract, not the implementation detail alone.
 - For bug/regression beads, add the smallest test that fails for the old behavior and protects the intended owner.
 - Update fixture tests and CSV data together.
