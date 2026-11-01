@@ -254,7 +254,7 @@ removeBlock('if (ampShowsBadge) {');
   );
   effectiveBody = effectiveBody.replace(
     '          drawEnemySprite();',
-    '          state.globals.RustCombatPresentation?.actor(ctx, enemy, pos.x, pos.y, enemyH, false, layoutScale, layoutOffsetX, layoutOffsetY);\n          drawEnemySprite();\n          state.globals.RustCombatPresentation?.actor(ctx, enemy, pos.x, pos.y, enemyH, true, layoutScale, layoutOffsetX, layoutOffsetY);',
+    '          g.RustCombatPresentation?.actor(ctx, enemy, pos.x, pos.y, enemyH, false, layoutScale, layoutOffsetX, layoutOffsetY);\n          drawEnemySprite();\n          g.RustCombatPresentation?.actor(ctx, enemy, pos.x, pos.y, enemyH, true, layoutScale, layoutOffsetX, layoutOffsetY);',
   );
   effectiveBody = effectiveBody.replace(
     'drawHeroSprite();',
