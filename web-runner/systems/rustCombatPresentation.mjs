@@ -56,7 +56,6 @@ export async function createRustCombatPresentation(globals) {
       }
       const was=encased.get(a.actor_id);if(a.encased>0&&!was)encased.set(a.actor_id,{born:snapshot.time,actor:a,ended:null});else if(was&&a.encased<=0&&was.ended===null)was.ended=snapshot.time;
     }
-    for(const a of snapshot.actors)if(a.team==='enemy'&&a.hp>0&&a.slowed>0){const height=126*(a.kind.startsWith('boss')?a.scale:a.scale*.6)*camera.zoom;for(let k=0;k<3;k++){const t=(now*.65+a.actor_id*.17+k*.32)%1,size=(4+k*.5)*z;gpu.bitmap('bubble-droplets',k,camera.x(a.pos.x)+(k-1)*height*.2,camera.y(a.pos.y)-height*(.82-.48*t),size,size,0,.65*(1-t*.45),0xe6ffff);}}
     for(const [id,record]of encased)if(record.ended!==null&&snapshot.time-record.ended>=.35)encased.delete(id);
     globals.RustCombatPresentation=api;
   }
