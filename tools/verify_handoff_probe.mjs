@@ -7,7 +7,7 @@ import { writeFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { quantiles } from './verify_handoff_logic.mjs';
 const require = createRequire(import.meta.url);
-const { detectChromeExecutable, classifyPlaywrightFailure } = require('./playwright_support.js');
+const { detectChromeExecutable, classifyPlaywrightFailure, waitForJsonEndpoint } = require('./playwright_support.js');
 
 // Runs before application scripts. Observers wrap public presentation seams; no combat mutation.
 export function installObservers() {
@@ -140,7 +140,7 @@ export async function combatProbe(root, out, seconds, seed) {
   let browser,browserServer;const errors=[];
   try {
     const url=`http://localhost:${port}/web-runner/index.html`;
-    for(let attempt=0;;attempt++){try{if((await fetch(url)).ok)break;}catch{}if(attempt===99)throw Error('QA server unavailable');await delay(100);}
+    await waitForJsonEndpoint(`http://localhost:${port}/package.json`,10000);
     browserServer=await chromium.launchServer({headless:true,executablePath:detectChromeExecutable()||undefined});
     browser=await chromium.connect(browserServer.wsEndpoint());
     const {defaultBrowserType,...profile}=devices['iPhone 13'],context=await browser.newContext(profile);
