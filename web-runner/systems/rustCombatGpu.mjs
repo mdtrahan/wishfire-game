@@ -1,7 +1,7 @@
 import { sliceFragment } from './rustCombatShader.mjs';
 import { sampleRustVfx, rustVfxFrameAlpha } from './rustCombatAssets.mjs';
 // Source vfx3d.rs POST quantizes the completed spell frame, before scene composition.
-const POST=`precision highp float;varying vec2 uv;uniform sampler2D FX,Scene;uniform vec2 sampleSize;void main(){vec2 at=vec2(uv.x,1.-uv.y);vec4 c=texture2D(FX,at),scene=texture2D(Scene,uv);vec2 cell=floor(at*sampleSize);float b=mod(cell.x+mod(cell.y,2.)*2.,4.)/4.;c.rgb=floor(c.rgb*31.+b)/31.;gl_FragColor=vec4(c.rgb+scene.rgb*(1.-c.a),scene.a+c.a*(1.-scene.a));}`;
+const POST=`precision highp float;varying vec2 uv;uniform sampler2D FX,Scene;uniform vec2 sampleSize;uniform float hazardAlpha;void main(){vec2 at=vec2(uv.x,1.-uv.y);vec4 c=texture2D(FX,at),scene=texture2D(Scene,uv);if(hazardAlpha>.5){gl_FragColor=vec4(c.rgb*c.a,1.);return;}vec2 cell=floor(at*sampleSize);float b=mod(cell.x+mod(cell.y,2.)*2.,4.)/4.;c.rgb=floor(c.rgb*31.+b)/31.;gl_FragColor=vec4(c.rgb+scene.rgb*(1.-c.a),scene.a+c.a*(1.-scene.a));}`;
 const VERTEX = `attribute vec3 position;attribute vec2 texcoord;attribute vec4 color0,normal;uniform float snap;uniform vec2 snapSize;varying vec2 uv;varying vec4 col,aux;void main(){uv=texcoord;col=color0;aux=normal;gl_Position=vec4(position.x/180.-1.,1.-position.y/320.,position.z,1.);if(snap>.5){vec2 g=snapSize;gl_Position.xy=(floor((gl_Position.xy*.5+.5)*g)+.5)/g*2.-1.;}}`;
 // Reusable CPU and GPU buffers; drawing allocates no arrays or typed views.
 export class SliceGpu {
@@ -48,7 +48,7 @@ export class SliceGpu {
     this.frameBuffer=gl.createFramebuffer();this.frameDepth=gl.createRenderbuffer();this.fxTexture=gl.createTexture();this.sceneTexture=gl.createTexture();this.resources.push(this.fxTexture,this.sceneTexture);
     for(const texture of [this.fxTexture,this.sceneTexture]){gl.bindTexture(gl.TEXTURE_2D,texture);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);}
     const post=this.postProgram=gl.createProgram();gl.attachShader(post,compile(gl.VERTEX_SHADER,VERTEX));gl.attachShader(post,compile(gl.FRAGMENT_SHADER,POST));gl.bindAttribLocation(post,gl.getAttribLocation(program,'position'),'position');gl.bindAttribLocation(post,gl.getAttribLocation(program,'texcoord'),'texcoord');gl.linkProgram(post);if(!gl.getProgramParameter(post,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(post));
-    gl.useProgram(post);gl.uniform1i(gl.getUniformLocation(post,'FX'),4);gl.uniform1i(gl.getUniformLocation(post,'Scene'),5);this.postSize=gl.getUniformLocation(post,'sampleSize');gl.useProgram(program);this.postActive=false;
+    gl.useProgram(post);gl.uniform1i(gl.getUniformLocation(post,'FX'),4);gl.uniform1i(gl.getUniformLocation(post,'Scene'),5);this.postSize=gl.getUniformLocation(post,'sampleSize');this.hazardUniform=gl.getUniformLocation(post,'hazardAlpha');this.hazardActive=false;gl.useProgram(program);this.postActive=false;
 
   }
   upload(image, linear) {
@@ -69,7 +69,7 @@ export class SliceGpu {
     this.flush();const operation=blend==='additive'?'lighter':'source-over';if(!this.postActive&&operation!==this.groupOp){this.blit();this.groupOp=operation;}const gl=this.gl;this.mode=mode;this.blend=blend;this.texture=texture;this.clock=clock;
     gl.uniform1f(this.modeUniform,mode);gl.uniform1f(this.clockUniform,clock);gl.uniform1f(this.snapUniform,mode>=0?1:0);
     if(blend==='solid'||blend==='gas'){gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.depthMask(blend==='solid');}else{gl.disable(gl.DEPTH_TEST);gl.depthMask(false);}
-    gl.blendFuncSeparate(gl.SRC_ALPHA,blend==='additive'?gl.ONE:gl.ONE_MINUS_SRC_ALPHA,this.postActive&&blend==='additive'?gl.ZERO:gl.ONE,this.postActive&&blend==='additive'?gl.ONE:gl.ONE_MINUS_SRC_ALPHA);
+    gl.blendFuncSeparate(gl.SRC_ALPHA,blend==='additive'?gl.ONE:gl.ONE_MINUS_SRC_ALPHA,this.hazardActive&&blend!=='backdrop'?gl.SRC_ALPHA:this.postActive&&blend==='additive'?gl.ZERO:gl.ONE,this.postActive&&blend==='additive'?gl.ONE:gl.ONE_MINUS_SRC_ALPHA);
     if(texture){gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);}
   }
   flush() {
@@ -121,11 +121,23 @@ export class SliceGpu {
   postMode(active){
     if(active===this.postActive)return;this.composite();this.postActive=active;const gl=this.gl;gl.bindFramebuffer(gl.FRAMEBUFFER,active?this.frameBuffer:null);gl.depthMask(true);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);this.hasDraw=false;this.mode=-99;this.blend='';this.texture=null;this.groupOp='source-over';
   }
+  hazardMode(active) {
+    if(active===this.hazardActive)return;if(active)this.postMode(true);this.composite();this.hazardActive=active;
+    if(active){
+      // Source portrait starts opaque, uses SrcAlpha for RGB and alpha, then presents over black.
+      const gl=this.gl;this.captureScene();gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,this.fxTexture);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,this.sceneCanvas);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);gl.activeTexture(gl.TEXTURE0);this.hasDraw=true;
+    }
+    this.mode=-99;this.blend='';this.texture=null;if(!active)this.postMode(false);
+  }
+  captureScene(){
+    const w=this.canvas.width,h=this.canvas.height,dpr=window.devicePixelRatio||1;
+    this.sceneCtx.clearRect(0,0,w,h);this.sceneCtx.drawImage(this.ctx.canvas,this.offsetX*dpr,this.offsetY*dpr,360*this.scale*dpr,640*this.scale*dpr,0,0,w,h);
+  }
   finishPost(){
-    const gl=this.gl,ctx=this.ctx,w=this.canvas.width,h=this.canvas.height,dpr=window.devicePixelRatio||1;
-    this.sceneCtx.clearRect(0,0,w,h);this.sceneCtx.drawImage(ctx.canvas,this.offsetX*dpr,this.offsetY*dpr,360*this.scale*dpr,640*this.scale*dpr,0,0,w,h);
+    const gl=this.gl,ctx=this.ctx,w=this.canvas.width,h=this.canvas.height;
+    this.captureScene();
     gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,this.sceneTexture);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,this.sceneCanvas);gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,this.fxTexture);
-    gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.useProgram(this.postProgram);gl.uniform2f(this.postSize,w,h);gl.disable(gl.BLEND);gl.disable(gl.DEPTH_TEST);this.hasDraw=false;
+    gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.useProgram(this.postProgram);gl.uniform2f(this.postSize,w,h);gl.uniform1f(this.hazardUniform,this.hazardActive?1:0);gl.disable(gl.BLEND);gl.disable(gl.DEPTH_TEST);this.hasDraw=false;
     this.vertex(0,0,0,0,0,0xffffff,1);this.vertex(360,0,0,1,0,0xffffff,1);this.vertex(360,640,0,1,1,0xffffff,1);this.vertex(0,0,0,0,0,0xffffff,1);this.vertex(360,640,0,1,1,0xffffff,1);this.vertex(0,640,0,0,1,0xffffff,1);this.flush();
     ctx.save();ctx.globalCompositeOperation='source-over';ctx.drawImage(this.canvas,this.offsetX,this.offsetY,360*this.scale,640*this.scale);ctx.restore();
     gl.enable(gl.BLEND);gl.useProgram(this.program);gl.activeTexture(gl.TEXTURE0);gl.bindFramebuffer(gl.FRAMEBUFFER,this.frameBuffer);gl.depthMask(true);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);this.hasDraw=false;this.mode=-99;this.texture=null;this.blend='';

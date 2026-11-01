@@ -20,10 +20,14 @@ export class SliceGround {
     else if(s.kind==='line'){const w=s.width*(h.kind==='boss_charge'?1:Math.max(1/3,h.width_scale??1))/2;const sx=-dy*w,sy=dx*w,l=s.length*progress;for(let i=0;i<4;i++){const sign=i===0||i===1?-1:1,at=i===1||i===2?l:0;p[count++]=x+(dx*at+sx*sign)*z;p[count++]=y+(dy*at+sy*sign)*z*.75;}}
     this.count=count/2;return this.count;
   }
-  texture(id){const e=this.gpu.assets.get(id);this.gpu.use(-1,'alpha',this.gpu.textures.get(e.image));}
-  fill(h,progress,alpha,color=0xff374b) {
+  texture(id,blend='alpha'){const e=this.gpu.assets.get(id);this.gpu.use(-1,blend,this.gpu.textures.get(e.image));}
+  dangerBackdrop(h,opacity=1) {
+    // Match the slice's muted floor inside danger only; keep its red tint/countdown passes.
+    this.fill(h,1,.6*opacity,0x847f74,'backdrop');
+  }
+  fill(h,progress,alpha,color=0xff374b,blend='alpha') {
     if(progress<=0||alpha<=0)return;const g=this.gpu,c=this.camera,s=h.shape;
-    this.texture('telegraph-fill');
+    this.texture('telegraph-fill',blend);
     if(s.kind==='ring'){
       const outer=s.inner+(s.outer-s.inner)*progress,n=segments(outer*c.zoom),x=c.x(h.origin.x),y=c.y(h.origin.y);
       for(let i=0;i<n;i++){const a=i/n*TAU,b=(i+1)/n*TAU,ax=Math.cos(a),ay=Math.sin(a),bx=Math.cos(b),by=Math.sin(b),inner=s.inner,oz=outer*c.zoom,iz=inner*c.zoom;
@@ -55,17 +59,22 @@ export class SliceGround {
   cancelled(f,now){
     const h=f.data.hazard,t=(now-f.born)/.12;if(t<0||t>=1||!hostileSliceHazard(h))return;const alpha=(1-t)**2,shape=h.shape;
     if(shape.kind==='circle'||shape.kind==='ring'){
-      const inner=shape.inner??0,radius=shape.radius??shape.outer,cut=inner+(radius-inner)*t,shell=f.data.shell,rim=f.data.rim;shell.shape.inner=cut;shell.shape.outer=radius;this.fill(shell,1,.12*alpha);const occupied=inner+(radius-inner)*clamp01(h.progress);if(h.phase!=='tracking'&&occupied>cut){shell.shape.outer=occupied;this.fill(shell,1,.34*alpha);}rim.shape.radius=radius;this.polygon(rim,1);this.boundary(.9*alpha);
-    }else{this.clipped(h,1,t);this.texture('telegraph-fill');this.fillPolygon(.12*alpha,0xff374b,true);if(h.phase!=='tracking'){this.clipped(h,h.progress,t);this.fillPolygon(.34*alpha,0xff374b,true);}this.clipped(h,1,t);this.boundary(.9*alpha);}
+      const inner=shape.inner??0,radius=shape.radius??shape.outer,cut=inner+(radius-inner)*t,shell=f.data.shell,rim=f.data.rim;shell.shape.inner=cut;shell.shape.outer=radius;this.dangerBackdrop(shell,alpha);this.fill(shell,1,.12*alpha);const occupied=inner+(radius-inner)*clamp01(h.progress);if(h.phase!=='tracking'&&occupied>cut){shell.shape.outer=occupied;this.fill(shell,1,.34*alpha);}rim.shape.radius=radius;this.polygon(rim,1);this.boundary(.9*alpha);
+    }else{this.clipped(h,1,t);this.texture('telegraph-fill','backdrop');this.fillPolygon(.6*alpha,0x847f74,true);this.texture('telegraph-fill');this.fillPolygon(.12*alpha,0xff374b,true);if(h.phase!=='tracking'){this.clipped(h,h.progress,t);this.fillPolygon(.34*alpha,0xff374b,true);}this.clipped(h,1,t);this.boundary(.9*alpha);}
   }
   pulse(h,state){if(h.phase!=='locked'||!state.previous)return 0;let old;for(const o of state.previous.hazards)if(o.id===h.id&&o.phase===h.phase){old=o;break;}if(!old)return 0;const dt=state.snapshot.time-state.previous.time;if(dt<=0||h.progress<=old.progress)return 0;const remaining=(1-h.progress)/((h.progress-old.progress)/dt);return remaining>.15?0:Math.sin(Math.PI*clamp01(1-remaining/.15));}
   hostile(state) {
     const now=state.snapshot.time;
+    if(!state.snapshot.hazards.some(h=>hostileSliceHazard(h)&&h.phase!=='resolved')&&!state.effects.some(f=>(f.type==='resolved'||f.type==='cancelled')&&hostileSliceHazard(f.data.hazard)))return;
+    this.gpu.hazardMode(true);
+    for(const h of state.snapshot.hazards)if(hostileSliceHazard(h)&&h.phase!=='resolved')this.dangerBackdrop(h);
+    for(const f of state.effects)if(f.type==='resolved'&&hostileSliceHazard(f.data.hazard))this.dangerBackdrop(f.data.hazard,1-(now-f.born)/.08);
     for(const h of state.snapshot.hazards)if(hostileSliceHazard(h)&&h.phase!=='resolved'){this.fill(h,1,.12);if(h.phase!=='tracking')this.fill(h,clamp01(h.progress),.34+.05*this.pulse(h,state));}
-    for(const f of state.effects)if(f.type==='resolved'&&hostileSliceHazard(f.data.hazard))this.fill(f.data.hazard,1,.18*(1-(now-f.born)/.08));
+    for(const f of state.effects)if(f.type==='resolved'&&hostileSliceHazard(f.data.hazard)){const opacity=1-(now-f.born)/.08;this.fill(f.data.hazard,1,.18*opacity);}
     for(const h of state.snapshot.hazards)if(hostileSliceHazard(h)&&h.phase!=='resolved'){this.polygon(h,1);const pulse=this.pulse(h,state),color=0xff0000|(Math.floor(55+90*pulse)<<8)|Math.floor(75+75*pulse);this.boundary(.9,color);}
     for(const f of state.effects)if(f.type==='resolved'&&hostileSliceHazard(f.data.hazard)){this.polygon(f.data.hazard,1);this.boundary(.18*(1-(now-f.born)/.08));}
     for(const f of state.effects)if(f.type==='cancelled')this.cancelled(f,now);
+    this.gpu.hazardMode(false);
     for(const h of state.snapshot.hazards)if(h.kind==='boss_charge'&&h.phase!=='resolved'&&h.shape.kind==='line'){
       const size=Math.min(18,h.shape.width*.25),c=this.camera,x=c.x(h.origin.x),y=c.y(h.origin.y),dx=h.dir.x,dy=h.dir.y,z=c.zoom;
       for(let i=1;i<=Math.floor(h.shape.length/70);i++){const tx=dx*i*70,ty=dy*i*70;this.gpu.solidLine(x+(tx-dx*size+dy*size)*z,y+(ty-dy*size-dx*size)*z*.75,x+tx*z,y+ty*z*.75,1.2,0xff374b,.5);this.gpu.solidLine(x+tx*z,y+ty*z*.75,x+(tx-dx*size-dy*size)*z,y+(ty-dy*size+dx*size)*z*.75,1.2,0xff374b,.5);}
