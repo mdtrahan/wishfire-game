@@ -78,7 +78,7 @@ impl Sim {
             let mut best = None;
             let mut score = f32::INFINITY;
             for k in 0..16 {
-                let candidate = self.floor.point(
+                let candidate = self.actor_floor(i).point(
                     p + direction(angle + side * (MIREWING_SIDESTEP + k as f32 * TAU / 16.))
                         * radius,
                     self.actors[i].view.radius,
@@ -108,7 +108,7 @@ impl Sim {
         }
         let a = &self.actors[i];
         let delta = a.destination - start;
-        let next = self.floor.point(
+        let next = self.actor_floor(i).point(
             start + delta.normalized() * (a.speed() * SIM_DT).min(delta.length()),
             a.view.radius,
         );
@@ -536,7 +536,7 @@ impl Sim {
                                         }
                                     } else {
                                         self.actors[i].velocity = aim * a.speed();
-                                        self.actors[i].view.pos = self.floor.point(
+                                        self.actors[i].view.pos = self.actor_floor(i).point(
                                             a.view.pos + aim * a.speed() * SIM_DT,
                                             a.view.radius,
                                         );

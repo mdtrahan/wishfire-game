@@ -153,7 +153,7 @@ test('continuous initializer applies an explicit QA encounter seed to pack-count
   assert.equal(JSON.stringify(plannedActors.map(actor=>[actor.continuousStageSectorIndex,actor.continuousStageEntryOrder,actor.continuousStageSectorSize])),JSON.stringify(expectedPlan.map(entry=>[entry.sectorIndex,entry.entryOrder,entry.sectorSize])));
 });
 
-for (let count = 1; count <= 6; count += 1) {
+for (let count = 1; count <= 4; count += 1) {
   test(`initializer constructs every member of a ${count}-hero configured party`, async () => {
     const members = Array.from({ length: count }, (_, i) => member(i));
     const before = JSON.stringify(members);
@@ -196,15 +196,15 @@ test('production starting party maps canonical identities', async () => {
   ]);
 });
 
-test('sparse formation slots retain their indexes and exclude slots beyond six', async () => {
-  const slots = [null, member(1), null, null, null, member(5), member(6)];
+test('sparse formation slots retain their indexes and exclude slots beyond four', async () => {
+  const slots = [null, member(1), null, member(3), member(5), member(6)];
   const { state, gameState } = await initialize(slots);
-  assert.deepEqual(Array.from(state.entities, actor => actor.uid), [2, 6]);
-  assert.deepEqual(Array.from(state.entities, actor => actor.heroDisplaySlot), [1, 5]);
+  assert.deepEqual(Array.from(state.entities, actor => actor.uid), [2, 4]);
+  assert.deepEqual(Array.from(state.entities, actor => actor.heroDisplaySlot), [1, 3]);
   const expectedHP=[0, ...state.entities.map(actor=>actor.hp)];
-  assert.deepEqual(Array.from(gameState.partyHP), [0, expectedHP[1], 0, 0, 0, expectedHP[2]]);
-  assert.deepEqual(Array.from(gameState.partyMaxHP), [0, expectedHP[1], 0, 0, 0, expectedHP[2]]);
-  assert.equal(state.globals.NextUID, 7);
+  assert.deepEqual(Array.from(gameState.partyHP), [0, expectedHP[1], 0, expectedHP[2], 0, 0]);
+  assert.deepEqual(Array.from(gameState.partyMaxHP), [0, expectedHP[1], 0, expectedHP[2], 0, 0]);
+  assert.equal(state.globals.NextUID, 5);
 });
 
 test('canonical progression owns HP for every configured hero', async () => {
@@ -216,14 +216,14 @@ test('canonical progression owns HP for every configured hero', async () => {
   assert.equal(JSON.stringify(Array.from(state.entities, actor => [actor.hp, actor.maxHP])), JSON.stringify(state.entities.map(actor => { const p=require('../web-runner/src/core/heroProgression.mjs').newHeroProgress(actor.baseHeroName); return [p.hp,p.maxHP]; })));
 });
 
-test('escort and spawned enemy IDs follow all six heroes without collisions', async () => {
+test('deployment clamps an oversized roster to four; escort and enemy IDs remain distinct', async () => {
   const { state } = await initialize(
     Array.from({ length: 6 }, (_, i) => member(i)),
     { name: 'Escort', baseHeroName: 'escort', kind: 'escort', hp: 20, maxHP: 20, heroDisplaySlot: 6 },
     true,
   );
-  assert.deepEqual(Array.from(state.entities, actor => actor.uid), [1, 2, 3, 4, 5, 6, 7, 8]);
-  assert.equal(state.globals.EscortNPCState.uid, 7);
-  assert.equal(state.entities[7].kind, 'enemy');
-  assert.equal(state.globals.NextUID, 9);
+  assert.deepEqual(Array.from(state.entities, actor => actor.uid), [1, 2, 3, 4, 5, 6]);
+  assert.equal(state.globals.EscortNPCState.uid, 5);
+  assert.equal(state.entities[5].kind, 'enemy');
+  assert.equal(state.globals.NextUID, 7);
 });

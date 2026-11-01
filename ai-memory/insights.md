@@ -677,3 +677,9 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Settle authoritative death receipts before retaining a renderer tail. Advance only presentation snapshots through hit-stop and KO/fade, keep host clock accrual live, and test the exact visual-transition boundary independently of world teardown.
 
 - Compare blended telegraph interior pixels at matching effect-relative positions; identical tint/alpha can wash out on brighter arena art. Trace render-target alpha through final composition: the slice default SrcAlpha alpha channel darkens its portrait when presented over black. Localize backdrop correction to the hostile footprint and preserve countdown and resolved-flash clocks.
+
+
+## Rust combat viewport and object lifetime
+- Fit both simulation floor and camera to the uncovered host viewport at the source projection and pixel scale. Source full-phone coordinates beneath a host HUD require gameplay bounds that reserve body height; a draw clip alone cannot prevent hidden fights.
+- Compare stationary world Y with projected draw Y while another actor moves. A fixed world Y and moving draw Y isolates camera framing; use the same viewport for actor-local glows and labels.
+- An authoritative actor can disappear before its effect timer reaches zero. Reconcile encasement on death/removal as well as timer expiry, and release live combat objects when their Rust world is destroyed before a presentation tail ends.

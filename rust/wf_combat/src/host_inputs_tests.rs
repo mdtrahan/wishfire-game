@@ -127,3 +127,48 @@ fn host_interest_point_is_optional_and_has_no_object_identity() {
     sim.choose_hero_intent(0);
     assert_ne!(sim.actors[0].destination, goal);
 }
+
+#[test]
+fn cropped_host_floor_contains_bodies_without_changing_collision_radii() {
+    let mut sim = Sim::new(SimConfig::default());
+    sim.floor = crate::math::Floor {
+        min: Vec2::new(96., 40.),
+        max: Vec2::new(816., 602.6667),
+    };
+    sim.contain_bodies = true;
+    for (k, p) in [
+        (Archetype::Fara, Vec2::new(0., 0.)),
+        (Archetype::Hondo, Vec2::new(9999., 9999.)),
+        (Archetype::Runa, Vec2::new(418., 520.)),
+        (Archetype::Kaja, Vec2::new(494., 520.)),
+        (Archetype::Boss, Vec2::new(456., 420.)),
+    ] {
+        sim.spawn_actor(k, p, stats(k));
+    }
+    for _ in 0..900 {
+        sim.step();
+        for a in &sim.actors {
+            let (half, top, bottom) = if is_boss(a.view.archetype) {
+                (176., 370., 40.)
+            } else {
+                (112., 210., 30.)
+            };
+            assert!(
+                a.view.pos.x >= sim.floor.min.x + half - 0.001
+                    && a.view.pos.x <= sim.floor.max.x - half + 0.001
+            );
+            assert!(
+                a.view.pos.y >= sim.floor.min.y + top - 0.001
+                    && a.view.pos.y <= sim.floor.max.y - bottom + 0.001
+            );
+            assert_eq!(
+                a.view.radius,
+                if is_boss(a.view.archetype) {
+                    BOSS_BODY_RADIUS
+                } else {
+                    BODY_RADIUS
+                }
+            );
+        }
+    }
+}

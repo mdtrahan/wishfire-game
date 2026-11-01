@@ -44,4 +44,4 @@
 
 - Continuous combat worlds retain actor clocks/wards across ordinary spawn batches. The fixed `ordinary_clear` respite validates an empty field and deduplicates a host transition ID; round 15% in host max-HP units before projection. EndEncounter emits despawn/ended facts without combat updates or kills. Continuous worlds select autonomous Phoenix by creation slot order and retain its selected recipient.
 
-- The current four-hero ABI admits saved formation cells 0..7, including sparse/reordered cells. Creation sorts those cells so autonomous Phoenix priority never depends on roster order.
+- Combat admits at most four heroes with party-order slots 0..3. Phoenix selects the lowest downed party slot; saved formation cells never enter the Rust host adapter. `geometry.contain_bodies` reserves source body bounds inside the host viewport without changing collision radii or reach.

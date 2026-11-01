@@ -130,6 +130,9 @@ impl Sim {
             h.v(self.floor.min);
             h.v(self.floor.max);
         }
+        if self.contain_bodies {
+            h.u(0x424f4459424f554e);
+        }
         h.v(self.cfg.arena_size);
         h.f(self.cfg.visible_width);
         h.f(self.cfg.visible_height);

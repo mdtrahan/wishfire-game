@@ -127,7 +127,8 @@ test('world generations reject stale handles and double destroy', () => {
 
 test('config validation rejects invalid inputs without allocating worlds', () => {
   const { bridge } = setup();
-  const changes = [c => c.seed = '18446744073709551616', c => c.seed = 1,
+  const changes = [c => c.heroes[0].slot = 4, c => c.heroes = Array(5).fill(c.heroes[0]),
+    c => { c.geometry.contain_bodies = true; c.geometry.floor.max.y = c.geometry.floor.min.y + 256; },c => c.seed = '18446744073709551616', c => c.seed = 1,
     c => c.heroes = [], c => c.heroes.push(...Array(4).fill(c.heroes[0])),
     c => c.heroes[0].definition_id = 'unknown', c => c.heroes[0].hp = -1,
     c => c.heroes[0].hp = 2000, c => c.heroes[0].stats.interval = 0,

@@ -50,3 +50,5 @@
 - Conditional combat predicates and modifier limits are shared pure rules. HP thresholds are fractions; comparison groups use current projected stats. Repeated stat changes resolve the strongest increase and strongest decrease against a clean baseline. Seeded RNG previews never consume a draw.
 
 - Boss reach scales the melee envelope with the four-times footprint so supports at their ranged stop position remain eligible after frontline KO. Ordinary actor ranges and nearest/Provoke priority remain unchanged.
+
+- `partyFormationRules.mjs` and its browser mirror clamp party-slot capacity to four; presentation grid capacity never authorizes extra deployed actors.

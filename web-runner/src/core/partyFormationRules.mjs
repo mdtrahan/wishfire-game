@@ -1,5 +1,5 @@
 export function normalizePartyFormationSlots(slots = [], size = 4) {
-  return Array.from({ length: size }, (_, idx) => String(slots?.[idx] || '').trim());
+  return Array.from({ length: Math.max(0, Math.min(4, Math.floor(Number(size) || 0))) }, (_, idx) => String(slots?.[idx] || '').trim());
 }
 
 export function assignHeroToPartySlot(slots = [], heroName = '', slotIndex = 0) {

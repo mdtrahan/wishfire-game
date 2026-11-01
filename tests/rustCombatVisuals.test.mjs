@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { createRustEffectState, effectSeed, slicePopupSize } from '../web-runner/systems/rustCombatEffects.mjs';
+import { createRustEffectState, elevateSourceForActor, effectSeed, slicePopupSize } from '../web-runner/systems/rustCombatEffects.mjs';
 import { sampleRustVfx } from '../web-runner/systems/rustCombatAssets.mjs';
 import { createBubbleModel } from '../web-runner/systems/rustCombatBubble.mjs';
 import { createArcaneModel } from '../web-runner/systems/rustCombatArcane.mjs';
+import { SLICE_FLOOR, COMBAT_VIEW } from '../web-runner/systems/rustCombatArena.mjs';
 import { createSliceCombatCamera } from '../web-runner/systems/rustCombatCamera.mjs';
 import { installRustCombat } from '../web-runner/systems/rustCombat.mjs';
 const root=new URL('../web-runner/assets/rust-combat/',import.meta.url),manifest=JSON.parse(fs.readFileSync(new URL('manifest.json',root)));
@@ -66,8 +67,10 @@ test('ground projection uses .75 squash, preserves fixed zoom and leaves snapsho
  const s=snapshot(),before=structuredClone(s),cam=createSliceCombatCamera();cam.update(s,1);const dx=cam.x(1100)-cam.x(1000),dy=cam.y(400)-cam.y(300);assert.equal(dx,50);assert.equal(dy,37.5);assert.deepEqual(s,before);
 });
 
-test('flag camera keeps the Troll body below the existing WFM boss HUD',()=>{
- const cam=createSliceCombatCamera(),s=snapshot();s.actors[1]={...enemy,pos:{x:1050,y:180}};cam.update(s,1);assert.ok(cam.y(180-370)>=155-1e-6);assert.ok(cam.y(hero.pos.y+30)<=478+1e-6);
+test('slice camera fits hero and Troll body bounds inside the unchanged WFM HUD gap',()=>{
+ const cam=createSliceCombatCamera(),s=snapshot();s.geometry.floor=SLICE_FLOOR;
+ s.actors=[{...hero,pos:{x:418,y:520}},{...enemy,pos:{x:456,y:430}}];cam.update(s,1);
+ assert.ok(cam.y(430-370)>=COMBAT_VIEW.top-1e-6);assert.ok(cam.y(520+30)<=COMBAT_VIEW.bottom+1e-6);
 });
 
 const {SliceActor,poisonStrength,castStrength,CAST_PURPLE,CAST_BLUE}=await import('../web-runner/systems/rustCombatActor.mjs');
@@ -133,4 +136,36 @@ test('Phoenix channel consumes its read-only observation and takes precedence ov
 
 test('enemy death owns its authored KO puff after the one-second clip; downed heroes do not',()=>{
  const fx=createRustEffectState(),s=snapshot(0);fx.ingest(s,[{body:{kind:'died',data:{actor:2}}},{body:{kind:'downed',data:{actor:1}}}]);assert.equal(fx.effects.filter(f=>f.type==='corpse').length,1);assert.equal(fx.effects.find(f=>f.type==='corpse').life,1.48);fx.ingest(snapshot(1.48),[]);assert.equal(fx.effects.filter(f=>f.type==='corpse').length,0);assert.equal(manifest.effects['ko-puff'].blend,'alpha');
+});
+
+
+test('Elevate follows the slice hero-only recipient guard', () => {
+ const kaja={...hero,actor_id:3,kind:'kaja',groove_active:7,elevate:'sword'};
+ const s={...snapshot(),actors:[hero,enemy,kaja]};
+ assert.equal(elevateSourceForActor(enemy,s),null);
+ assert.equal(elevateSourceForActor({...hero,hp:0},s),null);
+ assert.equal(elevateSourceForActor(hero,s),kaja);
+ assert.equal(elevateSourceForActor(hero,{...s,actors:[hero,enemy]}),null);
+});
+test('encasement ends on zero timer, death and removal, then pops for exactly source .32s', () => {
+ for (const end of ['timer','death','removed']) {
+  const fx=createRustEffectState(),a={...enemy,kind:'gobloc',encased:2};
+  fx.ingest({...snapshot(1),actors:[hero,a]},[]);fx.observeEncasements();assert.equal(fx.encased.size,1);
+  const actors=end==='removed'?[hero]:[hero,{...a,...(end==='timer'?{encased:0}:{hp:0})}];
+  fx.ingest({...snapshot(2),actors},[]);fx.observeEncasements();assert.equal(fx.encased.get(2).ended,2);
+  fx.ingest({...snapshot(2.319),actors},[]);fx.observeEncasements();assert.equal(fx.encased.size,1);
+  fx.ingest({...snapshot(2.321),actors},[]);fx.observeEncasements();assert.equal(fx.encased.size,0);
+ }
+});
+test('stationary world enemy and ground effects do not follow another hero in the slice frame', () => {
+ const cam=createSliceCombatCamera(),s={...snapshot(),geometry:{floor:SLICE_FLOOR}};
+ s.actors=[{...hero,pos:{x:418,y:410}},{...enemy,pos:{x:456,y:430}}];
+ const observations=[];
+ for(const y of [300,330,360,390]){s.actors[0]={...s.actors[0],pos:{x:418,y}};cam.update(s,1);observations.push({worldY:s.actors[1].pos.y,drawY:cam.y(s.actors[1].pos.y),groundY:cam.y(400)});}
+ assert.equal(new Set(observations.map(o=>o.worldY)).size,1);assert.equal(new Set(observations.map(o=>o.drawY)).size,1);assert.equal(new Set(observations.map(o=>o.groundY)).size,1);
+});
+test('bomb observations retire on the same snapshot as the source projectile', () => {
+ const fx=createRustEffectState(),p={id:10,kind:'bomb',team:'enemy',pos:{x:480,y:900}};
+ fx.ingest({...snapshot(1),projectiles:[p]},[]);assert.equal(fx.projectiles.size,1);
+ fx.ingest(snapshot(2),[present('hazard_resolved',{id:9,kind:'lizardo_drop',victims:[]})]);assert.equal(fx.projectiles.size,0);assert.deepEqual(fx.snapshot.projectiles,[]);
 });

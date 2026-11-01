@@ -145,4 +145,4 @@
 
 - Quest descriptions and counters never carry rarity colors; category labels keep their yellow presentation. Equipment rarity coverage stops at Blue/Rare. Epic (`equip_rarity:epic:`) and Legendary (`equip_rarity:legendary:`) coverage are retired: drop unfinished saved objectives without rewards, preserve completed objectives for one claim, and retain claimed keys/receipts.
 
-- Rust host roster inputs reuse `arenaCombat.formationSlots` for saved sparse cell IDs; Phoenix priority must follow those cells independently of actor/roster order.
+- Party deployment caps at four. Saved formation remains a Hero-screen UI contract; Rust combat ignores it and derives compact party-order slots and source travel offsets. Shared/runtime party-slot normalization clamps requested capacity to four.

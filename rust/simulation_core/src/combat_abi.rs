@@ -42,6 +42,8 @@ struct GeometryInput {
     viewport_world: Point,
     formation_origin: Point,
     screen_bound: bool,
+    #[serde(default)]
+    contain_bodies: bool,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -438,7 +440,7 @@ impl Transport {
                 }
                 let after = w.events.len();
                 if w.continuous {
-                    // Actors were created in formation-slot order, never archetype order.
+                    // Actors were created in party-slot order, never saved formation-cell order.
                     if let Some(id) = w
                         .sim
                         .phoenix
@@ -564,6 +566,8 @@ impl World {
             || floor.max.y - floor.min.y < 256.
             || floor.max.x - floor.min.x > 16384.
             || floor.max.y - floor.min.y > 16384.
+            || (g.contain_bodies
+                && (floor.max.x - floor.min.x < 352. || floor.max.y - floor.min.y < 410.))
             || g.viewport_world.x <= 0.
             || g.viewport_world.y <= 0.
         {
@@ -585,7 +589,7 @@ impl World {
                 .filter(|k| hero_index(*k).is_some())
                 .ok_or_else(|| invalid("config.heroes.definition_id"))?;
             // The slice still indexes heroes by archetype. Duplicate archetypes await the roster bead.
-            if h.slot >= 8 || !slots.insert(h.slot) || !definitions.insert(h.definition_id.as_str())
+            if h.slot >= 4 || !slots.insert(h.slot) || !definitions.insert(h.definition_id.as_str())
             {
                 return Err(invalid("config.heroes.slot/definition_id"));
             }
@@ -641,6 +645,7 @@ impl World {
             ..SimConfig::default()
         });
         sim.floor = floor;
+        sim.contain_bodies = g.contain_bodies;
         sim.formation_origin = g.formation_origin.into();
         // Summon templates are final host inputs, independent of initial enemy stats.
         for e in &c.enemies {

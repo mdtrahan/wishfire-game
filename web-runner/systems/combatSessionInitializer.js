@@ -302,8 +302,8 @@ export function createCombatSessionInitializer({
     const configuredHeroSlots = getConfiguredHeroSlots();
     const escortConfig = readEscortPartyConfig();
     const partyMembers = buildConfiguredCombatPartyMembers(configuredHeroSlots, escortConfig);
-    const heroSlotRoster = partyMembers.heroMembers;
-    for (let i = 0; i < Math.min(heroSlotRoster.length, 6); i += 1) {
+    const heroSlotRoster = partyMembers.heroMembers.slice(0, 4);
+    for (let i = 0; i < Math.min(heroSlotRoster.length, 4); i += 1) {
       const v = heroSlotRoster[i];
       if (!v) {
         partyHP[i] = 0;

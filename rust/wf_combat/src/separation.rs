@@ -32,7 +32,7 @@ impl Sim {
     }
     pub fn moat_point_ok(&self, i: usize, p: Vec2, yielding_to_hover: bool) -> bool {
         let a = &self.actors[i];
-        if p != self.floor.point(p, a.view.radius) {
+        if p != self.actor_floor(i).point(p, a.view.radius) {
             return false;
         }
         if a.view.team != Team::Hero {
@@ -106,7 +106,9 @@ impl Sim {
                             continue;
                         }
                         let target = self.actors[k].view.pos + dir * (push * w * sign);
-                        let target = self.floor.point(target, self.actors[k].view.radius);
+                        let target = self
+                            .actor_floor(k)
+                            .point(target, self.actors[k].view.radius);
                         let other = &self.actors[if k == i { j } else { i }];
                         // A planted moth cannot yield: allow the hero's full escape-safe
                         // correction even while it is still inside the warning it is leaving.

@@ -24,6 +24,7 @@ test('party formation slot assignment swaps duplicate heroes instead of cloning 
       mod.normalizePartyFormationSlots(['Falie'], 4),
       ['Falie', '', '', ''],
     );
+    assert.deepEqual(mod.normalizePartyFormationSlots(['Falie','Huun','Runa','Kojonn','Fifth'],8), ['Falie','Huun','Runa','Kojonn']);
   }
 });
 

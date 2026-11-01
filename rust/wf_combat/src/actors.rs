@@ -365,13 +365,39 @@ impl crate::Sim {
             self.formation_origin
         }
     }
+    pub fn spawn_floor(&self, kind: Archetype, radius: f32) -> crate::math::Floor {
+        if !self.contain_bodies {
+            return self.floor;
+        }
+        let (half, top, bottom) = if is_boss(kind) {
+            (176., 370., 40.)
+        } else {
+            (112., 210., 30.)
+        };
+        crate::math::Floor {
+            min: self.floor.min + Vec2::new(half - radius, top - radius),
+            max: self.floor.max - Vec2::new(half - radius, bottom - radius),
+        }
+    }
+    pub fn actor_floor(&self, i: usize) -> crate::math::Floor {
+        let a = &self.actors[i].view;
+        self.spawn_floor(a.archetype, a.radius)
+    }
     pub fn spawn_actor(&mut self, kind: Archetype, pos: Vec2, resolved: Stats) -> u32 {
         let id = self.next_id;
         self.next_id += 1;
         self.actors.push(Actor::new(
             id,
             kind,
-            self.floor.point(
+            self.spawn_floor(
+                kind,
+                if is_boss(kind) {
+                    BOSS_BODY_RADIUS
+                } else {
+                    BODY_RADIUS
+                },
+            )
+            .point(
                 pos,
                 if is_boss(kind) {
                     BOSS_BODY_RADIUS

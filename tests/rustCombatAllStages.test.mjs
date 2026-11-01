@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { WFM_ENEMY_DEFINITIONS, shadowEnemy } from '../src/core/combatShadowAdapter.mjs';
+import { SLICE_FLOOR, COMBAT_VIEW, SLICE_TRAVEL_SLOTS } from '../web-runner/systems/rustCombatArena.mjs';
+import { createSliceCombatCamera } from '../web-runner/systems/rustCombatCamera.mjs';
 import { createCombatBridge } from '../web-runner/src/core/combatBridge.mjs';
 import { createWfmCombatConfig } from '../web-runner/systems/wfmCombatConfig.mjs';
 import { createRustCombatRuntime } from '../web-runner/systems/rustCombatRuntime.mjs';
@@ -70,7 +72,7 @@ test('every authored WFM enemy has one explicit Rust definition and a distinct h
   assert.equal(new Set(Object.values(WFM_ENEMY_DEFINITIONS).map(d => d.id)).size, rows.length);
   const f = fixture();
   const config = createWfmCombatConfig({ globals: f.g, entities: f.state.entities, enemyRows: rows, encounterId: 'registry' });
-  const position = { x: 1200, y: 350 };
+  const position = { x: 456, y: 430 };
   config.enemies = rows.map((row, i) => shadowEnemy({ identity: String(1000 + i), key: row.name, position, reference: row, resolved: row, hp: row.HP, hostMaxHP: row.HP }));
   config.enemies.find(e => e.definition_id === 'slice.boss.troll_brute').summon_profiles = [{ definition_id: WFM_ENEMY_DEFINITIONS.Gobloc.id, stats: config.enemies[0].stats }];
   const world = f.bridge.create(config);
@@ -211,22 +213,53 @@ test('ordinary respite rounds in host units, deduplicates transitions and reject
   const clear = f.bridge.ordinaryClear(created.world, config.encounter_id, 'wave:1');
   clear.snapshot.actors.filter(a => a.team === 'hero').forEach(a => assert.ok(Math.abs(a.hp / a.max_hp - .65) < 1e-6));
   assert.deepEqual(f.bridge.ordinaryClear(created.world, config.encounter_id, 'wave:1').events, []);
-  const enemy = shadowEnemy({ identity: 'new', key: 'Gobloc', position: { x: 1300, y: 350 }, reference: rows[0], resolved: rows[0], hp: 40, hostMaxHP: 40 });
+  const enemy = shadowEnemy({ identity: 'new', key: 'Gobloc', position: { x: 456, y: 430 }, reference: rows[0], resolved: rows[0], hp: 40, hostMaxHP: 40 });
   f.bridge.spawn(created.world, config.encounter_id, [enemy]);
   assert.throws(() => f.bridge.ordinaryClear(created.world, config.encounter_id, 'wave:2'), /respite requires a cleared ordinary wave/);
   f.bridge.destroy(created.world); f.runtime.dispose();
 });
 
 
-test('autonomous Phoenix follows sparse saved formation cells independently of roster order', () => {
+test('autonomous Phoenix follows party order and ignores sparse saved formation cells', () => {
   const f = fixture({ boss: true, level: 1 });
   f.g.HeroFormationPlacement = { falie: { cell: 7 }, huun: { cell: 5 }, runa: { cell: 1 }, kojonn: { cell: 3 } };
   f.heroes[0].hp = f.heroes[1].hp = 0;
   f.state.entities.find(a => a.kind === 'enemy').stats.ATK = 0;
   const config = createWfmCombatConfig({ globals: f.g, entities: f.state.entities, enemyRows: rows, encounterId: 'saved-slots' });
-  assert.deepEqual(config.heroes.map(h => h.slot), [7, 5, 1, 3]);
+  assert.deepEqual(config.heroes.map(h => h.slot), [0, 1, 2, 3]);
   f.runUntil(() => !!f.runtime.read().snapshot?.phoenix_channel, 30);
   const snapshot = f.runtime.read().snapshot;
-  assert.equal(snapshot.phoenix_channel.hero, snapshot.actors.find(a => a.host_id === f.heroes[1].heroInstanceKey).actor_id);
+  assert.equal(snapshot.phoenix_channel.hero, snapshot.actors.find(a => a.host_id === f.heroes[0].heroInstanceKey).actor_id);
   assert.deepEqual(f.routes, []); f.runtime.dispose();
+});
+
+
+test('D13/D19/D23: source floor and slice starts ignore saved formation; fifth hero rejects', () => {
+  const f = fixture();
+  const input = { globals: f.g, entities: f.state.entities, enemyRows: rows, encounterId: 'slice-geometry' };
+  const config = createWfmCombatConfig(input);
+  assert.deepEqual(config.geometry.floor, SLICE_FLOOR);
+  assert.deepEqual(config.heroes.map(h => h.formation_offset), [{x:-38,y:-120},{x:38,y:-120},{x:-38,y:120},{x:38,y:120}]);
+  f.g.HeroFormationPlacement = { falie: {cell:7,x:9999,y:-9999} };
+  assert.deepEqual(createWfmCombatConfig(input), config);
+  assert.ok(config.enemies.every(e => e.position.x >= SLICE_FLOOR.min.x && e.position.x <= SLICE_FLOOR.max.x && e.position.y >= SLICE_FLOOR.min.y && e.position.y <= SLICE_FLOOR.max.y));
+  f.state.entities.push({...f.heroes[0],heroInstanceKey:'fifth'});
+  assert.throws(() => createWfmCombatConfig(input), /1..4 heroes/);
+  f.runtime.dispose();
+});
+
+
+test('one-screen gameplay keeps every living body inside the visible viewport across ordinary and boss steps', () => {
+ for(const boss of [false,true]) {
+  const f=fixture({boss,level:1}),cam=createSliceCombatCamera();
+  for(let step=0;step<900;step++) {
+   f.tick();const s=f.runtime.read().snapshot;if(!s)continue;cam.update(s,1/30);
+   for(const a of s.actors.filter(a=>a.hp>0)) {
+    const boss=a.kind.startsWith('boss'),half=boss?160:96,top=boss?370:210,bottom=boss?40:30;
+    assert.ok(cam.x(a.pos.x-half)>=8-.001 && cam.x(a.pos.x+half)<=352+.001,`${a.kind} X`);
+    assert.ok(cam.y(a.pos.y-top)>=COMBAT_VIEW.top-.001 && cam.y(a.pos.y+bottom)<=COMBAT_VIEW.bottom+.001,`${a.kind} Y`);
+   }
+  }
+  f.runtime.dispose();
+ }
 });

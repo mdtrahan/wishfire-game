@@ -12,10 +12,15 @@ export function sliceEvent(record) {
   const body = record.body;
   return body.kind === 'presentation' ? body.data.event : body;
 }
+export function elevateSourceForActor(actor, snapshot) {
+  if (actor.team !== 'hero' || !(actor.hp > 0) || actor.downed) return null;
+  return snapshot.actors.find(a => a.kind === 'kaja' && a.hp > 0 && a.groove_active > 0 && a.elevate) ?? null;
+}
 export function createRustEffectState() {
+  const encased = new Map();
   const effects = [], popups = [], groundItems=[], channels=[], phoenixChannel={kind:'resurrect',phase:'active',owner:null,origin:null,shape:{},progress:0}, hazards = new Map(), markers = new Map(), actors = new Map(), projectiles = new Map(), healingBuckets = new Map(), damageBuckets = new Map();
   let snapshot = null, previous = null, encounter = null;
-  function clear() { groundItems.length=channels.length=0; healingBuckets.clear(); damageBuckets.clear(); effects.length = 0; popups.length = 0; hazards.clear(); markers.clear(); actors.clear(); projectiles.clear(); snapshot = previous = null; encounter = null; }
+  function clear() { encased.clear(); groundItems.length=channels.length=0; healingBuckets.clear(); damageBuckets.clear(); effects.length = 0; popups.length = 0; hazards.clear(); markers.clear(); actors.clear(); projectiles.clear(); snapshot = previous = null; encounter = null; }
   function effect(type, data, born, life) { const item = { type, data, born, life }; effects.push(item); return item; }
   function popup(data, now, tone = 'damage') {
     const target = actors.get(data.target); if (!target || data.amount <= 0) return;
@@ -26,11 +31,25 @@ export function createRustEffectState() {
       text: `${tone==='heal'?'+':''}${Math.max(1, Math.round(data.amount))}${data.crit ? '!' : ''}`, born: now, life: .75,
       tone: data.blocked ? 'blocked' : tone, element: data.element });
   }
+  function observeEncasements() {
+    const now = snapshot.time;
+    for (const a of snapshot.actors) {
+      const was = encased.get(a.actor_id);
+      const active = a.team === 'enemy' && a.hp > 0 && a.encased > 0;
+      if (active && (!was || was.ended !== null)) encased.set(a.actor_id, { born: now, actor: a, ended: null });
+      else if (was && !active && was.ended === null) { was.actor = a; was.ended = now; }
+    }
+    for (const [id, record] of encased) {
+      if (record.ended === null && !snapshot.actors.some(a => a.actor_id === id)) record.ended = now;
+      if (record.ended !== null && now - record.ended >= .32) encased.delete(id);
+    }
+  }
   function ingest(next, records) {
     if (!next) { clear(); return; }
     if (encounter !== next.encounter_id) { clear(); encounter = next.encounter_id; }
     previous = snapshot; snapshot = next;
     const now = next.time;
+    for (const [id] of actors) if (!next.actors.some(a => actorId(a) === id)) actors.delete(id);
     for (const a of next.actors) actors.set(actorId(a), a);
     for (const h of next.hazards) { const entry=hazards.get(h.id);if(entry){entry.hazard=h;entry.seen=now;}else hazards.set(h.id, { hazard: h, seen: now }); }
     for (const [id, entry] of hazards) if (now - entry.seen >= .3) hazards.delete(id);
@@ -96,5 +115,5 @@ export function createRustEffectState() {
     for(const [id,b]of healingBuckets)if(now-b.born>=.75||now-b.last>=.2||!(actors.get(id)?.hp>0)){if(b.amount>=1)popup(b,now,'heal');healingBuckets.delete(id);}
     for(const [key,b]of damageBuckets)if(now-b.born>=.75||now-b.last>=.2||!(actors.get(b.target)?.hp>0)){popup(b,now);damageBuckets.delete(key);}
   }
-  return { effects, popups, groundItems, channels, hazards, markers, actors, projectiles, ingest, clear, get snapshot() { return snapshot; }, get previous() { return previous; } };
+  return { encased, observeEncasements, effects, popups, groundItems, channels, hazards, markers, actors, projectiles, ingest, clear, get snapshot() { return snapshot; }, get previous() { return previous; } };
 }

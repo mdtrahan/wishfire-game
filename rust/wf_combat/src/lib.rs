@@ -58,6 +58,7 @@ impl Default for EncounterModifiers {
 pub struct Sim {
     pub cfg: SimConfig,
     pub floor: math::Floor,
+    pub contain_bodies: bool,
     pub accumulator: f64,
     pub step_number: u64,
     pub combat_steps: u64,
@@ -133,6 +134,7 @@ impl Sim {
         let spotlight_enabled = cfg.spotlight.enabled;
         let mut sim = Self {
             floor: math::Floor::default(),
+            contain_bodies: false,
             cfg,
             accumulator: 0.,
             step_number: 0,

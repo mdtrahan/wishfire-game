@@ -129,6 +129,8 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
       const freeze = Math.max(0, snapshot.hit_stop?.remaining || 0);
       const visual = structuredClone(snapshot);
       visual.hit_stop = null;
+      visual.hazards = []; visual.projectiles = [];
+      for (const actor of visual.actors) { actor.encased = 0; actor.slowed = 0; }
       tail = { visual, spare: structuredClone(visual), ages: snapshot.actors.map(a => a.state_age), freeze, elapsed: 0, previousNow: stageOptions.nowMs,
         born: snapshot.time, combatBorn: snapshot.combat_time, picture: bossPicture,
         // actors.rs: 12 KO frames at 12 fps + .42 fade; impact_stop.rs: .32 camera.
