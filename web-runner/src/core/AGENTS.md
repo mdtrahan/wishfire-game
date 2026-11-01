@@ -150,3 +150,4 @@
 - `continuousCombatSubwaves.mjs` owns stage/wave/subwave `{key,count}` authoring and cohort cadence. Chapter 1 resolves all ten waves from existing seeded stage plans, preserving compositions, CP extras and checkpoint exclusions. Batches contain 3–5 enemies; a partial checkpoint may contain fewer. Queue state is encounter-local.
 
 - `heroPermanentInputs.mjs` binds live Rust actors to detached permanent meta transactions. Equipment/EXP refreshes route through that binding; live HP/stats come from Rust snapshots. `combatAuthorityDriver` coalesces the newest per-hero revision, submits contiguous commands before a step, and retains pending work until a matching ordered ack. Pauses retain revisions; recreation reads durable meta and starts fresh world revisions.
+- Host wave planning derives party CP from bound raw permanent inputs while Rust is live; snapshot-scaled HP and stale presentation stats cannot author the next enemy profile.

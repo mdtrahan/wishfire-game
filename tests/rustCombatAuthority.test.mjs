@@ -295,6 +295,9 @@ test('mid-fight HP equipment, EXP and Training commits revise Rust without mutat
   f.runtime.tick({ ...f.options,nowMs:1000 }); f.runtime.tick({ ...f.options,nowMs:1034 });
   assert.equal(hero.maxHP,700); assert.equal(hero.hp,700); assert.equal(f.runtime.read().pendingRevisions,0);
   assert.deepEqual(hero.stats,before.stats);
+  const { getContinuousCombatPartyCP } = await import('../web-runner/src/core/continuousCombatStage.mjs');
+  const { computeCombatPower } = await import('../web-runner/src/core/combatPower.mjs');
+  assert.equal(getContinuousCombatPartyCP([hero]),computeCombatPower(f.g.HeroProgress.heroes.Falie));
   saveHeroProgress(hero,f.g.HeroProgress);
   assert.equal(f.g.HeroProgress.heroes.Falie.maxHP,125);
   assert.deepEqual(f.g.HeroProgress.heroes.Falie.equipmentStats,item.stats);
