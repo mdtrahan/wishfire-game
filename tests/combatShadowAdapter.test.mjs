@@ -15,13 +15,15 @@ test('all Chapter 1 combatants have explicit definitions; Troll retains its R7 b
   assert.ok(stage.enemyNames.every(name => SHADOW_DEFINITIONS[name]));
 });
 
-test('M1 primary-channel shadow projection: ABI has one atk/def pair; full physical/magic channels deferred to TDD-A A12', () => {
+test('R5 projects independent ATK, DEF, MAG and RES channels', () => {
   const reference = { HP: 100, ATK: 10, DEF: 10, MAG: 10, RES: 10, SPD: 10 };
   const resolved = { HP: 200, ATK: 20, DEF: 30, MAG: 40, RES: 50, SPD: 20 };
   const physical = projectShadowStats(resolved, reference, SHADOW_DEFINITIONS.Falie);
   const magic = projectShadowStats(resolved, reference, SHADOW_DEFINITIONS.Runa);
   assert.equal(physical.atk, 26.4 * 2); assert.equal(physical.def, 28 * 3);
-  assert.equal(magic.atk, 36 * 4); assert.equal(magic.def, 10 * 5);
+  assert.equal(magic.atk, 36 * 2); assert.equal(magic.def, 10 * 3);
+  assert.equal(magic.mag, 36 * 4); assert.equal(magic.res, 10 * 5);
+  assert.equal(physical.mag, 26.4 * 4); assert.equal(physical.res, 28 * 5);
   assert.equal(physical.interval, .9); assert.equal(magic.interval, .7);
   assert.equal(physical.speed, SHADOW_DEFINITIONS.Falie.stats.speed);
   assert.equal(magic.reach, 270);

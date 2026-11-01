@@ -70,6 +70,7 @@ export function createHeroProgressStore(snapshot){
 }
 function sanitizeRewardLedger(ledger){return Object.fromEntries(Object.entries(ledger&&typeof ledger==='object'?ledger:{}).filter(([,value])=>Number.isFinite(Number(value))&&Number(value)>=0).map(([id,value])=>[String(id),Number(value)]));}
 export function attachHeroProgress(actor,store){
+ if(routeHeroPermanentInputs(actor,draft=>attachHeroProgress(draft,store)))return actor;
  const key=heroKey(actor),id=actor.heroInstanceKey||key;
  const saved=store.heroes[id]||(store.heroes[id]=newHeroProgress(key,id));
  Object.assign(actor,{currentLevel:saved.currentLevel,currentEXP:saved.currentEXP,lampEXPClaimed:saved.lampEXPClaimed,maxLevel:saved.maxLevel,heroInstanceKey:id,equipmentStats:{...saved.equipmentStats}});for(const key of ['actionSlotsPerTurn','sp','spMax','flow','flowMode'])delete actor[key];refreshHeroStats(actor);actor.hp=Math.min(actor.maxHP,saved.hp);actor.statuses=[];return actor;

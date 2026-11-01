@@ -7,6 +7,7 @@ fn djinn_long_fight_caps_snipers_and_lizardos_without_gobloc_summons() {
     for a in &mut s.combat.actors {
         if a.view.team == Team::Hero {
             a.stats.atk = 0.;
+            a.stats.mag = a.stats.atk;
             a.view.hp = 1e9;
             a.view.max_hp = 1e9;
         }

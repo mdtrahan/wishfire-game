@@ -527,7 +527,7 @@ impl Sim {
         }
         let base_duration = duration;
         let duration = countdown(kind, shape, base_duration);
-        let damage = source.map(|i| self.actors[i].committed_stats().atk).unwrap_or(0.)
+        let damage = source.map(|i| self.actors[i].committed_stats().attack(kind.damage_channel())).unwrap_or(0.)
             * if matches!(
                 kind,
                 HazardKind::BubbleAura | HazardKind::HealingSpring | HazardKind::RallyAura
@@ -545,7 +545,7 @@ impl Sim {
                 } else {
                     FAZE_POTENCY
                 }) * if source
-                    .is_some_and(|i| self.actors[i].view.elevate == Some(ElevateVariant::Sword))
+                    .is_some_and(|i| self.actors[i].committed_elevate() == Some(ElevateVariant::Sword))
                 {
                     1. + ELEVATE_BONUS
                 } else {
@@ -1106,7 +1106,7 @@ impl Sim {
                         );
                         let mut landed = false;
                         for _ in 0..hits {
-                            landed |= self.damage_limited(
+                            landed |= self.damage_limited_channel(
                                 h.view.owner,
                                 j,
                                 h.damage * range_mult,
@@ -1115,6 +1115,7 @@ impl Sim {
                                 element,
                                 None,
                                 pulse || h.view.team == Team::Enemy,
+                                h.view.kind.damage_channel(),
                             ) > 0.;
                         }
                         if landed {

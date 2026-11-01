@@ -314,7 +314,7 @@ test('mid-fight HP equipment, EXP and Training commits revise Rust without mutat
   f.runtime.tick({ ...f.options,nowMs:1102 });
   const priorHP=hero.hp,priorStats={...hero.stats};
   assert.equal(progression.train('ATK').ok,true); assert.deepEqual(hero.stats,priorStats); assert.equal(hero.hp,priorHP);
-  assert.equal(f.runtime.read().pendingRevisions,2);
+  assert.equal(f.runtime.read().pendingRevisions,4);
   f.runtime.tick({ ...f.options,nowMs:1136 }); assert.equal(f.runtime.read().pendingRevisions,0);
   assert.equal(f.runtime.read().failed,false); assert.deepEqual(f.warnings,[]);
   f.runtime.dispose(); noLeaks(f.bridge);

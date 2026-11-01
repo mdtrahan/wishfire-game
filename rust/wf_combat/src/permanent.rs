@@ -16,6 +16,8 @@ impl PermanentInputs {
             s.hp,
             s.atk,
             s.def,
+            s.mag,
+            s.res,
             s.speed,
             s.reach,
             s.interval,
@@ -282,4 +284,153 @@ mod tests {
                 < 1e-9
         );
     }
+    #[test]
+    fn actor_revival_commits_recipient_maximum_for_growth_and_shrink() {
+        for maximum in [840., 100.] {
+            let mut s = sim();
+            s.actors[0].view.hp = 0.;
+            s.actors[0].state(ActorState::Downed, 0., 0.);
+            s.actors[1].view.pos = s.actors[0].view.pos;
+            s.actors[1].state(ActorState::Idle, 0., 0.);
+            let target = s.actors[0].view.id;
+            s.start_action(1, Some(target), false, true);
+            assert_eq!(s.actors[1].action_target_max_hp, 420.);
+            let change = input(&s, 0, maximum);
+            s.replace_permanent_inputs(&[change]).unwrap();
+            s.actors[1].view.state_age = s.actors[1].view.impact_at;
+            s.action(1);
+            let expected = (420. * crate::tuning::REVIVE_HP).min(maximum);
+            assert_eq!(s.actors[0].view.hp, expected);
+            let healed = s.drain_events().iter().filter_map(|e| match e {
+                Event::Healed { amount, source: HealSource::Revive, .. } => Some(*amount), _ => None,
+            }).sum::<f32>();
+            assert_eq!(healed, expected);
+            s.action(1);
+            assert_eq!(s.actors[0].view.hp, expected);
+        }
+    }
+
+    #[test]
+    fn phoenix_commits_recipient_maximum_for_growth_and_shrink() {
+        for maximum in [840., 100.] {
+            let mut s = sim();
+            s.actors[0].view.hp = 0.;
+            s.actors[0].state(ActorState::Downed, 0., 0.);
+            let hero = s.actors[0].view.id;
+            s.phoenix_hold(hero);
+            s.phoenix_step();
+            assert_eq!(s.phoenix.target_max_hp, 420.);
+            let change = input(&s, 0, maximum);
+            s.replace_permanent_inputs(&[change]).unwrap();
+            for _ in 1..(crate::tuning::REVIVE_CHANNEL * SIM_HZ as f32).round() as u32 {
+                s.phoenix_hold(hero);
+                s.phoenix_step();
+            }
+            let expected = (420. * crate::tuning::REVIVE_HP).min(maximum);
+            assert_eq!(s.actors[0].view.hp, expected);
+            assert!(s.drain_events().iter().any(|e| matches!(e,
+                Event::Healed { amount, source: HealSource::Phoenix, .. } if *amount == expected)));
+        }
+    }
+
+    // Adapted from the independent verifier's native/src/bin/elevate.rs.
+    #[test]
+    fn pulse_and_faze_use_committed_elevate_and_magic_after_revision() {
+        for pulse in [true, false] {
+            let mut s = Sim::new(SimConfig::default());
+            s.spawn_actor(Archetype::Kaja, Vec2::new(480., 800.), crate::tuning::HERO_STATS[3]);
+            s.spawn_actor(Archetype::Gobloc, Vec2::new(480., 700.), crate::tuning::stats(Archetype::Gobloc));
+            s.actors[0].state(ActorState::Idle, 0., 0.);
+            s.actors[0].stats.mag = 31.;
+            s.actors[0].view.elevate = Some(ElevateVariant::Sword);
+            let target = s.actors[1].view.id;
+            if pulse { s.start_arcane_pulse(0, target); }
+            else { s.start_action(0, Some(target), false, false); }
+            let mut change = input(&s, 0, 560.);
+            change.stats.mag = 310.;
+            s.replace_permanent_inputs(&[change]).unwrap();
+            s.actors[0].view.elevate = None;
+            let kind = if pulse { HazardKind::ArcanePulse } else { HazardKind::FazePool };
+            if pulse {
+                s.actors[0].view.state_age = s.actors[0].view.impact_at;
+                s.action(0);
+            } else { s.place_faze(0, s.actors[1].view.pos); }
+            let potency = if pulse { crate::tuning::ARCANE_PULSE_POTENCY } else { crate::tuning::FAZE_POTENCY };
+            let expected = 31. * potency * (1. + crate::tuning::ELEVATE_BONUS);
+            let hazard = s.hazards.iter().find(|h| h.view.kind == kind).unwrap();
+            assert!((hazard.base_damage - expected).abs() < 0.0001);
+        }
+    }
+
+    #[test]
+    fn physical_and_magic_hits_use_independent_incoming_defence() {
+        let mut s = sim();
+        s.actors[0].stats.def = 100.;
+        s.actors[0].stats.res = 300.;
+        let source = s.actors[1].view.id;
+        assert_eq!(s.damage(source, 0, 80., false, true, Element::Physical), 40.);
+        assert_eq!(s.damage(source, 0, 80., false, true, Element::Arcane), 20.);
+        let mut change = input(&s, 0, 420.);
+        change.stats.res = 700.;
+        s.replace_permanent_inputs(&[change]).unwrap();
+        assert_eq!(s.damage(source, 0, 80., false, true, Element::Arcane), 10.);
+        assert_eq!(s.damage(source, 0, 80., false, true, Element::Physical), 40.);
+    }
+
+    #[test]
+    fn mage_basic_commits_magic_then_next_basic_uses_replacement() {
+        let mut s = sim();
+        s.spawn_actor(Archetype::Runa, Vec2::new(440., 800.), crate::tuning::HERO_STATS[2]);
+        s.actors[2].state(ActorState::Idle, 0., 0.);
+        s.actors[2].stats.atk = 3.;
+        s.actors[2].stats.mag = 71.;
+        let target = s.actors[0].view.id;
+        s.start_action(2, Some(target), false, false);
+        let mut change = input(&s, 2, 520.);
+        change.stats.mag = 710.;
+        s.replace_permanent_inputs(&[change]).unwrap();
+        s.actors[2].view.state_age = s.actors[2].view.impact_at;
+        s.action(2);
+        assert_eq!(s.projectiles.last().unwrap().damage, 71.);
+        assert_eq!(s.projectiles.last().unwrap().channel, DamageChannel::Magic);
+        s.actors[2].state(ActorState::Idle, 0., 0.);
+        s.start_action(2, Some(target), false, false);
+        s.actors[2].view.state_age = s.actors[2].view.impact_at;
+        s.action(2);
+        assert_eq!(s.projectiles.last().unwrap().damage, 710.);
+    }
+
+    #[test]
+    fn shadow_landing_retains_committed_reach_through_revision() {
+        let mut s = sim();
+        s.actors[0].view.team = Team::Enemy;
+        s.actors[1].state(ActorState::Idle, 0., 0.);
+        let target = s.actors[0].view.id;
+        s.start_action(1, Some(target), true, false);
+        let landing = s.combo_landing(1, 0, s.actors[1].view.pos).unwrap();
+        let mut change = input(&s, 1, 300.);
+        change.stats.reach *= 10.;
+        s.replace_permanent_inputs(&[change]).unwrap();
+        assert_eq!(s.combo_landing(1, 0, s.actors[1].view.pos), Some(landing));
+    }
+
+    #[test]
+    fn shadow_is_physical_even_with_arcane_impact_art() {
+        let mut s = sim();
+        s.actors[0].view.team = Team::Enemy;
+        s.actors[0].stats.def = 100.;
+        s.actors[0].stats.res = 900.;
+        s.actors[0].stats.evade = 0.;
+        s.actors[1].state(ActorState::Idle, 0., 0.);
+        s.actors[1].stats.atk = 30.;
+        s.actors[1].stats.mag = 300.;
+        let target = s.actors[0].view.id;
+        s.start_action(1, Some(target), true, false);
+        s.actors[1].view.state_age = s.actors[1].view.impact_at;
+        let before = s.actors[0].view.hp;
+        s.action(1);
+        let loss = before - s.actors[0].view.hp;
+        assert!(loss == 36. || loss == 54.);
+    }
+
 }

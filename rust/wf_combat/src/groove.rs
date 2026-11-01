@@ -310,7 +310,7 @@ impl Sim {
             return None;
         }
         let angle = libm::atan2f(a.view.pos.y - e.view.pos.y, a.view.pos.x - e.view.pos.x);
-        let radius = a.view.radius + e.view.radius + a.reach() * 0.6;
+        let radius = a.view.radius + e.view.radius + a.committed_reach() * 0.6;
         let turns: &[f32] = if staged {
             &[
                 COMBO_TURN,

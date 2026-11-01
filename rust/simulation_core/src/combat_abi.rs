@@ -48,6 +48,10 @@ struct GeometryInput {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct StatInput {
+    #[serde(default)]
+    mag: Option<f32>,
+    #[serde(default)]
+    res: Option<f32>,
     hp: f32,
     atk: f32,
     def: f32,
@@ -60,6 +64,8 @@ struct StatInput {
 impl StatInput {
     fn resolved(&self) -> Stats {
         Stats {
+            mag: self.mag.unwrap_or(self.atk),
+            res: self.res.unwrap_or(self.def),
             hp: self.hp,
             atk: self.atk,
             def: self.def,
@@ -75,6 +81,8 @@ impl StatInput {
             self.hp,
             self.atk,
             self.def,
+            self.mag.unwrap_or(self.atk),
+            self.res.unwrap_or(self.def),
             self.speed,
             self.reach,
             self.interval,
@@ -531,7 +539,7 @@ impl Transport {
                     } else {
                         w.sim.spawn_actor(kind, point, stats);
                         let actor = w.sim.actors.last_mut().unwrap();
-                        actor.begin_spawn(); actor.view.hp = hp; actor.wfm_magic = magic.unwrap_or(stats.atk);
+                        actor.begin_spawn(); actor.view.hp = hp; actor.stats.mag = magic.unwrap_or(stats.mag);
                         w.host_ids.insert(actor.view.id, id);
                     }
                 }
@@ -780,7 +788,7 @@ impl World {
                             .is_some_and(|id| id == &enemy.spawn_key)
                     })
                     ;
-                if let Some(actor) = actor { actor.wfm_magic = magic; }
+                if let Some(actor) = actor { actor.stats.mag = magic; }
             }
         }
         sim.deaths();
@@ -922,7 +930,7 @@ impl World {
             self.sim.spawn_actor(k, p, stats);
             let actor = self.sim.actors.last_mut().unwrap();
             actor.view.hp = hp;
-            actor.wfm_magic = magic.unwrap_or(stats.atk);
+            actor.stats.mag = magic.unwrap_or(stats.mag);
             self.host_ids.insert(actor.view.id, id);
         }
         self.sim.deaths();
@@ -980,18 +988,34 @@ impl World {
     }
     fn gameplay_hash(&self) -> u64 {
         let mut hash = wf_combat::snapshot::Hash(self.sim.state_hash());
+        hash.u(0x484f5354494e5055);
+        hash.u(self.command_sequence);
+        hash.b(self.continuous);
+        for byte in self.state.bytes() { hash.u(byte as u64); }
+        hash.u(self.host_max_hp.len() as u64);
+        for (actor, max) in &self.host_max_hp { hash.u(*actor as u64); hash.f(*max); }
+        hash.u(self.identities.len() as u64);
+        for identity in &self.identities {
+            hash.u(identity.len() as u64);
+            for byte in identity.bytes() { hash.u(byte as u64); }
+        }
+        hash.u(self.ordinary_clears.len() as u64);
+        for receipt in &self.ordinary_clears {
+            hash.u(receipt.len() as u64);
+            for byte in receipt.bytes() { hash.u(byte as u64); }
+        }
         if self.spawn_markers {
             hash.u(0x454e545259);
             for (marker, kind, id, p, stats, hp, magic) in &self.pending_spawns {
                 hash.u(*marker as u64); hash.u(*kind as u64); hash.v(*p);
                 for byte in id.bytes() { hash.u(byte as u64); }
-                for v in [stats.hp,stats.atk,stats.def,stats.speed,stats.reach,stats.interval,stats.evade,stats.special,*hp,magic.unwrap_or(stats.atk)] { hash.f(v); }
+                for v in [stats.hp,stats.atk,stats.def,stats.mag,stats.res,stats.speed,stats.reach,stats.interval,stats.evade,stats.special,*hp,magic.unwrap_or(stats.mag)] { hash.f(v); }
             }
         }
         hash.0
     }
     fn result(&self, after: usize) -> Value {
-        let actors:Vec<_> = self.sim.actors.iter().map(|a|json!({"actor_id":a.view.id,"permanent_revision":a.permanent_revision.to_string(),"host_id":self.host_ids.get(&a.view.id),"state":format!("{:?}",a.view.state).to_lowercase(),"state_age":a.view.state_age,"state_duration":a.view.state_duration,"impact_at":a.view.impact_at,"facing":format!("{:?}",a.view.facing).to_lowercase(),"ward":a.view.ward,"warcry_shield":a.view.warcry_shield,"energy":a.view.energy,"enraged":a.view.enraged,"radius":a.view.radius,"target":a.view.target,"encased":a.view.encased,"poisoned":a.view.poisoned,"slowed":a.view.slowed,"taunted_by":a.view.taunted_by,"groove_active":a.view.groove_active,"groove":a.view.groove.map(|g|format!("{g:?}").to_lowercase()),"meter":a.view.meter,"special_casting":a.view.special_casting,"elevate":a.view.elevate.map(|v| format!("{v:?}").to_lowercase()),"scale":a.view.scale,"kind":a.view.archetype,"team":if a.view.team==Team::Hero {"hero"} else {"enemy"},"pos":{"x":a.view.pos.x,"y":a.view.pos.y},"hp":a.view.hp,"max_hp":a.view.max_hp,"downed":a.view.state==ActorState::Downed})).collect();
+        let actors:Vec<_> = self.sim.actors.iter().map(|a|json!({"actor_id":a.view.id,"permanent_revision":a.permanent_revision.to_string(),"host_id":self.host_ids.get(&a.view.id),"stats":{"atk":a.stats.atk,"def":a.stats.def,"mag":a.stats.mag,"res":a.stats.res},"state":format!("{:?}",a.view.state).to_lowercase(),"state_age":a.view.state_age,"state_duration":a.view.state_duration,"impact_at":a.view.impact_at,"facing":format!("{:?}",a.view.facing).to_lowercase(),"ward":a.view.ward,"warcry_shield":a.view.warcry_shield,"energy":a.view.energy,"enraged":a.view.enraged,"radius":a.view.radius,"target":a.view.target,"encased":a.view.encased,"poisoned":a.view.poisoned,"slowed":a.view.slowed,"taunted_by":a.view.taunted_by,"groove_active":a.view.groove_active,"groove":a.view.groove.map(|g|format!("{g:?}").to_lowercase()),"meter":a.view.meter,"special_casting":a.view.special_casting,"elevate":a.view.elevate.map(|v| format!("{v:?}").to_lowercase()),"scale":a.view.scale,"kind":a.view.archetype,"team":if a.view.team==Team::Hero {"hero"} else {"enemy"},"pos":{"x":a.view.pos.x,"y":a.view.pos.y},"hp":a.view.hp,"max_hp":a.view.max_hp,"downed":a.view.state==ActorState::Downed})).collect();
         let hazards: Vec<_> = self.sim.snapshot().hazards.iter().map(|h| {
             let shape = match h.shape {
                 Shape::Circle { radius } => json!({"kind":"circle","radius":radius}),
@@ -1093,6 +1117,24 @@ pub extern "C" fn wf_response_free(response: u32) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn accepted_host_maximum_and_command_receipts_affect_gameplay_hash() {
+        let fixture: Value = serde_json::from_str(include_str!("../tests/permanent_revision_scenario.json")).unwrap();
+        let make = || World::create(serde_json::from_value(fixture["config"].clone()).unwrap());
+        let mut first = make().unwrap();
+        let mut second = make().unwrap();
+        assert_eq!(first.gameplay_hash(), second.gameplay_hash());
+        first.host_max_hp.insert(1, 10.);
+        second.host_max_hp.insert(1, 11.);
+        assert_ne!(first.gameplay_hash(), second.gameplay_hash());
+        second.host_max_hp.insert(1, 10.);
+        assert_eq!(first.gameplay_hash(), second.gameplay_hash());
+        second.command_sequence = 1;
+        assert_ne!(first.gameplay_hash(), second.gameplay_hash());
+        second.command_sequence = 0;
+        second.ordinary_clears.insert("clear-1".into());
+        assert_ne!(first.gameplay_hash(), second.gameplay_hash());
+    }
     #[test]
     fn native_revision_trace() {
         let fixture: Value = serde_json::from_str(include_str!("../tests/permanent_revision_scenario.json")).unwrap();

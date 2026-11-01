@@ -390,6 +390,9 @@ impl Sim {
                     h.u(self.chest_opener.unwrap_or(0) as u64);
                     if let Some((point, facing)) = self.chest_approach { h.v(point); h.u(facing as u64); }
                 }
+                // Production-only mechanical extension; the reference harness retains its frozen byte stream.
+                h.u(0x4348414e4e454c53);
+                for p in &self.projectiles { h.u(p.channel as u64); }
                 h.u(self.interest_points.len() as u64);
                 for (id, p) in &self.interest_points {
                     h.u(*id as u64);
@@ -399,7 +402,7 @@ impl Sim {
                 for (kind, s) in &self.spawn_profiles {
                     h.u(*kind as u64);
                     for v in [
-                        s.hp, s.atk, s.def, s.speed, s.reach, s.interval, s.evade, s.special,
+                        s.hp, s.atk, s.def, s.mag, s.res, s.speed, s.reach, s.interval, s.evade, s.special,
                     ] {
                         h.f(v);
                     }

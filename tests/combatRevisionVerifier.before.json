@@ -1,0 +1,181 @@
+{
+  "describe": {
+    "abi_version": 65536,
+    "capabilities": [
+      "headless_slice_v1",
+      "initial_enemies",
+      "events_after",
+      "spawn_enemies",
+      "end_encounter",
+      "wfm_enemies",
+      "autonomous_phoenix",
+      "wave_chest",
+      "replace_permanent_inputs_v1"
+    ],
+    "hz": 30,
+    "limits": {
+      "enemies": 256,
+      "event_step_reserve": 32768,
+      "floor_max_extent": 16384,
+      "floor_min_extent": 256,
+      "hazards": 2048,
+      "heroes": 4,
+      "inputs": 8,
+      "projectiles": 2048,
+      "request_bytes": 1048576,
+      "response_bytes": 8388608,
+      "responses": 8,
+      "retained_events": 65536,
+      "worlds": 2
+    },
+    "resources": {
+      "inputs": 1,
+      "responses": 0,
+      "worlds": 1
+    },
+    "schema": {
+      "major": 1,
+      "minor": 1
+    }
+  },
+  "atomic": "six rejected batches preserve complete inspect result; stale repeat rejected without mutation",
+  "r1": {
+    "woundedGrowth": 450,
+    "shrink": 100
+  },
+  "downed": "remains 0",
+  "coalescing": {
+    "Falie": {
+      "issued": "2",
+      "acknowledged": "2"
+    }
+  },
+  "reloadBeforeAck": {
+    "durableMax": 125,
+    "rustMax": 700,
+    "rustHP": 700
+  },
+  "gearNextStep": {
+    "before": {
+      "hp": 420,
+      "maxHP": 420,
+      "stats": {
+        "ATK": 7,
+        "DEF": 12,
+        "MAG": 4,
+        "RES": 8,
+        "SPD": 8
+      }
+    },
+    "after": {
+      "hp": 700,
+      "maxHP": 700
+    },
+    "liveWrites": []
+  },
+  "training": {
+    "ATK": {
+      "changed": true,
+      "before": {
+        "hp": 789,
+        "atk": 45.25714285714285,
+        "def": 42,
+        "speed": 130.24439999999998,
+        "reach": 100,
+        "interval": 1.8,
+        "evade": 0.09,
+        "special": 30
+      },
+      "after": {
+        "hp": 789,
+        "atk": 46.162285714285716,
+        "def": 42,
+        "speed": 130.24439999999998,
+        "reach": 100,
+        "interval": 1.8,
+        "evade": 0.09,
+        "special": 30
+      }
+    },
+    "DEF": {
+      "changed": true,
+      "before": {
+        "hp": 789,
+        "atk": 46.162285714285716,
+        "def": 42,
+        "speed": 130.24439999999998,
+        "reach": 100,
+        "interval": 1.8,
+        "evade": 0.09,
+        "special": 30
+      },
+      "after": {
+        "hp": 789,
+        "atk": 46.162285714285716,
+        "def": 42.84,
+        "speed": 130.24439999999998,
+        "reach": 100,
+        "interval": 1.8,
+        "evade": 0.09,
+        "special": 30
+      }
+    },
+    "MATK": {
+      "changed": false,
+      "before": {
+        "hp": 789,
+        "atk": 46.162285714285716,
+        "def": 42.84,
+        "speed": 130.24439999999998,
+        "reach": 100,
+        "interval": 1.8,
+        "evade": 0.09,
+        "special": 30
+      },
+      "after": {
+        "hp": 789,
+        "atk": 46.162285714285716,
+        "def": 42.84,
+        "speed": 130.24439999999998,
+        "reach": 100,
+        "interval": 1.8,
+        "evade": 0.09,
+        "special": 30
+      }
+    },
+    "RES": {
+      "changed": false,
+      "before": {
+        "hp": 789,
+        "atk": 46.162285714285716,
+        "def": 42.84,
+        "speed": 130.24439999999998,
+        "reach": 100,
+        "interval": 1.8,
+        "evade": 0.09,
+        "special": 30
+      },
+      "after": {
+        "hp": 789,
+        "atk": 46.162285714285716,
+        "def": 42.84,
+        "speed": 130.24439999999998,
+        "reach": 100,
+        "interval": 1.8,
+        "evade": 0.09,
+        "special": 30
+      }
+    }
+  },
+  "liveWrites": [],
+  "progressionPending": 1,
+  "developerLevel": {
+    "liveWrites": [
+      "hp"
+    ],
+    "hpBefore": 789,
+    "hpAfter": 197,
+    "rustHP": 789,
+    "pending": 1
+  }
+}

@@ -59,6 +59,7 @@ fn every_boss_basic_caps_after_defense_and_crits_including_ranged_interceptors()
             s.combat.diagnostic_trial = false;
             s.combat.actors[4].view.archetype = kind;
             s.combat.actors[4].stats.atk = 1e8;
+            s.combat.actors[4].stats.mag = s.combat.actors[4].stats.atk;
             s.combat.actors[4].stats.reach = if ranged { 400. } else { 100. };
             s.combat.actors[4].view.pos = Vec2::new(480., 900.);
             s.combat.actors[0].view.pos = Vec2::new(480., 1000.);

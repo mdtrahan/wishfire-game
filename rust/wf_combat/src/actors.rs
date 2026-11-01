@@ -13,7 +13,6 @@ pub struct Actor {
     pub action_elevate: Option<ElevateVariant>,
     pub view: ActorView,
     pub stats: Stats,
-    pub wfm_magic: f32,
     pub wfm_action: u8,
     pub velocity: Vec2,
     pub formed_age: f32,
@@ -129,7 +128,6 @@ impl Actor {
         let mut actor = Self {
             permanent_revision: 0, special_potency: 1., meter_rate: 1., action_revision: 0,
             action_target_revision: 0, action_target_max_hp: 0., action_stats: stats, action_max_hp: stats.hp, action_potency: 1., action_elevate: None,
-            wfm_magic: stats.atk,
             wfm_action: 0,
             view: ActorView {
                 id,
@@ -322,6 +320,9 @@ impl Actor {
     pub fn reach(&self) -> f32 {
         self.stats.reach * self.reach_scale()
     }
+    pub fn committed_reach(&self) -> f32 {
+        self.committed_stats().reach * if self.committed_elevate() == Some(ElevateVariant::Wings) { 1. + ELEVATE_RANGE_BONUS } else { 1. }
+    }
     pub fn reach_scale(&self) -> f32 {
         if self.view.elevate == Some(ElevateVariant::Wings) {
             1. + ELEVATE_RANGE_BONUS
@@ -336,8 +337,9 @@ impl Actor {
             self.stats.evade
         }
     }
-    pub fn defense(&self) -> f32 {
-        self.stats.def
+    pub fn defense(&self) -> f32 { self.defense_for(DamageChannel::Physical) }
+    pub fn defense_for(&self, channel: DamageChannel) -> f32 {
+        (match channel { DamageChannel::Physical => self.stats.def, DamageChannel::Magic => self.stats.res })
             * if self.view.elevate == Some(ElevateVariant::WingedBoots) {
                 1. + ELEVATE_DEF_BONUS
             } else {

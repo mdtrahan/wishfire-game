@@ -1,9 +1,12 @@
+import { permanentHeroSource } from '../src/core/heroPermanentInputs.mjs';
 import { resetRealtimeSkillAttempt } from '../src/core/realtimeSkillState.mjs';
 import { resetActorPuppetDefeats } from './actorPuppetDefeats.mjs';
 // Called only when creating a battle. Resurrection resumes the existing instance.
 // A continuing adventure carries its chosen buffs into its next battle; terminal
 // callers use the default and clear them with the rest of the session state.
 export function resetCombatSessionConditions(globals, gameState, entities = []) {
+  // A bound actor belongs to an ongoing Rust encounter. Teardown releases the binding before a fresh reset.
+  if (entities.some(actor => permanentHeroSource(actor))) return;
   resetActorPuppetDefeats(globals);
   resetRealtimeSkillAttempt(globals,entities);
   for (const key of [

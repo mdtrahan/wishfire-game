@@ -21,3 +21,5 @@
 - `chest.rs` ports the slice side approach, footprint avoidance, nearest living opener, 0.6-second open and 2-second post-open beat. The host decides admission; chest code grants no rewards and imports no director. Default-empty chest state preserves frozen harness hashes.
 
 - `permanent.rs` owns atomic hero input replacement with expected/current revisions and R1 HP growth/clamp; downed HP stays zero. Preserve clocks, targets, ward, statuses and RNG. Committed action stats, source/recipient maximum HP and potency survive revisions; later actions use the replacement. Hash revision state without changing unrevised harness hashes. R6 changes passive meter refill only, preserving earned meter and hit gains.
+
+- Select offence and mitigation by the action/hit damage channel; impact elements remain presentation facts. Projectiles retain their launch channel. Phoenix and actor revival retain the recipient maximum from channel commitment, with the current maximum as the healing cap. Revision-safe hazard construction uses committed Elevate; Shadow landing uses committed reach. Passive aura/Mend ticks and incoming mitigation remain live.

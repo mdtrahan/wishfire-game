@@ -30,6 +30,7 @@ fn fixture(spotlight: bool) -> Sim {
     s.combat.actors[4].view.hp = 100000.;
     s.combat.actors[4].view.max_hp = 100000.;
     s.combat.actors[4].stats.def = 0.;
+    s.combat.actors[4].stats.res = s.combat.actors[4].stats.def;
     s.combat.actors[4].stats.evade = 0.;
     s.combat.actors[3].target = Some(s.combat.actors[4].view.id);
     s.combat.actors[3].view.ai_intent = AiIntent::Attack;
@@ -68,6 +69,7 @@ fn arcane_pulse_unevadable_range_curve_keeps_crits_and_shared_victim_multiplier(
             for a in &mut s.combat.actors[4..] {
                 a.stats.evade = 1.;
                 a.stats.def = 100.;
+                a.stats.res = a.stats.def;
                 a.view.ward = 1000.;
             }
             let raw = s.combat.hazards.last().unwrap().damage;
@@ -116,6 +118,7 @@ fn arcane_pulse_resolution_uses_live_target_and_origin_fallbacks() {
         let victim = s.spawn_actor(Archetype::Orc, origin);
         s.combat.actors[5].stats.evade = 1.;
         s.combat.actors[5].stats.def = 0.;
+        s.combat.actors[5].stats.res = s.combat.actors[5].stats.def;
         s.combat.actors[4].view.pos = s.combat.actors[3].view.pos + Vec2::new(235., 0.);
         if lost != 1 && lost != 2 {
             s.combat.actors[5].view.pos = s.combat.actors[4].view.pos;

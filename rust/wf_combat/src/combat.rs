@@ -1,6 +1,7 @@
 use crate::{api::*, tuning::*, Sim};
 #[derive(Clone, Debug)]
 pub struct Projectile {
+    pub channel: DamageChannel,
     pub view: ProjectileView,
     pub source: u32,
     pub target: Option<u32>,
@@ -44,6 +45,12 @@ impl Sim {
         max_hp_fraction: Option<f32>,
         skip_evade: bool,
     ) -> f32 {
+        self.damage_limited_channel(source, target, raw, roll, mitigate, element, max_hp_fraction, skip_evade, element.damage_channel())
+    }
+    pub fn damage_limited_channel(
+        &mut self, source: u32, target: usize, raw: f32, roll: bool, mitigate: bool,
+        element: Element, max_hp_fraction: Option<f32>, skip_evade: bool, channel: DamageChannel,
+    ) -> f32 {
         if !self.actors[target].tangible() || self.actors[target].revive_immunity_steps > 0 {
             return 0.;
         }
@@ -61,7 +68,7 @@ impl Sim {
         let damage =
             raw * if mitigate {
                 DEF_BASE
-                    / ((DEF_BASE + a.defense()) * if rallied { RALLY_DEF_MULTIPLIER } else { 1. })
+                    / ((DEF_BASE + a.defense_for(channel)) * if rallied { RALLY_DEF_MULTIPLIER } else { 1. })
             } else {
                 1.
             } * if crit { CRIT_MULTIPLIER } else { 1. };
@@ -486,6 +493,7 @@ impl Sim {
         let id = self.next_id;
         self.next_id += 1;
         self.projectiles.push(Projectile {
+            channel: a.view.archetype.basic_channel(),
             view: ProjectileView {
                 id,
                 kind: if bomb {
@@ -533,6 +541,7 @@ impl Sim {
         let id = self.next_id;
         self.next_id += 1;
         self.projectiles.push(Projectile {
+            channel: DamageChannel::Physical,
             view: ProjectileView {
                 id,
                 kind: ProjectileKind::Bolt,
@@ -676,8 +685,8 @@ impl Sim {
             self.enemy_heal_impact(i);
         } else if a.action_revive {
             if let Some(t) = target {
-                let hp = self.actors[t].view.max_hp * REVIVE_HP;
-                self.revive_hero(t);
+                self.revive_hero_with_max(t, a.action_target_max_hp);
+                let hp = self.actors[t].view.hp;
                 self.events.push(Event::Healed {
                     target: self.actors[t].view.id,
                     amount: hp,
@@ -792,7 +801,7 @@ impl Sim {
                             to: self.actors[i].view.pos,
                             target: self.actors[t].view.id,
                         });
-                        let landed = self.damage(
+                        let landed = self.damage_limited_channel(
                             a.view.id,
                             t,
                             a.committed_stats().atk
@@ -804,7 +813,7 @@ impl Sim {
                                 },
                             true,
                             true,
-                            Element::Arcane,
+                            Element::Arcane, None, false, DamageChannel::Physical,
                         );
                         if landed > 0. {
                             let hondo = &mut self.actors[i];
@@ -823,7 +832,7 @@ impl Sim {
         } else if is_boss(a.view.archetype) {
             self.boss_basic_impact(i);
         } else if let Some(t) = target.filter(|t| self.actors[*t].alive()) {
-            let raw = a.committed_stats().atk
+            let raw = a.committed_stats().attack(a.view.archetype.basic_channel())
                 * if a.committed_elevate() == Some(ElevateVariant::Sword) {
                     1. + ELEVATE_BONUS
                 } else {
@@ -972,7 +981,7 @@ impl Sim {
                     crate::bound::caught_projectile(self, id, t);
                 }
                 p.age = PROJECTILE_LIFETIME;
-                let loss = self.damage_limited(
+                let loss = self.damage_limited_channel(
                     p.source,
                     t,
                     p.damage,
@@ -986,7 +995,7 @@ impl Sim {
                         Element::Arcane
                     },
                     p.boss_basic.then_some(BOSS_BASIC_MAX_HP),
-                    p.hit_hazard.is_some(),
+                    p.hit_hazard.is_some(), p.channel,
                 );
                 if loss > 0. && p.skill.is_none() && p.view.team == Team::Hero {
                     self.basic_groove(p.source);

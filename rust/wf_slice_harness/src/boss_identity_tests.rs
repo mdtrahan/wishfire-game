@@ -204,6 +204,7 @@ fn boss_basic_power_changes_leave_telegraph_damage_and_rate_scaling_intact() {
     ] {
         let mut s = fixture(kind);
         s.combat.actors[4].stats.atk = 100.;
+        s.combat.actors[4].stats.mag = s.combat.actors[4].stats.atk;
         s.combat.actors[4].stats.reach = 200.;
         let target = s.combat.actors[0].view.id;
         s.combat.start_action(4, Some(target), false, false);

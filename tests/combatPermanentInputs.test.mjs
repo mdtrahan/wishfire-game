@@ -71,3 +71,80 @@ test('downed hero remains downed when revised in a live party', () => {
   assert.ok(!result.events.some(e => ['revived', 'healed', 'died'].includes(e.body.kind)));
   b.destroy(created.world);
 });
+
+// Adapted from the independent verifier's phoenix.mjs.
+test('real wasm Phoenix retains its committed recipient maximum through growth and shrink', () => {
+  for (const maximum of [420, 840, 210, 100]) {
+    const b = bridge(), config = structuredClone(fixture.config);
+    config.heroes[0].hp = 0;
+    config.heroes.push({ ...structuredClone(config.heroes[0]), instance_id: 'Huun', definition_id: 'slice.hero.hondo', slot: 1, hp: 420, formation_offset: { x: 100, y: 0 } });
+    const created = b.create(config), events = [];
+    let snapshot = created.snapshot;
+    try {
+      for (let i = 0; i < 250; i++) {
+        const commands = [];
+        if (i === 10) {
+          assert.equal(snapshot.phoenix_channel.hero, snapshot.actors[0].actor_id);
+          assert.ok(snapshot.phoenix_channel.progress > 0);
+          const command = structuredClone(fixture.commands[0]);
+          command.step = String(i + 1);
+          command.body.data.stats.hp = maximum;
+          command.body.data.host_max_hp = maximum / 5.6;
+          command.body.data.skill_modifiers = { special_potency: 1, meter_rate: 1 };
+          commands.push(command);
+        }
+        const result = b.step(created.world, { encounter_id: config.encounter_id, expected_previous_step: snapshot.step, commands });
+        snapshot = result.snapshot; events.push(...result.events);
+        if (snapshot.actors[0].hp > 0) break;
+      }
+      assert.equal(snapshot.actors[0].max_hp, maximum);
+      assert.equal(snapshot.actors[0].hp, Math.min(168, maximum));
+      const presentation = events.filter(e=>e.body.kind==='presentation').map(e=>e.body.data.event);
+      const heals = presentation.filter(e => e.kind === 'healed' && e.data.source.kind === 'phoenix');
+      assert.equal(heals.length, 1);
+      assert.equal(heals[0].data.amount, Math.min(168, maximum));
+      assert.equal(presentation.filter(e => e.kind === 'phoenix_completed').length, 1);
+    } finally { b.destroy(created.world); }
+  }
+});
+
+test('real wasm hash distinguishes accepted host maxima, independent stats and revision history', () => {
+  const run = ({ host = 10, mag = 26.4, res = 28, revision = '1' } = {}) => {
+    const b = bridge(), config = structuredClone(fixture.config), c = b.create(config);
+    const commands = structuredClone(fixture.commands);
+    Object.assign(commands[0].body.data, { revision, host_max_hp: host });
+    Object.assign(commands[0].body.data.stats, { hp: 420, mag, res });
+    try { return b.step(c.world, { encounter_id: config.encounter_id, expected_previous_step: '0', commands }).snapshot; }
+    finally { b.destroy(c.world); }
+  };
+  const reference = run();
+  for (const input of [{ host: 11 }, { mag: 27 }, { res: 29 }, { revision: '2' }]) {
+    const alternate = run(input);
+    assert.equal(reference.actors[0].hp, alternate.actors[0].hp);
+    assert.notEqual(reference.gameplay_hash, alternate.gameplay_hash);
+  }
+});
+
+test('real wasm create, marker spawn and revision preserve all four stat channels', () => {
+  for (const markers of [false, true]) {
+    const b = bridge(), config = structuredClone(fixture.config);
+    config.spawn_markers = markers;
+    Object.assign(config.heroes[0].stats, { atk: 7, def: 12, mag: 4, res: 8 });
+    const c = b.create(config);
+    try {
+      assert.deepEqual(c.snapshot.actors[0].stats, { atk: 7, def: 12, mag: 4, res: 8 });
+      const enemy = { spawn_key: 'djinn-channel', definition_id: 'wfm.enemy.djinn', position: { x: 700, y: 1100 }, stats: { ...config.heroes[0].stats, atk: 6, def: 3, mag: 26, res: 13 }, hp: 420 };
+      const spawned = b.spawn(c.world, config.encounter_id, [enemy]);
+      if (markers) assert.equal(spawned.snapshot.pending_spawns.length, 1);
+      const commands = structuredClone(fixture.commands);
+      Object.assign(commands[0].body.data.stats, { atk: 70, def: 120, mag: 40, res: 80 });
+      let snapshot = b.step(c.world, { encounter_id: config.encounter_id, expected_previous_step: '0', commands }).snapshot;
+      assert.deepEqual(snapshot.actors[0].stats, { atk: 70, def: 120, mag: 40, res: 80 });
+      for (let i = 0; i < 180 && snapshot.pending_spawns.length; i++) {
+        snapshot = b.step(c.world, { encounter_id: config.encounter_id, expected_previous_step: snapshot.step, commands: [] }).snapshot;
+      }
+      assert.equal(snapshot.pending_spawns.length, 0);
+      assert.deepEqual(snapshot.actors.find(a => a.host_id === enemy.spawn_key).stats, { atk: 6, def: 3, mag: 26, res: 13 });
+    } finally { b.destroy(c.world); }
+  }
+});

@@ -577,6 +577,31 @@ pub enum Element {
     Poison,
 }
 
+/// Mechanical channel, independent of the impact's visual element.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DamageChannel { Physical, Magic }
+impl Element {
+    pub fn damage_channel(self) -> DamageChannel {
+        match self { Self::Physical => DamageChannel::Physical, _ => DamageChannel::Magic }
+    }
+}
+impl Archetype {
+    pub fn basic_channel(self) -> DamageChannel {
+        match self {
+            Self::Runa | Self::Kaja | Self::Lizardo | Self::Marid | Self::Mirewing => DamageChannel::Magic,
+            _ => DamageChannel::Physical,
+        }
+    }
+}
+impl HazardKind {
+    pub fn damage_channel(self) -> DamageChannel {
+        match self {
+            Self::BubblePop | Self::FazePool | Self::ArcanePulse | Self::KajaAura | Self::LizardoDrop => DamageChannel::Magic,
+            _ => DamageChannel::Physical,
+        }
+    }
+}
+
 /// Owner rule: heroes are never tethered to each other or to downed allies.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cohesion {

@@ -42,18 +42,15 @@ export function createWfmCombatConfig({ globals: g, entities, enemyRows, encount
       viewport_world: { x: 720, y: SLICE_FLOOR.max.y - SLICE_FLOOR.min.y },
       formation_origin: origin, screen_bound: false, contain_bodies: true },
     heroes: heroes.map((actor, slot) => {
-      const definition = heroDefinition(actor), modifiers = permanentHeroModifiers(g, actor);
-      const resolved = Object.fromEntries(Object.keys(definition.baseStats).map(stat => [stat,
-        projectCombatStat(stat === 'HP' ? actor.combatBaseMaxHP : actor.stats[stat], stat, modifiers)]));
+      const definition = heroDefinition(actor);
+      const permanent = wfmHeroPermanentInputs(g, actor);
       return { identity: String(actor.heroInstanceKey), key: definition.key, slot,
-        position: sliceHeroPosition(slot), resolved, reference: definition.baseStats,
-        hp: actor.hp, hostMaxHP: actor.maxHP };
+        position: sliceHeroPosition(slot), permanent, hp: actor.hp, hostMaxHP: actor.maxHP };
     }),
     enemies: entities.filter(actor => actor.kind === 'enemy' && actor.hp > 0).map(actor => wfmEnemyInput(actor, enemyRows)),
     summon: { resolved: g.EnemyData.find(row => row.name === 'Gobloc'), reference: enemyRows.find(row => row.name === 'Gobloc') },
   }) };
   config.heroes.forEach((hero, slot) => {
-    Object.assign(hero, wfmHeroPermanentInputs(g, heroes[slot]));
     hero.formation_offset = { ...SLICE_TRAVEL_SLOTS[slot] };
   });
   return config;

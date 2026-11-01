@@ -322,3 +322,5 @@
 
 - Formation editor, presets, Leader badges and formation persistence are retired. Old v3/v4 formation records remain untouched and unconsumed. Hero details, growth and equipment stay reachable from the canonical four-card roster. Existing DEV party-slot selectors retain membership editing and the four-hero cap.
 - Live Rust equipment, EXP/ticket levels and Training commits queue permanent revisions through `RustCombatPermanentInputs`; `wfmHeroPermanentInputs` supplies the same clean R5 projection for creation and replacement, with R6 passive refill. Save raw permanent stats through the bound source during ordinary clears; copying a live Rust actor would persist stale stats and Rust-scaled HP. Destroy/restore releases bindings. Flag-off retains the existing JS transaction path.
+
+- `resetCombatSessionConditions` defers resets while any actor remains bound to a live Rust encounter; teardown releases bindings before a fresh reset. Developer level presets persist detached progression and enqueue revisions. Creation computes `wfmHeroPermanentInputs` once and reuses its independent ATK/DEF/MAG/RES projection; entry HP keeps the original host-unit ratio.

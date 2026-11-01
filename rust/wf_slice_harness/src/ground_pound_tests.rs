@@ -32,6 +32,7 @@ fn fixture(spotlight: bool) -> Sim {
     s.combat.actors[4].view.max_hp = 100000.;
     s.combat.actors[4].stats.evade = 0.;
     s.combat.actors[4].stats.def = 0.;
+    s.combat.actors[4].stats.res = s.combat.actors[4].stats.def;
     s.combat.actors[0].target = Some(s.combat.actors[4].view.id);
     s.combat.actors[0].view.ai_intent = AiIntent::Attack;
     s.combat.actors[0].ai_cd = 100.;

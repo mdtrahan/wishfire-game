@@ -1,29 +1,30 @@
 # ORKA-kx5y permanent-input revisions
 
-Implementation source: `dcb3449e` (includes `b34c3fb1`). Baseline: `fbaab92fa70b06944772d80bac9e88ae84cfb827`.
-Branch: `bead/ORKA-kx5y-stat-revisions`. No push, merge, or review server.
+Branch: `bead/ORKA-kx5y-stat-revisions`. Remediation starts at `141231b553527575a0e0941a63e3ac493afa5e51`; baseline `fbaab92fa70b06944772d80bac9e88ae84cfb827`. Independent FAIL report: `/tmp/verify-kx5y/report.md`. No push or merge. Work stayed in the assigned worktree; local Beads reads required sandbox escalation.
 
-## Delivered contract
+## Verifier remediation
 
-Combat schema 1.1 advertises `replace_permanent_inputs_v1`; the existing raw ABI 1.0 layout and schema 1.0 requests remain supported. Step requests accept ordered, encounter/step-tagged `ReplacePermanentInputs` commands with expected/current per-hero revisions. A batch validates before mutation. Applied commands emit `permanent_inputs_applied` with revision and command sequence.
+F1: Phoenix captures its recipient maximum when a channel begins. Actor revival consumes `action_target_max_hp`; both cap healing at the current maximum and emit the actual healed amount. Arcane Pulse and Faze construction use committed Elevate. The additional commitment audit found Shadow landing reading live reach; it now uses committed reach. Boss basic and Mirewing release paths now use the shared committed-stat reader, and WFM action damage/healing uses committed MAG/ATK. Enemy revisions remain unsupported, so those enemy substitutions currently preserve behavior. Incoming mitigation, positions tracked by the existing targeting policy, passive aura/Mend and regeneration ticks remain live by design. No additional supported hero commitment leak was found in the source audit.
 
-Rust replaces permanent inputs while preserving committed action parameters, cooldowns, meters, targets, ward, statuses, spotlight and RNG. HP follows R1, including downed HP zero. Growth emits no healing or revival fact. Committed healing also retains its recipient maximum; repeated commands cannot grant another action or heal.
+F2: native stats and the create/spawn/marker/revision payloads retain independent ATK, DEF, MAG and RES. Physical actions use ATK/DEF; magic actions use MAG/RES. Shadow remains physical with Arcane impact art; Bubble Pop/Pulse/Faze use magic. Djinn and Chimerilass select the channel per physical/magic action. Projectiles retain their launch channel. Supported schema-1.0 requests without the added fields retain their established equal-channel defaults; the production host emits every channel. The former `wfm_magic` actor stat is removed. MATK/RES Training changes payload signatures and accepted Rust stats. Creation now computes the permanent projection once, retaining entry HP's host ratio (review F5).
 
-The host coalesces newest hero inputs, retains them across pause, and validates acknowledgements against submitted commands. Equipment, EXP/ticket levels and Training use detached raw meta, the existing primary-channel R5 projection and R6 passive meter refill. Accepted snapshots own live HP; Rust-path transactions do not rewrite live actor HP/stats. Creation reads durable meta after a reload before ack. Ordinary-clear saves and host party CP use the bound raw source. Flag-off follows the existing JS path.
+F3: `attachHeroProgress` routes the entire operation through detached meta while bound. The shared session reset refuses to reset bound actors; developer presets preserve the active Rust encounter and queue revisions. Watched real-host tests cover HP, maxHP, stats and statuses; accepted snapshots own live changes.
 
-R5 retains the baseline adapter's single primary ATK/DEF pair. Separate physical/magic mitigation and the broader stat catalog remain outside this prerequisite.
+F4: the ABI gameplay hash includes host maxima in actor order, command sequence, encounter mode/state, identity reservations and ordinary-clear receipts. Current/captured independent stats, active Phoenix maximum, pending spawn stats and projectile launch channels also enter the appropriate production hash. The frozen harness retains its established host hash stream and equal stat pairs.
 
-## Verification
+## Regression evidence
 
-All crates pass: SimulationCore 33, wf_combat 26, frozen harness 537; total 596 passed, 10 ignored. The supplied baseline was 586 passed, 10 ignored. Native/WASM revision traces match every event, snapshot and gameplay hash. The shipped WASM and source/binary provenance were rebuilt and verified.
+Tracked adaptations of verifier probes: `tests/combatRevisionVerifier.test.mjs` from `probes.mjs`; `tests/combatRevisionVerifier.before.json` preserves `wasm-host-probe.json`; the Phoenix test in `tests/combatPermanentInputs.test.mjs` derives from `phoenix.mjs`; native Pulse/Faze checks in `permanent.rs` derive from `native/src/bin/elevate.rs`.
 
-Focused host tests cover the original HP gear case (75→125 host; 420→700 Rust), R1 wounded HP (200→480), shrink, downed, paused coalescing, duplicate/out-of-order acknowledgements, stale/mixed atomic rejection, reload before ack, ordinary-clear saving, EXP, ticket levels and Training. Rust tests cover casting, poison, ward, spotlight, cooldown/target/status/RNG preservation, committed healing, no free attack/double heal and replacement without buff multiplication.
+Native tests cover actor/Phoenix revival after HP growth and shrink, the current healing cap, exactly one heal, committed Pulse/Faze Elevate and MAG, Shadow reach, independent incoming mitigation, next-action replacement, physical Shadow art and per-action Djinn channels. Real WASM covers Phoenix maxima 420/840/210/100, atomic rejection, coalescing, lost/stale ack rules, reload before ack, equipment/EXP/ticket/Training/developer commits, creation/spawn/marker channels and equal-HP hash divergence. The existing 13-result native/WASM fixture compares every event, snapshot and gameplay hash.
 
-The repository commit hook passed its real gameplay/roster proof: 10 tests. A later focused run covering the final CP adjustment passed 86 tests. All seven offline tests run after `npm run build:offline`.
+Focused regression run: 65 passed, zero failures. Full verification pending at this checkpoint; subsequent evidence below will replace this status.
 
-## Exact failure comparison
+## Full validation
 
-Baseline unit suite: 1472 tests, 1451 passed, 18 failed, 3 skipped. Candidate final unit suite: 1477 tests, 1456 passed, 18 failed, 3 skipped. Exact failure sets match: zero added and zero removed. The clean run includes all seven passing offline cases and the final CP adjustment. The first dirty candidate run had one additional mechanical failure, `the lab does not import Wishfire combat modules as its model oracle`, because it asserts an entirely clean runtime checkout. Its unchanged assertion passes after committing.
+PENDING_FINAL_VALIDATION
+
+## Exact inherited unit failure set
 
 The 18 baseline failure names are:
 
@@ -46,18 +47,7 @@ The 18 baseline failure names are:
 - boss encounters keep full hero spacing along the front edge
 - boss defeat is free, retains the full ready milestone, and resumes farming until summoned
 
-Browser baseline's natural failure is `hero party screen uses saved canonical data and stays contained across portrait viewport profiles` (`heroScreenUILayout.test.mjs:411`, persisted `pendingBagKillRewards: {}`). The fresh baseline passed the first lamp-emitter case; later lamp cases stalled and its owned process tree was stopped. `Auto-Equip closes empty disposal after feedback and preserves legacy salvage review` then reported a closed browser. That interruption is agent-induced, with no claim of an independent product failure. Fresh baseline browser totals: 30 tests, 27 passed, 2 failed, 1 skipped.
 
-Candidate full run used `npm test -- --test-timeout=240000`. Browser totals: 29 tests, 26 passed, 2 failed, 1 skipped. Its exact failures were the same natural Hero-screen failure and `tests/lampPresentation.test.mjs`, which was stopped with SIGKILL after 7:03 without further progress. Node had received the timeout flag but did not end the stall. The first two lamp cases passed; these three candidate cases remain unverified:
+## Limits and retained evidence
 
-- lamp emitter: full cache and every modal freeze movement, capture and cadence
-- trash-only full cache and held item open directly to one dismantle-all action
-- Auto-Equip closes empty disposal after feedback and preserves legacy salvage review
-
-The baseline interruption affected a later case after its lamp-emitter case passed. These differently interrupted runs establish the same natural browser failure; they do not establish a lamp regression or a complete lamp PASS. Interruption details and exact set comparison are retained in `candidate-lamp-interruption.json` and `failure-comparison.json`.
-
-The initial full `npm test` unit pass ran while runtime files were dirty (19 failures, including the cleanliness prerequisite); the complete final unit pass on the clean committed runtime cleared that prerequisite and retained exactly the baseline 18. Browser verification and the commit's separate gameplay/roster hook ran headlessly. Their owned test servers were stopped; no review server was created.
-
-## Evidence and retained artifacts
-
-Logs: `test-results/ORKA-kx5y/` (baseline/after/final unit and browser output, offline builds, Cargo suites, focused proof, commit hooks and storage audit). `output/balance/simulation-core-wasm-provenance.json` pins the checked-in binary and every Rust input. Offline output, ignored test evidence and Cargo build caches are retained for review. No tests or assertions were retired or weakened to clear inherited failures. Integration Ready against a newer main is outside this worker's commit-only delivery.
+The first commit attempt stopped at the broad UI lock’s inherited nearest-target invariant. Its unchanged assertions and report are retained in `test-results/ui-lock/2026-11-01T20-42-21-767Z/`. The final reset guard lives in the shared combat session owner; developer UI source is unchanged. No visual review or release acceptance is claimed. Native and WASM evidence covers the named fixtures rather than every possible state. Full-suite logs and browser time boxes must be reported explicitly. Temporary Cargo caches and logs use `/tmp/kx5y-*` and `/tmp/ORKA-kx5y-*`; offline outputs and ignored test artifacts remain in this worktree for review. Integration Ready against newer main is outside this commit-only delivery.

@@ -20,6 +20,8 @@ pub const IDLE_SEPARATION: f32 = 76.;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Stats {
+    pub mag: f32,
+    pub res: f32,
     pub hp: f32,
     pub atk: f32,
     pub def: f32,
@@ -28,6 +30,11 @@ pub struct Stats {
     pub interval: f32,
     pub evade: f32,
     pub special: f32,
+}
+impl Stats {
+    pub fn attack(self, channel: crate::DamageChannel) -> f32 {
+        match channel { crate::DamageChannel::Physical => self.atk, crate::DamageChannel::Magic => self.mag }
+    }
 }
 pub const HEROES: [Archetype; 4] = [
     Archetype::Fara,
@@ -42,7 +49,9 @@ pub const HERO_SPEED_MULTIPLIER: f32 = 1.6698;
 pub const HERO_STATS: [Stats; 4] = [
     Stats {
         hp: 420.,
+        mag: 26.4,
         atk: 26.4,
+        res: 28.,
         def: 28.,
         speed: HERO_SPEED_FLOOR * HERO_SPEED_MULTIPLIER * 1.0, // tank: second most agile (owner)
         reach: 100.,                                           // spear class ~2.75 bodies
@@ -52,7 +61,9 @@ pub const HERO_STATS: [Stats; 4] = [
     },
     Stats {
         hp: 300.,
+        mag: 40.8,
         atk: 40.8,
+        res: 14.,
         def: 14.,
         speed: HERO_SPEED_FLOOR * HERO_SPEED_MULTIPLIER * 1.10,
         reach: 45., // claw class ~1.25 bodies
@@ -62,7 +73,9 @@ pub const HERO_STATS: [Stats; 4] = [
     },
     Stats {
         hp: 260.,
+        mag: 36.,
         atk: 36.,
+        res: 10.,
         def: 10.,
         speed: HERO_SPEED_FLOOR * HERO_SPEED_MULTIPLIER * 0.95, // mages: least agile, rely on range
         reach: 270.,                                            // staff class ~7.5 bodies
@@ -72,7 +85,9 @@ pub const HERO_STATS: [Stats; 4] = [
     },
     Stats {
         hp: 280.,
+        mag: 21.6,
         atk: 21.6,
+        res: 16.,
         def: 16.,
         speed: HERO_SPEED_FLOOR * HERO_SPEED_MULTIPLIER * 0.95,
         reach: 235., // staff class ~6.5 bodies
@@ -84,7 +99,9 @@ pub const HERO_STATS: [Stats; 4] = [
 pub const FODDER_STATS: [Stats; 2] = [
     Stats {
         hp: 140.,
+        mag: 10.,
         atk: 10.,
+        res: 0.,
         def: 0.,
         speed: 55.,
         reach: 40.,
@@ -94,7 +111,9 @@ pub const FODDER_STATS: [Stats; 2] = [
     },
     Stats {
         hp: 210.,
+        mag: 11.,
         atk: 11.,
+        res: 0.,
         def: 0.,
         speed: 45.,
         reach: 63., // orc sword class ~1.75 bodies
@@ -107,7 +126,9 @@ pub const SPECIAL_STATS: [Stats; 4] = [
     // Sniper: fragile to offset its huge range (owner, DQSG reference): 90 -> 54 HP.
     Stats {
         hp: 54.,
+        mag: 26.,
         atk: 26.,
+        res: 0.,
         def: 0.,
         speed: 35.,
         reach: 300.,
@@ -117,7 +138,9 @@ pub const SPECIAL_STATS: [Stats; 4] = [
     },
     Stats {
         hp: 100.,
+        mag: 22.,
         atk: 22.,
+        res: 0.,
         def: 0.,
         speed: 45.,
         reach: 220.,
@@ -127,7 +150,9 @@ pub const SPECIAL_STATS: [Stats; 4] = [
     },
     Stats {
         hp: 95.,
+        mag: 60.,
         atk: 60.,
+        res: 0.,
         def: 0.,
         speed: 180., // owner 2026-10-27: faster than every hero (was 90)
         reach: 55.,
@@ -137,7 +162,9 @@ pub const SPECIAL_STATS: [Stats; 4] = [
     },
     Stats {
         hp: BOSS_HP,
+        mag: 165.,
         atk: 165.,
+        res: 0.,
         def: 0.,
         speed: 40.,
         reach: 100.,
@@ -154,7 +181,9 @@ pub fn stats(k: Archetype) -> Stats {
         Archetype::Kaja => HERO_STATS[3],
         Archetype::WfmHighGobloc => Stats {
             hp: 70.,
+            mag: 14.,
             atk: 14.,
+            res: 14.,
             def: 14.,
             speed: 25.2,
             reach: 46.,
@@ -164,7 +193,9 @@ pub fn stats(k: Archetype) -> Stats {
         },
         Archetype::WfmSkeleton => Stats {
             hp: 35.,
+            mag: 8.,
             atk: 8.,
+            res: 5.,
             def: 5.,
             speed: 25.2,
             reach: 46.,
@@ -174,7 +205,9 @@ pub fn stats(k: Archetype) -> Stats {
         },
         Archetype::WfmChimerilass => Stats {
             hp: 80.,
+            mag: 8.,
             atk: 8.,
+            res: 10.,
             def: 10.,
             speed: 25.2,
             reach: 146.,
@@ -184,7 +217,9 @@ pub fn stats(k: Archetype) -> Stats {
         },
         Archetype::WfmDjinn => Stats {
             hp: 55.,
+            mag: 6.,
             atk: 6.,
+            res: 6.,
             def: 6.,
             speed: 25.2,
             reach: 146.,
@@ -196,7 +231,9 @@ pub fn stats(k: Archetype) -> Stats {
         Archetype::Orc => FODDER_STATS[1],
         Archetype::HighOrc => Stats {
             hp: 260.,
+            mag: 30.,
             atk: 30.,
+            res: 80.,
             def: 80.,
             speed: 32.,
             reach: 68.,
@@ -206,7 +243,9 @@ pub fn stats(k: Archetype) -> Stats {
         },
         Archetype::Marid => Stats {
             hp: 235., // Between Orc (210) and High Orc (260).
+            mag: MARID_BOLT_DAMAGE,
             atk: MARID_BOLT_DAMAGE,
+            res: 10.,
             def: 10.,
             speed: HERO_STATS
                 .iter()
@@ -219,7 +258,9 @@ pub fn stats(k: Archetype) -> Stats {
         },
         Archetype::Gloamink => Stats {
             hp: 149.5, // ORKA-6jh1.52: previous 130 HP +15%.
+            mag: 10.,
             atk: 10.,
+            res: 0.,
             def: 0.,
             speed: 112.,
             reach: 40.,
@@ -229,7 +270,9 @@ pub fn stats(k: Archetype) -> Stats {
         },
         Archetype::Mirewing => Stats {
             hp: 145.,
+            mag: 20.,
             atk: 20.,
+            res: 8.,
             def: 8.,
             speed: MIREWING_SPEED,
             reach: MIREWING_MAX,
@@ -239,7 +282,9 @@ pub fn stats(k: Archetype) -> Stats {
         },
         Archetype::Bastorto => Stats {
             hp: 350.,
+            mag: 15.2,
             atk: 15.2,
+            res: 14.,
             def: 14.,
             speed: 50.,
             reach: 48.,
