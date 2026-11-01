@@ -1,0 +1,280 @@
+{
+  "version": 1,
+  "date": "2026-10-25",
+  "ability": "Hondo Shadow",
+  "scope": "art-only; proposed client presentation, simulation unchanged",
+  "zoom": 0.5,
+  "color_family": "black energy with indigo planes and violet rim light",
+  "assets": {
+    "shadow-coil.png": {
+      "frame_size_px": [
+        96,
+        96
+      ],
+      "frame_count": 4,
+      "layout": "horizontal strip, left to right",
+      "ms_per_frame": 25,
+      "pivot_px": [
+        48,
+        48
+      ],
+      "pivot_space": "top-left of individual frame",
+      "blend": "alpha",
+      "alpha": "straight",
+      "on_screen_canvas_px_at_zoom_0_5": [
+        48,
+        48
+      ],
+      "texture_filter": "linear; clamp to frame interior; no mipmaps",
+      "bytes": 35562
+    },
+    "shadow-streak.png": {
+      "frame_size_px": [
+        256,
+        48
+      ],
+      "frame_count": 1,
+      "layout": "horizontal strip, left to right",
+      "ms_per_frame": 120,
+      "pivot_px": [
+        4,
+        24
+      ],
+      "pivot_space": "top-left of individual frame",
+      "blend": "alpha",
+      "alpha": "straight",
+      "on_screen_canvas_px_at_zoom_0_5": {
+        "width": "distance(start, landing) * 0.5",
+        "height": 12
+      },
+      "texture_filter": "linear; clamp to frame interior; no mipmaps",
+      "bytes": 8600,
+      "geometry": {
+        "source_tail_px": [
+          4,
+          24
+        ],
+        "source_tip_px": [
+          249,
+          24
+        ],
+        "angle_radians": "atan2(landing.y-start.y, landing.x-start.x)",
+        "draw_world_size": [
+          "distance(start,landing) * 256 / 245",
+          24
+        ],
+        "placement": "Align source_tail to start and source_tip to landing; angle follows world travel direction. If camera squashes Y, derive angle and distance after projecting endpoints.",
+        "opacity_envelope": [
+          [
+            0,
+            0
+          ],
+          [
+            12,
+            1
+          ],
+          [
+            80,
+            0.9
+          ],
+          [
+            120,
+            0
+          ]
+        ],
+        "short_dash": "Keep 12 screen-px thickness at 30 px travel; do not uniformly scale thickness with distance."
+      }
+    },
+    "shadow-afterimage.png": {
+      "frame_size_px": [
+        64,
+        64
+      ],
+      "frame_count": 1,
+      "layout": "horizontal strip, left to right",
+      "ms_per_frame": 110,
+      "pivot_px": [
+        44,
+        32
+      ],
+      "pivot_space": "top-left of individual frame",
+      "blend": "alpha",
+      "alpha": "straight",
+      "on_screen_canvas_px_at_zoom_0_5": [
+        40,
+        40
+      ],
+      "texture_filter": "linear; clamp to frame interior; no mipmaps",
+      "bytes": 5554,
+      "tint_rgba": [
+        0.25,
+        0.19,
+        0.42,
+        1
+      ],
+      "note": "Neutral grayscale ink sprite. White tint preserves neutral black; suggested violet tint multiplies. 40 px canvas contains about 32 px high painted silhouette."
+    },
+    "shadow-impact.png": {
+      "frame_size_px": [
+        192,
+        192
+      ],
+      "frame_count": 8,
+      "layout": "horizontal strip, left to right",
+      "ms_per_frame": [
+        16,
+        17,
+        33,
+        33,
+        40,
+        40,
+        40,
+        40
+      ],
+      "pivot_px": [
+        96,
+        96
+      ],
+      "pivot_space": "top-left of individual frame",
+      "blend": "alpha",
+      "alpha": "straight",
+      "on_screen_canvas_px_at_zoom_0_5": [
+        96,
+        96
+      ],
+      "texture_filter": "linear; clamp to frame interior; no mipmaps",
+      "bytes": 253581,
+      "note": "Frame 0 starts on authoritative impact event. Maximum burst is frame 2, 33 ms after event. Flash core is baked into the alpha sprite; optional additive duplicate is omitted to preserve black shards."
+    },
+    "shadow-crack.png": {
+      "frame_size_px": [
+        128,
+        64
+      ],
+      "frame_count": 1,
+      "layout": "horizontal strip, left to right",
+      "ms_per_frame": 450,
+      "pivot_px": [
+        64,
+        32
+      ],
+      "pivot_space": "top-left of individual frame",
+      "blend": "alpha",
+      "alpha": "straight",
+      "on_screen_canvas_px_at_zoom_0_5": [
+        64,
+        32
+      ],
+      "texture_filter": "linear; clamp to frame interior; no mipmaps",
+      "bytes": 8593,
+      "opacity_envelope_ms": [
+        [
+          0,
+          0.72
+        ],
+        [
+          100,
+          0.6
+        ],
+        [
+          450,
+          0
+        ]
+      ]
+    },
+    "shadow-dissipate.png": {
+      "frame_size_px": [
+        96,
+        96
+      ],
+      "frame_count": 5,
+      "layout": "horizontal strip, left to right",
+      "ms_per_frame": 60,
+      "pivot_px": [
+        48,
+        76
+      ],
+      "pivot_space": "top-left of individual frame",
+      "blend": "alpha",
+      "alpha": "straight",
+      "on_screen_canvas_px_at_zoom_0_5": [
+        48,
+        48
+      ],
+      "texture_filter": "linear; clamp to frame interior; no mipmaps",
+      "bytes": 13696,
+      "note": "Pivot sits low in frame; anchor at landing foot position. Fading is baked into frames; optional overall fade only."
+    }
+  },
+  "timeline": {
+    "unit": "milliseconds",
+    "authoritative_anchor": "simulation impact frame / impact_at; damage remains 240% in simulation",
+    "coil": {
+      "start": "impact_at - 220",
+      "end": "impact_at - 120"
+    },
+    "streak": {
+      "start": "impact_at - 120",
+      "end": "impact_at"
+    },
+    "impact": {
+      "start": "impact_at",
+      "duration": 259
+    },
+    "dissipate": {
+      "start": "impact_at",
+      "duration": 300
+    },
+    "crack": {
+      "start": "impact_at",
+      "duration": 450
+    },
+    "scheduling": "Snapshot departure, target impact position and landing behind target at cue time. Scale anticipation to available lead-in if under 220 ms. Never delay damage or infer impact from animation completion. Late event starts impact immediately and skips elapsed anticipation."
+  },
+  "afterimages": {
+    "count": 3,
+    "spacing": "equal along path at 0.20, 0.45, 0.70; optional fourth at 0.85 for paths longer than 100 screen px",
+    "spawn_times_dash_ms": [
+      24,
+      54,
+      84
+    ],
+    "fade_ms": 110,
+    "opacity_at_spawn": 0.45,
+    "fade": "linear to zero; oldest stamp is faintest",
+    "anchor": "body center; match Hondo facing, retain body upright; rotate streak only"
+  },
+  "screen_shake": {
+    "amplitude_screen_px": 1.5,
+    "duration_ms": 90,
+    "trigger": "impact_at",
+    "envelope": "quick onset then linear decay; camera presentation only",
+    "maximum_allowed": [
+      2,
+      120
+    ]
+  },
+  "visual_hit_stop": {
+    "duration_ms": 32,
+    "maximum_ms": 40,
+    "scope": "hold attacker/target presentation pose only; sim, input and damage advance normally; effect clocks continue"
+  },
+  "preview": {
+    "file": "preview.jpg",
+    "size_px": [
+      1080,
+      640
+    ],
+    "panel_size_px": [
+      360,
+      640
+    ],
+    "panels": [
+      "coil",
+      "streak with afterimages",
+      "impact peak"
+    ],
+    "hero_visible_height_px": 32,
+    "note": "Static compositing mockup; not runtime capture. Arena crop uses camera zoom 0.5 and ground Y squash 0.75. Effects and actors use unsquashed sprite sizes."
+  }
+}

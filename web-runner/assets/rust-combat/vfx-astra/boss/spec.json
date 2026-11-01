@@ -1,0 +1,228 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-25",
+  "author": "Design sub-agent / painted layer revision pass7",
+  "authority": "Troll pass7 frozen. Djinn single/twin v8 owner-approved 2026-10-31; procedural runtime construction in docs/vfx-3d/djinn-beam.md supersedes pass8 sheets.",
+  "status": "Art assets and mocks only; no runtime integration or owner approval.",
+  "coordinates": {
+    "logical_viewport_px": [
+      360,
+      640
+    ],
+    "zoom": 0.5,
+    "actor_visible_height_px": 32,
+    "boss_visible_height_px": 70.4,
+    "ground_y_squash": 0.75,
+    "frame_uv": "[i/count,0,(i+1)/count,1]",
+    "billboard_note": "All release textures use screen-facing quads anchored to projected positions. Do not squash their already-painted forms a second time. Stomp ground pivot maps to circle center. Beam axis follows the projected hand-to-wall vector; transverse scale follows the warned lane geometry."
+  },
+  "sampling": {
+    "format": "PNG RGBA8, straight/unassociated alpha",
+    "filter": "linear",
+    "wrap": "clamp",
+    "tint": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "transparent_pixels_rgb": "zero",
+    "alpha_blend": {
+      "rgb_src": "SrcAlpha",
+      "rgb_dst": "OneMinusSrcAlpha"
+    },
+    "additive_blend": {
+      "rgb_src": "SrcAlpha",
+      "rgb_dst": "One",
+      "note": "If engine uses One/One, premultiply RGB by texture alpha in shader first. Global opacity must multiply the premultiplied result. Never add raw RGB of transparent texels."
+    },
+    "mipmaps": false,
+    "atlas_padding_texels": 2
+  },
+  "assets": [
+    {
+      "file": "stomp-impact.png",
+      "frame_size_px": [
+        192,
+        160
+      ],
+      "frame_count": 8,
+      "layout": "horizontal-left-to-right",
+      "fps": 22.22222222222222,
+      "pivot_px": [
+        96,
+        120
+      ],
+      "pivot_normalized": [
+        0.5,
+        0.75
+      ],
+      "blend": "alpha",
+      "on_screen_quad_px_at_zoom_0_5": [
+        75,
+        62.5
+      ],
+      "world_quad_units_before_projection": [
+        150,
+        125
+      ],
+      "ground_squash": 1,
+      "duration_s": 0.36,
+      "bytes": 158939,
+      "sha256": "d4d5c7594a23327a15e85d42d137e0193ec55a8c80e445e0f195065d20743c4a",
+      "loop": false
+    },
+    {
+      "file": "charge-shell.png",
+      "frame_size_px": [
+        256,
+        192
+      ],
+      "frame_count": 6,
+      "layout": "horizontal-left-to-right",
+      "fps": 18,
+      "pivot_px": [
+        128,
+        96
+      ],
+      "pivot_normalized": [
+        0.5,
+        0.5
+      ],
+      "blend": "alpha",
+      "on_screen_quad_px_at_zoom_0_5": [
+        128,
+        96
+      ],
+      "world_quad_units_before_projection": [
+        256,
+        192
+      ],
+      "ground_squash": 1,
+      "bytes": 67799,
+      "sha256": "46fe9dd9e8a3e87a087109571772cae2c5aa1d449df3f82c0842b2c7e471e39c",
+      "loop": true
+    },
+    {
+      "file": "charge-lines.png",
+      "frame_size_px": [
+        256,
+        192
+      ],
+      "frame_count": 6,
+      "layout": "horizontal-left-to-right",
+      "fps": 24,
+      "pivot_px": [
+        128,
+        96
+      ],
+      "pivot_normalized": [
+        0.5,
+        0.5
+      ],
+      "blend": "alpha",
+      "on_screen_quad_px_at_zoom_0_5": [
+        128,
+        96
+      ],
+      "world_quad_units_before_projection": [
+        256,
+        192
+      ],
+      "ground_squash": 1,
+      "bytes": 118558,
+      "sha256": "7981c7343cfbe59e021e3530044f9b40561b137cdc1239ad5ad0aa44eaaecf95",
+      "loop": true
+    }
+  ],
+  "djinn_wallbreaker": {
+    "presentation": "Owner-approved v8 projected 3D meshes, shaders and bloom; no beam sheets.",
+    "spec": "../../../docs/vfx-3d/djinn-beam.md",
+    "duration_s": 0.45,
+    "travel_s": 0.12,
+    "fade_s": 0.06,
+    "mechanics": "Simulation retains all targeting, lane widths, timing and damage. BossCone unchanged."
+  },
+  "marching_stomp": {
+    "telegraph": "Existing flat hostile circle renderer; no new circle/rim texture.",
+    "radius_world": 75,
+    "zoom": 0.5,
+    "projected_footprint_px": [
+      75,
+      56.25
+    ],
+    "impact": {
+      "file": "stomp-impact.png",
+      "on_event": "each individual circle resolve",
+      "duration_s": 0.36,
+      "pivot": "circle ground center",
+      "draw_quad_screen_px": [
+        75,
+        62.5
+      ],
+      "pivot_screen_px": [
+        37.5,
+        46.875
+      ],
+      "ground_squash": 1,
+      "projection": "Ground plane already suggested in painted dust; render screen-facing at projected ground center. Full width fits75px diameter; rising plume can extend above ellipse.",
+      "draw_order": "Ground-anchored release; preserve actors and pending-circle rims above overlapping cosmetic haze.",
+      "cull_rule": "Terminal frame fully transparent; cull at age>=0.36s. No mark/pool/crack remains."
+    },
+    "optional_dust": "Omitted; existing stomp impact retained unchanged.",
+    "sequence": "No timing or damage changes supplied. Simulation/lead owns staggered circle scheduling."
+  },
+  "review": {
+    "directory": "art/_work/boss-telegraphs/pass8",
+    "beam_comparison": "beam-vs-reference.png",
+    "phones": "beam-phones.png",
+    "release": "handoff-0-30-60ms.png",
+    "limits": "Art-only mocks; no runtime integration."
+  },
+  "troll_charge": {
+    "native_direction": "+X; runtime mirrors for -X. Shell leads, tapered streak tips trail -X.",
+    "anchor": "Both layers share boss torso center, 38px above feet.",
+    "draw_order": [
+      "boss",
+      "charge-shell.png",
+      "charge-lines.png"
+    ],
+    "shell": {
+      "file": "charge-shell.png",
+      "frame_count": 6,
+      "fps": 18,
+      "loop": true,
+      "size_px_at_zoom_0_5": [
+        128,
+        96
+      ],
+      "shape": "One open C bow; orange outside, yellow inside; pulses in place."
+    },
+    "lines": {
+      "file": "charge-lines.png",
+      "frame_count": 6,
+      "fps": 24,
+      "phase_offset_frames": 2,
+      "loop": true,
+      "size_px_at_zoom_0_5": [
+        128,
+        96
+      ],
+      "shape": "Five near-parallel white-core/yellow-edge strokes; thick at leading shell, tapered staggered rear tips. Independent length/position phases."
+    },
+    "start": "Authoritative charge movement begins; time for both loops begins here.",
+    "stop": "Remove both layers immediately at movement end/cancel.",
+    "damage": "Art changes no hitboxes, timing, or lane.",
+    "approval": "Lead PASS, frozen pass7 bytes. Owner review pending.",
+    "frozen_sha256": {
+      "charge-shell.png": "46fe9dd9e8a3e87a087109571772cae2c5aa1d449df3f82c0842b2c7e471e39c",
+      "charge-lines.png": "7981c7343cfbe59e021e3530044f9b40561b137cdc1239ad5ad0aa44eaaecf95"
+    }
+  },
+  "review_charge": {
+    "directory": "art/_work/boss-telegraphs/pass7",
+    "beam_comparison": "beam-vs-reference.png",
+    "charge_comparison": "charge-vs-reference.png",
+    "limits": "Game-scale composited art mocks; runtime unverified."
+  }
+}

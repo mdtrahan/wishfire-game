@@ -243,6 +243,31 @@ effectiveBody = replaceRequired(
   'hero amp badge condition',
 );
 removeBlock('if (ampShowsBadge) {');
+  // Slice presentation is installed only by the lazy rustCombat flag runtime.
+  effectiveBody = effectiveBody.replace(
+    "const point = combatCameraProjection.project(x, y, actorKind); return worldToCanvas(point.x, point.y);",
+    "const point = state.globals.RustCombatPresentation ? state.globals.RustCombatPresentation.project(x, y) : combatCameraProjection.project(x, y, actorKind); return worldToCanvas(point.x, point.y);",
+  );
+  effectiveBody = effectiveBody.replace(
+    '    const actorPaintQueue = [];',
+    '    state.globals.RustCombatPresentation?.ground(ctx, layoutScale, layoutOffsetX, layoutOffsetY);\n    const actorPaintQueue = [];',
+  );
+  effectiveBody = effectiveBody.replace(
+    '          drawEnemySprite();',
+    '          state.globals.RustCombatPresentation?.actor(ctx, enemy, pos.x, pos.y, enemyH, false, layoutScale, layoutOffsetX, layoutOffsetY);\n          drawEnemySprite();\n          state.globals.RustCombatPresentation?.actor(ctx, enemy, pos.x, pos.y, enemyH, true, layoutScale, layoutOffsetX, layoutOffsetY);',
+  );
+  effectiveBody = effectiveBody.replace(
+    'drawHeroSprite();',
+    'state.globals.RustCombatPresentation?.actor(ctx, hero, pos.x, footY, scaledH, false, layoutScale, layoutOffsetX, layoutOffsetY);\n          drawHeroSprite();\n          state.globals.RustCombatPresentation?.actor(ctx, hero, pos.x, footY, scaledH, true, layoutScale, layoutOffsetX, layoutOffsetY);',
+  );
+  effectiveBody = effectiveBody.replace(
+    'const footY = pos.y + h * 1.55 * COMBAT_BATTLEFIELD_ZOOM / 2;',
+    'const footY = state.globals.RustCombatPresentation && hero ? projectCombatActorWorldToCanvas(hero.footX, hero.footY).y : pos.y + h * 1.55 * COMBAT_BATTLEFIELD_ZOOM / 2;',
+  );
+  effectiveBody = effectiveBody.replace(
+    '    for (const paint of actorFrontOverlayQueue) paint();',
+    '    for (const paint of actorFrontOverlayQueue) paint();\n    state.globals.RustCombatPresentation?.front(ctx, layoutScale, layoutOffsetX, layoutOffsetY);',
+  );
   return effectiveBody;
 }
 

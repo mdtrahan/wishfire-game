@@ -1,0 +1,1285 @@
+{
+  "source_commit": "9c142b5f73294bd5a783e79d3840d0c3386c90a1",
+  "effects": {
+    "hit-physical": {
+      "file": "vfx-astra/hit-physical.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        25,
+        40,
+        55,
+        60
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        24
+      ]
+    },
+    "crit-physical": {
+      "file": "vfx-astra/crit-physical.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        25,
+        45,
+        65,
+        85
+      ],
+      "pivot": [
+        64,
+        64
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        38,
+        38
+      ]
+    },
+    "hit-arcane": {
+      "file": "vfx-astra/hit-arcane.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        25,
+        40,
+        55,
+        60
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        24
+      ]
+    },
+    "crit-arcane": {
+      "file": "vfx-astra/crit-arcane.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        25,
+        45,
+        65,
+        85
+      ],
+      "pivot": [
+        64,
+        64
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        38,
+        38
+      ]
+    },
+    "crit-poison": {
+      "file": "vfx-astra/crit-poison.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        25,
+        45,
+        65,
+        85
+      ],
+      "pivot": [
+        64,
+        64
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        38,
+        38
+      ]
+    },
+    "orb-head": {
+      "file": "vfx-astra/orb-head.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        12,
+        12
+      ]
+    },
+    "orb-head-kaja": {
+      "file": "vfx-astra/orb-head-kaja.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        12,
+        12
+      ]
+    },
+    "orb-trail": {
+      "file": "vfx-astra/orb-trail.png",
+      "frame_size": [
+        256,
+        64
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        128.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        6
+      ]
+    },
+    "orb-trail-kaja": {
+      "file": "vfx-astra/orb-trail-kaja.png",
+      "frame_size": [
+        256,
+        64
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        128.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        6
+      ]
+    },
+    "ward-shell": {
+      "file": "vfx-astra/ward-shell.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        64.0,
+        64.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        35
+      ]
+    },
+    "telegraph-fill": {
+      "file": "vfx-astra/telegraph-fill.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        64.0,
+        64.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        0,
+        0
+      ]
+    },
+    "telegraph-edge": {
+      "file": "vfx-astra/telegraph-edge.png",
+      "frame_size": [
+        256,
+        64
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        128.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        0,
+        1.5
+      ]
+    },
+    "cast-flash-neutral": {
+      "file": "vfx-astra/cast-flash-neutral.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        30,
+        35,
+        45,
+        50
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        20,
+        20
+      ]
+    },
+    "orb-head-neutral": {
+      "file": "vfx-astra/orb-head-neutral.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        12,
+        12
+      ]
+    },
+    "orb-trail-neutral": {
+      "file": "vfx-astra/orb-trail-neutral.png",
+      "frame_size": [
+        256,
+        64
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        128.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        6
+      ]
+    },
+    "bolt-head-neutral": {
+      "file": "vfx-astra/bolt-head-neutral.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        23,
+        8
+      ]
+    },
+    "bolt-trail-neutral": {
+      "file": "vfx-astra/bolt-trail-neutral.png",
+      "frame_size": [
+        256,
+        64
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        128.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        34,
+        4
+      ]
+    },
+    "support-cast-pulse": {
+      "file": "vfx-astra/spawn-portal-neutral.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        100,
+        150,
+        150,
+        200
+      ],
+      "pivot": [
+        64.0,
+        64.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        42,
+        31.5
+      ]
+    },
+    "warcry-shell-back": {
+      "file": "vfx-astra/warcry-shell-back.png",
+      "frame_size": [
+        128,
+        192
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        64.0,
+        96.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        35
+      ]
+    },
+    "warcry-shell-front": {
+      "file": "vfx-astra/warcry-shell-front.png",
+      "frame_size": [
+        128,
+        192
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        64.0,
+        96.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        24,
+        35
+      ]
+    },
+    "split-shard": {
+      "file": "vfx-astra/split-faze/split-shard.png",
+      "frame_size": [
+        32,
+        32
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        1000.0
+      ],
+      "pivot": [
+        16,
+        16
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        20,
+        20
+      ]
+    },
+    "faze-pool": {
+      "file": "vfx-astra/split-faze/faze-pool.png",
+      "frame_size": [
+        512,
+        384
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        1000.0
+      ],
+      "pivot": [
+        256,
+        192
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        138,
+        103.5
+      ]
+    },
+    "faze-bubbles": {
+      "file": "vfx-astra/split-faze/faze-bubbles.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 8,
+      "frame_ms": [
+        83.33333333333333,
+        83.33333333333333,
+        83.33333333333333,
+        83.33333333333333,
+        83.33333333333333,
+        83.33333333333333,
+        83.33333333333333,
+        83.33333333333333
+      ],
+      "pivot": [
+        32,
+        55
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        12,
+        12
+      ]
+    },
+    "faze-fumes": {
+      "file": "vfx-astra/split-faze/faze-fumes.png",
+      "frame_size": [
+        64,
+        96
+      ],
+      "frame_count": 8,
+      "frame_ms": [
+        125.0,
+        125.0,
+        125.0,
+        125.0,
+        125.0,
+        125.0,
+        125.0,
+        125.0
+      ],
+      "pivot": [
+        32,
+        90
+      ],
+      "blend": "additive",
+      "screen_size_px": [
+        14,
+        21
+      ]
+    },
+    "faze-splash": {
+      "file": "vfx-astra/split-faze/faze-splash.png",
+      "frame_size": [
+        256,
+        192
+      ],
+      "frame_count": 6,
+      "frame_ms": [
+        50.0,
+        50.0,
+        50.0,
+        50.0,
+        50.0,
+        50.0
+      ],
+      "pivot": [
+        128,
+        165
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        138,
+        103.5
+      ]
+    },
+    "faze-tick": {
+      "file": "vfx-astra/split-faze/faze-tick.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 5,
+      "frame_ms": [
+        41.666666666666664,
+        41.666666666666664,
+        41.666666666666664,
+        41.666666666666664,
+        41.666666666666664
+      ],
+      "pivot": [
+        32,
+        32
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        12,
+        12
+      ]
+    },
+    "crimson-sweep-arc": {
+      "file": "vfx-astra/crimson-sweep/crimson-sweep-arc.png",
+      "frame_size": [
+        256,
+        192
+      ],
+      "frame_count": 8,
+      "frame_ms": [
+        40.0,
+        40.0,
+        40.0,
+        40.0,
+        40.0,
+        40.0,
+        40.0,
+        40.0
+      ],
+      "pivot": [
+        16,
+        96
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        84,
+        72
+      ]
+    },
+    "crimson-sweep-impact": {
+      "file": "vfx-astra/crimson-sweep/crimson-sweep-impact.png",
+      "frame_size": [
+        96,
+        96
+      ],
+      "frame_count": 6,
+      "frame_ms": [
+        33.333333333333336,
+        33.333333333333336,
+        33.333333333333336,
+        33.333333333333336,
+        33.333333333333336,
+        33.333333333333336
+      ],
+      "pivot": [
+        48,
+        48
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        28,
+        28
+      ]
+    },
+    "spawn-marker": {
+      "file": "vfx-astra/spawn-marker/spawn-marker.png",
+      "frame_size": [
+        144,
+        104
+      ],
+      "frame_count": 6,
+      "frame_ms": [
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0
+      ],
+      "pivot": [
+        72,
+        52
+      ],
+      "blend": "SrcAlpha / OneMinusSrcAlpha",
+      "screen_size_px": [
+        72,
+        52
+      ]
+    },
+    "spawn-marker-appear": {
+      "file": "vfx-astra/spawn-marker/spawn-marker-appear.png",
+      "frame_size": [
+        144,
+        104
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        50.0,
+        50.0,
+        50.0,
+        50.0
+      ],
+      "pivot": [
+        72,
+        52
+      ],
+      "blend": "SrcAlpha / OneMinusSrcAlpha",
+      "screen_size_px": [
+        72,
+        52
+      ]
+    },
+    "bubble-swell": {
+      "file": "vfx-astra/bubble-pop/bubble-swell.png",
+      "frame_size": [
+        192,
+        192
+      ],
+      "frame_count": 6,
+      "frame_ms": [
+        58.333333333333336,
+        58.333333333333336,
+        58.333333333333336,
+        58.333333333333336,
+        58.333333333333336,
+        58.333333333333336
+      ],
+      "pivot": [
+        96,
+        189
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        149.33333333333334,
+        149.33333333333334
+      ]
+    },
+    "bubble-pop": {
+      "file": "vfx-astra/bubble-pop/bubble-pop.png",
+      "frame_size": [
+        256,
+        256
+      ],
+      "frame_count": 8,
+      "frame_ms": [
+        40.0,
+        40.0,
+        40.0,
+        40.0,
+        40.0,
+        40.0,
+        40.0,
+        40.0
+      ],
+      "pivot": [
+        128,
+        253
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        199.11111111111111,
+        199.11111111111111
+      ]
+    },
+    "bubble-suds": {
+      "file": "vfx-astra/bubble-pop/bubble-suds.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 6,
+      "frame_ms": [
+        40.0,
+        40.0,
+        40.0,
+        40.0,
+        40.0,
+        40.0
+      ],
+      "pivot": [
+        32,
+        32
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        28,
+        28
+      ]
+    },
+    "bubble-droplets": {
+      "file": "vfx-astra/bubble-pop/bubble-droplets.png",
+      "frame_size": [
+        24,
+        24
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        1000.0,
+        1000.0,
+        1000.0,
+        1000.0
+      ],
+      "pivot": [
+        12,
+        12
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        10,
+        10
+      ]
+    },
+    "charge-shell": {
+      "file": "vfx-astra/boss/charge-shell.png",
+      "frame_size": [
+        256,
+        192
+      ],
+      "frame_count": 6,
+      "frame_ms": [
+        55.55555555555556,
+        55.55555555555556,
+        55.55555555555556,
+        55.55555555555556,
+        55.55555555555556,
+        55.55555555555556
+      ],
+      "pivot": [
+        128,
+        96
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        128,
+        96
+      ]
+    },
+    "charge-lines": {
+      "file": "vfx-astra/boss/charge-lines.png",
+      "frame_size": [
+        256,
+        192
+      ],
+      "frame_count": 6,
+      "frame_ms": [
+        41.666666666666664,
+        41.666666666666664,
+        41.666666666666664,
+        41.666666666666664,
+        41.666666666666664,
+        41.666666666666664
+      ],
+      "pivot": [
+        128,
+        96
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        128,
+        96
+      ]
+    },
+    "shadow-coil": {
+      "file": "vfx-astra/shadow/shadow-coil.png",
+      "frame_size": [
+        96,
+        96
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        25,
+        25,
+        25,
+        25
+      ],
+      "pivot": [
+        48,
+        48
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        48,
+        48
+      ]
+    },
+    "shadow-streak": {
+      "file": "vfx-astra/shadow/shadow-streak.png",
+      "frame_size": [
+        256,
+        48
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        120
+      ],
+      "pivot": [
+        4,
+        24
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        0,
+        12
+      ]
+    },
+    "shadow-afterimage": {
+      "file": "vfx-astra/shadow/shadow-afterimage.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        110
+      ],
+      "pivot": [
+        44,
+        32
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        40,
+        40
+      ]
+    },
+    "shadow-impact": {
+      "file": "vfx-astra/shadow/shadow-impact.png",
+      "frame_size": [
+        192,
+        192
+      ],
+      "frame_count": 8,
+      "frame_ms": [
+        16,
+        17,
+        33,
+        33,
+        40,
+        40,
+        40,
+        40
+      ],
+      "pivot": [
+        96,
+        96
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        96,
+        96
+      ]
+    },
+    "shadow-crack": {
+      "file": "vfx-astra/shadow/shadow-crack.png",
+      "frame_size": [
+        128,
+        64
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        450
+      ],
+      "pivot": [
+        64,
+        32
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        64,
+        32
+      ]
+    },
+    "shadow-dissipate": {
+      "file": "vfx-astra/shadow/shadow-dissipate.png",
+      "frame_size": [
+        96,
+        96
+      ],
+      "frame_count": 5,
+      "frame_ms": [
+        60,
+        60,
+        60,
+        60,
+        60
+      ],
+      "pivot": [
+        48,
+        76
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        48,
+        48
+      ]
+    },
+    "sword": {
+      "file": "elevate/sword.png",
+      "frame_size": [
+        128,
+        384
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        64,
+        192
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        128,
+        384
+      ]
+    },
+    "winged_boots": {
+      "file": "elevate/winged_boots.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        64,
+        64
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        128,
+        128
+      ]
+    },
+    "wings": {
+      "file": "elevate/wings.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        64,
+        64
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        128,
+        128
+      ]
+    },
+    "wave_band": {
+      "file": "telegraph/wave_band.png",
+      "frame_size": [
+        512,
+        512
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        256,
+        256
+      ],
+      "blend": "additive",
+      "screen_size_px": [
+        512,
+        512
+      ]
+    },
+    "flash": {
+      "file": "telegraph/flash.png",
+      "frame_size": [
+        512,
+        512
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        256,
+        256
+      ],
+      "blend": "additive",
+      "screen_size_px": [
+        512,
+        512
+      ]
+    },
+    "bomb": {
+      "file": "projectiles/bomb.png",
+      "frame_size": [
+        48,
+        48
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        24,
+        24
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        48,
+        48
+      ]
+    },
+    "bolt": {
+      "file": "projectiles/bolt.png",
+      "frame_size": [
+        64,
+        16
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        0
+      ],
+      "pivot": [
+        32,
+        8
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        64,
+        16
+      ]
+    },
+    "resurrect/light-column": {
+      "file": "vfx/resurrect/light-column.png",
+      "frame_size": [
+        128,
+        512
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        125
+      ],
+      "pivot": [
+        64,
+        500
+      ],
+      "blend": "additive",
+      "screen_size_px": [
+        128,
+        512
+      ]
+    },
+    "resurrect/motes": {
+      "file": "vfx/resurrect/motes.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        125,
+        125,
+        125,
+        125
+      ],
+      "pivot": [
+        32,
+        32
+      ],
+      "blend": "additive",
+      "screen_size_px": [
+        64,
+        64
+      ]
+    },
+    "resurrect/ground-ring": {
+      "file": "vfx/resurrect/ground-ring.png",
+      "frame_size": [
+        256,
+        256
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        125
+      ],
+      "pivot": [
+        128,
+        128
+      ],
+      "blend": "additive",
+      "screen_size_px": [
+        256,
+        256
+      ]
+    },
+    "resurrect/burst": {
+      "file": "vfx/resurrect/burst.png",
+      "frame_size": [
+        512,
+        512
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        125
+      ],
+      "pivot": [
+        256,
+        256
+      ],
+      "blend": "additive",
+      "screen_size_px": [
+        512,
+        512
+      ]
+    },
+    "resurrect/channel-glow": {
+      "file": "vfx/resurrect/channel-glow.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        125
+      ],
+      "pivot": [
+        64,
+        64
+      ],
+      "blend": "additive",
+      "screen_size_px": [
+        128,
+        128
+      ]
+    }
+  },
+  "sha256": {
+    "vfx-astra/hit-physical.png": "bacc9cae90758f96dd6ed31b63eb976252bbc1c75f24d2694dcc400fa5d73dc6",
+    "vfx-astra/crit-physical.png": "b90cb48b83868b1ea8dda09303290a854da33ce927a57e23317bc6d65279b41a",
+    "vfx-astra/hit-arcane.png": "e9ebcde45aea8b8d1940e3792161bcf24125e75f6d0ad3c7f6667f1a14433b09",
+    "vfx-astra/crit-arcane.png": "a7354ffc63ce4e61797d066c9d06a9124f2566670a52a6e4ac8aa131d781f8c7",
+    "vfx-astra/crit-poison.png": "5a8e4d457a0cff6b66b403c8ad0472df6ff9669b51349d78d32e2f1012f9e1bd",
+    "vfx-astra/orb-head.png": "1a51efae862c15dabd2fb2e45f6bd60d5998ff6b59000a6a94bfaa5677f20d08",
+    "vfx-astra/orb-head-kaja.png": "ca8b6a35534a887bf1ad51d572433ad0bb123cfea9670f2eec8ceab0c2fcfb72",
+    "vfx-astra/orb-trail.png": "6d66e8fb8e2a34b0f2238f876ce7a0e6d60d200e945d7219fa65c09d3bfa7b29",
+    "vfx-astra/orb-trail-kaja.png": "0e672914926f9955b8938dd5261ba459b7035f4c6e5b29e193e63f8bd3c9ba86",
+    "vfx-astra/ward-shell.png": "7adb83ec7a0276286675f089a10082485624d24b0b0a893d04607cb6c4a03549",
+    "vfx-astra/telegraph-fill.png": "fdca1128634c8d1c92147ffa44a8f11c21aa7d41e026fffe184da70986ab0879",
+    "vfx-astra/telegraph-edge.png": "7bb0ec5efb7955d0518ad7398ad9d834b466fb38a2e761eaef88c15a44dae431",
+    "vfx-astra/cast-flash-neutral.png": "34eb70677e039ed270b723368966d403ca407c20de1795089cb55263d74575ac",
+    "vfx-astra/orb-head-neutral.png": "fa581f1df89c956d1f98a6039fefd7e70248638ae4bacc9f5052cd146ea65ea0",
+    "vfx-astra/orb-trail-neutral.png": "84013eff6cddf588595c8c0217e38fa01f582fdccb04b3ea5db099e0633b642e",
+    "vfx-astra/bolt-head-neutral.png": "7f0ee56f51bf08cc506a89176dcb9574322080f10c3667f7124ca7e7ceccfd96",
+    "vfx-astra/bolt-trail-neutral.png": "f13d4eea18097e4770494c4fb4b6e34fe1fffbe7addce96c8287a8a43d328975",
+    "vfx-astra/spawn-portal-neutral.png": "74a761af33aaaebcb349d34de5e0a8a6530ac223a32b40e44bb428a31f23429f",
+    "vfx-astra/warcry-shell-back.png": "7776b3f618b82351cf593d3f81764a1cbd7f63e3c95366093b9407cc4c118faa",
+    "vfx-astra/warcry-shell-front.png": "e8555f32f0f9788f70e0200a42eb2e060d2fd5dd4fb0ab2e8716f2c9d7ae7115",
+    "vfx-astra/split-faze/spec.json": "da31748a924c43dfaf5ccd5b7497d70717503ce51544ad7eb6c7775b65da685b",
+    "vfx-astra/split-faze/split-shard.png": "a664369a36ae1d805d68e7cc2052d7319a0667192c77067f647055881a388d54",
+    "vfx-astra/split-faze/faze-pool.png": "707bea6113dfa4139261a50a7b76beb3c6371f4d31cf0b0d9a554536c3281107",
+    "vfx-astra/split-faze/faze-bubbles.png": "1ac54ce112eba8906c9027eb58d0f83eccdefed4fe93d70a3901e94494543c94",
+    "vfx-astra/split-faze/faze-fumes.png": "aa6860f937d1cc04204711f0992a3e8f1430be12cf3eda85396a87332bd1d9e2",
+    "vfx-astra/split-faze/faze-splash.png": "e81e27ddd72ee634ce3fec438ebb2cfcec7c18e5ef2e6379c8999c11e850eda2",
+    "vfx-astra/split-faze/faze-tick.png": "10af49f99785f1a797eadb69a73ef02bf307ec53ae885606e7fbee70b3e77a78",
+    "vfx-astra/crimson-sweep/spec.json": "9198fe659abec40e4f7b72e4d5d1b1914e7636610638b7a365ce9ba387f04950",
+    "vfx-astra/crimson-sweep/crimson-sweep-arc.png": "f344b70d95fd4f6bf34e13db30a60cb3df1cc0123c4122a7dd6345b31f5d13de",
+    "vfx-astra/crimson-sweep/crimson-sweep-impact.png": "7ff6e23f81b12e28f7f5e29fcc7831740bc051813d225b490f82adff556c8a67",
+    "vfx-astra/spawn-marker/spec.json": "6acc8ccd0d75b506db4eb597cf4b0b7e349d8a296202a66a1b1fed70af509bcf",
+    "vfx-astra/spawn-marker/spawn-marker.png": "77284c931d16d9d55345c583f4dd0260cc8dbeb54007c01dca1b6966350072d7",
+    "vfx-astra/spawn-marker/spawn-marker-appear.png": "5fbe1d8475d4ac84e4439115504eee212e6865c34b09192a65302883c3ecfdfc",
+    "vfx-astra/bubble-pop/spec.json": "4f26b1bf2c98659fb9f102030a149e21b62f2bd27f78a83ef667deb0963921c3",
+    "vfx-astra/bubble-pop/bubble-swell.png": "cf627f0a951a04b483adf636b4038c71e891ec3e3f773195716e53f0c7a23da8",
+    "vfx-astra/bubble-pop/bubble-pop.png": "16a4da69ee24a8194e4ba79f0a4657f7c039be64cfe7f7834e8bfad099992b1a",
+    "vfx-astra/bubble-pop/bubble-suds.png": "1be675cbb5e920c38aec7370215e7742e95ae3a22595c4cef2eeeaf96c761d3d",
+    "vfx-astra/bubble-pop/bubble-droplets.png": "5224bb029f023575065776d1a0c84964f6149fa89d24c8722dbf4c1406b1f896",
+    "vfx-astra/boss/spec.json": "2a142f133e4e7859c74ccfde7a849f687db6a7c3a5d7c66e87da342a2cf56519",
+    "vfx-astra/boss/charge-shell.png": "46fe9dd9e8a3e87a087109571772cae2c5aa1d449df3f82c0842b2c7e471e39c",
+    "vfx-astra/boss/charge-lines.png": "a715942280598d3bb19f18e455f863b30947ea94a7ed91042d7ce574f9108a31",
+    "vfx-astra/shadow/spec.json": "9bdca929b6c385a0f6ed1b8aed44cde0e1f671d2c5a9d17f7bc0bb2f0ee68d2d",
+    "vfx-astra/shadow/shadow-coil.png": "03965762187b26210154ac457d316197d6367296b0f1a5539c5eb6178abeca65",
+    "vfx-astra/shadow/shadow-streak.png": "c20f1bfe9eef2679a3f192e56a7db6cc095dd68cd1cfe973c2d69cba8afea50e",
+    "vfx-astra/shadow/shadow-afterimage.png": "06568c2423bc9883818fe3970d41489872022ce32e1692b6a50120c8b2c232a6",
+    "vfx-astra/shadow/shadow-impact.png": "45fc3835d22a7fcdc9e9ac2f0d244752483bb4129295af1b7851c1776753e35a",
+    "vfx-astra/shadow/shadow-crack.png": "b4186116489b96b245b95134c49440e1fb39ff947304308128c217f3496d961a",
+    "vfx-astra/shadow/shadow-dissipate.png": "c4be0a078d97cf5d69ccca50f4ecabcb238f6d0404a5c4d0b7901599f4d78663",
+    "elevate/sword.png": "712ca8045f5041f83ae86cd7d129470c85179057b210d4c9f5764b9e51b6633b",
+    "elevate/winged_boots.png": "f5c4ad2ae60dd72342d55dd6486108e92445dea578f1edf5e676bef364499894",
+    "elevate/wings.png": "93bfe77c1e3f11059035fe9acb1c096a593a195e715fe0801e588eba047da34b",
+    "telegraph/wave_band.png": "40b9ddd982258794ad59b758836619eef3478a37ef406aff6c9e6eb607b703bd",
+    "telegraph/flash.png": "924f77e61e24b941cd26b72eeb70175576844fe1cbb0ef0c245fc2932602fecb",
+    "projectiles/bomb.png": "1a4ff4e73d331381449e3885020c504c98c6a2da3ea4ee2ac26c1a0945d92651",
+    "projectiles/bolt.png": "69b8ae79c063ae6cae7b1e20f1f639c4dd09f3ecf806d130ff48abfc5e2fc7f3",
+    "vfx/resurrect/art.json": "87640069936edc7b7da7dda788d84f236189147f951acf23cb0c79cf974c71a0",
+    "vfx/resurrect/light-column.png": "ecdc386fb7aebae22fc7e07dee1e991b163757eaf4282da101745b89672b5920",
+    "vfx/resurrect/motes.png": "0142ab251d8f05c95ef7cb9305797c0c6e945db867531b9007425cdf34bf0836",
+    "vfx/resurrect/ground-ring.png": "7e31ac1e0b38fbeafb4a9ada752125df6e6938316f91035114d387b1f908cbe8",
+    "vfx/resurrect/burst.png": "16ff6231615ee16c8cb24da01e69b2cc160b03bab4102a16a6dee79e21007c19",
+    "vfx/resurrect/channel-glow.png": "43a756803ebf9a86dea83970823e858658cd56e4ac539c5febdcdba66a805865",
+    "fonts/Bungee-Regular.ttf": "ff0ad5d7496a911460625f9052ea50b05e289065be71a1cb21c71896585224d2",
+    "PROVENANCE.md": "3d81f2c3d441693a517c07541d5dc2242c431609abd11afb3cd4b1500b2fc28b",
+    "art.json": "9ad0d5f757db23d69a096b203fee8e145d335f74c16bb66aeb3e5d3fcb46f72c",
+    "vfx-astra/vfx.json": "565063811a0eaf38ff711618c4c48dc461222f64dce41d757b0ae1ade7ba0f81",
+    "vfx-astra/PROVENANCE.md": "8d1172f9445d4f28f1d371acab0ec3c853ffc604f75bff7570c69d47df682c5e",
+    "vfx-astra/crimson-sweep/PROVENANCE.md": "56dc449657c0934e55b9c744e6c06cc93efff15e103675a1faa6e707e089a543",
+    "vfx-astra/shadow/PROVENANCE.md": "639e4f72af2ab58a918df1f7d7b17cd6ba670e25b61538348f7290895cf3bae8",
+    "vfx-astra/boss/PROVENANCE.md": "12e28b04821d5f88bc9aead375b588200ad56a45b9bf139e32120293199b01e6",
+    "vfx-astra/spawn-marker/PROVENANCE.md": "1fa746cfee7ae7e749eb33e8966e12e057f4fcefc772a48836119abe5d5d938e",
+    "vfx-astra/split-faze/PROVENANCE.md": "700171faa156ea2d9928300452513ec83061a1e7297a2a7657d5819c3fc99edc",
+    "vfx-astra/bubble-pop/PROVENANCE.md": "1c89d6c980ae52f5ddbfd654d57e545296b9e40f00715f6df1d1dd584fed9370",
+    "vfx/resurrect/PROVENANCE.md": "8f4172fec7030f28caf5c28866f47fb7e34142db78dbece16dd6e87c6ce68abc"
+  },
+  "font": "fonts/Bungee-Regular.ttf",
+  "existing_arcane_impact": "../images/vfx_impact_g03_purple.png"
+}

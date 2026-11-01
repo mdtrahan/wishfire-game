@@ -136,3 +136,5 @@
 - Bag probability footer shares the main window dark gradient and 2px gold border; retain its existing text, dimensions and detached close spacing.
 
 - Shared Bag/Training Ground close styling and glyph painting live in `systems/modalClose.mjs`; retain the accepted slate palette, floating gap and painted-bounds centering when changing either consumer.
+
+- `rust-combat/` contains unchanged bytes from slice `9c142b5f`, with source SHA-256s and authored pivots/cadence in its manifest. Load only through the lazy localhost rustCombat runtime; excluded arena, reward, icon and wishfire-skills folders stay absent.

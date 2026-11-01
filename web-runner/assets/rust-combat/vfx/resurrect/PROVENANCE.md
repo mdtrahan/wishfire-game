@@ -1,0 +1,13 @@
+# Resurrection VFX provenance
+
+**Date:** 2026-10-25
+**Tool:** OpenAI built-in imagegen tool; OpenAI Pillow post-processing.
+
+## Prompts
+
+- `light-column.png`: “Transparent PNG sprite, portrait aspect around 1:4. A polished console JRPG holy resurrection light pillar: broad soft warm-white core, feathered pale-gold luminous edges, gentle painterly glints, narrowing and fading toward top, bright lower bloom. Centered, luminous white and gold only, transparent background, no dark pixels, no backdrop, no text, no border, no watermark. Readable when rendered 40x160 over a tiny chibi hero.”
+- Shared atlas prompt: “Create a polished console JRPG Raise/Life resurrection VFX atlas on a square transparent RGBA canvas. Divide into four equal 512x512 quadrants with generous transparent gutters, no marks crossing quadrant edges. Top-left: complete centered soft golden ground ring with faint elegant luminous runic glyphs and radial tick rays, clear transparent center, circular and readable at 256px. Top-right: complete centered radiant completion burst, warm white central flash with soft broad gold rays and faint sparkles, luminous edges fade to transparent. Bottom-left: four separate small golden-white rising mote/sparkle designs arranged horizontally in one row, each centered within one quarter-cell and subtly different phases/shapes so they loop when cycled; no connecting trails between motifs. Bottom-right: centered soft warm golden-white hero channel halo, broad diffuse circle with a bright inner aura, no hard disc. Style: finely rendered painterly game sprite VFX, soft and readable, premium Dragon Quest / classic Final Fantasy spell art. Colors only luminous white, ivory, pale gold. True transparent background; no dark pixels, black outlines, checkerboard, background, text, labels, frames, shadows, watermark. Avoid thin vector-only strokes.”
+
+## Post-processing
+
+Generated column was center-cropped to the target 1:4 aspect and resized to 128x512. Atlas quadrants were cropped and resized to the specified sizes. Four mote frames use separate upper sparkle-cluster crops from the atlas. The atlas halo read as a small ground dome, so `channel-glow.png` was rebuilt as a soft radial aura with a subtle blurred rim in Pillow. The ground-ring center was explicitly cleared. Pillow Lanczos resizing preserved soft edges. A shared luminance-to-alpha pass removed saturated color fringe while retaining a warm-white additive RGB palette. `preview.jpg` composites the assets at in-game scale over a 360x240 arena crop, with the supplied Fara defeated-right-010 pose at 32px and a Djinn cast frame at 32px.

@@ -7,7 +7,7 @@ import { consumeCombatKillEvent } from '../modules/heroCommands.mjs';
 import { maybeAdvanceContinuousCombatStage } from '../src/core/continuousCombatStage.mjs';
 import { runtimeAssetUrl, getEmbeddedWasmBytes } from './runtimeAssetUrl.mjs';
 import { recordActorPuppetDefeat } from './actorPuppetDefeats.mjs';
-import { createRustHazardOverlay } from './rustCombatPresentation.mjs';
+import { createRustCombatPresentation } from './rustCombatPresentation.mjs';
 import { isRustCombatStage } from './rustCombat.mjs';
 
 // Kept injectable for headless proof using the real WASM and WFM lifecycle.
@@ -88,7 +88,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
         }
       } else if (kind === 'damage') {
         const target = hosts.get(data.target);
-        if (target && data.amount > 0) call('SpawnDamageText', Math.round(data.amount), target.x, target.y, data.crit ? 'critical' : 'damage', target.kind);
+        // The slice presentation consumes the same ordered Rust damage event.
       } else if (!['spawned', 'downed', 'revived', 'all_down', 'ended', 'presentation'].includes(kind)) {
         throw new Error(`Unknown Rust gameplay event: ${kind}`);
       }
@@ -110,7 +110,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
         state.entities.splice(0, state.entities.length, ...state.entities.filter(a => a.kind === 'hero'));
         g.EnemySlots.fill(0); g.EnemyIDs?.fill(0);
       }
-    } else present(snapshot);
+    } else present(snapshot, events);
     if (stageOptions) {
       advanced = maybeAdvanceContinuousCombatStage({ ...stageOptions, entities: state.entities, presentationBarrier: { lanes: {} }, combatTick() {},
         onBossTimeout() { g.RustCombatReceipt.outcome = 'timeout'; stop(); stageOptions.onBossTimeout?.(); } }) || advanced;
@@ -164,8 +164,8 @@ export async function mountRustCombat(options) {
     return response.arrayBuffer();
   });
   const { instance } = await WebAssembly.instantiate(bytes, {});
-  const overlay = createRustHazardOverlay(options.canvas, options.globals);
-  const runtime = createRustCombatRuntime({ ...options, bridge: createCombatBridge(instance), present: overlay.draw });
+  const overlay = await createRustCombatPresentation(options.globals);
+  const runtime = createRustCombatRuntime({ ...options, bridge: createCombatBridge(instance), present: overlay.present });
   const dispose = () => { runtime.dispose(); overlay.dispose(); window.removeEventListener('pagehide', dispose); };
   window.addEventListener('pagehide', dispose);
   return { ...runtime, dispose };
