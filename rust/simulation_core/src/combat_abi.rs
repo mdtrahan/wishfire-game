@@ -585,7 +585,7 @@ impl World {
                 .filter(|k| hero_index(*k).is_some())
                 .ok_or_else(|| invalid("config.heroes.definition_id"))?;
             // The slice still indexes heroes by archetype. Duplicate archetypes await the roster bead.
-            if h.slot >= 4 || !slots.insert(h.slot) || !definitions.insert(h.definition_id.as_str())
+            if h.slot >= 8 || !slots.insert(h.slot) || !definitions.insert(h.definition_id.as_str())
             {
                 return Err(invalid("config.heroes.slot/definition_id"));
             }

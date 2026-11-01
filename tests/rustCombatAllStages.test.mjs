@@ -155,7 +155,7 @@ test('one downed hero stays in Rust combat and autonomous Phoenix selects the lo
   f.state.entities.find(a => a.kind === 'enemy').stats.ATK = 0;
   f.tick();
   assert.equal(recoverContinuousOrdinaryDefeatIfNeeded({ state: f.state, session: { recoverContinuousDefeat() { throw Error('legacy KO route'); } } }), false);
-  f.runUntil(() => !!f.runtime.read().snapshot.phoenix_channel, 30);
+  f.runUntil(() => !!f.runtime.read().snapshot?.phoenix_channel, 30);
   assert.equal(f.runtime.read().snapshot.phoenix_channel.hero, f.runtime.read().snapshot.actors.find(a => a.host_id === f.heroes[0].heroInstanceKey).actor_id);
   assert.deepEqual(f.routes, []);
   f.runtime.dispose();
@@ -215,4 +215,18 @@ test('ordinary respite rounds in host units, deduplicates transitions and reject
   f.bridge.spawn(created.world, config.encounter_id, [enemy]);
   assert.throws(() => f.bridge.ordinaryClear(created.world, config.encounter_id, 'wave:2'), /respite requires a cleared ordinary wave/);
   f.bridge.destroy(created.world); f.runtime.dispose();
+});
+
+
+test('autonomous Phoenix follows sparse saved formation cells independently of roster order', () => {
+  const f = fixture({ boss: true, level: 1 });
+  f.g.HeroFormationPlacement = { falie: { cell: 7 }, huun: { cell: 5 }, runa: { cell: 1 }, kojonn: { cell: 3 } };
+  f.heroes[0].hp = f.heroes[1].hp = 0;
+  f.state.entities.find(a => a.kind === 'enemy').stats.ATK = 0;
+  const config = createWfmCombatConfig({ globals: f.g, entities: f.state.entities, enemyRows: rows, encounterId: 'saved-slots' });
+  assert.deepEqual(config.heroes.map(h => h.slot), [7, 5, 1, 3]);
+  f.runUntil(() => !!f.runtime.read().snapshot?.phoenix_channel, 30);
+  const snapshot = f.runtime.read().snapshot;
+  assert.equal(snapshot.phoenix_channel.hero, snapshot.actors.find(a => a.host_id === f.heroes[1].heroInstanceKey).actor_id);
+  assert.deepEqual(f.routes, []); f.runtime.dispose();
 });

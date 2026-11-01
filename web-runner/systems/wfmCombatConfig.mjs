@@ -1,4 +1,5 @@
 import { createShadowConfig, WFM_ENEMY_DEFINITIONS } from '../../src/core/combatShadowAdapter.mjs';
+import { formationSlots } from '../src/core/arenaCombat.mjs';
 import { getContinuousCombatStage } from '../src/core/continuousCombatStage.mjs';
 import { realtimeCooldownSeconds } from '../src/core/realtimeCooldown.mjs';
 import { heroDefinition } from '../src/core/heroDefinitions.mjs';
@@ -20,6 +21,7 @@ export function createWfmCombatConfig({ globals: g, entities, enemyRows, encount
     if (!enemyRows.some(row => row.name === name)) throw new Error(`WFM combat: missing authored enemy "${name}"`);
   }
   const heroes = entities.filter(actor => actor.kind === 'hero');
+  const slots = formationSlots(heroes, g.HeroFormationPlacement);
   const x = deriveCombatWorldBounds(), y = deriveCombatWorldVerticalBounds();
   const origin = { x: heroes.reduce((sum, a) => sum + a.x, 0) / heroes.length,
     y: heroes.reduce((sum, a) => sum + a.y, 0) / heroes.length };
@@ -31,7 +33,7 @@ export function createWfmCombatConfig({ globals: g, entities, enemyRows, encount
       const definition = heroDefinition(actor), modifiers = permanentHeroModifiers(g, actor);
       const resolved = Object.fromEntries(Object.keys(definition.baseStats).map(stat => [stat,
         projectCombatStat(stat === 'HP' ? actor.combatBaseMaxHP : actor.stats[stat], stat, modifiers)]));
-      return { identity: String(actor.heroInstanceKey), key: definition.key, slot,
+      return { identity: String(actor.heroInstanceKey), key: definition.key, slot: slots[slot].cell,
         position: { x: Number(actor.x), y: Number(actor.y) }, resolved, reference: definition.baseStats,
         hp: actor.hp, hostMaxHP: actor.maxHP };
     }),

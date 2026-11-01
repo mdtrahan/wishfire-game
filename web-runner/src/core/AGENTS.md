@@ -144,3 +144,5 @@
 - `formatCompactCount` owns Bag count text: exact integers below1,000, then floored one-decimal K/M/B with trailing .0 trimmed; negative or invalid inputs display0. Keep readiness and numeric accessibility values exact.
 
 - Quest descriptions and counters never carry rarity colors; category labels keep their yellow presentation. Equipment rarity coverage stops at Blue/Rare. Epic (`equip_rarity:epic:`) and Legendary (`equip_rarity:legendary:`) coverage are retired: drop unfinished saved objectives without rewards, preserve completed objectives for one claim, and retain claimed keys/receipts.
+
+- Rust host roster inputs reuse `arenaCombat.formationSlots` for saved sparse cell IDs; Phoenix priority must follow those cells independently of actor/roster order.

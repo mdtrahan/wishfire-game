@@ -112,7 +112,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
       outcome: bossKilled ? 'ended' : snapshot.state, seconds: snapshot.combat_time, presentationSeconds: snapshot.time,
       kills: Object.keys(g.ProgressionBattle?.defeated || {}).length,
       downed: snapshot.actors.filter(a => a.team === 'hero' && a.downed).length };
-    if (!bossKilled && snapshot.state === 'all_down') {
+    if (snapshot.state === 'all_down') {
       const boss = g.ContinuousCombatStage?.bossActive;
       stop('all_down_routed');
       if (boss) session.surrenderBossAttempt('rust_all_down');
