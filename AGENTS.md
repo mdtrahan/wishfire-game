@@ -58,6 +58,7 @@ After startup, execution policy is governed by:
 - Minor exemptions are only those listed in the Implementation Gate.
 - For gameplay/content bead creation, check `governance/product/player-living-guide.md`; if it conflicts with the request, ask before implementing.
 - If scope changes, stop and clarify, reopen the bead, or create a new bead.
+- Owner progress board: when you create, start, block, defer or close a bead, update its card on the monday "Wishfire — Product Kanban" board (18438029655) in the same turn. Lanes and column ids are in the `wishfire-po` skill (`~/.claude/skills/wishfire-po/SKILL.md`). Beads stays the source of truth; a 10-minute sync catches misses.
 
 ## Worktree Discipline
 - Lane tools record footprint; agents do not hand-measure.
