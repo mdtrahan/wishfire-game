@@ -61,6 +61,7 @@ function makeSavedFixture({shellsFirst=true}={}){
   return [id,hero];
  }));
  progress.heroes=shellsFirst?{...shells,...progress.heroes}:{...progress.heroes,...shells};
+ progress.pendingBagKillRewards={};
  progress.settledBattles=['hero-redesign-save-preservation'];
  return{progress,economy};
 }
