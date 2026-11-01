@@ -19,15 +19,15 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
   let attempt = null, serial = 0, baseTime = 0, lastCombatTime = 0, lastPresentationTime = 0;
   let stageOptions, advanced = false, failed = false, introNow = null, tail = null;
   const hosts = new Map(), seenSpawns = new Set(), hostHeroes = new Map();
-  function restoreHostHeroes() {
+  function restoreHostHeroes(keepVisuals = false) {
     for (const [actor, original] of hostHeroes) {
       const ratio = actor.maxHP > 0 ? actor.hp / actor.maxHP : 0;
       actor.maxHP = original.maxHP;
       actor.hp = Math.max(0, Math.min(actor.maxHP, actor.maxHP * ratio));
       actor.isAlive = actor.hp > 0;
-      delete actor.rustActorId; delete actor.rustState;
+      if (!keepVisuals) { delete actor.rustActorId; delete actor.rustState; }
     }
-    hostHeroes.clear();
+    if (!keepVisuals) hostHeroes.clear();
   }
   function stop() {
     driver.stop(); restoreHostHeroes(); attempt = null; introNow = null; tail = null; hosts.clear(); seenSpawns.clear();
@@ -41,7 +41,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
     present(null); warn('[rustCombat] encounter ended:', error);
     session.surrenderBossAttempt('rust_bridge_error');
   }
-  function project(snapshot) {
+  function project(snapshot, visualOnly = false) {
     for (const view of snapshot.actors) {
       let actor = hosts.get(view.actor_id);
       if (!actor && view.host_id != null) {
@@ -61,9 +61,9 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
       const visual=g.RustCombatPresentation?.pose(view);
       const shownState=heldCharge?'cast':visual?.poseState??view.state,shownAge=heldCharge?0:visual?.poseState?visual.poseAge:view.state_age;
       const shownFacing=g.RustCombatPresentation?.motion.records.get(view.actor_id)?.facing??view.facing;
+      if (!visualOnly) Object.assign(actor, { hp: view.hp, maxHP: view.max_hp, isAlive: view.hp > 0 });
       Object.assign(actor, { x: view.pos.x, y: view.pos.y, footX: view.pos.x, footY: view.pos.y,
-        originX: view.pos.x, originY: view.pos.y, hp: view.hp, maxHP: view.max_hp,
-        isAlive: view.hp > 0, facing: shownFacing, rustActorId: view.actor_id, rustState: view.state,
+        originX: view.pos.x, originY: view.pos.y, facing: shownFacing, rustActorId: view.actor_id, rustState: view.state,
         streamState: 'engaged', locomotion: view.state === 'walk' ? 'walk' : 'idle',
         actionState: shownState, actionFacing: shownFacing, actionStateStartedAt: g.time - shownAge,
         actionStateUntil: g.time - shownAge + (visual?.poseState ? visual.poseDuration : view.state_duration), actionImpactAt: g.time - shownAge + (visual?.poseState ? visual.poseImpact : view.impact_at) });
@@ -112,9 +112,11 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
     }
     if (bossKilled) {
       // Rewards and world destruction happen at death. Only the visual transition waits.
-      driver.stop();
+      driver.stop(); restoreHostHeroes(true);
       state.entities.splice(0, state.entities.length, ...state.entities.filter(a => a.kind === 'hero'));
       g.EnemySlots.fill(0); g.EnemyIDs?.fill(0);
+      stageOptions.onBossClear?.();
+      call('SettleContinuousCombatRewards');
       const freeze = Math.max(0, snapshot.hit_stop?.remaining || 0);
       const visual = structuredClone(snapshot);
       visual.hit_stop = null;
@@ -140,7 +142,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
     const visual = tail.spare; tail.spare = tail.visual; tail.visual = visual;
     visual.time = tail.born + age; visual.combat_time = tail.combatBorn + age;
     for (let i = 0; i < visual.actors.length; i++) visual.actors[i].state_age = tail.ages[i] + age;
-    present(visual, []); project(visual);
+    present(visual, []); project(visual, true);
     if (tail.picture) {
       tail.picture.actionStateStartedAt = g.time - age;
       tail.picture.actionStateUntil = g.time - age + BOSS_KO_SECONDS;
@@ -149,7 +151,8 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
     if (tail.elapsed + 1e-9 < tail.duration) return false;
     stop();
     return maybeAdvanceContinuousCombatStage({ ...options, entities: state.entities,
-      presentationBarrier: { lanes: {} }, combatTick() {} });
+      presentationBarrier: { lanes: {} }, combatTick() {}, onBossClear: undefined,
+      call(name, ...args) { if (name !== 'SettleContinuousCombatRewards') return options.call(name, ...args); } });
   }
   const driver = createCombatAuthorityDriver({ bridge, consume, onError: finishFailure });
   function tickFrame(options) {
