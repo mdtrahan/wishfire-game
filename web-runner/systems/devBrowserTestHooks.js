@@ -478,6 +478,7 @@ export function registerDevBrowserTestHooks({
       return applyDevToolingConfig(input);
     },
     callFunction(fnName, ...args) {
+      if (state.globals.RustCombatAuthority) throw new Error('Legacy function hook not supported in Rust encounters');
       return callFunctionWithContext(fnContext, fnName, ...args);
     },
     getStoryCardDebugLine() {

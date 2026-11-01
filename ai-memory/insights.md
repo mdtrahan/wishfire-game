@@ -26,6 +26,7 @@
 - Reframe before implementation when acceptance language implies persistent timed stat stacks (`ORKA-9ri`, `ORKA-zih`, residual wording in `ORKA-69r`).
 
 ## Regression Triggers
+- Guard generic developer dispatchers alongside named fixtures when Rust owns live combat. A guarded fixture leaves every mutating registry handler reachable through an unrestricted raw dispatcher.
 - Rust actor snapshots use projected combat HP and retain presentation-side stat copies. Permanent progression and ordinary-clear saves must use the bound raw meta source; copying the live actor can silently overwrite newly saved equipment/level stats before the next revision.
 - Rust bridge additions can pull serialization and simulation code into shipped WASM; compare raw/gzip size, supported exports and seeded results before accepting release-profile changes.
 - Task resource ownership needs a checkout creation identity; reused paths and repository-wide ref changes require explicit attribution. Optional synchronous hooks need an outer deadline that also bounds filesystem work.
