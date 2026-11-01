@@ -1,0 +1,821 @@
+{
+ "version": 2,
+ "stages": [
+  {
+   "name": "Stage 1 · Troll",
+   "waves": [
+    {
+     "name": "First contact",
+     "theme": "First contact",
+     "subwaves": [
+      {
+       "placed": "party",
+       "pattern": "authored",
+       "spawns": [
+        {
+         "type": "gobloc",
+         "x": 0,
+         "y": -200
+        },
+        {
+         "type": "gobloc",
+         "x": 173,
+         "y": -100
+        },
+        {
+         "type": "gobloc",
+         "x": 173,
+         "y": 100
+        },
+        {
+         "type": "gobloc",
+         "x": 0,
+         "y": 200
+        }
+       ]
+      },
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "gloamink",
+         "count": 2
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Orc line",
+     "theme": "Orc line",
+     "subwaves": [
+      {
+       "placed": "party",
+       "pattern": "authored",
+       "spawns": [
+        {
+         "type": "orc",
+         "x": 0,
+         "y": -200
+        },
+        {
+         "type": "orc",
+         "x": 173,
+         "y": -100
+        },
+        {
+         "type": "orc",
+         "x": 173,
+         "y": 100
+        }
+       ]
+      },
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "gobloc",
+         "count": 3
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "First sniper",
+     "theme": "First sniper",
+     "subwaves": [
+      {
+       "placed": "party",
+       "pattern": "authored",
+       "spawns": [
+        {
+         "type": "orc",
+         "x": 0,
+         "y": -200
+        },
+        {
+         "type": "orc",
+         "x": 173,
+         "y": -100
+        },
+        {
+         "type": "sniper",
+         "x": -330,
+         "y": -400
+        }
+       ]
+      },
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "gobloc",
+         "count": 3
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Heavy hitter",
+     "theme": "Heavy hitter",
+     "subwaves": [
+      {
+       "placed": "party",
+       "pattern": "authored",
+       "spawns": [
+        {
+         "type": "high orc",
+         "x": 0,
+         "y": -200
+        },
+        {
+         "type": "gobloc",
+         "x": 173,
+         "y": -100
+        },
+        {
+         "type": "gobloc",
+         "x": 173,
+         "y": 100
+        },
+        {
+         "type": "gobloc",
+         "x": 0,
+         "y": 200
+        }
+       ]
+      },
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "gloamink",
+         "count": 2
+        },
+        {
+         "type": "orc",
+         "count": 1
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Field medic",
+     "theme": "Field medic",
+     "subwaves": [
+      {
+       "placed": "party",
+       "pattern": "authored",
+       "spawns": [
+        {
+         "type": "marid",
+         "x": 0,
+         "y": -200
+        },
+        {
+         "type": "orc",
+         "x": 173,
+         "y": -100
+        },
+        {
+         "type": "orc",
+         "x": 173,
+         "y": 100
+        },
+        {
+         "type": "orc",
+         "x": 0,
+         "y": 200
+        }
+       ]
+      },
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "mirewing",
+         "count": 1
+        },
+        {
+         "type": "gobloc",
+         "count": 3
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Boss",
+     "theme": "Troll Brute",
+     "subwaves": [
+      {
+       "placed": "arena",
+       "pattern": "authored",
+       "spawns": [
+        {
+         "type": "boss",
+         "x": 0,
+         "y": -496
+        },
+        {
+         "type": "orc",
+         "x": -80,
+         "y": -200
+        },
+        {
+         "type": "orc",
+         "x": 80,
+         "y": -200
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Stage 2 · Chimerilass",
+   "waves": [
+    {
+     "name": "Fodder muster",
+     "theme": "opening fodder",
+     "subwaves": [
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "gobloc",
+         "count": 6
+        },
+        {
+         "type": "orc",
+         "count": 2
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "First rally",
+     "theme": "one Bastorto with fodder",
+     "subwaves": [
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "bastorto",
+         "count": 1
+        },
+        {
+         "type": "gobloc",
+         "count": 6
+        }
+       ]
+      },
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "orc",
+         "count": 3
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Crossfire breather",
+     "theme": "deliberate breather after the first rally; Lizardo and sniper lanes",
+     "subwaves": [
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "gobloc",
+         "count": 3
+        },
+        {
+         "type": "lizardo",
+         "count": 1
+        },
+        {
+         "type": "sniper",
+         "count": 2
+        }
+       ]
+      },
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "orc",
+         "count": 3
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Field medic",
+     "theme": "one Marid screened by fodder and fast flankers",
+     "subwaves": [
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "orc",
+         "count": 3
+        },
+        {
+         "type": "marid",
+         "count": 1
+        },
+        {
+         "type": "lizardo",
+         "count": 1
+        }
+       ]
+      },
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "gloamink",
+         "count": 3
+        },
+        {
+         "type": "sniper",
+         "count": 2
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Winged flank",
+     "theme": "Mirewing and sniper cover with Gloaminks",
+     "subwaves": [
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "orc",
+         "count": 2
+        },
+        {
+         "type": "mirewing",
+         "count": 1
+        },
+        {
+         "type": "gobloc",
+         "count": 2
+        }
+       ]
+      },
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "gloamink",
+         "count": 4
+        },
+        {
+         "type": "lizardo",
+         "count": 1
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Armored panic",
+     "theme": "one rallied High Orc before a surrounding backline flank",
+     "subwaves": [
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "bastorto",
+         "count": 1
+        },
+        {
+         "type": "high orc",
+         "count": 1
+        },
+        {
+         "type": "orc",
+         "count": 1
+        },
+        {
+         "type": "gobloc",
+         "count": 2
+        }
+       ]
+      },
+      {
+       "placed": "party",
+       "pattern": "authored",
+       "spawns": [
+        {
+         "type": "gloamink",
+         "x": 240,
+         "y": 240
+        },
+        {
+         "type": "gloamink",
+         "x": -240,
+         "y": 240
+        },
+        {
+         "type": "gloamink",
+         "x": -240,
+         "y": -240
+        },
+        {
+         "type": "gloamink",
+         "x": 240,
+         "y": -240
+        },
+        {
+         "type": "fizzmite",
+         "x": 0,
+         "y": -340
+        },
+        {
+         "type": "mirewing",
+         "x": -320,
+         "y": -570
+        },
+        {
+         "type": "lizardo",
+         "x": 320,
+         "y": -570
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Boss",
+     "theme": "Chimerilass heals her guard: heavies + lizardos",
+     "subwaves": [
+      {
+       "placed": "arena",
+       "pattern": "authored",
+       "spawns": [
+        {
+         "type": "boss",
+         "x": 0,
+         "y": -496
+        },
+        {
+         "type": "high orc",
+         "x": -140,
+         "y": -180
+        },
+        {
+         "type": "high orc",
+         "x": 140,
+         "y": -180
+        },
+        {
+         "type": "lizardo",
+         "x": -340,
+         "y": -420
+        },
+        {
+         "type": "lizardo",
+         "x": 340,
+         "y": -420
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Stage 3 · Djinn",
+   "waves": [
+    {
+     "name": "Rallied vanguard",
+     "theme": "deliberate opening breather; rallied melee vanguard",
+     "subwaves": [
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "bastorto",
+         "count": 1
+        },
+        {
+         "type": "high orc",
+         "count": 1
+        },
+        {
+         "type": "gobloc",
+         "count": 2
+        }
+       ]
+      },
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "gloamink",
+         "count": 2
+        },
+        {
+         "type": "orc",
+         "count": 2
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Rallied field hospital",
+     "theme": "one healer behind a rallied armored front; fodder follow-up",
+     "subwaves": [
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "high orc",
+         "count": 1
+        },
+        {
+         "type": "marid",
+         "count": 1
+        },
+        {
+         "type": "bastorto",
+         "count": 1
+        }
+       ]
+      },
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "gloamink",
+         "count": 3
+        },
+        {
+         "type": "gobloc",
+         "count": 4
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Panic flank",
+     "theme": "Fizzmites and poison with fast flankers",
+     "subwaves": [
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "fizzmite",
+         "count": 2
+        },
+        {
+         "type": "mirewing",
+         "count": 1
+        },
+        {
+         "type": "gobloc",
+         "count": 2
+        }
+       ]
+      },
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "gloamink",
+         "count": 4
+        },
+        {
+         "type": "orc",
+         "count": 1
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Winged bulwark",
+     "theme": "armored screen with a bomb thrower before fast flankers",
+     "subwaves": [
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "high orc",
+         "count": 1
+        },
+        {
+         "type": "orc",
+         "count": 1
+        },
+        {
+         "type": "lizardo",
+         "count": 1
+        }
+       ]
+      },
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "gloamink",
+         "count": 4
+        },
+        {
+         "type": "fizzmite",
+         "count": 2
+        },
+        {
+         "type": "mirewing",
+         "count": 1
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Siege alarm",
+     "theme": "rallied snipers followed by explosive fodder",
+     "subwaves": [
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "high orc",
+         "count": 1
+        },
+        {
+         "type": "bastorto",
+         "count": 1
+        },
+        {
+         "type": "sniper",
+         "count": 1
+        }
+       ]
+      },
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "gloamink",
+         "count": 5
+        },
+        {
+         "type": "fizzmite",
+         "count": 2
+        },
+        {
+         "type": "lizardo",
+         "count": 1
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Last rally",
+     "theme": "one sniper behind a wall before a surrounding panic flank",
+     "subwaves": [
+      {
+       "placed": "party",
+       "pattern": "seeded",
+       "units": [
+        {
+         "type": "high orc",
+         "count": 1
+        },
+        {
+         "type": "bastorto",
+         "count": 1
+        },
+        {
+         "type": "sniper",
+         "count": 1
+        }
+       ]
+      },
+      {
+       "placed": "party",
+       "pattern": "authored",
+       "spawns": [
+        {
+         "type": "gloamink",
+         "x": 314,
+         "y": 130
+        },
+        {
+         "type": "gloamink",
+         "x": 130,
+         "y": 314
+        },
+        {
+         "type": "gloamink",
+         "x": -130,
+         "y": 314
+        },
+        {
+         "type": "gloamink",
+         "x": -314,
+         "y": 130
+        },
+        {
+         "type": "gloamink",
+         "x": -314,
+         "y": -130
+        },
+        {
+         "type": "gloamink",
+         "x": -130,
+         "y": -314
+        },
+        {
+         "type": "gloamink",
+         "x": 130,
+         "y": -314
+        },
+        {
+         "type": "gloamink",
+         "x": 314,
+         "y": -130
+        },
+        {
+         "type": "fizzmite",
+         "x": 0,
+         "y": -340
+        },
+        {
+         "type": "fizzmite",
+         "x": 0,
+         "y": 340
+        },
+        {
+         "type": "mirewing",
+         "x": 0,
+         "y": -650
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Boss",
+     "theme": "Djinn",
+     "subwaves": [
+      {
+       "placed": "arena",
+       "pattern": "authored",
+       "spawns": [
+        {
+         "type": "boss",
+         "x": 0,
+         "y": -496
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

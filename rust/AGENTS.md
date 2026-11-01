@@ -29,7 +29,8 @@
 - `node --test tests/finalRustOwnershipBoundaryContract.test.js` for boundary/export changes.
 
 ## Child DOX Index
-- None.
+- `wf_combat/AGENTS.md` - extracted combat mechanics and explicit host inputs; independent of production in step 1.
+- `wf_slice_harness/AGENTS.md` - frozen slice director, rewards, fixtures and equivalence proof.
 
 - Energy is a macro balance: quest entry spends it, combat actions do not. Purple recovery remains active. Combat defeat depends on living heroes; Continue preserves energy.
 
