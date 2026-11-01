@@ -62,6 +62,11 @@ pub enum Archetype {
     Mirewing,
     /// Melee rallier whose living aura strengthens nearby enemies' defense.
     Bastorto,
+    // WFM definitions retain their own identities and combat behavior (R7).
+    WfmHighGobloc,
+    WfmSkeleton,
+    WfmChimerilass,
+    WfmDjinn,
 }
 
 /// Presentation state. Maps 1:1 to puppet clips (idle, walk, basic, cast, hurt, ko, spawn).

@@ -4,17 +4,21 @@ export function createCombatAuthorityDriver({ bridge, consume, onError }) {
   let world = null, encounter = null, snapshot = null, previousNow = null, debt = 0, failed = false;
   let sequence = 0n;
   const receipts = new Map();
-  function stop() {
-    const handle = world;
-    world = null; previousNow = null; debt = 0;
-    if (handle !== null) bridge.destroy(handle);
+  function stop(reason) {
+    try {
+      if (reason && world !== null && snapshot.state !== 'host_ended') accept(bridge.end(world, encounter, snapshot.step, reason), false);
+    } finally {
+      const handle = world;
+      world = null; previousNow = null; debt = 0;
+      if (handle !== null) bridge.destroy(handle);
+    }
   }
   function fail(error) {
     failed = true;
     try { stop(); } catch { /* Preserve the original transport failure. */ }
     onError(error);
   }
-  function accept(result) {
+  function accept(result, notify = true) {
     if (result.snapshot.encounter_id !== encounter) throw new Error('Rust encounter mismatch');
     const fresh = [];
     for (const event of result.events) {
@@ -30,7 +34,7 @@ export function createCombatAuthorityDriver({ bridge, consume, onError }) {
     }
     snapshot = result.snapshot;
     // Consumption can stop the world on an outcome. No renderer drains it.
-    consume(snapshot, fresh);
+    if (notify) consume(snapshot, fresh);
   }
   function start(config) {
     try {
@@ -60,5 +64,5 @@ export function createCombatAuthorityDriver({ bridge, consume, onError }) {
     try { accept(bridge.spawn(world, encounter, structuredClone(enemies))); }
     catch (error) { fail(error); }
   }
-  return { start, advance, spawn, stop, accept, read: () => ({ active: world !== null, failed, snapshot: structuredClone(snapshot), receipts: receipts.size }) };
+  return { start, advance, spawn, stop, accept, ordinaryClear(transitionId) { accept(bridge.ordinaryClear(world, encounter, transitionId)); }, read: () => ({ active: world !== null, failed, snapshot: structuredClone(snapshot), receipts: receipts.size }) };
 }

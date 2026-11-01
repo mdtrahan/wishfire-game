@@ -584,6 +584,14 @@ impl Sim {
                         continue;
                     }
                 }
+                kind if crate::wfm::is_wfm(kind) => {
+                    if distance > a.attack_range(&self.actors[t]) {
+                        movement = aim * a.speed();
+                    } else if a.basic_cd <= 0. {
+                        self.wfm_start_action(i, t);
+                        continue;
+                    }
+                }
                 _ => {
                     if distance > a.attack_range(&self.actors[t]) {
                         movement = (delta + a.formation_offset).normalized() * a.speed();

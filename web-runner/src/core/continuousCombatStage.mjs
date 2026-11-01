@@ -948,13 +948,13 @@ export function tickContinuousCombatStageJS({ globals, entities, call, now }) {
   }
 }
 
-export function maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier, call, runCombatStep, onBossTimeout, onBossClear, combatTick = tickContinuousCombatStageJS } = {}) {
+export function maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier, call, runCombatStep, onBossTimeout, onBossClear, onOrdinaryClear, allowDowned = false, combatTick = tickContinuousCombatStageJS } = {}) {
   if (!globals || Number(globals.ContinuousCombatStageLoop || 0) !== 1) return false;
   if (globals.DevToolingPaused || globals.QaScenarioPaused || globals.QaFixtureHoldTurn) return false;
   const stageState = globals.ContinuousCombatStage;
   if (!stageState) return false;
   if (recordContinuousCombatWavePackProgress(stageState, entities)) globals.HeroProgressDirty = true;
-  if (!stageState.bossActive && (entities || []).some(actor => actor?.kind === 'hero' && Number(actor.hp || 0) <= 0)) return false;
+  if (!allowDowned && !stageState.bossActive && (entities || []).some(actor => actor?.kind === 'hero' && Number(actor.hp || 0) <= 0)) return false;
   if (stageState.bossActive && Number(stageState.bossTransitionEndsAtMs || 0) > Date.now()) return false;
   if ((entities || []).some(actor => actor?.kind === 'hero' && isActorRecoveryRevealActive(actor, globals.time || 0))) return false;
   if (stageState.bossAvailable && !stageState.bossActive && !stageState.bossSummonRequired
@@ -964,7 +964,7 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   const now = Number(globals.time || 0);
   if (stageState.bossActive && stageState.bossTimerStartedAt == null) stageState.bossTimerStartedAt = now;
   combatTick({ globals, entities, call, now });
-  if (!stageState.bossActive && (entities || []).some(actor => actor?.kind === 'hero' && Number(actor.hp || 0) <= 0)) return false;
+  if (!allowDowned && !stageState.bossActive && (entities || []).some(actor => actor?.kind === 'hero' && Number(actor.hp || 0) <= 0)) return false;
   if (globals.GamePhase !== 'RUNTIME' || globals.BattleStartActive) return false;
 
   const current = getContinuousCombatStage(stageState);
@@ -998,7 +998,8 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
     if (!armContinuousCombatBoss(globals, entities, call)) return false;
     transition = { ...transition, stage: getContinuousCombatStage(globals.ContinuousCombatStage) };
   } else if (!spawnContinuousCombatStage({ globals, entities, call, state: transition.state })) return false;
-  if (!stageState.bossActive) {
+  if (!stageState.bossActive && onOrdinaryClear) onOrdinaryClear(stageState);
+  if (!stageState.bossActive && !onOrdinaryClear) {
     let healed = false;
     for (const hero of entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0)) {
       const maxHP = Math.max(0, Math.floor(Number(hero.maxHP) || 0));

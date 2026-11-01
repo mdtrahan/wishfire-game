@@ -58,7 +58,7 @@ function fixture({ lose = false, fault = false } = {}) {
   const options = { globals: g, entities: state.entities, presentationBarrier: { lanes: {} }, call,
     onBossTimeout: () => session.surrenderBossAttempt('boss_timeout'), onBossClear() { calls.push('boss_clear'); } };
   function run() {
-    for (let frame = 0; frame < 1500 && isRustCombatStage(g); frame++) runtime.tick({ ...options, entities: state.entities, nowMs: frame * 1000 / 30 });
+    for (let frame = 0; frame < 1500 && g.ContinuousCombatStage.bossActive; frame++) runtime.tick({ ...options, entities: state.entities, nowMs: frame * 1000 / 30 });
   }
   return { runtime, bridge: realBridge, g, state, rewards, calls, routes, warnings, run, options, spawns };
 }
@@ -89,14 +89,14 @@ test('bridge error releases its world and uses normal WFM failed-attempt recover
   assert.deepEqual(f.rewards, []); noLeaks(f.bridge);
 });
 
-test('localhost gate is lazy when off and refuses other stages and public origins', () => {
+test('localhost gate is lazy when off, admits every continuous stage and refuses public origins', () => {
   let loads = 0;
   const load = () => { loads++; throw Error('unexpected load'); };
   for (const location of [{ hostname: 'localhost', search: '' }, { hostname: 'localhost', search: '?rustCombat=0' },
     { hostname: 'example.org', search: '?rustCombat=1' }]) assert.equal(installRustCombat({}, { location, load }), undefined);
   assert.equal(loads, 0);
   for (const stage of [{ region: 2, stage: 1, bossActive: true }, { region: 1, stage: 1, bossActive: false }]) {
-    assert.equal(isRustCombatStage({ ContinuousCombatStageLoop: 1, ContinuousCombatStage: stage }), false);
+    assert.equal(isRustCombatStage({ ContinuousCombatStageLoop: 1, ContinuousCombatStage: stage }), true);
   }
 });
 

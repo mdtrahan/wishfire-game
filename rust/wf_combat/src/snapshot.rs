@@ -236,6 +236,10 @@ impl Sim {
             h.u(v.id as u64);
             h.u(v.team as u64);
             h.u(v.archetype as u64);
+            if crate::wfm::is_wfm(v.archetype) {
+                h.f(a.wfm_magic);
+                h.u(a.wfm_action as u64);
+            }
             h.v(v.pos);
             h.u(v.facing as u64);
             h.f(v.hp);

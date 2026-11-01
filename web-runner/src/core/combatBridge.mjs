@@ -45,6 +45,8 @@ export function createCombatBridge(instance) {
     describe: () => call({ kind: 'describe', data: {} }),
     create: config => call({ kind: 'create', data: { config } }),
     step: (world, request) => call({ kind: 'step', data: { world, request } }),
+    ordinaryClear: (world, encounter_id, transition_id) => call({ kind: 'ordinary_clear', data: { world, encounter_id, transition_id } }),
+    end: (world, encounter_id, expected_previous_step, reason) => call({ kind: 'step', data: { world, request: { encounter_id, expected_previous_step, end_encounter: reason } } }),
     inspect: (world, events_after = '0') => call({ kind: 'inspect', data: { world, events_after } }),
     spawn: (world, encounter_id, enemies) => call({ kind: 'spawn', data: { world, encounter_id, enemies } }),
     destroy: world => call({ kind: 'destroy', data: { world } }),

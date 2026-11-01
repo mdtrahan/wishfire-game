@@ -93,6 +93,8 @@ struct HeroInput {
     instance_id: String,
     definition_id: String,
     slot: u8,
+    #[serde(default)]
+    host_max_hp: Option<f32>,
     formation_offset: Point,
     stats: StatInput,
     hp: f32,
@@ -107,6 +109,8 @@ struct EnemyInput {
     hp: f32,
     #[serde(default)]
     summon_profiles: Vec<SummonProfile>,
+    #[serde(default)]
+    wfm_magic: Option<f32>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -117,15 +121,35 @@ struct SummonProfile {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct EncounterConfig {
+    #[serde(default)]
+    continuous: bool,
     encounter_id: String,
     seed: String,
     geometry: GeometryInput,
     heroes: Vec<HeroInput>,
     enemies: Vec<EnemyInput>,
 }
+#[derive(Clone, Copy, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum EndReason {
+    HostStageTransition,
+    HostTimeout,
+    AllDownRouted,
+}
+impl EndReason {
+    fn name(self) -> &'static str {
+        match self {
+            Self::HostStageTransition => "host_stage_transition",
+            Self::HostTimeout => "host_timeout",
+            Self::AllDownRouted => "all_down_routed",
+        }
+    }
+}
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct StepRequest {
+    #[serde(default)]
+    end_encounter: Option<EndReason>,
     encounter_id: String,
     expected_previous_step: String,
 }
@@ -153,6 +177,11 @@ enum Operation {
         world: u32,
         encounter_id: String,
         enemies: Vec<EnemyInput>,
+    },
+    OrdinaryClear {
+        world: u32,
+        encounter_id: String,
+        transition_id: String,
     },
     Destroy {
         world: u32,
@@ -230,6 +259,9 @@ struct World {
     sim: Sim,
     encounter_id: String,
     state: &'static str,
+    continuous: bool,
+    host_max_hp: BTreeMap<u32, f32>,
+    ordinary_clears: std::collections::BTreeSet<String>,
     events: Vec<Value>,
     identities: std::collections::BTreeSet<String>,
     host_ids: BTreeMap<u32, String>,
@@ -250,7 +282,7 @@ impl Transport {
     fn execute(&mut self, op: Operation) -> Result<Value, Value> {
         match op {
             Operation::Describe {} => Ok(json!({"abi_version":VERSION,"schema":SCHEMA,"hz":SIM_HZ,
-                "capabilities":["headless_slice_v1","initial_enemies","events_after","spawn_enemies"],
+                "capabilities":["headless_slice_v1","initial_enemies","events_after","spawn_enemies","end_encounter","wfm_enemies","autonomous_phoenix"],
                 "limits":{"request_bytes":MAX_REQUEST,"response_bytes":MAX_RESPONSE,"worlds":2,"responses":8,"inputs":8,"heroes":4,"enemies":MAX_ENEMIES,"hazards":MAX_EFFECTS,"projectiles":MAX_EFFECTS,"retained_events":MAX_EVENTS,"event_step_reserve":MAX_EVENTS/2,"floor_min_extent":256,"floor_max_extent":16384},
                 "resources":{"worlds":self.worlds.count(),"responses":self.responses.count(),"inputs":self.inputs.len()}})),
             Operation::Create { config } => {
@@ -269,6 +301,54 @@ impl Transport {
                     .insert(world)
                     .ok_or_else(|| error("resource_limit", "world", "world registry full", None))?;
                 Ok(json!({"world":handle,"snapshot":result["snapshot"],"events":result["events"]}))
+            }
+            Operation::OrdinaryClear {
+                world,
+                encounter_id,
+                transition_id,
+            } => {
+                let w = self.worlds.get_mut(world).ok_or_else(bad_world)?;
+                if encounter_id != w.encounter_id
+                    || !w.continuous
+                    || w.state != "running"
+                    || transition_id.is_empty()
+                    || transition_id.len() > 256
+                    || w.sim
+                        .actors
+                        .iter()
+                        .any(|a| a.view.team == Team::Enemy && a.alive())
+                {
+                    return Err(error(
+                        "invalid_transition",
+                        "ordinary_clear",
+                        "WFM respite requires a cleared ordinary wave",
+                        Some(w.sim.step_number),
+                    ));
+                }
+                let after = w.events.len();
+                if w.ordinary_clears.insert(transition_id) {
+                    for a in w
+                        .sim
+                        .actors
+                        .iter_mut()
+                        .filter(|a| a.view.team == Team::Hero && a.alive())
+                    {
+                        let max = w.host_max_hp[&a.view.id];
+                        let heal = ((f64::from(max) * 0.15).ceil() as f32) / max * a.view.max_hp;
+                        let before = a.view.hp;
+                        a.view.hp = (before + heal).min(a.view.max_hp);
+                        if a.view.hp > before {
+                            w.sim.events.push(Event::Healed {
+                                target: a.view.id,
+                                amount: a.view.hp - before,
+                                source: HealSource::PartyRestore,
+                            });
+                        }
+                    }
+                    w.collect();
+                    w.sim.refresh_snapshot();
+                }
+                Ok(w.result(after))
             }
             Operation::Destroy { world } => {
                 self.worlds.remove(world).ok_or_else(bad_world)?;
@@ -312,6 +392,33 @@ impl Transport {
                         Some(w.sim.step_number),
                     ));
                 }
+                if let Some(reason) = request.end_encounter {
+                    if w.state == "host_ended" {
+                        return Err(error(
+                            "terminal",
+                            "world",
+                            "encounter is terminal",
+                            Some(w.sim.step_number),
+                        ));
+                    }
+                    let after = w.events.len();
+                    w.sim.step_number += 1;
+                    w.sim.cancel_phoenix();
+                    let actors: Vec<_> = w.sim.actors.iter().map(|a| a.view.id).collect();
+                    for id in actors {
+                        w.event(
+                            json!({"kind":"despawned","data":{"actor":id,"reason":reason.name()}}),
+                        );
+                    }
+                    w.sim.actors.clear();
+                    w.sim.hazards.clear();
+                    w.sim.projectiles.clear();
+                    w.sim.encounter.complete = true;
+                    w.state = "host_ended";
+                    w.sim.refresh_snapshot();
+                    w.event(json!({"kind":"ended","data":{"reason":reason.name()}}));
+                    return Ok(w.result(after));
+                }
                 if w.state != "running" {
                     return Err(error(
                         "terminal",
@@ -330,6 +437,31 @@ impl Transport {
                     ));
                 }
                 let after = w.events.len();
+                if w.continuous {
+                    // Actors were created in formation-slot order, never archetype order.
+                    if let Some(id) = w
+                        .sim
+                        .phoenix
+                        .hero
+                        .filter(|id| {
+                            w.sim
+                                .actors
+                                .iter()
+                                .any(|a| a.view.id == *id && a.view.state == ActorState::Downed)
+                        })
+                        .or_else(|| {
+                            w.sim
+                                .actors
+                                .iter()
+                                .find(|a| {
+                                    a.view.team == Team::Hero && a.view.state == ActorState::Downed
+                                })
+                                .map(|a| a.view.id)
+                        })
+                    {
+                        w.sim.phoenix_hold(id);
+                    }
+                }
                 w.sim.step();
                 w.collect();
                 w.sim.defeats.clear();
@@ -382,6 +514,10 @@ fn kind(id: &str) -> Option<Archetype> {
         "slice.hero.hondo" => Archetype::Hondo,
         "slice.hero.runa" => Archetype::Runa,
         "slice.hero.kaja" => Archetype::Kaja,
+        "wfm.enemy.high_gobloc" => Archetype::WfmHighGobloc,
+        "wfm.enemy.skeleton" => Archetype::WfmSkeleton,
+        "wfm.enemy.chimerilass" => Archetype::WfmChimerilass,
+        "wfm.enemy.djinn" => Archetype::WfmDjinn,
         "slice.enemy.gobloc" => Archetype::Gobloc,
         "slice.enemy.orc" => Archetype::Orc,
         "slice.enemy.sniper" => Archetype::Sniper,
@@ -440,6 +576,11 @@ impl World {
         let mut heroes = c.heroes;
         heroes.sort_by_key(|h| h.slot);
         for h in &heroes {
+            if h.host_max_hp
+                .is_some_and(|hp| !hp.is_finite() || hp <= 0. || hp > 1_000_000.)
+            {
+                return Err(invalid("config.heroes.host_max_hp"));
+            }
             let k = kind(&h.definition_id)
                 .filter(|k| hero_index(*k).is_some())
                 .ok_or_else(|| invalid("config.heroes.definition_id"))?;
@@ -457,6 +598,11 @@ impl World {
             ));
         }
         for e in &c.enemies {
+            if e.wfm_magic
+                .is_some_and(|v| !v.is_finite() || !(0. ..=1_000_000.).contains(&v))
+            {
+                return Err(invalid("config.enemies.wfm_magic"));
+            }
             let k = kind(&e.definition_id)
                 .filter(|k| hero_index(*k).is_none())
                 .ok_or_else(|| invalid("config.enemies.definition_id"))?;
@@ -528,8 +674,24 @@ impl World {
             actor.view.hp = hp;
             host_ids.insert(actor.view.id, id.to_owned());
         }
+        let mut host_max_hp = BTreeMap::new();
         for (actor, hero) in sim.actors.iter_mut().zip(&heroes) {
+            host_max_hp.insert(actor.view.id, hero.host_max_hp.unwrap_or(hero.stats.hp));
             actor.formation_offset = hero.formation_offset.into();
+        }
+        for enemy in &c.enemies {
+            if let Some(magic) = enemy.wfm_magic {
+                let actor = sim
+                    .actors
+                    .iter_mut()
+                    .find(|a| {
+                        host_ids
+                            .get(&a.view.id)
+                            .is_some_and(|id| id == &enemy.spawn_key)
+                    })
+                    .unwrap();
+                actor.wfm_magic = magic;
+            }
         }
         sim.deaths();
         sim.refresh_snapshot();
@@ -537,6 +699,9 @@ impl World {
             sim,
             encounter_id: c.encounter_id,
             state: "running",
+            continuous: c.continuous,
+            host_max_hp,
+            ordinary_clears: std::collections::BTreeSet::new(),
             events: Vec::new(),
             identities,
             host_ids,
@@ -596,6 +761,8 @@ impl World {
             if e.spawn_key.is_empty()
                 || e.spawn_key.len() > 256
                 || !identities.insert(e.spawn_key.clone())
+                || e.wfm_magic
+                    .is_some_and(|v| !v.is_finite() || !(0. ..=1_000_000.).contains(&v))
                 || !e.stats.valid()
                 || !e.hp.is_finite()
                 || e.hp < 0.
@@ -618,16 +785,24 @@ impl World {
             {
                 return Err(invalid());
             }
-            batch.push((k, e.spawn_key.clone(), p, e.stats.resolved(), e.hp));
+            batch.push((
+                k,
+                e.spawn_key.clone(),
+                p,
+                e.stats.resolved(),
+                e.hp,
+                e.wfm_magic,
+            ));
         }
         self.identities = identities;
         self.state = "running";
         self.sim.encounter.complete = false;
         let after = self.events.len();
-        for (k, id, p, stats, hp) in batch {
+        for (k, id, p, stats, hp, magic) in batch {
             self.sim.spawn_actor(k, p, stats);
             let actor = self.sim.actors.last_mut().unwrap();
             actor.view.hp = hp;
+            actor.wfm_magic = magic.unwrap_or(stats.atk);
             self.host_ids.insert(actor.view.id, id);
         }
         self.sim.deaths();
@@ -670,11 +845,12 @@ impl World {
             {
                 self.state = "all_down";
                 self.event(json!({"kind":"all_down","data":{"heroes":self.sim.actors.iter().filter(|a|a.view.team==Team::Hero).map(|a|a.view.id).collect::<Vec<_>>()}}));
-            } else if !self
-                .sim
-                .actors
-                .iter()
-                .any(|a| a.view.team == Team::Enemy && a.alive())
+            } else if !self.continuous
+                && !self
+                    .sim
+                    .actors
+                    .iter()
+                    .any(|a| a.view.team == Team::Enemy && a.alive())
             {
                 self.state = "ended";
                 self.sim.encounter.complete = true;

@@ -7,9 +7,9 @@ import { permanentHeroModifiers } from '../web-runner/src/core/realtimeSkillStat
 import { projectCombatStat } from '../src/core/combatModifierRules.mjs';
 import { createContinuousCombatStageState, getContinuousCombatStage } from '../web-runner/src/core/continuousCombatStage.mjs';
 
-test('selected existing 1-1-boss has only slice-supported Troll content; ordinary Chapter 1 is excluded', () => {
+test('all Chapter 1 combatants have explicit definitions; Troll retains its R7 boss mapping', () => {
   const state = createContinuousCombatStageState(7);
-  assert.ok(getContinuousCombatStage(state).enemyNames.some(name => !SHADOW_DEFINITIONS[name]));
+  assert.ok(getContinuousCombatStage(state).enemyNames.every(name => SHADOW_DEFINITIONS[name]));
   const stage = getContinuousCombatStage({ ...state, bossActive: true });
   assert.equal(stage.id, '1-1-boss'); assert.deepEqual(stage.enemyNames, ['Troll']);
   assert.ok(stage.enemyNames.every(name => SHADOW_DEFINITIONS[name]));

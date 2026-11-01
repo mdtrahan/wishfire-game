@@ -3,6 +3,8 @@ use crate::{api::*, rng::Rng, tuning::*};
 pub struct Actor {
     pub view: ActorView,
     pub stats: Stats,
+    pub wfm_magic: f32,
+    pub wfm_action: u8,
     pub velocity: Vec2,
     pub formed_age: f32,
     pub target: Option<u32>,
@@ -107,6 +109,8 @@ impl Actor {
             Vec2::default()
         };
         let mut actor = Self {
+            wfm_magic: stats.atk,
+            wfm_action: 0,
             view: ActorView {
                 id,
                 team: if hero.is_some() {

@@ -2,13 +2,24 @@
 const heroSpeed = 78 * 1.6698;
 const base = (hp, atk, def, speed, reach, interval, evade = 0, special = 0) =>
   Object.freeze({ hp, atk, def, speed, reach, interval, evade, special });
+export const WFM_ENEMY_DEFINITIONS = Object.freeze({
+  Gobloc: { id: 'slice.enemy.gobloc', channel: 'physical', stats: base(140, 10, 0, 55, 40, 2.6) },
+  'High Gobloc': { id: 'wfm.enemy.high_gobloc', channel: 'physical', stats: base(70, 14, 14, 25.2, 46, 3.6) },
+  Lizardo: { id: 'slice.enemy.lizardo', channel: 'physical', stats: base(100, 22, 0, 45, 220, 4.5) },
+  Orc: { id: 'slice.enemy.orc', channel: 'physical', stats: base(210, 11, 0, 45, 63, 3) },
+  'High Orc': { id: 'slice.enemy.high_orc', channel: 'physical', stats: base(260, 30, 80, 32, 68, 4.2) },
+  Chimerilass: { id: 'wfm.enemy.chimerilass', channel: 'physical', stats: base(80, 8, 10, 25.2, 146, 5) },
+  Troll: { id: 'slice.boss.troll_brute', channel: 'physical', stats: base(1500, 165, 0, 40, 100, 4.5) },
+  Skeleton: { id: 'wfm.enemy.skeleton', channel: 'physical', stats: base(35, 8, 5, 25.2, 46, 3.6) },
+  Djinn: { id: 'wfm.enemy.djinn', channel: 'physical', stats: base(55, 6, 6, 25.2, 146, 5) },
+  Marid: { id: 'slice.enemy.marid', channel: 'magic', stats: base(235, 12, 10, heroSpeed * .95, 320, 4.5) },
+});
 export const SHADOW_DEFINITIONS = Object.freeze({
+  ...WFM_ENEMY_DEFINITIONS,
   Falie: { id: 'slice.hero.fara', channel: 'physical', stats: base(420, 26.4, 28, heroSpeed, 100, 1.8, .09, 30) },
   Huun: { id: 'slice.hero.hondo', channel: 'physical', stats: base(300, 40.8, 14, heroSpeed * 1.1, 45, 1.2, .12, 8) },
   Runa: { id: 'slice.hero.runa', channel: 'magic', stats: base(260, 36, 10, heroSpeed * .95, 270, 1.4, .05, 10) },
   Kojonn: { id: 'slice.hero.kaja', channel: 'magic', stats: base(280, 21.6, 16, heroSpeed * .95, 235, 1.6, .05, 16) },
-  Troll: { id: 'slice.boss.troll_brute', channel: 'physical', stats: base(1500, 165, 0, 40, 100, 4.5) },
-  Gobloc: { id: 'slice.enemy.gobloc', channel: 'physical', stats: base(140, 10, 0, 55, 40, 2.6) },
 });
 
 function number(value, name, positive = false) {
@@ -42,15 +53,20 @@ function entryHP(hp, hostMax, shadowMax) {
 export function shadowHero({ identity, key, slot, position, resolved, reference, hp, hostMaxHP }, origin) {
   const definition = SHADOW_DEFINITIONS[key];
   const stats = projectShadowStats(resolved, reference, definition);
-  return { instance_id: identity, definition_id: definition.id, slot,
+  return { instance_id: identity, definition_id: definition.id, slot, host_max_hp: hostMaxHP,
     formation_offset: { x: position.x - origin.x, y: position.y - origin.y }, stats,
     hp: entryHP(hp, hostMaxHP, stats.hp) };
 }
 
-export function shadowEnemy({ identity, key, position, resolved, reference, hp, hostMaxHP }) {
-  const definition = SHADOW_DEFINITIONS[key];
+export function shadowEnemy({ identity, key, position, resolved, reference, hp, hostMaxHP, speed, interval }) {
+  const definition = WFM_ENEMY_DEFINITIONS[key];
+  if (!definition) throw new Error(`WFM combat: unmapped enemy "${key}"`);
   const stats = projectShadowStats(resolved, reference, definition);
-  return { spawn_key: identity, definition_id: definition.id, position: { ...position }, stats,
+  if (definition.id.startsWith('wfm.')) {
+    stats.interval = interval ?? definition.stats.interval;
+    stats.speed = speed ?? definition.stats.speed;
+  }
+  return { ...(definition.id.startsWith('wfm.') ? { wfm_magic: number(resolved.MAG, 'enemy MAG') } : {}), spawn_key: identity, definition_id: definition.id, position: { ...position }, stats,
     hp: entryHP(hp, hostMaxHP, stats.hp) };
 }
 

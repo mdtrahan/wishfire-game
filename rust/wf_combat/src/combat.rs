@@ -662,7 +662,9 @@ impl Sim {
         #[cfg(feature = "reference-diagnostics")]
         crate::enmity_attribution::action(self, i);
         let a = self.actors[i].clone();
-        if a.action_heal {
+        if crate::wfm::is_wfm(a.view.archetype) {
+            self.wfm_impact(i, target);
+        } else if a.action_heal {
             self.actors[i].action_heal = false;
             self.enemy_heal_impact(i);
         } else if a.action_revive {

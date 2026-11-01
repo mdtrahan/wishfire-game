@@ -27,6 +27,7 @@ pub mod separation;
 pub mod snapshot;
 pub mod spotlight;
 pub mod tuning;
+pub mod wfm;
 
 use actors::Actor;
 use combat::Projectile;

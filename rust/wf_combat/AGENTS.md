@@ -6,10 +6,12 @@
 - Drain `defeats` and `materialized`, and consume `finish_requested` at the caller's orchestration boundaries. These outputs never advance host progression themselves.
 - `state_hash` covers combat and explicit inputs. The reference harness uses `hash_with_host` to retain the pinned legacy hash byte order.
 - `reference-diagnostics` enables frozen trial controls, observer taps and opaque host observations. Default builds exclude these paths. `bound-diagnostics` is optional measurement support.
-- Keep four-hero identity, numeric tuning, RNG consumption, action order and timings unchanged in this extraction. Definition catalogs, eight heroes, the full host protocol belong to later beads; the step-2 bridge exposes only the bounded headless subset.
+- Keep four-hero identity, numeric tuning, RNG consumption, action order and timings unchanged in this extraction. Eight heroes and the full host protocol belong to later beads; the bridge retains its bounded four-hero subset.
 - Validate with `CARGO_TARGET_DIR=/tmp/<task-target> cargo test --manifest-path rust/wf_combat/Cargo.toml --locked --offline`, then the harness suite. Keep build output outside the repository.
 
 ## Child DOX Index
 - None.
 
 - `Sim.floor` is per-world host geometry. Movement, ray clipping, hazards and projectile culling use it; default bounds preserve frozen slice hashes. Keep the harness geometry helpers defaulted.
+
+- `wfm.rs` owns distinct WFM High Gobloc/Skeleton melee and ordinary Chimerilass/Djinn ranged definitions. Chimerilass retains half-HP weighted healing; Djinn retains magic/physical single-target choices with absent-board fallback. Host supplies final stats and MAG; never alias these identities to slice enemies/bosses.
