@@ -1,4 +1,5 @@
 import { updateCombatDpsOverlay } from './systems/renderCombatDps.mjs';
+import { installRustCombat } from './systems/rustCombat.mjs';
 import { installRustCombatShadow } from './systems/rustCombatShadow.mjs';
 import { createEquipmentStorage } from './systems/equipmentStorage.mjs';
 import { createCombatProgression } from './systems/combatProgression.mjs';
@@ -1947,6 +1948,7 @@ async function main(){
   combatRuntimeGateway.setLayoutState(layoutState);
   const questCombat = createQuestCombatSession({ state, gameState, call: (name, ...args) => callFunctionWithContext(fnContext, name, ...args), sync: syncFromGlobals });
   const surrenderBossForDeparture = () => {
+    rustCombat?.stop();
     if (!questCombat.surrenderBossAttempt()) return false;
     heroProgressStorage.persistHeroProgressIfDirty({stateGlobals: state.globals, callFunctionWithContext, fnContext});
     return true;
@@ -1971,6 +1973,9 @@ async function main(){
   requireDevToolingRuntime().setBossResumeHandler(() => storyEntry.resumeBossActivity());
   const questUI = createQuestLadderUI({ canvas, gameState, layoutState, flow: storyEntry, getGold: () => state.globals.goldTotal || 0, getPuppetPresentation: () => actorPuppetPresentation });
   const rustCombatShadow = installRustCombatShadow({ state, gameState, getLayout: () => layoutState.getActiveLayoutId(), getEnemyRows: () => enemyRows });
+  const rustCombat = installRustCombat({ state, globals: state.globals, canvas, session: questCombat, progression: combatProgression,
+    getEnemyRows: () => enemyRows, call: (name, ...args) => callFunctionWithContext(fnContext, name, ...args),
+    advanceHostTime: options => combatSimulationTicker.advanceHostTime(options) });
   registerRuntimeLayouts(layoutState, {
     storyEntry,
     combatLayout,
@@ -3293,12 +3298,15 @@ function getStoryCardLiveLineState() {
       return;
     }
     if (shouldFreezeCombatSimulation(state, gameState)) {
+      rustCombat?.pause();
       combatSimulationTicker.reset();
       drawFrame();
       requestAnimationFrame(tick);
       return;
     }
-    combatSimulationTicker.tick({
+    const rustEncounter = rustCombat?.ownsEncounter();
+    if (rustEncounter) combatSimulationTicker.reset();
+    else combatSimulationTicker.tick({
       state, gameState, nowMs: performance.now(), fnContext, callFunctionWithContext,
       animationMath, layoutW, applyTurnGateGlobals, applyTurnGateIntent,
       createEnemyTurnIdleRecovery, runCombatStep: (name) => callFunctionWithContext(fnContext, name),
@@ -3319,7 +3327,7 @@ function getStoryCardLiveLineState() {
     const enemyLineClearPressureActive = false;
     const stageBefore = state.globals.ContinuousCombatStage;
     const previousStageKey = continuousCombatWaveClearEventId(stageBefore);
-    const continuousStageAdvanced = maybeAdvanceContinuousCombatStage({
+    const stageAdvanceOptions = {
       globals: state.globals,
       entities: state.entities,
       presentationBarrier: getPresentationTurnBarrier({
@@ -3329,9 +3337,12 @@ function getStoryCardLiveLineState() {
       call: (name, ...args) => callFunctionWithContext(fnContext, name, ...args),
       onBossTimeout: () => questCombat.surrenderBossAttempt('boss_timeout'),
       onBossClear: () => combatProgression.observe(),
-    });
+    };
+    const continuousStageAdvanced = rustEncounter
+      ? rustCombat.tick({ ...stageAdvanceOptions, nowMs: performance.now() })
+      : maybeAdvanceContinuousCombatStage({ ...stageAdvanceOptions });
     if (continuousStageAdvanced && previousStageKey) combatProgression.record({ id: previousStageKey, type: 'wave_clear' });
-    if (checkMainRuntimeCombatOutcome()) {
+    if (!rustEncounter && checkMainRuntimeCombatOutcome()) {
       heroProgressStorage.persistHeroProgressIfDirty({ stateGlobals: state.globals, callFunctionWithContext, fnContext });
       drawFrame();
       requestAnimationFrame(tick);

@@ -232,6 +232,7 @@ struct World {
     state: &'static str,
     events: Vec<Value>,
     identities: std::collections::BTreeSet<String>,
+    host_ids: BTreeMap<u32, String>,
 }
 struct Transport {
     inputs: BTreeMap<u32, Box<[u8]>>,
@@ -520,9 +521,12 @@ impl World {
                 return Err(invalid("config.enemies.summon_profiles"));
             }
         }
-        for (k, _, p, stats, hp) in spawns {
+        let mut host_ids = BTreeMap::new();
+        for (k, id, p, stats, hp) in spawns {
             sim.spawn_actor(k, p, stats.resolved());
-            sim.actors.last_mut().unwrap().view.hp = hp;
+            let actor = sim.actors.last_mut().unwrap();
+            actor.view.hp = hp;
+            host_ids.insert(actor.view.id, id.to_owned());
         }
         for (actor, hero) in sim.actors.iter_mut().zip(&heroes) {
             actor.formation_offset = hero.formation_offset.into();
@@ -535,6 +539,7 @@ impl World {
             state: "running",
             events: Vec::new(),
             identities,
+            host_ids,
         };
         w.collect();
         Ok(w)
@@ -613,15 +618,17 @@ impl World {
             {
                 return Err(invalid());
             }
-            batch.push((k, p, e.stats.resolved(), e.hp));
+            batch.push((k, e.spawn_key.clone(), p, e.stats.resolved(), e.hp));
         }
         self.identities = identities;
         self.state = "running";
         self.sim.encounter.complete = false;
         let after = self.events.len();
-        for (k, p, stats, hp) in batch {
+        for (k, id, p, stats, hp) in batch {
             self.sim.spawn_actor(k, p, stats);
-            self.sim.actors.last_mut().unwrap().view.hp = hp;
+            let actor = self.sim.actors.last_mut().unwrap();
+            actor.view.hp = hp;
+            self.host_ids.insert(actor.view.id, id);
         }
         self.sim.deaths();
         self.sim.refresh_snapshot();
@@ -676,8 +683,17 @@ impl World {
         }
     }
     fn result(&self, after: usize) -> Value {
-        let actors:Vec<_> = self.sim.actors.iter().map(|a|json!({"actor_id":a.view.id,"kind":a.view.archetype,"team":if a.view.team==Team::Hero {"hero"} else {"enemy"},"pos":{"x":a.view.pos.x,"y":a.view.pos.y},"hp":a.view.hp,"max_hp":a.view.max_hp,"downed":a.view.state==ActorState::Downed})).collect();
-        json!({"snapshot":{"schema":SCHEMA,"encounter_id":self.encounter_id,"step":self.sim.step_number.to_string(),"combat_steps":self.sim.combat_steps.to_string(),"state":self.state,"actors":actors,"live_enemies":self.sim.actors.iter().filter(|a|a.view.team==Team::Enemy && a.alive()).count(),"last_event_sequence":self.events.len().to_string(),"gameplay_hash":format!("{:016x}",self.sim.state_hash()),"geometry":{"floor":{"min":{"x":self.sim.floor.min.x,"y":self.sim.floor.min.y},"max":{"x":self.sim.floor.max.x,"y":self.sim.floor.max.y}}}},"events":&self.events[after..]})
+        let actors:Vec<_> = self.sim.actors.iter().map(|a|json!({"actor_id":a.view.id,"host_id":self.host_ids.get(&a.view.id),"state":format!("{:?}",a.view.state).to_lowercase(),"state_age":a.view.state_age,"state_duration":a.view.state_duration,"impact_at":a.view.impact_at,"facing":format!("{:?}",a.view.facing).to_lowercase(),"ward":a.view.ward,"scale":a.view.scale,"kind":a.view.archetype,"team":if a.view.team==Team::Hero {"hero"} else {"enemy"},"pos":{"x":a.view.pos.x,"y":a.view.pos.y},"hp":a.view.hp,"max_hp":a.view.max_hp,"downed":a.view.state==ActorState::Downed})).collect();
+        let hazards: Vec<_> = self.sim.snapshot().hazards.iter().map(|h| {
+            let shape = match h.shape {
+                Shape::Circle { radius } => json!({"kind":"circle","radius":radius}),
+                Shape::Ring { inner, outer } => json!({"kind":"ring","inner":inner,"outer":outer}),
+                Shape::Cone { length, half_angle_rad } => json!({"kind":"cone","length":length,"half_angle_rad":half_angle_rad}),
+                Shape::Line { length, width } => json!({"kind":"line","length":length,"width":width}),
+            };
+            json!({"id":h.id,"hostile":h.hostile,"origin":{"x":h.origin.x,"y":h.origin.y},"dir":{"x":h.dir.x,"y":h.dir.y},"shape":shape})
+        }).collect();
+        json!({"snapshot":{"time":self.sim.snapshot().time,"combat_time":self.sim.snapshot().combat_time,"hazards":hazards,"camera_focus":{"x":self.sim.snapshot().camera_focus.x,"y":self.sim.snapshot().camera_focus.y},"schema":SCHEMA,"encounter_id":self.encounter_id,"step":self.sim.step_number.to_string(),"combat_steps":self.sim.combat_steps.to_string(),"state":self.state,"actors":actors,"live_enemies":self.sim.actors.iter().filter(|a|a.view.team==Team::Enemy && a.alive()).count(),"last_event_sequence":self.events.len().to_string(),"gameplay_hash":format!("{:016x}",self.sim.state_hash()),"geometry":{"floor":{"min":{"x":self.sim.floor.min.x,"y":self.sim.floor.min.y},"max":{"x":self.sim.floor.max.x,"y":self.sim.floor.max.y}}}},"events":&self.events[after..]})
     }
 }
 thread_local! { static TRANSPORT: RefCell<Transport> = RefCell::new(Transport::new()); }
