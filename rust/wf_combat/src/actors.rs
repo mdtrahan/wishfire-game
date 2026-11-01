@@ -3,6 +3,8 @@ use crate::{api::*, rng::Rng, tuning::*};
 pub struct Actor {
     pub view: ActorView,
     pub stats: Stats,
+    pub wfm_magic: f32,
+    pub wfm_action: u8,
     pub velocity: Vec2,
     pub formed_age: f32,
     pub target: Option<u32>,
@@ -107,6 +109,8 @@ impl Actor {
             Vec2::default()
         };
         let mut actor = Self {
+            wfm_magic: stats.atk,
+            wfm_action: 0,
             view: ActorView {
                 id,
                 team: if hero.is_some() {
@@ -361,13 +365,39 @@ impl crate::Sim {
             self.formation_origin
         }
     }
+    pub fn spawn_floor(&self, kind: Archetype, radius: f32) -> crate::math::Floor {
+        if !self.contain_bodies {
+            return self.floor;
+        }
+        let (half, top, bottom) = if is_boss(kind) {
+            (176., 370., 40.)
+        } else {
+            (112., 210., 30.)
+        };
+        crate::math::Floor {
+            min: self.floor.min + Vec2::new(half - radius, top - radius),
+            max: self.floor.max - Vec2::new(half - radius, bottom - radius),
+        }
+    }
+    pub fn actor_floor(&self, i: usize) -> crate::math::Floor {
+        let a = &self.actors[i].view;
+        self.spawn_floor(a.archetype, a.radius)
+    }
     pub fn spawn_actor(&mut self, kind: Archetype, pos: Vec2, resolved: Stats) -> u32 {
         let id = self.next_id;
         self.next_id += 1;
         self.actors.push(Actor::new(
             id,
             kind,
-            self.floor.point(
+            self.spawn_floor(
+                kind,
+                if is_boss(kind) {
+                    BOSS_BODY_RADIUS
+                } else {
+                    BODY_RADIUS
+                },
+            )
+            .point(
                 pos,
                 if is_boss(kind) {
                     BOSS_BODY_RADIUS

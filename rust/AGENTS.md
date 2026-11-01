@@ -41,3 +41,9 @@
 - Combat outcome uses living hero count and turn eligibility uses individual actor HP. Enemy-target shadow exports accept six fixed hero records; update every JS caller and regenerate WASM with ABI changes.
 
 - Party-damage total-HP export accepts six hero HP values plus actual member count and damage. The shared barrier still absorbs once per party-wide damage event.
+
+- Continuous combat worlds retain actor clocks/wards across ordinary spawn batches. The fixed `ordinary_clear` respite validates an empty field and deduplicates a host transition ID; round 15% in host max-HP units before projection. EndEncounter emits despawn/ended facts without combat updates or kills. Continuous worlds select autonomous Phoenix by creation slot order and retain its selected recipient.
+
+- Combat admits at most four heroes with party-order slots 0..3. Phoenix selects the lowest downed party slot; saved formation cells never enter the Rust host adapter. `geometry.contain_bodies` reserves source body bounds inside the host viewport without changing collision radii or reach.
+
+- Combat ABI `wave_chest` requires an empty continuous field and returns chest state with empty rewards. Spawn rejects an unfinished chest pause. Opt-in `spawn_markers` reserves exact host enemy profiles through the slice countdown and emergence clip; pending entries count toward limits, live-enemy observations and gameplay hashes. Snapshots expose Groove and meter without recomputing them in JS.

@@ -112,3 +112,5 @@
 - The lamp phone gate includes the isolated Bag-upgrade component proof. Changes to its presentation module, CSS, shared close/medallion assets or strip progress must trigger `test:lamp-ui`; the suite runs browser files serially.
 
 - Shared `modalClose.mjs` and Training Ground `combatProgressionUI.mjs` changes route through the existing lamp/Training five-profile presentation guard. Preserve Bag coverage when extending the shared close consumer set.
+
+- `qa_rust_combat_playtest2.mjs` connects to QA_PORT (default8797), isolates browser state and captures full-height Rust combat at native DPR2. Fixtures use the existing three-part QA pause contract before presenting snapshots; inspect all frames before accepting the result.

@@ -17,7 +17,7 @@ impl Sim {
         let pos = a.view.pos;
         let hop = self.marid_hop_distance();
         let end = pos + dir * hop;
-        if self.floor.point(end, a.view.radius).distance(end) > 0.001 {
+        if self.actor_floor(i).point(end, a.view.radius).distance(end) > 0.001 {
             return None;
         }
         let mut clear = f32::INFINITY;

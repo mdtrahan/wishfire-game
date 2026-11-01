@@ -21,7 +21,7 @@ export function restoreHeroesToFullHP({ state, call, reason = 'manual' }) {
 }
 
 export function recoverContinuousOrdinaryDefeatIfNeeded({ state, session } = {}) {
-  if (!hasContinuousOrdinaryHeroKO(state)) return false;
+  if (state.globals.RustCombatAuthority || !hasContinuousOrdinaryHeroKO(state)) return false;
   return session?.recoverContinuousDefeat?.() || false;
 }
 

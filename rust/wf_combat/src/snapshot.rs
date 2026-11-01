@@ -130,6 +130,9 @@ impl Sim {
             h.v(self.floor.min);
             h.v(self.floor.max);
         }
+        if self.contain_bodies {
+            h.u(0x424f4459424f554e);
+        }
         h.v(self.cfg.arena_size);
         h.f(self.cfg.visible_width);
         h.f(self.cfg.visible_height);
@@ -236,6 +239,10 @@ impl Sim {
             h.u(v.id as u64);
             h.u(v.team as u64);
             h.u(v.archetype as u64);
+            if crate::wfm::is_wfm(v.archetype) {
+                h.f(a.wfm_magic);
+                h.u(a.wfm_action as u64);
+            }
             h.v(v.pos);
             h.u(v.facing as u64);
             h.f(v.hp);

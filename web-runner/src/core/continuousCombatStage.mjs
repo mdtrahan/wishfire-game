@@ -1,3 +1,4 @@
+import { authorSubwaveStages } from './continuousCombatSubwaves.mjs';
 import { resetRealtimeSkillAttempt } from './realtimeSkillState.mjs';
 import { clearHeroWards } from './heroWard.mjs';
 import { computeCombatPower } from './combatPower.mjs';
@@ -789,6 +790,14 @@ export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase
   }).filter(entry => Number.isInteger(entry.slotIndex));
 }
 
+export function buildChapterOneSubwaveStages(enemyRows, { seed = 1, partyCP = 0, enemySize = 40 } = {}) {
+  return authorSubwaveStages(Array.from({ length: continuousCombatStagesForRegion(1) }, (_, index) => ({
+    stage: index + 1,
+    waves: Array.from({ length: continuousCombatWavesForStage(1, index + 1) }, (_, wave) =>
+      buildContinuousCombatSpawnPlan(enemyRows, { ...createContinuousCombatStageState(seed, { stage: index + 1 }), wave: wave + 1, transitions: wave }, { partyCP, enemySize }).map(entry => entry.row.name)),
+  })));
+}
+
 function spawnContinuousCombatStage({ globals, entities, call, state }) {
   const slotBase = 0;
   const plan = buildContinuousCombatSpawnPlan(globals.EnemyData, state, { slotBase, partyCP: getContinuousCombatPartyCP(entities), enemySize: Number(globals.EnemySize || 40) });
@@ -948,13 +957,13 @@ export function tickContinuousCombatStageJS({ globals, entities, call, now }) {
   }
 }
 
-export function maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier, call, runCombatStep, onBossTimeout, onBossClear, combatTick = tickContinuousCombatStageJS } = {}) {
+export function maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier, call, runCombatStep, onBossTimeout, onBossClear, onOrdinaryClear, allowDowned = false, combatTick = tickContinuousCombatStageJS } = {}) {
   if (!globals || Number(globals.ContinuousCombatStageLoop || 0) !== 1) return false;
   if (globals.DevToolingPaused || globals.QaScenarioPaused || globals.QaFixtureHoldTurn) return false;
   const stageState = globals.ContinuousCombatStage;
   if (!stageState) return false;
   if (recordContinuousCombatWavePackProgress(stageState, entities)) globals.HeroProgressDirty = true;
-  if (!stageState.bossActive && (entities || []).some(actor => actor?.kind === 'hero' && Number(actor.hp || 0) <= 0)) return false;
+  if (!allowDowned && !stageState.bossActive && (entities || []).some(actor => actor?.kind === 'hero' && Number(actor.hp || 0) <= 0)) return false;
   if (stageState.bossActive && Number(stageState.bossTransitionEndsAtMs || 0) > Date.now()) return false;
   if ((entities || []).some(actor => actor?.kind === 'hero' && isActorRecoveryRevealActive(actor, globals.time || 0))) return false;
   if (stageState.bossAvailable && !stageState.bossActive && !stageState.bossSummonRequired
@@ -964,7 +973,7 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   const now = Number(globals.time || 0);
   if (stageState.bossActive && stageState.bossTimerStartedAt == null) stageState.bossTimerStartedAt = now;
   combatTick({ globals, entities, call, now });
-  if (!stageState.bossActive && (entities || []).some(actor => actor?.kind === 'hero' && Number(actor.hp || 0) <= 0)) return false;
+  if (!allowDowned && !stageState.bossActive && (entities || []).some(actor => actor?.kind === 'hero' && Number(actor.hp || 0) <= 0)) return false;
   if (globals.GamePhase !== 'RUNTIME' || globals.BattleStartActive) return false;
 
   const current = getContinuousCombatStage(stageState);
@@ -998,7 +1007,8 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
     if (!armContinuousCombatBoss(globals, entities, call)) return false;
     transition = { ...transition, stage: getContinuousCombatStage(globals.ContinuousCombatStage) };
   } else if (!spawnContinuousCombatStage({ globals, entities, call, state: transition.state })) return false;
-  if (!stageState.bossActive) {
+  if (!stageState.bossActive && onOrdinaryClear) onOrdinaryClear(stageState);
+  if (!stageState.bossActive && !onOrdinaryClear) {
     let healed = false;
     for (const hero of entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0)) {
       const maxHP = Math.max(0, Math.floor(Number(hero.maxHP) || 0));

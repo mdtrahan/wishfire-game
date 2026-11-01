@@ -1,4 +1,6 @@
-// Slice camera.rs spring, .5 zoom and .75 ground projection. WFM owns the viewport band.
+import { COMBAT_VIEW } from './rustCombatArena.mjs';
+// Slice spring and pixel scale; WFM supplies the unobstructed viewport.
+const MID=(COMBAT_VIEW.top+COMBAT_VIEW.bottom)/2;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 export function createSliceCombatCamera() {
   let cx=0,cy=0,vx=0,vy=0,started=false,viewX=null,viewY=null;
@@ -16,18 +18,18 @@ export function createSliceCombatCamera() {
       const tx=hx+clamp((nearestX-hx)*.3,-40,40),ty=hy+clamp((nearestY-hy)*.3,-180,180)-50;
       if(!started){cx=tx;cy=ty;started=true;}
       if(dt>0){let off=cx-tx,decay=Math.exp(-3.5*dt),change=(vx+3.5*off)*dt;cx=tx+(off+change)*decay;vx=(vx-3.5*change)*decay;off=cy-ty;decay=Math.exp(-7*dt);change=(vy+7*off)*dt;cy=ty+(off+change)*decay;vy=(vy-7*change)*decay;}
-      const floor=s.geometry.floor,halfX=360,halfY=(366-174)/(2*.5*.75);
+      const floor=s.geometry.floor,halfX=360,halfY=(COMBAT_VIEW.bottom-COMBAT_VIEW.top)/(2*.5*.75);
       cx=floor.max.x-floor.min.x<halfX*2?(floor.min.x+floor.max.x)/2:clamp(cx,floor.min.x+halfX,floor.max.x-halfX);
       cy=floor.max.y-floor.min.y<halfY*2?(floor.min.y+floor.max.y)/2:clamp(cy,floor.min.y+halfY,floor.max.y-halfY);
-      // Keep the same source body bounds and party fallback inside WFM's existing HUD band.
+      // Source body bounds keep the party and boss inside the phone frame.
       const heroMinX=minX,heroMaxX=maxX,heroMinY=minY,heroMaxY=maxY;
       for(const a of s.actors)if(a.team==='enemy'&&a.hp>0&&a.kind.startsWith('boss')){minX=Math.min(minX,a.pos.x-160);maxX=Math.max(maxX,a.pos.x+160);minY=Math.min(minY,a.pos.y-370);maxY=Math.max(maxY,a.pos.y+40);break;}
-      const lowX=maxX-344,highX=minX+344,lowY=maxY-(366-270)/.375,highY=minY+(270-174)/.375;
+      const lowX=maxX-344,highX=minX+344,lowY=maxY-(COMBAT_VIEW.bottom-MID)/.375,highY=minY+(MID-COMBAT_VIEW.top)/.375;
       {const lo=heroMaxX-344,hi=heroMinX+344,fit=lowX<=highX?clamp(cx,lowX,highX):lo<=hi?clamp((lowX+highX)/2,lo,hi):(lo+hi)/2;if(fit!==cx)vx=0;cx=fit;}
-      {const lo=heroMaxY-(366-270)/.375,hi=heroMinY+(270-174)/.375,fit=lowY<=highY?clamp(cy,lowY,highY):lo<=hi?clamp((lowY+highY)/2,lo,hi):(lo+hi)/2;if(fit!==cy)vy=0;cy=fit;}
+      {const lo=heroMaxY-(COMBAT_VIEW.bottom-MID)/.375,hi=heroMinY+(MID-COMBAT_VIEW.top)/.375,fit=lowY<=highY?clamp(cy,lowY,highY):lo<=hi?clamp((lowY+highY)/2,lo,hi):(lo+hi)/2;if(fit!==cy)vy=0;cy=fit;}
     },
     x(x){return(x-(viewX??cx))*camera.zoom+180+camera.offsetX;},
-    y(y){return(y-(viewY??cy))*camera.zoom*.75+270+camera.offsetY;},
+    y(y){return(y-(viewY??cy))*camera.zoom*.75+MID+camera.offsetY;},
     project(x,y){point.x=camera.x(x);point.y=camera.y(y);return point;},
     reset(){viewX=viewY=null;started=false;vx=vy=0;camera.offsetX=camera.offsetY=0;},
   };return camera;

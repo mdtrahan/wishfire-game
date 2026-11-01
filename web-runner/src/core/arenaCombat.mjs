@@ -65,7 +65,7 @@ function slotFor(hero, index, placement) {
   const placed = placement?.[String(hero?.heroInstanceKey || '').replace(/#1$/, '').toLowerCase()] || placement?.[heroName(hero)];
   return HERO_FORMATION_SLOTS[placed?.cell] || HERO_FORMATION_SLOTS[index % HERO_FORMATION_SLOTS.length];
 }
-function formationSlots(heroes, placement) {
+export function formationSlots(heroes, placement) {
   const occupied = new Set();
   const slots = heroes.map((hero, index) => {
     const copy = /#(\d+)$/.exec(String(hero.heroInstanceKey || ''));

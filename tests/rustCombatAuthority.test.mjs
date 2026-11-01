@@ -15,10 +15,20 @@ const progressSource = fs.readFileSync(new URL('../web-runner/systems/heroProgre
 const persistHeroProgressIfDirty = new Function('window', `${progressSource.replace(/^import .*\n/gm, '').replace(/export /g, '')}; return persistHeroProgressIfDirty;`)({ localStorage: { setItem: (k, v) => globalThis.window.localStorage.setItem(k, v) } });
 const wasm = new WebAssembly.Module(fs.readFileSync(new URL('../web-runner/assets/simulation_core.wasm', import.meta.url)));
 const noLeaks = bridge => assert.deepEqual(bridge.describe().resources, { worlds: 0, responses: 0, inputs: 1 });
-function fixture({ lose = false, fault = false } = {}) {
+function fixture({ lose = false, fault = false, deathObjects = false } = {}) {
   const realBridge = createCombatBridge(new WebAssembly.Instance(wasm));
   const spawns = [];
-  const bridge = { ...realBridge, spawn(...args) { spawns.push(args); return realBridge.spawn(...args); },
+  let presented, deathObjectSnapshots=0;
+  const bridge = { ...realBridge, step(...args) {
+    const next=realBridge.step(...args);
+    if(deathObjects && next.events.some(e=>e.body.kind==='died')) {
+      deathObjectSnapshots++;
+      next.snapshot.projectiles.push({id:999,kind:'bomb',team:'enemy',pos:{x:456,y:430},height:0,dir:{x:1,y:0}});
+      next.snapshot.hazards.push({id:998,kind:'lizardo_drop',phase:'locked'});
+      next.snapshot.actors[0].encased=1;
+    }
+    return next;
+  }, spawn(...args) { spawns.push(args); return realBridge.spawn(...args); },
     ...(fault ? { step() { throw new Error('bridge fault'); } } : {}) };
   const rows = ['Gobloc', 'Troll'].map(name => ({ name, HP: name === 'Troll' ? 1500 : 140, ATK: name === 'Troll' ? 165 : 10, DEF: 1, MAG: 1, RES: 1, SPD: 8 }));
   const heroes = ['Falie', 'Huun', 'Runa', 'Kojonn'].map((name, i) => {
@@ -54,13 +64,13 @@ function fixture({ lose = false, fault = false } = {}) {
   session.surrenderBossAttempt = function(reason) { routes.push(reason); return original.call(this, reason); };
   const clock = createCombatSimulationTicker({ isBagProgressBlocked: () => false });
   const runtime = createRustCombatRuntime({ state, bridge, session, call, getEnemyRows: () => rows,
-    advanceHostTime: clock.advanceHostTime, warn: (...args) => warnings.push(args) });
+    present: snapshot => { presented=snapshot; }, advanceHostTime: clock.advanceHostTime, warn: (...args) => warnings.push(args) });
   const options = { globals: g, entities: state.entities, presentationBarrier: { lanes: {} }, call,
     onBossTimeout: () => session.surrenderBossAttempt('boss_timeout'), onBossClear() { calls.push('boss_clear'); } };
   function run() {
-    for (let frame = 0; frame < 1500 && isRustCombatStage(g); frame++) runtime.tick({ ...options, entities: state.entities, nowMs: frame * 1000 / 30 });
+    for (let frame = 0; frame < 1500 && g.ContinuousCombatStage.bossActive; frame++) runtime.tick({ ...options, entities: state.entities, nowMs: frame * 1000 / 30 });
   }
-  return { runtime, bridge: realBridge, g, state, rewards, calls, routes, warnings, run, options, spawns };
+  return { get deathObjectSnapshots(){return deathObjectSnapshots;}, get presented(){return presented;}, runtime, bridge: realBridge, g, state, rewards, calls, routes, warnings, run, options, spawns };
 }
 
 test('real Rust boss death clears the WFM stage with one boss receipt and no JS combat entrypoints', () => {
@@ -89,14 +99,14 @@ test('bridge error releases its world and uses normal WFM failed-attempt recover
   assert.deepEqual(f.rewards, []); noLeaks(f.bridge);
 });
 
-test('localhost gate is lazy when off and refuses other stages and public origins', () => {
+test('localhost gate is lazy when off, admits every continuous stage and refuses public origins', () => {
   let loads = 0;
   const load = () => { loads++; throw Error('unexpected load'); };
   for (const location of [{ hostname: 'localhost', search: '' }, { hostname: 'localhost', search: '?rustCombat=0' },
     { hostname: 'example.org', search: '?rustCombat=1' }]) assert.equal(installRustCombat({}, { location, load }), undefined);
   assert.equal(loads, 0);
   for (const stage of [{ region: 2, stage: 1, bossActive: true }, { region: 1, stage: 1, bossActive: false }]) {
-    assert.equal(isRustCombatStage({ ContinuousCombatStageLoop: 1, ContinuousCombatStage: stage }), false);
+    assert.equal(isRustCombatStage({ ContinuousCombatStageLoop: 1, ContinuousCombatStage: stage }), true);
   }
 });
 
@@ -241,4 +251,16 @@ test('boss rewards settle at death and stage advance waits exactly for the sourc
   assert.equal(f.calls.filter(x => x === 'boss_clear').length, 1);
   assert.deepEqual(f.rewards, reward);
   assert.equal(f.calls.filter(x => x === 'SettleContinuousCombatRewards').length, 1);
+});
+
+
+test('destroyed Rust world cannot carry bombs, hazards or stun film into its boss presentation tail', () => {
+ const f=fixture({deathObjects:true});let frame=0;
+ for(;frame<1500&&f.g.RustCombatReceipt?.outcome!=='ended';frame++) f.runtime.tick({...f.options,nowMs:frame*1000/30});
+ assert.equal(f.runtime.read().active,false);assert.ok(f.deathObjectSnapshots>0,'pre-end Rust snapshot held a live bomb');
+ assert.deepEqual(f.runtime.read().snapshot.projectiles,[],'EndEncounter removed its projectiles');
+ assert.deepEqual(f.presented.projectiles,[]);assert.deepEqual(f.presented.hazards,[]);
+ f.runtime.tick({...f.options,nowMs:frame*1000/30});
+ assert.deepEqual(f.presented.projectiles,[]);assert.deepEqual(f.presented.hazards,[]);
+ assert.ok(f.presented.actors.every(a=>a.encased===0));f.runtime.dispose();
 });

@@ -103,7 +103,7 @@ impl Sim {
             })
             .map(|(t, _)| t)?;
         let p = self.actors[t].view.pos;
-        let spot = self.floor.point(
+        let spot = self.actor_floor(i).point(
             p + (a.view.pos - p).normalized() * REVIVE_APPROACH_RANGE,
             a.view.radius,
         );
@@ -273,7 +273,9 @@ impl Sim {
             let delta = goal - pos;
             let desired = delta.normalized() * a.speed().min(delta.length() * 5.);
             (velocity, heading) = crate::math::steer(desired, velocity, heading, a.speed());
-            pos = self.floor.point(pos + velocity * SIM_DT, a.view.radius);
+            pos = self
+                .actor_floor(i)
+                .point(pos + velocity * SIM_DT, a.view.radius);
             if !h.hits(pos, h.hit_radius(a.view.radius)) {
                 return (step + 1) as f32 * SIM_DT;
             }
@@ -361,7 +363,7 @@ impl Sim {
             let mut distance = 8.;
             while distance <= 2400. {
                 let next = p + ray * distance;
-                if next != self.floor.point(next, a.view.radius) {
+                if next != self.actor_floor(i).point(next, a.view.radius) {
                     break;
                 }
                 if !h.hits(next, padding)
@@ -393,12 +395,12 @@ impl Sim {
             // allowing less than the full comfort/arrival margin when boxed in.
             let bomb = h.view.kind == HazardKind::LizardoDrop;
             let point = if bomb {
-                self.floor.point(point, a.view.radius)
+                self.actor_floor(i).point(point, a.view.radius)
             } else {
                 point
             };
             // Other hazards retain their existing wall and rim rejection.
-            if point != self.floor.point(point, a.view.radius)
+            if point != self.actor_floor(i).point(point, a.view.radius)
                 || h.hits(
                     point,
                     if bomb {
@@ -506,7 +508,7 @@ impl Sim {
                 }
             }
             let point = p + ray * distance;
-            if point != self.floor.point(point, a.view.radius) {
+            if point != self.actor_floor(i).point(point, a.view.radius) {
                 continue;
             }
             let overlap = self.path_overlap(i, point, Some(h.view.id));
@@ -655,7 +657,7 @@ impl Sim {
                 || a.dodge_hazard != Some(id)
                 || h.hits(a.destination, h.hit_radius(a.view.radius))
                 || a.view.pos.distance(a.destination) < 3.
-                || a.destination != self.floor.point(a.destination, a.view.radius)
+                || a.destination != self.actor_floor(i).point(a.destination, a.view.radius)
                 || self.hazards.iter().any(|other| {
                     self.known_threat(i, other)
                         && other.hits(a.destination, other.hit_radius(a.view.radius))
@@ -686,6 +688,12 @@ impl Sim {
             self.actors[i].view.ai_intent = AiIntent::Retreat;
             return;
         }
+        if let Some(p) = self.chest_goal(i) {
+            self.actors[i].target = None;
+            self.actors[i].destination = p;
+            self.actors[i].view.ai_intent = AiIntent::Regroup;
+            return;
+        }
         if let Some(p) = self
             .interest_points
             .iter()
@@ -703,7 +711,7 @@ impl Sim {
             self.actors[i].destination = if a.view.pos.distance(p) <= REVIVE_APPROACH_RANGE + 5. {
                 a.view.pos
             } else {
-                self.floor.point(
+                self.actor_floor(i).point(
                     p + (a.view.pos - p).normalized() * REVIVE_APPROACH_RANGE,
                     a.view.radius,
                 )
@@ -778,7 +786,7 @@ impl Sim {
                     self.actors[i].destination = a.view.pos;
                     let mut best = f32::INFINITY;
                     for n in 0..32 {
-                        let candidate = self.floor.point(
+                        let candidate = self.actor_floor(i).point(
                             p + direction(n as f32 * TAU / 32.) * reach * 0.9,
                             a.view.radius,
                         );
@@ -836,8 +844,9 @@ impl Sim {
                 self.actors[i].view.ai_intent = AiIntent::None;
             } else {
                 let advance = (self.floor.min + self.floor.max) * 0.5;
-                self.actors[i].destination =
-                    self.floor.point(advance + TRAVEL_SLOTS[k], a.view.radius);
+                self.actors[i].destination = self
+                    .actor_floor(i)
+                    .point(advance + TRAVEL_SLOTS[k], a.view.radius);
                 self.actors[i].goal_cd = GOAL_HOLD;
             }
         }
@@ -987,7 +996,7 @@ impl Sim {
                 for n in 0..32 {
                     let candidate = direction(n as f32 * TAU / 32.) * speed;
                     let next = a.view.pos + candidate * SIM_DT;
-                    if next != self.floor.point(next, a.view.radius)
+                    if next != self.actor_floor(i).point(next, a.view.radius)
                         || self.path_enters_threat(i, next, None)
                         || !body_safe(next)
                     {
@@ -1062,9 +1071,11 @@ impl Sim {
         }
         // Free roaming retains only the floor/body constraints. A wide-arena
         // screen bound clamps each hero independently around the current camera.
-        for a in &mut self.actors {
+        for i in 0..self.actors.len() {
+            let floor = self.actor_floor(i);
+            let a = &mut self.actors[i];
             let before = a.view.pos;
-            a.view.pos = self.floor.point(a.view.pos, a.view.radius);
+            a.view.pos = floor.point(a.view.pos, a.view.radius);
             #[cfg(feature = "bound-diagnostics")]
             crate::bound::correction(a.view.id as usize - 1, 2, a.view.pos - before);
             #[cfg(not(feature = "bound-diagnostics"))]
@@ -1116,7 +1127,7 @@ impl Sim {
                                 for n in 0..64 {
                                     let p = self.actors[b].view.pos
                                         + direction(n as f32 * TAU / 64.) * (minimum + 0.01);
-                                    if p != self.floor.point(p, self.actors[i].view.radius)
+                                    if p != self.actor_floor(i).point(p, self.actors[i].view.radius)
                                         || self.actors.iter().enumerate().any(|(j, a)| {
                                             j != i
                                                 && a.view.team == Team::Hero
@@ -1148,7 +1159,8 @@ impl Sim {
                                 Vec2::new(1., 0.)
                             };
                             let raw = self.actors[i].view.pos + dir * minimum;
-                            let mut point = self.floor.point(raw, self.actors[b].view.radius);
+                            let mut point =
+                                self.actor_floor(b).point(raw, self.actors[b].view.radius);
                             if point != raw
                                 || self.actors.iter().any(|a| {
                                     a.view.team == Team::Hero
@@ -1162,7 +1174,9 @@ impl Sim {
                                     let candidate = self.actors[i].view.pos
                                         + direction(n as f32 * TAU / 32.) * (minimum + 0.01);
                                     if candidate
-                                        != self.floor.point(candidate, self.actors[b].view.radius)
+                                        != self
+                                            .actor_floor(b)
+                                            .point(candidate, self.actors[b].view.radius)
                                     {
                                         continue;
                                     }

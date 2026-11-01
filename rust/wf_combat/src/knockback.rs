@@ -83,7 +83,7 @@ impl Sim {
             self.events.push(Event::KnockbackResisted { id });
             return;
         }
-        self.actors[target].view.pos = self.floor.point(
+        self.actors[target].view.pos = self.actor_floor(target).point(
             self.actors[target].view.pos + direction * distance,
             self.actors[target].view.radius,
         );
