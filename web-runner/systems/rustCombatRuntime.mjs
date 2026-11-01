@@ -27,7 +27,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
   let stageOptions, advanced = false, failed = false, introNow = null, tail = null;
   const hosts = new Map(), seenSpawns = new Set(), hostHeroes = new Map();
   function queuePermanentInputs(heroId) {
-    if (!driver.read().active) return;
+    if (!driver.isActive()) return;
     for (const [actor, original] of hostHeroes) {
       if (heroId && String(actor.heroInstanceKey) !== heroId) continue;
       const source = g.HeroProgress?.heroes?.[actor.heroInstanceKey];
@@ -291,7 +291,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
         if (stage.bossActive && !config.enemies.some(enemy => enemy.spawn_key === String(stage.bossUID))) throw new Error('Missing WFM boss spawn');
         for (const enemy of config.enemies) seenSpawns.add(enemy.spawn_key);
         driver.start(config);
-        if (driver.read().active) for (const [hero, original] of hostHeroes) {
+        if (driver.isActive()) for (const [hero, original] of hostHeroes) {
           const fallback = structuredClone(hero);
           original.unbind = bindHeroPermanentInputs(hero, {
             read: () => g.HeroProgress?.heroes?.[hero.heroInstanceKey] || fallback,

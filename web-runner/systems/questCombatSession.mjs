@@ -1,3 +1,4 @@
+import { permanentHeroSource } from '../src/core/heroPermanentInputs.mjs';
 import { CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC, activateContinuousCombatSpawnedEnemy, buildContinuousCombatSpawnPlan, getContinuousCombatPartyCP, recordContinuousCombatWavePackProgress, resetContinuousCombatAfterDefeat } from '../src/core/continuousCombatStage.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import { resetActorPresentationAfterRestore } from '../src/core/actorPresentationState.mjs';
@@ -8,6 +9,7 @@ import { recordBalanceCombatEvent } from '../src/core/balanceTelemetry.mjs';
 
 // Session lifecycle only. Damage, initiative and skill rules remain runtime-owned.
 export function restoreHeroesToFullHP({ state, call, reason = 'manual' }) {
+  if (state.entities.some(actor => permanentHeroSource(actor))) throw new Error('HP restoration not supported in Rust encounters; stop the encounter first');
   const now = Number(state.globals?.time || 0);
   for (const hero of state.entities.filter(e => e?.kind === 'hero')) {
     const hpBefore = Number(hero.hp || 0);

@@ -39,3 +39,5 @@
 - Consolidation audits index retained historical lanes and local checkpoint locations; an archive or reachable tip does not establish feature acceptance or authorize historical runtime restoration.
 
 - Permanent-input audit evidence distinguishes native/WASM commitment and channel regressions, frozen slice hash equality, exact inherited unit failure names and unfinished browser cases. A time box certifies no browser PASS.
+
+- Permanent commitment audits apply the lead's A6/§3.3 boundary: capture permanent inputs and definition/modifier parameters; read transient Elevate live at impact with or without a revision. Record CPU-profile attribution and measured performance separately from hypotheses.

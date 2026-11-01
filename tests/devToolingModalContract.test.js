@@ -269,7 +269,8 @@ test('Speed Link Fixture uses the existing dev selector to force one two-times-S
     .replace(/^import .*;$/gm, '')
     .replace(/export \{[\s\S]*?\};/, '')
     .replace('export function createDevToolingRuntime', 'function createDevToolingRuntime');
-  const context = vm.createContext({ window: { addEventListener() {}, sessionStorage: { setItem() {} } }, document: { getElementById: () => null }, normalizeCombatOrientation: () => 'left-wise' });
+  const { routeHeroPermanentInputs, permanentHeroSource } = await import('../web-runner/src/core/heroPermanentInputs.mjs');
+  const context = vm.createContext({ routeHeroPermanentInputs, permanentHeroSource, window: { addEventListener() {}, sessionStorage: { setItem() {} } }, document: { getElementById: () => null }, normalizeCombatOrientation: () => 'left-wise' });
   vm.runInContext(src, context);
   const state = { globals: { CombatOrientation: 'left-wise', DevToolingConfig: {} }, entities: [
     { uid: 1, kind: 'hero', name: 'Hondo', hp: 40, stats: { SPD: 11 } },

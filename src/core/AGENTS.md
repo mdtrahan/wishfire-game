@@ -52,3 +52,5 @@
 - Boss reach scales the melee envelope with the four-times footprint so supports at their ranged stop position remain eligible after frontline KO. Ordinary actor ranges and nearest/Provoke priority remain unchanged.
 
 - `partyFormationRules.mjs` and its browser mirror clamp party-slot capacity to four; presentation grid capacity never authorizes extra deployed actors.
+
+- Rust action definitions alone choose damage channels. Host combatant definitions carry no channel declarations or channel table.

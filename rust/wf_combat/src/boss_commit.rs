@@ -66,7 +66,7 @@ impl Sim {
     pub fn boss_basic_impact(&mut self, i: usize) {
         let a = self.actors[i].clone();
         let raw = a.committed_stats().atk
-            * if a.committed_elevate() == Some(ElevateVariant::Sword) {
+            * if a.view.elevate == Some(ElevateVariant::Sword) {
                 1. + ELEVATE_BONUS
             } else {
                 1.

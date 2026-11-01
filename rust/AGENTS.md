@@ -51,3 +51,5 @@
 - Combat schema 1.1 adds `replace_permanent_inputs_v1` negotiation and ordered `ReplacePermanentInputs` step commands. Validate the entire batch before mutation, acknowledge applied revisions in the ordered event stream, and retain host max-HP units for ordinary-clear rounding. Raw ABI layout remains 1.0; schema 1.0 requests remain supported.
 
 - Combat actors carry independent ATK/DEF/MAG/RES through creation, marker/spawn profiles and permanent revisions. ABI gameplay hashes include host HP maxima, command sequence and idempotency receipts; these inputs affect future commands even when current HP matches.
+
+- TDD-A A6/§3.3 captures permanent progression stats, maxima and definition/modifier parameters at commitment, including Phoenix/revival recipient maxima. Transient Elevate remains live at impact under slice semantics in every action, regardless of revisions. Frozen slice fixtures stay unchanged.

@@ -265,3 +265,5 @@
 - `combatPermanentInputs.test.mjs` compares native/WASM revision traces and checks atomic rejection, coalescing, ordered acks, pause, HP growth/shrink and downed state. `rustCombatAuthority.test.mjs` reproduces live HP gear (75→125 host, 420→700 Rust), reload before ack, raw-meta saving, EXP, ticket-funded levels and Training without live JS HP/stat writes.
 
 - `combatRevisionVerifier.test.mjs` retains the independent host probe with before-fix evidence in `combatRevisionVerifier.before.json`. Assert zero live HP/maxHP/stats/status writes for developer levels and each paid Training channel reaching real WASM. Permanent-input tests cover Phoenix commitment growth/shrink, marker materialization, independent incoming mitigation and hash divergence for differing accepted inputs.
+
+- Permanent-input proof includes zero clones/revisions across unchanged render-time equipment syncs, routed/restored QA SPD, explicit Rust HP-fixture refusal, host definitions without channels and Lizardo's Rust magic basic. Native tests distinguish captured permanent power from live Elevate gained/lost during wind-up; frozen trace fixtures stay untouched.

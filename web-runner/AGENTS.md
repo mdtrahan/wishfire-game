@@ -71,3 +71,5 @@
 - Canonical product source is mdtrahan/wishfire-game main. Current combat equipment presentation is the Bag conveyor (lampConveyorPresentation.mjs and equipment-bag.png). Before editing or QA, verify repository, commit and renderer; exported Cloud snapshots are historical sources. COT/resources remain combat-only; Growth opens the approved Training Ground without changing navigation backers.
 
 - COT quest milestones include chapter/boss clears, party equipment coverage and level/rarity thresholds, plus Hero and Training milestones. Zero-KO quests are retired. app.js only wires pre-recovery and pre-restoration observation; deterministic progression stays in core and the controller.
+
+- Developer refresh and QA reset stop the outgoing Rust encounter before replacing actors or restoring HP. Rust heal fixtures refuse unsupported mutations explicitly.

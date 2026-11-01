@@ -268,7 +268,6 @@ impl Sim {
                 for v in [a.action_stats.hp,a.action_stats.atk,a.action_stats.def,a.action_stats.mag,a.action_stats.res,a.action_stats.speed,
                     a.action_stats.reach,a.action_stats.interval,a.action_stats.evade,a.action_stats.special,
                     a.action_max_hp,a.action_potency] { h.f(v); }
-                h.u(a.action_elevate.map_or(0, |v| v as u64 + 1));
             }
             let s = a.stats;
             h.f(s.hp);

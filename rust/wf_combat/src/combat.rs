@@ -262,7 +262,7 @@ impl Sim {
         let a = &self.actors[i];
         let raw = a.committed_stats().atk
             * SPLIT_POTENCY * a.committed_potency()
-            * if a.committed_elevate() == Some(ElevateVariant::Sword) {
+            * if a.view.elevate == Some(ElevateVariant::Sword) {
                 1. + ELEVATE_BONUS
             } else {
                 1.
@@ -350,7 +350,6 @@ impl Sim {
         a.action_stats = a.stats;
         a.action_max_hp = a.view.max_hp;
         a.action_potency = a.special_potency;
-        a.action_elevate = a.view.elevate;
         a.action_special = special;
         a.action_extra = extra;
         a.action_pulse = pulse;
@@ -806,7 +805,7 @@ impl Sim {
                             t,
                             a.committed_stats().atk
                                 * SHADOW_POTENCY * a.committed_potency()
-                                * if a.committed_elevate() == Some(ElevateVariant::Sword) {
+                                * if a.view.elevate == Some(ElevateVariant::Sword) {
                                     1. + ELEVATE_BONUS
                                 } else {
                                     1.
@@ -833,7 +832,7 @@ impl Sim {
             self.boss_basic_impact(i);
         } else if let Some(t) = target.filter(|t| self.actors[*t].alive()) {
             let raw = a.committed_stats().attack(a.view.archetype.basic_channel())
-                * if a.committed_elevate() == Some(ElevateVariant::Sword) {
+                * if a.view.elevate == Some(ElevateVariant::Sword) {
                     1. + ELEVATE_BONUS
                 } else {
                     1.

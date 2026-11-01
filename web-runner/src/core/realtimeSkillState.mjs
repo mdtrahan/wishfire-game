@@ -1,3 +1,4 @@
+import { permanentHeroSource } from './heroPermanentInputs.mjs';
 import { heroGrowthModifiers } from './heroGrowthRules.mjs';
 import { combatModifiers, projectCombatStat, projectCombatMultiplier } from '../../../src/core/combatModifierRules.mjs';
 import { clearHeroWards } from './heroWard.mjs';
@@ -51,6 +52,7 @@ export function realtimeCombatStat(globals, actor, stat, base = rawCombatStat(ac
   return projectCombatStat(base,stat,modifiers);
 }
 export function ensureSkillBattle(ctx) {
+  if (ctx.state.entities.some(actor => permanentHeroSource(actor))) throw new Error('Legacy skill mutation not supported in Rust encounters');
   const globals = ctx.state.globals;
   const battle = globals.RealtimeSkillBattleState ||= {attemptId:Number(globals.CombatSessionId || 0),baselinesByUID:{}};
   for (const actor of ctx.state.entities.filter(a => a?.kind === 'hero')) {
@@ -69,6 +71,7 @@ export function ensureSkillBattle(ctx) {
 }
 // keepWard: a boss clear keeps Crimson Ward's pool; every other reset clears it.
 export function resetRealtimeSkillAttempt(globals, entities = [], { keepWard = false } = {}) {
+  if (entities.some(actor => permanentHeroSource(actor))) throw new Error('Legacy skill reset not supported in Rust encounters; stop the encounter first');
   const battle = globals.RealtimeSkillBattleState;
   for (const hero of entities.filter(actor => actor?.kind === 'hero')) {
     const baseline = battle?.baselinesByUID?.[String(hero.uid)];

@@ -1,3 +1,4 @@
+import { routeHeroPermanentInputs, permanentHeroSource } from '../src/core/heroPermanentInputs.mjs';
 import * as devToolingControls from './devToolingControls.js';
 import { normalizeCombatOrientation } from '../../src/core/combatOrientation.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
@@ -127,6 +128,10 @@ export function createDevToolingRuntime(deps = {}) {
     return next;
   }
 
+  function setFixtureSpeed(actor, speed) {
+    if (!routeHeroPermanentInputs(actor, draft => { draft.stats.SPD = speed; }) && actor.stats) actor.stats.SPD = speed;
+  }
+
   function syncConfiguredDoubleAttackHarness(cfg = ensureDevToolingConfig()) {
     const heroNames = getDevToolHeroOptions();
     const originals = state.globals.DevSpeedLinkOriginalSPDByUID || {};
@@ -134,7 +139,7 @@ export function createDevToolingRuntime(deps = {}) {
       const actor = state.entities.find((entity) => entity && entity.kind === 'hero' && String(entity.name || '') === heroName);
       if (!actor) continue;
       callFunctionWithContext(fnContext, 'RemoveActorExtraTurnSkill', actor.uid);
-      if (Object.prototype.hasOwnProperty.call(originals, actor.uid) && actor.stats) actor.stats.SPD = Number(originals[actor.uid]);
+      if (Object.prototype.hasOwnProperty.call(originals, actor.uid)) setFixtureSpeed(actor, Number(originals[actor.uid]));
     }
     state.globals.DevSpeedLinkOriginalSPDByUID = {};
     const holderName = String(cfg.doubleAttackHeroName || '').trim();
@@ -155,10 +160,12 @@ export function createDevToolingRuntime(deps = {}) {
     const fastestEnemySpeed = Math.max(1, ...state.entities
       .filter((entity) => entity && entity.kind === 'enemy' && Number(entity.hp || 0) > 0)
       .map((entity) => Number(entity.stats?.SPD ?? entity.SPD ?? 0)));
-    const baseSpeed = Number(actor.stats?.SPD ?? actor.SPD ?? 0);
-    if (actor.stats) actor.stats.SPD = Math.max(baseSpeed, fastestEnemySpeed * 2);
+    const source = permanentHeroSource(actor) || actor;
+    const baseSpeed = Number(source.stats?.SPD ?? source.SPD ?? 0);
+    const linkedSpeed = Math.max(baseSpeed, fastestEnemySpeed * 2);
+    setFixtureSpeed(actor, linkedSpeed);
     state.globals.DevSpeedLinkOriginalSPDByUID = { [actor.uid]: baseSpeed };
-    state.globals.DevSpeedLinkFixture = { holderUID:Number(actor.uid || 0), holderName, baseSpeed, fastestEnemySpeed, linkedSpeed:Number(actor.stats?.SPD ?? actor.SPD ?? 0) };
+    state.globals.DevSpeedLinkFixture = { holderUID:Number(actor.uid || 0), holderName, baseSpeed, fastestEnemySpeed, linkedSpeed };
     state.globals.DevDoubleAttackHolderName = holderName;
     state.globals.DevDoubleAttackHolderUID = Number(actor.uid || 0);
     return Number(actor.uid || 0);

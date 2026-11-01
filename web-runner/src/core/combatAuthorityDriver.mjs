@@ -81,13 +81,13 @@ export function createCombatAuthorityDriver({ bridge, consume, onError }) {
       previousNow = nowMs;
       for (let budget = 0; world !== null && snapshot.state === 'running' && debt + 1e-9 >= 1 / 30 && budget < 8; budget++) {
         debt = Math.max(0, debt - 1 / 30);
-        const commands = [...pending.values()].map((data, index) => ({ encounter_id: encounter,
+        const commands = pending.size ? [...pending.values()].map((data, index) => ({ encounter_id: encounter,
           step: String(BigInt(snapshot.step) + 1n), sequence: String(commandSequence + BigInt(index) + 1n),
-          body: { kind: 'replace_permanent_inputs', data } }));
-        for (const command of commands) submitted.set(command.body.data.actor, { revision: command.body.data.revision, sequence: command.sequence });
+          body: { kind: 'replace_permanent_inputs', data } })) : null;
+        if (commands) for (const command of commands) submitted.set(command.body.data.actor, { revision: command.body.data.revision, sequence: command.sequence });
         const result = bridge.step(world, { encounter_id: encounter, expected_previous_step: snapshot.step,
-          ...(commands.length ? { commands } : {}) });
-        commandSequence += BigInt(commands.length);
+          ...(commands ? { commands } : {}) });
+        if (commands) commandSequence += BigInt(commands.length);
         accept(result);
         if (submitted.size) {
           throw new Error('Missing Rust revision ack');
@@ -100,5 +100,5 @@ export function createCombatAuthorityDriver({ bridge, consume, onError }) {
     try { accept(bridge.spawn(world, encounter, structuredClone(enemies))); }
     catch (error) { fail(error); }
   }
-  return { start, advance, spawn, stop, accept, replacePermanentInputs, waveChest() { accept(bridge.waveChest(world, encounter)); }, ordinaryClear(transitionId) { accept(bridge.ordinaryClear(world, encounter, transitionId)); }, read: () => ({ active: world !== null, failed, snapshot: structuredClone(snapshot), receipts: receipts.size, pendingRevisions: pending.size, revisions: Object.fromEntries([...revisions].map(([id,r]) => [id,{ issued: String(r.issued), acknowledged: String(r.acknowledged) }])) }) };
+  return { start, advance, spawn, stop, accept, replacePermanentInputs, isActive: () => world !== null, waveChest() { accept(bridge.waveChest(world, encounter)); }, ordinaryClear(transitionId) { accept(bridge.ordinaryClear(world, encounter, transitionId)); }, read: () => ({ active: world !== null, failed, snapshot: structuredClone(snapshot), receipts: receipts.size, pendingRevisions: pending.size, revisions: Object.fromEntries([...revisions].map(([id,r]) => [id,{ issued: String(r.issued), acknowledged: String(r.acknowledged) }])) }) };
 }

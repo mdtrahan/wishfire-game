@@ -335,21 +335,21 @@ mod tests {
 
     // Adapted from the independent verifier's native/src/bin/elevate.rs.
     #[test]
-    fn pulse_and_faze_use_committed_elevate_and_magic_after_revision() {
+    fn revision_keeps_committed_magic_while_new_elevate_applies_at_impact() {
         for pulse in [true, false] {
             let mut s = Sim::new(SimConfig::default());
             s.spawn_actor(Archetype::Kaja, Vec2::new(480., 800.), crate::tuning::HERO_STATS[3]);
             s.spawn_actor(Archetype::Gobloc, Vec2::new(480., 700.), crate::tuning::stats(Archetype::Gobloc));
             s.actors[0].state(ActorState::Idle, 0., 0.);
             s.actors[0].stats.mag = 31.;
-            s.actors[0].view.elevate = Some(ElevateVariant::Sword);
+            s.actors[0].view.elevate = None;
             let target = s.actors[1].view.id;
             if pulse { s.start_arcane_pulse(0, target); }
             else { s.start_action(0, Some(target), false, false); }
             let mut change = input(&s, 0, 560.);
             change.stats.mag = 310.;
             s.replace_permanent_inputs(&[change]).unwrap();
-            s.actors[0].view.elevate = None;
+            s.actors[0].view.elevate = Some(ElevateVariant::Sword);
             let kind = if pulse { HazardKind::ArcanePulse } else { HazardKind::FazePool };
             if pulse {
                 s.actors[0].view.state_age = s.actors[0].view.impact_at;
@@ -360,6 +360,52 @@ mod tests {
             let hazard = s.hazards.iter().find(|h| h.view.kind == kind).unwrap();
             assert!((hazard.base_damage - expected).abs() < 0.0001);
         }
+    }
+
+    #[test]
+    fn unrevised_actions_read_live_elevate_at_impact_and_shadow_landing() {
+        for gained in [true, false] {
+            let mut s = Sim::new(SimConfig::default());
+            s.spawn_actor(Archetype::Kaja, Vec2::new(480., 800.), crate::tuning::HERO_STATS[3]);
+            s.spawn_actor(Archetype::Gobloc, Vec2::new(480., 700.), crate::tuning::stats(Archetype::Gobloc));
+            s.actors[0].state(ActorState::Idle, 0., 0.);
+            s.actors[0].view.elevate = if gained { None } else { Some(ElevateVariant::Sword) };
+            let target = s.actors[1].view.id;
+            s.start_arcane_pulse(0, target);
+            let attack = s.actors[0].action_stats.mag;
+            s.actors[0].view.elevate = if gained { Some(ElevateVariant::Sword) } else { None };
+            s.actors[0].view.state_age = s.actors[0].view.impact_at;
+            s.action(0);
+            let multiplier = if gained { 1. + crate::tuning::ELEVATE_BONUS } else { 1. };
+            assert!((s.hazards.iter().find(|h| h.view.kind == HazardKind::ArcanePulse).unwrap().base_damage
+                - attack * crate::tuning::ARCANE_PULSE_POTENCY * multiplier).abs() < 0.0001);
+        }
+        let mut s = sim();
+        s.actors[0].view.team = Team::Enemy;
+        s.actors[1].state(ActorState::Idle, 0., 0.);
+        s.actors[1].view.elevate = Some(ElevateVariant::Wings);
+        let target = s.actors[0].view.id;
+        s.start_action(1, Some(target), true, false);
+        let landing = s.combo_landing(1, 0, s.actors[1].view.pos).unwrap();
+        s.actors[1].view.elevate = None;
+        let after = s.combo_landing(1, 0, s.actors[1].view.pos).unwrap();
+        assert_ne!(after, landing);
+    }
+
+    #[test]
+    fn lizardo_basic_uses_slice_magic_channel_with_unequal_offence() {
+        let mut s = sim();
+        s.spawn_actor(Archetype::Lizardo, Vec2::new(440., 800.), crate::tuning::stats(Archetype::Lizardo));
+        s.actors[2].state(ActorState::Idle, 0., 0.);
+        s.actors[2].stats.atk = 20.;
+        s.actors[2].stats.mag = 100.;
+        let target = s.actors[0].view.id;
+        s.start_action(2, Some(target), false, false);
+        s.actors[2].view.state_age = s.actors[2].view.impact_at;
+        s.action(2);
+        let projectile = s.projectiles.last().unwrap();
+        assert_eq!(projectile.channel, DamageChannel::Magic);
+        assert_eq!(projectile.damage, 100.);
     }
 
     #[test]

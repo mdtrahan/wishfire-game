@@ -6,6 +6,7 @@ import { isActorRecoveryRevealActive } from '../src/core/actorPresentationState.
 export const QA_STORY_TRANSITION_TIMEOUT_MS = 2400;
 
 export function applyQaEnemyLowHpFixture({ globals = {}, entities = [], choiceActive = false } = {}) {
+  if (globals.RustCombatAuthority) return { ok: false, reason: 'Low-HP fixture not supported in Rust encounters' };
   if (!(globals.QaScenarioPaused && globals.QaFixtureHoldTurn && globals.DevToolingPaused)) return { ok: false, reason: 'scenarioNotPaused' };
   if (choiceActive) return { ok: false, reason: 'choiceActive' };
   const heroes = entities.filter(actor => actor?.kind === 'hero');

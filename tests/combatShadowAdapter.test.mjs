@@ -98,3 +98,8 @@ test('ported Djinn preserves authored MAG/RES bases and projects both independen
   assert.equal(stats.atk, 6); assert.equal(stats.def, 6);
   assert.equal(stats.mag, 56); assert.equal(stats.res, 42);
 });
+
+// Rust selects channels per action, including mixed-action WFM enemies.
+test('host definitions carry no damage channel table', () => {
+  for (const definition of Object.values(SHADOW_DEFINITIONS)) assert.equal(Object.hasOwn(definition, 'channel'), false);
+});

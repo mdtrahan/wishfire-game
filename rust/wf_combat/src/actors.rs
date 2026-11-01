@@ -10,7 +10,6 @@ pub struct Actor {
     pub action_stats: Stats,
     pub action_max_hp: f32,
     pub action_potency: f32,
-    pub action_elevate: Option<ElevateVariant>,
     pub view: ActorView,
     pub stats: Stats,
     pub wfm_action: u8,
@@ -101,13 +100,12 @@ pub struct Actor {
     pub elevate_choice: Option<ElevateVariant>,
 }
 impl Actor {
-    pub fn revised_action(&self) -> bool {
-        self.action_revision != self.permanent_revision && matches!(self.view.state, ActorState::Basic | ActorState::Cast)
+    pub fn has_committed_inputs(&self) -> bool {
+        self.action_epoch > 0 && matches!(self.view.state, ActorState::Basic | ActorState::Cast)
     }
-    pub fn committed_stats(&self) -> Stats { if self.revised_action() { self.action_stats } else { self.stats } }
-    pub fn committed_max_hp(&self) -> f32 { if self.revised_action() { self.action_max_hp } else { self.view.max_hp } }
-    pub fn committed_potency(&self) -> f32 { if self.revised_action() { self.action_potency } else { self.special_potency } }
-    pub fn committed_elevate(&self) -> Option<ElevateVariant> { if self.revised_action() { self.action_elevate } else { self.view.elevate } }
+    pub fn committed_stats(&self) -> Stats { if self.has_committed_inputs() { self.action_stats } else { self.stats } }
+    pub fn committed_max_hp(&self) -> f32 { if self.has_committed_inputs() { self.action_max_hp } else { self.view.max_hp } }
+    pub fn committed_potency(&self) -> f32 { if self.has_committed_inputs() { self.action_potency } else { self.special_potency } }
 
     pub fn enemy_poison_damage(&self) -> f32 {
         ENEMY_POISON_TICK_DAMAGE * self.poison_potency
@@ -127,7 +125,7 @@ impl Actor {
         };
         let mut actor = Self {
             permanent_revision: 0, special_potency: 1., meter_rate: 1., action_revision: 0,
-            action_target_revision: 0, action_target_max_hp: 0., action_stats: stats, action_max_hp: stats.hp, action_potency: 1., action_elevate: None,
+            action_target_revision: 0, action_target_max_hp: 0., action_stats: stats, action_max_hp: stats.hp, action_potency: 1.,
             wfm_action: 0,
             view: ActorView {
                 id,
@@ -321,7 +319,7 @@ impl Actor {
         self.stats.reach * self.reach_scale()
     }
     pub fn committed_reach(&self) -> f32 {
-        self.committed_stats().reach * if self.committed_elevate() == Some(ElevateVariant::Wings) { 1. + ELEVATE_RANGE_BONUS } else { 1. }
+        self.committed_stats().reach * if self.view.elevate == Some(ElevateVariant::Wings) { 1. + ELEVATE_RANGE_BONUS } else { 1. }
     }
     pub fn reach_scale(&self) -> f32 {
         if self.view.elevate == Some(ElevateVariant::Wings) {

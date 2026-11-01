@@ -690,3 +690,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 
 - Performance regression gates need metric-specific absolute floors alongside relative thresholds. Repeated page/frame samples expose noise through median and min/max overlap; incomplete evidence must still fail closed. Cache baseline failures by exact source SHA and pin probe reuse to the measured scenario.
 - Permanent-input revisions must preserve every committed source/recipient parameter at delayed impact. Audit autonomous channels and hazard construction alongside actor casts; carry all offensive/defensive channels before signature comparison, and hash host rounding inputs plus command/receipt state.
+
+- Revision callbacks must sit behind changed permanent inputs. Render-time equipment sync can revisit every actor each frame; routing an unchanged detached copy can clone full Rust snapshots and rebuild payload signatures. Verify zero clone/revision work on unchanged syncs, alongside a real gear change. Transient slice buffs retain live-impact semantics while permanent parameters use commitment snapshots.

@@ -24,8 +24,7 @@ impl Sim {
         let potency = self.actors[caster].committed_potency();
         let source = &self.actors[caster];
         let max_hp = if source.target == Some(self.actors[target].view.id)
-            && source.view.state == ActorState::Cast
-            && (source.revised_action() || source.action_target_revision != self.actors[target].permanent_revision) {
+            && source.view.state == ActorState::Cast && source.has_committed_inputs() {
             source.action_target_max_hp
         } else { self.actors[target].view.max_hp };
         let a = &mut self.actors[target];

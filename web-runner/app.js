@@ -1738,6 +1738,7 @@ async function main(){
     if (!freshCombatBootstrapped || !Array.isArray(enemyRows) || !enemyRows.length) {
       return false;
     }
+    rustCombat?.stop();
     uiState.setUIStateField('overlayVisible', false);
     initEntities(enemyRows, instances);
     heroProgressStorage.restoreHeroProgressFromStorage({ callFunctionWithContext, fnContext, syncFromGlobals });
@@ -2049,6 +2050,7 @@ async function main(){
     enemyRefill: { dataCount: Number(state.globals.EnemyData?.length || 0), encounterNames: state.globals.EncounterPoolNames || [], locale: String(state.globals.EncounterLocale || state.globals.CurrentLocale || 'all'), slots: state.globals.EnemySlots || [], ids: state.globals.EnemyIDs || [], pending: state.globals.PendingEnemyRespawnSlots || [], timer: Number(state.globals.PendingEnemyRespawnTimerActive || 0), finite: Number(state.globals.QuestFiniteEncounter || 0), holdUIDs: Object.keys(state.globals.EnemyDeathVisualHoldByUID || {}).map(Number) },
   });
   const qaScenarioPauseGuard = ({ allowChoice = false } = {}) => {
+    if (!allowChoice && state.globals.RustCombatAuthority) return { ok: false, reason: 'Healing fixture not supported in Rust encounters' };
     if (!(state.globals.QaScenarioPaused && state.globals.QaFixtureHoldTurn && state.globals.DevToolingPaused)) return { ok: false, reason: 'scenarioNotPaused', readout: qaReadCombatState() };
     return null;
   };
@@ -2064,6 +2066,7 @@ async function main(){
     gameState.storyEntry.phase = 'combat';
     const resetCount = Number(state.globals.QaScenarioResetCount || 0) + 1;
     const devRuntime = requireDevToolingRuntime();
+    rustCombat?.stop();
     devRuntime.clearCombatSessionOverrides();
     state.globals.EncounterSeed = 7969171;
     state.globals.EncounterSeedExplicit = 1;

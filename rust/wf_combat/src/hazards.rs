@@ -545,7 +545,7 @@ impl Sim {
                 } else {
                     FAZE_POTENCY
                 }) * if source
-                    .is_some_and(|i| self.actors[i].committed_elevate() == Some(ElevateVariant::Sword))
+                    .is_some_and(|i| self.actors[i].view.elevate == Some(ElevateVariant::Sword))
                 {
                     1. + ELEVATE_BONUS
                 } else {

@@ -153,3 +153,5 @@
 - Host wave planning derives party CP from bound raw permanent inputs while Rust is live; snapshot-scaled HP and stale presentation stats cannot author the next enemy profile.
 
 - `attachHeroProgress` routes the entire attachment through a bound permanent-input transaction. HP and status resets belong to the detached draft while Rust owns the live actor; developer presets obey the same boundary.
+
+- Authority-driver diagnostic `read()` clones snapshots; use `isActive()` for lifecycle predicates. Idle steps build no revision command payloads. Legacy skill mutation/reset rejects actors bound to Rust.
