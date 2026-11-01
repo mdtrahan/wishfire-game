@@ -64,5 +64,5 @@ export function createCombatAuthorityDriver({ bridge, consume, onError }) {
     try { accept(bridge.spawn(world, encounter, structuredClone(enemies))); }
     catch (error) { fail(error); }
   }
-  return { start, advance, spawn, stop, accept, ordinaryClear(transitionId) { accept(bridge.ordinaryClear(world, encounter, transitionId)); }, read: () => ({ active: world !== null, failed, snapshot: structuredClone(snapshot), receipts: receipts.size }) };
+  return { start, advance, spawn, stop, accept, waveChest() { accept(bridge.waveChest(world, encounter)); }, ordinaryClear(transitionId) { accept(bridge.ordinaryClear(world, encounter, transitionId)); }, read: () => ({ active: world !== null, failed, snapshot: structuredClone(snapshot), receipts: receipts.size }) };
 }

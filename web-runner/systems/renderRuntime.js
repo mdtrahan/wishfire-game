@@ -250,7 +250,7 @@ removeBlock('if (ampShowsBadge) {');
   );
   effectiveBody = effectiveBody.replace(
     '    const actorPaintQueue = [];',
-    '    state.globals.RustCombatPresentation?.ground(ctx, layoutScale, layoutOffsetX, layoutOffsetY);\n    const actorPaintQueue = [];',
+    '    state.globals.RustCombatPresentation?.ground(ctx, layoutScale, layoutOffsetX, layoutOffsetY);\n    const actorPaintQueue = [];\n    const sliceChest = state.globals.RustCombatPresentation?.state.snapshot?.chest;\n    if (sliceChest) actorPaintQueue.push({ uid: -1, footY: layoutOffsetY + state.globals.RustCombatPresentation.camera.y(sliceChest.pos.y) * layoutScale, paint: () => state.globals.RustCombatPresentation.chest(ctx, layoutScale, layoutOffsetX, layoutOffsetY) });',
   );
   effectiveBody = effectiveBody.replace(
     '          drawEnemySprite();',
@@ -470,6 +470,7 @@ export function renderRuntime(deps) {
 
     // Hero health lives with the battlefield actor, matching enemy health bars.
     for (const hero of state.entities.filter(actor => actor?.kind === 'hero')) {
+      if (state.globals.RustCombatPresentation) continue;
       const uid = Number(hero.uid || 0);
       const anchor = state.globals.HeroRestBasePosByUID?.[uid];
       if (!anchor) continue;

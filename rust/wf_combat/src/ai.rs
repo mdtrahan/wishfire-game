@@ -688,6 +688,12 @@ impl Sim {
             self.actors[i].view.ai_intent = AiIntent::Retreat;
             return;
         }
+        if let Some(p) = self.chest_goal(i) {
+            self.actors[i].target = None;
+            self.actors[i].destination = p;
+            self.actors[i].view.ai_intent = AiIntent::Regroup;
+            return;
+        }
         if let Some(p) = self
             .interest_points
             .iter()

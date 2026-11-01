@@ -17,7 +17,8 @@ const rows = table.data[0].slice(1).map((cell, i) => Object.fromEntries(table.da
 const wasm = new WebAssembly.Module(fs.readFileSync(new URL('../web-runner/assets/simulation_core.wasm', import.meta.url)));
 function fixture({ mask = 0, boss = false, hp = 1, level = 100 } = {}) {
   const real = createCombatBridge(new WebAssembly.Instance(wasm)), ends = [], spawned = [], receipts = [], routes = [], transitions = [], heals = [], spawnHP = [], clears = [];
-  const bridge = { ...real, ordinaryClear(...args) { const result = real.ordinaryClear(...args); clears.push(result); return result; }, end(...args) { const result = real.end(...args); ends.push({ reason: args[3], events: result.events }); return result; } };
+  let worldHandle;
+  const bridge = { ...real, create(config) { const result=real.create(config);worldHandle=result.world;return result; }, ordinaryClear(...args) { const result = real.ordinaryClear(...args); clears.push(result); return result; }, end(...args) { const result = real.end(...args); ends.push({ reason: args[3], events: result.events }); return result; } };
   const heroes = ['Falie', 'Huun', 'Runa', 'Kojonn'].map((name, i) => {
     const actor = { ...newHeroProgress(name), uid: i + 1, kind: 'hero', x: 1020 + i * 36, y: 350, isAlive: true };
     actor.currentLevel = level; refreshHeroStats(actor); actor.hp = actor.maxHP * hp;
@@ -64,7 +65,7 @@ function fixture({ mask = 0, boss = false, hp = 1, level = 100 } = {}) {
     assert.equal(g.RustCombatError, undefined);
   }
   function runUntil(predicate, budget = 5000) { for (let n = 0; n < budget && !predicate(); n++) tick(); assert.ok(predicate(), 'scenario reached its bound'); }
-  return { state, g, heroes, runtime, bridge: real, ends, spawned, receipts, routes, transitions, heals, spawnHP, clears, tick, runUntil, call };
+  return { state, g, heroes, runtime, world:()=>worldHandle, bridge: real, ends, spawned, receipts, routes, transitions, heals, spawnHP, clears, tick, runUntil, call };
 }
 
 test('every authored WFM enemy has one explicit Rust definition and a distinct host identity', () => {
@@ -101,13 +102,13 @@ test('R8: all WFM spawn tables exclude dormant slice combatants; Troll is the so
   }
 });
 
-test('real Rust ordinary packs overlap, advance seeded waves at >=3s and heal once in host HP units', () => {
+test('real Rust ordinary subwaves retain seeded plans, chest pauses and host-rounded respite', () => {
   const f = fixture({ hp: .5 });
   const first = f.spawned.map(a => [a.name, a.x, a.y, a.streamSectorIndex]);
   assert.ok(new Set(f.spawned.map(a => a.streamSectorIndex)).size > 1);
   const control = fixture({ hp: .5 });
   assert.deepEqual(control.spawned.map(a => [a.name, a.x, a.y, a.streamSectorIndex]), first); control.runtime.dispose();
-  f.tick(); assert.ok(f.runtime.read().snapshot.live_enemies > 6);
+  f.tick(); assert.ok(f.runtime.read().snapshot.live_enemies >= 3 && f.runtime.read().snapshot.live_enemies <= 5);
   f.runUntil(() => f.transitions.length === 2);
   assert.ok(f.transitions.every(t => t.time >= t.from.nextEmissionAt));
   assert.equal(f.ends.length, 0, 'ordinary waves retain the world, cooldowns and wards');
@@ -133,7 +134,13 @@ test('checkpoint mask survives Rust creation and completed sectors never respawn
   assert.ok(f.spawned.every(a => !(0b010101 & 1 << a.streamSectorIndex)));
   f.tick();
   assert.equal(f.g.ContinuousCombatStage.clearedPackMask, 0b010101);
-  assert.equal(f.runtime.read().snapshot.live_enemies, f.spawned.length);
+  const firstWave = f.spawned.slice(), materialized = new Set();
+  for (let n=0;n<5000 && f.g.ContinuousCombatStage.wave===1;n++) {
+    for(const a of f.runtime.read().snapshot.actors)if(a.team==='enemy'&&a.host_id)materialized.add(a.host_id);
+    f.tick();
+  }
+  assert.equal(f.g.ContinuousCombatStage.wave,2);
+  assert.deepEqual([...materialized].sort(),firstWave.map(a=>String(a.uid)).sort());
   f.runtime.dispose();
 });
 
@@ -262,4 +269,48 @@ test('one-screen gameplay keeps every living body inside the visible viewport ac
   }
   f.runtime.dispose();
  }
+});
+
+test('chest grants nothing and blocks host and Rust spawn until approach, open and the two-second beat',()=>{
+ const f=fixture();f.tick();
+ f.runUntil(()=>!!f.runtime.read().snapshot?.chest);
+ const dropped=f.runtime.read().snapshot;
+ assert.equal(dropped.chest.state,'closed');assert.deepEqual(dropped.chest.rewards,[]);
+ assert.equal(f.g.ContinuousCombatStage.wave,1);
+ const receipts=f.receipts.length,stats=f.heroes.map(h=>[h.hp,h.maxHP,h.stats.ATK,h.stats.DEF]),step=dropped.step;
+ assert.throws(()=>f.bridge.spawn(f.world(),dropped.encounter_id,[]),/Chest pause has not finished/);
+ assert.deepEqual(f.runtime.read().snapshot,dropped);
+ let opening=0,openedAt=null;
+ for(let i=0;i<2000&&f.g.ContinuousCombatStage.wave===1;i++){
+  const before=f.runtime.read().snapshot;
+  if(before.chest.state==='opening')opening++;
+  if(before.chest.state==='open'){
+   openedAt??=before.combat_time;
+   assert.deepEqual(before.chest.rewards,[]);
+   assert.equal(f.receipts.length,receipts);
+   assert.deepEqual(f.heroes.map(h=>[h.hp,h.maxHP,h.stats.ATK,h.stats.DEF]),stats);
+  }
+  f.tick();
+ }
+ assert.ok(opening>=18);assert.ok(openedAt!==null);assert.equal(f.g.ContinuousCombatStage.wave,2);
+ assert.ok(f.runtime.read().snapshot.combat_time-openedAt>=2-1/30-1e-5);
+ assert.notEqual(f.runtime.read().snapshot.step,step);
+ f.runtime.dispose();
+});
+
+
+test('slice markers reserve each subwave through countdown and the source emergence clip',()=>{
+ const f=fixture();f.tick();const initial=f.runtime.read().snapshot;
+ assert.ok(initial.pending_spawns.length>=3&&initial.pending_spawns.length<=5);
+ assert.equal(initial.actors.filter(a=>a.team==='enemy').length,0);
+ assert.equal(initial.hazards.filter(h=>h.kind==='spawn_marker').length,initial.pending_spawns.length);
+ for(let i=0;i<30;i++)f.tick();
+ assert.equal(f.runtime.read().snapshot.actors.filter(a=>a.team==='enemy').length,0);
+ assert.equal(f.g.ContinuousCombatStage.wave,1);
+ f.runUntil(()=>f.runtime.read().snapshot.actors.some(a=>a.team==='enemy'),15);
+ const entered=f.runtime.read().snapshot.actors.filter(a=>a.team==='enemy');
+ assert.equal(entered.length,initial.pending_spawns.length);
+ assert.ok(entered.every(a=>a.state==='spawn'));
+ assert.ok(entered.every(a=>a.pos.x>=SLICE_FLOOR.min.x&&a.pos.x<=SLICE_FLOOR.max.x&&a.pos.y>=SLICE_FLOOR.min.y&&a.pos.y<=SLICE_FLOOR.max.y));
+ f.runtime.dispose();
 });

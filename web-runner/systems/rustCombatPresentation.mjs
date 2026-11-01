@@ -1,3 +1,4 @@
+import { drawSliceHeroBars, drawSliceChest } from './rustCombatWorldHud.mjs';
 import { COMBAT_VIEW } from './rustCombatArena.mjs';
 import { SliceSpotlightCamera } from './rustCombatSpotlightCamera.mjs';
 import { SliceActor, drawActorAura } from './rustCombatActor.mjs';
@@ -65,7 +66,7 @@ export async function createRustCombatPresentation(globals) {
     state.observeEncasements();
     globals.RustCombatPresentation=api;
   }
-  function begin(ctx,s,ox,oy){scale=s;offsetX=ox;offsetY=oy;const nextDensity=(window.devicePixelRatio||1)*s;if(density!==nextDensity){density=nextDensity;for(const p of state.popups)rasterPopup(p);}gpu.begin(density,ctx,s,ox,oy);ctx.save();ctx.beginPath();ctx.rect(ox,oy+COMBAT_VIEW.top*s,360*s,(COMBAT_VIEW.bottom-COMBAT_VIEW.top)*s);ctx.clip();}
+  function begin(ctx,s,ox,oy){scale=s;offsetX=ox;offsetY=oy;const nextDensity=(window.devicePixelRatio||1)*s;if(density!==nextDensity){density=nextDensity;for(const p of state.popups)rasterPopup(p);}gpu.begin(density,ctx,s,ox,oy);ctx.save();}
   function finish(ctx){gpu.composite();ctx.restore();}
   function groundPass(ctx,s,ox,oy){
     if(!state.snapshot)return;begin(ctx,s,ox,oy);sprites.beginFrame(density,s,ox,oy);const now=state.snapshot.time,z=camera.zoom/.5;sprites.chargeArt(false,now);
@@ -154,9 +155,10 @@ export async function createRustCombatPresentation(globals) {
     for(const a of snapshot.actors)if(a.team==='enemy'&&a.hp>0&&a.slowed>0){const height=126*(a.kind.startsWith('boss')?a.scale:a.scale*.6)*camera.zoom;for(let k=0;k<3;k++){const t=(now*.65+a.actor_id*.17+k*.32)%1,size=(4+k*.5)*z;gpu.bitmap('bubble-droplets',k,camera.x(a.pos.x)+(k-1)*height*.2,camera.y(a.pos.y)-height*(.82-.48*t),size,size,0,.65*(1-t*.45),0xe6ffff);}}
     for(const [id,record]of encased){const a=state.actors.get(id)??record.actor,height=126*(a.kind.startsWith('boss')?a.scale:a.scale*.6)*camera.zoom,x=camera.x(a.pos.x),y=camera.y(a.pos.y)+height*.15,wobble=Math.sin((now+id)*5)*.02,size=height*1.3*192/180;if(record.ended===null)gpu.bitmap('bubble-swell',Math.min(5,Math.floor((now-record.born)/.18*6)),x,y,size*(1+wobble),size*(1-wobble),0,.86);else{gpu.once('bubble-pop',now-record.ended,x,y,size*256/192,size*256/192,0,.8);gpu.once('bubble-suds',now-record.ended,x,camera.y(a.pos.y)-height*.5,height*.65,height*.65);}}
     finish(ctx);labels(ctx,s,ox,oy);
+    drawSliceHeroBars(ctx,snapshot,camera,s,ox,oy);
   }
-  function labels(ctx,s,ox,oy){const snapshot=state.snapshot,now=snapshot.time;ctx.save();ctx.beginPath();ctx.rect(ox,oy+COMBAT_VIEW.top*s,360*s,(COMBAT_VIEW.bottom-COMBAT_VIEW.top)*s);ctx.clip();for(let i=0;i<state.popups.length;i++){const p=state.popups[i],age=now-p.born;if(age<0)continue;let above=0;for(let j=i+1;j<state.popups.length;j++)if(state.popups[j].target===p.target)above++;const a=state.actors.get(p.target),pos=a?.pos??p.pos,height=126*(a?.scale??1)*(a?.kind?.startsWith('boss')?1:.6)*camera.zoom,t=c(age/p.life),side=a?.team==='hero'?-10:a?10:0,cy=Math.max(COMBAT_VIEW.top+p.inkHeight*.5+p.pad,Math.min(COMBAT_VIEW.bottom-p.inkHeight*.5-p.pad,camera.y(pos.y)-height*.5-above*12-18*(1-(1-t)**2))),x=Math.max(p.width/2+3,Math.min(357-p.width/2,camera.x(pos.x)+side))-p.width/2-p.pad,y=cy+p.inkHeight*.5-p.baseline;ctx.globalAlpha=c((p.life-age)/.25);ctx.drawImage(p.raster,ox+Math.round(x*density)/density*s,oy+Math.round(y*density)/density*s,p.raster.width/density*s,p.raster.height/density*s);}ctx.restore();}
-  const api={present,ground:groundPass,actor:actorPass,front:frontPass,camera,state,motion,project:camera.project,
+  function labels(ctx,s,ox,oy){const snapshot=state.snapshot,now=snapshot.time;ctx.save();for(let i=0;i<state.popups.length;i++){const p=state.popups[i],age=now-p.born;if(age<0)continue;let above=0;for(let j=i+1;j<state.popups.length;j++)if(state.popups[j].target===p.target)above++;const a=state.actors.get(p.target),pos=a?.pos??p.pos,height=126*(a?.scale??1)*(a?.kind?.startsWith('boss')?1:.6)*camera.zoom,t=c(age/p.life),side=a?.team==='hero'?-10:a?10:0,cy=Math.max(COMBAT_VIEW.top+p.inkHeight*.5+p.pad,Math.min(COMBAT_VIEW.bottom-p.inkHeight*.5-p.pad,camera.y(pos.y)-height*.5-above*12-18*(1-(1-t)**2))),x=Math.max(p.width/2+3,Math.min(357-p.width/2,camera.x(pos.x)+side))-p.width/2-p.pad,y=cy+p.inkHeight*.5-p.baseline;ctx.globalAlpha=c((p.life-age)/.25);ctx.drawImage(p.raster,ox+Math.round(x*density)/density*s,oy+Math.round(y*density)/density*s,p.raster.width/density*s,p.raster.height/density*s);}ctx.restore();}
+  const api={chest(ctx,s,ox,oy){drawSliceChest(ctx,state.snapshot,camera,assets,gpu,s,ox,oy);},present,ground:groundPass,actor:actorPass,front:frontPass,camera,state,motion,project:camera.project,
     sprite:sprites.sprite.bind(sprites),
     pose(view){return motion.records.get(view.actor_id);},
     height(host,fallback,s=1){const a=state.actors.get(host?.rustActorId);return a?128*(a.kind.startsWith('boss')?a.scale:a.scale*.6)*camera.zoom*s:fallback;},

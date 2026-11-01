@@ -1,4 +1,3 @@
-import { COMBAT_VIEW } from './rustCombatArena.mjs';
 import { drawActorPuppetFrame } from './actorPuppetPresentation.mjs';
 import { clamp01 as c, smooth } from './rustCombatEffects.mjs';
 const TAU=Math.PI*2;
@@ -25,7 +24,7 @@ export class SliceSprites {
   const px=x+r.dx*poseUnit,py=y-r.lift*poseUnit-(a.team==='enemy'&&a.encased>0?(6+2*Math.sin(frame.combat_time*3+a.actor_id))*this.camera.zoom/.5:0),dx=-p.clip.footOrigin.x*unit,dy=-p.clip.footOrigin.y*unit*r.sy,w=p.clip.canvas.width*unit,hh=p.clip.canvas.height*unit*r.sy;
   rect.drawX=ox+(px+dx)*s;rect.drawY=oy+(py+dy)*s;rect.width=w*s;rect.height=hh*s;
   const opacity=(this.motion.featured(a)?1:1-this.motion.scrimAlpha)*(a.state==='dead'?1-c((a.state_age-1)/.42):1);
-  ctx.save();ctx.beginPath();ctx.rect(ox,oy+COMBAT_VIEW.top*s,360*s,(COMBAT_VIEW.bottom-COMBAT_VIEW.top)*s);ctx.clip();
+  ctx.save();
   const g=this.gpu;g.begin((window.devicePixelRatio||1)*s,ctx,s,ox,oy);
   const charge=this.charge,reduced=this.reduced;
   if(charge?.id===a.actor_id){if(!charge.image)charge.image=p.frame;this.echoes(charge,px,py,body,dx,dy,w,hh,frame.time,reduced);}

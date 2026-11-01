@@ -1,10 +1,12 @@
+import { authorSubwaves, bindAuthoredSubwaves, subwaveReady } from '../src/core/continuousCombatSubwaves.mjs';
+import { continuousCombatWavesForStage } from '../src/core/continuousCombatProgressionRules.mjs';
 import { advanceBattleStartSimulation } from './combatSimulationTick.mjs';
 import { createCombatBridge } from '../src/core/combatBridge.mjs';
 import { createCombatAuthorityDriver } from '../src/core/combatAuthorityDriver.mjs';
 import { createWfmCombatConfig, wfmEnemyInput } from './wfmCombatConfig.mjs';
 import { shadowEnemy } from '../../src/core/combatShadowAdapter.mjs';
 import { consumeCombatKillEvent } from '../modules/heroCommands.mjs';
-import { maybeAdvanceContinuousCombatStage } from '../src/core/continuousCombatStage.mjs';
+import { maybeAdvanceContinuousCombatStage, buildChapterOneSubwaveStages, getContinuousCombatPartyCP } from '../src/core/continuousCombatStage.mjs';
 import { runtimeAssetUrl, getEmbeddedWasmBytes } from './runtimeAssetUrl.mjs';
 import { recordActorPuppetDefeat } from './actorPuppetDefeats.mjs';
 import { createRustCombatPresentation } from './rustCombatPresentation.mjs';
@@ -20,7 +22,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
   progression, getEnemyRows, advanceHostTime, present = () => {}, warn = console.warn }) {
   let attempt = null, serial = 0, baseTime = 0, lastCombatTime = 0, lastPresentationTime = 0;
   g.RustCombatAuthority = true;
-  let hostTransition = false;
+  let hostTransition = false, subwaves = [], previousSubwave = [], subwaveStarted = 0;
   let stageOptions, advanced = false, failed = false, introNow = null, tail = null;
   const hosts = new Map(), seenSpawns = new Set(), hostHeroes = new Map();
   function restoreHostHeroes(keepVisuals = false) {
@@ -34,6 +36,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
     if (!keepVisuals) hostHeroes.clear();
   }
   function stop(reason = 'host_stage_transition') {
+    subwaves = []; previousSubwave = [];
     driver.stop(reason); restoreHostHeroes(); attempt = null; introNow = null; tail = null; hosts.clear(); seenSpawns.clear();
     present(null);
   }
@@ -47,6 +50,10 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
     else session.recoverContinuousDefeat('rust_bridge_error');
   }
   function project(snapshot, visualOnly = false) {
+    for (const pending of snapshot.pending_spawns || []) {
+      const actor = state.entities.find(a => a.kind === 'enemy' && String(a.uid) === pending.host_id);
+      if (actor) Object.assign(actor, { hp: 0, isAlive: false });
+    }
     for (const view of snapshot.actors) {
       let actor = hosts.get(view.actor_id);
       if (!actor && view.host_id != null) {
@@ -138,6 +145,25 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
       present(visual, []); project(visual, true);
       return;
     }
+    if (!hostTransition && subwaves.length) {
+      const living = new Set(snapshot.actors.filter(a => a.team === 'enemy' && a.hp > 0).map(a => a.host_id).concat((snapshot.pending_spawns || []).map(a => a.host_id)));
+      if (subwaveReady(previousSubwave, living, snapshot.combat_time - subwaveStarted)) {
+        hostTransition = true;
+        try { releaseSubwave(snapshot.combat_time); } finally { hostTransition = false; }
+      }
+      return;
+    }
+    if (snapshot.pending_spawns?.length) return;
+    const stage = g.ContinuousCombatStage;
+    if (!hostTransition && !stage?.bossActive && snapshot.live_enemies === 0
+        && Number(stage?.wave || 1) < continuousCombatWavesForStage(stage?.region, stage?.stage)) {
+      if (!snapshot.chest) {
+        hostTransition = true;
+        try { driver.waveChest(); } finally { hostTransition = false; }
+        return;
+      }
+      if (!snapshot.chest.ready) return;
+    }
     if (stageOptions && !hostTransition) {
       const stage = g.ContinuousCombatStage;
       hostTransition = true;
@@ -183,11 +209,44 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
       call(name, ...args) { if (name !== 'SettleContinuousCombatRewards') return options.call(name, ...args); } });
   }
   const driver = createCombatAuthorityDriver({ bridge, consume, onError: finishFailure });
+  function showSubwave(batch) {
+    for (const actor of batch) {
+      if (!state.entities.includes(actor)) state.entities.push(actor);
+      g.EnemySlots[actor.slotIndex] = actor.uid + 1;
+      if (g.EnemyIDs) g.EnemyIDs[actor.slotIndex] = actor.uid;
+    }
+  }
+  function prepareSubwaves(enemies) {
+    if (!enemies.length) return [];
+    const stage = g.ContinuousCombatStage;
+    if (!g.RustCombatSubwaveAuthoring || g.RustCombatSubwaveAuthoring.seed !== stage.seed || g.RustCombatSubwaveAuthoring.region !== stage.region) {
+      g.RustCombatSubwaveAuthoring = { seed: stage.seed, region: stage.region,
+        stages: stage.region === 1 ? buildChapterOneSubwaveStages(getEnemyRows(), { seed: stage.seed, partyCP: getContinuousCombatPartyCP(state.entities) }) : [] };
+    }
+    const stages = g.RustCombatSubwaveAuthoring.stages;
+    let authored = stages.find(s => s.stage === stage.stage);
+    if (!authored) { authored = { stage: stage.stage, waves: [] }; stages.push(authored); }
+    // Resolve the current checkpoint/CP against the exact host plan, retaining every identity.
+    const wave = { subwaves: authorSubwaves(enemies.map(a => a.name)) };
+    if (!stage.bossActive) authored.waves[stage.wave - 1] = wave;
+    const groups = stage.bossActive ? [enemies] : bindAuthoredSubwaves(wave.subwaves, enemies);
+    subwaves = groups.slice(1); previousSubwave = groups[0]; subwaveStarted = lastCombatTime;
+    const hidden = new Set(subwaves.flat());
+    state.entities.splice(0, state.entities.length, ...state.entities.filter(a => !hidden.has(a)));
+    for (const actor of hidden) { g.EnemySlots[actor.slotIndex] = 0; if (g.EnemyIDs) g.EnemyIDs[actor.slotIndex] = 0; }
+    enemies.forEach(a => seenSpawns.add(String(a.uid)));
+    return previousSubwave;
+  }
+  function releaseSubwave(now) {
+    previousSubwave = subwaves.shift(); subwaveStarted = now;
+    showSubwave(previousSubwave);
+    driver.spawn(previousSubwave.map(a => shadowEnemy(wfmEnemyInput(a, getEnemyRows()))));
+  }
   function spawnAdditions() {
     const additions = state.entities.filter(a => a.kind === 'enemy' && !a.rustActorId && a.hp > 0 && !seenSpawns.has(String(a.uid)));
     if (additions.length) {
-      additions.forEach(a => seenSpawns.add(String(a.uid)));
-      driver.spawn(additions.map(a => shadowEnemy(wfmEnemyInput(a, getEnemyRows()))));
+      const batch = prepareSubwaves(additions);
+      driver.spawn(batch.map(a => shadowEnemy(wfmEnemyInput(a, getEnemyRows()))));
     }
   }
   function tickFrame(options) {
@@ -210,7 +269,9 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
       stop(); attempt = key; baseTime = Number(g.time || 0); lastCombatTime = 0; lastPresentationTime = 0;
       for (const hero of state.entities.filter(a => a.kind === 'hero')) hostHeroes.set(hero, { maxHP: hero.maxHP });
       try {
+        prepareSubwaves(state.entities.filter(a => a.kind === 'enemy' && a.hp > 0));
         const config = createWfmCombatConfig({ globals: g, entities: state.entities, enemyRows: getEnemyRows(), encounterId: `rust:${key}:${++serial}` });
+        config.spawn_markers = !stage.bossActive;
         if (stage.bossActive && !config.enemies.some(enemy => enemy.spawn_key === String(stage.bossUID))) throw new Error('Missing WFM boss spawn');
         for (const enemy of config.enemies) seenSpawns.add(enemy.spawn_key);
         driver.start(config);

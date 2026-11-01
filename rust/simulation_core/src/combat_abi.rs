@@ -125,6 +125,8 @@ struct SummonProfile {
 struct EncounterConfig {
     #[serde(default)]
     continuous: bool,
+    #[serde(default)]
+    spawn_markers: bool,
     encounter_id: String,
     seed: String,
     geometry: GeometryInput,
@@ -180,6 +182,7 @@ enum Operation {
         encounter_id: String,
         enemies: Vec<EnemyInput>,
     },
+    WaveChest { world: u32, encounter_id: String },
     OrdinaryClear {
         world: u32,
         encounter_id: String,
@@ -262,6 +265,8 @@ struct World {
     encounter_id: String,
     state: &'static str,
     continuous: bool,
+    spawn_markers: bool,
+    pending_spawns: Vec<(u32, Archetype, String, Vec2, Stats, f32, Option<f32>)>,
     host_max_hp: BTreeMap<u32, f32>,
     ordinary_clears: std::collections::BTreeSet<String>,
     events: Vec<Value>,
@@ -284,7 +289,7 @@ impl Transport {
     fn execute(&mut self, op: Operation) -> Result<Value, Value> {
         match op {
             Operation::Describe {} => Ok(json!({"abi_version":VERSION,"schema":SCHEMA,"hz":SIM_HZ,
-                "capabilities":["headless_slice_v1","initial_enemies","events_after","spawn_enemies","end_encounter","wfm_enemies","autonomous_phoenix"],
+                "capabilities":["headless_slice_v1","initial_enemies","events_after","spawn_enemies","end_encounter","wfm_enemies","autonomous_phoenix","wave_chest"],
                 "limits":{"request_bytes":MAX_REQUEST,"response_bytes":MAX_RESPONSE,"worlds":2,"responses":8,"inputs":8,"heroes":4,"enemies":MAX_ENEMIES,"hazards":MAX_EFFECTS,"projectiles":MAX_EFFECTS,"retained_events":MAX_EVENTS,"event_step_reserve":MAX_EVENTS/2,"floor_min_extent":256,"floor_max_extent":16384},
                 "resources":{"worlds":self.worlds.count(),"responses":self.responses.count(),"inputs":self.inputs.len()}})),
             Operation::Create { config } => {
@@ -304,6 +309,15 @@ impl Transport {
                     .ok_or_else(|| error("resource_limit", "world", "world registry full", None))?;
                 Ok(json!({"world":handle,"snapshot":result["snapshot"],"events":result["events"]}))
             }
+            Operation::WaveChest { world, encounter_id } => {
+                let w = self.worlds.get_mut(world).ok_or_else(bad_world)?;
+                if encounter_id != w.encounter_id || !w.continuous || w.state != "running"
+                    || !w.pending_spawns.is_empty() || w.sim.actors.iter().any(|a| a.view.team == Team::Enemy && a.alive()) {
+                    return Err(error("invalid_transition", "wave_chest", "Chest requires an empty ordinary wave", Some(w.sim.step_number)));
+                }
+                if w.sim.chests.is_empty() { w.sim.drop_wave_chest(); }
+                Ok(w.result(w.events.len()))
+            }
             Operation::OrdinaryClear {
                 world,
                 encounter_id,
@@ -315,6 +329,7 @@ impl Transport {
                     || w.state != "running"
                     || transition_id.is_empty()
                     || transition_id.len() > 256
+                    || !w.pending_spawns.is_empty()
                     || w.sim
                         .actors
                         .iter()
@@ -465,6 +480,17 @@ impl Transport {
                     }
                 }
                 w.sim.step();
+                for (marker, kind, id, point, stats, hp, magic) in std::mem::take(&mut w.pending_spawns) {
+                    if w.sim.hazards.iter().any(|h| h.view.id == marker && h.view.phase != HazardPhase::Resolved) {
+                        w.pending_spawns.push((marker, kind, id, point, stats, hp, magic));
+                    } else {
+                        w.sim.spawn_actor(kind, point, stats);
+                        let actor = w.sim.actors.last_mut().unwrap();
+                        actor.begin_spawn(); actor.view.hp = hp; actor.wfm_magic = magic.unwrap_or(stats.atk);
+                        w.host_ids.insert(actor.view.id, id);
+                    }
+                }
+                w.sim.refresh_snapshot();
                 w.collect();
                 w.sim.defeats.clear();
                 w.sim.materialized.clear();
@@ -672,8 +698,16 @@ impl World {
                 return Err(invalid("config.enemies.summon_profiles"));
             }
         }
+        let mut pending_spawns = Vec::new();
         let mut host_ids = BTreeMap::new();
         for (k, id, p, stats, hp) in spawns {
+            if c.spawn_markers && hero_index(k).is_none() && !wf_combat::tuning::is_boss(k) {
+                sim.hazard(HazardKind::SpawnMarker, 0, None, p, Vec2::new(0., -1.));
+                let marker = sim.hazards.last().unwrap().view.id;
+                let magic = c.enemies.iter().find(|e| e.spawn_key == id).and_then(|e| e.wfm_magic);
+                pending_spawns.push((marker, k, id.to_owned(), p, stats.resolved(), hp, magic));
+                continue;
+            }
             sim.spawn_actor(k, p, stats.resolved());
             let actor = sim.actors.last_mut().unwrap();
             actor.view.hp = hp;
@@ -694,8 +728,8 @@ impl World {
                             .get(&a.view.id)
                             .is_some_and(|id| id == &enemy.spawn_key)
                     })
-                    .unwrap();
-                actor.wfm_magic = magic;
+                    ;
+                if let Some(actor) = actor { actor.wfm_magic = magic; }
             }
         }
         sim.deaths();
@@ -705,6 +739,8 @@ impl World {
             encounter_id: c.encounter_id,
             state: "running",
             continuous: c.continuous,
+            spawn_markers: c.spawn_markers,
+            pending_spawns,
             host_max_hp,
             ordinary_clears: std::collections::BTreeSet::new(),
             events: Vec::new(),
@@ -715,6 +751,10 @@ impl World {
         Ok(w)
     }
     fn spawn(&mut self, encounter_id: &str, enemies: Vec<EnemyInput>) -> Result<Value, Value> {
+        if !self.sim.chests.is_empty() && !self.sim.wave_chest_ready() {
+            return Err(error("invalid_transition", "spawn.chest", "Chest pause has not finished", Some(self.sim.step_number)));
+        }
+
         let invalid = || {
             error(
                 "invalid_input",
@@ -740,7 +780,7 @@ impl World {
             ));
         }
         if enemies.is_empty()
-            || self.sim.actors.len() + enemies.len() > MAX_ENEMIES + 4
+            || self.sim.actors.len() + self.pending_spawns.len() + enemies.len() > MAX_ENEMIES + 4
             || self.events.len() >= MAX_EVENTS / 2
         {
             return Err(error(
@@ -802,8 +842,16 @@ impl World {
         self.identities = identities;
         self.state = "running";
         self.sim.encounter.complete = false;
+        self.sim.chests.clear();
+        self.sim.chest_opener = None; self.sim.chest_approach = None;
         let after = self.events.len();
         for (k, id, p, stats, hp, magic) in batch {
+            if self.spawn_markers && !wf_combat::tuning::is_boss(k) {
+                self.sim.hazard(HazardKind::SpawnMarker, 0, None, p, Vec2::new(0., -1.));
+                let marker = self.sim.hazards.last().unwrap().view.id;
+                self.pending_spawns.push((marker, k, id, p, stats, hp, magic));
+                continue;
+            }
             self.sim.spawn_actor(k, p, stats);
             let actor = self.sim.actors.last_mut().unwrap();
             actor.view.hp = hp;
@@ -863,8 +911,20 @@ impl World {
             }
         }
     }
+    fn gameplay_hash(&self) -> u64 {
+        let mut hash = wf_combat::snapshot::Hash(self.sim.state_hash());
+        if self.spawn_markers {
+            hash.u(0x454e545259);
+            for (marker, kind, id, p, stats, hp, magic) in &self.pending_spawns {
+                hash.u(*marker as u64); hash.u(*kind as u64); hash.v(*p);
+                for byte in id.bytes() { hash.u(byte as u64); }
+                for v in [stats.hp,stats.atk,stats.def,stats.speed,stats.reach,stats.interval,stats.evade,stats.special,*hp,magic.unwrap_or(stats.atk)] { hash.f(v); }
+            }
+        }
+        hash.0
+    }
     fn result(&self, after: usize) -> Value {
-        let actors:Vec<_> = self.sim.actors.iter().map(|a|json!({"actor_id":a.view.id,"host_id":self.host_ids.get(&a.view.id),"state":format!("{:?}",a.view.state).to_lowercase(),"state_age":a.view.state_age,"state_duration":a.view.state_duration,"impact_at":a.view.impact_at,"facing":format!("{:?}",a.view.facing).to_lowercase(),"ward":a.view.ward,"warcry_shield":a.view.warcry_shield,"energy":a.view.energy,"enraged":a.view.enraged,"radius":a.view.radius,"target":a.view.target,"encased":a.view.encased,"poisoned":a.view.poisoned,"slowed":a.view.slowed,"taunted_by":a.view.taunted_by,"groove_active":a.view.groove_active,"special_casting":a.view.special_casting,"elevate":a.view.elevate.map(|v| format!("{v:?}").to_lowercase()),"scale":a.view.scale,"kind":a.view.archetype,"team":if a.view.team==Team::Hero {"hero"} else {"enemy"},"pos":{"x":a.view.pos.x,"y":a.view.pos.y},"hp":a.view.hp,"max_hp":a.view.max_hp,"downed":a.view.state==ActorState::Downed})).collect();
+        let actors:Vec<_> = self.sim.actors.iter().map(|a|json!({"actor_id":a.view.id,"host_id":self.host_ids.get(&a.view.id),"state":format!("{:?}",a.view.state).to_lowercase(),"state_age":a.view.state_age,"state_duration":a.view.state_duration,"impact_at":a.view.impact_at,"facing":format!("{:?}",a.view.facing).to_lowercase(),"ward":a.view.ward,"warcry_shield":a.view.warcry_shield,"energy":a.view.energy,"enraged":a.view.enraged,"radius":a.view.radius,"target":a.view.target,"encased":a.view.encased,"poisoned":a.view.poisoned,"slowed":a.view.slowed,"taunted_by":a.view.taunted_by,"groove_active":a.view.groove_active,"groove":a.view.groove.map(|g|format!("{g:?}").to_lowercase()),"meter":a.view.meter,"special_casting":a.view.special_casting,"elevate":a.view.elevate.map(|v| format!("{v:?}").to_lowercase()),"scale":a.view.scale,"kind":a.view.archetype,"team":if a.view.team==Team::Hero {"hero"} else {"enemy"},"pos":{"x":a.view.pos.x,"y":a.view.pos.y},"hp":a.view.hp,"max_hp":a.view.max_hp,"downed":a.view.state==ActorState::Downed})).collect();
         let hazards: Vec<_> = self.sim.snapshot().hazards.iter().map(|h| {
             let shape = match h.shape {
                 Shape::Circle { radius } => json!({"kind":"circle","radius":radius}),
@@ -874,7 +934,7 @@ impl World {
             };
             json!({"id":h.id,"kind":h.kind,"owner":h.owner,"team":if h.team==Team::Hero {"hero"} else {"enemy"},"phase":format!("{:?}",h.phase).to_lowercase(),"progress":h.progress,"width_scale":h.width_scale,"tier":h.tier,"fill":format!("{:?}",h.fill).to_lowercase(),"hostile":h.hostile,"origin":{"x":h.origin.x,"y":h.origin.y},"dir":{"x":h.dir.x,"y":h.dir.y},"shape":shape})
         }).collect();
-        json!({"snapshot":{"time":self.sim.snapshot().time,"combat_time":self.sim.snapshot().combat_time,"phoenix_cooldown":self.sim.snapshot().phoenix_cooldown,"phoenix_channel":self.sim.snapshot().phoenix_channel.map(|v|json!({"hero":v.hero,"progress":v.progress})),"hit_stop":self.sim.snapshot().hit_stop.map(|h|json!({"cause":format!("{:?}",h.cause).to_lowercase(),"actor":h.actor,"remaining":h.remaining})),"spotlight":self.sim.snapshot().spotlight.as_ref().map(|v|json!({"caster":v.caster,"skill":v.skill,"phase":format!("{:?}",v.phase).to_lowercase(),"started":v.started,"participants":v.participants,"co_casters":v.co_casters,"projectiles":v.projectiles,"hazards":v.hazards})),"hazards":hazards,"projectiles":self.sim.snapshot().projectiles.iter().map(|p|json!({"id":p.id,"kind":format!("{:?}",p.kind).to_lowercase(),"team":if p.team==Team::Hero {"hero"} else {"enemy"},"pos":{"x":p.pos.x,"y":p.pos.y},"height":p.height,"dir":{"x":p.dir.x,"y":p.dir.y}})).collect::<Vec<_>>(),"camera_focus":{"x":self.sim.snapshot().camera_focus.x,"y":self.sim.snapshot().camera_focus.y},"schema":SCHEMA,"encounter_id":self.encounter_id,"step":self.sim.step_number.to_string(),"combat_steps":self.sim.combat_steps.to_string(),"state":self.state,"actors":actors,"live_enemies":self.sim.actors.iter().filter(|a|a.view.team==Team::Enemy && a.alive()).count(),"last_event_sequence":self.events.len().to_string(),"gameplay_hash":format!("{:016x}",self.sim.state_hash()),"geometry":{"floor":{"min":{"x":self.sim.floor.min.x,"y":self.sim.floor.min.y},"max":{"x":self.sim.floor.max.x,"y":self.sim.floor.max.y}}}},"events":&self.events[after..]})
+        json!({"snapshot":{"pending_spawns":self.pending_spawns.iter().map(|(marker,_,id,p,_,_,_)|json!({"marker":marker,"host_id":id,"pos":{"x":p.x,"y":p.y}})).collect::<Vec<_>>(),"chest":self.sim.chests.first().map(|c|json!({"id":c.id,"pos":{"x":c.pos.x,"y":c.pos.y},"state":format!("{:?}",c.state).to_lowercase(),"state_age":c.state_age,"age":c.age,"ready":self.sim.wave_chest_ready(),"rewards":[]})),"time":self.sim.snapshot().time,"combat_time":self.sim.snapshot().combat_time,"phoenix_cooldown":self.sim.snapshot().phoenix_cooldown,"phoenix_channel":self.sim.snapshot().phoenix_channel.map(|v|json!({"hero":v.hero,"progress":v.progress})),"hit_stop":self.sim.snapshot().hit_stop.map(|h|json!({"cause":format!("{:?}",h.cause).to_lowercase(),"actor":h.actor,"remaining":h.remaining})),"spotlight":self.sim.snapshot().spotlight.as_ref().map(|v|json!({"caster":v.caster,"skill":v.skill,"phase":format!("{:?}",v.phase).to_lowercase(),"started":v.started,"participants":v.participants,"co_casters":v.co_casters,"projectiles":v.projectiles,"hazards":v.hazards})),"hazards":hazards,"projectiles":self.sim.snapshot().projectiles.iter().map(|p|json!({"id":p.id,"kind":format!("{:?}",p.kind).to_lowercase(),"team":if p.team==Team::Hero {"hero"} else {"enemy"},"pos":{"x":p.pos.x,"y":p.pos.y},"height":p.height,"dir":{"x":p.dir.x,"y":p.dir.y}})).collect::<Vec<_>>(),"camera_focus":{"x":self.sim.snapshot().camera_focus.x,"y":self.sim.snapshot().camera_focus.y},"schema":SCHEMA,"encounter_id":self.encounter_id,"step":self.sim.step_number.to_string(),"combat_steps":self.sim.combat_steps.to_string(),"state":self.state,"actors":actors,"live_enemies":self.pending_spawns.len()+self.sim.actors.iter().filter(|a|a.view.team==Team::Enemy && a.alive()).count(),"last_event_sequence":self.events.len().to_string(),"gameplay_hash":format!("{:016x}",self.gameplay_hash()),"geometry":{"floor":{"min":{"x":self.sim.floor.min.x,"y":self.sim.floor.min.y},"max":{"x":self.sim.floor.max.x,"y":self.sim.floor.max.y}}}},"events":&self.events[after..]})
     }
 }
 thread_local! { static TRANSPORT: RefCell<Transport> = RefCell::new(Transport::new()); }

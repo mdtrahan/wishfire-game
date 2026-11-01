@@ -1,3 +1,4 @@
+import { authorSubwaveStages } from './continuousCombatSubwaves.mjs';
 import { resetRealtimeSkillAttempt } from './realtimeSkillState.mjs';
 import { clearHeroWards } from './heroWard.mjs';
 import { computeCombatPower } from './combatPower.mjs';
@@ -787,6 +788,14 @@ export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase
       sectorSize: entry.isSolo ? 1 : sectorSizes.get(entry.sectorIndex),
     };
   }).filter(entry => Number.isInteger(entry.slotIndex));
+}
+
+export function buildChapterOneSubwaveStages(enemyRows, { seed = 1, partyCP = 0, enemySize = 40 } = {}) {
+  return authorSubwaveStages(Array.from({ length: continuousCombatStagesForRegion(1) }, (_, index) => ({
+    stage: index + 1,
+    waves: Array.from({ length: continuousCombatWavesForStage(1, index + 1) }, (_, wave) =>
+      buildContinuousCombatSpawnPlan(enemyRows, { ...createContinuousCombatStageState(seed, { stage: index + 1 }), wave: wave + 1, transitions: wave }, { partyCP, enemySize }).map(entry => entry.row.name)),
+  })));
 }
 
 function spawnContinuousCombatStage({ globals, entities, call, state }) {

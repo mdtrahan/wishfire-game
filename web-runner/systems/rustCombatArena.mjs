@@ -1,6 +1,6 @@
 import { deriveCombatWorldBounds, deriveCombatWorldVerticalBounds } from '../../src/core/combatOrientation.mjs';
-// Slice camera.rs pixel scale fitted to WFM's unobstructed combat viewport.
-export const COMBAT_VIEW = Object.freeze({ left: 0, right: 360, top: 155, bottom: 366, zoom: .5, squash: .75 });
+// Slice camera.rs pixel scale fitted to WFM's full-height combat floor beneath the WFM UI.
+export const COMBAT_VIEW = Object.freeze({ left: 0, right: 360, top: 42, bottom: 430, zoom: .5, squash: .75 });
 const authoredX = deriveCombatWorldBounds(), authoredY = deriveCombatWorldVerticalBounds();
 const height = (COMBAT_VIEW.bottom - COMBAT_VIEW.top) / (COMBAT_VIEW.zoom * COMBAT_VIEW.squash);
 export const SLICE_FLOOR = Object.freeze({ min: Object.freeze({ x: 96, y: 40 }), max: Object.freeze({ x: 816, y: 40 + height }) });

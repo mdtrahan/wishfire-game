@@ -7,6 +7,7 @@ pub mod barrage;
 pub mod boss_commit;
 pub mod bubble_aura;
 pub mod combat;
+pub mod chest;
 pub mod combo;
 pub mod enemies;
 pub mod enemy_healing;
@@ -89,6 +90,9 @@ pub struct Sim {
     pub encounter: EncounterState,
     pub modifiers: EncounterModifiers,
     pub formation_origin: Vec2,
+    pub chests: Vec<chest::ChestView>,
+    pub chest_opener: Option<u32>,
+    pub chest_approach: Option<(Vec2, Facing)>,
     pub interest_points: Vec<(u32, Vec2)>,
     pub spawn_profiles: Vec<(Archetype, tuning::Stats)>,
     pub defeats: Vec<Vec2>,
@@ -161,6 +165,9 @@ impl Sim {
             formation_origin: tuning::ARENA_CENTRE,
             encounter: EncounterState::default(),
             modifiers: EncounterModifiers::default(),
+            chests: Vec::new(),
+            chest_opener: None,
+            chest_approach: None,
             interest_points: Vec::with_capacity(4),
             spawn_profiles: Vec::with_capacity(16),
             defeats: Vec::with_capacity(64),
@@ -295,6 +302,7 @@ impl Sim {
         self.update_hazards();
         self.sync_boss_casts();
         self.enmity_step();
+        self.update_chests();
         self.hero_ai();
         self.enemy_ai();
         self.sync_hero_areas();
@@ -305,6 +313,7 @@ impl Sim {
         self.deaths();
         self.separate_bodies();
         self.constrain_party();
+        self.constrain_chests();
         self.select_spotlight();
         if self.spotlight.active.is_none() {
             self.finish_requested = true;
@@ -374,6 +383,12 @@ impl Sim {
                 h.f(self.modifiers.cooldown_multiplier);
                 h.f(self.modifiers.slam_radius_bonus);
                 h.f(self.modifiers.recharge_reduction);
+                if !self.chests.is_empty() {
+                    h.u(0x4348455354);
+                    for c in &self.chests { h.u(c.id as u64); h.v(c.pos); h.u(c.state as u64); h.f(c.state_age); h.f(c.age); }
+                    h.u(self.chest_opener.unwrap_or(0) as u64);
+                    if let Some((point, facing)) = self.chest_approach { h.v(point); h.u(facing as u64); }
+                }
                 h.u(self.interest_points.len() as u64);
                 for (id, p) in &self.interest_points {
                     h.u(*id as u64);

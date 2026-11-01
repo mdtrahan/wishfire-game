@@ -1326,6 +1326,89 @@
         30
       ],
       "file": "vfx-astra/ko-puff.png"
+    },
+    "chest-closed": {
+      "file": "rewards/chest-closed.png",
+      "frame_size": [
+        96,
+        96
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        1000
+      ],
+      "pivot": [
+        48,
+        88
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        32,
+        32
+      ]
+    },
+    "chest-open": {
+      "file": "rewards/chest-open.png",
+      "frame_size": [
+        96,
+        96
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        1000
+      ],
+      "pivot": [
+        48,
+        88
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        32,
+        32
+      ]
+    },
+    "chest-sparkle": {
+      "file": "vfx-astra/chest-sparkle-neutral.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 4,
+      "frame_ms": [
+        100,
+        150,
+        150,
+        200
+      ],
+      "pivot": [
+        64,
+        122
+      ],
+      "blend": "additive",
+      "screen_size_px": [
+        44,
+        44
+      ]
+    },
+    "shadow": {
+      "file": "vfx-astra/shadow.png",
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        1000
+      ],
+      "pivot": [
+        64.0,
+        64.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        31,
+        10
+      ]
     }
   },
   "sha256": {
@@ -1406,7 +1489,11 @@
     "vfx-astra/charge-up/charge-ground.png": "4e97a74420519fb5c9a60865dd10e2c290fcdce292171f0481df7a51e967e338",
     "vfx-astra/charge-up/charge-flare.png": "7099c37fe57607a6ebf631fb8876afe9b0ba2393a96bf7d33034d1571a492d0a",
     "vfx-astra/blast-smoke.png": "9606faae241b7d208263fb99470df6d77a87feb59a85beb88b79a89e58e8fb5f",
-    "vfx-astra/ko-puff.png": "4c7656295143161fe8fdedda67cc39c4d740b88fd219c6a81405bcff10323dfb"
+    "vfx-astra/ko-puff.png": "4c7656295143161fe8fdedda67cc39c4d740b88fd219c6a81405bcff10323dfb",
+    "rewards/chest-closed.png": "db6eb0dc9b7f03192b8f5e89ec20595deec59d9e1cf209bcdc80119e3f496f2b",
+    "rewards/chest-open.png": "352dc65fa5e3f27afa0c1fc3f4f129ca4f2e5d7b2c0902344d06578801699924",
+    "vfx-astra/chest-sparkle-neutral.png": "6f9ea91229da254587a4d95419573f960f6c375af96ba113331b9dc41a96ecdf",
+    "vfx-astra/shadow.png": "25a870b15f04269d5e397ae36f2f4355ec6bd709415292d2ac465295e7b9cb32"
   },
   "font": "fonts/Bungee-Regular.ttf",
   "existing_arcane_impact": "../images/vfx_impact_g03_purple.png",
