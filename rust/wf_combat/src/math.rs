@@ -135,39 +135,51 @@ pub fn contains(shape: Shape, origin: Vec2, dir: Vec2, point: Vec2, body: f32) -
     }
 }
 
-/// Keep the entire body on the painted floor, including its half-open upper edges.
-pub fn floor_point(p: Vec2, radius: f32) -> Vec2 {
-    let pad = Vec2::new(radius, radius);
-    p.clamp(
-        crate::tuning::ARENA_MIN + pad,
-        crate::tuning::ARENA_MAX - pad - Vec2::new(0.001, 0.001),
-    )
+/// Per-encounter floor. Defaults preserve the frozen slice geometry.
+#[derive(Clone, Copy, Debug)]
+pub struct Floor {
+    pub min: Vec2,
+    pub max: Vec2,
 }
-
-/// Length along a locked ray before its end reaches the walkable wall.
-pub fn floor_ray(origin: Vec2, dir: Vec2, length: f32) -> f32 {
-    let mut result = length;
-    for (p, d, lo, hi) in [
-        (
-            origin.x,
-            dir.x,
-            crate::tuning::ARENA_MIN.x,
-            crate::tuning::ARENA_MAX.x,
-        ),
-        (
-            origin.y,
-            dir.y,
-            crate::tuning::ARENA_MIN.y,
-            crate::tuning::ARENA_MAX.y,
-        ),
-    ] {
-        if d > 0. {
-            result = result.min((hi - 0.001 - p) / d);
-        } else if d < 0. {
-            result = result.min((lo - p) / d);
+impl Default for Floor {
+    fn default() -> Self {
+        Self {
+            min: crate::tuning::ARENA_MIN,
+            max: crate::tuning::ARENA_MAX,
         }
     }
-    result.max(0.)
+}
+impl Floor {
+    /// Keep the entire body on the painted floor, including its half-open upper edges.
+    pub fn point(self, p: Vec2, radius: f32) -> Vec2 {
+        let pad = Vec2::new(
+            radius.min((self.max.x - self.min.x) * 0.5 - 0.001),
+            radius.min((self.max.y - self.min.y) * 0.5 - 0.001),
+        );
+        p.clamp(self.min + pad, self.max - pad - Vec2::new(0.001, 0.001))
+    }
+
+    /// Length along a locked ray before its end reaches the walkable wall.
+    pub fn ray(self, origin: Vec2, dir: Vec2, length: f32) -> f32 {
+        let mut result = length;
+        for (p, d, lo, hi) in [
+            (origin.x, dir.x, self.min.x, self.max.x),
+            (origin.y, dir.y, self.min.y, self.max.y),
+        ] {
+            if d > 0. {
+                result = result.min((hi - 0.001 - p) / d);
+            } else if d < 0. {
+                result = result.min((lo - p) / d);
+            }
+        }
+        result.max(0.)
+    }
+}
+pub fn floor_point(p: Vec2, radius: f32) -> Vec2 {
+    Floor::default().point(p, radius)
+}
+pub fn floor_ray(origin: Vec2, dir: Vec2, length: f32) -> f32 {
+    Floor::default().ray(origin, dir, length)
 }
 
 /// Closest interior destination with a body/edge margin. Zone AI depends on this

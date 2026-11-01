@@ -1,7 +1,7 @@
 //! Fixed-distance teleports, weighted by open travel and the existing retreat/range intent.
 use crate::{
     api::*,
-    math::{direction, floor_point, projectile_entry},
+    math::{direction, projectile_entry},
     tuning::*,
     Sim,
 };
@@ -17,7 +17,7 @@ impl Sim {
         let pos = a.view.pos;
         let hop = self.marid_hop_distance();
         let end = pos + dir * hop;
-        if floor_point(end, a.view.radius).distance(end) > 0.001 {
+        if self.floor.point(end, a.view.radius).distance(end) > 0.001 {
             return None;
         }
         let mut clear = f32::INFINITY;

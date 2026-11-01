@@ -77,8 +77,8 @@ impl Sim {
                 _ => 1.,
             };
         if a.stats.reach > 100. {
-            let end = a.view.pos
-                + a.action_aim * crate::math::floor_ray(a.view.pos, a.action_aim, f32::INFINITY);
+            let end =
+                a.view.pos + a.action_aim * self.floor.ray(a.view.pos, a.action_aim, f32::INFINITY);
             self.projectile(i, a.target, end, false, raw, None);
         } else {
             let victim = a

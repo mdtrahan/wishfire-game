@@ -1,3 +1,5 @@
+mod combat_abi;
+
 fn number_or_zero(value: f64) -> f64 {
     if value.is_nan() {
         0.0

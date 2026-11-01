@@ -139,7 +139,7 @@ impl Sim {
         let mut best = f32::INFINITY;
         for n in 0..64 {
             let dir = direction((n % 32) as f32 * TAU / 32.);
-            let p = crate::math::floor_point(
+            let p = self.floor.point(
                 if n < 32 {
                     e.view.pos + dir * radius
                 } else {
@@ -162,10 +162,10 @@ impl Sim {
                 .fold(f32::INFINITY, |d, (j, b)| {
                     d.min(p.distance(b.view.pos) - self.mage_danger_radius(i, j))
                 });
-            let wall = (p.x - ARENA_MIN.x - a.view.radius)
-                .min(ARENA_MAX.x - p.x - a.view.radius)
-                .min(p.y - ARENA_MIN.y - a.view.radius)
-                .min(ARENA_MAX.y - p.y - a.view.radius);
+            let wall = (p.x - self.floor.min.x - a.view.radius)
+                .min(self.floor.max.x - p.x - a.view.radius)
+                .min(p.y - self.floor.min.y - a.view.radius)
+                .min(self.floor.max.y - p.y - a.view.radius);
             let delta = p - a.view.pos;
             let penetration = self
                 .actors

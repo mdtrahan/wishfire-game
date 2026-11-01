@@ -56,6 +56,8 @@
 - Tests that read untracked `output/` fixtures (`partySustain`, `sustainTrackerContract`) skip with a named reason when the fixture is absent; they still run in checkouts that hold the knowledge-lab data.
 - Do not weaken an ownership contract to make an implementation pass unless the product/architecture source changed too.
 
+- `combatBridge.test.mjs` instantiates the rebuilt WASM in Node and proves deterministic fights, exact step rejection, host bounds, handle generations, malformed inputs, capacity limits and zero retained input/response/world allocations after teardown.
+
 ## Work Guidance
 - Name new tests after the behavior or contract, not the implementation detail alone.
 - For bug/regression beads, add the smallest test that fails for the old behavior and protects the intended owner.

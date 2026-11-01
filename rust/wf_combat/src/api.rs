@@ -10,6 +10,7 @@ pub const SIM_HZ: u32 = 30;
 pub const SIM_DT: f32 = 1.0 / SIM_HZ as f32;
 
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Vec2 {
     pub x: f32,
     pub y: f32,
@@ -29,6 +30,8 @@ pub enum Team {
 
 /// Which body/role an actor uses. The client maps this to art; the sim maps it to stats.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum Archetype {
     // Heroes
     Fara,  // tank, Crimson Ward ring
@@ -63,6 +66,8 @@ pub enum Archetype {
 
 /// Presentation state. Maps 1:1 to puppet clips (idle, walk, basic, cast, hurt, ko, spawn).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum ActorState {
     Spawn,
     Idle,
@@ -152,6 +157,8 @@ pub enum ElevateVariant {
 /// Owner Groove spec (2026-10-26): how a hero's special meter fills and is spent.
 /// Only usable specials spend it (never passives). Specials have no cooldown clocks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum Groove {
     /// C (Runa): three notches; Bubble Pop and Heal cost 1 each.
     Super,
@@ -223,6 +230,8 @@ pub enum HazardPhase {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum HazardKind {
     SniperLine,
     LizardoDrop,
@@ -362,6 +371,8 @@ pub struct Snapshot {
 
 /// Heal provenance for recipient presentation; never changes restoration mechanics.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "snake_case", tag = "kind", content = "data"))]
 pub enum HealSource {
     HealingSpring,
     Mend,
@@ -377,6 +388,8 @@ pub enum HealSource {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "snake_case", tag = "kind", content = "data"))]
 pub enum Event {
     PhoenixBegan {
         hero: u32,
@@ -547,6 +560,8 @@ pub enum Event {
 
 /// Impact VFX family; maps to Wishfire elemental-impact flipbooks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum Element {
     Physical,
     Fire,
@@ -583,6 +598,8 @@ pub struct SimConfig {
 /// Hero special skills: the only actions eligible for a Cinematic Skill Spotlight.
 /// Basic attacks and resurrect channels are never skills.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum Skill {
     CrimsonWard,   // Fara special
     Taunt,         // Fara extra

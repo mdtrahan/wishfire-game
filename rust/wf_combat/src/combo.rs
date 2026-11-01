@@ -95,7 +95,7 @@ impl Sim {
                 Shape::Circle {
                     radius: BUBBLE_RADIUS,
                 },
-                crate::math::floor_point(center, BUBBLE_RADIUS),
+                self.floor.point(center, BUBBLE_RADIUS),
                 Vec2::new(1., 0.),
                 self.actors[t].view.radius,
             ),
@@ -103,7 +103,7 @@ impl Sim {
                 Shape::Circle {
                     radius: ARCANE_PULSE_RADIUS,
                 },
-                crate::math::floor_point(center, ARCANE_PULSE_RADIUS),
+                self.floor.point(center, ARCANE_PULSE_RADIUS),
                 Vec2::new(1., 0.),
                 self.actors[t].view.radius,
             ),

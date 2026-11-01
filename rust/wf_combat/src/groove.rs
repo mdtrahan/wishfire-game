@@ -15,7 +15,7 @@ impl Sim {
             .into_iter()
             .map(|side| e.view.pos + Vec2::new(side * a.attack_range(e) * 0.9, 0.))
             .filter(|&p| {
-                p == crate::math::floor_point(p, a.view.radius)
+                p == self.floor.point(p, a.view.radius)
                     && self.fight_spot_safe(i, p)
                     && !self.path_enters_threat(i, p, None)
                     && !self.actors.iter().enumerate().any(|(j, other)| {
@@ -173,7 +173,7 @@ impl Sim {
             {
                 continue;
             }
-            let center = crate::math::floor_point(enemy.view.pos, radius);
+            let center = self.floor.point(enemy.view.pos, radius);
             let count = self
                 .actors
                 .iter()
@@ -341,7 +341,7 @@ impl Sim {
             if p.distance(a.view.pos) + 0.00001 < COMBO_MIN_HOP
                 || p.distance(origin) > COMBO_RADIUS
                 || !self.combo_on_screen(i, p)
-                || p != crate::math::floor_point(p, a.view.radius)
+                || p != self.floor.point(p, a.view.radius)
                 || self.hazards.iter().any(|h| {
                     h.view.hostile
                         && h.view.kind != HazardKind::KajaAura

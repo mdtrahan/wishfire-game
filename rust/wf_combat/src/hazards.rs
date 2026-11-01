@@ -125,7 +125,7 @@ impl Sim {
             return;
         };
         if let Shape::Circle { radius } = h.view.shape {
-            h.view.origin = crate::math::floor_point(self.actors[t].view.pos, radius);
+            h.view.origin = self.floor.point(self.actors[t].view.pos, radius);
             return;
         }
         if let Some(s) = self
@@ -267,7 +267,7 @@ impl Sim {
             ),
             HazardKind::BossCharge => (
                 Shape::Line {
-                    length: crate::math::floor_ray(
+                    length: self.floor.ray(
                         origin,
                         dir,
                         target
@@ -437,7 +437,7 @@ impl Sim {
                 r.width_scale = 1.5;
             }
         }
-        scaled_shape(shape, rule, origin, dir)
+        scaled_shape_in(self.floor, shape, rule, origin, dir)
     }
     pub fn attack_covers_hero(
         &self,
@@ -470,7 +470,7 @@ impl Sim {
         origin: Vec2,
         dir: Vec2,
     ) -> u32 {
-        let origin = crate::math::floor_point(origin, 0.);
+        let origin = self.floor.point(origin, 0.);
         let dir = dir.normalized();
         let id = self.next_id;
         self.next_id += 1;
@@ -511,7 +511,7 @@ impl Sim {
                 r.width_scale = 1.5;
             }
         }
-        shape = scaled_shape(shape, phase_rule, origin, dir);
+        shape = scaled_shape_in(self.floor, shape, phase_rule, origin, dir);
         if kind == HazardKind::GroundPound
             && (target.is_some_and(|id| self.actor_index(id).is_none())
                 || source.is_some_and(|s| self.actors[s].action_target_teleported))
@@ -723,8 +723,9 @@ impl Sim {
                         Shape::Cone { .. } => self.cone_shape(h.view.owner),
                         shape => shape,
                     };
-                    h.view.origin = crate::math::floor_point(h.view.origin, 0.);
-                    h.view.shape = scaled_shape(shape, h.phase_rule, h.view.origin, h.view.dir);
+                    h.view.origin = self.floor.point(h.view.origin, 0.);
+                    h.view.shape =
+                        scaled_shape_in(self.floor, shape, h.phase_rule, h.view.origin, h.view.dir);
                     h.duration = countdown(h.view.kind, h.view.shape, h.base_duration);
                     h.damage = h.base_damage * (h.duration / h.base_duration).max(1.);
                 }
@@ -1256,6 +1257,15 @@ pub fn countdown(kind: HazardKind, shape: Shape, base: f32) -> f32 {
     })
 }
 pub fn scaled_shape(shape: Shape, rule: Option<PhaseRule>, origin: Vec2, dir: Vec2) -> Shape {
+    scaled_shape_in(crate::math::Floor::default(), shape, rule, origin, dir)
+}
+pub fn scaled_shape_in(
+    floor: crate::math::Floor,
+    shape: Shape,
+    rule: Option<PhaseRule>,
+    origin: Vec2,
+    dir: Vec2,
+) -> Shape {
     let (length_scale, width_scale, radius_scale) = rule.map_or((1., 1., 1.), |r| {
         (r.length_scale, r.width_scale, r.radius_scale)
     });
@@ -1268,14 +1278,14 @@ pub fn scaled_shape(shape: Shape, rule: Option<PhaseRule>, origin: Vec2, dir: Ve
             outer: outer * radius_scale,
         },
         Shape::Line { length, width } => Shape::Line {
-            length: crate::math::floor_ray(origin, dir, length * length_scale),
+            length: floor.ray(origin, dir, length * length_scale),
             width: width * width_scale,
         },
         Shape::Cone {
             length,
             half_angle_rad,
         } => Shape::Cone {
-            length: crate::math::floor_ray(origin, dir, length * length_scale),
+            length: floor.ray(origin, dir, length * length_scale),
             half_angle_rad: half_angle_rad * width_scale,
         },
     }

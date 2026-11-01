@@ -83,7 +83,7 @@ impl Sim {
             self.events.push(Event::KnockbackResisted { id });
             return;
         }
-        self.actors[target].view.pos = crate::math::floor_point(
+        self.actors[target].view.pos = self.floor.point(
             self.actors[target].view.pos + direction * distance,
             self.actors[target].view.radius,
         );
@@ -157,7 +157,7 @@ impl Sim {
                     a.view.pos
                 };
                 if let Shape::Line { length, .. } = &mut h.view.shape {
-                    *length = crate::math::floor_ray(h.view.origin, h.view.dir, *length);
+                    *length = self.floor.ray(h.view.origin, h.view.dir, *length);
                 }
                 // Wall-reaching locked footprints keep ending at the wall after the shift.
                 if h.view.phase == HazardPhase::Locked
@@ -165,8 +165,7 @@ impl Sim {
                 {
                     match &mut h.view.shape {
                         Shape::Line { length, .. } | Shape::Cone { length, .. } => {
-                            *length =
-                                crate::math::floor_ray(h.view.origin, h.view.dir, f32::INFINITY);
+                            *length = self.floor.ray(h.view.origin, h.view.dir, f32::INFINITY);
                         }
                         _ => {}
                     }
