@@ -4,14 +4,14 @@ const base = (hp, atk, def, speed, reach, interval, evade = 0, special = 0) =>
   Object.freeze({ hp, atk, def, mag: atk, res: def, speed, reach, interval, evade, special });
 export const WFM_ENEMY_DEFINITIONS = Object.freeze({
   Gobloc: { id: 'slice.enemy.gobloc', channel: 'physical', stats: base(140, 10, 0, 55, 40, 2.6) },
-  'High Gobloc': { id: 'wfm.enemy.high_gobloc', channel: 'physical', stats: base(70, 14, 14, 25.2, 46, 3.6) },
+  'High Gobloc': { id: 'wfm.enemy.high_gobloc', channel: 'physical', stats: Object.freeze({ ...base(70, 14, 14, 25.2, 46, 3.6), mag: 8, res: 12 }) },
   Lizardo: { id: 'slice.enemy.lizardo', channel: 'physical', stats: base(100, 22, 0, 45, 220, 4.5) },
   Orc: { id: 'slice.enemy.orc', channel: 'physical', stats: base(210, 11, 0, 45, 63, 3) },
   'High Orc': { id: 'slice.enemy.high_orc', channel: 'physical', stats: base(260, 30, 80, 32, 68, 4.2) },
-  Chimerilass: { id: 'wfm.enemy.chimerilass', channel: 'physical', stats: base(80, 8, 10, 25.2, 146, 5) },
+  Chimerilass: { id: 'wfm.enemy.chimerilass', channel: 'physical', stats: Object.freeze({ ...base(80, 8, 10, 25.2, 146, 5), mag: 26, res: 16 }) },
   Troll: { id: 'slice.boss.troll_brute', channel: 'physical', stats: base(1500, 165, 0, 40, 100, 4.5) },
-  Skeleton: { id: 'wfm.enemy.skeleton', channel: 'physical', stats: base(35, 8, 5, 25.2, 46, 3.6) },
-  Djinn: { id: 'wfm.enemy.djinn', channel: 'magic', stats: base(55, 6, 6, 25.2, 146, 5) },
+  Skeleton: { id: 'wfm.enemy.skeleton', channel: 'physical', stats: Object.freeze({ ...base(35, 8, 5, 25.2, 46, 3.6), mag: 4, res: 4 }) },
+  Djinn: { id: 'wfm.enemy.djinn', channel: 'magic', stats: Object.freeze({ ...base(55, 6, 6, 25.2, 146, 5), mag: 28, res: 14 }) },
   Marid: { id: 'slice.enemy.marid', channel: 'magic', stats: base(235, 12, 10, heroSpeed * .95, 320, 4.5) },
 });
 export const SHADOW_DEFINITIONS = Object.freeze({

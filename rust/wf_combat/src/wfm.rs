@@ -214,4 +214,17 @@ mod tests {
         }
     }
 
+    #[test]
+    fn ported_enemy_magic_and_resistance_retain_authored_wfm_values() {
+        for (kind, mag, res) in [
+            (Archetype::WfmHighGobloc, 8., 12.),
+            (Archetype::WfmSkeleton, 4., 4.),
+            (Archetype::WfmChimerilass, 26., 16.),
+            (Archetype::WfmDjinn, 28., 14.),
+        ] {
+            let stats = tuning::stats(kind);
+            assert_eq!((stats.mag, stats.res), (mag, res));
+        }
+    }
+
 }

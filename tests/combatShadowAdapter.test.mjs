@@ -88,3 +88,13 @@ test('create config copies geometry and preserves decimal-string seed and identi
   assert.equal(result.seed, '18446744073709551615'); result.geometry.floor.min.x = -100;
   assert.equal(geometry.floor.min.x, 0);
 });
+
+
+test('ported Djinn preserves authored MAG/RES bases and projects both independently', () => {
+  const reference = { HP: 55, ATK: 6, DEF: 6, MAG: 28, RES: 14, SPD: 11 };
+  const input = { identity: 'djinn', key: 'Djinn', position: { x: 600, y: 400 }, reference,
+    resolved: { ...reference, MAG: 56, RES: 42 }, hp: 55, hostMaxHP: 55 };
+  const { stats } = shadowEnemy(input);
+  assert.equal(stats.atk, 6); assert.equal(stats.def, 6);
+  assert.equal(stats.mag, 56); assert.equal(stats.res, 42);
+});

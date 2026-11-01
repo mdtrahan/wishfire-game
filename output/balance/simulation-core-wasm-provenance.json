@@ -44,11 +44,11 @@
     "rust/wf_combat/src/spotlight.rs": "cd1243e8d60b07ef9a6e22f1559b1b87ae792fb2cb1416037953258106a59ad8",
     "rust/wf_combat/src/stomp_metrics.rs": "ebaa42a900cb544955b12247c0fa3755c0cb17db3f9486207e23fa6a29211f20",
     "rust/wf_combat/src/target_lock_metrics.rs": "4c959c3fffc323869e9dfb49f6b0980f8379ba689e2f479268e9c7a575c822f1",
-    "rust/wf_combat/src/tuning.rs": "888f506a9131bb5555e8aba3ec23f4b5fe66ada631e8f628e7de0a6f7ee31466",
-    "rust/wf_combat/src/wfm.rs": "2b8351cd96bb4967791a86eecdc657884896e634b8ec59f97061a4bab832106d",
+    "rust/wf_combat/src/tuning.rs": "062ed7faa6788e1cff1b33d5b334e56d44a3cd924c17b00d5db614f12718600b",
+    "rust/wf_combat/src/wfm.rs": "3bd0a6b77ef17b3ec6591547ea78328710832c18b2a5fbaeafd01ff5cf871cb1",
     "rust/wf_combat/Cargo.toml": "c3f471482b7aa3e83ac5b5cc58ac791c7648566aad9caca503c330bc79736f61",
     "rust/wf_combat/Cargo.lock": "3c5857ea04d81e81c50722826ff4e97999da2db395e55c74b71e40a539974c2f"
   },
   "binary": "web-runner/assets/simulation_core.wasm",
-  "binarySha256": "8e7ec46f791c98d00c4ec4d39454f061fabce4ffdaaf1eec1eb4cb0f15536fb2"
+  "binarySha256": "e4649c1ffe5254f5ee76f4cb330aab9ccedcc27c5b62bc200a2f5bfd53f43a6c"
 }
