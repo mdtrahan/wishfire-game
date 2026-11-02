@@ -40,7 +40,8 @@ export function persistHeroProgressIfDirty({stateGlobals:g}) {
         return false;
       }
       checkpoint.combatCheckpoint = { ...stage.combatCheckpoint,
-        generation: changed ? priorMeta.generation + 1 : stage.combatCheckpoint.generation };
+        generation: changed ? priorMeta.generation + 1 : stage.combatCheckpoint.generation,
+        ...(stage.bossActive ? { subwaves: undefined } : {}) };
       stage.combatCheckpoint = checkpoint.combatCheckpoint;
     }
     if (JSON.stringify(checkpoint) !== JSON.stringify(g.HeroProgress.continuousStage)) {

@@ -34,6 +34,7 @@ export function awardHeroEXP(hero,amount){
 // Bump content identity when authored combat definitions/projection change incompatibly.
 export const WFM_COMBAT_CONTENT_VERSION = 'wfm-slice-v1';
 export const WFM_COMBAT_ABI_VERSION = 0x10000;
+export function combatSubwavePosition(stage) { return `${stage.seed}:${stage.region}:${stage.stage}:${stage.wave}:${stage.transitions || 0}`; }
 export function validateCombatCheckpoint(stage, abiVersion = WFM_COMBAT_ABI_VERSION) {
  const meta=stage?.combatCheckpoint;
  if(meta===undefined)return;
@@ -49,9 +50,9 @@ export function validateCombatCheckpoint(stage, abiVersion = WFM_COMBAT_ABI_VERS
  if(meta.subwaves!==undefined){
   const progress=meta.subwaves;
   if(!progress||typeof progress.position!=='string'||!progress.position||progress.position.length>100
-   ||!Array.isArray(progress.clearedSpawns)||progress.clearedSpawns.length>42
-   ||!progress.clearedSpawns.every(key=>typeof key==='string'&&key.length<=100&&/^\d+:[01]:\d+$/.test(key))
-   ||new Set(progress.clearedSpawns).size!==progress.clearedSpawns.length)fail('invalid cleared-subwave checkpoint');
+   ||!Number.isSafeInteger(progress.index)||progress.index<0||progress.index>=42
+   ||!Number.isFinite(progress.partyCP)||progress.partyCP<0
+   ||!Number.isSafeInteger(progress.entryPackMask)||progress.entryPackMask<0||progress.entryPackMask>63)fail('invalid subwave checkpoint');
  }
 }
 function normalizeContinuousStageCheckpoint(stage) {
@@ -75,7 +76,7 @@ function normalizeContinuousStageCheckpoint(stage) {
   checkpoint.seed=stage.seed;checkpoint.transitions=stage.transitions;
   const m=stage.combatCheckpoint;
   checkpoint.combatCheckpoint={version:m.version,id:m.id,generation:m.generation,rewardLineage:m.rewardLineage,contentVersion:m.contentVersion,abiVersion:m.abiVersion,
-   ...(m.subwaves?{subwaves:{position:m.subwaves.position,clearedSpawns:[...m.subwaves.clearedSpawns]}}:{})};
+   ...(m.subwaves?{subwaves:{position:m.subwaves.position,index:m.subwaves.index,partyCP:m.subwaves.partyCP,entryPackMask:m.subwaves.entryPackMask}}:{})};
  }
  return checkpoint;
 }

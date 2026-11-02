@@ -1,5 +1,5 @@
 import { beginCombatDpsSession } from '../src/core/combatDps.mjs';
-import {attachHeroProgress, createHeroProgressStore} from '../src/core/heroProgression.mjs';
+import {attachHeroProgress, createHeroProgressStore, combatSubwavePosition} from '../src/core/heroProgression.mjs';
 import { computeCombatPower as canonicalCombatPower } from '../src/core/combatPower.mjs';
 import { scaleRoutineEnemy } from '../src/core/routineEnemyScaling.mjs';
 import { buildContinuousCombatSpawnPlan, getContinuousCombatPartyCP } from '../src/core/continuousCombatStage.mjs';
@@ -431,8 +431,12 @@ export function createCombatSessionInitializer({
       let encounter = null;
       let spawnPlan = [];
       const continuousStageEncounter = Number(state.globals.ContinuousCombatStageLoop || 0) === 1;
+      const stage = state.globals.ContinuousCombatStage;
+      const savedSubwave = stage?.combatCheckpoint?.subwaves;
+      const restartPlan = !stage?.bossActive && savedSubwave?.position === (stage && combatSubwavePosition(stage)) ? savedSubwave : null;
+      const planStage = restartPlan ? { ...stage, clearedPackMask: restartPlan.entryPackMask } : stage;
       const authoredContinuousPlan = continuousStageEncounter && (!state.globals.ContinuousCombatStage?.bossAvailable || state.globals.ContinuousCombatStage?.bossSummonRequired)
-        ? buildContinuousCombatSpawnPlan(mappedEnemyData, state.globals.ContinuousCombatStage, { partyCP: continuousPartyCP, enemySize: Number(state.globals.EnemySize || 40) })
+        ? buildContinuousCombatSpawnPlan(mappedEnemyData, planStage, { partyCP: restartPlan?.partyCP ?? continuousPartyCP, enemySize: Number(state.globals.EnemySize || 40) })
         : [];
       if (continuousStageEncounter) {
         spawnPlan = authoredContinuousPlan;

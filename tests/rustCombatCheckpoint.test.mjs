@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import { createCombatBridge } from '../web-runner/src/core/combatBridge.mjs';
 import { createRustCombatRuntime } from '../web-runner/systems/rustCombatRuntime.mjs';
+import { authorSubwaves, bindAuthoredSubwaves } from '../web-runner/src/core/continuousCombatSubwaves.mjs';
+import { SLICE_ORIGIN, SLICE_TRAVEL_SLOTS } from '../web-runner/systems/rustCombatArena.mjs';
 import { wfmHeroPermanentInputs } from '../web-runner/systems/wfmCombatConfig.mjs';
 import * as progression from '../web-runner/src/core/heroProgression.mjs';
 import { configureContinuousCombatProduction, createContinuousCombatStageState, buildContinuousCombatSpawnPlan, activateContinuousCombatSpawnedEnemy, getContinuousCombatPartyCP } from '../web-runner/src/core/continuousCombatStage.mjs';
@@ -37,7 +39,10 @@ function fixture({ raw, settlePendingReceipts, bridgeOverrides, saveFails = fals
   function rebuild() {
     planned.length = 0;
     state.entities.splice(0, state.entities.length, ...state.entities.filter(a => a.kind === 'hero'));
-    for (const entry of buildContinuousCombatSpawnPlan(rows, g.ContinuousCombatStage, { partyCP: getContinuousCombatPartyCP(state.entities) })) {
+    const progress = g.ContinuousCombatStage.combatCheckpoint?.subwaves;
+    const saved = progress?.position === progression.combatSubwavePosition(g.ContinuousCombatStage) ? progress : null;
+    for (const entry of buildContinuousCombatSpawnPlan(g.EnemyData, saved ? { ...g.ContinuousCombatStage, clearedPackMask: saved.entryPackMask } : g.ContinuousCombatStage,
+      { partyCP: saved?.partyCP ?? getContinuousCombatPartyCP(state.entities) })) {
       const a = { uid: g.NextUID++, kind: 'enemy', name: entry.row.name, stats: { ...entry.row }, hp: entry.row.HP,
         maxHP: entry.row.HP, slotIndex: entry.slotIndex, enemyRole: entry.row.enemyRole };
       planned.push(a); state.entities.push(a); activateContinuousCombatSpawnedEnemy(g, a, entry);
@@ -46,15 +51,23 @@ function fixture({ raw, settlePendingReceipts, bridgeOverrides, saveFails = fals
     }
   }
   rebuild();
+  function call(name, ...args) {
+    if (name !== 'SpawnEnemy') return;
+    if (!state.entities.some(a => a.kind === 'enemy')) planned.length = 0;
+    const [row, slotIndex] = args;
+    const actor = { uid: g.NextUID++, kind: 'enemy', name: row.name, stats: { ...row }, hp: row.HP,
+      maxHP: row.HP, slotIndex, enemyRole: row.enemyRole };
+    planned.push(actor); state.entities.push(actor); return actor;
+  }
   const runtime = createRustCombatRuntime({ state, bridge, session: {
     recoverContinuousDefeat: reason => routes.push(reason), surrenderBossAttempt: reason => routes.push(reason) },
-    call() {}, getEnemyRows: () => rows, advanceHostTime() {}, warn: (...args) => warnings.push(args),
+    call, getEnemyRows: () => rows, advanceHostTime() {}, warn: (...args) => warnings.push(args),
     persistCheckpoint() {
       if (saveFails) return false;
       g.HeroProgressDirty = true;
       return store.persistHeroProgressIfDirty({ stateGlobals: g });
     } });
-  const tick = nowMs => runtime.tick({ globals: g, entities: state.entities, call() {}, nowMs });
+  const tick = nowMs => runtime.tick({ globals: g, entities: state.entities, call, nowMs });
   return { g, state, real, runtime, created, routes, warnings, store, tick, rebuild, planned, spawned, world: () => worldHandle, raw: () => store.values.get(key) };
 }
 function assertFresh(f) {
@@ -67,6 +80,9 @@ function assertFresh(f) {
     assert.equal(a.hp, a.max_hp); assert.equal(a.permanent_revision, '0');
     for (const field of ['ward', 'encased', 'poisoned', 'meter', 'groove_active']) assert.equal(a[field], 0, field);
     assert.ok(['idle', 'walk'].includes(a.state), 'no prior committed action resumes');
+    const slot = f.created.at(-1).heroes.find(h => h.instance_id === a.host_id).slot;
+    const offset = SLICE_TRAVEL_SLOTS[slot];
+    assert.deepEqual(a.pos, { x: Math.fround(Math.fround(SLICE_ORIGIN.x) + offset.x), y: Math.fround(Math.fround(SLICE_ORIGIN.y) + offset.y) });
   }
   assert.equal(f.runtime.read().pendingRevisions, 0);
   return s;
@@ -84,7 +100,7 @@ test('D18 reload persists identity/seed/generation/lineage and reconstructs only
   assert.equal(first.seed, 42); assert.equal(first.transitions, 2);
   assert.equal(first.combatCheckpoint.generation, 1);
   assert.equal(first.combatCheckpoint.rewardLineage, 'original-reward-domain');
-  before.g.ContinuousCombatStage.clearedPackMask |= 0b000010;
+  before.g.ContinuousCombatStage.bossSummonRequired = true;
   before.store.persistHeroProgressIfDirty({ stateGlobals: before.g });
   const raw = before.raw(), saved = JSON.parse(raw).continuousStage;
   assert.equal(saved.combatCheckpoint.generation, 2);
@@ -178,7 +194,8 @@ test('fixture 6: accepted permanent stat revision before ack reloads latest save
 });
 
 test('fixture 6: active boss reload resets timer, discards live attempt and starts healthy', () => {
-  const before = fixture();
+  const before = fixture(); before.tick(0);
+  assert.equal(before.runtime.restartAtSubwave(2), true); before.tick(34);
   Object.assign(before.g.ContinuousCombatStage, { bossActive: true, bossAvailable: true, bossArmed: true, bossTimerStartedAt: 17, wave: 10 });
   before.rebuild(); before.tick(0);
   let dirty = false;
@@ -190,6 +207,7 @@ test('fixture 6: active boss reload resets timer, discards live attempt and star
   assert.ok(dirty, 'old boss attempt contains real live combat state');
   const oldId = before.runtime.read().snapshot.encounter_id;
   const raw = before.raw(); before.runtime.dispose();
+  assert.equal(JSON.parse(raw).continuousStage.combatCheckpoint.subwaves, undefined, 'boss checkpoint drops ordinary subwave cursor');
   const after = fixture({ raw });
   assert.equal(after.g.ContinuousCombatStage.bossActive, false);
   assert.equal(after.g.ContinuousCombatStage.bossSummonRequired, true);
@@ -266,32 +284,95 @@ test('loaded checkpoint rejects a different running WASM ABI before save or crea
 });
 
 
-test('completed subwaves inside an uncleared pack never respawn after checkpoint reload', () => {
+test('D17′ reload restarts current subwave N with its authored boundaries, latest stats and healthy origins', () => {
   const before = fixture();
   for (const hero of before.state.entities.filter(a => a.kind === 'hero')) {
     hero.currentLevel = 100; progression.refreshHeroStats(hero); hero.hp = hero.maxHP;
     progression.saveHeroProgress(hero, before.g.HeroProgress);
   }
   before.rebuild(); before.tick(0);
-  let progress;
-  for (let frame = 1; frame < 1500; frame++) {
-    before.tick(frame * 1000 / 30);
-    progress = before.g.ContinuousCombatStage.combatCheckpoint.subwaves;
-    if (progress.clearedSpawns.length) break;
-  }
-  assert.ok(progress.clearedSpawns.length > 0, 'a real Rust subwave completed');
+  for (let frame = 1; frame < 1500 && before.g.ContinuousCombatStage.combatCheckpoint.subwaves.index < 2; frame++) before.tick(frame * 1000 / 30);
+  const progress = before.g.ContinuousCombatStage.combatCheckpoint.subwaves;
+  assert.ok(progress.index >= 2, 'real Rust admitted a later subwave');
   assert.equal(before.g.ContinuousCombatStage.wave, 1);
-  assert.equal(before.g.ContinuousCombatStage.clearedPackMask, 0, 'the containing pack is still unfinished');
-  const raw = before.raw(), cleared = new Set(progress.clearedSpawns);
-  assert.ok(JSON.parse(raw).continuousStage.combatCheckpoint.generation > 1);
+  const token = a => `${a.name}:${a.streamSectorIndex}:${a.streamSolo ? 1 : 0}:${a.streamEntryOrder}`;
+  const groups = bindAuthoredSubwaves(authorSubwaves(before.planned.map(a => a.name)), before.planned);
+  const expected = groups[progress.index].map(token).sort();
+  const saved = JSON.parse(before.raw());
+  assert.equal(saved.continuousStage.combatCheckpoint.subwaves.index, progress.index);
+  assert.ok(saved.continuousStage.combatCheckpoint.generation > 1);
+  // New permanent stats must not change which authored group N denotes.
+  saved.heroes.Falie.equipmentStats.HP = (saved.heroes.Falie.equipmentStats.HP || 0) + 50;
   before.runtime.dispose();
-  const after = fixture({ raw }); after.tick(0); assertFresh(after);
-  const token = a => `${a.streamSectorIndex}:${a.streamSolo ? 1 : 0}:${a.streamEntryOrder}`;
-  const expected = after.planned.filter(a => !cleared.has(token(a)));
-  const issued = () => [...after.created[0].enemies, ...after.spawned];
-  for (let frame = 1; frame < 1500 && issued().length < expected.length; frame++) after.tick(frame * 1000 / 30);
-  assert.equal(issued().length, expected.length, 'all remaining subwaves are issued once');
-  assert.deepEqual(issued().map(e => e.spawn_key).sort(), expected.map(a => String(a.uid)).sort());
-  assert.ok(issued().every(e => !cleared.has(token(after.planned.find(a => String(a.uid) === e.spawn_key)))));
+  const after = fixture({ raw: JSON.stringify(saved) }); after.tick(0); assertFresh(after);
+  assert.equal(after.g.ContinuousCombatStage.combatCheckpoint.subwaves.index, progress.index);
+  assert.equal(after.g.ContinuousCombatStage.combatCheckpoint.subwaves.partyCP, progress.partyCP);
+  const issued = after.created[0].enemies.map(e => after.planned.find(a => String(a.uid) === e.spawn_key));
+  assert.deepEqual(issued.map(token).sort(), expected);
+  assert.ok(after.created[0].enemies.every(e => e.hp === e.stats.hp), 'entire current subwave starts fresh');
+  assert.equal(after.created[0].heroes[0].hp, wfmHeroPermanentInputs(after.g, after.state.entities[0]).stats.hp);
+  after.runtime.dispose();
+});
+
+test('shared restartAtSubwave entry destroys the old attempt and supports unlimited free healthy retries', () => {
+  const f = fixture(); f.tick(0); f.g.goldTotal = 123;
+  const wave = f.g.ContinuousCombatStage.wave, lineage = f.g.ContinuousCombatStage.combatCheckpoint.rewardLineage;
+  const ids = new Set([f.runtime.read().snapshot.encounter_id]);
+  assert.throws(() => f.runtime.restartAtSubwave(-1), /invalid subwave index/);
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    assert.equal(attempt === 1 ? f.runtime.restartAtSubwave(2) : f.g.RustCombatRestartAtSubwave(), true);
+    assert.equal(f.real.describe().resources.worlds, 0, 'outgoing world is destroyed before replacement');
+    f.tick(attempt * 1000); const fresh = assertFresh(f);
+    assert.ok(!ids.has(fresh.encounter_id)); ids.add(fresh.encounter_id);
+    assert.equal(f.g.ContinuousCombatStage.combatCheckpoint.subwaves.index, 2);
+    assert.equal(f.g.ContinuousCombatStage.wave, wave);
+    assert.equal(f.g.ContinuousCombatStage.combatCheckpoint.rewardLineage, lineage);
+    assert.equal(f.g.goldTotal, 123);
+    assert.deepEqual(f.routes, []);
+  }
+  const active = f.runtime.read().snapshot.encounter_id;
+  f.g.ContinuousCombatStage.bossActive = true;
+  assert.equal(f.runtime.restartAtSubwave(0), false, 'boss recovery keeps its WFM checkpoint path');
+  assert.equal(f.runtime.read().snapshot.encounter_id, active);
+  f.runtime.dispose(); assert.equal(f.g.RustCombatRestartAtSubwave, undefined);
+});
+
+test('real Rust AllDown can enter the shared current-subwave restart without resource use', () => {
+  const f = fixture();
+  for (const hero of f.state.entities.filter(a => a.kind === 'hero')) hero.hp = .001;
+  for (const enemy of f.state.entities.filter(a => a.kind === 'enemy')) enemy.stats.ATK = 10000;
+  f.tick(0);
+  for (let frame = 1; frame < 2000 && !f.routes.includes('rust_all_down'); frame++) f.tick(frame * 1000 / 30);
+  assert.ok(f.routes.includes('rust_all_down'), 'real WASM reached terminal AllDown');
+  const index = f.g.ContinuousCombatStage.combatCheckpoint.subwaves.index;
+  f.g.goldTotal = 0;
+  assert.equal(f.runtime.restartAtSubwave(index), true);
+  f.tick(100000); assertFresh(f);
+  assert.equal(f.g.ContinuousCombatStage.combatCheckpoint.subwaves.index, index);
+  assert.equal(f.g.goldTotal, 0);
+  f.runtime.dispose();
+});
+
+
+test('reload after a host wave checkpoint but before its first subwave starts at index zero', () => {
+  const before = fixture(); before.tick(0);
+  const saved = JSON.parse(before.raw());
+  saved.continuousStage.wave = 2;
+  saved.continuousStage.transitions++;
+  saved.continuousStage.combatCheckpoint.subwaves.index = 3;
+  before.runtime.dispose();
+  const after = fixture({ raw: JSON.stringify(saved) }); after.tick(0); assertFresh(after);
+  assert.equal(after.g.ContinuousCombatStage.wave, 2);
+  assert.equal(after.g.ContinuousCombatStage.combatCheckpoint.subwaves.index, 0);
+  after.runtime.dispose();
+});
+
+
+test('an out-of-plan persisted subwave index fails closed without checkpoint recovery or overwrite', () => {
+  const before = fixture(); before.tick(0); const saved = JSON.parse(before.raw()); before.runtime.dispose();
+  saved.continuousStage.combatCheckpoint.subwaves.index = 41;
+  const raw = JSON.stringify(saved), after = fixture({ raw }); after.tick(0);
+  assert.match(after.g.RustCombatError, /invalid subwave index 41/);
+  assert.equal(after.created.length, 0); assert.deepEqual(after.routes, []); assert.equal(after.raw(), raw);
   after.runtime.dispose();
 });
