@@ -344,3 +344,5 @@
 - Bomb raster rotation stays zero throughout flight and landing; travel direction only orients directional projectiles.
 
 - rustCombatWorldHud.mjs owns identical hero/enemy HP track dimensions. Groove meters are hero-only; the active boss keeps its separate battle HUD.
+
+- Elevate uses the active living Rust Kaja snapshot and its groove duration. Each living hero receives a distinct buff instance in the existing HUD signal input, retaining its offense badge for the entire buff; enemy actors never enter that input.

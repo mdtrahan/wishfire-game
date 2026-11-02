@@ -75,7 +75,7 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
       // HP is pinned at 60% so no passive condition adds badges of its own.
       await page.evaluate(() => {
         const views=__codexGame.globals.RustCombatPresentation.state.snapshot.actors.filter(a=>a.team==='hero');
-        views.forEach((actor,index)=>{actor.ward=20;actor.elevate=index===0;});
+        views.forEach(actor=>{actor.ward=20;actor.elevate='sword';actor.groove_active=actor.kind==='kaja'?8:0;});
       });
       await page.waitForFunction(() => document.querySelectorAll('.hero-buff-party .hero-buff').length===1 && document.querySelector('.hero-cooldown .hero-buff')?.dataset.icon==='hero-offense');
       const buffs = await page.evaluate(() => ({
@@ -89,7 +89,7 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
       const partyCenter = (buffs.party[0].rect.left + buffs.party.at(-1).rect.right) / 2;
       assert.ok(Math.abs(partyCenter - (current.row.x + current.row.width / 2)) < 1, 'party icons centered on the eight-slot strip');
       assert.ok(buffs.party.every(entry => entry.rect.bottom <= current.row.top + .5 && entry.rect.top >= buffs.quest.bottom), 'party row sits below the whole mini-quest box and above the strip');
-      assert.deepEqual(buffs.badges.map(list => list.map(entry => entry.icon)), [['hero-offense'], [], [], [], [], [], [], []]);
+      assert.deepEqual(buffs.badges.map(list => list.map(entry => entry.icon)), [['hero-offense'], ['hero-offense'], ['hero-offense'], ['hero-offense'], [], [], [], []]);
       for (const [index, list] of buffs.badges.entries()) list.forEach((entry, order) => {
         const slot = buffs.slots[index];
         assert.ok(entry.rect.bottom <= slot.bottom + .5 && entry.rect.bottom >= slot.bottom - slot.height * .1, 'badge bottom-aligned');
@@ -117,7 +117,7 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
       await page.keyboard.press('Escape'); await page.waitForFunction(() => document.querySelector('#training-ground').hidden);
       await page.evaluate(async () => {
         const views = __codexGame.globals.RustCombatPresentation.state.snapshot.actors;
-        views.forEach(actor => { actor.ward = 0; actor.warcry_shield = false; actor.elevate = null; });
+        views.forEach(actor => { actor.ward = 0; actor.warcry_shield = false; actor.elevate = null; actor.groove_active = 0; });
       });
       await page.waitForFunction(() => !document.querySelector('.hero-buff'));
       await page.evaluate(async () => { const { state } = await import('./modules/state.js'); state.globals.DevToolingPaused = 0; state.globals.QaScenarioPaused = false; });

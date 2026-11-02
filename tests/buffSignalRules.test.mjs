@@ -79,8 +79,8 @@ test('Rust snapshot buffs translate into channels and party icons keep their ski
   };
   entities.forEach(actor => { actor.rustActorId = actor.uid; });
   globals.RustCombatPresentation = { state: { snapshot: { actors: [
-    { actor_id: 1, team: 'hero', ward: 20 },
-    { actor_id: 4, team: 'hero', ward: 20, elevate: 'power' },
+    { actor_id: 1, team: 'hero', kind: 'fara', hp: 30, ward: 20 },
+    { actor_id: 4, team: 'hero', kind: 'kaja', hp: 50, groove_active: 8, ward: 20, elevate: 'sword' },
     { actor_id: 2, team: 'hero', ward: 0, downed: true },
   ] } } };
   const before = JSON.stringify({ entities, globals });
@@ -90,5 +90,30 @@ test('Rust snapshot buffs translate into channels and party icons keep their ski
   const out = projectBuffSignals(input);
   assert.deepEqual(out.party, ['party-ward']);
   assert.deepEqual(out.partyRefs['party-ward'], { effectId: 'ward' });
-  assert.deepEqual(out.heroes, { 1: [], 4: ['offense'] }, 'Rust Elevate signals offense; legacy effect collections do not contribute');
+  assert.deepEqual(out.heroes, { 1: ['offense'], 4: ['offense'] }, 'each living recipient shows Elevate; legacy effect collections do not contribute');
+});
+
+
+test('every living hero signals Elevate until its Rust source ends, without enemy buffs', () => {
+  const entities = ['Falie', 'Huun', 'Runa', 'Kojonn'].map((name, i) => ({ kind: 'hero', name, uid: i + 1, rustActorId: i + 1, hp: 100 }));
+  const views = entities.map((a, i) => ({ team: 'hero', actor_id: a.rustActorId, kind: ['fara', 'hondo', 'runa', 'kaja'][i], hp: 100 }));
+  const source = views[3];
+  const globals = { RustCombatPresentation: { state: { snapshot: { actors: [...views, { team: 'enemy', actor_id: 5, hp: 100 }] } } } };
+  for (const variant of ['sword', 'wings', 'wingedboots']) {
+    source.elevate = variant;
+    for (const duration of [8, 4, .0001]) {
+      source.groove_active = duration;
+      const before = structuredClone(globals);
+      const input = heroBuffSignalInput(entities, globals), signals = projectBuffSignals(input);
+      assert.equal(input.length, 4);
+      assert.ok(input.every(hero => hero.buffs.some(buff => buff.ref.effectId === 'elevate')));
+      assert.deepEqual(Object.values(signals.heroes), Array(4).fill(['offense']));
+      assert.deepEqual(globals, before);
+    }
+    source.groove_active = 0;
+    assert.ok(heroBuffSignalInput(entities, globals).every(hero => hero.buffs.length === 0));
+  }
+  source.groove_active = 8;
+  source.hp = 0;
+  assert.ok(heroBuffSignalInput(entities, globals).every(hero => hero.buffs.length === 0));
 });
