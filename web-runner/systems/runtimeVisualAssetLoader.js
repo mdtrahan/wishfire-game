@@ -5,7 +5,7 @@ import {
   HERO_PACK_PLUS_PATH,
 } from '../state/heroScreenConfig.js';
 import { heroArtPath } from '../state/heroArtAssets.mjs';
-import { getEmbeddedJson } from './runtimeAssetUrl.mjs';
+import { getEmbeddedJson, runtimeAssetUrl } from './runtimeAssetUrl.mjs';
 import { createActorClipLoader } from './actorClipPlayback.mjs';
 
 export function createElementalImpactFrameLoader({ loadManifest, loadImage, frameUrl }) {
@@ -36,7 +36,8 @@ export async function loadRuntimeImage(url, { resolveRuntimeImageUrl = (value) =
     const img = new Image();
     img.onload = () => res(img);
     img.onerror = () => res(null);
-    img.src = resolveRuntimeImageUrl(url);
+    const resolved = resolveRuntimeImageUrl(url);
+    img.src = globalThis.__ORKA_OFFLINE_RUNTIME__ ? runtimeAssetUrl(resolved) : resolved;
   });
 }
 

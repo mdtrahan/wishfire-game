@@ -20,7 +20,9 @@ test('simulation core shadow mode is wired as observe-only browser support', () 
 
   assert.match(shadowSrc, /SHADOW_STATE_KEY/);
   assert.match(shadowSrc, /dataset\.simCoreShadowStatus/);
-  assert.match(shadowSrc, /WebAssembly\.instantiateStreaming|WebAssembly\.instantiate/);
+  assert.match(shadowSrc, /loadSimulationCore\(wasmUrl\)/);
+  const loaderSrc = fs.readFileSync(path.join(path.dirname(shadowModulePath), 'simulationCoreLoader.mjs'), 'utf8');
+  assert.match(loaderSrc, /WebAssembly\.instantiate/);
   assert.match(shadowSrc, /Math\.abs\(rustValue - jsValue\) > 1e-6/);
   assert.match(shadowSrc, /return jsValue;/);
 });

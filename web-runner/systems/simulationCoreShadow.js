@@ -1,5 +1,5 @@
 import { createSeededRngSimulationPacket } from "../src/core/seededRngRules.mjs";
-import { getEmbeddedWasmBytes } from "./runtimeAssetUrl.mjs";
+import { loadSimulationCore } from "./simulationCoreLoader.mjs";
 const DEFAULT_WASM_URL = "./assets/simulation_core.wasm";
 const SHADOW_STATE_KEY = "__ORKA_SIMULATION_CORE_SHADOW__";
 const metaState = { status: "idle", mismatches: [], exports: null };
@@ -30,11 +30,7 @@ function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = {}) {
   if (state.ready) return state.ready;
   state.status = "loading";
   state.ready = (async () => {
-    const bytes = getEmbeddedWasmBytes(wasmUrl) || await fetch(wasmUrl).then((response) => {
-      if (!response.ok) throw new Error(`Meta WASM HTTP ${response.status}`);
-      return response.arrayBuffer();
-    });
-    const { instance } = await WebAssembly.instantiate(bytes, {});
+    const instance = await loadSimulationCore(wasmUrl);
     if (!hasSeededRngExports(instance.exports) || typeof instance.exports.combat_power_full_shadow !== "function") throw new Error("Missing CP/meta RNG exports");
     state.exports = instance.exports;
     state.status = "ready";

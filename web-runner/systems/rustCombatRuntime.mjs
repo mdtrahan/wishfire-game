@@ -8,7 +8,7 @@ import { createWfmCombatConfig, wfmEnemyInput, wfmHeroPermanentInputs } from './
 import { shadowEnemy } from '../../src/core/combatShadowAdapter.mjs';
 import { consumeCombatKillEvent } from '../modules/heroCommands.mjs';
 import { maybeAdvanceContinuousCombatStage, buildChapterOneSubwaveStages, getContinuousCombatPartyCP, buildContinuousCombatSpawnPlan, activateContinuousCombatSpawnedEnemy, CONTINUOUS_COMBAT_PACK_INTERVAL_SEC } from '../src/core/continuousCombatStage.mjs';
-import { runtimeAssetUrl, getEmbeddedWasmBytes } from './runtimeAssetUrl.mjs';
+import { loadSimulationCore } from './simulationCoreLoader.mjs';
 import { recordActorPuppetDefeat } from './actorPuppetDefeats.mjs';
 import { createRustCombatPresentation } from './rustCombatPresentation.mjs';
 import { bindHeroPermanentInputs } from '../src/core/heroPermanentInputs.mjs';
@@ -411,19 +411,15 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
 }
 
 export async function mountRustCombat(options) {
-  const url = runtimeAssetUrl('simulation_core.wasm');
-  const bytes = getEmbeddedWasmBytes(url) || await fetch(url).then(response => {
-    if (!response.ok) throw new Error(`Combat WASM HTTP ${response.status}`);
-    return response.arrayBuffer();
-  });
-  const { instance } = await WebAssembly.instantiate(bytes, {});
+  const instance = await loadSimulationCore();
+  const bridge = createCombatBridge(instance);
   const overlay = await createRustCombatPresentation(options.globals);
   const { persistHeroProgressIfDirty } = await import('./heroProgressStorage.js');
   const persistCheckpoint = () => {
     options.globals.HeroProgressDirty = true;
     return persistHeroProgressIfDirty({ stateGlobals: options.globals });
   };
-  const runtime = createRustCombatRuntime({ ...options, persistCheckpoint, bridge: createCombatBridge(instance), present: overlay.present });
+  const runtime = createRustCombatRuntime({ ...options, persistCheckpoint, bridge, present: overlay.present });
   const dispose = () => { runtime.dispose(); overlay.dispose(); window.removeEventListener('pagehide', dispose); };
   window.addEventListener('pagehide', dispose);
   return { ...runtime, dispose };

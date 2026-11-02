@@ -25,7 +25,8 @@
 - `verifyHandoff.test.mjs` guards stable npm/Cargo failure identities, failure-set comparisons, diff line attribution, test-change review, duplicate-block heuristics and performance gate boundaries, strict relative-plus-absolute thresholds, three-run medians/spread overlap for every metric, vsync-bucket uncertainty,300-step batch arithmetic, missing/zero baseline measurements, fresh ABABAB sampling, same-SHA controls and SHA-bound npm-only cache reuse.
 - `*.test.js` files use Node's built-in test runner for contracts and static/runtime checks.
 - `*.spec.js` files cover browser-style flows where present.
-- `runtimeReleaseContract.test.mjs` builds an isolated tracked importer/dependency pair, then removes the dependency and requires a failed hosted build without a release manifest.
+- `runtimeReleaseContract.test.mjs` requires missing tracked dependencies or stale Rust inputs to fail while preserving the previous playable hosted release.
+- `rustWasmRelease.test.mjs` checks real-wasm release identity, fail-closed version/hash checks, shared loading, HTTP errors and ten completed fight teardowns with zero retained world/buffer handles and flat warmed wasm memory. Offline proof launches disconnected Chromium from file://, disables fetch and requires live Rust steps and damage.
 - `offlineBundleContract.test.js` protects the portable file:// release shape, embedded startup and elemental impact manifests, relative frame assets, manifest hashes, and separation from the hosted release.
 - `fixtures/` owns deterministic CSV cases shared by JS and Rust/WASM tests.
 

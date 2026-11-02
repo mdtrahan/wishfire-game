@@ -17,6 +17,7 @@
 - `superGemRuntime.js` owns supergem board/effect runtime behavior.
 - `heroProgressStorage.js` owns versioned localStorage hero EXP/progression persistence.
 - `simulationCoreShadow.js` owns WASM loading, Rust owner markers, shadow checks, and mismatch diagnostics.
+- `simulationCoreLoader.mjs` shares one verified wasm instance across scalar, combat and shadow consumers. Validate binary SHA-256, ABI 1.0, schema 1.1, content version and capabilities before use; failures stop initialization. Offline builds embed provenance, runtime images/fonts, referenced puppet frames and the progress portrait for origin-clean file:// WebGL uploads and scene readback. Standalone HTML must work after copying it alone to an empty directory.
 - `runtimeAssetUrl.mjs` owns document-base asset resolution and embedded offline JSON/WASM payload lookup; hosted runtime loading remains the default path. Hero skill icons use this resolver so the classic offline bundle can open the current Skills screen.
 - `devToolingControls.js` and runtime debug helpers own QA/dev surfaces.
 - `devMovementTuningPanel.mjs` mounts live movement/camera sliders in the dev modal; values persist only under the dev localStorage key and never enter save data. Named-leader controls are retired; old leader choices are ignored. The camera anchor follows the first living deployed slot.
