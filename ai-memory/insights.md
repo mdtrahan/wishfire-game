@@ -708,3 +708,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - A release content handshake must compare the binary-owned definition version with both manifest and host expectations before world creation. A manifest source digest proves build provenance separately; matching manifest/host constants alone cannot detect a stale binary.
 
 - A death silhouette can shrink inside authored KO frames even when draw dimensions remain constant. Keep enemy standing art during the snapshot-owned alpha fade and test both clip selection and painted dimensions.
+
+- Ballistic height and projectile travel direction are independent of bomb artwork orientation; verify both teams and the landing sample.

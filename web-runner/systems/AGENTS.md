@@ -340,3 +340,5 @@
 - Party-stat OSD reads live Rust snapshot ATK/MAG/DEF/RES through `rustCombatStatDisplay.mjs` in native units; its permanent comparison converts display units only. SPD remains permanent meta because the ABI exposes no cadence readback. DEV Combat Speed scales the Rust driver foreground clock; Reward Drop/Count controls and state are retired.
 
 - Dead enemies use full-size standing puppet art and the Rust snapshot death-age alpha fade; KO clips remain for downed heroes.
+
+- Bomb raster rotation stays zero throughout flight and landing; travel direction only orients directional projectiles.

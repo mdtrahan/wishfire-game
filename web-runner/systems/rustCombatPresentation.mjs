@@ -147,7 +147,7 @@ export async function createRustCombatPresentation(globals) {
     for(const p of snapshot.projectiles??[]){
       const x=camera.x(p.pos.x),y=camera.y(p.pos.y)-p.height*camera.zoom,angle=Math.atan2(p.dir.y*.75,p.dir.x),observation=state.projectiles.get(p.id),enemy=p.team==='enemy',kaja=observation?.source?.kind==='kaja';
       if(p.kind==='bolt'){gpu.bitmap('bolt',0,x,y,23*z,6*z,angle);continue;}
-      if(p.kind==='bomb'){gpu.bitmap('bomb',0,x,y,14*z,14*z,angle);continue;}
+      if(p.kind==='bomb'){gpu.bitmap('bomb',0,x,y,14*z,14*z,0);continue;}
       const head=enemy?'orb-head-neutral':kaja?'orb-head-kaja':'orb-head',trail=enemy?'orb-trail-neutral':kaja?'orb-trail-kaja':'orb-trail',tint=enemy?0xffafc2:0xffffff,dx=p.dir.x,dy=p.dir.y*.75,length=Math.hypot(dx,dy)||1,travel=observation?Math.hypot(camera.x(p.pos.x)-camera.x(observation.origin.x),camera.y(p.pos.y)-camera.y(observation.origin.y)):0,span=Math.max(0,Math.min(24*z,travel-4*z));
       if(span>0){const tx=x-dx/length*4*z,ty=y-dy/length*4*z;gpu.strip(trail,tx-dx/length*span,ty-dy/length*span,tx,ty,6*z,1,tint);}
       gpu.bitmap(head,1,x,y,12*z,12*z,angle,1,tint);

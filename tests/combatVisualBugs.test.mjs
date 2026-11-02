@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { actorPuppetState } from '../web-runner/systems/actorPuppetPresentation.mjs';
 import { SliceSprites } from '../web-runner/systems/rustCombatSprites.mjs';
@@ -24,4 +25,20 @@ test('dead enemies keep standing dimensions throughout the authoritative death f
   }
   assert.deepEqual(calls.map(c => c.slice(3, 5)), Array(5).fill([40, 50]));
   assert.deepEqual(calls.map(c => Math.round(c[5] * 100)), [100, 100, 50, 0, 0]);
+});
+
+
+test('bombs stay upright for both teams through launch, apex and landing', () => {
+  const source = readFileSync(new URL('../web-runner/systems/rustCombatPresentation.mjs', import.meta.url), 'utf8');
+  const loop = source.slice(source.indexOf('    for(const p of snapshot.projectiles??[])'), source.indexOf("    for(const a of snapshot.actors)if(a.team==='enemy'&&a.hp>0&&a.slowed>0)"));
+  assert.ok(loop.length > 0);
+  const draw = new Function('snapshot', 'camera', 'state', 'gpu', 'z', loop);
+  const calls = [], camera = { x: x => x, y: y => y, zoom: .5 };
+  for (const team of ['hero', 'enemy']) for (const height of [0, 40, 100, 40, 0]) for (const dir of [{ x: -1, y: 1 }, { x: 1, y: -1 }, { x: 0, y: -1 }]) {
+    const snapshot = { projectiles: [{ id: 1, kind: 'bomb', team, pos: { x: 10, y: 20 }, height, dir }] }, before = structuredClone(snapshot);
+    draw(snapshot, camera, { projectiles: new Map() }, { bitmap: (...args) => calls.push(args) }, 1);
+    assert.deepEqual(snapshot, before);
+  }
+  assert.equal(calls.length, 30);
+  for (const c of calls) { assert.equal(c[0], 'bomb'); assert.equal(c[6], 0); }
 });
