@@ -1,4 +1,4 @@
-import { drawActorPuppetFrame } from './actorPuppetPresentation.mjs';
+import { ENEMY_DEFEAT_FADE_SEC } from './actorPuppetDefeats.mjs';
 import { clamp01 as c, smooth } from './rustCombatEffects.mjs';
 const TAU=Math.PI*2;
 const DIRECTIONS=[-1,0,1,0,0,-1,0,1,-.707,-.707,.707,-.707,-.707,.707,.707,.707],ENERGY=[8,.045,5,.10,2,.20];
@@ -17,13 +17,24 @@ export class SliceSprites {
  beginFrame(density,s,ox,oy){const w=Math.round(360*density),h=Math.round(640*density);if(this.mask.width!==w||this.mask.height!==h){this.mask.width=w;this.mask.height=h;}this.maskCtx.setTransform(density,0,0,density,0,0);this.maskCtx.clearRect(0,0,360,640);this.s=s;this.ox=ox;this.oy=oy;}
  observe(){const charge=this.motion.charge;if(charge&&this.charge!==charge){this.charge=charge;charge.lines=chargeLines(charge.id,charge.born,charge.duration);}else if(!charge)this.charge=null;this.reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;}
  sprite(ctx,p,options){
+  const host=options.actor;
+  if(host?.isPuppetDefeat){
+   const paint=host.puppetPaint;if(!paint)return null;
+   const {presentation,dx,dy,w,hh,angle}=paint,s=this.s,px=(options.footX-this.ox)/s,py=(options.footY-this.oy)/s;
+   const opacity=1-c((options.now-host.actionStateStartedAt)/ENEMY_DEFEAT_FADE_SEC),g=this.gpu;
+   ctx.save();g.begin((window.devicePixelRatio||1)*s,ctx,s,this.ox,this.oy);
+   g.actor(presentation.frame,px+dx,py+dy,w,hh,opacity,0,0,1,1,1,0,'alpha',angle,px,py);
+   g.composite();ctx.restore();
+   return {drawX:options.footX+dx*s,drawY:options.footY+dy*s,width:w*s,height:hh*s};
+  }
   const a=this.state.actors.get(options.rustActorId),r=a&&this.motion.records.get(a.actor_id);
-  if(!a||!r||!p?.frame||!p.clip)return drawActorPuppetFrame(ctx,p,options);
+  if(!a||!r||(a.team==='enemy'&&a.hp<=0)||!p?.frame||!p.clip)return null;
   const s=this.s,ox=this.ox,oy=this.oy,frame=this.state.snapshot,unit=options.height/s/(p.clip.canvas.referenceHeight??p.clip.canvas.height),h=options.height/s,x=(options.footX-ox)/s+this.camera.x(r.visualX)-this.camera.x(a.pos.x),y=(options.footY-oy)/s+this.camera.y(r.visualY)-this.camera.y(a.pos.y),body=126*(a.kind.startsWith('boss')?a.scale:a.scale*.6)*this.camera.zoom,poseUnit=body/58;
   if(!r.rect)r.rect={drawX:0,drawY:0,width:0,height:0};const rect=r.rect;
   const px=x+r.dx*poseUnit,py=y-r.lift*poseUnit-(a.team==='enemy'&&a.encased>0?(6+2*Math.sin(frame.combat_time*3+a.actor_id))*this.camera.zoom/.5:0),dx=-p.clip.footOrigin.x*unit,dy=-p.clip.footOrigin.y*unit*r.sy,w=p.clip.canvas.width*unit,hh=p.clip.canvas.height*unit*r.sy;
   rect.drawX=ox+(px+dx)*s;rect.drawY=oy+(py+dy)*s;rect.width=w*s;rect.height=hh*s;
-  const opacity=(this.motion.featured(a)?1:1-this.motion.scrimAlpha)*(a.state==='dead'?1-c((a.state_age-1)/.42):1);
+  if(host)host.puppetPaint={presentation:p,dx:px+dx-x,dy:py+dy-y,w,hh,angle:r.angle,height:h};
+  const opacity=this.motion.featured(a)?1:1-this.motion.scrimAlpha;
   ctx.save();
   const g=this.gpu;g.begin((window.devicePixelRatio||1)*s,ctx,s,ox,oy);
   const charge=this.charge,reduced=this.reduced;

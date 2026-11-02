@@ -16,7 +16,7 @@ test('removed enemies finish their puppet KO without returning to simulation or 
   g.time = 4.9;
   recordActorPuppetDefeat(g, actor);
   assert.equal(combatEnemiesForPresentation([], g)[0].actionStateStartedAt, 4, 'duplicate KO cannot restart the pose');
-  g.time = 5;
+  g.time = 5.48;
   assert.deepEqual(combatEnemiesForPresentation([], g), []);
 });
 

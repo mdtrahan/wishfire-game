@@ -281,3 +281,5 @@
 - App-tick VM fixtures supply Bag UI state and route boss-defeat facts through the Rust owner's callback into the real checkpoint session. Cache-review proof freezes ordinary combat while full-cache-only proof keeps combat advancing; retain all equipment and economic assertions.
 
 - Party-stat OSD proof must render a real WASM stat revision through the production display adapter. Rust speed proof compares equal-step snapshots across 0.25x/1x/4x, checks the eight-step frame budget, and exercises the DEV setting plus pause through the production runtime.
+
+- `combatDeathLifecycle.test.mjs` observes natural real-WASM deaths on the production page through retained-picture expiry. Require one GPU corpse draw per frame, unchanged living painted dimensions, intermediate alpha, monotonic fade to zero and snapshot eviction; the original Canvas handoff must fail this proof.

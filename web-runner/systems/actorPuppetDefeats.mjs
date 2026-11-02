@@ -1,6 +1,7 @@
 // Defeat pictures outlive simulation removal without owning rewards or targeting.
 const sessions = new WeakMap();
-const KO_DURATION_SEC = 1;
+export const ENEMY_DEFEAT_FADE_SEC = 1;
+const KO_DURATION_SEC = 1.48;
 
 function session(globals) {
   let current = sessions.get(globals);

@@ -63,6 +63,7 @@ export function createActorPuppetPresentation({ loadClip }) {
     },
     frameFor(actor, now, orientation) {
       if (!Number.isFinite(now)) return null;
+      if (actor.isPuppetDefeat) return actor.puppetPaint?.presentation ?? null;
       if (frameNow !== now) {
         for (const [id, slot] of actors) {
           if (now < frameNow || slot.seen !== frameNow) actors.delete(id);
@@ -107,13 +108,6 @@ export function createActorPuppetPresentation({ loadClip }) {
       // A replacement's clock/facing must never resample the outgoing pose.
       // Keep the image last presented until the requested clip is ready.
       if (ready?.key !== key) return slot.shown ?? null;
-      if (actor.isPuppetDefeat && slot.defeatClipKey !== key) {
-        // This is a presentation copy, already removed from the simulation.
-        actor.actionStateStartedAt = now;
-        actor.puppetDefeatEndsAt = now + clip.durationMs / 1000;
-        actor.actionStateUntil = actor.puppetDefeatEndsAt;
-        slot.defeatClipKey = key;
-      }
       const frame = clip && sampleActorClip(clip, actorClipAgeMs(actor, state, clip, now));
       slot.shown = frame ? { frame, clip, state, facing } : null;
       return slot.shown;

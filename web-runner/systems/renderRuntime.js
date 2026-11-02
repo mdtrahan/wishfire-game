@@ -820,12 +820,12 @@ const body = `with (scope) {
         const drawY = pos.y - (enemy.combatRank === 'boss' ? enemyH : enemyH / 2);
         const puppet = actorPuppetPresentation?.frameFor(enemy, Number(g.time || 0), activeCombatOrientation);
         const enemyFootY = Number(pos.y);
-        const enemyFadeAlpha = getEnemyActivationFadeAlpha(enemy, Number(g.time || 0));
+        const enemyFadeAlpha = enemy.isPuppetDefeat ? 1 : getEnemyActivationFadeAlpha(enemy, Number(g.time || 0));
         const paintEnemyActor = () => {
           ctx.save();
           ctx.globalAlpha *= enemyFadeAlpha;
 
-          const drawEnemySprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY: pos.y, height: enemyH, actorUID: enemy.uid, rustActorId: enemy.rustActorId, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }) : null;
+          const drawEnemySprite = () => puppet ? drawActorPuppetFrame(ctx, puppet, { footX: pos.x, footY: pos.y, height: enemyH, actor: enemy, actorUID: enemy.uid, rustActorId: enemy.rustActorId, effects: g.RealtimeSkillEffects, now: Number(g.time || 0) }) : null;
           g.RustCombatPresentation?.actor(ctx, enemy, pos.x, pos.y, enemyH, false, layoutScale, layoutOffsetX, layoutOffsetY);
           drawEnemySprite();
           g.RustCombatPresentation?.actor(ctx, enemy, pos.x, pos.y, enemyH, true, layoutScale, layoutOffsetX, layoutOffsetY);

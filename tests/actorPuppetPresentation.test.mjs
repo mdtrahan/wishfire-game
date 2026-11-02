@@ -130,19 +130,16 @@ test('decoded facing changes are sampled synchronously without another load', ()
   assert.equal(flipped.facing, 'left');
 });
 
-test('a delayed defeat clip gets its full duration and committed facing on the presentation copy', async () => {
-  let resolve;
-  const presentation = createActorPuppetPresentation({ loadClip: () => new Promise(r => { resolve = r; }) });
+test('defeat pictures keep the captured living frame and clocks through asynchronous facing changes', () => {
+  const presentation = createActorPuppetPresentation({ loadClip: () => { throw new Error('corpse must never load a replacement clip'); } });
+  const painted = { frame: clip.frames[1], clip, facing: 'left' };
   const actor = { uid: 9, name: 'Gobloc', hp: 0, isPuppetDefeat: true, facing: 'right',
-    actionState: 'ko', actionFacing: 'left', actionStateStartedAt: 1, actionStateUntil: 2, puppetDefeatEndsAt: 2 };
-  presentation.frameFor(actor, 1); await Promise.resolve();
-  resolve(clip); await new Promise(r => setImmediate(r));
-  const first = presentation.frameFor(actor, 1.4);
-  assert.equal(first.frame, clip.frames[0]);
-  assert.equal(actor.actionStateStartedAt, 1.4);
-  assert.equal(actor.puppetDefeatEndsAt, 2.4);
-  assert.equal(actor.actionStateUntil, 2.4);
-  assert.equal(presentation.frameFor(actor, 2.2).facing, 'left');
+    actionStateStartedAt: 1, puppetDefeatEndsAt: 2.48, puppetPaint: { presentation: painted } };
+  const before = { ...actor };
+  for (const now of [1, 1.4, 2.2]) {
+    assert.equal(presentation.frameFor(actor, now), painted);
+    assert.deepEqual(actor, before, 'rendering cannot restart the fade or extend its lifetime');
+  }
 });
 
 test('transparent overscan preserves body scale and foot anchoring', () => {
