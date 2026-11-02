@@ -396,14 +396,15 @@ export function createCombatSessionInitializer({
       state.globals.InitialSpawn = 1;
       const rawSeed = Number(state.globals.EncounterSeed || 0);
       const explicitSeed = Number(state.globals.EncounterSeedExplicit || 0) === 1;
-      const encounterSeed = (explicitSeed && Number.isFinite(rawSeed) && rawSeed > 0)
+      const checkpointSeed = Number(state.globals.ContinuousCombatStageLoop) === 1 && state.globals.HeroProgress?.continuousStage?.combatCheckpoint
+        ? state.globals.HeroProgress.continuousStage.seed : null;
+      const encounterSeed = checkpointSeed ?? ((explicitSeed && Number.isFinite(rawSeed) && rawSeed > 0)
         ? rawSeed
-        : generateEncounterSeedFn();
+        : generateEncounterSeedFn());
       state.globals.EncounterSeed = encounterSeed;
       state.globals.EncounterSeedExplicit = 0;
       if (Number(state.globals.ContinuousCombatStageLoop || 0) === 1 && state.globals.ContinuousCombatStage) {
-        // The selected encounter seed also owns pack-count randomness. Explicit QA seeds
-        // remain authoritative because encounterSeed already preserves that request.
+        // Reload keeps its saved pack-count seed; a fresh encounter honors an explicit QA seed.
         state.globals.ContinuousCombatStage.seed = (Number(encounterSeed) >>> 0) || 1;
       }
       installCombatRuntimeRandom(deriveCombatRuntimeRngSeed(encounterSeed), 'initEntities');

@@ -1,12 +1,15 @@
 import {attachHeroProgress,createHeroProgressStore,settleBattleEXP} from '../src/core/heroProgression.mjs';
 export const HERO_PROGRESS_SAVE_KEY = 'orka.hero_progress.v2';
 const KEY = HERO_PROGRESS_SAVE_KEY;
-export function restoreHeroProgressFromStorage({fnContext}) {
+export function restoreHeroProgressFromStorage({fnContext, settlePendingReceipts = () => {}}) {
   const g = fnContext.state.globals;
   if (!g.HeroProgressStorageRestored) {
     try {
       const raw = window.localStorage.getItem(KEY);
       g.HeroProgress = createHeroProgressStore(raw ? JSON.parse(raw) : g.HeroProgress || null);
+      const settlement = settlePendingReceipts({ state: fnContext.state });
+      if (settlement === false || settlement?.then) throw new Error('WFM checkpoint: receipt settlement must complete synchronously before restart');
+      g.WfmCheckpointReload = !!g.HeroProgress.continuousStage;
       for (const actor of fnContext.state.entities || []) if (actor?.kind === 'hero') attachHeroProgress(actor, g.HeroProgress);
       g.HeroProgressStorageRestored = true;
     } catch (error) {
@@ -14,6 +17,7 @@ export function restoreHeroProgressFromStorage({fnContext}) {
       g.HeroProgress ||= createHeroProgressStore();
     }
   }
+  if (g.HeroProgressStorageError) return false;
   restorePendingGoldSettlements(g);
   restorePendingBattleRewards(g, fnContext.state.entities || []);
   persistHeroProgressIfDirty({ stateGlobals: g });
@@ -24,6 +28,20 @@ export function persistHeroProgressIfDirty({stateGlobals:g}) {
   const stage = g.ContinuousCombatStage;
   if (Number(g.ContinuousCombatStageLoop) === 1 && stage) {
     const checkpoint = { topologyVersion: 2, region: stage.region, stage: stage.stage, wave: stage.bossActive ? 1 : stage.wave, bossAvailable: !!stage.bossAvailable || !!stage.bossActive, bossSummonRequired: stage.bossSummonRequired === true || stage.bossActive === true, clearedBosses: stage.clearedBosses, bossUID: stage.bossActive && Number.isSafeInteger(stage.bossUID) && stage.bossUID > 0 ? stage.bossUID : undefined, clearedPackMask: Number.isSafeInteger(stage.clearedPackMask) && stage.clearedPackMask >= 0 && stage.clearedPackMask <= 63 ? stage.clearedPackMask : 0 };
+    if (stage.combatCheckpoint) {
+      checkpoint.seed = stage.seed;
+      checkpoint.transitions = Number(stage.transitions || 0);
+      const previous = g.HeroProgress.continuousStage;
+      const priorMeta = previous?.combatCheckpoint;
+      const changed = priorMeta && Object.entries(checkpoint).some(([field, value]) => previous[field] !== value);
+      if (changed && priorMeta.generation >= Number.MAX_SAFE_INTEGER) {
+        g.HeroProgressStorageError = 'WFM checkpoint: generation exhausted';
+        return false;
+      }
+      checkpoint.combatCheckpoint = { ...stage.combatCheckpoint,
+        generation: changed ? priorMeta.generation + 1 : stage.combatCheckpoint.generation };
+      stage.combatCheckpoint = checkpoint.combatCheckpoint;
+    }
     if (JSON.stringify(checkpoint) !== JSON.stringify(g.HeroProgress.continuousStage)) {
       g.HeroProgress.continuousStage = checkpoint;
       g.HeroProgressDirty = true;

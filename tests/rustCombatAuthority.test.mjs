@@ -63,7 +63,7 @@ function fixture({ lose = false, fault = false, deathObjects = false } = {}) {
   const original = session.surrenderBossAttempt;
   session.surrenderBossAttempt = function(reason) { routes.push(reason); return original.call(this, reason); };
   const clock = createCombatSimulationTicker({ isBagProgressBlocked: () => false });
-  const runtime = createRustCombatRuntime({ state, bridge, session, call, getEnemyRows: () => rows,
+  const runtime = createRustCombatRuntime({ persistCheckpoint: () => true, state, bridge, session, call, getEnemyRows: () => rows,
     present: snapshot => { presented=snapshot; }, advanceHostTime: clock.advanceHostTime, warn: (...args) => warnings.push(args) });
   const options = { globals: g, entities: state.entities, presentationBarrier: { lanes: {} }, call,
     onBossTimeout: () => session.surrenderBossAttempt('boss_timeout'), onBossClear() { calls.push('boss_clear'); } };

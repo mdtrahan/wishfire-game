@@ -54,7 +54,7 @@ function fixture({ mask = 0, boss = false, hp = 1, level = 100 } = {}) {
     const fn = session[method]; session[method] = function(reason) { routes.push([method, reason]); return fn.call(this, reason); };
   }
   const clock = createCombatSimulationTicker({ isBagProgressBlocked: () => false });
-  const runtime = createRustCombatRuntime({ state, bridge, session, call, getEnemyRows: () => rows, advanceHostTime: clock.advanceHostTime,
+  const runtime = createRustCombatRuntime({ persistCheckpoint: () => true, state, bridge, session, call, getEnemyRows: () => rows, advanceHostTime: clock.advanceHostTime,
     warn(...args) { throw new Error(args.join(' ')); } });
   let frame = 0;
   const options = () => ({ globals: g, entities: state.entities, call, nowMs: frame++ * 1000 / 30,

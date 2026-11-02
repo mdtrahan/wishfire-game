@@ -29,7 +29,7 @@ export function wfmHeroPermanentInputs(g, actor) {
     skill_modifiers: { special_potency: growth.specialMagnitude, meter_rate: 1 / growth.specialCooldown } };
 }
 
-export function createWfmCombatConfig({ globals: g, entities, enemyRows, encounterId }) {
+export function createWfmCombatConfig({ globals: g, entities, enemyRows, encounterId, checkpointEntry = false }) {
   for (const name of getContinuousCombatStage(g.ContinuousCombatStage).enemyNames) {
     if (!Object.hasOwn(WFM_ENEMY_DEFINITIONS, name)) throw new Error(`WFM combat: unmapped stage enemy "${name}"`);
     if (!enemyRows.some(row => row.name === name)) throw new Error(`WFM combat: missing authored enemy "${name}"`);
@@ -51,6 +51,7 @@ export function createWfmCombatConfig({ globals: g, entities, enemyRows, encount
     summon: { resolved: g.EnemyData.find(row => row.name === 'Gobloc'), reference: enemyRows.find(row => row.name === 'Gobloc') },
   }) };
   config.heroes.forEach((hero, slot) => {
+    if (checkpointEntry) hero.hp = hero.stats.hp;
     hero.formation_offset = { ...SLICE_TRAVEL_SLOTS[slot] };
   });
   return config;

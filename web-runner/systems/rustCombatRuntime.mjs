@@ -11,7 +11,7 @@ import { runtimeAssetUrl, getEmbeddedWasmBytes } from './runtimeAssetUrl.mjs';
 import { recordActorPuppetDefeat } from './actorPuppetDefeats.mjs';
 import { createRustCombatPresentation } from './rustCombatPresentation.mjs';
 import { bindHeroPermanentInputs } from '../src/core/heroPermanentInputs.mjs';
-import { saveHeroProgress } from '../src/core/heroProgression.mjs';
+import { saveHeroProgress, validateCombatCheckpoint, WFM_COMBAT_CONTENT_VERSION, WFM_COMBAT_ABI_VERSION } from '../src/core/heroProgression.mjs';
 import { isActorRecoveryRevealActive } from '../src/core/actorPresentationState.mjs';
 import { isRustCombatStage } from './rustCombat.mjs';
 
@@ -20,8 +20,8 @@ const BOSS_KO_SECONDS = 1, CORPSE_FADE = .42, DEATH_CAMERA_SECONDS = .32;
 
 // Kept injectable for headless proof using the real WASM and WFM lifecycle.
 export function createRustCombatRuntime({ state, globals: g = state.globals, bridge, session, call,
-  progression, getEnemyRows, advanceHostTime, present = () => {}, warn = console.warn }) {
-  let attempt = null, serial = 0, baseTime = 0, lastCombatTime = 0, lastPresentationTime = 0;
+  progression, getEnemyRows, advanceHostTime, present = () => {}, warn = console.warn, persistCheckpoint }) {
+  let attempt = null, baseTime = 0, lastCombatTime = 0, lastPresentationTime = 0;
   g.RustCombatAuthority = true;
   let hostTransition = false, subwaves = [], previousSubwave = [], subwaveStarted = 0;
   let stageOptions, advanced = false, failed = false, introNow = null, tail = null;
@@ -62,6 +62,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
     g.RustCombatError = String(error);
     g.RustCombatReceipt = { ...g.RustCombatReceipt, outcome: 'bridge_error' };
     present(null); warn('[rustCombat] encounter ended:', error);
+    if (error.code?.startsWith('WFM_CHECKPOINT_') || g.HeroProgressStorageError) return;
     if (g.ContinuousCombatStage?.bossActive) session.surrenderBossAttempt('rust_bridge_error');
     else session.recoverContinuousDefeat('rust_bridge_error');
   }
@@ -116,8 +117,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
           const picture = recordActorPuppetDefeat(g, enemy);
           if (bossKilled && Number(enemy.uid) === Number(g.ContinuousCombatStage?.bossUID)) bossPicture = picture;
           consumeCombatKillEvent(g.ProgressionBattle, { enemy });
-          if (g.HeroProgressStorageError) throw new Error(g.HeroProgressStorageError);
-          const index = state.entities.indexOf(enemy);
+            const index = state.entities.indexOf(enemy);
           if (index >= 0) state.entities.splice(index, 1);
           g.EnemySlots[enemy.slotIndex] = 0;
           if (g.EnemyIDs) g.EnemyIDs[enemy.slotIndex] = 0;
@@ -268,6 +268,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
   function tickFrame(options) {
     stageOptions = options; advanced = false;
     if (failed) return false;
+    if (g.HeroProgressStorageError) throw new Error(g.HeroProgressStorageError);
     if (!isRustCombatStage(g)) { if (attempt) stop(); return false; }
     const stage = g.ContinuousCombatStage;
     if (tail) return advanceTail(options);
@@ -285,12 +286,25 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
       stop(); attempt = key; baseTime = Number(g.time || 0); lastCombatTime = 0; lastPresentationTime = 0;
       for (const hero of state.entities.filter(a => a.kind === 'hero')) hostHeroes.set(hero, { maxHP: hero.maxHP });
       try {
+        if (!stage.combatCheckpoint) stage.combatCheckpoint = {
+          version: 1, id: crypto.randomUUID(), generation: 1,
+          rewardLineage: String(g.ProgressionBattle?.id || crypto.randomUUID()),
+          contentVersion: WFM_COMBAT_CONTENT_VERSION, abiVersion: WFM_COMBAT_ABI_VERSION,
+        };
+        validateCombatCheckpoint({ ...stage, transitions: Number(stage.transitions || 0) }, bridge.describe().abi_version);
+        if (typeof persistCheckpoint !== 'function' || persistCheckpoint() !== true) {
+          const error = new Error('WFM checkpoint: save failed before Rust attempt creation');
+          error.code = 'WFM_CHECKPOINT_SAVE_FAILED';
+          throw error;
+        }
+        if (g.WfmCheckpointReload) stage.bossTimerStartedAt = null;
         prepareSubwaves(state.entities.filter(a => a.kind === 'enemy' && a.hp > 0));
-        const config = createWfmCombatConfig({ globals: g, entities: state.entities, enemyRows: getEnemyRows(), encounterId: `rust:${key}:${++serial}` });
+        const config = createWfmCombatConfig({ globals: g, entities: state.entities, enemyRows: getEnemyRows(), encounterId: `rust:${stage.combatCheckpoint.id}:${crypto.randomUUID()}`, checkpointEntry: g.WfmCheckpointReload === true });
         config.spawn_markers = !stage.bossActive;
         if (stage.bossActive && !config.enemies.some(enemy => enemy.spawn_key === String(stage.bossUID))) throw new Error('Missing WFM boss spawn');
         for (const enemy of config.enemies) seenSpawns.add(enemy.spawn_key);
         driver.start(config);
+        if (driver.isActive()) g.WfmCheckpointReload = false;
         if (driver.isActive()) for (const [hero, original] of hostHeroes) {
           const fallback = structuredClone(hero);
           original.unbind = bindHeroPermanentInputs(hero, {
@@ -323,7 +337,12 @@ export async function mountRustCombat(options) {
   });
   const { instance } = await WebAssembly.instantiate(bytes, {});
   const overlay = await createRustCombatPresentation(options.globals);
-  const runtime = createRustCombatRuntime({ ...options, bridge: createCombatBridge(instance), present: overlay.present });
+  const { persistHeroProgressIfDirty } = await import('./heroProgressStorage.js');
+  const persistCheckpoint = () => {
+    options.globals.HeroProgressDirty = true;
+    return persistHeroProgressIfDirty({ stateGlobals: options.globals });
+  };
+  const runtime = createRustCombatRuntime({ ...options, persistCheckpoint, bridge: createCombatBridge(instance), present: overlay.present });
   const dispose = () => { runtime.dispose(); overlay.dispose(); window.removeEventListener('pagehide', dispose); };
   window.addEventListener('pagehide', dispose);
   return { ...runtime, dispose };
