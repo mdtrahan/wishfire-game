@@ -275,3 +275,5 @@
 - Rust-only retirement keeps economy, saves, CP/meta RNG and artifact assertions. Retire JS scheduler/scalar/VFX implementation tests; rewire supported lifecycle tests to real WASM and #229 revisions. `rustOnlyInventory.test.mjs` includes rejection fixtures; `rustCombatAllStages.test.mjs` spies on retired owners and proves D17′ with real Rust AllDown, free recovery and origin placement. Run focused browser tests serially.
 
 - `rustCombatAdmissionBrowser.test.mjs` runs serial HTTP503/ABI0 admission and 37-enemy/nine-subwave navigation proof in one Chromium. `rustCombatAllStages.test.mjs` retains the real-WASM pause control. `combatProgression.test.mjs` owns untouched v3/v4 formation saves plus Training, star/ticket spending and progression reload guarantees. GameState envelope CSV checks remain after retired scalar-export tests are removed.
+
+- App-tick VM fixtures supply Bag UI state and route boss-defeat facts through the Rust owner's callback into the real checkpoint session. Cache-review proof freezes ordinary combat while full-cache-only proof keeps combat advancing; retain all equipment and economic assertions.

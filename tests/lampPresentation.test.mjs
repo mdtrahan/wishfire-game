@@ -33,11 +33,11 @@ async function movingTap(page,id){
  const point=await page.evaluate(id=>{const n=[...document.querySelectorAll('.lamp-conveyor-item')].find(n=>n.dataset.id===id),r=n.getBoundingClientRect(),b=n.parentElement.getBoundingClientRect();return{x:(Math.max(r.left,b.left)+Math.min(r.right,b.right))/2,y:r.top+r.height/2};},id);
  await page.mouse.click(point.x,point.y);
 }
-async function movement(page,id,{paused=false}={}){
+async function movement(page,id,{paused=false,combatPaused=false}={}){
  await page.evaluate(id=>window.sampledConveyorNode=[...document.querySelectorAll('.lamp-conveyor-item')].find(n=>n.dataset.id===id),id);
  const combatBefore=await page.evaluate(()=>window.__codexGame.globals.time),before=await page.evaluate(()=>window.sampledConveyorNode.getBoundingClientRect().x);await delay(400);
  const after=await page.evaluate(id=>{const n=[...document.querySelectorAll('.lamp-conveyor-item')].find(n=>n.dataset.id===id);return{same:n===window.sampledConveyorNode,x:n.getBoundingClientRect().x,running:n.getAnimations()[0]?.playState,beltObject:!!document.querySelector('.lamp-conveyor-track')};},id);
- await page.waitForFunction(before=>window.__codexGame.globals.time>before,combatBefore,{timeout:3000});const combatAfter=await page.evaluate(()=>window.__codexGame.globals.time);assert.ok(combatAfter>combatBefore,'combat continues during cache review');assert.equal(after.same,true);assert.equal(after.running,paused?'paused':'running');assert.equal(after.beltObject,false,'item motion has no literal belt object');if(paused)assert.ok(Math.abs(after.x-before)<.1,'cache freezes equipment in place');else assert.ok(after.x>before+2,'equipment moves left to right without restarting its node');return{before,...after,combatBefore,combatAfter};
+ if(!combatPaused)await page.waitForFunction(before=>window.__codexGame.globals.time>before,combatBefore,{timeout:3000});const combatAfter=await page.evaluate(()=>window.__codexGame.globals.time);if(combatPaused)assert.equal(combatAfter,combatBefore,'open cache pauses ordinary Rust combat');else assert.ok(combatAfter>combatBefore,'a full cache outside review keeps combat advancing');assert.equal(after.same,true);assert.equal(after.running,paused?'paused':'running');assert.equal(after.beltObject,false,'item motion has no literal belt object');if(paused)assert.ok(Math.abs(after.x-before)<.1,'cache freezes equipment in place');else assert.ok(after.x>before+2,'equipment moves left to right without restarting its node');return{before,...after,combatBefore,combatAfter};
 }
 async function containment(page){
  assert.equal(await page.locator('#lamp-dialog button').evaluateAll(ns=>ns.every(n=>getComputedStyle(n).opacity==='1')),true,'equipment dialog controls, portraits, arrows and tiles stay fully opaque at every phone size');
@@ -141,7 +141,7 @@ test('continuous equipment lifecycle: four phones, full-cache pause, concurrent 
    assert.equal((await state(page)).lamp.sequence,saved.lamp.sequence,'full cache pauses issuance');
    assert.equal(await page.evaluate(()=>window.lampPassageBounces.length),0,'full cache cannot bounce');
    await strip.locator('.lamp-collect').click();await dialog.waitFor();
-   const movingReview=await movement(page,pausedId,{paused:true}),reviewLayout=await containment(page),passageBounce={fullCacheBounce:false};
+   const movingReview=await movement(page,pausedId,{paused:true,combatPaused:true}),reviewLayout=await containment(page),passageBounce={fullCacheBounce:false};
    assert.equal(await dialog.locator('.lamp-hero-current-cp').count(),4);assert.equal(await dialog.locator('.lamp-actions button').count(),2);assert.equal(await dialog.getByText(/^Revealed /).count(),0);
    const mainIds=await dialog.locator('[aria-label="Actionable upgrades"] .lamp-tile').evaluateAll(ns=>ns.map(n=>({id:n.dataset.id,gain:Number(n.dataset.bestGain),arrow:!!n.querySelector('.lamp-review-arrow')})));assert.equal(mainIds.length,3);assert.ok(mainIds.every(n=>n.gain>0&&n.arrow));
    await page.evaluate(()=>{const original=performance.now.bind(performance);performance.now=()=>original()+15100;});await page.locator('.lamp-idle-helper').waitFor();assert.equal(await page.locator('.lamp-idle-helper').getAttribute('data-target'),'auto-equip');
