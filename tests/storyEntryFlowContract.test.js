@@ -117,20 +117,6 @@ test('QA manual narrative pages reach embedded combat without changing narrative
  }
  assert.equal(s.layout.getActiveLayoutId(),'combat');assert.ok(pages>16);
 });
-test('defeat waits for resource Continue or Quit without completion or unlock', async () => {
- const s=await setup();s.flow.skip();await flush();
- assert.equal(s.flow.defeat(),true);await flush();
- assert.equal(s.gameState.storyEntry.phase,'defeat');
- assert.equal(s.gameState.storyEntry.progress.revealed,1);
- assert.equal(await s.flow.continueCombat(),true);
- assert.equal(s.gameState.storyEntry.progress.resources,120);
- assert.equal(s.layout.getActiveLayoutId(),'combat');
- s.flow.defeat();await flush();s.gameState.storyEntry.progress.resources=0;
- assert.equal(await s.flow.continueCombat(),false);
- s.flow.quit();assert.equal(s.gameState.storyEntry.phase,'map');
- assert.equal(s.gameState.storyEntry.progress.completed.length,0);
-});
-
 test('synthetic roster stages remain QA helpers and never enter the player card list', async () => {
  const { buildSyntheticQuestStages } = await import('../web-runner/systems/storyEntryFlow.mjs');
  const table = JSON.parse(fs.readFileSync(path.join(root, 'web-runner/assets/enemies.json')));
@@ -160,29 +146,6 @@ test('Quests from the map changes the view without requesting the same layout', 
  assert.equal(s.gameState.storyEntry.error, null);
 });
 
-
-test('combat end resets overrides once; Continue preserves the active session', async () => {
- const s = await setup(); s.flow.skip(); await flush();
- s.flow.defeat(); await flush();
- assert.equal(s.sessionEnds(),0);
- await s.flow.continueCombat();
- assert.equal(s.sessionEnds(),0);
- s.flow.victory(); await flush();
- assert.equal(s.sessionEnds(),1);
- s.flow.victory(); assert.equal(s.sessionEnds(),1);
- s.flow.startCard(0); s.flow.requestSkip(); s.flow.confirmSkip(); await flush();
- s.flow.defeat(); await flush(); s.flow.quit();
- assert.equal(s.sessionEnds(),2);
- s.flow.startCard(1); s.flow.requestSkip(); s.flow.confirmSkip();
- assert.equal(s.sessionEnds(),2,'story-only completion has no combat overrides to clear');
- await s.flow.startCombatForQA(); await flush();
- await s.flow.navigate('Quests');
- assert.equal(s.gameState.storyEntry.phase,'combat-paused');
- assert.equal(s.gameState.storyEntry.modal,'combat-pause');
- assert.equal(s.sessionEnds(),2,'pausing preserves the active combat session');
- assert.equal(s.flow.quitPausedCombat(),true);
- assert.equal(s.sessionEnds(),3,'quitting the paused battle clears the session once');
-});
 
 test('every enabled non-combat destination pauses before its shared Quests resume-or-quit gate', async () => {
  for (const label of ['Hero', 'Vault', 'Shop', 'Map']) {

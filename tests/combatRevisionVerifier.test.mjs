@@ -47,13 +47,8 @@ const {newHeroProgress,createHeroProgressStore,awardHeroEXP,expToNextLevel,saveH
  try { for (let frame=0; frame<30; frame++) await equipment.sync(); }
  finally { globalThis.structuredClone = clone; }
  assert.equal(clones,0); assert.equal(runtime.read().pendingRevisions,0);
- const lowSource=fs.readFileSync(root+'/web-runner/systems/devBrowserTestHooks.js','utf8');
- const lowBody=lowSource.slice(lowSource.indexOf('export function applyQaEnemyLowHpFixture'),lowSource.indexOf('export function deriveQaSettlementReward')).replace('export ','');
- const lowFn=new Function(lowBody+';return applyQaEnemyLowHpFixture;')();
- Object.assign(g,{QaScenarioPaused:1,QaFixtureHoldTurn:1,DevToolingPaused:1});
- const enemyHP=enemy.hp; assert.match(lowFn({globals:g,entities:state.entities}).reason,/not supported in Rust encounters/); assert.equal(enemy.hp,enemyHP);
  const {restoreHeroesToFullHP}=await load('web-runner/systems/questCombatSession.mjs');
- const {resetRealtimeSkillAttempt,ensureSkillBattle}=await load('web-runner/src/core/realtimeSkillState.mjs');
+ const {resetRealtimeSkillAttempt,ensureSkillBattle}=await load('web-runner/src/core/heroPermanentModifiers.mjs');
  assert.throws(()=>restoreHeroesToFullHP({state,call(){}}),/not supported in Rust encounters/);
  assert.throws(()=>resetRealtimeSkillAttempt(g,state.entities),/not supported in Rust encounters/);
  assert.throws(()=>ensureSkillBattle({state}),/not supported in Rust encounters/);

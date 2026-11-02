@@ -956,7 +956,8 @@ impl World {
         self.events.push(json!({"schema":SCHEMA,"encounter_id":self.encounter_id,"step":self.sim.step_number.to_string(),"combat_step":self.sim.combat_steps.to_string(),"sequence":(self.acknowledged_sequence+self.events.len() as u64+1).to_string(),"body":body}));
     }
     fn collect(&mut self) {
-        for e in self.sim.drain_events() {
+        let hp_losses = self.sim.events.hp_losses();
+        for (event_index, e) in self.sim.drain_events().into_iter().enumerate() {
             let body = match e {
                 Event::Hit {
                     source,
@@ -966,7 +967,7 @@ impl World {
                     element,
                     blocked,
                 } => {
-                    json!({"kind":"damage","data":{"source":source,"target":target,"amount":amount,"crit":crit,"element":element,"blocked":blocked}})
+                    json!({"kind":"damage","data":{"source":source,"target":target,"amount":amount,"hp_loss":hp_losses.get(&event_index).copied().unwrap_or(0.),"crit":crit,"element":element,"blocked":blocked}})
                 }
                 Event::Downed { id } => json!({"kind":"downed","data":{"hero":id}}),
                 Event::Died { id } => {

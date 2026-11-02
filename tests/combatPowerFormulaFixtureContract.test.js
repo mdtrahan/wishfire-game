@@ -12,7 +12,7 @@ test('canonical CP derives capability from the full stat projection',async()=>{
 });
 
 test('function-bank mirrors delegate CP to the canonical owner',()=>{
- for(const rel of ['Scripts/functionBank.js','web-runner/modules/functionBank.js']){
+ for(const rel of ['web-runner/modules/functionBank.js']){
   const src=fs.readFileSync(path.join(__dirname,'..',rel),'utf8');
   assert.match(src,/import \{ computeCombatPower as canonicalCombatPower \}/);
   assert.match(src,/return canonicalCombatPower\(\{ maxHP: hp, level, stats:/);

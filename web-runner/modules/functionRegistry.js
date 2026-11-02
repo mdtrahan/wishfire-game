@@ -1,11 +1,9 @@
 import { state } from './state.js';
 import * as functionBank from './functionBank.js';
-import * as skillSheet from './skillSheet.js';
 import * as mainSheet from './mainSheet.js';
 
 export const registry = {
   ...functionBank,
-  ...skillSheet,
   ...mainSheet,
 };
 

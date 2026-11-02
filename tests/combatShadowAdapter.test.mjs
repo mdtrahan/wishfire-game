@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { SHADOW_DEFINITIONS, projectShadowStats, shadowHero, shadowEnemy, createShadowConfig } from '../src/core/combatShadowAdapter.mjs';
 import { HERO_DEFINITIONS } from '../web-runner/src/core/heroDefinitions.mjs';
 import { newHeroProgress, refreshHeroStats } from '../web-runner/src/core/heroProgression.mjs';
-import { permanentHeroModifiers } from '../web-runner/src/core/realtimeSkillState.mjs';
+import { permanentHeroModifiers } from '../web-runner/src/core/heroPermanentModifiers.mjs';
 import { projectCombatStat } from '../src/core/combatModifierRules.mjs';
 import { createContinuousCombatStageState, getContinuousCombatStage } from '../web-runner/src/core/continuousCombatStage.mjs';
 

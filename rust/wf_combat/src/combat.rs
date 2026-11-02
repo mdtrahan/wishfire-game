@@ -92,14 +92,14 @@ impl Sim {
         let interrupt = a.action_revive
             && a.committed()
             && absorbed + loss > a.view.max_hp * REVIVE_INTERRUPT_HP;
-        self.events.push(Event::Hit {
+        self.events.hit(Event::Hit {
             source,
             target: a.view.id,
             amount: absorbed + loss,
             crit,
             element,
             blocked: absorbed > 0.,
-        });
+        }, loss);
         self.damage_enmity(source, target, absorbed + loss);
         if absorbed + loss > 0. {
             self.spotlight_affected(source, self.actors[target].view.id);

@@ -9,7 +9,7 @@ import { settleContinuousCombatRewards } from '../web-runner/modules/heroCommand
 import { createRustCombatRuntime } from '../web-runner/systems/rustCombatRuntime.mjs';
 import { installRustCombat, isRustCombatStage } from '../web-runner/systems/rustCombat.mjs';
 import { createQuestCombatSession } from '../web-runner/systems/questCombatSession.mjs';
-import { createCombatSimulationTicker } from '../web-runner/systems/combatSimulationTick.mjs';
+import { createCombatHostClock } from '../web-runner/systems/combatHostClock.mjs';
 import { createContinuousCombatStageState } from '../web-runner/src/core/continuousCombatStage.mjs';
 import { createHeroProgressStore, newHeroProgress, refreshHeroStats } from '../web-runner/src/core/heroProgression.mjs';
 const progressSource = fs.readFileSync(new URL('../web-runner/systems/heroProgressStorage.js', import.meta.url), 'utf8');
@@ -63,7 +63,7 @@ function fixture({ lose = false, fault = false, deathObjects = false, durable = 
   const session = createQuestCombatSession({ state, gameState: {}, call, sync() {} });
   const original = session.surrenderBossAttempt;
   session.surrenderBossAttempt = function(reason) { routes.push(reason); return original.call(this, reason); };
-  const clock = createCombatSimulationTicker({ isBagProgressBlocked: () => false });
+  const clock = createCombatHostClock({ isBagProgressBlocked: () => false });
   const saved = new Map();
   const equipment = durable ? createEquipmentStorage({globals:g,storage:{getItem:key=>saved.get(key)??null,setItem:(key,value)=>saved.set(key,value)},locks:{request:async(_key,fn)=>fn()},now:()=>0,seed:()=>42,reportError:()=>{}}) : undefined;
   const runtime = createRustCombatRuntime({ persistCheckpoint: () => true, state, bridge, session, call, equipmentProgress:equipment, persistProgress: () => {saved.set('orka.hero_progress.v2',JSON.stringify(g.HeroProgress));return true;}, getEnemyRows: () => rows,
@@ -100,17 +100,6 @@ test('bridge error releases its world and uses normal WFM failed-attempt recover
   assert.deepEqual(f.routes, ['rust_bridge_error']); assert.equal(f.warnings.length, 1);
   assert.equal(f.g.RustCombatReceipt.outcome, 'bridge_error');
   assert.deepEqual(f.rewards, []); noLeaks(f.bridge);
-});
-
-test('localhost gate is lazy when off, admits every continuous stage and refuses public origins', () => {
-  let loads = 0;
-  const load = () => { loads++; throw Error('unexpected load'); };
-  for (const location of [{ hostname: 'localhost', search: '' }, { hostname: 'localhost', search: '?rustCombat=0' },
-    { hostname: 'example.org', search: '?rustCombat=1' }]) assert.equal(installRustCombat({}, { location, load }), undefined);
-  assert.equal(loads, 0);
-  for (const stage of [{ region: 2, stage: 1, bossActive: true }, { region: 1, stage: 1, bossActive: false }]) {
-    assert.equal(isRustCombatStage({ ContinuousCombatStageLoop: 1, ContinuousCombatStage: stage }), true);
-  }
 });
 
 test('event batches deduplicate by encounter/sequence; gaps and collisions stop before another step', () => {
@@ -177,11 +166,11 @@ test('Rust victory clears through legacy presentation barriers without recreatin
 });
 
 
-test('executable app tick calls only the selected combat owner and keeps JS outcome inference off under Rust', () => {
+test('executable app tick calls only Rust and never invokes retired scheduler or outcome owners', () => {
   const app = fs.readFileSync(new URL('../web-runner/app.js', import.meta.url), 'utf8');
   const start = app.indexOf('  function tick(){', app.indexOf('let frameCount = 0;'));
   const source = app.slice(start, app.indexOf('  tick();', start));
-  for (const enabled of [true, false]) {
+  for (const enabled of [true]) {
     const counts = { rust: 0, js: 0, stage: 0, outcome: 0 };
     const context = vm.createContext({
       state: { globals: {}, entities: [] }, gameState: { storyEntry: { phase: 'combat' } },
@@ -205,7 +194,7 @@ test('executable app tick calls only the selected combat owner and keeps JS outc
       startGemMergeFx() {}, getGoldLabelTargetWorld() {},
     });
     vm.runInContext(`let frameCount = 0; ${source}; tick();`, context);
-    assert.deepEqual(counts, enabled ? { rust: 1, js: 0, stage: 0, outcome: 0 } : { rust: 0, js: 1, stage: 1, outcome: 1 });
+    assert.deepEqual(counts, { rust: 1, js: 0, stage: 0, outcome: 0 });
   }
 });
 

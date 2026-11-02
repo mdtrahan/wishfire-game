@@ -7,8 +7,8 @@ import { createSliceCombatCamera } from '../web-runner/systems/rustCombatCamera.
 import { createCombatBridge } from '../web-runner/src/core/combatBridge.mjs';
 import { createWfmCombatConfig } from '../web-runner/systems/wfmCombatConfig.mjs';
 import { createRustCombatRuntime } from '../web-runner/systems/rustCombatRuntime.mjs';
-import { createQuestCombatSession, recoverContinuousOrdinaryDefeatIfNeeded } from '../web-runner/systems/questCombatSession.mjs';
-import { createCombatSimulationTicker } from '../web-runner/systems/combatSimulationTick.mjs';
+import { createQuestCombatSession } from '../web-runner/systems/questCombatSession.mjs';
+import { createCombatHostClock } from '../web-runner/systems/combatHostClock.mjs';
 import { settleContinuousCombatRewards } from '../web-runner/modules/heroCommands.mjs';
 import { newHeroProgress, refreshHeroStats, createHeroProgressStore } from '../web-runner/src/core/heroProgression.mjs';
 import { buildContinuousCombatSpawnPlan, activateContinuousCombatSpawnedEnemy, createContinuousCombatStageState, getContinuousCombatStage } from '../web-runner/src/core/continuousCombatStage.mjs';
@@ -53,7 +53,7 @@ function fixture({ mask = 0, boss = false, hp = 1, level = 100 } = {}) {
   for (const method of ['surrenderBossAttempt', 'recoverContinuousDefeat']) {
     const fn = session[method]; session[method] = function(reason) { routes.push([method, reason]); return fn.call(this, reason); };
   }
-  const clock = createCombatSimulationTicker({ isBagProgressBlocked: () => false });
+  const clock = createCombatHostClock({ isBagProgressBlocked: () => false });
   const runtime = createRustCombatRuntime({ persistCheckpoint: () => true, state, bridge, session, call, persistProgress: () => true, getEnemyRows: () => rows, advanceHostTime: clock.advanceHostTime,
     warn(...args) { throw new Error(args.join(' ')); } });
   let frame = 0;
@@ -163,7 +163,6 @@ test('one downed hero stays in Rust combat and autonomous Phoenix selects the lo
   f.heroes[0].hp = f.heroes[1].hp = 0;
   f.state.entities.find(a => a.kind === 'enemy').stats.ATK = 0;
   f.tick();
-  assert.equal(recoverContinuousOrdinaryDefeatIfNeeded({ state: f.state, session: { recoverContinuousDefeat() { throw Error('legacy KO route'); } } }), false);
   f.runUntil(() => !!f.runtime.read().snapshot?.phoenix_channel, 30);
   assert.equal(f.runtime.read().snapshot.phoenix_channel.hero, f.runtime.read().snapshot.actors.find(a => a.host_id === f.heroes[0].heroInstanceKey).actor_id);
   assert.deepEqual(f.routes, []);

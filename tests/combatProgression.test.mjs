@@ -6,7 +6,7 @@ import {
   COMBAT_PROGRESSION_SAVE_KEY, COMBAT_REWARD_BUNDLES, purchasePartyTraining, trainingCost, TRAINING_STATS, spendHeroTickets, settleHeroTicketSpend, heroTicketLevelCost,
 } from '../web-runner/src/core/combatProgressionRules.mjs';
 import { awardHeroEXP, createHeroProgressStore, newHeroProgress, saveHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
-import { partyTrainingCombatStat, realtimeCombatStat } from '../web-runner/src/core/realtimeSkillState.mjs';
+import { partyTrainingCombatStat } from '../web-runner/src/core/heroPermanentModifiers.mjs';
 import { createCombatProgression } from '../web-runner/systems/combatProgression.mjs';
 import { createEquipmentStorage } from '../web-runner/systems/equipmentStorage.mjs';
 import { claimObjectiveWithReceipt } from '../web-runner/systems/combatProgressionUI.mjs';
@@ -344,7 +344,7 @@ test('training spends Incense atomically and applies permanent bonuses to each h
   for (const stat of ['ATK', 'DEF', 'MAG', 'RES']) {
     const actors = heroes.map(hero => ({ ...hero, stats: { [stat]: 100 } }));
     for (const actor of actors) assert.ok(partyTrainingCombatStat(globals, actor, stat, 100) > 100);
-    assert.equal(realtimeCombatStat(globals, actors[0], stat, 100), partyTrainingCombatStat(globals, actors[0], stat, 100));
+    assert.equal(partyTrainingCombatStat(globals, actors[0], stat, 100), 102);
     assert.equal(actors[0].stats[stat], 100);
   }
   assert.equal(partyTrainingCombatStat(globals, { kind: 'enemy' }, 'ATK', 100), 100);

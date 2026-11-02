@@ -1,7 +1,7 @@
 import { createCombatRewardOutbox } from './combatRewardOutbox.mjs';
 import { authorSubwaves, bindAuthoredSubwaves, subwaveReady } from '../src/core/continuousCombatSubwaves.mjs';
 import { continuousCombatWavesForStage } from '../src/core/continuousCombatProgressionRules.mjs';
-import { advanceBattleStartSimulation } from './combatSimulationTick.mjs';
+import { advanceBattleStartSimulation } from './combatHostClock.mjs';
 import { createCombatBridge } from '../src/core/combatBridge.mjs';
 import { createCombatAuthorityDriver } from '../src/core/combatAuthorityDriver.mjs';
 import { createWfmCombatConfig, wfmEnemyInput, wfmHeroPermanentInputs } from './wfmCombatConfig.mjs';
