@@ -697,3 +697,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - A manually invoked retry seam cannot prove automatic wipe routing. Trigger real WASM AllDown through the production session and compare the admitted subwave and authored enemy identities across the next-tick fresh attempt; keep checkpoint bookkeeping separate from unchanged resource balances.
 
 - Synchronous reload admission can transfer economic receipts into an existing durable source queue before deleting transport rows. Preserve that queue across the asynchronous destination lock and verify crash replay through the real loader plus fresh world creation. Restrict transient-state assertions to checkpoint/hero state; delivery cursors and cached event identities belong to the separate transport journal.
+
+- Schema range checks can coerce null/string inputs and admit negative or fractional versions. Use exact supported numeric versions at every durable batch envelope. Test malformed first/last events through the real ack driver, comparing filesystem bytes and retained Rust cursors; nullable identity fields must distinguish explicit null from omission.

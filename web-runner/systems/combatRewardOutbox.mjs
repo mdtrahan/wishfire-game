@@ -2,6 +2,7 @@ import {COMBAT_RECEIPT_WINDOW,createCombatRewardOutboxState} from '../src/core/c
 import {enemyBagKillPoints} from '../src/core/lampGear.mjs';
 const known=new Set(['spawned','damage','died','downed','revived','all_down','ended','despawned','presentation','permanent_inputs_applied']);
 const decimal=value=>typeof value==='string'&&/^(0|[1-9][0-9]*)$/.test(value)&&BigInt(value)<=18446744073709551615n;
+const supportedSchema=schema=>schema?.major===1&&(schema.minor===0||schema.minor===1);
 // Transport identity lives here; economic identity retains WFM battle/spawn IDs.
 export function createCombatRewardOutbox({globals:g,persistProgress,progression}){
  function save(){
@@ -20,7 +21,7 @@ export function createCombatRewardOutbox({globals:g,persistProgress,progression}
  }
  function consumeBatch(snapshot,events,resolveEnemy){
   if(snapshot.state==='event_overflow'||snapshot.event_overflow)throw new Error('Rust event overflow.');
-  if(!g.HeroProgress||typeof snapshot.encounter_id!=='string'||!snapshot.encounter_id||snapshot.encounter_id.length>256||!decimal(snapshot.step)||!decimal(snapshot.last_event_sequence)||!Array.isArray(events))throw new Error('Invalid Rust event batch.');
+  if(!g.HeroProgress||!supportedSchema(snapshot.schema)||typeof snapshot.encounter_id!=='string'||!snapshot.encounter_id||snapshot.encounter_id.length>256||!decimal(snapshot.step)||!decimal(snapshot.last_event_sequence)||!Array.isArray(events))throw new Error('Invalid Rust event batch.');
   const next=createCombatRewardOutboxState(g.HeroProgress.combatRewardOutbox);
   const id=snapshot.encounter_id;
   if(next.activeEncounter&&next.activeEncounter!==id)throw new Error('Unknown Rust encounter.');
@@ -29,7 +30,7 @@ export function createCombatRewardOutbox({globals:g,persistProgress,progression}
   const stream=Object.hasOwn(next.streams,id)?next.streams[id]:{sequence:'0',step:'0',recent:{},pending:[]};
   let changed=false,delivery=null;
   for(const event of events){
-   if(event.encounter_id!==id||event.schema?.major!==1||event.schema?.minor>1||!decimal(event.sequence)||event.sequence==='0'||!decimal(event.step)||BigInt(event.step)>BigInt(snapshot.step)||!known.has(event.body?.kind))throw new Error('Unknown or invalid Rust gameplay event.');
+   if(event.encounter_id!==id||!supportedSchema(event.schema)||!decimal(event.sequence)||event.sequence==='0'||!decimal(event.step)||BigInt(event.step)>BigInt(snapshot.step)||!known.has(event.body?.kind))throw new Error('Unknown or invalid Rust gameplay event.');
    const seq=BigInt(event.sequence),body=JSON.stringify(event);
    if(delivery!==null&&seq!==delivery+1n)throw new Error('Rust event batch sequence gap.');
    delivery=seq;
@@ -44,7 +45,7 @@ export function createCombatRewardOutbox({globals:g,persistProgress,progression}
     if(!data||!['hero','enemy'].includes(data.team)||data.reason!=='combat')throw new Error('Unknown Rust death provenance.');
     if(data.team==='enemy'){
      const enemy=resolveEnemy(data);
-     if(enemy?.kind!=='enemy'||!Number.isSafeInteger(enemy.uid)||enemy.uid<1||data.host_id!=null&&String(enemy.uid)!==data.host_id)throw new Error('Unknown Rust enemy reward identity.');
+     if(enemy?.kind!=='enemy'||!Number.isSafeInteger(enemy.uid)||enemy.uid<1||data.host_id!==null&&(typeof data.host_id!=='string'||String(enemy.uid)!==data.host_id))throw new Error('Unknown Rust enemy reward identity.');
      const battleId=g.ProgressionBattle?.id,amount=enemyBagKillPoints(enemy);
      if(typeof battleId!=='string'||!battleId)throw new Error('Missing WFM reward battle.');
      stream.pending.push({sequence:event.sequence,battleId,id:`enemy:${battleId}:${enemy.uid}`,amount,enemy:{kind:'enemy',uid:enemy.uid,enemyRole:amount?'boss':'ordinary'}});

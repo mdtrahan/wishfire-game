@@ -1,7 +1,9 @@
 import {createCombatProgression} from '../web-runner/systems/combatProgression.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {existsSync,mkdtempSync,readFileSync,readdirSync,rmSync,writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {createCombatAuthorityDriver} from '../web-runner/src/core/combatAuthorityDriver.mjs';
 import {createCombatBridge} from '../web-runner/src/core/combatBridge.mjs';
 import {createCombatRewardOutbox} from '../web-runner/systems/combatRewardOutbox.mjs';
@@ -37,6 +39,50 @@ async function drain(h){
  await h.progression?.sync();
 }
 const enemy=()=>({kind:'enemy',uid:90,enemyRole:'boss'});
+function rejectsWithoutSaveOrAck(name,alter){
+ test(name,t=>{
+  const dir=mkdtempSync(join(tmpdir(),'combat-outbox-rejection-'));
+  t.after(()=>rmSync(dir,{recursive:true,force:true}));
+  const file=k=>join(dir,Buffer.from(k).toString('base64url'));
+  const values={get:k=>existsSync(file(k))?readFileSync(file(k),'utf8'):undefined,set:(k,v)=>writeFileSync(file(k),v)};
+  const disk=()=>readdirSync(dir).sort().map(name=>[name,readFileSync(join(dir,name))]);
+  const f=combat(),h=host(values),errors=[],acks=[];
+  h.outbox.beginEncounter(f.batch.snapshot.encounter_id);
+  const before=disk(),batch=structuredClone(f.batch);
+  alter(batch);
+  let retained;
+  const driver=createCombatAuthorityDriver({bridge:{...f.bridge,create:()=>({world:f.world,...batch}),ack(...args){acks.push(args);return f.bridge.ack(...args);},destroy(world){retained=f.bridge.inspect(world);return f.bridge.destroy(world);}},consume:(snapshot,events)=>h.outbox.consumeBatch(snapshot,events,enemy),onError:error=>errors.push(error)});
+  t.after(()=>driver.stop());
+  driver.start({encounter_id:f.batch.snapshot.encounter_id});
+  assert.equal(errors.length,1,'malformed batch must fail');
+  assert.deepEqual(disk(),before,'every saved byte must stay unchanged');
+  assert.deepEqual(acks,[],'Rust must receive no acknowledgement');
+  assert.equal(retained.snapshot.acknowledged_event_sequence,'0');
+  assert.deepEqual(retained.events,f.batch.events,'Rust must retain the complete batch');
+ });
+}
+for(const field of ['major','minor'])for(const value of [-1,0.5,null,'1',undefined]){
+ const label=value===undefined?'missing':JSON.stringify(value);
+ for(const index of [0,-1])rejectsWithoutSaveOrAck(`event schema ${field}=${label} at ${index} rejects before save or ack`,batch=>{
+  const schema=batch.events.at(index).schema;
+  if(value===undefined)delete schema[field];else schema[field]=value;
+ });
+ rejectsWithoutSaveOrAck(`snapshot schema ${field}=${label} rejects before save or ack`,batch=>{
+  if(value===undefined)delete batch.snapshot.schema[field];else batch.snapshot.schema[field]=value;
+ });
+}
+for(const value of [undefined,90])rejectsWithoutSaveOrAck(`death host_id=${value} rejects before save or ack`,batch=>{
+ const data=batch.events.find(event=>event.body.kind==='died').body.data;
+ if(value===undefined)delete data.host_id;else data.host_id=value;
+});
+for(const minor of [0,1])test(`schema 1.${minor} and explicit null host identity remain supported`,t=>{
+ const f=combat(),h=host();t.after(()=>f.bridge.destroy(f.world));
+ const batch=structuredClone(f.batch);
+ batch.snapshot.schema.minor=minor;
+ for(const event of batch.events){event.schema.minor=minor;if(event.body.kind==='died')event.body.data.host_id=null;}
+ assert.equal(h.outbox.consumeBatch(batch.snapshot,batch.events,enemy),batch.snapshot.last_event_sequence);
+ assert.equal(JSON.parse(h.values.get(key)).combatRewardOutbox.streams['outbox-proof'].pending.length,1);
+});
 test('fresh and reloaded HeroProgress share the empty durable outbox shape',()=>{
  const fresh=createHeroProgressStore();
  assert.deepEqual(fresh.combatRewardOutbox,{version:1,streams:{}});
