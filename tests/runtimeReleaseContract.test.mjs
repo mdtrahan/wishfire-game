@@ -12,7 +12,7 @@ test('hosted release preserves its playable output when a tracked dependency or 
   mkdirSync(path.join(root, 'web-runner'));
   for (const file of ['tools/build_runtime_release.mjs', 'tools/build_wasm_support.mjs',
     'web-runner/systems/simulationCoreLoader.mjs', 'web-runner/systems/runtimeAssetUrl.mjs',
-    'web-runner/src/core/combatBridge.mjs', 'web-runner/assets/simulation_core.wasm', 'web-runner/assets/simulation_core.manifest.json']) {
+    'web-runner/src/core/combatBridge.mjs', 'web-runner/src/core/specialClockContent.mjs', 'web-runner/assets/simulation_core.wasm', 'web-runner/assets/simulation_core.manifest.json']) {
     mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     copyFileSync(new URL('../' + file, import.meta.url), path.join(root, file));
   }
@@ -43,6 +43,14 @@ test('hosted release preserves its playable output when a tracked dependency or 
   assert.equal(readFileSync(manifest, 'utf8'), originalManifest);
   assert.equal(readFileSync(path.join(root, 'dist/web-runner/required.mjs'), 'utf8'), 'export const required = true;\n');
   writeFileSync(dependency, 'export const required = true;\n');
+  const clocks = path.join(root, 'web-runner/src/core/specialClockContent.mjs');
+  const originalClocks = readFileSync(clocks, 'utf8');
+  writeFileSync(clocks, originalClocks.replace('10,', '120,'));
+  const staleClocks = build();
+  assert.notEqual(staleClocks.status, 0);
+  assert.match(staleClocks.stderr, /special clock content mismatch/);
+  assert.equal(readFileSync(manifest, 'utf8'), originalManifest);
+  writeFileSync(clocks, originalClocks);
   writeFileSync(path.join(root, 'rust/wf_combat/src/combat.rs'), '// changed Rust content\n');
   const stale = build();
   assert.notEqual(stale.status, 0);

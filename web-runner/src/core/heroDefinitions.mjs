@@ -15,8 +15,8 @@ const basic = magic => Object.freeze({skillId:'basic_attack',displayName:'Attack
 // no lingering) + two Resonances. Resonances are late-game scaffolding: data and Hero
 // screen only, no runtime. Special cooldowns marked provisional await owner tuning.
 export const PROVISIONAL_SPECIAL_COOLDOWNS = Object.freeze(['shadow', 'bubble_pop', 'elevate']);
-const special = (skillId,displayName,icon,cooldownSeconds,conditions,conditionLabel,targetRule,effectSpec,description,extra={}) => Object.freeze({
- skillId,slot:'special',displayName,icon,cooldownSeconds,unlockLevel:1,conditions,conditionLabel,targetRule,effectSpec,description,
+const special = (skillId,displayName,icon,conditions,conditionLabel,targetRule,effectSpec,description,extra={}) => Object.freeze({
+ skillId,slot:'special',displayName,icon,unlockLevel:1,conditions,conditionLabel,targetRule,effectSpec,description,
  targetType:targetRule.kind,durationSeconds:extra.durationSeconds||0,trigger:'poll',recipientPolicy:'all',
  provisionalCooldown:PROVISIONAL_SPECIAL_COOLDOWNS.includes(skillId),...extra,
 });
@@ -36,7 +36,7 @@ const kit = (key,name,role,baseStats,growth,baseAttackInterval,{special,passive,
  special,passive,resonances:Object.freeze(resonances),skills:Object.freeze([special,passive,...resonances]),actives:Object.freeze([special])});
 export const HERO_DEFINITIONS = Object.freeze({
  Falie:kit('Falie','Fara','Tank',{HP:75,ATK:7,DEF:12,MAG:4,RES:8,SPD:8},{HP:8,ATK:.8,DEF:1.8,MAG:.4,RES:1.1,SPD:.15},1.8,{
-  special:special('crimson_ward','Crimson Ward','party-ward',120,count(1),'A foe in range',party(),{kind:'ward'},
+  special:special('crimson_ward','Crimson Ward','party-ward',count(1),'A foe in range',party(),{kind:'ward'},
    'Every hero gains its own temporary HP worth 8% of its max HP, stacking up to 50% of its original max HP. Hits drain only the struck hero’s ward. Kept between waves, into a boss fight and after a boss clear; cleared when the party falls or a boss attempt fails.',
    {wardPctMaxHP:CRIMSON_WARD.wardPctMaxHP,capPctMaxHP:CRIMSON_WARD.capPctMaxHP,partyWide:true}),
   passive:passive('smoke_form','Smoke Form','party-dr','Own HP below 40%',{hpBelow:.4,incomingCutPct:50},'Below 40% HP, Fara takes 50% less damage.'),
@@ -46,7 +46,7 @@ export const HERO_DEFINITIONS = Object.freeze({
   ],
  }),
  Huun:kit('Huun','Hondo','Damage',{HP:60,ATK:16,DEF:5,MAG:3,RES:4,SPD:12},{HP:6,ATK:2.1,DEF:.7,MAG:.3,RES:.6,SPD:.35},1.2,{
-  special:special('shadow','Shadow','party-special',20,count(1),'A foe in range',enemy(),{kind:'damageBlink',damagePct:240},'Jump behind a foe and hit it for 240% damage.',{damagePct:240}),
+  special:special('shadow','Shadow','party-special',count(1),'A foe in range',enemy(),{kind:'damageBlink',damagePct:240},'Jump behind a foe and hit it for 240% damage.',{damagePct:240}),
   passive:passive('royalty','Royalty','party-atk','Own HP below 50%',{hpBelow:.5,basicDamageMultiplier:2,targetDebuff:{channel:'DEF',magnitude:.05,durationSeconds:4}},'Below 50% HP, Hondo’s basic attacks deal double damage and lower the struck enemy’s DEF by 5% for 4s (provisional), helping every hero.'),
   resonances:[
    resonance('chase','Chase','party-atk','Exactly one foe in range','Against a lone foe in range, deal +160% damage.'),
@@ -54,7 +54,7 @@ export const HERO_DEFINITIONS = Object.freeze({
   ],
  }),
  Runa:kit('Runa','Runa','Mage',{HP:60,ATK:3,DEF:4,MAG:16,RES:10,SPD:11},{HP:5,ATK:.3,DEF:.7,MAG:2.1,RES:1.4,SPD:.3},1.4,{
-  special:special('bubble_pop','Bubble Pop','party-mag',20,count(1),'A foe in range',{kind:'inRangeEnemies'},{kind:'damageRetreat',damagePct:180},'Hit every foe in range for 180% magic damage and push them back for 2 seconds.',{damagePct:180,durationSeconds:2}),
+  special:special('bubble_pop','Bubble Pop','party-mag',count(1),'A foe in range',{kind:'inRangeEnemies'},{kind:'damageRetreat',damagePct:180},'Hit every foe in range for 180% magic damage and push them back for 2 seconds.',{damagePct:180,durationSeconds:2}),
   passive:passive('boast','Boast','party-res','Own HP above 80%',{hpAbove:.8,modifiers:[{channel:'MAG',direction:'up',magnitude:.05},{channel:'RES',direction:'up',magnitude:.05}]},'Above 80% HP, Runa gains MAG +5% and RES +5%.'),
   resonances:[
    resonance('vengeance','Vengeance','party-mag','Own HP below 45%','Below 45% HP, MAG rises by the share of HP lost.'),
@@ -62,7 +62,7 @@ export const HERO_DEFINITIONS = Object.freeze({
   ],
  },true),
  Kojonn:kit('Kojonn','Kaja','Support',{HP:65,ATK:4,DEF:7,MAG:9,RES:12,SPD:10},{HP:7,ATK:.4,DEF:1.1,MAG:1.4,RES:1.7,SPD:.25},1.6,{
-  special:special('elevate','Elevate','party-spd',20,count(1,'livingHeroes'),'Fight start, then each time the clock fills',party(),{kind:'elevate'},
+  special:special('elevate','Elevate','party-spd',count(1,'livingHeroes'),'Fight start, then each time the clock fills',party(),{kind:'elevate'},
    'Roll one party set until the next roll: SPD +5% and ATK +5%, max HP +20% and MAG +5%, or attack range +10% and crit damage +5%. Ends if Kaja falls.',
    {randomStats:Object.keys(ELEVATE_SETS),partyWide:true}),
   passive:passive('ethereal_aura','Ethereal Aura','party-mag','Foes in range',{aura:{rawDamagePerChapter:1,intervalSeconds:1}},'Foes in Kaja’s range take Faze damage every second, rising with each chapter.'),
@@ -79,7 +79,7 @@ for (const definition of Object.values(HERO_DEFINITIONS)) for (const skill of de
   validateSkillCondition(skill.conditions);
   if(!skill.conditionLabel)throw new Error(`Missing readable condition for ${skill.skillId}`);
   if(!targetKinds.has(skill.targetRule.kind) || !effectKinds.has(skill.effectSpec.kind))throw new Error('Unknown skill target or effect');
-  if(skill.trigger!=='poll' || skill.recipientPolicy!=='all' || !(skill.cooldownSeconds>0))throw new Error('Specials poll, reach every recipient and own a clock');
+  if(skill.trigger!=='poll' || skill.recipientPolicy!=='all')throw new Error('Specials poll, reach every recipient and own a clock');
 }
 for (const definition of Object.values(HERO_DEFINITIONS)) {
   if(definition.passive.cooldownSeconds!=null || definition.resonances.some(r=>r.cooldownSeconds!=null))throw new Error('Passives and resonances never own a clock');
