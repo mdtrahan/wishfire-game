@@ -185,13 +185,18 @@ test('a real lethal hit on the deadline step wins before the timeout callback', 
   f.runtime.dispose();
 });
 
-test('ordinary all-down routes once through checkpoint recovery and never credits cleanup', () => {
+test('ordinary all-down queues the same subwave retry and never credits cleanup', () => {
   const f = fixture();
   f.heroes.forEach(h => { h.hp = 0; });
   f.tick();
   assert.equal(f.g.RustCombatReceipt.outcome, 'all_down');
-  assert.deepEqual(f.routes, [['recoverContinuousDefeat', 'rust_all_down']]);
-  assert.equal(f.ends.at(-1).reason, 'all_down_routed');
+  assert.deepEqual(f.routes, []);
+  assert.equal(f.ends.at(-1).reason, 'host_stage_transition');
+  assert.equal(f.bridge.describe().resources.worlds, 0);
+  assert.equal(f.g.ContinuousCombatStage.combatCheckpoint.subwaves.index, 0);
+  f.tick();
+  assert.equal(f.bridge.describe().resources.worlds, 1);
+  assert.equal(f.runtime.read().snapshot.step, '0');
   assert.ok(f.heroes.every(h => h.hp === h.maxHP));
   assert.deepEqual(f.receipts, []);
   f.runtime.dispose();

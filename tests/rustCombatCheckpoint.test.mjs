@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import { createCombatBridge } from '../web-runner/src/core/combatBridge.mjs';
 import { createRustCombatRuntime } from '../web-runner/systems/rustCombatRuntime.mjs';
+import { createQuestCombatSession } from '../web-runner/systems/questCombatSession.mjs';
 import { authorSubwaves, bindAuthoredSubwaves } from '../web-runner/src/core/continuousCombatSubwaves.mjs';
 import { SLICE_ORIGIN, SLICE_TRAVEL_SLOTS } from '../web-runner/systems/rustCombatArena.mjs';
 import { wfmHeroPermanentInputs } from '../web-runner/systems/wfmCombatConfig.mjs';
@@ -21,7 +22,7 @@ function storage(raw) {
   vm.runInNewContext(`${source}; this.api = {restoreHeroProgressFromStorage, persistHeroProgressIfDirty};`, context);
   return { ...context.api, values, localStorage };
 }
-function fixture({ raw, settlePendingReceipts, bridgeOverrides, saveFails = false } = {}) {
+function fixture({ raw, settlePendingReceipts, bridgeOverrides, saveFails = false, useRealSession = false } = {}) {
   const store = storage(raw), real = createCombatBridge(new WebAssembly.Instance(wasm));
   const created = [], routes = [], warnings = [], planned = [], spawned = [];
   let worldHandle;
@@ -59,7 +60,8 @@ function fixture({ raw, settlePendingReceipts, bridgeOverrides, saveFails = fals
       maxHP: row.HP, slotIndex, enemyRole: row.enemyRole };
     planned.push(actor); state.entities.push(actor); return actor;
   }
-  const runtime = createRustCombatRuntime({ state, bridge, session: {
+  const runtime = createRustCombatRuntime({ state, bridge, session: useRealSession
+    ? createQuestCombatSession({ state, gameState: {}, call, sync() {} }) : {
     recoverContinuousDefeat: reason => routes.push(reason), surrenderBossAttempt: reason => routes.push(reason) },
     call, getEnemyRows: () => rows, advanceHostTime() {}, warn: (...args) => warnings.push(args),
     persistCheckpoint() {
@@ -337,19 +339,47 @@ test('shared restartAtSubwave entry destroys the old attempt and supports unlimi
   f.runtime.dispose(); assert.equal(f.g.RustCombatRestartAtSubwave, undefined);
 });
 
-test('real Rust AllDown can enter the shared current-subwave restart without resource use', () => {
-  const f = fixture();
+test('automatic real Rust AllDown restarts subwave 3 with the same enemies, healthy origins and no cost', () => {
+  const f = fixture({ useRealSession: true });
   for (const hero of f.state.entities.filter(a => a.kind === 'hero')) hero.hp = .001;
-  for (const enemy of f.state.entities.filter(a => a.kind === 'enemy')) enemy.stats.ATK = 10000;
+  for (const enemy of f.planned) {
+    enemy.stats.ATK = 10000;
+    enemy.stats.HP = enemy.maxHP = enemy.hp = 1000;
+  }
+  const stage = f.g.ContinuousCombatStage;
+  stage.combatCheckpoint = { version: 1, id: 'automatic-wipe', generation: 1, rewardLineage: 'automatic-wipe',
+    contentVersion: progression.WFM_COMBAT_CONTENT_VERSION, abiVersion: f.real.describe().abi_version,
+    subwaves: { position: progression.combatSubwavePosition(stage), index: 2,
+      partyCP: getContinuousCombatPartyCP(f.state.entities), entryPackMask: 0 } };
+  const token = a => `${a.name}:${a.streamSectorIndex}:${a.streamEntryOrder}`;
+  const groups = bindAuthoredSubwaves(authorSubwaves(f.planned.map(a => a.name)), f.planned);
+  f.g.goldTotal = 123;
+  const resources = ({ continuousStage, ...value }) => value;
+  const beforeResources = structuredClone(resources(f.g.HeroProgress));
+  const transitions = stage.transitions, wave = stage.wave;
   f.tick(0);
-  for (let frame = 1; frame < 2000 && !f.routes.includes('rust_all_down'); frame++) f.tick(frame * 1000 / 30);
-  assert.ok(f.routes.includes('rust_all_down'), 'real WASM reached terminal AllDown');
-  const index = f.g.ContinuousCombatStage.combatCheckpoint.subwaves.index;
-  f.g.goldTotal = 0;
-  assert.equal(f.runtime.restartAtSubwave(index), true);
-  f.tick(100000); assertFresh(f);
-  assert.equal(f.g.ContinuousCombatStage.combatCheckpoint.subwaves.index, index);
-  assert.equal(f.g.goldTotal, 0);
+  const encounter = f.runtime.read().snapshot.encounter_id;
+  let index, frame = 1;
+  for (; frame < 6000 && f.g.RustCombatReceipt.outcome !== 'all_down'; frame++) {
+    index = stage.combatCheckpoint.subwaves.index;
+    f.tick(frame * 1000 / 30);
+  }
+  assert.equal(f.g.RustCombatReceipt.outcome, 'all_down', 'real WASM reached terminal AllDown');
+  assert.equal(index, 3, 'wipe occurs during subwave 3');
+  assert.equal(f.real.describe().resources.worlds, 0, 'outgoing world destroyed before retry');
+  assert.equal(f.g.ContinuousCombatStage, stage);
+  assert.equal(stage.combatCheckpoint.subwaves.index, index);
+  f.tick(frame * 1000 / 30);
+  assert.notEqual(assertFresh(f).encounter_id, encounter);
+  const issued = f.created.at(-1).enemies.map(e => f.planned.find(a => String(a.uid) === e.spawn_key));
+  assert.deepEqual(issued.map(token).sort(), groups[index].map(token).sort());
+  assert.equal(stage.combatCheckpoint.subwaves.index, index);
+  assert.equal(stage.transitions, transitions);
+  assert.equal(stage.wave, wave);
+  assert.equal(f.g.goldTotal, 123);
+  assert.deepEqual(resources(f.g.HeroProgress), beforeResources, 'permanent progress/resources unchanged');
+  assert.equal(f.real.describe().resources.worlds, 1);
+  assert.deepEqual(f.warnings, []);
   f.runtime.dispose();
 });
 
