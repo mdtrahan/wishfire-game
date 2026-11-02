@@ -68,11 +68,12 @@ impl Sim {
         let damage =
             raw * if mitigate {
                 crate::formulas::mitigation_multiplier(
-                    a.defense_for(channel) as f64 * if rallied { RALLY_DEF_MULTIPLIER as f64 } else { 1. }
+                    a.defense_for(channel) as f64
                 ) as f32
             } else {
                 1.
-            } * if crit { CRIT_MULTIPLIER } else { 1. };
+            } / if mitigate && rallied { RALLY_DAMAGE_DIVISOR } else { 1. }
+              * if crit { CRIT_MULTIPLIER } else { 1. };
         let damage =
             max_hp_fraction.map_or(damage, |fraction| damage.min(a.view.max_hp * fraction));
         let absorbed = damage.min(a.view.ward);

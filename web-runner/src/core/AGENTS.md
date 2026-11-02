@@ -72,6 +72,7 @@
 - None.
 
 - `combatFormulas.mjs` mirrors Rust's 100-point mitigation shape for all CP/previews. CP neutral-hit and effective-HP estimates use this helper; displayed live stats remain Rust observations.
+- Wave CP balancing chooses the nearest total across rounded-stat jumps; keep the deterministic wave-growth bound when changing mitigation estimates.
 
 - `combatFormulas.cooldownSeconds` mirrors `CD*100/(100+Haste)`. Star rewards accumulate Haste, calibrated to the existing star-two .92 cooldown factor; the existing R6 meter-rate input carries this to Rust. Hero detail cooldown previews consume the same derived factor. No Haste stat catalog is introduced.
 

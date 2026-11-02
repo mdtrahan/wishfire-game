@@ -646,7 +646,7 @@ pub const ENEMY_POISON_SECONDS: f32 = 5.;
 /// Flat enemy poison; only explicit skill/buff potency may multiply this value.
 pub const ENEMY_POISON_TICK_DAMAGE: f32 = 4.;
 pub const RALLY_RADIUS: f32 = 150.;
-pub const RALLY_DEF_MULTIPLIER: f32 = 1.5;
+pub const RALLY_DAMAGE_DIVISOR: f32 = 1.5;
 
 // Owner enemy-healer identity: burst support, ordinary combat-clock commitments.
 pub const ENEMY_HEAL_CAST: f32 = 0.8;

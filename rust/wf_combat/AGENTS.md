@@ -13,6 +13,7 @@
 - None.
 
 - `formulas::mitigation_multiplier` owns `100/(100+defense)` for physical DEF and magic RES. Apply defense buffs before mitigation; positive attack power remains positive at finite defenses. SimulationCore CP uses the same helper; browser estimates mirror it in `combatFormulas.mjs`.
+- Rally divides mitigated damage by 1.5 independently of DEF/RES, including zero-defense allies. Preserve range, nonstacking and living-owner gates.
 
 - `formulas::cooldown_seconds` owns `CD*100/(100+Haste)`. Boss escalation/recharge, enrage, barrage and interrupted revival use Haste inputs. R6 meter refill derives Haste from existing `meter_rate` (default1 gives Haste0); no Haste stat catalog or ABI field is added. Existing positive rates below1 encode slowdown. Enrage preserves earned refill fraction, including barrage shortening.
 

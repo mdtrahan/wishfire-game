@@ -1,5 +1,4 @@
-//! Golden traces originated at pristine 9c142b5f; owner-authorized formula
-//! updates and exact old/new values are recorded in FORMULA_REPINS.md.
+//! Golden traces originated at pristine 9c142b5f, with owner-authorized formula updates.
 use crate::*;
 fn fold(hash: &mut u64, bytes: &[u8]) {
     for byte in bytes {
