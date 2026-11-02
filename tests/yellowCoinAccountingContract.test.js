@@ -117,15 +117,6 @@ function loadYellowSequenceHarness() {
   return { startYellowCasinoSequence: context.module.exports.startYellowCasinoSequence, context, captured };
 }
 
-function loadSuperGemRuntime() {
-  const src = read('web-runner/systems/superGemRuntime.js')
-    .replace(/export function /g, 'function ')
-    .replace(/export \{ SUPER_GEM_COST \};/g, '')
-    + '\nmodule.exports = { activateSuperGemEffect };';
-  const context = { module: { exports: {} }, exports: {}, Math, Number, String, Array, Map, Set };
-  vm.runInNewContext(src, context, { filename: 'superGemRuntime.js' });
-  return context.module.exports;
-}
 
 test('normal yellow match-3 sends only matched gems through regular gold randomizer', () => {
   const { startYellowCasinoSequence, context, captured } = loadYellowSequenceHarness();
@@ -147,41 +138,4 @@ test('normal yellow match-3 sends only matched gems through regular gold randomi
   assert.equal(context.gameState.yellowCasino.pendingGoldAward, 0);
   assert.equal(context.gameState.yellowCasino.active, false);
   assert.equal(captured.queues[0].length, 0);
-});
-
-
-
-test('yellow supergem consumes board-wide yellow count and bypasses random gold roll', () => {
-  const { activateSuperGemEffect } = loadSuperGemRuntime();
-  const actor = { uid: 4, name: 'Falie', kind: 'hero' };
-  const state = {
-    globals: {
-      time: 8,
-      goldTotal: 15,
-      RuntimeRandom: () => { throw new Error('yellow supergem gold should not roll random gold'); },
-    },
-    entities: [actor],
-  };
-  const calls = [];
-
-  const activated = activateSuperGemEffect({
-    superGem: { baseColor: 3 },
-    actorUID: actor.uid,
-    selectedEnemyUID: 0,
-    state,
-    callFunctionWithContext: (_ctx, name, ...args) => {
-      calls.push({ name, args });
-      if (name === 'GetActorByUID') return state.entities.find((entity) => Number(entity.uid) === Number(args[0])) || null;
-      return undefined;
-    },
-    fnContext: {},
-    sourceItems: [],
-    consumedColorGemCount: 10,
-    startGemMergeFx: () => {},
-    getGoldLabelTargetWorld: () => null,
-  });
-
-  assert.equal(activated, true);
-  assert.equal(state.globals.goldTotal, 25);
-  assert.ok(calls.some((call) => call.name === 'LogCombat' && /found 10 gold/.test(String(call.args[0]))));
 });

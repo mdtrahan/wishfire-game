@@ -21,6 +21,11 @@ export function installRustCombat(options, {
   }).catch(routeError);
   return {
     ready,
+    async requireReady() {
+      await ready;
+      if (failure) throw failure;
+      if (disposed || !runtime) throw new Error('Rust combat is unavailable');
+    },
     ownsEncounter: () => !disposed && isRustCombatStage(options.globals),
     tick(args) {
       if (failure) return false;

@@ -49,8 +49,8 @@ test('embedded JSON and WASM branches precede hosted fetch fallbacks', () => {
   const bundle = fs.readFileSync(path.join(output, 'wishfire.bundle.js'), 'utf8');
   const embeddedJson = bundle.indexOf('const embedded = getEmbeddedJson(requestUrl)');
   const jsonFetch = bundle.indexOf('const res = await fetch(u');
-  const embeddedWasm = bundle.indexOf('const embeddedBytes = getEmbeddedWasmBytes(wasmUrl)');
-  const wasmFetch = bundle.indexOf('instantiateStreaming(fetch(wasmUrl)');
+  const embeddedWasm = bundle.indexOf('getEmbeddedWasmBytes(url) || await fetch(url)');
+  const wasmFetch = bundle.indexOf('await fetch(url)', embeddedWasm);
 
   assert.ok(embeddedJson >= 0 && embeddedJson < jsonFetch, 'JSON startup data must resolve before fetch');
   assert.ok(embeddedWasm >= 0 && embeddedWasm < wasmFetch, 'WASM startup data must resolve before fetch');

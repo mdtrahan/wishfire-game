@@ -75,3 +75,5 @@
 - Developer refresh and QA reset stop the outgoing Rust encounter before replacing actors or restoring HP. Rust heal fixtures refuse unsupported mutations explicitly.
 
 - Rust loads for combat without a flag; initialization failures remain visible. No JS fallback or shadow world exists. CP and meta RNG retain their separate scalar exports. Story defeat offers return navigation; paid-Continue is retired.
+
+- Startup awaits Rust readiness before combat setup or encounter admission. WASM/ABI failure uses the existing startup error frame. Ordinary navigation and visibility changes pause the retained world and authored subwave queue; only teardown or boss-checkpoint departure stops it.

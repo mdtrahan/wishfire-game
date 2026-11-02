@@ -211,8 +211,8 @@ test('runtime-shaped hero anchors reserve a status-icon row above HP bars', asyn
   assert.equal(shiftedEnemyYs[2] - shiftedEnemyYs[1], anchors.enemyYs[2] - anchors.enemyYs[1]);
   assert.equal(shiftedEnemyYs[1], anchors.enemyYs[1]);
   const renderer = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
-  assert.match(renderer, /const footY = pos\.y \+ h \* 1\.55 \* COMBAT_BATTLEFIELD_ZOOM \/ 2/);
-  assert.match(renderer, /restFeetByUID\[hero\.uid\] = \{ x: baseX, y: yWorld \+ hWorld \* 1\.55 \/ 2 \}/);
+  assert.match(renderer, /const footY = state\.globals\.RustCombatPresentation && hero \? projectCombatActorWorldToCanvas\(hero\.footX, hero\.footY\)\.y/);
+  assert.match(renderer, /restFeetByUID\[hero\.uid\] = \{ x: worldX, y: actorYWorld \+ hWorld \* 1\.55 \/ 2 \}/);
   assert.match(renderer, /const cameraCenterX = bossPresentationActive \? Number\(state\.globals\.ContinuousCombatStage\?\.bossCameraCenterX \?\? squadCenterX\) : resolveCombatCameraCenterX\(state\.globals, squadCenterX\)/);
   assert.match(renderer, /createCombatCameraProjection\(\{ viewportWidth: layoutW, worldWidth: combatWorldBounds\.worldWidth, zoom: COMBAT_BATTLEFIELD_ZOOM, centerX: cameraCenterX, orientation: activeCombatOrientation \}\)/);
 });
@@ -293,35 +293,18 @@ test('enemy death and refill never change surviving right-wise slot projections'
   assert.equal(survivorGeometry.actors.find((actor) => actor.uid === 8).y, snapshots[0].positions.get(8).y);
 });
 
-test('runtime projects actor visuals, hit regions, and action anchors without mutating combat state', () => {
-  const app = fs.readFileSync(path.join(root, 'web-runner', 'app.js'), 'utf8');
-  const render = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
-  const hooks = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'devBrowserTestHooks.js'), 'utf8');
-
+test('runtime projects Rust actor feet and sprites through the observed camera without mutating combat state', () => {
+  const app = fs.readFileSync(path.join(root, 'web-runner/app.js'), 'utf8');
   assert.match(app, /CombatOrientation = readCombatOrientationFromSearch\(window\.location\.search\)/);
-  assert.match(app, /function combatActorWorldToCanvas/);
-  assert.match(app, /createCombatCameraProjection/);
-  assert.match(app, /deriveCombatWorldBounds/);
-  assert.match(app, /const pos = combatActorWorldToCanvas\(x, y, 'enemy'\)/);
-  assert.doesNotMatch(app, /prepareAstralFlowKoOrbPresentation/);
-  assert.match(app, /orientCombatWorldOffsetX\(Number\(d\.floatVectorX/);
-
-  assert.match(render, /spawnPendingDamageNumbers\(projectCombatDamageWorldToCanvas, layoutScale\)/);
-  assert.match(render, /projectCombatActorWorldToCanvas\(xWorld, yWorld, 'hero'\)/);
-  assert.match(render, /projectCombatActorWorldToCanvas\(Number\(anchor\.x \|\| 0\) \+ offsetX, Number\(anchor\.y \|\| 0\), 'hero'\)/);
-  assert.match(render, /projectCombatActorWorldToCanvas\(Number\(footAnchor\.x \|\| 0\) \+ offsetX, Number\(footAnchor\.y \|\| 0\), 'hero'\)/);
-  assert.match(render, /projectCombatActorWorldToCanvas\(wardWorldX, wardWorldY, 'hero'\)/);
-  assert.match(render, /projectCombatActorWorldToCanvas\(Number\(pulse\.sourceX[^\n]*'hero'/);
-  assert.match(render, /projectCombatActorWorldToCanvas\(Number\(pulse\.targetX[^\n]*'enemy'/);
-  assert.match(render, /targetActor\.footX \?\? targetActor\.x \?\? targetActor\.originX/);
-  assert.match(render, /targetActor\.footY \?\? targetActor\.y \?\? targetActor\.originY/);
-  assert.match(render, /projectCombatActorWorldToCanvas\(Number\(targetFeet\.x[^\n]*targetActor\?\.kind/);
-  assert.match(render, /viewportLeft: layoutOffsetX, viewportRight: layoutOffsetX \+ layoutW \* layoutScale/);
-  assert.match(render, /projectCombatActorWorldToCanvas\(x, y, 'enemy'\)/);
-  assert.match(render, /CombatOrientationGeometry = createCombatOrientationGeometry\([^\n]*\.\.\.combatFormationAnchors/);
-  assert.match(hooks, /combatOrientation:/);
-
   assert.doesNotMatch(app, /localStorage[^\n]*CombatOrientation|CombatOrientation[^\n]*localStorage/);
+  const hooks = fs.readFileSync(path.join(root, 'web-runner/systems/devBrowserTestHooks.js'), 'utf8');
+  assert.match(hooks, /combatOrientation:/);
+  const render = fs.readFileSync(path.join(root, 'web-runner/systems/renderRuntime.js'), 'utf8');
+  assert.match(render, /state\.globals\.RustCombatPresentation\.project\(x, y\)/);
+  assert.match(render, /footX: pos\.x, footY: pos\.y, height: enemyH/);
+  assert.match(render, /footX: pos\.x, footY, height: scaledH/);
+  assert.match(render, /deps\.drawActorPuppetFrame = deps\.state\.globals\.RustCombatPresentation\?\.sprite/);
+  assert.doesNotMatch(render, /hero\.hp\s*=|enemy\.hp\s*=|rustCombat\.tick\(/);
 });
 
 test('developer panel stages orientation and refreshes combat instead of flipping a live frame', () => {
@@ -379,10 +362,8 @@ test('right-wise actor sprites mirror about their oriented pivot while left-wise
   assert.equal(presentation.shouldMirrorCombatActorSprite('right-wise', 'left', 'left'), true, 'right-wise projection mirrors native left-facing enemy art');
   assert.equal(presentation.shouldMirrorCombatActorSprite('right-wise', 'right', 'left'), false, 'right-wise projection presents rightward-facing enemy art without another flip');
 
-  const render = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
-  assert.match(render, /drawCombatActorSprite\(ctx, sprite/);
-  assert.match(render, /drawCombatActorSprite\(ctx, img/);
-  assert.match(render, /facing: hero\.facing, nativeFacing: 'right'/);
-  assert.match(render, /facing: enemy\.facing, nativeFacing: 'left'/);
-  assert.match(render, /\.replaceAll\(/);
+  const render = fs.readFileSync(path.join(root, 'web-runner/systems/renderRuntime.js'), 'utf8');
+  assert.match(render, /drawActorPuppetFrame\(ctx, puppet/);
+  const puppets = fs.readFileSync(path.join(root, 'web-runner/systems/actorPuppetPresentation.mjs'), 'utf8');
+  assert.match(puppets, /facing/);
 });

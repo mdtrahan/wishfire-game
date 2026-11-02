@@ -1726,13 +1726,14 @@ async function main(){
       try {
         state.globals.GamePhase = 'BOOTSTRAP';
         await loadC3ProjectAssets();
+        await rustCombat.requireReady();
         prepareCombatSetupFromInstances(instances, gameState);
         freshCombatBootstrapped = true;
         COMBAT_BOOTSTRAP_COMPLETE = true;
         updateStartupLoadState({ active: false, phase: 'ready', label: 'Tap to enter combat', progress: 1 });
       } catch (err) {
         console.error('[BOOTSTRAP] Startup preload failed:', err);
-        updateStartupLoadState({ active: true, phase: 'error', label: 'Load failed', progress: 1 });
+        updateStartupLoadState({ active: true, phase: 'error', label: state.globals.RustCombatError ? 'Combat failed to load. Reload to retry.' : 'Load failed', progress: 1 });
         throw err;
       }
     })();
@@ -1812,6 +1813,7 @@ async function main(){
   combatRuntimeGateway.setLayoutState(layoutState);
   const questCombat = createQuestCombatSession({ state, gameState, call: (name, ...args) => callFunctionWithContext(fnContext, name, ...args), sync: syncFromGlobals });
   const surrenderBossForDeparture = () => {
+    if (!state.globals.ContinuousCombatStage?.bossActive) { rustCombat?.pause(); return false; }
     rustCombat?.stop();
     if (!questCombat.surrenderBossAttempt()) return false;
     heroProgressStorage.persistHeroProgressIfDirty({stateGlobals: state.globals, callFunctionWithContext, fnContext});
@@ -3038,7 +3040,7 @@ function getStoryCardLiveLineState() {
       requestAnimationFrame(tick);
       return;
     }
-    if (shouldFreezeCombatSimulation(state, gameState)) {
+    if (lampEquipment.state().open || shouldFreezeCombatSimulation(state, gameState)) {
       rustCombat?.pause();
       drawFrame();
       requestAnimationFrame(tick);

@@ -24,15 +24,11 @@ test('runtime snapshot surfaces combatPower for heroes and enemies', () => {
   assert.match(src, /enemies:[\s\S]*combatPower: Number\(e\.combatPower \|\| 0\)/);
 });
 
-test('spawn enemy derives combatPower in both runtime mirrors', () => {
+test('spawn enemy derives combatPower in the supported runtime spawner', () => {
   const runtimePath = path.join(__dirname, '..', 'web-runner', 'modules', 'functionBank.js');
-  const scriptsPath = path.join(__dirname, '..', 'Scripts', 'functionBank.js');
   const runtimeSrc = fs.readFileSync(runtimePath, 'utf8');
-  const scriptsSrc = fs.readFileSync(scriptsPath, 'utf8');
 
-  for (const src of [runtimeSrc, scriptsSrc]) {
-    assert.match(src, /function computeCombatPowerFromStats\(atk, def, hp\)/);
-    assert.match(src, /combatPower: computeCombatPowerFromStats\(/);
-    assert.doesNotMatch(src, /combatPower: Number\([\s\S]{0,260}enemyData\.CombatPower/);
-  }
+    assert.match(runtimeSrc, /function computeCombatPowerFromStats\(atk, def, hp\)/);
+    assert.match(runtimeSrc, /combatPower: computeCombatPowerFromStats\(/);
+    assert.doesNotMatch(runtimeSrc, /combatPower: Number\([\s\S]{0,260}enemyData\.CombatPower/);
 });

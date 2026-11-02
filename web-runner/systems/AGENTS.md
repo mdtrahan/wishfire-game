@@ -333,3 +333,5 @@
 - The exposed `__codexGame.callFunction` dispatcher rejects every legacy call under Rust authority before dispatch; diagnostics use the named read hooks. Internal Rust presentation callbacks retain their own registry access.
 
 - `rustCombatRuntime.mjs` alone projects live combat actors and consumes ordered Rust damage/death facts. DPS uses per-hit Rust `hp_loss`, excluding absorbed ward. Gear, levels and Training use bound permanent-input revisions; no live JS HP restoration. `simulationCoreShadow.js` now supplies only CP/meta RNG.
+
+- Ordinary screen/DEV/background departure pauses the existing Rust world without discarding subwaves. Bootstrap gates on `requireReady()` and reuses the startup loading error surface on WASM/ABI failure. Legacy movement/camera sliders are retired until an authoritative API exists.

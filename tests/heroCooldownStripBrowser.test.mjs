@@ -31,7 +31,7 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
       const page = await context.newPage();
       const errors = []; page.on('pageerror', error => errors.push(error.message));
       await page.goto(`http://localhost:${port}/web-runner/index.html`);
-      await page.waitForFunction(() => typeof window.render_game_to_text === 'function');
+      await page.waitForFunction(() => typeof window.render_game_to_text === 'function' && JSON.parse(render_game_to_text()).flags.layout0Ready);
       await page.waitForTimeout(2000);
       const canvas = await page.locator('canvas').first().boundingBox();
       await page.mouse.click(canvas.x + canvas.width / 2, canvas.y + 426 * canvas.width / 360);

@@ -15,4 +15,3 @@ test('canonical hero progress is persisted by the browser storage owner', () => 
  assert.match(storage,/createHeroProgressStore/);
  assert.doesNotMatch(storage,/LoadHeroGemProgressSnapshot/);
 });
-

@@ -369,7 +369,6 @@ async function readStallDiagnostic(page) {
     return {
       time: Number(globals.time || 0),
       focusUID: Number(globals.RealtimeHeroFocusTargetUID || 0),
-      lastRawDamage: Number(globals.LastCalculateDamageRaw || 0),
       lastHitShadow: globals.LastSingleHitDamageShadow || null,
       actors: game.state.entities.filter(value => (value?.kind === 'hero' || value?.kind === 'enemy') && Number(value.hp || 0) > 0).map(actor),
       clocks: globals.RealtimeHeroBasicClocks || {},

@@ -121,3 +121,5 @@
 - `qa_rust_combat_playtest2.mjs` connects to QA_PORT (default8797), isolates browser state and captures full-height Rust combat at native DPR2. Fixtures use the existing three-part QA pause contract before presenting snapshots; inspect all frames before accepting the result.
 
 - `verify_rust_only_inventory.mjs` scans runtime, shared source, Scripts, tools and tests. It rejects retired modules/calls/flags/scalar hooks and unclassified combat writers. Tests are fixtures; combat_lab models remain offline analyses. Synthetic JS KO controls and target-misfire diagnostics are retired. Handoff probes use the default engine without flags.
+
+- Rust-only writer inventory classifies checkpoint input construction separately from live actor projection. DEV movement controls and legacy raw-damage telemetry are retired; release builds enumerate the Git index, so stage runtime deletions before validating a build.

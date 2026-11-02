@@ -8,4 +8,3 @@ test('gear max HP growth adds the capacity increase without healing a KO hero', 
   assert.equal(fillGearMaxHpGrowth(0, 100, 125), 0);
   assert.equal(fillGearMaxHpGrowth(140, 100, 125), 125);
 });
-

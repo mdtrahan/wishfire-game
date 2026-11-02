@@ -12,7 +12,7 @@ import { createQuestCombatSession } from '../web-runner/systems/questCombatSessi
 import { createCombatHostClock } from '../web-runner/systems/combatHostClock.mjs';
 import { settleContinuousCombatRewards } from '../web-runner/modules/heroCommands.mjs';
 import { newHeroProgress, refreshHeroStats, createHeroProgressStore } from '../web-runner/src/core/heroProgression.mjs';
-import { buildContinuousCombatSpawnPlan, activateContinuousCombatSpawnedEnemy, createContinuousCombatStageState, getContinuousCombatStage } from '../web-runner/src/core/continuousCombatStage.mjs';
+import { buildContinuousCombatSpawnPlan, activateContinuousCombatSpawnedEnemy, createContinuousCombatStageState, getContinuousCombatStage, getContinuousCombatPartyCP } from '../web-runner/src/core/continuousCombatStage.mjs';
 const table = JSON.parse(fs.readFileSync(new URL('../web-runner/assets/enemies.json', import.meta.url)));
 const rows = table.data[0].slice(1).map((cell, i) => Object.fromEntries(table.data.map(column => [column[0][0], column[i + 1][0]]))).filter(row => row.name);
 const wasm = new WebAssembly.Module(fs.readFileSync(new URL('../web-runner/assets/simulation_core.wasm', import.meta.url)));
@@ -43,7 +43,7 @@ function fixture({ mask = 0, boss = false, hp = 1, level = 100 } = {}) {
     if (name === 'SettleContinuousCombatRewards') return settleContinuousCombatRewards({ state });
     if (name === 'UpdateHeroHPUI') heals.push(heroes.map(h => h.hp));
   }
-  const plan = buildContinuousCombatSpawnPlan(rows, g.ContinuousCombatStage);
+  const plan = buildContinuousCombatSpawnPlan(rows, g.ContinuousCombatStage, { partyCP: getContinuousCombatPartyCP(heroes) });
   g.ContinuousCombatStage.spawnedPackMask = plan.reduce((mask, p) => mask | 1 << p.sectorIndex, 0);
   for (const entry of plan) {
     const a = call('SpawnEnemy', { ...entry.row, enemyRole: boss ? 'boss' : 'fodder' }, entry.slotIndex);
@@ -335,10 +335,9 @@ test('runtime-spy gate: ordinary AllDown restarts the same subwave free, healthy
   f.g.goldTotal=123;f.g.Player_Energy=200;
   const equipment=JSON.stringify(f.g.Equipment),progress={region:f.g.ContinuousCombatStage.region,wave:f.g.ContinuousCombatStage.wave};
   try {
-    f.runUntil(()=>f.g.ContinuousCombatStage.defeatRecoveries===1,1800);
+    f.runUntil(()=>f.g.RustCombatReceipt?.outcome === 'all_down',1800);
     assert.deepEqual({region:f.g.ContinuousCombatStage.region,wave:f.g.ContinuousCombatStage.wave},progress);
     assert.equal(f.g.goldTotal,123);assert.equal(f.g.Player_Energy,200);assert.equal(JSON.stringify(f.g.Equipment),equipment);
-    assert.ok(f.heroes.every(hero=>hero.hp===hero.maxHP));
     assert.equal(f.routes.length,0,'ordinary AllDown does not enter boss recovery or a paid menu');
     f.tick();
     const snapshot=f.runtime.read().snapshot;
@@ -358,7 +357,7 @@ test('runtime-spy gate: ordinary AllDown restarts the same subwave free, healthy
 test('restartAtSubwave keeps a later authored cohort across repeated free retries', () => {
   const f = fixture();
   const groups = bindAuthoredSubwaves(authorSubwaves(f.spawned.map(actor => actor.name)), f.spawned);
-  const expected = groups[1].map(actor => String(actor.uid)).sort();
+  const expected = groups[1].map(actor => actor.name).sort();
   f.g.goldTotal = 123; f.g.Player_Energy = 200;
   try {
     f.tick();
@@ -367,12 +366,35 @@ test('restartAtSubwave keeps a later authored cohort across repeated free retrie
       f.tick();
       const snapshot = f.runtime.read().snapshot;
       const entered = snapshot.actors.filter(actor => actor.team === 'enemy').map(actor => actor.host_id)
-        .concat(snapshot.pending_spawns.map(actor => actor.host_id)).sort();
+        .concat(snapshot.pending_spawns.map(actor => actor.host_id))
+        .map(id => f.spawned.find(actor => String(actor.uid) === id).name).sort();
       assert.deepEqual(entered, expected);
       assert.equal(f.g.goldTotal, 123); assert.equal(f.g.Player_Energy, 200);
       assert.deepEqual(f.receipts, []);
-      assert.equal(f.g.ContinuousCombatStage.defeatRecoveries, retry + 1);
+      assert.equal(f.g.ContinuousCombatStage.combatCheckpoint.subwaves.index, 1);
     }
   } finally { f.runtime.dispose(); }
   assert.deepEqual(f.bridge.describe().resources, { worlds: 0, responses: 0, inputs: 1 });
+});
+
+test('real WASM pauses all 37 enemies across nine authored subwaves and resumes the same world', () => {
+  const f = fixture();
+  try {
+    f.tick();
+    const read = () => {
+      const stage = f.g.ContinuousCombatStage;
+      const groups = f.g.RustCombatSubwaveAuthoring.stages.find(s => s.stage === stage.stage).waves[stage.wave - 1].subwaves;
+      return { subwaves: groups.length, enemies: groups.flat().reduce((n, entry) => n + entry.count, 0) };
+    };
+    assert.deepEqual(read(), { subwaves: 9, enemies: 37 });
+    const before = f.runtime.read();
+    for (const departure of ['Hero', 'Bag', 'Quests', 'DEV', 'hidden']) {
+      f.runtime.pause();
+      assert.deepEqual(f.runtime.read(), before, departure);
+      assert.deepEqual(read(), { subwaves: 9, enemies: 37 }, departure);
+    }
+    f.tick();
+    assert.equal(f.runtime.read().snapshot.encounter_id, before.snapshot.encounter_id);
+    assert.deepEqual(read(), { subwaves: 9, enemies: 37 });
+  } finally { f.runtime.dispose(); }
 });

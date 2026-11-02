@@ -179,8 +179,8 @@ test('app wires party stat OSD without adding app-owned stat formatting', () => 
 
   assert.match(appSrc, /import \* as partyStatOsd from '\.\/systems\/partyStatOsd\.js';/);
   assert.match(appSrc, /partyStatOsd\.createPartyStatOsdRuntime\(\{/);
-  assert.match(appSrc, /callFunctionWithContext\(fnContext, 'GetEffectiveStat', hero, stat\)/);
-  assert.match(appSrc, /callFunctionWithContext\(fnContext, 'GetPowerAmpMultiplierForActor', Number\(hero\?\.uid \|\| 0\)\)/);
+  assert.match(appSrc, /getEffectiveStat: \(hero, stat\) => hero\.stats\?\.\[stat\] \?\? 0/);
+  assert.match(appSrc, /getPowerMultiplier: \(\) => 1/);
   assert.match(appSrc, /partyStatOsd\.isPartyStatOsdHotkey\(ev\)/);
   assert.match(appSrc, /partyStatOsdRuntime\.refresh\(\);/);
   assert.doesNotMatch(appSrc, /PartyBuff_ATK[\s\S]{0,160}PartyBuff_DEF[\s\S]{0,160}PartyBuff_RES[\s\S]{0,160}PartyBuff_SPD/);

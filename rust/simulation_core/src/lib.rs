@@ -106,3 +106,41 @@ pub extern "C" fn seeded_rng_next_value_shadow(seed: f64, draws: f64) -> f64 {
 pub extern "C" fn seeded_rng_index_shadow(seed: f64, draws: f64, size: f64) -> f64 {
     seeded_rng_index(seed, draws, size)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn mirrors_current_seeded_rng_cases() {
+        let cases = [
+            (1.0, 1.0, 6.0, 1015568748.0, 0.23645552527159452, 1.0),
+            (1.0, 2.0, 6.0, 1586005467.0, 0.3692706737201661, 2.0),
+            (123456789.0, 1.0, 10.0, 920370032.0, 0.2142903469502926, 2.0),
+            (
+                123456789.0,
+                3.0,
+                10.0,
+                2252023330.0,
+                0.5243400414474308,
+                5.0,
+            ),
+            (0.0, 1.0, 6.0, 1015568748.0, 0.23645552527159452, 1.0),
+            (
+                4294967295.0,
+                1.0,
+                10.0,
+                1012239698.0,
+                0.2356804204173386,
+                2.0,
+            ),
+            (987654321.0, 5.0, 3.0, 2873750864.0, 0.669097263365984, 2.0),
+        ];
+
+        for (seed, draws, size, expected_state, expected_value, expected_index) in cases {
+            assert_eq!(seeded_rng_next_state(seed, draws), expected_state);
+            assert!((seeded_rng_next_value(seed, draws) - expected_value).abs() < 0.000000000001);
+            assert_eq!(seeded_rng_index(seed, draws, size), expected_index);
+        }
+    }
+
+}

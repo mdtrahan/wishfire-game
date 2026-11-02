@@ -55,3 +55,5 @@
 - TDD-A A6/§3.3 captures permanent progression stats, maxima and definition/modifier parameters at commitment, including Phoenix/revival recipient maxima. Transient Elevate remains live at impact under slice semantics in every action, regardless of revisions. Frozen slice fixtures stay unchanged.
 
 - Damage events carry per-hit `hp_loss` from the Rust damage operation, excluding ward absorption. Event sidecars never alter the frozen public slice Event, RNG consumption, gameplay hashes or trace rows. Preserve ward-only and multiple-hit/heal coverage when changing telemetry.
+
+- Retained meta RNG keeps the native `mirrors_current_seeded_rng_cases` fixture alongside shipped-WASM parity checks when combat scalar exports retire.

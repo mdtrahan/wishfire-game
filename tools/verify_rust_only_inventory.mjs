@@ -19,6 +19,7 @@ const writers = {
   'tools/qa_rust_combat_playtest2.mjs': 'isolated fixture projection from Rust snapshots',
   'tools/combat_lab/model.mjs': 'offline counterfactual model; no live runtime',
   'tools/combat_lab/party_sustain.mjs': 'offline survival model; no live runtime',
+  'web-runner/systems/wfmCombatConfig.mjs': 'pre-world checkpoint entry restores full Rust input HP; no live actor writes',
   'web-runner/systems/rustCombatRuntime.mjs': 'Rust snapshot projection; stopped-world restoration',
   'web-runner/systems/rustCombatPresentation.mjs': 'disposable presentation snapshot',
   'web-runner/systems/equipmentStorage.mjs': 'unbound meta transaction; bound inputs use revisions',
