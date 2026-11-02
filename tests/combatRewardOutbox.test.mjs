@@ -21,7 +21,7 @@ function combat({cleanup=false}={}){
 }
 function host(values=new Map(),failure='',withProgression=false){
  const g={HeroProgress:createHeroProgressStore(JSON.parse(values.get(key)||'null')),goldTotal:0,ProgressionBattle:{id:'battle',participants:[],defeated:{},defeatedGold:{}}};
- const storage={getItem:k=>values.get(k)??null,setItem(k,v){if(failure===k)throw Error('injected save failure');values.set(k,v);}};
+ const storage={getItem:k=>values.get(k)??null,setItem(k,v){if(typeof failure==='function'?failure(k):failure===k)throw Error('injected save failure');values.set(k,v);}};
  const source=readFileSync(new URL('../web-runner/systems/heroProgressStorage.js',import.meta.url),'utf8');
  const progress=new Function('window','attachHeroProgress','createHeroProgressStore','settleBattleEXP',source.replace(/^import .*\n/gm,'').replace(/export /g,'')+';return {persistHeroProgressIfDirty};')({localStorage:storage},attachHeroProgress,createHeroProgressStore,settleBattleEXP);
  const save=()=>progress.persistHeroProgressIfDirty({stateGlobals:g});
@@ -37,7 +37,12 @@ for(const crash of ['before outbox save','after outbox save','after equipment co
   h.setFailure(key);assert.throws(()=>h.outbox.consumeBatch(f.batch.snapshot,f.batch.events,enemy),/save failure/);assert.equal(h.equipment.data.lamp.killPoints,0);h.setFailure('');
  }else{
   h.outbox.consumeBatch(f.batch.snapshot,f.batch.events,enemy);
-  if(crash==='after equipment commit'){h.setFailure(key);await assert.rejects(h.outbox.settlePendingReceipts(),/save failure/);h.setFailure('');}
+  if(crash==='after equipment commit'){
+   h.setFailure(k=>k===key&&JSON.parse(h.values.get(EQUIPMENT_SAVE_KEY)).lamp.killPoints===5);
+   await assert.rejects(h.outbox.settlePendingReceipts(),/save failure/);h.setFailure('');
+   assert.equal(JSON.parse(h.values.get(EQUIPMENT_SAVE_KEY)).lamp.killPoints,5);
+   assert.equal(JSON.parse(h.values.get(key)).combatRewardOutbox.streams['outbox-proof'].pending.length,1);
+  }
   if(crash==='before ack')await h.outbox.settlePendingReceipts();
  }
  const reloaded=host(h.values);
