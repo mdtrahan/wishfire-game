@@ -32,6 +32,20 @@ Focused validation: 39 cases, 38 passed, one inherited failure, `boss defeat is 
 
 ## Validation and delivery
 
-Full cargo/build/test and verifier results are recorded below after completion. Frozen slice/hash inputs and runtime source remain unchanged. This is a documentation checkpoint, not Rust-only acceptance: flags, shadow path, JS fallback, legacy combat and scalar exports remain present. No feature has been rewired. The static retirement gate and runtime-spy gate have not been delivered.
+Cargo passed: simulation_core 34, wf_combat 37, wf_slice_harness 537; 608 passed and 10 ignored. `npm run build:offline` passed. The standalone unit run had 1,497 tests: 1,476 passed, 18 failed and 3 skipped. Browser TAP reports 30 cases: 27 passed, two Bag failures and one skipped. The agent interrupted the lamp worker after an erroneous stall classification despite output having resumed 22 seconds earlier. Both assertion failures were emitted before the intervention; the standalone result does not certify natural teardown. `/tmp/jiyg-stop/browser-interruption.json` records the intervention; `/tmp/jiyg-stop/npm-test.log` retains all output. The verifier suites completed naturally; its outer run was interrupted later during probes.
+
+Frozen slice/hash inputs and runtime source remain unchanged: harness tree `c781cad4b9f3cf2ad11165177a22261c955f5bad` and VFX tree `e7f600b9b3990882df318130a7625b4f9aeda717` match the base. Storage guard passed; read-only storage audit completed. The branch adds documentation bytes versus main. The required runtime shrink is not delivered. This is a documentation checkpoint, not Rust-only acceptance: flags, shadow path, JS fallback, legacy combat and scalar exports remain present. No feature has been rewired. The static retirement gate and runtime-spy gate have not been delivered.
 
 The review URL is `http://localhost:8798/web-runner/index.html` without flags; DEV → Chapter 1 shows the unchanged JS-default baseline. Keep its status explicit during review. ORKA-jiyg remains in progress for the lead's recovery-contract decision and implementation ordering.
+
+Commit preparation uses `tools/prepare_commit_check.sh ORKA-jiyg`; no hot runtime files were edited. Generated preparation metadata is retained in `/tmp/jiyg-stop/`. Existing parent Child DOX indexes still match the unchanged directory structure. Retrieval used the assigned checkout and focused `rg`; jcodemunch was unavailable.
+
+## Handoff verifier receipt
+
+Ran `node tools/verify_handoff.mjs --base 0aad6419 --head dd0f68db --out /tmp/jiyg-handoff`. Status: INCOMPLETE after the turn interruption; the original verifier process no longer exists, and no official aggregate verdict was written. Do not infer a product hang from the unfinished second baseline probe. Receipt: `/tmp/jiyg-handoff/interrupted-receipt.json`; complete suite logs and the first browser trace pair remain alongside it. Temporary comparison checkouts were removed after preserving their test evidence and rebuilt WASM.
+
+The exact observed failure-set diff is one newly observed failure, `tests/combatDpsOverlay.test.mjs::DPS and current CP: normal combat, toggle continuity and four contained viewport sizes`, and one absent failure, `tests/taskFootprintContract.test.mjs::start before allocation survives automatic lane linking, resume and finalization`; 22 failures are shared. The DPS case timed out after 30 seconds waiting for `#combat-dps-overlay` at test line 32. No runtime/test-source change establishes a causal fix or regression. Base browser output: 29 passed, zero failed, one skipped. Head browser output: 28 passed, one failed, one skipped.
+
+Partial head performance: mean frame 23.775 ms, 30.81% of frames above 16.7 ms, ABI step mean 0.145 ms. Browser figures use the first completed trace; step figures use a fresh replay through the existing `sampleSteps` helper and that trace's exact config/rebuilt WASM. These are not the required three-run aggregate; retained-heap comparison is unavailable. The browser probe used the existing opt-in Rust fallback, so these figures do not certify no-flag routing.
+
+Recommended next actions: reconcile retained resource Continue with D17/TDD-A checkpoint recovery before deleting its consumer; rerun the interrupted full verifier after implementation. This checkpoint does not grant QA PASS or Integration Ready.
