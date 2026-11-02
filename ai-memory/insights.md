@@ -6,6 +6,7 @@
 - Do not log routine execution history, file lists, or status chatter.
 
 ## Operating Constraints
+- Canvas entry tests must wait for the control's first paint and startup readiness before clicking its rendered position; exported debug hooks can exist before render-owned hit zones.
 - Release inventory comes from Git; committed deletions disappear from it. Missing tracked runtime files must fail packaging; inject a missing dependency in a disposable fixture to prove failure without a success manifest.
 - Retiring a quest requires filtering new candidates and safely replacing unfinished saved objectives. Preserve completed legacy claims, claimed keys and reward receipts; changing only the candidate pool leaves existing players stuck.
 - Equipment-service test setup uses the production hero-store factory. Empty stores cause the ownership guard to reject reward and Gold transactions before those contracts can be exercised.
