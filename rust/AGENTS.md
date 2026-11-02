@@ -56,4 +56,6 @@
 
 - Damage events carry per-hit `hp_loss` from the Rust damage operation, excluding ward absorption. Event sidecars never alter the frozen public slice Event, RNG consumption, gameplay hashes or trace rows. Preserve ward-only and multiple-hit/heal coverage when changing telemetry.
 
+- Combat ABI taunt observations use the validated forced target, rather than the raw actor view. `taunted_by` and `taunt_age` become null on expiry or source loss; age derives from Rust's existing taunt countdown without adding simulation state.
+
 - Retained meta RNG keeps the native `mirrors_current_seeded_rng_cases` fixture alongside shipped-WASM parity checks when combat scalar exports retire.

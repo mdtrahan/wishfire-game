@@ -1,4 +1,5 @@
 import { drawSliceActorBars, drawSliceChest } from './rustCombatWorldHud.mjs';
+import { drawTauntIcons } from './rustCombatTaunt.mjs';
 import { COMBAT_VIEW, SLICE_ACTOR_HEIGHT } from './rustCombatArena.mjs';
 import { SliceSpotlightCamera } from './rustCombatSpotlightCamera.mjs';
 import { SliceActor, drawActorAura } from './rustCombatActor.mjs';
@@ -154,6 +155,7 @@ export async function createRustCombatPresentation(globals) {
     }
     for(const a of snapshot.actors)if(a.team==='enemy'&&a.hp>0&&a.slowed>0){const height=126*(a.kind.startsWith('boss')?a.scale:a.scale*.6)*camera.zoom;for(let k=0;k<3;k++){const t=(now*.65+a.actor_id*.17+k*.32)%1,size=(4+k*.5)*z;gpu.bitmap('bubble-droplets',k,camera.x(a.pos.x)+(k-1)*height*.2,camera.y(a.pos.y)-height*(.82-.48*t),size,size,0,.65*(1-t*.45),0xe6ffff);}}
     for(const [id,record]of encased){const a=state.actors.get(id)??record.actor,height=126*(a.kind.startsWith('boss')?a.scale:a.scale*.6)*camera.zoom,x=camera.x(a.pos.x),y=camera.y(a.pos.y)+height*.15,wobble=Math.sin((now+id)*5)*.02,size=height*1.3*192/180;if(record.ended===null)gpu.bitmap('bubble-swell',Math.min(5,Math.floor((now-record.born)/.18*6)),x,y,size*(1+wobble),size*(1-wobble),0,.86);else{gpu.once('bubble-pop',now-record.ended,x,y,size*256/192,size*256/192,0,.8);gpu.once('bubble-suds',now-record.ended,x,camera.y(a.pos.y)-height*.5,height*.65,height*.65);}}
+    drawTauntIcons(gpu,snapshot,camera);
     finish(ctx);labels(ctx,s,ox,oy);
     drawSliceActorBars(ctx,snapshot,camera,s,ox,oy);
   }
