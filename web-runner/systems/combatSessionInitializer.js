@@ -1,5 +1,5 @@
 import { beginCombatDpsSession } from '../src/core/combatDps.mjs';
-import {attachHeroProgress, createHeroProgressStore} from '../src/core/heroProgression.mjs';
+import {attachHeroProgress, createHeroProgressStore, combatSubwavePosition} from '../src/core/heroProgression.mjs';
 import { computeCombatPower as canonicalCombatPower } from '../src/core/combatPower.mjs';
 import { scaleRoutineEnemy } from '../src/core/routineEnemyScaling.mjs';
 import { buildContinuousCombatSpawnPlan, getContinuousCombatPartyCP } from '../src/core/continuousCombatStage.mjs';
@@ -396,14 +396,15 @@ export function createCombatSessionInitializer({
       state.globals.InitialSpawn = 1;
       const rawSeed = Number(state.globals.EncounterSeed || 0);
       const explicitSeed = Number(state.globals.EncounterSeedExplicit || 0) === 1;
-      const encounterSeed = (explicitSeed && Number.isFinite(rawSeed) && rawSeed > 0)
+      const checkpointSeed = Number(state.globals.ContinuousCombatStageLoop) === 1 && state.globals.HeroProgress?.continuousStage?.combatCheckpoint
+        ? state.globals.HeroProgress.continuousStage.seed : null;
+      const encounterSeed = checkpointSeed ?? ((explicitSeed && Number.isFinite(rawSeed) && rawSeed > 0)
         ? rawSeed
-        : generateEncounterSeedFn();
+        : generateEncounterSeedFn());
       state.globals.EncounterSeed = encounterSeed;
       state.globals.EncounterSeedExplicit = 0;
       if (Number(state.globals.ContinuousCombatStageLoop || 0) === 1 && state.globals.ContinuousCombatStage) {
-        // The selected encounter seed also owns pack-count randomness. Explicit QA seeds
-        // remain authoritative because encounterSeed already preserves that request.
+        // Reload keeps its saved pack-count seed; a fresh encounter honors an explicit QA seed.
         state.globals.ContinuousCombatStage.seed = (Number(encounterSeed) >>> 0) || 1;
       }
       installCombatRuntimeRandom(deriveCombatRuntimeRngSeed(encounterSeed), 'initEntities');
@@ -430,8 +431,12 @@ export function createCombatSessionInitializer({
       let encounter = null;
       let spawnPlan = [];
       const continuousStageEncounter = Number(state.globals.ContinuousCombatStageLoop || 0) === 1;
+      const stage = state.globals.ContinuousCombatStage;
+      const savedSubwave = stage?.combatCheckpoint?.subwaves;
+      const restartPlan = !stage?.bossActive && savedSubwave?.position === (stage && combatSubwavePosition(stage)) ? savedSubwave : null;
+      const planStage = restartPlan ? { ...stage, clearedPackMask: restartPlan.entryPackMask } : stage;
       const authoredContinuousPlan = continuousStageEncounter && (!state.globals.ContinuousCombatStage?.bossAvailable || state.globals.ContinuousCombatStage?.bossSummonRequired)
-        ? buildContinuousCombatSpawnPlan(mappedEnemyData, state.globals.ContinuousCombatStage, { partyCP: continuousPartyCP, enemySize: Number(state.globals.EnemySize || 40) })
+        ? buildContinuousCombatSpawnPlan(mappedEnemyData, planStage, { partyCP: restartPlan?.partyCP ?? continuousPartyCP, enemySize: Number(state.globals.EnemySize || 40) })
         : [];
       if (continuousStageEncounter) {
         spawnPlan = authoredContinuousPlan;

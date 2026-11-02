@@ -31,7 +31,32 @@ export function awardHeroEXP(hero,amount){
  if(hero.currentLevel>=hero.maxLevel){hero.currentEXP=0;hero.EXPToNextLevel=0;}
  const d=heroDefinition(hero);return {hero:d.name,exp,fromLevel:before.level,toLevel:hero.currentLevel,expBefore:before.exp,expAfter:Math.max(0,Number(hero.currentEXP||0)),expToNextBefore:before.expToNext,statsBefore:before.stats,statsAfter:{...hero.stats},maxHPBefore:before.hp,maxHPAfter:hero.maxHP};
 }
+// Bump content identity when authored combat definitions/projection change incompatibly.
+export const WFM_COMBAT_CONTENT_VERSION = 'wfm-slice-v1';
+export const WFM_COMBAT_ABI_VERSION = 0x10000;
+export function combatSubwavePosition(stage) { return `${stage.seed}:${stage.region}:${stage.stage}:${stage.wave}:${stage.transitions || 0}`; }
+export function validateCombatCheckpoint(stage, abiVersion = WFM_COMBAT_ABI_VERSION) {
+ const meta=stage?.combatCheckpoint;
+ if(meta===undefined)return;
+ const fail=message=>{const error=new Error(`WFM checkpoint: ${message}`);error.code='WFM_CHECKPOINT_INCOMPATIBLE';throw error;};
+ if(!meta||typeof meta!=='object'||Array.isArray(meta))fail('invalid checkpoint identity');
+ if(meta.version!==1)fail('unsupported checkpoint version');
+ if(meta.contentVersion!==WFM_COMBAT_CONTENT_VERSION)fail(`content version mismatch (saved ${meta.contentVersion}, expected ${WFM_COMBAT_CONTENT_VERSION})`);
+ if(meta.abiVersion!==abiVersion)fail(`ABI version mismatch (saved ${meta.abiVersion}, expected ${abiVersion})`);
+ if(!Number.isSafeInteger(stage.seed)||stage.seed<1||stage.seed>0xffffffff
+  ||!Number.isSafeInteger(stage.transitions)||stage.transitions<0
+  ||!Number.isSafeInteger(meta.generation)||meta.generation<1
+  ||![meta.id,meta.rewardLineage].every(value=>typeof value==='string'&&value.length>0&&value.length<=180))fail('invalid checkpoint identity, seed, generation or reward lineage');
+ if(meta.subwaves!==undefined){
+  const progress=meta.subwaves;
+  if(!progress||typeof progress.position!=='string'||!progress.position||progress.position.length>100
+   ||!Number.isSafeInteger(progress.index)||progress.index<0||progress.index>=42
+   ||!Number.isFinite(progress.partyCP)||progress.partyCP<0
+   ||!Number.isSafeInteger(progress.entryPackMask)||progress.entryPackMask<0||progress.entryPackMask>63)fail('invalid subwave checkpoint');
+ }
+}
 function normalizeContinuousStageCheckpoint(stage) {
+ validateCombatCheckpoint(stage);
  if(!stage||!Number.isSafeInteger(stage.region)||stage.region<1||!Number.isSafeInteger(stage.stage)
   ||!Number.isSafeInteger(stage.wave)||stage.wave<1||typeof stage.bossAvailable!=='boolean'
   ||!Number.isSafeInteger(stage.clearedBosses)||stage.clearedBosses<0)return null;
@@ -46,6 +71,13 @@ function normalizeContinuousStageCheckpoint(stage) {
   bossSummonRequired:stage.bossSummonRequired===true,clearedBosses:stage.clearedBosses};
  if(!legacy&&Number.isSafeInteger(stage.clearedPackMask)&&stage.clearedPackMask>=0&&stage.clearedPackMask<=63)checkpoint.clearedPackMask=stage.clearedPackMask;
  if(Number.isSafeInteger(stage.bossUID)&&stage.bossUID>0)checkpoint.bossUID=stage.bossUID;
+ if(stage.combatCheckpoint){
+  if(legacy)throw new Error('WFM checkpoint: combat identity requires topology version 2');
+  checkpoint.seed=stage.seed;checkpoint.transitions=stage.transitions;
+  const m=stage.combatCheckpoint;
+  checkpoint.combatCheckpoint={version:m.version,id:m.id,generation:m.generation,rewardLineage:m.rewardLineage,contentVersion:m.contentVersion,abiVersion:m.abiVersion,
+   ...(m.subwaves?{subwaves:{position:m.subwaves.position,index:m.subwaves.index,partyCP:m.subwaves.partyCP,entryPackMask:m.subwaves.entryPackMask}}:{})};
+ }
  return checkpoint;
 }
 
@@ -63,6 +95,7 @@ export function createHeroProgressStore(snapshot){
   store.pendingBagKillRewards=Object.fromEntries(Object.entries(snapshot.pendingBagKillRewards||{}).filter(([id,amount])=>id&&id.length<=180&&[1,5].includes(amount)));
   store.settledTicketSpends=Array.isArray(snapshot.settledTicketSpends)?[...new Set(snapshot.settledTicketSpends.filter(id=>typeof id==='string'&&id.length<=180))].slice(-256):[];
   const stage=normalizeContinuousStageCheckpoint(snapshot.continuousStage);
+  if(snapshot.continuousStage?.combatCheckpoint&&!stage)throw new Error('WFM checkpoint: invalid checkpoint topology');
   if(stage)store.continuousStage=stage;
  }
  for(const key of Object.keys(HERO_DEFINITIONS))if(!store.heroes[key])store.heroes[key]=newHeroProgress(key);

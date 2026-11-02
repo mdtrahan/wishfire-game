@@ -693,3 +693,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Permanent-input revisions must preserve every committed source/recipient parameter at delayed impact. Audit autonomous channels and hazard construction alongside actor casts; carry all offensive/defensive channels before signature comparison, and hash host rounding inputs plus command/receipt state.
 
 - Revision callbacks must sit behind changed permanent inputs. Render-time equipment sync can revisit every actor each frame; routing an unchanged detached copy can clone full Rust snapshots and rebuild payload signatures. Verify zero clone/revision work on unchanged syncs, alongside a real gear change. Transient slice buffs retain live-impact semantics while permanent parameters use commitment snapshots.
+
+- A manually invoked retry seam cannot prove automatic wipe routing. Trigger real WASM AllDown through the production session and compare the admitted subwave and authored enemy identities across the next-tick fresh attempt; keep checkpoint bookkeeping separate from unchanged resource balances.
