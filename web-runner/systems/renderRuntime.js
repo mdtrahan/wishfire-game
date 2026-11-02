@@ -795,12 +795,11 @@ const body = `with (scope) {
     const heroAuraQueue = [];
     const addActorPaint = (uid, paint) => { const actor = actorPaintQueue.find(entry => Number(entry.uid || 0) === Number(uid || 0)); if (!actor) return; const drawActor = actor.paint; actor.paint = () => { drawActor(); paint(); }; };
 
-    // Render enemies (use Enemy_Sprite animations)
+    // Paint enemy puppets; rustCombatWorldHud.mjs owns their snapshot HP tracks.
     const deathHoldByUID = state.globals.EnemyDeathVisualHoldByUID || {};
     const enemiesToDraw = combatEnemiesForPresentation(state.entities, state.globals);
     if (enemiesToDraw.length) {
       const g = state.globals;
-      const barQueue = [];
       for (const enemy of enemiesToDraw) {
         const slotIndex = enemy.slotIndex ?? 0;
         const spacing = g.Spacing || ((g.EnemySize || 40) + (g.enemyGAP || 8));
@@ -834,36 +833,6 @@ const body = `with (scope) {
         };
         actorPaintQueue.push({ footY: enemyFootY, uid: Number(enemy.uid || 0), paint: paintEnemyActor });
 
-        // Queue enemy HP bars to draw above all enemies
-        barQueue.push({ enemy, pos, enemyH, origH, enemyW, enemyFootY, enemyFadeAlpha });
-      }
-      for (const entry of barQueue) {
-        const { enemy, pos, enemyH, origH, enemyW, enemyFootY, enemyFadeAlpha } = entry;
-        const barKey = enemy.uid;
-        let barState = enemyBars.get(barKey);
-        const baseW = Math.max(20, Math.min(48, enemyH * 0.78));
-        const baseH = Math.max(3, Math.min(6, 4 * layoutScale));
-        if (!barState) {
-          barState = {
-            baseW,
-            fillW: baseW,
-            yellowW: baseW,
-          };
-          enemyBars.set(barKey, barState);
-        }
-        const hpRatio = enemy.maxHP ? Math.max(0, Math.min(1, enemy.hp / enemy.maxHP)) : 0;
-        const targetW = barState.baseW * hpRatio;
-        barState.fillW = Math.max(targetW, barState.fillW - 180 * dt);
-        barState.yellowW = Math.max(targetW, barState.yellowW - 90 * dt);
-
-        const drawBarW = Math.max(1, Math.round(barState.baseW));
-        const drawBarH = Math.max(1, Math.round(baseH));
-        const barX = Math.round(pos.x - (drawBarW / 2));
-        const barY = Math.round(enemyFootY + (4 * layoutScale));
-        const drawYellowW = Math.max(0, Math.round(barState.yellowW));
-        const drawFillW = Math.max(0, Math.round(barState.fillW));
-
-        if (!(state.globals.ContinuousCombatStage?.bossActive && enemy.uid === state.globals.ContinuousCombatStage.bossUID)) addActorPaint(enemy.uid, () => { ctx.save(); ctx.globalAlpha *= enemyFadeAlpha; drawCombatHealthBar(ctx, { x: barX, y: barY, width: drawBarW, height: drawBarH, fillWidth: drawFillW, trailWidth: drawYellowW, team: 'enemy' }); ctx.restore(); });
       }
     }
 

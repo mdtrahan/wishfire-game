@@ -342,3 +342,5 @@
 - Dead enemies use full-size standing puppet art and the Rust snapshot death-age alpha fade; KO clips remain for downed heroes.
 
 - Bomb raster rotation stays zero throughout flight and landing; travel direction only orients directional projectiles.
+
+- rustCombatWorldHud.mjs owns identical hero/enemy HP track dimensions. Groove meters are hero-only; the active boss keeps its separate battle HUD.

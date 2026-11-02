@@ -57,7 +57,8 @@ test('world-height bounds invert the half-scale camera only inside measured HUD-
 test('enemy health bars stay anchored to puppet feet during clip loading', () => {
   const renderer = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
   assert.match(renderer, /const enemyFootY = Number\(pos\.y\)/);
-  assert.match(renderer, /const barY = Math\.round\(enemyFootY \+ \(4 \* layoutScale\)\)/);
+  const hud = fs.readFileSync(path.join(root, 'web-runner/systems/rustCombatWorldHud.mjs'), 'utf8');
+  assert.match(hud, /y = camera\.y\(a\.pos\.y\), hpY = y \+ \(a\.team === 'hero' \? 8\*z : 4\)/);
   assert.match(renderer, /const drawY = pos\.y - \(enemy\.combatRank === 'boss' \? enemyH : enemyH \/ 2\)/);
 });
 

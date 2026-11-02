@@ -3,14 +3,21 @@ const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-test('enemy HP bar rendering uses integer pixel coordinates and sizes', () => {
-  const filePath = path.join(__dirname, '..', 'web-runner', 'systems', 'renderRuntime.js');
-  const src = fs.readFileSync(filePath, 'utf8');
-
-  assert.match(src, /const drawBarW = Math\.max\(1, Math\.round\(barState\.baseW\)\);/);
-  assert.match(src, /const drawBarH = Math\.max\(1, Math\.round\(baseH\)\);/);
-  assert.match(src, /const barX = Math\.round\(pos\.x - \(drawBarW \/ 2\)\);/);
-  assert.match(src, /const barY = Math\.round\(enemyFootY \+ \(4 \* layoutScale\)\);/);
+test('enemy HP tracks exactly match hero geometry and suppress enemy meters', async () => {
+  const { drawSliceActorBars } = await import('../web-runner/systems/rustCombatWorldHud.mjs');
+  for (const zoom of [.5, .8]) for (const scale of [.6, 1, 1.5]) {
+    const calls = [];
+    const ctx = new Proxy({}, { get: (target, key) => key in target ? target[key] : (...args) => { if (key === 'fillRect') calls.push({ rect: args, color: target.fillStyle }); }, set: (target, key, value) => { target[key] = value; return true; } });
+    const actor = { pos: { x: 100, y: 200 }, kind: 'gobloc', hp: 50, max_hp: 100, groove: 'power', meter: 3 };
+    const snapshot = { actors: [{ ...actor, kind: 'fara', team: 'hero' }, { ...actor, team: 'enemy' }, { ...actor, team: 'enemy', kind: 'boss' }] };
+    const before = structuredClone(snapshot);
+    drawSliceActorBars(ctx, snapshot, { zoom, x: x => x, y: y => y }, scale, 0, 0);
+    assert.equal(calls.length, 6); // hero track + full meter/glow; enemy track only
+    assert.deepEqual(calls[0].rect.slice(2), calls[5].rect.slice(2));
+    assert.equal(calls[5].color, '#292E34');
+    assert.equal(calls[5].rect[1], 204);
+    assert.deepEqual(snapshot, before);
+  }
 });
 
 test('enemy HP bars paint flat vector tracks without sprite sampling', async () => {

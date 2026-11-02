@@ -710,3 +710,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - A death silhouette can shrink inside authored KO frames even when draw dimensions remain constant. Keep enemy standing art during the snapshot-owned alpha fade and test both clip selection and painted dimensions.
 
 - Ballistic height and projectile travel direction are independent of bomb artwork orientation; verify both teams and the landing sample.
+
+- When Rust presentation replaces hero bars, enemy parity must use that same live renderer. Removing the host duplicate prevents art-scale-dependent bar sizes and permits exact geometry comparisons.
