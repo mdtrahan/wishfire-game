@@ -36,21 +36,17 @@ async function main() {
   const cachePath=join(cacheDir,`${refs.base}.json`);
   let savedCache=null;
   if(quick&&existsSync(cachePath))savedCache=JSON.parse(readFileSync(cachePath,'utf8'));
-  const temp=await mkdtemp(join(tmpdir(),'orka-handoff-')),created=[],started=performance.now();
+  const temp=await mkdtemp(join(tmpdir(),'orka-handoff-')),created=[],roots={},outputs={},started=performance.now();
   const diff=git('diff','--no-ext-diff','--unified=3',refs.base,refs.head,'--','.',':(exclude)history',':(exclude)output',':(exclude).beads');
   const statuses=git('diff','--name-status','-M',refs.base,refs.head,'--','.',':(exclude)history',':(exclude)output',':(exclude).beads');
   const report={schema:2,mode:quick?'quick':'full',cache:{path:cachePath,baseResultHit:false,baseNpmHit:false},refs,scenario:{chapter:1,seed,seconds,profile:'iPhone 13 native DPR 3',entry:'canonical developer-launch Chapter 1 boss, repeated after encounter end; unchanged combat stats'},out,suites:{},probes:{},errors:[],scan:scanDiff(diff,statuses)};
   try {
     const changed=git('diff','--name-only',refs.base,refs.head,'--','rust').split('\n');
     const crateNames=[...new Set(changed.filter(f=>/^rust\/[^/]+\//.test(f)).map(f=>f.split('/')[1]))].sort();
-    const cached=quick?selectBaseCache(savedCache,refs.base,report.scenario,crateNames):null;
+    const cached=quick?selectBaseCache(savedCache,refs.base):null;
     for(const label of ['base','head']) {
-      if(label==='base'&&cached?.result){
-        console.log('base: reusing SHA/scenario-matched result cache');
-        report.suites.base=cached.result.suites;report.probes.base=cached.result.probes;
-        report.cache.baseResultHit=true;report.cache.baseNpmHit=true;continue;
-      }
       const tree=join(temp,label),dir=join(out,label);await mkdir(dir,{recursive:true});
+      roots[label]=tree;outputs[label]=dir;
       console.log(`${label}: ${refs[label]} preparing isolated worktree`);
       git('worktree','add','--detach','--no-checkout',tree,refs[label]);created.push(tree);
       execFileSync('git',['sparse-checkout','set','--no-cone','--stdin'],{cwd:tree,input:'/*\n!/history/\n!/output/\n!/.beads/\n',stdio:['pipe','ignore','pipe']});
@@ -79,12 +75,10 @@ async function main() {
         if(cargo.status&&!names.length)failures.push(`cargo:${crate}::UNPARSED_SUITE_FAILURE`);
       }
       report.suites[label]={steps,failures:[...new Set(failures)].sort()};
-      console.log(`${label}: seeded combat/performance probe (${seconds}s)`);
-      report.probes[label]=await combatProbes(tree,dir,seconds,seed);
       if(label==='base'){
         savedCache={schema:1,sha:refs.base,npm:{step:npm,failures:npmFailures},
           fullSeconds:savedCache?.sha===refs.base?savedCache.fullSeconds:null,
-          result:{scenario:report.scenario,crates:crateNames,suites:report.suites.base,probes:report.probes.base}};
+          result:null};
         await mkdir(cacheDir,{recursive:true});await writeFile(cachePath,JSON.stringify(savedCache)+'\n');
       }
       // Scan actual head sources for unused exports and copies of existing eight-line blocks.
@@ -108,6 +102,8 @@ async function main() {
         }
       }
     }
+    const probes=await combatProbes(roots,outputs,seconds,seed);
+    report.probes={base:probes.base,head:probes.head};report.scenario.runOrder=probes.order;
   } catch(error) {report.errors.push(String(error.stack));}
   finally {
     for(const tree of created.reverse())try {git('worktree','remove','--force',tree);}catch(error){report.errors.push(`Worktree cleanup failed: ${tree}: ${error.message}`);}
@@ -120,7 +116,7 @@ async function main() {
     const pass=probe?.status==='PASS'&&Number.isFinite(value)&&value>=(c.min??-Infinity)&&value<=(c.max??Infinity);
     report.claims[`claim:${id}`]={status:pass?'PASS':'FAIL',probe:c.probe,measured:value??null,min:c.min??null,max:c.max??null};
   }
-  report.performance=perfDiff(report.probes.base?.metrics||{},report.probes.head?.metrics||{},report.probes.base?.spreads,report.probes.head?.spreads);
+  report.performance=perfDiff(report.probes.base?.metrics||{},report.probes.head?.metrics||{},report.probes.base?.spreads,report.probes.head?.spreads,{sameRef:refs.base===refs.head});
   const buildFailed=Object.values(report.suites).some(s=>s.steps.some(step=>step.status!==null&&step.status!==0&&!/^(npm-test|cargo-)/.test(step.name)));
   const complete=['base','head'].every(k=>report.probes[k]?.coverage?.complete&&report.suites[k]&&!report.suites[k].failures.some(f=>f.endsWith('UNPARSED_SUITE_FAILURE')));
   report.verdict=complete&&!buildFailed&&!report.errors.length&&!Object.values(report.probes).some(p=>p.errors?.length)&&!report.failures.new.length&&Object.values(report.claims).every(c=>c.status==='PASS')&&!Object.values(report.performance).some(p=>p.regression)?(Object.values(report.performance).some(p=>p.status==='INCONCLUSIVE')?'INCONCLUSIVE':'PASS'):'FAIL';
@@ -128,7 +124,7 @@ async function main() {
   report.runtimes={quickSeconds:quick?report.seconds:null,fullSeconds:quick?savedCache?.fullSeconds??null:report.seconds,fullSource:quick?'previous full proof':'this run'};
   if(!quick&&savedCache?.sha===refs.base){savedCache.fullSeconds=report.seconds;await writeFile(cachePath,JSON.stringify(savedCache)+'\n');}
   const bullet=values=>values.length?values.slice(0,12).map(v=>`- ${typeof v==='string'?v:JSON.stringify(v)}`).join('\n')+(values.length>12?`\n- ${values.length-12} more in report.json`:''):'- None';
-  const md=`<div style="color:#17202a;background:#ffffff;padding:16px">\n\n# Handoff verification\n\n${refs.base} → ${refs.head}\n\nSeed ${seed}; Chapter 1; ${seconds}s per ref; iPhone 13 DPR 3. Mode ${report.mode}; runtime ${report.seconds.toFixed(1)}s. Quick/full runtimes: ${JSON.stringify(report.runtimes)}. Cache: ${JSON.stringify(report.cache)}. Three runs per ref; medians and min/max spreads below. Headless Chromium observations; draw bounds are sprite quads.\n\n## Failure sets\n\nNew (${report.failures.new.length}):\n\n${bullet(report.failures.new)}\n\nFixed (${report.failures.fixed.length}):\n\n${bullet(report.failures.fixed)}\n\nStill failing (${report.failures.stillFailing.length}):\n\n${bullet(report.failures.stillFailing)}\n\n## Claims\n\n${bullet(Object.entries(report.claims).map(([id,c])=>`${id}: ${c.status}; measured=${c.measured}`))}\n\n## Performance\n\n${bullet(Object.entries(report.performance).map(([id,p])=>`${id}: ${p.base} → ${p.head}; delta ${p.deltaPct===null?'unmeasured':p.deltaPct.toFixed?.(2)??p.deltaPct}%; ${p.status}; absolute delta ${p.delta}; thresholds ${JSON.stringify(p.threshold)}${p.spread?`; spread ${JSON.stringify(p.spread)}`:''}`))}\n\n## Test changes to review\n\n${bullet(report.scan.testChanges)}\n\n## Heuristic scan (${report.scan.findings.length} findings; ordering timers ${report.scan.timerCount})\n\n${bullet(report.scan.findings.slice(0,30).map(f=>`${f.file}:${f.line}: ${f.kind}`))}\n\nFull findings, command statuses and measurements: report.json; per-ref suite logs and trace.json. Findings require human/agent review and do not independently gate PASS.\n\n## Evidence errors\n\n${bullet([...report.errors,...Object.entries(report.probes).flatMap(([k,p])=>p.error?[`${k}: ${p.error}`]:[])])}\n\n</div>\n\nOverall verdict: **${report.verdict}**\n`;
+  const md=`<div style="color:#17202a;background:#ffffff;padding:16px">\n\n# Handoff verification\n\n${refs.base} → ${refs.head}\n\nSeed ${seed}; Chapter 1; ${seconds}s per ref; iPhone 13 DPR 3. Mode ${report.mode}; runtime ${report.seconds.toFixed(1)}s. Quick/full runtimes: ${JSON.stringify(report.runtimes)}. Cache: ${JSON.stringify(report.cache)}. Fresh ABABAB runs; medians and min/max spreads below. Steps use 30 batches of 300 ABI calls after 3 warmup batches, timed with process.hrtime.bigint. Heap growth is retained after forced GC with observer arrays released. Headless Chromium observations; draw bounds are sprite quads.\n\n## Failure sets\n\nNew (${report.failures.new.length}):\n\n${bullet(report.failures.new)}\n\nFixed (${report.failures.fixed.length}):\n\n${bullet(report.failures.fixed)}\n\nStill failing (${report.failures.stillFailing.length}):\n\n${bullet(report.failures.stillFailing)}\n\n## Claims\n\n${bullet(Object.entries(report.claims).map(([id,c])=>`${id}: ${c.status}; measured=${c.measured}`))}\n\n## Performance\n\n${bullet(Object.entries(report.probes).map(([label,p])=>`${label}: frame mean ${p.metrics.frameMean} ms; frames >16.7 ms ${p.metrics.frameDroppedRate}; step mean ${p.metrics.stepMean} ms; retained heap growth ${p.metrics.heapGrowthBytes} bytes`))}\n\n${bullet(Object.entries(report.performance).map(([id,p])=>`${id}: ${p.base} → ${p.head}; delta ${p.deltaPct===null?'unmeasured':p.deltaPct.toFixed?.(2)??p.deltaPct}%; ${p.status}${p.reason?`; ${p.reason}`:''}; absolute delta ${p.delta}; thresholds ${JSON.stringify(p.threshold)}${p.spread?`; spread ${JSON.stringify(p.spread)}`:''}`))}\n\n## Test changes to review\n\n${bullet(report.scan.testChanges)}\n\n## Heuristic scan (${report.scan.findings.length} findings; ordering timers ${report.scan.timerCount})\n\n${bullet(report.scan.findings.slice(0,30).map(f=>`${f.file}:${f.line}: ${f.kind}`))}\n\nFull findings, command statuses and measurements: report.json; per-ref suite logs and trace.json. Findings require human/agent review and do not independently gate PASS.\n\n## Evidence errors\n\n${bullet([...report.errors,...Object.entries(report.probes).flatMap(([k,p])=>p.error?[`${k}: ${p.error}`]:[])])}\n\n</div>\n\nOverall verdict: **${report.verdict}**\n`;
   await writeFile(join(out,'report.json'),JSON.stringify(report,null,2)+'\n');await writeFile(join(out,'report.md'),md);
   console.log(JSON.stringify({verdict:report.verdict,seconds:report.seconds,runtimes:report.runtimes,cache:report.cache,failures:report.failures,claims:report.claims,performance:report.performance,out},null,2));
   process.exitCode=report.verdict==='PASS'?0:report.verdict==='INCONCLUSIVE'?2:1;

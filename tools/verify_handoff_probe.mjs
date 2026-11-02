@@ -5,13 +5,14 @@ import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
 import { mkdir, writeFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { quantiles, summarizeMetrics } from './verify_handoff_logic.mjs';
+import { quantiles, summarizeMetrics, frameMetrics } from './verify_handoff_logic.mjs';
+import { sampleSteps } from './verify_handoff_step.mjs';
 const require = createRequire(import.meta.url);
 const { detectChromeExecutable, classifyPlaywrightFailure, waitForJsonEndpoint } = require('./playwright_support.js');
 
 // Runs before application scripts. Observers wrap public presentation seams; no combat mutation.
 export function installObservers() {
-  const q = window.handoffProbe = { frames: [], steps: [], longTasks: [], samples: [], events: [], buffs: [], clips: [], errors: [], draws: 0, expired: [], observedEffects: 0 };
+  const q = window.handoffProbe = { frames: [], stepCount: 0, longTasks: [], samples: [], events: [], buffs: [], clips: [], errors: [], draws: 0, expired: [], observedEffects: 0 };
   let recording = false, previous, paint, serial = 0;
   const ids = new WeakMap(), contexts = new WeakMap(), effectOrigins = new WeakMap(), missingSince = new Map();
   try { new PerformanceObserver(list => { if (recording) q.longTasks.push(...list.getEntries().map(e => e.duration)); }).observe({ type: 'longtask', buffered: false }); }
@@ -21,9 +22,10 @@ export function installObservers() {
     const exports = descriptor.get.call(this);
     if (!exports.wf_combat_call) return exports;
     if (!facades.has(this)) facades.set(this, { ...exports, wf_combat_call(ptr, len) {
-      const step = recording && JSON.parse(new TextDecoder().decode(new Uint8Array(exports.memory.buffer, ptr, len))).operation.kind === 'step';
-      const start = performance.now();
-      try { return exports.wf_combat_call(ptr, len); } finally { if (step) q.steps.push(performance.now() - start); }
+      const operation = JSON.parse(new TextDecoder().decode(new Uint8Array(exports.memory.buffer, ptr, len))).operation;
+      if (operation.kind === 'create') q.stepConfig = operation.data.config;
+      if (recording && operation.kind === 'step') q.stepCount++;
+      return exports.wf_combat_call(ptr, len);
     } });
     return facades.get(this);
   } });
@@ -134,7 +136,7 @@ export function installObservers() {
 }
 
 export async function combatProbe(root, out, seconds, seed) {
-  const { chromium, devices } = await import('playwright');
+  const { chromium, devices } = createRequire(join(root, 'package.json'))('playwright');
   const socket=createServer();await new Promise(resolve=>socket.listen(0,'127.0.0.1',resolve));const port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
   const server=spawn(process.execPath,['tools/serve_web.js','--port',String(port)],{cwd:root,stdio:'ignore'});
   let browser,browserServer;const errors=[];
@@ -171,7 +173,7 @@ export async function combatProbe(root, out, seconds, seed) {
       if(suffix){const state=await page.evaluate(()=>{const g=__codexGame.globals;return {authority:g.RustCombatAuthority,error:g.RustCombatError,receipt:g.RustCombatReceipt,loop:g.ContinuousCombatStageLoop,stage:g.ContinuousCombatStage,quest:JSON.parse(render_game_to_text()).quest};});throw Error(`Runtime probe found no active Rust authority/snapshot: ${JSON.stringify(state)}`);}legacyFlag=true;
     }
     const cdp=await context.newCDPSession(page);await cdp.send('Performance.enable');
-    const heap=async()=> (await cdp.send('Runtime.getHeapUsage')).usedSize;
+    const heap=async()=> { await cdp.send('HeapProfiler.collectGarbage'); return (await cdp.send('Runtime.getHeapUsage')).usedSize; };
     const heapStart=await heap(),identity=await page.evaluate(()=>({seed:__codexGame.globals.ContinuousCombatStage.seed,chapter:__codexGame.globals.ContinuousCombatStage.region,viewport:[innerWidth,innerHeight,devicePixelRatio]}));
     console.log(`probe: recording ${seconds}s`);await page.evaluate(()=>handoffProbe.start());
     const deadline=performance.now()+seconds*1000;let reentries=0;
@@ -181,17 +183,19 @@ export async function combatProbe(root, out, seconds, seed) {
       if(!active&&deadline-performance.now()>2000){console.log('probe: re-entering seeded Chapter 1 boss');await enterBoss();reentries++;}
     }
     await page.evaluate(()=>handoffProbe.stop());
-    const heapEnd=await heap(),q=await page.evaluate(()=>handoffProbe);
+    const q=await page.evaluate(()=>handoffProbe);
+    await page.evaluate(()=>{for(const value of Object.values(handoffProbe))if(Array.isArray(value))value.length=0;});
+    const heapEnd=await heap();
     await writeFile(join(out,'trace.json'),JSON.stringify({...q,identity,errors}));
     const actors=q.samples.flatMap(s=>s.actors.map(a=>({...a,floor:s.floor})));
     const escaped=actors.filter(a=>a.hp>0&&(a.world.x<a.floor.min.x-.5||a.world.x>a.floor.max.x+.5||a.world.y<a.floor.min.y-.5||a.world.y>a.floor.max.y+.5));
     const activeSeconds=q.samples.reduce((sum,s,i)=>sum+(i&&s.encounter===q.samples[i-1].encounter?Math.max(0,s.rustTime-q.samples[i-1].rustTime):0),0);
-    const frame=quantiles(q.frames),step=quantiles(q.steps),complete=q.samples.length>1&&q.samples.length>=q.frames.length*.9&&activeSeconds>=seconds*.8&&q.draws>0&&step&&identity.seed===seed&&identity.chapter===1;
+    const frame=quantiles(q.frames),complete=q.samples.length>1&&q.samples.length>=q.frames.length*.9&&activeSeconds>=seconds*.8&&q.draws>0&&q.stepCount>0&&identity.seed===seed&&identity.chapter===1;
     const violations={noLingeringEffects:q.expired.length,actorsInsideArena:escaped.length,buffsAllowedSides:q.buffs.filter(b=>!b.allowed.includes(b.side)).length,noClipping:q.clips.length,noConsoleErrors:errors.length};
     const claims=Object.fromEntries(Object.entries(violations).map(([id,value])=>[id,{status:complete&&value===0?'PASS':'FAIL',measured:value,evidence: {samples:q.samples.length,draws:q.draws,effects:q.observedEffects,buffs:q.buffs.length}}]));
     if(!q.observedEffects)claims.noLingeringEffects.status='FAIL';
     if(!q.buffs.length)claims.buffsAllowedSides.status='FAIL';
-    return {trace:join(out,'trace.json'),reentries,engine:'Rust (live snapshots + measured WASM calls)',legacyFlag,identity,claims,coverage:{complete:!!complete,activeSeconds,samples:q.samples.length,effects:q.observedEffects,buffs:q.buffs.length},metrics:{frameP50:frame?.p50??null,frameP95:frame?.p95??null,frameMax:frame?.max??null,stepP50:step?.p50??null,stepP95:step?.p95??null,stepMax:step?.max??null,heapStart,heapEnd,heapGrowthBytes:heapEnd-heapStart,longTasks:q.longTasks.length,longTaskMs:q.longTasks.reduce((a,b)=>a+b,0),wasmBytes:(await stat(join(root,'web-runner/assets/simulation_core.wasm'))).size,pageLoadMs:loadMs},errors:[...errors,...q.errors]};
+    return {trace:join(out,'trace.json'),reentries,engine:'Rust (live snapshots + batched ABI replay)',legacyFlag,identity,claims,stepConfig:q.stepConfig,coverage:{complete:!!complete,activeSeconds,samples:q.samples.length,effects:q.observedEffects,buffs:q.buffs.length},metrics:{frameP50:frame?.p50??null,frameP95:frame?.p95??null,frameMax:frame?.max??null,...frameMetrics(q.frames),heapStart,heapEnd,heapGrowthBytes:heapEnd-heapStart,longTasks:q.longTasks.length,longTaskMs:q.longTasks.reduce((a,b)=>a+b,0),wasmBytes:(await stat(join(root,'web-runner/assets/simulation_core.wasm'))).size,pageLoadMs:loadMs},errors:[...errors,...q.errors]};
   } catch(error) {return {error:String(error.stack),classification:classifyPlaywrightFailure(error),errors,claims:{},metrics:{}};}
   finally {
     console.log('probe: releasing owned browser/server');
@@ -200,14 +204,27 @@ export async function combatProbe(root, out, seconds, seed) {
   }
 }
 
-export async function combatProbes(root, out, seconds, seed) {
-  const runs = [];
+export async function combatProbes(roots, outputs, seconds, seed, sampler = combatProbe, stepSampler = sampleSteps) {
+  const runs = { base: [], head: [] };
+  const order = [];
   for (let i = 1; i <= 3; i++) {
-    const dir = join(out, `run-${i}`);
-    await mkdir(dir, { recursive: true });
-    console.log(`probe: run ${i}/3`);
-    runs.push(await combatProbe(root, dir, seconds, seed));
+    for (const label of ['base', 'head']) {
+      const dir = join(outputs[label], `run-${i}`);
+      await mkdir(dir, { recursive: true });
+      console.log(`probe: ${label} run ${i}/3`);order.push(label);
+      const result = await sampler(roots[label], dir, seconds, seed);
+      if (!result.error) {
+        try { const step = await stepSampler(roots[label], result.stepConfig);Object.assign(result.metrics, step.metrics);result.stepTiming = step.timing; }
+        catch (error) { result.errors.push(`Step batching: ${error.stack}`);result.coverage.complete = false; }
+      }
+      delete result.stepConfig;
+      runs[label].push(result);
+    }
   }
+  return { order, ...Object.fromEntries(Object.entries(runs).map(([label, samples]) => [label, summarizeProbes(samples)])) };
+}
+
+function summarizeProbes(runs) {
   return {
     ...summarizeMetrics(runs), runs,
     coverage: { complete: runs.every(r => r.coverage?.complete) },
