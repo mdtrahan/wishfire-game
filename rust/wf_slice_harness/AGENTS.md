@@ -15,4 +15,4 @@
 
 - Frozen slice inputs explicitly maintain `ATK=MAG` and `DEF=RES`, including stage/reward scaling and fixture overrides. Preserve every pinned trace/event row and existing assertion when extending production channels. Production-only projectile provenance is hashed by `wf_combat::state_hash`, outside the harness host hash stream.
 
-- Owner-authorized formula changes in ORKA-nspw.12 supersede the original mitigation trace expectations. `FORMULA_REPINS.md` records every changed row and hash; preserve outcome/balance assertions without retuning.
+- Owner-authorized formula changes in ORKA-nspw.12/.11 supersede the original mitigation/cooldown trace expectations. `FORMULA_REPINS.md` records every changed row and hash; preserve outcome/balance assertions without retuning. Escalation supplies additive Haste per level, never a cooldown subtraction.

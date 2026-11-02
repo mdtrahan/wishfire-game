@@ -1,5 +1,7 @@
 # Tests DOX
 - `combatFormulas.test.mjs` checks 100-point mitigation, CP hit/durability previews and real-WASM CP parity across independent DEF/RES and levels.
+- Formula tests also require positive extreme-Haste cooldowns, diminishing returns, neutral defaults and the retained star-two .92 factor.
+- Hero-screen proof checks all four earned-Haste previews at reference/compact sizes, retaining each path's existing base timing. Authored preview bases and Rust stock-refill bases remain separate pending owner follow-up.
 - `heroCooldownStrip.test.mjs` covers deployed identity, unlocked active readiness and immutable combat-time projection. `heroCooldownStripBrowser.test.mjs` locks eight centered slots, quest inset, equipment separation, pause/resume shading and cache access at reference, compact, narrow and natural-size viewports; clock fixtures stay separate from normal-combat screenshots.
 - `combatArenaBackground.test.mjs` covers chapter 1–4 asset availability, chapter 5+ grid retention, undecoded-image fallback and camera orientation without changing vertical framing.
 - `balanceTelemetryContract.test.mjs` protects opt-in capture, bounded event retention and pre-hit range geometry and enemy-tier attribution; `balanceHarnessEntryContract.test.js` protects exact-event use alongside sampled HP, including bounded impact samples and per-tier totals, ordered first-hero casualty aggregation, labeled post-recovery gear/stat samples, fail-closed uninterrupted ordinary acceptance and CSV output.

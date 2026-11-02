@@ -3,10 +3,34 @@ pub fn mitigation_multiplier(defense: f64) -> f64 {
     100. / (100. + defense.max(0.))
 }
 
+/// Haste is derived from existing positive rate inputs; zero preserves the base.
+/// Negative haste above -100 represents an existing rate below one (slowdown).
+pub fn cooldown_seconds(base: f64, haste: f64) -> f64 {
+    base * 100. / (100. + haste)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{tuning::*, *};
+
+    #[test]
+    fn cooldown_stays_positive_at_extreme_haste() {
+        for base in [SIM_DT, 5., 30.] {
+            for haste in [0., 100., 1e12, f32::MAX] {
+                let seconds = cooldown_seconds(base as f64, haste as f64) as f32;
+                assert!(seconds.is_finite() && seconds > 0. && seconds <= base, "{base}, {haste}: {seconds}");
+            }
+        }
+        assert_eq!(cooldown_seconds(10., 100.), 5.);
+        assert_eq!(cooldown_seconds(10., -50.), 20.);
+        let mut sim = Sim::new(SimConfig::default());
+        sim.spawn_actor(Archetype::Boss, ARENA_CENTRE, stats(Archetype::Boss));
+        sim.modifiers.cooldown_haste = f32::MAX;
+        sim.modifiers.recharge_haste = f32::MAX;
+        assert!(sim.boss_time_scale() > 0.);
+        assert!(sim.boss_recharge_duration(0) > 0.);
+    }
 
     #[test]
     fn positive_hits_at_extreme_defense_and_resistance_use_independent_channels() {

@@ -39,7 +39,9 @@ impl Sim {
                     enemy.recharge_left.max(enemy.relocate_left)
                         + if enemy.enemy_phase == 2 {
                             self.hazards.iter().filter(|h| h.view.owner == enemy.view.id && h.view.hostile && h.view.phase != HazardPhase::Resolved)
-                                .map(|h| h.remaining()).fold(0., f32::max) + BOSS_RECHARGE_FLOOR
+                                .map(|h| h.remaining()).fold(0., f32::max)
+                                + crate::formulas::cooldown_seconds(self.boss_recharge_duration(e) as f64,
+                                    if enemy.barrage_recharge { CHIMERA_BARRAGE_HASTE as f64 } else { 0. }) as f32
                         } else { 0. }
                 } else if matches!(enemy.view.archetype, Archetype::Sniper | Archetype::Lizardo) {
                     enemy.basic_cd.max((enemy.view.state_duration - enemy.view.state_age).max(0.))

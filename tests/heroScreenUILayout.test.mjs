@@ -135,6 +135,29 @@ const plateText=hero=>heroDefinition(hero).name+'★★★★★★★★';
 const p_scale=profile=>Math.min(profile.width/360,profile.height/640);
 const heading=page=>page.locator('#hero-details .hero-name h1').textContent();
 
+test('Hero cooldown preview applies earned Haste to each existing authored base',{timeout:90000},async()=>{
+ const fixture=makeSavedFixture(),{server,url}=await startFixtureServer();
+ const browser=await chromium.launch({headless:true,executablePath:detectChromeExecutable()});
+ try{
+  for(const profile of profiles.slice(0,2)){
+   const {context,page,pageErrors}=await mountPage(browser,profile,fixture,url);
+   try{
+    await page.evaluate(()=>window.heroQa.setGrowth({stars:{Falie:2,Huun:2,Runa:2,Kojonn:2}}));
+    const detail=page.locator('#hero-details');
+    for(const [index,seconds] of [110.4,18.4,18.4,18.4].entries()){
+     if(index)await detail.getByRole('button',{name:'Next hero'}).click();
+     await page.waitForFunction(name=>document.querySelector('#hero-details h1')?.textContent===name,Object.values(HERO_DEFINITIONS)[index].name);
+     assert.match(await detail.locator('.skill-meta').innerText(),/Cooldown: 0s/);
+     await detail.getByRole('button',{name:'Next skill'}).click();
+     await page.waitForFunction(seconds=>document.querySelector('.skill-meta')?.textContent.includes(`Cooldown: ${seconds}s`),seconds);
+     assert.match(await detail.locator('.skill-meta').innerText(),new RegExp(`Cooldown: ${seconds}s`));
+    }
+    assert.deepEqual(pageErrors,[]);
+   }finally{await context.close();}
+  }
+ }finally{await browser.close();server.close();}
+});
+
 test('combat copies never appear as unequipped duplicate heroes in the Hero screen',{timeout:90000},async()=>{
  await mkdir(artifactDir,{recursive:true});
  const {progress,economy}=makeSavedFixture({shellsFirst:false}),heroes=Object.keys(HERO_DEFINITIONS).map(key=>progress.heroes[key]);

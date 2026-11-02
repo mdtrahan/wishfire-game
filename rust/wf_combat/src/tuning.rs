@@ -339,7 +339,7 @@ pub const BREATHER_DELAY: f32 = 4.;
 pub const BREATHER_HP_PER_SECOND: f32 = 0.03;
 pub const REVIVE_SAFE_HP: f32 = 0.35;
 pub const REVIVE_INTERRUPT_HP: f32 = 0.10;
-pub const REVIVE_REFUND: f32 = 0.5;
+pub const REVIVE_INTERRUPT_HASTE: f32 = 100.;
 pub const BOSS_BODY_RADIUS: f32 = 66.;
 // 128 px * 2.2 actor scale * 0.5 zoom / (0.5 zoom * 0.75 squash)
 // gives ~375 u including transparent frame padding. A 300-u spine + 66-u cap
@@ -497,11 +497,10 @@ pub const BOSS_PHASE: PhaseRule = PhaseRule {
 };
 pub const BOSS_RECHARGE: f32 = 5.;
 
-pub const BOSS_RECHARGE_FLOOR: f32 = 3.5;
 pub const ENGAGE_READ_MIN: f32 = 0.3;
 pub const ENGAGE_READ_MAX: f32 = 0.6;
 pub const LOW_HP_STANDOFF: f32 = 24.;
-pub const ENRAGE_RECHARGE: f32 = 0.7;
+pub const ENRAGE_HASTE: f32 = 300. / 7.;
 
 // Charge has variable target distance; this is its tuned fallback length.
 pub const CHARGE_BASE_LENGTH: f32 = 350. + BOSS_BODY_RADIUS;
@@ -670,7 +669,7 @@ pub const CHIMERA_HEAL_INTERVAL: f32 = 5.;
 pub const CHIMERA_ATTACK_RATE: f32 = 0.7;
 
 // Chimerilass rotates targeted, scatter and an eight-bomb melee fortress.
-pub const CHIMERA_BARRAGE_COOLDOWN_SCALE: f32 = 0.5;
+pub const CHIMERA_BARRAGE_HASTE: f32 = 100.;
 pub const CHIMERA_FORTRESS_BOMBS: usize = 8;
 pub const CHIMERA_FORTRESS_GAP: f32 = 70.;
 pub const BOMB_OPEN_MARGIN: f32 = 8.;

@@ -1,3 +1,5 @@
+import { cooldownSeconds } from '../../web-runner/src/core/combatFormulas.mjs';
+
 // Shadow-only bases from rust/wf_combat/src/tuning.rs, not WFM balance inputs.
 const heroSpeed = 78 * 1.6698;
 const base = (hp, atk, def, speed, reach, interval, evade = 0, special = 0) =>
@@ -39,7 +41,7 @@ export function projectShadowStats(resolved, reference, definition) {
     mag: c.mag * ratio('MAG'),
     res: c.res === 0 ? 0 : c.res * ratio('RES'),
     // ABI cadence bounds; SPD never changes movement or reach.
-    interval: Math.max(1 / 30, Math.min(1_000_000, c.interval / ratio('SPD'))),
+    interval: Math.max(1 / 30, Math.min(1_000_000, cooldownSeconds(c.interval, (ratio('SPD') - 1) * 100))),
   };
 }
 

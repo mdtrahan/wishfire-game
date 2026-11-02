@@ -1,16 +1,16 @@
 //! Chimerilass's committed bomb packages; all positions are locked before the first throw.
 use crate::{api::*, math::direction, tuning::*, Sim};
+
+pub(crate) fn boss_recharge_seconds(kind: Archetype, haste: f32, enraged: bool) -> f32 {
+    let haste = haste as f64 + if enraged { ENRAGE_HASTE as f64 } else { 0. };
+    crate::formulas::cooldown_seconds(BOSS_RECHARGE as f64, haste) as f32
+        / if kind == Archetype::BossBomber { CHIMERA_ATTACK_RATE } else { 1. }
+}
+
 impl Sim {
     pub fn boss_recharge_duration(&self, i: usize) -> f32 {
         let a = &self.actors[i];
-        ((BOSS_RECHARGE - self.modifiers.recharge_reduction)
-            * if a.view.enraged { ENRAGE_RECHARGE } else { 1. })
-        .max(BOSS_RECHARGE_FLOOR)
-            / if a.view.archetype == Archetype::BossBomber {
-                CHIMERA_ATTACK_RATE
-            } else {
-                1.
-            }
+        boss_recharge_seconds(a.view.archetype, self.modifiers.recharge_haste, a.view.enraged)
     }
     pub fn bomb_radius(&self, i: usize) -> f32 {
         BOMB_RADIUS
@@ -159,7 +159,7 @@ impl Sim {
             duration = duration.max(h.duration);
             self.projectile(i, None, points[b], true, 0., Some(hid));
         }
-        let cooldown = self.boss_recharge_duration(i) * CHIMERA_BARRAGE_COOLDOWN_SCALE;
+        let cooldown = crate::formulas::cooldown_seconds(self.boss_recharge_duration(i) as f64, CHIMERA_BARRAGE_HASTE as f64) as f32;
         let a = &mut self.actors[i];
         a.barrage_cd = duration + cooldown;
         a.barrage_recharge = true;

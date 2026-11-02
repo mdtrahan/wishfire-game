@@ -1,4 +1,5 @@
 import { HERO_DEFINITIONS } from './heroDefinitions.mjs';
+import { cooldownSeconds } from './combatFormulas.mjs';
 
 export const STAR_MAX = 8;
 export const STAR_COST_STEP = 50;
@@ -7,7 +8,7 @@ export const GROWTH_STATS = Object.freeze(['HP', 'ATK', 'DEF', 'MAG', 'RES']);
 export const STAR_EFFECTS = Object.freeze(Object.fromEntries(
   [
     ['special', { magnitudeBonus: 0.1, text: '+10% Special damage/healing' }],
-    ['special', { cooldownMultiplier: 0.92, text: '-8% Special cooldown' }],
+    ['special', { haste: 100 / 0.92 - 100, text: '-8% Special cooldown' }],
     ['passive', { magnitudeBonus: 0.15, text: '+15% Passive magnitude' }],
     ['passive', { magnitudeBonus: 0.15, text: '+15% Passive magnitude' }],
     ['resonance1', null], ['resonance1', null], ['resonance2', null], ['resonance2', null],
@@ -32,14 +33,14 @@ export function canonicalGrowthId(key) {
 export function heroStars(growth, heroId) { return clampStars(growth?.stars?.[canonicalGrowthId(heroId)]); }
 export function heroStarSkillMultipliers(growth, heroId) {
   const stars = heroStars(growth, heroId);
-  let specialBonus = 0, passiveBonus = 0, specialCooldown = 1;
+  let specialBonus = 0, passiveBonus = 0, specialHaste = 0;
   for (const [index, slots] of Object.entries(STAR_EFFECTS)) {
     if (Number(index) > stars) continue;
     specialBonus += slots.special?.skillEffect?.magnitudeBonus || 0;
     passiveBonus += slots.passive?.skillEffect?.magnitudeBonus || 0;
-    specialCooldown *= slots.special?.skillEffect?.cooldownMultiplier ?? 1;
+    specialHaste += slots.special?.skillEffect?.haste || 0;
   }
-  return { specialMagnitude: 1 + specialBonus, specialCooldown, passiveMagnitude: 1 + passiveBonus };
+  return { specialMagnitude: 1 + specialBonus, specialCooldown: cooldownSeconds(1, specialHaste), passiveMagnitude: 1 + passiveBonus };
 }
 export function heroGrowthBreakdown(growth, heroId) {
   const stars = heroStars(growth, heroId);

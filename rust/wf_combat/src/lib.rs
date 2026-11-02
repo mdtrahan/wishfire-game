@@ -45,16 +45,16 @@ pub struct EncounterState {
 }
 #[derive(Clone, Copy, Debug)]
 pub struct EncounterModifiers {
-    pub cooldown_multiplier: f32,
+    pub cooldown_haste: f32,
     pub slam_radius_bonus: f32,
-    pub recharge_reduction: f32,
+    pub recharge_haste: f32,
 }
 impl Default for EncounterModifiers {
     fn default() -> Self {
         Self {
-            cooldown_multiplier: 1.,
+            cooldown_haste: 0.,
             slam_radius_bonus: 0.,
-            recharge_reduction: 0.,
+            recharge_haste: 0.,
         }
     }
 }
@@ -382,9 +382,9 @@ impl Sim {
                 h.b(self.encounter.transitioning);
                 h.b(self.encounter.complete);
                 h.b(self.encounter.hold_position);
-                h.f(self.modifiers.cooldown_multiplier);
+                h.f(self.modifiers.cooldown_haste);
                 h.f(self.modifiers.slam_radius_bonus);
-                h.f(self.modifiers.recharge_reduction);
+                h.f(self.modifiers.recharge_haste);
                 if !self.chests.is_empty() {
                     h.u(0x4348455354);
                     for c in &self.chests { h.u(c.id as u64); h.v(c.pos); h.u(c.state as u64); h.f(c.state_age); h.f(c.age); }

@@ -131,7 +131,7 @@ impl Sim {
         }
         a.action_revive = false;
         a.action_done = true;
-        a.revive_cd = REVIVE_COOLDOWN * (1. - REVIVE_REFUND);
+        a.revive_cd = crate::formulas::cooldown_seconds(REVIVE_COOLDOWN as f64, REVIVE_INTERRUPT_HASTE as f64) as f32;
         a.view.ai_intent = AiIntent::None;
         a.ai_cd = 0.;
         a.state(ActorState::Idle, 0., 0.);

@@ -1,8 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { mitigationMultiplier } from '../web-runner/src/core/combatFormulas.mjs';
+import { mitigationMultiplier, cooldownSeconds } from '../web-runner/src/core/combatFormulas.mjs';
+import { heroStarSkillMultipliers } from '../web-runner/src/core/heroGrowthRules.mjs';
 import { normalizeCombatPowerActor, computeCombatPower } from '../web-runner/src/core/combatPower.mjs';
+
+test('cooldown previews stay positive with diminishing Haste and retain star calibration', () => {
+  assert.equal(cooldownSeconds(10), 10);
+  assert.equal(cooldownSeconds(10, 100), 5);
+  assert.equal(cooldownSeconds(10, -50), 20);
+  for (const haste of [1e6, 1e12, Number.MAX_VALUE]) {
+    assert.ok(cooldownSeconds(10, haste) > 0);
+  }
+  assert.equal(heroStarSkillMultipliers(null, 'Falie').specialCooldown, 1);
+  assert.equal(heroStarSkillMultipliers({ stars: { Falie: 2 } }, 'Falie').specialCooldown, 0.92);
+  assert.ok(cooldownSeconds(10, 100) - cooldownSeconds(10, 200)
+    < cooldownSeconds(10, 0) - cooldownSeconds(10, 100));
+});
 
 test('CP previews use the same 100-point mitigation for hits and durability', () => {
   assert.equal(mitigationMultiplier(0), 1);

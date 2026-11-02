@@ -35,3 +35,57 @@ Rows: seed spotlight step | state, cumulative state, cumulative events (old -> n
 
 ## a Kaja-only +4 upgrade survives the real dismantle flow with an early combat copy
 - Former +15 fixed golden -> +4. Identical positive-upgrade protection and persistence assertions.
+
+## ORKA-nspw.11: baseline_trace_tests::pinned_every_step_hash_and_ordered_events_match
+Fixture SHA-256: c048539d5bfff09a9b2f173d5d95c58e8b9c3a26978424fad2cd7c1e30772a01 -> b444cd29ff0b5e5d694a60335c5c806280640bdffe5127e5ac26dbb46a10a215
+
+Cooldowns use the Haste helper, including additive Haste escalation, combined enrage and the matching revive-safety forecast. Hero refill bases stay unchanged. All536 other checks pass before this re-pin.
+- 1 false 27000 4f51e9492669a685 079468a80fad6ee7 2220f1e79c249cfd -> 1 false 27000 4f51e9492669a685 4494127900e30553 2220f1e79c249cfd
+- 7 false 27000 fcafcce2727ce73c c7f3fd304ee9ad61 e4984427246abba9 -> 7 false 27000 77f6a5cd3fb0b81a a0efc7b322453f1a f296a603e0e9647f
+- 42 false 27000 25f9168a1aca33d8 dc21e6f4cd41dc5d 75185588f79eb8bd -> 42 false 27000 db04b2670dcbf512 9e1070c26374903d cc33dfce2a71638a
+- 1 true 27000 e24638fd82cf6bb6 a1fd059c9b3856af d5e88ad3e593ae8d -> 1 true 27000 bdf3a274b5da3d39 447bbcf14e4e2780 e9c21305d4173e74
+- 7 true 27000 e148d1ae9e554e50 aa302bb8280a7cf0 818d0a911b4d6890 -> 7 true 27000 fdbcceb3249ad33d 7b3634faf38d29bb 2a6f756d2af038f5
+- 42 true 27000 5453a916365cfe80 ccef98d5816f1b5a 724aeb5bc8b42e1e -> 42 true 27000 948a304cc1163b88 52b362227abdcb14 07ebc56dc700187f
+
+## ORKA-nspw.11 formula assertions
+- `tests::enraged_refill_is_thirty_percent_shorter_with_the_same_floor` -> `tests::enraged_refill_combines_haste_with_escalation_and_stays_positive`: expected `(5 - level*0.4)*(enraged ? 0.7 : 1)`, floor3.5 -> `5*100/(100 + level*(200/23) + (enraged ? 300/7 : 0))`. Exact equality remains; positivity is added.
+- `host_inputs_tests::modifiers_have_neutral_defaults_and_drive_boss_abilities`: cooldown input .81 -> Haste25, expected scale .81 -> .8; recharge subtraction1 -> Haste25, expected5-1 ->5*.8 (both4). Radius assertion unchanged.
+
+## Deferred base-timing mismatch (owner confirmed)
+- `web-runner/src/core/heroDefinitions.mjs` authors Fara120s; Hondo/Runa/Kaja20s. Rust `rust/wf_combat/src/tuning.rs` uses Fara/Hondo/Runa10s stock refills, Kaja6.5/1.15 (~5.652174s).
+- Apply Haste atop each current base. No base-timing/content alignment belongs to this lane.
+
+## Runtime formula locations
+
+- `rust/wf_combat/src/formulas.rs:2`
+- `rust/wf_combat/src/formulas.rs:8`
+- `rust/wf_combat/src/combat.rs:70`
+- `rust/wf_combat/src/combat.rs:134`
+- `rust/wf_combat/src/ai.rs:35`
+- `rust/wf_combat/src/ai.rs:43`
+- `rust/simulation_core/src/lib.rs:36`
+- `web-runner/src/core/combatFormulas.mjs:2`
+- `web-runner/src/core/combatFormulas.mjs:7`
+- `web-runner/src/core/combatPower.mjs:21`
+- `web-runner/src/core/combatPower.mjs:23`
+- `rust/wf_combat/src/barrage.rs:4`
+- `rust/wf_combat/src/barrage.rs:162`
+- `rust/wf_combat/src/enemies.rs:187`
+- `rust/wf_combat/src/enemies.rs:331`
+- `rust/wf_combat/src/actors.rs:669`
+- `rust/wf_combat/src/groove.rs:43`
+- `rust/wf_combat/src/lib.rs:48`
+- `rust/wf_combat/src/tuning.rs:342`
+- `rust/wf_combat/src/tuning.rs:503`
+- `rust/wf_combat/src/tuning.rs:672`
+- `rust/wf_slice_harness/src/lib.rs:330`
+- `rust/wf_slice_harness/src/lib.rs:332`
+- `rust/wf_slice_harness/src/tuning.rs:4`
+- `rust/wf_slice_harness/src/tuning.rs:70`
+- `src/core/combatShadowAdapter.mjs:44`
+- `web-runner/src/core/heroGrowthRules.mjs:11`
+- `web-runner/src/core/heroGrowthRules.mjs:41`
+- `web-runner/src/core/heroGrowthRules.mjs:43`
+- `web-runner/systems/renderHeroScreen.js:177`
+
+Mismatch source lines: `web-runner/src/core/heroDefinitions.mjs:39,49,57,65` (120,20,20,20s); `rust/wf_combat/src/tuning.rs:681,686,687,690` (10,10,10,6.5/1.15s). Haste applies independently atop these preserved bases.

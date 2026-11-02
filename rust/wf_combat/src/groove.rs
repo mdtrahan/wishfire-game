@@ -39,7 +39,10 @@ impl Sim {
                 _ => None,
             };
             if let Some((seconds, cap)) = passive {
-                a.view.meter = (a.view.meter + SIM_DT * a.meter_rate / seconds).min(cap);
+                // Existing R6 rate is the stat input: rate 1 means Haste 0.
+                let haste = (a.meter_rate as f64 - 1.) * 100.;
+                let cooldown = crate::formulas::cooldown_seconds(seconds as f64, haste) as f32;
+                a.view.meter = (a.view.meter + SIM_DT / cooldown).min(cap);
             }
             if a.alive() && a.view.archetype == Archetype::Kaja {
                 a.view.groove_active = if a.view.groove_active <= SIM_DT + 0.00001 {
