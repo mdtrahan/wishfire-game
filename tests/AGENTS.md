@@ -215,7 +215,7 @@
 
 - `combatDpsContract.test.mjs` protects actual-damage attribution, active-time hit rates and successful hit counts, no toggle reset, fresh-session reset, idle hit-rate decay and scaled overlay containment and canonical current CP refresh without importing boss policy.
 
-- `combatDpsOverlay.test.mjs` drives normal entry and the real DEV checkbox at four viewport sizes, compares current CP with canonical equipped heroes, checks text/Canvas containment and saves screenshots. Hide/show must retain nonzero earned damage.
+- `combatDpsOverlay.test.mjs` waits for Canvas START to paint, clicks its rendered position through the Canvas locator, and drives the real DEV checkbox at four viewport sizes. It compares current CP with canonical equipped heroes, checks text/Canvas containment and saves screenshots. Hide/show must retain nonzero earned damage.
 
 - bossBattleHud.test.mjs resolves the exact active boss UID, tests current stat changes and dismissal, and drives production summon plus four phone sizes at DPR 2. Its screenshots/report distinguish seeded readiness and paused presentation captures from organic balance proof. The UI lock runs this contract and guards its renderer/assets in pre-commit.
 

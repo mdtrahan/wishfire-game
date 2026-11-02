@@ -21,6 +21,17 @@ test('DPS and current CP: normal combat, toggle continuity and four contained vi
     browser = await chromium.launch({ executablePath: detectChromeExecutable(), headless: true });
     const context = await browser.newContext({ viewport: { width: 360, height: 640 }, deviceScaleFactor: 2 });
     const page = await context.newPage();
+    await page.addInitScript(() => {
+      // START is Canvas-only; wait for its paint and use its rendered position.
+      const fillText = CanvasRenderingContext2D.prototype.fillText;
+      CanvasRenderingContext2D.prototype.fillText = function(text, x, y, ...args) {
+        if (text === 'START') {
+          const point = new DOMPoint(x, y).matrixTransform(this.getTransform());
+          window.dpsQaStart = { x: point.x * this.canvas.clientWidth / this.canvas.width, y: point.y * this.canvas.clientHeight / this.canvas.height };
+        }
+        return fillText.call(this, text, x, y, ...args);
+      };
+    });
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(`http://localhost:${port}/web-runner/index.html`);
@@ -28,7 +39,8 @@ test('DPS and current CP: normal combat, toggle continuity and four contained vi
     await page.getByRole('button', { name: 'Open developer tooling modal', exact: true }).click();
     await page.locator('[data-devtool-combat-dps]').check();
     await page.locator('[data-devtool-close]').click();
-    await page.mouse.click(180, 426);
+    await page.waitForFunction(() => window.dpsQaStart && JSON.parse(render_game_to_text()).flags.layout0Ready);
+    await page.locator('#view').click({ position: await page.evaluate(() => window.dpsQaStart) });
     await page.locator('#combat-dps-overlay').waitFor();
     await page.evaluate(async () => { window.dpsQaState = (await import('./modules/state.js')).state; });
     await page.waitForFunction(() => window.dpsQaState.globals.CombatDps?.totalDamage > 0);
