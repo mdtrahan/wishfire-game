@@ -12,7 +12,7 @@
 - Recovery loadouts and Hero stats are sampled at the first post-transition poll and labeled as such; they are not exact event-time state.
 - Ordinary acceptance requires an exact runtime wave counter, ordered events, zero Hero KOs/recoveries and no gaps; total clears remain a separate count.
 - `ui_presentation_lock_gate.mjs` is the canonical fail-closed rendered presentation gate for approved responsive UI seams. It also renders the manual boss retry group and guards its combat Y anchor, resource separation and horizontal containment, then checks modal/menu hiding with readiness preserved; its renderer is a pre-commit UI owner.
-- UI-lock startup waits for realtime basic clocks, then verifies each living hero arena target against that hero nearest living foe. Empty fields allow target zero; pursuit can face a foe outside basic reach. Per-hero basic eligibility is recorded separately. Shared focus is retired.
+- UI-lock startup waits for a materialized Rust enemy, freezes that snapshot, then compares each hero projection against Rust HP and positions. Focused browser contracts run serially.
 - Playwright doctor, launch matrix, and Chrome CDP helpers diagnose browser startup/control issues.
 - Rust build helper generates the browser WASM artifact.
 - `build_offline_release.mjs` reuses hosted runtime staging, embeds startup JSON, the optional elemental impact manifest, and SimulationCore WASM, and emits the portable file:// artifact with relative frame assets; it must leave the Netlify release path unchanged.
@@ -119,3 +119,7 @@
 - Shared `modalClose.mjs` and Training Ground `combatProgressionUI.mjs` changes route through the existing lamp/Training five-profile presentation guard. Preserve Bag coverage when extending the shared close consumer set.
 
 - `qa_rust_combat_playtest2.mjs` connects to QA_PORT (default8797), isolates browser state and captures full-height Rust combat at native DPR2. Fixtures use the existing three-part QA pause contract before presenting snapshots; inspect all frames before accepting the result.
+
+- `verify_rust_only_inventory.mjs` scans runtime, shared source, Scripts, tools and tests. It rejects retired modules/calls/flags/scalar hooks and unclassified combat writers. Tests are fixtures; combat_lab models remain offline analyses. Synthetic JS KO controls and target-misfire diagnostics are retired. Handoff probes use the default engine without flags.
+
+- Rust-only writer inventory classifies checkpoint input construction separately from live actor projection. DEV movement controls and legacy raw-damage telemetry are retired; release builds enumerate the Git index, so stage runtime deletions before validating a build.

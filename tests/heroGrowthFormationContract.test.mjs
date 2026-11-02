@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createCombatProgressionState } from '../web-runner/src/core/combatProgressionRules.mjs';
 import { starUpHero, setHeroResonance, starUpCost, heroGrowthModifiers, heroGrowthBreakdown, sanitizeHeroGrowth, canonicalGrowthId, STAR_MAX, STAR_EFFECTS } from '../web-runner/src/core/heroGrowthRules.mjs';
 import { resolveCombatMovementTuning, resolveCombatAnchor } from '../web-runner/src/core/combatMovementTuning.mjs';
-import { permanentHeroModifiers } from '../web-runner/src/core/realtimeSkillState.mjs';
+import { permanentHeroModifiers } from '../web-runner/src/core/heroPermanentModifiers.mjs';
 
 const withTickets = tickets => createCombatProgressionState({ wallet: { ticketsByHero: tickets } });
 

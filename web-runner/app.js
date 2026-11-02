@@ -1,88 +1,27 @@
 import { updateCombatDpsOverlay } from './systems/renderCombatDps.mjs';
 import { installRustCombat } from './systems/rustCombat.mjs';
-import { installRustCombatShadow } from './systems/rustCombatShadow.mjs';
 import { createEquipmentStorage } from './systems/equipmentStorage.mjs';
 import { createCombatProgression } from './systems/combatProgression.mjs';
 import { createCombatProgressionUI, createTrainingGroundUI } from './systems/combatProgressionUI.mjs';
 import { createLampEquipmentUI } from './systems/lampEquipmentUI.mjs';
 import { state } from './modules/state.js';
 import { createContext, callFunctionWithContext } from './modules/functionRegistry.js';
-import { CombatRuntimeGateway } from './src/core/combatRuntimeGateway.js';
-import {
-  createCombatTurnRefreshBaseline,
-  createEnemyRosterRefillHold,
-  createEnemyTurnGateBaseline,
-  createEnemyTurnIdleRecovery,
-  createEnemyTurnRetryHold,
-  createDeferredAdvanceResolved,
-  createDeferredRefillHold,
-  createDeferredStaleActionRecovery,
-  createDeferredStaleBusyRecovery,
-  createDeferredTextHold,
-  derivePresentationTurnBarrier,
-  isCanPickGemsReady,
-  createRefillCompleteGate,
-  createRefillStartGate,
-  createYellowSafetyNet,
-  createYellowSequenceCompletion,
-  createYellowSequenceGate,
-  createYellowSequenceSkip,
-  COMBAT_CHOICE_MODE,
-  deriveCombatChoiceMode,
-} from './src/core/turnGateController.mjs';
-import {
-  YELLOW_COLOR,
-  YELLOW_REFILL_TARGETS,
-  pickYellowReassignTarget,
-} from './src/core/yellowRefillRules.mjs';
-import { resolveCurrentHeroUID } from './src/core/heroSelectorRules.mjs';
-import {
-  assignHeroToPartySlot,
-  normalizePartyFormationSlots,
-} from './src/core/partyFormationRules.mjs';
+import { CombatNavigationState } from './systems/combatNavigationState.mjs';
+import { createCombatTurnRefreshBaseline, createEnemyTurnGateBaseline, createEnemyTurnIdleRecovery, derivePresentationTurnBarrier, isCanPickGemsReady, createRefillCompleteGate, createRefillStartGate, createYellowSequenceCompletion, createYellowSequenceGate, createYellowSequenceSkip, COMBAT_CHOICE_MODE, deriveCombatChoiceMode } from './src/core/turnGateController.mjs';
+import { YELLOW_COLOR, YELLOW_REFILL_TARGETS } from './src/core/yellowRefillRules.mjs';
+import { assignHeroToPartySlot, normalizePartyFormationSlots } from './src/core/partyFormationRules.mjs';
 
-import {
-  pickIdleAutoplaySuperGem,
-  pickIdleAutoplayTriplet,
-  resolveIdleAutoplayPartyHpRatio,
-} from './src/core/idleAutoplayPriority.mjs';
-import {
-  getSuperGemAtCanvasPoint,
-  getSuperGemAtCell,
-  resetSuperGemBoardState,
-  resolveSuperGemDecomposition,
-  settleSuperGemShapes,
-  spendSuperGem,
-  syncSuperGemShapes,
-} from './src/core/superGemBoardState.mjs';
-import {
-  capturePendingEnemyTargetIntent,
-  recoverPendingTargetActor,
-  resolvePendingSuperGemHandoff,
-  validatePendingEnemyTargetIntent,
-} from './src/core/pendingSuperGemHandoff.mjs';
+import { resetSuperGemBoardState, resolveSuperGemDecomposition } from './src/core/superGemBoardState.mjs';
 import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
 import { deriveDamageFloatFrameOffset } from '../src/core/damageFloatVector.mjs';
-import {
-  COMBAT_BATTLEFIELD_ZOOM,
-  createCombatCameraProjection,
-  deriveCombatWorldBounds,
-  orientCombatWorldOffsetX,
-  readCombatOrientationFromSearch,
-} from '../src/core/combatOrientation.mjs';
+import { COMBAT_BATTLEFIELD_ZOOM, createCombatCameraProjection, deriveCombatWorldBounds, orientCombatWorldOffsetX, readCombatOrientationFromSearch } from '../src/core/combatOrientation.mjs';
 import { resolveCombatCameraCenterX } from './src/core/combatCamera.mjs';
 import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
 import { createHealBloom } from './src/core/healBloomAnimation.mjs';
-import { createCombatOutcomeSimulationPacket } from './src/core/combatOutcomeRules.mjs';
-import {
-  createPartyRegenLifecycleSimulationPacket,
-  createPartyRegenTickSimulationPacket,
-} from './src/core/statusEffectRules.mjs';
 import * as heroProgressStorage from './systems/heroProgressStorage.js';
 import * as runtimeDebugLogging from './systems/runtimeDebugLogging.js';
 import * as animationMath from './systems/animationMath.js';
 import * as inputHandling from './systems/inputHandling.js';
-import * as renderSystem from './systems/renderSystem.js';
 import * as renderHUD from './systems/renderHUD.js';
 import * as renderHeroScreen from './systems/renderHeroScreen.js';
 import * as renderBoard from './systems/renderBoard.js';
@@ -91,64 +30,36 @@ import * as renderCombatRuntime from './systems/renderCombatRuntime.js';
 import * as renderOverlays from './systems/renderOverlays.js';
 import * as renderRuntime from './systems/renderRuntime.js';
 import { createActorPuppetPresentation } from './systems/actorPuppetPresentation.mjs';
-import { createCombatSimulationTicker, shouldFreezeCombatSimulation } from './systems/combatSimulationTick.mjs';
-import {
-  getEmbeddedJson,
-  runtimeAssetUrl,
-} from './systems/runtimeAssetUrl.mjs';
+import { createCombatHostClock, shouldFreezeCombatSimulation } from './systems/combatHostClock.mjs';
+import { getEmbeddedJson, runtimeAssetUrl } from './systems/runtimeAssetUrl.mjs';
 import { heroDefinition } from './src/core/heroDefinitions.mjs';
-import { heroArtKey } from './state/heroArtAssets.mjs';
 import { computeCombatPower as canonicalCombatPower, normalizeCombatPowerActor } from './src/core/combatPower.mjs';
 import * as partyStatOsd from './systems/partyStatOsd.js';
-import * as superGemRuntime from './systems/superGemRuntime.js';
-import {
-  createSimulationCoreSeededRng,
-  initializeSimulationCoreShadow,
-  shadowCombatPower,
-  shadowSeededRng,
-} from './systems/simulationCoreShadow.js';
-import {
-  createAppViewportRuntime,
-} from './systems/appShellViewport.js';
-import {
-  computeCombatDamageFontSize,
-  computeScaledCombatControlSize,
-} from './systems/combatPresentationScale.mjs';
+import { createRustCombatStatDisplay } from './systems/rustCombatStatDisplay.mjs';
+import { createSimulationCoreSeededRng, initializeSimulationCoreShadow, shadowCombatPower, shadowSeededRng } from './systems/simulationCoreShadow.js';
+import { createAppViewportRuntime } from './systems/appShellViewport.js';
+import { computeCombatDamageFontSize, computeScaledCombatControlSize } from './systems/combatPresentationScale.mjs';
 import { initializeStoryCardPresentationLayout } from './systems/storyCardPresentation.js';
 import { registerRuntimeLayouts } from './systems/runtimeLayoutRegistry.js';
 import { renderExistingNavigation } from './systems/renderExistingNavigation.mjs';
 import { updateBossSummonFallback } from './systems/renderCombatBossControl.mjs';
 import { createQuestLadderUI } from './systems/questLadderUI.mjs';
-import { createQuestCombatSession, recoverContinuousOrdinaryDefeatIfNeeded, restoreHeroesToFullHP } from './systems/questCombatSession.mjs';
+import { createQuestCombatSession, restoreHeroesToFullHP } from './systems/questCombatSession.mjs';
 import { createCombatEntryTransition } from './systems/combatEntryTransition.mjs';
 import { releaseCombatStartToScheduler } from './systems/combatSessionReset.mjs';
 import { createStoryEntryFlow } from './systems/storyEntryFlow.mjs';
 import { createSurfaceRenderRouter } from './systems/surfaceRenderRouter.js';
-import { createPointerRoutingShell, returnToQuest } from './systems/pointerRoutingShell.js';
+import { createPointerRoutingShell } from './systems/pointerRoutingShell.js';
 import { loadRuntimeVisualAssets } from './systems/runtimeVisualAssetLoader.js';
 import { registerDevBrowserTestHooks } from './systems/devBrowserTestHooks.js';
-import {
-  createCombatSessionInitializer,
-  generateEncounterSeed,
-} from './systems/combatSessionInitializer.js';
-import {
-  configureContinuousCombatProduction,
-  continuousCombatWaveClearEventId,
-  finalizeContinuousCombatProduction,
-  maybeAdvanceContinuousCombatStage,
-  summonContinuousCombatBoss,
-} from './src/core/continuousCombatStage.mjs';
-import {
-  createDevToolingRuntime,
-  DEV_TOOL_GEM_OPTIONS,
-  DEV_TOOL_GEM_RANDOM,
-  GEM_SPAWN_COLORS,
-} from './systems/devToolingRuntime.js';
+import { createCombatSessionInitializer, generateEncounterSeed } from './systems/combatSessionInitializer.js';
+import { configureContinuousCombatProduction, continuousCombatWaveClearEventId, finalizeContinuousCombatProduction, summonContinuousCombatBoss } from './src/core/continuousCombatStage.mjs';
+import { createDevToolingRuntime, DEV_TOOL_GEM_OPTIONS, DEV_TOOL_GEM_RANDOM, GEM_SPAWN_COLORS } from './systems/devToolingRuntime.js';
 import * as helpers from './utils/helpers.js';
 import * as mapLayoutState from './state/mapLayoutState.js';
 import * as uiState from './state/uiState.js';
 import { createInitialGameState } from './state/gameState.js';
-import { CANONICAL_HERO_ROSTER, HERO_CLASS_LABELS, HERO_STAT_KEYS, heroLayoutSpec } from './state/heroScreenConfig.js';
+import { CANONICAL_HERO_ROSTER, heroLayoutSpec } from './state/heroScreenConfig.js';
 import { createHarnessEventBus, createHarnessLayoutState, HarnessInputDomainManager } from './state/harnessLayoutState.js';
 import { createRuntimeEnvironment, createRuntimeFingerprint, exposeRuntimeDebugFlags } from './state/runtimeEnvironment.js';
 import * as task015TraceState from './state/task015TraceState.js';
@@ -577,48 +488,7 @@ let COMBAT_BOOTSTRAP_COMPLETE = false;
 const eventBus = createHarnessEventBus();
 let layoutState = null;
 const animationLayer = null;
-const combatRuntimeGateway = new CombatRuntimeGateway({
-  combatState: gameState,
-  eventBus,
-  layoutState: null,
-  callFunctionWithContext,
-  getAuthoritativeTurnState() {
-    const g = (state && state.globals) ? state.globals : {};
-    return {
-      turnQueue: Array.isArray(g.TurnOrderArray) ? g.TurnOrderArray : [],
-      currentActorIndex: Number(g.CurrentTurnIndex || 0),
-      capturedAtTick: Number(g.time || 0),
-    };
-  },
-  applyAuthoritativeTurnState(turnState) {
-    const g = (state && state.globals) ? state.globals : {};
-    g.TurnOrderArray = Array.isArray(turnState.turnQueue) ? helpers.cloneJson(turnState.turnQueue) : [];
-    g.CurrentTurnIndex = Number(turnState.currentActorIndex || 0);
-    const active = g.TurnOrderArray[g.CurrentTurnIndex];
-    if (active && typeof active === 'object') {
-      if (active.uid != null) g.CurrentTurn = Number(active.uid || 0);
-      if (active.type != null) g.CurrentTurnType = Number(active.type || 0);
-    }
-  },
-  getDeterministicRngState() {
-    const g = (state && state.globals) ? state.globals : {};
-    return {
-      RuntimeRandomSeed: Number(g.RuntimeRandomSeed || 0),
-      RuntimeRandomDraws: Number(g.RuntimeRandomDraws || 0),
-      RuntimeRandomOwner: String(g.RuntimeRandomOwner || ''),
-      RuntimeRandomReason: String(g.RuntimeRandomReason || ''),
-      RuntimeRandomLastValue: Number(g.RuntimeRandomLastValue || 0),
-    };
-  },
-  setDeterministicRngState(rngState = {}) {
-    const g = (state && state.globals) ? state.globals : {};
-    g.RuntimeRandomSeed = Number(rngState.seed ?? rngState.RuntimeRandomSeed ?? 0);
-    g.RuntimeRandomDraws = Number(rngState.draws ?? rngState.RuntimeRandomDraws ?? 0);
-    g.RuntimeRandomOwner = String(rngState.owner ?? rngState.RuntimeRandomOwner ?? '');
-    g.RuntimeRandomReason = String(rngState.reason ?? rngState.RuntimeRandomReason ?? '');
-    g.RuntimeRandomLastValue = Number(rngState.lastValue ?? rngState.RuntimeRandomLastValue ?? 0);
-  },
-});
+const combatRuntimeGateway = new CombatNavigationState({ combatState: gameState, eventBus });
 
 function computeCombatPower(atk, def, hp) {
   const actor = atk && typeof atk === 'object' ? atk : { ATK: atk, DEF: def, HP: hp };
@@ -805,7 +675,7 @@ function recordTask011RefillWriteEvent({
     previousUid: Number(previousUid || 0),
     newUid: Number(newUid || 0),
     time: Number(state.globals.time || 0),
-    turnType: Number(callFunctionWithContext(fnContext, 'GetCurrentType') || 0),
+    turnType: 0,
     turnPhase: Number(state.globals.TurnPhase || 0),
     boardFillActive: Number(state.globals.BoardFillActive || 0),
   });
@@ -846,8 +716,7 @@ const fnContext = createContext({
 
 const partyStatOsdRuntime = partyStatOsd.createPartyStatOsdRuntime({
   state,
-  getEffectiveStat: (hero, stat) => callFunctionWithContext(fnContext, 'GetEffectiveStat', hero, stat),
-  getPowerMultiplier: (hero) => callFunctionWithContext(fnContext, 'GetPowerAmpMultiplierForActor', Number(hero?.uid || 0)),
+  ...createRustCombatStatDisplay(state),
 });
 
 devToolingRuntime = createDevToolingRuntime({
@@ -858,7 +727,6 @@ devToolingRuntime = createDevToolingRuntime({
   fnContext,
   getLayoutState: () => layoutState,
   resetSuperGemBoardState,
-  superGemRuntime,
   setGemArray,
   rebuildGridFromGems,
   hasEmptySlots,
@@ -1742,8 +1610,7 @@ async function main(){
     uiState.setUIStateField('overlayVisible', false);
     initEntities(enemyRows, instances);
     heroProgressStorage.restoreHeroProgressFromStorage({ callFunctionWithContext, fnContext, syncFromGlobals });
-    assertCombatLayoutDev('StartRound');
-    callFunctionWithContext(fnContext, 'StartRound');
+
     gameState.selectedGems = [];
     gameState.selectionLocked = false;
     initializeStoryCardLayout('dev-tool-refresh');
@@ -1757,7 +1624,7 @@ async function main(){
     state.globals.BattleStartSessionText = '';
     state.globals.BattleStartSessionId = Number(state.globals.CombatSessionId || 0);
     resetCombatRuntimeForFreshSession('dev-tool-refresh', {
-      currentTurnType: Number(callFunctionWithContext(fnContext, 'GetCurrentType') || 0),
+      currentTurnType: 0,
       boardFillActive: Number(state.globals.BoardFillActive || 0),
       boardHasEmptySlots: hasEmptySlots(),
     });
@@ -1859,23 +1726,21 @@ async function main(){
       try {
         state.globals.GamePhase = 'BOOTSTRAP';
         await loadC3ProjectAssets();
+        await rustCombat.requireReady();
         prepareCombatSetupFromInstances(instances, gameState);
         freshCombatBootstrapped = true;
         COMBAT_BOOTSTRAP_COMPLETE = true;
         updateStartupLoadState({ active: false, phase: 'ready', label: 'Tap to enter combat', progress: 1 });
       } catch (err) {
         console.error('[BOOTSTRAP] Startup preload failed:', err);
-        updateStartupLoadState({ active: true, phase: 'error', label: 'Load failed', progress: 1 });
+        updateStartupLoadState({ active: true, phase: 'error', label: state.globals.RustCombatError ? 'Combat failed to load. Reload to retry.' : 'Load failed', progress: 1 });
         throw err;
       }
     })();
     return startupPreloadPromise;
   }
   const validateCombatSnapshot = (snapshot, stage, transitionLabel) => {
-    const valid = !snapshot || (
-      Array.isArray(snapshot.turnQueue) &&
-      Number.isFinite(Number(snapshot.currentActorIndex))
-    );
+    const valid = !snapshot || snapshot.version === 1;
     console.log('[LAYOUT_PHASE1]', {
       stage,
       transition: transitionLabel,
@@ -1919,8 +1784,7 @@ async function main(){
       if (needsCombatSeed) {
         initEntities(enemyRows, instances);
         heroProgressStorage.restoreHeroProgressFromStorage({ callFunctionWithContext, fnContext, syncFromGlobals });
-        assertCombatLayoutDev('StartRound');
-        callFunctionWithContext(fnContext, 'StartRound');
+
         combatSessionSeeded = true;
         state.globals.GamePhase = 'RUNTIME';
         updateStartupLoadState({ active: false, phase: 'runtime', label: 'Ready', progress: 1 });
@@ -1949,6 +1813,7 @@ async function main(){
   combatRuntimeGateway.setLayoutState(layoutState);
   const questCombat = createQuestCombatSession({ state, gameState, call: (name, ...args) => callFunctionWithContext(fnContext, name, ...args), sync: syncFromGlobals });
   const surrenderBossForDeparture = () => {
+    if (!state.globals.ContinuousCombatStage?.bossActive) { rustCombat?.pause(); return false; }
     rustCombat?.stop();
     if (!questCombat.surrenderBossAttempt()) return false;
     heroProgressStorage.persistHeroProgressIfDirty({stateGlobals: state.globals, callFunctionWithContext, fnContext});
@@ -1970,14 +1835,13 @@ async function main(){
   const finishCombatEnd = async () => { await equipmentProgress.stopAuto(); devToolingRuntime.clearCombatSessionOverrides(); };
   const finishCombatQuit = async () => { surrenderBossForDeparture(); await equipmentProgress.stopAuto(); devToolingRuntime.clearCombatSessionOverrides(); resetCombatRuntimeForFreshSession('quest-navigation-quit', { clearSessionSettlement: true }); };
   const qaPauseSnapshotEnabled = new URLSearchParams(window.location.search).get('questQA') === '1';
-  const storyEntry = createStoryEntryFlow({ gameState, layoutState, isReady: () => freshCombatBootstrapped, getEnemies: () => enemyRows, prepareEncounter: questCombat.prepare, resurrect: questCombat.resurrect, closeTransientSurface: () => lampEquipment.close(), canCloseTransientSurface: () => lampEquipment.state().canLeave, recordQaPauseSnapshot: qaPauseSnapshotEnabled ? stage => gameState.publishQaPauseSnapshot?.(stage) : undefined, onBossActivityResumed: () => summonContinuousCombatBoss(state.globals, state.entities, (name, ...args) => callFunctionWithContext(fnContext, name, ...args)), energyGlobals: state.globals, enterCombat: createCombatEntryTransition(canvas, { onComplete: () => releaseCombatStartToScheduler(state.globals) }), onCombatEnd: finishCombatEnd, onCombatQuit: finishCombatQuit, isCombatPauseEligible: () => state.globals.NativeBattleEnded !== true && state.globals.ProgressionBattle?.outcome !== 'victory' && state.globals.ProgressionBattle?.outcome !== 'defeat' });
+  const storyEntry = createStoryEntryFlow({ gameState, layoutState, isReady: () => freshCombatBootstrapped, getEnemies: () => enemyRows, prepareEncounter: questCombat.prepare, closeTransientSurface: () => lampEquipment.close(), canCloseTransientSurface: () => lampEquipment.state().canLeave, recordQaPauseSnapshot: qaPauseSnapshotEnabled ? stage => gameState.publishQaPauseSnapshot?.(stage) : undefined, onBossActivityResumed: () => summonContinuousCombatBoss(state.globals, state.entities, (name, ...args) => callFunctionWithContext(fnContext, name, ...args)), energyGlobals: state.globals, enterCombat: createCombatEntryTransition(canvas, { onComplete: () => releaseCombatStartToScheduler(state.globals) }), onCombatEnd: finishCombatEnd, onCombatQuit: finishCombatQuit, isCombatPauseEligible: () => state.globals.NativeBattleEnded !== true && state.globals.ProgressionBattle?.outcome !== 'victory' && state.globals.ProgressionBattle?.outcome !== 'defeat' });
   requireDevToolingRuntime().setBossResumeHandler(() => storyEntry.resumeBossActivity());
   const questUI = createQuestLadderUI({ canvas, gameState, layoutState, flow: storyEntry, getGold: () => state.globals.goldTotal || 0, getPuppetPresentation: () => actorPuppetPresentation });
-  const rustCombatShadow = installRustCombatShadow({ state, gameState, getLayout: () => layoutState.getActiveLayoutId(), getEnemyRows: () => enemyRows });
   const rustCombat = installRustCombat({ state, globals: state.globals, canvas, session: questCombat, progression: combatProgression, equipmentProgress,
     persistProgress: () => heroProgressStorage.persistHeroProgressIfDirty({stateGlobals: state.globals}),
     getEnemyRows: () => enemyRows, call: (name, ...args) => callFunctionWithContext(fnContext, name, ...args),
-    advanceHostTime: options => combatSimulationTicker.advanceHostTime(options) });
+    advanceHostTime: options => combatHostClock.advanceHostTime(options) });
   registerRuntimeLayouts(layoutState, {
     storyEntry,
     combatLayout,
@@ -2045,7 +1909,7 @@ async function main(){
       return { index, uid: Number(actor.uid || 0), runtimeName: String(actor.name || ''), displayName: String(definition?.name || actor.name || ''), role: String(definition?.role || ''), definitionId: String(definition?.key || '') };
     }),
     selectedHeroUID: Number(state.globals.QaSelectedHeroUID || 0),
-    ctbActorUID: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0),
+    ctbActorUID: 0,
     enemyLowHp: state.globals.QaEnemyLowHpFixture || null,
     enemyRoster: state.entities.filter(actor => actor?.kind === 'enemy').map(actor => ({ uid: Number(actor.uid || 0), hp: Number(actor.hp || 0), slot: Number(actor.slotIndex || 0), held: Number(actor.deathVisualHold || 0) })),
     enemyRefill: { dataCount: Number(state.globals.EnemyData?.length || 0), encounterNames: state.globals.EncounterPoolNames || [], locale: String(state.globals.EncounterLocale || state.globals.CurrentLocale || 'all'), slots: state.globals.EnemySlots || [], ids: state.globals.EnemyIDs || [], pending: state.globals.PendingEnemyRespawnSlots || [], timer: Number(state.globals.PendingEnemyRespawnTimerActive || 0), finite: Number(state.globals.QuestFiniteEncounter || 0), holdUIDs: Object.keys(state.globals.EnemyDeathVisualHoldByUID || {}).map(Number) },
@@ -2074,7 +1938,7 @@ async function main(){
     initEntities(enemyRows, instances);
     heroProgressStorage.restoreHeroProgressFromStorage({ callFunctionWithContext, fnContext, syncFromGlobals });
     restoreHeroesToFullHP({ state, call: (name, ...args) => callFunctionWithContext(fnContext, name, ...args) });
-    callFunctionWithContext(fnContext, 'StartRound');
+
     gameState.selectedGems = [];
     gameState.selectionLocked = false;
     combatSessionSeeded = true;
@@ -2087,7 +1951,7 @@ async function main(){
     state.globals.BattleStartSessionText = '';
     state.globals.BattleStartSessionId = Number(state.globals.CombatSessionId || 0);
     resetCombatRuntimeForFreshSession('quest-qa-scenario-reset', {
-      currentTurnType: Number(callFunctionWithContext(fnContext, 'GetCurrentType') || 0),
+      currentTurnType: 0,
       boardFillActive: Number(state.globals.BoardFillActive || 0),
       boardHasEmptySlots: hasEmptySlots(),
     });
@@ -2109,26 +1973,7 @@ async function main(){
     requireDevToolingRuntime().resumeGameplayFromDevTooling();
     return { ok: true, readout: qaReadCombatState() };
   };
-  const qaFixtureHeal = () => {
-    const guard = qaScenarioPauseGuard();
-    if (guard) return guard;
-    const heroes = state.entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
-    const selected = heroes.find(hero => Number(hero.uid || 0) === Number(state.globals.QaSelectedHeroUID || 0)) || heroes[0] || null;
-    if (!selected || heroes.length < 2) return { ok: false, reason: 'requiresTwoLivingHeroes' };
-    const other = heroes.find(hero => Number(hero.uid || 0) !== Number(selected.uid || 0));
-    selected.hp = Math.max(1, Number(selected.maxHP || 1) - Math.max(2, Math.floor(Number(selected.maxHP || 1) * .2)));
-    other.hp = Math.max(1, Number(other.maxHP || 1) - Math.max(2, Math.floor(Number(other.maxHP || 1) * .25)));
-    const initiative = state.globals.DynamicInitiative && typeof state.globals.DynamicInitiative === 'object' ? state.globals.DynamicInitiative : (state.globals.DynamicInitiative = {});
-    initiative.active = 1;
-    initiative.current = { uid: Number(selected.uid || 0), type: 0, name: String(selected.name || '') };
-    state.globals.InitiativeCurrentUID = Number(selected.uid || 0);
-    const before = Number(selected.hp || 0);
-    const started = callFunctionWithContext(fnContext, 'DoHeal', selected.uid);
-    const after = Number(selected.hp || 0);
-    const result = { ok: !!started, selectedHeroUID: Number(selected.uid || 0), damagedHeroUIDs: [Number(selected.uid || 0), Number(other.uid || 0)], before, after, actualDelta: Math.max(0, after - before) };
-    state.globals.QaFixtureHeal = result;
-    return result;
-  };
+
   const viewportRuntime = createAppViewportRuntime({
     canvas,
     layoutW,
@@ -2352,10 +2197,9 @@ async function main(){
   const animState = {};
   const enemyBars = new Map();
   let lastFrameTime = performance.now();
-  const combatSimulationTicker = createCombatSimulationTicker();
+  const combatHostClock = createCombatHostClock();
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) surrenderBossForDeparture();
-    combatSimulationTicker.reset();
     lastFrameTime = performance.now();
   });
   window.addEventListener('pagehide', () => { surrenderBossForDeparture(); });
@@ -2429,7 +2273,6 @@ async function main(){
       }
       state.globals.EnemyAreaRect = { minX, maxX, minY, maxY };
       callFunctionWithContext(fnContext, 'ComputeEnemyLayout');
-      callFunctionWithContext(fnContext, 'RefreshEnemyPositions');
     }
 
     out.textContent = `🎮 Puzzle RPG\n\n✓ Game loaded\n${rendered.length} total objects loaded`;
@@ -2493,7 +2336,6 @@ async function main(){
 
   function drawFrame(dtOverride){
     if (document.hidden) {
-      combatSimulationTicker.reset();
       lastFrameTime = performance.now();
       return null;
     }
@@ -2631,18 +2473,11 @@ async function main(){
       isHitFlashActive,
       getHitFlashTone,
       deriveDamageFloatFrameOffset,
-      createPartyRegenTickSimulationPacket,
       actorPuppetPresentation,
     };
     if (activeLayoutId === 'combat') {
       combatProgression.recordCommittedEnemyDefeats(state.globals.ProgressionBattle);
-      const pendingEnemyDeaths = Object.keys(state.globals.PendingDeaths || {}).filter(uid => state.entities.some(actor => actor?.kind === 'enemy' && String(actor.uid) === String(uid)));
-      callFunctionWithContext(fnContext, 'CommitPendingEnemyDeaths');
-      if (!state.globals.ProgressionBattle?.id) for (const uid of pendingEnemyDeaths) {
-        if (Object.prototype.hasOwnProperty.call(state.globals.PendingDeaths || {}, uid)) continue;
-        const runId = String(state.globals.ContinuousCombatStageLastTransition?.to || 'combat');
-        combatProgression.record({ id: `enemy:${runId}:${uid}`, type: 'enemy_defeat' });
-      }
+
     }
     const result = renderRuntime.renderRuntime(runtimeScope);
     renderExistingNavigation(ctx, { worldToCanvas, layoutScale, gameState, layoutState, eventBus });
@@ -2985,8 +2820,8 @@ function getStoryCardLiveLineState() {
           const inertDiag = {
             ...rowState,
             turn: {
-              uid: callFunctionWithContext(fnContext, 'GetCurrentTurn'),
-              type: callFunctionWithContext(fnContext, 'GetCurrentType'),
+              uid: 0,
+              type: 0,
             },
           };
           console.error('[INERT_CELL]', inertDiag);
@@ -2998,96 +2833,6 @@ function getStoryCardLiveLineState() {
     if (inertCells.length > 0) {
       throw new Error(`[DIAG] Inert gem cells detected at ${reasonTag}: ${inertCells.length}`);
     }
-  }
-  function resolveCombatOutcomeWithOwner({
-    source = 'app.combatOutcome',
-    energy = 0,
-    partyHp = 0,
-    livingHeroes = 0,
-  } = {}) {
-    const root = typeof globalThis !== 'undefined' ? globalThis : null;
-    const packet = createCombatOutcomeSimulationPacket({
-      source,
-      energy,
-      partyHp,
-      livingHeroes,
-      ownerHook: root && typeof root.__ORKA_COMBAT_OUTCOME_OWNER__ === 'function'
-        ? root.__ORKA_COMBAT_OUTCOME_OWNER__
-        : null,
-      requestFactory(action, context) {
-        return combatRuntimeGateway.createSimulationCoreRequest(action, context);
-      },
-      responseApplier(response) {
-        return combatRuntimeGateway.applySimulationCoreResponse(response);
-      },
-    });
-    state.globals.LastCombatOutcomePacket = {
-      owner: String(packet.owner || ''),
-      code: Number(packet.code || 0),
-      reason: String(packet.reason || ''),
-      result: String(packet.simulationCoreResponse?.result || ''),
-      source: String(source || ''),
-    };
-    return packet;
-  }
-  function resolveMainRuntimeCombatOutcome({ energy = 0, partyHp = 0, livingHeroes = 0 } = {}) {
-    return resolveCombatOutcomeWithOwner({
-      source: 'app.mainRuntimeCombatOutcome',
-      energy,
-      partyHp,
-      livingHeroes,
-    });
-  }
-  function checkMainRuntimeCombatOutcome() {
-    const heroes = state.entities.filter(actor => actor?.kind === 'hero');
-    if (heroes.length === 0) return false;
-    const livingHeroes = heroes.filter(hero => Number(hero.hp || 0) > 0 && hero.isAlive !== false).length;
-    if (livingHeroes > 0) return false;
-    if (questCombat.hasPendingBossVictory()) return false;
-    const energy = Number(state.globals.Player_Energy || 0);
-    const partyHp = heroes.reduce((sum, hero) => sum + Math.max(0, Number(hero.hp || 0)), 0);
-    const outcome = resolveMainRuntimeCombatOutcome({ energy, partyHp, livingHeroes });
-    return outcome.reason ? requestCombatFailureExit(outcome.reason) : false;
-  }
-  function requestCombatFailureExit(reason = 'party_defeated') {
-    if (
-      Number(state.globals.ContinuousCombatStageLoop || 0) === 1 &&
-      (String(reason || '') === 'party_defeated' || String(reason || '') === 'no_living_heroes')
-    ) {
-      return questCombat.recoverContinuousDefeat();
-    }
-    if (String(reason || '') === 'party_defeated' || String(reason || '') === 'no_living_heroes') {
-      callFunctionWithContext(fnContext, 'SettleCombatDefeat');
-    }
-    if (storyEntry.defeat()) return true;
-    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
-      ? layoutState.getActiveLayoutId()
-      : null;
-    if (
-      activeLayoutId !== 'combat' ||
-      state.globals.GamePhase !== 'RUNTIME' ||
-      gameState.combatFailExitRequested
-    ) {
-      return false;
-    }
-    const normalizedReason = String(reason || '');
-    const layoutReason = normalizedReason === 'energy_depleted' || normalizedReason === 'combat-energy-depleted'
-      ? 'combat-energy-depleted'
-      : 'combat-party-defeated';
-    gameState.combatFailExitRequested = true;
-    state.globals.CanPickGems = 0;
-    state.globals.IsPlayerBusy = 1;
-    state.globals.ActionInProgress = 0;
-    state.globals.DeferAdvance = 0;
-    gameState.substate = 'Neutral';
-    gameState.isTurnResolving = false;
-    gameState.isSpikeProcessing = false;
-    gameState.areEffectsAnimating = false;
-    layoutState.requestLayoutChange('storyMock', layoutReason).catch((err) => {
-      gameState.combatFailExitRequested = false;
-      console.error('[LAYOUT_PHASE1] combat fail gate layout transition failed', err);
-    });
-    return true;
   }
   function getEnemyHit(mx, my) {
     const enemies = state.entities.filter(e => e.kind === 'enemy' && (e.hp ?? 0) > 0);
@@ -3195,7 +2940,7 @@ function getStoryCardLiveLineState() {
         }
       }
     }
-    
+
     for(const r of rendered){
       if(mx >= r.dx && mx <= r.dx + r.w && my >= r.dy && my <= r.dy + r.h){
         // Other interactive elements
@@ -3265,30 +3010,25 @@ function getStoryCardLiveLineState() {
   // per-frame tick loop with animation cycling
   let frameCount = 0;
   function tick(){
-    rustCombatShadow?.update();
     frameCount++;
     if (document.hidden) {
       surrenderBossForDeparture();
-      combatSimulationTicker.reset();
       lastFrameTime = performance.now();
       requestAnimationFrame(tick);
       return;
     }
     if (gameState.storyEntry.phase === 'defeat') {
-      combatSimulationTicker.reset();
       drawFrame();
       requestAnimationFrame(tick);
       return;
     }
     if (ensureDevToolingConfig().open) {
       surrenderBossForDeparture();
-      combatSimulationTicker.reset();
       requestAnimationFrame(tick);
       return;
     }
     if (gameState.storyEntry.combatPaused) {
       surrenderBossForDeparture();
-      combatSimulationTicker.reset();
       gameState.publishQaPauseSnapshot?.('paused');
       if (layoutState.getActiveLayoutId() !== 'combat') drawFrame();
       requestAnimationFrame(tick);
@@ -3296,38 +3036,17 @@ function getStoryCardLiveLineState() {
     }
     if (layoutState.getActiveLayoutId() !== 'combat') {
       surrenderBossForDeparture();
-      combatSimulationTicker.reset();
       drawFrame();
       requestAnimationFrame(tick);
       return;
     }
-    if (shouldFreezeCombatSimulation(state, gameState)) {
+    if (lampEquipment.state().open || shouldFreezeCombatSimulation(state, gameState)) {
       rustCombat?.pause();
-      combatSimulationTicker.reset();
       drawFrame();
       requestAnimationFrame(tick);
       return;
     }
-    const rustEncounter = rustCombat?.ownsEncounter();
-    if (rustEncounter) combatSimulationTicker.reset();
-    else combatSimulationTicker.tick({
-      state, gameState, nowMs: performance.now(), fnContext, callFunctionWithContext,
-      animationMath, layoutW, applyTurnGateGlobals, applyTurnGateIntent,
-      createEnemyTurnIdleRecovery, runCombatStep: (name) => callFunctionWithContext(fnContext, name),
-      getCellWorldPos, randomGemFrame, setGemArray, countCellCoverage,
-      recordTask011RefillWriteEvent, createEnemyTurnGateBaseline, createRefillCompleteGate,
-      runtimeDebugLogging, assertBoardIntegrity, getGemGateSnapshot,
-      getYellowSequenceCompletionIntent, traceTask015YellowAnimation, traceTask015YellowWrite,
-      YELLOW_CASINO_SETTLE_SEC, YELLOW_CASINO_SETTLE_BOUNCE_AMP, YELLOW_COLOR,
-      startGemMergeFx, getGoldLabelTargetWorld,
-    });
     combatProgression.observe();
-    if (recoverContinuousOrdinaryDefeatIfNeeded({ state, session: questCombat })) {
-      heroProgressStorage.persistHeroProgressIfDirty({ stateGlobals: state.globals, callFunctionWithContext, fnContext });
-      drawFrame();
-      requestAnimationFrame(tick);
-      return;
-    }
     const enemyLineClearPressureActive = false;
     const stageBefore = state.globals.ContinuousCombatStage;
     const previousStageKey = continuousCombatWaveClearEventId(stageBefore);
@@ -3342,16 +3061,8 @@ function getStoryCardLiveLineState() {
       onBossTimeout: () => questCombat.surrenderBossAttempt('boss_timeout'),
       onBossClear: () => combatProgression.observe(),
     };
-    const continuousStageAdvanced = rustEncounter
-      ? rustCombat.tick({ ...stageAdvanceOptions, nowMs: performance.now() })
-      : maybeAdvanceContinuousCombatStage({ ...stageAdvanceOptions });
+    const continuousStageAdvanced = rustCombat.tick({ ...stageAdvanceOptions, nowMs: performance.now() });
     if (continuousStageAdvanced && previousStageKey) combatProgression.record({ id: previousStageKey, type: 'wave_clear' });
-    if (!rustEncounter && checkMainRuntimeCombatOutcome()) {
-      heroProgressStorage.persistHeroProgressIfDirty({ stateGlobals: state.globals, callFunctionWithContext, fnContext });
-      drawFrame();
-      requestAnimationFrame(tick);
-      return;
-    }
     if (continuousStageAdvanced) {
       heroProgressStorage.persistHeroProgressIfDirty({ stateGlobals: state.globals, callFunctionWithContext, fnContext });
       drawFrame();
@@ -3408,7 +3119,6 @@ function getStoryCardLiveLineState() {
     canvas,
     qaResetScenario,
     qaResumeScenario,
-    qaFixtureHeal,
     qaReadCombatState,
   });
 }

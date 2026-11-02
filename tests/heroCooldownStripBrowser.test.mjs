@@ -31,12 +31,12 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
       const page = await context.newPage();
       const errors = []; page.on('pageerror', error => errors.push(error.message));
       await page.goto(`http://localhost:${port}/web-runner/index.html`);
-      await page.waitForFunction(() => typeof window.render_game_to_text === 'function');
+      await page.waitForFunction(() => typeof window.render_game_to_text === 'function' && JSON.parse(render_game_to_text()).flags.layout0Ready);
       await page.waitForTimeout(2000);
       const canvas = await page.locator('canvas').first().boundingBox();
       await page.mouse.click(canvas.x + canvas.width / 2, canvas.y + 426 * canvas.width / 360);
       await page.locator('.hero-cooldowns').waitFor();
-      await page.waitForTimeout(900);
+      await page.waitForFunction(() => __codexGame.globals.RustCombatPresentation?.state.snapshot?.actors.some(actor => actor.team === 'hero'));
       const read = () => page.evaluate(() => {
         const rect = selector => document.querySelector(selector).getBoundingClientRect().toJSON();
         return { viewport: [innerWidth, innerHeight], dpr: devicePixelRatio, canvas: rect('#view'), backing: [document.querySelector('#view').width, document.querySelector('#view').height],
@@ -56,15 +56,12 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
       assert.ok(current.quest.bottom <= current.row.top + .5, 'quest remains above cooldown row');
       assert.ok(current.row.bottom < current.lamp.top, 'equipment strip stays separate');
       await page.screenshot({ path: `${directory}/${width}-${height}-combat.png` });
-      // Controlled presentation fixture: use real skill clocks and production pause handling.
-      await page.evaluate(async () => {
-        const { state } = await import('./modules/state.js'); state.globals.DevToolingPaused = 1;
-        const { heroDefinition } = await import('./src/core/heroDefinitions.mjs');
-        const actor = state.entities.find(actor => actor.kind === 'hero');
-        const skill = heroDefinition(actor).actives[0];
-        const clocks = state.globals.RealtimeHeroBasicClocks ||= {};
-        const clock = clocks[actor.uid] ||= { skillReadyAt: {} };
-        (clock.skillReadyAt ||= {})[skill.skillId] = state.globals.time + skill.cooldownSeconds / 2;
+      // Isolated presentation fixture: snapshots are disposable reads of Rust state.
+      await page.evaluate(() => {
+        const g=__codexGame.globals; g.QaScenarioPaused=true;
+        const fx=g.RustCombatPresentation;
+        fx.state.snapshot=structuredClone(fx.state.snapshot);
+        fx.state.snapshot.actors.filter(a=>a.team==='hero').forEach(a=>a.meter=.5);
       });
       await page.waitForFunction(() => {const node=document.querySelector('.hero-cooldown');return node.dataset.state==='cooldown'&&Math.abs(parseFloat(node.style.getPropertyValue('--cooldown'))-180)<.01;});
       const paused = (await read()).slots[0].shade;
@@ -76,25 +73,11 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
       await page.screenshot({ path: `${directory}/${width}-${height}-paused-clock.png` });
       // Buff signals: a party-wide Elevate roll plus own buffs on the first two clocks.
       // HP is pinned at 60% so no passive condition adds badges of its own.
-      await page.evaluate(async () => {
-        const { state } = await import('./modules/state.js'); const g = state.globals;
-        const heroes = state.entities.filter(actor => actor.kind === 'hero' && actor.hp > 0);
-        for (const actor of heroes) actor.hp = Math.ceil(actor.maxHP * .6);
-        g.HeroWardHPByUID = {}; g.RealtimeSkillEffects = {};
-        const until = g.time + 60, effects = g.RealtimeSkillEffects, kaja = heroes.find(actor => /Kojonn|Kaja/.test(actor.name)) || heroes[0];
-        for (const actor of heroes) effects[actor.uid] = { elevate: { sourceUID: kaja.uid, expiresAt: until, data: { set: 'swift' }, modifiers: [{ channel: 'SPD', direction: 'up', magnitude: .05 }, { channel: 'ATK', direction: 'up', magnitude: .05 }] } };
-        effects[heroes[0].uid].fixture_def = { sourceUID: heroes[0].uid, expiresAt: until, damageCutPct: 20 };
-        effects[heroes[0].uid].fixture_mag = { sourceUID: heroes[1].uid, expiresAt: until, modifiers: [{ channel: 'MAG', direction: 'up' }] };
-        effects[heroes[1].uid].fixture_res = { sourceUID: heroes[1].uid, expiresAt: until, modifiers: [{ channel: 'RES', direction: 'up' }, { channel: 'DEF', direction: 'down' }] };
+      await page.evaluate(() => {
+        const views=__codexGame.globals.RustCombatPresentation.state.snapshot.actors.filter(a=>a.team==='hero');
+        views.forEach((actor,index)=>{actor.ward=20;actor.elevate=index===0;});
       });
-      // Elevate may already show two party icons before this fixture renders. Wait for
-      // the own-buff signature too, so the following read cannot sample the old frame.
-      await page.waitForFunction(() => {
-        const slots = [...document.querySelectorAll('.hero-cooldown')];
-        const icons = index => [...slots[index].querySelectorAll('.hero-buff')].map(node => node.dataset.icon).join(',');
-        return document.querySelectorAll('.hero-buff-party .hero-buff').length === 2 &&
-          icons(0) === 'hero-offense,hero-defense' && icons(1) === 'hero-defense' && icons(2) === '';
-      });
+      await page.waitForFunction(() => document.querySelectorAll('.hero-buff-party .hero-buff').length===1 && document.querySelector('.hero-cooldown .hero-buff')?.dataset.icon==='hero-offense');
       const buffs = await page.evaluate(() => ({
         party: [...document.querySelectorAll('.hero-buff-party .hero-buff')].map(node => ({ icon: node.dataset.icon, rect: node.getBoundingClientRect().toJSON() })),
         badges: [...document.querySelectorAll('.hero-cooldown')].map(slot => [...slot.querySelectorAll('.hero-buff')].map(node => ({ icon: node.dataset.icon, rect: node.getBoundingClientRect().toJSON() }))),
@@ -102,11 +85,11 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
         quest: document.querySelector('.cot-objective').getBoundingClientRect().toJSON(),
         sheetLoaded: getComputedStyle(document.querySelector('.hero-buff')).backgroundImage.includes('buff-signals.png'),
       }));
-      assert.deepEqual(buffs.party.map(entry => entry.icon), ['party-spd', 'party-atk']);
+      assert.deepEqual(buffs.party.map(entry => entry.icon), ['party-ward']);
       const partyCenter = (buffs.party[0].rect.left + buffs.party.at(-1).rect.right) / 2;
       assert.ok(Math.abs(partyCenter - (current.row.x + current.row.width / 2)) < 1, 'party icons centered on the eight-slot strip');
       assert.ok(buffs.party.every(entry => entry.rect.bottom <= current.row.top + .5 && entry.rect.top >= buffs.quest.bottom), 'party row sits below the whole mini-quest box and above the strip');
-      assert.deepEqual(buffs.badges.map(list => list.map(entry => entry.icon)), [['hero-offense', 'hero-defense'], ['hero-defense'], [], [], [], [], [], []]);
+      assert.deepEqual(buffs.badges.map(list => list.map(entry => entry.icon)), [['hero-offense'], [], [], [], [], [], [], []]);
       for (const [index, list] of buffs.badges.entries()) list.forEach((entry, order) => {
         const slot = buffs.slots[index];
         assert.ok(entry.rect.bottom <= slot.bottom + .5 && entry.rect.bottom >= slot.bottom - slot.height * .1, 'badge bottom-aligned');
@@ -117,7 +100,7 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
       await page.screenshot({ path: `${directory}/${width}-${height}-buffs.png` });
       // A party icon owns its hit area and opens its exact Party Skills entry; the quest never receives it.
       const icon = buffs.party[0].rect, at = { x: icon.left + icon.width / 2, y: icon.top + icon.height / 2 };
-      assert.equal(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.dataset.icon, at), 'party-spd');
+      assert.equal(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.dataset.icon, at), 'party-ward');
       const questBefore = await page.locator('.cot-objective').textContent();
       await page.mouse.click(at.x, at.y);
       await page.locator('#training-ground').waitFor();
@@ -128,15 +111,16 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
         return { tab: host.dataset.tab, focused: card?.dataset.partySkill, inView: !!c && c.top >= l.top - 1 && c.bottom <= l.bottom + 1, selected: host.querySelector('.tg-tab[aria-selected=true]').textContent,
           entries: [...host.querySelectorAll('.tg-skill')].map(node => node.dataset.partySkill), strengthen: host.textContent.includes('Strengthen') };
       });
-      assert.deepEqual(party, { tab: 'party', focused: 'elevate:swift', inView: true, selected: 'Party Skills', entries: ['crimson_ward', 'elevate:swift', 'elevate:vital', 'elevate:reach'], strengthen: false });
+      assert.deepEqual(party, { tab: 'party', focused: 'crimson_ward', inView: true, selected: 'Party Skills', entries: ['crimson_ward', 'elevate:swift', 'elevate:vital', 'elevate:reach'], strengthen: false });
       assert.equal(await page.locator('.cot-objective').textContent(), questBefore, 'the click never reaches the mini-quest');
       await page.screenshot({ path: `${directory}/${width}-${height}-party-skills.png` });
       await page.keyboard.press('Escape'); await page.waitForFunction(() => document.querySelector('#training-ground').hidden);
       await page.evaluate(async () => {
-        const { state } = await import('./modules/state.js'); state.globals.RealtimeSkillEffects = {};
+        const views = __codexGame.globals.RustCombatPresentation.state.snapshot.actors;
+        views.forEach(actor => { actor.ward = 0; actor.warcry_shield = false; actor.elevate = null; });
       });
       await page.waitForFunction(() => !document.querySelector('.hero-buff'));
-      await page.evaluate(async () => { const { state } = await import('./modules/state.js'); state.globals.DevToolingPaused = 0; });
+      await page.evaluate(async () => { const { state } = await import('./modules/state.js'); state.globals.DevToolingPaused = 0; state.globals.QaScenarioPaused = false; });
       await page.waitForFunction(old => document.querySelector('.hero-cooldown').style.getPropertyValue('--cooldown') !== old, paused);
       const bag = page.locator('#wishfire-lamp [data-action="collect"]');
       await bag.click();

@@ -47,16 +47,8 @@ const {newHeroProgress,createHeroProgressStore,awardHeroEXP,expToNextLevel,saveH
  try { for (let frame=0; frame<30; frame++) await equipment.sync(); }
  finally { globalThis.structuredClone = clone; }
  assert.equal(clones,0); assert.equal(runtime.read().pendingRevisions,0);
- const lowSource=fs.readFileSync(root+'/web-runner/systems/devBrowserTestHooks.js','utf8');
- const lowBody=lowSource.slice(lowSource.indexOf('export function applyQaEnemyLowHpFixture'),lowSource.indexOf('export function deriveQaSettlementReward')).replace('export ','');
- const lowFn=new Function(lowBody+';return applyQaEnemyLowHpFixture;')();
- Object.assign(g,{QaScenarioPaused:1,QaFixtureHoldTurn:1,DevToolingPaused:1});
- const enemyHP=enemy.hp; assert.match(lowFn({globals:g,entities:state.entities}).reason,/not supported in Rust encounters/); assert.equal(enemy.hp,enemyHP);
  const {restoreHeroesToFullHP}=await load('web-runner/systems/questCombatSession.mjs');
- const {resetRealtimeSkillAttempt,ensureSkillBattle}=await load('web-runner/src/core/realtimeSkillState.mjs');
  assert.throws(()=>restoreHeroesToFullHP({state,call(){}}),/not supported in Rust encounters/);
- assert.throws(()=>resetRealtimeSkillAttempt(g,state.entities),/not supported in Rust encounters/);
- assert.throws(()=>ensureSkillBattle({state}),/not supported in Rust encounters/);
  const {routeHeroPermanentInputs,permanentHeroSource}=await load('web-runner/src/core/heroPermanentInputs.mjs');
  const devRuntimeSource=fs.readFileSync(root+'/web-runner/systems/devToolingRuntime.js','utf8');
  const speedBody=devRuntimeSource.slice(devRuntimeSource.indexOf('  function setFixtureSpeed'),devRuntimeSource.indexOf('  function readPersistedDevToolingConfig'));
@@ -70,6 +62,6 @@ const {newHeroProgress,createHeroProgressStore,awardHeroEXP,expToNextLevel,saveH
  speedFn({doubleAttackHeroName:'',doubleAttackChance:1});assert.equal(speedWrites,0);assert.equal(runtime.read().pendingRevisions,1);
  assert.equal(wfmHeroPermanentInputs(g,hero).stats.interval,interval);
  runtime.tick({...options,nowMs:374});assert.equal(runtime.read().pendingRevisions,0);assert.deepEqual(errors,[]);
- runtime.stop();restoreHeroesToFullHP({state,call(){}});resetRealtimeSkillAttempt(g,state.entities);runtime.dispose();
+ runtime.stop();restoreHeroesToFullHP({state,call(){}});runtime.dispose();
 }
 const baseline=JSON.parse(fs.readFileSync(new URL('./combatRevisionVerifier.before.json',import.meta.url)));assert.equal(baseline.training.MATK.changed,false);assert.equal(baseline.training.RES.changed,false);assert.ok(baseline.developerLevel.liveWrites.includes('hp'));assert.equal(result.training.MATK.changed,true);assert.equal(result.training.RES.changed,true);assert.deepEqual(result.developerLevel.liveWrites,[]);assert.equal(result.developerLevel.hpBefore,result.developerLevel.hpAfter);});

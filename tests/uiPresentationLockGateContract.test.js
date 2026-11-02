@@ -32,8 +32,8 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
     'dev-panel-2-containment',
     'dev-panel-1-action-order',
     'battlefield-selectors-absent',
-    'each-hero-targets-nearest-living-foe',
-    'realtime-basic-clocks-present',
+    'rust-actor-projection',
+    'rust-steps-present',
     'hero-combat-card-ui-absent',
     'actor-health-bars-present',
     'gem-board-backdrop-absent',
@@ -58,11 +58,10 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
   assert.match(gate, /CanvasRenderingContext2D\.prototype\.drawImage/);
   assert.match(gate, /CanvasRenderingContext2D\.prototype\.fillText/);
   assert.match(gate, /CanvasRenderingContext2D\.prototype\.fillRect/);
-  assert.match(gate, /TickRealtimeHeroBasics/);
-  assert.match(gate, /RealtimeHeroBasicClocks/);
-  assert.match(gate, /arenaTargetUID/);
-  assert.match(gate, /eligibleInRangeEnemyUIDs/);
-  assert.match(gate, /resolveHeroAttackTarget/);
+  assert.match(gate, /evaluateCombatTargetInvariant/);
+  assert.match(gate, /RustCombatPresentation/);
+  assert.match(gate, /rustActorId/);
+  assert.match(gate, /--test-concurrency=1/);
   assert.doesNotMatch(gate, /DynamicInitiativeAuthority|setupDynamicInitiative/);
   assert.doesNotMatch(gate, /AstralFlow|\bFLOW\b/);
   assert.match(gate, /ui-lock-report\.json/);
@@ -72,27 +71,19 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
   assert.match(gate, /process\.exitCode = 1/);
 });
 
-test('UI lock checks each hero nearest living target and permits targetless empty fields', async () => {
- const { evaluateCombatTargetInvariant: check }=await import('../tools/ui_presentation_lock_gate.mjs');
- const hero={uid:1,kind:'hero',hp:100,footX:100,footY:200,arenaTargetUID:0};
- assert.equal(check({heroes:[hero],enemies:[]}).pass,true);
- const remote={uid:20,kind:'enemy',hp:50,footX:1200,footY:200,streamState:'roaming'};
- const pursuing=check({heroes:[{...hero,arenaTargetUID:20}],enemies:[remote]});
- assert.equal(pursuing.pass,true);assert.deepEqual(pursuing.actors[0].eligibleInRangeEnemyUIDs,[]);
- const near={...remote,uid:21,footX:140,streamState:'retreating'};
- assert.equal(check({heroes:[hero],enemies:[near,remote]}).pass,false,'a missing target fails with a living foe');
- assert.equal(check({heroes:[{...hero,arenaTargetUID:20}],enemies:[near,remote]}).pass,false,'a stale farther target fails');
- const both=check({heroes:[{...hero,arenaTargetUID:21},{...hero,uid:2,footX:1220,arenaTargetUID:20}],enemies:[near,remote]});
- assert.equal(both.pass,true);assert.deepEqual(both.actors.map(a=>a.expectedTargetUID),[21,20]);
- near.hp=0;assert.equal(check({heroes:[{...hero,arenaTargetUID:21}],enemies:[near,remote]}).pass,false,'KO foes cannot retain a target');
+test('UI lock compares immutable hero projections with Rust snapshots', async () => {
+ const {evaluateCombatTargetInvariant:check}=await import('../tools/ui_presentation_lock_gate.mjs');
+ const hero={uid:1,rustActorId:3,hp:20,footX:10,footY:30};
+ const view={actor_id:3,team:'hero',hp:20,pos:{x:10,y:30}};
+ assert.equal(check({heroes:[hero],actors:[view]}).pass,true);
+ for(const changed of [{...hero,hp:19},{...hero,footX:11},{...hero,rustActorId:4}])assert.equal(check({heroes:[changed],actors:[view]}).pass,false);
+ assert.equal(check({heroes:[hero],actors:[]}).pass,false);
 });
 
-test('UI lock startup waits for basic clocks without requiring an attack target', () => {
-  const gate = read('tools/ui_presentation_lock_gate.mjs');
-  const wait = gate.match(/await page\.waitForFunction\(\(\) => \{\s*const globals = window\.__codexGame\.globals;([\s\S]*?)\}, null, \{ timeout: 5000 \}\);/);
-  assert.ok(wait, 'missing realtime combat startup synchronization');
-  assert.match(wait[1], /RealtimeHeroBasicClocks/);
-  assert.doesNotMatch(wait[1], /RealtimeHeroFocusTargetUID/, 'targetless roaming is valid during startup');
+test('UI lock waits for authoritative Rust steps before capturing combat', () => {
+ const gate=read('tools/ui_presentation_lock_gate.mjs');
+ assert.match(gate,/Number\(snapshot\?\.step\) > 0/);
+ assert.doesNotMatch(gate,/callFunction\('TickRealtime/);
 });
 
 test('pre-commit routes staged UI-owner changes through the full UI lock', () => {

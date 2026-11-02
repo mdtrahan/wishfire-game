@@ -1,24 +1,8 @@
 import { serializeQaPauseCombatSnapshot } from '../src/core/qaPauseSnapshot.mjs';
-import { canUseHeroCommand, rulesContext, settleVictory } from '../modules/heroCommands.mjs';
 import { derivePresentationTurnBarrier } from '../src/core/turnGateController.mjs';
 import { isActorRecoveryRevealActive } from '../src/core/actorPresentationState.mjs';
 
 export const QA_STORY_TRANSITION_TIMEOUT_MS = 2400;
-
-export function applyQaEnemyLowHpFixture({ globals = {}, entities = [], choiceActive = false } = {}) {
-  if (globals.RustCombatAuthority) return { ok: false, reason: 'Low-HP fixture not supported in Rust encounters' };
-  if (!(globals.QaScenarioPaused && globals.QaFixtureHoldTurn && globals.DevToolingPaused)) return { ok: false, reason: 'scenarioNotPaused' };
-  if (choiceActive) return { ok: false, reason: 'choiceActive' };
-  const heroes = entities.filter(actor => actor?.kind === 'hero');
-  if (globals.ProgressionBattle?.outcome === 'defeat' || (heroes.length > 0 && heroes.every(hero => Number(hero.hp || 0) <= 0))) return { ok: false, reason: 'defeatAlreadySettled' };
-  const enemies = entities.filter(actor => actor?.kind === 'enemy' && Number(actor.hp || 0) > 0 && actor.isAlive !== false && !Number(actor.pendingOfficialDeath || 0));
-  if (!enemies.length) return { ok: false, reason: 'noLivingEnemies' };
-  const hpChanges = enemies.map(enemy => ({ uid: Number(enemy.uid || 0), beforeHP: Number(enemy.hp || 0), afterHP: 1 }));
-  for (const enemy of enemies) enemy.hp = 1;
-  const result = { ok: true, affectedUIDs: hpChanges.map(change => change.uid), hpChanges };
-  globals.QaEnemyLowHpFixture = result;
-  return result;
-}
 
 export function deriveQaSettlementReward({ threshold, currentEXP, overflow = false, noLevel = false } = {}) {
   const liveThreshold = Math.max(1, Math.floor(Number(threshold) || 0));

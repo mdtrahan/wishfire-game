@@ -16,10 +16,9 @@ test('web-runner app restores town recovery routing shell', () => {
   assert.match(pointerRouterSrc, /if \(activeLayout === 'town'\) \{[\s\S]*?harnessInputDomains\.emit\(activeLayout, 'layout:town:click'/);
   assert.match(src, /storyEntry\.handlePointer/);
   assert.doesNotMatch(src, /requestLayoutChange\('town', 'story-blue-click'\)/);
-  assert.match(src, /function requestCombatFailureExit\(reason = 'party_defeated'\)/);
-  assert.match(src, /gameState\.substate = 'Neutral';/);
-  assert.match(src, /gameState\.isTurnResolving = false;/);
-  assert.match(src, /requestLayoutChange\('storyMock', layoutReason\)/);
-  assert.match(src, /const outcome = resolveMainRuntimeCombatOutcome\(\{ energy, partyHp, livingHeroes \}\);/);
-  assert.match(src, /requestCombatFailureExit\(outcome\.reason\)/);
+  assert.match(src, /const continuousStageAdvanced = rustCombat\.tick\(/);
+  const owner = fs.readFileSync(path.join(__dirname, '..', 'web-runner/systems/rustCombatRuntime.mjs'), 'utf8');
+  assert.match(owner, /snapshot\.state === 'all_down'/);
+  assert.match(owner, /session\.surrenderBossAttempt\('rust_all_down'\)/);
+  assert.match(owner, /else restartAtSubwave\(\)/);
 });

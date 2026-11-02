@@ -9,7 +9,6 @@ import process from 'node:process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
-import { resolveHeroAttackTarget, isHeroBasicTargetInRange } from '../src/core/heroAttackTargetingRules.mjs';
 
 const require = createRequire(import.meta.url);
 const { classifyPlaywrightFailure, detectChromeExecutable } = require('./playwright_support.js');
@@ -47,15 +46,12 @@ function invariant(name, pass, measured, allowed) {
   return { name, pass: Boolean(pass), measured, allowed };
 }
 
-export function evaluateCombatTargetInvariant(targeting = {}) {
-  const heroes = Array.isArray(targeting.heroes) ? targeting.heroes.filter(hero => Number(hero?.hp || 0) > 0) : [];
-  const enemies = (targeting.enemies || []).filter(enemy => Number(enemy?.hp || 0) > 0 && enemy.streamState !== 'approaching');
-  const actors = heroes.map(hero => {
-    const expected = resolveHeroAttackTarget({ hero, enemies });
-    return { heroUID: Number(hero.uid || 0), targetUID: Number(hero.arenaTargetUID || 0), expectedTargetUID: Number(expected?.uid || 0),
-      eligibleInRangeEnemyUIDs: enemies.filter(enemy => isHeroBasicTargetInRange(enemy, hero)).map(enemy => Number(enemy.uid || 0)) };
+export function evaluateCombatTargetInvariant({ heroes = [], actors = [] } = {}) {
+  const projections = heroes.map(hero => {
+    const view = actors.find(actor => actor.team === 'hero' && actor.actor_id === hero.rustActorId);
+    return { uid: hero.uid, matches: !!view && hero.hp === view.hp && hero.footX === view.pos.x && hero.footY === view.pos.y };
   });
-  return { pass: actors.every(actor => actor.targetUID === actor.expectedTargetUID), actors, livingHeroCount: heroes.length };
+  return { pass: projections.length > 0 && projections.every(actor => actor.matches), actors: projections };
 }
 
 function between(value, minimum, maximum) {
@@ -123,7 +119,7 @@ function waitForHttp(url, timeoutMs = 15000) {
 }
 
 function runFocusedContracts() {
-  const result = spawnSync(process.execPath, ['--test', ...focusedContracts], {
+  const result = spawnSync(process.execPath, ['--test', '--test-concurrency=1', ...focusedContracts], {
     cwd: repoRoot,
     encoding: 'utf8',
     stdio: 'inherit',
@@ -464,17 +460,12 @@ async function captureDevPanels(page, viewport, artifactDir, metrics) {
 async function captureCombat(page, viewport, artifactDir) {
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text())?.flags?.layoutId === 'combat');
   await page.locator('[aria-label="Entering combat"]').waitFor({state:'hidden'});
-  await page.evaluate(() => {
-    const game = window.__codexGame;
-    const globals = game.globals;
-    globals.ContinuousCombatStageLoop = 1;
-    game.callFunction('TickRealtimeHeroBasics');
-    game.callFunction('TickRealtimeEnemyActions');
-    game.stepFrames(1);
-  });
   await page.waitForFunction(() => {
     const globals = window.__codexGame.globals;
-    return Object.keys(globals.RealtimeHeroBasicClocks || {}).length > 0;
+    const snapshot = globals.RustCombatPresentation?.state.snapshot;
+    const ready = Number(snapshot?.step) > 0 && snapshot.actors.some(actor => actor.team === 'enemy' && actor.hp > 0);
+    if (ready) globals.QaScenarioPaused = true;
+    return ready;
   }, null, { timeout: 5000 });
   await resetTrace(page);
   await page.evaluate(() => window.__codexGame.stepFrames(2));
@@ -507,17 +498,10 @@ async function captureCombat(page, viewport, artifactDir) {
   await resetTrace(page);
   const targeting = await page.evaluate(() => {
     const game = window.__codexGame;
-    const globals = game.globals;
-    const enemies = game.state.entities.filter((entity) => entity?.kind === 'enemy' && Number(entity.hp || 0) > 0);
     game.stepFrames(2);
-    return {
-      livingEnemyUIDs: enemies.map((enemy) => Number(enemy.uid || 0)),
-      heroes: game.state.entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0).map(actor => ({ uid: actor.uid, arenaTargetUID: actor.arenaTargetUID, kind: actor.kind, hp: actor.hp, attackType: actor.attackType, footX: actor.footX, footY: actor.footY, x: actor.x, y: actor.y })),
-      enemies: enemies.map(actor => ({ kind: actor.kind, uid: actor.uid, hp: actor.hp, streamState: actor.streamState, streamSectorIndex: actor.streamSectorIndex, streamPackIndex: actor.streamPackIndex, combatRank: actor.combatRank, enemyRole: actor.enemyRole, footX: actor.footX, footY: actor.footY, x: actor.x, y: actor.y })),
-      globals: { ContinuousCombatStageLoop: globals.ContinuousCombatStageLoop, ContinuousCombatStage: globals.ContinuousCombatStage ? { activeEncounterGroupId: globals.ContinuousCombatStage.activeEncounterGroupId, bossActive: globals.ContinuousCombatStage.bossActive } : null },
-      basicClockCount: Object.keys(globals.RealtimeHeroBasicClocks || {}).length,
-      scheduledBasics: Object.keys(globals.RealtimeHeroBasicScheduledActions || {}).length,
-    };
+    return { heroes: game.state.entities.filter(actor => actor.kind === 'hero').map(actor => ({uid:actor.uid,rustActorId:actor.rustActorId,hp:actor.hp,footX:actor.footX,footY:actor.footY})),
+      actors: game.globals.RustCombatPresentation.state.snapshot.actors,
+      step: Number(game.globals.RustCombatPresentation.state.snapshot.step) };
   });
   const targetGuard = evaluateCombatTargetInvariant(targeting);
   const targetTrace = await readTrace(page);
@@ -526,52 +510,25 @@ async function captureCombat(page, viewport, artifactDir) {
 
   await resetTrace(page);
   await page.evaluate(() => {
-    const game = window.__codexGame;
-    const globals = game.globals;
-    const enemy = game.state.entities.find((entity) => entity?.kind === 'enemy' && Number(entity.hp || 0) > 0);
-    document.querySelectorAll('.damage-number canvas').forEach(el => el.dataset.uiLockExisting = 'true');
-    globals.DamageTexts = [{
-      amount: 20,
-      partyMaxHP: Number(globals.PartyMaxHP || 147),
-      zIndex: 4,
-      x: Number(enemy?.x || 250),
-      y: Number(enemy?.y || 160),
-      baseX: Number(enemy?.x || 250),
-      baseY: Number(enemy?.y || 160),
-      kind: 'damage',
-      targetKind: 'enemy',
-      canvasAnchored: false,
-      domSpawned: false,
-      floatAngleDeg: 0,
-      floatVectorX: 0,
-      floatVectorY: -26,
-      age: 0,
-      phase: 0,
-      opacity: 1,
-      riseInSec: 0.12,
-      holdSec: 0.7,
-      fadeSec: 0.16,
-    }];
-    game.stepFrames(1);
-  });
-  await page.waitForSelector('.damage-number canvas:not([data-ui-lock-existing])', { timeout: 3000 });
-  await page.waitForFunction(() => {
-    const canvas = document.querySelector('.damage-number canvas:not([data-ui-lock-existing])');
-    return canvas && new DOMMatrixReadOnly(getComputedStyle(canvas).transform).a >= 0.99;
+    const g = __codexGame.globals, fx = g.RustCombatPresentation;
+    g.QaScenarioPaused = true;
+    const snapshot = fx.state.snapshot;
+    const source = snapshot.actors.find(actor => actor.team === 'hero');
+    const target = snapshot.actors.find(actor => actor.team === 'enemy');
+    if (!source || !target) throw new Error('UI lock requires a live Rust encounter');
+    fx.present(snapshot, [{body:{kind:'damage',data:{source:source.actor_id,target:target.actor_id,amount:1,hp_loss:1,crit:false,element:'physical',blocked:false}}}]);
+    __codexGame.stepFrames(1);
   });
   const damage = await page.evaluate(() => {
-    const canvas = document.querySelector('.damage-number canvas:not([data-ui-lock-existing])');
-    const box = canvas?.getBoundingClientRect();
-    const trace = window.__orkaUiLockTrace.read();
-    const text = [...trace].reverse().find((entry) => entry.kind === 'fillText' && entry.text === '20');
-    return {
-      rect: box ? { width: box.width, height: box.height } : null,
-      backing: canvas ? { width: canvas.width, height: canvas.height } : null,
-      font: text?.font || null,
-      fontPx: Number((String(text?.font || '').match(/(\d+(?:\.\d+)?)px/) || [])[1] || 0),
-    };
+    const p = __codexGame.globals.RustCombatPresentation.state.popups.findLast(p => p.text === '1');
+    if (!p?.raster) throw new Error('Rust popup raster is missing');
+    const font = p.raster.getContext('2d').font;
+    return { font, fontPx: Number(font.match(/([\d.]+)px/)[1]), density:p.density,
+      backing:{width:p.raster.width,height:p.raster.height},
+      rect:{width:p.raster.width/p.density*__orkaAppViewport.layoutScale,height:p.raster.height/p.density*__orkaAppViewport.layoutScale} };
   });
   await page.screenshot({ path: path.join(artifactDir, `${viewport.name}-07-damage-text.png`) });
+  await page.evaluate(() => { __codexGame.globals.QaScenarioPaused = false; });
 
   // Exercise the separate DOM retry group after the Canvas HUD/resource checks.
   await page.evaluate(() => {
@@ -606,12 +563,8 @@ async function captureCombat(page, viewport, artifactDir) {
   const bossMenu = await page.evaluate(() => ({hidden:document.querySelector('#combat-boss-fallback').hidden,display:getComputedStyle(document.querySelector('#combat-boss-fallback')).display,visibleFlag:window.__codexGame.globals.CombatBossFallbackVisible,ready:window.__codexGame.globals.ContinuousCombatStage.bossAvailable}));
   await page.screenshot({path:path.join(artifactDir, `${viewport.name}-09-boss-hidden-menu.png`)});
 
-  const canvasWidth = Number(targeting?.canvas?.width || 0);
-  const damageRatio = damage.fontPx / canvasWidth;
-  const damageDensity = (damage.backing?.width || 0) / Math.max(1, damage.rect?.width || 0);
-  const expectedDamageFontPx = Math.max(4, Math.round(14 * layoutScale));
-  const expectedDamageWidth = Math.ceil(expectedDamageFontPx * 3.12);
-  const expectedDamageHeight = Math.max(12, Math.ceil(expectedDamageFontPx * 2.6));
+  const damageDensity = damage.backing.width / damage.rect.width;
+  const expectedDamageFontPx = 10.5 * viewport.dpr * layoutScale;
 
   return [
     invariant('boss-summon-hidden-in-modal', bossHiddenInModal && bossHiddenInGrowth, {equipment:bossHiddenInModal,growth:bossHiddenInGrowth}, {equipment:true,growth:true}),
@@ -621,9 +574,9 @@ async function captureCombat(page, viewport, artifactDir) {
     invariant('boss-summon-contained', boss.group.left>=boss.canvas.left-.5 && boss.group.right<=boss.canvas.right+.5 && boss.pageWidth<=boss.viewportWidth, boss, {horizontalOverflow:0}),
     ...commandInvariants,
     invariant('battlefield-selectors-absent', !heroSelector && !targetSelector, { heroSelector, targetSelector }, { count: 0 }),
-    invariant('each-hero-targets-nearest-living-foe', targetGuard.pass, targetGuard, { perHeroCanonicalSelector: true }),
-    invariant('realtime-basic-clocks-present', targeting.basicClockCount > 0, targeting, { minimum: 1 }),
-    invariant('damage-text-scale', within(damage.fontPx, expectedDamageFontPx, 0.1) && within(damage.rect?.width, expectedDamageWidth, 1) && within(damage.rect?.height, expectedDamageHeight, 1), { ...damage, fontRatio: damageRatio }, { fontPx: expectedDamageFontPx, cssWidth: expectedDamageWidth, cssHeight: expectedDamageHeight }),
+    invariant('rust-actor-projection', targetGuard.pass, targetGuard, { matchesAuthoritativeSnapshot: true }),
+    invariant('rust-steps-present', targeting.step > 0, targeting, { minimum: 1 }),
+    invariant('damage-text-scale', within(damage.fontPx, expectedDamageFontPx, .1), damage, { fontPx: expectedDamageFontPx }),
     invariant('damage-text-density', between(damageDensity, viewport.dpr * 0.98, viewport.dpr * 1.02), { density: damageDensity, dpr: viewport.dpr, ...damage }, { density: [viewport.dpr * 0.98, viewport.dpr * 1.02] }),
     invariant('pooled-health-bar-absent', !partyHealthBar, partyHealthBar, { count: 0 }),
     invariant('gem-board-backdrop-absent', !heroTrace.some(entry => entry.kind==='fillRect'

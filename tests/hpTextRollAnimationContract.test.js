@@ -74,12 +74,3 @@ test('HP text roll helper starts stable then rolls damage and healing toward can
     assert.equal(healEnd.active, false);
   }
 });
-
-test('combat health presentation reads hero HP above the actor while simulation stays independent of rolling text', () => {
-  const renderSrc = read('web-runner/systems/renderRuntime.js');
-  assert.match(renderSrc, /HeroRestBasePosByUID[\s\S]*const hpRatio = Number\(hero\.maxHP/,
-    'the battlefield bar reads canonical hero HP at the actor anchor');
-  for (const file of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
-    assert.doesNotMatch(read(file), /hpTextRoll|HP_TEXT_ROLL|updateHpTextRollState/);
-  }
-});

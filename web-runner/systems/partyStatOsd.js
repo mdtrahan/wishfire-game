@@ -105,6 +105,7 @@ export function isPartyStatOsdHotkey(ev) {
 export function buildPartyStatRows({
   stateEntities = [],
   stateGlobals = {},
+  getBaseStat = readBaseStat,
   getEffectiveStat = null,
   getPowerMultiplier = null,
 } = {}) {
@@ -113,7 +114,7 @@ export function buildPartyStatRows({
     .sort(sortPartyHeroes)
     .map((hero) => {
       const stats = PARTY_STAT_KEYS.map((stat) => {
-        const base = readBaseStat(hero, stat);
+        const base = sanitizeNumber(getBaseStat(hero, stat));
         const effective = readDisplayEffectiveStat(hero, stat, stateGlobals, getEffectiveStat, getPowerMultiplier);
         const delta = effective - base;
         return { stat, base, effective, delta };
@@ -147,10 +148,11 @@ export function formatPartyStatRowHtml(row) {
 export function formatPartyStatOsdText({
   stateEntities = [],
   stateGlobals = {},
+  getBaseStat = readBaseStat,
   getEffectiveStat = null,
   getPowerMultiplier = null,
 } = {}) {
-  const rows = buildPartyStatRows({ stateEntities, stateGlobals, getEffectiveStat, getPowerMultiplier });
+  const rows = buildPartyStatRows({ stateEntities, stateGlobals, getBaseStat, getEffectiveStat, getPowerMultiplier });
   if (!rows.length) return 'No party heroes';
   return rows.map(formatPartyStatRow).join('\n');
 }
@@ -158,10 +160,11 @@ export function formatPartyStatOsdText({
 export function formatPartyStatOsdHtml({
   stateEntities = [],
   stateGlobals = {},
+  getBaseStat = readBaseStat,
   getEffectiveStat = null,
   getPowerMultiplier = null,
 } = {}) {
-  const rows = buildPartyStatRows({ stateEntities, stateGlobals, getEffectiveStat, getPowerMultiplier });
+  const rows = buildPartyStatRows({ stateEntities, stateGlobals, getBaseStat, getEffectiveStat, getPowerMultiplier });
   if (!rows.length) return 'No party heroes';
   return rows.map(formatPartyStatRowHtml).join('\n');
 }
@@ -219,6 +222,7 @@ function ensurePartyStatOsdElement(documentRef) {
 export function createPartyStatOsdRuntime({
   state,
   document: documentRef = (typeof document !== 'undefined' ? document : null),
+  getBaseStat = readBaseStat,
   getEffectiveStat = null,
   getPowerMultiplier = null,
 } = {}) {
@@ -244,6 +248,7 @@ export function createPartyStatOsdRuntime({
       body.innerHTML = formatPartyStatOsdHtml({
         stateEntities: state?.entities || [],
         stateGlobals: state?.globals || {},
+        getBaseStat,
         getEffectiveStat,
         getPowerMultiplier,
       });

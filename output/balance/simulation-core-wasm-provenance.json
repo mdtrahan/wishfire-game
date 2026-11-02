@@ -1,10 +1,10 @@
 {
   "source": "rust/simulation_core/src/lib.rs",
-  "sourceSha256": "6f0c716a09038af90f6f0fd23d62fa46e49428e7c5d800b283902c27480d58f6",
+  "sourceSha256": "a9e8e8193ee6cf165cb7ecc345da7b0f3c7637721a7118c0f27353fd89c4a51d",
   "combatAbiVersion": "1.0",
   "sources": {
-    "rust/simulation_core/src/combat_abi.rs": "ca6cb13526b956f640408de58d1735a509fc1aaaeffeddcb824305fee1679610",
-    "rust/simulation_core/src/lib.rs": "6f0c716a09038af90f6f0fd23d62fa46e49428e7c5d800b283902c27480d58f6",
+    "rust/simulation_core/src/combat_abi.rs": "00a374bfca3b572f240a7e97066728829fe6f9d59ba6f6c5a11a8cdd45c5b9da",
+    "rust/simulation_core/src/lib.rs": "a9e8e8193ee6cf165cb7ecc345da7b0f3c7637721a7118c0f27353fd89c4a51d",
     "rust/simulation_core/Cargo.toml": "f054cead0315b3aa9ebab3ce055e0442ceb50930ab974bf0ecdb7d36a6666858",
     "rust/simulation_core/Cargo.lock": "29e6ef77306922df52ec854db1d8ce4caee8cc5a000e108c85529bba911b89c8",
     "rust/wf_combat/src/actors.rs": "3d70b6b0f8c88b2a53bcaa28f331b992a195d4a292e971d4c1fe4a9fba61222e",
@@ -16,14 +16,14 @@
     "rust/wf_combat/src/bound.rs": "b3ea16e30015daedb9f6c9affcb3aa39ab52f069e660fefa1b6e3955ac936e9c",
     "rust/wf_combat/src/bubble_aura.rs": "a0565009526299d4c97c62bfbf7de42efc9bd9fa27b04f1cbc58092c8f0cf1eb",
     "rust/wf_combat/src/chest.rs": "b62ae9f8653f9f50c6deb62684fa8edd08f044fac1e411f364486900ddd0c8fa",
-    "rust/wf_combat/src/combat.rs": "84205133c9ff48f6c98969b76b78439d297727033368b1e1449a06c4f3429d64",
+    "rust/wf_combat/src/combat.rs": "cf0c24fd85d4520b083e56a07812ca209f0e443293f0c0b12b232fe4ef821cdb",
     "rust/wf_combat/src/combo.rs": "b0b175a7dc7f4d2172e133df56fca3703432305cdc0c4947dc83d631bccff682",
     "rust/wf_combat/src/enemies.rs": "f139ea8d74df20f92ea8020bebec2d70cc1f8630967d7f1cdaafd185a44442bc",
     "rust/wf_combat/src/enemy_healing.rs": "0474b7b692a101577ed070099ef824ee71409b95f3ad5d3f76486c80938e0247",
     "rust/wf_combat/src/enemy_status.rs": "5d8557645307c10ed0754e27bbd34a96273d9962aed2f34f3215bc9ca3c20730",
     "rust/wf_combat/src/enmity_attribution.rs": "f533bed63f72ef20510d2d2fdbe0e26a2380d4c2d1e0d705d966b88e530075a6",
     "rust/wf_combat/src/enmity.rs": "63eb322f37b423b1b7b53c0179ecd86da74d16a9fbb2d2ad764129bf80e1a1e7",
-    "rust/wf_combat/src/events.rs": "fd9bd24709e36f81e64fa49147351446cdb9d18b91a01e11cc2930d6ee04e48e",
+    "rust/wf_combat/src/events.rs": "100e75f2b2b71026682c82a23b279fe8f64d43c1ff03af0da733db8fb2b72d1d",
     "rust/wf_combat/src/groove.rs": "17ea9ac2766dce9be1b3dbf623457849d1bc7ce8cfda644c311bd0516f260998",
     "rust/wf_combat/src/hazards.rs": "3d919812cf874de9c9c6fe957b0a74b3035f487d4b9acaa9a44abd9f3d4dfa7a",
     "rust/wf_combat/src/healing_spring.rs": "8df15c45bf29d0f8f216653ac31a9aa67b880d1bb5a5a65d9b4044b219be3c7e",
@@ -50,5 +50,5 @@
     "rust/wf_combat/Cargo.lock": "3c5857ea04d81e81c50722826ff4e97999da2db395e55c74b71e40a539974c2f"
   },
   "binary": "web-runner/assets/simulation_core.wasm",
-  "binarySha256": "facaa061edbab00c39a832b4f18c56c57798352896faca76c92cdbe9734ee2c4"
+  "binarySha256": "c95cbe961d137e157c5064b679109f8a7588425b0a4c4c55419e3964ec2475f4"
 }

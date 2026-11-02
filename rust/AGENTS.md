@@ -10,22 +10,21 @@
 
 ## Local Contracts
 - Combat ABI advertises `ack_events_v1`: `ack {world, encounter_id, sequence}` validates the absolute cursor and prunes only its acknowledged prefix. `inspect.events_after` must lie between the acknowledged and last cursors. Sequence generation remains monotonic after pruning; acknowledgement changes no gameplay hash. Retained-event backpressure rejects before stepping and resumes after ack. `died` includes combat reason, team and optional original host spawn identity; teardown emits only despawn/ended facts.
-- Combat ABI 1.0 snapshots additionally expose host identities, pose/facing, ward, clocks, full hazard presentation fields, projectiles and camera focus. Actor effect observations include shield, poison, encasement, Elevate and cast state. Read-only hit-stop, spotlight and Phoenix channel/cooldown fields supply presentation clocks and revival observations. These are observations of the existing sim; preserve scalar exports, mechanics and snapshot/event order. Rebuild the shipped artifact and provenance after boundary changes.
+- Combat ABI 1.0 snapshots additionally expose host identities, pose/facing, ward, clocks, full hazard presentation fields, projectiles and camera focus. Actor effect observations include shield, poison, encasement, Elevate and cast state. Read-only hit-stop, spotlight and Phoenix channel/cooldown fields supply presentation clocks and revival observations. These are observations of the existing sim; preserve mechanics and snapshot/event order. Combat scalars are retired; CP and meta RNG scalars remain. Rebuild the shipped artifact and provenance after boundary changes.
 - Rust owns deterministic simulation slices named in `governance/planning/simulation-core-rust-final-audit.md`.
 - Rust must not depend on DOM, Canvas, audio, storage APIs, Netlify, browser globals, or presentation timing.
-- Public shadow export names are part of the JS/WASM contract and are asserted by tests.
+- Supported scalar exports are CP and meta RNG only; combat runs through the world ABI. The required-export gate rejects missing supported exports.
 - The realtime combat ABI excludes turn, hero/enemy turn flow, round-pointer, and gem-action shadow exports; keep the required-export gate aligned with the rebuilt WASM.
 - Fixture-driven behavior must match `tests/fixtures/*.csv` and JS packet expectations.
 - Do not flip ownership of a new rule family without updating Rust, JS packet routing, shadow markers, WASM, fixtures, and tests together.
 
-- `simulation_core/src/combat_abi.rs` owns the headless `wf_combat_call` JSON bridge and independent input/response/world registries. Its additive `spawn` operation atomically validates enemy batches, retains host identities and permits the host's next wave after an empty field. Existing scalar exports and production routing stay unchanged.
+- `simulation_core/src/combat_abi.rs` owns the headless `wf_combat_call` JSON bridge and independent input/response/world registries. Its additive `spawn` operation atomically validates enemy batches, retains host identities and permits the host's next wave after an empty field. Only CP/meta RNG scalars remain; all combat uses this ABI.
 
 ## Work Guidance
 - Keep Rust functions small and numeric/JSON-compatible at the WASM boundary.
 - Preserve JS rounding/normalization semantics when tests encode them.
 - Rebuild WASM after Rust changes that affect browser behavior.
 - SimulationCore release builds optimize WASM size with `opt-level = "z"`, LTO, one codegen unit, stripped symbols and aborting panics; preserve floating-point results and every supported export when changing build settings.
-- `single_hit_damage_shadow` takes attack percentage, matching resistance, and general resistance after its existing eight arguments. Keep zero-floor damage and modifier order aligned with both JavaScript rule copies and rebuild the checked-in WASM after edits.
 
 ## Verification
 - `cargo test --manifest-path rust/simulation_core/Cargo.toml`
@@ -37,7 +36,7 @@
 - `wf_combat/AGENTS.md` - extracted combat mechanics and explicit host inputs; independent of production in step 1.
 - `wf_slice_harness/AGENTS.md` - frozen slice director, rewards, fixtures and equivalence proof.
 
-- Energy is a macro balance: quest entry spends it, combat actions do not. Purple recovery remains active. Combat defeat depends on living heroes; Continue preserves energy.
+- Energy is a macro balance: quest entry spends it, combat actions do not. Purple recovery remains active. Rust decides combat defeat; recovery never spends combat energy.
 
 - Combat outcome uses living hero count and turn eligibility uses individual actor HP. Enemy-target shadow exports accept six fixed hero records; update every JS caller and regenerate WASM with ABI changes.
 
@@ -54,3 +53,7 @@
 - Combat actors carry independent ATK/DEF/MAG/RES through creation, marker/spawn profiles and permanent revisions. ABI gameplay hashes include host HP maxima, command sequence and idempotency receipts; these inputs affect future commands even when current HP matches.
 
 - TDD-A A6/§3.3 captures permanent progression stats, maxima and definition/modifier parameters at commitment, including Phoenix/revival recipient maxima. Transient Elevate remains live at impact under slice semantics in every action, regardless of revisions. Frozen slice fixtures stay unchanged.
+
+- Damage events carry per-hit `hp_loss` from the Rust damage operation, excluding ward absorption. Event sidecars never alter the frozen public slice Event, RNG consumption, gameplay hashes or trace rows. Preserve ward-only and multiple-hit/heal coverage when changing telemetry.
+
+- Retained meta RNG keeps the native `mirrors_current_seeded_rng_cases` fixture alongside shipped-WASM parity checks when combat scalar exports retire.

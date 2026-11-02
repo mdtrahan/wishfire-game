@@ -1,18 +1,17 @@
 import { projectShadowStats, SHADOW_DEFINITIONS, createShadowConfig, WFM_ENEMY_DEFINITIONS } from '../../src/core/combatShadowAdapter.mjs';
 import { COMBAT_PARTY_CAP, SLICE_FLOOR, SLICE_ORIGIN, SLICE_TRAVEL_SLOTS, sliceHeroPosition, slicePackPosition } from './rustCombatArena.mjs';
 import { getContinuousCombatStage } from '../src/core/continuousCombatStage.mjs';
-import { realtimeCooldownSeconds } from '../src/core/realtimeCooldown.mjs';
 import { permanentHeroSource } from '../src/core/heroPermanentInputs.mjs';
 import { heroStarSkillMultipliers } from '../src/core/heroGrowthRules.mjs';
 import { heroDefinition } from '../src/core/heroDefinitions.mjs';
-import { permanentHeroModifiers } from '../src/core/realtimeSkillState.mjs';
+import { permanentHeroModifiers } from '../src/core/heroPermanentModifiers.mjs';
 import { projectCombatStat } from '../../src/core/combatModifierRules.mjs';
 
 export function wfmEnemyInput(actor, enemyRows) {
   if (!Object.hasOwn(WFM_ENEMY_DEFINITIONS, actor.name)) throw new Error(`WFM combat: unmapped enemy "${actor.name}"`);
   const reference = enemyRows.find(row => row.name === actor.name);
   if (!reference) throw new Error(`Missing authored combat reference: ${actor.name}`);
-  return { identity: String(actor.uid), key: actor.name, speed: actor.streamWalkSpeed, interval: realtimeCooldownSeconds({ ...actor, type: 1, attackDelivery: actor.streamDelivery }), position: slicePackPosition({ x: Number(actor.x), y: Number(actor.y) }, actor.name === 'Troll'), reference,
+  return { identity: String(actor.uid), key: actor.name, speed: actor.streamWalkSpeed, interval: authoredEnemyInterval(actor), position: slicePackPosition({ x: Number(actor.x), y: Number(actor.y) }, actor.name === 'Troll'), reference,
     resolved: { ...actor.stats, HP: actor.maxHP }, hp: actor.hp, hostMaxHP: actor.maxHP };
 }
 
@@ -55,4 +54,12 @@ export function createWfmCombatConfig({ globals: g, entities, enemyRows, encount
     hero.formation_offset = { ...SLICE_TRAVEL_SLOTS[slot] };
   });
   return config;
+}
+
+// WFM authored pacing is host input; Rust owns action clocks and scheduling.
+function authoredEnemyInterval(actor) {
+  const boss = String(actor.enemyRole || '').toLowerCase() === 'boss' ? Number(actor.attackPattern?.intervalSeconds) : 0;
+  if (Number.isFinite(boss) && boss > 0) return boss;
+  if (actor.streamDelivery === 'ranged') return 5;
+  return ['fodder', 'routine'].includes(String(actor.combatTier || '').toLowerCase()) ? 3.6 : 1.6;
 }

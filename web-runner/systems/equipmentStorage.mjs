@@ -4,7 +4,7 @@ import {CONVEYOR_TRAVEL_MS,conveyorItemAge,validateConveyorState,emitConveyorIte
 import {equipmentStats} from '../src/core/equipment.mjs';
 import {awardLampKillPoints,markLampGuide,createLampEconomy,lampStoredCount,migrateLegacyEquipment,migrateDraftLamp,migrateFourStatLamp,migrateLampEconomy,lampCapacity,upgradeLamp,restorePaidLampUpgrade,LAMP_CONFIG,progressionOrdinal} from '../src/core/lampGear.mjs';
 import {refreshHeroStats,awardHeroEXP} from '../src/core/heroProgression.mjs';
-import {fillGearMaxHpGrowth} from '../src/core/heroSustainRules.mjs';
+import {fillGearMaxHpGrowth} from '../src/core/heroMaxHpPolicy.mjs';
 import {computeCombatPower} from '../src/core/combatPower.mjs';
 export const EQUIPMENT_SAVE_KEY='wishfire.equipment-economy.v5';
 export const BAG_UPGRADE_BACKUP_KEY=EQUIPMENT_SAVE_KEY+'.before-bag-upgrades';

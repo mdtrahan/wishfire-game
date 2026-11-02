@@ -3,14 +3,11 @@ export function isRustCombatStage(globals) {
   return Number(globals.ContinuousCombatStageLoop) === 1 && !!stage;
 }
 
-// Flag-off loads no combat bridge/runtime and instantiates no additional WASM.
+// Every encounter uses Rust. Startup failure remains visible and never selects JS.
 export function installRustCombat(options, {
-  location = globalThis.location,
   load = () => import('./rustCombatRuntime.mjs'),
   warn = console.warn,
 } = {}) {
-  if (!['localhost', '127.0.0.1', '[::1]'].includes(location?.hostname) ||
-      new URLSearchParams(location.search).get('rustCombat') !== '1') return undefined;
   options.globals.RustCombatAuthority = true;
   let runtime, disposed = false, failure;
   function routeError(error) {
@@ -18,12 +15,17 @@ export function installRustCombat(options, {
     options.globals.RustCombatError = String(error);
     warn('[rustCombat] encounter ended:', error);
   }
-  const ready = load().then(module => module.mountRustCombat(options)).then(value => {
+  const ready = Promise.resolve().then(load).then(module => module.mountRustCombat(options)).then(value => {
     if (disposed) value.dispose();
     else runtime = value;
   }).catch(routeError);
   return {
     ready,
+    async requireReady() {
+      await ready;
+      if (failure) throw failure;
+      if (disposed || !runtime) throw new Error('Rust combat is unavailable');
+    },
     ownsEncounter: () => !disposed && isRustCombatStage(options.globals),
     tick(args) {
       if (failure) return false;

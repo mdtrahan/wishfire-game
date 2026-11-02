@@ -1,4 +1,4 @@
-//! Headless JSON transport. Only the opt-in developer shadow calls this in-game.
+//! Sole combat authority: headless JSON transport for the WFM host.
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{cell::RefCell, collections::BTreeMap};
@@ -956,7 +956,8 @@ impl World {
         self.events.push(json!({"schema":SCHEMA,"encounter_id":self.encounter_id,"step":self.sim.step_number.to_string(),"combat_step":self.sim.combat_steps.to_string(),"sequence":(self.acknowledged_sequence+self.events.len() as u64+1).to_string(),"body":body}));
     }
     fn collect(&mut self) {
-        for e in self.sim.drain_events() {
+        let hp_losses = self.sim.events.hp_losses();
+        for (event_index, e) in self.sim.drain_events().into_iter().enumerate() {
             let body = match e {
                 Event::Hit {
                     source,
@@ -966,7 +967,7 @@ impl World {
                     element,
                     blocked,
                 } => {
-                    json!({"kind":"damage","data":{"source":source,"target":target,"amount":amount,"crit":crit,"element":element,"blocked":blocked}})
+                    json!({"kind":"damage","data":{"source":source,"target":target,"amount":amount,"hp_loss":hp_losses.get(&event_index).copied().unwrap_or(0.),"crit":crit,"element":element,"blocked":blocked}})
                 }
                 Event::Downed { id } => json!({"kind":"downed","data":{"hero":id}}),
                 Event::Died { id } => {
@@ -1134,6 +1135,30 @@ pub extern "C" fn wf_response_free(response: u32) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn per_hit_hp_loss_excludes_ward_and_keeps_same_step_healing_separate() {
+        let fixture: Value = serde_json::from_str(include_str!("../tests/permanent_revision_scenario.json")).unwrap();
+        let mut world = World::create(serde_json::from_value(fixture["config"].clone()).unwrap()).unwrap();
+        let target = 0;
+        let id = world.sim.actors[target].view.id;
+        world.sim.actors[target].view.hp = 100.;
+        world.sim.actors[target].view.ward = 20.;
+        world.sim.drain_events();
+        let offset = world.events.len();
+        world.sim.damage(99, target, 10., false, false, Element::Physical);
+        world.sim.damage(99, target, 25., false, false, Element::Physical);
+        world.sim.actors[target].view.hp += 5.;
+        world.sim.events.push(Event::Healed { target: id, amount: 5., source: HealSource::Mend });
+        world.sim.damage(99, target, 7., false, false, Element::Physical);
+        world.collect();
+        let hits: Vec<_> = world.events[offset..].iter()
+            .filter(|event| event["body"]["kind"] == "damage")
+            .map(|event| (event["body"]["data"]["amount"].as_f64().unwrap(), event["body"]["data"]["hp_loss"].as_f64().unwrap()))
+            .collect();
+        assert_eq!(hits, vec![(10., 0.), (25., 15.), (7., 7.)]);
+        assert_eq!(world.sim.actors[target].view.hp, 83.);
+        assert_eq!(hits.iter().map(|(_, loss)| loss).sum::<f64>(), 22.);
+    }
     #[test]
     fn accepted_host_maximum_and_command_receipts_affect_gameplay_hash() {
         let fixture: Value = serde_json::from_str(include_str!("../tests/permanent_revision_scenario.json")).unwrap();

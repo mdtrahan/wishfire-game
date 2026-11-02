@@ -18,11 +18,10 @@ test('simulation core shadow mode is wired as observe-only browser support', () 
   assert.match(appSrc, /import \{[\s\S]*shadowCombatPower[\s\S]*\} from '\.\/systems\/simulationCoreShadow\.js';/);
   assert.match(appSrc, /return shadowCombatPower\(\{[\s\S]*jsValue: result[\s\S]*\}\);/);
 
-  assert.match(shadowSrc, /window\.__ORKA_SIMULATION_CORE_SHADOW__/);
+  assert.match(shadowSrc, /SHADOW_STATE_KEY/);
   assert.match(shadowSrc, /dataset\.simCoreShadowStatus/);
-  assert.match(shadowSrc, /dataset\.simCoreShadowSingleHitChecks/);
   assert.match(shadowSrc, /WebAssembly\.instantiateStreaming|WebAssembly\.instantiate/);
-  assert.match(shadowSrc, /Math\.abs\(rustValue - jsValue\) > 0\.000001/);
+  assert.match(shadowSrc, /Math\.abs\(rustValue - jsValue\) > 1e-6/);
   assert.match(shadowSrc, /return jsValue;/);
 });
 
@@ -34,7 +33,6 @@ test('simulation core can be built as a static wasm asset', () => {
   assert.match(cargoSrc, /crate-type = \["cdylib", "rlib"\]/);
   assert.match(rustSrc, /extern "C" fn combat_power_shadow/);
   assert.match(rustSrc, /extern "C" fn combat_power_full_shadow/);
-  assert.match(rustSrc, /extern "C" fn single_hit_damage_shadow/);
   assert.match(serveSrc, /'\.wasm':'application\/wasm'/);
 });
 
@@ -51,7 +49,6 @@ test('static simulation core wasm exposes the canonical combat power shadow expo
   const result = await WebAssembly.instantiate(bytes, {});
   assert.equal(typeof result.instance.exports.combat_power_shadow, 'function');
   assert.equal(typeof result.instance.exports.combat_power_full_shadow, 'function');
-  assert.equal(typeof result.instance.exports.single_hit_damage_shadow, 'function');
   assert.equal(result.instance.exports.combat_power_full_shadow(10, 4, 5, 4, 100, 10, 1, 0, .01, 1.25, 0, 0, 0, 0, 0, 0, 1), 30.6);
 });
 

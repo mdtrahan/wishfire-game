@@ -12,7 +12,7 @@ export function buildSyntheticQuestStages(enemies) {
     }));
 }
 
-export function createStoryEntryFlow({ gameState, layoutState, isReady, content = WISHFIRE_WARP_CROSSING_CONTENT, resurrect = () => {}, prepareEncounter = () => {}, getEnemies = () => [], onCombatEnd = () => {}, onCombatQuit = onCombatEnd, isCombatPauseEligible = () => true, closeTransientSurface = () => {}, canCloseTransientSurface = () => true, recordQaPauseSnapshot = () => {}, onBossActivityResumed = () => {}, energyGlobals = { Player_Energy: 200 }, enterCombat = change => change() }) {
+export function createStoryEntryFlow({ gameState, layoutState, isReady, content = WISHFIRE_WARP_CROSSING_CONTENT, prepareEncounter = () => {}, getEnemies = () => [], onCombatEnd = () => {}, onCombatQuit = onCombatEnd, isCombatPauseEligible = () => true, closeTransientSurface = () => {}, canCloseTransientSurface = () => true, recordQaPauseSnapshot = () => {}, onBossActivityResumed = () => {}, energyGlobals = { Player_Energy: 200 }, enterCombat = change => change() }) {
   const scene = content.scenes[0];
   const handoff = scene.steps.findIndex(step => step.id === scene.combatHandoffStepId);
   if (handoff < 0) throw new Error('Opening scene requires an authored combat handoff step');
@@ -193,21 +193,6 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
   return { enter() {}, update, handlePointer, startCard, startCombat, startCombatForQA, requestSkip, confirmSkip, cancelSkip, navigate,
     allowedTransitions: () => entry.pending || entry.modal === 'combat-pause' || (!entry.modal && entry.phase !== 'opening') ? ['combat', 'town', 'heroLayout', 'chestsLayout', 'idleFarmLayout', 'mapLayout'] : [],
     victory() { if (entry.phase === 'combat' && entry.activeCard !== null && !entry.pending) return complete(); return false; },
-    defeat() {
-      if (entry.phase !== 'combat' || entry.activeCard === null || entry.pending) return false;
-      entry.phase = 'defeat';
-      void go('storyMock', 'quest-defeat');
-      return true;
-    },
-    async continueCombat() {
-      if (entry.phase !== 'defeat' || entry.pending) return false;
-      if (entry.progress.resources < 30) { entry.error = 'Not enough resources to continue.'; return false; }
-      if (!await go('combat', 'quest-resurrection')) return false;
-      resurrect();
-      entry.progress.resources -= 30;
-      entry.phase = 'combat';
-      return true;
-    },
     async continuePausedCombat() {
       if (entry.phase !== 'combat-paused' || entry.modal !== 'combat-pause' || entry.pending) return false;
       const changed = await go('combat', 'combat-pause-continue');
@@ -253,15 +238,6 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
         entry.phase = 'map';
         entry.modal = null;
         entry.combatPaused = false;
-        entry.activeCard = null;
-        entry.combatUnlocked = false;
-        entry.error = null;
-      });
-    },
-    quit() {
-      if (entry.phase !== 'defeat' || entry.pending) return false;
-      return finishCombatExit(onCombatEnd, () => {
-        entry.phase = 'map';
         entry.activeCard = null;
         entry.combatUnlocked = false;
         entry.error = null;

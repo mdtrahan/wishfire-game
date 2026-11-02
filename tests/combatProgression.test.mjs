@@ -6,7 +6,7 @@ import {
   COMBAT_PROGRESSION_SAVE_KEY, COMBAT_REWARD_BUNDLES, purchasePartyTraining, trainingCost, TRAINING_STATS, spendHeroTickets, settleHeroTicketSpend, heroTicketLevelCost,
 } from '../web-runner/src/core/combatProgressionRules.mjs';
 import { awardHeroEXP, createHeroProgressStore, newHeroProgress, saveHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
-import { partyTrainingCombatStat, realtimeCombatStat } from '../web-runner/src/core/realtimeSkillState.mjs';
+import { partyTrainingCombatStat } from '../web-runner/src/core/heroPermanentModifiers.mjs';
 import { createCombatProgression } from '../web-runner/systems/combatProgression.mjs';
 import { createEquipmentStorage } from '../web-runner/systems/equipmentStorage.mjs';
 import { claimObjectiveWithReceipt } from '../web-runner/systems/combatProgressionUI.mjs';
@@ -344,7 +344,7 @@ test('training spends Incense atomically and applies permanent bonuses to each h
   for (const stat of ['ATK', 'DEF', 'MAG', 'RES']) {
     const actors = heroes.map(hero => ({ ...hero, stats: { [stat]: 100 } }));
     for (const actor of actors) assert.ok(partyTrainingCombatStat(globals, actor, stat, 100) > 100);
-    assert.equal(realtimeCombatStat(globals, actors[0], stat, 100), partyTrainingCombatStat(globals, actors[0], stat, 100));
+    assert.equal(partyTrainingCombatStat(globals, actors[0], stat, 100), 102);
     assert.equal(actors[0].stats[stat], 100);
   }
   assert.equal(partyTrainingCombatStat(globals, { kind: 'enemy' }, 'ATK', 100), 100);
@@ -592,5 +592,37 @@ test('quest description and progress presentation never carries a rarity color',
         assert.equal(view.color, undefined, `${type}:${rarity}:${progress}`);
       }
     }
+  }
+});
+
+test('old v3/v4 formation records stay untouched while Training, stars and progression survive reload', () => {
+  for (const v3 of ['{', JSON.stringify({ version: 3, leader: 'Runa', cells: { Falie: 7 } })])
+  for (const raw of ['{', JSON.stringify({ version: 4, active: 2, presets: [{ leader: 'Runa', cells: { Falie: 7 } }] })]) {
+    const disk = new MemoryStorage();
+    const old = { 'wishfire.heroFormation.v3': v3, 'wishfire.heroFormation.v4': raw };
+    for (const [key, value] of Object.entries(old)) disk.setItem(key, value);
+    disk.setItem(COMBAT_PROGRESSION_SAVE_KEY, JSON.stringify({
+      ...createCombatProgressionState({ wallet: { incense: 1000, ticketsByHero: { Falie: 1000 } }, training: { ATK: 3 } }),
+      leader: 'Runa', formation: { active: 2 },
+    }));
+    const reads = [], get = disk.getItem.bind(disk);
+    disk.getItem = key => { reads.push(key); return get(key); };
+    const globals = {}, controller = createCombatProgression({ globals, storage: disk });
+    assert.equal(controller.ticketCount('Falie'), 1000);
+    assert.equal(globals.PartyTrainingLevels.ATK, 3);
+    assert.equal(controller.starUp('Falie').ok, true);
+    assert.equal(controller.ticketCount('Falie'), 950);
+    assert.equal(controller.train('ATK').ok, true);
+    assert.equal(globals.PartyTrainingLevels.ATK, 4);
+    const committed = structuredClone(controller.state()), reloadedGlobals = {};
+    const again = createCombatProgression({ globals: reloadedGlobals, storage: disk });
+    assert.deepEqual(again.state(), committed);
+    assert.equal(again.ticketCount('Falie'), 950);
+    assert.equal(again.heroGrowth().stars.Falie, 1);
+    assert.equal(reloadedGlobals.PartyTrainingLevels.ATK, 4);
+    for (const [key, value] of Object.entries(old)) assert.equal(disk.values.get(key), value);
+    assert.equal(reads.some(key => key.includes('heroFormation')), false);
+    assert.equal('formation' in controller, false);
+    assert.equal(Object.keys(globals).some(key => key.startsWith('HeroFormation')), false);
   }
 });

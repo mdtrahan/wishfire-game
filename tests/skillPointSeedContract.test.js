@@ -3,14 +3,6 @@ const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-test('party seed function exists in runtime functionBank', () => {
-  const filePath = path.join(__dirname, '..', 'web-runner', 'modules', 'functionBank.js');
-  const src = fs.readFileSync(filePath, 'utf8');
-  assert.match(src, /export function SetHeroSkillPointsForParty\(ctx, exactAmount = 300, source = 'party_seed_exact'\)/);
-  assert.match(src, /const HERO_SKILL_SHARED_KEY = '__party_shared__';/);
-  assert.match(src, /store\[HERO_SKILL_SHARED_KEY\] = target;/);
-});
-
 test('combat init uses canonical resources without retired skill-point seeds', () => {
   const filePath = path.join(__dirname, '..', 'web-runner', 'systems', 'combatSessionInitializer.js');
   const src = fs.readFileSync(filePath, 'utf8');

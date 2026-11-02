@@ -120,9 +120,9 @@
 
 - Combat-session completion, Quit, or return to Quests clears dev-tool overrides. Continue retains the same session. Reset staged settings and persisted dev config while preserving saved gold.
 
-- Resource Continue restores party HP while preserving energy, encounter progress, buffs and skills.
+- Paid story Continue is retired. Ordinary Rust AllDown uses `restartAtSubwave(index)`, also exposed as `globals.RustCombatRestartAtSubwave(index)`: destroy without kill credit, settle earned receipts, queue the same zero-based authored subwave, create healthy heroes at slice origins on the next tick. Boss calls return false and retain their checkpoint policy.
 
-- Energy is a macro balance: quest entry spends it, combat actions do not. Purple recovery remains active. Combat defeat depends on living heroes; Continue preserves energy.
+- Energy is a macro balance: quest entry spends it, combat actions do not. Purple recovery remains active. Rust decides combat defeat; recovery never spends combat energy.
 
 - Starting macro energy is 200. Stage cards cost 15 per entry; all Main Story cards cost zero and omit the energy row, including embedded combat.
 
@@ -331,3 +331,9 @@
 
 - Equipment render-time sync routes permanent revisions only when gear stats or earned EXP change. Process live bound actors before saved copies so save projection cannot hide a changed input. Reading driver activity must not clone its snapshot. QA Speed Link applies/restores SPD through the permanent route; low-HP/heal fixtures refuse Rust encounters. Central HP restoration and legacy skill reset reject bound actors until teardown.
 - The exposed `__codexGame.callFunction` dispatcher rejects every legacy call under Rust authority before dispatch; diagnostics use the named read hooks. Internal Rust presentation callbacks retain their own registry access.
+
+- `rustCombatRuntime.mjs` alone projects live combat actors and consumes ordered Rust damage/death facts. DPS uses per-hit Rust `hp_loss`, excluding absorbed ward. Gear, levels and Training use bound permanent-input revisions; no live JS HP restoration. `simulationCoreShadow.js` now supplies only CP/meta RNG.
+
+- Ordinary screen/DEV/background departure pauses the existing Rust world without discarding subwaves. Bootstrap gates on `requireReady()` and reuses the startup loading error surface on WASM/ABI failure. Legacy movement/camera sliders are retired until an authoritative API exists.
+
+- Party-stat OSD reads live Rust snapshot ATK/MAG/DEF/RES through `rustCombatStatDisplay.mjs` in native units; its permanent comparison converts display units only. SPD remains permanent meta because the ABI exposes no cadence readback. DEV Combat Speed scales the Rust driver foreground clock; Reward Drop/Count controls and state are retired.

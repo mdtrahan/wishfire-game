@@ -4,8 +4,8 @@ import {readFileSync} from 'node:fs';
 import {createLampEconomy,LAMP_CONFIG} from '../web-runner/src/core/lampGear.mjs';
 import {attachHeroProgress,createHeroProgressStore,settleBattleEXP} from '../web-runner/src/core/heroProgression.mjs';
 import {createEquipmentStorage,EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
-import {createCombatSimulationTicker} from '../web-runner/systems/combatSimulationTick.mjs';
-import {recordEnemyDefeatReward} from '../web-runner/modules/heroCommands.mjs';
+import {createCombatHostClock} from '../web-runner/systems/combatHostClock.mjs';
+import {consumeCombatKillEvent} from '../web-runner/modules/heroCommands.mjs';
 
 const HERO_KEY='orka.hero_progress.v2';
 const source=readFileSync(new URL('../web-runner/systems/heroProgressStorage.js',import.meta.url),'utf8');
@@ -17,11 +17,11 @@ function fixture(initial={}){
  const state={globals,entities:[]},gameState={storyEntry:{phase:'combat'}};
  progress.restoreHeroProgressFromStorage({fnContext:{state}});
  const store=createEquipmentStorage({globals,storage,locks:{request:(_key,fn)=>{const next=chain.then(fn);chain=next.catch(()=>{});return next;}},seed:()=>42,reportError:()=>{}});
- const ticker=createCombatSimulationTicker({isBagProgressBlocked:()=>menuOpen});
- const frame=()=>ticker.tick({state,gameState,nowMs:now});
+ const ticker=createCombatHostClock({isBagProgressBlocked:()=>menuOpen});
+ const frame=(dt=0)=>{if(!gameState.storyEntry.combatPaused)ticker.advanceHostTime({state,dt});};
  return{values,globals,gameState,store,ticker,frame,setFail:value=>failEquipment=value,setMenu:value=>menuOpen=value,
-  advance(seconds){for(let n=0;n<Math.round(seconds*20);n++){now+=50;frame();}},
-  background(seconds){ticker.reset();now+=seconds*1000;},
+  advance(seconds){for(let n=0;n<Math.round(seconds*20);n++){now+=50;frame(.05);}},
+  background(seconds){now+=seconds*1000;},
   snapshot(){return Object.fromEntries(values);}};
 }
 
@@ -32,9 +32,9 @@ test('61 active combat seconds yield four durable Bag ticks; ordinary kills add 
  assert.deepEqual(pending,{'tick:clock-battle:1':1,'tick:clock-battle:2':1,'tick:clock-battle:3':1,'tick:clock-battle:4':1});
  await f.store.sync();assert.equal(f.store.data.lamp.killPoints,4);assert.equal(f.store.data.lamp.essence,0);
  assert.deepEqual(f.store.data.settledBagKillRewards['tick:clock-battle'],[[1,4]]);
- for(const actor of [{uid:1,enemyRole:'fodder'},{uid:2,isSolo:true},{uid:3,enemyRole:'pack'}])recordEnemyDefeatReward(f.globals.ProgressionBattle,{kind:'enemy',...actor});
+ for(const actor of [{uid:1,enemyRole:'fodder'},{uid:2,isSolo:true},{uid:3,enemyRole:'pack'}])consumeCombatKillEvent(f.globals.ProgressionBattle,{enemy:{kind:'enemy',...actor}});
  await f.store.sync();assert.equal(f.store.data.lamp.killPoints,4);
- const boss={kind:'enemy',uid:4,enemyRole:'boss'};recordEnemyDefeatReward(f.globals.ProgressionBattle,boss);recordEnemyDefeatReward(f.globals.ProgressionBattle,boss);
+ const boss={kind:'enemy',uid:4,enemyRole:'boss'};consumeCombatKillEvent(f.globals.ProgressionBattle,{enemy:boss});consumeCombatKillEvent(f.globals.ProgressionBattle,{enemy:boss});
  await f.store.sync();assert.equal(f.store.data.lamp.killPoints,9);assert.equal(f.store.data.lamp.essence,0);
 });
 
@@ -46,8 +46,9 @@ test('paused menus and background wall time preserve partial active seconds with
  await f.store.sync();assert.equal(f.store.data.lamp.killPoints,0);
  f.advance(.1);await f.store.sync();assert.equal(f.store.data.lamp.killPoints,1);
  const app=readFileSync(new URL('../web-runner/app.js',import.meta.url),'utf8');
- const loop=app.slice(app.indexOf('function tick(){',app.indexOf('let frameCount = 0;'))),tick=loop.indexOf('combatSimulationTicker.tick(');
- for(const guard of ['if (document.hidden)','if (gameState.storyEntry.combatPaused)',"if (layoutState.getActiveLayoutId() !== 'combat') {"]){const at=loop.indexOf(guard);assert.ok(at>=0&&at<tick,guard);assert.match(loop.slice(at,loop.indexOf('}',at)),/combatSimulationTicker.reset\(\)/);}
+ const loop=app.slice(app.indexOf('function tick(){',app.indexOf('let frameCount = 0;'))),tick=loop.indexOf('rustCombat.tick(');
+ for(const guard of ['if (document.hidden)','if (gameState.storyEntry.combatPaused)',"if (layoutState.getActiveLayoutId() !== 'combat') {"]){const at=loop.indexOf(guard);assert.ok(at>=0&&at<tick,guard);}
+
 });
 
 test('pending ticks survive a failed equipment write and reload; acknowledged ticks never replay and indices resume',async()=>{

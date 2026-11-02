@@ -23,9 +23,9 @@ test('combat frame exits before stage or legacy turn service whenever simulation
   const tickEnd = app.indexOf('\n  tick();', tickStart);
   const tick = app.slice(tickStart, tickEnd);
   const pausedGate = tick.indexOf('shouldFreezeCombatSimulation(state, gameState)');
-  const stageAdvance = tick.indexOf('maybeAdvanceContinuousCombatStage(');
+  const stageAdvance = tick.indexOf('rustCombat.tick(');
   assert.ok(pausedGate >= 0 && pausedGate < stageAdvance, 'pause gate precedes continuous action scheduling');
-  assert.match(tick.slice(pausedGate, stageAdvance), /combatSimulationTicker\.reset\(\)[\s\S]*return;/);
+  assert.match(tick.slice(pausedGate, stageAdvance), /rustCombat\?\.pause\(\)[\s\S]*return;/);
   assert.doesNotMatch(tick, /TurnPhase|DeferAdvance|ProcessTurn|AdvanceTurn/);
 
   const defeatStart = tick.indexOf("if (gameState.storyEntry.phase === 'defeat')");
@@ -35,5 +35,5 @@ test('combat frame exits before stage or legacy turn service whenever simulation
 
   const hiddenStart = tick.indexOf('if (document.hidden)');
   const hiddenEnd = tick.indexOf("if (gameState.storyEntry.phase === 'defeat')", hiddenStart);
-  assert.match(tick.slice(hiddenStart, hiddenEnd), /combatSimulationTicker\.reset\(\)[\s\S]*return;/);
+  assert.match(tick.slice(hiddenStart, hiddenEnd), /surrenderBossForDeparture\(\)[\s\S]*return;/);
 });

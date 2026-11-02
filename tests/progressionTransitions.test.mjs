@@ -6,9 +6,9 @@ import {HERO_DEFINITIONS,heroSkillUnlocked} from '../web-runner/src/core/heroDef
 import {attachHeroProgress,createHeroProgressStore,setHeroProgressLevel,awardHeroEXP} from '../web-runner/src/core/heroProgression.mjs';
 import {createLampEconomy,validateLampEconomy,LAMP_CONFIG,upgradeLamp} from '../web-runner/src/core/lampGear.mjs';
 import {createEquipmentStorage,EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
-import {castRealtimeHeroSkill} from '../web-runner/src/core/realtimeHeroSkills.mjs';
 import {continuousCombatWaveClearEventId,buildContinuousCombatSpawnPlan,configureContinuousCombatProduction,deriveContinuousCombatWavePackProgress,maybeAdvanceContinuousCombatStage,resetContinuousCombatAfterDefeat,summonContinuousCombatBoss} from '../web-runner/src/core/continuousCombatStage.mjs';
 import {resetCombatSessionConditions} from '../web-runner/systems/combatSessionReset.mjs';
+import {createQuestCombatSession} from '../web-runner/systems/questCombatSession.mjs';
 
 const progressSource=readFileSync(new URL('../web-runner/systems/heroProgressStorage.js',import.meta.url),'utf8');
 const appSource=readFileSync(new URL('../web-runner/app.js',import.meta.url),'utf8');
@@ -94,7 +94,7 @@ test('fresh heroes own their Special from level 1 and a skill above their level 
   assert.deepEqual(d.actives.map(s=>s.unlockLevel),[1]);assert.equal(h.currentLevel,1);assert.equal(h.currentEXP,0);
   assert.equal(heroSkillUnlocked(h,d.special),true);
   const locked={...d.special,unlockLevel:2},snapshot=JSON.stringify(ctx.state);
-  assert.equal(heroSkillUnlocked(h,locked),false);assert.equal(castRealtimeHeroSkill(ctx,1,locked,{targetUID:2,targetUIDs:[1],point:{x:220,y:200}}),false);assert.equal(JSON.stringify(ctx.state),snapshot);
+  assert.equal(heroSkillUnlocked(h,locked),false);assert.equal(JSON.stringify(ctx.state),snapshot);
  }
  const h=store.heroes.Huun;h.currentLevel=4;h.currentEXP=0;h.maxLevel=100;awardHeroEXP(h,800);assert.equal(h.currentLevel,5);assert.equal(heroSkillUnlocked(h,HERO_DEFINITIONS.Huun.special),true);
 });
@@ -151,19 +151,19 @@ test('an unfinished active boss checkpoint reloads as a manual retry instead of 
 });
 
 test('production visibility and pagehide handlers call surrender on the correct event targets',()=>{
- const start=appSource.indexOf("document.addEventListener('visibilitychange'",appSource.indexOf('const combatSimulationTicker = createCombatSimulationTicker()'));
+ const start=appSource.indexOf("document.addEventListener('visibilitychange'",appSource.indexOf('const combatHostClock = createCombatHostClock()'));
  const end=appSource.indexOf('const buffIconFrames',start);
  assert.ok(start>=0&&end>start,'finds production visibility and pagehide registrations');
  const source=appSource.slice(start,end),documentHandlers={},windowHandlers={};let surrenders=0,resets=0;
  const documentMock={hidden:false,addEventListener:(name,handler)=>{documentHandlers[name]=handler;}};
- new Function('document','window','combatSimulationTicker','lastFrameTime','performance','surrenderBossForDeparture',source)(
+ new Function('document','window','rustCombat','lastFrameTime','performance','surrenderBossForDeparture',source)(
   documentMock,
   {addEventListener:(name,handler)=>{windowHandlers[name]=handler;}},
-  {reset(){resets++;}},0,{now:()=>100},()=>{surrenders++;}
+  {pause(){resets++;}},0,{now:()=>100},()=>{surrenders++;}
  );
  documentHandlers.visibilitychange();assert.equal(surrenders,0,'a visible tab keeps the current boss attempt');
  documentMock.hidden=true;documentHandlers.visibilitychange();assert.equal(surrenders,1);
- assert.equal(resets,2);
+ assert.equal(resets,0,'visibility resets host timestamps without a retired JS ticker');
  assert.equal(typeof windowHandlers.pagehide,'function');windowHandlers.pagehide();assert.equal(surrenders,2);
 });
 
@@ -238,7 +238,7 @@ test('ordinary KO recovery and reload preserve progress within a region-sized st
  assert.equal(hud.progressPosition/10,0.3);
 });
 
-test('the app tick persists boss readiness before its stage early return and defeat reset before its outcome early return',()=>{
+test('the app tick persists stage readiness and the Rust-owned boss defeat checkpoint',()=>{
  const tickStart=appSource.indexOf('function tick(){',appSource.indexOf('let frameCount = 0;'));
  const tickEnd=appSource.indexOf('\n  tick();',tickStart);
  assert.ok(tickStart>=0&&tickEnd>tickStart,'extracts the production app tick function');
@@ -254,14 +254,14 @@ test('the app tick persists boss readiness before its stage early return and def
   }
   return null;
  };
- const runTick=(state,gameState,checkOutcome)=>{
+ const runTick=(state,gameState,rustOutcome)=>{
   const context=vm.createContext({
    state,gameState,document:{hidden:false},performance:{now:()=>100},requestAnimationFrame(){},continuousCombatWaveClearEventId,
    combatProgression:{recordCommittedEnemyDefeats(){},record(){},observe(){}},
-   combatSimulationTicker:{reset(){},tick(){}},rustCombatShadow:undefined,rustCombat:undefined,lastFrameTime:0,ensureDevToolingConfig:()=>({open:false}),
+   rustCombat:{pause(){},tick:options=>rustOutcome()?false:maybeAdvanceContinuousCombatStage({...options,combatTick(){}})},lampEquipment:{state:()=>({open:false})},lastFrameTime:0,ensureDevToolingConfig:()=>({open:false}),
    layoutState:{getActiveLayoutId:()=> 'combat'},shouldFreezeCombatSimulation:()=>false,drawFrame(){},
    fnContext:{},callFunctionWithContext:(ctx,name,...args)=>makeCall(state)(name,...args),
-   maybeAdvanceContinuousCombatStage,getPresentationTurnBarrier:()=>({lanes:{}}),recoverContinuousOrdinaryDefeatIfNeeded:()=>false,checkMainRuntimeCombatOutcome:checkOutcome,
+   maybeAdvanceContinuousCombatStage,getPresentationTurnBarrier:()=>({lanes:{}}),recoverContinuousOrdinaryDefeatIfNeeded:()=>false,checkMainRuntimeCombatOutcome(){assert.fail('retired JS outcome inference');},
    questCombat:{isCleared:()=>false},storyEntry:{victory(){}},heroProgressStorage:{persistHeroProgressIfDirty},
    animationMath:{},layoutW:0,applyTurnGateGlobals(){},applyTurnGateIntent(){},createEnemyTurnIdleRecovery(){},
    getCellWorldPos(){},randomGemFrame(){},setGemArray(){},countCellCoverage(){},recordTask011RefillWriteEvent(){},
@@ -312,15 +312,11 @@ test('the app tick persists boss readiness before its stage early return and def
  assert.equal(reloadedGlobals.ContinuousCombatStage.bossActive,true);
  assert.equal(reloadedState.entities.filter(actor=>actor.kind==='enemy'&&actor.enemyRole==='boss').length,1);
  reloadedGlobals.ContinuousCombatStage.bossTransitionEndsAtMs=0;
- runTick(reloadedState,reloadedGameState,()=>{
-  reloadedState.entities=reloadedState.entities.filter(actor=>actor.kind==='hero');
-  resetContinuousCombatAfterDefeat(reloadedGlobals);
-  reloadedGameState.storyEntry.phase='defeat';
-  return true;
- });
+ const bossSession=createQuestCombatSession({state:reloadedState,gameState:reloadedGameState,call:makeCall(reloadedState),sync(){}});
+ runTick(reloadedState,reloadedGameState,()=>bossSession.surrenderBossAttempt('rust_all_down'));
  checkpoint=JSON.parse(savedValues.get(HERO_PROGRESS_SAVE_KEY)).continuousStage;
- assert.equal(checkpoint.bossAvailable,true,'outcome early return preserves defeated-boss readiness');
- assert.equal(checkpoint.bossSummonRequired,true,'the defeated-stage manual retry latch is saved before the outcome early return');
+ assert.equal(checkpoint.bossAvailable,true,'Rust boss defeat preserves the saved readiness');
+ assert.equal(checkpoint.bossSummonRequired,true,'the Rust boss-defeat manual retry latch is saved before the frame returns');
  assert.equal(checkpoint.wave,1);
  assert.equal(checkpoint.clearedPackMask,0,'ready boss recovery starts wave-one farming while readiness keeps the bar full');
 

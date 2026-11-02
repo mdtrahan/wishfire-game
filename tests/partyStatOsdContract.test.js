@@ -179,9 +179,38 @@ test('app wires party stat OSD without adding app-owned stat formatting', () => 
 
   assert.match(appSrc, /import \* as partyStatOsd from '\.\/systems\/partyStatOsd\.js';/);
   assert.match(appSrc, /partyStatOsd\.createPartyStatOsdRuntime\(\{/);
-  assert.match(appSrc, /callFunctionWithContext\(fnContext, 'GetEffectiveStat', hero, stat\)/);
-  assert.match(appSrc, /callFunctionWithContext\(fnContext, 'GetPowerAmpMultiplierForActor', Number\(hero\?\.uid \|\| 0\)\)/);
+  assert.match(appSrc, /\.\.\.createRustCombatStatDisplay\(state\)/);
   assert.match(appSrc, /partyStatOsd\.isPartyStatOsdHotkey\(ev\)/);
   assert.match(appSrc, /partyStatOsdRuntime\.refresh\(\);/);
   assert.doesNotMatch(appSrc, /PartyBuff_ATK[\s\S]{0,160}PartyBuff_DEF[\s\S]{0,160}PartyBuff_RES[\s\S]{0,160}PartyBuff_SPD/);
+});
+
+
+test('OSD follows a real WASM permanent revision in native display units without changing host stats', async () => {
+  const osd = await loadOsdModule();
+  const { createRustCombatStatDisplay } = await import('../web-runner/systems/rustCombatStatDisplay.mjs');
+  const { createCombatBridge } = await import('../web-runner/src/core/combatBridge.mjs');
+  const { newHeroProgress } = await import('../web-runner/src/core/heroProgression.mjs');
+  const fixture = JSON.parse(fs.readFileSync(path.join(repoRoot, 'rust/simulation_core/tests/permanent_revision_scenario.json')));
+  const wasm = new WebAssembly.Module(fs.readFileSync(path.join(repoRoot, 'web-runner/assets/simulation_core.wasm')));
+  const bridge = createCombatBridge(new WebAssembly.Instance(wasm));
+  const created = bridge.create(fixture.config);
+  const hero = { ...newHeroProgress('Falie'), kind: 'hero', heroInstanceKey: 'Falie', uid: 1 };
+  const original = structuredClone(hero);
+  const state = { entities: [hero], globals: { RustCombatPresentation: { state: { snapshot: created.snapshot } } } };
+  const { documentRef } = makeFakeDocument();
+  const runtime = osd.createPartyStatOsdRuntime({ state, document: documentRef, ...createRustCombatStatDisplay(state) });
+  const body = runtime.root.querySelector('[data-party-stat-osd-body]');
+  try {
+    runtime.toggle();
+    assert.match(body.innerHTML, /^Falie ATK 26\.4, MAG 26\.4, DEF 28, RES 28/);
+    const revised = bridge.step(created.world, { encounter_id: fixture.config.encounter_id, expected_previous_step: '0', commands: fixture.commands });
+    assert.ok(revised.events.some(event => event.body.kind === 'permanent_inputs_applied'));
+    state.globals.RustCombatPresentation.state.snapshot = revised.snapshot;
+    runtime.refresh();
+    assert.equal(revised.snapshot.actors[0].stats.atk, 40);
+    assert.match(body.innerHTML, /^Falie ATK 40/);
+    assert.match(body.innerHTML, /> \+13\.6<\/span>/);
+    assert.deepEqual(hero, original);
+  } finally { bridge.destroy(created.world); }
 });

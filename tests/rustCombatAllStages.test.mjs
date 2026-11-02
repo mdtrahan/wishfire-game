@@ -1,17 +1,18 @@
+import { authorSubwaves, bindAuthoredSubwaves } from '../web-runner/src/core/continuousCombatSubwaves.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { WFM_ENEMY_DEFINITIONS, shadowEnemy } from '../src/core/combatShadowAdapter.mjs';
-import { SLICE_FLOOR, COMBAT_VIEW, SLICE_TRAVEL_SLOTS } from '../web-runner/systems/rustCombatArena.mjs';
+import { SLICE_FLOOR, COMBAT_VIEW, SLICE_TRAVEL_SLOTS, sliceHeroPosition } from '../web-runner/systems/rustCombatArena.mjs';
 import { createSliceCombatCamera } from '../web-runner/systems/rustCombatCamera.mjs';
 import { createCombatBridge } from '../web-runner/src/core/combatBridge.mjs';
 import { createWfmCombatConfig } from '../web-runner/systems/wfmCombatConfig.mjs';
 import { createRustCombatRuntime } from '../web-runner/systems/rustCombatRuntime.mjs';
-import { createQuestCombatSession, recoverContinuousOrdinaryDefeatIfNeeded } from '../web-runner/systems/questCombatSession.mjs';
-import { createCombatSimulationTicker } from '../web-runner/systems/combatSimulationTick.mjs';
+import { createQuestCombatSession } from '../web-runner/systems/questCombatSession.mjs';
+import { createCombatHostClock } from '../web-runner/systems/combatHostClock.mjs';
 import { settleContinuousCombatRewards } from '../web-runner/modules/heroCommands.mjs';
 import { newHeroProgress, refreshHeroStats, createHeroProgressStore } from '../web-runner/src/core/heroProgression.mjs';
-import { buildContinuousCombatSpawnPlan, activateContinuousCombatSpawnedEnemy, createContinuousCombatStageState, getContinuousCombatStage } from '../web-runner/src/core/continuousCombatStage.mjs';
+import { buildContinuousCombatSpawnPlan, activateContinuousCombatSpawnedEnemy, createContinuousCombatStageState, getContinuousCombatStage, getContinuousCombatPartyCP } from '../web-runner/src/core/continuousCombatStage.mjs';
 const table = JSON.parse(fs.readFileSync(new URL('../web-runner/assets/enemies.json', import.meta.url)));
 const rows = table.data[0].slice(1).map((cell, i) => Object.fromEntries(table.data.map(column => [column[0][0], column[i + 1][0]]))).filter(row => row.name);
 const wasm = new WebAssembly.Module(fs.readFileSync(new URL('../web-runner/assets/simulation_core.wasm', import.meta.url)));
@@ -42,7 +43,7 @@ function fixture({ mask = 0, boss = false, hp = 1, level = 100 } = {}) {
     if (name === 'SettleContinuousCombatRewards') return settleContinuousCombatRewards({ state });
     if (name === 'UpdateHeroHPUI') heals.push(heroes.map(h => h.hp));
   }
-  const plan = buildContinuousCombatSpawnPlan(rows, g.ContinuousCombatStage);
+  const plan = buildContinuousCombatSpawnPlan(rows, g.ContinuousCombatStage, { partyCP: getContinuousCombatPartyCP(heroes) });
   g.ContinuousCombatStage.spawnedPackMask = plan.reduce((mask, p) => mask | 1 << p.sectorIndex, 0);
   for (const entry of plan) {
     const a = call('SpawnEnemy', { ...entry.row, enemyRole: boss ? 'boss' : 'fodder' }, entry.slotIndex);
@@ -53,7 +54,7 @@ function fixture({ mask = 0, boss = false, hp = 1, level = 100 } = {}) {
   for (const method of ['surrenderBossAttempt', 'recoverContinuousDefeat']) {
     const fn = session[method]; session[method] = function(reason) { routes.push([method, reason]); return fn.call(this, reason); };
   }
-  const clock = createCombatSimulationTicker({ isBagProgressBlocked: () => false });
+  const clock = createCombatHostClock({ isBagProgressBlocked: () => false });
   const runtime = createRustCombatRuntime({ persistCheckpoint: () => true, state, bridge, session, call, persistProgress: () => true, getEnemyRows: () => rows, advanceHostTime: clock.advanceHostTime,
     warn(...args) { throw new Error(args.join(' ')); } });
   let frame = 0;
@@ -163,7 +164,6 @@ test('one downed hero stays in Rust combat and autonomous Phoenix selects the lo
   f.heroes[0].hp = f.heroes[1].hp = 0;
   f.state.entities.find(a => a.kind === 'enemy').stats.ATK = 0;
   f.tick();
-  assert.equal(recoverContinuousOrdinaryDefeatIfNeeded({ state: f.state, session: { recoverContinuousDefeat() { throw Error('legacy KO route'); } } }), false);
   f.runUntil(() => !!f.runtime.read().snapshot?.phoenix_channel, 30);
   assert.equal(f.runtime.read().snapshot.phoenix_channel.hero, f.runtime.read().snapshot.actors.find(a => a.host_id === f.heroes[0].heroInstanceKey).actor_id);
   assert.deepEqual(f.routes, []);
@@ -220,10 +220,13 @@ test('ordinary respite rounds in host units, deduplicates transitions and reject
   const f = fixture();
   const config = createWfmCombatConfig({ globals: f.g, entities: f.state.entities, enemyRows: rows, encounterId: 'respite-rounding' });
   config.enemies = [];
-  config.heroes.forEach(h => { h.host_max_hp = 100; h.hp = h.stats.hp / 2; });
+  config.heroes.forEach(h => { h.host_max_hp = 40; h.hp = h.stats.hp / 2; });
   const created = f.bridge.create(config);
   const clear = f.bridge.ordinaryClear(created.world, config.encounter_id, 'wave:1');
-  clear.snapshot.actors.filter(a => a.team === 'hero').forEach(a => assert.ok(Math.abs(a.hp / a.max_hp - .65) < 1e-6));
+  clear.snapshot.actors.filter(a => a.team === 'hero').forEach(a => {
+    assert.ok(Math.abs(a.hp / a.max_hp - .65) < 1e-6);
+    assert.equal(Math.round(a.hp / a.max_hp * 40), 26, 'Rust heals 15% in host units: 20 + 6');
+  });
   assert.deepEqual(f.bridge.ordinaryClear(created.world, config.encounter_id, 'wave:1').events, []);
   const enemy = shadowEnemy({ identity: 'new', key: 'Gobloc', position: { x: 456, y: 430 }, reference: rows[0], resolved: rows[0], hp: 40, hostMaxHP: 40 });
   f.bridge.spawn(created.world, config.encounter_id, [enemy]);
@@ -318,4 +321,80 @@ test('slice markers reserve each subwave through countdown and the source emerge
  assert.ok(entered.every(a=>a.state==='spawn'));
  assert.ok(entered.every(a=>a.pos.x>=SLICE_FLOOR.min.x&&a.pos.x<=SLICE_FLOOR.max.x&&a.pos.y>=SLICE_FLOOR.min.y&&a.pos.y<=SLICE_FLOOR.max.y));
  f.runtime.dispose();
+});
+
+test('runtime-spy gate: ordinary AllDown restarts the same subwave free, healthy and at origin', () => {
+  const retired = ['__ORKA_SINGLE_HIT_OWNER__','__ORKA_CALCULATE_DAMAGE_OWNER__','__ORKA_EFFECTIVE_STAT_OWNER__','__ORKA_PARTY_DAMAGE_OWNER__','__ORKA_COMBAT_OUTCOME_OWNER__','__ORKA_COMBAT_SNAPSHOT_OWNER__','__ORKA_ENEMY_TARGET_OWNER__','__ORKA_ENEMY_SKILL_CHOICE_OWNER__','__ORKA_ENEMY_JOB_SKILL_OWNER__','__ORKA_START_ENEMY_ACTION_OWNER__','__ORKA_ENEMY_DOT_PACKET_OWNER__','__ORKA_ENEMY_DOT_TICK_OWNER__','__ORKA_ENEMY_DOT_LIFECYCLE_OWNER__','__ORKA_ENEMY_DEBUFF_APPLY_OWNER__','__ORKA_ENEMY_DEBUFF_DECAY_OWNER__','__ORKA_ENEMY_DEBUFF_SLOT_OWNER__','__ORKA_PARTY_REGEN_LIFECYCLE_OWNER__','__ORKA_PARTY_REGEN_TICK_OWNER__'];
+  const prior = retired.map(key => Object.getOwnPropertyDescriptor(globalThis,key));
+  for (const key of retired) Object.defineProperty(globalThis,key,{configurable:true,value(){assert.fail(`retired scalar called: ${key}`);}});
+  const f=fixture({hp:.000001,level:1});
+  // A single fragile hero and lethal, durable hostiles force an actual Rust hit.
+  f.heroes.splice(1);
+  f.state.entities.splice(0, f.state.entities.length, f.heroes[0], ...f.spawned);
+  for (const enemy of f.spawned) { enemy.hp = enemy.maxHP = 10000; enemy.stats.HP = 10000; enemy.stats.ATK = 10000; }
+  f.g.goldTotal=123;f.g.Player_Energy=200;
+  const equipment=JSON.stringify(f.g.Equipment),progress={region:f.g.ContinuousCombatStage.region,wave:f.g.ContinuousCombatStage.wave};
+  try {
+    f.runUntil(()=>f.g.RustCombatReceipt?.outcome === 'all_down',1800);
+    assert.deepEqual({region:f.g.ContinuousCombatStage.region,wave:f.g.ContinuousCombatStage.wave},progress);
+    assert.equal(f.g.goldTotal,123);assert.equal(f.g.Player_Energy,200);assert.equal(JSON.stringify(f.g.Equipment),equipment);
+    assert.equal(f.routes.length,0,'ordinary AllDown does not enter boss recovery or a paid menu');
+    f.tick();
+    const snapshot=f.runtime.read().snapshot;
+    snapshot.actors.filter(actor=>actor.team==='hero').forEach((view, slot) => {
+      assert.equal(view.hp,view.max_hp);
+      assert.equal(view.host_id,String(f.heroes[slot].heroInstanceKey));
+      const origin=sliceHeroPosition(slot);
+      assert.deepEqual(view.pos,{x:Math.fround(origin.x),y:Math.fround(origin.y)});
+    });
+    assert.throws(()=>f.runtime.restartAtSubwave(-1),/subwave index/);
+  } finally {
+    f.runtime.dispose();
+    retired.forEach((key,index)=>prior[index]?Object.defineProperty(globalThis,key,prior[index]):delete globalThis[key]);
+  }
+});
+
+test('restartAtSubwave keeps a later authored cohort across repeated free retries', () => {
+  const f = fixture();
+  const groups = bindAuthoredSubwaves(authorSubwaves(f.spawned.map(actor => actor.name)), f.spawned);
+  const expected = groups[1].map(actor => actor.name).sort();
+  f.g.goldTotal = 123; f.g.Player_Energy = 200;
+  try {
+    f.tick();
+    for (let retry = 0; retry < 3; retry++) {
+      assert.equal(f.runtime.restartAtSubwave(1), true);
+      f.tick();
+      const snapshot = f.runtime.read().snapshot;
+      const entered = snapshot.actors.filter(actor => actor.team === 'enemy').map(actor => actor.host_id)
+        .concat(snapshot.pending_spawns.map(actor => actor.host_id))
+        .map(id => f.spawned.find(actor => String(actor.uid) === id).name).sort();
+      assert.deepEqual(entered, expected);
+      assert.equal(f.g.goldTotal, 123); assert.equal(f.g.Player_Energy, 200);
+      assert.deepEqual(f.receipts, []);
+      assert.equal(f.g.ContinuousCombatStage.combatCheckpoint.subwaves.index, 1);
+    }
+  } finally { f.runtime.dispose(); }
+  assert.deepEqual(f.bridge.describe().resources, { worlds: 0, responses: 0, inputs: 1 });
+});
+
+test('real WASM pauses all 37 enemies across nine authored subwaves and resumes the same world', () => {
+  const f = fixture();
+  try {
+    f.tick();
+    const read = () => {
+      const stage = f.g.ContinuousCombatStage;
+      const groups = f.g.RustCombatSubwaveAuthoring.stages.find(s => s.stage === stage.stage).waves[stage.wave - 1].subwaves;
+      return { subwaves: groups.length, enemies: groups.flat().reduce((n, entry) => n + entry.count, 0) };
+    };
+    assert.deepEqual(read(), { subwaves: 9, enemies: 37 });
+    const before = f.runtime.read();
+    for (const departure of ['Hero', 'Bag', 'Quests', 'DEV', 'hidden']) {
+      f.runtime.pause();
+      assert.deepEqual(f.runtime.read(), before, departure);
+      assert.deepEqual(read(), { subwaves: 9, enemies: 37 }, departure);
+    }
+    f.tick();
+    assert.equal(f.runtime.read().snapshot.encounter_id, before.snapshot.encounter_id);
+    assert.deepEqual(read(), { subwaves: 9, enemies: 37 });
+  } finally { f.runtime.dispose(); }
 });

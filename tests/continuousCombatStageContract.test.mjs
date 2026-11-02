@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { COMBAT_BATTLEFIELD_ZOOM, createCombatCameraProjection, deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldVerticalBounds } from '../src/core/combatOrientation.mjs';
 import { actorFootprintRadius } from '../src/core/arenaCombatRules.mjs';
-import { advanceContinuousCombatArena, CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS, deriveContinuousCombatRecoveryHuddle, deriveContinuousCombatSpawnMoat, placeContinuousCombatHeroesInRecoveryHuddle } from '../web-runner/src/core/arenaCombat.mjs';
+import { deriveContinuousCombatSpawnMoat, placeContinuousCombatHeroesInRecoveryHuddle } from '../web-runner/src/core/arenaCombat.mjs';
 import { computeCombatPower } from '../web-runner/src/core/combatPower.mjs';
 import { createHeroProgressStore } from '../web-runner/src/core/heroProgression.mjs';
 import { derivePresentationTurnBarrier } from '../web-runner/src/core/turnGateController.mjs';
@@ -31,14 +31,11 @@ import {
   finalizeContinuousCombatProduction,
   getContinuousCombatPartyCP,
   maybeAdvanceContinuousCombatStage,
-  pushContinuousCombatEnemy,
-  reverseContinuousCombatEnemy,
   resetContinuousCombatAfterDefeat,
   shouldExpireContinuousCombatBoss,
   summonContinuousCombatBoss,
   recordContinuousCombatWavePackProgress,
   scaleContinuousCombatPackRow,
-  teleportContinuousCombatEnemy,
 } from '../web-runner/src/core/continuousCombatStage.mjs';
 
 const rows = ['Gobloc', 'Skeleton', 'High Gobloc', 'Lizardo', 'Orc', 'High Orc', 'Chimerilass', 'Djinn', 'Troll']
@@ -96,21 +93,6 @@ test('ordinary wave clear serial advances once per clear and excludes boss and r
   assert.equal(advanceContinuousCombatStage({ ...recovery.ContinuousCombatStage, wave: 1 }).state.ordinaryWaveClears, 11);
 });
 
-test('continuous combat ignores retired enemy-slot refill holds in both runtime banks', async () => {
-  const { readFileSync } = await import('node:fs');
-  const { getEnemyRosterStability } = await import('../web-runner/src/core/enemyRosterStability.mjs');
-  const entities = [{ kind: 'enemy', uid: 2, hp: 10 }];
-  assert.equal(getEnemyRosterStability({ enemySlots: [99], enemyIds: [98], pendingRespawnSlots: [1], entities }).stable, false);
-  assert.equal(getEnemyRosterStability({ entities }).stable, true);
-  for (const path of ['../web-runner/modules/functionBank.js', '../Scripts/functionBank.js']) {
-    const source = readFileSync(new URL(path, import.meta.url), 'utf8');
-    assert.match(source, /if \(Number\(g\.ContinuousCombatStageLoop \|\| 0\) === 1\) return getEnemyRosterStability\(\{ entities: getEntities\(ctx\) \}\);/);
-    assert.match(source, /if \(!g\.QuestFiniteEncounter && !continuousStageActive && scheduleRespawn\) scheduleEnemyRespawnWindow\(ctx, slotIndex, respawnDelay\);/);
-    assert.match(source, /if \(!g\.QuestFiniteEncounter && !continuousStageActive\) markEnemyRespawnPending\(ctx, slotIndex\);/);
-    assert.match(source, /if \(Number\(g\.ContinuousCombatStageLoop \|\| 0\) === 1\) \{ g\.PendingEnemyRespawnTimerActive = 0; g\.PendingEnemyRespawnSlots = \[\]; return; \}/);
-  }
-});
-
 test('continuous stage simulation makes no movement, emission or action claim while paused', () => {
   for (const pauseKey of ['DevToolingPaused', 'QaScenarioPaused', 'QaFixtureHoldTurn']) {
     const stage = createContinuousCombatStageState(91);
@@ -159,27 +141,6 @@ test('normal wave plans keep six two-or-three-member packs and add one weak solo
   assert.ok(totals[1] < totals[2]);
   assert.ok(totals[1] / totals[0] < 1 + CONTINUOUS_COMBAT_PACK_CP_STEP * 2);
   assert.ok(totals[2] / totals[1] < 1 + CONTINUOUS_COMBAT_PACK_CP_STEP * 2);
-});
-
-test('only low-tier Gobloc and Skeleton spawn as lone patrols in every ordinary wave', () => {
-  const observed = new Set();
-  for (let seed = 1; seed <= 16; seed += 1) for (let wave = 1; wave <= 10; wave += 1) {
-    const plan = buildContinuousCombatSpawnPlan(rows, { ...createContinuousCombatStageState(seed), wave, transitions: wave - 1 });
-    const solos = plan.filter(entry => entry.isSolo);
-    assert.equal(solos.length, 6);
-    for (const entry of solos) {
-      assert.ok(['Gobloc', 'Skeleton'].includes(entry.row.name));
-      observed.add(entry.row.name);
-      const source = rows.find(row => row.name === entry.row.name);
-      const weakScaled = Object.fromEntries(['HP', 'ATK', 'DEF', 'MAG', 'RES', 'SPD'].map(key => [key, Math.max(1, Math.round(source[key] * entry.row.streamCpScale))]));
-      for (const key of ['ATK', 'DEF', 'MAG', 'RES', 'SPD']) assert.equal(entry.row[key], weakScaled[key], `solo ${key} stays at its existing weak scale`);
-      assert.equal(entry.row.HP, Math.max(1, Math.ceil(weakScaled.HP * 0.5)), 'solo HP is halved after weak-CP scaling');
-      assert.equal(entry.row.maxHP, entry.row.HP);
-      assert.equal(entry.row.CombatPower, computeCombatPower(entry.row), 'CombatPower is recomputed after HP softening');
-      assert.ok(computeCombatPower(entry.row) < Math.min(...plan.filter(actor => !actor.isSolo).map(actor => computeCombatPower(actor.row))));
-    }
-  }
-  assert.deepEqual([...observed].sort(), ['Gobloc', 'Skeleton']);
 });
 
 test('seeded solos stay outside the recovery moat and separated from pack clouds across the arena', () => {
@@ -252,99 +213,6 @@ test('full solo placement matrix remains seeded, bounded and clear of six-member
   }
 });
 
-test('melee and ranged solos both move toward a reachable waypoint within one patrol leg', () => {
-  for (const streamDelivery of ['melee', 'ranged']) {
-    const heroes = Array.from({ length: 4 }, (_, index) => ({ uid: index + 1, kind: 'hero', hp: 100, footX: 1080 + index, footY: 319.5 + index }));
-    const solo = { uid: 100, kind: 'enemy', hp: 100, streamSolo: 1, streamState: 'roaming', streamDelivery, streamSoloAnchorX: 240, streamSoloAnchorY: 320, streamSoloPhase: 0, footX: 240, footY: 320 };
-    const globals = { ContinuousCombatStage: createContinuousCombatStageState(17), time: 0 };
-    heroes[0].recoveryFadeStartedAt = 0;
-    globals.time = 0.1;
-    advanceContinuousCombatArena({ globals, entities: [...heroes, solo], seconds: 0.1 });
-    assert.deepEqual([solo.footX, solo.footY], [240, 320], `${streamDelivery} patrol pauses during recovery reveal`);
-    delete heroes[0].recoveryFadeStartedAt;
-    for (let step = 2; step <= 10; step += 1) {
-      globals.time = step * 0.1;
-      advanceContinuousCombatArena({ globals, entities: [...heroes, solo], seconds: 0.1 });
-    }
-    assert.ok(solo.footX > 260 && solo.footX <= 270, `${streamDelivery} patrol makes progress within its first leg`);
-    assert.equal(solo.streamState, 'roaming');
-    assert.equal(solo.locomotion, 'walk', `${streamDelivery} patrol keeps its movement clip while it is outside pack-detection range`);
-  }
-});
-
-test('solo enemies patrol within a small safe radius and engage normally on detection', () => {
-  const stage = createContinuousCombatStageState(17);
-  const plan = buildContinuousCombatSpawnPlan(rows, stage);
-  const heroes = Array.from({ length: 4 }, (_, index) => ({ uid: index + 1, kind: 'hero', hp: 100, maxHP: 100, footX: 1080 + index, footY: 319.5 + index }));
-  const enemies = plan.map((entry, index) => {
-    const enemy = { uid: 100 + index, kind: 'enemy', name: entry.row.name, hp: entry.row.HP, maxHP: entry.row.HP, ...entry.row };
-    activateContinuousCombatSpawnedEnemy({ ContinuousCombatStage: stage, EnemySize: 40, time: 0 }, enemy, entry);
-    return enemy;
-  });
-  for (const enemy of enemies.filter(actor => !actor.streamSolo)) {
-    const remoteX = enemy.footX < 1080 ? 350 : 1810;
-    enemy.footX = enemy.x = enemy.streamEngageX = remoteX;
-  }
-  for (const solo of enemies.filter(actor => actor.streamSolo)) {
-    const remoteX = solo.footX < 1080 ? 100 : 2060;
-    solo.footX = solo.x = solo.streamSoloAnchorX = solo.soloFootX = remoteX;
-    solo.streamState = 'roaming';
-    solo.arenaTargetUID = 0;
-  }
-  const globals = { ContinuousCombatStage: stage, time: 2.2 };
-  const solos = enemies.filter(enemy => enemy.streamSolo);
-  solos[0].streamDelivery = 'melee';
-  solos[1].streamDelivery = 'ranged';
-  const beforePatrol = new Map(solos.map(enemy => [enemy.uid, { x: enemy.footX, y: enemy.footY }]));
-  for (let tick = 0; tick < 48; tick += 1) {
-    globals.time = 2.5 + tick * 0.25;
-    globals.ContinuousCombatFormation={x:1080,y:370};
-    heroes.forEach((hero,index)=>{hero.footX=hero.formationSlotX=1080+HERO_FORMATION_SLOTS[index].x;hero.footY=hero.formationSlotY=370+HERO_FORMATION_SLOTS[index].y;});
-    advanceContinuousCombatArena({ globals, entities: [...heroes, ...enemies], seconds: 0.25 });
-  }
-  assert.ok(solos.every(enemy => {
-    const prior = beforePatrol.get(enemy.uid);
-    const displacement = Math.hypot(enemy.footX - prior.x, enemy.footY - prior.y);
-    const anchorDistance = Math.hypot(enemy.footX - enemy.streamSoloAnchorX, enemy.footY - enemy.streamSoloAnchorY);
-    const closestActor = Math.min(...enemies.filter(other => other !== enemy).map(other => Math.hypot(other.footX - enemy.footX, other.footY - enemy.footY)));
-    return displacement >= 8 && anchorDistance <= 40 && closestActor >= 100 && enemy.streamState === 'roaming';
-  }), 'each solo wanders while remaining a distinct distant actor and outside the moat');
-  assert.ok(enemies.filter(enemy => !enemy.streamSolo).every(enemy => enemy.streamState === 'roaming' && enemy.locomotion === 'idle'), 'pack actors remain dormant while distant solos patrol');
-
-  const blockedSolo = solos.find(enemy => enemy.footX < 1000 && enemy.footY + 110 < deriveCombatWorldVerticalBounds().maxY);
-  assert.ok(blockedSolo);
-  const blocker = enemies.find(enemy => !enemy.streamSolo);
-  for (const enemy of enemies) if (enemy !== blockedSolo && enemy !== blocker) {
-    enemy.footX = enemy.x = blockedSolo.footX + 700;
-    enemy.footY = enemy.y = blockedSolo.footY;
-  }
-  blockedSolo.footX = blockedSolo.x = blockedSolo.streamSoloAnchorX;
-  blockedSolo.footY = blockedSolo.y = blockedSolo.streamSoloAnchorY;
-  blockedSolo.streamSoloPhase = 0;
-  blockedSolo.streamDelivery = 'ranged';
-  blocker.footX = blocker.x = blockedSolo.footX;
-  blocker.footY = blocker.y = blockedSolo.footY + 110;
-  const blockedPosition = { x: blockedSolo.footX, y: blockedSolo.footY };
-  heroes.forEach((hero, index) => { hero.footX = 1080 + index; hero.footY = 319.5 + index; });
-  globals.time = 3;
-  advanceContinuousCombatArena({ globals, entities: [...heroes, ...enemies], seconds: 1 });
-  assert.deepEqual([blockedSolo.footX, blockedSolo.footY], [blockedPosition.x, blockedPosition.y], 'a patrol step that would rejoin a pack is rejected');
-  assert.equal(blockedSolo.locomotion, 'idle', 'rejected movement does not leave a walk clip running in place');
-  assert.equal(blockedSolo.actionState, 'idle');
-
-  const targetSolo = solos[0];
-  for (const enemy of enemies) if (enemy !== targetSolo) {
-    enemy.footX = enemy.x = targetSolo.footX + 800;
-    enemy.footY = enemy.y = targetSolo.footY;
-  }
-  targetSolo.footX = targetSolo.x = 1120; targetSolo.footY = targetSolo.y = 370;
-  heroes.forEach((hero, index) => { hero.footX = 1080 + index; hero.footY = 370 + index; });
-  globals.time += 0.25;
-  advanceContinuousCombatArena({ globals, entities: [...heroes, ...enemies], seconds: 0.25 });
-  assert.equal(targetSolo.streamState, 'engaged');
-  assert.ok(heroes.every(hero => hero.arenaTargetUID === targetSolo.uid), 'detected solos enter the existing local target and combat flow');
-});
-
 test('a latched ready stage keeps farming after wave clears until the player summons the boss', () => {
   const globals = {
     ContinuousCombatStageLoop: 1, GamePhase: 'RUNTIME', BattleStartActive: 0, DevBalanceCapture: true, time: 0,
@@ -352,7 +220,7 @@ test('a latched ready stage keeps farming after wave clears until the player sum
     ContinuousCombatStage: { ...createContinuousCombatStageState(52), wave: 1, bossAvailable: true, bossSummonRequired: true, nextEmissionAt: 0 },
   };
   const entities = [{ uid: 1, kind: 'hero', hp: 20, maxHP: 40, footX: 180, footY: 280 }];
-  let nextUID = 10;
+  let nextUID = 10, ordinaryClears = 0;
   const call = (name, row, slotIndex) => {
     if (name === 'SettleContinuousCombatRewards') return;
     if (name !== 'SpawnEnemy') return;
@@ -365,14 +233,14 @@ test('a latched ready stage keeps farming after wave clears until the player sum
     globals.ContinuousCombatStage.wave = wave;
     globals.ContinuousCombatStage.nextEmissionAt = globals.time;
     entities.splice(0, entities.length, entities.find(actor => actor.kind === 'hero'));
-    assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), true, `wave ${wave} clears into farming`);
+    assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, onOrdinaryClear() { ordinaryClears++; } }), true, `wave ${wave} clears into farming`);
     assert.equal(globals.ContinuousCombatStage.bossActive, false);
     assert.equal(globals.ContinuousCombatStage.bossAvailable, true);
     assert.equal(globals.ContinuousCombatStage.bossSummonRequired, true);
     assert.ok(entities.some(actor => actor.kind === 'enemy' && actor.enemyRole !== 'boss'), 'the next fodder wave keeps the player farming');
-    assert.equal(entities[0].hp, Math.min(40, 20 + wave * 6), 'each ordinary clear heals 15% max HP without exceeding max');
+    assert.equal(entities[0].hp, 20, 'host controller delegates HP changes to Rust');
   }
-  assert.equal(globals.BalanceCombatEvents.filter(event => event.type === 'heal' && event.reason === 'ordinary_wave_clear').length, 4);
+  assert.equal(ordinaryClears, 4, 'each ordinary clear submits one Rust respite');
   const hero = entities.find(actor => actor.kind === 'hero');
   hero.hp = 0;
   assert.equal(summonContinuousCombatBoss(globals, entities, call), false, 'manual summon cannot bypass a KO before the recovery owner runs');
@@ -643,47 +511,6 @@ test('deployed party CP includes KO heroes and uses the direct canonical actor s
   assert.ok(getContinuousCombatPartyCP(heroes) > computeCombatPower(heroes[0]));
 });
 
-test('runtime wave emission pads weak packs while only detected sectors enter local commitment', () => {
-  const enemyRows=['Gobloc','Skeleton','High Gobloc','Lizardo','Orc','High Orc','Chimerilass','Djinn','Troll']
-    .map(name=>({name,HP:1,ATK:1,DEF:1,MAG:1,RES:1,SPD:1}));
-  const stage={...createContinuousCombatStageState(53),nextEmissionAt:0,lastUpdatedAt:5,lastArenaUpdatedAt:5};
-  const heroes=Array.from({length:4},(_,index)=>({uid:index+1,kind:'hero',hp:300,maxHP:300,currentLevel:50,stats:{ATK:100,DEF:100,MAG:100,RES:100,SPD:100},footX:180+index*4,footY:220+index*8}));
-  const entities=[...heroes];
-  const globals={ContinuousCombatStageLoop:1,ContinuousCombatStage:stage,GamePhase:'RUNTIME',BattleStartActive:0,time:5,EnemyData:enemyRows,EnemySize:40,EnemySlots:[],EnemyIDs:[],PendingDeaths:{},EnemyDeathVisualHoldByUID:{}};
-  const call=(name,row,slotIndex)=>{
-    if(name!=='SpawnEnemy')return null;
-    const enemy={uid:100+slotIndex,kind:'enemy',name:row.name,hp:row.HP,maxHP:row.HP,stats:{ATK:row.ATK,DEF:row.DEF,MAG:row.MAG,RES:row.RES,SPD:row.SPD},slotIndex};
-    entities.push(enemy);return enemy;
-  };
-  assert.equal(maybeAdvanceContinuousCombatStage({globals,entities,presentationBarrier:{lanes:{}},call}),true);
-  assert.equal(globals.ContinuousCombatStage.wave,2);
-  const packs=new Map();
-  const solos=[];
-  for(const enemy of entities.filter(actor=>actor.kind==='enemy')) {
-    if(enemy.streamSolo){solos.push(enemy);continue;}
-    const packId=enemy.streamSectorIndex;
-    const pack=packs.get(packId)||[];pack.push(enemy);packs.set(packId,pack);
-  }
-  assert.equal(packs.size,6);
-  assert.ok([...packs.values()].every(pack=>pack.length>=3&&pack.length<=6));
-  assert.equal(solos.length,6);
-  for(const solo of solos)assert.notEqual(solo.streamEngagementGroupId,solo.streamSectorIndex,'solos share progress sectors but keep their own local encounter group');
-  const solo=solos.find(enemy=>enemy.streamSectorIndex%6===0);
-  const committedPack=[...packs.entries()].find(([sector])=>sector===solo.streamSectorIndex);
-  heroes.forEach((hero,index)=>{hero.footX=solo.footX+index;hero.footY=solo.footY+index;});
-  for(const enemy of entities.filter(actor=>actor.kind==='enemy'&&actor!==solo)) {
-    enemy.footX=solo.footX+800;
-    enemy.x=enemy.footX;
-    enemy.footY=solo.footY;
-    enemy.y=enemy.footY;
-  }
-  advanceContinuousCombatArena({globals,entities,seconds:0});
-  assert.equal(globals.ContinuousCombatStage.activeEncounterGroupId,solo.streamEngagementGroupId);
-  assert.ok(['in_range','engaged'].includes(solo.streamState));
-  assert.ok(committedPack[1].every(enemy=>enemy.streamState==='roaming'),'nearby solo engagement does not wake the remote pack that shares its progress sector');
-  assert.ok(heroes.every(hero=>hero.arenaTargetUID===solo.uid),'heroes target the local solo independently of its sector pack');
-});
-
 test('chapter scaling raises later chapters and makes the boss a group-level spike', () => {
   const early = createContinuousCombatStageState(42, { region: 1, stage: 1 });
   const late = createContinuousCombatStageState(42, { region: 3, stage: 1, wave: 20 });
@@ -751,78 +578,6 @@ test('boss victory advances the chapter after the region five short chapter', ()
   assert.equal(shortRegionTransition.state.stage, 1);
 });
 
-test('ordinary waves grant capped respite while a boss clear restores and cleanses the party', () => {
-  for (const stage of [
-    { wave: 10 },
-    { wave: 10, bossAvailable: true, bossSummonRequired: true, bossArmed: true, bossActive: true },
-  ]) {
-    const heroes = [
-      { uid: 1, kind: 'hero', baseHeroName: 'Falie', hp: 13, maxHP: 50, isAlive: true, footX: 1800, footY: 275, statuses: [{ statusEffect: 'dot' }, { statusEffect: 'atkUp' }], statusEffects: [{ statusEffect: 'blind' }, { statusEffect: 'barrier' }] },
-      { uid: 2, kind: 'hero', baseHeroName: 'Huun', hp: stage.bossActive ? 0 : 10, maxHP: 40, isAlive: !stage.bossActive, footX: 420, footY: 205, actionState: stage.bossActive ? 'ko' : undefined, actionFacing: 'left', actionStateStartedAt: 1, actionImpactAt: 1, actionStateUntil: 86401, statuses: [{ statusEffect: 'silence' }] },
-    ];
-    const entities = [...heroes];
-    const globals = {
-      ContinuousCombatStageLoop: 1,
-      ContinuousCombatStage: { ...createContinuousCombatStageState(1), ...stage, nextEmissionAt: 0 },
-      EnemyData: rows, EnemySize: 40, GamePhase: 'RUNTIME', BattleStartActive: 0, DevBalanceCapture: true,
-      time: 10, PendingDeaths: {}, EnemyDeathVisualHoldByUID: {}, EnemySlots: [],
-      HeroProgress: createHeroProgressStore(),
-    };
-    const calls = [];
-    const call = (name, row, slotIndex) => {
-      calls.push(name);
-      if (name === 'SettleContinuousCombatRewards' && stage.bossActive) heroes[0].maxHP = 60;
-      if (name !== 'SpawnEnemy') return null;
-      const enemy = { uid: 10 + slotIndex, kind: 'enemy', name: row.name, hp: row.HP, maxHP: row.HP };
-      entities.push(enemy);
-      return enemy;
-    };
-    assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), true);
-    const clearedBoss = !!stage.bossActive;
-    assert.deepEqual(heroes.map(hero => hero.hp), clearedBoss ? [60, 40] : [21, 16]);
-    assert.equal(globals.ContinuousCombatStage.bossActive, !clearedBoss, 'the final ordinary clear arms the boss with its respite already applied');
-    assert.equal((globals.BalanceCombatEvents || []).filter(event => event.reason === 'ordinary_wave_clear').length, clearedBoss ? 0 : 2,
-      'boss victory never receives ordinary-wave healing');
-    assert.deepEqual(heroes.map(hero => hero.isAlive), [true, true]);
-    if (clearedBoss) {
-      const huddle = deriveContinuousCombatRecoveryHuddle(heroes, globals.ContinuousCombatInitialRoam?.direction || 1);
-      assert.deepEqual(heroes.map(hero => [hero.footX, hero.footY]), huddle.map(({ x, y }) => [x, y]), 'the revived party snaps to role-based huddle coordinates');
-      assert.ok(heroes.every(hero => hero.recoveryFadeStartedAt === 10), 'all revived heroes share one fade start');
-    } else {
-      assert.ok(heroes.every(hero=>hero.footX>=520&&hero.footX<=1640&&hero.footY>=290&&hero.footY<=450),'restored rigid slots fit inside the ordinary patrol');
-    }
-    if (clearedBoss) {
-      assert.equal(globals.ContinuousCombatStage.bossSummonRequired, false, 'boss victory clears the retry latch for the new stage');
-      for (const hero of heroes) {
-        assert.equal(hero.locomotion, 'idle');
-        assert.equal(hero.locomotionStartedAt, 10);
-        for (const key of ['actionState', 'actionFacing', 'actionStateStartedAt', 'actionImpactAt', 'actionStateUntil']) assert.equal(hero[key], undefined);
-      }
-    }
-    assert.deepEqual(heroes.map(hero => hero.statuses.map(status => status.statusEffect)),
-      clearedBoss ? [['atkUp'], []] : [['dot', 'atkUp'], ['silence']]);
-    assert.deepEqual(heroes[0].statusEffects.map(status => status.statusEffect), clearedBoss ? ['barrier'] : ['blind', 'barrier']);
-    assert.equal(calls.includes('UpdateHeroHPUI'), true);
-    assert.equal(globals.HeroProgress.heroes.Falie?.hp, clearedBoss ? 60 : 21);
-    assert.equal(globals.HeroProgress.heroes.Huun?.hp, clearedBoss ? 40 : 16);
-    const restored = createHeroProgressStore(JSON.parse(JSON.stringify(globals.HeroProgress)));
-    assert.equal(restored.heroes.Falie?.hp, clearedBoss ? 60 : 21, 'Fara HP survives a HeroProgress save and reload');
-    assert.equal(restored.heroes.Huun?.hp, clearedBoss ? 40 : 16, 'Hondo HP survives a HeroProgress save and reload');
-    assert.equal(globals.ContinuousCombatStage.wave, 1);
-  }
-});
-
-test('an ordinary Hero KO blocks wave settlement and respite until recovery', () => {
-  const stage = createContinuousCombatStageState(1);
-  const living = { uid: 1, kind: 'hero', hp: 10, maxHP: 40 };
-  const ko = { uid: 2, kind: 'hero', hp: 0, maxHP: 40 };
-  const globals = { ContinuousCombatStageLoop: 1, ContinuousCombatStage: stage, GamePhase: 'RUNTIME', DevBalanceCapture: true, time: 1 };
-  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities: [living, ko], call() {} }), false);
-  assert.deepEqual([living.hp, ko.hp], [10, 0]);
-  assert.equal(stage.ordinaryWaveClears, 0);
-  assert.equal((globals.BalanceCombatEvents || []).length, 0);
-});
-
 test('a lethal boss trade waits for death presentation and then awards the clear', () => {
   const heroes = [
     { uid: 1, kind: 'hero', baseHeroName: 'Falie', hp: 0, maxHP: 50, isAlive: false },
@@ -870,71 +625,6 @@ test('the final ordinary wave waits for its normal interval before boss entry', 
   globals.time = 20;
   assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities: [], presentationBarrier: { lanes: {} }, call }), true);
   assert.equal(globals.ContinuousCombatStage.wave, 1);
-});
-
-test('boss defeat retains readiness and waits for explicit summon after recovery pacing', () => {
-  const globals = { ContinuousCombatStageLoop: 1, time: 12, GamePhase: 'RUNTIME', BattleStartActive: 0, EnemyData: rows, EnemySlots: [], PendingDeaths: {}, EnemyDeathVisualHoldByUID: {}, ContinuousCombatStage: createContinuousCombatStageState(42, { region: 2, stage: 1 }) };
-  const entities=[{uid:1,kind:'hero',hp:40,maxHP:75}];
-  const call=(name,row)=>{if(name==='SpawnEnemy'){const e={uid:2,kind:'enemy',hp:row.HP};entities.push(e);return e;}};
-  assert.equal(armContinuousCombatBoss(globals,entities,call), false);
-  globals.ContinuousCombatStage.bossAvailable = true;
-  assert.equal(armContinuousCombatBoss(globals,entities,call), true);
-  assert.equal(globals.ContinuousCombatStage.bossArmed, true);
-  entities.splice(0, entities.length, ...entities.filter(actor => actor.kind === 'hero'));
-  assert.equal(resetContinuousCombatAfterDefeat(globals), true);
-  assert.equal(globals.ContinuousCombatStage.region, 2);
-  assert.equal(globals.ContinuousCombatStage.stage, 1);
-  assert.equal(globals.ContinuousCombatStage.wave, 1);
-  assert.equal(globals.ContinuousCombatStage.bossAvailable, true);
-  assert.equal(globals.ContinuousCombatStage.bossSummonRequired, true);
-  assert.equal(deriveContinuousCombatWavePackProgress(globals.ContinuousCombatStage, entities).fraction, 1);
-  assert.equal(globals.ContinuousCombatStage.bossArmed, false);
-  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), false, 'boss retry observes the recovery interval');
-  globals.time = 15;
-  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), true);
-  assert.equal(globals.ContinuousCombatStage.bossActive, false);
-  assert.ok(entities.some(a=>a.kind==='enemy'&&a.enemyRole!=='boss'),'the retry resumes farming fodder');
-  assert.equal(summonContinuousCombatBoss(globals, entities, call), true, 'the explicit retry summons the boss');
-  assert.equal(globals.ContinuousCombatStage.bossActive, true);
-  assert.equal(globals.ContinuousCombatStage.bossSummonRequired, true);
-});
-
-test('a KO on the final-wave last-kill boundary records readiness but never auto-enters', () => {
-  const stage = { ...createContinuousCombatStageState(73), wave: 10, spawnedPackMask: 63, spawnSerial: 1, nextEmissionAt: 0 };
-  const globals = { ContinuousCombatStageLoop: 1, time: 10, GamePhase: 'RUNTIME', BattleStartActive: 0, EnemyData: rows, EnemySlots: [], PendingDeaths: {}, EnemyDeathVisualHoldByUID: {}, ContinuousCombatStage: stage };
-  const entities = [{ uid: 1, kind: 'hero', hp: 100, maxHP: 100 }];
-  assert.equal(recordContinuousCombatWavePackProgress(stage, entities), true, 'the tick captures all six last-kill clears before recovery filters enemies');
-  assert.equal(stage.clearedPackMask, 63);
-  assert.equal(resetContinuousCombatAfterDefeat(globals), true);
-  assert.equal(globals.ContinuousCombatStage.bossAvailable, true);
-  assert.equal(globals.ContinuousCombatStage.bossSummonRequired, true);
-  let nextUID = 10;
-  const call = (name, row, slotIndex) => {
-    if (name !== 'SpawnEnemy') return;
-    const enemy = { uid: nextUID++, kind: 'enemy', name: row.name, enemyRole: row.enemyRole || row.role || 'fodder', hp: row.HP, maxHP: row.HP, slotIndex };
-    entities.push(enemy);
-    return enemy;
-  };
-  globals.time = 12;
-  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), false, 'the normal recovery interval still paces the farming restart');
-  globals.time = 13;
-  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call }), true);
-  assert.equal(globals.ContinuousCombatStage.bossActive, false);
-  assert.ok(entities.some(actor => actor.kind === 'enemy' && actor.enemyRole !== 'boss'), 'completed-approach recovery farms fodder instead of entering the boss');
-});
-
-test('an individual KO does not interrupt an active boss attempt', () => {
-  const globals = { ContinuousCombatStageLoop: 1, ContinuousCombatStage: { ...createContinuousCombatStageState(31), bossAvailable: true, bossSummonRequired: true, bossActive: true, bossTransitionEndsAtMs: 0, nextEmissionAt: 99 }, GamePhase: 'RUNTIME', BattleStartActive: 0, time: 5 };
-  const entities = [
-    { uid: 1, kind: 'hero', hp: 0, maxHP: 40 },
-    { uid: 2, kind: 'hero', hp: 40, maxHP: 40 },
-    { uid: 2, kind: 'hero', hp: 40, maxHP: 40, x: 200, y: 290, footX: 200, footY: 290 },
-    { uid: 3, kind: 'enemy', hp: 40, maxHP: 40, streamState: 'engaged', x: 220, y: 290, footX: 220, footY: 290, streamSectorIndex: 0, streamPackIndex: 0, streamEncounterGroupId: 1 },
-  ];
-  const calls = [];
-  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call: name => calls.push(name) }), false);
-  assert.ok(calls.includes('TickRealtimeEnemyActions'), 'boss actions continue under the existing whole-party defeat rule');
-  assert.equal(globals.ContinuousCombatStage.bossActive, true);
 });
 
 test('final cleared wave enters the boss once through the existing wipe without spawning more fodder', () => {
@@ -1026,110 +716,6 @@ test('six seeded sector identities keep full pack footprints outside the compact
   assert.equal(enemies[0].streamWalkSpeed, Math.max(34, 40 * 0.9) * 0.7 * 0.9);
 });
 
-test('Shield Slam and Return Gate move right within the attack boundary', () => {
-  const enemy = { uid: 71, kind: 'enemy', hp: 10, streamState: 'engaged', x: 280, originX: 280, streamEngageX: 280 };
-  assert.equal(pushContinuousCombatEnemy(enemy, 80, 5), 10);
-  assert.equal(enemy.x, 290);
-  assert.equal(enemy.streamState, 'in_range');
-  enemy.x = 200;
-  enemy.originX = 200;
-  enemy.streamEngageX = 200;
-  enemy.streamState = 'engaged';
-  assert.equal(pushContinuousCombatEnemy(enemy, 80, 5), 55);
-  assert.equal(enemy.x, 255);
-  enemy.x = 180;
-  enemy.originX = 180;
-  enemy.streamEngageX = 180;
-  enemy.streamState = 'engaged';
-  assert.equal(teleportContinuousCombatEnemy(enemy, 100, 6), 100);
-  assert.equal(enemy.x, 280);
-  enemy.x = 300;
-  enemy.originX = 300;
-  enemy.streamEngageX = 300;
-  assert.equal(teleportContinuousCombatEnemy(enemy, 100, 7), 0);
-  assert.equal(enemy.x, 300);
-});
-
-test('active arena displacement clamps against the three-screen world edge', () => {
-  const enemy = { uid: 90, kind: 'enemy', hp: 10, streamState: 'engaged', arenaEnabled: true, x: 2110, y: 280, footX: 2110, footY: 280 };
-  const source = { uid: 1, kind: 'hero', hp: 100, footX: 2055, footY: 280 };
-  assert.equal(pushContinuousCombatEnemy(enemy, 55, 0, source), 10);
-  assert.equal(enemy.footX, 2120);
-  assert.equal(reverseContinuousCombatEnemy(enemy, 1, 1, source), true);
-});
-
-test('displacement preserves an active stationary impact and returns the enemy to its attack anchor', () => {
-  const enemy = { uid: 74, kind: 'enemy', hp: 10, streamState: 'engaged', x: 200, originX: 200, originY: 210, streamEngageX: 200, streamWalkSpeed: 80, streamStartAt: 0 };
-  const action = { uid: enemy.uid, active: true, stationary: true, state: 'HIT', timer: 0.2, nextReadyAt: 7 };
-  const pendingImpact = { ownerUID: enemy.uid, impactAt: 1.2 };
-  const stage = { ...createContinuousCombatStageState(3), lastUpdatedAt: 1 };
-  const globals = {
-    ContinuousCombatStageLoop: 1,
-    ContinuousCombatStage: stage,
-    RealtimeEnemyActionsByUID: { [enemy.uid]: action },
-    PendingHeroHits: [pendingImpact],
-    GamePhase: 'RUNTIME',
-    time: 1,
-  };
-
-  assert.equal(pushContinuousCombatEnemy(enemy, 55, 1), 55);
-  assert.equal(enemy.x, 255);
-  assert.equal(enemy.streamEngageX, 200);
-  globals.time = 1.1;
-  enemy.x = enemy.originX;
-  maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], call() {} });
-  assert.equal(enemy.originX, 255);
-  assert.equal(enemy.x, 255);
-  assert.equal(enemy.streamState, 'in_range');
-  assert.equal(action.active, true);
-  assert.equal(action.timer, 0.2);
-  assert.equal(action.nextReadyAt, 7);
-  assert.equal(globals.PendingHeroHits[0], pendingImpact);
-
-  action.active = false;
-  globals.time = 1.2;
-  maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], call() {} });
-  assert.equal(enemy.streamEngageX, 200);
-  assert.ok(enemy.x < 255);
-});
-
-test('Frost Reversal retreats on simulation time, blocks new enemy actions, and preserves pending impacts', () => {
-  const stage = { ...createContinuousCombatStageState(4), lastUpdatedAt: 1 };
-  const enemy = { uid: 72, kind: 'enemy', hp: 10, streamState: 'engaged', x: 200, originX: 200, originY: 210, streamEngageX: 200, streamWalkSpeed: 80, streamStartAt: 0 };
-  const pendingHit = { uid: 9, targetUID: enemy.uid, impactAt: 1.3 };
-  const globals = { ContinuousCombatStageLoop: 1, ContinuousCombatStage: stage, GamePhase: 'RUNTIME', time: 1, PendingHeroHits: [pendingHit] };
-  assert.equal(reverseContinuousCombatEnemy(enemy, 1), true);
-  assert.equal(enemy.streamState, 'retreating');
-  let enemyActionCalls = 0;
-  for (let step = 1; step <= 10; step += 1) {
-    globals.time = 1 + step * 0.1;
-    maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], call(name) { if (name === 'TickRealtimeEnemyActions') enemyActionCalls += 1; } });
-  }
-  assert.equal(enemy.x, 280);
-  assert.equal(enemy.streamState, 'retreating');
-  assert.equal(enemyActionCalls, 0);
-  assert.equal(globals.PendingHeroHits[0], pendingHit);
-
-  for (let step = 11; step <= 14; step += 1) {
-    globals.time = 1 + step * 0.1;
-    maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], call(name) { if (name === 'TickRealtimeEnemyActions') enemyActionCalls += 1; } });
-    if (step === 12) assert.equal(enemy.streamState, 'retreating');
-    if (step === 13) assert.equal(enemy.streamState, 'in_range');
-  }
-  assert.ok(enemy.x < 300, 'the enemy resumes its leftward approach after 1.25 seconds');
-  assert.equal(enemy.streamState, 'in_range');
-  assert.equal(globals.PendingHeroHits[0], pendingHit);
-});
-
-test('paused simulation time freezes a forced retreat', () => {
-  const enemy = { uid: 73, kind: 'enemy', hp: 10, streamState: 'engaged', x: 200, originX: 200, streamEngageX: 200, streamWalkSpeed: 80, streamStartAt: 0 };
-  assert.equal(reverseContinuousCombatEnemy(enemy, 2), true);
-  const globals = { ContinuousCombatStageLoop: 1, ContinuousCombatStage: { ...createContinuousCombatStageState(1), lastUpdatedAt: 2 }, GamePhase: 'RUNTIME', time: 2, DevToolingPaused: 1 };
-  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], call() {} }), false);
-  assert.equal(enemy.x, 200);
-  assert.equal(enemy.streamState, 'retreating');
-});
-
 test('next dispersed wave follows the three-second emission interval', () => {
   for (const transitions of [0, 2]) {
   const globals = {
@@ -1180,32 +766,6 @@ test('boss spawn accepts a world-space squad-relative home', () => {
   maybeAdvanceContinuousCombatStage({ globals, entities: [boss], presentationBarrier: { lanes: {} }, call() {}, runCombatStep() { resumed += 1; } });
   assert.equal(boss.x, 901);
   assert.equal(boss.y, 290);
-});
-
-test('engaged enemy cooldowns keep ticking while hero projectiles are in flight', () => {
-  const globals = {
-    ContinuousCombatStageLoop: 1,
-    ContinuousCombatStage: { ...createContinuousCombatStageState(1), bossActive: true },
-    GamePhase: 'RUNTIME', BattleStartActive: 0, time: 2,
-    PendingHeroHits: [{ targetUID: 1 }], ActionInProgress: 1, IsPlayerBusy: 1,
-  };
-  const boss = { kind: 'enemy', hp: 10, streamState: 'engaged', x: 290, y: 290 };
-  let enemyTimerChecks = 0;
-  maybeAdvanceContinuousCombatStage({ globals, entities: [boss], presentationBarrier: { lanes: { pendingHeroHits: true } }, call(name) { if (name === 'TickRealtimeEnemyActions') enemyTimerChecks += 1; }, runCombatStep() { assert.fail('continuous enemy scheduling must not use ProcessTurn'); } });
-  assert.equal(enemyTimerChecks, 1);
-});
-
-test('active per-enemy actions hold boss or wave clearance through their own impact', () => {
-  const globals = {
-    ContinuousCombatStageLoop: 1,
-    ContinuousCombatStage: { ...createContinuousCombatStageState(1), bossActive: true, bossAvailable: true, bossArmed: true },
-    GamePhase: 'RUNTIME', BattleStartActive: 0, time: 2,
-    RealtimeEnemyActionsByUID: { 9: { uid: 9, active: true, state: 'HIT' } },
-  };
-  let settled = 0;
-  maybeAdvanceContinuousCombatStage({ globals, entities: [], presentationBarrier: { lanes: {} }, call(name) { if (name === 'SettleContinuousCombatRewards') settled += 1; }, runCombatStep() {} });
-  assert.equal(settled, 0);
-  assert.equal(globals.ContinuousCombatStage.bossActive, true);
 });
 
 test('one compact pack keeps deterministic lanes and travel speeds', () => {
@@ -1319,42 +879,6 @@ test('later-stage recovery plans keep bounded packs after partial saved clears',
       }
     }
   }
-});
-
-test('recovery reveal holds the party at section B center, then the nearest spaced pack engages', () => {
-  const heroes = [
-    { uid: 1, kind: 'hero', name: 'Fara', hp: 100, footX: 300, footY: 180 },
-    { uid: 2, kind: 'hero', name: 'Hondo', hp: 100, footX: 320, footY: 200 },
-    { uid: 3, kind: 'hero', name: 'Runa', hp: 100, footX: 340, footY: 220 },
-    { uid: 4, kind: 'hero', name: 'Kaja', hp: 100, footX: 360, footY: 240 },
-  ];
-  const stage = { ...createContinuousCombatStageState(42), clearedPackMask: 0b000101, spawnedPackMask: 0b111111, spawnSerial: 1, nextEmissionAt: 99, lastArenaUpdatedAt: 10 };
-  const globals = { ContinuousCombatStageLoop: 1, ContinuousCombatStage: stage, GamePhase: 'RUNTIME', BattleStartActive: 0, EnemySize: 40, time: 10.2 };
-  placeContinuousCombatHeroesInRecoveryHuddle({ globals, heroes, now: 10 });
-  const moat = deriveContinuousCombatSpawnMoat();
-  const camera = createCombatCameraProjection({ viewportWidth: 360, worldWidth: 2160, zoom: 0.5, centerX: moat.centerX });
-  const huddle = deriveContinuousCombatRecoveryHuddle(heroes);
-  assert.equal(globals.ContinuousCombatFormation.x, moat.centerX);
-  assert.equal(camera.project(globals.ContinuousCombatFormation.x,globals.ContinuousCombatFormation.y).x,180);
-
-  const enemies = Array.from({ length: CONTINUOUS_COMBAT_PACKS_PER_WAVE }, (_, sectorIndex) => [0, 1].map(entryOrder =>
-    activateContinuousCombatSpawnedEnemy(globals, { uid: 20 + sectorIndex * 2 + entryOrder, kind: 'enemy', hp: 100 }, { packIndex: 0, sectorIndex, entryOrder, sectorSize: 2 }))).flat();
-  const initialHeroes = heroes.map(hero => [hero.footX, hero.footY]);
-  const initialEnemies = enemies.map(enemy => [enemy.footX, enemy.footY]);
-  const call = () => {};
-  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities: [...heroes, ...enemies], presentationBarrier: { lanes: {} }, call }), false);
-  assert.deepEqual(heroes.map(hero => [hero.footX, hero.footY]), initialHeroes, 'the shared reveal holds movement');
-  assert.deepEqual(enemies.map(enemy => [enemy.footX, enemy.footY]), initialEnemies, 'remote packs stay parked during the reveal');
-  assert.equal(stage.clearedPackMask, 0b000101, 'earned sectors survive the recovery transition');
-
-  globals.time = 10.5;
-  const packDistance = enemy => Math.min(...heroes.map(hero => Math.hypot(enemy.footX - hero.footX, enemy.footY - hero.footY)));
-  const local = enemies.filter(enemy => packDistance(enemy) <= CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS);
-  const remote = enemies.filter(enemy => packDistance(enemy) > CONTINUOUS_COMBAT_ENEMY_DETECTION_RADIUS);
-  assert.ok(local.length > 0 && remote.length > 0, 'the tighter full-footprint gap leaves some packs local and others dormant');
-  maybeAdvanceContinuousCombatStage({ globals, entities: [...heroes, ...enemies], presentationBarrier: { lanes: {} }, call });
-  assert.ok(local.some(enemy => enemy.streamState !== 'roaming'), 'a pack already within notice range activates without an artificial delay');
-  assert.ok(remote.every(enemy => enemy.streamState === 'roaming'), 'distant packs remain dormant until a hero approaches');
 });
 
 test('ordinary six-member packs form repeatable compact two-dimensional clouds inside arena bounds', () => {
@@ -1510,405 +1034,4 @@ test('boss entry stages an edge-bound party into a fixed left-heroes right-boss 
     assert.ok(Math.max(...heroes.map(hero => hero.footX)) - Math.min(...heroes.map(hero => hero.footX)) < 40,
       'edge staging preserves the party formation span');
   }
-});
-
-test('nearby pack engagement wakes the cooldown scheduler', () => {
-  const globals = {
-    ContinuousCombatStageLoop: 1,
-    ContinuousCombatStage: { ...createContinuousCombatStageState(1), awaitingPackArrival: true, nextEmissionAt: 99, lastUpdatedAt: 0, lastArenaUpdatedAt: 0, spawnSerial: 1 },
-    GamePhase: 'RUNTIME', BattleStartActive: 0, time: 0,
-    EnemyAreaRect: { minX: 160, maxX: 200, minY: 60, maxY: 180 }, EnemySize: 40,
-    EnemyData: rows, EnemySlots: [2], PendingDeaths: {}, ActionInProgress: 0, IsPlayerBusy: 1, DeferAdvance: 1,
-  };
-  const enemy = activateContinuousCombatSpawnedEnemy(globals, { uid: 1, kind: 'enemy', hp: 10 }, { lane: 1, entryOrder: 0, sectorIndex: 0 });
-  enemy.x = enemy.footX = 1120; enemy.y = enemy.footY = 370;
-  const hero = { uid: 2, kind: 'hero', hp: 100, attackType: 'melee', footX: 1080, footY: 370 };
-  globals.ContinuousCombatStage.lastUpdatedAt = 0.9;
-  globals.time = 1;
-  let resumed = 0;
-  maybeAdvanceContinuousCombatStage({ globals, entities: [hero, enemy], presentationBarrier: { lanes: {} }, call(name) { if (name === 'TickRealtimeEnemyActions') resumed += 1; }, runCombatStep() {} });
-  assert.equal(enemy.streamState, 'engaged');
-  assert.equal(enemy.arenaInReach, true);
-  assert.equal(globals.ContinuousCombatStage.nextEmissionAt, 99);
-  assert.equal(resumed, 1);
-});
-
-test('heroes leave remote roaming packs dormant until local detection', () => {
-  const globals = {
-    ContinuousCombatStageLoop: 1,
-    ContinuousCombatStage: { ...createContinuousCombatStageState(1), nextEmissionAt: 99, lastUpdatedAt: 0.9, spawnSerial: 1 },
-    GamePhase: 'RUNTIME', BattleStartActive: 0, time: 1,
-    EnemySize: 40, EnemyData: rows, EnemySlots: [2], PendingDeaths: {}, ActionInProgress: 0, IsPlayerBusy: 0,
-  };
-  const hero = { uid: 2, kind: 'hero', hp: 100, footX: 1080, footY: 319.5 };
-  const enemy = activateContinuousCombatSpawnedEnemy(globals, { uid: 1, kind: 'enemy', hp: 10 }, { lane: 1, entryOrder: 0, sectorIndex: 0 });
-  const farX = enemy.x;
-  let resumed = 0;
-  maybeAdvanceContinuousCombatStage({ globals, entities: [hero, enemy], presentationBarrier: { lanes: {} }, call(name) { if (name === 'TickRealtimeEnemyActions') resumed += 1; }, runCombatStep() {} });
-  assert.equal(enemy.streamState, 'roaming');
-  assert.equal(enemy.x, farX);
-  assert.equal(resumed, 0);
-});
-
-test('queryless production centers only the fresh continuous party in B and disables AF', () => {
-  const globals = { EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 }, EnemySize: 40 };
-  assert.equal(configureContinuousCombatProduction(globals, { productionPath: true }), true);
-  assert.equal(globals.RealtimeHeroFocusTargetUID, 0);
-  const heroes = Array.from({ length: 4 }, (_, index) => ({ kind: 'hero', uid: index + 1, hp: 100, flow: 100, flowReady: true }));
-  const enemies = Array.from({ length: 6 }, (_, entryOrder) => ({
-    kind: 'enemy', uid: 20 + entryOrder, hp: 20, slotIndex: entryOrder,
-    continuousStageSectorIndex: 2, continuousStageEntryOrder: entryOrder,
-    continuousStageSectorSize: 6, continuousStagePackIndex: 3,
-  }));
-  const entities = [...heroes, ...enemies];
-  assert.equal(finalizeContinuousCombatProduction(globals, entities), true);
-  assert.ok(heroes.every(hero => hero.flow === 0));
-  assert.equal(globals.ContinuousCombatFormation.x,1080);
-  assert.ok(heroes.every(hero => hero.footX >= 720 && hero.footX <= 1440));
-  assert.ok(Math.abs(Math.max(...heroes.map(hero => hero.footX)) - Math.min(...heroes.map(hero => hero.footX)) - 70.4) < 1e-9);
-  assert.ok(enemies.every(enemy => enemy.streamState === 'roaming'));
-  assert.ok(Math.max(...enemies.map(enemy => enemy.x)) - Math.min(...enemies.map(enemy => enemy.x)) <= 116,
-    'the production finalizer routes existing enemies through the shared clustered placement owner');
-  assert.equal(globals.ContinuousCombatStage.nextEmissionAt, 3);
-  advanceContinuousCombatArena({ globals, entities: heroes, seconds: 0 });
-  assert.ok(heroes.every(hero => Number.isFinite(hero.footY)), 'first arena tick completes finite world feet from the same fresh-entry fixture');
-  assert.equal(globals.ContinuousCombatFormation.x,1080);
-});
-
-test('production finalization preserves an already-positioned continuous party', () => {
-  const globals = {
-    ContinuousCombatStageLoop: 1,
-    ContinuousCombatStage: createContinuousCombatStageState(3),
-    time: 0,
-  };
-  const heroes = [
-    { kind: 'hero', uid: 1, footX: 880, footY: 250 },
-    { kind: 'hero', uid: 2, footX: 920, footY: 270 },
-  ];
-  assert.equal(finalizeContinuousCombatProduction(globals, heroes), true);
-  const huddle = deriveContinuousCombatRecoveryHuddle(heroes, globals.ContinuousCombatInitialRoam.direction);
-  assert.deepEqual(heroes.map(hero => [hero.footX, hero.footY]), huddle.map(slot => [slot.x, slot.y]),
-    'fresh production starts from the authored midpoint huddle, regardless of prior actor coordinates');
-  assert.ok(heroes.every(hero => Math.abs(hero.footX - 1080) < 30 && Math.abs(hero.footY - 370) < 40));
-});
-
-test('fresh production and recovery choose seeded headings while preserving fixed board offsets', () => {
-  let left = 0;
-  let right = 0;
-  for (let seed = 1; seed <= 64; seed += 1) {
-    const globals = {
-      ContinuousCombatStageLoop: 1,
-      ContinuousCombatStage: createContinuousCombatStageState(seed),
-      EncounterSeed: seed,
-      time: 0,
-      EnemySize: 40,
-      EnemyData: rows,
-    };
-    const heroes = [
-      { kind: 'hero', uid: 1, baseHeroName: 'Fara', hp: 100, maxHP: 100, atk: 20, footX: 1800, footY: 680 },
-      { kind: 'hero', uid: 2, baseHeroName: 'Hondo', hp: 100, maxHP: 100, atk: 20, footX: 1800, footY: 680 },
-      { kind: 'hero', uid: 3, baseHeroName: 'Runa', hp: 100, maxHP: 100, mag: 20, footX: 1800, footY: 680 },
-      { kind: 'hero', uid: 4, baseHeroName: 'Kaja', hp: 100, maxHP: 100, mag: 20, footX: 1800, footY: 680 },
-    ];
-    const plan = buildContinuousCombatSpawnPlan(rows, globals.ContinuousCombatStage, { partyCP: 1000 });
-    const enemies = plan.map((entry, index) => ({
-      kind: 'enemy', uid: 100 + index, hp: 100, maxHP: 100, slotIndex: index,
-      continuousStageSectorIndex: entry.sectorIndex,
-      continuousStageEntryOrder: entry.entryOrder,
-      continuousStageSectorSize: entry.sectorSize,
-      continuousStagePackIndex: entry.packIndex,
-      continuousStageRank: entry.rank,
-      continuousStageSolo: entry.isSolo ? 1 : 0,
-      continuousStageSoloFootX: entry.soloFootX,
-      continuousStageSoloFootY: entry.soloFootY,
-    }));
-    const entities = [...heroes, ...enemies];
-    assert.equal(finalizeContinuousCombatProduction(globals, entities), true);
-    const first = globals.ContinuousCombatInitialRoam;
-    assert.ok(first);
-    if (first.direction < 0) left += 1; else right += 1;
-    assert.equal(first.originX, 1080, 'offscreen pre-huddle origins cannot reverse the opening choice');
-    assert.equal(first.targetX, 1080 + first.direction * 200);
-    assert.ok(enemies.some(enemy => enemy.streamState === 'roaming'), 'test uses the real multi-sector production pack layout');
-    const positions = heroes.map(hero => hero.footX);
-    assert.deepEqual(heroes.map(hero=>[hero.footX,hero.footY]),HERO_FORMATION_SLOTS.slice(0,4).map(slot=>[1080+slot.x,370+slot.y]));
-    const firstSnapshot = { ...first };
-    assert.deepEqual(globals.ContinuousCombatInitialRoam, firstSnapshot, 'reading the attempt does not redraw its heading');
-
-    globals.time = 0.5;
-    advanceContinuousCombatArena({ globals, entities, seconds: 0.5 });
-    assert.ok(heroes.every((hero, index) => (hero.footX - positions[index]) * first.direction > 0),
-      'all four heroes begin walking in the selected direction with the production packs present');
-  }
-  assert.ok(left >= 20 && right >= 20, `seeded headings should vary across attempts (left=${left}, right=${right})`);
-
-  const globals = { ContinuousCombatStage: createContinuousCombatStageState(91), EncounterSeed: 91, ContinuousCombatRoamAttempt: 0, time: 10 };
-  const heroes = [
-    { uid: 1, kind: 'hero', baseHeroName: 'Fara', hp: 100, footX: 1800, footY: 690 },
-    { uid: 2, kind: 'hero', baseHeroName: 'Hondo', hp: 100, footX: 1800, footY: 690 },
-    { uid: 3, kind: 'hero', baseHeroName: 'Runa', hp: 100, footX: 1800, footY: 690 },
-    { uid: 4, kind: 'hero', baseHeroName: 'Kaja', hp: 100, footX: 1800, footY: 690 },
-  ];
-  placeContinuousCombatHeroesInRecoveryHuddle({ globals, heroes, now: 10 });
-  const recovered = globals.ContinuousCombatInitialRoam;
-  assert.equal(recovered.attempt, 1, 'recovery advances the transient attempt draw once');
-  assert.equal(recovered.originX, 1080);
-  assert.equal(recovered.targetX, 1080 + recovered.direction * 200);
-  assert.ok(heroes.every(hero => hero.footX >= 720 && hero.footX <= 1440 && hero.footY < 680),
-    'recovery first relocates offscreen actors into the centered huddle');
-  assert.deepEqual(heroes.map(hero=>[hero.footX,hero.footY]),HERO_FORMATION_SLOTS.slice(0,4).map(slot=>[1080+slot.x,370+slot.y]));
-  globals.ContinuousCombatStageLoop = 1;
-  const openingDirection = recovered.direction;
-  let elapsed = 0;
-  while (globals.ContinuousCombatInitialRoam && elapsed < 5) {
-    globals.time = 10 + elapsed;
-    advanceContinuousCombatArena({ globals, entities: heroes, seconds: 0.1 });
-    elapsed += 0.1;
-  }
-  const recoveredCenter = heroes.reduce((sum, hero) => sum + hero.footX, 0) / heroes.length;
-  assert.ok(elapsed < 5, 'the opening walk completes on a bounded simulation clock');
-  assert.ok((recoveredCenter - 1080) * openingDirection >= 176, 'the full squad reaches the seeded opening waypoint within formation tolerance');
-
-  const bossGlobals = { ContinuousCombatStageLoop: 1, ContinuousCombatStage: { ...createContinuousCombatStageState(13), bossActive: true }, time: 0 };
-  const bossHeroes = [
-    { kind: 'hero', uid: 1, footX: 800, footY: 300 },
-    { kind: 'hero', uid: 2, footX: 840, footY: 320 },
-  ];
-  const bossActor = { kind: 'enemy', uid: 90, hp: 100, maxHP: 100, combatRank: 'boss', footX: 1400, footY: 320 };
-  const bossPositions = bossHeroes.map(hero => [hero.footX, hero.footY]);
-  finalizeContinuousCombatProduction(bossGlobals, [...bossHeroes, bossActor]);
-  assert.equal(bossGlobals.ContinuousCombatInitialRoam, undefined);
-  assert.deepEqual(bossHeroes.map(hero => [hero.footX, hero.footY]), bossPositions, 'boss presentation keeps its fixed authored layout');
-});
-
-test('opening roam releases pursuit when the formation reaches its waypoint', () => {
-  for (const direction of [-1, 1]) {
-    const globals = {
-      ContinuousCombatStageLoop: 1,
-      ContinuousCombatStage: createContinuousCombatStageState(1),
-      time: 1,
-      ContinuousCombatInitialRoam: { direction, originX: 1080, targetX: 1080 + direction * 200, distance: 200 },
-    };
-    globals.ContinuousCombatFormation={x:globals.ContinuousCombatInitialRoam.targetX-direction*.5,y:370};
-    const heroes=HERO_FORMATION_SLOTS.slice(0,4).map((slot,index)=>({uid:index+1,kind:'hero',hp:100,footX:globals.ContinuousCombatFormation.x+slot.x,footY:370+slot.y}));
-    advanceContinuousCombatArena({ globals, entities: heroes, seconds: 0.1 });
-    assert.equal(globals.ContinuousCombatInitialRoam, undefined, 'formation offset cannot hold pursuit disabled');
-  }
-});
-
-test('opening roam yields to actual attack reach and a lingering incoming impact', () => {
-  for (const direction of [-1, 1]) {
-    const globals = {
-      ContinuousCombatStageLoop: 1,
-      ContinuousCombatStage: createContinuousCombatStageState(1),
-      time: 1,
-      EnemySize: 40,
-      EnemyData: rows,
-      ContinuousCombatInitialRoam: { direction, originX: 1080, targetX: 1280, distance: 200 },
-    };
-    const heroes = [
-      { uid: 1, kind: 'hero', baseHeroName: 'Fara', hp: 100, footX: 1080 + direction * 22.4, footY: 319.5 },
-      { uid: 2, kind: 'hero', baseHeroName: 'Hondo', hp: 100, footX: 1080 + direction * 22.4, footY: 339.5 },
-      { uid: 3, kind: 'hero', baseHeroName: 'Runa', hp: 100, footX: 1080 - direction * 22.4, footY: 299.5 },
-      { uid: 4, kind: 'hero', baseHeroName: 'Kaja', hp: 100, footX: 1080 - direction * 22.4, footY: 339.5 },
-    ];
-    const enemy = { uid: 40, kind: 'enemy', hp: 100, maxHP: 100, footX: 1080 + direction * 20, footY: 319.5, streamSectorIndex: 0, streamState: 'roaming' };
-    const entities = [...heroes, enemy];
-    advanceContinuousCombatArena({ globals, entities, seconds: 0.1 });
-    assert.equal(globals.ContinuousCombatInitialRoam, undefined, 'a hero in its delivery reach ends the opening walk');
-    assert.ok(heroes.some(hero => hero.arenaTargetUID === enemy.uid), 'normal shared targeting takes over in the same tick');
-  }
-
-  const globals = {
-    ContinuousCombatStageLoop: 1,
-    ContinuousCombatStage: createContinuousCombatStageState(1),
-    time: 1,
-    ContinuousCombatInitialRoam: { direction: 1, originX: 1080, targetX: 1280, distance: 200 },
-    RealtimeEnemyActionsByUID: { 40: { active: false, targetUID: 1 } },
-    CombatImpactVisuals: [{ ownerUID: 40, targetUID: 1 }],
-  };
-  const heroes = [{ uid: 1, kind: 'hero', hp: 100, footX: 1080, footY: 319.5 }];
-  const enemy = { uid: 40, kind: 'enemy', hp: 100, footX: 1700, footY: 319.5, streamSectorIndex: 0, streamState: 'roaming' };
-  advanceContinuousCombatArena({ globals, entities: [...heroes, enemy], seconds: 0 });
-  assert.equal(globals.ContinuousCombatInitialRoam, undefined, 'an already-emitted impact remains a combat interruption after its action record deactivates');
-});
-
-test('opening roam keeps its seeded direction when the nearest detected enemy starts opposite', () => {
-  for (const direction of [-1, 1]) {
-    const globals = {
-      ContinuousCombatStageLoop: 1,
-      ContinuousCombatStage: createContinuousCombatStageState(17),
-      time: 0.5,
-      EnemySize: 40,
-      EnemyData: rows,
-      ContinuousCombatInitialRoam: { direction, originX: 1080, targetX: 1080 + direction * 200, distance: 200, attempt: 0 },
-    };
-    const heroes=HERO_FORMATION_SLOTS.slice(0,4).map((slot,index)=>({uid:index+1,kind:'hero',hp:100,footX:1080+slot.x,footY:370+slot.y}));
-    globals.ContinuousCombatFormation={x:1080,y:370};
-    const enemy = { uid: 55, kind: 'enemy', hp: 100, maxHP: 100, footX: 1080 - direction * 250, footY: 370, streamSectorIndex: 0, streamState: 'roaming' };
-    const entities = [...heroes, enemy];
-    const startingX = heroes.map(hero => hero.footX);
-    for (let tick = 0; tick < 3; tick += 1) {
-      globals.time += 0.1;
-      advanceContinuousCombatArena({ globals, entities, seconds: 0.1 });
-    }
-    assert.equal(enemy.streamState, 'in_range', 'the opposite-side enemy is detected and locally committed');
-    assert.equal(globals.ContinuousCombatInitialRoam?.direction, direction, 'notice alone does not reroll or reverse the seeded walk');
-    assert.ok(heroes.every((hero, index) => (hero.footX - startingX[index]) * direction > 0),
-      'all four heroes keep walking in the selected direction while the nearest enemy is opposite');
-    assert.ok(heroes.every(hero => hero.arenaTargetUID === enemy.uid), 'normal local target ownership remains available during the opening walk');
-  }
-});
-
-test('production traversal visits ten waves before entering the chapter boss', () => {
-  const heroes = Array.from({ length: 4 }, (_, index) => ({ uid: index + 1, kind: 'hero', hp: 1000, maxHP: 1000, footX: 100 + index * 6, footY: 220 + index * 18 }));
-  const initialPlan = buildContinuousCombatSpawnPlan(rows, createContinuousCombatStageState(7));
-  const enemies = initialPlan.map((entry, index) => ({
-    uid: 20 + index, kind: 'enemy', hp: 100, maxHP: 100, slotIndex: index,
-    continuousStageSectorIndex: entry.sectorIndex, continuousStageEntryOrder: entry.entryOrder,
-    continuousStageSectorSize: entry.sectorSize, continuousStagePackIndex: entry.packIndex,
-    continuousStageRank: entry.rank, continuousStageSolo: entry.isSolo ? 1 : 0,
-    continuousStageSoloFootX: entry.soloFootX, continuousStageSoloFootY: entry.soloFootY,
-  }));
-  const entities = [...heroes, ...enemies];
-  const globals = {
-    ContinuousCombatStageLoop: 1, ContinuousCombatStage: createContinuousCombatStageState(7),
-    GamePhase: 'RUNTIME', BattleStartActive: 0, time: 0, EnemySize: 40, EnemyData: rows,
-    EncounterMaxSlots: CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX, EnemySlots: enemies.map(enemy => enemy.uid + 1), EnemyIDs: enemies.map(enemy => enemy.uid), PendingDeaths: {}, EnemyDeathVisualHoldByUID: {},
-    ProgressionBattle: { outcome: 'active', settled: false },
-  };
-  assert.equal(finalizeContinuousCombatProduction(globals, entities), true);
-  const discovered = new Set();
-  const spawnSlotArguments = [];
-  let nextUid = 100;
-  const call = (name, data, slotIndex) => {
-    if (name !== 'SpawnEnemy') return null;
-    const enemy = { uid: nextUid++, kind: 'enemy', hp: data.HP, maxHP: data.HP, name: data.name, enemyRole: data.enemyRole, slotIndex };
-    spawnSlotArguments.push(slotIndex);
-    globals.EnemyIDs[slotIndex] = enemy.uid;
-    globals.EnemySlots[slotIndex] = enemy.uid + 1;
-    entities.push(enemy);
-    return enemy;
-  };
-  for (let tick = 0; tick <= 3000 && globals.ContinuousCombatStage.wave === 1; tick += 1) {
-    globals.time = tick / 10;
-    maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} });
-    for (const enemy of enemies) {
-      if (enemy.hp > 0 && enemy.streamState !== 'roaming') {
-        discovered.add(enemy.streamSectorIndex);
-        enemy.hp = 0;
-      }
-    }
-  }
-  assert.deepEqual([...discovered].sort((a, b) => a - b), [0, 1, 2, 3, 4, 5]);
-  assert.equal(globals.ContinuousCombatStage.wave, 2);
-  assert.ok(globals.time >= CONTINUOUS_COMBAT_PACK_INTERVAL_SEC);
-  assert.ok(entities.some(enemy => enemy.kind === 'enemy' && enemy.hp > 0 && enemy.streamState === 'roaming'), 'next wave remains remote and dormant after the clear');
-
-  for (const expectedWave of [2, 3, 4, 5, 6, 7, 8, 9, 10]) {
-    const activeWave = entities.filter(enemy => enemy.kind === 'enemy' && enemy.hp > 0);
-    const packActors = activeWave.filter(enemy => !enemy.streamSolo);
-    const sectorCounts = new Map();
-    for (const enemy of packActors) {
-      const count = sectorCounts.get(enemy.streamSectorIndex) || 0;
-      sectorCounts.set(enemy.streamSectorIndex, count + 1);
-    }
-    assert.ok(activeWave.length >= 18 && activeWave.length <= CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX);
-    assert.equal(activeWave.filter(enemy => enemy.streamSolo).length, CONTINUOUS_COMBAT_SOLOS_PER_WAVE);
-    assert.equal(sectorCounts.size, CONTINUOUS_COMBAT_PACKS_PER_WAVE);
-    assert.ok([...sectorCounts.values()].every(count => count >= 2 && count <= 6));
-    assert.ok(activeWave.every(enemy => enemy.slotIndex >= 0 && enemy.slotIndex < CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX));
-    activeWave.forEach(enemy => { enemy.hp = 0; globals.EnemyIDs[enemy.slotIndex] = 0; globals.EnemySlots[enemy.slotIndex] = 0; });
-    const priorSpawnCount = spawnSlotArguments.length;
-    globals.time = globals.ContinuousCombatStage.nextEmissionAt;
-    assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} }), true);
-    const emitted = spawnSlotArguments.slice(priorSpawnCount);
-    if (expectedWave === 10) {
-      assert.deepEqual(emitted, [0], 'the final clear enters the boss without another fodder wave');
-      assert.equal(globals.ContinuousCombatStage.bossActive, true);
-    } else {
-    assert.ok(emitted.length >= 18 && emitted.length <= CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX);
-    const emittedActors = entities.filter(enemy => enemy.kind === 'enemy' && enemy.hp > 0 && emitted.includes(enemy.slotIndex));
-    assert.equal(emittedActors.filter(enemy => enemy.streamSolo).length, CONTINUOUS_COMBAT_SOLOS_PER_WAVE);
-    }
-    assert.deepEqual(emitted, emitted.map((_, slotIndex) => slotIndex), 'each new wave reuses its fixed slot range');
-    assert.ok(emitted.every(slotIndex => slotIndex >= 0 && slotIndex < CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX));
-    assert.ok(globals.EnemySlots.length <= CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX);
-    if (expectedWave < 10) assert.equal(globals.ContinuousCombatStage.wave, expectedWave + 1);
-  }
-  assert.equal(globals.ContinuousCombatStage.wave, 1);
-  assert.equal(globals.ContinuousCombatStage.bossAvailable, true);
-  assert.equal(globals.ContinuousCombatStage.bossActive, true);
-  assert.deepEqual(entities.filter(enemy => enemy.kind === 'enemy').map(enemy => [enemy.name, enemy.slotIndex]), [['Troll', 0]]);
-  assert.ok(globals.EnemySlots.length <= CONTINUOUS_COMBAT_ENEMIES_PER_WAVE_MAX);
-});
-
-test('runtime source targets in-range walkers while keeping them out of the enemy scheduler', async () => {
-  const fs = await import('node:fs');
-  const source = fs.readFileSync(new URL('../web-runner/modules/functionBank.js', import.meta.url), 'utf8');
-  const heroCommands = fs.readFileSync(new URL('../web-runner/modules/heroCommands.mjs', import.meta.url), 'utf8');
-  assert.match(source, /e\.streamState !== 'approaching'/);
-  assert.match(source, /enemy\.streamState && enemy\.streamState !== 'engaged'/);
-  assert.doesNotMatch(source, /stationary: enemy\.streamState === 'engaged'/);
-  assert.match(source, /stationary: Number\(g\.ContinuousCombatStageLoop \|\| 0\) === 1 \|\| profile === 'ranged'/);
-  assert.match(source, /stationary: continuousCombat \|\| \/\^Enemy_Heal_/);
-  assert.match(source, /forwardX: originX/);
-  assert.match(source, /selectionEnabled: targetAvailable/);
-  assert.match(source, /actorRoster\.eligible\.filter\(actor => Number\(actor\.type \|\| 0\) === 1\)/);
-  assert.match(source, /export function TickRealtimeHeroBasics/);
-  assert.match(source, /hit\.realtimeBasic = 1/);
-  assert.match(heroCommands, /noLivingEnemy&&streamComplete/);
-  assert.match(source, /Number\(astralFlowAward\?\.spawned \|\| 0\) > 0 && markEnemyDeathVisualHold/);
-  const renderer = fs.readFileSync(new URL('../web-runner/systems/renderRuntime.js', import.meta.url), 'utf8');
-  const simulationTick = fs.readFileSync(new URL('../web-runner/systems/combatSimulationTick.mjs', import.meta.url), 'utf8');
-  const stage = fs.readFileSync(new URL('../web-runner/src/core/continuousCombatStage.mjs', import.meta.url), 'utf8');
-  assert.match(renderer, /enemiesToDraw = .*\.sort\(\(a, b\) => Number\(b\.y/);
-  assert.match(simulationTick, /const completeEnemyTurn =/);
-  assert.match(simulationTick, /delete actionMap\[key\]/);
-  assert.doesNotMatch(simulationTick.slice(simulationTick.indexOf('export function advanceEnemyActionSimulation')), /callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
-  assert.match(simulationTick, /!pendingHit && !pendingImpact && !pendingBloom && \(Number\(state\.globals\.ContinuousCombatStageLoop/);
-  assert.match(stage, /call\('TickRealtimeEnemyActions'\)/);
-  assert.doesNotMatch(stage, /runCombatStep\('ProcessTurn'\)/);
-});
-
-test('engaged enemies select only a living hero inside their actor-relative reach', async () => {
-  const { readFileSync } = await import('node:fs');
-  const source = readFileSync(new URL('../web-runner/modules/functionBank.js', import.meta.url), 'utf8');
-  const targeter = source.slice(source.indexOf('function pickEnemyTargetHero('), source.indexOf('function applyRunaMagicResist('));
-  assert.match(targeter, /enemy\?\.streamState !== 'engaged' \|\| enemy\.arenaInReach === false/);
-  assert.match(targeter, /selectContinuousEnemyTarget\(\{[\s\S]*requireInReach: true/);
-  assert.doesNotMatch(targeter, /HeroRestBasePosByUID|visibleBottomY/);
-});
-
-test('continuous scheduler rejects a stale hero claim before selecting an engaged enemy', async () => {
-  const { readFileSync } = await import('node:fs');
-  for (const path of ['../web-runner/modules/functionBank.js', '../Scripts/functionBank.js']) {
-    const source = readFileSync(new URL(path, import.meta.url), 'utf8');
-    const scheduler = source.slice(source.indexOf('export function ProcessTurn(ctx)'), source.indexOf('function isBoardFullyPopulatedForEnemyMutation'));
-    assert.match(scheduler, /current\?\.type === 1/);
-    assert.match(scheduler, /state\.readyAt\?\.\[String\(current\.uid\)\] !== Number\.MAX_SAFE_INTEGER/);
-    assert.match(scheduler, /state\.current = null/);
-  }
-});
-
-
-test('the introductory boss stays damageable and gives the default frontline time to fight', async () => {
-  const { readFileSync } = await import('node:fs');
-  const { scaleRoutineEnemy } = await import('../web-runner/src/core/routineEnemyScaling.mjs');
-  const { calculateDamageFromJs } = await import('../web-runner/src/core/calculateDamageRules.mjs');
-  const { HERO_DEFINITIONS } = await import('../web-runner/src/core/heroDefinitions.mjs');
-  const { realtimeCooldownSeconds } = await import('../web-runner/src/core/realtimeCooldown.mjs');
-  const data = JSON.parse(readFileSync(new URL('../web-runner/assets/enemies.json', import.meta.url))).data;
-  const catalog = data[0].slice(1).map((_, i) => Object.fromEntries(data.map(column => [column[0][0], column[i + 1][0]])))
-    .filter(row => row.name).map(row => scaleRoutineEnemy(row, 1));
-  const boss = buildContinuousCombatSpawnPlan(catalog, { region: 1, stage: 1, wave: 10, bossActive: true })[0].row;
-  assert.equal(boss.HP, 231);
-  assert.equal(boss.ATK, 20);
-  for (const [key, stat, resist] of [['Huun', 'ATK', 'DEF'], ['Runa', 'MAG', 'RES']]) {
-    assert.ok(calculateDamageFromJs({ power: HERO_DEFINITIONS[key].baseStats[stat], resist: boss[resist] }).damage > 0);
-  }
-  const tank = HERO_DEFINITIONS.Falie.baseStats;
-  const criticalHit = calculateDamageFromJs({ power: boss.ATK, resist: tank.DEF, critRoll01: 0 }).damage;
-  const survival = (Math.ceil(tank.HP / criticalHit) - 1) * realtimeCooldownSeconds({ ...boss, type: 1, enemyRole: 'boss', attackDelivery: 'melee' });
-  assert.ok(survival >= 10, `fresh Fara survives at least10seconds even if every hit crits: ${survival}`);
 });

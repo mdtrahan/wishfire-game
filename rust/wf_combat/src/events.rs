@@ -2,6 +2,7 @@
 use crate::{Event, HazardKind, Vec2};
 pub enum Pending {
     Event(Event),
+    Hit { event: Event, hp_loss: f32 },
     Split {
         hero: u32,
         center: Vec2,
@@ -33,6 +34,16 @@ impl Events {
     }
     pub fn push(&mut self, event: Event) {
         self.pending.push(Pending::Event(event));
+    }
+    // Presentation telemetry accompanies the original event without changing
+    // the frozen public Event shape, RNG, gameplay hashes or damage order.
+    pub fn hit(&mut self, event: Event, hp_loss: f32) {
+        self.pending.push(Pending::Hit { event, hp_loss });
+    }
+    pub fn hp_losses(&self) -> std::collections::BTreeMap<usize, f32> {
+        self.pending.iter().enumerate().filter_map(|(index, entry)| {
+            if let Pending::Hit { hp_loss, .. } = entry { Some((index, *hp_loss)) } else { None }
+        }).collect()
     }
     pub fn victim_start(&self) -> usize {
         self.victims.len()
@@ -77,6 +88,7 @@ impl Events {
             .drain(..)
             .map(|e| match e {
                 Pending::Event(e) => e,
+                Pending::Hit { event, .. } => event,
                 Pending::Taunt { hero, start, end } => Event::Taunt {
                     hero,
                     radius: crate::tuning::TAUNT_RADIUS,

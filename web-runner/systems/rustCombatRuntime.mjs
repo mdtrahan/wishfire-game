@@ -1,7 +1,7 @@
 import { createCombatRewardOutbox } from './combatRewardOutbox.mjs';
 import { authorSubwaves, bindAuthoredSubwaves, subwaveReady } from '../src/core/continuousCombatSubwaves.mjs';
 import { continuousCombatWavesForStage } from '../src/core/continuousCombatProgressionRules.mjs';
-import { advanceBattleStartSimulation } from './combatSimulationTick.mjs';
+import { advanceBattleStartSimulation } from './combatHostClock.mjs';
 import { createCombatBridge } from '../src/core/combatBridge.mjs';
 import { createCombatAuthorityDriver } from '../src/core/combatAuthorityDriver.mjs';
 import { createWfmCombatConfig, wfmEnemyInput, wfmHeroPermanentInputs } from './wfmCombatConfig.mjs';
@@ -15,6 +15,7 @@ import { bindHeroPermanentInputs } from '../src/core/heroPermanentInputs.mjs';
 import { saveHeroProgress, validateCombatCheckpoint, combatSubwavePosition, WFM_COMBAT_CONTENT_VERSION, WFM_COMBAT_ABI_VERSION } from '../src/core/heroProgression.mjs';
 import { isActorRecoveryRevealActive } from '../src/core/actorPresentationState.mjs';
 import { isRustCombatStage } from './rustCombat.mjs';
+import { recordCombatDpsDamage } from '../src/core/combatDps.mjs';
 
 // Pinned slice Boss KO: 12 frames at 12 fps; actors.rs fade and impact_stop.rs camera.
 const BOSS_KO_SECONDS = 1, CORPSE_FADE = .42, DEATH_CAMERA_SECONDS = .32;
@@ -193,6 +194,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
         }
       } else if (kind === 'damage') {
         const target = hosts.get(data.target);
+        recordCombatDpsDamage(g, hosts.get(data.source), target, data.hp_loss);
         // The slice presentation consumes the same ordered Rust damage event.
       } else if (!['spawned', 'downed', 'revived', 'all_down', 'ended', 'despawned', 'presentation', 'permanent_inputs_applied'].includes(kind)) {
         throw new Error(`Unknown Rust gameplay event: ${kind}`);
@@ -398,7 +400,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
       } catch (error) { finishFailure(error); return false; }
     }
     spawnAdditions();
-    driver.advance(options.nowMs, !!rewardDelivery);
+    driver.advance(options.nowMs, !!rewardDelivery, g.DevCombatSpeedMultiplier ?? 1);
     return advanced;
   }
   function tick(options) {

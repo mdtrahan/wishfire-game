@@ -9,7 +9,7 @@ import { settleContinuousCombatRewards } from '../web-runner/modules/heroCommand
 import { createRustCombatRuntime } from '../web-runner/systems/rustCombatRuntime.mjs';
 import { installRustCombat, isRustCombatStage } from '../web-runner/systems/rustCombat.mjs';
 import { createQuestCombatSession } from '../web-runner/systems/questCombatSession.mjs';
-import { createCombatSimulationTicker } from '../web-runner/systems/combatSimulationTick.mjs';
+import { createCombatHostClock } from '../web-runner/systems/combatHostClock.mjs';
 import { createContinuousCombatStageState } from '../web-runner/src/core/continuousCombatStage.mjs';
 import { createHeroProgressStore, newHeroProgress, refreshHeroStats } from '../web-runner/src/core/heroProgression.mjs';
 const progressSource = fs.readFileSync(new URL('../web-runner/systems/heroProgressStorage.js', import.meta.url), 'utf8');
@@ -63,7 +63,7 @@ function fixture({ lose = false, fault = false, deathObjects = false, durable = 
   const session = createQuestCombatSession({ state, gameState: {}, call, sync() {} });
   const original = session.surrenderBossAttempt;
   session.surrenderBossAttempt = function(reason) { routes.push(reason); return original.call(this, reason); };
-  const clock = createCombatSimulationTicker({ isBagProgressBlocked: () => false });
+  const clock = createCombatHostClock({ isBagProgressBlocked: () => false });
   const saved = new Map();
   const equipment = durable ? createEquipmentStorage({globals:g,storage:{getItem:key=>saved.get(key)??null,setItem:(key,value)=>saved.set(key,value)},locks:{request:async(_key,fn)=>fn()},now:()=>0,seed:()=>42,reportError:()=>{}}) : undefined;
   const runtime = createRustCombatRuntime({ persistCheckpoint: () => true, state, bridge, session, call, equipmentProgress:equipment, persistProgress: () => {saved.set('orka.hero_progress.v2',JSON.stringify(g.HeroProgress));return true;}, getEnemyRows: () => rows,
@@ -100,17 +100,6 @@ test('bridge error releases its world and uses normal WFM failed-attempt recover
   assert.deepEqual(f.routes, ['rust_bridge_error']); assert.equal(f.warnings.length, 1);
   assert.equal(f.g.RustCombatReceipt.outcome, 'bridge_error');
   assert.deepEqual(f.rewards, []); noLeaks(f.bridge);
-});
-
-test('localhost gate is lazy when off, admits every continuous stage and refuses public origins', () => {
-  let loads = 0;
-  const load = () => { loads++; throw Error('unexpected load'); };
-  for (const location of [{ hostname: 'localhost', search: '' }, { hostname: 'localhost', search: '?rustCombat=0' },
-    { hostname: 'example.org', search: '?rustCombat=1' }]) assert.equal(installRustCombat({}, { location, load }), undefined);
-  assert.equal(loads, 0);
-  for (const stage of [{ region: 2, stage: 1, bossActive: true }, { region: 1, stage: 1, bossActive: false }]) {
-    assert.equal(isRustCombatStage({ ContinuousCombatStageLoop: 1, ContinuousCombatStage: stage }), true);
-  }
 });
 
 test('event batches deduplicate by encounter/sequence; gaps and collisions stop before another step', () => {
@@ -177,17 +166,18 @@ test('Rust victory clears through legacy presentation barriers without recreatin
 });
 
 
-test('executable app tick calls only the selected combat owner and keeps JS outcome inference off under Rust', () => {
+test('executable app tick calls only Rust and never invokes retired scheduler or outcome owners', () => {
   const app = fs.readFileSync(new URL('../web-runner/app.js', import.meta.url), 'utf8');
   const start = app.indexOf('  function tick(){', app.indexOf('let frameCount = 0;'));
   const source = app.slice(start, app.indexOf('  tick();', start));
-  for (const enabled of [true, false]) {
-    const counts = { rust: 0, js: 0, stage: 0, outcome: 0 };
+  for (const bagOpen of [false, true]) {
+    const counts = { rust: 0, paused: 0, js: 0, stage: 0, outcome: 0 };
     const context = vm.createContext({
       state: { globals: {}, entities: [] }, gameState: { storyEntry: { phase: 'combat' } },
       document: { hidden: false }, performance: { now: () => 100 }, requestAnimationFrame() {},
       rustCombatShadow: undefined,
-      rustCombat: enabled ? { ownsEncounter: () => true, tick() { counts.rust++; return false; } } : undefined,
+      rustCombat: { ownsEncounter: () => true, tick() { counts.rust++; return false; }, pause() { counts.paused++; } },
+      lampEquipment: { state: () => ({ open: bagOpen }) },
       combatSimulationTicker: { reset() {}, tick() { counts.js++; } },
       ensureDevToolingConfig: () => ({ open: false }), layoutState: { getActiveLayoutId: () => 'combat' },
       shouldFreezeCombatSimulation: () => false, combatProgression: { observe() {} },
@@ -205,7 +195,7 @@ test('executable app tick calls only the selected combat owner and keeps JS outc
       startGemMergeFx() {}, getGoldLabelTargetWorld() {},
     });
     vm.runInContext(`let frameCount = 0; ${source}; tick();`, context);
-    assert.deepEqual(counts, enabled ? { rust: 1, js: 0, stage: 0, outcome: 0 } : { rust: 0, js: 1, stage: 1, outcome: 1 });
+    assert.deepEqual(counts, { rust: bagOpen ? 0 : 1, paused: bagOpen ? 1 : 0, js: 0, stage: 0, outcome: 0 });
   }
 });
 
@@ -334,4 +324,23 @@ test('real-WASM runtime durably captures a boss kill and automatically settles a
  const source=JSON.parse(f.saved.get('orka.hero_progress.v2'));
  assert.ok(Object.values(source.combatRewardOutbox.streams).every(stream=>stream.pending.length===0));
  assert.deepEqual(f.warnings,[]);noLeaks(f.bridge);
+});
+
+
+test('DEV speed reaches the real Rust foreground clock and pause discards elapsed time', () => {
+  const f = fixture();
+  const boss = f.state.entities.find(actor => actor.kind === 'enemy');
+  boss.hp = boss.maxHP = boss.stats.HP = 1e6;
+  try {
+    f.g.DevCombatSpeedMultiplier = .25;
+    for (let frame = 0; frame <= 120; frame++) f.runtime.tick({ ...f.options, nowMs: frame * 1000 / 60 });
+    assert.equal(f.runtime.read().snapshot.step, '15');
+    f.g.DevCombatSpeedMultiplier = 4;
+    for (let frame = 121; frame <= 180; frame++) f.runtime.tick({ ...f.options, nowMs: frame * 1000 / 60 });
+    assert.equal(f.runtime.read().snapshot.step, '135');
+    f.runtime.pause();
+    f.runtime.tick({ ...f.options, nowMs: 3600000 });
+    assert.equal(f.runtime.read().snapshot.step, '135');
+    assert.deepEqual(f.warnings, []);
+  } finally { f.runtime.stop(); noLeaks(f.bridge); }
 });

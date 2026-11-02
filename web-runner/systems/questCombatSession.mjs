@@ -3,8 +3,6 @@ import { CONTINUOUS_COMBAT_BOSS_TIME_LIMIT_SEC, activateContinuousCombatSpawnedE
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import { resetActorPresentationAfterRestore } from '../src/core/actorPresentationState.mjs';
 import { placeContinuousCombatHeroesInRecoveryHuddle } from '../src/core/arenaCombat.mjs';
-import { cleanseDebuffs } from '../src/core/combatRules.mjs';
-import { hasContinuousOrdinaryHeroKO } from './combatSimulationTick.mjs';
 import { recordBalanceCombatEvent } from '../src/core/balanceTelemetry.mjs';
 
 // Session lifecycle only. Damage, initiative and skill rules remain runtime-owned.
@@ -20,11 +18,6 @@ export function restoreHeroesToFullHP({ state, call, reason = 'manual' }) {
     if (state.globals.PendingDeaths) delete state.globals.PendingDeaths[hero.uid];
   }
   call('UpdateHeroHPUI');
-}
-
-export function recoverContinuousOrdinaryDefeatIfNeeded({ state, session } = {}) {
-  if (state.globals.RustCombatAuthority || !hasContinuousOrdinaryHeroKO(state)) return false;
-  return session?.recoverContinuousDefeat?.() || false;
 }
 
 export function createQuestCombatSession({ state, gameState, call, sync }) {
@@ -88,7 +81,6 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
       resetContinuousCombatAfterDefeat(state.globals);
       restoreHeroesToFullHP({ state, call, reason });
       const heroes = state.entities.filter(actor => actor?.kind === 'hero');
-      for (const hero of heroes) cleanseDebuffs(hero);
       placeContinuousCombatHeroesInRecoveryHuddle({ globals: state.globals, heroes, now: Number(state.globals.time || 0) });
       const stageState = state.globals.ContinuousCombatStage;
       const plan = stageState.bossAvailable && !stageState.bossSummonRequired ? [] : buildContinuousCombatSpawnPlan(state.globals.EnemyData, stageState, { slotBase: 0, partyCP: getContinuousCombatPartyCP(state.entities), enemySize: Number(state.globals.EnemySize || 40) });
@@ -108,28 +100,6 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
       call('UpdateEnemyHPUI');
       sync();
       return true;
-    },
-    resurrect() {
-      const heroes = state.entities.filter(actor => actor?.kind === 'hero');
-      const stage = state.globals.ContinuousCombatStage;
-      if (Number(state.globals.ContinuousCombatStageLoop || 0) === 1 && recordContinuousCombatWavePackProgress(stage, state.entities)) state.globals.HeroProgressDirty = true;
-      const needsContinuousHuddle = Number(state.globals.ContinuousCombatStageLoop || 0) === 1
-        && heroes.some(hero => Number(hero.hp || 0) <= 0);
-      restoreHeroesToFullHP({ state, call, reason: 'resurrect' });
-      if (needsContinuousHuddle) {
-        placeContinuousCombatHeroesInRecoveryHuddle({ globals: state.globals, heroes, now: Number(state.globals.time || 0) });
-      }
-      state.globals.NativeBattleEnded = false;
-      if (state.globals.ProgressionBattle) {
-        state.globals.ProgressionBattle.outcome = 'active';
-        state.globals.ProgressionBattle.defeatSettled = false;
-        state.globals.ProgressionBattle.settled = false;
-      }
-      state.globals.ActionInProgress = 0;
-      state.globals.IsPlayerBusy = 0;
-      state.globals.DeferAdvance = 0;
-      gameState.combatFailExitRequested = false;
-      sync();
     },
   };
 }

@@ -5,14 +5,12 @@ const assert = require('node:assert/strict');
 const { parseCsvRows } = require('./helpers/fixtureCsv');
 
 const fixturePath = path.join(__dirname, 'fixtures', 'game_state_envelope_cases.csv');
-const rustLibPath = path.join(__dirname, '..', 'rust', 'simulation_core', 'src', 'lib.rs');
-const wasmPath = path.join(__dirname, '..', 'web-runner', 'assets', 'simulation_core.wasm');
 
 function toNumber(row, key) {
   return Number(row[key] || 0);
 }
 
-test('GameState envelope fixtures encode Rust-owned shape validation', () => {
+test('retained GameState envelope fixtures encode actor counts and schema cases', () => {
   const rows = parseCsvRows(fs.readFileSync(fixturePath, 'utf8'));
   assert.ok(rows.length >= 5);
   for (const row of rows) {
@@ -35,43 +33,31 @@ test('GameState envelope fixtures encode Rust-owned shape validation', () => {
   }
 });
 
-test('Rust simulation core declares GameState envelope shadow exports', () => {
-  const rustSrc = fs.readFileSync(rustLibPath, 'utf8');
-  assert.match(rustSrc, /pub fn game_state_envelope_valid/);
-  assert.match(rustSrc, /extern "C" fn game_state_envelope_valid_shadow/);
-  assert.match(rustSrc, /extern "C" fn game_state_envelope_actor_count_shadow/);
-});
-
-test('static simulation core wasm matches GameState envelope fixtures', async () => {
-  const rows = parseCsvRows(fs.readFileSync(fixturePath, 'utf8'));
-  const bytes = fs.readFileSync(wasmPath);
-  const result = await WebAssembly.instantiate(bytes, {});
-  const exports = result.instance.exports;
-  assert.equal(typeof exports.game_state_envelope_actor_count_shadow, 'function');
-  assert.equal(typeof exports.game_state_envelope_valid_shadow, 'function');
-
-  for (const row of rows) {
-    assert.equal(
-      exports.game_state_envelope_actor_count_shadow(
-        toNumber(row, 'heroCount'),
-        toNumber(row, 'enemyCount'),
-      ),
-      toNumber(row, 'expectedActorCount'),
-      `${row.name} wasm actor count`,
-    );
-    assert.equal(
-      exports.game_state_envelope_valid_shadow(
-        toNumber(row, 'schemaVersion'),
-        toNumber(row, 'heroCount'),
-        toNumber(row, 'enemyCount'),
-        toNumber(row, 'gemCount'),
-        toNumber(row, 'turnQueueLength'),
-        toNumber(row, 'currentActorIndex'),
-        toNumber(row, 'energy'),
-        toNumber(row, 'partyHp'),
-      ),
-      toNumber(row, 'expectedValid'),
-      `${row.name} wasm valid`,
-    );
+test('shipped GameState envelope builders preserve fixture actors and resources through normalization', async () => {
+  const source = require('../src/core/gameStateEnvelopeRules.cjs');
+  const runtime = await import('../web-runner/src/core/gameStateEnvelopeRules.mjs');
+  for (const row of parseCsvRows(fs.readFileSync(fixturePath, 'utf8'))) {
+    const count = key => Math.max(0, toNumber(row, key));
+    const input = {
+      schemaVersion: toNumber(row, 'schemaVersion'),
+      heroes: Array.from({ length: count('heroCount') }, (_, uid) => ({ uid: uid + 1, hp: 20, maxHp: 40 })),
+      enemies: Array.from({ length: count('enemyCount') }, (_, uid) => ({ uid: uid + 10, hp: 30, maxHp: 60 })),
+      board: { gems: Array.from({ length: count('gemCount') }, (_, uid) => ({ uid: uid + 100, color: 3 })) },
+      turnState: { turnQueue: Array.from({ length: count('turnQueueLength') }, (_, uid) => ({ uid: uid + 1 })), currentActorIndex: toNumber(row, 'currentActorIndex') },
+      resources: { energy: toNumber(row, 'energy'), partyHp: toNumber(row, 'partyHp') },
+    };
+    const envelope = runtime.normalizeGameStateEnvelope(input);
+    assert.deepEqual(envelope, source.normalizeGameStateEnvelope(input), row.name);
+    assert.deepEqual(JSON.parse(JSON.stringify(envelope)), envelope, row.name);
+    const shape = runtime.getGameStateEnvelopeShape(envelope);
+    assert.equal(shape.schemaVersion, 1, row.name);
+    assert.equal(shape.heroCount + shape.enemyCount, toNumber(row, 'expectedActorCount'), row.name);
+    assert.equal(shape.heroCount, count('heroCount'), row.name);
+    assert.equal(shape.enemyCount, count('enemyCount'), row.name);
+    assert.equal(shape.gemCount, count('gemCount'), row.name);
+    assert.equal(shape.turnQueueLength, count('turnQueueLength'), row.name);
+    assert.equal(shape.currentActorIndex, row.name === 'bad_index' ? 3 : toNumber(row, 'currentActorIndex'), row.name);
+    assert.equal(shape.energy, toNumber(row, 'energy'), row.name);
+    assert.equal(shape.partyHp, toNumber(row, 'partyHp'), row.name);
   }
 });

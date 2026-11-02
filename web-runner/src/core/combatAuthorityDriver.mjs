@@ -86,12 +86,13 @@ export function createCombatAuthorityDriver({ bridge, consume, onError }) {
       accept(result);
     } catch (error) { fail(error); }
   }
-  function advance(nowMs, paused = false) {
+  function advance(nowMs, paused = false, speed = 1) {
     if (failed || world === null) return;
     try {
       if (paused) { previousNow = null; debt = 0; return; }
       if (!Number.isFinite(nowMs)) throw new Error('Invalid Rust foreground clock');
-      debt += previousNow === null ? 0 : Math.min(.25, Math.max(0, (nowMs - previousNow) / 1000));
+      if (!Number.isFinite(speed) || speed < .25 || speed > 4) throw new Error('Invalid Rust foreground speed');
+      debt += previousNow === null ? 0 : Math.min(.25, Math.max(0, (nowMs - previousNow) / 1000)) * speed;
       previousNow = nowMs;
       for (let budget = 0; world !== null && snapshot.state === 'running' && debt + 1e-9 >= 1 / 30 && budget < 8; budget++) {
         debt = Math.max(0, debt - 1 / 30);

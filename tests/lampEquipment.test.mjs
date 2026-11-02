@@ -232,10 +232,10 @@ test('corrupt ownership, duplicate assignments and unsupported stats fail valida
 });
 
 test('native victories cannot grant idle Gold or hero EXP',async()=>{
- const h=await import('../web-runner/src/core/heroProgression.mjs');const {rulesContext,settleVictory}=await import('../web-runner/modules/heroCommands.mjs');const hero=h.newHeroProgress('Falie');hero.kind='hero';hero.uid=100;
+ const h=await import('../web-runner/src/core/heroProgression.mjs');const {consumeCombatKillEvent,settleContinuousCombatRewards}=await import('../web-runner/modules/heroCommands.mjs');const hero=h.newHeroProgress('Falie');hero.kind='hero';hero.uid=100;
  const g={goldTotal:5,HeroProgress:h.createHeroProgressStore(),ProgressionBattle:{id:'gold-test',participants:['Falie'],defeated:{}},NativeBattleEnded:true};
- const ctx={state:{globals:g,entities:[hero]},callFunction:()=>{}};const rules=rulesContext(ctx);rules.onKO({kind:'enemy',uid:1,expValue:10,goldValue:17});rules.onKO({kind:'enemy',uid:2,expValue:20});
- settleVictory(ctx);settleVictory(ctx);assert.equal(g.goldTotal,5);assert.equal(hero.currentEXP,0);assert.equal(g.ProgressionBattle.goldReward,0);
+ const ctx={state:{globals:g,entities:[hero]},callFunction:()=>{}};consumeCombatKillEvent(g.ProgressionBattle,{enemy:{kind:'enemy',uid:1,expValue:10,goldValue:17}});consumeCombatKillEvent(g.ProgressionBattle,{enemy:{kind:'enemy',uid:2,expValue:20}});
+ const battle=g.ProgressionBattle;settleContinuousCombatRewards(ctx);settleContinuousCombatRewards(ctx);assert.equal(g.goldTotal,5);assert.equal(hero.currentEXP,0);assert.equal(battle.goldReward,0);
 });
 
 test('draft saves keep identity, Gold and assigned gear while dropping retired SPD stats',async()=>{
@@ -339,8 +339,8 @@ test('full cache emits unsaved gear and resumes collection after confirmed dispo
  assert.equal(f.store.data.lamp.autoEnabled,false,'legacy Auto preference is inert');
 });
 
-test('ordinary first hero KO restores the squad with equipment unchanged',async()=>{
- const {createQuestCombatSession,recoverContinuousOrdinaryDefeatIfNeeded}=await import('../web-runner/systems/questCombatSession.mjs');
+test('routed Rust AllDown restores the squad with equipment unchanged',async()=>{
+ const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
  const f=fixture(),heroes=Object.values(f.globals.HeroProgress.heroes);
  heroes.forEach((hero,index)=>Object.assign(hero,{kind:'hero',uid:index+1,maxHP:42,hp:index===0?0:24,isAlive:index!==0,currentLevel:5}));
  f.globals.ContinuousCombatStageLoop=1;
@@ -350,7 +350,7 @@ test('ordinary first hero KO restores the squad with equipment unchanged',async(
  const state={globals:f.globals,entities:heroes},gameState={};
  const session=createQuestCombatSession({state,gameState,call(){},sync:()=>f.store.sync()});
  const equipmentBefore=JSON.stringify(f.store.data.items);
- assert.equal(recoverContinuousOrdinaryDefeatIfNeeded({state,session}),true,'the first hero KO reaches the recovery owner');
+ assert.equal(session.recoverContinuousDefeat('rust_all_down'),true,'a routed Rust AllDown reaches free recovery');
  assert.deepEqual(heroes.map(hero=>hero.hp),[42,42,42,42]);
  assert.ok(heroes.every(hero=>hero.isAlive));
  assert.equal(f.store.data.lamp.autoEnabled,false);
@@ -507,7 +507,7 @@ test('kill points normalize missing or corrupt saved values without changing ear
 });
 
 test('durable KO outbox awards only bosses while preserving pack and lone ledgers across reload and failed saves',async()=>{
- const {recordEnemyDefeatReward}=await import('../web-runner/modules/heroCommands.mjs');
+ const {consumeCombatKillEvent}=await import('../web-runner/modules/heroCommands.mjs');
  const {attachHeroProgress,settleBattleEXP}=await import('../web-runner/src/core/heroProgression.mjs');
  const source=readFileSync(new URL('../web-runner/systems/heroProgressStorage.js',import.meta.url),'utf8');
  const restore=storage=>new Function('window','attachHeroProgress','createHeroProgressStore','settleBattleEXP',source.replace(/^import .*\n/gm,'').replace(/export /g,'')+';return restoreHeroProgressFromStorage;')({localStorage:storage},attachHeroProgress,createHeroProgressStore,settleBattleEXP);
@@ -515,7 +515,7 @@ test('durable KO outbox awards only bosses while preserving pack and lone ledger
  f.globals.ProgressionBattle={id:'kill-battle',participants:[],defeated:{},defeatedGold:{}};
  restore(f.storage)({fnContext:{state:{globals:f.globals,entities:[]}}});
  for(const actor of [{uid:1,kind:'enemy',enemyRole:'fodder'},{uid:2,kind:'enemy',isSolo:true},{uid:3,kind:'enemy',enemyRole:'boss'}]){
-  assert.equal(recordEnemyDefeatReward(f.globals.ProgressionBattle,actor),true);assert.equal(recordEnemyDefeatReward(f.globals.ProgressionBattle,actor),false);
+  assert.equal(consumeCombatKillEvent(f.globals.ProgressionBattle,{enemy:actor}),true);assert.equal(consumeCombatKillEvent(f.globals.ProgressionBattle,{enemy:actor}),false);
  }
  const heroRaw=f.values.get('orka.hero_progress.v2');assert.deepEqual(JSON.parse(heroRaw).pendingBagKillRewards,{'enemy:kill-battle:3':5});assert.equal(Object.keys(JSON.parse(heroRaw).pendingBattleRewards.defeated).length,3);
  const saved=f.values.get(EQUIPMENT_SAVE_KEY);f.setFail(true);await assert.rejects(f.store.sync(),/disk full/);assert.equal(f.values.get(EQUIPMENT_SAVE_KEY),saved);assert.equal(Object.keys(f.globals.HeroProgress.pendingBagKillRewards).length,1);

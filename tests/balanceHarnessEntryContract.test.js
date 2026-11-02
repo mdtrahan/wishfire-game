@@ -26,11 +26,9 @@ test('boss timeout measurement has a separate bound and preserves game failure e
   assert.match(source, /endReason = 'max_boss_timeouts'/);
 });
 
-test('synthetic ordinary Hero KO is explicit and uses the production damage route', () => {
-  assert.equal(buildConfig({}, {}).forceOrdinaryKo, false);
-  assert.equal(buildConfig({ forceOrdinaryKo: 'true' }, {}).forceOrdinaryKo, true);
-  assert.match(source, /game\.callFunction\('ApplyDamageToTarget', hero\.uid/);
-  assert.match(source, /if \(!forcedHit \|\| forcedHit\.afterHP > 0\) throw/);
+test('balance harness leaves live combat damage and defeat to Rust', () => {
+  assert.equal(Object.hasOwn(buildConfig({}, {}), 'forceOrdinaryKo'), false);
+  assert.doesNotMatch(source, /ApplyDamageToTarget|hero\.hp\s*=/);
 });
 
 test('source fingerprint changes when an untracked capture module changes', () => {
@@ -258,15 +256,13 @@ test('balance harness records exact damage and healing events alongside sampled 
   assert.match(hookSource, /sourceUID: Number\(d\.sourceUID \|\| 0\)/);
 });
 
-test('first KO follows ordered applied damage events across heroes and enemies', () => {
-  const browserBank = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'modules', 'functionBank.js'), 'utf8');
-  const scriptBank = fs.readFileSync(path.join(__dirname, '..', 'Scripts', 'functionBank.js'), 'utf8');
-  for (const bank of [browserBank, scriptBank]) {
-    assert.match(bank, /type: 'enemy_ko', sourceUID: Number\(source\?\.uid \|\| 0\), targetUID: Number\(uid \|\| 0\)/);
-  }
+test('death policy consumes ordered Rust facts after retiring bank mirrors', () => {
+  const runtime = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'rustCombatRuntime.mjs'), 'utf8');
+  assert.match(runtime, /kind === 'died'/);
+  assert.match(runtime, /consumeCombatKillEvent\(g.ProgressionBattle, \{ enemy \}\)/);
   assert.match(source, /if \(event\.type === 'enemy_ko'\)/);
   assert.match(source, /if \(!firstKo\) firstKo = \{ side: 'hero', uid: event\.targetUID/);
-  assert.doesNotMatch(source, /firstKo = \{ side: event\.side/);
+  assert.doesNotMatch(source, /ApplyDamageToTarget|TickRealtime/);
 });
 
 test('unchanged builds count observed wave transitions without treating defeat reset as a clear', () => {

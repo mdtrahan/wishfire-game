@@ -1,30 +1,23 @@
-import { HERO_DEFINITIONS, heroDefinition, heroSkillUnlocked } from '../src/core/heroDefinitions.mjs';
+import { heroDefinition } from '../src/core/heroDefinitions.mjs';
 import { heroArtPath } from '../state/heroArtAssets.mjs';
 import { runtimeAssetUrl } from './runtimeAssetUrl.mjs';
-import { activeCombatEffect } from '../../src/core/combatModifierRules.mjs';
 import { BUFF_SIGNAL_FRAMES, BUFF_SIGNAL_SHEET, projectBuffSignals } from '../../src/core/buffSignalRules.mjs';
-import { heroPassiveSignals } from '../src/core/realtimeHeroPassives.mjs';
 import { partySkillFor } from '../src/core/partySkillCatalog.mjs';
-import { realtimeSpecialCooldown } from '../src/core/realtimeHeroSkills.mjs';
 
 // questTop keeps the mini-quest's whole box above the party buff row (row top = top - 14).
 export const HERO_COOLDOWN_LAYOUT = Object.freeze({ slots: 8, width: 344, height: 41.28, top: 441.6, questTop: 370 });
 
-// Read-only projection of active-skill clocks. Readiness does not imply a valid cast condition.
+// Party order and meters come directly from the Rust projection.
 export function heroCooldownSlots(entities = [], globals = {}) {
-  const actors = entities.filter(actor => actor?.kind === 'hero');
-  const now = Number(globals.time || 0);
-  const heroes = Object.values(HERO_DEFINITIONS).flatMap(definition => {
-    const actor = actors.find(candidate => heroDefinition(candidate) === definition);
-    if (!actor) return [];
-    const skills = definition.actives.filter(skill => heroSkillUnlocked(actor, skill));
-    const clock = globals.RealtimeHeroBasicClocks?.[String(actor.uid)]?.skillReadyAt || {};
-    const next = skills.map(skill => ({ skill, remaining: Math.max(0, Number(clock[skill.skillId] ?? now) - now) }))
-      .sort((a, b) => a.remaining - b.remaining)[0];
-    const status = Number(actor.hp) <= 0 ? 'ko' : !next ? 'locked' : next.remaining > 0 ? 'cooldown' : 'ready';
-    return [{ uid: actor.uid, heroKey: definition.key, name: definition.name, path: heroArtPath(actor), status,
-      remaining: next?.remaining || 0,
-      fraction: status === 'cooldown' ? Math.min(1, next.remaining / realtimeSpecialCooldown(globals, actor, next.skill)) : 0 }];
+  const actors = entities.filter(actor => actor?.kind === 'hero' && heroDefinition(actor));
+  const views = globals.RustCombatPresentation?.state.snapshot?.actors || [];
+  const heroes = actors.map(actor => {
+    const view = views.find(view => view.team === 'hero' && view.host_id === String(actor.heroInstanceKey));
+    const definition = heroDefinition(actor);
+    const fraction = Math.max(0, Math.min(1, Number(view?.meter || 0)));
+    return { uid: actor.uid, heroKey: definition.key, name: definition.name, path: heroArtPath(actor),
+      status: view?.downed || Number(actor.hp) <= 0 ? 'ko' : fraction >= 1 ? 'ready' : 'cooldown',
+      remaining: 0, fraction: 1 - fraction };
   });
   return Array.from({ length: HERO_COOLDOWN_LAYOUT.slots }, (_, index) => heroes[index] || null);
 }
@@ -35,24 +28,14 @@ const up = channel => ({ channel, direction: 'up' });
 
 // Read-only translation of live combat buffs into signal input; the projection owns the rules.
 export function heroBuffSignalInput(entities = [], globals = {}) {
-  const now = Number(globals.time || 0);
+  const views = globals.RustCombatPresentation?.state.snapshot?.actors || [];
   return heroCooldownSlots(entities, globals).filter(Boolean).map(slot => {
-    const actor = entities.find(candidate => candidate?.kind === 'hero' && candidate.uid === slot.uid);
-    const uid = Number(slot.uid), buffs = [];
-    for (const [id, record] of Object.entries(globals.RealtimeSkillEffects?.[String(uid)] || {})) {
-      if (!activeCombatEffect(record, now)) continue;
-      const modifiers = [...(record.modifiers || [])];
-      if (Number(record.damageCutPct) > 0) modifiers.push(up('damageReduction'));
-      buffs.push({ key: `${record.sourceUID}:${id}`, modifiers, ref: { effectId: id, set: record.data?.set } });
-    }
-    if (Number(globals.HeroWardHPByUID?.[uid] || 0) > 0) buffs.push({ key: `${globals.HeroWardSourceUID}:ward`, modifiers: [up('ward')], ref: { effectId: 'ward' } });
-    buffs.push(...heroPassiveSignals(actor,globals));
-    for (const stat of ['ATK', 'DEF', 'MAG', 'RES', 'SPD']) if (Number(globals[`PartyBuff_${stat}`] || 0) > 0) buffs.push({ key: `board:${stat}`, modifiers: [up(stat)] });
-    for (const status of actor?.statuses || []) {
-      const stat = /^(atk|def|mag|res|spd)Up$/.exec(status?.statusEffect || '')?.[1];
-      if (stat && Number(status.duration) > 0) buffs.push({ key: `status:${status.statusEffect}`, modifiers: [up(stat.toUpperCase())] });
-    }
-    return { uid, alive: slot.status !== 'ko', buffs };
+    const actor = entities.find(actor => actor.uid === slot.uid);
+    const view = views.find(view => view.actor_id === actor.rustActorId);
+    const buffs = [];
+    if (Number(view?.ward || 0) > 0 || Number(view?.warcry_shield || 0) > 0) buffs.push({ key: 'ward', ref: { effectId: 'ward' }, modifiers: [up('ward')] });
+    if (view?.elevate) buffs.push({ key: 'elevate', ref: { effectId: 'elevate', set: 'power' }, modifiers: [up('ATK')] });
+    return { uid: slot.uid, alive: slot.status !== 'ko', buffs };
   });
 }
 
@@ -128,7 +111,7 @@ export function createHeroCooldownStrip({ onHero = () => {}, onPartySkill = () =
         slot.replaceChildren(image, slot.badges); slot.dataset.uid = String(hero.uid); slot.dataset.heroKey = hero.heroKey;
       } else if (!hero && slot.dataset.uid) { slot.replaceChildren(); delete slot.dataset.uid; delete slot.dataset.heroKey; }
       syncBuffIcons(slot.badges, (hero ? signals.heroes[String(hero.uid)] || [] : []).map(group => `hero-${group}`));
-      const label = !hero ? `Empty hero slot ${index + 1}` : `${hero.name}: ${hero.status === 'cooldown' ? `special ready in ${Math.ceil(hero.remaining)} seconds` : hero.status === 'ready' ? 'special ready; casting waits for conditions and target' : hero.status === 'ko' ? 'KO' : 'special locked'}. Open hero skills`;
+      const label = !hero ? `Empty hero slot ${index + 1}` : `${hero.name}: ${hero.status === 'cooldown' ? `special meter ${Math.round((1 - hero.fraction) * 100)} percent` : hero.status === 'ready' ? 'special ready; casting waits for conditions and target' : hero.status === 'ko' ? 'KO' : 'special locked'}. Open hero skills`;
       slot.setAttribute('aria-label', label);
     });
   } };
