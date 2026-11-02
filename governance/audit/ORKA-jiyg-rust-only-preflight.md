@@ -1,71 +1,37 @@
 # ORKA-jiyg Rust-only cutover preflight
 
-Status: STOPPED before combat deletion. Runtime source remains fbaab92fa70b06944772d80bac9e88ae84cfb827.
-Branch: bead/ORKA-jiyg-rust-only. No push or merge.
+Status: STOP under the owner's step 5, before combat deletion. Runtime source is unchanged from `origin/main@0aad6419`.
+Branch: `bead/ORKA-jiyg-rust-only`. No push or merge.
 
-## Blocking supported feature
+## Rebase and resolved prerequisite
 
-Live equipment, level and Training changes require an in-place Rust permanent-input revision. The shipped ABI cannot accept one. Removing JS stat/HP writes without a replacement would leave saved progression and displayed CP ahead of combat strength. Recreating the world would reset casts, clocks, effects and RNG, violating the approved revision contract.
+Fetched origin and rebased the earlier preflight onto `0aad6419`. PR #229 supplies permanent-input revisions; equipment, level, Training and SPD are no longer the reported prerequisite. Formation/Leader removal and the handoff verifier are present. The worktree was clean before this investigation.
 
-- `web-runner/systems/equipmentStorage.mjs:69-81` applies earned EXP and equipment to both saved heroes and deployed actors; its live HP delta currently happens in JS.
-- `web-runner/src/core/heroProgression.mjs:22-29` updates live level stats and HP.
-- `rust/simulation_core/src/combat_abi.rs:154-160` accepts only end reason, encounter identity and previous step. Its Operation enum at lines 167-195 has no permanent-input revision operation.
-- `web-runner/src/core/combatBridge.mjs:45-53` exposes creation, step, chest, clear, end, inspect, spawn and destroy, without revisions.
-- Governing TDD-A section 3.3 requires `ReplacePermanentInputs` with atomic revision checks, preserved casts/cooldowns/targets/ward/status/RNG, living HP growth and downed HP unchanged. TDD-B section 3.5 requires coalescing and acknowledged step-boundary projection. RECONCILIATION R1 fixes the HP rule.
+## Retained feature requiring reconciliation
 
-## Shipped-WASM repro
+The retained story defeat control spends 30 resources on Continue and resumes the encounter. `web-runner/systems/storyEntryFlow.mjs:202-209` invokes `resurrect` before spending resources. `questCombatSession.mjs:113-132` restores every hero while retaining enemy progress and the encounter's buffs/skills. The explicit regression contract is `tests/questCombatSessionContract.test.js:85-105`; the resource/navigation contract is `tests/storyEntryFlowContract.test.js:120-132`.
 
-Created a continuous one-hero Falie encounter through the real `createCombatBridge` and current `createShadowConfig`, then applied HP gear with the existing `refreshHeroStats` helper. Host max HP grew from 75 to 125; Rust max HP remained 420. At the accepted ratio the new Rust maximum would be 700. Passing `commands` to the current step request returned:
+This control has no equivalent in the shipped Rust lifecycle:
 
-```
-invalid_input: unknown field `commands`, expected one of `end_encounter`, `encounter_id`, `expected_previous_step`
-```
+- A Rust-bound actor causes central HP restoration to throw before mutation (`questCombatSession.mjs:11-12`).
+- Rust makes `all_down` terminal; subsequent combat steps and permanent-input revisions return `terminal` (`rust/simulation_core/src/combat_abi.rs:484-489`).
+- The ABI exposes describe/create/step/inspect/spawn/wave_chest/ordinary_clear/destroy, without a recovery operation (`combat_abi.rs:210-238`). R1 explicitly keeps downed heroes at zero during permanent revisions.
+- Governing TDD-A §3.3 forbids a public arbitrary HP/revive command and describes checkpoint restart. Creation accepts initial HP, but cannot restore an existing world's statuses, committed actions, clocks and RNG. A replacement world can implement a restart; it cannot establish parity with the retained in-place Continue contract.
 
-Exact result: `test-results/ORKA-jiyg/live-equip-api-proof.json`.
+Current player Start enters continuous progression. This gap concerns the retained story/QA defeat flow explicitly included in the owner's every-encounter scope and TDD-B §6 story/dev migration. No claim is made that ordinary Chapter 1 reaches this menu organically. D17 replaces any-KO pausing and supplies slice revival; it does not specify how this retained resource Continue changes after terminal all-down.
 
-## Required next slice
+The cutover must obtain a reconciled story recovery contract: preserve supported Continue state through an approved Rust lifecycle boundary, or explicitly authorize checkpoint-restart semantics and update the retained story contract. Adding an arbitrary revive command or silently dropping Continue is outside this deletion's approved API. Keep the current engine until that choice and its Rust proof exist.
 
-Implement the approved Rust permanent-input revision contract and bridge/driver routing first, with monotonic revisions, atomic validation, HP policy, committed-cast preservation and pause/reload acknowledgement tests. Rewire equipment/level/Training commits to that path before removing their JS live writes. Then resume the full retirement inventory and retained story/dev migration. No world-recreation workaround, delayed-until-next-fight progression or weakened save/economy assertion is accepted by this report.
+## Shipped-WASM proof
 
-Hero Lab is excluded by the owner: it belongs to unpushed ORKA-6ury work and does not exist on this baseline. No scenario was added.
+Ran `/tmp/jiyg-stop/story-continue-proof.mjs` against the checked-in WASM. JSON evidence: `/tmp/jiyg-stop/story-continue-proof.json`.
 
-## Validation
+Created a finite one-hero encounter with a downed hero and an enemy at 7 HP. Creation returned `all_down`. Both the next step and a valid permanent-input revision returned `terminal: encounter is terminal`. A proposed `recover` operation returned `invalid_input: unknown variant recover`. Bound `session.resurrect()` threw `HP restoration not supported in Rust encounters; stop the encounter first`, retaining HP `[0,7]`. The unbound control restored `[1000,7]` and preserved the buff record. Teardown left zero worlds/responses; one input was the describe call itself.
 
-Installed locked dependencies with `npm ci`; restored the tracked node_modules lock metadata to its original bytes. `npm run build:offline` succeeded. All seven offline artifact contracts ran and passed; they are absent from the failures below because their build prerequisite was satisfied. The initial sandbox-denied server run is discarded; the authoritative run uses permitted loopback/Chromium access.
+Focused validation: 39 cases, 38 passed, one inherited failure, `boss defeat is free, retains the full ready milestone, and resumes farming until summoned`. Story resource Continue, retained-state resurrection and terminal-WASM contracts passed. No assertion was weakened and no test retired.
 
-`cargo test` passed for every crate: simulation_core 31 tests, wf_combat 18, wf_slice_harness 537 (10 ignored). Total 586 passed, 10 ignored.
+## Validation and delivery
 
-Full unit baseline: 1472 tests, 1451 passed, 18 failed, 3 skipped.
+Full cargo/build/test and verifier results are recorded below after completion. Frozen slice/hash inputs and runtime source remain unchanged. This is a documentation checkpoint, not Rust-only acceptance: flags, shadow path, JS fallback, legacy combat and scalar exports remain present. No feature has been rewired. The static retirement gate and runtime-spy gate have not been delivered.
 
-Exact unit failures:
-
-- hero screen reads every accepted kit skill from shared data
-- automatic HERO_SINGLE uses the runtime random target in web-runner/modules/functionBank.js
-- Tank HERO_SINGLE targeting follows runtime random in web-runner/modules/functionBank.js
-- Fighter HERO_SINGLE targeting follows runtime random in web-runner/modules/functionBank.js
-- Controller HERO_SINGLE targeting follows runtime random in web-runner/modules/functionBank.js
-- Support HERO_SINGLE targeting follows runtime random in web-runner/modules/functionBank.js
-- random targeting excludes dead enemies in web-runner/modules/functionBank.js
-- automatic HERO_SINGLE uses the runtime random target in Scripts/functionBank.js
-- Tank HERO_SINGLE targeting follows runtime random in Scripts/functionBank.js
-- Fighter HERO_SINGLE targeting follows runtime random in Scripts/functionBank.js
-- Controller HERO_SINGLE targeting follows runtime random in Scripts/functionBank.js
-- Support HERO_SINGLE targeting follows runtime random in Scripts/functionBank.js
-- random targeting excludes dead enemies in Scripts/functionBank.js
-- leader-target bias spans own-nearest to the legacy shared target
-- heroes split across nearby enemies by default and dog-pile under the legacy toggle
-- heroes may stack on one target while hero-enemy spacing stays whole
-- boss encounters keep full hero spacing along the front edge
-- boss defeat is free, retains the full ready milestone, and resumes farming until summoned
-
-Browser baseline: 25 passed, 1 skipped, 1 natural failure and 1 interrupted case. The natural failure is `hero party screen uses saved canonical data and stays contained across portrait viewport profiles` (`tests/heroScreenUILayout.test.mjs:411`): persisted HeroProgress gained `pendingBagKillRewards: {}` relative to the fixture's expected object. The interrupted case is `lamp emitter: full cache and every modal freeze movement, capture and cadence` (`tests/lampPresentation.test.mjs:208`), interrupted at 91.383 seconds after output stopped. Closing its browser caused the reported `Target page, context or browser has been closed`; this is agent-induced interruption evidence, not an independently established product failure. The test process then required SIGKILL to leave teardown. Remaining files completed. The two later cases in that lamp file were attempted separately in `baseline-lamp-remaining.log`; that run produced no completed case in over 180 seconds and was stopped with its owned descendants. Both later cases remain unverified. Process evidence is retained in `remaining-cases-timeout.json`.
-
-After: no runtime changes retained; no post-change suite claimed. No tests were retired and no failure is claimed fixed. All runtime paths remain present, including the flags and JS fallback, because the cutover stopped before deletion.
-
-Logs remain in `test-results/ORKA-jiyg/`: baseline-build.log, baseline-tests.log, cargo-simulation_core.log, cargo-wf_combat.log and cargo-wf_slice_harness.log.
-
-## Delivery state
-
-Documentation checkpoint only. Rust-only default, retirement acceptance gate and no-flag combat review are not delivered. Existing runtime source and mirrors are unchanged. ORKA-jiyg remains in progress for the lead to order the prerequisite and resume.
-
-Baseline review is served at http://localhost:8798/web-runner/index.html without flags. This remains the unchanged JS-default baseline, not Rust-only acceptance. The first sandboxed footprint-close call failed with `Cannot read properties of undefined (reading trim)`. Retrying with permitted process access succeeded, as did the read-only storage audit. Logs, offline bundle, local Cargo build output and the requested review server are intentionally retained in this unmerged lane; footprint baseline is unknown. DEV Chapter 1 was launched from the plain URL in the collaborative preview.
+The review URL is `http://localhost:8798/web-runner/index.html` without flags; DEV → Chapter 1 shows the unchanged JS-default baseline. Keep its status explicit during review. ORKA-jiyg remains in progress for the lead's recovery-contract decision and implementation ordering.
