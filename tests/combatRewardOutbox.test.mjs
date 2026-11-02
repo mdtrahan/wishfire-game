@@ -31,6 +31,11 @@ function host(values=new Map(),failure='',withProgression=false){
  return{g,outbox,equipment,progression,values,save,setFailure:v=>failure=v};
 }
 const enemy=()=>({kind:'enemy',uid:90,enemyRole:'boss'});
+test('fresh and reloaded HeroProgress share the empty durable outbox shape',()=>{
+ const fresh=createHeroProgressStore();
+ assert.deepEqual(fresh.combatRewardOutbox,{version:1,streams:{}});
+ assert.deepEqual(createHeroProgressStore(JSON.parse(JSON.stringify(fresh))).combatRewardOutbox,fresh.combatRewardOutbox);
+});
 for(const crash of ['before outbox save','after outbox save','after equipment commit','before ack'])test(`real WASM replay grants once: crash ${crash}`,async()=>{
  const f=combat(),h=host();await h.equipment.sync();
  if(crash==='before outbox save'){

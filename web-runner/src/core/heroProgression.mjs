@@ -83,7 +83,7 @@ function normalizeContinuousStageCheckpoint(stage) {
 }
 
 export function createHeroProgressStore(snapshot){
- const store={version:HERO_PROGRESS_VERSION,heroes:{},settledBattles:[],pendingBattleRewards:null,pendingGoldSettlements:{},settledTicketSpends:[]};
+ const store={version:HERO_PROGRESS_VERSION,heroes:{},settledBattles:[],pendingBattleRewards:null,pendingGoldSettlements:{},settledTicketSpends:[],combatRewardOutbox:createCombatRewardOutboxState()};
  // Old skill-rank data is deliberately not imported into the replacement kits.
  if(snapshot?.version===HERO_PROGRESS_VERSION&&snapshot.heroes&&typeof snapshot.heroes==='object'){
   for(const [id,saved] of Object.entries(snapshot.heroes)){
