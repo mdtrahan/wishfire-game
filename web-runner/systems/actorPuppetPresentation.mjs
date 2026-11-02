@@ -20,7 +20,7 @@ export function actorPuppetKey(actor) {
 }
 
 export function actorPuppetState(actor, now) {
-  if (Number(actor?.hp) <= 0) return 'ko';
+  if (Number(actor?.hp) <= 0) return actor?.kind === 'enemy' ? 'idle' : 'ko';
   const actionState = String(actor?.actionState || '');
   if (CLIP_STATES.has(actionState) && Number(actor?.actionStateUntil || 0) > now) return actionState;
   return actor?.locomotion === 'walk' ? 'walk' : 'idle';

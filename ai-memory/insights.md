@@ -706,3 +706,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Rust-only host controls and diagnostics need behavioral proof at their consumer: read snapshot stats in explicit display units and change a real WASM revision; apply speed to admitted foreground time and compare equal-step snapshots. Renderer dt and permanent host stats cannot certify these seams.
 
 - A release content handshake must compare the binary-owned definition version with both manifest and host expectations before world creation. A manifest source digest proves build provenance separately; matching manifest/host constants alone cannot detect a stale binary.
+
+- A death silhouette can shrink inside authored KO frames even when draw dimensions remain constant. Keep enemy standing art during the snapshot-owned alpha fade and test both clip selection and painted dimensions.
