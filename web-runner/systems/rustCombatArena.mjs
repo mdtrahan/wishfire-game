@@ -1,10 +1,11 @@
 import { deriveCombatWorldBounds, deriveCombatWorldVerticalBounds } from '../../src/core/combatOrientation.mjs';
 // Slice camera.rs pixel scale fitted to WFM's full-height combat floor beneath the WFM UI.
 export const COMBAT_VIEW = Object.freeze({ left: 0, right: 360, top: 42, bottom: 430, zoom: .5, squash: .75 });
+export const SLICE_ACTOR_HEIGHT = 128;
 const authoredX = deriveCombatWorldBounds(), authoredY = deriveCombatWorldVerticalBounds();
 const height = (COMBAT_VIEW.bottom - COMBAT_VIEW.top) / (COMBAT_VIEW.zoom * COMBAT_VIEW.squash);
 export const SLICE_FLOOR = Object.freeze({ min: Object.freeze({ x: 96, y: 40 }), max: Object.freeze({ x: 816, y: 40 + height }) });
-export const SLICE_ORIGIN = Object.freeze({ x: 456, y: (SLICE_FLOOR.min.y + SLICE_FLOOR.max.y) / 2 + 80 });
+export const SLICE_ORIGIN = Object.freeze({ x: 456, y: (SLICE_FLOOR.min.y + SLICE_FLOOR.max.y) / 2 + 80 + 1.5 * SLICE_ACTOR_HEIGHT * .6 / COMBAT_VIEW.squash });
 export const SLICE_TRAVEL_SLOTS = Object.freeze([
   { x: -38, y: -120 }, { x: 38, y: -120 }, { x: -38, y: 120 }, { x: 38, y: 120 },
 ]);

@@ -1,5 +1,5 @@
 import { drawSliceActorBars, drawSliceChest } from './rustCombatWorldHud.mjs';
-import { COMBAT_VIEW } from './rustCombatArena.mjs';
+import { COMBAT_VIEW, SLICE_ACTOR_HEIGHT } from './rustCombatArena.mjs';
 import { SliceSpotlightCamera } from './rustCombatSpotlightCamera.mjs';
 import { SliceActor, drawActorAura } from './rustCombatActor.mjs';
 import { SliceSprites } from './rustCombatSprites.mjs';
@@ -161,7 +161,7 @@ export async function createRustCombatPresentation(globals) {
   const api={chest(ctx,s,ox,oy){drawSliceChest(ctx,state.snapshot,camera,assets,gpu,s,ox,oy);},present,ground:groundPass,actor:actorPass,front:frontPass,camera,state,motion,project:camera.project,
     sprite:sprites.sprite.bind(sprites),
     pose(view){return motion.records.get(view.actor_id);},
-    height(host,fallback,s=1){const a=state.actors.get(host?.rustActorId);return a?128*(a.kind.startsWith('boss')?a.scale:a.scale*.6)*camera.zoom*s:fallback;},
+    height(host,fallback,s=1){const a=state.actors.get(host?.rustActorId);return a?SLICE_ACTOR_HEIGHT*(a.kind.startsWith('boss')?a.scale:a.scale*.6)*camera.zoom*s:fallback;},
     dispose(){present(null);gpu.dispose();assets.dispose();}};
   return api;
 }

@@ -714,3 +714,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - When Rust presentation replaces hero bars, enemy parity must use that same live renderer. Removing the host duplicate prevents art-scale-dependent bar sizes and permits exact geometry comparisons.
 
 - Source duration must gate a distributed visual buff even if a recipient retains a variant field. Give per-recipient HUD effects distinct source/recipient keys when every hero must retain a badge instead of collapsing into the party row.
+
+- Convert a requested screen-space anchor shift through the ground projection squash before changing authored world positions. Compare the visible displacement against painted hero height and guard the entire hero/HP footprint above the bottom HUD at compact scales.

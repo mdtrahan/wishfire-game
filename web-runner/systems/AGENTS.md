@@ -346,3 +346,5 @@
 - rustCombatWorldHud.mjs owns identical hero/enemy HP track dimensions. Groove meters are hero-only; the active boss keeps its separate battle HUD.
 
 - Elevate uses the active living Rust Kaja snapshot and its groove duration. Each living hero receives a distinct buff instance in the existing HUD signal input, retaining its offense badge for the entire buff; enemy actors never enter that input.
+
+- rustCombatArena.mjs owns the idle formation origin and shared 128-unit puppet height. Its Y drop is 1.5 painted hero heights converted through the camera squash; fixed slot offsets, floor and enemy origins remain unchanged.
