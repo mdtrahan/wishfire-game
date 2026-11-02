@@ -142,3 +142,5 @@
 - `rust-combat/manifest.json` pins unchanged slice bitmaps/font and records source actor clip bounds for participant framing. Charge-up and resisted-push smoke use their authored raster sheets. These assets load through the default Rust combat runtime.
 
 - Rust combat chest/opening presentation uses unchanged pinned chest bitmaps, sparkle and shadow. Reward icons and reward logic remain outside the port.
+
+- Rebuilt combat WASM must retain the current reward acknowledgement capability and receipt schema when scalar combat exports retire; regenerate provenance from the same source and binary.

@@ -170,13 +170,14 @@ test('executable app tick calls only Rust and never invokes retired scheduler or
   const app = fs.readFileSync(new URL('../web-runner/app.js', import.meta.url), 'utf8');
   const start = app.indexOf('  function tick(){', app.indexOf('let frameCount = 0;'));
   const source = app.slice(start, app.indexOf('  tick();', start));
-  for (const enabled of [true]) {
-    const counts = { rust: 0, js: 0, stage: 0, outcome: 0 };
+  for (const bagOpen of [false, true]) {
+    const counts = { rust: 0, paused: 0, js: 0, stage: 0, outcome: 0 };
     const context = vm.createContext({
       state: { globals: {}, entities: [] }, gameState: { storyEntry: { phase: 'combat' } },
       document: { hidden: false }, performance: { now: () => 100 }, requestAnimationFrame() {},
       rustCombatShadow: undefined,
-      rustCombat: enabled ? { ownsEncounter: () => true, tick() { counts.rust++; return false; } } : undefined,
+      rustCombat: { ownsEncounter: () => true, tick() { counts.rust++; return false; }, pause() { counts.paused++; } },
+      lampEquipment: { state: () => ({ open: bagOpen }) },
       combatSimulationTicker: { reset() {}, tick() { counts.js++; } },
       ensureDevToolingConfig: () => ({ open: false }), layoutState: { getActiveLayoutId: () => 'combat' },
       shouldFreezeCombatSimulation: () => false, combatProgression: { observe() {} },
@@ -194,7 +195,7 @@ test('executable app tick calls only Rust and never invokes retired scheduler or
       startGemMergeFx() {}, getGoldLabelTargetWorld() {},
     });
     vm.runInContext(`let frameCount = 0; ${source}; tick();`, context);
-    assert.deepEqual(counts, { rust: 1, js: 0, stage: 0, outcome: 0 });
+    assert.deepEqual(counts, { rust: bagOpen ? 0 : 1, paused: bagOpen ? 1 : 0, js: 0, stage: 0, outcome: 0 });
   }
 });
 
