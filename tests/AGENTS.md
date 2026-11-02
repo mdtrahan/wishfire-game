@@ -26,7 +26,7 @@
 - `*.test.js` files use Node's built-in test runner for contracts and static/runtime checks.
 - `*.spec.js` files cover browser-style flows where present.
 - `runtimeReleaseContract.test.mjs` requires missing tracked dependencies or stale Rust inputs to fail while preserving the previous playable hosted release.
-- `rustWasmRelease.test.mjs` checks real-wasm release identity, fail-closed version/hash checks, shared loading, HTTP errors and ten completed fight teardowns with zero retained world/buffer handles and flat warmed wasm memory. Offline proof launches disconnected Chromium from file://, disables fetch and requires live Rust steps and an enemy death. Supported CP/meta RNG parity and world ABI checks use the verified loader and matched provenance.
+- `rustWasmRelease.test.mjs` checks real-wasm release identity, actual binary content-version mutation, fail-closed version/hash checks, shared loading, HTTP errors and ten completed fight teardowns with zero retained world/buffer handles and flat warmed wasm memory. Offline proof launches disconnected Chromium from file://, disables fetch and requires live Rust steps and an enemy death. Supported CP/meta RNG parity and world ABI checks use the verified loader and matched provenance. Admission browser proof requires stale binary content to paint the existing startup error and create zero worlds.
 - `offlineBundleContract.test.js` protects the portable file:// release shape, embedded startup and elemental impact manifests, relative frame assets, manifest hashes, and separation from the hosted release.
 - `fixtures/` owns deterministic CSV cases shared by JS and Rust/WASM tests.
 

@@ -1,3 +1,4 @@
+import { WFM_COMBAT_CONTENT_VERSION } from './combatBridge.mjs';
 import {createCombatRewardOutboxState} from './combatRewardOutbox.mjs';
 import { routeHeroPermanentInputs, permanentHeroSource } from './heroPermanentInputs.mjs';
 import { HERO_DEFINITIONS, PROGRESSION, heroDefinition, heroKey } from './heroDefinitions.mjs';
@@ -33,7 +34,7 @@ export function awardHeroEXP(hero,amount){
  const d=heroDefinition(hero);return {hero:d.name,exp,fromLevel:before.level,toLevel:hero.currentLevel,expBefore:before.exp,expAfter:Math.max(0,Number(hero.currentEXP||0)),expToNextBefore:before.expToNext,statsBefore:before.stats,statsAfter:{...hero.stats},maxHPBefore:before.hp,maxHPAfter:hero.maxHP};
 }
 // Bump content identity when authored combat definitions/projection change incompatibly.
-export const WFM_COMBAT_CONTENT_VERSION = 'wfm-slice-v1';
+export { WFM_COMBAT_CONTENT_VERSION };
 export const WFM_COMBAT_ABI_VERSION = 0x10000;
 export function combatSubwavePosition(stage) { return `${stage.seed}:${stage.region}:${stage.stage}:${stage.wave}:${stage.transitions || 0}`; }
 export function validateCombatCheckpoint(stage, abiVersion = WFM_COMBAT_ABI_VERSION) {

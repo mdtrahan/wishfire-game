@@ -5,11 +5,13 @@ import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { setTimeout as delay } from 'node:timers/promises';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 const { detectChromeExecutable } = createRequire(import.meta.url)('../tools/playwright_support.js');
 
 // One browser, serial isolated contexts. Fault injection needs request interception
 // and a WASM export facade; the normal page and visible controls remain unchanged.
-test('Rust admission rejects HTTP 503/ABI 0 and navigation retains 37 enemies in nine subwaves', async () => {
+test('Rust admission rejects HTTP 503/ABI 0/content mismatch and navigation retains 37 enemies in nine subwaves', async () => {
   const socket = createServer();
   await new Promise(resolve => socket.listen(0, '127.0.0.1', resolve));
   const port = socket.address().port;
@@ -24,7 +26,7 @@ test('Rust admission rejects HTTP 503/ABI 0 and navigation retains 37 enemies in
       await delay(100);
     }
     browser = await chromium.launch({ headless: true, executablePath: detectChromeExecutable() });
-    for (const mode of ['http503', 'abi0', 'navigation']) {
+    for (const mode of ['http503', 'abi0', 'content', 'navigation']) {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
       try {
         const page = await context.newPage();
@@ -55,6 +57,16 @@ test('Rust admission rejects HTTP 503/ABI 0 and navigation retains 37 enemies in
           } });
         }, mode);
         if (mode === 'http503') await page.route('**/simulation_core.wasm', route => route.fulfill({ status: 503, body: 'fixture' }));
+        if (mode === 'content') {
+          const bytes = readFileSync(new URL('../web-runner/assets/simulation_core.wasm', import.meta.url));
+          const manifest = JSON.parse(readFileSync(new URL('../web-runner/assets/simulation_core.manifest.json', import.meta.url)));
+          const offset = bytes.indexOf(manifest.content.version);
+          assert.ok(offset >= 0);
+          bytes.write('wfm-slice-v2', offset);
+          manifest.binarySha256 = createHash('sha256').update(bytes).digest('hex');
+          await page.route('**/simulation_core.wasm', route => route.fulfill({ body: bytes, contentType: 'application/wasm' }));
+          await page.route('**/simulation_core.manifest.json', route => route.fulfill({ json: manifest }));
+        }
         await page.goto(url);
         await page.waitForFunction(() => window.__codexGame && typeof render_game_to_text === 'function');
         if (mode !== 'navigation') {
@@ -63,7 +75,7 @@ test('Rust admission rejects HTTP 503/ABI 0 and navigation retains 37 enemies in
           await page.mouse.click(canvas.x + canvas.width / 2, canvas.y + canvas.height * .67);
           const proof = await page.evaluate(() => ({ flags: JSON.parse(render_game_to_text()).flags,
             error: __codexGame.globals.RustCombatError, enemies: __codexGame.state.entities.filter(a => a.kind === 'enemy').length, ...admissionProof }));
-          assert.match(proof.error, mode === 'http503' ? /503/ : /Unsupported combat ABI/);
+          assert.match(proof.error, mode === 'http503' ? /503/ : mode === 'content' ? /SimulationCore content\/version mismatch/ : /Unsupported combat ABI/);
           assert.equal(proof.flags.layoutId, 'storyMock');
           assert.equal(proof.creates, 0);
           assert.equal(proof.enemies, 0);

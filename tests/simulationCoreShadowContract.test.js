@@ -46,12 +46,28 @@ test('serve fingerprint identifies the source without guessing ownership from Be
   assert.match(serveSrc, /bag-conveyor/);
 });
 
-test('static simulation core wasm exposes the canonical combat power shadow export', async () => {
+test('verified loader supplies the world ABI, CP and meta RNG exports', async () => {
   const bytes = fs.readFileSync(wasmPath);
-  const result = await WebAssembly.instantiate(bytes, {});
-  assert.equal(typeof result.instance.exports.combat_power_shadow, 'function');
-  assert.equal(typeof result.instance.exports.combat_power_full_shadow, 'function');
-  assert.equal(result.instance.exports.combat_power_full_shadow(10, 4, 5, 4, 100, 10, 1, 0, .01, 1.25, 0, 0, 0, 0, 0, 0, 1), 30.6);
+  const { loadSimulationCore } = await import('../web-runner/systems/simulationCoreLoader.mjs');
+  const { createCombatBridge } = await import('../web-runner/src/core/combatBridge.mjs');
+  const { parseCsvRows } = require('./helpers/fixtureCsv');
+  const previous = globalThis.__ORKA_OFFLINE_RUNTIME__;
+  globalThis.__ORKA_OFFLINE_RUNTIME__ = {
+    json: { 'simulation_core.manifest.json': JSON.parse(fs.readFileSync(path.join(path.dirname(wasmPath), 'simulation_core.manifest.json'))) },
+    wasm: { 'simulation_core.wasm': bytes.toString('base64') },
+  };
+  try {
+    const instance = await loadSimulationCore('file:///cp-meta-proof/assets/simulation_core.wasm');
+    assert.equal(await loadSimulationCore('file:///cp-meta-proof/assets/simulation_core.wasm'), instance);
+    assert.equal(createCombatBridge(instance).describe().abi_version, 0x10000);
+    assert.equal(instance.exports.combat_power_shadow(10, 5, 100), 28.1);
+    assert.equal(instance.exports.combat_power_full_shadow(10, 4, 5, 4, 100, 10, 1, 0, .01, 1.25, 0, 0, 0, 0, 0, 0, 1), 30.6);
+    for (const row of parseCsvRows(fs.readFileSync(path.join(__dirname, 'fixtures/seeded_rng_cases.csv'), 'utf8'))) {
+      assert.equal(instance.exports.seeded_rng_next_state_shadow(+row.seed, +row.draws), +row.expectedState, row.name);
+      assert.ok(Math.abs(instance.exports.seeded_rng_next_value_shadow(+row.seed, +row.draws) - +row.expectedValue) < 1e-12, row.name);
+      assert.equal(instance.exports.seeded_rng_index_shadow(+row.seed, +row.draws, +row.size), +row.expectedIndex, row.name);
+    }
+  } finally { globalThis.__ORKA_OFFLINE_RUNTIME__ = previous; }
 });
 
 test('CP shadow diagnostic records compared full-stat fields for an explicit zero direct packet', () => { const source=fs.readFileSync(shadowModulePath,'utf8'); assert.match(source,/actor: input,\n    jsValue,\n    rustValue/); assert.match(source,/combat_power_full_shadow/); });

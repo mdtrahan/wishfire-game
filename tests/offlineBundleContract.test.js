@@ -194,8 +194,8 @@ test('disconnected Chromium starts a real Rust fight from the offline file', { t
     await page.waitForFunction(() => {
       const g = __codexGame.globals, snapshot = g.RustCombatPresentation?.state.snapshot;
       if (g.RustCombatError) throw new Error(g.RustCombatError);
-      return snapshot && Number(snapshot.step) >= 90 && snapshot.actors.some(actor => actor.hp < actor.max_hp);
-    }).catch(async error => {
+      return snapshot && Number(snapshot.step) >= 90 && Number(g.RustCombatReceipt?.kills) > 0;
+    }, undefined, { timeout: 90000 }).catch(async error => {
       const diagnostic = await page.evaluate(() => {
         const g = window.__codexGame?.globals, s = g?.RustCombatPresentation?.state.snapshot;
         return { authority: g?.RustCombatAuthority, error: g?.RustCombatError, receipt: g?.RustCombatReceipt, hidden: document.hidden, phase: g?.GamePhase, time: g?.time,
@@ -207,10 +207,10 @@ test('disconnected Chromium starts a real Rust fight from the offline file', { t
     const proof = await page.evaluate(() => {
       const g = __codexGame.globals, s = g.RustCombatPresentation.state.snapshot;
       return { protocol: location.protocol, authority: g.RustCombatAuthority, step: s.step, actors: s.actors.length,
-        damaged: s.actors.filter(a => a.hp < a.max_hp).length, hash: s.gameplay_hash, fetches: window.offlineFetches, error: g.RustCombatError || null };
+        enemyDeaths: Number(g.RustCombatReceipt?.kills || 0), hash: s.gameplay_hash, fetches: window.offlineFetches, error: g.RustCombatError || null };
     });
     assert.equal(proof.protocol, 'file:'); assert.equal(proof.authority, true);
-    assert.ok(proof.damaged > 0); assert.match(proof.hash, /^[a-f0-9]{16}$/);
+    assert.ok(proof.enemyDeaths > 0, 'offline Rust fight must kill an enemy'); assert.match(proof.hash, /^[a-f0-9]{16}$/);
     assert.deepEqual(proof.fetches, []); assert.deepEqual(network, []); assert.deepEqual(errors, []);
     console.log('OFFLINE_RUST_FIGHT ' + JSON.stringify(proof));
   } finally { await context.close(); await browser.close(); fs.rmSync(singleFileRoot, { recursive: true, force: true }); }

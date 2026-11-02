@@ -1,12 +1,36 @@
 {
-  "source": "rust/simulation_core/src/lib.rs",
-  "sourceSha256": "a9e8e8193ee6cf165cb7ecc345da7b0f3c7637721a7118c0f27353fd89c4a51d",
-  "combatAbiVersion": "1.0",
+  "format": 1,
+  "abiVersion": 65536,
+  "schema": {
+    "major": 1,
+    "minor": 1
+  },
+  "hz": 30,
+  "capabilities": [
+    "headless_slice_v1",
+    "initial_enemies",
+    "events_after",
+    "ack_events_v1",
+    "spawn_enemies",
+    "end_encounter",
+    "wfm_enemies",
+    "autonomous_phoenix",
+    "wave_chest",
+    "replace_permanent_inputs_v1"
+  ],
+  "content": {
+    "version": "wfm-slice-v1",
+    "sha256": "485aa2464e5257635c5070e2957a79af4e35e67f954ac5ef79ea57ef467aaeed"
+  },
+  "sourceCommit": "598766917b6fce297792a254c39902c17f043289",
+  "extractedSliceCommit": "9c142b5f73294bd5a783e79d3840d0c3386c90a1",
   "sources": {
-    "rust/simulation_core/src/combat_abi.rs": "00a374bfca3b572f240a7e97066728829fe6f9d59ba6f6c5a11a8cdd45c5b9da",
-    "rust/simulation_core/src/lib.rs": "a9e8e8193ee6cf165cb7ecc345da7b0f3c7637721a7118c0f27353fd89c4a51d",
-    "rust/simulation_core/Cargo.toml": "f054cead0315b3aa9ebab3ce055e0442ceb50930ab974bf0ecdb7d36a6666858",
     "rust/simulation_core/Cargo.lock": "29e6ef77306922df52ec854db1d8ce4caee8cc5a000e108c85529bba911b89c8",
+    "rust/simulation_core/Cargo.toml": "f054cead0315b3aa9ebab3ce055e0442ceb50930ab974bf0ecdb7d36a6666858",
+    "rust/simulation_core/src/combat_abi.rs": "f6c02aeb1904959ff5d7833491f32571c2c5027179f9da33d56bdf220faf0ee7",
+    "rust/simulation_core/src/lib.rs": "a9e8e8193ee6cf165cb7ecc345da7b0f3c7637721a7118c0f27353fd89c4a51d",
+    "rust/wf_combat/Cargo.lock": "3c5857ea04d81e81c50722826ff4e97999da2db395e55c74b71e40a539974c2f",
+    "rust/wf_combat/Cargo.toml": "c3f471482b7aa3e83ac5b5cc58ac791c7648566aad9caca503c330bc79736f61",
     "rust/wf_combat/src/actors.rs": "3d70b6b0f8c88b2a53bcaa28f331b992a195d4a292e971d4c1fe4a9fba61222e",
     "rust/wf_combat/src/ai.rs": "1f2b6f9a6c1b783a84aa819dc0404a62b44e49fcd4d0e894a48ec5c6ba069901",
     "rust/wf_combat/src/api.rs": "2205d8fef3fb379cdb8be72ba2ebcb84c8e38ba87df1542aa33c533a09e4cc63",
@@ -21,8 +45,8 @@
     "rust/wf_combat/src/enemies.rs": "f139ea8d74df20f92ea8020bebec2d70cc1f8630967d7f1cdaafd185a44442bc",
     "rust/wf_combat/src/enemy_healing.rs": "0474b7b692a101577ed070099ef824ee71409b95f3ad5d3f76486c80938e0247",
     "rust/wf_combat/src/enemy_status.rs": "5d8557645307c10ed0754e27bbd34a96273d9962aed2f34f3215bc9ca3c20730",
-    "rust/wf_combat/src/enmity_attribution.rs": "f533bed63f72ef20510d2d2fdbe0e26a2380d4c2d1e0d705d966b88e530075a6",
     "rust/wf_combat/src/enmity.rs": "63eb322f37b423b1b7b53c0179ecd86da74d16a9fbb2d2ad764129bf80e1a1e7",
+    "rust/wf_combat/src/enmity_attribution.rs": "f533bed63f72ef20510d2d2fdbe0e26a2380d4c2d1e0d705d966b88e530075a6",
     "rust/wf_combat/src/events.rs": "100e75f2b2b71026682c82a23b279fe8f64d43c1ff03af0da733db8fb2b72d1d",
     "rust/wf_combat/src/groove.rs": "17ea9ac2766dce9be1b3dbf623457849d1bc7ce8cfda644c311bd0516f260998",
     "rust/wf_combat/src/hazards.rs": "3d919812cf874de9c9c6fe957b0a74b3035f487d4b9acaa9a44abd9f3d4dfa7a",
@@ -45,10 +69,30 @@
     "rust/wf_combat/src/stomp_metrics.rs": "ebaa42a900cb544955b12247c0fa3755c0cb17db3f9486207e23fa6a29211f20",
     "rust/wf_combat/src/target_lock_metrics.rs": "4c959c3fffc323869e9dfb49f6b0980f8379ba689e2f479268e9c7a575c822f1",
     "rust/wf_combat/src/tuning.rs": "062ed7faa6788e1cff1b33d5b334e56d44a3cd924c17b00d5db614f12718600b",
-    "rust/wf_combat/src/wfm.rs": "3bd0a6b77ef17b3ec6591547ea78328710832c18b2a5fbaeafd01ff5cf871cb1",
-    "rust/wf_combat/Cargo.toml": "c3f471482b7aa3e83ac5b5cc58ac791c7648566aad9caca503c330bc79736f61",
-    "rust/wf_combat/Cargo.lock": "3c5857ea04d81e81c50722826ff4e97999da2db395e55c74b71e40a539974c2f"
+    "rust/wf_combat/src/wfm.rs": "3bd0a6b77ef17b3ec6591547ea78328710832c18b2a5fbaeafd01ff5cf871cb1"
   },
   "binary": "web-runner/assets/simulation_core.wasm",
-  "binarySha256": "c95cbe961d137e157c5064b679109f8a7588425b0a4c4c55419e3964ec2475f4"
+  "binarySha256": "8cfeb347d183d7501a43089d65b98d5a4baa71fa17880f3cf97d57599656b98e",
+  "source": "rust/simulation_core/src/lib.rs",
+  "sourceSha256": "a9e8e8193ee6cf165cb7ecc345da7b0f3c7637721a7118c0f27353fd89c4a51d",
+  "combatAbiVersion": "1.0",
+  "toolchain": {
+    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+    "cargo": "cargo 1.96.0 (30a34c682 2026-05-25)"
+  },
+  "build": {
+    "target": "wasm32-unknown-unknown",
+    "profile": "release",
+    "features": "Cargo.toml defaults",
+    "rustflags": "",
+    "encodedRustflags": "",
+    "args": [
+      "--manifest-path",
+      "rust/simulation_core/Cargo.toml",
+      "--locked",
+      "--target",
+      "wasm32-unknown-unknown",
+      "--release"
+    ]
+  }
 }

@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { createCombatBridge } from '../web-runner/src/core/combatBridge.mjs';
 import { loadSimulationCore, validateSimulationCore } from '../web-runner/systems/simulationCoreLoader.mjs';
+import { WFM_COMBAT_CONTENT_VERSION } from '../web-runner/src/core/heroProgression.mjs';
+import { installRustCombat } from '../web-runner/systems/rustCombat.mjs';
 
 const binary = fs.readFileSync(new URL('../web-runner/assets/simulation_core.wasm', import.meta.url));
 const manifest = JSON.parse(fs.readFileSync(new URL('../web-runner/assets/simulation_core.manifest.json', import.meta.url)));
@@ -23,10 +25,46 @@ test('release identity rejects ABI, schema, content version and corrupted bytes 
     globalThis.__ORKA_OFFLINE_RUNTIME__ = { json: { 'simulation_core.manifest.json': manifest },
       wasm: { 'simulation_core.wasm': binary.toString('base64') } };
     const [a, b] = await Promise.all([loadSimulationCore('file:///proof/assets/simulation_core.wasm'), loadSimulationCore('file:///proof/assets/simulation_core.wasm')]);
-    assert.equal(a, b, 'scalar and combat consumers share one verified instance');
+    assert.equal(a, b, 'CP/meta and combat consumers share one verified instance');
     const corrupt = Buffer.from(binary); corrupt[corrupt.length - 1] ^= 1;
     globalThis.__ORKA_OFFLINE_RUNTIME__.wasm['simulation_core.wasm'] = corrupt.toString('base64');
     await assert.rejects(loadSimulationCore('file:///corrupt/assets/simulation_core.wasm'), /SimulationCore binary hash mismatch/);
+  } finally {
+    globalThis.fetch = fetchBefore;
+    globalThis.__ORKA_OFFLINE_RUNTIME__ = previous;
+  }
+});
+
+test('binary-owned content negotiation rejects stale or absent definitions and fails combat startup closed', async () => {
+  assert.equal(createCombatBridge(fresh()).describe().content_version, WFM_COMBAT_CONTENT_VERSION);
+  assert.equal(manifest.content.version, WFM_COMBAT_CONTENT_VERSION);
+  const previous = globalThis.__ORKA_OFFLINE_RUNTIME__;
+  const fetchBefore = globalThis.fetch;
+  try {
+    globalThis.fetch = () => { throw new Error('Content mismatch proof attempted fetch'); };
+    for (const [from, to] of [[WFM_COMBAT_CONTENT_VERSION, 'wfm-slice-v2'], ['content_version', 'unknown_version']]) {
+      const bytes = Buffer.from(binary), offset = bytes.indexOf(from);
+      assert.ok(offset >= 0);
+      assert.equal(bytes.indexOf(from, offset + from.length), -1, 'mutate only the binary description');
+      assert.equal(Buffer.byteLength(to), Buffer.byteLength(from));
+      bytes.write(to, offset);
+      const changed = new WebAssembly.Instance(new WebAssembly.Module(bytes));
+      assert.throws(() => validateSimulationCore(changed, manifest), /SimulationCore content\/version mismatch/);
+      assert.throws(() => validateSimulationCore(changed, { ...manifest, content: { ...manifest.content, version: to } }), /SimulationCore content\/version mismatch/);
+      globalThis.__ORKA_OFFLINE_RUNTIME__ = {
+        json: { 'simulation_core.manifest.json': { ...manifest, binarySha256: createHash('sha256').update(bytes).digest('hex') } },
+        wasm: { 'simulation_core.wasm': bytes.toString('base64') },
+      };
+      const globals = {};
+      const combat = installRustCombat({ globals }, {
+        load: async () => ({ mountRustCombat: () => loadSimulationCore(`file:///${to}/assets/simulation_core.wasm`) }),
+        warn: () => {},
+      });
+      await assert.rejects(combat.requireReady(), /SimulationCore content\/version mismatch/);
+      assert.match(globals.RustCombatError, /SimulationCore content\/version mismatch/);
+      assert.equal(combat.tick({}), false);
+      combat.dispose();
+    }
   } finally {
     globalThis.fetch = fetchBefore;
     globalThis.__ORKA_OFFLINE_RUNTIME__ = previous;

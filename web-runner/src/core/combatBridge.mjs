@@ -1,4 +1,5 @@
-// Headless transport, used by the opt-in developer shadow only.
+// Headless transport and host content contract for Rust combat.
+export const WFM_COMBAT_CONTENT_VERSION = 'wfm-slice-v1';
 export function createCombatBridge(instance) {
   const wasm = instance.exports;
   const names = ['wf_combat_abi_version', 'wf_input_alloc', 'wf_input_free',

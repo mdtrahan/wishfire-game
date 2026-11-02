@@ -23,7 +23,7 @@ async function main() {
   const manifest = {
     format: 1, abiVersion: description.abi_version, schema: description.schema, hz: description.hz,
     capabilities: description.capabilities,
-    content: { version: 1, sha256: sha256(JSON.stringify(sources)) },
+    content: { version: description.content_version, sha256: sha256(JSON.stringify(sources)) },
     sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(),
     extractedSliceCommit: '9c142b5f73294bd5a783e79d3840d0c3386c90a1',
     sources, binary: wasmFile, binarySha256: sha256(bytes),
