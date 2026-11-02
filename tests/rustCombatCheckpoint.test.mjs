@@ -25,7 +25,7 @@ function storage(raw) {
   vm.runInNewContext(`${source}; this.api = {restoreHeroProgressFromStorage, persistHeroProgressIfDirty};`, context);
   return { ...context.api, values, localStorage };
 }
-function fixture({ raw, settlePendingReceipts, bridgeOverrides, saveFails = false, useRealSession = false } = {}) {
+function fixture({ raw, settlePendingReceipts, bridgeOverrides, saveFails = false, useRealSession = false, seed = 42 } = {}) {
   const store = storage(raw), real = createCombatBridge(new WebAssembly.Instance(wasm));
   const created = [], routes = [], warnings = [], planned = [], spawned = [];
   let worldHandle;
@@ -40,7 +40,7 @@ function fixture({ raw, settlePendingReceipts, bridgeOverrides, saveFails = fals
   const state = { globals: g, entities: ['Falie', 'Huun', 'Runa', 'Kojonn'].map((name, i) => ({ ...progression.newHeroProgress(name), kind: 'hero', uid: i + 1 })) };
   store.restoreHeroProgressFromStorage({ fnContext: { state }, settlePendingReceipts });
   configureContinuousCombatProduction(g, { productionPath: true });
-  if (!raw) g.ContinuousCombatStage.seed = 42;
+  if (!raw) g.ContinuousCombatStage.seed = seed;
   function rebuild() {
     planned.length = 0;
     state.entities.splice(0, state.entities.length, ...state.entities.filter(a => a.kind === 'hero'));
@@ -347,7 +347,8 @@ test('shared restartAtSubwave entry destroys the old attempt and supports unlimi
 });
 
 test('automatic real Rust AllDown restarts subwave 3 with the same enemies, healthy origins and no cost', () => {
-  const f = fixture({ useRealSession: true });
+  // Seed 4 keeps the automatic wipe in subwave 3 with the lower idle origin.
+  const f = fixture({ useRealSession: true, seed: 4 });
   for (const hero of f.state.entities.filter(a => a.kind === 'hero')) hero.hp = .001;
   for (const enemy of f.planned) {
     enemy.stats.ATK = 10000;

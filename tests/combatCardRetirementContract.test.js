@@ -64,14 +64,18 @@ test('retired combat-card modules, assets, and active-runtime tokens stay absent
   assert.match(storyEntry, /storyCardPresentation|Quest|story/i);
 });
 
-test('combat status stays on battlefield actors', () => {
+test('combat status stays on living battlefield actors with hero-only meters and separate boss HUD', async () => {
+  const { drawSliceActorBars } = await import('../web-runner/systems/rustCombatWorldHud.mjs');
   const app = fs.readFileSync(path.join(root, 'web-runner/app.js'), 'utf8');
-  const render = fs.readFileSync(path.join(root, 'web-runner/systems/renderRuntime.js'), 'utf8');
   assert.doesNotMatch(app, /heroCommandUI|hero-commands/);
-  assert.match(render, /HeroRestBasePosByUID[\s\S]*const hpRatio = Number\(hero\.maxHP/);
-  assert.match(render, /const barY = Math\.round\(footPos\.y \+ 4 \* layoutScale\);/);
-  assert.match(render, /addActorPaint\(uid, \(\) => paintWithActivationAlpha\(ctx, heroBarFadeAlpha, \(\) => drawCombatHealthBar/);
-  assert.equal((render.match(/drawCombatHealthBar\(ctx, \{/g) || []).length, 2);
-  const bars = fs.readFileSync(path.join(root, 'web-runner/systems/combatHealthBarPresentation.mjs'), 'utf8');
-  assert.match(bars, /ctx\.fillStyle = '#292E34';/);
+  const tracks=[],meters=[],fills=[];let color,current;
+  const ctx=new Proxy({}, {get:(_target,key)=>key==='roundRect'?(...r)=>{current=r.slice(0,4);}:key==='fillRect'?(...r)=>{if(color==='#292E34')tracks.push(r);else meters.push({r,color});}:key==='fill'?()=>fills.push({r:current,color}):()=>{},set:(_target,key,value)=>{if(key==='fillStyle')color=value;return true;}});
+  const actor=(team,kind,x,extra={})=>({team,kind,hp:50,max_hp:100,groove:'super',meter:1.5,pos:{x,y:200},...extra});
+  const snapshot={actors:[actor('hero','fara',100),actor('enemy','gobloc',150),actor('enemy','boss_troll',200),actor('enemy','gobloc',250,{hp:0}),actor('hero','hondo',300,{downed:true}),actor('hero','runa',350,{hp:0})]};
+  const before=structuredClone(snapshot);
+  drawSliceActorBars(ctx,snapshot,{zoom:.5,x:x=>x,y:y=>y},1,0,0);
+  assert.deepEqual(tracks,[[91.5,208,17,1.5],[141.5,204,17,1.5]]);
+  assert.deepEqual(fills,[{r:[91.5,208,8.5,1.5],color:'#35B9E7'},{r:[141.5,204,8.5,1.5],color:'#E98824'}]);
+  assert.deepEqual(meters,[{r:[91.5,210.5,17,1],color:'#090e12'},{r:[91.5,210.5,8.5,1],color:'#ffc745'}]);
+  assert.deepEqual(snapshot,before,'HUD cannot mutate combat or visibility state');
 });

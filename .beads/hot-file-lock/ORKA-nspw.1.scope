@@ -1,2 +1,1 @@
-web-runner/app.js:__MODULE__
-web-runner/systems/renderRuntime.js:__MODULE__
+web-runner/systems/renderRuntime.js:addActorPaint,drawEnemySprite

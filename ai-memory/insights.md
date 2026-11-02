@@ -28,6 +28,7 @@
 - Reframe before implementation when acceptance language implies persistent timed stat stacks (`ORKA-9ri`, `ORKA-zih`, residual wording in `ORKA-69r`).
 
 ## Regression Triggers
+- Derived status fields may exist only in Rust's rebuilt snapshot view. JSON bridges reading raw actor views must explicitly project validated status state; presence of a serialized field alone does not prove live values reach rendering.
 - Guard generic developer dispatchers alongside named fixtures when Rust owns live combat. A guarded fixture leaves every mutating registry handler reachable through an unrestricted raw dispatcher.
 - Rust actor snapshots use projected combat HP and retain presentation-side stat copies. Permanent progression and ordinary-clear saves must use the bound raw meta source; copying the live actor can silently overwrite newly saved equipment/level stats before the next revision.
 - Rust bridge additions can pull serialization and simulation code into shipped WASM; compare raw/gzip size, supported exports and seeded results before accepting release-profile changes.
@@ -707,3 +708,17 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Rust-only host controls and diagnostics need behavioral proof at their consumer: read snapshot stats in explicit display units and change a real WASM revision; apply speed to admitted foreground time and compare equal-step snapshots. Renderer dt and permanent host stats cannot certify these seams.
 
 - A release content handshake must compare the binary-owned definition version with both manifest and host expectations before world creation. A manifest source digest proves build provenance separately; matching manifest/host constants alone cannot detect a stale binary.
+
+- A death silhouette can shrink inside authored KO frames even when draw dimensions remain constant. Keep enemy standing art during the snapshot-owned alpha fade and test both clip selection and painted dimensions.
+
+- Ballistic height and projectile travel direction are independent of bomb artwork orientation; verify both teams and the landing sample.
+
+- When Rust presentation replaces hero bars, enemy parity must use that same live renderer. Removing the host duplicate prevents art-scale-dependent bar sizes and permits exact geometry comparisons.
+
+- Source duration must gate a distributed visual buff even if a recipient retains a variant field. Give per-recipient HUD effects distinct source/recipient keys when every hero must retain a badge instead of collapsing into the party row.
+
+- Convert a requested screen-space anchor shift through the ground projection squash before changing authored world positions. Compare the visible displacement against painted hero height and guard the entire hero/HP footprint above the bottom HUD at compact scales.
+
+- Capture the last living paint before simulation removal when a death picture must outlive its actor. Exercise the actual WASM-to-host-to-render lifetime: isolated death ages miss renderer handoffs, size fallbacks and activation alpha accidentally reapplied to corpses.
+
+- When a presentation owner moves, migrate test imports and exercise the new owner through its production call site. Source-text assertions against a removed duplicate cannot protect anchoring, geometry, visibility or paint order.

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { authorSubwaves, bindAuthoredSubwaves, subwaveReady } from '../web-runner/src/core/continuousCombatSubwaves.mjs';
 import { buildChapterOneSubwaveStages, buildContinuousCombatSpawnPlan, createContinuousCombatStageState } from '../web-runner/src/core/continuousCombatStage.mjs';
-import { drawSliceHeroBars } from '../web-runner/systems/rustCombatWorldHud.mjs';
+import { drawSliceActorBars } from '../web-runner/systems/rustCombatWorldHud.mjs';
 const columns=JSON.parse(fs.readFileSync(new URL('../web-runner/assets/enemies.json',import.meta.url))).data;
 const rows=columns[0].slice(1).map((_,i)=>Object.fromEntries(columns.map(c=>[c[0][0],c[i+1][0]]))).filter(r=>r.name);
 const totals=keys=>Object.fromEntries([...new Set(keys)].sort().map(k=>[k,keys.filter(v=>v===k).length]));
@@ -29,7 +29,9 @@ test('subwave release follows the previous cohort at one survivor or exactly ten
  assert.throws(()=>bindAuthoredSubwaves([[{key:'Missing',count:1}]],actors),/missing/);
 });
 test('hero world bars draw snapshot Groove immediately below slice HP geometry',()=>{
- const rects=[];let fillStyle;const ctx={save(){},restore(){},translate(){},scale(){},set fillStyle(v){fillStyle=v;},fillRect(...r){rects.push({r,fillStyle});}};
- drawSliceHeroBars(ctx,{actors:[{team:'hero',hp:50,max_hp:100,groove:'super',meter:1.5,pos:{x:100,y:200}}]},{zoom:.5,x:x=>x,y:y=>y},1,0,0);
- assert.deepEqual(rects.map(r=>r.r),[[91.5,208,17,1.5],[91.5,208,8.5,1.5],[91.5,210.5,17,1],[91.5,210.5,8.5,1]]);
+ const rects=[],fills=[];let fillStyle,current;
+ const ctx=new Proxy({}, {get:(_target,key)=>key==='roundRect'?(...r)=>{current=r.slice(0,4);}:key==='fillRect'?(...r)=>rects.push({r,fillStyle}):key==='fill'?()=>fills.push({r:current,fillStyle}):()=>{},set:(_target,key,value)=>{if(key==='fillStyle')fillStyle=value;return true;}});
+ drawSliceActorBars(ctx,{actors:[{kind:'fara',team:'hero',hp:50,max_hp:100,groove:'super',meter:1.5,pos:{x:100,y:200}}]},{zoom:.5,x:x=>x,y:y=>y},1,0,0);
+ assert.deepEqual(rects.map(r=>r.r),[[91.5,208,17,1.5],[91.5,210.5,17,1],[91.5,210.5,8.5,1]]);
+ assert.deepEqual(fills,[{r:[91.5,208,8.5,1.5],fillStyle:'#35B9E7'}]);
 });

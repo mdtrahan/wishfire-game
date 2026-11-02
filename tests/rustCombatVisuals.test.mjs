@@ -16,9 +16,10 @@ const snapshot=(time=1,hazards=[])=>({encounter_id:'visual-proof',camera_focus:{
 const present=(kind,data)=>({body:{kind:'presentation',data:{event:{kind,data}}}});
 const damage=data=>({body:{kind:'damage',data:{source:1,target:2,amount:15,crit:false,element:'physical',...data}}});
 
-test('slice manifest validates every referenced byte and excludes UI/arena/reward/chest art',()=>{
+test('slice manifest validates every referenced byte and limits imported UI art to the approved taunt eye',()=>{
  assert.equal(manifest.source_commit,'9c142b5f73294bd5a783e79d3840d0c3386c90a1');
- for(const [file,hash]of Object.entries(manifest.sha256)){const bytes=fs.readFileSync(new URL(file,root));assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),hash,file);assert.ok(!/^(arena|icons|wishfire-skills)\//.test(file),file);if(file.startsWith('rewards/'))assert.ok(/^rewards\/chest-(closed|open)\.png$/.test(file));}
+ for(const [file,hash]of Object.entries(manifest.sha256)){const bytes=fs.readFileSync(new URL(file,root));assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),hash,file);assert.ok(file==='icons/warn.png'||!/^(arena|icons|wishfire-skills)\//.test(file),file);if(file.startsWith('rewards/'))assert.ok(/^rewards\/chest-(closed|open)\.png$/.test(file));}
+ assert.equal(manifest.sha256['icons/warn.png'],'32dab0e9e6a5ef3e0ae351924246308bfe85f623a0bd927b05a992a27024ff6b');
  for(const [id,e]of Object.entries(manifest.effects)){assert.ok(fs.existsSync(new URL(e.file,root)),id);assert.equal(e.frame_ms.length,e.frame_count,id);const b=fs.readFileSync(new URL(e.file,root));assert.equal(b.readUInt32BE(16),e.frame_size[0]*e.frame_count,id);assert.equal(b.readUInt32BE(20),e.frame_size[1],id);}
  assert.ok(fs.existsSync(new URL(manifest.font,root)));
 });

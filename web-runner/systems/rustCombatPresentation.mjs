@@ -1,5 +1,6 @@
-import { drawSliceHeroBars, drawSliceChest } from './rustCombatWorldHud.mjs';
-import { COMBAT_VIEW } from './rustCombatArena.mjs';
+import { drawSliceActorBars, drawSliceChest } from './rustCombatWorldHud.mjs';
+import { drawTauntIcons } from './rustCombatTaunt.mjs';
+import { COMBAT_VIEW, SLICE_ACTOR_HEIGHT } from './rustCombatArena.mjs';
 import { SliceSpotlightCamera } from './rustCombatSpotlightCamera.mjs';
 import { SliceActor, drawActorAura } from './rustCombatActor.mjs';
 import { SliceSprites } from './rustCombatSprites.mjs';
@@ -152,21 +153,22 @@ export async function createRustCombatPresentation(globals) {
     for(const p of snapshot.projectiles??[]){
       const x=camera.x(p.pos.x),y=camera.y(p.pos.y)-p.height*camera.zoom,angle=Math.atan2(p.dir.y*.75,p.dir.x),observation=state.projectiles.get(p.id),enemy=p.team==='enemy',kaja=observation?.source?.kind==='kaja';
       if(p.kind==='bolt'){gpu.bitmap('bolt',0,x,y,23*z,6*z,angle);continue;}
-      if(p.kind==='bomb'){gpu.bitmap('bomb',0,x,y,14*z,14*z,angle);continue;}
+      if(p.kind==='bomb'){gpu.bitmap('bomb',0,x,y,14*z,14*z,0);continue;}
       const head=enemy?'orb-head-neutral':kaja?'orb-head-kaja':'orb-head',trail=enemy?'orb-trail-neutral':kaja?'orb-trail-kaja':'orb-trail',tint=enemy?0xffafc2:0xffffff,dx=p.dir.x,dy=p.dir.y*.75,length=Math.hypot(dx,dy)||1,travel=observation?Math.hypot(camera.x(p.pos.x)-camera.x(observation.origin.x),camera.y(p.pos.y)-camera.y(observation.origin.y)):0,span=Math.max(0,Math.min(24*z,travel-4*z));
       if(span>0){const tx=x-dx/length*4*z,ty=y-dy/length*4*z;gpu.strip(trail,tx-dx/length*span,ty-dy/length*span,tx,ty,6*z,1,tint);}
       gpu.bitmap(head,1,x,y,12*z,12*z,angle,1,tint);
     }
     for(const a of snapshot.actors)if(a.team==='enemy'&&a.hp>0&&a.slowed>0){const height=126*(a.kind.startsWith('boss')?a.scale:a.scale*.6)*camera.zoom;for(let k=0;k<3;k++){const t=(now*.65+a.actor_id*.17+k*.32)%1,size=(4+k*.5)*z;gpu.bitmap('bubble-droplets',k,camera.x(a.pos.x)+(k-1)*height*.2,camera.y(a.pos.y)-height*(.82-.48*t),size,size,0,.65*(1-t*.45),0xe6ffff);}}
     for(const [id,record]of encased){const a=state.actors.get(id)??record.actor,height=126*(a.kind.startsWith('boss')?a.scale:a.scale*.6)*camera.zoom,x=camera.x(a.pos.x),y=camera.y(a.pos.y)+height*.15,wobble=Math.sin((now+id)*5)*.02,size=height*1.3*192/180;if(record.ended===null)gpu.bitmap('bubble-swell',Math.min(5,Math.floor((now-record.born)/.18*6)),x,y,size*(1+wobble),size*(1-wobble),0,.86);else{gpu.once('bubble-pop',now-record.ended,x,y,size*256/192,size*256/192,0,.8);gpu.once('bubble-suds',now-record.ended,x,camera.y(a.pos.y)-height*.5,height*.65,height*.65);}}
+    drawTauntIcons(gpu,snapshot,camera);
     finish(ctx);labels(ctx,s,ox,oy);
-    drawSliceHeroBars(ctx,snapshot,camera,s,ox,oy);
+    drawSliceActorBars(ctx,snapshot,camera,s,ox,oy);
   }
   function labels(ctx,s,ox,oy){const snapshot=state.snapshot,now=snapshot.time;ctx.save();for(let i=0;i<state.popups.length;i++){const p=state.popups[i],age=now-p.born;if(age<0)continue;let above=0;for(let j=i+1;j<state.popups.length;j++)if(state.popups[j].target===p.target)above++;const a=state.actors.get(p.target),pos=a?.pos??p.pos,height=126*(a?.scale??1)*(a?.kind?.startsWith('boss')?1:.6)*camera.zoom,t=c(age/p.life),side=a?.team==='hero'?-10:a?10:0,cy=Math.max(COMBAT_VIEW.top+p.inkHeight*.5+p.pad,Math.min(COMBAT_VIEW.bottom-p.inkHeight*.5-p.pad,camera.y(pos.y)-height*.5-above*12-18*(1-(1-t)**2))),x=Math.max(p.width/2+3,Math.min(357-p.width/2,camera.x(pos.x)+side))-p.width/2-p.pad,y=cy+p.inkHeight*.5-p.baseline;ctx.globalAlpha=c((p.life-age)/.25);ctx.drawImage(p.raster,ox+Math.round(x*density)/density*s,oy+Math.round(y*density)/density*s,p.raster.width/density*s,p.raster.height/density*s);}ctx.restore();}
   const api={chest(ctx,s,ox,oy){drawSliceChest(ctx,state.snapshot,camera,assets,gpu,s,ox,oy);},present,ground:groundPass,actor:actorPass,front:frontPass,camera,state,motion,project:camera.project,
     sprite:sprites.sprite.bind(sprites),
     pose(view){return motion.records.get(view.actor_id);},
-    height(host,fallback,s=1){const a=state.actors.get(host?.rustActorId);return a?128*(a.kind.startsWith('boss')?a.scale:a.scale*.6)*camera.zoom*s:fallback;},
+    height(host,fallback,s=1){if(host?.isPuppetDefeat)return host.puppetPaint?.height*s;const a=state.actors.get(host?.rustActorId);return a?SLICE_ACTOR_HEIGHT*(a.kind.startsWith('boss')?a.scale:a.scale*.6)*camera.zoom*s:fallback;},
     dispose(){present(null);gpu.dispose();assets.dispose();}};
   return api;
 }
