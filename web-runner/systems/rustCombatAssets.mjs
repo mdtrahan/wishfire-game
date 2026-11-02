@@ -1,14 +1,18 @@
-import { runtimeAssetUrl } from './runtimeAssetUrl.mjs';
+import { runtimeAssetUrl, getEmbeddedJson } from './runtimeAssetUrl.mjs';
 
 // Loaded exclusively by the localhost rustCombat runtime. Source pixels are unchanged.
 export async function preloadRustCombatAssets({ fetchAsset = fetch, ImageClass = Image, FontClass = FontFace, fonts = document.fonts } = {}) {
   const root = runtimeAssetUrl('rust-combat/');
-  const response = await fetchAsset(`${root}manifest.json`);
-  if (!response.ok) throw new Error(`Rust VFX manifest HTTP ${response.status}`);
-  const manifest = await response.json(), files = new Map(), entries = new Map();
+  let manifest = getEmbeddedJson(`${root}manifest.json`);
+  if (!manifest) {
+    const response = await fetchAsset(`${root}manifest.json`);
+    if (!response.ok) throw new Error(`Rust VFX manifest HTTP ${response.status}`);
+    manifest = await response.json();
+  }
+  const files = new Map(), entries = new Map();
   const load = file => {
     if (!files.has(file)) files.set(file, (async () => {
-      const image = new ImageClass(); image.src = root + file;
+      const image = new ImageClass(); image.src = runtimeAssetUrl(`rust-combat/${file}`);
       await image.decode(); return image;
     })());
     return files.get(file);
@@ -21,7 +25,7 @@ export async function preloadRustCombatAssets({ fetchAsset = fetch, ImageClass =
     const centered=entry.file.startsWith('telegraph/')||entry.file.startsWith('projectiles/')||entry.file.startsWith('elevate/')||entry.file.startsWith('vfx/resurrect/');
     entries.set(id, { ...entry, image, centered, duration:entry.frame_ms.reduce((a,b)=>a+b,0)/1000, boundsX:x0+.5,boundsWidth:Math.max(1,x1-x0) });
   }));
-  const font = new FontClass('SliceBungee', `url("${root}${manifest.font}")`);
+  const font = new FontClass('SliceBungee', `url("${runtimeAssetUrl(`rust-combat/${manifest.font}`)}")`);
   await font.load(); fonts.add(font);
   return { manifest, entries, dispose() { fonts.delete(font); files.clear(); entries.clear(); } };
 }

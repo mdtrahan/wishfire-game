@@ -704,3 +704,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Pause a retained authoritative world across ordinary UI navigation and page hiding; stopping it can silently discard authored work queued outside visible actors. Gate startup before host encounter assembly and test HTTP/ABI rejection through an existing player-visible error surface. Keep save/economy and meta RNG guarantees when retiring combat implementation fixtures.
 
 - Rust-only host controls and diagnostics need behavioral proof at their consumer: read snapshot stats in explicit display units and change a real WASM revision; apply speed to admitted foreground time and compare equal-step snapshots. Renderer dt and permanent host stats cannot certify these seams.
+
+- A release content handshake must compare the binary-owned definition version with both manifest and host expectations before world creation. A manifest source digest proves build provenance separately; matching manifest/host constants alone cannot detect a stale binary.
