@@ -1,3 +1,4 @@
+import {createCombatRewardOutboxState} from './combatRewardOutbox.mjs';
 import { routeHeroPermanentInputs, permanentHeroSource } from './heroPermanentInputs.mjs';
 import { HERO_DEFINITIONS, PROGRESSION, heroDefinition, heroKey } from './heroDefinitions.mjs';
 import { continuousCombatWavesForStage } from './continuousCombatProgressionRules.mjs';
@@ -82,7 +83,7 @@ function normalizeContinuousStageCheckpoint(stage) {
 }
 
 export function createHeroProgressStore(snapshot){
- const store={version:HERO_PROGRESS_VERSION,heroes:{},settledBattles:[],pendingBattleRewards:null,pendingGoldSettlements:{},settledTicketSpends:[]};
+ const store={version:HERO_PROGRESS_VERSION,heroes:{},settledBattles:[],pendingBattleRewards:null,pendingGoldSettlements:{},settledTicketSpends:[],combatRewardOutbox:createCombatRewardOutboxState()};
  // Old skill-rank data is deliberately not imported into the replacement kits.
  if(snapshot?.version===HERO_PROGRESS_VERSION&&snapshot.heroes&&typeof snapshot.heroes==='object'){
   for(const [id,saved] of Object.entries(snapshot.heroes)){
@@ -92,6 +93,7 @@ export function createHeroProgressStore(snapshot){
   const pending=snapshot.pendingBattleRewards;
   if(pending&&typeof pending.id==='string'&&pending.id&&Array.isArray(pending.participants))store.pendingBattleRewards={id:pending.id,participants:pending.participants.filter(id=>typeof id==='string'),defeated:sanitizeRewardLedger(pending.defeated),defeatedGold:sanitizeRewardLedger(pending.defeatedGold)};
   store.pendingGoldSettlements=sanitizeRewardLedger(snapshot.pendingGoldSettlements);
+  store.combatRewardOutbox=createCombatRewardOutboxState(snapshot.combatRewardOutbox);
   store.pendingBagKillRewards=Object.fromEntries(Object.entries(snapshot.pendingBagKillRewards||{}).filter(([id,amount])=>id&&id.length<=180&&[1,5].includes(amount)));
   store.settledTicketSpends=Array.isArray(snapshot.settledTicketSpends)?[...new Set(snapshot.settledTicketSpends.filter(id=>typeof id==='string'&&id.length<=180))].slice(-256):[];
   const stage=normalizeContinuousStageCheckpoint(snapshot.continuousStage);

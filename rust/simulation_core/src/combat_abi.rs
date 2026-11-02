@@ -216,6 +216,7 @@ enum Operation {
         world: u32,
         request: StepRequest,
     },
+    Ack { world: u32, encounter_id: String, sequence: String },
     Inspect {
         world: u32,
         events_after: String,
@@ -314,6 +315,7 @@ struct World {
     host_max_hp: BTreeMap<u32, f32>,
     ordinary_clears: std::collections::BTreeSet<String>,
     events: Vec<Value>,
+    acknowledged_sequence: u64,
     identities: std::collections::BTreeSet<String>,
     host_ids: BTreeMap<u32, String>,
 }
@@ -333,7 +335,7 @@ impl Transport {
     fn execute(&mut self, op: Operation) -> Result<Value, Value> {
         match op {
             Operation::Describe {} => Ok(json!({"abi_version":VERSION,"schema":SCHEMA,"hz":SIM_HZ,
-                "capabilities":["headless_slice_v1","initial_enemies","events_after","spawn_enemies","end_encounter","wfm_enemies","autonomous_phoenix","wave_chest","replace_permanent_inputs_v1"],
+                "capabilities":["headless_slice_v1","initial_enemies","events_after","ack_events_v1","spawn_enemies","end_encounter","wfm_enemies","autonomous_phoenix","wave_chest","replace_permanent_inputs_v1"],
                 "limits":{"request_bytes":MAX_REQUEST,"response_bytes":MAX_RESPONSE,"worlds":2,"responses":8,"inputs":8,"heroes":4,"enemies":MAX_ENEMIES,"hazards":MAX_EFFECTS,"projectiles":MAX_EFFECTS,"retained_events":MAX_EVENTS,"event_step_reserve":MAX_EVENTS/2,"floor_min_extent":256,"floor_max_extent":16384},
                 "resources":{"worlds":self.worlds.count(),"responses":self.responses.count(),"inputs":self.inputs.len()}})),
             Operation::Create { config } => {
@@ -423,13 +425,24 @@ impl Transport {
                 let w = self.worlds.get_mut(world).ok_or_else(bad_world)?;
                 w.spawn(&encounter_id, enemies)
             }
+            Operation::Ack { world, encounter_id, sequence } => {
+                let w = self.worlds.get_mut(world).ok_or_else(bad_world)?;
+                let sequence = decimal(&sequence, "operation.data.sequence")?;
+                let last = w.acknowledged_sequence + w.events.len() as u64;
+                if encounter_id != w.encounter_id || sequence < w.acknowledged_sequence || sequence > last {
+                    return Err(error("invalid_cursor", "sequence", "invalid acknowledgement cursor", Some(w.sim.step_number)));
+                }
+                w.events.drain(..(sequence - w.acknowledged_sequence) as usize);
+                w.acknowledged_sequence = sequence;
+                Ok(json!({"acknowledged_sequence": sequence.to_string()}))
+            }
             Operation::Inspect {
                 world,
                 events_after,
             } => {
                 let w = self.worlds.get(world).ok_or_else(bad_world)?;
                 let after = decimal(&events_after, "operation.data.events_after")?;
-                if after > w.events.len() as u64 {
+                if after < w.acknowledged_sequence || after > w.acknowledged_sequence + w.events.len() as u64 {
                     return Err(error(
                         "invalid_cursor",
                         "events_after",
@@ -437,7 +450,7 @@ impl Transport {
                         Some(w.sim.step_number),
                     ));
                 }
-                Ok(w.result(after as usize))
+                Ok(w.result((after - w.acknowledged_sequence) as usize))
             }
             Operation::Step { world, request } => {
                 let w = self.worlds.get_mut(world).ok_or_else(bad_world)?;
@@ -489,12 +502,12 @@ impl Transport {
                         Some(w.sim.step_number),
                     ));
                 }
-                // Keep room for a complete tick. No acknowledged cursor or event eviction in this bead.
+                // Reserve a complete tick; only acknowledged events can be pruned.
                 if w.events.len() >= MAX_EVENTS / 2 {
                     return Err(error(
                         "event_backpressure",
                         "events",
-                        "retained event capacity requires a new encounter",
+                        "retained event capacity requires acknowledgement",
                         Some(w.sim.step_number),
                     ));
                 }
@@ -804,6 +817,7 @@ impl World {
             host_max_hp,
             ordinary_clears: std::collections::BTreeSet::new(),
             events: Vec::new(),
+            acknowledged_sequence: 0,
             identities,
             host_ids,
         };
@@ -939,7 +953,7 @@ impl World {
         Ok(self.result(after))
     }
     fn event(&mut self, body: Value) {
-        self.events.push(json!({"schema":SCHEMA,"encounter_id":self.encounter_id,"step":self.sim.step_number.to_string(),"combat_step":self.sim.combat_steps.to_string(),"sequence":(self.events.len() as u64+1).to_string(),"body":body}));
+        self.events.push(json!({"schema":SCHEMA,"encounter_id":self.encounter_id,"step":self.sim.step_number.to_string(),"combat_step":self.sim.combat_steps.to_string(),"sequence":(self.acknowledged_sequence+self.events.len() as u64+1).to_string(),"body":body}));
     }
     fn collect(&mut self) {
         for e in self.sim.drain_events() {
@@ -955,7 +969,10 @@ impl World {
                     json!({"kind":"damage","data":{"source":source,"target":target,"amount":amount,"crit":crit,"element":element,"blocked":blocked}})
                 }
                 Event::Downed { id } => json!({"kind":"downed","data":{"hero":id}}),
-                Event::Died { id } => json!({"kind":"died","data":{"actor":id}}),
+                Event::Died { id } => {
+                    let actor = self.sim.actors.iter().find(|a| a.view.id == id).expect("death actor retained");
+                    json!({"kind":"died","data":{"actor":id,"team":if actor.view.team==Team::Enemy {"enemy"} else {"hero"},"reason":"combat","host_id":self.host_ids.get(&id)}})
+                },
                 Event::Spawned { id, archetype } => {
                     json!({"kind":"spawned","data":{"actor":id,"kind":archetype}})
                 }
@@ -1025,7 +1042,7 @@ impl World {
             };
             json!({"id":h.id,"kind":h.kind,"owner":h.owner,"team":if h.team==Team::Hero {"hero"} else {"enemy"},"phase":format!("{:?}",h.phase).to_lowercase(),"progress":h.progress,"width_scale":h.width_scale,"tier":h.tier,"fill":format!("{:?}",h.fill).to_lowercase(),"hostile":h.hostile,"origin":{"x":h.origin.x,"y":h.origin.y},"dir":{"x":h.dir.x,"y":h.dir.y},"shape":shape})
         }).collect();
-        json!({"snapshot":{"pending_spawns":self.pending_spawns.iter().map(|(marker,_,id,p,_,_,_)|json!({"marker":marker,"host_id":id,"pos":{"x":p.x,"y":p.y}})).collect::<Vec<_>>(),"chest":self.sim.chests.first().map(|c|json!({"id":c.id,"pos":{"x":c.pos.x,"y":c.pos.y},"state":format!("{:?}",c.state).to_lowercase(),"state_age":c.state_age,"age":c.age,"ready":self.sim.wave_chest_ready(),"rewards":[]})),"time":self.sim.snapshot().time,"combat_time":self.sim.snapshot().combat_time,"phoenix_cooldown":self.sim.snapshot().phoenix_cooldown,"phoenix_channel":self.sim.snapshot().phoenix_channel.map(|v|json!({"hero":v.hero,"progress":v.progress})),"hit_stop":self.sim.snapshot().hit_stop.map(|h|json!({"cause":format!("{:?}",h.cause).to_lowercase(),"actor":h.actor,"remaining":h.remaining})),"spotlight":self.sim.snapshot().spotlight.as_ref().map(|v|json!({"caster":v.caster,"skill":v.skill,"phase":format!("{:?}",v.phase).to_lowercase(),"started":v.started,"participants":v.participants,"co_casters":v.co_casters,"projectiles":v.projectiles,"hazards":v.hazards})),"hazards":hazards,"projectiles":self.sim.snapshot().projectiles.iter().map(|p|json!({"id":p.id,"kind":format!("{:?}",p.kind).to_lowercase(),"team":if p.team==Team::Hero {"hero"} else {"enemy"},"pos":{"x":p.pos.x,"y":p.pos.y},"height":p.height,"dir":{"x":p.dir.x,"y":p.dir.y}})).collect::<Vec<_>>(),"camera_focus":{"x":self.sim.snapshot().camera_focus.x,"y":self.sim.snapshot().camera_focus.y},"schema":SCHEMA,"encounter_id":self.encounter_id,"step":self.sim.step_number.to_string(),"combat_steps":self.sim.combat_steps.to_string(),"state":self.state,"actors":actors,"live_enemies":self.pending_spawns.len()+self.sim.actors.iter().filter(|a|a.view.team==Team::Enemy && a.alive()).count(),"last_event_sequence":self.events.len().to_string(),"gameplay_hash":format!("{:016x}",self.gameplay_hash()),"geometry":{"floor":{"min":{"x":self.sim.floor.min.x,"y":self.sim.floor.min.y},"max":{"x":self.sim.floor.max.x,"y":self.sim.floor.max.y}}}},"events":&self.events[after..]})
+        json!({"snapshot":{"pending_spawns":self.pending_spawns.iter().map(|(marker,_,id,p,_,_,_)|json!({"marker":marker,"host_id":id,"pos":{"x":p.x,"y":p.y}})).collect::<Vec<_>>(),"chest":self.sim.chests.first().map(|c|json!({"id":c.id,"pos":{"x":c.pos.x,"y":c.pos.y},"state":format!("{:?}",c.state).to_lowercase(),"state_age":c.state_age,"age":c.age,"ready":self.sim.wave_chest_ready(),"rewards":[]})),"time":self.sim.snapshot().time,"combat_time":self.sim.snapshot().combat_time,"phoenix_cooldown":self.sim.snapshot().phoenix_cooldown,"phoenix_channel":self.sim.snapshot().phoenix_channel.map(|v|json!({"hero":v.hero,"progress":v.progress})),"hit_stop":self.sim.snapshot().hit_stop.map(|h|json!({"cause":format!("{:?}",h.cause).to_lowercase(),"actor":h.actor,"remaining":h.remaining})),"spotlight":self.sim.snapshot().spotlight.as_ref().map(|v|json!({"caster":v.caster,"skill":v.skill,"phase":format!("{:?}",v.phase).to_lowercase(),"started":v.started,"participants":v.participants,"co_casters":v.co_casters,"projectiles":v.projectiles,"hazards":v.hazards})),"hazards":hazards,"projectiles":self.sim.snapshot().projectiles.iter().map(|p|json!({"id":p.id,"kind":format!("{:?}",p.kind).to_lowercase(),"team":if p.team==Team::Hero {"hero"} else {"enemy"},"pos":{"x":p.pos.x,"y":p.pos.y},"height":p.height,"dir":{"x":p.dir.x,"y":p.dir.y}})).collect::<Vec<_>>(),"camera_focus":{"x":self.sim.snapshot().camera_focus.x,"y":self.sim.snapshot().camera_focus.y},"schema":SCHEMA,"encounter_id":self.encounter_id,"step":self.sim.step_number.to_string(),"combat_steps":self.sim.combat_steps.to_string(),"state":self.state,"actors":actors,"live_enemies":self.pending_spawns.len()+self.sim.actors.iter().filter(|a|a.view.team==Team::Enemy && a.alive()).count(),"last_event_sequence":(self.acknowledged_sequence+self.events.len() as u64).to_string(),"acknowledged_event_sequence":self.acknowledged_sequence.to_string(),"gameplay_hash":format!("{:016x}",self.gameplay_hash()),"geometry":{"floor":{"min":{"x":self.sim.floor.min.x,"y":self.sim.floor.min.y},"max":{"x":self.sim.floor.max.x,"y":self.sim.floor.max.y}}}},"events":&self.events[after..]})
     }
 }
 thread_local! { static TRANSPORT: RefCell<Transport> = RefCell::new(Transport::new()); }
@@ -1179,6 +1196,30 @@ mod tests {
             }}})).unwrap());
             assert!(result.is_err(),"{failure}"); assert_eq!(t.worlds.get(world).unwrap().result(0),before,"{failure}");
         }
+    }
+    #[test]
+    fn event_backpressure_is_atomic_and_ack_releases_capacity() {
+        let fixture: Value = serde_json::from_str(include_str!("../tests/permanent_revision_scenario.json")).unwrap();
+        let mut t = Transport::new();
+        let created = t.execute(serde_json::from_value(json!({"kind":"create","data":{"config":fixture["config"]}})).unwrap()).unwrap();
+        let world = created["world"].as_u64().unwrap() as u32;
+        let w = t.worlds.get_mut(world).unwrap();
+        while w.events.len() < MAX_EVENTS / 2 { w.event(json!({"kind":"presentation","data":{}})); }
+        let before = w.result(0);
+        let step = || Operation::Step { world, request: serde_json::from_value(json!({"encounter_id":"permanent-parity","expected_previous_step":"0"})).unwrap() };
+        assert_eq!(t.execute(step()).unwrap_err()["code"], "event_backpressure");
+        assert_eq!(t.worlds.get(world).unwrap().result(0), before);
+        let last = (MAX_EVENTS / 2) as u64;
+        assert!(t.execute(Operation::Ack { world, encounter_id:"permanent-parity".into(), sequence:(last+1).to_string() }).is_err());
+        t.execute(Operation::Ack { world, encounter_id:"permanent-parity".into(), sequence:last.to_string() }).unwrap();
+        let w = t.worlds.get(world).unwrap();
+        assert!(w.events.is_empty());
+        assert_eq!(w.result(0)["snapshot"]["gameplay_hash"], before["snapshot"]["gameplay_hash"]);
+        assert!(t.execute(Operation::Inspect { world, events_after:"0".into() }).is_err());
+        let after = t.execute(step()).unwrap();
+        assert_eq!(after["snapshot"]["step"], "1");
+        assert_eq!(after["snapshot"]["acknowledged_event_sequence"], last.to_string());
+        for e in after["events"].as_array().unwrap() { assert!(e["sequence"].as_str().unwrap().parse::<u64>().unwrap() > last); }
     }
     #[test]
     fn generation_rejects_stale_and_double_free() {

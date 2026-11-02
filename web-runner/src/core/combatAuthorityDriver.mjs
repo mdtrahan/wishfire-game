@@ -34,6 +34,16 @@ export function createCombatAuthorityDriver({ bridge, consume, onError }) {
   }
   function accept(result, notify = true) {
     if (result.snapshot.encounter_id !== encounter) throw new Error('Rust encounter mismatch');
+    // A partial delivery can be repaired from Rust's retained stream. Validate
+    // the replacement normally; an unavailable/invalid cursor stops the world.
+    let expected = sequence, gap = false;
+    for (const event of result.events) if (BigInt(event.sequence) > expected) {
+      if (BigInt(event.sequence) !== expected + 1n) gap = true;
+      expected = BigInt(event.sequence);
+    }
+    if (result.snapshot.last_event_sequence !== undefined && BigInt(result.snapshot.last_event_sequence) > expected) gap = true;
+    if (gap && world !== null && bridge.inspect) result = bridge.inspect(world, String(sequence));
+    if (result.snapshot.encounter_id !== encounter) throw new Error('Rust retained encounter mismatch');
     const fresh = [];
     for (const event of result.events) {
       if (event.encounter_id !== encounter) throw new Error('Rust event encounter mismatch');
@@ -58,6 +68,10 @@ export function createCombatAuthorityDriver({ bridge, consume, onError }) {
     snapshot = result.snapshot;
     // Consumption can stop the world on an outcome. No renderer drains it.
     if (notify) consume(snapshot, fresh);
+    // The consumer has durably saved its cursor and economic receipts. A reload
+    // can settle them even after this retained transport batch is pruned.
+    if (world !== null && bridge.ack) bridge.ack(world, encounter, String(sequence));
+    while (receipts.size > 128) receipts.delete(receipts.keys().next().value);
   }
   function start(config) {
     try {

@@ -1974,7 +1974,8 @@ async function main(){
   requireDevToolingRuntime().setBossResumeHandler(() => storyEntry.resumeBossActivity());
   const questUI = createQuestLadderUI({ canvas, gameState, layoutState, flow: storyEntry, getGold: () => state.globals.goldTotal || 0, getPuppetPresentation: () => actorPuppetPresentation });
   const rustCombatShadow = installRustCombatShadow({ state, gameState, getLayout: () => layoutState.getActiveLayoutId(), getEnemyRows: () => enemyRows });
-  const rustCombat = installRustCombat({ state, globals: state.globals, canvas, session: questCombat, progression: combatProgression,
+  const rustCombat = installRustCombat({ state, globals: state.globals, canvas, session: questCombat, progression: combatProgression, equipmentProgress,
+    persistProgress: () => heroProgressStorage.persistHeroProgressIfDirty({stateGlobals: state.globals}),
     getEnemyRows: () => enemyRows, call: (name, ...args) => callFunctionWithContext(fnContext, name, ...args),
     advanceHostTime: options => combatSimulationTicker.advanceHostTime(options) });
   registerRuntimeLayouts(layoutState, {

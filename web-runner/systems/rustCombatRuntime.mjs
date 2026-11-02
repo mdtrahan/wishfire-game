@@ -1,3 +1,4 @@
+import { createCombatRewardOutbox } from './combatRewardOutbox.mjs';
 import { authorSubwaves, bindAuthoredSubwaves, subwaveReady } from '../src/core/continuousCombatSubwaves.mjs';
 import { continuousCombatWavesForStage } from '../src/core/continuousCombatProgressionRules.mjs';
 import { advanceBattleStartSimulation } from './combatSimulationTick.mjs';
@@ -20,11 +21,23 @@ const BOSS_KO_SECONDS = 1, CORPSE_FADE = .42, DEATH_CAMERA_SECONDS = .32;
 
 // Kept injectable for headless proof using the real WASM and WFM lifecycle.
 export function createRustCombatRuntime({ state, globals: g = state.globals, bridge, session, call,
-  progression, getEnemyRows, advanceHostTime, present = () => {}, warn = console.warn, persistCheckpoint }) {
+  progression, equipmentProgress, getEnemyRows, advanceHostTime, present = () => {}, warn = console.warn, persistCheckpoint, persistProgress = persistCheckpoint }) {
   let attempt = null, baseTime = 0, lastCombatTime = 0, lastPresentationTime = 0;
   g.RustCombatAuthority = true;
   let hostTransition = false, subwaves = [], previousSubwave = [], subwaveStarted = 0, pendingRestart = null;
   let stageOptions, advanced = false, failed = false, introNow = null, tail = null;
+  const rewardOutbox = createCombatRewardOutbox({globals:g,persistProgress,progression});
+  function settlePendingReceipts(){
+    return rewardOutbox.settlePendingReceipts();
+  }
+  let rewardDelivery = null;
+  function flushRewards(){
+    settlePendingReceipts();
+    if(!equipmentProgress || rewardDelivery)return;
+    rewardDelivery=equipmentProgress.sync().then(()=>progression?.sync()).catch(error=>{
+      try { stop(); } finally { finishFailure(error); }
+    }).finally(()=>{rewardDelivery=null;});
+  }
   const hosts = new Map(), seenSpawns = new Set(), hostHeroes = new Map();
   function saveCheckpoint() {
     if (typeof persistCheckpoint === 'function' && persistCheckpoint() === true) return;
@@ -151,6 +164,9 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
     }
   }
   function consume(snapshot, events) {
+    rewardOutbox.consumeBatch(snapshot, events, data => hosts.get(data.actor) || state.entities.find(actor => actor.kind === 'enemy' && String(actor.uid) === data.host_id));
+    if(equipmentProgress) flushRewards();
+
     const combatDelta = snapshot.combat_time - lastCombatTime;
     const presentationDelta = snapshot.time - lastPresentationTime;
     advanceHostTime?.({ state, dt: combatDelta, activeSeconds: presentationDelta, presentationSeconds: presentationDelta });
@@ -351,6 +367,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
       stop(); attempt = key; baseTime = Number(g.time || 0); lastCombatTime = 0; lastPresentationTime = 0;
       for (const hero of state.entities.filter(a => a.kind === 'hero')) hostHeroes.set(hero, { maxHP: hero.maxHP });
       try {
+        settlePendingReceipts();
         ensureCheckpoint();
         if (restart) for (const entry of restart) {
           const actor = call('SpawnEnemy', { ...entry.row, enemyRole: entry.row.enemyRole || entry.row.role || 'fodder' }, entry.slotIndex);
@@ -364,6 +381,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
         config.spawn_markers = !stage.bossActive;
         if (stage.bossActive && !config.enemies.some(enemy => enemy.spawn_key === String(stage.bossUID))) throw new Error('Missing WFM boss spawn');
         for (const enemy of config.enemies) seenSpawns.add(enemy.spawn_key);
+        rewardOutbox.beginEncounter(config.encounter_id);
         driver.start(config);
         if (driver.isActive()) g.WfmCheckpointReload = false;
         if (driver.isActive()) for (const [hero, original] of hostHeroes) {
@@ -380,14 +398,14 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
       } catch (error) { finishFailure(error); return false; }
     }
     spawnAdditions();
-    driver.advance(options.nowMs);
+    driver.advance(options.nowMs, !!rewardDelivery);
     return advanced;
   }
   function tick(options) {
     try { return tickFrame(options); }
     catch (error) { try { stop(); } finally { finishFailure(error); } return false; }
   }
-  return { tick, stop, restartAtSubwave, pause() { introNow = null; if (tail) tail.previousNow = null; driver.advance(0, true); }, dispose() { stop(); delete g.RustCombatAuthority; delete g.RustCombatPermanentInputs; delete g.RustCombatRestartAtSubwave; }, read: driver.read };
+  return { tick, stop, restartAtSubwave, settlePendingReceipts, pause() { introNow = null; if (tail) tail.previousNow = null; driver.advance(0, true); }, dispose() { stop(); delete g.RustCombatAuthority; delete g.RustCombatPermanentInputs; delete g.RustCombatRestartAtSubwave; }, read: driver.read };
 }
 
 export async function mountRustCombat(options) {
