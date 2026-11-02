@@ -54,6 +54,7 @@ export function createCombatBridge(instance) {
     waveChest: (world, encounter_id) => call({ kind: 'wave_chest', data: { world, encounter_id } }),
     ordinaryClear: (world, encounter_id, transition_id) => call({ kind: 'ordinary_clear', data: { world, encounter_id, transition_id } }),
     end: (world, encounter_id, expected_previous_step, reason) => call({ kind: 'step', data: { world, request: { encounter_id, expected_previous_step, end_encounter: reason } } }),
+    ack: (world, encounter_id, sequence) => call({ kind: 'ack', data: { world, encounter_id, sequence } }),
     inspect: (world, events_after = '0') => call({ kind: 'inspect', data: { world, events_after } }),
     spawn: (world, encounter_id, enemies) => call({ kind: 'spawn', data: { world, encounter_id, enemies } }),
     destroy: world => call({ kind: 'destroy', data: { world } }),

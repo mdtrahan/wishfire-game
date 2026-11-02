@@ -1,3 +1,4 @@
+import {createEquipmentStorage,EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -15,7 +16,7 @@ const progressSource = fs.readFileSync(new URL('../web-runner/systems/heroProgre
 const persistHeroProgressIfDirty = new Function('window', `${progressSource.replace(/^import .*\n/gm, '').replace(/export /g, '')}; return persistHeroProgressIfDirty;`)({ localStorage: { setItem: (k, v) => globalThis.window.localStorage.setItem(k, v) } });
 const wasm = new WebAssembly.Module(fs.readFileSync(new URL('../web-runner/assets/simulation_core.wasm', import.meta.url)));
 const noLeaks = bridge => assert.deepEqual(bridge.describe().resources, { worlds: 0, responses: 0, inputs: 1 });
-function fixture({ lose = false, fault = false, deathObjects = false } = {}) {
+function fixture({ lose = false, fault = false, deathObjects = false, durable = false } = {}) {
   const realBridge = createCombatBridge(new WebAssembly.Instance(wasm));
   const spawns = [];
   let presented, deathObjectSnapshots=0;
@@ -63,14 +64,16 @@ function fixture({ lose = false, fault = false, deathObjects = false } = {}) {
   const original = session.surrenderBossAttempt;
   session.surrenderBossAttempt = function(reason) { routes.push(reason); return original.call(this, reason); };
   const clock = createCombatSimulationTicker({ isBagProgressBlocked: () => false });
-  const runtime = createRustCombatRuntime({ persistCheckpoint: () => true, state, bridge, session, call, getEnemyRows: () => rows,
+  const saved = new Map();
+  const equipment = durable ? createEquipmentStorage({globals:g,storage:{getItem:key=>saved.get(key)??null,setItem:(key,value)=>saved.set(key,value)},locks:{request:async(_key,fn)=>fn()},now:()=>0,seed:()=>42,reportError:()=>{}}) : undefined;
+  const runtime = createRustCombatRuntime({ persistCheckpoint: () => true, state, bridge, session, call, equipmentProgress:equipment, persistProgress: () => {saved.set('orka.hero_progress.v2',JSON.stringify(g.HeroProgress));return true;}, getEnemyRows: () => rows,
     present: snapshot => { presented=snapshot; }, advanceHostTime: clock.advanceHostTime, warn: (...args) => warnings.push(args) });
   const options = { globals: g, entities: state.entities, presentationBarrier: { lanes: {} }, call,
     onBossTimeout: () => session.surrenderBossAttempt('boss_timeout'), onBossClear() { calls.push('boss_clear'); } };
   function run() {
     for (let frame = 0; frame < 1500 && g.ContinuousCombatStage.bossActive; frame++) runtime.tick({ ...options, entities: state.entities, nowMs: frame * 1000 / 30 });
   }
-  return { get deathObjectSnapshots(){return deathObjectSnapshots;}, get presented(){return presented;}, runtime, bridge: realBridge, g, state, rewards, calls, routes, warnings, run, options, spawns };
+  return { equipment,saved, get deathObjectSnapshots(){return deathObjectSnapshots;}, get presented(){return presented;}, runtime, bridge: realBridge, g, state, rewards, calls, routes, warnings, run, options, spawns };
 }
 
 test('real Rust boss death clears the WFM stage with one boss receipt and no JS combat entrypoints', () => {
@@ -318,4 +321,17 @@ test('mid-fight HP equipment, EXP and Training commits revise Rust without mutat
   f.runtime.tick({ ...f.options,nowMs:1136 }); assert.equal(f.runtime.read().pendingRevisions,0);
   assert.equal(f.runtime.read().failed,false); assert.deepEqual(f.warnings,[]);
   f.runtime.dispose(); noLeaks(f.bridge);
+});
+
+test('real-WASM runtime durably captures a boss kill and automatically settles after world teardown',async()=>{
+ const f=fixture({durable:true});
+ for(let frame=0;frame<1500&&f.g.ContinuousCombatStage.bossActive;frame++){
+  f.runtime.tick({...f.options,entities:f.state.entities,nowMs:frame*1000/30});await new Promise(resolve=>setImmediate(resolve));
+ }
+ await f.runtime.settlePendingReceipts();
+ assert.equal(f.g.ContinuousCombatStage.region,2);
+ assert.equal(JSON.parse(f.saved.get(EQUIPMENT_SAVE_KEY)).lamp.killPoints,5);
+ const source=JSON.parse(f.saved.get('orka.hero_progress.v2'));
+ assert.ok(Object.values(source.combatRewardOutbox.streams).every(stream=>stream.pending.length===0));
+ assert.deepEqual(f.warnings,[]);noLeaks(f.bridge);
 });
