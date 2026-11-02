@@ -10,7 +10,7 @@ export const RETIRED_COMBAT_ENTRYPOINTS = Object.freeze([
 const families = 'calculateDamageRules effectiveStatRules enemyTargetingRules enemyJobSkillRules enemySkillChoiceRules enemyTurnFlowRules heroTurnEntryRules startEnemyActionRules singleHitRules partyDamageRules statusEffectRules heroSustainRules heroWard realtimeHeroSkills realtimeHeroPassives realtimeHeroTargeting realtimeCooldown realtimeSkillState dynamicInitiativeAuthorityExperiment dynamicInitiativeRules dynamicInitiativeRuntimeShadow initiativeGuards roundPointerAdvanceRules turnActorEligibilityRules turnOrderGroupRules turnPhaseAssignmentRules turnSummaryRules schedulerRules combatOutcomeRules runaMagicResistRules combatRules combatRuntimeGateway heroAttackTargetingRules'.split(' ');
 const retiredPaths = [
   ...families.flatMap(name => ['src/core', 'web-runner/src/core'].flatMap(root => ['mjs', 'js', 'cjs'].map(ext => `${root}/${name}.${ext}`))),
-  'Scripts/functionBank.js', 'Scripts/skillSheet.js',
+  'Scripts/functionBank.js', 'Scripts/skillSheet.js', 'Scripts/functionRegistry.js',
   ...['combatSimulationTick.mjs', 'superGemRuntime.js', 'combatAttackVfxPresentation.mjs', 'astralFlowKoOrbPresentation.js', 'heroWardAura.mjs', 'combatTurnQaReadout.mjs', 'rustCombatShadow.mjs', 'rustCombatShadowRuntime.mjs'].map(name => `web-runner/systems/${name}`),
 ];
 // TDD-B §6 classifications. These are the only supported host writers; the
