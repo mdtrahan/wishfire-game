@@ -1409,6 +1409,26 @@
         31,
         10
       ]
+    },
+    "warn": {
+      "file": "icons/warn.png",
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 1,
+      "frame_ms": [
+        1
+      ],
+      "pivot": [
+        32.0,
+        32.0
+      ],
+      "blend": "alpha",
+      "screen_size_px": [
+        20,
+        20
+      ]
     }
   },
   "sha256": {
@@ -1493,7 +1513,8 @@
     "rewards/chest-closed.png": "db6eb0dc9b7f03192b8f5e89ec20595deec59d9e1cf209bcdc80119e3f496f2b",
     "rewards/chest-open.png": "352dc65fa5e3f27afa0c1fc3f4f129ca4f2e5d7b2c0902344d06578801699924",
     "vfx-astra/chest-sparkle-neutral.png": "6f9ea91229da254587a4d95419573f960f6c375af96ba113331b9dc41a96ecdf",
-    "vfx-astra/shadow.png": "25a870b15f04269d5e397ae36f2f4355ec6bd709415292d2ac465295e7b9cb32"
+    "vfx-astra/shadow.png": "25a870b15f04269d5e397ae36f2f4355ec6bd709415292d2ac465295e7b9cb32",
+    "icons/warn.png": "32dab0e9e6a5ef3e0ae351924246308bfe85f623a0bd927b05a992a27024ff6b"
   },
   "font": "fonts/Bungee-Regular.ttf",
   "existing_arcane_impact": "../images/vfx_impact_g03_purple.png",

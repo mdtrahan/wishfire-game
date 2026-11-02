@@ -1,14 +1,14 @@
+import { drawCombatHealthBar } from './combatHealthBarPresentation.mjs';
 // Pinned slice render/groove.rs and render/rewards.rs. Read-only presentation.
 const clamp = v => Math.max(0, Math.min(1, v));
-export function drawSliceHeroBars(ctx, snapshot, camera, scale, ox, oy) {
+export function drawSliceActorBars(ctx, snapshot, camera, scale, ox, oy) {
   const z = camera.zoom / .5;
   ctx.save(); ctx.translate(ox, oy); ctx.scale(scale, scale);
   for (const a of snapshot.actors) {
-    if (a.team !== 'hero' || a.hp <= 0 || a.downed) continue;
-    const x = camera.x(a.pos.x) - 17*z/2, y = camera.y(a.pos.y);
-    ctx.fillStyle = '#090e12'; ctx.fillRect(x,y+8*z,17*z,1.5*z);
-    ctx.fillStyle = '#45d487'; ctx.fillRect(x,y+8*z,17*z*clamp(a.hp/Math.max(1,a.max_hp)),1.5*z);
-    if (!a.groove) continue;
+    if (a.hp <= 0 || a.downed || a.kind.startsWith('boss')) continue;
+    const x = camera.x(a.pos.x) - 17*z/2, y = camera.y(a.pos.y), hpY = y + (a.team === 'hero' ? 8*z : 4);
+    drawCombatHealthBar(ctx, { x, y: hpY, width: 17*z, height: 1.5*z, fillWidth: 17*z*clamp(a.hp/Math.max(1,a.max_hp)), trailWidth: 0, team: a.team });
+    if (a.team !== 'hero' || !a.groove) continue;
     const segments = a.groove === 'combo' ? 1 : 3, value = Number.isFinite(a.meter) ? clamp(a.meter/segments) : 0;
     if (value === 1) for (const [pad,alpha] of [[2,.07],[1,.14]]) {
       ctx.fillStyle = `rgba(255,184,51,${alpha})`;ctx.fillRect(x-pad*z,y+(10.5-pad)*z,(17+2*pad)*z,(1+2*pad)*z);

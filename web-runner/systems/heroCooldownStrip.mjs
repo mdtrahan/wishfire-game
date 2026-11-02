@@ -1,3 +1,4 @@
+import { elevateSourceForActor } from './rustCombatEffects.mjs';
 import { heroDefinition } from '../src/core/heroDefinitions.mjs';
 import { heroArtPath } from '../state/heroArtAssets.mjs';
 import { runtimeAssetUrl } from './runtimeAssetUrl.mjs';
@@ -28,13 +29,15 @@ const up = channel => ({ channel, direction: 'up' });
 
 // Read-only translation of live combat buffs into signal input; the projection owns the rules.
 export function heroBuffSignalInput(entities = [], globals = {}) {
-  const views = globals.RustCombatPresentation?.state.snapshot?.actors || [];
+  const snapshot = globals.RustCombatPresentation?.state.snapshot;
+  const views = snapshot?.actors || [];
   return heroCooldownSlots(entities, globals).filter(Boolean).map(slot => {
     const actor = entities.find(actor => actor.uid === slot.uid);
     const view = views.find(view => view.actor_id === actor.rustActorId);
     const buffs = [];
     if (Number(view?.ward || 0) > 0 || Number(view?.warcry_shield || 0) > 0) buffs.push({ key: 'ward', ref: { effectId: 'ward' }, modifiers: [up('ward')] });
-    if (view?.elevate) buffs.push({ key: 'elevate', ref: { effectId: 'elevate', set: 'power' }, modifiers: [up('ATK')] });
+    const elevate = view && elevateSourceForActor(view, snapshot);
+    if (elevate) buffs.push({ key: `elevate:${elevate.actor_id}:${view.actor_id}`, ref: { effectId: 'elevate', set: 'power' }, modifiers: [up('ATK')] });
     return { uid: slot.uid, alive: slot.status !== 'ko', buffs };
   });
 }

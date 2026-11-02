@@ -339,3 +339,15 @@
 - Ordinary screen/DEV/background departure pauses the existing Rust world without discarding subwaves. Bootstrap gates on `requireReady()` and reuses the startup loading error surface on WASM/ABI failure. Legacy movement/camera sliders are retired until an authoritative API exists.
 
 - Party-stat OSD reads live Rust snapshot ATK/MAG/DEF/RES through `rustCombatStatDisplay.mjs` in native units; its permanent comparison converts display units only. SPD remains permanent meta because the ABI exposes no cadence readback. DEV Combat Speed scales the Rust driver foreground clock; Reward Drop/Count controls and state are retired.
+
+- Dead enemies retain their last living painted frame, dimensions and pose on the host defeat picture. SliceSprites draws that picture through the GPU with an explicit one-second alpha fade, including after Rust actor eviction; never apply activation alpha, reload clips or use a plain Canvas fallback. KO clips remain for downed heroes.
+
+- Bomb raster rotation stays zero throughout flight and landing; travel direction only orients directional projectiles.
+
+- rustCombatWorldHud.mjs owns identical hero/enemy HP track dimensions. Groove meters are hero-only; the active boss keeps its separate battle HUD.
+
+- Elevate uses the active living Rust Kaja snapshot and its groove duration. Each living hero receives a distinct buff instance in the existing HUD signal input, retaining its offense badge for the entire buff; enemy actors never enter that input.
+
+- `rustCombatTaunt.mjs` draws the approved eye above every living enemy with snapshot `taunted_by`. Rust's `taunt_age` drives the appearance pop; camera zoom scales its 20px size at zoom0.5 and bob. Keep full alpha through the last taunted snapshot, with no renderer timers or event bookkeeping.
+
+- rustCombatArena.mjs owns the idle formation origin and shared 128-unit puppet height. Its Y drop is 1.5 painted hero heights converted through the camera squash; fixed slot offsets, floor and enemy origins remain unchanged.

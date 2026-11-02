@@ -267,6 +267,7 @@
 - `rustCombatAllStages.test.mjs` drives real WASM for all ten registry entries, dormant R8 spawn tables, overlapping seeded packs, checkpoint masks, retained wave worlds, host-rounded/idempotent respite, autonomous lowest-slot Phoenix, all-down, surrender, timeout and deadline-step victory. Flag-off JS contracts remain active.
 
 - Rust combat regressions cover party-order Phoenix despite sparse saved formation, four-hero admission/deployment, body containment in the full-height floor under UI, hero-only Elevate, encasement removal/death/expiry and source pop duration, snapshot-exact bomb removal and cleared boss-tail objects. Stationary world Y and draw Y must remain equal across another hero's movement in the fixed camera.
+- `rustCombatTaunt.test.mjs` requires one full-alpha eye per living taunted enemy, immediate removal on expiry/death/disappearance, and source pop/bob geometry at multiple camera zooms. Native ABI proof covers the full180-tick taunt and source loss.
 
 - Rust subwave proof checks all Chapter 1 compositions, exact cohort thresholds, checkpoint identities, pending marker reservations and source emergence. Chest tests reject early ABI spawn, verify approach/open/post-open timing and assert unchanged reward receipts and hero stats. Native-DPR capture runs through `tools/qa_rust_combat_playtest2.mjs`.
 
@@ -284,3 +285,7 @@
 - App-tick VM fixtures supply Bag UI state and route boss-defeat facts through the Rust owner's callback into the real checkpoint session. Cache-review proof freezes ordinary combat while full-cache-only proof keeps combat advancing; retain all equipment and economic assertions.
 
 - Party-stat OSD proof must render a real WASM stat revision through the production display adapter. Rust speed proof compares equal-step snapshots across 0.25x/1x/4x, checks the eight-step frame budget, and exercises the DEV setting plus pause through the production runtime.
+
+- `combatDeathLifecycle.test.mjs` observes natural real-WASM deaths on the production page through retained-picture expiry. Require one GPU corpse draw per frame, unchanged living painted dimensions, intermediate alpha, monotonic fade to zero and snapshot eviction; the original Canvas handoff must fail this proof.
+
+- Shared Rust HUD contracts execute the production sorted actor queue and front pass, checking foot anchors, scale transforms, identical team HP dimensions and late HP paint. Dead/downed actors and bosses have no local HP track; only heroes receive Groove meters.

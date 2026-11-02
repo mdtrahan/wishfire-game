@@ -1034,7 +1034,11 @@ impl World {
         hash.0
     }
     fn result(&self, after: usize) -> Value {
-        let actors:Vec<_> = self.sim.actors.iter().map(|a|json!({"actor_id":a.view.id,"permanent_revision":a.permanent_revision.to_string(),"host_id":self.host_ids.get(&a.view.id),"stats":{"atk":a.stats.atk,"def":a.stats.def,"mag":a.stats.mag,"res":a.stats.res},"state":format!("{:?}",a.view.state).to_lowercase(),"state_age":a.view.state_age,"state_duration":a.view.state_duration,"impact_at":a.view.impact_at,"facing":format!("{:?}",a.view.facing).to_lowercase(),"ward":a.view.ward,"warcry_shield":a.view.warcry_shield,"energy":a.view.energy,"enraged":a.view.enraged,"radius":a.view.radius,"target":a.view.target,"encased":a.view.encased,"poisoned":a.view.poisoned,"slowed":a.view.slowed,"taunted_by":a.view.taunted_by,"groove_active":a.view.groove_active,"groove":a.view.groove.map(|g|format!("{g:?}").to_lowercase()),"meter":a.view.meter,"special_casting":a.view.special_casting,"elevate":a.view.elevate.map(|v| format!("{v:?}").to_lowercase()),"scale":a.view.scale,"kind":a.view.archetype,"team":if a.view.team==Team::Hero {"hero"} else {"enemy"},"pos":{"x":a.view.pos.x,"y":a.view.pos.y},"hp":a.view.hp,"max_hp":a.view.max_hp,"downed":a.view.state==ActorState::Downed})).collect();
+        let actors:Vec<_> = self.sim.actors.iter().enumerate().map(|(index,a)| {
+            let taunted_by = self.sim.taunt_target(index).map(|target| self.sim.actors[target].view.id);
+            let taunt_age = taunted_by.map(|_| tuning::TAUNT_DURATION - a.taunt_left);
+            json!({"actor_id":a.view.id,"permanent_revision":a.permanent_revision.to_string(),"host_id":self.host_ids.get(&a.view.id),"stats":{"atk":a.stats.atk,"def":a.stats.def,"mag":a.stats.mag,"res":a.stats.res},"state":format!("{:?}",a.view.state).to_lowercase(),"state_age":a.view.state_age,"state_duration":a.view.state_duration,"impact_at":a.view.impact_at,"facing":format!("{:?}",a.view.facing).to_lowercase(),"ward":a.view.ward,"warcry_shield":a.view.warcry_shield,"energy":a.view.energy,"enraged":a.view.enraged,"radius":a.view.radius,"target":a.view.target,"encased":a.view.encased,"poisoned":a.view.poisoned,"slowed":a.view.slowed,"taunted_by":taunted_by,"taunt_age":taunt_age,"groove_active":a.view.groove_active,"groove":a.view.groove.map(|g|format!("{g:?}").to_lowercase()),"meter":a.view.meter,"special_casting":a.view.special_casting,"elevate":a.view.elevate.map(|v| format!("{v:?}").to_lowercase()),"scale":a.view.scale,"kind":a.view.archetype,"team":if a.view.team==Team::Hero {"hero"} else {"enemy"},"pos":{"x":a.view.pos.x,"y":a.view.pos.y},"hp":a.view.hp,"max_hp":a.view.max_hp,"downed":a.view.state==ActorState::Downed})
+        }).collect();
         let hazards: Vec<_> = self.sim.snapshot().hazards.iter().map(|h| {
             let shape = match h.shape {
                 Shape::Circle { radius } => json!({"kind":"circle","radius":radius}),
@@ -1136,6 +1140,38 @@ pub extern "C" fn wf_response_free(response: u32) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn snapshot_taunt_tracks_live_source_and_exact_expiry() {
+        let fixture: Value = serde_json::from_str(include_str!("../tests/permanent_revision_scenario.json")).unwrap();
+        let mut world = World::create(serde_json::from_value(fixture["config"].clone()).unwrap()).unwrap();
+        let pos = world.sim.actors[0].view.pos;
+        let stats = world.sim.actors[0].stats;
+        for kind in [Archetype::Orc, Archetype::Boss] {
+            world.sim.spawn_actor(kind, pos, stats);
+            world.sim.actors.last_mut().unwrap().view.state = ActorState::Idle;
+        }
+        world.sim.taunt(0);
+        let source = world.sim.actors[0].view.id;
+        for tick in 0..180 {
+            let result = world.result(0);
+            for enemy in &result["snapshot"]["actors"].as_array().unwrap()[1..] {
+                assert_eq!(enemy["taunted_by"], source);
+                let age = enemy["taunt_age"].as_f64().unwrap();
+                assert!((age - tick as f64 / 30.).abs() < 0.0001);
+            }
+            world.sim.timers();
+        }
+        for enemy in &world.result(0)["snapshot"]["actors"].as_array().unwrap()[1..] {
+            assert!(enemy["taunted_by"].is_null());
+            assert!(enemy["taunt_age"].is_null());
+        }
+        world.sim.taunt(0);
+        world.sim.actors[0].view.hp = 0.;
+        for enemy in &world.result(0)["snapshot"]["actors"].as_array().unwrap()[1..] {
+            assert!(enemy["taunted_by"].is_null());
+            assert!(enemy["taunt_age"].is_null());
+        }
+    }
     #[test]
     fn per_hit_hp_loss_excludes_ward_and_keeps_same_step_healing_separate() {
         let fixture: Value = serde_json::from_str(include_str!("../tests/permanent_revision_scenario.json")).unwrap();
