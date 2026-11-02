@@ -22,7 +22,7 @@
     "version": "wfm-slice-v1",
     "sha256": "485aa2464e5257635c5070e2957a79af4e35e67f954ac5ef79ea57ef467aaeed"
   },
-  "sourceCommit": "598766917b6fce297792a254c39902c17f043289",
+  "sourceCommit": "561d52ba8ca93c2d2f2bf8183e94975ee0e48854",
   "extractedSliceCommit": "9c142b5f73294bd5a783e79d3840d0c3386c90a1",
   "sources": {
     "rust/simulation_core/Cargo.lock": "29e6ef77306922df52ec854db1d8ce4caee8cc5a000e108c85529bba911b89c8",
