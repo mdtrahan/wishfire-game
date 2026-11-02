@@ -21,6 +21,7 @@
 - `simulation_core/src/combat_abi.rs` owns the headless `wf_combat_call` JSON bridge and independent input/response/world registries. Its `describe.content_version` identifies the content definitions and must match the WFM host and generated manifest before startup. Its additive `spawn` operation atomically validates enemy batches, retains host identities and permits the host's next wave after an empty field. Only CP/meta RNG scalars remain; all combat uses this ABI.
 
 ## Work Guidance
+- CP durability uses `wf_combat::formulas::mitigation_multiplier`, matching the browser CP helper's 100-point armor scale.
 - Keep Rust functions small and numeric/JSON-compatible at the WASM boundary.
 - Preserve JS rounding/normalization semantics when tests encode them.
 - Rebuild WASM after Rust changes that affect browser behavior.

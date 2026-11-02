@@ -1,3 +1,5 @@
+import { mitigationMultiplier } from './combatFormulas.mjs';
+
 const number = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
@@ -14,12 +16,11 @@ export function normalizeCombatPowerActor(actorOrAtk = {}, legacyDef = 0, legacy
   const res = Math.max(0, number(stats.RES ?? actor.res));
   const hp = Math.max(1, number(stats.HP ?? actor.maxHP ?? actor.hp));
   const spd = Math.max(0, number(stats.SPD ?? actor.spd));
-  const guard = 20 + (1.5 * (level - 1));
   const benchmark = 7 + (0.9 * (level - 1));
   const offense = Math.max(atk, mag);
-  const neutralHit = (2 + (0.48 * offense)) * guard / (guard + benchmark);
+  const neutralHit = offense * mitigationMultiplier(benchmark);
   const actionRate = clamp(spd / 10, 0.6, 1.8);
-  const effectiveHP = hp * (1 + (((def + res) / 2) / guard));
+  const effectiveHP = hp / mitigationMultiplier((def + res) / 2);
   const kit = actor.kit || {};
   const expectedDirect = number(kit.directDamage ?? neutralHit);
   const crit = expectedDirect * clamp(number(kit.critChance ?? 0.01), 0, 1) * (clamp(number(kit.critMultiplier ?? 1.25), 1, 3) - 1);

@@ -857,7 +857,7 @@ fn spotlight_off_clocks_and_hashes_match_current_baseline() {
     let cases = [
         (1, 0x17f93061448585ca),
         (7, 0x0afdb6acd7e8a932),
-        (42, 0xd293acd036a06ad1),
+        (42, 0x86e6dd7b82481638),
     ];
     let actual = cases.map(|(seed, _)| {
         let mut s = Sim::new(SimConfig {

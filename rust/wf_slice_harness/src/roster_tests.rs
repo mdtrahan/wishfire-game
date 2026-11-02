@@ -325,6 +325,24 @@ fn mirewing_spit_is_straight_interceptable_and_poison_ticks_five_times_after_sou
     );
 }
 #[test]
+fn rally_reduces_physical_and_magic_damage_at_zero_and_nonzero_defense() {
+    let mut s = fixture(Archetype::Bastorto);
+    s.combat.actors[4].view.pos = Vec2::new(480., 1000.);
+    let ally = s.spawn_actor(Archetype::Orc, Vec2::new(480., 1100.));
+    let i = s.combat.actor_index(ally).unwrap();
+    s.combat.actors[i].view.hp = 10000.;
+    for (defense, expected) in [(0., 60.), (20., 50.), (50., 40.)] {
+        for channel in [DamageChannel::Physical, DamageChannel::Magic] {
+            // Keep the other channel distinct to catch DEF/RES aliasing.
+            s.combat.actors[i].stats.def = if channel == DamageChannel::Physical { defense } else { 100. };
+            s.combat.actors[i].stats.res = if channel == DamageChannel::Magic { defense } else { 100. };
+            let damage = s.combat.damage_limited_channel(1, i, 90., false, true, Element::Physical, None, true, channel);
+            assert!((damage - expected).abs() < 0.001, "{channel:?} defense {defense}: {damage}");
+            assert!(damage < 90. * DEF_BASE / (DEF_BASE + defense));
+        }
+    }
+}
+#[test]
 fn rally_defense_follows_a_living_visible_owner_does_not_stack_and_ends_immediately_on_death() {
     let mut s = fixture(Archetype::Bastorto);
     s.combat.actors[4].view.pos = Vec2::new(480., 1000.);
@@ -333,9 +351,11 @@ fn rally_defense_follows_a_living_visible_owner_does_not_stack_and_ends_immediat
     s.combat.actors[i].view.hp = 10000.;
     let armor = s.combat.actors[i].stats.def;
     let normal = 90. * DEF_BASE / (DEF_BASE + armor);
+    let rallied = normal / RALLY_DAMAGE_DIVISOR;
+    assert!(rallied < normal);
     assert!(
         (s.combat.damage(1, i, 90., false, true, Element::Physical)
-            - normal / RALLY_DEF_MULTIPLIER)
+            - rallied)
             .abs()
             < 0.001
     );
@@ -356,7 +376,7 @@ fn rally_defense_follows_a_living_visible_owner_does_not_stack_and_ends_immediat
     let second = s.spawn_actor(Archetype::Bastorto, s.combat.actors[4].view.pos);
     assert!(
         (s.combat.damage(1, i, 90., false, true, Element::Physical)
-            - normal / RALLY_DEF_MULTIPLIER)
+            - rallied)
             .abs()
             < 0.001
     );

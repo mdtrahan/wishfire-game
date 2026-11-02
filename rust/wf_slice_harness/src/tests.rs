@@ -1348,8 +1348,8 @@ fn boss_spends_one_charge_and_recharges_only_after_resolution() {
             relocated = true;
         }
         let now = s.snapshot.time;
-        let recharge = (BOSS_RECHARGE - s.stage.escalation_level as f32 * BOSS_RECHARGE_PER_LEVEL)
-            .max(BOSS_RECHARGE_FLOOR);
+        let recharge = wf_combat::formulas::cooldown_seconds(BOSS_RECHARGE as f64,
+            (s.stage.escalation_level as f32 * BOSS_RECHARGE_HASTE_PER_LEVEL) as f64) as f32;
         for e in s.drain_events() {
             match e {
                 Event::HazardResolved {
@@ -2542,7 +2542,7 @@ fn boss_separation_at_each_wall_keeps_all_whole_bodies_on_floor() {
 }
 
 #[test]
-fn enraged_refill_is_thirty_percent_shorter_with_the_same_floor() {
+fn enraged_refill_combines_haste_with_escalation_and_stays_positive() {
     for level in [0, ESCALATION_CAP] {
         for enraged in [false, true] {
             let mut s = Sim::new(config(1));
@@ -2552,9 +2552,10 @@ fn enraged_refill_is_thirty_percent_shorter_with_the_same_floor() {
             s.combat.actors[i].view.enraged = enraged;
             s.combat.actors[i].enemy_phase = 2;
             s.enemy_ai();
-            let expected = ((BOSS_RECHARGE - level as f32 * BOSS_RECHARGE_PER_LEVEL)
-                * if enraged { 0.7 } else { 1. })
-            .max(BOSS_RECHARGE_FLOOR);
+            let haste = (level as f32 * BOSS_RECHARGE_HASTE_PER_LEVEL) as f64
+                + if enraged { ENRAGE_HASTE as f64 } else { 0. };
+            let expected = wf_combat::formulas::cooldown_seconds(BOSS_RECHARGE as f64, haste) as f32;
+            assert!(expected > 0.);
             assert_eq!(s.combat.actors[i].recharge_duration, expected);
         }
     }

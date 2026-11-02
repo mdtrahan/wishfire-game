@@ -93,7 +93,7 @@ test('one actual CP invariant controls arrows, equip and disposal across four ph
    Object.values(heroes.heroes).forEach((hero,n)=>{const item={...generateLampItem(42,n,0),type:'hat',stats:scenario==='increase'?ownerStats[n]:stats(scenario==='decrease'||scenario==='mixed'&&n<2?1000:scenario==='equal'?10:1)};save.items.push(item);save.loadouts[hero.heroInstanceKey]={hat:item.instanceId};});
    save.items.push(candidate);save.lamp.pending=[candidate.instanceId];save.lamp.sequence=5;validateConveyorState(save);
    const expectedGains=Object.values(heroes.heroes).map(h=>lampItemCPGain(save,candidate,h)),useful=expectedGains.some(g=>g>0);
-   if(scenario==='increase')assert.deepEqual(expectedGains,[13.6,15,6,11.9]);
+   if(scenario==='increase')assert.deepEqual(expectedGains,[42.8,47.7,50.7,43.2]);
    const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
    try{
     await page.addInitScript(({save,heroes})=>{save.lamp.lastActivationAt=Date.now();localStorage.setItem('wishfire.equipment-economy.v5',JSON.stringify(save));localStorage.setItem('orka.hero_progress.v2',JSON.stringify(heroes));},{save,heroes});
@@ -112,7 +112,7 @@ test('one actual CP invariant controls arrows, equip and disposal across four ph
      await dialog.getByRole('button',{name:'Back to cache',exact:true}).click();await dialog.getByRole('button',{name:'Auto-Equip',exact:true}).click();await page.locator('.lamp-cp-feedback').waitFor();
      const feedback=await page.locator('.lamp-cp-feedback').evaluateAll(ns=>ns.map(n=>({hero:n.dataset.hero,before:+n.dataset.before,after:+n.dataset.after,change:+n.dataset.change})));
      assert.equal(feedback.length,1);assert.equal(feedback[0].change,Math.max(...expectedGains));assert.ok(feedback[0].after>feedback[0].before);
-     if(scenario==='increase')assert.equal(feedback[0].hero,'Huun');
+     if(scenario==='increase')assert.equal(feedback[0].hero,'Runa');
      const saved=await assertSave(page);assert.equal(Object.values(saved.loadouts).filter(slots=>slots.hat===candidate.instanceId).length,1);await page.waitForFunction(()=>document.querySelector('#lamp-overlay').hidden);
     }else{await dialog.locator('[data-action="queue-disposal"]').click();await page.waitForFunction(()=>document.querySelector('#lamp-dialog').dataset.view==='dismantle');assert.equal(await dialog.getAttribute('data-view'),'dismantle');await dialog.getByRole('button',{name:'Dismantle all',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#lamp-overlay').hidden);}
     assert.deepEqual(errors,[]);report.push({width,height,dpr,scenario,arrows,layout,errors});

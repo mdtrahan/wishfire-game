@@ -68,16 +68,16 @@ test('canonical EncounterCP derives fresh-start encounter appearances without au
   const rows = loadEnemyRows(helpers);
   const byName = Object.fromEntries(rows.map((row) => [row.name, row]));
   const expectedCp = {
-    Gobloc: 56.4,
-    'High Gobloc': 77.4,
-    Lizardo: 62.3,
-    Orc: 49.8,
-    'High Orc': 72.8,
-    Chimerilass: 76,
-    Troll: 78.3,
-    Skeleton: 49.7,
-    Djinn: 83.7,
-    Marid: 67.5,
+    Gobloc: 90.3,
+    'High Gobloc': 118.2,
+    Lizardo: 101.9,
+    Orc: 72.7,
+    'High Orc': 87.1,
+    Chimerilass: 120,
+    Troll: 87.7,
+    Skeleton: 76.6,
+    Djinn: 159.4,
+    Marid: 109.9,
   };
   for (const [name, cp] of Object.entries(expectedCp)) {
     assert.equal(byName[name].CombatPower, cp, `${name} EncounterCP`);

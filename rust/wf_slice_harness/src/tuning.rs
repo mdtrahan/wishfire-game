@@ -1,7 +1,7 @@
 use crate::Archetype;
 pub use wf_combat::tuning::*;
 pub(crate) const ESCALATION_INTERVAL: f32 = 25.;
-pub(crate) const ESCALATION_COOLDOWN: f32 = 0.9;
+pub(crate) const ESCALATION_HASTE_PER_LEVEL: f32 = 100. / 9.;
 pub(crate) const ESCALATION_RADIUS: f32 = 10.;
 pub(crate) const ESCALATION_CAP: u32 = 4;
 pub(crate) const STAGE_HP_SCALE: f32 = 1.2;
@@ -67,4 +67,4 @@ pub const VICTORY_HOLD: f32 = 2.2;
 pub const VICTORY_FADE: f32 = 0.5;
 pub const WIPE_FADE: f32 = 0.6;
 pub const FADE_IN: f32 = 0.5;
-pub const BOSS_RECHARGE_PER_LEVEL: f32 = 0.4;
+pub const BOSS_RECHARGE_HASTE_PER_LEVEL: f32 = 200. / 23.;

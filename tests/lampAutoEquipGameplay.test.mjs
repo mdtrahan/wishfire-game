@@ -97,11 +97,11 @@ test('player-visible cache arrows, item review, Auto receipts and Hero gear agre
    }
    assert.deepEqual(Object.keys(after.loadouts).sort(),Object.keys(save.loadouts).sort());if(save.loadouts['falie#1'])assert.deepEqual(after.loadouts['falie#1'],save.loadouts['falie#1']);
    if(scenario==='mixed'){assert.equal(after.loadouts.Falie.hat,selected.instanceId);assert.equal(after.loadouts.Huun.boots,other.instanceId);assert.equal(receipts.length,2);}
-   if(scenario==='hondo'){assert.deepEqual(owners.map(id=>gain(save,heroes.heroes[id],selected)),[13.6,15,6,11.9]);assert.equal(after.loadouts.Huun.hat,selected.instanceId);}
-   if(scenario.startsWith('kaja')){assert.equal(gain(save,heroes.heroes.Kojonn,selected),15);assert.equal(after.loadouts.Kojonn.hat,selected.instanceId);}
-   if(scenario==='lowercp'||scenario==='fulltie'){assert.equal(gain(save,heroes.heroes.Falie,selected),60);assert.equal(gain(save,heroes.heroes.Huun,selected),60);assert.equal(after.loadouts[scenario==='lowercp'?'Huun':'Falie'].hat,selected.instanceId);if(scenario==='lowercp'){assert.ok(cp(save,heroes.heroes.Huun)<cp(save,heroes.heroes.Falie));assert.ok(save.items.find(i=>i.instanceId===save.loadouts.Huun.body).stats.HP>save.items.find(i=>i.instanceId===save.loadouts.Falie.body).stats.HP);}else assert.equal(cp(save,heroes.heroes.Falie),cp(save,heroes.heroes.Huun));}
+   if(scenario==='hondo'){assert.deepEqual(owners.map(id=>gain(save,heroes.heroes[id],selected)),[42.8,47.7,50.7,43.2]);assert.equal(after.loadouts.Runa.hat,selected.instanceId);}
+   if(scenario.startsWith('kaja')){assert.equal(gain(save,heroes.heroes.Kojonn,selected),4);assert.equal(after.loadouts.Kojonn.hat,selected.instanceId);}
+   if(scenario==='lowercp'||scenario==='fulltie'){assert.equal(gain(save,heroes.heroes.Falie,selected),20);assert.equal(gain(save,heroes.heroes.Huun,selected),20);assert.equal(after.loadouts[scenario==='lowercp'?'Huun':'Falie'].hat,selected.instanceId);if(scenario==='lowercp'){assert.ok(cp(save,heroes.heroes.Huun)<cp(save,heroes.heroes.Falie));assert.ok(save.items.find(i=>i.instanceId===save.loadouts.Huun.body).stats.HP>save.items.find(i=>i.instanceId===save.loadouts.Falie.body).stats.HP);}else assert.equal(cp(save,heroes.heroes.Falie),cp(save,heroes.heroes.Huun));}
    if(scenario==='itemtie'){assert.equal(after.loadouts.Falie.hat,other.instanceId);assert.ok(after.lamp.discarded.includes(selected.instanceId));}
-   if(scenario==='rerank'){const revealed=candidates.find(i=>i!==selected&&i!==other);const intermediate={...save,loadouts:{...save.loadouts,Falie:{...save.loadouts.Falie,body:selected.instanceId}}};assert.ok(gain(intermediate,heroes.heroes.Falie,revealed)<=0);assert.equal(gain({...intermediate,loadouts:{...intermediate.loadouts,Falie:{...intermediate.loadouts.Falie,hat:other.instanceId}}},heroes.heroes.Falie,revealed),29.3);assert.equal(after.loadouts.Falie.body,revealed.instanceId);assert.equal(after.loadouts.Falie.hat,other.instanceId);}
+   if(scenario==='rerank'){const revealed=candidates.find(i=>i!==selected&&i!==other);const intermediate={...save,loadouts:{...save.loadouts,Falie:{...save.loadouts.Falie,body:selected.instanceId}}};assert.ok(gain(intermediate,heroes.heroes.Falie,revealed)<=0);assert.equal(gain({...intermediate,loadouts:{...intermediate.loadouts,Falie:{...intermediate.loadouts.Falie,hat:other.instanceId}}},heroes.heroes.Falie,revealed),15);assert.equal(after.loadouts.Falie.body,revealed.instanceId);assert.equal(after.loadouts.Falie.hat,other.instanceId);}
    if(scenario==='held'){assert.equal(after.loadouts.Huun.hat,selected.instanceId);assert.equal(after.lamp.reviewHold,null);}
    await page.screenshot({path:`${directory}/${scenario}-receipts.png`});await page.waitForFunction(()=>!document.querySelector('.lamp-cp-feedback'));
    if(scenario==='itemtie'){await dialog.locator(`[data-action="queue"][data-id="${selected.instanceId}"]`).click();await arrows(page,owners.map(id=>gain(after,heroes.heroes[id],selected)));assert.equal(await dialog.locator('[data-action="queue-disposal"]').isEnabled(),true);await page.screenshot({path:`${directory}/itemtie-leftover-red.png`});}
@@ -128,11 +128,11 @@ test('Auto-Equip never equips a hero advertised red by the arrows beside it',asy
  }finally{await writeFile(`${directory}/red-promise.json`,JSON.stringify(report,null,2));await context.close();await browser.close();server?.kill();}
 });
 
-test('a Kaja-only +15 upgrade survives the real dismantle flow with an early combat copy',async()=>{
+test('a Kaja-only +4 upgrade survives the real dismantle flow with an early combat copy',async()=>{
  await mkdir(directory,{recursive:true});const {server,url}=await serveGame(),browser=await chromium.launch({headless:true,executablePath:detectChromeExecutable()}),context=await browser.newContext({viewport:{width:360,height:640}}),page=await context.newPage(),fixture=trustFixture('kaja'),report={};context.setDefaultTimeout(15000);
  try{
   await page.addInitScript(({save,heroes})=>{save.lamp.lastActivationAt=Date.now();localStorage.setItem('wishfire.equipment-economy.v5',JSON.stringify(save));localStorage.setItem('orka.hero_progress.v2',JSON.stringify(heroes));},fixture);
-  assert.equal(gain(fixture.save,fixture.heroes.heroes.Kojonn,fixture.selected),15);
+  assert.equal(gain(fixture.save,fixture.heroes.heroes.Kojonn,fixture.selected),4);
   await enter(page,url);await page.locator('#wishfire-lamp .lamp-collect').click();const dialog=page.locator('#lamp-dialog');await dialog.waitFor();report.openedView=await dialog.getAttribute('data-view');
   await page.screenshot({path:`${directory}/kaja-protection-before-action.png`});
   // On the broken build the player is offered Dismantle all immediately.
@@ -143,7 +143,7 @@ test('a Kaja-only +15 upgrade survives the real dismantle flow with an early com
    assert.equal(await dialog.locator('[data-action="queue-disposal"]').isEnabled(),false);
   }
   const after=await read(page);report.survived=after.items.some(i=>i.instanceId===fixture.selected.instanceId);report.essence=after.lamp.essence;
-  assert.equal(report.survived,true,'Dismantle destroyed a cached item worth +15 CP to Kaja');assert.equal(after.lamp.essence,fixture.save.lamp.essence);
+  assert.equal(report.survived,true,'Dismantle destroyed a cached item worth +4 CP to Kaja');assert.equal(after.lamp.essence,fixture.save.lamp.essence);
  }finally{await writeFile(`${directory}/kaja-protection.json`,JSON.stringify(report,null,2));await context.close();await browser.close();server?.kill();}
 });
 

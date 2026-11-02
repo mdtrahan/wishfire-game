@@ -60,8 +60,8 @@ test('verified loader supplies the world ABI, CP and meta RNG exports', async ()
     const instance = await loadSimulationCore('file:///cp-meta-proof/assets/simulation_core.wasm');
     assert.equal(await loadSimulationCore('file:///cp-meta-proof/assets/simulation_core.wasm'), instance);
     assert.equal(createCombatBridge(instance).describe().abi_version, 0x10000);
-    assert.equal(instance.exports.combat_power_shadow(10, 5, 100), 28.1);
-    assert.equal(instance.exports.combat_power_full_shadow(10, 4, 5, 4, 100, 10, 1, 0, .01, 1.25, 0, 0, 0, 0, 0, 0, 1), 30.6);
+    assert.equal(instance.exports.combat_power_shadow(10, 5, 100), 25.6);
+    assert.equal(instance.exports.combat_power_full_shadow(10, 4, 5, 4, 100, 10, 1, 0, .01, 1.25, 0, 0, 0, 0, 0, 0, 1), 26.1);
     for (const row of parseCsvRows(fs.readFileSync(path.join(__dirname, 'fixtures/seeded_rng_cases.csv'), 'utf8'))) {
       assert.equal(instance.exports.seeded_rng_next_state_shadow(+row.seed, +row.draws), +row.expectedState, row.name);
       assert.ok(Math.abs(instance.exports.seeded_rng_next_value_shadow(+row.seed, +row.draws) - +row.expectedValue) < 1e-12, row.name);

@@ -32,14 +32,16 @@ impl Sim {
                     }
                 });
                 let heavy_melee = enemy.stats.reach <= 100.
-                    && enemy.stats.atk * CRIT_MULTIPLIER * DEF_BASE / (DEF_BASE + a.stats.def) > a.view.max_hp * REVIVE_INTERRUPT_HP
+                    && enemy.stats.atk * CRIT_MULTIPLIER * crate::formulas::mitigation_multiplier(a.defense() as f64) as f32 > a.view.max_hp * REVIVE_INTERRUPT_HP
                     && enemy.view.pos.distance(spot) <= enemy.attack_range(a) + REVIVE_DANGER_MARGIN;
                 if heavy_melee { return true; }
                 let wait = if is_boss(enemy.view.archetype) {
                     enemy.recharge_left.max(enemy.relocate_left)
                         + if enemy.enemy_phase == 2 {
                             self.hazards.iter().filter(|h| h.view.owner == enemy.view.id && h.view.hostile && h.view.phase != HazardPhase::Resolved)
-                                .map(|h| h.remaining()).fold(0., f32::max) + BOSS_RECHARGE_FLOOR
+                                .map(|h| h.remaining()).fold(0., f32::max)
+                                + crate::formulas::cooldown_seconds(self.boss_recharge_duration(e) as f64,
+                                    if enemy.barrage_recharge { CHIMERA_BARRAGE_HASTE as f64 } else { 0. }) as f32
                         } else { 0. }
                 } else if matches!(enemy.view.archetype, Archetype::Sniper | Archetype::Lizardo) {
                     enemy.basic_cd.max((enemy.view.state_duration - enemy.view.state_age).max(0.))

@@ -28,6 +28,7 @@
 - `buffSignalRules.mjs` owns buff-signal projection. One effect key (source plus effect) active on every living hero, with at least two alive, is party-wide and shows once as a stat icon. Other up-direction channels collapse into the Tempo, Offense and Defense hero groups. Debuffs, unknown channels and KO heroes never signal. Order is stable by arrival. New skills plug in by emitting channels listed in `BUFF_SIGNAL_CHANNELS`.
 
 ## Work Guidance
+- `combatShadowAdapter.mjs` projects positive SPD rates through the canonical browser `combatFormulas.cooldownSeconds` helper; slowdown preserves authored intervals and ABI cadence bounds.
 - Add fixture rows for deterministic behavior with meaningful edge cases.
 - Use explicit owner-hook diagnostics when a rule can be resolved by Rust or JS.
 - Keep normalization helpers boring and defensive; packet drift creates save/load and Rust/JS mismatch failures.
