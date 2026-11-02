@@ -20,7 +20,7 @@
 - JavaScript owns browser integration: Canvas rendering, input, menus, overlays, audio, save/load wrappers, deployment, and presentation timing.
 - Rust SimulationCore owns deterministic simulation rule families that have owner markers and fixture contracts.
 - Browser runtime code may apply returned state and render presentation events; it must not recompute Rust-owned outcomes.
-- Production and developer QA variants enter the same realtime combat loop. Finite/story defeat checks remain Rust-owned after scheduled work; ordinary continuous roaming interrupts the current scheduler at the first hero KO and routes the attempt to session recovery. Paused/background frames freeze combat time, and combat never dispatches turn advancement.
+- Production and developer QA enter the same Rust authority loop. A single downed hero does not pause combat; ordinary AllDown recreates the current subwave through `restartAtSubwave`. Paused/background frames discard wall-time debt.
 - Do not store durable gameplay rules in render modules, asset JSON, or `app.js` when a module/core owner exists.
 
 - The combat HUD shows chapter progress and the ready/active boss control. Chapter 1 has 10 ordinary waves, Chapter 2 has 15, and later chapters have 20 except every fifth chapter has 5; chapter/stage reads authoritative stage state. A clean first approach enters automatically. Any hero KO or boss defeat preserves earned progress and latches manual retry for that stage; once readiness is earned, fodder farming continues at 100% until summon. The latch survives reload and clears on boss victory.
@@ -73,3 +73,5 @@
 - COT quest milestones include chapter/boss clears, party equipment coverage and level/rarity thresholds, plus Hero and Training milestones. Zero-KO quests are retired. app.js only wires pre-recovery and pre-restoration observation; deterministic progression stays in core and the controller.
 
 - Developer refresh and QA reset stop the outgoing Rust encounter before replacing actors or restoring HP. Rust heal fixtures refuse unsupported mutations explicitly.
+
+- Rust loads for combat without a flag; initialization failures remain visible. No JS fallback or shadow world exists. CP and meta RNG retain their separate scalar exports. Story defeat offers return navigation; paid-Continue is retired.

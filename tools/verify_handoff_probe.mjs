@@ -157,21 +157,13 @@ export async function combatProbe(root, out, seconds, seed) {
       await page.locator('[data-devtool-boss-chapter]').fill('1');await page.locator('[data-devtool-launch-boss]').click();
       await page.waitForFunction(()=>JSON.parse(render_game_to_text()).quest.phase==='combat');
     };
-    let legacyFlag=false,loadMs;
-    for(const suffix of ['', '?rustCombat=1']) {
-      console.log(`probe: load ${suffix?'legacy opt-in':'default engine'}`);
-      errors.length=0;await page.goto(url+suffix);
-      await page.waitForFunction(()=>window.__codexGame&&JSON.parse(window.render_game_to_text()).flags.layout0Ready);
-      await page.evaluate(seed=>__codexGame.setEncounterRequest({seed}),seed);
-      await page.waitForTimeout(2000);
-      // Canonical Chapter 1 boss entry reused from qa_rust_combat_playtest2.mjs.
-      await enterBoss();
-      console.log('probe: combat entered; checking Rust authority');
-      await page.waitForFunction(()=>__codexGame.globals.RustCombatPresentation?.state.snapshot?.actors.length,{},{timeout:10000}).catch(()=>{});
-      const engine=await page.evaluate(()=>!!__codexGame.globals.RustCombatPresentation?.state.snapshot);
-      if(engine){loadMs=await page.evaluate(()=>performance.getEntriesByType('navigation')[0].loadEventEnd);break;}
-      if(suffix){const state=await page.evaluate(()=>{const g=__codexGame.globals;return {authority:g.RustCombatAuthority,error:g.RustCombatError,receipt:g.RustCombatReceipt,loop:g.ContinuousCombatStageLoop,stage:g.ContinuousCombatStage,quest:JSON.parse(render_game_to_text()).quest};});throw Error(`Runtime probe found no active Rust authority/snapshot: ${JSON.stringify(state)}`);}legacyFlag=true;
-    }
+    console.log('probe: load default engine');
+    errors.length=0;await page.goto(url);
+    await page.waitForFunction(()=>window.__codexGame&&JSON.parse(window.render_game_to_text()).flags.layout0Ready);
+    await page.evaluate(seed=>__codexGame.setEncounterRequest({seed}),seed);
+    await enterBoss();
+    await page.waitForFunction(()=>__codexGame.globals.RustCombatPresentation?.state.snapshot?.actors.length,null,{timeout:10000});
+    const loadMs=await page.evaluate(()=>performance.getEntriesByType('navigation')[0].loadEventEnd);
     const cdp=await context.newCDPSession(page);await cdp.send('Performance.enable');
     const heap=async()=> { await cdp.send('HeapProfiler.collectGarbage'); return (await cdp.send('Runtime.getHeapUsage')).usedSize; };
     const heapStart=await heap(),identity=await page.evaluate(()=>({seed:__codexGame.globals.ContinuousCombatStage.seed,chapter:__codexGame.globals.ContinuousCombatStage.region,viewport:[innerWidth,innerHeight,devicePixelRatio]}));
@@ -195,7 +187,7 @@ export async function combatProbe(root, out, seconds, seed) {
     const claims=Object.fromEntries(Object.entries(violations).map(([id,value])=>[id,{status:complete&&value===0?'PASS':'FAIL',measured:value,evidence: {samples:q.samples.length,draws:q.draws,effects:q.observedEffects,buffs:q.buffs.length}}]));
     if(!q.observedEffects)claims.noLingeringEffects.status='FAIL';
     if(!q.buffs.length)claims.buffsAllowedSides.status='FAIL';
-    return {trace:join(out,'trace.json'),reentries,engine:'Rust (live snapshots + batched ABI replay)',legacyFlag,identity,claims,stepConfig:q.stepConfig,coverage:{complete:!!complete,activeSeconds,samples:q.samples.length,effects:q.observedEffects,buffs:q.buffs.length},metrics:{frameP50:frame?.p50??null,frameP95:frame?.p95??null,frameMax:frame?.max??null,...frameMetrics(q.frames),heapStart,heapEnd,heapGrowthBytes:heapEnd-heapStart,longTasks:q.longTasks.length,longTaskMs:q.longTasks.reduce((a,b)=>a+b,0),wasmBytes:(await stat(join(root,'web-runner/assets/simulation_core.wasm'))).size,pageLoadMs:loadMs},errors:[...errors,...q.errors]};
+    return {trace:join(out,'trace.json'),reentries,engine:'Rust (live snapshots + batched ABI replay)',identity,claims,stepConfig:q.stepConfig,coverage:{complete:!!complete,activeSeconds,samples:q.samples.length,effects:q.observedEffects,buffs:q.buffs.length},metrics:{frameP50:frame?.p50??null,frameP95:frame?.p95??null,frameMax:frame?.max??null,...frameMetrics(q.frames),heapStart,heapEnd,heapGrowthBytes:heapEnd-heapStart,longTasks:q.longTasks.length,longTaskMs:q.longTasks.reduce((a,b)=>a+b,0),wasmBytes:(await stat(join(root,'web-runner/assets/simulation_core.wasm'))).size,pageLoadMs:loadMs},errors:[...errors,...q.errors]};
   } catch(error) {return {error:String(error.stack),classification:classifyPlaywrightFailure(error),errors,claims:{},metrics:{}};}
   finally {
     console.log('probe: releasing owned browser/server');

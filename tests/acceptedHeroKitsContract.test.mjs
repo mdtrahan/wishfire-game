@@ -1,6 +1,7 @@
+import { BUFF_SIGNAL_FRAMES } from '../src/core/buffSignalRules.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { HERO_DEFINITIONS } from '../web-runner/src/core/heroDefinitions.mjs';
+import { HERO_DEFINITIONS, PROVISIONAL_SPECIAL_COOLDOWNS } from '../web-runner/src/core/heroDefinitions.mjs';
 const ACCEPTED = {
   Falie: ['crimson_ward', 'smoke_form', 'phoenix_soul', 'chastise'],
   Huun: ['shadow', 'royalty', 'chase', 'weaken'],
@@ -24,6 +25,3 @@ test('every hero carries exactly Special, Passive and two Resonances from the ac
   assert.deepEqual(PROVISIONAL_SPECIAL_COOLDOWNS, ['shadow', 'bubble_pop', 'elevate']);
   assert.ok(Object.values(HERO_DEFINITIONS).every(d => d.special.provisionalCooldown === PROVISIONAL_SPECIAL_COOLDOWNS.includes(d.special.skillId)));
 });
-
-const wards = g => Object.fromEntries(Object.entries(g.HeroWardHPByUID || {}).map(([uid, hp]) => [Number(uid), hp]));
-

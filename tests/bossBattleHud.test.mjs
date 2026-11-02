@@ -145,6 +145,7 @@ test('boss battle HUD: real summon, live identity, dismissal and phone containme
           __codexGame.stepFrames(1);
         }
         const hidden = document.querySelector('#boss-info-panel').hidden;
+        if (outcome === 'replacement') s.entities[s.entities.findIndex(actor => actor.uid === boss.uid)] = boss;
         stage.bossActive = true;
         boss.hp = saved.hp; hero.hp = saved.heroHP; stage.bossTimerStartedAt = saved.start;
         __codexGame.stepFrames(1);
@@ -161,24 +162,32 @@ test('boss battle HUD: real summon, live identity, dismissal and phone containme
       const g = __codexGame.globals;
       g.QaScenarioPaused = true;
       const boss = __codexGame.state.entities.find(actor => actor.uid === g.ContinuousCombatStage.bossUID);
-      __codexGame.callFunction('ApplyDamageToTarget', boss.uid, boss.hp + 1);
-      __codexGame.stepFrames(1);
-      const openAtZeroHP = !document.querySelector('#boss-info-panel').hidden;
+      const { routeHeroPermanentInputs } = await import('/web-runner/src/core/heroPermanentInputs.mjs');
+      const { refreshHeroStats } = await import('/web-runner/src/core/heroProgression.mjs');
+      for (const hero of __codexGame.state.entities.filter(actor => actor.kind === 'hero')) {
+        const routed = routeHeroPermanentInputs(hero, draft => {
+          draft.currentLevel = 100;
+          refreshHeroStats(draft);
+        });
+        if (!routed) throw Error('boss death fixture requires a bound Rust hero');
+      }
+      let openAtZeroHP = false;
       const frames = [], start = performance.now();
       g.QaScenarioPaused = false;
       await new Promise(resolve => {
         function sample() {
           const active = !!g.ContinuousCombatStage.bossActive;
           const open = !document.querySelector('#boss-info-panel').hidden;
+          if (active && boss.hp <= 0) openAtZeroHP = open;
           frames.push({ active, open });
           if ((!active && !open) || performance.now() - start > 6000) { g.QaScenarioPaused = true; resolve(); }
           else requestAnimationFrame(sample);
         }
         requestAnimationFrame(sample);
       });
-      return { openAtZeroHP, frames };
+      return { openAtZeroHP, frames, observed: { hp: boss.hp, error: g.RustCombatError, receipt: g.RustCombatReceipt, step: g.RustCombatPresentation?.state.snapshot?.step, paused: g.QaFixtureHoldTurn, heroes: __codexGame.state.entities.filter(a => a.kind === 'hero').map(a => ({ hp:a.hp, stats:a.stats })) } };
     });
-    assert.equal(death.openAtZeroHP, true);
+    assert.equal(death.openAtZeroHP, true, JSON.stringify(death.observed));
     assert.ok(death.frames.some(frame => frame.active && frame.open), 'inspector survives actual death presentation');
     assert.equal(death.frames.filter(frame => frame.active && !frame.open).length, 0, 'no early closure on any sampled frame');
     assert.deepEqual(death.frames.at(-1), { active: false, open: false }, 'closes with the actual stage exit');

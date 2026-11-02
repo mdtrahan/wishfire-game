@@ -54,3 +54,5 @@
 - `partyFormationRules.mjs` and its browser mirror clamp party-slot capacity to four; presentation grid capacity never authorizes extra deployed actors.
 
 - Rust action definitions alone choose damage channels. Host combatant definitions carry no channel declarations or channel table.
+
+- Rust-only cutover retires JS damage, effective combat stats, targeting, scheduler, status/ward and turn/outcome families plus their browser mirrors. Shared JS retains meta modifiers, CP/meta RNG, authored geometry, presentation and save contracts. No compatibility combat owners may be reintroduced.

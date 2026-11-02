@@ -137,8 +137,8 @@
 
 - Shared Bag/Training Ground close styling and glyph painting live in `systems/modalClose.mjs`; retain the accepted slate palette, floating gap and painted-bounds centering when changing either consumer.
 
-- `rust-combat/` contains unchanged bytes from slice `9c142b5f`, with source SHA-256s and authored pivots/cadence in its manifest. Load only through the lazy localhost rustCombat runtime; excluded arena, reward, icon and wishfire-skills folders stay absent.
+- `rust-combat/` contains unchanged bytes from slice `9c142b5f`, with source SHA-256s and authored pivots/cadence in its manifest. Load through the lazy Rust combat runtime; excluded arena, reward, icon and wishfire-skills folders stay absent.
 
-- `rust-combat/manifest.json` pins unchanged slice bitmaps/font and records source actor clip bounds for participant framing. Charge-up and resisted-push smoke use their authored raster sheets. These assets load only through the loopback Rust-combat flag.
+- `rust-combat/manifest.json` pins unchanged slice bitmaps/font and records source actor clip bounds for participant framing. Charge-up and resisted-push smoke use their authored raster sheets. These assets load through the default Rust combat runtime.
 
 - Rust combat chest/opening presentation uses unchanged pinned chest bitmaps, sparkle and shadow. Reward icons and reward logic remain outside the port.

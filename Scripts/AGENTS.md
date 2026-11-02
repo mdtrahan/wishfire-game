@@ -1,47 +1,5 @@
 # Scripts DOX
 
-## Purpose
-- Preserve the Construct-style runtime mirror used by parity contracts and legacy-compatible runtime helpers.
-- Keep this tree aligned with the browser runtime where tests declare mirrored behavior.
+Retained state, runtime adapters, entity/config initialization and meta token helpers live here. Combat function-bank and skill-sheet mirrors are retired. Do not restore JS scheduling, damage, healing, statuses or turn dispatch. Rust owns combat; the browser host owns meta transactions and lifecycle.
 
-## Ownership
-- `Scripts/functionBank.js` mirrors selected high-risk gameplay functions from `web-runner/modules/functionBank.js`.
-- `Scripts/state.js`, `mainSheet.js`, `skillSheet.js`, `functionRegistry.js`, and related modules preserve Construct-like runtime vocabulary.
-- Retired Construct 3 project artifacts are not owned here and should not be reintroduced.
-
-## Local Contracts
-- Do not edit mirrored high-risk functions in only one runtime path. Check `tests/functionBankParityContract.test.js` before changing function-bank behavior.
-- Keep names and state vocabulary compatible with `web-runner/modules/` unless a bead explicitly authorizes a migration.
-- Deterministic gameplay rules should move toward shared `src/core/` or Rust SimulationCore seams, not deeper into the mirror.
-- Mirror the production stream's bypass of retired enemy-slot refill holds in `GetEnemyRosterStability`.
-- The mirrored damage seam records opt-in hero damage and enemy KO events with the browser function bank; keep source, target, type, applied HP delta and incoming-hit geometry aligned.
-- `SpawnEnemy` mirrors the browser actor's combat tier so realtime enemy cadence uses the same source tier.
-- Avoid using this folder as a dumping ground for new browser UI, rendering, storage, or tooling behavior.
-
-## Work Guidance
-- When changing combat, skill, turn, damage, enemy, or gem behavior, inspect the matching `web-runner/modules/` function first.
-- If only one mirror should change, document why in the bead and add/update a contract that proves the intentional divergence.
-- Keep edits narrow; these files are hot and historically regression-prone.
-
-## Verification
-- `node --test tests/functionBankParityContract.test.js`
-- Add focused contract tests for any intentionally new mirrored behavior.
-- Run broader focused tests for the touched rule family when changing gameplay behavior.
-
-## Child DOX Index
-- None.
-
-- Energy is a macro balance: quest entry spends it, combat actions do not. Purple recovery remains active. Combat defeat depends on living heroes; Continue preserves energy.
-
-- Mirror individual-HP initiative and turn eligibility; KO actors receive no new turn-start hooks. Pooled HP must not determine actor survival.
-
-- Mirror deployed-versus-living hero enumeration and actor-owned HP totals by heroDisplaySlot. Damage cannot consume a barrier on a KO target; ordinary healing procs cannot revive.
-- Mirror active-hero healing and percentage amounts based on that hero maximum. The pooled ApplyPartyHeal/SyncPartyHPToHeroes API is retired; retain party max-HP buffs and explicit full recovery.
-- Mirror Arcane Pulse's caster-specific resting sprite-base source; never restore the retired party-midpoint source.
-- Mirror per-target attack VFX metadata for native hero AOE damage packets.
-- Mirror the enemy scheduler exclusion for targetable stream walkers; they may receive hero attacks after crossing the range line and may act only after reaching home.
-- Keep automatic `HeroTurn` target selection aligned with the browser mirror: draw a fresh living enemy per acting hero and record the result only after selection.
-
-- The mirrored CalculateDamage function retains Rust-owned baseline arithmetic and applies the same bounded realtime damage amplification as the browser owner; conditional selection and effect execution remain in the live browser/shared-core path.
-
-- Mirror permanent party Training projection in GetEffectiveStat; keep unrelated main combat behavior unchanged.
+Validation: `tests/rustOnlyInventory.test.mjs` scans Scripts with runtime, shared core, tools and tests. Retained CP and meta RNG contracts stay independent of combat RNG.

@@ -104,6 +104,8 @@ Describe expected behavior, not a list of tools or activities. Skip this brief f
 - Do not write outside the repo without approval.
 
 ## Combat Migration Specification
+- Rust is the sole combat engine for every encounter, without flags, shadow execution or JS fallback. Host code retains economy, saves, CP/meta RNG, UI, authored stage/subwave data and pacing. Live equipment, level and Training changes use the #229 permanent-input revision path.
+- D17′ ordinary AllDown calls `restartAtSubwave(index)` to recreate the same authored subwave with healthy heroes at slice origins, without cost. Bosses retain checkpoint/manual-summon recovery. Story paid-Continue is retired.
 - `LAMP_EQUIPMENT_MVP.md` owns the approved lamp replacement; `goals/approved-bag-upgrades.md` owns the smooth full-cost Bag upgrade and reward contract; `goals/wishfire-lamp-progression.md` separates delivered paid progression from proposed quality tiers and pacing assumptions.
 - `COMBAT_ENGINE_CLEANUP_PLAN.md` owns the realtime foundation. Approved conditional-skill definitions and their progression supersede its earlier five-active kit contract. `COMBAT_MIGRATION_PLAN.md` retains the earlier hero-command contract as history; SP/FLOW, hidden Pals and playable turns are retired.
 - `web-runner/src/core/heroDefinitions.mjs` owns the accepted hero kits (owner, 2026-10-23): Basic + Special (the only clock) + Passive (no clock, no lingering) + two late-game Resonances (display-only scaffolding). Special cooldowns flagged provisional await owner tuning. `governance/planning/conditional-skill-catalog.md` is retired history for the deleted 33-skill kit.
@@ -113,7 +115,7 @@ Describe expected behavior, not a list of tools or activities. Skip this brief f
 
 ## Child DOX Index
 - `history/AGENTS.md` - explicit opt-in boundary for preserved legacy material.
-- `Scripts/AGENTS.md` - Construct-style runtime mirror and high-risk function parity.
+- `Scripts/AGENTS.md` - retained meta/state adapters; combat mirrors are retired.
 - `web-runner/AGENTS.md` - browser runtime shell, rendering/input systems, runtime data, and browser-shipped core rules.
 - `src/AGENTS.md` - shared deterministic JS rules and layout contracts.
 - `rust/AGENTS.md` - Rust SimulationCore deterministic boundary and WASM exports.

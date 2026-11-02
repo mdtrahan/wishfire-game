@@ -15,6 +15,16 @@ function updateShadowDomMarker(shadow) {
 function hasSeededRngExports(exports) {
   return typeof exports?.seeded_rng_next_state_shadow === "function" && typeof exports?.seeded_rng_next_value_shadow === "function" && typeof exports?.seeded_rng_index_shadow === "function";
 }
+function normalizeSeed(seed = 1) {
+  return (Number(seed || 1) >>> 0) || 1;
+}
+function createSeededRngFallback(seed = 1) {
+  let state = normalizeSeed(seed);
+  return () => {
+    state = (1664525 * state + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
 function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = {}) {
   const state = getShadowState();
   if (state.ready) return state.ready;

@@ -66,7 +66,7 @@ test('party icons also keep arrival order', () => {
   assert.deepEqual(out.party, ['party-res', 'party-spd']);
 });
 
-test('live combat effects translate into channels and party icons keep their skill route', () => {
+test('Rust snapshot buffs translate into channels and party icons keep their skill route', () => {
   const entities = [
     { kind: 'hero', name: 'Falie', uid: 1, hp: 30, maxHP: 100, currentLevel: 1 },
     { kind: 'hero', name: 'Kojonn', uid: 4, hp: 50, maxHP: 100, currentLevel: 1, statuses: [{ statusEffect: 'atkUp', duration: 2 }] },
@@ -77,13 +77,18 @@ test('live combat effects translate into channels and party icons keep their ski
     time: 10, PartyBuff_DEF: 3, HeroWardHPByUID: { 1: 20, 4: 20 }, HeroWardSourceUID: 1,
     RealtimeSkillEffects: { 1: { elevate: { ...elevate } }, 4: { elevate: { ...elevate }, old: { sourceUID: 4, expiresAt: 9, modifiers: [{ channel: 'MAG', direction: 'up' }] } } },
   };
+  entities.forEach(actor => { actor.rustActorId = actor.uid; });
+  globals.RustCombatPresentation = { state: { snapshot: { actors: [
+    { actor_id: 1, team: 'hero', ward: 20 },
+    { actor_id: 4, team: 'hero', ward: 20, elevate: 'power' },
+    { actor_id: 2, team: 'hero', ward: 0, downed: true },
+  ] } } };
   const before = JSON.stringify({ entities, globals });
   const input = heroBuffSignalInput(entities, globals);
   assert.equal(JSON.stringify({ entities, globals }), before);
-  assert.deepEqual(input.map(hero => [hero.uid, hero.alive]), [[1, true], [2, false], [4, true]]);
+  assert.deepEqual(input.map(hero => [hero.uid, hero.alive]), [[1, true], [4, true], [2, false]]);
   const out = projectBuffSignals(input);
-  assert.deepEqual(out.party, ['party-range', 'party-cd', 'party-def', 'party-ward']);
-  assert.deepEqual(out.partyRefs['party-range'], { effectId: 'elevate', set: 'reach' });
+  assert.deepEqual(out.party, ['party-ward']);
   assert.deepEqual(out.partyRefs['party-ward'], { effectId: 'ward' });
-  assert.deepEqual(out.heroes, { 1: ['defense'], 4: ['offense'] }, 'Smoke Form below 40% HP; Kaja status ATK up');
+  assert.deepEqual(out.heroes, { 1: [], 4: ['offense'] }, 'Rust Elevate signals offense; legacy effect collections do not contribute');
 });

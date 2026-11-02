@@ -105,7 +105,7 @@ test('player-visible cache arrows, item review, Auto receipts and Hero gear agre
    if(scenario==='held'){assert.equal(after.loadouts.Huun.hat,selected.instanceId);assert.equal(after.lamp.reviewHold,null);}
    await page.screenshot({path:`${directory}/${scenario}-receipts.png`});await page.waitForFunction(()=>!document.querySelector('.lamp-cp-feedback'));
    if(scenario==='itemtie'){await dialog.locator(`[data-action="queue"][data-id="${selected.instanceId}"]`).click();await arrows(page,owners.map(id=>gain(after,heroes.heroes[id],selected)));assert.equal(await dialog.locator('[data-action="queue-disposal"]').isEnabled(),true);await page.screenshot({path:`${directory}/itemtie-leftover-red.png`});}
-   if(await page.locator('#lamp-overlay').isVisible())await dialog.getByRole('button',{name:'Close equipment comparison',exact:true}).click();
+   if(await page.locator('#lamp-overlay').isVisible()){await dialog.getByRole('button',{name:'Close equipment comparison',exact:true}).click({noWaitAfter:true});await page.locator('#lamp-overlay').waitFor({state:'hidden'});}
    const displayed=await heroScreens(page,after,heroes,scenario);await page.reload();await page.waitForFunction(()=>typeof window.render_game_to_text==='function');
    const restored=await read(page);assert.deepEqual(restored.loadouts,after.loadouts);assert.deepEqual(restored.items,after.items);
    assert.deepEqual(errors,[]);report.push({scenario,cacheArrows,itemArrows,receipts,displayed,reloadPreserved:true,errors});

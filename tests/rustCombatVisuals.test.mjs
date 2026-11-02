@@ -22,11 +22,10 @@ test('slice manifest validates every referenced byte and excludes UI/arena/rewar
  for(const [id,e]of Object.entries(manifest.effects)){assert.ok(fs.existsSync(new URL(e.file,root)),id);assert.equal(e.frame_ms.length,e.frame_count,id);const b=fs.readFileSync(new URL(e.file,root));assert.equal(b.readUInt32BE(16),e.frame_size[0]*e.frame_count,id);assert.equal(b.readUInt32BE(20),e.frame_size[1],id);}
  assert.ok(fs.existsSync(new URL(manifest.font,root)));
 });
-test('flag off imports and preloads no slice module or asset',()=>{
- let loads=0;const load=()=>{loads++;throw new Error('unexpected load');};
- for(const search of ['', '?rustCombat=0','?rustShadow=1'])assert.equal(installRustCombat({}, {location:{hostname:'localhost',search},load}),undefined);
- assert.equal(loads,0);
- const runtime=fs.readFileSync(new URL('../web-runner/app.js',import.meta.url),'utf8');assert.ok(!runtime.includes('rustCombatPresentation'));
+test('Rust is loaded on every origin without inspecting query flags',async()=>{
+ let loads=0;const globals={};
+ const control=installRustCombat({globals},{load:async()=>{loads++;return {mountRustCombat:async()=>({dispose(){}})};}});
+ await control.ready;assert.equal(loads,1);assert.equal(globals.RustCombatAuthority,true);control.dispose();
 });
 test('damage, blocked, heal and Miss retain the slice font size, format and three-popup stack',()=>{
  const fx=createRustEffectState();fx.ingest(snapshot(),[damage({crit:true,amount:23}),damage({amount:7,blocked:true}),damage({amount:9}),damage({amount:12})]);

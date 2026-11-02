@@ -271,3 +271,5 @@
 
 - Permanent-input proof includes zero clones/revisions across unchanged render-time equipment syncs, routed/restored QA SPD, explicit Rust HP-fixture refusal, host definitions without channels and Lizardo's Rust magic basic. Native tests distinguish captured permanent power from live Elevate gained/lost during wind-up; frozen trace fixtures stay untouched.
 - Developer-hook contracts reject every raw legacy dispatch under Rust authority before the registry can change HP, stats, statuses or ward; flag-off dispatch stays supported.
+
+- Rust-only retirement keeps economy, saves, CP/meta RNG and artifact assertions. Retire JS scheduler/scalar/VFX implementation tests; rewire supported lifecycle tests to real WASM and #229 revisions. `rustOnlyInventory.test.mjs` includes rejection fixtures; `rustCombatAllStages.test.mjs` spies on retired owners and proves D17′ with real Rust AllDown, free recovery and origin placement. Run focused browser tests serially.

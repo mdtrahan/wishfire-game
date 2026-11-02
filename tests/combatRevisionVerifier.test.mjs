@@ -48,10 +48,7 @@ const {newHeroProgress,createHeroProgressStore,awardHeroEXP,expToNextLevel,saveH
  finally { globalThis.structuredClone = clone; }
  assert.equal(clones,0); assert.equal(runtime.read().pendingRevisions,0);
  const {restoreHeroesToFullHP}=await load('web-runner/systems/questCombatSession.mjs');
- const {resetRealtimeSkillAttempt,ensureSkillBattle}=await load('web-runner/src/core/heroPermanentModifiers.mjs');
  assert.throws(()=>restoreHeroesToFullHP({state,call(){}}),/not supported in Rust encounters/);
- assert.throws(()=>resetRealtimeSkillAttempt(g,state.entities),/not supported in Rust encounters/);
- assert.throws(()=>ensureSkillBattle({state}),/not supported in Rust encounters/);
  const {routeHeroPermanentInputs,permanentHeroSource}=await load('web-runner/src/core/heroPermanentInputs.mjs');
  const devRuntimeSource=fs.readFileSync(root+'/web-runner/systems/devToolingRuntime.js','utf8');
  const speedBody=devRuntimeSource.slice(devRuntimeSource.indexOf('  function setFixtureSpeed'),devRuntimeSource.indexOf('  function readPersistedDevToolingConfig'));
@@ -65,6 +62,6 @@ const {newHeroProgress,createHeroProgressStore,awardHeroEXP,expToNextLevel,saveH
  speedFn({doubleAttackHeroName:'',doubleAttackChance:1});assert.equal(speedWrites,0);assert.equal(runtime.read().pendingRevisions,1);
  assert.equal(wfmHeroPermanentInputs(g,hero).stats.interval,interval);
  runtime.tick({...options,nowMs:374});assert.equal(runtime.read().pendingRevisions,0);assert.deepEqual(errors,[]);
- runtime.stop();restoreHeroesToFullHP({state,call(){}});resetRealtimeSkillAttempt(g,state.entities);runtime.dispose();
+ runtime.stop();restoreHeroesToFullHP({state,call(){}});runtime.dispose();
 }
 const baseline=JSON.parse(fs.readFileSync(new URL('./combatRevisionVerifier.before.json',import.meta.url)));assert.equal(baseline.training.MATK.changed,false);assert.equal(baseline.training.RES.changed,false);assert.ok(baseline.developerLevel.liveWrites.includes('hp'));assert.equal(result.training.MATK.changed,true);assert.equal(result.training.RES.changed,true);assert.deepEqual(result.developerLevel.liveWrites,[]);assert.equal(result.developerLevel.hpBefore,result.developerLevel.hpAfter);});

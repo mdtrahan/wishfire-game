@@ -64,6 +64,7 @@ test('DEV chapter input launches real bosses from the map and repeated combat se
     const errors = []; page.on('pageerror', error => errors.push(error.message));
     await page.goto(`http://localhost:${port}/web-runner/index.html`);
     await page.waitForFunction(() => window.__codexGame && JSON.parse(render_game_to_text()).flags.layout0Ready);
+    await page.evaluate(() => __codexGame.setEncounterRequest({ seed: 42 }));
     await page.getByRole('button', { name: 'Open developer tooling modal', exact: true }).click();
     console.log('Boss launch QA: developer panel ready');
     await page.locator('[data-devtool-boss-chapter]').fill('0');

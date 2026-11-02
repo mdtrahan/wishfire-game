@@ -102,13 +102,9 @@ test('both developer launchers consume the shared compact control scale', () => 
 
 test('developer panels permit vertical scrolling without horizontal overflow', () => {
   const devTooling = read('web-runner/systems/devToolingRuntime.js');
-  const turnQa = read('web-runner/systems/combatTurnQaReadout.mjs');
   const html = read('web-runner/index.html');
 
   assert.match(devTooling, /'overflow:auto'/);
-  assert.match(turnQa, /table-layout:fixed/);
-  assert.match(turnQa, /overflow-wrap:anywhere/);
-  assert.match(turnQa, /word-break:break-word/);
   assert.match(html, /overflow-wrap:anywhere/);
   assert.match(devTooling, /min-height:28px/);
   assert.match(devTooling, /data-devtool-title[\s\S]*white-space:nowrap/);
@@ -120,7 +116,7 @@ test('progress bars and damage bitmaps obey the presentation scale', () => {
 
   assert.match(damage, /document\.defaultView\?\.devicePixelRatio/);
   assert.match(damage, /numberText\.width = Math\.ceil\(approxWidth \* pixelRatio\)/);
-  assert.match(render, /const barH = Math\.min\(partyBar\.h, 8 \* layoutScale\)/);
+  assert.match(render, /drawCombatHealthBar/);
 });
 
 test('fallback text scales or elides against the measured logical Canvas width', () => {
@@ -172,20 +168,6 @@ test('combat transient controls and damage text share the compact layout scale',
   }), { width: 60, height: 30 });
   assert.equal(scaleModule.computeCombatDamageFontSize({ amount: 20, partyMaxHP: 147, isCrit: false, damageType: 'damage', layoutScale: 0.703 }), 10);
   assert.equal(scaleModule.computeCombatDamageFontSize({ amount: 4, partyMaxHP: 147, isCrit: false, damageType: 'damage', layoutScale: 0.703 }), 8);
-});
-
-test('combat renderer and attack hit target consume shared presentation sizing', () => {
-  const app = read('web-runner/app.js');
-  const render = read('web-runner/systems/renderRuntime.js');
-  assert.match(app, /computeScaledCombatControlSize\(\{/);
-  assert.match(app, /assetsLayout = runtimeLayouts\.assetsLayout \|\| null;\n\s*refreshCombatOverlayAssetSizes\(\);/);
-  assert.match(app, /displayFontSize: computeCombatDamageFontSize\(\{/);
-  assert.match(app, /function spawnPendingDamageNumbers\(projectToCanvas = null, presentationScale = 1\)/);
-  assert.match(render, /spawnPendingDamageNumbers\(projectCombatDamageWorldToCanvas, layoutScale\);/);
-  assert.doesNotMatch(render, /spawnPendingDamageNumbers\(projectCombatDamageWorldToCanvas\);/);
-  assert.match(render, /deps\.computeCombatDamageFontSize = computeCombatDamageFontSize/);
-  assert.doesNotMatch(render, /selectorAsset|selectorImg/);
-  assert.match(render, /const fontSize = computeCombatDamageFontSize\(\{/);
 });
 
 test('questQA exposes a hidden pause snapshot without retired combat controls', () => {

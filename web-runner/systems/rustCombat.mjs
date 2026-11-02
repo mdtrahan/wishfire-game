@@ -15,7 +15,7 @@ export function installRustCombat(options, {
     options.globals.RustCombatError = String(error);
     warn('[rustCombat] encounter ended:', error);
   }
-  const ready = load().then(module => module.mountRustCombat(options)).then(value => {
+  const ready = Promise.resolve().then(load).then(module => module.mountRustCombat(options)).then(value => {
     if (disposed) value.dispose();
     else runtime = value;
   }).catch(routeError);

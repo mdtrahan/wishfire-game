@@ -16,14 +16,6 @@ fn round_like_js(value: f64) -> f64 {
     }
 }
 
-fn positive_floor_or_zero(value: f64) -> f64 {
-    if value.is_finite() && value > 0.0 {
-        value.floor()
-    } else {
-        0.0
-    }
-}
-
 fn positive_floor_or_one(value: f64) -> f64 {
     let normalized = if value.is_finite() && value != 0.0 {
         value
@@ -90,57 +82,6 @@ pub fn seeded_rng_index(seed: f64, draws: f64, size: f64) -> f64 {
     (seeded_rng_next_value(seed, draws) * pool_size).floor()
 }
 
-pub fn game_state_envelope_actor_count(hero_count: f64, enemy_count: f64) -> f64 {
-    positive_floor_or_zero(hero_count) + positive_floor_or_zero(enemy_count)
-}
-
-pub fn game_state_envelope_valid(
-    schema_version: f64,
-    hero_count: f64,
-    enemy_count: f64,
-    gem_count: f64,
-    turn_queue_length: f64,
-    current_actor_index: f64,
-    energy: f64,
-    party_hp: f64,
-) -> f64 {
-    if number_or_zero(schema_version) != 1.0 {
-        return 0.0;
-    }
-    if !hero_count.is_finite()
-        || !enemy_count.is_finite()
-        || !gem_count.is_finite()
-        || !turn_queue_length.is_finite()
-        || !current_actor_index.is_finite()
-        || !energy.is_finite()
-        || !party_hp.is_finite()
-    {
-        return 0.0;
-    }
-    if hero_count < 0.0 || enemy_count < 0.0 || gem_count < 0.0 || turn_queue_length < 0.0 {
-        return 0.0;
-    }
-    if !finite_integer(hero_count)
-        || !finite_integer(enemy_count)
-        || !finite_integer(gem_count)
-        || !finite_integer(turn_queue_length)
-        || !finite_integer(current_actor_index)
-    {
-        return 0.0;
-    }
-    if turn_queue_length == 0.0 {
-        return if current_actor_index == 0.0 { 1.0 } else { 0.0 };
-    }
-    if current_actor_index < 0.0 || current_actor_index >= turn_queue_length {
-        return 0.0;
-    }
-    1.0
-}
-
-fn finite_integer(value: f64) -> bool {
-    value.is_finite() && value.fract() == 0.0
-}
-
 #[no_mangle]
 pub extern "C" fn combat_power_shadow(atk: f64, def: f64, hp: f64) -> f64 {
     combat_power(atk, def, hp)
@@ -164,35 +105,4 @@ pub extern "C" fn seeded_rng_next_value_shadow(seed: f64, draws: f64) -> f64 {
 #[no_mangle]
 pub extern "C" fn seeded_rng_index_shadow(seed: f64, draws: f64, size: f64) -> f64 {
     seeded_rng_index(seed, draws, size)
-}
-
-#[no_mangle]
-pub extern "C" fn game_state_envelope_actor_count_shadow(
-    hero_count: f64,
-    enemy_count: f64,
-) -> f64 {
-    game_state_envelope_actor_count(hero_count, enemy_count)
-}
-
-#[no_mangle]
-pub extern "C" fn game_state_envelope_valid_shadow(
-    schema_version: f64,
-    hero_count: f64,
-    enemy_count: f64,
-    gem_count: f64,
-    turn_queue_length: f64,
-    current_actor_index: f64,
-    energy: f64,
-    party_hp: f64,
-) -> f64 {
-    game_state_envelope_valid(
-        schema_version,
-        hero_count,
-        enemy_count,
-        gem_count,
-        turn_queue_length,
-        current_actor_index,
-        energy,
-        party_hp,
-    )
 }

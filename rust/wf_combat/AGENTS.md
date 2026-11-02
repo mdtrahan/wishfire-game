@@ -1,6 +1,6 @@
 # Combat mechanics DOX
 
-- `wf_combat` is a standalone headless rlib extracted from `wf_sim@9c142b5f73294bd5a783e79d3840d0c3386c90a1`. SimulationCore depends on it for the isolated headless bridge; the game has no bridge wiring.
+- `wf_combat` is a standalone headless rlib extracted from `wf_sim@9c142b5f73294bd5a783e79d3840d0c3386c90a1`. SimulationCore depends on it for the production headless combat bridge.
 - Host calls `spawn_actor` with final `tuning::Stats`; child spawns use host-resolved `spawn_profiles`. Never apply stage, wave, reward or escalation scaling here.
 - `EncounterState`, `EncounterModifiers`, `formation_origin` and actor-keyed `interest_points` are explicit host inputs. Default modifiers are neutral. Enemy AI runs independently of a director.
 - Drain `defeats` and `materialized`, and consume `finish_requested` at the caller's orchestration boundaries. These outputs never advance host progression themselves.
@@ -25,3 +25,5 @@
 - Select offence and mitigation by the action/hit damage channel; impact elements remain presentation facts. Projectiles retain their launch channel. Phoenix and actor revival retain the recipient maximum from channel commitment, with the current maximum as the healing cap. Hazard construction reads live transient Elevate; Shadow landing combines committed permanent reach with live Wings. Passive aura/Mend ticks and incoming mitigation remain live.
 
 - Committed permanent inputs are consumed unconditionally for Basic/Cast actions after admission; revision equality never selects live permanent values. Elevate is transient and read live at impact, including damage and Wings reach. A mid-wind-up revision preserves source damage parameters while a newly gained Elevate applies immediately.
+
+- Pending hit telemetry carries effective HP loss separately from the original slice Event. Ward absorption stays in presentation amount; ABI DPS reads only HP loss. This sidecar must not affect frozen hashes, RNG, event order or drained Event payloads.

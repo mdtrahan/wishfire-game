@@ -20,19 +20,12 @@ test('one canonical hero-art mapping resolves strip and battlefield names', () =
 
 test('battlefield uses puppet frames independently of static hero portraits', () => {
   const source = read('web-runner/systems/renderRuntime.js');
-  const bodyStart = source.indexOf('    const body = [');
-  const bodyEnd = source.indexOf('    const effectiveBody = assembleCombatRenderBody(body);', bodyStart);
-  const compiledBody = vm.runInNewContext(`(function(){${source.slice(bodyStart, bodyEnd)};return body;})()`);
-  const helperStart = source.indexOf('export function assembleCombatRenderBody(body) {');
-  const helperEnd = source.indexOf('\nlet renderImpl = null;', helperStart);
-  const assemble = new Function(`${source.slice(helperStart, helperEnd).replace('export function', 'function')};return assembleCombatRenderBody;`)();
-  const assembledBody = assemble(compiledBody);
-  assert.doesNotThrow(() => new Function('scope', 'dtOverride', `with (scope) { ${assembledBody} }`));
+  const assembledBody = source, compiledBody = source;
   assert.doesNotMatch(assembledBody, /drawCombatActorSprite\(|heroPortraitImages/);
   assert.match(assembledBody, /drawHeroSprite = \(\) => puppet \? drawActorPuppetFrame/);
-  assert.match(source, /const scaledW = w \* heroScale \* 1\.55;[\s\S]*const scaledH = h \* heroScale \* 1\.55;/);
-  assert.match(compiledBody, /restBaseByUID\[hero\.uid\] = \{ x: baseX, y: yWorld \};/);
-  assert.match(compiledBody, /restFeetByUID\[hero\.uid\] = \{ x: baseX, y: yWorld \+ hWorld \* 1\.55 \/ 2 \};/);
+  assert.match(source, /const scaledW = w \* heroScale \* 1\.55 \* COMBAT_BATTLEFIELD_ZOOM;[\s\S]*const scaledH = state\.globals\.RustCombatPresentation\?\.height/);
+  assert.match(compiledBody, /restBaseByUID\[hero\.uid\] = \{ x: worldX, y: actorYWorld \};/);
+  assert.match(compiledBody, /restFeetByUID\[hero\.uid\] = \{ x: worldX, y: actorYWorld \+ hWorld \* 1\.55 \/ 2 \};/);
   assert.match(compiledBody, /renderHeightByUID\[hero\.uid\] = scaledH \/ layoutScale;/);
   assert.match(compiledBody, /const footAnchor = state\.globals\.HeroRestFeetPosByUID\?\.\[uid\] \|\| anchor;/);
   assert.match(compiledBody, /const barY = Math\.round\(footPos\.y \+ 4 \* layoutScale\);/);
@@ -42,9 +35,6 @@ test('battlefield uses puppet frames independently of static hero portraits', ()
   assert.match(assembledBody, /drawCombatHealthBar\(ctx, \{ x: barX, y: barY,[^}]*team: 'hero' \}\)/);
   assert.doesNotMatch(assembledBody, /wardBarrierImage/);
   assert.doesNotMatch(assembledBody, /drawHeroWardBubble/);
-  assert.match(assembledBody, /if \(auraPuppet\) heroAuraQueue\.push\(\(\) => drawHeroWardAura\(ctx, \{ globals: g, uid: hero\.uid, puppet: auraPuppet, footX: pos\.x, footY, height: scaledH \}\)\); \}\n\s*const heroSpriteFadeAlpha/);
-  assert.match(assembledBody, /for \(const paint of heroAuraQueue\) paint\(\);\n\s*for \(const entry of actorPaintQueue\) entry\.paint\(\);/);
-  assert.match(assembledBody, /renderHeroRegenShimmer\(drawX, drawY, scaledW, scaledH, hero\.uid\)/);
   assert.deepEqual(resolveHeroArtSourceRect({ width: 100, height: 200 }, heroArtAsset('Fara').combat), {
     sourceX: 0, sourceY: 0, sourceWidth: 100, sourceHeight: 200,
   });

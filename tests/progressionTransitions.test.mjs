@@ -6,7 +6,6 @@ import {HERO_DEFINITIONS,heroSkillUnlocked} from '../web-runner/src/core/heroDef
 import {attachHeroProgress,createHeroProgressStore,setHeroProgressLevel,awardHeroEXP} from '../web-runner/src/core/heroProgression.mjs';
 import {createLampEconomy,validateLampEconomy,LAMP_CONFIG,upgradeLamp} from '../web-runner/src/core/lampGear.mjs';
 import {createEquipmentStorage,EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
-import {castRealtimeHeroSkill} from '../web-runner/src/core/realtimeHeroSkills.mjs';
 import {continuousCombatWaveClearEventId,buildContinuousCombatSpawnPlan,configureContinuousCombatProduction,deriveContinuousCombatWavePackProgress,maybeAdvanceContinuousCombatStage,resetContinuousCombatAfterDefeat,summonContinuousCombatBoss} from '../web-runner/src/core/continuousCombatStage.mjs';
 import {resetCombatSessionConditions} from '../web-runner/systems/combatSessionReset.mjs';
 
@@ -94,7 +93,7 @@ test('fresh heroes own their Special from level 1 and a skill above their level 
   assert.deepEqual(d.actives.map(s=>s.unlockLevel),[1]);assert.equal(h.currentLevel,1);assert.equal(h.currentEXP,0);
   assert.equal(heroSkillUnlocked(h,d.special),true);
   const locked={...d.special,unlockLevel:2},snapshot=JSON.stringify(ctx.state);
-  assert.equal(heroSkillUnlocked(h,locked),false);assert.equal(castRealtimeHeroSkill(ctx,1,locked,{targetUID:2,targetUIDs:[1],point:{x:220,y:200}}),false);assert.equal(JSON.stringify(ctx.state),snapshot);
+  assert.equal(heroSkillUnlocked(h,locked),false);assert.equal(JSON.stringify(ctx.state),snapshot);
  }
  const h=store.heroes.Huun;h.currentLevel=4;h.currentEXP=0;h.maxLevel=100;awardHeroEXP(h,800);assert.equal(h.currentLevel,5);assert.equal(heroSkillUnlocked(h,HERO_DEFINITIONS.Huun.special),true);
 });
@@ -151,19 +150,19 @@ test('an unfinished active boss checkpoint reloads as a manual retry instead of 
 });
 
 test('production visibility and pagehide handlers call surrender on the correct event targets',()=>{
- const start=appSource.indexOf("document.addEventListener('visibilitychange'",appSource.indexOf('const combatSimulationTicker = createCombatSimulationTicker()'));
+ const start=appSource.indexOf("document.addEventListener('visibilitychange'",appSource.indexOf('const combatHostClock = createCombatHostClock()'));
  const end=appSource.indexOf('const buffIconFrames',start);
  assert.ok(start>=0&&end>start,'finds production visibility and pagehide registrations');
  const source=appSource.slice(start,end),documentHandlers={},windowHandlers={};let surrenders=0,resets=0;
  const documentMock={hidden:false,addEventListener:(name,handler)=>{documentHandlers[name]=handler;}};
- new Function('document','window','combatSimulationTicker','lastFrameTime','performance','surrenderBossForDeparture',source)(
+ new Function('document','window','rustCombat','lastFrameTime','performance','surrenderBossForDeparture',source)(
   documentMock,
   {addEventListener:(name,handler)=>{windowHandlers[name]=handler;}},
-  {reset(){resets++;}},0,{now:()=>100},()=>{surrenders++;}
+  {pause(){resets++;}},0,{now:()=>100},()=>{surrenders++;}
  );
  documentHandlers.visibilitychange();assert.equal(surrenders,0,'a visible tab keeps the current boss attempt');
  documentMock.hidden=true;documentHandlers.visibilitychange();assert.equal(surrenders,1);
- assert.equal(resets,2);
+ assert.equal(resets,0,'visibility resets host timestamps without a retired JS ticker');
  assert.equal(typeof windowHandlers.pagehide,'function');windowHandlers.pagehide();assert.equal(surrenders,2);
 });
 
@@ -258,7 +257,7 @@ test('the app tick persists boss readiness before its stage early return and def
   const context=vm.createContext({
    state,gameState,document:{hidden:false},performance:{now:()=>100},requestAnimationFrame(){},continuousCombatWaveClearEventId,
    combatProgression:{recordCommittedEnemyDefeats(){},record(){},observe(){}},
-   combatSimulationTicker:{reset(){},tick(){}},rustCombatShadow:undefined,rustCombat:undefined,lastFrameTime:0,ensureDevToolingConfig:()=>({open:false}),
+   rustCombat:{pause(){},tick:options=>maybeAdvanceContinuousCombatStage({...options,combatTick(){}})},lastFrameTime:0,ensureDevToolingConfig:()=>({open:false}),
    layoutState:{getActiveLayoutId:()=> 'combat'},shouldFreezeCombatSimulation:()=>false,drawFrame(){},
    fnContext:{},callFunctionWithContext:(ctx,name,...args)=>makeCall(state)(name,...args),
    maybeAdvanceContinuousCombatStage,getPresentationTurnBarrier:()=>({lanes:{}}),recoverContinuousOrdinaryDefeatIfNeeded:()=>false,checkMainRuntimeCombatOutcome:checkOutcome,

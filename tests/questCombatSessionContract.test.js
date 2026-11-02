@@ -177,7 +177,7 @@ test('gold persists gains and spending across reloads without writing unchanged 
 });
 
 
-test('macro energy is charged only on entry and purple recovery shares the balance', async () => {
+test('macro energy is charged only on entry and meta recovery shares the balance', async () => {
  const fs = require('node:fs'); const vm = require('node:vm');
  const {createStoryEntryFlow} = await import('../web-runner/systems/storyEntryFlow.mjs');
  const globals = {Player_Energy:80, MatchedColorValue:1};
@@ -186,14 +186,14 @@ test('macro energy is charged only on entry and purple recovery shares the balan
  layoutState:{getActiveLayoutId:()=>layout,requestLayoutChange:async id=>{layout=id;return true;}}});
  await flow.startCombatForQA();
  assert.equal(globals.Player_Energy,80);
- for (const file of ['web-runner/modules/functionBank.js','web-runner/modules/functionBank.js']) {
+ for (const file of ['web-runner/modules/functionBank.js']) {
   const src=fs.readFileSync(require('node:path').join(__dirname,'..',file),'utf8');
   const extract=name=>src.match(new RegExp('function '+name+'\\([^)]*\\) \\{[\\s\\S]*?\\n\\}'))[0];
-  const ctx=vm.createContext({getGlobals:()=>globals,Math,GetCurrentTurn:()=>1,rollCombatRandom:()=>0,getActorNameByUID:()=> 'Hero',LogCombat:()=>{}});
+  const ctx=vm.createContext({getGlobals:()=>globals,Math,GetCurrentTurn:()=>1,random01:()=>0.7,getActorNameByUID:()=> 'Hero',LogCombat:()=>{}});
   vm.runInContext(extract('Sub_Energy'),ctx); ctx.Sub_Energy({},3);
   assert.equal(globals.Player_Energy,80);
-  vm.runInContext(extract('GrantPurpleMatchEnergy'),ctx);
-  ctx.GrantPurpleMatchEnergy({},1,3,6);
+  vm.runInContext(extract('Add_Energy'),ctx);
+  ctx.Add_Energy({});
   assert.equal(gameState.storyEntry.progress.energy,86);
   globals.Player_Energy=80;
  }

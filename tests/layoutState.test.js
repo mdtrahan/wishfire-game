@@ -4,8 +4,9 @@ const assert = require('node:assert/strict');
 const {
   createLayoutStateSingleton,
   resetLayoutStateSingletonForTests,
-  CombatRuntimeGateway,
 } = require('../src/core');
+const { CombatNavigationState } = require('../web-runner/systems/combatNavigationState.mjs');
+class TestLayoutGateway extends CombatNavigationState { isInAtomicSection() { return !!(this.combatState.isTurnResolving || this.combatState.isSpikeProcessing || this.combatState.areEffectsAnimating); } }
 const { registerCoreLayouts } = require('../src/layout/registerLayouts');
 
 function createEventBus() {
@@ -17,64 +18,6 @@ function createEventBus() {
     },
   };
 }
-
-test('combat snapshot/restore keeps turn queue and actor pointer, resets gem state, blocks inactive combat input', async () => {
-  resetLayoutStateSingletonForTests();
-
-  const eventBus = createEventBus();
-  const animationLayer = {
-    async playTransition() {
-      return undefined;
-    },
-  };
-
-  const combatState = {
-    turnQueue: [101, 102, 103, 104],
-    currentActorIndex: 2,
-    gemInputState: {
-      mode: 'gem-selection',
-      selectedGemIds: [8, 9],
-      targetId: 555,
-      isRefillQueued: true,
-    },
-    acceptEvents: false,
-    inputEnabled: false,
-  };
-
-  const combatGateway = new CombatRuntimeGateway({ combatState, eventBus });
-  const layoutState = createLayoutStateSingleton({ eventBus, animationLayer, combatRuntimeGateway: combatGateway });
-  registerCoreLayouts(layoutState, { combatGateway });
-
-  await layoutState.activateInitialLayout('combat');
-  assert.equal(layoutState.getActiveLayoutId(), 'combat');
-  assert.equal(combatState.acceptEvents, true);
-
-  await layoutState.requestLayoutChange('base', 'battle-finished');
-  assert.equal(layoutState.getActiveLayoutId(), 'base');
-  assert.equal(combatState.acceptEvents, false);
-  assert.equal(combatState.inputEnabled, false);
-  assert.deepEqual(combatState.gemInputState, {
-    mode: 'idle',
-    selectedGemIds: [],
-    targetId: null,
-    isRefillQueued: false,
-  });
-
-  const savedSnapshot = layoutState.getSnapshot('combat');
-  assert.deepEqual(savedSnapshot.turnQueue, [101, 102, 103, 104]);
-  assert.equal(savedSnapshot.currentActorIndex, 2);
-  assert.equal(combatGateway.handleEvent('combat:gem-picked', {}), false);
-
-  combatState.turnQueue = [999];
-  combatState.currentActorIndex = 0;
-
-  await layoutState.requestLayoutChange('combat', 'resume-battle');
-  assert.equal(layoutState.getActiveLayoutId(), 'combat');
-  assert.equal(combatState.acceptEvents, true);
-  assert.equal(combatState.inputEnabled, true);
-  assert.deepEqual(combatState.turnQueue, [101, 102, 103, 104]);
-  assert.equal(combatState.currentActorIndex, 2);
-});
 
 test('input is locked during layout transition and unlocked after activation', async () => {
   resetLayoutStateSingletonForTests();
@@ -98,7 +41,7 @@ test('input is locked during layout transition and unlocked after activation', a
     acceptEvents: false,
     inputEnabled: false,
   };
-  const combatGateway = new CombatRuntimeGateway({ combatState, eventBus });
+  const combatGateway = new TestLayoutGateway({ combatState, eventBus });
   const layoutState = createLayoutStateSingleton({ eventBus, animationLayer, combatRuntimeGateway: combatGateway });
   registerCoreLayouts(layoutState, { combatGateway });
 
@@ -141,7 +84,7 @@ test('requestLayoutChange queues request during combat atomic section without th
     inputEnabled: false,
   };
 
-  const combatGateway = new CombatRuntimeGateway({ combatState, eventBus });
+  const combatGateway = new TestLayoutGateway({ combatState, eventBus });
   const layoutState = createLayoutStateSingleton({ eventBus, animationLayer, combatRuntimeGateway: combatGateway });
   registerCoreLayouts(layoutState, { combatGateway });
   await layoutState.activateInitialLayout('base');
@@ -179,7 +122,7 @@ test('queued layout changes execute after atomic section clears and transition f
     inputEnabled: false,
   };
 
-  const combatGateway = new CombatRuntimeGateway({ combatState, eventBus });
+  const combatGateway = new TestLayoutGateway({ combatState, eventBus });
   const layoutState = createLayoutStateSingleton({ eventBus, animationLayer, combatRuntimeGateway: combatGateway });
   registerCoreLayouts(layoutState, { combatGateway });
   await layoutState.activateInitialLayout('base');
@@ -220,7 +163,7 @@ test('queued layout requests preserve FIFO order', async () => {
     inputEnabled: false,
   };
 
-  const combatGateway = new CombatRuntimeGateway({ combatState, eventBus });
+  const combatGateway = new TestLayoutGateway({ combatState, eventBus });
   const layoutState = createLayoutStateSingleton({ eventBus, animationLayer, combatRuntimeGateway: combatGateway });
   registerCoreLayouts(layoutState, { combatGateway });
   await layoutState.activateInitialLayout('base');
@@ -268,7 +211,7 @@ test('core layouts reject the retired AstralFlow route and preserve the Gold sho
     acceptEvents: false,
     inputEnabled: false,
   };
-  const combatGateway = new CombatRuntimeGateway({ combatState, eventBus });
+  const combatGateway = new TestLayoutGateway({ combatState, eventBus });
   const layoutState = createLayoutStateSingleton({ eventBus, animationLayer, combatRuntimeGateway: combatGateway });
   registerCoreLayouts(layoutState, { combatGateway });
 

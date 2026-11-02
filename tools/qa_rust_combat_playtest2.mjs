@@ -9,7 +9,7 @@ const browser=await chromium.launch({executablePath:detectChromeExecutable(),hea
 try {
  const page=await browser.newPage({viewport:{width:360,height:640},deviceScaleFactor:2});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto(`http://localhost:${port}/web-runner/index.html?rustCombat=1`);
+ await page.goto(`http://localhost:${port}/web-runner/index.html`);
  await page.waitForFunction(()=>window.__codexGame&&JSON.parse(render_game_to_text()).flags.layout0Ready);
  await page.getByRole('button',{name:'Open developer tooling modal',exact:true}).click();
  await page.locator('[data-devtool-level="100"]').click();

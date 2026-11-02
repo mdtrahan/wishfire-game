@@ -3,8 +3,7 @@ import test from 'node:test';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { attachHeroProgress, createHeroProgressStore, newHeroProgress, settleBattleEXP } from '../web-runner/src/core/heroProgression.mjs';
-import { recordEnemyDefeatReward, rulesContext, settleContinuousCombatRewards, settleDefeat } from '../web-runner/modules/heroCommands.mjs';
-import { resolveSkill, turnStart } from '../web-runner/src/core/combatRules.mjs';
+import { consumeCombatKillEvent, settleContinuousCombatRewards } from '../web-runner/modules/heroCommands.mjs';
 import { PROGRESSION } from '../web-runner/src/core/heroDefinitions.mjs';
 import { createEquipmentStorage } from '../web-runner/systems/equipmentStorage.mjs';
 import { advanceContinuousCombatStage, createContinuousCombatStageState } from '../web-runner/src/core/continuousCombatStage.mjs';
@@ -52,7 +51,7 @@ test('pending kill rewards settle on reload before fresh session IDs can reuse e
   await createEquipmentStorage({ globals: reloaded, storage, locks, seed: () => 3, now: () => 1000, reportError() {} }).sync();
   confirmGoldSettlements({ stateGlobals: reloaded });
   persistHeroProgressIfDirty({ stateGlobals: reloaded });
-  recordEnemyDefeatReward(reloaded.ProgressionBattle, { uid: 9, kind: 'enemy', expValue: 11, goldValue: 5 });
+  consumeCombatKillEvent(reloaded.ProgressionBattle, { enemy: { uid: 9, kind: 'enemy', expValue: 11, goldValue: 5 } });
   assert.equal(JSON.parse(values.get('orka.hero_progress.v2')).pendingBattleRewards.id, 'new-session');
   const again = {
     HeroProgress: createHeroProgressStore(),
@@ -105,7 +104,7 @@ test('boss victory clears its UID before checkpoint so its legitimate reward sti
 test('a KO flushes its pending reward ledger before any animation-frame save', () => withStorage(async values => {
   const globals = { HeroProgress: createHeroProgressStore(), ProgressionBattle: { id: 'same-frame-ko', participants: ['Falie'], defeated: {}, settled: false } };
   restoreHeroProgressFromStorage({ fnContext: { state: { globals, entities: [{ ...newHeroProgress('Falie'), kind: 'hero', uid: 1 }] } } });
-  assert.equal(recordEnemyDefeatReward(globals.ProgressionBattle, { uid: 9, kind: 'enemy', expValue: 8, goldValue: 3 }), true);
+  assert.equal(consumeCombatKillEvent(globals.ProgressionBattle, { enemy: { uid: 9, kind: 'enemy', expValue: 8, goldValue: 3 } }), true);
   const immediate = JSON.parse(values.get('orka.hero_progress.v2'));
   assert.equal(immediate.pendingBattleRewards.id, 'same-frame-ko');
   assert.deepEqual(immediate.pendingBattleRewards.defeated, { 9: 0 });
@@ -132,12 +131,12 @@ test('ordinary defeat preserves legacy Gold without awarding EXP before settleme
   const hero = { ...newHeroProgress('Falie'), kind: 'hero', uid: 1 };
   const battle = { id: 'ordinary-defeat', participants: ['Falie'], defeated: { 9: 7 }, defeatedGold: { 9: 4 }, settled: false };
   const globals = { ProgressionBattle: battle, HeroProgress: createHeroProgressStore(), goldTotal: 2 };
-  settleDefeat({ state: { globals, entities: [hero] }, callFunction() {} });
+  settleContinuousCombatRewards({ state: { globals, entities: [hero] }, callFunction() {} });
   assert.equal(hero.currentEXP, 0);
   assert.equal(globals.goldTotal, 6);
   assert.equal(battle.settled, true);
   assert.ok(globals.HeroProgress.settledBattles.includes('ordinary-defeat'));
-  settleDefeat({ state: { globals, entities: [hero] }, callFunction() {} });
+  settleContinuousCombatRewards({ state: { globals, entities: [hero] }, callFunction() {} });
   assert.equal(hero.currentEXP, 0);
   assert.equal(globals.goldTotal, 6);
 });
@@ -158,39 +157,6 @@ test('continuous wallet receipts stay unique across rollovers and sessions with 
   assert.deepEqual(first, ['session-uuid-a', 'session-uuid-a-continuous-1']);
   assert.deepEqual(second, ['session-uuid-b', 'session-uuid-b-continuous-1']);
   assert.equal(new Set([...first, ...second]).size, 4);
-});
-
-test('role skill, counter and DoT KOs reach the shared reward callback', () => {
-  const make = (enemyHP = 5, heroStatuses = []) => {
-    const hero = { ...newHeroProgress('Falie'), kind: 'hero', uid: 1, hp: 100, statuses: heroStatuses };
-    const enemy = { uid: 9, kind: 'enemy', hp: enemyHP, maxHP: 5, stats: { ATK: 5, DEF: 1, MAG: 5, RES: 1, SPD: 5 }, statuses: [] };
-    let rewardFlushes = 0;
-    const globals = { ProgressionBattle: { id: 'role-paths', participants: ['Falie'], defeated: {}, defeatedGold: {}, persistPendingRewards() { rewardFlushes++; } } };
-    const ctx = { state: { globals, entities: [hero, enemy] }, callFunction(name, uid, amount) {
-      if (name === 'CalculateDamage') return 10;
-      if (name === 'ApplyDamageToTarget') { const target = ctx.state.entities.find(actor => actor.uid === uid); const before = target.hp; target.hp = Math.max(0, target.hp - amount); return before - target.hp; }
-      throw new Error(`unexpected ${name}`);
-    }};
-    return { hero, enemy, globals, ctx, rewardFlushes: () => rewardFlushes };
-  };
-  const skillCase = make();
-  resolveSkill(rulesContext(skillCase.ctx), skillCase.hero, { skillId: 'test_role', targetType: 'enemy', tags: ['physical'], effects: [{ effectType: 'damage', fixedDamage: 5 }] }, [9]);
-  assert.deepEqual({ ...skillCase.globals.ProgressionBattle.defeated }, { 9: 0 });
-  assert.deepEqual({ ...skillCase.globals.ProgressionBattle.defeatedGold }, { 9: 0 });
-  assert.equal(skillCase.rewardFlushes(), 1);
-
-  const counterCase = make(5, [{ statusEffect: 'counter', magnitude: 1, duration: 2 }]);
-  resolveSkill(rulesContext(counterCase.ctx), counterCase.enemy, { skillId: 'test_enemy', targetType: 'enemy', tags: ['physical'], effects: [{ effectType: 'damage', fixedDamage: 1 }] }, [1]);
-  assert.deepEqual({ ...counterCase.globals.ProgressionBattle.defeated }, { 9: 0 });
-  assert.deepEqual({ ...counterCase.globals.ProgressionBattle.defeatedGold }, { 9: 0 });
-  assert.equal(counterCase.rewardFlushes(), 1);
-
-  const dotCase = make(1);
-  dotCase.enemy.statuses = [{ statusEffect: 'dot', snapshotPotency: 1, duration: 2, sourceUID: 1 }];
-  turnStart(rulesContext(dotCase.ctx), dotCase.enemy, 1);
-  assert.deepEqual({ ...dotCase.globals.ProgressionBattle.defeated }, { 9: 0 });
-  assert.deepEqual({ ...dotCase.globals.ProgressionBattle.defeatedGold }, { 9: 0 });
-  assert.equal(dotCase.rewardFlushes(), 1);
 });
 
 test('wallet first sync commits recovered Gold and retries a saved receipt without duplicating it', async () => withStorage(async values => {
