@@ -16,7 +16,7 @@ fn resolved_spawn_stats_are_applied_once() {
 fn inputs_change_combat_hash_without_host_state() {
     let mut sim = Sim::new(SimConfig::default());
     let original = sim.state_hash();
-    sim.modifiers.cooldown_multiplier = 0.9;
+    sim.modifiers.cooldown_haste = 10.;
     assert_ne!(original, sim.state_hash());
     sim.modifiers = EncounterModifiers::default();
     assert_eq!(original, sim.state_hash());
@@ -56,12 +56,12 @@ fn modifiers_have_neutral_defaults_and_drive_boss_abilities() {
         .hazard_spec(HazardKind::BossSlam, None, ARENA_CENTRE, Vec2::new(1., 0.))
         .0;
     sim.modifiers = EncounterModifiers {
-        cooldown_multiplier: 0.81,
+        cooldown_haste: 25.,
         slam_radius_bonus: 20.,
-        recharge_reduction: 1.,
+        recharge_haste: 25.,
     };
-    assert_eq!(sim.boss_time_scale(), 0.81);
-    assert_eq!(sim.boss_recharge_duration(0), base_recharge - 1.);
+    assert_eq!(sim.boss_time_scale(), 0.8);
+    assert_eq!(sim.boss_recharge_duration(0), base_recharge * 0.8);
     let modified = sim
         .hazard_spec(HazardKind::BossSlam, None, ARENA_CENTRE, Vec2::new(1., 0.))
         .0;

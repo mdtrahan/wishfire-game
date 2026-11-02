@@ -184,7 +184,7 @@ impl Sim {
         done
     }
     pub fn boss_time_scale(&self) -> f32 {
-        self.modifiers.cooldown_multiplier
+        crate::formulas::cooldown_seconds(1., self.modifiers.cooldown_haste as f64) as f32
     }
     pub fn relocate_enemy(&mut self, i: usize, target: Vec2) {
         let scale = if is_boss(self.actors[i].view.archetype) {
@@ -328,12 +328,8 @@ impl Sim {
             if self.actors[i].enemy_phase == 2 {
                 if boss {
                     let recharge = self.boss_recharge_duration(i);
-                    self.actors[i].recharge_left = recharge
-                        * if self.actors[i].barrage_recharge {
-                            CHIMERA_BARRAGE_COOLDOWN_SCALE
-                        } else {
-                            1.
-                        };
+                    self.actors[i].recharge_left = crate::formulas::cooldown_seconds(recharge as f64,
+                        if self.actors[i].barrage_recharge { CHIMERA_BARRAGE_HASTE as f64 } else { 0. }) as f32;
                     self.actors[i].barrage_recharge = false;
                     self.actors[i].recharge_duration = self.actors[i].recharge_left;
                 }

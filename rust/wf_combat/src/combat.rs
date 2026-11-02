@@ -67,11 +67,13 @@ impl Sim {
         let a = &mut self.actors[target];
         let damage =
             raw * if mitigate {
-                DEF_BASE
-                    / ((DEF_BASE + a.defense_for(channel)) * if rallied { RALLY_DEF_MULTIPLIER } else { 1. })
+                crate::formulas::mitigation_multiplier(
+                    a.defense_for(channel) as f64
+                ) as f32
             } else {
                 1.
-            } * if crit { CRIT_MULTIPLIER } else { 1. };
+            } / if mitigate && rallied { RALLY_DAMAGE_DIVISOR } else { 1. }
+              * if crit { CRIT_MULTIPLIER } else { 1. };
         let damage =
             max_hp_fraction.map_or(damage, |fraction| damage.min(a.view.max_hp * fraction));
         let absorbed = damage.min(a.view.ward);
@@ -130,7 +132,7 @@ impl Sim {
         }
         a.action_revive = false;
         a.action_done = true;
-        a.revive_cd = REVIVE_COOLDOWN * (1. - REVIVE_REFUND);
+        a.revive_cd = crate::formulas::cooldown_seconds(REVIVE_COOLDOWN as f64, REVIVE_INTERRUPT_HASTE as f64) as f32;
         a.view.ai_intent = AiIntent::None;
         a.ai_cd = 0.;
         a.state(ActorState::Idle, 0., 0.);

@@ -33,7 +33,7 @@ export function trustFixture(scenario='mixed'){
    const hero=heroes.heroes[id],hat=save.items.find(i=>i.instanceId===save.loadouts[id].hat),body=save.items.find(i=>i.instanceId===save.loadouts[id].body),boots=save.items.find(i=>i.instanceId===save.loadouts[id].boots);
    hat.stats={ATK:1,DEF:1,MAG:1,RES:1,HP:1};boots.stats={...hat.stats};
    body.stats={ATK:id==='Falie'?2000:1,MAG:1,DEF:98-hero.stats.DEF,RES:98-hero.stats.RES,HP:id==='Falie'?1:1000};
-   if(scenario==='fulltie'){body.stats.ATK=id==='Falie'?100:7;body.stats.HP=id==='Falie'?100:181;}
+   if(scenario==='fulltie'){body.stats.ATK=id==='Falie'?100:7;body.stats.HP=id==='Falie'?100:651;}
   }
   selected.stats={ATK:1,DEF:1,MAG:1,RES:1,HP:41};
   heroes.heroes=Object.fromEntries(Object.entries(heroes.heroes).reverse());
@@ -48,7 +48,7 @@ export function trustFixture(scenario='mixed'){
   for(const id of ['Huun','Runa','Kojonn'])for(const slot of ['hat','body','boots'])save.items.find(i=>i.instanceId===save.loadouts[id][slot]).stats={ATK:10000,DEF:10000,MAG:10000,RES:10000,HP:10000};
   selected.type='body';selected.stats={ATK:35,DEF:114,MAG:53,RES:44,HP:999};
   other=make('hat',1);other.stats={ATK:43,DEF:74,MAG:101,RES:68,HP:367};
-  const revealed=make('body',1);revealed.stats={ATK:70,DEF:113,MAG:72,RES:91,HP:794};save.lamp.pending.push(revealed.instanceId);
+  const revealed=make('body',1);revealed.stats={ATK:70,DEF:113,MAG:72,RES:91,HP:720};save.lamp.pending.push(revealed.instanceId);
  }
  if(scenario==='kaja'){
   save.items.find(i=>i.instanceId===save.loadouts.Kojonn.hat).stats={ATK:1,DEF:1,MAG:1,RES:1,HP:10};

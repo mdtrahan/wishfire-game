@@ -327,11 +327,10 @@ impl Sim {
             hold_position: self.director.boss.is_some(),
         };
         self.combat.modifiers = wf_combat::EncounterModifiers {
-            cooldown_multiplier: (0..self.stage.escalation_level)
-                .fold(1., |v, _| v * tuning::ESCALATION_COOLDOWN),
+            cooldown_haste: self.stage.escalation_level as f32 * tuning::ESCALATION_HASTE_PER_LEVEL,
             slam_radius_bonus: self.stage.escalation_level as f32 * tuning::ESCALATION_RADIUS,
-            recharge_reduction: self.stage.escalation_level as f32
-                * tuning::BOSS_RECHARGE_PER_LEVEL,
+            recharge_haste: self.stage.escalation_level as f32
+                * tuning::BOSS_RECHARGE_HASTE_PER_LEVEL,
         };
         self.combat.spawn_profiles.clear();
         for kind in [

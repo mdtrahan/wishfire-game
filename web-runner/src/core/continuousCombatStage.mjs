@@ -593,7 +593,9 @@ function findPackScale(rows, targetCP) {
     if (total < targetCP) low = scale;
     else high = scale;
   }
-  return high;
+  // Rounded stats make CP discontinuous; choose the closest side of the jump.
+  const distance = (scale) => Math.abs(rows.reduce((sum, row) => sum + scaleContinuousCombatRow(row, scale).CombatPower, 0) - targetCP);
+  return distance(low) < distance(high) ? low : high;
 }
 function expandWaveRows(stage, byName, catalogRows, compositionSeed = null) {
   const pool = stage.enemyNames.map((name) => byName.get(name)).filter(Boolean);

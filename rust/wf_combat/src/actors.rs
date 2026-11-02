@@ -666,14 +666,9 @@ impl crate::Sim {
                     if !a.view.enraged && a.view.hp < a.view.max_hp * rule.hp_below {
                         a.view.enraged = true;
                         if a.recharge_left > 0. {
-                            let duration = (a.recharge_duration * ENRAGE_RECHARGE).max(
-                                BOSS_RECHARGE_FLOOR
-                                    / if a.view.archetype == Archetype::BossBomber {
-                                        CHIMERA_ATTACK_RATE
-                                    } else {
-                                        1.
-                                    },
-                            );
+                            let base = crate::barrage::boss_recharge_seconds(a.view.archetype, self.modifiers.recharge_haste, false);
+                            let enraged = crate::barrage::boss_recharge_seconds(a.view.archetype, self.modifiers.recharge_haste, true);
+                            let duration = a.recharge_duration * (enraged / base);
                             a.recharge_left *= duration / a.recharge_duration;
                             a.recharge_duration = duration;
                         }
