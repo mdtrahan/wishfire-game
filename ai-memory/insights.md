@@ -719,3 +719,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Convert a requested screen-space anchor shift through the ground projection squash before changing authored world positions. Compare the visible displacement against painted hero height and guard the entire hero/HP footprint above the bottom HUD at compact scales.
 
 - Capture the last living paint before simulation removal when a death picture must outlive its actor. Exercise the actual WASM-to-host-to-render lifetime: isolated death ages miss renderer handoffs, size fallbacks and activation alpha accidentally reapplied to corpses.
+
+- When a presentation owner moves, migrate test imports and exercise the new owner through its production call site. Source-text assertions against a removed duplicate cannot protect anchoring, geometry, visibility or paint order.

@@ -90,16 +90,33 @@ test('combat progress HUD shows the current chapter and region-sized wave progre
   assert.equal(notchColors().length, 4);
 });
 
-test('actor HP bars follow their owners in the shared depth-sorted paint queue', () => {
+test('shared Rust HP bars follow owner feet and paint above the sorted actor and front passes', async () => {
+  const { drawSliceActorBars } = await import('../web-runner/systems/rustCombatWorldHud.mjs');
+  const { drawTauntIcons } = await import('../web-runner/systems/rustCombatTaunt.mjs');
+  const source = fs.readFileSync(path.join(root, 'web-runner/systems/rustCombatPresentation.mjs'), 'utf8');
+  const frontSource = source.slice(source.indexOf('  function frontPass('), source.indexOf('  function labels('));
   const renderer = fs.readFileSync(path.join(root, 'web-runner/systems/renderRuntime.js'), 'utf8');
-  assert.match(renderer, /addActorPaint\(enemy\.uid, \(\) => \{ ctx\.save\(\); ctx\.globalAlpha \*= enemyFadeAlpha; drawCombatHealthBar\(ctx, \{ x: barX, y: barY, width: drawBarW, height: drawBarH, fillWidth: drawFillW, trailWidth: drawYellowW, team: \\?'enemy\\?' \}\); ctx\.restore\(\); \}\)/);
-  assert.match(renderer, /addActorPaint\(uid, \(\) => paintWithActivationAlpha\(ctx, heroBarFadeAlpha, \(\) => drawCombatHealthBar\(ctx, \{ x: barX, y: barY, width: baseW, height: baseH, fillWidth: barState\.fillW, trailWidth: barState\.yellowW, team: \\?'hero\\?' \}\)\)\)/);
-  assert.match(renderer, /const enemyFootY = Number\(pos\.y\)/);
-  assert.match(renderer, /actorPaintQueue\.push\(\{ footY: enemyFootY/);
-  assert.match(renderer, /const barY = Math\.round\(enemyFootY \+ \(4 \* layoutScale\)\)/);
-  assert.match(renderer, /footY: pos\.y, height: enemyH/);
-  assert.match(renderer, /const drawY = pos\.y - \(enemy\.combatRank === 'boss' \? enemyH : enemyH \/ 2\)/);
-  assert.match(renderer, /footPos\.y \+ 4 \* layoutScale/);
-  assert.match(renderer, /for \(const entry of actorPaintQueue\) entry\.paint\(\);[\s\S]*for \(const paint of actorFrontOverlayQueue\) paint\(\);/);
-  assert.doesNotMatch(renderer, /actorFrontOverlayQueue\.push\(\(\) => drawCombatHealthBar/);
+  const queueSource = renderer.slice(renderer.indexOf('    actorPaintQueue.sort('), renderer.indexOf('    // Render hero damage/heal text'));
+  assert.ok(frontSource.length && queueSource.length);
+  for (const zoom of [.4, .5]) for (const scale of [.6, 1.25]) {
+    const order = [], tracks = [], transforms = []; let color;
+    const ctx = new Proxy({}, {get:(_target,key)=>key==='fillRect'?(...rect)=>{if(color==='#292E34'){tracks.push(rect);order.push('hp');}}:key==='translate'||key==='scale'?(...args)=>transforms.push([key,...args]):()=>{},set:(_target,key,value)=>{if(key==='fillStyle')color=value;return true;}});
+    const actors = [
+      {actor_id:1,team:'hero',kind:'fara',hp:50,max_hp:100,pos:{x:100,y:200}},
+      {actor_id:2,team:'enemy',kind:'gobloc',hp:25,max_hp:100,pos:{x:130,y:100}},
+    ];
+    const camera = {zoom,x:x=>x*zoom+5,y:y=>y*.75*zoom+7};
+    const snapshot = {time:1,combat_time:1,actors,hazards:[],projectiles:[]};
+    const scope = {state:{snapshot,effects:[],channels:[]},camera,drawSliceActorBars,drawTauntIcons,encased:new Map(),
+      gpu:{mask(){},composite(){},bitmap(){}},sprites:{chargeArt(){}},
+      procedural:()=>order.push('front-effects'),begin(){},finish:()=>order.push('composite'),labels:()=>order.push('labels')};
+    const front = new Function('scope', `with(scope){${frontSource};return frontPass;}`)(scope);
+    const queue = actors.map(a=>({uid:a.actor_id,footY:a.pos.y,paint:()=>order.push(a.team)}));
+    new Function('state','ctx','actorPaintQueue','heroAuraQueue','actorFrontOverlayQueue','layoutScale','layoutOffsetX','layoutOffsetY',queueSource)(
+      {globals:{RustCombatPresentation:{front}}},ctx,queue,[()=>order.push('aura')],[()=>order.push('overlay')],scale,11,13);
+    assert.deepEqual(order,['aura','enemy','hero','overlay','front-effects','composite','labels','hp','hp']);
+    const z=zoom/.5;
+    assert.deepEqual(tracks,actors.map(a=>[camera.x(a.pos.x)-17*z/2,camera.y(a.pos.y)+(a.team==='hero'?8*z:4),17*z,1.5*z]));
+    assert.deepEqual(transforms,[['translate',11,13],['scale',scale,scale]]);
+  }
 });
