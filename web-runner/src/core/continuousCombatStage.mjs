@@ -1,6 +1,7 @@
 import { authorSubwaveStages } from './continuousCombatSubwaves.mjs';
 import { resetRealtimeSkillAttempt } from './realtimeSkillState.mjs';
 import { clearHeroWards } from './heroWard.mjs';
+import { permanentHeroSource } from './heroPermanentInputs.mjs';
 import { computeCombatPower } from './combatPower.mjs';
 import { deriveCombatArenaBounds, deriveCombatWorldBounds, deriveCombatWorldStartFormation, deriveCombatWorldVerticalBounds } from '../../../src/core/combatOrientation.mjs';
 import { cleanseDebuffs } from './combatRules.mjs';
@@ -109,7 +110,7 @@ export function configureContinuousCombatProduction(globals, { productionPath = 
 export function getContinuousCombatPartyCP(entities) {
   return (Array.isArray(entities) ? entities : [])
     .filter(actor => actor?.kind === 'hero')
-    .reduce((total, hero) => total + computeCombatPower(hero), 0);
+    .reduce((total, hero) => total + computeCombatPower(permanentHeroSource(hero) || hero), 0);
 }
 
 export function deriveContinuousCombatWavePackProgress(stageState, entities = []) {

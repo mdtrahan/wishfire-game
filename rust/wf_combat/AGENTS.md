@@ -14,8 +14,14 @@
 
 - `Sim.floor` is per-world host geometry. Movement, ray clipping, hazards and projectile culling use it; default bounds preserve frozen slice hashes. Keep the harness geometry helpers defaulted.
 
-- `wfm.rs` owns distinct WFM High Gobloc/Skeleton melee and ordinary Chimerilass/Djinn ranged definitions. Chimerilass retains half-HP weighted healing; Djinn retains magic/physical single-target choices with absent-board fallback. Host supplies final stats and MAG; never alias these identities to slice enemies/bosses.
+- `wfm.rs` owns distinct WFM High Gobloc/Skeleton melee and ordinary Chimerilass/Djinn ranged definitions. Chimerilass retains half-HP weighted healing; Djinn retains magic/physical single-target choices with absent-board fallback. Their independent MAG/RES bases retain the authored WFM values, including Djinn 28/14 and Chimerilass 26/16. Host supplies final stats; never alias these identities to slice enemies/bosses.
 
 - Production `contain_bodies` constrains actor spawn, planning, travel, separation and displacement through `actor_floor`/`spawn_floor`, reserving the slice camera body bounds plus side gutters. Default false preserves the frozen reference hash and behaviour; include the enabled constraint in gameplay hashes. Hazard/ray geometry still uses the actual world floor.
 
 - `chest.rs` ports the slice side approach, footprint avoidance, nearest living opener, 0.6-second open and 2-second post-open beat. The host decides admission; chest code grants no rewards and imports no director. Default-empty chest state preserves frozen harness hashes.
+
+- `permanent.rs` owns atomic hero input replacement with expected/current revisions and R1 HP growth/clamp; downed HP stays zero. Preserve clocks, targets, ward, statuses and RNG. Committed action stats, source/recipient maximum HP and potency survive revisions; later actions use the replacement. Hash revision state without changing unrevised harness hashes. R6 changes passive meter refill only, preserving earned meter and hit gains.
+
+- Select offence and mitigation by the action/hit damage channel; impact elements remain presentation facts. Projectiles retain their launch channel. Phoenix and actor revival retain the recipient maximum from channel commitment, with the current maximum as the healing cap. Hazard construction reads live transient Elevate; Shadow landing combines committed permanent reach with live Wings. Passive aura/Mend ticks and incoming mitigation remain live.
+
+- Committed permanent inputs are consumed unconditionally for Basic/Cast actions after admission; revision equality never selects live permanent values. Elevate is transient and read live at impact, including damage and Wings reach. A mid-wind-up revision preserves source damage parameters while a newly gained Elevate applies immediately.

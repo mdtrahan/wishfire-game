@@ -148,3 +148,10 @@
 - Party deployment caps at four. Formation and Leader are retired (owner, 2026-11-01): no UI, meta or save contract remains; old saved formation/leader fields load and are ignored. Rust combat derives compact party-order slots and source travel offsets. Shared/runtime party-slot normalization clamps requested capacity to four.
 
 - `continuousCombatSubwaves.mjs` owns stage/wave/subwave `{key,count}` authoring and cohort cadence. Chapter 1 resolves all ten waves from existing seeded stage plans, preserving compositions, CP extras and checkpoint exclusions. Batches contain 3–5 enemies; a partial checkpoint may contain fewer. Queue state is encounter-local.
+
+- `heroPermanentInputs.mjs` binds live Rust actors to detached permanent meta transactions. Equipment/EXP refreshes route through that binding; live HP/stats come from Rust snapshots. `combatAuthorityDriver` coalesces the newest per-hero revision, submits contiguous commands before a step, and retains pending work until a matching ordered ack. Pauses retain revisions; recreation reads durable meta and starts fresh world revisions.
+- Host wave planning derives party CP from bound raw permanent inputs while Rust is live; snapshot-scaled HP and stale presentation stats cannot author the next enemy profile.
+
+- `attachHeroProgress` routes the entire attachment through a bound permanent-input transaction. HP and status resets belong to the detached draft while Rust owns the live actor; developer presets obey the same boundary.
+
+- Authority-driver diagnostic `read()` clones snapshots; use `isActive()` for lifecycle predicates. Idle steps build no revision command payloads. Legacy skill mutation/reset rejects actors bound to Rust.

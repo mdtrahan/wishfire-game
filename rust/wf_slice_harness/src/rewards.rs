@@ -9,7 +9,9 @@ impl Sim {
             if let Some(k) = hero_index(a.view.archetype) {
                 let base = HERO_STATS[k];
                 a.stats.atk = base.atk * attack;
+                a.stats.mag = a.stats.atk;
                 a.stats.def = ((DEF_BASE + base.def) * armor - DEF_BASE).max(0.);
+                a.stats.res = a.stats.def;
                 a.stats.reach = base.reach * b.range;
                 a.stats.interval = base.interval / b.attack_speed;
                 a.stats.special = base.special / b.attack_speed;

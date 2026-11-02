@@ -1,3 +1,4 @@
+import { routeHeroPermanentInputs, permanentHeroSource } from './heroPermanentInputs.mjs';
 import { HERO_DEFINITIONS, PROGRESSION, heroDefinition, heroKey } from './heroDefinitions.mjs';
 import { continuousCombatWavesForStage } from './continuousCombatProgressionRules.mjs';
 export const HERO_PROGRESS_VERSION=2;
@@ -9,7 +10,7 @@ export function levelStats(hero){
  for(const [stat,value] of Object.entries(hero.equipmentStats||{}))if(stat in stats)stats[stat]+=value;
  return Object.fromEntries(Object.entries(stats).map(([k,v])=>[k,Math.max(1,Math.floor(v))]));
 }
-export function refreshHeroStats(hero){const stats=levelStats(hero);hero.combatBaseMaxHP=stats.HP;hero.maxHP=Math.max(1,Math.floor(stats.HP*Number(hero.combatMaxHPMultiplier || 1)));delete stats.HP;hero.stats=stats;hero.maxLevel=heroDefinition(hero)?.maxLevel||PROGRESSION.maxLevel;hero.EXPToNextLevel=expToNextLevel(hero.currentLevel,{...PROGRESSION,maxLevel:hero.maxLevel});return hero;}
+export function refreshHeroStats(hero){if(routeHeroPermanentInputs(hero,refreshHeroStats))return hero;const stats=levelStats(hero);hero.combatBaseMaxHP=stats.HP;hero.maxHP=Math.max(1,Math.floor(stats.HP*Number(hero.combatMaxHPMultiplier || 1)));delete stats.HP;hero.stats=stats;hero.maxLevel=heroDefinition(hero)?.maxLevel||PROGRESSION.maxLevel;hero.EXPToNextLevel=expToNextLevel(hero.currentLevel,{...PROGRESSION,maxLevel:hero.maxLevel});return hero;}
 export function newHeroProgress(key,instanceKey=key){const definition=heroDefinition(key);if(!definition)throw new Error('Unknown hero: '+key);const hero={heroInstanceKey:instanceKey,baseHeroName:definition.key,name:definition.key,currentLevel:1,currentEXP:0,lampEXPClaimed:0,maxLevel:definition.maxLevel};refreshHeroStats(hero);hero.hp=hero.maxHP;return hero;}
 export function setHeroProgressLevel(store,level,partyEXP=0){
  if(!Number.isInteger(level)||level<1||level>PROGRESSION.maxLevel||!Number.isSafeInteger(partyEXP)||partyEXP<0)throw new Error('Invalid hero progression preset.');
@@ -20,6 +21,7 @@ export function setHeroProgressLevel(store,level,partyEXP=0){
  return store;
 }
 export function awardHeroEXP(hero,amount){
+ const routed=routeHeroPermanentInputs(hero,draft=>awardHeroEXP(draft,amount));if(routed)return routed.result;
  const before={level:hero.currentLevel,hp:hero.maxHP,stats:{...hero.stats},exp:Math.max(0,Number(hero.currentEXP||0)),expToNext:Math.max(0,Number(hero.EXPToNextLevel||0))};let exp=Math.max(0,Math.floor(Number(amount)||0));
  if(hero.currentLevel>=hero.maxLevel){hero.currentEXP=0;hero.EXPToNextLevel=0;return {hero:heroKey(hero),exp:0,fromLevel:before.level,toLevel:before.level,expBefore:before.exp,expAfter:0,expToNextBefore:before.expToNext};}
  hero.currentEXP+=exp;
@@ -68,11 +70,12 @@ export function createHeroProgressStore(snapshot){
 }
 function sanitizeRewardLedger(ledger){return Object.fromEntries(Object.entries(ledger&&typeof ledger==='object'?ledger:{}).filter(([,value])=>Number.isFinite(Number(value))&&Number(value)>=0).map(([id,value])=>[String(id),Number(value)]));}
 export function attachHeroProgress(actor,store){
+ if(routeHeroPermanentInputs(actor,draft=>attachHeroProgress(draft,store)))return actor;
  const key=heroKey(actor),id=actor.heroInstanceKey||key;
  const saved=store.heroes[id]||(store.heroes[id]=newHeroProgress(key,id));
  Object.assign(actor,{currentLevel:saved.currentLevel,currentEXP:saved.currentEXP,lampEXPClaimed:saved.lampEXPClaimed,maxLevel:saved.maxLevel,heroInstanceKey:id,equipmentStats:{...saved.equipmentStats}});for(const key of ['actionSlotsPerTurn','sp','spMax','flow','flowMode'])delete actor[key];refreshHeroStats(actor);actor.hp=Math.min(actor.maxHP,saved.hp);actor.statuses=[];return actor;
 }
-export function saveHeroProgress(actor,store){const id=actor.heroInstanceKey||heroKey(actor);store.heroes[id]={heroInstanceKey:id,equipmentStats:{...actor.equipmentStats},baseHeroName:heroKey(actor),name:heroKey(actor),currentLevel:actor.currentLevel,currentEXP:actor.currentEXP,lampEXPClaimed:actor.lampEXPClaimed||0,maxLevel:actor.maxLevel,hp:Math.min(actor.hp,actor.combatBaseMaxHP || actor.maxHP),maxHP:actor.combatBaseMaxHP || actor.maxHP,stats:{...actor.stats},EXPToNextLevel:actor.EXPToNextLevel};}
+export function saveHeroProgress(actor,store){const source=permanentHeroSource(actor);if(source)actor={...source,hp:actor.maxHP>0?actor.hp/actor.maxHP*source.maxHP:0};const id=actor.heroInstanceKey||heroKey(actor);store.heroes[id]={heroInstanceKey:id,equipmentStats:{...actor.equipmentStats},baseHeroName:heroKey(actor),name:heroKey(actor),currentLevel:actor.currentLevel,currentEXP:actor.currentEXP,lampEXPClaimed:actor.lampEXPClaimed||0,maxLevel:actor.maxLevel,hp:Math.min(actor.hp,actor.combatBaseMaxHP || actor.maxHP),maxHP:actor.combatBaseMaxHP || actor.maxHP,stats:{...actor.stats},EXPToNextLevel:actor.EXPToNextLevel};}
 export function settleBattleEXP(store,battle,heroes){
  if(battle.settled||store.settledBattles.includes(battle.id))return [];
  battle.settled=true;store.settledBattles.push(battle.id);store.settledBattles=store.settledBattles.slice(-100);

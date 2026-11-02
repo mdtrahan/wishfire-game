@@ -793,6 +793,7 @@ fn elevate_multiplies_party_basics_and_specials_by_25_percent() {
             let mut s = fixture(&[Archetype::Orc]);
             s.combat.actors[4].view.hp = 100000.;
             s.combat.actors[4].stats.def = 0.;
+            s.combat.actors[4].stats.res = s.combat.actors[4].stats.def;
             s.combat.actors[hero].view.elevate = if buffed {
                 Some(ElevateVariant::Sword)
             } else {
@@ -820,6 +821,7 @@ fn elevate_multiplies_party_basics_and_specials_by_25_percent() {
         s.combat.actors[4].view.pos = s.combat.actors[3].view.pos;
         s.combat.actors[4].view.hp = 100000.;
         s.combat.actors[4].stats.def = 0.;
+        s.combat.actors[4].stats.res = s.combat.actors[4].stats.def;
         s.combat.actors[3].view.elevate = if buffed {
             Some(ElevateVariant::Sword)
         } else {

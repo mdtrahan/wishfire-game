@@ -367,6 +367,7 @@ impl Sim {
         if actors::hero_index(kind).is_none() {
             stats.hp *= hp;
             stats.atk *= atk;
+            stats.mag = stats.atk;
         }
         stats
     }

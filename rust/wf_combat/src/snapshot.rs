@@ -234,13 +234,17 @@ impl Sim {
             }
         }
         h.u(self.actors.len() as u64);
+        let permanent_revised = self.actors.iter().any(|actor| actor.permanent_revision > 0);
+        if self.phoenix.hero.and_then(|id| self.actor_index(id)).is_some_and(|i| self.phoenix.target_max_hp != self.actors[i].view.max_hp) {
+            h.u(0x50484f454e49584d); h.f(self.phoenix.target_max_hp);
+        }
         for a in &self.actors {
             let v = &a.view;
             h.u(v.id as u64);
             h.u(v.team as u64);
             h.u(v.archetype as u64);
             if crate::wfm::is_wfm(v.archetype) {
-                h.f(a.wfm_magic);
+                h.f(a.stats.mag);
                 h.u(a.wfm_action as u64);
             }
             h.v(v.pos);
@@ -257,6 +261,14 @@ impl Sim {
             h.f(v.radius);
             h.f(v.scale);
             h.u(v.ai_intent as u64);
+            if permanent_revised || a.special_potency != 1. || a.meter_rate != 1. {
+                h.u(0x5245564953494f4e); h.u(a.permanent_revision);
+                h.f(a.special_potency); h.f(a.meter_rate); h.u(a.action_revision);
+                h.u(a.action_target_revision); h.f(a.action_target_max_hp);
+                for v in [a.action_stats.hp,a.action_stats.atk,a.action_stats.def,a.action_stats.mag,a.action_stats.res,a.action_stats.speed,
+                    a.action_stats.reach,a.action_stats.interval,a.action_stats.evade,a.action_stats.special,
+                    a.action_max_hp,a.action_potency] { h.f(v); }
+            }
             let s = a.stats;
             h.f(s.hp);
             h.f(s.atk);
@@ -266,6 +278,9 @@ impl Sim {
             h.f(s.interval);
             h.f(s.evade);
             h.f(s.special);
+            if s.mag != s.atk || s.res != s.def {
+                h.u(0x4348414e4e454c53); h.f(s.mag); h.f(s.res);
+            }
             h.v(a.velocity);
             h.f(a.formed_age);
             h.id(a.target);

@@ -56,6 +56,7 @@ mod tests {
             for a in &mut s.combat.actors[..4] {
                 a.view.pos = pos + Vec2::new(300., 0.);
                 a.stats.def = 1000.; // The transferred continuous damage ignores armor.
+                a.stats.res = a.stats.def;
                 a.view.ward = 0.;
             }
             let edge = AURA_RADIUS + s.combat.actors[0].view.radius;

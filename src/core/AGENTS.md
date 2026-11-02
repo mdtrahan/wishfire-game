@@ -9,7 +9,7 @@
 - Session level-up owns visible XP settlement only. Retired combat-card catalogs and offer queues have no production owner.
 
 ## Local Contracts
-- `combatShadowAdapter.mjs` explicitly maps all ten WFM enemy names to distinct Rust IDs; only WFM Troll maps to `slice.boss.troll_brute`. Unknown enemies fail before encounter creation. It projects already-resolved WFM stats against authored references onto pinned slice bases. Shadow ABI 1.0 projects each actor's primary channel into its single ATK/DEF pair; separate physical/magic mitigation awaits TDD-A A12. Never repeat level, equipment, training or star application here.
+- `combatShadowAdapter.mjs` explicitly maps all ten WFM enemy names to distinct Rust IDs; only WFM Troll maps to `slice.boss.troll_brute`. Unknown enemies fail before encounter creation. It projects already-resolved WFM stats against authored references onto pinned slice bases. Combat payloads carry independent ATK/DEF/MAG/RES. Actions choose their own physical or magic channel; no hero-primary-channel projection may discard Training or gear inputs. Never repeat level, equipment, training or star application here.
 - Keep rule modules deterministic and JSON-safe.
 - Do not import DOM, Canvas, localStorage, audio, Netlify, or browser globals into deterministic modules.
 - Speed-based interleaved initiative is canonical for normal combat; team-phase helpers are compatibility/shadow surfaces unless a bead explicitly changes the product decision.
@@ -52,3 +52,5 @@
 - Boss reach scales the melee envelope with the four-times footprint so supports at their ranged stop position remain eligible after frontline KO. Ordinary actor ranges and nearest/Provoke priority remain unchanged.
 
 - `partyFormationRules.mjs` and its browser mirror clamp party-slot capacity to four; presentation grid capacity never authorizes extra deployed actors.
+
+- Rust action definitions alone choose damage channels. Host combatant definitions carry no channel declarations or channel table.

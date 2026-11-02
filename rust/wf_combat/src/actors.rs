@@ -1,9 +1,17 @@
 use crate::{api::*, rng::Rng, tuning::*};
 #[derive(Clone, Debug)]
 pub struct Actor {
+    pub permanent_revision: u64,
+    pub special_potency: f32,
+    pub meter_rate: f32,
+    pub action_revision: u64,
+    pub action_target_revision: u64,
+    pub action_target_max_hp: f32,
+    pub action_stats: Stats,
+    pub action_max_hp: f32,
+    pub action_potency: f32,
     pub view: ActorView,
     pub stats: Stats,
-    pub wfm_magic: f32,
     pub wfm_action: u8,
     pub velocity: Vec2,
     pub formed_age: f32,
@@ -92,6 +100,13 @@ pub struct Actor {
     pub elevate_choice: Option<ElevateVariant>,
 }
 impl Actor {
+    pub fn has_committed_inputs(&self) -> bool {
+        self.action_epoch > 0 && matches!(self.view.state, ActorState::Basic | ActorState::Cast)
+    }
+    pub fn committed_stats(&self) -> Stats { if self.has_committed_inputs() { self.action_stats } else { self.stats } }
+    pub fn committed_max_hp(&self) -> f32 { if self.has_committed_inputs() { self.action_max_hp } else { self.view.max_hp } }
+    pub fn committed_potency(&self) -> f32 { if self.has_committed_inputs() { self.action_potency } else { self.special_potency } }
+
     pub fn enemy_poison_damage(&self) -> f32 {
         ENEMY_POISON_TICK_DAMAGE * self.poison_potency
     }
@@ -109,7 +124,8 @@ impl Actor {
             Vec2::default()
         };
         let mut actor = Self {
-            wfm_magic: stats.atk,
+            permanent_revision: 0, special_potency: 1., meter_rate: 1., action_revision: 0,
+            action_target_revision: 0, action_target_max_hp: 0., action_stats: stats, action_max_hp: stats.hp, action_potency: 1.,
             wfm_action: 0,
             view: ActorView {
                 id,
@@ -302,6 +318,9 @@ impl Actor {
     pub fn reach(&self) -> f32 {
         self.stats.reach * self.reach_scale()
     }
+    pub fn committed_reach(&self) -> f32 {
+        self.committed_stats().reach * if self.view.elevate == Some(ElevateVariant::Wings) { 1. + ELEVATE_RANGE_BONUS } else { 1. }
+    }
     pub fn reach_scale(&self) -> f32 {
         if self.view.elevate == Some(ElevateVariant::Wings) {
             1. + ELEVATE_RANGE_BONUS
@@ -316,8 +335,9 @@ impl Actor {
             self.stats.evade
         }
     }
-    pub fn defense(&self) -> f32 {
-        self.stats.def
+    pub fn defense(&self) -> f32 { self.defense_for(DamageChannel::Physical) }
+    pub fn defense_for(&self, channel: DamageChannel) -> f32 {
+        (match channel { DamageChannel::Physical => self.stats.def, DamageChannel::Magic => self.stats.res })
             * if self.view.elevate == Some(ElevateVariant::WingedBoots) {
                 1. + ELEVATE_DEF_BONUS
             } else {

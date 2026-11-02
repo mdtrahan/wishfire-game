@@ -12,3 +12,5 @@
 
 ## Child DOX Index
 - None.
+
+- Frozen slice inputs explicitly maintain `ATK=MAG` and `DEF=RES`, including stage/reward scaling and fixture overrides. Preserve every pinned trace/event row and existing assertion when extending production channels. Production-only projectile provenance is hashed by `wf_combat::state_hash`, outside the harness host hash stream.

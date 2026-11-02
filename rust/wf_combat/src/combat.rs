@@ -1,6 +1,7 @@
 use crate::{api::*, tuning::*, Sim};
 #[derive(Clone, Debug)]
 pub struct Projectile {
+    pub channel: DamageChannel,
     pub view: ProjectileView,
     pub source: u32,
     pub target: Option<u32>,
@@ -44,6 +45,12 @@ impl Sim {
         max_hp_fraction: Option<f32>,
         skip_evade: bool,
     ) -> f32 {
+        self.damage_limited_channel(source, target, raw, roll, mitigate, element, max_hp_fraction, skip_evade, element.damage_channel())
+    }
+    pub fn damage_limited_channel(
+        &mut self, source: u32, target: usize, raw: f32, roll: bool, mitigate: bool,
+        element: Element, max_hp_fraction: Option<f32>, skip_evade: bool, channel: DamageChannel,
+    ) -> f32 {
         if !self.actors[target].tangible() || self.actors[target].revive_immunity_steps > 0 {
             return 0.;
         }
@@ -61,7 +68,7 @@ impl Sim {
         let damage =
             raw * if mitigate {
                 DEF_BASE
-                    / ((DEF_BASE + a.defense()) * if rallied { RALLY_DEF_MULTIPLIER } else { 1. })
+                    / ((DEF_BASE + a.defense_for(channel)) * if rallied { RALLY_DEF_MULTIPLIER } else { 1. })
             } else {
                 1.
             } * if crit { CRIT_MULTIPLIER } else { 1. };
@@ -149,7 +156,7 @@ impl Sim {
     pub fn grant_ward(&mut self, i: usize) {
         let a = &mut self.actors[i];
         let amount =
-            (a.view.max_hp * WARD_FRACTION).min((a.view.max_hp * WARD_CAP - a.view.ward).max(0.));
+            (a.committed_max_hp() * WARD_FRACTION).min((a.committed_max_hp() * WARD_CAP - a.view.ward).max(0.));
         a.view.ward += amount;
         self.events.push(Event::WardGained {
             target: a.view.id,
@@ -253,8 +260,8 @@ impl Sim {
         }
         self.events.split(hero, center, start);
         let a = &self.actors[i];
-        let raw = a.stats.atk
-            * SPLIT_POTENCY
+        let raw = a.committed_stats().atk
+            * SPLIT_POTENCY * a.committed_potency()
             * if a.view.elevate == Some(ElevateVariant::Sword) {
                 1. + ELEVATE_BONUS
             } else {
@@ -326,6 +333,8 @@ impl Sim {
         if let Some(t) = target.and_then(|id| self.actor_index(id)) {
             self.actors[index].action_target_pos = self.actors[t].view.pos;
             self.actors[index].action_target_radius = self.actors[t].view.radius;
+            self.actors[index].action_target_revision = self.actors[t].permanent_revision;
+            self.actors[index].action_target_max_hp = self.actors[t].view.max_hp;
         }
         self.actors[index].action_target_teleported = false;
         self.actors[index].target = target;
@@ -337,6 +346,10 @@ impl Sim {
         a.action_done = false;
         a.action_heal = false;
         a.action_epoch += 1;
+        a.action_revision = a.permanent_revision;
+        a.action_stats = a.stats;
+        a.action_max_hp = a.view.max_hp;
+        a.action_potency = a.special_potency;
         a.action_special = special;
         a.action_extra = extra;
         a.action_pulse = pulse;
@@ -479,6 +492,7 @@ impl Sim {
         let id = self.next_id;
         self.next_id += 1;
         self.projectiles.push(Projectile {
+            channel: a.view.archetype.basic_channel(),
             view: ProjectileView {
                 id,
                 kind: if bomb {
@@ -526,6 +540,7 @@ impl Sim {
         let id = self.next_id;
         self.next_id += 1;
         self.projectiles.push(Projectile {
+            channel: DamageChannel::Physical,
             view: ProjectileView {
                 id,
                 kind: ProjectileKind::Bolt,
@@ -669,8 +684,8 @@ impl Sim {
             self.enemy_heal_impact(i);
         } else if a.action_revive {
             if let Some(t) = target {
-                let hp = self.actors[t].view.max_hp * REVIVE_HP;
-                self.revive_hero(t);
+                self.revive_hero_with_max(t, a.action_target_max_hp);
+                let hp = self.actors[t].view.hp;
                 self.events.push(Event::Healed {
                     target: self.actors[t].view.id,
                     amount: hp,
@@ -711,7 +726,7 @@ impl Sim {
         } else if a.action_extra && a.view.archetype == Archetype::Fara {
             self.taunt(i);
             let a = &mut self.actors[i];
-            let ward = a.view.ward.max(a.view.max_hp * WARCRY_WARD_FRACTION);
+            let ward = a.view.ward.max(a.committed_max_hp() * WARCRY_WARD_FRACTION);
             let amount = ward - a.view.ward;
             a.view.ward = ward;
             a.self_ward_steps = 0;
@@ -785,11 +800,11 @@ impl Sim {
                             to: self.actors[i].view.pos,
                             target: self.actors[t].view.id,
                         });
-                        let landed = self.damage(
+                        let landed = self.damage_limited_channel(
                             a.view.id,
                             t,
-                            a.stats.atk
-                                * SHADOW_POTENCY
+                            a.committed_stats().atk
+                                * SHADOW_POTENCY * a.committed_potency()
                                 * if a.view.elevate == Some(ElevateVariant::Sword) {
                                     1. + ELEVATE_BONUS
                                 } else {
@@ -797,11 +812,11 @@ impl Sim {
                                 },
                             true,
                             true,
-                            Element::Arcane,
+                            Element::Arcane, None, false, DamageChannel::Physical,
                         );
                         if landed > 0. {
                             let hondo = &mut self.actors[i];
-                            let amount = hondo.view.max_hp * SHADOW_WARD_FRACTION;
+                            let amount = a.committed_max_hp() * SHADOW_WARD_FRACTION;
                             hondo.view.ward = amount;
                             hondo.self_ward_steps = (SHADOW_WARD_SECONDS * SIM_HZ as f32) as u32;
                             self.events.push(Event::WardGained {
@@ -816,7 +831,7 @@ impl Sim {
         } else if is_boss(a.view.archetype) {
             self.boss_basic_impact(i);
         } else if let Some(t) = target.filter(|t| self.actors[*t].alive()) {
-            let raw = a.stats.atk
+            let raw = a.committed_stats().attack(a.view.archetype.basic_channel())
                 * if a.view.elevate == Some(ElevateVariant::Sword) {
                     1. + ELEVATE_BONUS
                 } else {
@@ -965,7 +980,7 @@ impl Sim {
                     crate::bound::caught_projectile(self, id, t);
                 }
                 p.age = PROJECTILE_LIFETIME;
-                let loss = self.damage_limited(
+                let loss = self.damage_limited_channel(
                     p.source,
                     t,
                     p.damage,
@@ -979,7 +994,7 @@ impl Sim {
                         Element::Arcane
                     },
                     p.boss_basic.then_some(BOSS_BASIC_MAX_HP),
-                    p.hit_hazard.is_some(),
+                    p.hit_hazard.is_some(), p.channel,
                 );
                 if loss > 0. && p.skill.is_none() && p.view.team == Team::Hero {
                     self.basic_groove(p.source);

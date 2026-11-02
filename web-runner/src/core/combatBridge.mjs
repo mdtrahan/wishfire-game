@@ -9,10 +9,10 @@ export function createCombatBridge(instance) {
   }
   const encoder = new TextEncoder();
   const decoder = new TextDecoder('utf-8', { fatal: true });
-  let nextRequest = 0n;
+  let nextRequest = 0n, revisionSupport;
   function call(operation, requestId = String(++nextRequest)) {
     const input = encoder.encode(JSON.stringify({
-      schema: { major: 1, minor: 0 }, request_id: requestId, operation,
+      schema: { major: 1, minor: operation.data?.request?.commands?.length ? 1 : 0 }, request_id: requestId, operation,
     }, (_, value) => typeof value === 'bigint' ? value.toString() : value));
     const ptr = wasm.wf_input_alloc(input.length) >>> 0;
     if (!ptr) throw new Error('Combat input allocation rejected');
@@ -44,7 +44,13 @@ export function createCombatBridge(instance) {
     call,
     describe: () => call({ kind: 'describe', data: {} }),
     create: config => call({ kind: 'create', data: { config } }),
-    step: (world, request) => call({ kind: 'step', data: { world, request } }),
+    step: (world, request) => {
+      if (request.commands?.length) {
+        revisionSupport ??= call({ kind: 'describe', data: {} }).capabilities.includes('replace_permanent_inputs_v1');
+        if (!revisionSupport) throw new Error('Combat ABI lacks replace_permanent_inputs_v1');
+      }
+      return call({ kind: 'step', data: { world, request } });
+    },
     waveChest: (world, encounter_id) => call({ kind: 'wave_chest', data: { world, encounter_id } }),
     ordinaryClear: (world, encounter_id, transition_id) => call({ kind: 'ordinary_clear', data: { world, encounter_id, transition_id } }),
     end: (world, encounter_id, expected_previous_step, reason) => call({ kind: 'step', data: { world, request: { encounter_id, expected_previous_step, end_encounter: reason } } }),

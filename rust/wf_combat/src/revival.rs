@@ -3,6 +3,7 @@ use crate::{tuning::*, *};
 
 #[derive(Default)]
 pub struct Phoenix {
+    pub target_max_hp: f32,
     pub held: Option<u32>,
     pub hero: Option<u32>,
     pub steps: u32,
@@ -61,6 +62,7 @@ impl Sim {
             self.cancel_phoenix();
             if let Some(hero) = held {
                 self.phoenix.hero = Some(hero);
+                self.phoenix.target_max_hp = self.actors[self.actor_index(hero).unwrap()].view.max_hp;
                 self.events.push(Event::PhoenixBegan { hero });
             }
         }
@@ -69,10 +71,10 @@ impl Sim {
             if self.phoenix.steps >= (REVIVE_CHANNEL * SIM_HZ as f32).round() as u32 {
                 let i = self.actor_index(hero).unwrap();
                 self.phoenix.hero = None;
-                self.revive_hero(i);
+                self.revive_hero_with_max(i, self.phoenix.target_max_hp);
                 self.events.push(Event::Healed {
                     target: hero,
-                    amount: self.actors[i].view.max_hp * REVIVE_HP,
+                    amount: self.actors[i].view.hp,
                     source: crate::HealSource::Phoenix,
                 });
                 self.events.push(Event::PhoenixCompleted { hero });
@@ -113,12 +115,16 @@ impl Sim {
     }
 
     pub fn revive_hero(&mut self, i: usize) {
+        self.revive_hero_with_max(i, self.actors[i].view.max_hp);
+    }
+
+    pub fn revive_hero_with_max(&mut self, i: usize, committed_max: f32) {
         if self.phoenix.hero == Some(self.actors[i].view.id) {
             self.cancel_phoenix();
         }
         let a = &mut self.actors[i];
         a.clear_ailments();
-        a.view.hp = a.view.max_hp * REVIVE_HP;
+        a.view.hp = (committed_max * REVIVE_HP).min(a.view.max_hp);
         a.undamaged = 0.;
         a.revive_progress = 0.;
         a.revive_grace = 0.;

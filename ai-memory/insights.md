@@ -26,6 +26,8 @@
 - Reframe before implementation when acceptance language implies persistent timed stat stacks (`ORKA-9ri`, `ORKA-zih`, residual wording in `ORKA-69r`).
 
 ## Regression Triggers
+- Guard generic developer dispatchers alongside named fixtures when Rust owns live combat. A guarded fixture leaves every mutating registry handler reachable through an unrestricted raw dispatcher.
+- Rust actor snapshots use projected combat HP and retain presentation-side stat copies. Permanent progression and ordinary-clear saves must use the bound raw meta source; copying the live actor can silently overwrite newly saved equipment/level stats before the next revision.
 - Rust bridge additions can pull serialization and simulation code into shipped WASM; compare raw/gzip size, supported exports and seeded results before accepting release-profile changes.
 - Task resource ownership needs a checkout creation identity; reused paths and repository-wide ref changes require explicit attribution. Optional synchronous hooks need an outer deadline that also bounds filesystem work.
 - A Hero screen that cycles over all progression records can display combat `*#1` copies as duplicate unequipped heroes. Resolve the canonical player roster before reading loadouts; verify a second full navigation cycle with real combat copies present. Auto must preserve every existing hero/slot except its positive-CP replacement, and equipped gear never becomes another hero's candidate.
@@ -688,3 +690,6 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Combat floor boundaries define movement; HUD rectangles define paint order. Clipping a combat pass to an unobstructed HUD gap crops procedural spells and moving actors. Deferred spawn markers must reserve host identities and count toward cadence, clear gates, capacity and deterministic hashes until emergence. Chest admission belongs to the host; movement and opening belong to combat, with reward mutation separately excluded.
 
 - Performance regression gates need metric-specific absolute floors alongside relative thresholds. Repeated page/frame samples expose noise through median and min/max overlap; incomplete evidence must still fail closed. Cache baseline failures by exact source SHA and pin probe reuse to the measured scenario.
+- Permanent-input revisions must preserve every committed source/recipient parameter at delayed impact. Audit autonomous channels and hazard construction alongside actor casts; carry all offensive/defensive channels before signature comparison, and hash host rounding inputs plus command/receipt state.
+
+- Revision callbacks must sit behind changed permanent inputs. Render-time equipment sync can revisit every actor each frame; routing an unchanged detached copy can clone full Rust snapshots and rebuild payload signatures. Verify zero clone/revision work on unchanged syncs, alongside a real gear change. Transient slice buffs retain live-impact semantics while permanent parameters use commitment snapshots.

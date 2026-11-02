@@ -81,7 +81,7 @@ impl Sim {
                 self.damage(
                     a.view.id,
                     t,
-                    if magic { a.wfm_magic } else { a.stats.atk },
+                    a.committed_stats().attack(if magic { DamageChannel::Magic } else { DamageChannel::Physical }),
                     true,
                     true,
                     if magic {
@@ -98,13 +98,13 @@ impl Sim {
             3 => (5., -2., 3.),
             _ => (6., -3., 4.),
         };
-        let base = libm::floorf(a.wfm_magic * 0.5).max(1.);
+        let base = libm::floorf(a.committed_stats().mag * 0.5).max(1.);
         let min = (base + low).max(floor);
         let max = (base + high).max(min);
         let rolled = min + libm::floorf(self.actors[i].ai_rng.range(0., 1.) * (max - min + 1.));
         let crit = self.actors[i].ai_rng.range(0., 1.) <= 0.1;
-        let multiplier = if a.wfm_magic > 0. {
-            (1. + a.wfm_magic / 10.).min(3.)
+        let multiplier = if a.committed_stats().mag > 0. {
+            (1. + a.committed_stats().mag / 10.).min(3.)
         } else {
             1.1
         };
@@ -156,7 +156,7 @@ mod tests {
             tuning::stats(Archetype::Fara),
         );
         sim.spawn_actor(kind, Vec2::new(480., 1050.), tuning::stats(kind));
-        sim.actors[1].wfm_magic = 26.;
+        sim.actors[1].stats.mag = 26.;
         sim
     }
     #[test]
@@ -195,4 +195,36 @@ mod tests {
         assert_eq!(choices, [true, true]);
         assert!(sim.hazards.is_empty());
     }
+    #[test]
+    fn djinn_selects_offence_and_defence_by_each_actions_channel() {
+        for action in [0, 1] {
+            let mut sim = world(Archetype::WfmDjinn);
+            sim.actors[0].stats.def = 100.;
+            sim.actors[0].stats.res = 300.;
+            sim.actors[0].stats.evade = 0.;
+            sim.actors[1].stats.atk = 8.;
+            sim.actors[1].stats.mag = 80.;
+            sim.wfm_start_action(1, 0);
+            sim.actors[1].wfm_action = action;
+            let before = sim.actors[0].view.hp;
+            sim.wfm_impact(1, Some(0));
+            let loss = before - sim.actors[0].view.hp;
+            let expected = if action == 0 { 4. } else { 20. };
+            assert!(loss == expected || loss == expected * crate::tuning::CRIT_MULTIPLIER);
+        }
+    }
+
+    #[test]
+    fn ported_enemy_magic_and_resistance_retain_authored_wfm_values() {
+        for (kind, mag, res) in [
+            (Archetype::WfmHighGobloc, 8., 12.),
+            (Archetype::WfmSkeleton, 4., 4.),
+            (Archetype::WfmChimerilass, 26., 16.),
+            (Archetype::WfmDjinn, 28., 14.),
+        ] {
+            let stats = tuning::stats(kind);
+            assert_eq!((stats.mag, stats.res), (mag, res));
+        }
+    }
+
 }

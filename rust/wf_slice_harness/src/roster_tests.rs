@@ -121,6 +121,7 @@ fn gloamink_landed_hits_apply_standard_poison_including_ward_absorption() {
         s.combat.actors.remove(4);
         s.combat.actors[target].view.ward = 0.;
         s.combat.actors[target].stats.def = 100000.;
+        s.combat.actors[target].stats.res = s.combat.actors[target].stats.def;
         let hp = s.combat.actors[target].view.hp;
         s.combat.events.clear();
         for _ in 0..5 * SIM_HZ {
@@ -199,6 +200,7 @@ fn all_enemy_poison_is_flat_across_tiers_cycles_and_outer_waves_while_hits_scale
             // Once landed, poison ignores DEF/evade, survives source loss and spends ward first.
             s.combat.actors.remove(4);
             s.combat.actors[0].stats.def = 100_000.;
+            s.combat.actors[0].stats.res = s.combat.actors[0].stats.def;
             s.combat.actors[0].stats.evade = 1.;
             s.combat.actors[0].view.ward = 6.;
             let hp = s.combat.actors[0].view.hp;
@@ -301,6 +303,7 @@ fn mirewing_spit_is_straight_interceptable_and_poison_ticks_five_times_after_sou
     assert_eq!(s.combat.actors[3].view.poisoned, 0.);
     let hp = s.combat.actors[0].view.hp;
     s.combat.actors[0].stats.def = 100000.;
+    s.combat.actors[0].stats.res = s.combat.actors[0].stats.def;
     s.combat.events.clear();
     for _ in 0..150 {
         s.combat.enemy_statuses();
@@ -781,6 +784,7 @@ fn measure_fizzmite_trigger_rate(first_six: bool) {
                             kind => stats(kind).atk,
                         };
                         a.stats.atk = base_atk * [1., 2., 1.78][(s.stage.tier - 1) as usize];
+                        a.stats.mag = a.stats.atk;
                     }
                     if baseline {
                         match a.view.archetype {
@@ -793,6 +797,7 @@ fn measure_fizzmite_trigger_rate(first_six: bool) {
                             Archetype::Gloamink => {
                                 a.stats.hp *= 45. / stats(Archetype::Gloamink).hp;
                                 a.stats.atk *= 16. / stats(Archetype::Gloamink).atk;
+                                a.stats.mag = a.stats.atk;
                                 a.view.hp = a.stats.hp;
                                 a.view.max_hp = a.stats.hp;
                             }

@@ -1,3 +1,4 @@
+import {routeHeroPermanentInputs,permanentHeroSource} from '../src/core/heroPermanentInputs.mjs';
 import {lampHeroRoster} from '../src/core/lampHeroRoster.mjs';
 import {CONVEYOR_TRAVEL_MS,conveyorItemAge,validateConveyorState,emitConveyorItem,collectConveyorItem,classifyConveyorCache,equipConveyorItem,planConveyorAutoEquip,queueConveyorDisposal,conveyorDisposalPreview,dismantleConveyorItems} from '../src/core/lampConveyor.mjs';
 import {equipmentStats} from '../src/core/equipment.mjs';
@@ -67,19 +68,29 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,checkpo
   record=next;globals.goldTotal=record.gold;appliedGold=record.gold;globals.Equipment=record;globals.SettledGoldRewardReceipts=[...record.settledGoldRewards];globals.LampStorageError='';
   const pending=globals.PendingGoldSettlements&&typeof globals.PendingGoldSettlements==='object'?globals.PendingGoldSettlements:{};
   globals.PendingGoldSettlements=Object.fromEntries(Object.entries(pending).filter(([id])=>!record.settledGoldRewards.includes(String(id))));
-  for(const hero of [...Object.values(globals.HeroProgress?.heroes||{}),...getActors().filter(a=>a.kind==='hero')]){
-   const exp=record.partyEXP-(hero.lampEXPClaimed||0);
-   if(exp>0){awardHeroEXP(hero,exp);hero.lampEXPClaimed=record.partyEXP;globals.HeroProgressDirty=true;}
+  for(const hero of [...getActors().filter(a=>a.kind==='hero'),...Object.values(globals.HeroProgress?.heroes||{})]){
+   const source=permanentHeroSource(hero)||hero,stats=heroEquipmentStats(source);
+   const previous=source.equipmentStats||{};
+   if(record.partyEXP>(source.lampEXPClaimed||0)||Object.keys(stats).some(key=>stats[key]!==previous[key])||Object.keys(previous).some(key=>previous[key]!==stats[key])){
+    if(!routeHeroPermanentInputs(hero,draft=>applyHero(draft,stats)))applyHero(hero,stats);
+   }
+   hero.combatPower=computeCombatPower(permanentHeroSource(hero)||hero);
+  }
+  if(globals.HeroProgressDirty)persistProgress();
+ }
+ function heroEquipmentStats(hero){
    const canonical=hero.baseHeroName;
    const primary=hero.heroInstanceKey===canonical||hero.heroInstanceKey===`${canonical?.toLowerCase()}#1`;
-   const stats=equipmentStats(record.items,record.loadouts[hero.heroInstanceKey]??(primary?record.loadouts[canonical]:undefined));
+   return equipmentStats(record.items,record.loadouts[hero.heroInstanceKey]??(primary?record.loadouts[canonical]:undefined));
+ }
+ function applyHero(hero,stats){
+   const exp=record.partyEXP-(hero.lampEXPClaimed||0);
+   if(exp>0){awardHeroEXP(hero,exp);hero.lampEXPClaimed=record.partyEXP;globals.HeroProgressDirty=true;}
    if(JSON.stringify(hero.equipmentStats||{})!==JSON.stringify(stats)){
     const beforeMaxHp=hero.maxHP,beforeHp=hero.hp;
     hero.equipmentStats=stats;refreshHeroStats(hero);hero.hp=fillGearMaxHpGrowth(beforeHp,beforeMaxHp,hero.maxHP);globals.HeroProgressDirty=true;
    }
    hero.combatPower=computeCombatPower(hero);
-  }
-  if(globals.HeroProgressDirty)persistProgress();
  }
  async function transact(change){
   if(globals.HeroProgressStorageError&&(Object.keys(globals.PendingGoldSettlements||{}).length||Object.keys(globals.HeroProgress?.pendingBagKillRewards||{}).length))throw new Error('Pending rewards need a saved HeroProgress receipt.');

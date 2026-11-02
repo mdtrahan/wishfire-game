@@ -63,7 +63,7 @@
 - `combatBridge.test.mjs` instantiates the rebuilt WASM in Node and proves deterministic fights, exact step rejection, host bounds, handle generations, malformed inputs, capacity limits and zero retained input/response/world allocations after teardown.
 
 ## Work Guidance
-- `combatShadowAdapter.test.mjs` pins slice bases, primary-channel ABI limits, WFM-resolved progression, cadence and checkpoint HP. `combatShadowDriver.test.mjs` drives real WASM through frozen host observations, batched spawns, pause/error/end teardown and flag-off lazy-loading refusal. Extracted app-tick fixtures supply the optional shadow controller.
+- `combatShadowAdapter.test.mjs` pins slice bases, independent ATK/DEF/MAG/RES channels, WFM-resolved progression, cadence and checkpoint HP. `combatShadowDriver.test.mjs` drives real WASM through frozen host observations, batched spawns, pause/error/end teardown and flag-off lazy-loading refusal. Extracted app-tick fixtures supply the optional shadow controller.
 - Name new tests after the behavior or contract, not the implementation detail alone.
 - For bug/regression beads, add the smallest test that fails for the old behavior and protects the intended owner.
 - Update fixture tests and CSV data together.
@@ -261,3 +261,10 @@
 - Rust combat regressions cover party-order Phoenix despite sparse saved formation, four-hero admission/deployment, body containment in the full-height floor under UI, hero-only Elevate, encasement removal/death/expiry and source pop duration, snapshot-exact bomb removal and cleared boss-tail objects. Stationary world Y and draw Y must remain equal across another hero's movement in the fixed camera.
 
 - Rust subwave proof checks all Chapter 1 compositions, exact cohort thresholds, checkpoint identities, pending marker reservations and source emergence. Chest tests reject early ABI spawn, verify approach/open/post-open timing and assert unchanged reward receipts and hero stats. Native-DPR capture runs through `tools/qa_rust_combat_playtest2.mjs`.
+
+- `combatPermanentInputs.test.mjs` compares native/WASM revision traces and checks atomic rejection, coalescing, ordered acks, pause, HP growth/shrink and downed state. `rustCombatAuthority.test.mjs` reproduces live HP gear (75→125 host, 420→700 Rust), reload before ack, raw-meta saving, EXP, ticket-funded levels and Training without live JS HP/stat writes.
+
+- `combatRevisionVerifier.test.mjs` retains the independent host probe with before-fix evidence in `combatRevisionVerifier.before.json`. Assert zero live HP/maxHP/stats/status writes for developer levels and each paid Training channel reaching real WASM. Permanent-input tests cover Phoenix commitment growth/shrink, marker materialization, independent incoming mitigation and hash divergence for differing accepted inputs.
+
+- Permanent-input proof includes zero clones/revisions across unchanged render-time equipment syncs, routed/restored QA SPD, explicit Rust HP-fixture refusal, host definitions without channels and Lizardo's Rust magic basic. Native tests distinguish captured permanent power from live Elevate gained/lost during wind-up; frozen trace fixtures stay untouched.
+- Developer-hook contracts reject every raw legacy dispatch under Rust authority before the registry can change HP, stats, statuses or ward; flag-off dispatch stays supported.

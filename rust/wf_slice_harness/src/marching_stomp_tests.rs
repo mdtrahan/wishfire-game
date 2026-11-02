@@ -133,6 +133,7 @@ fn uncovered_pattern_never_spends_energy_on_a_stomp() {
 fn enrage_enlarges_each_radius_fill_damage_far_gate_and_wall_truncation() {
     let mut s = fixture();
     s.combat.actors[4].stats.atk = 100.;
+    s.combat.actors[4].stats.mag = s.combat.actors[4].stats.atk;
     s.combat.spawn_marching_stomp(4, 0);
     let base = s.combat.hazards[0].clone();
     s.combat.hazards.clear();
@@ -168,6 +169,7 @@ fn circles_resolve_independently_in_order_with_no_linger() {
     for k in 0..4 {
         s.combat.actors[k].view.pos = Vec2::new(480., 1006. + 120. * k as f32);
         s.combat.actors[k].stats.def = 0.;
+        s.combat.actors[k].stats.res = s.combat.actors[k].stats.def;
     }
     s.combat.spawn_marching_stomp(4, 3);
     let ids: Vec<_> = s.combat.hazards.iter().map(|h| h.view.id).collect();

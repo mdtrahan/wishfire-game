@@ -21,8 +21,14 @@ impl Sim {
         if !self.actors[target].alive() || self.actors[target].view.team != Team::Hero {
             return;
         }
+        let potency = self.actors[caster].committed_potency();
+        let source = &self.actors[caster];
+        let max_hp = if source.target == Some(self.actors[target].view.id)
+            && source.view.state == ActorState::Cast && source.has_committed_inputs() {
+            source.action_target_max_hp
+        } else { self.actors[target].view.max_hp };
         let a = &mut self.actors[target];
-        let amount = (a.view.max_hp * SUPER_HEAL_FRACTION).min((a.view.max_hp - a.view.hp).max(0.));
+        let amount = (max_hp * SUPER_HEAL_FRACTION * potency).min((a.view.max_hp - a.view.hp).max(0.));
         if amount <= 0. {
             return;
         }

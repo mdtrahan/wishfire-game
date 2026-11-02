@@ -39,7 +39,7 @@ impl Sim {
                 _ => None,
             };
             if let Some((seconds, cap)) = passive {
-                a.view.meter = (a.view.meter + SIM_DT / seconds).min(cap);
+                a.view.meter = (a.view.meter + SIM_DT * a.meter_rate / seconds).min(cap);
             }
             if a.alive() && a.view.archetype == Archetype::Kaja {
                 a.view.groove_active = if a.view.groove_active <= SIM_DT + 0.00001 {
@@ -310,7 +310,7 @@ impl Sim {
             return None;
         }
         let angle = libm::atan2f(a.view.pos.y - e.view.pos.y, a.view.pos.x - e.view.pos.x);
-        let radius = a.view.radius + e.view.radius + a.reach() * 0.6;
+        let radius = a.view.radius + e.view.radius + a.committed_reach() * 0.6;
         let turns: &[f32] = if staged {
             &[
                 COMBO_TURN,

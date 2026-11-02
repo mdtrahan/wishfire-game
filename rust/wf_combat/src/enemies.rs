@@ -170,7 +170,7 @@ impl Sim {
             a.target,
             a.action_target_pos,
             false,
-            a.stats.atk * MIREWING_ROUND_DAMAGE,
+            a.committed_stats().attack(a.view.archetype.basic_channel()) * MIREWING_ROUND_DAMAGE,
             None,
         );
         self.actors[i].enemy_phase += 1;

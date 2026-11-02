@@ -1309,6 +1309,7 @@ fn boss_spends_one_charge_and_recharges_only_after_resolution() {
     for a in &mut s.combat.actors {
         a.view.pos = TRIAL_ORIGIN;
         a.stats.atk = 0.;
+        a.stats.mag = a.stats.atk;
         // Isolate the uninterrupted energy cycle from hero knockback/stagger retries.
         a.special_cd = 10000.;
         a.extra_cd = 10000.;
@@ -1318,6 +1319,7 @@ fn boss_spends_one_charge_and_recharges_only_after_resolution() {
     let id = s.spawn_actor(Archetype::Boss, TRIAL_ORIGIN + Vec2::new(0., -280.));
     let b = s.combat.actor_index(id).unwrap();
     s.combat.actors[b].stats.atk = 0.;
+    s.combat.actors[b].stats.mag = s.combat.actors[b].stats.atk;
     s.combat.actors[b].view.hp = 100000.;
     s.director.boss = Some(id);
     let mut resolved = None;
@@ -1645,10 +1647,12 @@ fn specials_relocate_after_telegraphs_without_attacking() {
         for a in &mut s.combat.actors {
             a.view.pos = TRIAL_ORIGIN;
             a.stats.atk = 0.;
+            a.stats.mag = a.stats.atk;
         }
         let id = s.spawn_actor(kind, TRIAL_ORIGIN + Vec2::new(0., -300.));
         let i = s.combat.actor_index(id).unwrap();
         s.combat.actors[i].stats.atk = 0.;
+        s.combat.actors[i].stats.mag = s.combat.actors[i].stats.atk;
         s.combat.actors[i].view.hp = 100000.;
         let mut relocating = false;
         let mut moved = false;
@@ -2311,6 +2315,7 @@ fn live_enraged_lengths_reach_the_walkable_wall() {
                 for a in &mut s.combat.actors {
                     if a.view.team == Team::Hero {
                         a.stats.atk = 0.;
+                        a.stats.mag = a.stats.atk;
                         a.view.hp = 100000.;
                     } else if is_boss(a.view.archetype) {
                         a.view.hp = a.view.max_hp * 0.2;

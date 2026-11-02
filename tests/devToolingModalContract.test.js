@@ -227,6 +227,32 @@ test('debug gem diagnostics do not mutate timing samples unless explicitly reque
 });
 
 
+test('raw browser function hook refuses every legacy dispatch under Rust authority', () => {
+  const vm = require('node:vm');
+  const src = fs.readFileSync(path.join(__dirname, '../web-runner/systems/devBrowserTestHooks.js'), 'utf8')
+    .replace(/^import .*;$/gm, '').replace(/^export /gm, '');
+  const context = vm.createContext({ window: { location: { search: '' } }, URLSearchParams });
+  vm.runInContext(src, context);
+  const state = { globals: { RustCombatAuthority: true }, entities: [{ uid: 1, hp: 420, stats: { DEF: 28 }, statuses: [], ward: 20 }] };
+  const before = structuredClone(state);
+  const calls = [];
+  context.registerDevBrowserTestHooks({ state, gameState: {}, callFunctionWithContext: (_, name, ...args) => {
+    calls.push([name, ...args]);
+    state.entities[0].hp = 1;
+    return 'dispatched';
+  } });
+  for (const name of ['ApplyDamageToTarget', 'HealRealtimeActor', 'ApplyPartyDamage', 'TickRealtimeHeroBasics',
+    'Enemy_Heal_Self', 'Enemy_Heal_Allies', 'Enemy_Heal_Ally', 'Enemy_Drain_Buff', 'Enemy_Wipe',
+    'TryPartyDestiny', 'ApplyActiveHeroHeal', 'ExecutePurpleDebuff', 'StartBuffRoll', 'futureLegacyHandler']) {
+    assert.throws(() => context.window.__codexGame.callFunction(name, 1, 50), /not supported in Rust encounters/);
+  }
+  assert.deepEqual(calls, []);
+  assert.deepEqual(state, before, 'rejection cannot mutate live actor state');
+  state.globals.RustCombatAuthority = false;
+  assert.equal(context.window.__codexGame.callFunction('ApplyDamageToTarget', 1, 50), 'dispatched');
+  assert.deepEqual(calls, [['ApplyDamageToTarget', 1, 50]]);
+});
+
 test('combat end clears staged dev overrides while preserving gold', () => {
   const vm = require('node:vm');
   const src = fs.readFileSync(path.join(__dirname, '../web-runner/systems/devToolingRuntime.js'), 'utf8')
@@ -269,7 +295,8 @@ test('Speed Link Fixture uses the existing dev selector to force one two-times-S
     .replace(/^import .*;$/gm, '')
     .replace(/export \{[\s\S]*?\};/, '')
     .replace('export function createDevToolingRuntime', 'function createDevToolingRuntime');
-  const context = vm.createContext({ window: { addEventListener() {}, sessionStorage: { setItem() {} } }, document: { getElementById: () => null }, normalizeCombatOrientation: () => 'left-wise' });
+  const { routeHeroPermanentInputs, permanentHeroSource } = await import('../web-runner/src/core/heroPermanentInputs.mjs');
+  const context = vm.createContext({ routeHeroPermanentInputs, permanentHeroSource, window: { addEventListener() {}, sessionStorage: { setItem() {} } }, document: { getElementById: () => null }, normalizeCombatOrientation: () => 'left-wise' });
   vm.runInContext(src, context);
   const state = { globals: { CombatOrientation: 'left-wise', DevToolingConfig: {} }, entities: [
     { uid: 1, kind: 'hero', name: 'Hondo', hp: 40, stats: { SPD: 11 } },
