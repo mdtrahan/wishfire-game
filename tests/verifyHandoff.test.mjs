@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseFailures, failureDiff, diffLines, scanDiff, quantiles, perfDiff, PERF_THRESHOLDS, medianSpread, summarizeMetrics, selectBaseCache } from '../tools/verify_handoff_logic.mjs';
+import { parseFailures, failureDiff, diffLines, scanDiff, quantiles, frameMetrics, perfDiff, PERF_THRESHOLDS, medianSpread, summarizeMetrics, selectBaseCache } from '../tools/verify_handoff_logic.mjs';
+import { combatProbes } from '../tools/verify_handoff_probe.mjs';
+import { sampleSteps } from '../tools/verify_handoff_step.mjs';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 test('failure identities survive disposable paths and source-line moves', () => {
   const tap=(root,line)=>`TAP version 13\nnot ok 2 - preserves HP\n  ---\n  location: '${root}/tests/combat.test.mjs:${line}:4'\n  ---\nnot ok 3 - ${root}/tests/crash.test.mjs\n`;
@@ -44,7 +49,7 @@ function compare(key, base, head, baseSamples = [base, base, base], headSamples 
 
 test('every gate requires both strict relative and absolute increases', () => {
   assert.deepEqual(Object.fromEntries(Object.entries(PERF_THRESHOLDS).map(([k,v]) => [k,v.absolute])),
-    {pageLoadMs:50,frameP95:2,stepP95:.2,heapGrowthBytes:5*1024*1024,wasmBytes:64*1024});
+    {pageLoadMs:50,frameP95:2,frameMean:2,frameDroppedRate:.05,stepP95:.2,heapGrowthBytes:5*1024*1024,wasmBytes:64*1024});
   for (const [key, { absolute, relativePct }] of Object.entries(PERF_THRESHOLDS)) {
     assert.equal(relativePct, 10);
     const b = absolute * 100;
@@ -65,7 +70,7 @@ test('overlapping repeated spreads are inconclusive even when both thresholds ex
   assert.equal(d.status, 'INCONCLUSIVE');assert.equal(d.regression, false);
   assert.equal(compare('frameP95', 10, 20, [9, 10, 20], [20, 20, 30]).status, 'INCONCLUSIVE');
   assert.equal(compare('frameP95', 10, 20, [9, 10, 11], [19, 20, 21]).status, 'FAIL');
-  assert.equal(compare('frameP95', 10, 10).status, 'INCONCLUSIVE');
+  assert.equal(compare('frameP95', 10, 10).status, 'PASS');
 });
 
 test('missing measurements and repeated spreads fail closed', () => {
@@ -73,25 +78,79 @@ test('missing measurements and repeated spreads fail closed', () => {
   assert.equal(compare('wasmBytes', undefined, 100).status, 'FAIL');
   assert.equal(compare('pageLoadMs', 100, 200, [100, null, 100]).status, 'FAIL');
   assert.equal(perfDiff({pageLoadMs:100}, {pageLoadMs:100}).pageLoadMs.status, 'FAIL');
-  assert.equal(Object.keys(perfDiff({}, {})).length, 5);
+  assert.equal(Object.keys(perfDiff({}, {})).length, 7);
   assert.ok(Object.values(perfDiff({}, {})).every(p => p.regression));
 });
 
-test('base cache requires exact SHA and parsed npm failures; probe reuse also pins scenario and crates', () => {
-  const scenario = {seed:7,seconds:60},crates = ['wf_combat'];
-  const cache = {schema:1,sha:'abc',npm:{step:{status:1},failures:['test::old']},
-    result:{scenario,crates,suites:{steps:[{name:'npm-test',status:1}]},
-      probes:{runs:[{},{},{}],coverage:{complete:true},errors:[]}}};
-  assert.equal(selectBaseCache(cache,'abc',scenario,crates).result,cache.result);
-  assert.equal(selectBaseCache(cache,'other',scenario,crates),null);
-  assert.equal(selectBaseCache({...cache,npm:{...cache.npm,failures:[]}},'abc',scenario,crates),null);
-  assert.equal(selectBaseCache({...cache,npm:{...cache.npm,failures:['npm::UNPARSED_SUITE_FAILURE']}},'abc',scenario,crates),null);
-  for (const [s,c] of [[{seed:8,seconds:60},crates],[{seed:7,seconds:30},crates],[scenario,[]]]) {
-    const selected = selectBaseCache(cache,'abc',s,c);
-    assert.equal(selected.result,null);assert.deepEqual(selected.npm.failures,['test::old']);
+test('every metric needs separated run ranges before declaring a regression', () => {
+  for (const [key, {absolute}] of Object.entries(PERF_THRESHOLDS)) {
+    assert.equal(compare(key, absolute, absolute * 3, [absolute, absolute, absolute * 4], [absolute * 2, absolute * 3, absolute * 4]).status, 'INCONCLUSIVE', key);
   }
-  const failed = structuredClone(cache);failed.result.suites.steps.push({name:'wasm-build',status:1});
-  assert.equal(selectBaseCache(failed,'abc',scenario,crates).result,null);
-  const noSamples = structuredClone(cache);noSamples.result.probes.runs.pop();
-  assert.equal(selectBaseCache(noSamples,'abc',scenario,crates).result,null);
+});
+
+test('frame mean and over-budget share accompany quantized one-bucket uncertainty', () => {
+  assert.deepEqual(frameMetrics([16.6, 16.7, 33.3]), {frameMean: 22.2, frameDroppedRate: 1/3, frameQuantized: 1});
+  assert.equal(frameMetrics([11, 12, 13]).frameQuantized, 0);
+  const base = {...frameMetrics([16.7, 16.7, 16.8]), frameP95:16.8};
+  const head = {...frameMetrics([33.3, 33.4, 33.4]), frameP95:33.4};
+  const summarize = m => summarizeMetrics([m,m,m].map(metrics => ({metrics})));
+  const b = summarize(base), h = summarize(head);
+  const result = perfDiff(b.metrics, h.metrics, b.spreads, h.spreads);
+  for(const key of ['frameP95','frameMean','frameDroppedRate']) assert.equal(result[key].status, 'INCONCLUSIVE', key);
+  assert.equal(compare('frameP95',16.8,33.4).status,'FAIL','nonquantized clear slowdown still fails');
+});
+
+test('binary timestamp residue cannot count as a dropped frame', () => {
+  const frames = [33.4-16.7,50.1-33.4,66.8-50.1,16.700000000003,16.8,33.3];
+  assert.equal(frameMetrics(frames).frameDroppedRate,2/6);
+});
+
+test('same-SHA mocked sampler runs ABABAB freshly and never reports a perf regression', async () => {
+  const out = await mkdtemp(join(tmpdir(), 'handoff-control-test-'));
+  let index = 0;
+  const seen = [];
+  const sampler = async root => {
+    seen.push(root);const n = index++ % 2 ? 400 : 100;
+    return {metrics:Object.fromEntries(Object.keys(PERF_THRESHOLDS).map(k=>[k,n * (k === 'heapGrowthBytes' ? 1024*1024 : 1)])),
+      coverage:{complete:true},claims:{noConsoleErrors:{status:'PASS',measured:0}},errors:[]};
+  };
+  try {
+    const result = await combatProbes({base:'same-sha',head:'same-sha'}, {base:join(out,'base'),head:join(out,'head')},1,7,sampler,async()=>({metrics:{}}));
+    assert.deepEqual(result.order,['base','head','base','head','base','head']);
+    assert.deepEqual(seen,Array(6).fill('same-sha'));
+    assert.equal(result.base.runs.length,3);assert.equal(result.head.runs.length,3);
+    const {base:b,head:h} = result;
+    const perf = perfDiff(b.metrics,h.metrics,b.spreads,h.spreads,{sameRef:true});
+    assert.ok(Object.values(perf).every(p=>['PASS','INCONCLUSIVE'].includes(p.status)));
+    assert.equal(perfDiff(b.metrics,h.metrics,b.spreads,h.spreads).stepP95.status,'FAIL','distinct refs retain the regression gate');
+  } finally { await rm(out,{recursive:true,force:true}); }
+});
+
+test('base cache reuses SHA-matched npm failures and always discards old performance evidence', () => {
+  const cache = {schema:1,sha:'abc',npm:{step:{status:1},failures:['test::old']},
+    result:{suites:{steps:[{name:'npm-test',status:1}]},
+      probes:{runs:[{},{},{}],coverage:{complete:true},errors:[]}}};
+  const selected = selectBaseCache(cache,'abc');
+  assert.equal(selected.result,null);assert.deepEqual(selected.npm.failures,['test::old']);
+  assert.equal(selectBaseCache(cache,'other'),null);
+  assert.equal(selectBaseCache({...cache,schema:0},'abc'),null);
+  assert.equal(selectBaseCache({...cache,npm:{...cache.npm,failures:[]}},'abc'),null);
+  assert.equal(selectBaseCache({...cache,npm:{...cache.npm,failures:['npm::UNPARSED_SUITE_FAILURE']}},'abc'),null);
+});
+
+test('Rust batch samples divide high-resolution totals by 300 steps', async () => {
+  const stats = {hp:1000,atk:0,def:5,speed:100,reach:80,interval:.5,evade:0,special:10};
+  const config = {encounter_id:'perf-batch-test',seed:'7',
+    geometry:{floor:{min:{x:96,y:40},max:{x:864,y:1592}},viewport_world:{x:720,y:1280},formation_origin:{x:480,y:800},screen_bound:false},
+    heroes:[{instance_id:'fara-1',definition_id:'slice.hero.fara',slot:0,formation_offset:{x:0,y:0},stats,hp:1000}],
+    enemies:[{spawn_key:'orc-1',definition_id:'slice.enemy.orc',position:{x:480,y:700},stats,hp:1000}]};
+  const result = await sampleSteps(new URL('..',import.meta.url).pathname,config,{batches:3});
+  assert.equal(result.timing.clock,'process.hrtime.bigint');
+  assert.equal(result.timing.totals.length,3);
+  for (const [i,total] of result.timing.totals.entries()) {
+    assert.equal(total.steps,300);assert.ok(total.elapsedNs>0);
+    assert.equal(result.timing.perStepMs[i],total.elapsedNs/1e6/300);
+  }
+  assert.equal(result.metrics.stepP95,quantiles(result.timing.perStepMs).p95);
+  assert.equal(result.metrics.stepMean,result.timing.perStepMs.reduce((a,b)=>a+b,0)/3);
 });

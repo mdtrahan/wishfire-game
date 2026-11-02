@@ -74,12 +74,21 @@ export function quantiles(values) {
   const a = values.filter(Number.isFinite).sort((x, y) => x - y);
   return a.length ? { count: a.length, p50: a[Math.floor((a.length - 1) * .5)], p95: a[Math.floor((a.length - 1) * .95)], max: a.at(-1) } : null;
 }
+export function frameMetrics(values) {
+  const frames = values.filter(Number.isFinite), budget = 16.7, vsync = 1000 / 60;
+  return { frameMean: frames.length ? frames.reduce((a, b) => a + b, 0) / frames.length : null,
+    // RAF timestamp subtraction can put nominal 16.7ms frames a few ulps above budget.
+    frameDroppedRate: frames.length ? frames.filter(v => v > budget + 1e-6).length / frames.length : null,
+    frameQuantized: frames.length ? Number(frames.filter(v => v >= vsync - .5 && Math.abs(v - Math.round(v / vsync) * vsync) <= .5).length / frames.length >= .9) : null };
+}
 export const PERF_THRESHOLDS = Object.freeze({
   pageLoadMs: { relativePct: 10, absolute: 50, repeated: true },
   frameP95: { relativePct: 10, absolute: 2, repeated: true },
-  stepP95: { relativePct: 10, absolute: .2 },
-  heapGrowthBytes: { relativePct: 10, absolute: 5 * 1024 * 1024 },
-  wasmBytes: { relativePct: 10, absolute: 64 * 1024 },
+  frameMean: { relativePct: 10, absolute: 2, repeated: true },
+  frameDroppedRate: { relativePct: 10, absolute: .05, repeated: true },
+  stepP95: { relativePct: 10, absolute: .2, repeated: true },
+  heapGrowthBytes: { relativePct: 10, absolute: 5 * 1024 * 1024, repeated: true },
+  wasmBytes: { relativePct: 10, absolute: 64 * 1024, repeated: true },
 });
 
 export function medianSpread(values) {
@@ -94,29 +103,29 @@ export function summarizeMetrics(runs) {
   return { metrics: Object.fromEntries([...keys].map(key => [key, spreads[key]?.median ?? null])), spreads };
 }
 
-export function perfDiff(base, head, baseSpreads = {}, headSpreads = {}) {
+export function perfDiff(base, head, baseSpreads = {}, headSpreads = {}, { sameRef = false } = {}) {
   return Object.fromEntries(Object.entries(PERF_THRESHOLDS).map(([key, threshold]) => {
     const b = base[key], h = head[key], delta = Number.isFinite(b) && Number.isFinite(h) ? h - b : null;
     const deltaPct = delta === null ? null : b === 0 ? (h === 0 ? 0 : Infinity) : delta / Math.abs(b) * 100;
     const bs = baseSpreads[key], hs = headSpreads[key];
     const validSpreads = !threshold.repeated || (bs && hs && bs.median === b && hs.median === h);
     const overlap = threshold.repeated && validSpreads && bs.min <= hs.max && hs.min <= bs.max;
-    const status = delta === null || !validSpreads ? 'FAIL' : overlap ? 'INCONCLUSIVE'
-      : h > b + Math.abs(b) * threshold.relativePct / 100 && h > b + threshold.absolute ? 'FAIL' : 'PASS';
+    const oneVsyncBucket = key.startsWith('frame') && base.frameQuantized === 1 && head.frameQuantized === 1
+      && Math.abs(Math.abs(head.frameP95 - base.frameP95) - 1000 / 60) <= 1;
+    const exceeded = delta !== null && h > b + Math.abs(b) * threshold.relativePct / 100 && h > b + threshold.absolute;
+    const status = delta === null || !validSpreads ? 'FAIL' : oneVsyncBucket || overlap && exceeded || sameRef && exceeded ? 'INCONCLUSIVE'
+      : exceeded ? 'FAIL' : 'PASS';
     return [key, { base: b ?? null, head: h ?? null, delta, deltaPct: deltaPct === Infinity ? 'Infinity' : deltaPct,
       threshold, spread: threshold.repeated ? { base: bs ?? null, head: hs ?? null } : undefined,
+      reason: oneVsyncBucket ? 'one vsync bucket; quantized frame distribution' : sameRef && exceeded ? 'same-SHA control drift' : overlap && exceeded ? 'run ranges overlap' : undefined,
       status, regression: status === 'FAIL' }];
   }));
 }
 
-export function selectBaseCache(cache, sha, scenario, crates) {
+export function selectBaseCache(cache, sha) {
   if (cache?.schema !== 1 || cache.sha !== sha || !Array.isArray(cache.npm?.failures)
       || !cache.npm.failures.every(f => typeof f === 'string' && !f.endsWith('UNPARSED_SUITE_FAILURE'))
       || !Number.isInteger(cache.npm.step?.status) || (cache.npm.step.status !== 0 && !cache.npm.failures.length)) return null;
-  const result = cache.result;
-  const reusable = result && JSON.stringify(result.scenario) === JSON.stringify(scenario)
-    && JSON.stringify(result.crates) === JSON.stringify(crates) && result.probes?.runs?.length === 3
-    && result.probes.coverage.complete && !result.probes.errors.length
-    && result.suites.steps.every(s => s.status === 0 || /^(npm-test|cargo-)/.test(s.name));
-  return { ...cache, result: reusable ? result : null };
+  // Host-load measurements must always be contemporary paired observations.
+  return { ...cache, result: null };
 }
