@@ -10,7 +10,7 @@ import { createEquipmentStorage } from '../web-runner/systems/equipmentStorage.m
 import { advanceContinuousCombatStage, createContinuousCombatStageState } from '../web-runner/src/core/continuousCombatStage.mjs';
 
 const storageSource = fs.readFileSync(new URL('../web-runner/systems/heroProgressStorage.js', import.meta.url), 'utf8')
-  .replace(/^import .*;\n/, '')
+  .replace(/^import .*;\n/gm, '')
   .replace(/export (function|const) /g, '$1 ');
 const storageContext = { createHeroProgressStore, attachHeroProgress, settleBattleEXP, window: null };
 vm.runInNewContext(`${storageSource}\nthis.storageApi={persistHeroProgressIfDirty,restoreHeroProgressFromStorage,confirmGoldSettlements};`, storageContext);

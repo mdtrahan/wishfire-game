@@ -1,7 +1,9 @@
 import {attachHeroProgress,createHeroProgressStore,settleBattleEXP} from '../src/core/heroProgression.mjs';
+import {createCombatRewardOutbox} from './combatRewardOutbox.mjs';
+import {createCombatProgression} from './combatProgression.mjs';
 export const HERO_PROGRESS_SAVE_KEY = 'orka.hero_progress.v2';
 const KEY = HERO_PROGRESS_SAVE_KEY;
-export function restoreHeroProgressFromStorage({fnContext, settlePendingReceipts = () => {}}) {
+export function restoreHeroProgressFromStorage({fnContext, settlePendingReceipts = settleRestoredCombatRewards}) {
   const g = fnContext.state.globals;
   if (!g.HeroProgressStorageRestored) {
     try {
@@ -22,6 +24,14 @@ export function restoreHeroProgressFromStorage({fnContext, settlePendingReceipts
   restorePendingBattleRewards(g, fnContext.state.entities || []);
   persistHeroProgressIfDirty({ stateGlobals: g });
   bindRewardPersistence(g);
+}
+function settleRestoredCombatRewards({state}) {
+  const g = state.globals;
+  if (!Object.values(g.HeroProgress.combatRewardOutbox.streams).some(stream => stream.pending.length)) return true;
+  const progression = createCombatProgression({ globals: g, storage: window.localStorage,
+    getHeroes: () => Object.values(g.HeroProgress.heroes).map(hero => ({...hero, kind: 'hero'})) });
+  return createCombatRewardOutbox({ globals: g, progression,
+    persistProgress: () => persistHeroProgressIfDirty({stateGlobals: g}) }).settlePendingReceipts();
 }
 export function persistHeroProgressIfDirty({stateGlobals:g}) {
   if (!g.HeroProgress || g.HeroProgressStorageError) return false;

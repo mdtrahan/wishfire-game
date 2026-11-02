@@ -10,6 +10,9 @@ import { SLICE_ORIGIN, SLICE_TRAVEL_SLOTS } from '../web-runner/systems/rustComb
 import { wfmHeroPermanentInputs } from '../web-runner/systems/wfmCombatConfig.mjs';
 import * as progression from '../web-runner/src/core/heroProgression.mjs';
 import { configureContinuousCombatProduction, createContinuousCombatStageState, buildContinuousCombatSpawnPlan, activateContinuousCombatSpawnedEnemy, getContinuousCombatPartyCP } from '../web-runner/src/core/continuousCombatStage.mjs';
+import {createCombatRewardOutbox} from '../web-runner/systems/combatRewardOutbox.mjs';
+import {createCombatProgression} from '../web-runner/systems/combatProgression.mjs';
+import {createEquipmentStorage,EQUIPMENT_SAVE_KEY} from '../web-runner/systems/equipmentStorage.mjs';
 const wasm = new WebAssembly.Module(fs.readFileSync(new URL('../web-runner/assets/simulation_core.wasm', import.meta.url)));
 const table = JSON.parse(fs.readFileSync(new URL('../web-runner/assets/enemies.json', import.meta.url)));
 const rows = table.data[0].slice(1).map((_, i) => Object.fromEntries(table.data.map(column => [column[0][0], column[i + 1][0]]))).filter(row => row.name);
@@ -17,8 +20,8 @@ const source = fs.readFileSync(new URL('../web-runner/systems/heroProgressStorag
 const key = 'orka.hero_progress.v2';
 function storage(raw) {
   const values = new Map(raw ? [[key, raw]] : []);
-  const localStorage = { getItem: k => values.get(k), setItem: (k, v) => values.set(k, v) };
-  const context = { ...progression, window: { localStorage } };
+  const localStorage = { getItem: k => values.get(k) ?? null, setItem: (k, v) => values.set(k, v) };
+  const context = { ...progression, createCombatRewardOutbox, createCombatProgression, window: { localStorage } };
   vm.runInNewContext(`${source}; this.api = {restoreHeroProgressFromStorage, persistHeroProgressIfDirty};`, context);
   return { ...context.api, values, localStorage };
 }
@@ -32,6 +35,7 @@ function fixture({ raw, settlePendingReceipts, bridgeOverrides, saveFails = fals
     const result = real.create(config); worldHandle = result.world; return result;
   } };
   const g = { HeroProgress: progression.createHeroProgressStore(), ContinuousCombatStageLoop: 0,
+    ProgressionBattle: {id: 'checkpoint-rewards', participants: [], defeated: {}, defeatedGold: {}},
     EnemyData: rows, EnemySlots: [], EnemyIDs: [], NextUID: 90, CombatSessionId: 'same-session-after-reload', GamePhase: 'RUNTIME', time: 0 };
   const state = { globals: g, entities: ['Falie', 'Huun', 'Runa', 'Kojonn'].map((name, i) => ({ ...progression.newHeroProgress(name), kind: 'hero', uid: i + 1 })) };
   store.restoreHeroProgressFromStorage({ fnContext: { state }, settlePendingReceipts });
@@ -123,7 +127,9 @@ test('D18 reload persists identity/seed/generation/lineage and reconstructs only
   assert.ok(all.every(a => !(saved.clearedPackMask & 1 << (a.streamSectorIndex % 6))));
   assert.ok(after.created[0].enemies.every(e => all.some(a => String(a.uid) === e.spawn_key)));
   assert.equal(after.created[0].enemies.length, fresh.live_enemies);
-  assert.doesNotMatch(raw, /projectiles|hazards|rustState|permanent_revision|encounter_id/);
+  const {combatRewardOutbox, ...checkpointOnly} = JSON.parse(raw);
+  assert.ok(combatRewardOutbox.streams[initial.encounter_id], 'transport journal retains its encounter identity');
+  assert.doesNotMatch(JSON.stringify(checkpointOnly), /projectiles|hazards|rustState|permanent_revision|encounter_id/);
   after.runtime.dispose();
 });
 
@@ -295,6 +301,7 @@ test('D17′ reload restarts current subwave N with its authored boundaries, lat
   before.rebuild(); before.tick(0);
   for (let frame = 1; frame < 1500 && before.g.ContinuousCombatStage.combatCheckpoint.subwaves.index < 2; frame++) before.tick(frame * 1000 / 30);
   const progress = before.g.ContinuousCombatStage.combatCheckpoint.subwaves;
+  assert.deepEqual(before.warnings, []);
   assert.ok(progress.index >= 2, 'real Rust admitted a later subwave');
   assert.equal(before.g.ContinuousCombatStage.wave, 1);
   const token = a => `${a.name}:${a.streamSectorIndex}:${a.streamSolo ? 1 : 0}:${a.streamEntryOrder}`;
@@ -354,7 +361,7 @@ test('automatic real Rust AllDown restarts subwave 3 with the same enemies, heal
   const token = a => `${a.name}:${a.streamSectorIndex}:${a.streamEntryOrder}`;
   const groups = bindAuthoredSubwaves(authorSubwaves(f.planned.map(a => a.name)), f.planned);
   f.g.goldTotal = 123;
-  const resources = ({ continuousStage, ...value }) => value;
+  const resources = ({ continuousStage, combatRewardOutbox, ...value }) => value;
   const beforeResources = structuredClone(resources(f.g.HeroProgress));
   const transitions = stage.transitions, wave = stage.wave;
   f.tick(0);
@@ -406,3 +413,74 @@ test('an out-of-plan persisted subwave index fails closed without checkpoint rec
   assert.equal(after.created.length, 0); assert.deepEqual(after.routes, []); assert.equal(after.raw(), raw);
   after.runtime.dispose();
 });
+
+for (const crash of ['before source save', 'after source save', 'after equipment commit', 'before ack']) {
+  test(`real reload settles boss receipt once and restarts subwave 3: ${crash}`, async () => {
+    const before = fixture(); before.tick(0);
+    before.runtime.restartAtSubwave(2); before.tick(34);
+    const expected = before.created.at(-1).enemies.map(e => [e.definition_id, e.position]);
+    const config = structuredClone(before.created.at(-1));
+    config.encounter_id = `reload-crash:${crash}`;
+    config.heroes.forEach(h => { h.hp = h.stats.hp = 10000; h.stats.atk = 1000; });
+    config.enemies = [{ definition_id: 'slice.boss.troll_brute', spawn_key: '702', hp: 1,
+      position: { x: config.geometry.formation_origin.x, y: config.geometry.formation_origin.y - 50 },
+      stats: {hp: 1, atk: 0, def: 2, speed: 150, reach: 120, interval: .25, evade: 0, special: 10} }];
+    config.enemies[0].summon_profiles = [{definition_id: 'slice.enemy.gobloc', stats: {...config.enemies[0].stats}}];
+    config.spawn_markers = false;
+    const created = before.real.create(config); let batch = created;
+    try {
+      for (let i = 0; i < 1200 && !batch.events.some(e => e.body.kind === 'died'); i++) {
+        batch = before.real.step(created.world, { encounter_id: config.encounter_id, expected_previous_step: batch.snapshot.step });
+      }
+      assert.ok(batch.events.some(e => e.body.kind === 'died'), 'real WASM boss death');
+      batch = before.real.inspect(created.world);
+      let failSource = false;
+      const outbox = createCombatRewardOutbox({ globals: before.g, persistProgress() {
+        if (failSource) throw new Error('crash source write');
+        return before.store.persistHeroProgressIfDirty({stateGlobals: before.g});
+      } });
+      outbox.beginEncounter(config.encounter_id);
+      const enemy = () => ({kind: 'enemy', uid: 702, enemyRole: 'boss'});
+      const equipment = createEquipmentStorage({globals: before.g, storage: before.store.localStorage,
+        locks: {request: async (_key, fn) => fn()}, seed: () => 42, now: () => 0});
+      await equipment.sync();
+      if (crash === 'before source save') {
+        failSource = true;
+        assert.throws(() => outbox.consumeBatch(batch.snapshot, batch.events, enemy), /crash source write/);
+        failSource = false;
+      } else {
+        outbox.consumeBatch(batch.snapshot, batch.events, enemy);
+        if (crash === 'after equipment commit') {
+          await equipment.sync();
+          assert.equal(JSON.parse(before.store.values.get(EQUIPMENT_SAVE_KEY)).lamp.killPoints, 5);
+          assert.equal(JSON.parse(before.raw()).combatRewardOutbox.streams[config.encounter_id].pending.length, 1);
+        }
+        if (crash === 'before ack') assert.equal(outbox.settlePendingReceipts(), true);
+      }
+      const disk = new Map(before.store.values);
+      before.runtime.dispose();
+      const after = fixture({raw: disk.get(key)});
+      assert.equal(after.g.HeroProgressStorageError, undefined);
+      const replay = createCombatRewardOutbox({globals: after.g,
+        persistProgress: () => after.store.persistHeroProgressIfDirty({stateGlobals: after.g})});
+      // Before-source-write recovery replays Rust's retained event batch first.
+      // Other boundaries have already passed through the production reload hook.
+      replay.consumeBatch(batch.snapshot, batch.events, enemy);
+      assert.equal(replay.settlePendingReceipts(), true);
+      assert.equal(replay.settlePendingReceipts(), true);
+      after.store.values.set(EQUIPMENT_SAVE_KEY, disk.get(EQUIPMENT_SAVE_KEY));
+      const destination = createEquipmentStorage({globals: after.g, storage: after.store.localStorage,
+        locks: {request: async (_key, fn) => fn()}, seed: () => 42, now: () => 0});
+      await destination.sync(); await destination.sync();
+      assert.equal(destination.data.lamp.killPoints, 5);
+      assert.equal(destination.data.gold, 0); assert.equal(destination.data.partyEXP, 0);
+      assert.equal(destination.data.lamp.essence, 0);
+      assert.ok(Object.values(after.g.HeroProgress.combatRewardOutbox.streams).every(stream => !stream.pending.length));
+      after.tick(0); assertFresh(after);
+      assert.equal(after.g.ContinuousCombatStage.combatCheckpoint.subwaves.index, 2);
+      assert.deepEqual(after.created[0].enemies.map(e => [e.definition_id, e.position]), expected);
+      assert.deepEqual(after.warnings, []);
+      after.runtime.dispose();
+    } finally { before.real.destroy(created.world); before.runtime.dispose(); }
+  });
+}

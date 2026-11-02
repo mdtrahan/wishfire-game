@@ -21,26 +21,22 @@ const BOSS_KO_SECONDS = 1, CORPSE_FADE = .42, DEATH_CAMERA_SECONDS = .32;
 
 // Kept injectable for headless proof using the real WASM and WFM lifecycle.
 export function createRustCombatRuntime({ state, globals: g = state.globals, bridge, session, call,
-  progression, equipmentProgress, persistProgress, getEnemyRows, advanceHostTime, present = () => {}, warn = console.warn, persistCheckpoint }) {
+  progression, equipmentProgress, getEnemyRows, advanceHostTime, present = () => {}, warn = console.warn, persistCheckpoint, persistProgress = persistCheckpoint }) {
   let attempt = null, baseTime = 0, lastCombatTime = 0, lastPresentationTime = 0;
   g.RustCombatAuthority = true;
   let hostTransition = false, subwaves = [], previousSubwave = [], subwaveStarted = 0, pendingRestart = null;
   let stageOptions, advanced = false, failed = false, introNow = null, tail = null;
-  const rewardOutbox = createCombatRewardOutbox({globals:g,persistProgress,equipmentProgress,progression});
-  let rewardSettlement = null;
+  const rewardOutbox = createCombatRewardOutbox({globals:g,persistProgress,progression});
   function settlePendingReceipts(){
     return rewardOutbox.settlePendingReceipts();
   }
+  let rewardDelivery = null;
   function flushRewards(){
-    if(rewardSettlement)return;
-    rewardSettlement=settlePendingReceipts().then(saved=>{
-      if(!saved)throw new Error('Combat reward settlement is pending.');
-    }).catch(error=>{
+    settlePendingReceipts();
+    if(!equipmentProgress || rewardDelivery)return;
+    rewardDelivery=equipmentProgress.sync().then(()=>progression?.sync()).catch(error=>{
       try { stop(); } finally { finishFailure(error); }
-    }).finally(()=>{
-      rewardSettlement=null;
-      if(!failed && Object.values(g.HeroProgress.combatRewardOutbox?.streams||{}).some(stream=>stream.pending.length))flushRewards();
-    });
+    }).finally(()=>{rewardDelivery=null;});
   }
   const hosts = new Map(), seenSpawns = new Set(), hostHeroes = new Map();
   function saveCheckpoint() {
@@ -170,6 +166,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
   function consume(snapshot, events) {
     rewardOutbox.consumeBatch(snapshot, events, data => hosts.get(data.actor) || state.entities.find(actor => actor.kind === 'enemy' && String(actor.uid) === data.host_id));
     if(equipmentProgress) flushRewards();
+
     const combatDelta = snapshot.combat_time - lastCombatTime;
     const presentationDelta = snapshot.time - lastPresentationTime;
     advanceHostTime?.({ state, dt: combatDelta, activeSeconds: presentationDelta, presentationSeconds: presentationDelta });
@@ -370,6 +367,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
       stop(); attempt = key; baseTime = Number(g.time || 0); lastCombatTime = 0; lastPresentationTime = 0;
       for (const hero of state.entities.filter(a => a.kind === 'hero')) hostHeroes.set(hero, { maxHP: hero.maxHP });
       try {
+        settlePendingReceipts();
         ensureCheckpoint();
         if (restart) for (const entry of restart) {
           const actor = call('SpawnEnemy', { ...entry.row, enemyRole: entry.row.enemyRole || entry.row.role || 'fodder' }, entry.slotIndex);
@@ -400,7 +398,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
       } catch (error) { finishFailure(error); return false; }
     }
     spawnAdditions();
-    driver.advance(options.nowMs, !!rewardSettlement);
+    driver.advance(options.nowMs, !!rewardDelivery);
     return advanced;
   }
   function tick(options) {

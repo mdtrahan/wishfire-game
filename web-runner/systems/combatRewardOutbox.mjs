@@ -3,8 +3,7 @@ import {enemyBagKillPoints} from '../src/core/lampGear.mjs';
 const known=new Set(['spawned','damage','died','downed','revived','all_down','ended','despawned','presentation','permanent_inputs_applied']);
 const decimal=value=>typeof value==='string'&&/^(0|[1-9][0-9]*)$/.test(value)&&BigInt(value)<=18446744073709551615n;
 // Transport identity lives here; economic identity retains WFM battle/spawn IDs.
-export function createCombatRewardOutbox({globals:g,persistProgress,equipmentProgress,progression}){
- let settling=null;
+export function createCombatRewardOutbox({globals:g,persistProgress,progression}){
  function save(){
   g.HeroProgressDirty=true;
   if(persistProgress()!==true)throw new Error(g.HeroProgressStorageError||'Combat reward outbox save failed.');
@@ -66,31 +65,28 @@ export function createCombatRewardOutbox({globals:g,persistProgress,equipmentPro
   return stream.sequence;
  }
  function settlePendingReceipts(){
-  if(settling)return settling;
-  settling=(async()=>{
-   const outbox=createCombatRewardOutboxState(g.HeroProgress?.combatRewardOutbox);
-   const pending=Object.values(outbox.streams).flatMap(stream=>stream.pending);
-   if(!pending.length){await equipmentProgress?.sync();return progression?.sync?await progression.sync():true;}
-   if(!equipmentProgress)throw new Error('Combat reward settlement requires equipment storage.');
-   // Re-establish source durability before any retry touches the destination.
-   for(const row of pending)if(row.amount)(g.HeroProgress.pendingBagKillRewards||={})[row.id]=row.amount;
-   save();
-   await equipmentProgress.sync();
-   // Replay quest observations through their existing stable receipt domain.
-   if(progression?.record)for(const row of pending)progression.record({id:row.id,type:'enemy_defeat'});
-   // COT owns Essence receipts independently; combat events cannot mint Essence.
-   if(progression?.sync&&await progression.sync()===false)return false;
-   const current=g.HeroProgress.combatRewardOutbox;
-   const next=createCombatRewardOutboxState(current);
-   for(const[id,stream]of Object.entries(next.streams)){
-    const settled=new Set((outbox.streams[id]?.pending||[]).map(row=>row.sequence));
-    stream.pending=stream.pending.filter(row=>!settled.has(row.sequence));
-   }
-   g.HeroProgress.combatRewardOutbox=next;
-   try{save();}catch(error){g.HeroProgress.combatRewardOutbox=current;throw error;}
-   return true;
-  })().finally(()=>{settling=null;});
-  return settling;
+  const outbox=createCombatRewardOutboxState(g.HeroProgress?.combatRewardOutbox);
+  const pending=Object.values(outbox.streams).flatMap(stream=>stream.pending);
+  if(!pending.length)return true;
+  // Transfer into the existing durable Bag queue. Its locked equipment consumer
+  // commits balance + receipt atomically and retries independently after reload.
+  for(const row of pending)if(row.amount)(g.HeroProgress.pendingBagKillRewards||={})[row.id]=row.amount;
+  save();
+  if(g.CombatProgressionStorageError)throw new Error(g.CombatProgressionStorageError);
+  for(const row of pending){
+   const result=progression?.record?.({id:row.id,type:'enemy_defeat'});
+   if(result===false||result?.then)throw new Error('Combat quest settlement must complete synchronously.');
+  }
+  const current=g.HeroProgress.combatRewardOutbox;
+  const next=createCombatRewardOutboxState(current);
+  for(const[id,stream]of Object.entries(next.streams)){
+   const settled=new Set((outbox.streams[id]?.pending||[]).map(row=>row.sequence));
+   stream.pending=stream.pending.filter(row=>!settled.has(row.sequence));
+  }
+  g.HeroProgress.combatRewardOutbox=next;
+  try{save();}catch(error){g.HeroProgress.combatRewardOutbox=current;throw error;}
+  return true;
  }
+
  return{beginEncounter,consumeBatch,settlePendingReceipts};
 }

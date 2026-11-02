@@ -23,12 +23,18 @@ function host(values=new Map(),failure='',withProgression=false){
  const g={HeroProgress:createHeroProgressStore(JSON.parse(values.get(key)||'null')),goldTotal:0,ProgressionBattle:{id:'battle',participants:[],defeated:{},defeatedGold:{}}};
  const storage={getItem:k=>values.get(k)??null,setItem(k,v){if(typeof failure==='function'?failure(k):failure===k)throw Error('injected save failure');values.set(k,v);}};
  const source=readFileSync(new URL('../web-runner/systems/heroProgressStorage.js',import.meta.url),'utf8');
- const progress=new Function('window','attachHeroProgress','createHeroProgressStore','settleBattleEXP',source.replace(/^import .*\n/gm,'').replace(/export /g,'')+';return {persistHeroProgressIfDirty};')({localStorage:storage},attachHeroProgress,createHeroProgressStore,settleBattleEXP);
+ const progress=new Function('window','attachHeroProgress','createHeroProgressStore','settleBattleEXP','createCombatRewardOutbox','createCombatProgression',source.replace(/^import .*\n/gm,'').replace(/export /g,'')+';return {persistHeroProgressIfDirty,restoreHeroProgressFromStorage};')({localStorage:storage},attachHeroProgress,createHeroProgressStore,settleBattleEXP,createCombatRewardOutbox,createCombatProgression);
+ progress.restoreHeroProgressFromStorage({fnContext:{state:{globals:g,entities:[]}}});
  const save=()=>progress.persistHeroProgressIfDirty({stateGlobals:g});
  const equipment=createEquipmentStorage({globals:g,storage,locks:{request:(_k,fn)=>Promise.resolve().then(fn)},now:()=>0,seed:()=>42,reportError:()=>{}});
  const progression=withProgression?createCombatProgression({globals:g,storage,equipmentProgress:equipment,getHeroes:()=>Object.values(g.HeroProgress.heroes).map(hero=>({...hero,kind:'hero'})),now:()=>1000,reportError:()=>{}}):undefined;
  const outbox=createCombatRewardOutbox({globals:g,persistProgress:save,equipmentProgress:equipment,progression});
  return{g,outbox,equipment,progression,values,save,setFailure:v=>failure=v};
+}
+async function drain(h){
+ assert.equal(h.outbox.settlePendingReceipts(),true, 'settlement completes synchronously');
+ await h.equipment.sync();
+ await h.progression?.sync();
 }
 const enemy=()=>({kind:'enemy',uid:90,enemyRole:'boss'});
 test('fresh and reloaded HeroProgress share the empty durable outbox shape',()=>{
@@ -43,17 +49,18 @@ for(const crash of ['before outbox save','after outbox save','after equipment co
  }else{
   h.outbox.consumeBatch(f.batch.snapshot,f.batch.events,enemy);
   if(crash==='after equipment commit'){
-   h.setFailure(k=>k===key&&JSON.parse(h.values.get(EQUIPMENT_SAVE_KEY)).lamp.killPoints===5);
-   await assert.rejects(h.outbox.settlePendingReceipts(),/save failure/);h.setFailure('');
+   await h.equipment.sync();
+   h.setFailure(key);
+   assert.throws(()=>h.outbox.settlePendingReceipts(),/save failure/);h.setFailure('');
    assert.equal(JSON.parse(h.values.get(EQUIPMENT_SAVE_KEY)).lamp.killPoints,5);
    assert.equal(JSON.parse(h.values.get(key)).combatRewardOutbox.streams['outbox-proof'].pending.length,1);
   }
-  if(crash==='before ack')await h.outbox.settlePendingReceipts();
+  if(crash==='before ack')await drain(h);
  }
  const reloaded=host(h.values);
  reloaded.outbox.consumeBatch(f.batch.snapshot,f.batch.events,enemy);
- await reloaded.outbox.settlePendingReceipts();
- reloaded.outbox.consumeBatch(f.batch.snapshot,f.batch.events,enemy);await reloaded.outbox.settlePendingReceipts();
+ await drain(reloaded);
+ reloaded.outbox.consumeBatch(f.batch.snapshot,f.batch.events,enemy);await drain(reloaded);
  assert.equal(reloaded.equipment.data.lamp.killPoints,5);assert.equal(reloaded.equipment.data.gold,0);assert.equal(reloaded.equipment.data.partyEXP,0);assert.equal(reloaded.equipment.data.lamp.essence,0);
  const ack=f.bridge.ack(f.world,f.batch.snapshot.encounter_id,f.batch.snapshot.last_event_sequence);
  assert.equal(ack.acknowledged_sequence,f.batch.snapshot.last_event_sequence);assert.deepEqual(f.bridge.inspect(f.world,ack.acknowledged_sequence).events,[]);
@@ -72,17 +79,17 @@ test('batch validation is atomic for gaps, unknown kinds, collisions and overflo
  f.bridge.destroy(f.world);
 });
 test('ordinary death and cleanup/despawn mint no currency; saved outbox corruption fails closed',async()=>{
- const f=combat(),h=host();await h.equipment.sync();h.outbox.consumeBatch(f.batch.snapshot,f.batch.events,()=>({...enemy(),enemyRole:'fodder'}));await h.outbox.settlePendingReceipts();
+ const f=combat(),h=host();await h.equipment.sync();h.outbox.consumeBatch(f.batch.snapshot,f.batch.events,()=>({...enemy(),enemyRole:'fodder'}));await drain(h);
  assert.equal(h.equipment.data.lamp.killPoints,0);
  const cleanup=combat({cleanup:true}),clean=host();
- clean.outbox.consumeBatch(cleanup.batch.snapshot,cleanup.batch.events,()=>{throw Error('cleanup resolved a reward');});await clean.outbox.settlePendingReceipts();
+ clean.outbox.consumeBatch(cleanup.batch.snapshot,cleanup.batch.events,()=>{throw Error('cleanup resolved a reward');});await drain(clean);
  assert.equal(clean.equipment.data.lamp.killPoints,0);assert.equal(clean.equipment.data.lamp.essence,0);assert.equal(clean.equipment.data.gold,0);assert.equal(clean.equipment.data.partyEXP,0);cleanup.bridge.destroy(cleanup.world);
  const saved=JSON.parse(h.values.get(key));saved.combatRewardOutbox.streams['outbox-proof'].sequence='broken';assert.throws(()=>createHeroProgressStore(saved),/outbox/);
  f.bridge.destroy(f.world);
 });
 
 test('retired encounters reject stale deliveries after bounded cursor compaction',async()=>{
- const f=combat(),h=host();await h.equipment.sync();h.outbox.consumeBatch(f.batch.snapshot,f.batch.events,enemy);await h.outbox.settlePendingReceipts();
+ const f=combat(),h=host();await h.equipment.sync();h.outbox.consumeBatch(f.batch.snapshot,f.batch.events,enemy);await drain(h);
  for(let i=0;i<70;i++)h.outbox.beginEncounter(`fresh-${i}`);
  assert.equal(Object.keys(h.g.HeroProgress.combatRewardOutbox.streams).length,0);
  assert.throws(()=>h.outbox.consumeBatch(f.batch.snapshot,f.batch.events,enemy),/Unknown Rust encounter/);assert.equal(h.equipment.data.lamp.killPoints,5);f.bridge.destroy(f.world);
@@ -90,9 +97,9 @@ test('retired encounters reject stale deliveries after bounded cursor compaction
 
 test('failed destination saves retain durable receipts for reload',async()=>{
  const f=combat(),h=host();await h.equipment.sync();h.outbox.consumeBatch(f.batch.snapshot,f.batch.events,enemy);h.setFailure(EQUIPMENT_SAVE_KEY);
- await assert.rejects(h.outbox.settlePendingReceipts(),/save failure/);
+ await assert.rejects(h.equipment.sync(),/save failure/);
  assert.equal(JSON.parse(h.values.get(key)).combatRewardOutbox.streams['outbox-proof'].pending.length,1);
- const replay=host(h.values);await replay.outbox.settlePendingReceipts();assert.equal(replay.equipment.data.lamp.killPoints,5);f.bridge.destroy(f.world);
+ const replay=host(h.values);await drain(replay);assert.equal(replay.equipment.data.lamp.killPoints,5);f.bridge.destroy(f.world);
 });
 test('real WASM ack prunes only the consumed prefix and preserves absolute sequence and gameplay',()=>{
  const f=combat(),{bridge,world,batch}=f,cursor=batch.snapshot.last_event_sequence;
@@ -114,14 +121,14 @@ test('driver repairs a gapped delivery from retained real-WASM events before ack
  const ended=f.bridge.end(f.world,f.batch.snapshot.encounter_id,f.batch.snapshot.step,'host_stage_transition');
  driver.accept({...ended,events:ended.events.slice(1)});
  assert.deepEqual(errors,[]);assert.equal(h.g.HeroProgress.combatRewardOutbox.streams['outbox-proof'].sequence,ended.snapshot.last_event_sequence);
- assert.deepEqual(f.bridge.inspect(f.world,ended.snapshot.last_event_sequence).events,[]);await h.outbox.settlePendingReceipts();assert.equal(h.equipment.data.lamp.killPoints,5);driver.stop();
+ assert.deepEqual(f.bridge.inspect(f.world,ended.snapshot.last_event_sequence).events,[]);await drain(h);assert.equal(h.equipment.data.lamp.killPoints,5);driver.stop();
 });
 
 test('reload settlement preserves independent COT Essence receipt identity',async()=>{
  const values=new Map([['orka.combat_progression.v1',JSON.stringify({seed:99,objective:{id:'fixed-gear',type:'gear_collect',target:1,progress:0,seed:99}})]]),h=host(values,'',true);
  const objective=h.progression.state().objective;
  for(let i=0;i<objective.target;i++)h.progression.record({id:`gear-${i}`,type:objective.type});
- assert.equal(h.progression.claimObjective(objective.id).ok,true);await h.outbox.settlePendingReceipts();assert.equal(h.equipment.data.lamp.essence,2);
- const replay=host(values,'',true);await replay.outbox.settlePendingReceipts();await replay.outbox.settlePendingReceipts();
+ assert.equal(h.progression.claimObjective(objective.id).ok,true);await drain(h);assert.equal(h.equipment.data.lamp.essence,2);
+ const replay=host(values,'',true);await drain(replay);await drain(replay);
  assert.equal(replay.equipment.data.lamp.essence,2);assert.equal(replay.equipment.data.lamp.killPoints,0);assert.equal(replay.equipment.data.gold,0);assert.equal(replay.equipment.data.partyEXP,0);
 });
