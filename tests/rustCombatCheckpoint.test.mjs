@@ -6,7 +6,7 @@ import { createCombatBridge } from '../web-runner/src/core/combatBridge.mjs';
 import { createRustCombatRuntime } from '../web-runner/systems/rustCombatRuntime.mjs';
 import { wfmHeroPermanentInputs } from '../web-runner/systems/wfmCombatConfig.mjs';
 import * as progression from '../web-runner/src/core/heroProgression.mjs';
-import { configureContinuousCombatProduction, createContinuousCombatStageState, buildContinuousCombatSpawnPlan, activateContinuousCombatSpawnedEnemy } from '../web-runner/src/core/continuousCombatStage.mjs';
+import { configureContinuousCombatProduction, createContinuousCombatStageState, buildContinuousCombatSpawnPlan, activateContinuousCombatSpawnedEnemy, getContinuousCombatPartyCP } from '../web-runner/src/core/continuousCombatStage.mjs';
 const wasm = new WebAssembly.Module(fs.readFileSync(new URL('../web-runner/assets/simulation_core.wasm', import.meta.url)));
 const table = JSON.parse(fs.readFileSync(new URL('../web-runner/assets/enemies.json', import.meta.url)));
 const rows = table.data[0].slice(1).map((_, i) => Object.fromEntries(table.data.map(column => [column[0][0], column[i + 1][0]]))).filter(row => row.name);
@@ -21,9 +21,9 @@ function storage(raw) {
 }
 function fixture({ raw, settlePendingReceipts, bridgeOverrides, saveFails = false } = {}) {
   const store = storage(raw), real = createCombatBridge(new WebAssembly.Instance(wasm));
-  const created = [], routes = [], warnings = [], planned = [];
+  const created = [], routes = [], warnings = [], planned = [], spawned = [];
   let worldHandle;
-  const bridge = { ...real, ...bridgeOverrides, create(config) {
+  const bridge = { ...real, ...bridgeOverrides, spawn(...args) { spawned.push(...args[2]); return real.spawn(...args); }, create(config) {
     assert.ok(store.values.has(key), 'checkpoint persisted before create');
     created.push(structuredClone(config));
     const result = real.create(config); worldHandle = result.world; return result;
@@ -37,7 +37,7 @@ function fixture({ raw, settlePendingReceipts, bridgeOverrides, saveFails = fals
   function rebuild() {
     planned.length = 0;
     state.entities.splice(0, state.entities.length, ...state.entities.filter(a => a.kind === 'hero'));
-    for (const entry of buildContinuousCombatSpawnPlan(rows, g.ContinuousCombatStage)) {
+    for (const entry of buildContinuousCombatSpawnPlan(rows, g.ContinuousCombatStage, { partyCP: getContinuousCombatPartyCP(state.entities) })) {
       const a = { uid: g.NextUID++, kind: 'enemy', name: entry.row.name, stats: { ...entry.row }, hp: entry.row.HP,
         maxHP: entry.row.HP, slotIndex: entry.slotIndex, enemyRole: entry.row.enemyRole };
       planned.push(a); state.entities.push(a); activateContinuousCombatSpawnedEnemy(g, a, entry);
@@ -55,7 +55,7 @@ function fixture({ raw, settlePendingReceipts, bridgeOverrides, saveFails = fals
       return store.persistHeroProgressIfDirty({ stateGlobals: g });
     } });
   const tick = nowMs => runtime.tick({ globals: g, entities: state.entities, call() {}, nowMs });
-  return { g, state, real, runtime, created, routes, warnings, store, tick, rebuild, planned, world: () => worldHandle, raw: () => store.values.get(key) };
+  return { g, state, real, runtime, created, routes, warnings, store, tick, rebuild, planned, spawned, world: () => worldHandle, raw: () => store.values.get(key) };
 }
 function assertFresh(f) {
   const s = f.runtime.read().snapshot;
@@ -102,7 +102,7 @@ test('D18 reload persists identity/seed/generation/lineage and reconstructs only
   assert.equal(after.g.ContinuousCombatStage.wave, 3);
   assert.equal(after.g.ContinuousCombatStage.transitions, 2);
   const all = after.planned;
-  assert.ok(all.every(a => !(saved.clearedPackMask & 1 << a.streamSectorIndex)));
+  assert.ok(all.every(a => !(saved.clearedPackMask & 1 << (a.streamSectorIndex % 6))));
   assert.ok(after.created[0].enemies.every(e => all.some(a => String(a.uid) === e.spawn_key)));
   assert.equal(after.created[0].enemies.length, fresh.live_enemies);
   assert.doesNotMatch(raw, /projectiles|hazards|rustState|permanent_revision|encounter_id/);
@@ -263,4 +263,35 @@ test('loaded checkpoint rejects a different running WASM ABI before save or crea
   assert.match(after.g.RustCombatError, /ABI version mismatch/);
   assert.equal(after.created.length, 0); assert.deepEqual(after.routes, []);
   assert.equal(after.raw(), raw); after.runtime.dispose();
+});
+
+
+test('completed subwaves inside an uncleared pack never respawn after checkpoint reload', () => {
+  const before = fixture();
+  for (const hero of before.state.entities.filter(a => a.kind === 'hero')) {
+    hero.currentLevel = 100; progression.refreshHeroStats(hero); hero.hp = hero.maxHP;
+    progression.saveHeroProgress(hero, before.g.HeroProgress);
+  }
+  before.rebuild(); before.tick(0);
+  let progress;
+  for (let frame = 1; frame < 1500; frame++) {
+    before.tick(frame * 1000 / 30);
+    progress = before.g.ContinuousCombatStage.combatCheckpoint.subwaves;
+    if (progress.clearedSpawns.length) break;
+  }
+  assert.ok(progress.clearedSpawns.length > 0, 'a real Rust subwave completed');
+  assert.equal(before.g.ContinuousCombatStage.wave, 1);
+  assert.equal(before.g.ContinuousCombatStage.clearedPackMask, 0, 'the containing pack is still unfinished');
+  const raw = before.raw(), cleared = new Set(progress.clearedSpawns);
+  assert.ok(JSON.parse(raw).continuousStage.combatCheckpoint.generation > 1);
+  before.runtime.dispose();
+  const after = fixture({ raw }); after.tick(0); assertFresh(after);
+  const token = a => `${a.streamSectorIndex}:${a.streamSolo ? 1 : 0}:${a.streamEntryOrder}`;
+  const expected = after.planned.filter(a => !cleared.has(token(a)));
+  const issued = () => [...after.created[0].enemies, ...after.spawned];
+  for (let frame = 1; frame < 1500 && issued().length < expected.length; frame++) after.tick(frame * 1000 / 30);
+  assert.equal(issued().length, expected.length, 'all remaining subwaves are issued once');
+  assert.deepEqual(issued().map(e => e.spawn_key).sort(), expected.map(a => String(a.uid)).sort());
+  assert.ok(issued().every(e => !cleared.has(token(after.planned.find(a => String(a.uid) === e.spawn_key)))));
+  after.runtime.dispose();
 });

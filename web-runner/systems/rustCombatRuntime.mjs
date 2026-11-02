@@ -23,9 +23,34 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
   progression, getEnemyRows, advanceHostTime, present = () => {}, warn = console.warn, persistCheckpoint }) {
   let attempt = null, baseTime = 0, lastCombatTime = 0, lastPresentationTime = 0;
   g.RustCombatAuthority = true;
-  let hostTransition = false, subwaves = [], previousSubwave = [], subwaveStarted = 0;
+  let hostTransition = false, subwaves = [], previousSubwave = [], subwaveStarted = 0, releasedSubwaves = [];
   let stageOptions, advanced = false, failed = false, introNow = null, tail = null;
   const hosts = new Map(), seenSpawns = new Set(), hostHeroes = new Map();
+  function saveCheckpoint() {
+    if (typeof persistCheckpoint === 'function' && persistCheckpoint() === true) return;
+    const error = new Error('WFM checkpoint: save failed before Rust attempt creation or checkpoint advance');
+    error.code = 'WFM_CHECKPOINT_SAVE_FAILED';
+    throw error;
+  }
+  function subwaveSpawnKey(actor) {
+    if (![actor.streamSectorIndex, actor.streamEntryOrder].every(n => Number.isSafeInteger(n) && n >= 0)) {
+      throw new Error('WFM checkpoint: missing stable subwave spawn identity');
+    }
+    return `${actor.streamSectorIndex}:${actor.streamSolo ? 1 : 0}:${actor.streamEntryOrder}`;
+  }
+  function checkpointClearedSubwaves(snapshot) {
+    const stage = g.ContinuousCombatStage;
+    if (stage.bossActive || !releasedSubwaves.length) return;
+    const living = new Set(snapshot.actors.filter(a => a.team === 'enemy' && a.hp > 0).map(a => a.host_id)
+      .concat((snapshot.pending_spawns || []).map(a => a.host_id)));
+    const completed = releasedSubwaves.filter(group => group.every(a => !living.has(String(a.uid))));
+    if (!completed.length) return;
+    const prior = stage.combatCheckpoint.subwaves;
+    stage.combatCheckpoint = { ...stage.combatCheckpoint, subwaves: { ...prior,
+      clearedSpawns: [...new Set([...prior.clearedSpawns, ...completed.flat().map(subwaveSpawnKey)])] } };
+    saveCheckpoint();
+    releasedSubwaves = releasedSubwaves.filter(group => !completed.includes(group));
+  }
   function queuePermanentInputs(heroId) {
     if (!driver.isActive()) return;
     for (const [actor, original] of hostHeroes) {
@@ -52,7 +77,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
     if (!keepVisuals) hostHeroes.clear();
   }
   function stop(reason = 'host_stage_transition') {
-    subwaves = []; previousSubwave = [];
+    subwaves = []; previousSubwave = []; releasedSubwaves = [];
     driver.stop(reason); restoreHostHeroes(); attempt = null; introNow = null; tail = null; hosts.clear(); seenSpawns.clear();
     present(null);
   }
@@ -130,6 +155,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
         throw new Error(`Unknown Rust gameplay event: ${kind}`);
       }
     }
+    checkpointClearedSubwaves(snapshot);
     call('UpdateHeroHPUI'); call('UpdateEnemyHPUI');
     g.RustCombatReceipt = { encounterId: snapshot.encounter_id, step: snapshot.step, sequence: snapshot.last_event_sequence,
       outcome: bossKilled ? 'ended' : snapshot.state, seconds: snapshot.combat_time, presentationSeconds: snapshot.time,
@@ -233,8 +259,20 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
     }
   }
   function prepareSubwaves(enemies) {
-    if (!enemies.length) return [];
     const stage = g.ContinuousCombatStage;
+    if (!stage.bossActive) {
+      const position = `${stage.seed}:${stage.region}:${stage.stage}:${stage.wave}:${stage.transitions || 0}`;
+      const prior = stage.combatCheckpoint.subwaves;
+      const progress = prior?.position === position ? prior : { position, clearedSpawns: [] };
+      stage.combatCheckpoint = { ...stage.combatCheckpoint, subwaves: progress };
+      const cleared = new Set(progress.clearedSpawns);
+      const excluded = new Set(enemies.filter(a => cleared.has(subwaveSpawnKey(a))));
+      state.entities.splice(0, state.entities.length, ...state.entities.filter(a => !excluded.has(a)));
+      for (const actor of excluded) { g.EnemySlots[actor.slotIndex] = 0; if (g.EnemyIDs) g.EnemyIDs[actor.slotIndex] = 0; }
+      enemies = enemies.filter(a => !excluded.has(a));
+    }
+    releasedSubwaves = [];
+    if (!enemies.length) { subwaves = []; previousSubwave = []; return []; }
     if (!g.RustCombatSubwaveAuthoring || g.RustCombatSubwaveAuthoring.seed !== stage.seed || g.RustCombatSubwaveAuthoring.region !== stage.region) {
       g.RustCombatSubwaveAuthoring = { seed: stage.seed, region: stage.region,
         stages: stage.region === 1 ? buildChapterOneSubwaveStages(getEnemyRows(), { seed: stage.seed, partyCP: getContinuousCombatPartyCP(state.entities) }) : [] };
@@ -246,7 +284,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
     const wave = { subwaves: authorSubwaves(enemies.map(a => a.name)) };
     if (!stage.bossActive) authored.waves[stage.wave - 1] = wave;
     const groups = stage.bossActive ? [enemies] : bindAuthoredSubwaves(wave.subwaves, enemies);
-    subwaves = groups.slice(1); previousSubwave = groups[0]; subwaveStarted = lastCombatTime;
+    subwaves = groups.slice(1); previousSubwave = groups[0]; releasedSubwaves = [groups[0]]; subwaveStarted = lastCombatTime;
     const hidden = new Set(subwaves.flat());
     state.entities.splice(0, state.entities.length, ...state.entities.filter(a => !hidden.has(a)));
     for (const actor of hidden) { g.EnemySlots[actor.slotIndex] = 0; if (g.EnemyIDs) g.EnemyIDs[actor.slotIndex] = 0; }
@@ -254,7 +292,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
     return previousSubwave;
   }
   function releaseSubwave(now) {
-    previousSubwave = subwaves.shift(); subwaveStarted = now;
+    previousSubwave = subwaves.shift(); releasedSubwaves.push(previousSubwave); subwaveStarted = now;
     showSubwave(previousSubwave);
     driver.spawn(previousSubwave.map(a => shadowEnemy(wfmEnemyInput(a, getEnemyRows()))));
   }
@@ -292,13 +330,9 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
           contentVersion: WFM_COMBAT_CONTENT_VERSION, abiVersion: WFM_COMBAT_ABI_VERSION,
         };
         validateCombatCheckpoint({ ...stage, transitions: Number(stage.transitions || 0) }, bridge.describe().abi_version);
-        if (typeof persistCheckpoint !== 'function' || persistCheckpoint() !== true) {
-          const error = new Error('WFM checkpoint: save failed before Rust attempt creation');
-          error.code = 'WFM_CHECKPOINT_SAVE_FAILED';
-          throw error;
-        }
         if (g.WfmCheckpointReload) stage.bossTimerStartedAt = null;
         prepareSubwaves(state.entities.filter(a => a.kind === 'enemy' && a.hp > 0));
+        saveCheckpoint();
         const config = createWfmCombatConfig({ globals: g, entities: state.entities, enemyRows: getEnemyRows(), encounterId: `rust:${stage.combatCheckpoint.id}:${crypto.randomUUID()}`, checkpointEntry: g.WfmCheckpointReload === true });
         config.spawn_markers = !stage.bossActive;
         if (stage.bossActive && !config.enemies.some(enemy => enemy.spawn_key === String(stage.bossUID))) throw new Error('Missing WFM boss spawn');

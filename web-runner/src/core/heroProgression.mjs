@@ -46,6 +46,13 @@ export function validateCombatCheckpoint(stage, abiVersion = WFM_COMBAT_ABI_VERS
   ||!Number.isSafeInteger(stage.transitions)||stage.transitions<0
   ||!Number.isSafeInteger(meta.generation)||meta.generation<1
   ||![meta.id,meta.rewardLineage].every(value=>typeof value==='string'&&value.length>0&&value.length<=180))fail('invalid checkpoint identity, seed, generation or reward lineage');
+ if(meta.subwaves!==undefined){
+  const progress=meta.subwaves;
+  if(!progress||typeof progress.position!=='string'||!progress.position||progress.position.length>100
+   ||!Array.isArray(progress.clearedSpawns)||progress.clearedSpawns.length>42
+   ||!progress.clearedSpawns.every(key=>typeof key==='string'&&key.length<=100&&/^\d+:[01]:\d+$/.test(key))
+   ||new Set(progress.clearedSpawns).size!==progress.clearedSpawns.length)fail('invalid cleared-subwave checkpoint');
+ }
 }
 function normalizeContinuousStageCheckpoint(stage) {
  validateCombatCheckpoint(stage);
@@ -67,7 +74,8 @@ function normalizeContinuousStageCheckpoint(stage) {
   if(legacy)throw new Error('WFM checkpoint: combat identity requires topology version 2');
   checkpoint.seed=stage.seed;checkpoint.transitions=stage.transitions;
   const m=stage.combatCheckpoint;
-  checkpoint.combatCheckpoint={version:m.version,id:m.id,generation:m.generation,rewardLineage:m.rewardLineage,contentVersion:m.contentVersion,abiVersion:m.abiVersion};
+  checkpoint.combatCheckpoint={version:m.version,id:m.id,generation:m.generation,rewardLineage:m.rewardLineage,contentVersion:m.contentVersion,abiVersion:m.abiVersion,
+   ...(m.subwaves?{subwaves:{position:m.subwaves.position,clearedSpawns:[...m.subwaves.clearedSpawns]}}:{})};
  }
  return checkpoint;
 }

@@ -33,7 +33,8 @@ export function persistHeroProgressIfDirty({stateGlobals:g}) {
       checkpoint.transitions = Number(stage.transitions || 0);
       const previous = g.HeroProgress.continuousStage;
       const priorMeta = previous?.combatCheckpoint;
-      const changed = priorMeta && Object.entries(checkpoint).some(([field, value]) => previous[field] !== value);
+      const changed = priorMeta && (Object.entries(checkpoint).some(([field, value]) => previous[field] !== value)
+        || JSON.stringify(priorMeta.subwaves) !== JSON.stringify(stage.combatCheckpoint.subwaves));
       if (changed && priorMeta.generation >= Number.MAX_SAFE_INTEGER) {
         g.HeroProgressStorageError = 'WFM checkpoint: generation exhausted';
         return false;
