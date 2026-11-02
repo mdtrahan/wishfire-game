@@ -32,7 +32,7 @@ impl Sim {
                     }
                 });
                 let heavy_melee = enemy.stats.reach <= 100.
-                    && enemy.stats.atk * CRIT_MULTIPLIER * DEF_BASE / (DEF_BASE + a.stats.def) > a.view.max_hp * REVIVE_INTERRUPT_HP
+                    && enemy.stats.atk * CRIT_MULTIPLIER * crate::formulas::mitigation_multiplier(a.defense() as f64) as f32 > a.view.max_hp * REVIVE_INTERRUPT_HP
                     && enemy.view.pos.distance(spot) <= enemy.attack_range(a) + REVIVE_DANGER_MARGIN;
                 if heavy_melee { return true; }
                 let wait = if is_boss(enemy.view.archetype) {

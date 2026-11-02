@@ -67,8 +67,9 @@ impl Sim {
         let a = &mut self.actors[target];
         let damage =
             raw * if mitigate {
-                DEF_BASE
-                    / ((DEF_BASE + a.defense_for(channel)) * if rallied { RALLY_DEF_MULTIPLIER } else { 1. })
+                crate::formulas::mitigation_multiplier(
+                    a.defense_for(channel) as f64 * if rallied { RALLY_DEF_MULTIPLIER as f64 } else { 1. }
+                ) as f32
             } else {
                 1.
             } * if crit { CRIT_MULTIPLIER } else { 1. };

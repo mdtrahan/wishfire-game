@@ -71,6 +71,8 @@
 ## Child DOX Index
 - None.
 
+- `combatFormulas.mjs` mirrors Rust's 100-point mitigation shape for all CP/previews. CP neutral-hit and effective-HP estimates use this helper; displayed live stats remain Rust observations.
+
 - Combat outcome ignores macro energy. Only living heroes determine defeat; energy is spent at quest entry and purple gems may restore it.
 
 - Combat defeat uses the living deployed hero count. Pooled HP is diagnostic. Individual actor HP gates new turns, including when old pending-group markers remain; enemy-target packets support six slots.

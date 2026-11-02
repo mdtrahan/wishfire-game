@@ -333,9 +333,10 @@ fn rally_defense_follows_a_living_visible_owner_does_not_stack_and_ends_immediat
     s.combat.actors[i].view.hp = 10000.;
     let armor = s.combat.actors[i].stats.def;
     let normal = 90. * DEF_BASE / (DEF_BASE + armor);
+    let rallied = 90. * DEF_BASE / (DEF_BASE + armor * RALLY_DEF_MULTIPLIER);
     assert!(
         (s.combat.damage(1, i, 90., false, true, Element::Physical)
-            - normal / RALLY_DEF_MULTIPLIER)
+            - rallied)
             .abs()
             < 0.001
     );
@@ -356,7 +357,7 @@ fn rally_defense_follows_a_living_visible_owner_does_not_stack_and_ends_immediat
     let second = s.spawn_actor(Archetype::Bastorto, s.combat.actors[4].view.pos);
     assert!(
         (s.combat.damage(1, i, 90., false, true, Element::Physical)
-            - normal / RALLY_DEF_MULTIPLIER)
+            - rallied)
             .abs()
             < 0.001
     );

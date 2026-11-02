@@ -12,6 +12,8 @@
 ## Child DOX Index
 - None.
 
+- `formulas::mitigation_multiplier` owns `100/(100+defense)` for physical DEF and magic RES. Apply defense buffs before mitigation; positive attack power remains positive at finite defenses. SimulationCore CP uses the same helper; browser estimates mirror it in `combatFormulas.mjs`.
+
 - `Sim.floor` is per-world host geometry. Movement, ray clipping, hazards and projectile culling use it; default bounds preserve frozen slice hashes. Keep the harness geometry helpers defaulted.
 
 - `wfm.rs` owns distinct WFM High Gobloc/Skeleton melee and ordinary Chimerilass/Djinn ranged definitions. Chimerilass retains half-HP weighted healing; Djinn retains magic/physical single-target choices with absent-board fallback. Their independent MAG/RES bases retain the authored WFM values, including Djinn 28/14 and Chimerilass 26/16. Host supplies final stats; never alias these identities to slice enemies/bosses.

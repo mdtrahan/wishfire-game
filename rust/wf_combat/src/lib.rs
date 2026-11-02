@@ -15,6 +15,7 @@ pub mod enemy_healing;
 pub mod enemy_status;
 pub mod enmity;
 pub mod events;
+pub mod formulas;
 pub mod groove;
 pub mod hazards;
 pub mod healing_spring;
