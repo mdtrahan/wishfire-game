@@ -325,3 +325,22 @@ test('real-WASM runtime durably captures a boss kill and automatically settles a
  assert.ok(Object.values(source.combatRewardOutbox.streams).every(stream=>stream.pending.length===0));
  assert.deepEqual(f.warnings,[]);noLeaks(f.bridge);
 });
+
+
+test('DEV speed reaches the real Rust foreground clock and pause discards elapsed time', () => {
+  const f = fixture();
+  const boss = f.state.entities.find(actor => actor.kind === 'enemy');
+  boss.hp = boss.maxHP = boss.stats.HP = 1e6;
+  try {
+    f.g.DevCombatSpeedMultiplier = .25;
+    for (let frame = 0; frame <= 120; frame++) f.runtime.tick({ ...f.options, nowMs: frame * 1000 / 60 });
+    assert.equal(f.runtime.read().snapshot.step, '15');
+    f.g.DevCombatSpeedMultiplier = 4;
+    for (let frame = 121; frame <= 180; frame++) f.runtime.tick({ ...f.options, nowMs: frame * 1000 / 60 });
+    assert.equal(f.runtime.read().snapshot.step, '135');
+    f.runtime.pause();
+    f.runtime.tick({ ...f.options, nowMs: 3600000 });
+    assert.equal(f.runtime.read().snapshot.step, '135');
+    assert.deepEqual(f.warnings, []);
+  } finally { f.runtime.stop(); noLeaks(f.bridge); }
+});

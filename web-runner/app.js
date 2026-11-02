@@ -35,6 +35,7 @@ import { getEmbeddedJson, runtimeAssetUrl } from './systems/runtimeAssetUrl.mjs'
 import { heroDefinition } from './src/core/heroDefinitions.mjs';
 import { computeCombatPower as canonicalCombatPower, normalizeCombatPowerActor } from './src/core/combatPower.mjs';
 import * as partyStatOsd from './systems/partyStatOsd.js';
+import { createRustCombatStatDisplay } from './systems/rustCombatStatDisplay.mjs';
 import { createSimulationCoreSeededRng, initializeSimulationCoreShadow, shadowCombatPower, shadowSeededRng } from './systems/simulationCoreShadow.js';
 import { createAppViewportRuntime } from './systems/appShellViewport.js';
 import { computeCombatDamageFontSize, computeScaledCombatControlSize } from './systems/combatPresentationScale.mjs';
@@ -715,8 +716,7 @@ const fnContext = createContext({
 
 const partyStatOsdRuntime = partyStatOsd.createPartyStatOsdRuntime({
   state,
-  getEffectiveStat: (hero, stat) => hero.stats?.[stat] ?? 0,
-  getPowerMultiplier: () => 1,
+  ...createRustCombatStatDisplay(state),
 });
 
 devToolingRuntime = createDevToolingRuntime({

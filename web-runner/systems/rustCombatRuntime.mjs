@@ -400,7 +400,7 @@ export function createRustCombatRuntime({ state, globals: g = state.globals, bri
       } catch (error) { finishFailure(error); return false; }
     }
     spawnAdditions();
-    driver.advance(options.nowMs, !!rewardDelivery);
+    driver.advance(options.nowMs, !!rewardDelivery, g.DevCombatSpeedMultiplier ?? 1);
     return advanced;
   }
   function tick(options) {

@@ -246,7 +246,7 @@ test('combat end clears staged dev overrides while preserving gold', () => {
   assert.equal(g.DevForcedEnemyType, '');
   assert.equal(g.DevToolingPaused, 0);
   assert.equal(g.DevDoubleAttackHolderUID, 0);
-  assert.equal(g.DevRewardDrops.length, 0);
+  assert.equal('DevRewardDrops' in g, false);
   assert.equal(g.DevEnemySlots.join(','), '__RANDOM__,__RANDOM__,__RANDOM__');
   assert.deepEqual(removed, ['orka.dev_tooling_config.v1']);
   assert.ok(!calls.includes('ClearSessionSkillDraught'));
@@ -280,4 +280,10 @@ test('Speed Link Fixture uses the existing dev selector to force one two-times-S
   await runtime.applyDevToolingConfig({ doubleAttackHeroName: '' }, { closeModal: false });
   assert.equal(state.entities[0].stats.SPD, 11);
   assert.equal(state.globals.DevSpeedLinkFixture, null);
+});
+
+
+test('DEV tooling retires Reward Drop and Reward Count controls and their unused state', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../web-runner/systems/devToolingRuntime.js'), 'utf8');
+  assert.doesNotMatch(source, /Reward Drop|Reward Count|devtool-reward|DevReward|DEV_TOOL_REWARD_OPTIONS/);
 });

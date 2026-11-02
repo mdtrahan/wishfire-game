@@ -335,3 +335,5 @@
 - `rustCombatRuntime.mjs` alone projects live combat actors and consumes ordered Rust damage/death facts. DPS uses per-hit Rust `hp_loss`, excluding absorbed ward. Gear, levels and Training use bound permanent-input revisions; no live JS HP restoration. `simulationCoreShadow.js` now supplies only CP/meta RNG.
 
 - Ordinary screen/DEV/background departure pauses the existing Rust world without discarding subwaves. Bootstrap gates on `requireReady()` and reuses the startup loading error surface on WASM/ABI failure. Legacy movement/camera sliders are retired until an authoritative API exists.
+
+- Party-stat OSD reads live Rust snapshot ATK/MAG/DEF/RES through `rustCombatStatDisplay.mjs` in native units; its permanent comparison converts display units only. SPD remains permanent meta because the ABI exposes no cadence readback. DEV Combat Speed scales the Rust driver foreground clock; Reward Drop/Count controls and state are retired.

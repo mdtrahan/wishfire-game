@@ -14,17 +14,6 @@ const DEV_TOOL_GEM_OPTIONS = Object.freeze([
   { value: 5, label: 'PURPLE' },
 ]);
 const GEM_SPAWN_COLORS = Object.freeze([1, 2, 3, 4, 5]);
-const DEV_TOOL_REWARD_OPTIONS = Object.freeze([
-  { value: '', label: 'None' },
-  { value: 'GOLD', label: 'Gold' },
-  { value: 'ENERGY', label: 'Energy' },
-  { value: 'HEAL', label: 'Heal' },
-  { value: 'SAND', label: 'Sand' },
-  { value: 'BONE_CHIP', label: 'Bone Chip' },
-  { value: 'SLIME', label: 'Slime' },
-  { value: 'HORN', label: 'Horn' },
-  { value: 'SHELL', label: 'Shell' },
-]);
 const DEV_TOOLING_STORAGE_KEY = 'orka.dev_tooling_config.v1';
 const DEV_TOOL_EMPTY_SLOT = '';
 const DEV_TOOL_RANDOM_ENEMY_SLOT = '__RANDOM__';
@@ -32,7 +21,6 @@ export {
   DEV_TOOL_HOTKEY_LABEL,
   DEV_TOOL_GEM_RANDOM,
   DEV_TOOL_GEM_OPTIONS,
-  DEV_TOOL_REWARD_OPTIONS,
   DEV_TOOL_EMPTY_SLOT,
   DEV_TOOL_RANDOM_ENEMY_SLOT,
   GEM_SPAWN_COLORS,
@@ -80,8 +68,6 @@ export function createDevToolingRuntime(deps = {}) {
       goldAmount: 0,
       combatSpeed: 1,
       combatOrientation: normalizeCombatOrientation(state.globals.CombatOrientation),
-      rewardDrops: '',
-      rewardCount: 1,
       doubleAttackHeroName: '',
       doubleAttackChance: 1,
       lastAppliedAt: 0,
@@ -110,9 +96,6 @@ export function createDevToolingRuntime(deps = {}) {
     next.goldAmount = Math.max(0, Math.floor(Number(next.goldAmount || 0)));
     next.combatSpeed = Math.max(0.25, Math.min(4, Number(next.combatSpeed || 1)));
     next.combatOrientation = normalizeCombatOrientation(next.combatOrientation);
-    const rewardDrop = String(next.rewardDrops || '').trim().toUpperCase();
-    next.rewardDrops = DEV_TOOL_REWARD_OPTIONS.some((row) => row.value === rewardDrop) ? rewardDrop : '';
-    next.rewardCount = Math.max(0, Math.min(99, Math.floor(Number(next.rewardCount || base.rewardCount))));
     const doubleAttackHeroName = String(next.doubleAttackHeroName || '').trim();
     next.doubleAttackHeroName = !doubleAttackHeroName || allowedHeroNames.has(doubleAttackHeroName) ? doubleAttackHeroName : '';
     next.doubleAttackChance = 1;
@@ -405,8 +388,6 @@ export function createDevToolingRuntime(deps = {}) {
     devToolingDom.goldAmount.value = String(cfg.goldAmount);
     devToolingDom.combatSpeed.value = String(cfg.combatSpeed);
     devToolingDom.combatOrientation.value = String(cfg.combatOrientation);
-    devToolingDom.rewardDrops.value = String(cfg.rewardDrops || '');
-    devToolingDom.rewardCount.value = String(cfg.rewardCount);
     populateDevToolSlotSelect(devToolingDom.doubleAttackHero, { choices: getDevToolHeroOptions(), includeRandom: false, selected: cfg.doubleAttackHeroName || DEV_TOOL_EMPTY_SLOT });
     updateDevToolingStatus();
   }
@@ -420,8 +401,6 @@ export function createDevToolingRuntime(deps = {}) {
       goldAmount: Number(devToolingDom.goldAmount.value || 0),
       combatSpeed: Number(devToolingDom.combatSpeed.value || 1),
       combatOrientation: String(devToolingDom.combatOrientation.value || 'left-wise'),
-      rewardDrops: String(devToolingDom.rewardDrops.value || ''),
-      rewardCount: Number(devToolingDom.rewardCount.value || 1),
       doubleAttackHeroName: String(devToolingDom.doubleAttackHero?.value || ''),
     };
   }
@@ -443,11 +422,6 @@ export function createDevToolingRuntime(deps = {}) {
     state.globals.goldTotal = next.goldAmount;
     state.globals.DevCombatSpeedMultiplier = next.combatSpeed;
     state.globals.CombatOrientation = next.combatOrientation;
-    state.globals.DevRewardDropId = next.rewardDrops;
-    state.globals.DevRewardDrops = next.rewardDrops
-      ? Array.from({ length: next.rewardCount }, () => next.rewardDrops)
-      : [];
-    state.globals.DevRewardCount = next.rewardCount;
     state.globals.DevDoubleAttackHolderName = '';
     state.globals.DevDoubleAttackHolderUID = 0;
     state.globals.DevDoubleAttackChance = Number(next.doubleAttackChance || 1);
@@ -483,12 +457,10 @@ export function createDevToolingRuntime(deps = {}) {
       `Enemy slots (staged): ${next.enemySlots.map((value) => value === DEV_TOOL_RANDOM_ENEMY_SLOT ? 'Random' : (value || 'Empty')).join(', ')}\n` +
       `Combat orientation: ${next.combatOrientation}\n` +
       `Speed Link Fixture: ${next.doubleAttackHeroName || 'Off'}${doubleAttackUID ? ` (uid ${doubleAttackUID})` : ''}\n` +
-      `Reward (staged): ${next.rewardDrops || 'None'} x${next.rewardCount}\n` +
       `${combatSetupChanged ? `Combat setup applied: ${appliedSessionChange}` : 'Combat state unchanged'}`
     );
     return {
       ...next,
-      rewardDrops: [...(state.globals.DevRewardDrops || [])],
       boardRecolored: recolored,
       doubleAttackUID,
       loadoutChanged,
@@ -628,14 +600,6 @@ export function createDevToolingRuntime(deps = {}) {
             <option value="right-wise">Right-wise</option>
           </select>
         </label>
-        <label style="display:flex;flex-direction:column;gap:4px;">Reward Drop
-          <select data-devtool-reward-drops>
-            ${DEV_TOOL_REWARD_OPTIONS.map((row) => `<option value="${row.value}">${row.label}</option>`).join('')}
-          </select>
-        </label>
-        <label style="display:flex;flex-direction:column;gap:4px;">Reward Count
-          <input data-devtool-reward-count type="number" min="0" max="99" step="1">
-        </label>
         <label style="display:flex;flex-direction:column;gap:4px;">Speed Link Fixture
           <select data-devtool-double-attack-hero></select>
         </label>
@@ -682,8 +646,6 @@ export function createDevToolingRuntime(deps = {}) {
       goldAmount: panel.querySelector('[data-devtool-gold-amount]'),
       combatSpeed: panel.querySelector('[data-devtool-combat-speed]'),
       combatOrientation: panel.querySelector('[data-devtool-combat-orientation]'),
-      rewardDrops: panel.querySelector('[data-devtool-reward-drops]'),
-      rewardCount: panel.querySelector('[data-devtool-reward-count]'),
       doubleAttackHero: panel.querySelector('[data-devtool-double-attack-hero]'),
       status: null,
     };
@@ -793,9 +755,6 @@ export function createDevToolingRuntime(deps = {}) {
     g.DevForcedBoardColor = cfg.boardGemColor;
     g.DevCombatSpeedMultiplier = cfg.combatSpeed;
     g.CombatOrientation = cfg.combatOrientation;
-    g.DevRewardDropId = '';
-    g.DevRewardDrops = [];
-    g.DevRewardCount = cfg.rewardCount;
     syncConfiguredDoubleAttackHarness(cfg);
     devToolingPauseSnapshot = null;
     g.DevToolingPaused = 0;
