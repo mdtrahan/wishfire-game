@@ -1,0 +1,17 @@
+{
+  "hot_files": {
+    "web-runner/app.js": {
+      "functions": [
+        "__MODULE__"
+      ],
+      "staged_blob": "7b9b999b185f006efd05672ef888225c5096b3e0"
+    },
+    "web-runner/systems/renderRuntime.js": {
+      "functions": [
+        "__MODULE__"
+      ],
+      "staged_blob": "6c336fe28c2a4b579712a34a88b8bd61b2675322"
+    }
+  },
+  "issue_id": "ORKA-nspw.1"
+}

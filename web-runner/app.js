@@ -15,7 +15,7 @@ import { resetSuperGemBoardState, resolveSuperGemDecomposition } from './src/cor
 import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
 import { deriveDamageFloatFrameOffset } from '../src/core/damageFloatVector.mjs';
 import { COMBAT_BATTLEFIELD_ZOOM, createCombatCameraProjection, deriveCombatWorldBounds, orientCombatWorldOffsetX, readCombatOrientationFromSearch } from '../src/core/combatOrientation.mjs';
-import { resolveCombatCameraCenterX } from './src/core/combatCamera.mjs';
+import { resolveCombatCameraCenterX } from './systems/rustCombatCamera.mjs';
 import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
 import { createHealBloom } from './src/core/healBloomAnimation.mjs';
 import * as heroProgressStorage from './systems/heroProgressStorage.js';

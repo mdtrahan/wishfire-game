@@ -12,7 +12,7 @@ import { createSliceCombatCamera } from '../web-runner/systems/rustCombatCamera.
 import { installRustCombat } from '../web-runner/systems/rustCombat.mjs';
 const root=new URL('../web-runner/assets/rust-combat/',import.meta.url),manifest=JSON.parse(fs.readFileSync(new URL('manifest.json',root)));
 const hero={actor_id:1,team:'hero',kind:'hondo',pos:{x:900,y:300},hp:100,max_hp:100,scale:1,state:'cast'},enemy={actor_id:2,team:'enemy',kind:'boss',pos:{x:1050,y:300},hp:100,max_hp:100,scale:2.2};
-const snapshot=(time=1,hazards=[])=>({encounter_id:'visual-proof',time,combat_time:time,actors:[hero,enemy],hazards,projectiles:[],geometry:{floor:{min:{x:0,y:-40},max:{x:2160,y:680}}}});
+const snapshot=(time=1,hazards=[])=>({encounter_id:'visual-proof',camera_focus:{x:900,y:300},time,combat_time:time,actors:[hero,enemy],hazards,projectiles:[],geometry:{floor:{min:{x:0,y:-40},max:{x:2160,y:680}}}});
 const present=(kind,data)=>({body:{kind:'presentation',data:{event:{kind,data}}}});
 const damage=data=>({body:{kind:'damage',data:{source:1,target:2,amount:15,crit:false,element:'physical',...data}}});
 
@@ -155,13 +155,6 @@ test('encasement ends on zero timer, death and removal, then pops for exactly so
   fx.ingest({...snapshot(2.319),actors},[]);fx.observeEncasements();assert.equal(fx.encased.size,1);
   fx.ingest({...snapshot(2.321),actors},[]);fx.observeEncasements();assert.equal(fx.encased.size,0);
  }
-});
-test('stationary world enemy and ground effects do not follow another hero in the slice frame', () => {
- const cam=createSliceCombatCamera(),s={...snapshot(),geometry:{floor:SLICE_FLOOR}};
- s.actors=[{...hero,pos:{x:418,y:410}},{...enemy,pos:{x:456,y:430}}];
- const observations=[];
- for(const y of [300,330,360,390]){s.actors[0]={...s.actors[0],pos:{x:418,y}};cam.update(s,1);observations.push({worldY:s.actors[1].pos.y,drawY:cam.y(s.actors[1].pos.y),groundY:cam.y(400)});}
- assert.equal(new Set(observations.map(o=>o.worldY)).size,1);assert.equal(new Set(observations.map(o=>o.drawY)).size,1);assert.equal(new Set(observations.map(o=>o.groundY)).size,1);
 });
 test('bomb observations retire on the same snapshot as the source projectile', () => {
  const fx=createRustEffectState(),p={id:10,kind:'bomb',team:'enemy',pos:{x:480,y:900}};

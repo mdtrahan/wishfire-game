@@ -1,0 +1,112 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { createSliceCombatCamera, resolveCombatCameraCenterX, ARENA_TO_VIEW_HEIGHT, COMBAT_VIEW } from '../web-runner/systems/rustCombatCamera.mjs';
+import { SLICE_FLOOR } from '../web-runner/systems/rustCombatArena.mjs';
+import { SliceSpotlightCamera } from '../web-runner/systems/rustCombatSpotlightCamera.mjs';
+const trace = JSON.parse(fs.readFileSync(new URL('./fixtures/slice-camera-stage7.json', import.meta.url)));
+const hero = (actor_id, x, y) => ({ actor_id, kind: 'hondo', team: 'hero', hp: 100, scale: 1, state: 'idle', pos: { x, y } });
+const snapshot = () => ({ encounter_id: 'camera-proof', time: 0, camera_focus: { x: 456, y: 650 }, geometry: { floor: structuredClone(SLICE_FLOOR) }, actors: [hero(1, 418, 650), hero(2, 494, 650)], hazards: [], projectiles: [] });
+const near = (a, b, tolerance = .003) => assert.ok(Math.abs(a - b) <= tolerance, `${a} != ${b}`);
+const frame = c => [c.centreX, c.centreY, c.zoom];
+const freeze = value => { if (value && typeof value === 'object') { Object.freeze(value); Object.values(value).forEach(freeze); } return value; };
+
+test('recorded seed-7 WFM ordinary and boss snapshots match pinned Rust f32 formulas', () => {
+  const camera = createSliceCombatCamera();
+  for (const { snapshot: s, dt, expected } of trace.frames) {
+    const before = structuredClone(s); freeze(s); camera.update(s, dt);
+    frame(camera).forEach((value, i) => near(value, expected[i]));
+    assert.deepEqual(s, before);
+  }
+  assert.ok(trace.frames.some(f => f.snapshot.actors.some(a => a.kind.startsWith('boss'))));
+});
+
+test('D13 floor keeps one screen width and the slice 9.97% vertical pan allowance', () => {
+  const height = SLICE_FLOOR.max.y - SLICE_FLOOR.min.y;
+  const useful = (COMBAT_VIEW.bottom - COMBAT_VIEW.top) / (.5 * .75);
+  assert.equal((SLICE_FLOOR.max.x - SLICE_FLOOR.min.x) * .5, 360);
+  near((height - useful) / height, .099656357388316, 1e-12);
+  near(height / useful, ARENA_TO_VIEW_HEIGHT, 1e-12);
+  assert.equal(COMBAT_VIEW.top, 42); assert.equal(COMBAT_VIEW.bottom, 430);
+});
+
+test('nearest spawn marker supplies 30% look-ahead; springs have no positional dead zone', () => {
+  const s = snapshot(); s.geometry.floor = { min: { x: 0, y: 0 }, max: { x: 6000, y: 6000 } };
+  s.actors = [hero(1, 2900, 3000), hero(2, 3100, 3000)]; s.camera_focus = { x: 3000, y: 2950 };
+  const camera = createSliceCombatCamera(); camera.update(s, 0);
+  near(camera.centreX, 3000); near(camera.centreY, 2950);
+  s.hazards = [{ kind: 'spawn_marker', origin: { x: 3100, y: 3100 } }];
+  camera.update(s, .1);
+  near(camera.centreX, 3000 + 30 * (1 - (1 + .35) * Math.exp(-.35)), 1e-9);
+  near(camera.centreY, 2950 + 30 * (1 - (1 + .7) * Math.exp(-.7)), 1e-9);
+  assert.ok(camera.centreX > 3000);
+});
+
+test('arena clamp, body overscan and infeasible groups preserve party priority', () => {
+  const s = snapshot(), camera = createSliceCombatCamera();
+  for (const y of [SLICE_FLOOR.min.y + 210, SLICE_FLOOR.max.y - 30]) {
+    s.actors = [hero(1, 456, y)]; camera.reset(); camera.update(s, 1);
+    near(camera.centreX, 456);
+    assert.ok(camera.y(y - 210) >= COMBAT_VIEW.top - .001);
+    assert.ok(camera.y(y + 30) <= COMBAT_VIEW.bottom + .001);
+    assert.ok(camera.centreY >= SLICE_FLOOR.min.y + 388 / .75 - .001);
+    assert.ok(camera.centreY <= SLICE_FLOOR.max.y - 388 / .75 + .001);
+  }
+  s.actors = [hero(1, 100, 650), hero(2, 1000, 650), { ...hero(3, 4000, 650), kind: 'boss', team: 'enemy' }];
+  camera.reset(); camera.update(s, 1);
+  near(camera.centreX, 550); assert.equal(camera.zoom, .5);
+  near(camera.x(100 - 96), 360 - camera.x(1000 + 96));
+  s.actors = [hero(1, 456, 70)]; camera.reset(); camera.update(s, 1);
+  assert.ok(camera.centreY < SLICE_FLOOR.min.y + 388 / .75);
+  near(camera.y(70 - 210), 42);
+});
+
+test('boss Spawn cuts at +540, holds standard zoom, defeat holds and encounter reset settles anew', () => {
+  const s = snapshot(), camera = createSliceCombatCamera(); camera.update(s, 0);
+  const boss = { ...hero(10, 456, 100), kind: 'boss', team: 'enemy', state: 'spawn' }; s.actors.push(boss);
+  camera.update(s, 1); assert.deepEqual(frame(camera), [456, 640, .5]);
+  camera.update(s, .01); assert.deepEqual(frame(camera), [456, 640, .5]);
+  s.actors.forEach(a => { a.hp = 0; a.state = 'dead'; }); camera.update(s, 1);
+  assert.deepEqual(frame(camera), [456, 640, .5]);
+  const reset = snapshot(); reset.encounter_id = 'next-attempt'; camera.update(reset, 0);
+  const fresh = createSliceCombatCamera(); fresh.update(reset, 0); assert.deepEqual(frame(camera), frame(fresh));
+});
+
+test('normal follow freezes through spotlight/hit-stop and excludes downed/dead heroes', () => {
+  const s = snapshot(), camera = createSliceCombatCamera(); camera.update(s, 0); const held = frame(camera);
+  s.actors[0].pos.y += 300; s.spotlight = {}; camera.update(s, 1); assert.deepEqual(frame(camera), held);
+  delete s.spotlight; s.hit_stop = {}; camera.update(s, 1); assert.deepEqual(frame(camera), held);
+  delete s.hit_stop; s.actors[0].state = 'downed';
+  const only = structuredClone(s); only.actors.shift(); const a = createSliceCombatCamera(), b = createSliceCombatCamera();
+  a.update(s, 0); b.update(only, 0); assert.deepEqual(frame(a), frame(b));
+});
+
+const spotlight = (extra = {}) => ({ caster: 1, started: 0, participants: [1], hazards: [], co_casters: [], projectiles: [], ...extra });
+function apply(camera, spot, s, reduced = false, wallDt = 0) { const before = structuredClone(s); camera.update(s, 0); spot.apply(camera, s, reduced, wallDt); assert.deepEqual(s, before); }
+test('spotlight enters with 1.2s smoothstep and corrects the asymmetric safe-band centre', () => {
+  const s = snapshot(), camera = createSliceCombatCamera(), spot = new SliceSpotlightCamera({});
+  camera.update(s, 0); const normal = frame(camera); s.spotlight = spotlight();
+  apply(camera, spot, s); near(camera.zoom, .5);
+  s.time = .6; apply(camera, spot, s); near(camera.zoom, .65, 1e-12);
+  s.time = 1.2; apply(camera, spot, s); near(camera.zoom, .8, 1e-12);
+  // Hero fallback body at .6 visual scale, with 12 projected-world units of padding.
+  const boxMid = 650 * .75 + (-110 * .6 + 5 * .6) / 2;
+  near(camera.centreY, (boxMid + 2 / .8) / .75, 1e-9);
+  assert.deepEqual(normal[2], .5);
+  assert.equal(resolveCombatCameraCenterX({ RustCombatPresentation: { camera } }), camera.centreX);
+});
+
+test('spotlight holds expanding core, excludes far extras, and returns calmly on frozen sim time', () => {
+  const s = snapshot(), camera = createSliceCombatCamera(), spot = new SliceSpotlightCamera({});
+  const before = structuredClone(s); camera.update(s, 0); s.spotlight = spotlight({ co_casters: [2] }); s.actors[1].pos.x = 4000;
+  apply(camera, spot, s, true); const featured = frame(camera);
+  s.actors[1].pos.x = 6000; apply(camera, spot, s, true); assert.deepEqual(frame(camera), featured);
+  s.actors[0].pos.x += 100; apply(camera, spot, s, true); const expanded = { ...spot.held };
+  s.actors[0].pos.x -= 100; apply(camera, spot, s, true); assert.deepEqual(spot.held, expanded);
+  s.spotlight = null; apply(camera, spot, s, false, .25); near(camera.zoom, .65, 1e-12);
+  apply(camera, spot, s, false, .25); assert.equal(spot.current, null); near(camera.zoom, .5);
+  const fresh = createSliceCombatCamera(); fresh.update({ ...before, encounter_id: s.encounter_id }, 0);
+  near(camera.centreX, fresh.centreX);
+  s.spotlight = spotlight({ started: 2 }); apply(camera, spot, s, true); near(camera.zoom, .8);
+  s.spotlight = null; apply(camera, spot, s, true); assert.equal(spot.current, null);
+});

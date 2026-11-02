@@ -16,7 +16,7 @@ import { drawCombatHealthBar } from './combatHealthBarPresentation.mjs';
 import { drawCombatArenaBackground } from './combatArenaBackground.mjs';
 import { drawActorPuppetFrame } from './actorPuppetPresentation.mjs';
 import { combatEnemiesForPresentation } from './actorPuppetDefeats.mjs';
-import { resolveCombatCameraCenterX } from '../src/core/combatCamera.mjs';
+import { resolveCombatCameraCenterX } from './rustCombatCamera.mjs';
 import { createEnemyActivationFade, paintWithActivationAlpha } from './enemyActivationFadePresentation.mjs';
 import {
   computeCombatDamageFontSize,
