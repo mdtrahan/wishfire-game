@@ -88,7 +88,7 @@ async function optionBGeometry(page){
  near(m.upgrade.width/m.scale,44);near(m.upgrade.height/m.scale,40);
  assert.equal(m.upgradeCentre,true,'storage badge leaves Bag center available for upgrades: '+JSON.stringify(m));
  near(m.lane.width/m.scale,312);assert.ok(m.lane.right<=m.bag.x);near(m.upgrade.x,m.bag.x);
- near(m.meter.width,m.strip.width);near(m.meter.height/m.scale,2.5);near(m.meter.bottom,m.nav.y);
+ near(m.meter.width,m.strip.width);near(m.meter.height/m.scale,3);near(m.meter.y,m.nav.y);near(m.meter.bottom,m.nav.y+3*m.scale);
  assert.equal(m.border,'0px');assert.equal(m.topBorder,'2px');assert.equal(m.oldControls,0);
  m.fonts.forEach((size,i)=>near(size,[11,12.65,12][i]));
  for(const {box,disabled} of m.targets){near(box.width/m.scale,48);near(box.height/m.scale,40);if(box.x<m.lane.x-1||box.right>m.lane.right+1)assert.equal(disabled,true,'partial previews cannot be clicked');}

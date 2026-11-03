@@ -155,7 +155,8 @@
 #wishfire-lamp .lamp-collect{position:absolute;z-index:2;top:4%;right:.4%;width:6.9%;height:20%;aspect-ratio:auto;border:2px solid #ece6cf;border-radius:50% 50% 45% 30%;background:linear-gradient(#89c2f4 5%,#3972b9 18%,#193d86 70%,#306cae);box-shadow:0 0 0 1px #182f54,inset 0 0 0 1px #c4e5ff}
 #wishfire-lamp .lamp-collect:after{content:'';position:absolute;left:9%;bottom:-14%;width:27%;height:25%;background:#285493;border-left:2px solid #ece6cf;transform:skewY(-35deg);z-index:-1}
 #wishfire-lamp .lamp-count{position:static;display:block;padding:0;border:0;background:none;color:#fff;font-size:1.2em;line-height:1;font-weight:950;text-shadow:0 1px 2px #122458;letter-spacing:-.04em}
-.lamp-progress{position:absolute;left:0;bottom:0;width:100%;height:calc(2.5px * var(--lamp-scale));overflow:hidden;pointer-events:none;background:linear-gradient(#50605a,#354c4c 48%,#263a3d)}
+/* Occupy navigation's ridge so this is the only line at the shared seam. */
+.lamp-progress{position:absolute;left:0;bottom:calc(-3px * var(--lamp-scale));width:100%;height:calc(3px * var(--lamp-scale));overflow:hidden;pointer-events:none;background:linear-gradient(#50605a,#354c4c 48%,#263a3d)}
 .lamp-progress:before{content:'';position:absolute;left:0;right:0;top:calc(.25px * var(--lamp-scale));height:calc(.5px * var(--lamp-scale));background:#89968a61}
 .lamp-progress>span{position:absolute;left:0;top:0;height:100%;overflow:hidden;background:#73f9df4d;transition:width .25s ease-out}
 .lamp-progress>span:before{content:'';position:absolute;inset:calc(.35px * var(--lamp-scale)) 0;background:linear-gradient(#b7fff0,#45d6c2 36%,#13776e);box-shadow:inset 0 calc(.35px * var(--lamp-scale)) #c3ffefa6}

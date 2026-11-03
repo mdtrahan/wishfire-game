@@ -4,6 +4,8 @@ const PARTICLE_KINDS = Object.freeze([
   'star', 'star', 'speck', 'star', 'star', 'speck',
 ]);
 const activeByArt = new WeakMap();
+// Main's painted Bag height at the 360px reference width, independent of icon size.
+const BAG_EFFECT_REFERENCE_HEIGHT = 71.15625;
 
 function shuffled(values, random) {
   const result = [...values];
@@ -39,17 +41,21 @@ export function beginLampBagWishRing(art, { doc = art?.ownerDocument || globalTh
   activeByArt.get(art)?.cancel();
   installStyle(doc);
   const bounds = art.getBoundingClientRect();
-  const baseSize = Math.min(bounds.width, bounds.height);
+  if (!(bounds.width > 0 && bounds.height > 0)) return { crest() {}, cancel() {} };
+  const strip = art.closest?.('#wishfire-lamp');
+  const baseSize = strip ? BAG_EFFECT_REFERENCE_HEIGHT * strip.getBoundingClientRect().width / 360 : Math.min(bounds.width, bounds.height);
   if (!(baseSize > 0)) return { crest() {}, cancel() {} };
   const scale = Math.min(1.2, Math.max(.65, baseSize / 70));
-  const centerX = bounds.left + bounds.width / 2;
-  const centerY = bounds.top + bounds.height / 2;
   const viewportWidth = doc.documentElement?.clientWidth || globalThis.innerWidth || Infinity;
   const viewportHeight = doc.documentElement?.clientHeight || globalThis.innerHeight || Infinity;
   const stage = doc.querySelector?.('canvas')?.getBoundingClientRect?.();
   const left = Math.max(0, stage?.left ?? 0), top = Math.max(0, stage?.top ?? 0);
   const right = Math.min(viewportWidth, stage?.right ?? viewportWidth);
   const bottom = Math.min(viewportHeight, stage?.bottom ?? viewportHeight);
+  // Retain the full main-sized glow at the corner instead of shrinking the burst.
+  const radius = strip ? baseSize * .61 : 0;
+  const centerX = Math.max(left + radius, Math.min(right - radius, bounds.left + bounds.width / 2));
+  const centerY = Math.max(top + radius, Math.min(bottom - radius, bounds.top + bounds.height / 2));
   const availableRadius = Math.max(0, Math.min(centerX - left, right - centerX, centerY - top, bottom - centerY));
   const particleClearance = 12 * scale;
   const initialRadius = Math.min(baseSize * .56, Math.max(0, availableRadius - particleClearance));
@@ -58,7 +64,7 @@ export function beginLampBagWishRing(art, { doc = art?.ownerDocument || globalTh
   const node = doc.createElement('span');
   node.className = `lamp-wish-ring-vfx${reduced ? ' lamp-wish-reduced' : ''}`;
   node.setAttribute('aria-hidden', 'true');
-  Object.assign(node.style, { left: `${bounds.left + bounds.width / 2}px`, top: `${bounds.top + bounds.height / 2}px` });
+  Object.assign(node.style, { left: `${centerX}px`, top: `${centerY}px` });
   const glow = doc.createElement('i');
   glow.className = 'lamp-wish-ring-glow';
   glow.style.setProperty('--wish-glow-size', `${baseSize * 1.22}px`);

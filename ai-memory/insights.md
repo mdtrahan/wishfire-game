@@ -730,3 +730,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Camera ports must preserve production arena geometry and keep spotlight scheduling OFF. Compare identical captured host calls through every gameplay hash and ordered damage/death event; immutable rendering alone cannot prove simulation equality. Profile matched snapshots before attributing RAF tail changes to camera code.
 
 - Spotlight return must re-constrain live participants after interpolation: target movement continues while zoom eases out. Trace actor IDs, return participants and draw quads at the failing step; static active-shot bounds cannot prove return containment.
+
+- Inspect both sides of a shared UI seam: removing one border can expose a second owner's ridge. Match VFX through its measured inputs and output at fixed randomness; unchanged effect code can still regress when its source artwork shrinks.
