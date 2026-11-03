@@ -11,6 +11,7 @@
 - `execution/` owns process guidance and active execution directives.
 
 ## Local Contracts
+- `execution/validation.md` owns fast commit checks and once-per-PR heavy owner proofs; integration requires a verifier receipt for the final head and pinned main base.
 - `execution/integration.md` owns storage closeout for every lane: report task footprint, justify retained resources, audit retirement candidates and preserve ignored evidence until reviewed.
 - Governance docs can guide implementation but do not by themselves authorize runtime edits outside the active bead scope.
 - Product docs outrank code when deciding intended gameplay, but code/tests show current implementation reality.

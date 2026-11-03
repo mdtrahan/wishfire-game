@@ -224,7 +224,7 @@
 
 - `combatDpsOverlay.test.mjs` waits for Canvas START to paint, clicks its rendered position through the Canvas locator, and drives the real DEV checkbox at four viewport sizes. It compares current CP with canonical equipped heroes, checks text/Canvas containment and saves screenshots. Hide/show must retain nonzero earned damage.
 
-- bossBattleHud.test.mjs resolves the exact active boss UID, tests current stat changes and dismissal, and drives production summon plus four phone sizes at DPR 2. Its screenshots/report distinguish seeded readiness and paused presentation captures from organic balance proof. The UI lock runs this contract and guards its renderer/assets in pre-commit.
+- bossBattleHud.test.mjs resolves the exact active boss UID, tests current stat changes and dismissal, and drives production summon plus four phone sizes at DPR 2. Its screenshots/report distinguish seeded readiness and paused presentation captures from organic balance proof. The merge-tier UI lock runs this contract and guards its renderer/assets.
 
 - Boss inspection stays open through zero HP, an expired clock and removal of the defeated actor while the same boss stage remains active. Actual stage exit dismisses in that render; retained actor data cannot cross into another attempt.
 
@@ -250,7 +250,7 @@
 
 - lampAutoEquipGameplay runs the full game in isolated contexts through cache/item controls, Auto receipts, Hero screens and reload. Its red-promise test fails on main 5d7910f9 after an actual Auto click. Fixed golden gains and a separate stat-projection oracle check allocation; lampRoster covers all 120 five-record orders and atomic guards. Both browser files run in test:lamp-ui.
 
-- Auto gameplay proof asserts every pending, discarded and held leftover is nonpositive for every canonical owner. Negative controls must demonstrate failure for a positive item in each queue. The commit guard runs this browser file and lampRoster for CP/equipment/roster changes even when presentation files are untouched.
+- Auto gameplay proof asserts every pending, discarded and held leftover is nonpositive for every canonical owner. Negative controls must demonstrate failure for a positive item in each queue. The merge guard runs this browser file and lampRoster for CP/equipment/roster changes even when presentation files are untouched.
 
 - Accepted-kit contracts verify bonus-only Royalty scaling (2.3x at four stars), direct percent/flat scaling and eight-star Boast stacking (+16% own stats plus +6.5% MAG/RES), alongside exact 0/2/4/8-star multipliers, unchanged passive thresholds/timers, per-hero growth ownership and inert empty Resonance entries. Scheduler and cooldown-strip tests exercise the reduced Special clock; browser fixtures await their complete rendered badge signature because an existing Elevate icon count can match before the new frame; Hero UI checks each effect label across phone profiles.
 - Hero party-layout proof preserves accepted kits, eight-star effects, empty Accessory and Resonance slots. Retained Hero dialogs require one detached bottom-center X, close center within 2 CSS pixels of the panel center, positive gap, focus trapping, Escape and opener restoration. Fixed combat-slot proof preserves width, rigid offsets, drift, ally separation, facing and reach, while retired saves cannot choose positions or a leader.
@@ -297,4 +297,9 @@
 
 - Camera browser proof runs the production handoff no-clipping observer at both viewport/DPR profiles. During `spotlightCamera.current`, enforce caster/target containment through return; all actors regain frame-edge checks when framing clears. Keep the original all-body normal-camera test unchanged.
 
+- `preCommitRouting.mjs` executes the real commit/merge scripts with stub proof commands. `preCommitRouting.test.mjs`, lampRoster and UI-lock routing contracts retain every owner and failure assertion at its tier; command-removal mutations must fail. Fast-tier selection excludes browser imports, includes deterministic consumers and keeps Rust unit checks.
+
+- Lamp gameplay proof shares `browserTestResources.mjs` with the HUD proof. It waits for server readiness, retains production START readiness, registers abort cleanup before launch and waits for owned process termination rather than graceful browser shutdown; each browser case has a bounded cancellation deadline.
 - Camera return regression moves the seed-7 boss through the .5s return and checks full puppet quads on every frame, exact zoom easing and immutable snapshots.
+
+- `verifyHandoffMerge.test.mjs` executes the handoff CLI with isolated command/probe stubs; full and cached quick runs require the head merge tier, pinned base/head evidence and its log, and propagate a heavy-proof failure.

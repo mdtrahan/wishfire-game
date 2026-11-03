@@ -1,4 +1,4 @@
-import {runPreCommit} from './preCommitRouting.mjs';
+import {runPreCommit,runMerge} from './preCommitRouting.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {trustFixture,owners,gain} from './fixtures/lampTrust.mjs';
@@ -43,13 +43,17 @@ test('reclassification preserves owned gear, copy loadouts, balances and every i
  await f.store.autoEquip();assert.deepEqual(f.store.data.loadouts['falie#1'],save.loadouts['falie#1']);assert.deepEqual(f.store.data.items.find(i=>i.instanceId===copyItem.instanceId),copyItem);
 });
 
-test('commit guard routes CP equipment roster and proof changes through real gameplay',()=>{
- const gameplay='node --test --test-concurrency=1 tests/lampAutoEquipGameplay.test.mjs tests/lampRoster.test.mjs';
- for(const path of ['.beads/hooks/pre-commit','package.json','web-runner/app.js','web-runner/src/core/lampGear.mjs','web-runner/src/core/lampConveyor.mjs','web-runner/src/core/lampHeroRoster.mjs','web-runner/src/core/equipment.mjs','web-runner/src/core/combatPower.mjs','web-runner/src/core/heroProgression.mjs','web-runner/src/core/heroDefinitions.mjs','web-runner/systems/equipmentStorage.mjs','web-runner/systems/renderHeroScreen.js','web-runner/systems/heroGearUI.mjs','tests/lampAutoEquipGameplay.test.mjs','tests/lampRoster.test.mjs','tests/fixtures/lampTrust.mjs']){
-  const result=runPreCommit([path]);assert.equal(result.status,0,result.stderr);assert.ok(result.commands.includes(gameplay),path+' must run gameplay and roster proof');
+test('merge guard routes CP equipment roster and proof changes through real gameplay',()=>{
+ const gameplay='node --import ./tools/ensure_simulation_core.cjs --test --test-concurrency=1 tests/lampAutoEquipGameplay.test.mjs tests/lampRoster.test.mjs';
+ for(const path of ['.beads/hooks/pre-commit','package.json','web-runner/app.js','web-runner/src/core/lampGear.mjs','web-runner/src/core/lampConveyor.mjs','web-runner/src/core/lampHeroRoster.mjs','web-runner/src/core/equipment.mjs','web-runner/src/core/combatPower.mjs','web-runner/src/core/heroProgression.mjs','web-runner/src/core/heroDefinitions.mjs','web-runner/systems/equipmentStorage.mjs','web-runner/systems/renderHeroScreen.js','web-runner/systems/heroGearUI.mjs','tests/lampAutoEquipGameplay.test.mjs','tests/lampRoster.test.mjs','tests/lampCPInvariant.test.mjs','tests/lampConveyor.test.mjs','tests/lampEquipment.test.mjs','tests/fixtures/lampTrust.mjs']){
+  const result=runMerge([path]);assert.equal(result.status,0,result.stderr);assert.ok(result.commands.includes(gameplay),path+' must run gameplay and roster proof');
  }
- const mixed=runPreCommit(['web-runner/assets/lampEquipmentUI.css','web-runner/src/core/lampGear.mjs']);
- assert.equal(mixed.status,0,mixed.stderr);assert.ok(mixed.commands.includes('npm run test:lamp-ui'));assert.ok(mixed.commands.includes('node --test tests/lampRoster.test.mjs'),'mixed presentation and rule commits must also run roster guards');
- assert.deepEqual(runPreCommit(['README.md']).commands,[]);
- assert.notEqual(runPreCommit(['tests/lampRoster.test.mjs'],gameplay).status,0,'failed gameplay proof blocks commit');
+ const mixed=runMerge(['web-runner/assets/lampEquipmentUI.css','web-runner/src/core/lampGear.mjs']);
+ assert.equal(mixed.status,0,mixed.stderr);assert.ok(mixed.commands.includes('npm run test:lamp-ui'));assert.ok(mixed.commands.includes('node --import ./tools/ensure_simulation_core.cjs --test tests/lampRoster.test.mjs'),'mixed presentation and rule commits must also run roster guards');
+ assert.deepEqual(runMerge(['README.md']).commands,[]);
+ assert.notEqual(runMerge(['tests/lampRoster.test.mjs'],gameplay).status,0,'failed gameplay proof blocks merge');
+});
+
+test('lamp owner commits run the fast tier',()=>{
+ assert.deepEqual(runPreCommit(['web-runner/src/core/combatPower.mjs']).commands,['node tools/run_commit_tests.mjs']);
 });

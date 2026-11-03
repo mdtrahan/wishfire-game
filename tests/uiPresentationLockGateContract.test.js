@@ -86,10 +86,10 @@ test('UI lock waits for authoritative Rust steps before capturing combat', () =>
  assert.doesNotMatch(gate,/callFunction\('TickRealtime/);
 });
 
-test('pre-commit routes staged UI-owner changes through the full UI lock', async () => {
-  const {runPreCommit} = await import('./preCommitRouting.mjs');
+test('merge routes UI-owner changes through the full UI lock', async () => {
+  const {runMerge} = await import('./preCommitRouting.mjs');
   for (const owner of [
-    'package.json', 'tools/ui_presentation_lock_gate.mjs', 'tests/uiPresentationLockGateContract.test.js',
+    'package.json', 'web-runner/index.html', 'web-runner/src/core/damageNumberAnimation.mjs', 'tools/ui_presentation_lock_gate.mjs', 'tests/uiPresentationLockGateContract.test.js',
     'web-runner/systems/renderBossBattleHud.mjs', 'web-runner/assets/images/boss-hud/clock.png',
     'tests/bossBattleHud.test.mjs', 'tests/devBossLaunch.test.mjs', 'web-runner/systems/devToolingControls.js',
     'web-runner/systems/renderCombatBossControl.mjs', 'web-runner/systems/renderRuntime.js',
@@ -97,11 +97,11 @@ test('pre-commit routes staged UI-owner changes through the full UI lock', async
     'web-runner/systems/appShellViewport.js', 'web-runner/app.js', 'web-runner/systems/surfaceRenderRouter.js',
     'web-runner/systems/pointerRoutingShell.js',
   ]) {
-    const result = runPreCommit([owner]);
+    const result = runMerge([owner]);
     assert.equal(result.status, 0, result.stderr);
     assert.ok(result.commands.includes('npm run test:ui-lock'), `${owner} must run the rendered lock`);
   }
-  assert.deepEqual(runPreCommit(['README.md']).commands, []);
-  assert.notEqual(runPreCommit(['tests/bossBattleHud.test.mjs'], 'npm run test:ui-lock').status, 0,
-    'failed UI lock blocks commit');
+  assert.deepEqual(runMerge(['README.md']).commands, []);
+  assert.notEqual(runMerge(['tests/bossBattleHud.test.mjs'], 'npm run test:ui-lock').status, 0,
+    'failed UI lock blocks merge');
 });

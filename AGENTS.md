@@ -88,7 +88,7 @@ Support ├── `agents/` (retired)
 - Prefer deterministic shared logic in `src/` or Rust-owned SimulationCore seams over new browser-shell logic.
 - Keep `web-runner/app.js` orchestration-only; detailed ownership rules live in `governance/execution/implementation-gate.md`.
 - Use `governance/execution/validation.md` for focused proof and `governance/execution/integration.md` for merge readiness.
-- Lamp presentation owners run `test:lamp-ui` through the commit hook; four-phone checks enforce helper and overlay containment. CP, equipment, roster and proof-owner changes also trigger the real gameplay/roster suite when presentation is unchanged.
+- Pre-commit runs fast deterministic owner checks through `test:commit` (typical target under two minutes). The PR verifier runs `test:merge -- --base <pinned-main>` once per final PR head: lamp browser containment, CP/equipment/roster gameplay and rendered UI locks retain their owner routes. Browser viewport profiles prove responsive web behavior; native-phone testing is not a commit gate.
 
 ## Investigation and experiments
 

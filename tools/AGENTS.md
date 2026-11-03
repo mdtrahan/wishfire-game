@@ -11,13 +11,13 @@
 - Recovery evidence records observed progression boundaries and ordered post-recovery enemy KOs; skipped polls or event gaps remain unknown rather than inferred.
 - Recovery loadouts and Hero stats are sampled at the first post-transition poll and labeled as such; they are not exact event-time state.
 - Ordinary acceptance requires an exact runtime wave counter, ordered events, zero Hero KOs/recoveries and no gaps; total clears remain a separate count.
-- `ui_presentation_lock_gate.mjs` is the canonical fail-closed rendered presentation gate for approved responsive UI seams. It also renders the manual boss retry group and guards its combat Y anchor, resource separation and horizontal containment, then checks modal/menu hiding with readiness preserved; its renderer is a pre-commit UI owner.
+- `ui_presentation_lock_gate.mjs` is the canonical fail-closed rendered presentation gate for approved responsive UI seams. It also renders the manual boss retry group and guards its combat Y anchor, resource separation and horizontal containment, then checks modal/menu hiding with readiness preserved; its renderer is a merge-tier UI owner.
 - UI-lock startup waits for a materialized Rust enemy, freezes that snapshot, then compares each hero projection against Rust HP and positions. Focused browser contracts run serially.
 - Playwright doctor, launch matrix, and Chrome CDP helpers diagnose browser startup/control issues.
 - Rust build helper uses locked Cargo inputs and validates the candidate ABI before replacing ignored WASM, manifest, Special clock content and provenance. Source hashes cover both crates, the shared Rust workspace/lockfile and build tools. Cargo remaps checkout/registry paths; manifests omit Git revision/time. Reproducibility requires identical compiler and flags.
 - Hosted/offline builders verify that source provenance and binary match, stage beside their destinations and preserve previous playable output on failure. Release manifests bind the wasm identity to every loader, host definition and presentation asset hash.
-- Handoff verification builds each sampled revision before probing; retain revision-local provenance validation and spotlight clipping assertions when integrating new probes.
-- Server startup, `npm test`, `test:hero-cooldowns`, `test:ui-lock` and `test:lamp-ui` ensure source-matched WASM before generated-module imports. Browser gates preload the bootstrap before starting fixtures so cold compilation stays outside HTTP readiness deadlines. `npm test -- tests/<name>.test.mjs` runs selected contracts; direct Node tests preload `--import ./tools/ensure_simulation_core.cjs` before `--test`, so generated ESM exists before import resolution.
+- Handoff verification always runs `npm run test:merge -- --base <resolved-base-sha>` in the head checkout, including quick mode, records its pinned base/head and log, and fails on missing or failed merge-tier evidence. It builds each sampled revision before probing; retain revision-local provenance validation and spotlight clipping assertions when integrating new probes.
+- Server startup, `npm test`, `test:hero-cooldowns`, `test:ui-lock`, `test:lamp-ui` and the test tiers ensure source-matched WASM before generated-module imports. Browser gates preload the bootstrap before starting fixtures so cold compilation stays outside HTTP readiness deadlines. `npm test -- tests/<name>.test.mjs` runs selected contracts; direct Node tests preload `--import ./tools/ensure_simulation_core.cjs` before `--test`, so generated ESM exists before import resolution.
 - `build_offline_release.mjs` reuses hosted staging, embeds JSON, matched wasm/provenance, runtime images/fonts and referenced puppet frames, and emits both the portable entry and standalone `wishfire.html`. All Canvas images must be embedded for origin-clean file:// WebGL. Netlify keeps its separate release path.
 - `build_runtime_release.mjs` ensures source-matched products, packages tracked runtime plus the explicit generated-runtime allowlist and preserves the previous release on failure. Netlify installs Rust 1.96.0 with wasm32-unknown-unknown first.
 - Offline builds must validate dependencies before touching `dist-offline`, assemble in a sibling candidate directory, and replace the prior playable artifact only after the bundle and manifest are complete.
@@ -32,7 +32,7 @@
 - Superseded-ancestor retirement requires explicit `--superseded-by <registered-successor-path>`, a CLOSED clean target, exact target HEAD ancestry in the live registered successor HEAD, and no Dolt or protected local material. Patch equivalence is insufficient; the successor is never modified.
 - General historical retirement requires explicit `--historical`, a clean registered non-main checkout, a durable local branch or tag containing HEAD, no Dolt or protected local files, and a separate live-process check. It does not require merge ancestry or Bead status. Unknown material remains protected; refs remain.
 - The hot-file regression gate exercises live realtime hero/enemy scheduling, impact timing, rewards, and the shared damage/skill mirror; retired turn and gem scheduler tests are outside that gate.
-- The hot-file regression gate runs the lamp phone gate when lamp presentation owners change. That gate owns and stops its temporary server; `LAMP_QA_URL` explicitly selects an existing review server.
+- The explicit hot-file regression gate can run lamp browser proofs during development. The commit hook runs `run_commit_tests.mjs`; `run_merge_tests.sh` preserves the former heavy owner routes for one verifier run per final PR head. `LAMP_QA_URL` explicitly selects an existing review server.
 - Do not create a second batch game-test pipeline beside `npm run balance-harness` without explicit scope.
 - Keep `npm run test:ui-lock` presentation-only. It may arrange deterministic test state through `window.__codexGame`; it must not become a balance or gameplay simulation harness.
 - UI lock failures must name the viewport, invariant, measured value, allowed range, and JSON report path.
@@ -85,7 +85,7 @@
 - Handoff methodology and real-control evidence live in `docs/handoff-performance.md`; frame-budget comparisons allow1ns for binary timestamp residue.
 - `npm run playwright:doctor` / `npm run playwright:launch-matrix` only when diagnosing browser startup/control.
 - `npm run balance-harness` for bounded batch game automation.
-- `npm run test:ui-lock` after changes to a listed UI presentation owner; inspect its compact, reference, natural-preview, and Retina screenshots before accepting new bounds.
+- The PR verifier runs `npm run test:ui-lock` through `test:merge` once for the final head when a listed presentation owner changes; inspect compact, reference, natural-preview and Retina screenshots before accepting new bounds.
 
 ## Child DOX Index
 
@@ -118,7 +118,7 @@
 - Run pad_actor_motion_clips.py after affected native exports. It re-renders an expanded view box rather than padding already-clipped PNGs; referenceHeight128 and translated foot origins preserve body scale. The owner review capture script lives with its generated output, outside the production game.
 
 - The rendered UI lock also runs bossBattleHud.test.mjs for independent boss HP/countdown rails, actor identity, inspector lifecycle and phone containment.
-- The lamp phone gate includes the isolated Bag-upgrade component proof. Changes to its presentation module, CSS, shared close/medallion assets or strip progress must trigger `test:lamp-ui`; the suite runs browser files serially.
+- The lamp merge-tier browser gate includes the isolated Bag-upgrade component proof. Changes to its presentation module, CSS, shared close/medallion assets or strip progress must trigger `test:lamp-ui`; the suite runs browser files serially.
 
 - Shared `modalClose.mjs` and Training Ground `combatProgressionUI.mjs` changes route through the existing lamp/Training five-profile presentation guard. Preserve Bag coverage when extending the shared close consumer set.
 
@@ -129,3 +129,5 @@
 - Rust-only writer inventory classifies checkpoint input construction separately from live actor projection. DEV movement controls and legacy raw-damage telemetry are retired; release builds enumerate the Git index, so stage runtime deletions before validating a build.
 
 - The handoff no-clipping probe reads `RustCombatPresentation.spotlightCamera.current.participants`. Only identified nonparticipants may cross the Canvas frame during that framing, including return. Missing framing/identity retains all-actor checks; participant clipping, explicit Canvas clips, WebGL scissors and every other probe remain enforced.
+
+- Fast selection follows module/fixture dependencies and direct source references, excludes browser tests through their import graph, and runs changed Rust crate unit tests (all local crates for shared Rust-root inputs). Tier-router edits require all merge proofs; routing contracts must reject omitted commands and failed proofs.

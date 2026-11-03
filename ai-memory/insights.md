@@ -6,6 +6,7 @@
 - Do not log routine execution history, file lists, or status chatter.
 
 ## Operating Constraints
+- Browser proofs can finish every assertion and stall in graceful Chrome shutdown under parallel load. Register owned resources before startup, wait for actual server readiness and process termination, and give the test a cancellation deadline; retain gameplay assertions while making teardown observable.
 - When mitigation changes, preserve independent damage modifiers and test zero DEF/RES. For CP-driven balancing with rounded stats, compare both sides of each CP jump; synthetic equipment fixtures must retain their eligibility and ranking conditions after recalibration.
 - Canvas entry tests must wait for the control's first paint and startup readiness before clicking its rendered position; exported debug hooks can exist before render-owned hit zones.
 - Release inventory comes from Git; committed deletions disappear from it. Missing tracked runtime files must fail packaging; inject a missing dependency in a disposable fixture to prove failure without a success manifest.
@@ -28,6 +29,7 @@
 - Reframe before implementation when acceptance language implies persistent timed stat stacks (`ORKA-9ri`, `ORKA-zih`, residual wording in `ORKA-69r`).
 
 ## Regression Triggers
+- Moving heavy owner proofs out of pre-commit requires an executable verifier gate. Run the head merge tier against the pinned base on every handoff, retain its log and reject missing or failed evidence even when broad suites share inherited failures.
 - Cross-revision tooling must use each checkout's provenance validator after that checkout builds its artifacts; a newer workspace schema cannot validate an older crate layout. Standalone npm test aliases that import generated modules must bootstrap before ESM resolution.
 - Special previews must read Rust stock-refill content and round the meter-rate input at the same f32 boundary as combat. Authored kit timings cannot establish parity; compare previews against real WASM meter increments with zero and earned Haste.
 - Derived status fields may exist only in Rust's rebuilt snapshot view. JSON bridges reading raw actor views must explicitly project validated status state; presence of a serialized field alone does not prove live values reach rendering.
