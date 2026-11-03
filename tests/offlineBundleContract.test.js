@@ -143,7 +143,7 @@ test('hosted release contract remains a separate module/data release', () => {
   const netlify = fs.readFileSync(path.join(root, 'netlify.toml'), 'utf8');
   const hostedIndex = fs.readFileSync(path.join(root, 'web-runner', 'index.html'), 'utf8');
   const hostedManifest = JSON.parse(fs.readFileSync(path.join(root, 'dist', 'release-manifest.json'), 'utf8'));
-  assert.match(netlify, /rustup toolchain install 1\.96\.0 --profile minimal --target wasm32-unknown-unknown && node tools\/build_runtime_release\.mjs/);
+  assert.match(netlify, /command = "rustup toolchain install 1\.96\.0 --profile minimal --target wasm32-unknown-unknown && node tools\/build_runtime_release\.mjs"/);
   assert.match(netlify, /RUSTUP_TOOLCHAIN = "1\.96\.0"/);
   assert.match(hostedIndex, /type="module" src="\.\/app\.js"/);
   assert.ok(hostedManifest.files['web-runner/app.js']);
