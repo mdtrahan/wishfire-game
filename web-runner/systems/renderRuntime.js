@@ -1,7 +1,6 @@
 import { updateHpTextRollState } from '../src/core/hpTextRollAnimation.mjs';
 import {
   COMBAT_BATTLEFIELD_ZOOM,
-  createCombatCameraProjection,
   deriveCombatWorldBounds,
   createCombatFormationProjection,
   createCombatOrientationGeometry,
@@ -16,7 +15,6 @@ import { drawCombatHealthBar } from './combatHealthBarPresentation.mjs';
 import { drawCombatArenaBackground } from './combatArenaBackground.mjs';
 import { drawActorPuppetFrame } from './actorPuppetPresentation.mjs';
 import { combatEnemiesForPresentation } from './actorPuppetDefeats.mjs';
-import { resolveCombatCameraCenterX } from './rustCombatCamera.mjs';
 import { createEnemyActivationFade, paintWithActivationAlpha } from './enemyActivationFadePresentation.mjs';
 import {
   computeCombatDamageFontSize,
@@ -35,11 +33,7 @@ const body = `with (scope) {
     const combatFormationAnchors = deriveCombatFormationAnchors({ globals: state.globals, entities: state.entities, heroCount: getCombatPartyRenderRoster().length });
     const combatWorldVfxScale = layoutScale * COMBAT_BATTLEFIELD_ZOOM;
     const combatWorldBounds = deriveCombatWorldBounds(layoutW, COMBAT_BATTLEFIELD_ZOOM);
-    const livingHeroesForCamera = state.entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
-    const squadCenterX = livingHeroesForCamera.length ? livingHeroesForCamera.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? layoutW / 2), 0) / livingHeroesForCamera.length : layoutW / 2;
-    const cameraCenterX = bossPresentationActive ? Number(state.globals.ContinuousCombatStage?.bossCameraCenterX ?? squadCenterX) : resolveCombatCameraCenterX(state.globals, squadCenterX);
-    const combatCameraProjection = createCombatCameraProjection({ viewportWidth: layoutW, worldWidth: combatWorldBounds.worldWidth, zoom: COMBAT_BATTLEFIELD_ZOOM, centerX: cameraCenterX, orientation: activeCombatOrientation });
-    const projectCombatActorWorldToCanvas = (x, y, actorKind = '') => { const point = state.globals.RustCombatPresentation ? state.globals.RustCombatPresentation.project(x, y) : combatCameraProjection.project(x, y, actorKind); return worldToCanvas(point.x, point.y); };
+    const projectCombatActorWorldToCanvas = (x, y) => { const point = state.globals.RustCombatPresentation.project(x, y); return worldToCanvas(point.x, point.y); };
     const projectCombatDamageWorldToCanvas = (x, y, targetKind) => (targetKind === 'bar' || targetKind === 'energy') ? worldToCanvas(x, y) : projectCombatActorWorldToCanvas(x, y, targetKind === 'hero' ? 'hero' : 'enemy');
     const combatOrientationGeometryActors = [];
     const visualControlPatches = {};
@@ -64,6 +58,11 @@ const body = `with (scope) {
     }
     if (state.globals.DevToolingPaused && !(state.globals.QaScenarioPaused && state.globals.QaFixtureHoldTurn)) {
       lastFrameTime = performance.now();
+      return;
+    }
+
+    if (!state.globals.RustCombatPresentation) {
+      drawStartupLoadingFrame();
       return;
     }
 
@@ -1002,8 +1001,6 @@ let renderImpl;
 export function renderRuntime(deps) {
   deps.drawCombatArenaBackground = drawCombatArenaBackground;
   deps.COMBAT_BATTLEFIELD_ZOOM = COMBAT_BATTLEFIELD_ZOOM;
-  deps.createCombatCameraProjection = createCombatCameraProjection;
-  deps.resolveCombatCameraCenterX = resolveCombatCameraCenterX;
   deps.deriveCombatWorldBounds = deriveCombatWorldBounds;
   deps.updateHpTextRollState = updateHpTextRollState;
   deps.createCombatFormationProjection = createCombatFormationProjection;

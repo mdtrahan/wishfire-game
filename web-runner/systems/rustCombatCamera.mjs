@@ -27,7 +27,7 @@ export function createSliceCombatCamera() {
     const heroes = s.actors.filter(livingHero);
     if (!heroes.length) { vx = vy = 0; return; }
     const boss = s.actors.find(livingBoss);
-    if (boss?.state === 'spawn') { cut(boss); return; }
+    if (boss?.state === 'spawn') { cut(boss, s, heroes); return; }
     const hx = heroes.reduce((sum, a) => sum + a.pos.x, 0) / heroes.length;
     const hy = heroes.reduce((sum, a) => sum + a.pos.y, 0) / heroes.length;
     let nearest = { x: hx, y: hy }, best = Infinity;
@@ -36,6 +36,9 @@ export function createSliceCombatCamera() {
     for (const p of threats) { const d = (p.x - hx) ** 2 + (p.y - hy) ** 2; if (d < best) { best = d; nearest = p; } }
     const tx = hx + clamp((nearest.x - hx) * .3, -40, 40), ty = hy + clamp((nearest.y - hy) * .3, -180, 180) - 50;
     [cx, vx] = damp(cx, vx, tx, OMEGA_X, dt); [cy, vy] = damp(cy, vy, ty, OMEGA_Y, dt);
+    contain(s, heroes, boss);
+  }
+  function contain(s, heroes, boss) {
     const floor = s.geometry.floor, halfX = 180 / ZOOM, halfY = (COMBAT_VIEW.bottom - COMBAT_VIEW.top) / (2 * ZOOM * SQUASH);
     cx = floor.max.x - floor.min.x < halfX * 2 ? (floor.min.x + floor.max.x) / 2 : clamp(cx, floor.min.x + halfX, floor.max.x - halfX);
     cy = floor.max.y - floor.min.y < halfY * 2 ? (floor.min.y + floor.max.y) / 2 : clamp(cy, floor.min.y + halfY, floor.max.y - halfY);
@@ -49,7 +52,7 @@ export function createSliceCombatCamera() {
     const y = fit(cy, maxY - below, minY + above, heroMaxY - below, heroMinY + above);
     if (x !== cx) vx = 0; if (y !== cy) vy = 0; cx = x; cy = y;
   }
-  function cut(boss) { cx = boss.pos.x; cy = boss.pos.y + BOSS_ENTRY_Y; vx = vy = 0; camera.zoom = ZOOM; }
+  function cut(boss, s, heroes) { if (!heroes.length) return; cx = boss.pos.x; cy = boss.pos.y + BOSS_ENTRY_Y; vx = vy = 0; camera.zoom = ZOOM; contain(s, heroes, boss); }
   const camera = {
     zoom: ZOOM, offsetX: 0, offsetY: 0,
     get centreX() { return viewX ?? cx; }, get centreY() { return viewY ?? cy; },
@@ -61,8 +64,10 @@ export function createSliceCombatCamera() {
         cx = s.camera_focus.x; cy = s.camera_focus.y; vx = vy = 0; started = true;
         advance(s, 1); // WorldCamera::new performs one second of initial settling.
       }
-      const arrival = events.find(e => e.body.kind === 'spawned' && e.body.data.kind.startsWith('boss'));
-      if (arrival) { const boss = s.actors.find(a => a.actor_id === arrival.body.data.actor); if (boss) cut(boss); }
+      // Slice BossArrived is HostObservation tag 1, emitted with begin_spawn by its director.
+      // WFM's generic Spawned starts Idle and carries no boss-intro contract.
+      const arrival = events.find(e => e.body.kind === 'presentation' && e.body.data.event.kind === 'host_observation' && e.body.data.event.data.tag === 1);
+      if (arrival) { const boss = s.actors.find(a => a.actor_id === arrival.body.data.event.data.a && livingBoss(a) && a.state === 'spawn'); if (boss) cut(boss, s, s.actors.filter(livingHero)); }
       if (dt <= 0 || s.spotlight || s.hit_stop) return;
       advance(s, dt);
     },

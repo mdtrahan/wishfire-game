@@ -290,3 +290,5 @@
 - `combatDeathLifecycle.test.mjs` observes natural real-WASM deaths on the production page through retained-picture expiry. Require one GPU corpse draw per frame, unchanged living painted dimensions, intermediate alpha, monotonic fade to zero and snapshot eviction; the original Canvas handoff must fail this proof.
 
 - Shared Rust HUD contracts execute the production sorted actor queue and front pass, checking foot anchors, scale transforms, identical team HP dimensions and late HP paint. Dead/downed actors and bosses have no local HP track; only heroes receive Groove meters.
+
+- `sliceCombatCameraBrowser.test.mjs` observes real production ingestion/ground rendering: generic Idle boss Spawned stays bounded, natural offensive spotlight charges for1.2s and returns over.5s, then combat/follow resume. Rendering preserves complete snapshots including hashes. Parity uses captured boss state, never a fabricated Spawn lifecycle.

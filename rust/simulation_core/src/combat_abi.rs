@@ -166,6 +166,8 @@ struct SummonProfile {
 #[serde(deny_unknown_fields)]
 struct EncounterConfig {
     #[serde(default)]
+    spotlight: bool,
+    #[serde(default)]
     continuous: bool,
     #[serde(default)]
     spawn_markers: bool,
@@ -726,6 +728,7 @@ impl World {
             }
         }
         let mut sim = Sim::new(SimConfig {
+            spotlight: if c.spotlight { SpotlightConfig::DEFAULT } else { SpotlightConfig::OFF },
             seed,
             arena_size: floor.max - floor.min,
             visible_width: g.viewport_world.x,
@@ -1140,6 +1143,24 @@ pub extern "C" fn wf_response_free(response: u32) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn wfm_spotlight_config_uses_slice_preset_and_preserves_off_default() {
+        let fixture: Value = serde_json::from_str(include_str!("../tests/permanent_revision_scenario.json")).unwrap();
+        let mut config = fixture["config"].clone();
+        let default = World::create(serde_json::from_value(config.clone()).unwrap()).unwrap();
+        config["spotlight"] = json!(false);
+        let off = World::create(serde_json::from_value(config.clone()).unwrap()).unwrap();
+        assert_eq!(default.gameplay_hash(), off.gameplay_hash());
+        assert_eq!(off.sim.config().spotlight, SpotlightConfig::OFF);
+        config["spotlight"] = json!(true);
+        let on = World::create(serde_json::from_value(config.clone()).unwrap()).unwrap();
+        assert_eq!(on.sim.config().spotlight, SpotlightConfig::DEFAULT);
+        // Scheduler provenance is deliberately hashed as soon as it is enabled.
+        assert_ne!(on.gameplay_hash(), off.gameplay_hash());
+        assert_eq!(on.sim.snapshot().actors, off.sim.snapshot().actors);
+        config["spotlight"] = json!("true");
+        assert!(serde_json::from_value::<EncounterConfig>(config).is_err());
+    }
     #[test]
     fn snapshot_taunt_tracks_live_source_and_exact_expiry() {
         let fixture: Value = serde_json::from_str(include_str!("../tests/permanent_revision_scenario.json")).unwrap();

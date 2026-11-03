@@ -61,15 +61,31 @@ test('arena clamp, body overscan and infeasible groups preserve party priority',
   near(camera.y(70 - 210), 42);
 });
 
-test('boss Spawn cuts at +540, holds standard zoom, defeat holds and encounter reset settles anew', () => {
-  const s = snapshot(), camera = createSliceCombatCamera(); camera.update(s, 0);
-  const boss = { ...hero(10, 456, 100), kind: 'boss', team: 'enemy', state: 'spawn' }; s.actors.push(boss);
-  camera.update(s, 1); assert.deepEqual(frame(camera), [456, 640, .5]);
-  camera.update(s, .01); assert.deepEqual(frame(camera), [456, 640, .5]);
+test('real WFM Idle boss ignores generic Spawned, stays inside floor and holds on defeat/reset', () => {
+  const s = structuredClone(trace.frames.find(f => f.snapshot.time === 0 && f.snapshot.actors.some(a => a.kind.startsWith('boss'))).snapshot);
+  const boss = s.actors.find(a => a.kind.startsWith('boss'));
+  assert.equal(boss.state, 'idle');
+  const camera = createSliceCombatCamera(), control = createSliceCombatCamera();
+  const events = [{ body: { kind: 'spawned', data: { actor: boss.actor_id, kind: boss.kind } } }];
+  camera.update(s, 0, events); control.update(s, 0);
+  assert.deepEqual(frame(camera), frame(control));
+  const initial = frame(camera); camera.update(s, 0); assert.deepEqual(frame(camera), initial);
+  near(camera.centreX, 456);
+  assert.ok(camera.y(boss.pos.y - 370) >= COMBAT_VIEW.top - .003);
+  assert.ok(camera.centreY <= s.geometry.floor.max.y - 388 / .75 + .003);
   s.actors.forEach(a => { a.hp = 0; a.state = 'dead'; }); camera.update(s, 1);
-  assert.deepEqual(frame(camera), [456, 640, .5]);
+  assert.deepEqual(frame(camera), initial);
   const reset = snapshot(); reset.encounter_id = 'next-attempt'; camera.update(reset, 0);
   const fresh = createSliceCombatCamera(); fresh.update(reset, 0); assert.deepEqual(frame(camera), frame(fresh));
+});
+
+test('runtime has one combat projection and no retired enemy hit helper', () => {
+  const runtime = fs.readFileSync(new URL('../web-runner/systems/renderRuntime.js', import.meta.url), 'utf8');
+  const app = fs.readFileSync(new URL('../web-runner/app.js', import.meta.url), 'utf8');
+  const orientation = fs.readFileSync(new URL('../src/core/combatOrientation.mjs', import.meta.url), 'utf8');
+  for (const source of [runtime, app, orientation]) assert.doesNotMatch(source, /createCombatCameraProjection/);
+  assert.doesNotMatch(app, /combatActorWorldToCanvas|getEnemyHit/);
+  assert.match(runtime, /if \(!state\.globals\.RustCombatPresentation\) \{\s*drawStartupLoadingFrame\(\);\s*return;/);
 });
 
 test('normal follow freezes through spotlight/hit-stop and excludes downed/dead heroes', () => {

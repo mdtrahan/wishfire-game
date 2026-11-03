@@ -60,3 +60,5 @@
 - Combat ABI taunt observations use the validated forced target, rather than the raw actor view. `taunted_by` and `taunt_age` become null on expiry or source loss; age derives from Rust's existing taunt countdown without adding simulation state.
 
 - Retained meta RNG keeps the native `mirrors_current_seeded_rng_cases` fixture alongside shipped-WASM parity checks when combat scalar exports retire.
+
+- Encounter config accepts optional boolean `spotlight` (default false); true selects unchanged `SpotlightConfig::DEFAULT`. WFM opts in. OFF traces retain their hashes; enabled scheduler configuration/history participates in existing gameplay hashes.

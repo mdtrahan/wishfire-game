@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { arenaBackgroundAsset, drawCombatArenaBackground } from '../web-runner/systems/combatArenaBackground.mjs';
-import { createCombatCameraProjection } from '../src/core/combatOrientation.mjs';
+import { createSliceCombatCamera } from '../web-runner/systems/rustCombatCamera.mjs';
 
 test('only chapters 1–4 resolve to shipped artwork; later chapters keep the grid', () => {
   for (let chapter = 1; chapter <= 4; chapter++) {
@@ -21,9 +21,10 @@ test('decoded panorama follows both camera orientations and leaves pending/later
   };
   const calls = [];
   const ctx = Object.fromEntries(['save', 'restore', 'translate', 'scale', 'drawImage'].map(key => [key, (...args) => calls.push([key, ...args])]));
+  const camera = createSliceCombatCamera(); camera.frame(1080, 650, .5);
   const options = orientation => ({
     region: 1, worldWidth: 2160, layoutH: 640,
-    project: createCombatCameraProjection({ centerX: 1080, orientation }).project,
+    project: (x, y) => ({ x: orientation === 'right-wise' ? 360 - camera.x(x) : camera.x(x), y: camera.y(y) }),
     worldToCanvas: (x, y) => ({ x: x * 1.25 + 20, y: y * 1.25 + 10 }),
   });
   // The renderer's project already includes the outer Canvas scale and offset.
