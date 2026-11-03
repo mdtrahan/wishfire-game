@@ -128,6 +128,58 @@ test('automatic start waits for a scheduled worker to finish its baseline', t =>
   assert.equal(call('start').record.baseline.paths, null);
 });
 
+test('startup Git queries tolerate scheduling delays beyond the check subprocess deadline', t => {
+  const { cwd, run, git, call } = fixture(t);
+  git('switch', '-c', 'bead/ORKA-test-lane');
+  const realGit = run('which', ['git']);
+  const bin = path.join(cwd, 'bin'), delayed = path.join(cwd, 'delayed-git-calls');
+  fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, 'git'), `#!/bin/sh\nif [ "$TASK_FOOTPRINT_HOOK" = 1 ]; then\ncase "$4" in\n--path-format=absolute|HEAD|--symbolic-full-name) printf '%s\\n' "$4" >> '${delayed}'; sleep 0.25;;\nesac\nfi\nexec '${realGit}' "$@"\n`, { mode: 0o755 });
+  for (const args of [[tool, 'footprint:hook-start', '--task', 'ORKA-test'], [linker]]) {
+    const result = spawnSync(process.execPath, args, {
+      cwd, encoding: 'utf8', timeout: 5000, env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stderr, '');
+    assert.match(result.stdout, /baseline after creation/);
+    assert.equal(call('start').record.baseline.paths, null);
+  }
+  const calls = fs.readFileSync(delayed, 'utf8').trim().split('\n');
+  for (const query of ['--path-format=absolute', 'HEAD', '--symbolic-full-name'])
+    assert.ok(calls.includes(query), `delayed required Git query ${query} executed`);
+});
+
+test('hook warnings preserve the failed worker Git query and stderr', t => {
+  const { cwd, call } = fixture(t);
+  call('start');
+  const bin = path.join(cwd, 'bin');
+  fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, 'git'), '#!/bin/sh\necho REVIEW_STARTUP_GIT_FAILURE >&2\nexit 73\n', { mode: 0o755 });
+  const result = spawnSync(process.execPath, [tool, 'footprint:hook-start', '--task', 'ORKA-test'], {
+    cwd, encoding: 'utf8', timeout: 5000, env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal((result.stderr.match(/Footprint warning:/g) || []).length, 1);
+  assert.match(result.stderr, /common Git directory: REVIEW_STARTUP_GIT_FAILURE/);
+  assert.match(result.stderr, /exit 2/);
+});
+
+test('startup inventory also tolerates subprocess scheduling delays beyond 200 ms', t => {
+  const { cwd, run, call } = fixture(t);
+  const realLsof = run('which', ['lsof']);
+  const bin = path.join(cwd, 'bin'), delayed = path.join(cwd, 'delayed-inventory');
+  fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, 'lsof'), `#!/bin/sh\nif [ "$TASK_FOOTPRINT_HOOK" = 1 ]; then echo delayed >> '${delayed}'; sleep 0.25; fi\nexec '${realLsof}' "$@"\n`, { mode: 0o755 });
+  const result = spawnSync(process.execPath, [tool, 'footprint:hook-start', '--task', 'ORKA-test'], {
+    cwd, encoding: 'utf8', timeout: 5000, env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, '');
+  assert.match(result.stdout, /baseline after creation/);
+  assert.equal(call('start').record.baseline.paths, null);
+  assert.ok(fs.existsSync(delayed), 'the startup inventory subprocess was delayed');
+});
+
 test('discovery records owned builds, observes peaks and keeps dirty close provisional', t => {
   const { cwd, git, call } = fixture(t);
   const start = call('start');

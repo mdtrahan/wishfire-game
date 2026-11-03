@@ -732,3 +732,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Spotlight return must re-constrain live participants after interpolation: target movement continues while zoom eases out. Trace actor IDs, return participants and draw quads at the failing step; static active-shot bounds cannot prove return containment.
 
 - Separate startup completion from a periodic watchdog deadline when accumulated subprocess latency can discard required metadata. Browser fixtures should share the existing owned-process teardown and await termination even when Chromium has already exited.
+
+- Audit nested subprocess deadlines when extending a worker watchdog. Delay the required Git query itself in the regression and retain worker stderr in warnings so scheduling timeouts remain attributable.
