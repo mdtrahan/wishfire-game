@@ -2,20 +2,11 @@ import {test} from 'node:test';
 import {observeCombatStart,waitForCombatStart} from './combatStartReady.mjs';
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
-import {createRequire} from 'node:module';
+import {launchBrowserTest} from './browserTestResources.mjs';
 import {mkdir,writeFile} from 'node:fs/promises';
-import {spawn} from 'node:child_process';
-import {createServer} from 'node:net';
-import {setTimeout as delay} from 'node:timers/promises';
 import {trustFixture,owners,cp,gain} from './fixtures/lampTrust.mjs';
-const require=createRequire(import.meta.url),{detectChromeExecutable}=require('../tools/playwright_support.js');
 const directory=process.env.LAMP_TRUST_OUTPUT||'test-results/lamp-trust';
 const read=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')));
-async function serveGame(){
- let server,url=process.env.LAMP_QA_URL;
- if(!url){const socket=createServer();await new Promise(r=>socket.listen(0,'127.0.0.1',r));const port=socket.address().port;await new Promise(r=>socket.close(r));url=`http://localhost:${port}/web-runner/index.html`;server=spawn(process.execPath,['tools/serve_web.js','--port',String(port),'--host','127.0.0.1'],{stdio:'ignore'});for(let n=0;n<50;n++){try{if((await fetch(url)).ok)break;}catch{}await delay(100);}}
- return{server,url};
-}
 async function enter(page,url){
  await observeCombatStart(page);await page.goto(url,{waitUntil:'domcontentloaded'});await waitForCombatStart(page);
  const canvas=await page.locator('canvas').first().boundingBox();await page.mouse.click(canvas.x+canvas.width/2,canvas.y+426*canvas.width/360);
@@ -55,9 +46,8 @@ async function heroScreens(page,save,heroes,prefix){
  }
  return rows;
 }
-test('player-visible cache arrows, item review, Auto receipts and Hero gear agree',async()=>{
- await mkdir(directory,{recursive:true});const {server,url}=await serveGame(),report=[];
- const browser=await chromium.launch({headless:true,executablePath:detectChromeExecutable()});
+test('player-visible cache arrows, item review, Auto receipts and Hero gear agree',{timeout:180000},async t=>{
+ await mkdir(directory,{recursive:true});const {browser,url,close}=await launchBrowserTest(t,chromium,{url:process.env.LAMP_QA_URL}),report=[];
  try{for(const scenario of ['mixed','hondo','equal','decrease','kaja','kaja-last','kaja-interleaved','held','lowercp','fulltie','itemtie','rerank']){
   const fixture=trustFixture(scenario.startsWith('kaja')?'kaja':scenario),{save,heroes,selected,other}=fixture;
   if(scenario==='kaja-last')heroes.heroes=Object.fromEntries([...owners,'falie#1'].map(id=>[id,heroes.heroes[id]]));
@@ -111,11 +101,11 @@ test('player-visible cache arrows, item review, Auto receipts and Hero gear agre
    const restored=await read(page);assert.deepEqual(restored.loadouts,after.loadouts);assert.deepEqual(restored.items,after.items);
    assert.deepEqual(errors,[]);report.push({scenario,cacheArrows,itemArrows,receipts,displayed,reloadPreserved:true,errors});
   }catch(error){await page.screenshot({path:`${directory}/${scenario}-failure.png`});report.push({scenario,error:error.stack});throw error;}finally{await context.close();}
- }}finally{await browser.close();server?.kill();await writeFile(`${directory}/gameplay.json`,JSON.stringify(report,null,2));}
+ }}finally{await close();await writeFile(`${directory}/gameplay.json`,JSON.stringify(report,null,2));}
 });
 
-test('Auto-Equip never equips a hero advertised red by the arrows beside it',async()=>{
- await mkdir(directory,{recursive:true});const {server,url}=await serveGame(),browser=await chromium.launch({headless:true,executablePath:detectChromeExecutable()}),context=await browser.newContext({viewport:{width:360,height:640}}),page=await context.newPage(),fixture=trustFixture('mixed'),report={};
+test('Auto-Equip never equips a hero advertised red by the arrows beside it',{timeout:180000},async t=>{
+ await mkdir(directory,{recursive:true});const {browser,url,close}=await launchBrowserTest(t,chromium,{url:process.env.LAMP_QA_URL}),context=await browser.newContext({viewport:{width:360,height:640}}),page=await context.newPage(),fixture=trustFixture('mixed'),report={};
  try{
   await page.addInitScript(({save,heroes})=>{save.lamp.lastActivationAt=Date.now();localStorage.setItem('wishfire.equipment-economy.v5',JSON.stringify(save));localStorage.setItem('orka.hero_progress.v2',JSON.stringify(heroes));},fixture);
   await enter(page,url);await page.locator('#wishfire-lamp .lamp-collect').click();
@@ -126,11 +116,11 @@ test('Auto-Equip never equips a hero advertised red by the arrows beside it',asy
   await page.screenshot({path:`${directory}/red-promise-after-auto.png`});
   assert.ok(report.receipts.length>0);
   for(const receipt of report.receipts)assert.equal(report.arrows.find(a=>a.id===receipt.id)?.green,true,receipt.id+' was advertised red but Auto equipped gear');
- }finally{await writeFile(`${directory}/red-promise.json`,JSON.stringify(report,null,2));await context.close();await browser.close();server?.kill();}
+ }finally{await writeFile(`${directory}/red-promise.json`,JSON.stringify(report,null,2));await context.close();await close();}
 });
 
-test('a Kaja-only +4 upgrade survives the real dismantle flow with an early combat copy',async()=>{
- await mkdir(directory,{recursive:true});const {server,url}=await serveGame(),browser=await chromium.launch({headless:true,executablePath:detectChromeExecutable()}),context=await browser.newContext({viewport:{width:360,height:640}}),page=await context.newPage(),fixture=trustFixture('kaja'),report={};context.setDefaultTimeout(15000);
+test('a Kaja-only +4 upgrade survives the real dismantle flow with an early combat copy',{timeout:180000},async t=>{
+ await mkdir(directory,{recursive:true});const {browser,url,close}=await launchBrowserTest(t,chromium,{url:process.env.LAMP_QA_URL}),context=await browser.newContext({viewport:{width:360,height:640}}),page=await context.newPage(),fixture=trustFixture('kaja'),report={};context.setDefaultTimeout(15000);
  try{
   await page.addInitScript(({save,heroes})=>{save.lamp.lastActivationAt=Date.now();localStorage.setItem('wishfire.equipment-economy.v5',JSON.stringify(save));localStorage.setItem('orka.hero_progress.v2',JSON.stringify(heroes));},fixture);
   assert.equal(gain(fixture.save,fixture.heroes.heroes.Kojonn,fixture.selected),4);
@@ -145,11 +135,11 @@ test('a Kaja-only +4 upgrade survives the real dismantle flow with an early comb
   }
   const after=await read(page);report.survived=after.items.some(i=>i.instanceId===fixture.selected.instanceId);report.essence=after.lamp.essence;
   assert.equal(report.survived,true,'Dismantle destroyed a cached item worth +4 CP to Kaja');assert.equal(after.lamp.essence,fixture.save.lamp.essence);
- }finally{await writeFile(`${directory}/kaja-protection.json`,JSON.stringify(report,null,2));await context.close();await browser.close();server?.kill();}
+ }finally{await writeFile(`${directory}/kaja-protection.json`,JSON.stringify(report,null,2));await context.close();await close();}
 });
 
-test('an upgrade arriving during Auto feedback returns to inventory-wide review',async()=>{
- await mkdir(directory,{recursive:true});const {server,url}=await serveGame(),browser=await chromium.launch({headless:true,executablePath:detectChromeExecutable()}),context=await browser.newContext({viewport:{width:360,height:640}}),page=await context.newPage(),writer=await context.newPage(),fixture=trustFixture('mixed');context.setDefaultTimeout(15000);
+test('an upgrade arriving during Auto feedback returns to inventory-wide review',{timeout:180000},async t=>{
+ await mkdir(directory,{recursive:true});const {browser,url,close}=await launchBrowserTest(t,chromium,{url:process.env.LAMP_QA_URL}),context=await browser.newContext({viewport:{width:360,height:640}}),page=await context.newPage(),writer=await context.newPage(),fixture=trustFixture('mixed');context.setDefaultTimeout(15000);
  try{
   await page.addInitScript(({save,heroes})=>{save.lamp.lastActivationAt=Date.now();localStorage.setItem('wishfire.equipment-economy.v5',JSON.stringify(save));localStorage.setItem('orka.hero_progress.v2',JSON.stringify(heroes));},fixture);
   await writer.goto(new URL('/package.json',url).href);await enter(page,url);await page.locator('#wishfire-lamp .lamp-collect').click();await page.getByRole('button',{name:'Auto-Equip',exact:true}).click();await page.locator('.lamp-cp-feedback').first().waitFor();
@@ -160,11 +150,11 @@ test('an upgrade arriving during Auto feedback returns to inventory-wide review'
   const save=await read(page),result=await arrows(page,owners.map(id=>Math.max(0,gain(save,fixture.heroes.heroes[id],incoming))));
   assert.equal(await page.locator('#lamp-dialog [data-action="disposal"]').isEnabled(),false);assert.equal(await page.getByRole('button',{name:'Auto-Equip',exact:true}).isEnabled(),true);
   await page.screenshot({path:`${directory}/feedback-arrival-overview.png`});await writeFile(`${directory}/feedback-arrival.json`,JSON.stringify({arrows:result,incoming:incoming.instanceId,view:'cache'},null,2));
- }finally{await context.close();await browser.close();server?.kill();}
+ }finally{await context.close();await close();}
 });
 
-test('a legal equip in another tab rescues a stale disposal item and manual Equip preserves other gear',async()=>{
- await mkdir(directory,{recursive:true});const {server,url}=await serveGame(),browser=await chromium.launch({headless:true,executablePath:detectChromeExecutable()}),context=await browser.newContext({viewport:{width:360,height:640}}),page=await context.newPage(),writer=await context.newPage(),fixture=trustFixture('decrease');context.setDefaultTimeout(15000);
+test('a legal equip in another tab rescues a stale disposal item and manual Equip preserves other gear',{timeout:180000},async t=>{
+ await mkdir(directory,{recursive:true});const {browser,url,close}=await launchBrowserTest(t,chromium,{url:process.env.LAMP_QA_URL}),context=await browser.newContext({viewport:{width:360,height:640}}),page=await context.newPage(),writer=await context.newPage(),fixture=trustFixture('decrease');context.setDefaultTimeout(15000);
  const {save,heroes,selected}=fixture,stats=n=>({ATK:n,DEF:n,MAG:n,RES:n,HP:n});
  for(const id of owners)for(const slot of ['hat','body','boots'])save.items.find(i=>i.instanceId===save.loadouts[id][slot]).stats=stats(id==='Falie'?1:10000);
  save.items.find(i=>i.instanceId===save.loadouts.Falie.hat).stats={...stats(1),MAG:200};save.items.find(i=>i.instanceId===save.loadouts.Falie.boots).stats=stats(0);
@@ -200,7 +190,7 @@ test('a legal equip in another tab rescues a stale disposal item and manual Equi
   const afterScreens=await heroScreens(page,after,heroes,'stale-after');assert.ok(afterScreens[0].cp>beforeScreens[0].cp);
   await page.reload();await page.waitForFunction(()=>typeof window.render_game_to_text==='function');assert.deepEqual((await read(page)).loadouts,after.loadouts);assert.deepEqual(errors,[]);
   await writeFile(`${directory}/stale-disposal.json`,JSON.stringify({beforeScreens,afterScreens,preview,guard,receipt,reloadPreserved:true,errors},null,2));
- }catch(e){await page.screenshot({path:`${directory}/stale-disposal-failure.png`});throw e;}finally{await context.close();await browser.close();server?.kill();}
+ }catch(e){await page.screenshot({path:`${directory}/stale-disposal-failure.png`});throw e;}finally{await context.close();await close();}
 });
 
 // Negative controls prove the browser assertion detects a missed positive assignment.

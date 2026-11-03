@@ -6,6 +6,7 @@
 - Do not log routine execution history, file lists, or status chatter.
 
 ## Operating Constraints
+- Browser proofs can finish every assertion and stall in graceful Chrome shutdown under parallel load. Register owned resources before startup, wait for actual server readiness and process termination, and give the test a cancellation deadline; retain gameplay assertions while making teardown observable.
 - When mitigation changes, preserve independent damage modifiers and test zero DEF/RES. For CP-driven balancing with rounded stats, compare both sides of each CP jump; synthetic equipment fixtures must retain their eligibility and ranking conditions after recalibration.
 - Canvas entry tests must wait for the control's first paint and startup readiness before clicking its rendered position; exported debug hooks can exist before render-owned hit zones.
 - Release inventory comes from Git; committed deletions disappear from it. Missing tracked runtime files must fail packaging; inject a missing dependency in a disposable fixture to prove failure without a success manifest.

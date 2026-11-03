@@ -5,7 +5,7 @@ import { once } from 'node:events';
 const { detectChromeExecutable } = createRequire(import.meta.url)('../tools/playwright_support.js');
 
 // Register before startup: Node test cancellation does not cancel Playwright promises.
-export async function launchBrowserTest(t, chromium) {
+export async function launchBrowserTest(t, chromium, { url } = {}) {
   let server, browserServer, closing = Promise.resolve();
   const close = () => {
     const ownedServer = server, ownedBrowser = browserServer;
@@ -26,29 +26,32 @@ export async function launchBrowserTest(t, chromium) {
   t.signal.addEventListener('abort', abort, { once: true });
   t.after(async () => { t.signal.removeEventListener('abort', abort); await close(); });
   try {
-    const socket = createServer();
-    await new Promise((resolve, reject) => { socket.once('error', reject); socket.listen(0, '127.0.0.1', resolve); });
-    const port = socket.address().port;
-    await new Promise(resolve => socket.close(resolve));
-    t.signal.throwIfAborted();
-    server = spawn(process.execPath, ['tools/serve_web.js', '--port', String(port)], { stdio: ['ignore', 'pipe', 'inherit'] });
-    await new Promise((resolve, reject) => {
-      const ready = data => { if (String(data).includes('Serving ')) finish(); };
-      const exited = code => finish(new Error(`Test server exited before readiness: ${code}`));
-      const aborted = () => finish(t.signal.reason);
-      function finish(error) {
-        server?.stdout.off('data', ready); server?.off('error', finish); server?.off('exit', exited);
-        t.signal.removeEventListener('abort', aborted);
-        error ? reject(error) : resolve();
-      }
-      server.stdout.on('data', ready); server.once('error', finish); server.once('exit', exited);
-      t.signal.addEventListener('abort', aborted, { once: true });
-    });
+    let port;
+    if (!url) {
+      const socket = createServer();
+      await new Promise((resolve, reject) => { socket.once('error', reject); socket.listen(0, '127.0.0.1', resolve); });
+      port = socket.address().port;
+      await new Promise(resolve => socket.close(resolve));
+      t.signal.throwIfAborted();
+      server = spawn(process.execPath, ['tools/serve_web.js', '--port', String(port)], { stdio: ['ignore', 'pipe', 'inherit'] });
+      await new Promise((resolve, reject) => {
+        const ready = data => { if (String(data).includes('Serving ')) finish(); };
+        const exited = code => finish(new Error(`Test server exited before readiness: ${code}`));
+        const aborted = () => finish(t.signal.reason);
+        function finish(error) {
+          server?.stdout.off('data', ready); server?.off('error', finish); server?.off('exit', exited);
+          t.signal.removeEventListener('abort', aborted);
+          error ? reject(error) : resolve();
+        }
+        server.stdout.on('data', ready); server.once('error', finish); server.once('exit', exited);
+        t.signal.addEventListener('abort', aborted, { once: true });
+      });
+    }
     t.signal.throwIfAborted();
     browserServer = await chromium.launchServer({ executablePath: detectChromeExecutable(), headless: true });
     t.signal.throwIfAborted();
     const browser = await chromium.connect(browserServer.wsEndpoint());
     t.signal.throwIfAborted();
-    return { browser, port, close };
+    return { browser, port, url: url || `http://localhost:${port}/web-runner/index.html`, close };
   } catch (error) { await close(); throw error; }
 }
