@@ -26,7 +26,7 @@
 - Make historically fragile behavior explicit and repeatable.
 
 ## Ownership
-- `verifyHandoff.test.mjs` guards stable npm/Cargo failure identities, failure-set comparisons, diff line attribution, test-change review, duplicate-block heuristics and performance gate boundaries, strict relative-plus-absolute thresholds, three-run medians/spread overlap for every metric, vsync-bucket uncertainty,300-step batch arithmetic, missing/zero baseline measurements, fresh ABABAB sampling, same-SHA controls and SHA-bound npm-only cache reuse.
+- `verifyHandoff.test.mjs` guards stable npm/Cargo failure identities, failure-set comparisons, diff line attribution, test-change review, duplicate-block heuristics and performance gate boundaries, strict relative-plus-absolute thresholds, three-run medians/spread overlap for every metric, vsync-bucket uncertainty,300-step batch arithmetic, missing/zero baseline measurements, fresh ABABAB sampling, same-SHA controls and SHA-bound npm-only cache reuse. Step-sampler fixtures require revision-local provenance validation before ABI loading and stale-source rejection.
 - `*.test.js` files use Node's built-in test runner for contracts and static/runtime checks.
 - `*.spec.js` files cover browser-style flows where present.
 - `runtimeReleaseContract.test.mjs` requires generated files to ship while staying untracked, and missing tracked dependencies or failed regeneration to preserve the previous playable hosted release. `npm test -- tests/<name>.test.mjs` prepares WASM before focused tests; direct Node commands preload `--import ./tools/ensure_simulation_core.cjs` before `--test`.

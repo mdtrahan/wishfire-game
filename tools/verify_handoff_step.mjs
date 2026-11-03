@@ -1,12 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { ensureWasmRelease } from './build_wasm_support.mjs';
 import { quantiles } from './verify_handoff_logic.mjs';
 
 // Replay the observed boss config; time complete ABI steps with Node's nanosecond clock.
 export async function sampleSteps(root, config, { batches = 30, batchSize = 300 } = {}) {
-  ensureWasmRelease(root);
+  // Preparation builds each revision; its validator owns that revision's source layout.
+  const { readWasmRelease } = await import(pathToFileURL(join(root, 'tools/build_wasm_support.mjs')));
+  readWasmRelease(root);
   if (!config) throw Error('Missing observed Rust encounter config');
   const { createCombatBridge } = await import(pathToFileURL(join(root, 'web-runner/src/core/combatBridge.mjs')));
   const bridge = createCombatBridge(new WebAssembly.Instance(await WebAssembly.compile(await readFile(join(root, 'web-runner/assets/simulation_core.wasm')))));

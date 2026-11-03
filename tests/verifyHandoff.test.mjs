@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { parseFailures, failureDiff, diffLines, scanDiff, quantiles, frameMetrics, perfDiff, PERF_THRESHOLDS, medianSpread, summarizeMetrics, selectBaseCache } from '../tools/verify_handoff_logic.mjs';
 import { combatProbes } from '../tools/verify_handoff_probe.mjs';
 import { sampleSteps } from '../tools/verify_handoff_step.mjs';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -153,4 +153,24 @@ test('Rust batch samples divide high-resolution totals by 300 steps', async () =
   }
   assert.equal(result.metrics.stepP95,quantiles(result.timing.perStepMs).p95);
   assert.equal(result.metrics.stepMean,result.timing.perStepMs.reduce((a,b)=>a+b,0)/3);
+});
+
+// A baseline can own a different provenance schema from the sampler's checkout.
+test('Rust batch samples validate provenance with the sampled revision before loading the ABI', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'handoff-provenance-test-'));
+  try {
+    await mkdir(join(root, 'tools'));
+    await writeFile(join(root, 'source.txt'), 'matched');
+    await writeFile(join(root, 'tools/build_wasm_support.mjs'), `
+      import { readFileSync } from 'node:fs';
+      import { join } from 'node:path';
+      export function readWasmRelease(root) {
+        if (readFileSync(join(root, 'source.txt'), 'utf8') !== 'matched')
+          throw Error('revision-local source provenance mismatch');
+      }
+    `);
+    await assert.rejects(sampleSteps(root, null), /Missing observed Rust encounter config/);
+    await writeFile(join(root, 'source.txt'), 'stale');
+    await assert.rejects(sampleSteps(root, null), /revision-local source provenance mismatch/);
+  } finally { await rm(root, {recursive:true,force:true}); }
 });
