@@ -1,25 +1,15 @@
 import test from 'node:test';
-import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { createRequire } from 'node:module';
-import { spawn } from 'node:child_process';
-import { createServer } from 'node:net';
+import { launchBrowserTest } from './browserTestResources.mjs';
+import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { installObservers } from '../tools/verify_handoff_probe.mjs';
-const { detectChromeExecutable } = createRequire(import.meta.url)('../tools/playwright_support.js');
 
 // Real page, real WFM config and WASM. Observers wrap render entry without changing snapshots.
 for (const { width, height, dpr } of [{ width: 360, height: 640, dpr: 2 }, { width: 216, height: 384, dpr: 3 }]) {
-test(`WFM boss admission and observed Special framing at ${width}x${height} DPR${dpr}`, { timeout: 120000 }, async () => {
-  const socket = createServer();
-  await new Promise(resolve => socket.listen(0, '127.0.0.1', resolve));
-  const port = socket.address().port;
-  await new Promise(resolve => socket.close(resolve));
-  const server = spawn(process.execPath, ['tools/serve_web.js', '--port', String(port)], { stdio: ['ignore', 'pipe', 'pipe'] });
-  let browser;
+test(`WFM boss admission and observed Special framing at ${width}x${height} DPR${dpr}`, { timeout: 120000 }, async t => {
+  const { browser, port, close } = await launchBrowserTest(t, chromium);
   try {
-    await new Promise((resolve, reject) => { server.stdout.on('data', data => { if (String(data).includes('Serving ')) resolve(); }); server.once('error', reject); });
-    browser = await chromium.launch({ executablePath: detectChromeExecutable(), headless: true });
     const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: dpr, reducedMotion: 'no-preference' });
     const page = await context.newPage(), errors = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -165,6 +155,6 @@ test(`WFM boss admission and observed Special framing at ${width}x${height} DPR$
       writeFileSync(file, JSON.stringify(fixture, null, 2) + '\n');
     }
     console.log(JSON.stringify({ frames: proof.frames.length, bossEntryFrames: initial.length, attackDuration: active.at(-1).time - active[0].time, maxZoom: Math.max(...active.map(f => f.z)), snapshots: proof.snapshots.length }));
-  } finally { await browser?.close(); server.kill('SIGTERM'); }
+  } finally { await close(); }
 });
 }

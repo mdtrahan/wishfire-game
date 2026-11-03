@@ -1,25 +1,15 @@
 import test from 'node:test';
-import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { createRequire } from 'node:module';
-import { spawn } from 'node:child_process';
-import { createServer } from 'node:net';
+import { launchBrowserTest } from './browserTestResources.mjs';
+import { observeCombatStart, waitForCombatStart } from './combatStartReady.mjs';
+import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createLampEconomy, generateLampItem } from '../web-runner/src/core/lampGear.mjs';
-const require = createRequire(import.meta.url);
-const { detectChromeExecutable } = require('../tools/playwright_support.js');
 
-test('eight-slot cooldown HUD preserves quest, equipment access and combat-time shading at phone sizes', { timeout: 120000 }, async () => {
-  const probe = createServer();
-  await new Promise(resolve => probe.listen(0, '127.0.0.1', resolve));
-  const port = probe.address().port;
-  await new Promise(resolve => probe.close(resolve));
-  const server = spawn(process.execPath, ['tools/serve_web.js', '--port', String(port)], { stdio: ['ignore', 'pipe', 'pipe'] });
+test('eight-slot cooldown HUD preserves quest, equipment access and combat-time shading at phone sizes', { timeout: 120000 }, async t => {
+  const { browser, port, close } = await launchBrowserTest(t, chromium);
   const directory = 'test-results/hero-cooldown-strip';
-  let browser;
   try {
-    await new Promise((resolve, reject) => { server.stdout.on('data', data => { if (String(data).includes('Serving ')) resolve(); }); server.once('error', reject); });
-    browser = await chromium.launch({ executablePath: detectChromeExecutable(), headless: true });
     await mkdir(directory, { recursive: true });
     const measurements = [];
     for (const [width, height, dpr] of [[360, 640, 1], [216, 384, 2], [233, 452, 1], [316, 452, 1], [1280, 800, 2]]) {
@@ -30,13 +20,16 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
       await context.addInitScript(save => { save.lamp.lastActivationAt = Date.now(); localStorage.setItem('wishfire.equipment-economy.v5', JSON.stringify(save)); }, equipment);
       const page = await context.newPage();
       const errors = []; page.on('pageerror', error => errors.push(error.message));
+      await observeCombatStart(page);
       await page.goto(`http://localhost:${port}/web-runner/index.html`);
-      await page.waitForFunction(() => typeof window.render_game_to_text === 'function' && JSON.parse(render_game_to_text()).flags.layout0Ready);
-      await page.waitForTimeout(2000);
+      await waitForCombatStart(page);
       const canvas = await page.locator('canvas').first().boundingBox();
       await page.mouse.click(canvas.x + canvas.width / 2, canvas.y + 426 * canvas.width / 360);
       await page.locator('.hero-cooldowns').waitFor();
-      await page.waitForFunction(() => __codexGame.globals.RustCombatPresentation?.state.snapshot?.actors.some(actor => actor.team === 'hero'));
+      await page.waitForFunction(() => __codexGame.globals.RustCombatPresentation?.state.snapshot?.actors.some(actor => actor.team === 'hero')).catch(async error => {
+        const startup = await page.evaluate(() => { const g = __codexGame.globals, text = JSON.parse(render_game_to_text()); return { flags: text.flags, quest: text.quest, error: g.RustCombatError, paused: [g.DevToolingPaused, g.QaScenarioPaused], hidden: document.hidden, snapshot: g.RustCombatPresentation?.state.snapshot }; });
+        throw new Error(`${error.message}: ${JSON.stringify({ width, height, errors, startup })}`, { cause: error });
+      });
       const read = () => page.evaluate(() => {
         const rect = selector => document.querySelector(selector).getBoundingClientRect().toJSON();
         return { viewport: [innerWidth, innerHeight], dpr: devicePixelRatio, canvas: rect('#view'), backing: [document.querySelector('#view').width, document.querySelector('#view').height],
@@ -69,7 +62,17 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
       const reveal=await page.locator('.hero-cooldown').first().evaluate(node=>{const style=getComputedStyle(node,'::after');return{mask:style.maskImage,filter:style.backdropFilter};});
       assert.equal(reveal.mask,'conic-gradient(rgba(0, 0, 0, 0) 0deg, rgba(0, 0, 0, 0) 180deg, rgb(0, 0, 0) 180deg, rgb(0, 0, 0) 360deg)','the colored half reveals clockwise from twelve o’clock');
       assert.equal(reveal.filter,'grayscale(1)','the remaining cooldown wedge is grayscale');
-      await page.waitForTimeout(150); assert.equal((await read()).slots[0].shade, paused);
+      const pausedFrames = await page.evaluate(async () => {
+        const shades = [], started = performance.now();
+        for (let frame = 0; frame < 120; frame++) {
+          await new Promise(requestAnimationFrame);
+          shades.push(document.querySelector('.hero-cooldown').style.getPropertyValue('--cooldown'));
+          if (performance.now() - started >= 150) break;
+        }
+        return { shades, elapsed: performance.now() - started };
+      });
+      assert.ok(pausedFrames.elapsed >= 150, 'observe at least 150 ms of paused frames');
+      assert.deepEqual(pausedFrames.shades, pausedFrames.shades.map(() => paused), 'every paused frame keeps its shade');
       await page.screenshot({ path: `${directory}/${width}-${height}-paused-clock.png` });
       // Buff signals: a party-wide Elevate roll plus own buffs on the first two clocks.
       // HP is pinned at 60% so no passive condition adds badges of its own.
@@ -77,7 +80,11 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
         const views=__codexGame.globals.RustCombatPresentation.state.snapshot.actors.filter(a=>a.team==='hero');
         views.forEach(actor=>{actor.ward=20;actor.elevate='sword';actor.groove_active=actor.kind==='kaja'?8:0;});
       });
-      await page.waitForFunction(() => document.querySelectorAll('.hero-buff-party .hero-buff').length===1 && document.querySelector('.hero-cooldown .hero-buff')?.dataset.icon==='hero-offense');
+      await page.waitForFunction(() => {
+        const party = [...document.querySelectorAll('.hero-buff-party .hero-buff')].map(node => node.dataset.icon);
+        const badges = [...document.querySelectorAll('.hero-cooldown')].map(slot => [...slot.querySelectorAll('.hero-buff')].map(node => node.dataset.icon));
+        return JSON.stringify(party) === '["party-ward"]' && JSON.stringify(badges) === '[["hero-offense"],["hero-offense"],["hero-offense"],["hero-offense"],[],[],[],[]]';
+      });
       const buffs = await page.evaluate(() => ({
         party: [...document.querySelectorAll('.hero-buff-party .hero-buff')].map(node => ({ icon: node.dataset.icon, rect: node.getBoundingClientRect().toJSON() })),
         badges: [...document.querySelectorAll('.hero-cooldown')].map(slot => [...slot.querySelectorAll('.hero-buff')].map(node => ({ icon: node.dataset.icon, rect: node.getBoundingClientRect().toJSON() }))),
@@ -151,5 +158,5 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
       await context.close();
     }
     await writeFile(`${directory}/report.json`, JSON.stringify(measurements, null, 2));
-  } finally { await browser?.close(); server.kill(); }
+  } finally { await close(); }
 });

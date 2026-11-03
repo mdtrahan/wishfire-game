@@ -233,8 +233,23 @@ test('the lab does not import Wishfire combat modules as its model oracle', () =
     const source = fs.readFileSync(path.join(REPO, 'tools/combat_lab', file), 'utf8');
     assert.doesNotMatch(source, /from ['"][^'"]*(web-runner|src\/core|Scripts)\//, `${file} imports runtime code`);
   }
-  const status = execFileSync('git', ['status', '--porcelain', '--', 'web-runner', 'src', 'Scripts', 'rust'], { cwd: REPO, encoding: 'utf8' });
-  assert.equal(status.trim(), '', 'runtime paths must stay unchanged in this lane');
+  // Import isolation holds even when a verifier builds or edits unrelated runtime paths.
+  const runtimeStatus = () => [
+    ['status', '--porcelain', '--untracked-files=all'], ['diff', '--binary', 'HEAD'],
+  ].map(args => execFileSync('git', [...args, '--', 'web-runner', 'src', 'Scripts', 'rust'], { cwd: REPO, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
+  const before = runtimeStatus();
+  execFileSync(process.execPath, ['--input-type=module', '-e', `
+    import assert from 'node:assert/strict';
+    import {registerHooks} from 'node:module';
+    registerHooks({resolve(specifier, context, next) {
+      const result = next(specifier, context);
+      assert.doesNotMatch(result.url, /\\/(?:web-runner|src\\/core|Scripts)\\//, 'lab imports runtime code');
+      return result;
+    }});
+    await import('./tools/combat_lab/claims.mjs');
+    await import('./tools/combat_lab/render.mjs');
+  `], { cwd: REPO, encoding: 'utf8', stdio: 'pipe' });
+  assert.deepEqual(runtimeStatus(), before, 'lab imports must leave runtime paths unchanged');
 });
 
 test('harness boss policy and event log are explicit, optional and default-off', async () => {

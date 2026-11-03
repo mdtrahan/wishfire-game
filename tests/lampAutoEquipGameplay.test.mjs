@@ -1,4 +1,5 @@
 import {test} from 'node:test';
+import {observeCombatStart,waitForCombatStart} from './combatStartReady.mjs';
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 import {createRequire} from 'node:module';
@@ -16,8 +17,8 @@ async function serveGame(){
  return{server,url};
 }
 async function enter(page,url){
- await page.goto(url);await page.waitForFunction(()=>typeof window.render_game_to_text==='function');
- await page.waitForTimeout(2000);const canvas=await page.locator('canvas').first().boundingBox();await page.mouse.click(canvas.x+canvas.width/2,canvas.y+426*canvas.width/360);
+ await observeCombatStart(page);await page.goto(url,{waitUntil:'domcontentloaded'});await waitForCombatStart(page);
+ const canvas=await page.locator('canvas').first().boundingBox();await page.mouse.click(canvas.x+canvas.width/2,canvas.y+426*canvas.width/360);
  await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).quest.phase==='combat');await page.locator('#wishfire-lamp .lamp-collect').waitFor();
 }
 async function arrows(page,expected){

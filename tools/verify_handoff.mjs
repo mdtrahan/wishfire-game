@@ -49,7 +49,7 @@ async function main() {
       roots[label]=tree;outputs[label]=dir;
       console.log(`${label}: ${refs[label]} preparing isolated worktree`);
       git('worktree','add','--detach','--no-checkout',tree,refs[label]);created.push(tree);
-      execFileSync('git',['sparse-checkout','set','--no-cone','--stdin'],{cwd:tree,input:'/*\n!/history/\n!/output/\n!/.beads/\n',stdio:['pipe','ignore','pipe']});
+      execFileSync('git',['sparse-checkout','set','--no-cone','--stdin'],{cwd:tree,input:'/*\n!/history/\n!/output/\n!/.beads/*\n/.beads/hooks/\n',stdio:['pipe','ignore','pipe']});
       execFileSync('git',['checkout','--detach',refs[label]],{cwd:tree,stdio:'ignore'});
       const env={CARGO_TARGET_DIR:join(temp,'cargo',label)},steps=[];
       const execute=async(name,cmd,args)=>{console.log(`${label}: ${name}`);const result=await run(cmd,args,tree,join(dir,`${name}.log`),env);steps.push({name,...result});return result;};

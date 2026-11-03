@@ -44,9 +44,25 @@ test('retirement requires a present, clean, merged, CLOSED Bead worktree', () =>
 
 test('apply requires an exact registered worktree', () => {
   const tool = fileURLToPath(new URL('../tools/storage_hygiene.mjs', import.meta.url));
-  const result = spawnSync(process.execPath, [tool, 'clean', '--apply'], { encoding: 'utf8' });
-  assert.equal(result.status, 2);
-  assert.match(result.stderr, /specify one exact registered absolute path/);
+  // Own the Git fixture: T3 checkouts can be detached or lack a local main ref.
+  const temp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'orka-exact-worktree-')));
+  try {
+    for (const args of [['init', '-b', 'main'], ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '--allow-empty', '-m', 'fixture']]) {
+      const setup = spawnSync('git', args, { cwd: temp, encoding: 'utf8' });
+      assert.equal(setup.status, 0, setup.stderr);
+    }
+    for (const args of [['--apply'], ['--worktree', '.'], ['--worktree', temp, '--worktree', temp, '--apply']]) {
+      const result = spawnSync(process.execPath, [tool, 'clean', ...args], { cwd: temp, encoding: 'utf8' });
+      assert.equal(result.status, 2);
+      assert.match(result.stderr, /specify one exact registered absolute path/);
+    }
+    const result = spawnSync(process.execPath, [tool, 'clean', '--worktree', path.join(temp, 'unregistered'), '--apply'], { cwd: temp, encoding: 'utf8' });
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /unregistered worktree/);
+    assert.equal(fs.existsSync(path.join(temp, '.git')), true, 'refused cleanup preserves the fixture');
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
 });
 
 test('cleanup refuses unknown evidence and dirty files, then removes only allowlisted artifacts', () => {
