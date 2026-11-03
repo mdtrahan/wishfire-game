@@ -1,0 +1,12 @@
+{
+  "hot_files": {
+    "web-runner/systems/renderRuntime.js": {
+      "functions": [
+        "addActorPaint",
+        "drawEnemySprite"
+      ],
+      "staged_blob": "b3333ce107418ca7c3328ab44a6cd11f3245cd29"
+    }
+  },
+  "issue_id": "ORKA-nspw.1"
+}

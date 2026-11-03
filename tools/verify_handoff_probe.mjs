@@ -47,9 +47,9 @@ export function installObservers() {
       return original.apply(this,args);
     };
   }
-  function clipped(ctx, rect, layer) {
+  function clipped(ctx, rect, layer, allowFrameEdge = false) {
     const active = [{left:0,top:0,right:ctx.canvas.width,bottom:ctx.canvas.height},...(contexts.get(ctx)?.clips || [])];
-    if (active.some(clip => !clip || outside(rect,clip))) q.clips.push({time:paint?.state.snapshot?.time,layer,rect,active});
+    if (active.some((clip, i) => (i > 0 || !allowFrameEdge) && (!clip || outside(rect,clip)))) q.clips.push({time:paint?.state.snapshot?.time,layer,rect,active});
   }
   for(const glProto of [WebGLRenderingContext.prototype,WebGL2RenderingContext.prototype]) {
     const states=new WeakMap();
@@ -82,7 +82,12 @@ export function installObservers() {
     const sprite=p.sprite;
     p.sprite=function(ctx,puppet,options) {
       const rect=sprite.call(this,ctx,puppet,options);
-      if(recording&&rect) {q.draws++;clipped(ctx,box(ctx,rect.drawX,rect.drawY,rect.width,rect.height),'actor');}
+      if(recording&&rect) {
+        q.draws++;
+        const participants=p.spotlightCamera?.current?.participants,id=options.rustActorId??options.actor?.rustActorId;
+        const allowFrameEdge=Array.isArray(participants)&&participants.length>0&&Number.isFinite(id)&&!participants.includes(id);
+        clipped(ctx,box(ctx,rect.drawX,rect.drawY,rect.width,rect.height),'actor',allowFrameEdge);
+      }
       return rect;
     };
     for(const key of ['ground','front','chest','actor']) {

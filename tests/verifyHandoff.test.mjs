@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseFailures, failureDiff, diffLines, scanDiff, quantiles, frameMetrics, perfDiff, PERF_THRESHOLDS, medianSpread, summarizeMetrics, selectBaseCache } from '../tools/verify_handoff_logic.mjs';
-import { combatProbes } from '../tools/verify_handoff_probe.mjs';
+import { combatProbes, installObservers } from '../tools/verify_handoff_probe.mjs';
+import { runInNewContext } from 'node:vm';
 import { sampleSteps } from '../tools/verify_handoff_step.mjs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -153,4 +154,45 @@ test('Rust batch samples divide high-resolution totals by 300 steps', async () =
   }
   assert.equal(result.metrics.stepP95,quantiles(result.timing.perStepMs).p95);
   assert.equal(result.metrics.stepMean,result.timing.perStepMs.reduce((a,b)=>a+b,0)/3);
+});
+
+
+test('no-clipping exempts only identified nonparticipants at frame edges during presentation framing', () => {
+  class Context {
+    constructor() { this.canvas = { width: 360, height: 640, getBoundingClientRect: () => ({ width: 360 }) }; }
+    getTransform() { return { a:1,b:0,c:0,d:1,e:0,f:0 }; }
+    save() {} restore() {} beginPath() {} rect() {} roundRect() {} clip() {}
+  }
+  class GL { enable() {} disable() {} scissor() {} drawArrays() {} drawElements() {} }
+  class GL2 extends GL {}
+  class Instance {}
+  Object.defineProperty(Instance.prototype, 'exports', { configurable:true, get() { return {}; } });
+  let frame;
+  const p = { state:{ ingest() {} }, spotlightCamera:{ current:null },
+    sprite: () => ({ drawX:350, drawY:100, width:20, height:30 }), ground() {} };
+  const window = { __codexGame:{ globals:{ RustCombatPresentation:p } } };
+  runInNewContext(`(${installObservers.toString()})()`, { window, WebAssembly:{ Instance },
+    CanvasRenderingContext2D:Context, WebGLRenderingContext:GL, WebGL2RenderingContext:GL2,
+    Path2D:class {}, PerformanceObserver:class { observe() {} }, requestAnimationFrame:fn => { frame=fn; } });
+  frame(0); window.handoffProbe.start();
+  const q = window.handoffProbe, ctx = new Context();
+  const draw = (id, expected) => {
+    const before = q.clips.length;
+    p.sprite(ctx, {}, { rustActorId:id });
+    assert.equal(q.clips.length - before, expected);
+  };
+  draw(4, 1); // All actors outside spotlight.
+  p.spotlightCamera.current = { participants:[1,3] };
+  draw(1, 1); draw(3, 1); draw(4, 0); draw(undefined, 1);
+  // Return retains the current presentation frame after the active cast ends.
+  p.spotlightCamera.active = null; draw(4, 0);
+  ctx.beginPath(); ctx.rect(0,0,355,640); ctx.clip(); draw(4, 1);
+  const gl = new GL(); gl.SCISSOR_TEST = 1; gl.drawingBufferWidth = 360; gl.drawingBufferHeight = 640;
+  gl.enable(1); gl.scissor(0,0,355,640);
+  const before = q.clips.length; gl.drawArrays(); assert.equal(q.clips.length, before + 1);
+  ctx.beginPath(); ctx.rect(0,0,100,640); ctx.clip();
+  const layers = q.clips.length; p.ground(ctx); assert.equal(q.clips.length, layers + 1);
+  const fresh = new Context(); p.spotlightCamera.current = null;
+  const after = q.clips.length; p.sprite(fresh, {}, { rustActorId:4 }); assert.equal(q.clips.length, after + 1);
+  assert.equal(q.draws, 8);
 });

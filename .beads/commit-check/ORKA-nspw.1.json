@@ -1,0 +1,209 @@
+{
+  "changed_functions": {
+    "ai-memory/insights.md": [
+      "__MODULE__"
+    ],
+    "output/balance/simulation-core-wasm-provenance.json": [
+      "__MODULE__"
+    ],
+    "rust/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/simulation_core/src/combat_abi.rs": [
+      "heal",
+      "result"
+    ],
+    "tests/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "tests/actorPuppetDefeats.test.mjs": [
+      "__MODULE__"
+    ],
+    "tests/actorPuppetPresentation.test.mjs": [
+      "load"
+    ],
+    "tests/buffSignalRules.test.mjs": [
+      "party"
+    ],
+    "tests/combatBossButtonContract.test.js": [
+      "assertBossMarkerSeparated"
+    ],
+    "tests/combatCardRetirementContract.test.js": [
+      "sourceFiles",
+      "actor"
+    ],
+    "tests/combatDeathLifecycle.test.mjs": [
+      "observe",
+      "__MODULE__"
+    ],
+    "tests/combatOrientationContract.test.js": [
+      "projectY"
+    ],
+    "tests/combatSubwaves.test.mjs": [
+      "totals",
+      "__MODULE__"
+    ],
+    "tests/combatVisualBugs.test.mjs": [
+      "oldOriginY",
+      "drop",
+      "hpBottom",
+      "bottomHudTop",
+      "__MODULE__"
+    ],
+    "tests/enemyBarRenderContract.test.js": [
+      "__MODULE__"
+    ],
+    "tests/heroCooldownStripBrowser.test.mjs": [
+      "paused",
+      "partyCenter"
+    ],
+    "tests/rustCombatCheckpoint.test.mjs": [
+      "fixture",
+      "token"
+    ],
+    "tests/rustCombatTaunt.test.mjs": [
+      "draw",
+      "__MODULE__"
+    ],
+    "tests/rustCombatVisuals.test.mjs": [
+      "damage"
+    ],
+    "web-runner/assets/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/assets/rust-combat/icons/warn.png": [],
+    "web-runner/assets/rust-combat/manifest.json": [
+      "__MODULE__"
+    ],
+    "web-runner/assets/simulation_core.manifest.json": [
+      "__MODULE__"
+    ],
+    "web-runner/assets/simulation_core.wasm": [],
+    "web-runner/systems/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/systems/actorPuppetDefeats.mjs": [
+      "__MODULE__"
+    ],
+    "web-runner/systems/actorPuppetPresentation.mjs": [
+      "actorPuppetState",
+      "protect"
+    ],
+    "web-runner/systems/heroCooldownStrip.mjs": [
+      "heroBuffSignalInput",
+      "__MODULE__"
+    ],
+    "web-runner/systems/renderRuntime.js": [
+      "addActorPaint",
+      "drawEnemySprite"
+    ],
+    "web-runner/systems/rustCombatArena.mjs": [
+      "height",
+      "__MODULE__"
+    ],
+    "web-runner/systems/rustCombatPresentation.mjs": [
+      "frontPass",
+      "labels",
+      "__MODULE__"
+    ],
+    "web-runner/systems/rustCombatSprites.mjs": [
+      "chargeLines",
+      "__MODULE__"
+    ],
+    "web-runner/systems/rustCombatTaunt.mjs": [
+      "drawTauntIcons",
+      "__MODULE__"
+    ],
+    "web-runner/systems/rustCombatWorldHud.mjs": [
+      "drawSliceActorBars",
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "web-runner/systems/renderRuntime.js"
+    ],
+    "staged_file_count": 34,
+    "staged_line_count": 436,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    "ai-memory/insights.md",
+    "output/balance/simulation-core-wasm-provenance.json",
+    "rust/AGENTS.md",
+    "rust/simulation_core/src/combat_abi.rs",
+    "tests/AGENTS.md",
+    "tests/actorPuppetDefeats.test.mjs",
+    "tests/actorPuppetPresentation.test.mjs",
+    "tests/buffSignalRules.test.mjs",
+    "tests/combatBossButtonContract.test.js",
+    "tests/combatCardRetirementContract.test.js",
+    "tests/combatDeathLifecycle.test.mjs",
+    "tests/combatOrientationContract.test.js",
+    "tests/combatSubwaves.test.mjs",
+    "tests/combatVisualBugs.test.mjs",
+    "tests/enemyBarRenderContract.test.js",
+    "tests/heroCooldownStripBrowser.test.mjs",
+    "tests/rustCombatCheckpoint.test.mjs",
+    "tests/rustCombatTaunt.test.mjs",
+    "tests/rustCombatVisuals.test.mjs",
+    "web-runner/assets/AGENTS.md",
+    "web-runner/assets/rust-combat/icons/warn.png",
+    "web-runner/assets/rust-combat/manifest.json",
+    "web-runner/assets/simulation_core.manifest.json",
+    "web-runner/assets/simulation_core.wasm",
+    "web-runner/systems/AGENTS.md",
+    "web-runner/systems/actorPuppetDefeats.mjs",
+    "web-runner/systems/actorPuppetPresentation.mjs",
+    "web-runner/systems/heroCooldownStrip.mjs",
+    "web-runner/systems/renderRuntime.js",
+    "web-runner/systems/rustCombatArena.mjs",
+    "web-runner/systems/rustCombatPresentation.mjs",
+    "web-runner/systems/rustCombatSprites.mjs",
+    "web-runner/systems/rustCombatTaunt.mjs",
+    "web-runner/systems/rustCombatWorldHud.mjs"
+  ],
+  "issue_id": "ORKA-nspw.1",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    "ai-memory/insights.md": "45d87b447572a6de63686aba9c8e269dddf5901b",
+    "output/balance/simulation-core-wasm-provenance.json": "131b0734daada8b2bec218f4ef9baca17c96957e",
+    "rust/AGENTS.md": "3b0728fc8e94e5a102cc93a94f2a607af442abf6",
+    "rust/simulation_core/src/combat_abi.rs": "d2848e1b0ab99ed1f8a2ca5a4cecdd8c7ad0ef36",
+    "tests/AGENTS.md": "f712d093e234ae72d4ae4615d839e1f417251553",
+    "tests/actorPuppetDefeats.test.mjs": "38470b1387bdb2ddc9458911824f5c8db1338280",
+    "tests/actorPuppetPresentation.test.mjs": "c18020b7885da39264ca5fbe83c74d14fddf57ee",
+    "tests/buffSignalRules.test.mjs": "2449d5525d370d5f22b508541af419282e352aa1",
+    "tests/combatBossButtonContract.test.js": "5353f633b1ae8a84cc31db3d208494be1bb547bf",
+    "tests/combatCardRetirementContract.test.js": "eabd11ecf0add20ebbd2bab828ef4c4fd03e6928",
+    "tests/combatDeathLifecycle.test.mjs": "397e79ce5b31d7ffd6f0ed9001492d354a47300a",
+    "tests/combatOrientationContract.test.js": "159523b82008f314a20ff946008dd98e244abe36",
+    "tests/combatSubwaves.test.mjs": "699d43ce713e5d03d20626142b4537b15995e2cc",
+    "tests/combatVisualBugs.test.mjs": "752c06e6af2fbad8222c7e5660b22b349755d334",
+    "tests/enemyBarRenderContract.test.js": "a8fe345c3f99bd04e074ce8dbe8c27342a3dc86f",
+    "tests/heroCooldownStripBrowser.test.mjs": "034ce1893ade5514436d809ea5cd36f4f61d863e",
+    "tests/rustCombatCheckpoint.test.mjs": "d0fde95e46481925e50bf2e9843974e04abc30cf",
+    "tests/rustCombatTaunt.test.mjs": "f5d5bee8c7c08ced400289752473557294fa2a4f",
+    "tests/rustCombatVisuals.test.mjs": "7466e8d467e1604de6e77e141c1169a3ff71df69",
+    "web-runner/assets/AGENTS.md": "add7834e96ebe9c2854d68b4140e51d56b92a20b",
+    "web-runner/assets/rust-combat/icons/warn.png": "2992229344bb9df27725ccb8304466574e19d21d",
+    "web-runner/assets/rust-combat/manifest.json": "c411b2c03f6213f290fa87d75a76c877cb460b57",
+    "web-runner/assets/simulation_core.manifest.json": "131b0734daada8b2bec218f4ef9baca17c96957e",
+    "web-runner/assets/simulation_core.wasm": "fcd903199fdb10be46ac53d7f5d7c2b7fbb9b694",
+    "web-runner/systems/AGENTS.md": "a8ba33d1f07f1315ef408da0dcff7b0a3ad09c4e",
+    "web-runner/systems/actorPuppetDefeats.mjs": "01f7e37a36d7e632806b77022e56ca68fdbff590",
+    "web-runner/systems/actorPuppetPresentation.mjs": "88cf466bbb90737bef3f19423dd2fef045f46c9a",
+    "web-runner/systems/heroCooldownStrip.mjs": "1fc145bfc3b8d3c9524c30cef0e5bac4e3bb49d1",
+    "web-runner/systems/renderRuntime.js": "b3333ce107418ca7c3328ab44a6cd11f3245cd29",
+    "web-runner/systems/rustCombatArena.mjs": "c86e1b1417aa7336f7f2e0befbc5a08015bb6bbf",
+    "web-runner/systems/rustCombatPresentation.mjs": "977815b9e715f8af4bcc2cb994a2d0672835ab39",
+    "web-runner/systems/rustCombatSprites.mjs": "30a6386894bd8ea4118642f0d1aecf3605e1c79b",
+    "web-runner/systems/rustCombatTaunt.mjs": "f7ecd2cd6f0046aca0591a1857a30f03c940fec2",
+    "web-runner/systems/rustCombatWorldHud.mjs": "c0f4331b9fb42bb2a4bfac030ce1581d79fa4981"
+  }
+}

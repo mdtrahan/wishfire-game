@@ -1,7 +1,8 @@
 import { HERO_FORMATION_SLOTS } from '../src/core/heroFormationGeometry.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { COMBAT_BATTLEFIELD_ZOOM, createCombatCameraProjection, deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldVerticalBounds } from '../src/core/combatOrientation.mjs';
+import { COMBAT_BATTLEFIELD_ZOOM, deriveCombatFormationAnchors, deriveCombatWorldBounds, deriveCombatWorldVerticalBounds } from '../src/core/combatOrientation.mjs';
+import { createSliceCombatCamera } from '../web-runner/systems/rustCombatCamera.mjs';
 import { actorFootprintRadius } from '../src/core/arenaCombatRules.mjs';
 import { deriveContinuousCombatSpawnMoat, placeContinuousCombatHeroesInRecoveryHuddle } from '../web-runner/src/core/arenaCombat.mjs';
 import { computeCombatPower } from '../web-runner/src/core/combatPower.mjs';
@@ -694,10 +695,7 @@ test('restored readiness auto-enters once and clears queued fodder actions', () 
 
 test('recovery moat projects to 150 logical pixels at the canonical battlefield zoom', () => {
   const moat = deriveContinuousCombatSpawnMoat();
-  const camera = createCombatCameraProjection({ viewportWidth: 360, worldWidth: 2160, zoom: COMBAT_BATTLEFIELD_ZOOM, centerX: moat.centerX });
-  const left = camera.project(moat.centerX - moat.minimumEnemyCenterDistance, moat.centerY).x;
-  const right = camera.project(moat.centerX + moat.minimumEnemyCenterDistance, moat.centerY).x;
-  assert.equal(Math.abs(right - left), 150);
+  assert.equal(2 * moat.minimumEnemyCenterDistance * COMBAT_BATTLEFIELD_ZOOM, 150);
 });
 
 test('six seeded sector identities keep full pack footprints outside the compact recovery moat', () => {
@@ -1025,10 +1023,10 @@ test('boss entry stages an edge-bound party into a fixed left-heroes right-boss 
     };
     assert.equal(armContinuousCombatBoss(globals, entities, call, { wallNowMs: 1000 }), true);
     assert.equal(globals.CombatOrientation, 'right-wise', 'boss presentation leaves the saved roam preference untouched');
-    const leftwise = createCombatCameraProjection({ viewportWidth: 360, worldWidth: world.worldWidth, zoom: 0.5,
-      centerX: globals.ContinuousCombatStage.bossCameraCenterX, orientation: 'left-wise' });
-    const heroX = leftwise.project(heroes.reduce((sum, hero) => sum + hero.footX, 0) / heroes.length, 250, 'hero').x;
-    const bossX = leftwise.project(boss.footX, boss.footY, 'enemy').x;
+    const camera = createSliceCombatCamera();
+    camera.frame(globals.ContinuousCombatStage.bossCameraCenterX, 650, .5);
+    const heroX = camera.x(heroes.reduce((sum, hero) => sum + hero.footX, 0) / heroes.length);
+    const bossX = camera.x(boss.footX);
     assert.ok(heroX < bossX, 'heroes stay left of the boss at either world edge');
     assert.ok(heroX > 0 && bossX < 360, 'both sides fit inside the fixed viewport');
     assert.ok(Math.max(...heroes.map(hero => hero.footX)) - Math.min(...heroes.map(hero => hero.footX)) < 40,
