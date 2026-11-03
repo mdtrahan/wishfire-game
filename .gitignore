@@ -45,3 +45,10 @@ web-runner/runtime-fingerprint.js
 /docs/archive/
 /governance/audit/quarantine/
 /governance/execution/dev-directives/archive/
+
+# Source-validated build products; local/test/release entry points regenerate these.
+/web-runner/assets/simulation_core.wasm
+/web-runner/assets/simulation_core.manifest.json
+/web-runner/src/core/specialClockContent.mjs
+/output/balance/simulation-core-wasm-provenance.json
+/web-runner/assets/.simulation-core-next-*/

@@ -165,3 +165,5 @@
 - Authority-driver diagnostic `read()` clones snapshots; use `isActive()` for lifecycle predicates. Idle steps build no revision command payloads. Legacy skill mutation/reset rejects actors bound to Rust.
 
 - Runtime-spy and static-inventory gates enforce sole Rust authority. `arenaCombat.mjs` retains pre-world origin placement only; continuous stage/subwave authoring never resolves live attacks. Save/economy and #229 revision assertions remain binding.
+
+- `specialClockContent.mjs` is ignored. Server/test/release startup generates it from the validated WASM; direct Node tests preload `--import ./tools/ensure_simulation_core.cjs` before `--test` so it exists before ESM resolution.

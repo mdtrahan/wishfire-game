@@ -28,6 +28,7 @@
 - Reframe before implementation when acceptance language implies persistent timed stat stacks (`ORKA-9ri`, `ORKA-zih`, residual wording in `ORKA-69r`).
 
 ## Regression Triggers
+- Cross-revision tooling must use each checkout's provenance validator after that checkout builds its artifacts; a newer workspace schema cannot validate an older crate layout. Standalone npm test aliases that import generated modules must bootstrap before ESM resolution.
 - Special previews must read Rust stock-refill content and round the meter-rate input at the same f32 boundary as combat. Authored kit timings cannot establish parity; compare previews against real WASM meter increments with zero and earned Haste.
 - Derived status fields may exist only in Rust's rebuilt snapshot view. JSON bridges reading raw actor views must explicitly project validated status state; presence of a serialized field alone does not prove live values reach rendering.
 - Guard generic developer dispatchers alongside named fixtures when Rust owns live combat. A guarded fixture leaves every mutating registry handler reachable through an unrestricted raw dispatcher.

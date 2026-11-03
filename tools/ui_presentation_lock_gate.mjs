@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import './ensure_simulation_core.cjs';
 import { spawn, spawnSync } from 'node:child_process';
 import fsPromises from 'node:fs/promises';
 import http from 'node:http';

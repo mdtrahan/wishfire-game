@@ -11,7 +11,7 @@
 ## Local Contracts
 - `describe.special_clocks` exports the four Hero stock-refill constants from wf_combat tuning for generated display content. This additive description field leaves request, snapshot and event schemas unchanged.
 - Combat ABI advertises `ack_events_v1`: `ack {world, encounter_id, sequence}` validates the absolute cursor and prunes only its acknowledged prefix. `inspect.events_after` must lie between the acknowledged and last cursors. Sequence generation remains monotonic after pruning; acknowledgement changes no gameplay hash. Retained-event backpressure rejects before stepping and resumes after ack. `died` includes combat reason, team and optional original host spawn identity; teardown emits only despawn/ended facts.
-- Combat ABI 1.0 snapshots additionally expose host identities, pose/facing, ward, clocks, full hazard presentation fields, projectiles and camera focus. Actor effect observations include shield, poison, encasement, Elevate and cast state. Read-only hit-stop, spotlight and Phoenix channel/cooldown fields supply presentation clocks and revival observations. These are observations of the existing sim; preserve mechanics and snapshot/event order. Combat scalars are retired; CP and meta RNG scalars remain. Rebuild the shipped artifact and provenance after boundary changes.
+- Combat ABI 1.0 snapshots additionally expose host identities, pose/facing, ward, clocks, full hazard presentation fields, projectiles and camera focus. Actor effect observations include shield, poison, encasement, Elevate and cast state. Read-only hit-stop, spotlight and Phoenix channel/cooldown fields supply presentation clocks and revival observations. These are observations of the existing sim; preserve mechanics and snapshot/event order. Combat scalars are retired; CP and meta RNG scalars remain. Regenerate and validate local artifact/provenance after boundary changes.
 - Rust owns deterministic simulation slices named in `governance/planning/simulation-core-rust-final-audit.md`.
 - Rust must not depend on DOM, Canvas, audio, storage APIs, Netlify, browser globals, or presentation timing.
 - Supported scalar exports are CP and meta RNG only; combat runs through the world ABI. The required-export gate rejects missing supported exports.
@@ -62,4 +62,7 @@
 
 - Retained meta RNG keeps the native `mirrors_current_seeded_rng_cases` fixture alongside shipped-WASM parity checks when combat scalar exports retire.
 
+- WASM, manifest, Special clock content and provenance are ignored build products. Server/test/release entry points rebuild missing or stale products; never stage generated products after Rust edits. Rebuild with the same Rust version and flags for byte reproduction.
+
+- SimulationCore and wf_combat share `rust/Cargo.toml` and `rust/Cargo.lock` so Cargo crate identities stay relative across checkouts. The reference harness retains its separate lock/workspace. Release profile settings live at the workspace root.
 - WFM keeps the Rust spotlight scheduler OFF. Attack framing observes existing cast events and snapshot attack lifetimes in JS; camera presentation must preserve gameplay hashes, damage and deaths.

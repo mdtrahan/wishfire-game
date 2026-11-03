@@ -6,7 +6,7 @@
 
 ## Ownership
 - `layouts.json`, `objectTypes.json`, and `enemies.json` are structured runtime data.
-- `simulation_core.wasm`, `simulation_core.manifest.json` and `../src/core/specialClockContent.mjs` form one matched generated release from `rust/simulation_core/`. Rebuild them through `npm run rust:build-wasm`; release builders reject stale Rust source or binary hashes.
+- `simulation_core.wasm`, `simulation_core.manifest.json` and `../src/core/specialClockContent.mjs` form one matched generated release from `rust/simulation_core/`. Server/test/release startup regenerates missing or stale products and validates the matched set.
 - `images/`, `gems/`, and `fonts/` are presentation assets referenced by render/runtime code and tests.
 
 ## Local Contracts
@@ -144,3 +144,5 @@
 - Rust combat chest/opening presentation uses unchanged pinned chest bitmaps, sparkle and shadow. Reward icons and reward logic remain outside the port.
 
 - Rebuilt combat WASM must retain the current reward acknowledgement capability and receipt schema when scalar combat exports retire; regenerate provenance from the same source and binary.
+
+- SimulationCore WASM/manifest, generated Special clocks and provenance stay untracked. Server/test/release entry points regenerate missing or stale products before validating source hashes, binary identity, ABI/content and clocks.

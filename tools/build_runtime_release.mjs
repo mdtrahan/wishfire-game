@@ -1,19 +1,19 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { sha256, readWasmRelease, publishRelease } from './build_wasm_support.mjs';
+import { sha256, ensureWasmRelease, generatedRuntimeFiles, publishRelease } from './build_wasm_support.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const output = path.join(root, 'dist');
 const candidate = `${output}.next-${process.pid}`;
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const commit = git('rev-parse', 'HEAD');
-const simulationCore = readWasmRelease(root);
+const simulationCore = ensureWasmRelease(root);
 const allowedExtensions = new Set(['.html', '.js', '.mjs', '.json', '.css', '.wasm', '.png', '.jpg', '.jpeg', '.webp', '.svg', '.woff', '.woff2', '.ttf', '.otf', '.mp3', '.ogg', '.wav']);
-const files = git('ls-files', '-z', '--', 'web-runner', 'src').split('\0').filter(file =>
-  file && allowedExtensions.has(path.extname(file)) && !file.endsWith('/prompts.json'));
+const files = [...new Set([...git('ls-files', '-z', '--', 'web-runner', 'src').split('\0').filter(file =>
+  file && allowedExtensions.has(path.extname(file)) && !file.endsWith('/prompts.json')), ...generatedRuntimeFiles])];
 if (!files.includes('web-runner/app.js')) throw new Error('Release requires tracked runtime');
-if (!files.includes('web-runner/assets/simulation_core.manifest.json')) throw new Error('Release requires tracked SimulationCore provenance');
+if (!files.includes('web-runner/assets/simulation_core.manifest.json')) throw new Error('Release requires SimulationCore provenance');
 fs.rmSync(candidate, { recursive: true, force: true });
 try {
   for (const file of files) {
