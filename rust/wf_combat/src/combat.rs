@@ -23,6 +23,16 @@ pub struct Projectile {
     pub poison_damage: f32,
 }
 impl Sim {
+    fn damage_crit(&mut self, source: u32) -> bool {
+        #[cfg(test)]
+        if let Some(result) = crate::prd_tests::independent_crit(self, source) { return result; }
+        #[cfg(test)]
+        let p = crate::prd_tests::nominal(source).unwrap_or(CRIT_CHANCE);
+        #[cfg(not(test))]
+        let p = CRIT_CHANCE;
+        crate::prd::state(&mut self.prd, source).damage_crit.roll(&mut self.combat_rng, p)
+    }
+
     pub fn damage(
         &mut self,
         source: u32,
@@ -54,9 +64,10 @@ impl Sim {
         if !self.actors[target].tangible() || self.actors[target].revive_immunity_steps > 0 {
             return 0.;
         }
-        let crit = roll && self.combat_rng.chance(CRIT_CHANCE);
+        let crit = roll && self.damage_crit(source);
         // Unevadable contacts retain crits and all protection.
-        if roll && !skip_evade && self.combat_rng.chance(self.actors[target].evade()) {
+        let evade = self.actors[target].evade();
+        if roll && !skip_evade && crate::prd::state(&mut self.prd, self.actors[target].view.id).evade.roll(&mut self.combat_rng, evade) {
             self.events.push(Event::Evaded {
                 source,
                 target: self.actors[target].view.id,

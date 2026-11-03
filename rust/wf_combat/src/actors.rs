@@ -406,6 +406,7 @@ impl crate::Sim {
     pub fn spawn_actor(&mut self, kind: Archetype, pos: Vec2, resolved: Stats) -> u32 {
         let id = self.next_id;
         self.next_id += 1;
+        self.prd.push((id, crate::prd::State::default()));
         self.actors.push(Actor::new(
             id,
             kind,
