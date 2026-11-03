@@ -264,6 +264,21 @@ test('D13/D19/D23: source floor and slice starts ignore saved formation; fifth h
 });
 
 
+test('one-screen gameplay keeps every living body inside the visible viewport across ordinary and boss steps', () => {
+ for(const boss of [false,true]) {
+  const f=fixture({boss,level:1}),cam=createSliceCombatCamera();
+  for(let step=0;step<900;step++) {
+   f.tick();const s=f.runtime.read().snapshot;if(!s)continue;cam.update(s,1/30);
+   for(const a of s.actors.filter(a=>a.hp>0)) {
+    const boss=a.kind.startsWith('boss'),half=boss?160:96,top=boss?370:210,bottom=boss?40:30;
+    assert.ok(cam.x(a.pos.x-half)>=8-.001 && cam.x(a.pos.x+half)<=352+.001,`${a.kind} X`);
+    assert.ok(cam.y(a.pos.y-top)>=COMBAT_VIEW.top-.001 && cam.y(a.pos.y+bottom)<=COMBAT_VIEW.bottom+.001,`${a.kind} Y`);
+   }
+  }
+  f.runtime.dispose();
+ }
+});
+
 test('chest grants nothing and blocks host and Rust spawn until approach, open and the two-second beat',()=>{
  const f=fixture();f.tick();
  f.runUntil(()=>!!f.runtime.read().snapshot?.chest);

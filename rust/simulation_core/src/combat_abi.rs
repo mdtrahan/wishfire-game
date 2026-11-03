@@ -166,8 +166,6 @@ struct SummonProfile {
 #[serde(deny_unknown_fields)]
 struct EncounterConfig {
     #[serde(default)]
-    spotlight: bool,
-    #[serde(default)]
     continuous: bool,
     #[serde(default)]
     spawn_markers: bool,
@@ -338,6 +336,7 @@ impl Transport {
     fn execute(&mut self, op: Operation) -> Result<Value, Value> {
         match op {
             Operation::Describe {} => Ok(json!({"abi_version":VERSION,"content_version":CONTENT_VERSION,"schema":SCHEMA,"hz":SIM_HZ,
+                "special_clocks":{"slice.hero.fara":tuning::RAGE_FILL_SECONDS,"slice.hero.hondo":tuning::COMBO_FILL_SECONDS,"slice.hero.runa":tuning::SUPER_FILL_SECONDS,"slice.hero.kaja":tuning::POWER_STOCK_SECONDS},
                 "capabilities":["headless_slice_v1","initial_enemies","events_after","ack_events_v1","spawn_enemies","end_encounter","wfm_enemies","autonomous_phoenix","wave_chest","replace_permanent_inputs_v1"],
                 "limits":{"request_bytes":MAX_REQUEST,"response_bytes":MAX_RESPONSE,"worlds":2,"responses":8,"inputs":8,"heroes":4,"enemies":MAX_ENEMIES,"hazards":MAX_EFFECTS,"projectiles":MAX_EFFECTS,"retained_events":MAX_EVENTS,"event_step_reserve":MAX_EVENTS/2,"floor_min_extent":256,"floor_max_extent":16384},
                 "resources":{"worlds":self.worlds.count(),"responses":self.responses.count(),"inputs":self.inputs.len()}})),
@@ -728,7 +727,6 @@ impl World {
             }
         }
         let mut sim = Sim::new(SimConfig {
-            spotlight: if c.spotlight { SpotlightConfig::DEFAULT } else { SpotlightConfig::OFF },
             seed,
             arena_size: floor.max - floor.min,
             visible_width: g.viewport_world.x,
@@ -1144,21 +1142,12 @@ pub extern "C" fn wf_response_free(response: u32) -> u32 {
 mod tests {
     use super::*;
     #[test]
-    fn wfm_spotlight_config_uses_slice_preset_and_preserves_off_default() {
+    fn wfm_spotlight_remains_observation_only() {
         let fixture: Value = serde_json::from_str(include_str!("../tests/permanent_revision_scenario.json")).unwrap();
         let mut config = fixture["config"].clone();
-        let default = World::create(serde_json::from_value(config.clone()).unwrap()).unwrap();
-        config["spotlight"] = json!(false);
-        let off = World::create(serde_json::from_value(config.clone()).unwrap()).unwrap();
-        assert_eq!(default.gameplay_hash(), off.gameplay_hash());
-        assert_eq!(off.sim.config().spotlight, SpotlightConfig::OFF);
+        let world = World::create(serde_json::from_value(config.clone()).unwrap()).unwrap();
+        assert_eq!(world.sim.config().spotlight, SpotlightConfig::OFF);
         config["spotlight"] = json!(true);
-        let on = World::create(serde_json::from_value(config.clone()).unwrap()).unwrap();
-        assert_eq!(on.sim.config().spotlight, SpotlightConfig::DEFAULT);
-        // Scheduler provenance is deliberately hashed as soon as it is enabled.
-        assert_ne!(on.gameplay_hash(), off.gameplay_hash());
-        assert_eq!(on.sim.snapshot().actors, off.sim.snapshot().actors);
-        config["spotlight"] = json!("true");
         assert!(serde_json::from_value::<EncounterConfig>(config).is_err());
     }
     #[test]

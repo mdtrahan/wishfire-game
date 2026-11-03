@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { createSliceCombatCamera, resolveCombatCameraCenterX, ARENA_TO_VIEW_HEIGHT, COMBAT_VIEW } from '../web-runner/systems/rustCombatCamera.mjs';
+import { createSliceCombatCamera, resolveCombatCameraCenterX, COMBAT_VIEW } from '../web-runner/systems/rustCombatCamera.mjs';
 import { SLICE_FLOOR } from '../web-runner/systems/rustCombatArena.mjs';
 import { SliceSpotlightCamera } from '../web-runner/systems/rustCombatSpotlightCamera.mjs';
 const trace = JSON.parse(fs.readFileSync(new URL('./fixtures/slice-camera-stage7.json', import.meta.url)));
@@ -21,12 +21,12 @@ test('recorded seed-7 WFM ordinary and boss snapshots match pinned Rust f32 form
   assert.ok(trace.frames.some(f => f.snapshot.actors.some(a => a.kind.startsWith('boss'))));
 });
 
-test('D13 floor keeps one screen width and the slice 9.97% vertical pan allowance', () => {
+test('D13 keeps approved gameplay floor and viewport geometry', () => {
   const height = SLICE_FLOOR.max.y - SLICE_FLOOR.min.y;
   const useful = (COMBAT_VIEW.bottom - COMBAT_VIEW.top) / (.5 * .75);
   assert.equal((SLICE_FLOOR.max.x - SLICE_FLOOR.min.x) * .5, 360);
-  near((height - useful) / height, .099656357388316, 1e-12);
-  near(height / useful, ARENA_TO_VIEW_HEIGHT, 1e-12);
+  near(height, useful, 1e-12);
+  near(SLICE_FLOOR.max.y, 1074.6666666666667, 1e-9);
   assert.equal(COMBAT_VIEW.top, 42); assert.equal(COMBAT_VIEW.bottom, 430);
 });
 
@@ -97,8 +97,8 @@ test('normal follow freezes through spotlight/hit-stop and excludes downed/dead 
   a.update(s, 0); b.update(only, 0); assert.deepEqual(frame(a), frame(b));
 });
 
-const spotlight = (extra = {}) => ({ caster: 1, started: 0, participants: [1], hazards: [], co_casters: [], projectiles: [], ...extra });
-function apply(camera, spot, s, reduced = false, wallDt = 0) { const before = structuredClone(s); camera.update(s, 0); spot.apply(camera, s, reduced, wallDt); assert.deepEqual(s, before); }
+const spotlight = (extra = {}) => ({ caster: 1, started: 0, participants: [1], hazards: [], entry: 1.2, ...extra });
+function apply(camera, spot, s, reduced = false, wallDt = 0) { const before = structuredClone(s); camera.update(s, 0); spot.active = s.spotlight; spot.apply(camera, s, reduced, wallDt); assert.deepEqual(s, before); }
 test('spotlight enters with 1.2s smoothstep and corrects the asymmetric safe-band centre', () => {
   const s = snapshot(), camera = createSliceCombatCamera(), spot = new SliceSpotlightCamera({});
   camera.update(s, 0); const normal = frame(camera); s.spotlight = spotlight();
@@ -112,9 +112,9 @@ test('spotlight enters with 1.2s smoothstep and corrects the asymmetric safe-ban
   assert.equal(resolveCombatCameraCenterX({ RustCombatPresentation: { camera } }), camera.centreX);
 });
 
-test('spotlight holds expanding core, excludes far extras, and returns calmly on frozen sim time', () => {
+test('spotlight holds expanding core, excludes nonparticipants, and returns calmly on frozen sim time', () => {
   const s = snapshot(), camera = createSliceCombatCamera(), spot = new SliceSpotlightCamera({});
-  const before = structuredClone(s); camera.update(s, 0); s.spotlight = spotlight({ co_casters: [2] }); s.actors[1].pos.x = 4000;
+  const before = structuredClone(s); camera.update(s, 0); s.spotlight = spotlight(); s.actors[1].pos.x = 4000;
   apply(camera, spot, s, true); const featured = frame(camera);
   s.actors[1].pos.x = 6000; apply(camera, spot, s, true); assert.deepEqual(frame(camera), featured);
   s.actors[0].pos.x += 100; apply(camera, spot, s, true); const expanded = { ...spot.held };
@@ -125,4 +125,47 @@ test('spotlight holds expanding core, excludes far extras, and returns calmly on
   near(camera.centreX, fresh.centreX);
   s.spotlight = spotlight({ started: 2 }); apply(camera, spot, s, true); near(camera.zoom, .8);
   s.spotlight = null; apply(camera, spot, s, true); assert.equal(spot.current, null);
+});
+
+const castEvent = (skill = 'shadow', id = 1, target = 3) => ({ sequence: '1', body: { kind: 'presentation', data: { event: { kind: 'skill_started', data: { id, skill, target } } } } });
+function observedAttack() {
+  const s = snapshot();
+  s.actors[0] = { ...s.actors[0], state: 'cast', special_casting: true, state_duration: .7 };
+  s.actors.push({ ...hero(3, 470, 620), team: 'enemy' });
+  return s;
+}
+test('offensive cast observations zoom within the attack and return without writing snapshot or events', () => {
+  const s = observedAttack(), camera = createSliceCombatCamera(), spot = new SliceSpotlightCamera({}), events = freeze([castEvent()]);
+  const draw = () => { const before = structuredClone(s); spot.observe(freeze(s), events); camera.update(s, 0); spot.apply(camera, s, false); assert.deepEqual(s, before); };
+  draw(); near(camera.zoom, .5); assert.equal(s.spotlight, undefined);
+  const advance = (time, casting = true) => {
+    const next = structuredClone(s); next.time = time; next.actors[0].special_casting = casting;
+    const before = structuredClone(next); spot.observe(freeze(next)); camera.update(next, 0); spot.apply(camera, next, false); assert.deepEqual(next, before);
+  };
+  advance(.175); near(camera.zoom, .65, 1e-12);
+  advance(.35); near(camera.zoom, .8, 1e-12);
+  advance(.45); near(camera.zoom, .8, 1e-12);
+  advance(.7, false); assert.equal(spot.active, null); near(camera.zoom, .65, 1e-12);
+  advance(.95, false); near(camera.zoom, .5, 1e-12); assert.equal(spot.current, null);
+});
+test('support skills and enemy casts cannot start presentation spotlight', () => {
+  for (const skill of ['taunt', 'elevate', 'healing_spring', 'crimson_ward', 'faze']) {
+    const s = freeze(observedAttack()), spot = new SliceSpotlightCamera({});
+    spot.observe(s, freeze([castEvent(skill)])); assert.equal(spot.active, null);
+  }
+  const s = observedAttack(), spot = new SliceSpotlightCamera({}); s.actors[0].team = 'enemy';
+  spot.observe(freeze(s), freeze([castEvent()])); assert.equal(spot.active, null);
+});
+test('attack framing ends at owned hazard completion, caster loss or encounter replacement', () => {
+  const s = observedAttack(), spot = new SliceSpotlightCamera({}); spot.observe(s, [castEvent('ground_pound')]);
+  s.actors[0].special_casting = false;
+  s.hazards = [{ id: 9, owner: 1, kind: 'ground_pound', phase: 'active' }]; spot.observe(s); assert.deepEqual(spot.active.hazards, [9]);
+  s.hazards[0].phase = 'resolved'; spot.observe(s); assert.equal(spot.active, null);
+  spot.observe(s, [castEvent()]); s.actors[0].hp = 0; spot.observe(s); assert.equal(spot.active, null);
+  s.actors[0].hp = 100; spot.observe(s, [castEvent()]); s.encounter_id = 'next'; spot.observe(s); assert.equal(spot.active, null); assert.equal(spot.current, null);
+});
+
+test('a frozen terminal cast cannot hold framing past its committed attack duration', () => {
+  const s = observedAttack(), spot = new SliceSpotlightCamera({});
+  spot.observe(s, [castEvent()]); s.time = .7; spot.observe(freeze(s)); assert.equal(spot.active, null);
 });

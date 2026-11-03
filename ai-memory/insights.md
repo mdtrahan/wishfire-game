@@ -28,6 +28,7 @@
 - Reframe before implementation when acceptance language implies persistent timed stat stacks (`ORKA-9ri`, `ORKA-zih`, residual wording in `ORKA-69r`).
 
 ## Regression Triggers
+- Special previews must read Rust stock-refill content and round the meter-rate input at the same f32 boundary as combat. Authored kit timings cannot establish parity; compare previews against real WASM meter increments with zero and earned Haste.
 - Derived status fields may exist only in Rust's rebuilt snapshot view. JSON bridges reading raw actor views must explicitly project validated status state; presence of a serialized field alone does not prove live values reach rendering.
 - Guard generic developer dispatchers alongside named fixtures when Rust owns live combat. A guarded fixture leaves every mutating registry handler reachable through an unrestricted raw dispatcher.
 - Rust actor snapshots use projected combat HP and retain presentation-side stat copies. Permanent progression and ordinary-clear saves must use the bound raw meta source; copying the live actor can silently overwrite newly saved equipment/level stats before the next revision.
@@ -722,3 +723,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Capture the last living paint before simulation removal when a death picture must outlive its actor. Exercise the actual WASM-to-host-to-render lifetime: isolated death ages miss renderer handoffs, size fallbacks and activation alpha accidentally reapplied to corpses.
 
 - When a presentation owner moves, migrate test imports and exercise the new owner through its production call site. Source-text assertions against a removed duplicate cannot protect anchoring, geometry, visibility or paint order.
+
+- Camera ports must preserve production arena geometry and keep spotlight scheduling OFF. Compare identical captured host calls through every gameplay hash and ordered damage/death event; immutable rendering alone cannot prove simulation equality. Profile matched snapshots before attributing RAF tail changes to camera code.

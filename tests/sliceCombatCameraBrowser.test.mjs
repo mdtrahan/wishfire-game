@@ -8,7 +8,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const { detectChromeExecutable } = createRequire(import.meta.url)('../tools/playwright_support.js');
 
 // Real page, real WFM config and WASM. Observers wrap render entry without changing snapshots.
-test('WFM boss admission stays bounded and natural offensive spotlight charges, returns and resumes follow', { timeout: 120000 }, async () => {
+for (const { width, height, dpr } of [{ width: 360, height: 640, dpr: 2 }, { width: 216, height: 384, dpr: 3 }]) {
+test(`WFM boss admission and observed Special framing at ${width}x${height} DPR${dpr}`, { timeout: 120000 }, async () => {
   const socket = createServer();
   await new Promise(resolve => socket.listen(0, '127.0.0.1', resolve));
   const port = socket.address().port;
@@ -18,7 +19,7 @@ test('WFM boss admission stays bounded and natural offensive spotlight charges, 
   try {
     await new Promise((resolve, reject) => { server.stdout.on('data', data => { if (String(data).includes('Serving ')) resolve(); }); server.once('error', reject); });
     browser = await chromium.launch({ executablePath: detectChromeExecutable(), headless: true });
-    const context = await browser.newContext({ viewport: { width: 360, height: 640 }, deviceScaleFactor: 2, reducedMotion: 'no-preference' });
+    const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: dpr, reducedMotion: 'no-preference' });
     const page = await context.newPage(), errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.addInitScript(() => {
@@ -76,7 +77,7 @@ test('WFM boss admission stays bounded and natural offensive spotlight charges, 
           ground.apply(this, args);
           cameraProof.unchanged &&= before === JSON.stringify(s);
           const c = api.camera, boss = s.actors.find(a => a.kind.startsWith('boss') && a.hp > 0);
-          cameraProof.frames.push({ encounter: s.encounter_id, step: s.step, time: s.time, combat: s.combat_time, spotlight: s.spotlight, hitStop: !!s.hit_stop,
+          cameraProof.frames.push({ encounter: s.encounter_id, step: s.step, time: s.time, combat: s.combat_time, spotlight: structuredClone(api.spotlightCamera.active), hitStop: !!s.hit_stop,
             x: c.centreX, y: c.centreY, z: c.zoom, floor: s.geometry.floor, boss: boss && { state: boss.state, x: boss.pos.x, y: boss.pos.y },
             heroes: s.actors.filter(a => a.team === 'hero' && a.hp > 0).map(a => ({ x: c.x(a.pos.x), y: c.y(a.pos.y) })) });
         };
@@ -102,15 +103,24 @@ test('WFM boss admission stays bounded and natural offensive spotlight charges, 
     await page.waitForFunction(() => cameraProof.frames.some(f => f.boss));
     await page.waitForFunction(() => cameraProof.frames.filter(f => f.boss && f.step === '0').length >= 2);
     await page.waitForFunction(() => cameraProof.snapshots.filter(s => s.actors.some(a => a.kind.startsWith('boss'))).length >= 10);
+    const viewport = await page.evaluate(() => {
+      const c = document.querySelector('#view'), r = c.getBoundingClientRect();
+      return { width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scroll: document.documentElement.scrollWidth,
+        canvas: { left: r.left, right: r.right, width: r.width, height: r.height, backing: [c.width, c.height] } };
+    });
+    assert.deepEqual([viewport.width, viewport.height, viewport.dpr], [width, height, dpr]);
+    assert.ok(viewport.scroll <= width && viewport.canvas.left >= 0 && viewport.canvas.right <= width);
+    assert.ok(Math.abs(viewport.canvas.backing[0] - viewport.canvas.width * dpr) <= 1);
+    assert.ok(Math.abs(viewport.canvas.backing[1] - viewport.canvas.height * dpr) <= 1);
     const proof = await page.evaluate(() => cameraProof);
     assert.deepEqual(errors, []);
-    assert.ok(proof.configs.length >= 2 && proof.configs.every(c => c.spotlight === true));
+    assert.ok(proof.configs.length >= 2 && proof.configs.every(c => c.spotlight === undefined));
     assert.equal(proof.unchanged, true, 'ground render cannot write snapshots or hashes');
     const admission = proof.raw.find(row => row.snapshot.actors.some(a => a.kind.startsWith('boss')));
     assert.ok(admission);
     assert.ok(proof.snapshots.some(s => s.encounter_id === admission.snapshot.encounter_id && s.step === '0'));
     const initialHeroes = proof.snapshots[0].actors.filter(a => a.team === 'hero');
-    assert.deepEqual(initialHeroes.map(a => Math.round(a.pos.y * 1e4) / 1e4), [728.1954, 728.1954, 968.1954, 968.1954]);
+    assert.deepEqual(initialHeroes.map(a => Math.round(a.pos.y * 1e4) / 1e4), [670.9333, 670.9333, 910.9333, 910.9333]);
     assert.equal(admission.snapshot.actors.find(a => a.kind.startsWith('boss')).state, 'idle');
     assert.ok(admission.events.some(e => e.body.kind === 'spawned' && e.body.data.kind.startsWith('boss')));
     const initial = proof.frames.filter(f => f.encounter === admission.snapshot.encounter_id && f.step === '0');
@@ -128,9 +138,10 @@ test('WFM boss admission stays bounded and natural offensive spotlight charges, 
     assert.ok(Math.abs(initial[1].y - initial[0].y) < .003, 'Idle entry never cuts and snaps back');
     const start = proof.frames.findIndex(f => f.spotlight), first = proof.frames[start];
     const end = proof.frames.findIndex((f, i) => i > start && !f.spotlight && f.encounter === first.encounter);
-    const active = proof.frames.slice(start, end), charge = active.filter(f => f.spotlight.phase === 'charge');
-    assert.ok(charge.length > 10);
-    assert.ok(charge.at(-1).time - charge[0].time >= 1.1 && charge.at(-1).time - charge[0].time <= 1.25);
+    const active = proof.frames.slice(start, end);
+    assert.ok(active.length > 5);
+    assert.ok(active.at(-1).combat > active[0].combat, 'spotlight cannot hold combat time');
+    assert.ok(proof.skills.every(row => !row.event.kind.startsWith('spotlight_')), 'Rust spotlight scheduler stays off');
     assert.ok(active.every(f => f.z >= .5 - .001 && f.z <= .8 + .001));
     assert.ok(active.some(f => f.z > .5), 'natural offensive Special zooms');
     const returning = proof.frames.slice(end).filter(f => f.encounter === first.encounter);
@@ -144,10 +155,11 @@ test('WFM boss admission stays bounded and natural offensive spotlight charges, 
     assert.ok(returning.at(-1).combat > returning[0].combat, 'ordinary combat resumes after spotlight');
     if (process.env.RECORD_SLICE_CAMERA === '1') {
       const file = new URL('./fixtures/slice-camera-stage7.json', import.meta.url), fixture = JSON.parse(readFileSync(file));
-      fixture.recording = 'Real WFM Chapter1 seed7 LV1 ordinary/boss, spotlight enabled; current lowered hero origin; every36th step, replay dt1/30';
+      fixture.recording = 'Real WFM Chapter1 seed7 LV1 ordinary/boss; base geometry and scheduler OFF; every36th step, replay dt1/30';
       fixture.frames = proof.snapshots.filter(s => !s.actors.some(a => a.kind.startsWith('boss')) || s.encounter_id === admission.snapshot.encounter_id).map(snapshot => ({ dt: 1/30, snapshot }));
       writeFileSync(file, JSON.stringify(fixture, null, 2) + '\n');
     }
-    console.log(JSON.stringify({ frames: proof.frames.length, bossEntryFrames: initial.length, charge: charge.at(-1).time - charge[0].time, maxZoom: Math.max(...active.map(f => f.z)), snapshots: proof.snapshots.length }));
+    console.log(JSON.stringify({ frames: proof.frames.length, bossEntryFrames: initial.length, attackDuration: active.at(-1).time - active[0].time, maxZoom: Math.max(...active.map(f => f.z)), snapshots: proof.snapshots.length }));
   } finally { await browser?.close(); server.kill('SIGTERM'); }
 });
+}

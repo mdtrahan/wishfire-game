@@ -4,7 +4,7 @@ const path = require('node:path');
 const { spawnSync, execFileSync } = require('node:child_process');
 
 async function main() {
-  const { sha256, sourceHashes, describeBinary, readWasmRelease, wasmFile, wasmManifestFile } = await import('./build_wasm_support.mjs');
+  const { sha256, sourceHashes, describeBinary, readWasmRelease, wasmFile, wasmManifestFile, specialClocksFile, specialClockContent } = await import('./build_wasm_support.mjs');
   const root = path.resolve(__dirname, '..');
   const rustup = '/opt/homebrew/opt/rustup/bin/rustup';
   const rustc = path.join(process.env.HOME || '', '.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc');
@@ -35,13 +35,15 @@ async function main() {
     build: { target: 'wasm32-unknown-unknown', profile: 'release', features: 'Cargo.toml defaults', rustflags: env.RUSTFLAGS || '', encodedRustflags: env.CARGO_ENCODED_RUSTFLAGS || '', args: args.slice(prefix.length + 1).map(arg => arg === path.join(root, 'rust/simulation_core/Cargo.toml') ? 'rust/simulation_core/Cargo.toml' : arg) },
   };
   const candidate = fs.mkdtempSync(path.join(root, 'web-runner/assets/.simulation-core-next-'));
-  const files = [wasmFile, wasmManifestFile];
+  const files = [wasmFile, wasmManifestFile, specialClocksFile];
   const previous = files.map(file => fs.existsSync(path.join(root, file)) ? fs.readFileSync(path.join(root, file)) : null);
   try {
-    // Validate the complete candidate against current sources before replacing either shipped file.
+    // Validate the complete candidate against current sources before replacing the matched shipped files.
     fs.mkdirSync(path.join(candidate, 'web-runner/assets'), { recursive: true });
     fs.writeFileSync(path.join(candidate, wasmFile), bytes);
     fs.writeFileSync(path.join(candidate, wasmManifestFile), JSON.stringify(manifest, null, 2) + '\n');
+    fs.mkdirSync(path.dirname(path.join(candidate, specialClocksFile)), { recursive: true });
+    fs.writeFileSync(path.join(candidate, specialClocksFile), specialClockContent(description));
     const { validateSimulationCore } = await import('../web-runner/systems/simulationCoreLoader.mjs');
     validateSimulationCore(new WebAssembly.Instance(new WebAssembly.Module(bytes)), manifest);
     try {

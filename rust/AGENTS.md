@@ -9,6 +9,7 @@
 - `web-runner/assets/simulation_core.wasm` is the generated browser artifact, but the source owner is this Rust crate.
 
 ## Local Contracts
+- `describe.special_clocks` exports the four Hero stock-refill constants from wf_combat tuning for generated display content. This additive description field leaves request, snapshot and event schemas unchanged.
 - Combat ABI advertises `ack_events_v1`: `ack {world, encounter_id, sequence}` validates the absolute cursor and prunes only its acknowledged prefix. `inspect.events_after` must lie between the acknowledged and last cursors. Sequence generation remains monotonic after pruning; acknowledgement changes no gameplay hash. Retained-event backpressure rejects before stepping and resumes after ack. `died` includes combat reason, team and optional original host spawn identity; teardown emits only despawn/ended facts.
 - Combat ABI 1.0 snapshots additionally expose host identities, pose/facing, ward, clocks, full hazard presentation fields, projectiles and camera focus. Actor effect observations include shield, poison, encasement, Elevate and cast state. Read-only hit-stop, spotlight and Phoenix channel/cooldown fields supply presentation clocks and revival observations. These are observations of the existing sim; preserve mechanics and snapshot/event order. Combat scalars are retired; CP and meta RNG scalars remain. Rebuild the shipped artifact and provenance after boundary changes.
 - Rust owns deterministic simulation slices named in `governance/planning/simulation-core-rust-final-audit.md`.
@@ -61,4 +62,4 @@
 
 - Retained meta RNG keeps the native `mirrors_current_seeded_rng_cases` fixture alongside shipped-WASM parity checks when combat scalar exports retire.
 
-- Encounter config accepts optional boolean `spotlight` (default false); true selects unchanged `SpotlightConfig::DEFAULT`. WFM opts in. OFF traces retain their hashes; enabled scheduler configuration/history participates in existing gameplay hashes.
+- WFM keeps the Rust spotlight scheduler OFF. Attack framing observes existing cast events and snapshot attack lifetimes in JS; camera presentation must preserve gameplay hashes, damage and deaths.

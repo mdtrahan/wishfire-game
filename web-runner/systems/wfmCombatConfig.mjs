@@ -36,7 +36,7 @@ export function createWfmCombatConfig({ globals: g, entities, enemyRows, encount
   const heroes = entities.filter(actor => actor.kind === 'hero');
   if (!heroes.length || heroes.length > COMBAT_PARTY_CAP) throw new Error('WFM combat: party must contain 1..4 heroes');
   const origin = SLICE_ORIGIN;
-  const config = { continuous: true, spotlight: true, ...createShadowConfig({ encounterId, seed: g.ContinuousCombatStage.seed,
+  const config = { continuous: true, ...createShadowConfig({ encounterId, seed: g.ContinuousCombatStage.seed,
     geometry: { floor: SLICE_FLOOR,
       viewport_world: { x: 720, y: SLICE_FLOOR.max.y - SLICE_FLOOR.min.y },
       formation_origin: origin, screen_bound: false, contain_bodies: true },
