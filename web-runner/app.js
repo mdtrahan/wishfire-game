@@ -14,8 +14,7 @@ import { assignHeroToPartySlot, normalizePartyFormationSlots } from './src/core/
 import { resetSuperGemBoardState, resolveSuperGemDecomposition } from './src/core/superGemBoardState.mjs';
 import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
 import { deriveDamageFloatFrameOffset } from '../src/core/damageFloatVector.mjs';
-import { COMBAT_BATTLEFIELD_ZOOM, createCombatCameraProjection, deriveCombatWorldBounds, orientCombatWorldOffsetX, readCombatOrientationFromSearch } from '../src/core/combatOrientation.mjs';
-import { resolveCombatCameraCenterX } from './src/core/combatCamera.mjs';
+import { orientCombatWorldOffsetX, readCombatOrientationFromSearch } from '../src/core/combatOrientation.mjs';
 import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
 import { createHealBloom } from './src/core/healBloomAnimation.mjs';
 import * as heroProgressStorage from './systems/heroProgressStorage.js';
@@ -1998,17 +1997,6 @@ async function main(){
     return { x: cx, y: cy };
   }
 
-  function combatActorWorldToCanvas(wx, wy, actorKind = '') {
-    const heroes = state.entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
-    const squadCenterX = heroes.length ? heroes.reduce((sum, hero) => sum + Number(hero.footX ?? hero.x ?? layoutW / 2), 0) / heroes.length : layoutW / 2;
-    const stage = state.globals.ContinuousCombatStage;
-    const centerX = stage?.bossActive === true ? Number(stage.bossCameraCenterX ?? squadCenterX) : resolveCombatCameraCenterX(state.globals, squadCenterX);
-    const world = deriveCombatWorldBounds(layoutW, COMBAT_BATTLEFIELD_ZOOM);
-    const projection = createCombatCameraProjection({ viewportWidth: layoutW, worldWidth: world.worldWidth, zoom: COMBAT_BATTLEFIELD_ZOOM, centerX, orientation: state.globals.CombatOrientation });
-    const point = projection.project(wx, wy, actorKind);
-    return worldToCanvas(point.x, point.y);
-  }
-
   function traceTask015StoryPlacement(trigger, bounds) {
     const store = getTask015TraceStore();
     store.storycardPlacement.push({
@@ -2834,30 +2822,6 @@ function getStoryCardLiveLineState() {
       throw new Error(`[DIAG] Inert gem cells detected at ${reasonTag}: ${inertCells.length}`);
     }
   }
-  function getEnemyHit(mx, my) {
-    const enemies = state.entities.filter(e => e.kind === 'enemy' && (e.hp ?? 0) > 0);
-    if (!enemies.length) return null;
-    const g = state.globals;
-    for (const enemy of enemies) {
-      const slotIndex = enemy.slotIndex ?? 0;
-      const spacing = g.Spacing || ((g.EnemySize || 40) + (g.enemyGAP || 8));
-      const center = Math.floor((g.Slots || 0) / 2);
-      const x = enemy.x != null ? enemy.x : (g.X0 || 200) + (slotIndex - center) * spacing;
-      const y = enemy.y != null ? enemy.y : (g.EnemyAreaY0 || 140) + slotIndex * spacing;
-      const enemyOrig = enemySpriteImages[String(enemy.name || '').toLowerCase()];
-      const origW = enemyOrig ? enemyOrig.width : 1;
-      const origH = enemyOrig ? enemyOrig.height : 1;
-      const enemyH = (g.EnemySize || 40) * layoutScale * COMBAT_BATTLEFIELD_ZOOM;
-      const enemyW = enemyH * (origW / origH);
-      const pos = combatActorWorldToCanvas(x, y, 'enemy');
-      if (mx >= pos.x - enemyW / 2 && mx <= pos.x + enemyW / 2 &&
-          my >= pos.y - enemyH / 2 && my <= pos.y + enemyH / 2) {
-        return enemy;
-      }
-    }
-    return null;
-  }
-
   function deriveEncounterRequestFromMapState() {
     const war = Math.max(0, Math.min(1, Number(mapLayoutState.getMapLayoutState().warMeter || 0)));
     const node = mapLayoutState.getMapLayoutState().encounterNode || {};

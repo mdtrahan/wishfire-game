@@ -1,6 +1,6 @@
 import { deriveCombatWorldBounds, deriveCombatWorldVerticalBounds } from '../../src/core/combatOrientation.mjs';
-// Slice camera.rs pixel scale fitted to WFM's full-height combat floor beneath the WFM UI.
-export const COMBAT_VIEW = Object.freeze({ left: 0, right: 360, top: 42, bottom: 430, zoom: .5, squash: .75 });
+import { COMBAT_VIEW } from './rustCombatCamera.mjs';
+export { COMBAT_VIEW } from './rustCombatCamera.mjs';
 export const SLICE_ACTOR_HEIGHT = 128;
 const authoredX = deriveCombatWorldBounds(), authoredY = deriveCombatWorldVerticalBounds();
 const height = (COMBAT_VIEW.bottom - COMBAT_VIEW.top) / (COMBAT_VIEW.zoom * COMBAT_VIEW.squash);

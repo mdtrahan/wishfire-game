@@ -28,3 +28,5 @@
 - lamp-auto-earned-69.json preserves a disclosed ordinary saved batch to catch early item-CP truncation; it is a replay fixture and provides no timing proof.
 
 - lampTrust.mjs builds disclosed synthetic cache/loadout fixtures and projects CP independently of lamp eligibility, sorting and allocation. Seed once per browser context so reload checks cannot overwrite the result.
+
+- `slice-camera-stage7.json` records real WFM seed7 Chapter1 ordinary/boss snapshots with approved base gameplay geometry and the Rust spotlight scheduler OFF. Recapture with `RECORD_SLICE_CAMERA=1 node --test tests/sliceCombatCameraBrowser.test.mjs`, then regenerate the Rust oracle. `node tests/fixtures/slice-camera-reference.mjs` regenerates expectations by compiling pinned slice `camera.rs` with only DTO/render stubs and declared WFM viewport constants; run the parity test afterwards. No Cargo suite is needed.

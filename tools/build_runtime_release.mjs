@@ -13,6 +13,7 @@ const allowedExtensions = new Set(['.html', '.js', '.mjs', '.json', '.css', '.wa
 const files = [...new Set([...git('ls-files', '-z', '--', 'web-runner', 'src').split('\0').filter(file =>
   file && allowedExtensions.has(path.extname(file)) && !file.endsWith('/prompts.json')), ...generatedRuntimeFiles])];
 if (!files.includes('web-runner/app.js')) throw new Error('Release requires tracked runtime');
+if (!files.includes('web-runner/assets/simulation_core.manifest.json')) throw new Error('Release requires SimulationCore provenance');
 fs.rmSync(candidate, { recursive: true, force: true });
 try {
   for (const file of files) {

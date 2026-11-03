@@ -1142,6 +1142,15 @@ pub extern "C" fn wf_response_free(response: u32) -> u32 {
 mod tests {
     use super::*;
     #[test]
+    fn wfm_spotlight_remains_observation_only() {
+        let fixture: Value = serde_json::from_str(include_str!("../tests/permanent_revision_scenario.json")).unwrap();
+        let mut config = fixture["config"].clone();
+        let world = World::create(serde_json::from_value(config.clone()).unwrap()).unwrap();
+        assert_eq!(world.sim.config().spotlight, SpotlightConfig::OFF);
+        config["spotlight"] = json!(true);
+        assert!(serde_json::from_value::<EncounterConfig>(config).is_err());
+    }
+    #[test]
     fn snapshot_taunt_tracks_live_source_and_exact_expiry() {
         let fixture: Value = serde_json::from_str(include_str!("../tests/permanent_revision_scenario.json")).unwrap();
         let mut world = World::create(serde_json::from_value(fixture["config"].clone()).unwrap()).unwrap();

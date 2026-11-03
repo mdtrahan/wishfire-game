@@ -23,7 +23,7 @@ test('idle formation drops exactly 1.5 painted hero heights while clearing the b
   const { HERO_COOLDOWN_LAYOUT } = await import('../web-runner/systems/heroCooldownStrip.mjs');
   const oldOriginY = (SLICE_FLOOR.min.y + SLICE_FLOOR.max.y) / 2 + 80;
   const actors = SLICE_TRAVEL_SLOTS.map((offset, slot) => ({ team: 'hero', actor_id: slot + 1, kind: 'fara', hp: 100, scale: 1, state: 'idle', pos: sliceHeroPosition(slot) }));
-  const snapshot = { actors, geometry: { floor: SLICE_FLOOR } }, before = structuredClone(snapshot);
+  const snapshot = { encounter_id: 'lowered-idle', time: 0, camera_focus: { ...SLICE_ORIGIN }, actors, hazards: [], geometry: { floor: SLICE_FLOOR } }, before = structuredClone(snapshot);
   const camera = createSliceCombatCamera();
   camera.update(snapshot, 1);
   for (const [width, height, dpr] of [[360, 640, 1], [216, 384, 2], [233, 452, 1], [316, 452, 2]]) {

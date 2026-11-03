@@ -4,6 +4,7 @@ import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
+import { readWasmRelease } from '../tools/build_wasm_support.mjs';
 
 test('hosted release preserves its playable output when a tracked dependency or Rust input is missing', t => {
   const root = mkdtempSync(path.join(tmpdir(), 'orka-runtime-release-'));
@@ -52,12 +53,14 @@ test('hosted release preserves its playable output when a tracked dependency or 
   const clocks = path.join(root, 'web-runner/src/core/specialClockContent.mjs');
   const originalClocks = readFileSync(clocks, 'utf8');
   writeFileSync(clocks, originalClocks.replace('10,', '120,'));
+  assert.throws(() => readWasmRelease(root), /special clock content mismatch/);
   const staleClocks = build();
   assert.notEqual(staleClocks.status, 0);
   assert.match(staleClocks.stderr, /wasm build failed.*previous artifacts preserved/);
   assert.equal(readFileSync(manifest, 'utf8'), originalManifest);
   writeFileSync(clocks, originalClocks);
   writeFileSync(path.join(root, 'rust/wf_combat/src/combat.rs'), '// changed Rust content\n');
+  assert.throws(() => readWasmRelease(root), /source provenance mismatch/);
   const stale = build();
   assert.notEqual(stale.status, 0);
   assert.match(stale.stderr, /wasm build failed.*previous artifacts preserved/);

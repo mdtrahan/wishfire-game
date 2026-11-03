@@ -14,7 +14,7 @@ export function chargeLines(id,started,duration=1.2){
 }
 export class SliceSprites {
  constructor(gpu,camera,motion,state){this.gpu=gpu;this.camera=camera;this.motion=motion;this.state=state;this.mask=document.createElement('canvas');this.maskCtx=this.mask.getContext('2d');this.s=1;this.ox=this.oy=0;this.charge=null;this.reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;}
- beginFrame(density,s,ox,oy){const w=Math.round(360*density),h=Math.round(640*density);if(this.mask.width!==w||this.mask.height!==h){this.mask.width=w;this.mask.height=h;}this.maskCtx.setTransform(density,0,0,density,0,0);this.maskCtx.clearRect(0,0,360,640);this.s=s;this.ox=ox;this.oy=oy;}
+ beginFrame(density,s,ox,oy,maskEnabled){this.maskEnabled=maskEnabled;if(maskEnabled){const w=Math.round(360*density),h=Math.round(640*density);if(this.mask.width!==w||this.mask.height!==h){this.mask.width=w;this.mask.height=h;}this.maskCtx.setTransform(density,0,0,density,0,0);this.maskCtx.clearRect(0,0,360,640);}this.s=s;this.ox=ox;this.oy=oy;}
  observe(){const charge=this.motion.charge;if(charge&&this.charge!==charge){this.charge=charge;charge.lines=chargeLines(charge.id,charge.born,charge.duration);}else if(!charge)this.charge=null;this.reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;}
  sprite(ctx,p,options){
   const host=options.actor;
@@ -51,7 +51,7 @@ export class SliceSprites {
   const immuneAge=frame.combat_time-r.immuneAt;
   if(a.hp>0&&immuneAge>=0&&immuneAge<2){const alpha=reduced?.12:.12+.16*Math.max(0,Math.sin(immuneAge*22));for(let i=0;i<4;i++){if(!reduced&&(Math.floor(immuneAge*14)+i)%3===0)continue;const ex=i===0?-1:i===1?1:0,ey=i===2?-1:i===3?1:0;g.actor(p.frame,px+dx+ex,py+dy+ey,w,hh,alpha,0,0,1,.84,.43,0,'additive',r.angle,px+ex,py+ey);}}
   g.composite();ctx.restore();
-  const mask=this.maskCtx;mask.save();mask.translate(px,py);mask.rotate(r.angle);mask.drawImage(p.frame,dx,dy,w,hh);mask.restore();
+  if(this.maskEnabled){const mask=this.maskCtx;mask.save();mask.translate(px,py);mask.rotate(r.angle);mask.drawImage(p.frame,dx,dy,w,hh);mask.restore();}
   return rect;
  }
  echoes(charge,x,y,h,dx,dy,w,hh,now,reduced){
