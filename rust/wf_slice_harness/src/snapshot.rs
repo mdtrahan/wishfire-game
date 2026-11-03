@@ -4,6 +4,7 @@ impl Sim {
         self.combat.refresh_snapshot();
         let src = self.combat.snapshot();
         let dst = &mut self.snapshot;
+        dst.prd.clone_from(&src.prd);
         dst.step = src.step;
         dst.time = src.time;
         dst.combat_time = src.combat_time;

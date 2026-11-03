@@ -350,6 +350,8 @@ pub struct PhoenixChannelView {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Snapshot {
+    /// Actor-keyed PRD history, including actors removed while their attacks remain in flight.
+    pub prd: Vec<(u32, crate::prd::State)>,
     /// Presentation clock: advances every step, including spotlight and hit-stop steps.
     pub time: f64,
     /// Combat clock: frozen during spotlights and hit-stop.

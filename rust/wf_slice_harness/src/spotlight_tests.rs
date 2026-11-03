@@ -854,10 +854,11 @@ fn spotlight_off_clocks_and_hashes_match_current_baseline() {
     // ORKA-6jh1.68: owner 30/15/15/15/15/10 chest retune; native/Wasm parity passes.
     // ORKA-6jh1.79: unevadable Pulse and live distance scaling; native/Wasm parity passes.
     // ORKA-6jh1.80: Power auto-fill +15%; native/Wasm parity passes.
+    // ORKA-nspw.10: binary-combat PRD plus actor/check counter hashing.
     let cases = [
-        (1, 0x17f93061448585ca),
-        (7, 0x0afdb6acd7e8a932),
-        (42, 0x86e6dd7b82481638),
+        (1, 0xe957f91cd9cc7b23),
+        (7, 0x7ddcfc29bcd02044),
+        (42, 0x498164b3743cf168),
     ];
     let actual = cases.map(|(seed, _)| {
         let mut s = Sim::new(SimConfig {

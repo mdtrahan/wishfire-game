@@ -51,6 +51,8 @@ impl Hash {
 }
 impl Sim {
     pub fn refresh_snapshot(&mut self) {
+        self.snapshot.prd.clear();
+        self.snapshot.prd.extend(self.prd.iter().copied());
         self.snapshot.arena_min = self.floor.min;
         self.snapshot.arena_max = self.floor.max;
         self.snapshot.step = self.step_number;
@@ -219,6 +221,11 @@ impl Sim {
         h.u(self.next_id as u64);
         h.u(self.spawn_rng.0);
         h.u(self.combat_rng.0);
+        h.u(self.prd.len() as u64);
+        for &(id, state) in &self.prd {
+            h.u(id as u64);
+            for next in state.counters() { h.u(next); }
+        }
         host(1, &mut h);
         #[cfg(feature = "reference-diagnostics")]
         {

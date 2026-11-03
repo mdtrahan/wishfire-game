@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { installObservers } from '../tools/verify_handoff_probe.mjs';
 const { detectChromeExecutable } = createRequire(import.meta.url)('../tools/playwright_support.js');
 
 // Real page, real WFM config and WASM. Observers wrap render entry without changing snapshots.
@@ -55,6 +56,7 @@ test(`WFM boss admission and observed Special framing at ${width}x${height} DPR$
         return cache.get(this);
       } });
     });
+    await page.addInitScript(installObservers);
     await page.goto(`http://localhost:${port}/web-runner/index.html`);
     await page.waitForFunction(() => window.__codexGame && JSON.parse(render_game_to_text()).flags.layout0Ready);
     await page.evaluate(() => {
@@ -84,6 +86,7 @@ test(`WFM boss admission and observed Special framing at ${width}x${height} DPR$
       } });
     });
     await page.waitForFunction(() => cameraProof.startPainted);
+    await page.evaluate(() => handoffProbe.start());
     const canvas = await page.locator('#view').boundingBox();
     await page.mouse.click(canvas.x + canvas.width / 2, canvas.y + canvas.height * .67);
     await page.evaluate(() => { __codexGame.globals.DevCombatSpeedMultiplier = 2; });
@@ -112,6 +115,8 @@ test(`WFM boss admission and observed Special framing at ${width}x${height} DPR$
     assert.ok(viewport.scroll <= width && viewport.canvas.left >= 0 && viewport.canvas.right <= width);
     assert.ok(Math.abs(viewport.canvas.backing[0] - viewport.canvas.width * dpr) <= 1);
     assert.ok(Math.abs(viewport.canvas.backing[1] - viewport.canvas.height * dpr) <= 1);
+    const clips = await page.evaluate(() => { handoffProbe.stop(); return handoffProbe.clips; });
+    assert.deepEqual(clips, [], 'production spotlight participants and all actors outside framing remain unclipped');
     const proof = await page.evaluate(() => cameraProof);
     assert.deepEqual(errors, []);
     assert.ok(proof.configs.length >= 2 && proof.configs.every(c => c.spotlight === undefined));

@@ -94,6 +94,7 @@ impl Sim {
             tuning::STAGE_ORIGIN
         };
         let snapshot = Snapshot {
+            prd: Vec::with_capacity(128),
             time: 0.,
             combat_time: 0.,
             spotlight: None,
@@ -209,6 +210,7 @@ impl Sim {
         self.combat
             .actors
             .retain(|a| a.view.state != ActorState::Dead);
+        self.combat.prune_prd();
         self.deaths();
         self.combat.enemy_statuses();
         self.combat.bubble_aura();

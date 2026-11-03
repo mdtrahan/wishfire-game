@@ -14,10 +14,6 @@ function damp(value, velocity, target, omega, dt) {
 function fit(value, low, high, heroLow, heroHigh) {
   return low <= high ? clamp(value, low, high) : heroLow <= heroHigh ? clamp((low + high) / 2, heroLow, heroHigh) : (heroLow + heroHigh) / 2;
 }
-// Supported UI readers consume the presentation centre, including spotlight framing.
-export function resolveCombatCameraCenterX(globals = {}, fallbackX = 0) {
-  return globals.RustCombatPresentation?.camera.centreX ?? fallbackX;
-}
 export function createSliceCombatCamera() {
   let cx = 0, cy = 0, vx = 0, vy = 0, started = false, viewX = null, viewY = null, encounterId = null;
   const point = { x: 0, y: 0 };

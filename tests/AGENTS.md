@@ -292,3 +292,5 @@
 - Shared Rust HUD contracts execute the production sorted actor queue and front pass, checking foot anchors, scale transforms, identical team HP dimensions and late HP paint. Dead/downed actors and bosses have no local HP track; only heroes receive Groove meters.
 
 - `sliceCombatCameraBrowser.test.mjs` observes real production ingestion/ground rendering: generic Idle boss Spawned stays bounded, observed offensive Specials zoom during the existing attack and return over.5s while combat time advances, with zero Rust spotlight events. Rendering preserves complete snapshots including hashes. Parity uses captured boss state, never a fabricated Spawn lifecycle.
+
+- Camera browser proof runs the production handoff no-clipping observer at both viewport/DPR profiles. During `spotlightCamera.current`, enforce caster/target containment through return; all actors regain frame-edge checks when framing clears. Keep the original all-body normal-camera test unchanged.

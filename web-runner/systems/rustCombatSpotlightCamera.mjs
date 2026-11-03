@@ -45,6 +45,7 @@ export class SliceSpotlightCamera {
    if(core)core=union(this.held,core);this.held=core;let bounds=core;
    const to=bounds?fit(bounds):normal,t=reduced?1:smooth((s.time-this.born)/v.entry),from=this.from??normal;f={x:from.x+(to.x-from.x)*t,y:from.y+(to.y-from.y)*t,z:from.z+(to.z-from.z)*t};if(bounds)constrain(f,bounds);
   }else if(this.current){if(this.key){this.key=null;this.from=this.current;this.returnAge=0;}this.returnAge+=dt;const t=reduced?1:c(this.returnAge/RETURN);if(t>=1-1e-12){this.current=this.from=null;return;}const u=smooth(t),from=this.from??this.current;f={x:from.x+(normal.x-from.x)*u,y:from.y+(normal.y-from.y)*u,z:from.z+(normal.z-from.z)*u};}else return;
+  f.participants=v?[v.caster,...v.participants]:this.current.participants;
   this.current=f;camera.frame(f.x,f.y,f.z);camera.offsetX=camera.offsetY=0;
  }
 }

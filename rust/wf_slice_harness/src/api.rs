@@ -699,6 +699,7 @@ impl From<wf_combat::Event> for Event {
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct Snapshot {
+    pub prd: Vec<(u32, wf_combat::prd::State)>,
     /// Presentation clock: advances every step, including spotlight and hit-stop steps.
     pub time: f64,
     /// Combat clock: frozen during spotlights and hit-stop.

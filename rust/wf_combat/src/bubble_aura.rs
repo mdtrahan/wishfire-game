@@ -42,7 +42,7 @@ impl Sim {
             a.bubble_steps += 1;
             if a.bubble_steps >= SIM_HZ {
                 a.bubble_steps = 0;
-                if a.bubble_rng.chance(BUBBLE_AURA_ENCASE_CHANCE) {
+                if crate::prd::state(&mut self.prd, a.view.id).encase.roll(&mut a.bubble_rng, BUBBLE_AURA_ENCASE_CHANCE) {
                     self.encase(i);
                 }
             }

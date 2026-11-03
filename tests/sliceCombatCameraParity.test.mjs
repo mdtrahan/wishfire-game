@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { createSliceCombatCamera, resolveCombatCameraCenterX, COMBAT_VIEW } from '../web-runner/systems/rustCombatCamera.mjs';
+import { createSliceCombatCamera, COMBAT_VIEW } from '../web-runner/systems/rustCombatCamera.mjs';
 import { SLICE_FLOOR } from '../web-runner/systems/rustCombatArena.mjs';
 import { SliceSpotlightCamera } from '../web-runner/systems/rustCombatSpotlightCamera.mjs';
 const trace = JSON.parse(fs.readFileSync(new URL('./fixtures/slice-camera-stage7.json', import.meta.url)));
@@ -109,7 +109,6 @@ test('spotlight enters with 1.2s smoothstep and corrects the asymmetric safe-ban
   const boxMid = 650 * .75 + (-110 * .6 + 5 * .6) / 2;
   near(camera.centreY, (boxMid + 2 / .8) / .75, 1e-9);
   assert.deepEqual(normal[2], .5);
-  assert.equal(resolveCombatCameraCenterX({ RustCombatPresentation: { camera } }), camera.centreX);
 });
 
 test('spotlight holds expanding core, excludes nonparticipants, and returns calmly on frozen sim time', () => {
@@ -168,4 +167,38 @@ test('attack framing ends at owned hazard completion, caster loss or encounter r
 test('a frozen terminal cast cannot hold framing past its committed attack duration', () => {
   const s = observedAttack(), spot = new SliceSpotlightCamera({});
   spot.observe(s, [castEvent()]); s.time = .7; spot.observe(freeze(s)); assert.equal(spot.active, null);
+});
+
+
+test('spotlight contains caster and every target; nonparticipants may cross the frame until return ends', () => {
+  const boxes = JSON.parse(fs.readFileSync(new URL('../web-runner/assets/rust-combat/manifest.json', import.meta.url))).actor_boxes;
+  const s = observedAttack(), camera = createSliceCombatCamera(), spot = new SliceSpotlightCamera(boxes);
+  s.actors[1].pos.x = 850;
+  s.actors.push({ ...hero(4, 500, 640), kind: 'orc', team: 'enemy' });
+  const contained = a => {
+    const scale = a.scale * (a.kind.startsWith('boss') ? 1 : .6);
+    for (const q of [[-55,-110,55,5], boxes[a.kind]?.idle, boxes[a.kind]?.[a.state]].filter(Boolean)) {
+      assert.ok(camera.x(a.pos.x + q[0] * scale) >= COMBAT_VIEW.left, `${a.actor_id} left`);
+      assert.ok(camera.x(a.pos.x + q[2] * scale) <= COMBAT_VIEW.right, `${a.actor_id} right`);
+      assert.ok(camera.y(a.pos.y) + q[1] * scale * camera.zoom >= COMBAT_VIEW.top, `${a.actor_id} top`);
+      assert.ok(camera.y(a.pos.y) + q[3] * scale * camera.zoom <= COMBAT_VIEW.bottom, `${a.actor_id} bottom`);
+    }
+  };
+  const draw = (time, events = [], wallDt = 0) => {
+    s.time = time;
+    const before = structuredClone(s);
+    spot.observe(s, events); camera.update(s, 0); spot.apply(camera, s, false, wallDt);
+    assert.deepEqual(s, before);
+    const participants = spot.current?.participants;
+    for (const a of s.actors.filter(a => a.hp > 0 && (!participants || participants.includes(a.actor_id)))) contained(a);
+  };
+  camera.update(s, 0); s.actors.forEach(contained);
+  draw(0, [castEvent()]); draw(.175); draw(.35, [{ body: { kind: 'damage', data: { source: 1, target: 4 } } }]);
+  assert.deepEqual(spot.current.participants, [1,3,4]);
+  assert.ok(camera.x(s.actors[1].pos.x) > COMBAT_VIEW.right);
+  draw(.5);
+  s.actors[0].special_casting = false;
+  draw(.7); assert.equal(spot.active, null); assert.deepEqual(spot.current.participants, [1,3,4]);
+  draw(.7, [], .3); assert.equal(spot.current, null);
+  s.actors.forEach(contained);
 });
