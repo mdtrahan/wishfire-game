@@ -3,6 +3,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
+require('./ensure_simulation_core.cjs');
 const args = process.argv.slice(2);
 let port = 8080;
 let host = '127.0.0.1';

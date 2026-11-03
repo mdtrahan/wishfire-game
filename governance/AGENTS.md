@@ -42,3 +42,5 @@
 - Permanent-input audit evidence distinguishes native/WASM commitment and channel regressions, frozen slice hash equality, exact inherited unit failure names and unfinished browser cases. A time box certifies no browser PASS.
 
 - Permanent commitment audits apply the lead's A6/§3.3 boundary: capture permanent inputs and definition/modifier parameters; read transient Elevate live at impact with or without a revision. Record CPU-profile attribution and measured performance separately from hypotheses.
+
+- The integration playbook owns the ignored generated-WASM lifecycle and mechanical source-integration rebuilds.

@@ -34,3 +34,5 @@
 - Pending hit telemetry carries effective HP loss separately from the original slice Event. Ward absorption stays in presentation amount; ABI DPS reads only HP loss. This sidecar must not affect frozen hashes, RNG, event order or drained Event payloads.
 
 - `prd.rs` owns renewal-calibrated binary damage/heal crit, evade, encase and boss push resistance. Each actor/check starts at N=1 per battle; failures increment and success resets. Retain actor-keyed `Sim.prd` after actor removal for in-flight attacks; native/ABI snapshots carry it and both hashes include all counters. Calibration caches are derived and omitted from serialized state. Nominal stat changes preserve N; categorical RNG paths and one-draw eligibility stay unchanged. `prd_tests::hondo_ab_built_combat -- --nocapture` prints the built-code A/B proof; its independent-roll arm is test-only.
+
+- SimulationCore and wf_combat share `rust/Cargo.toml` and `rust/Cargo.lock` so Cargo crate identities stay relative across checkouts. The reference harness retains its separate lock/workspace. Release profile settings live at the workspace root.

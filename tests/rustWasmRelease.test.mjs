@@ -71,15 +71,17 @@ test('binary-owned content negotiation rejects stale or absent definitions and f
   }
 });
 
-test('committed wasm records every Rust input and the exact binary hash', () => {
+test('generated wasm records every Rust input and the exact binary hash', () => {
   const root = new URL('../', import.meta.url);
   for (const [file, hash] of Object.entries(manifest.sources)) {
     assert.equal(createHash('sha256').update(fs.readFileSync(new URL(file, root))).digest('hex'), hash, file);
   }
-  assert.ok(manifest.sources['rust/simulation_core/Cargo.lock']);
+  assert.ok(manifest.sources['rust/Cargo.lock']);
   assert.ok(manifest.sources['rust/wf_combat/src/combat.rs']);
   assert.equal(createHash('sha256').update(binary).digest('hex'), manifest.binarySha256);
-  assert.match(manifest.sourceCommit, /^[0-9a-f]{40}$/);
+  assert.equal(manifest.sourceCommit, undefined);
+  assert.equal(JSON.stringify(manifest).includes(process.cwd()), false);
+  assert.deepEqual(JSON.parse(fs.readFileSync(new URL('output/balance/simulation-core-wasm-provenance.json', root))), manifest);
   assert.ok(manifest.toolchain.rustc);
   assert.ok(manifest.build.args.includes('--locked'));
 });
