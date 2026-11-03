@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { observeCombatStart, waitForCombatStart } from './combatStartReady.mjs';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { createRequire } from 'node:module';
@@ -30,9 +31,9 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
       await context.addInitScript(save => { save.lamp.lastActivationAt = Date.now(); localStorage.setItem('wishfire.equipment-economy.v5', JSON.stringify(save)); }, equipment);
       const page = await context.newPage();
       const errors = []; page.on('pageerror', error => errors.push(error.message));
+      await observeCombatStart(page);
       await page.goto(`http://localhost:${port}/web-runner/index.html`);
-      await page.waitForFunction(() => typeof window.render_game_to_text === 'function' && JSON.parse(render_game_to_text()).flags.layout0Ready);
-      await page.waitForTimeout(2000);
+      await waitForCombatStart(page);
       const canvas = await page.locator('canvas').first().boundingBox();
       await page.mouse.click(canvas.x + canvas.width / 2, canvas.y + 426 * canvas.width / 360);
       await page.locator('.hero-cooldowns').waitFor();
@@ -69,7 +70,15 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
       const reveal=await page.locator('.hero-cooldown').first().evaluate(node=>{const style=getComputedStyle(node,'::after');return{mask:style.maskImage,filter:style.backdropFilter};});
       assert.equal(reveal.mask,'conic-gradient(rgba(0, 0, 0, 0) 0deg, rgba(0, 0, 0, 0) 180deg, rgb(0, 0, 0) 180deg, rgb(0, 0, 0) 360deg)','the colored half reveals clockwise from twelve o’clock');
       assert.equal(reveal.filter,'grayscale(1)','the remaining cooldown wedge is grayscale');
-      await page.waitForTimeout(150); assert.equal((await read()).slots[0].shade, paused);
+      const pausedFrames = await page.evaluate(async () => {
+        const shades = [];
+        for (let frame = 0; frame < 3; frame++) {
+          await new Promise(requestAnimationFrame);
+          shades.push(document.querySelector('.hero-cooldown').style.getPropertyValue('--cooldown'));
+        }
+        return shades;
+      });
+      assert.deepEqual(pausedFrames, [paused, paused, paused]);
       await page.screenshot({ path: `${directory}/${width}-${height}-paused-clock.png` });
       // Buff signals: a party-wide Elevate roll plus own buffs on the first two clocks.
       // HP is pinned at 60% so no passive condition adds badges of its own.
@@ -77,7 +86,11 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
         const views=__codexGame.globals.RustCombatPresentation.state.snapshot.actors.filter(a=>a.team==='hero');
         views.forEach(actor=>{actor.ward=20;actor.elevate='sword';actor.groove_active=actor.kind==='kaja'?8:0;});
       });
-      await page.waitForFunction(() => document.querySelectorAll('.hero-buff-party .hero-buff').length===1 && document.querySelector('.hero-cooldown .hero-buff')?.dataset.icon==='hero-offense');
+      await page.waitForFunction(() => {
+        const party = [...document.querySelectorAll('.hero-buff-party .hero-buff')].map(node => node.dataset.icon);
+        const badges = [...document.querySelectorAll('.hero-cooldown')].map(slot => [...slot.querySelectorAll('.hero-buff')].map(node => node.dataset.icon));
+        return JSON.stringify(party) === '["party-ward"]' && JSON.stringify(badges) === '[["hero-offense"],["hero-offense"],["hero-offense"],["hero-offense"],[],[],[],[]]';
+      });
       const buffs = await page.evaluate(() => ({
         party: [...document.querySelectorAll('.hero-buff-party .hero-buff')].map(node => ({ icon: node.dataset.icon, rect: node.getBoundingClientRect().toJSON() })),
         badges: [...document.querySelectorAll('.hero-cooldown')].map(slot => [...slot.querySelectorAll('.hero-buff')].map(node => ({ icon: node.dataset.icon, rect: node.getBoundingClientRect().toJSON() }))),

@@ -59,7 +59,11 @@ test('boss defeat is free, retains the full ready milestone, and resumes farming
  const recoveredHeroes=state.entities.filter(actor=>actor.kind==='hero');
  assert.equal(new Set(recoveredHeroes.map(hero=>hero.recoveryFadeStartedAt)).size,1,'the squad shares one reveal start');
  assert.ok(recoveredHeroes.every(hero=>Number.isFinite(hero.footX)&&Number.isFinite(hero.footY)&&hero.x===hero.footX&&hero.y===hero.footY));
- assert.ok(Math.max(...recoveredHeroes.map(hero=>hero.footX))-Math.min(...recoveredHeroes.map(hero=>hero.footX))<60,'heroes return to the compact authored huddle');
+ // c899baed (retained by 4bc092d0) replaced the compact huddle with fixed 2-4-2 slots.
+ const {HERO_FORMATION_SLOTS}=await import('../src/core/heroFormationGeometry.mjs');
+ const {deriveCombatWorldStartFormation,deriveCombatOrdinaryPatrolBounds}=await import('../src/core/combatOrientation.mjs');
+ const {centerX}=deriveCombatWorldStartFormation(recoveredHeroes.length),patrol=deriveCombatOrdinaryPatrolBounds(),centerY=(patrol.minY+patrol.maxY)/2;
+ assert.deepEqual(recoveredHeroes.map(hero=>[hero.footX,hero.footY]),HERO_FORMATION_SLOTS.slice(0,recoveredHeroes.length).map(slot=>[centerX+slot.x,centerY+slot.y]),'recovery preserves the fixed formation at the ordinary patrol center');
  assert.ok(state.entities.some(actor=>actor.kind==='enemy'&&actor.enemyRole!=='boss'),'recovery resumes ordinary farming before explicit boss summon');
  assert.ok(calls.includes('SettleContinuousCombatRewards'));
  assert.equal(calls.includes('ProcessTurn'),false);
