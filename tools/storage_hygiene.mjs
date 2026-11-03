@@ -22,9 +22,11 @@ function protectedIgnored(paths = []) {
 }
 
 function run(command, args, cwd) {
+  const startup = ['footprint:start', 'footprint:link-start'].includes(process.argv[2]);
+  const timeout = startup ? (command === 'git' ? 1000 : 500) : 200;
   return spawnSync(command, args, {
     cwd, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024,
-    ...(process.env.TASK_FOOTPRINT_HOOK === '1' ? { timeout: 200, killSignal: 'SIGKILL' } : {}),
+    ...(process.env.TASK_FOOTPRINT_HOOK === '1' ? { timeout, killSignal: 'SIGKILL' } : {}),
     env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' },
   });
 }
@@ -34,7 +36,7 @@ function git(cwd, ...args) {
 }
 
 function required(result, label) {
-  if (result.status !== 0) throw new Error(`${label}: ${result.stderr.trim() || result.error?.message || 'command failed'}`);
+  if (result.status !== 0) throw new Error(`${label}: ${result.stderr?.trim() || result.error?.message || `exit ${result.status}, signal ${result.signal}`}`);
   return result.stdout.trim();
 }
 
@@ -253,11 +255,12 @@ const bytesLabel = bytes => bytes == null ? 'unknown' : Math.abs(bytes) < 1024 ?
   : Math.abs(bytes) < MiB ? `${(bytes / 1024).toFixed(1)} KiB` : size(bytes / 1024);
 const isRebuildable = target => /(?:^|\/)(?:target|node_modules|dist(?:-offline)?|__pycache__)$/.test(target) || target.endsWith('/.serena/cache');
 
-// Bound the entire optional hook, including synchronous filesystem work. Only its
-// dedicated measurement process group is stopped; application servers are untouched.
+// Bound checks, including synchronous filesystem work. Startup waits for completion
+// with longer subprocess limits than checks and one shared inventory snapshot.
+// Only the dedicated measurement group is stopped; application servers are untouched.
 export function footprintHook(mode, args = [], cwd = process.cwd()) {
   const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), `footprint:${mode}`, ...args], {
-    cwd, encoding: 'utf8', detached: true, timeout: 1000, killSignal: 'SIGKILL', maxBuffer: MiB,
+    cwd, encoding: 'utf8', detached: true, timeout: mode === 'check' ? 1000 : 0, killSignal: 'SIGKILL', maxBuffer: MiB,
     env: { ...process.env, TASK_FOOTPRINT_HOOK: '1' },
   });
   // The worker may die while a synchronous subprocess is still running.
@@ -265,7 +268,9 @@ export function footprintHook(mode, args = [], cwd = process.cwd()) {
     try { process.kill(-result.pid, 'SIGKILL'); }
     catch (error) { if (error.code !== 'ESRCH') result.error = error; }
   }
-  if (result.error || result.status !== 0) console.warn('Footprint warning: check unavailable or timed out; workflow continues.');
+  if (result.error || result.status !== 0) console.warn('Footprint warning: check unavailable or timed out; workflow continues.',
+    [result.error?.message, result.stderr?.trim(), result.signal && `signal ${result.signal}`,
+      result.status != null && `exit ${result.status}`].filter(Boolean).join('; '));
   else process.stdout.write(result.stdout);
 }
 
@@ -304,7 +309,7 @@ export function footprintIndex(cwd) {
 export function footprintListeners() {
   const listing = run('lsof', ['-nP', '-iTCP', '-sTCP:LISTEN', '-Fpn']);
   if (listing.status !== 0 && (listing.status !== 1 || listing.stdout || listing.stderr))
-    return { servers: [], unknown: 'listener inventory unavailable' };
+    return { servers: [], unknown: `listener inventory unavailable: ${listing.stderr?.trim() || listing.error?.message || `exit ${listing.status}, signal ${listing.signal}`}` };
   const servers = [];
   let pid;
   for (const line of listing.stdout.split('\n')) {
@@ -325,17 +330,21 @@ export function footprintListeners() {
     if (line.startsWith('n')) cwds.set(pid, line.slice(1));
   }
   for (const server of servers) Object.assign(server, { startTime: times.get(server.pid), cwd: cwds.get(server.pid) });
-  return { servers, unknown: starts.status !== 0 || dirs.status !== 0 || servers.some(server => !server.startTime || !server.cwd)
-    ? 'some server identities or working directories unavailable' : undefined };
+  const failures = [starts, dirs].filter(result => result.status !== 0)
+    .map(result => result.stderr?.trim() || result.error?.message || `exit ${result.status}, signal ${result.signal}`);
+  return { servers, unknown: failures.length || servers.some(server => !server.startTime || !server.cwd)
+    ? `some server identities or working directories unavailable${failures.length ? `: ${failures.join('; ')}` : ''}` : undefined };
 }
 
 function footprintSystem(cwd) {
+  const inventory = footprintListeners();
+  if (process.env.TASK_FOOTPRINT_HOOK === '1' && inventory.unknown) throw new Error(inventory.unknown);
   const volume = fs.statfsSync(cwd);
   const swap = run('sysctl', ['-n', 'vm.swapusage']);
   const counts = Object.fromEntries(required(git(cwd, 'count-objects', '-v'), 'common Git object size').split('\n').map(line => line.split(': ')));
   return { freeBytes: volume.bavail * volume.bsize, swap: swap.status === 0 ? swap.stdout.trim() : 'unknown',
     commonGit: { looseBytes: Number(counts.size) * 1024, packBytes: Number(counts['size-pack']) * 1024 },
-    ...footprintListeners() };
+    ...inventory };
 }
 
 function resourceKey(resource) {
@@ -363,9 +372,9 @@ function checkoutIdentity(target) {
   return { gitDir: fs.realpathSync(directory), directory: stamp(target), git: stamp(directory) };
 }
 
-function reconcile(record, cwd) {
-  const inventory = footprintListeners();
+function reconcile(record, cwd, inventory = footprintListeners()) {
   record.inventoryUnknown = inventory.unknown;
+  if (process.env.TASK_FOOTPRINT_HOOK === '1' && record.inventoryUnknown) throw new Error(record.inventoryUnknown);
   const registered = linkedWorktrees(cwd);
   const checkouts = record.resources.filter(item => item.kind === 'worktree');
   for (const item of checkouts) {
@@ -525,12 +534,13 @@ export function footprintCommand(mode, args = [], cwd = process.cwd()) {
     if (!record) {
       const target = path.resolve(options.worktree || cwd);
       if (forbidden(target)) throw new Error('footprint: protected owned path');
+      const system = footprintSystem(cwd);
       record = { version: 1, task: options.task, run: options.run, cwd, startedAt: new Date().toISOString(),
         status: 'incomplete', baseline: { label: fs.existsSync(target) ? 'baseline after creation' : 'baseline before creation',
-          head: required(git(cwd, 'rev-parse', 'HEAD'), 'baseline HEAD'), refs: refs(cwd), system: footprintSystem(cwd) },
+          head: required(git(cwd, 'rev-parse', 'HEAD'), 'baseline HEAD'), refs: refs(cwd), system },
         resources: [{ kind: 'worktree', path: target, source: 'registered', reason: 'task checkout',
           identity: checkoutIdentity(target), pendingCreation: !fs.existsSync(target) }] };
-      reconcile(record, cwd);
+      reconcile(record, cwd, record.baseline.system);
       record.baseline.paths = process.env.TASK_FOOTPRINT_HOOK === '1' ? null : measureRun(record, cwd);
       record.baseline.resourceKeys = record.resources.map(resourceKey);
     } else reconcile(record, cwd);
