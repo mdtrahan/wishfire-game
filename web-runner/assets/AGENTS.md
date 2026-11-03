@@ -120,7 +120,7 @@
 
 - Every authored enemy must have all seven states in both facings in `puppets/manifest.json`; combat has no static-art fallback.
 
-- Option B conveyor uses32px art,11px labels and48x40 targets at68px pitch; three previews fit before the upgrade pill. Preserve the five-second emission rate; clipped previews are noninteractive. `data-conveyor-paused=true` freezes travel with the creation gate.
+- Variant B conveyor uses32px art,11px labels and48x40 targets at78px pitch; four previews fit before the44x40 Bag. The Bag carries a lower-right level diamond and retains its upper-right storage count; a full-width2.5px teal meter replaces only the strip bottom border. Preserve the five-second emission rate; clipped previews are noninteractive. `data-conveyor-paused=true` freezes travel with the creation gate.
 
 - images/boss-hud contains generated transparent raster boss, clock and inspect icons; ART.md records provenance. They serve the active battle HUD independently from the chapter rail and summon control.
 - Preserve embedded color profiles when matching owner references; convert sampled colors to CSS sRGB rather than copying raw RGB from a display-profile PNG. The Bag menu palette and provenance are recorded in `images/ui/ART.md`.

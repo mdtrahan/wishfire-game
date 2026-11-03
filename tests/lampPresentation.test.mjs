@@ -66,26 +66,31 @@ async function conveyorGap(page){
    // Sample the real CSS animation at exactly one unchanged emission interval apart.
    nodes.forEach((n,i)=>{const animation=n.getAnimations()[0];animation.pause();animation.currentTime=(10-i*5)*1000;});
    const art=nodes.map(n=>n.querySelector('.lamp-art').getBoundingClientRect()),scale=strip.getBoundingClientRect().width/360;
-   return{scale,artWidth:art[0].width,gap:art[0].left-art[1].right,expectedGap:68*scale-art[0].width,viewport:[innerWidth,innerHeight,devicePixelRatio]};
+   return{scale,artWidth:art[0].width,gap:art[0].left-art[1].right,expectedGap:78*scale-art[0].width,viewport:[innerWidth,innerHeight,devicePixelRatio]};
   }finally{nodes.forEach(n=>n.remove());}
  });
  assert.ok(Math.abs(result.artWidth/ result.scale-32)<.1,'Option B keeps 32px item art');
- assert.ok(Math.abs(result.gap-result.expectedGap)<.1,'three previews use 68px pitch: '+JSON.stringify(result));
+ assert.ok(Math.abs(result.gap-result.expectedGap)<.1,'four previews use 78px pitch: '+JSON.stringify(result));
  assert.ok(result.gap>0,'regular emission does not overlap');return result;
 }
 async function optionBGeometry(page){
+ await page.locator('[aria-label="Entering combat"]').waitFor({state:'detached'});
  const m=await page.evaluate(()=>{
   const strip=document.querySelector('#wishfire-lamp'),scale=strip.getBoundingClientRect().width/360;
   const box=n=>{const r=n.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
-  const bag=strip.querySelector('.lamp-bag'),upgrade=strip.querySelector('.lamp-tier-badge'),lane=strip.querySelector('.lamp-conveyor');
-  return{scale,strip:box(strip),nav:box(document.querySelector('#game-meta-nav')),bag:box(bag),upgrade:box(upgrade),lane:box(lane),fonts:['.lamp-level','.lamp-count','.lamp-level-disc small','.lamp-exp-value'].map(s=>parseFloat(getComputedStyle(strip.querySelector(s)).fontSize)/scale),targets:[...lane.children].map(n=>({box:box(n),disabled:n.disabled}))};
+  const bag=strip.querySelector('.lamp-bag'),upgrade=strip.querySelector('.lamp-bag-upgrades'),lane=strip.querySelector('.lamp-conveyor'),meter=strip.querySelector('.lamp-progress');
+  const u=box(upgrade);
+  return{scale,strip:box(strip),nav:box(document.querySelector('#game-meta-nav')),bag:box(bag),upgrade:u,upgradeCentre:document.elementFromPoint(u.x+u.width/2,u.y+u.height/2)?.closest('button')===upgrade,upgradeHit:document.elementFromPoint(u.x+u.width/2,u.y+u.height/2)?.outerHTML.slice(0,240),lane:box(lane),meter:box(meter),border:getComputedStyle(strip).borderBottomWidth,topBorder:getComputedStyle(strip).borderTopWidth,oldControls:strip.querySelectorAll('.lamp-tier-badge,.lamp-level-disc,.lamp-exp-value').length,fonts:['.lamp-level','.lamp-count','.lamp-bag-level text'].map(s=>parseFloat(getComputedStyle(strip.querySelector(s)).fontSize)/(s.endsWith('text')?1:scale)),targets:[...lane.children].map(n=>({box:box(n),disabled:n.disabled}))};
  });
  const near=(a,b)=>assert.ok(Math.abs(a-b)<.1,`${a} != ${b}`);
  near(m.strip.height/m.scale,46);near(m.strip.bottom,m.nav.y);
  near(m.bag.width/m.scale,44);near(m.bag.height/m.scale,40);
- near(m.upgrade.width/m.scale,120);near(m.upgrade.height/m.scale,40);
- near(m.lane.width/m.scale,184);assert.ok(m.lane.right<=m.upgrade.x);assert.ok(m.upgrade.right<=m.bag.x);
- m.fonts.forEach((size,i)=>near(size,i===1?12.65:11));
+ near(m.upgrade.width/m.scale,44);near(m.upgrade.height/m.scale,40);
+ assert.equal(m.upgradeCentre,true,'storage badge leaves Bag center available for upgrades: '+JSON.stringify(m));
+ near(m.lane.width/m.scale,312);assert.ok(m.lane.right<=m.bag.x);near(m.upgrade.x,m.bag.x);
+ near(m.meter.width,m.strip.width);near(m.meter.height/m.scale,2.5);near(m.meter.bottom,m.nav.y);
+ assert.equal(m.border,'0px');assert.equal(m.topBorder,'2px');assert.equal(m.oldControls,0);
+ m.fonts.forEach((size,i)=>near(size,[11,12.65,12][i]));
  for(const {box,disabled} of m.targets){near(box.width/m.scale,48);near(box.height/m.scale,40);if(box.x<m.lane.x-1||box.right>m.lane.right+1)assert.equal(disabled,true,'partial previews cannot be clicked');}
 }
 function fixture(){
@@ -188,7 +193,7 @@ test('continuous equipment lifecycle: four phones, full-cache pause, concurrent 
    const failureLayout=await containment(page),savedBefore=await state(page);assert.equal(savedBefore.partyEXP,0);assert.equal(await page.locator('.lamp-cp-feedback').count(),0);
    await dialog.locator('[data-action=close]').click();await page.waitForFunction(()=>document.querySelector('#lamp-overlay').hidden);
    // The approved full-cost upgrade applies once, then acknowledges the saved capacity gain.
-   await strip.locator('.lamp-tier-badge').click();await dialog.waitFor();const beforeUpgrade=await state(page);
+   await strip.locator('.lamp-bag-upgrades').click();await dialog.waitFor();const beforeUpgrade=await state(page);
    {await page.evaluate(()=>{const s=window.__codexGame.globals.ContinuousCombatStage;s.bossSummonRequired=true;s.bossAvailable=true;s.bossActive=false;s.bossArmed=false;});await page.waitForFunction(()=>document.querySelector('#lamp-overlay').dataset.bossFallback==='false'&&document.querySelector('#combat-boss-fallback')?.hidden!==false);}
    await upgradeWithoutScroll(page);
    const upgradeLayout={...await containment(page),noScroll:await upgradeWithoutScroll(page)};

@@ -101,7 +101,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   const data=economy.data,l=data?.lamp;if(!l){helper.hidden=true;return;}
   let selectors;
   if(open)selectors=upgradeOpen?['[data-action="upgrade"]','[data-action="close"]']:selectedItem?(selectedHero?['[data-action="equip"]','[data-action="cache"]']:['[data-action="hero"][data-id="Huun"]:has(.lamp-cp-direction.up)','[data-action="hero"]:has(.lamp-cp-direction.up)','[data-action="cache"]']):(disposalView?['[data-action="dismantle"]','[data-action="close"]']:['[data-action="auto-equip"]','[data-action="disposal"]','[data-action="close"]']);
-  else if(l.capacityTier===0)selectors=lampStoredCount(data)?['[data-action="collect"]']:(!(l.guide&LAMP_GUIDE.preview)&&l.essence>0||l.essence>=lampUpgradeCost(data))?['[data-action="lamp-upgrades"]']:['[data-action="collect"]'];
+  else if(l.capacityTier===0)selectors=lampStoredCount(data)?['[data-action="collect"]']:(!(l.guide&LAMP_GUIDE.preview)&&l.essence>0||l.essence>=lampUpgradeCost(data))?['[data-action="lamp-upgrades"]']:['.lamp-bag-upgrades'];
   const scope=open?dialog:strip,target=selectors?.map(s=>scope.querySelector(s+':not(:disabled)')).find(Boolean);
   if(!target){helper.hidden=true;return;}
   let r=target.getBoundingClientRect();const bounds=scope.getBoundingClientRect();
