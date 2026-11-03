@@ -3,15 +3,12 @@ import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 import {RARITIES} from '../web-runner/src/core/equipment.mjs';
 const rarityColors=Object.values(RARITIES).map(({color})=>'rgb('+color.slice(1).match(/../g).map(v=>parseInt(v,16)).join(', ')+')');
-import {createRequire} from 'node:module';
-import {spawn} from 'node:child_process';
-import {createServer} from 'node:net';
+import {launchBrowserTest} from './browserTestResources.mjs';
 import {setTimeout as delay} from 'node:timers/promises';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {createHeroProgressStore,refreshHeroStats} from '../web-runner/src/core/heroProgression.mjs';
 import {createLampEconomy,generateLampItem,lampStoredCount,lampCapacity,salvageValue,lampItemCPGain} from '../web-runner/src/core/lampGear.mjs';
 import {validateConveyorState} from '../web-runner/src/core/lampConveyor.mjs';
-const require=createRequire(import.meta.url),{detectChromeExecutable}=require('../tools/playwright_support.js');
 const directory=process.env.LAMP_QA_OUTPUT||'test-results/lamp';
 const profiles=[[360,640,1],[216,384,2],[233,452,2],[316,452,2]];
 const state=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')));
@@ -80,10 +77,9 @@ function fixture(){
  save.lamp.emissions=save.items.filter(i=>i.instanceId.startsWith('lamp:')).slice(0,3).map((item,n)=>({item,issuedAt:0,collected:true,age:3000+n*2000}));return{save,heroes};
 }
 
-test('one actual CP invariant controls arrows, equip and disposal across four phones',async()=>{
- let server,url=process.env.LAMP_QA_URL;const report=[];await mkdir(directory,{recursive:true});
- if(!url){const socket=createServer();await new Promise(r=>socket.listen(0,'127.0.0.1',r));const port=socket.address().port;await new Promise(r=>socket.close(r));url=`http://localhost:${port}/web-runner/index.html`;server=spawn(process.execPath,['tools/serve_web.js','--port',String(port),'--host','127.0.0.1'],{stdio:'ignore'});for(let n=0;n<50;n++){try{if((await fetch(url)).ok)break;}catch{}if(n===49)throw Error('Lamp server did not start');await delay(100);}}
- const browser=await chromium.launch({headless:true,executablePath:detectChromeExecutable()});
+test('one actual CP invariant controls arrows, equip and disposal across four phones',{timeout:300000},async t=>{
+ const report=[];await mkdir(directory,{recursive:true});
+ const resources=await launchBrowserTest(t,chromium,{url:process.env.LAMP_QA_URL}),{browser,url}=resources;
  try{for(const [width,height,dpr] of profiles){
   const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:dpr});context.setDefaultTimeout(15000);
   try{for(const scenario of ['increase','decrease','equal','mixed']){
@@ -118,13 +114,12 @@ test('one actual CP invariant controls arrows, equip and disposal across four ph
     assert.deepEqual(errors,[]);report.push({width,height,dpr,scenario,arrows,layout,errors});
    }finally{await page.close();}
   }}finally{await context.close();}
- }}finally{await browser.close();server?.kill();await writeFile(`${directory}/cp-invariant.json`,JSON.stringify(report,null,2));}
+ }}finally{await resources.close();await writeFile(`${directory}/cp-invariant.json`,JSON.stringify(report,null,2));}
 });
 
-test('continuous equipment lifecycle: four phones, full-cache pause, concurrent active-tab collection, CP loss rejection and selected disposal',async()=>{
- let server,url=process.env.LAMP_QA_URL;const report=[];await mkdir(directory,{recursive:true});
- if(!url){const socket=createServer();await new Promise(resolve=>socket.listen(0,'127.0.0.1',resolve));const port=socket.address().port;await new Promise(resolve=>socket.close(resolve));url=`http://localhost:${port}/web-runner/index.html`;server=spawn(process.execPath,['tools/serve_web.js','--port',String(port),'--host','127.0.0.1'],{stdio:'ignore'});for(let n=0;n<50;n++){try{if((await fetch(url)).ok)break;}catch{}if(n===49)throw Error('Lamp server did not start');await delay(100);}}
- const browser=await chromium.launch({headless:true,executablePath:detectChromeExecutable()});
+test('continuous equipment lifecycle: four phones, full-cache pause, concurrent active-tab collection, CP loss rejection and selected disposal',{timeout:300000},async t=>{
+ const report=[];await mkdir(directory,{recursive:true});
+ const resources=await launchBrowserTest(t,chromium,{url:process.env.LAMP_QA_URL}),{browser,url}=resources;
  try{for(const [width,height,dpr] of profiles){
   const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:dpr}),page=await context.newPage(),errors=[];context.setDefaultTimeout(15000);page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>{window.lampPassageBounces=[];const original=Element.prototype.animate;Element.prototype.animate=function(...args){const animation=original.apply(this,args);if(this.matches('.lamp-bag-art')){const receipt={art:this,animation,samples:[]};window.lampPassageBounces.push(receipt);const sample=()=>{const style=getComputedStyle(this);receipt.samples.push({opacity:Number(style.opacity),scale:new DOMMatrixReadOnly(style.transform).a});if(animation.playState==='running')requestAnimationFrame(sample);};requestAnimationFrame(sample);}return animation;};});
@@ -202,13 +197,12 @@ test('continuous equipment lifecycle: four phones, full-cache pause, concurrent 
   await Promise.all([first.waitForFunction(()=>Object.values(window.__codexGame.globals.HeroProgress.heroes).every(h=>h.lampEXPClaimed===0)),second.waitForFunction(()=>Object.values(window.__codexGame.globals.HeroProgress.heroes).every(h=>h.lampEXPClaimed===0))]);
   report.push({realSharedTabs:2,uniqueCollectedId:id,permanentStored:20,partyEXP:accepted.partyEXP});
  }finally{await shared.close();}
- }finally{await browser.close();server?.kill();await writeFile(`${directory}/report.json`,JSON.stringify(report,null,2));}
+ }finally{await resources.close();await writeFile(`${directory}/report.json`,JSON.stringify(report,null,2));}
 });
 
-test('lamp emitter: full cache and every modal freeze movement, capture and cadence',async()=>{
- let server,url=process.env.LAMP_QA_URL;const report=[];await mkdir(directory,{recursive:true});
- if(!url){const socket=createServer();await new Promise(r=>socket.listen(0,'127.0.0.1',r));const port=socket.address().port;await new Promise(r=>socket.close(r));url=`http://localhost:${port}/web-runner/index.html`;server=spawn(process.execPath,['tools/serve_web.js','--port',String(port),'--host','127.0.0.1'],{stdio:'ignore'});for(let n=0;n<50;n++){try{if((await fetch(url)).ok)break;}catch{}if(n===49)throw Error('Lamp server did not start');await delay(100);}}
- const browser=await chromium.launch({headless:true,executablePath:detectChromeExecutable()});
+test('lamp emitter: full cache and every modal freeze movement, capture and cadence',{timeout:300000},async t=>{
+ const report=[];await mkdir(directory,{recursive:true});
+ const resources=await launchBrowserTest(t,chromium,{url:process.env.LAMP_QA_URL}),{browser,url}=resources;
  try{for(const [width,height,dpr] of profiles){
   const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:dpr}),page=await context.newPage();context.setDefaultTimeout(15000);
   try{
@@ -234,7 +228,7 @@ test('lamp emitter: full cache and every modal freeze movement, capture and cade
    await page.getByRole('button',{name:'HERO',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#wishfire-lamp').hidden);const away=await state(page);await delay(5500);assert.equal((await state(page)).lamp.sequence,away.lamp.sequence,'noncombat also pauses emissions');
    report.push({width,height,dpr,full,disposal,result:'PASS'});await page.screenshot({path:`${directory}/${width}-gates.png`});
   }catch(error){await writeFile(`${directory}/${width}-emitter-error.txt`,error.stack||String(error));await writeFile(`${directory}/${width}-emitter-state.json`,JSON.stringify(await page.evaluate(()=>({save:JSON.parse(localStorage.getItem('wishfire.equipment-economy.v5')),paused:document.querySelector('#wishfire-lamp')?.dataset.conveyorPaused,nodes:[...document.querySelectorAll('.lamp-conveyor-item')].map(n=>({data:{...n.dataset},delay:n.style.animationDelay,motion:n.getAnimations().map(a=>({time:a.currentTime,state:a.playState,timing:a.effect.getComputedTiming()}))}))})),null,2));throw error;}finally{await context.close();}
- }}finally{await browser.close();server?.kill();await writeFile(`${directory}/emitter-gates.json`,JSON.stringify(report,null,2));}
+ }}finally{await resources.close();await writeFile(`${directory}/emitter-gates.json`,JSON.stringify(report,null,2));}
 });
 
 async function disposalDensity(page,count){
@@ -242,10 +236,9 @@ async function disposalDensity(page,count){
  assert.equal(metrics.visible,Math.min(count,20),'up to20 visible items: '+JSON.stringify(metrics));assert.equal(metrics.columns,5);assert.ok(Math.abs(metrics.tile.width-metrics.tile.height)<1);assert.ok(metrics.tile.width<metrics.dialog.width*.17);assert.ok(metrics.dialog.height>=metrics.dialog.width*.85);return metrics;
 }
 
-test('trash-only full cache and held item open directly to one dismantle-all action',async()=>{
- let server,url=process.env.LAMP_QA_URL;const report=[];await mkdir(directory,{recursive:true});
- if(!url){const socket=createServer();await new Promise(resolve=>socket.listen(0,'127.0.0.1',resolve));const port=socket.address().port;await new Promise(resolve=>socket.close(resolve));url=`http://localhost:${port}/web-runner/index.html`;server=spawn(process.execPath,['tools/serve_web.js','--port',String(port),'--host','127.0.0.1'],{stdio:'ignore'});for(let n=0;n<50;n++){try{if((await fetch(url)).ok)break;}catch{}if(n===49)throw Error('Lamp server did not start');await delay(100);}}
- const browser=await chromium.launch({headless:true,executablePath:detectChromeExecutable()});
+test('trash-only full cache and held item open directly to one dismantle-all action',{timeout:300000},async t=>{
+ const report=[];await mkdir(directory,{recursive:true});
+ const resources=await launchBrowserTest(t,chromium,{url:process.env.LAMP_QA_URL}),{browser,url}=resources;
  try{for(const [width,height,dpr] of [profiles[0],profiles[1]]){
   const page=await browser.newPage({viewport:{width,height},deviceScaleFactor:dpr}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   const seed=fixture();for(const i of seed.save.items)if(i.instanceId.startsWith('lamp:'))i.stats={ATK:2,DEF:2,MAG:2,RES:2,HP:2};
@@ -263,17 +256,14 @@ test('trash-only full cache and held item open directly to one dismantle-all act
    const scrolling=await dialog.locator('.lamp-disposal-body').evaluate(n=>{n.scrollTop=n.scrollHeight;return{client:n.clientHeight,total:n.scrollHeight};});assert.ok(scrolling.total>scrolling.client);await containment(page);await page.screenshot({path:`${directory}/${width}-large-disposal.png`});await dialog.locator('.lamp-tile').last().click();assert.equal(await dialog.getAttribute('data-view'),'equip');assert.ok(await dialog.locator('.lamp-level').count()>0);assert.ok(await dialog.locator('.lamp-item-cp').count()>0);await containment(page);const inspected=await assertSave(page);assert.deepEqual(inspected.items,large.items);assert.deepEqual(inspected.loadouts,large.loadouts);
    assert.deepEqual(errors,[]);report.push({width,height,dpr,selected:21,essence:expected,density,heldDensity,scrolling,errors});
   }finally{await page.close();}
- }}finally{await browser.close();server?.kill();}
+ }}finally{await resources.close();}
  await writeFile(`${directory}/direct-dismantle.json`,JSON.stringify(report,null,2));
 });
 
-test('Auto-Equip closes empty disposal after feedback and preserves legacy salvage review',async()=>{
- const socket=createServer();await new Promise(r=>socket.listen(0,'127.0.0.1',r));const port=socket.address().port;await new Promise(r=>socket.close(r));
- const server=spawn(process.execPath,['tools/serve_web.js','--port',String(port),'--host','127.0.0.1'],{stdio:'ignore'}),url=`http://localhost:${port}/web-runner/index.html`;
- let browser;
+test('Auto-Equip closes empty disposal after feedback and preserves legacy salvage review',{timeout:300000},async t=>{
+ await mkdir(directory,{recursive:true});
+ const resources=await launchBrowserTest(t,chromium),{browser,url}=resources;
  try{
-  for(let n=0;n<50;n++){try{if((await fetch(url)).ok)break;}catch{}if(n===49)throw Error('Lamp server did not start');await delay(100);}
-  await mkdir(directory,{recursive:true});browser=await chromium.launch({headless:true,executablePath:detectChromeExecutable()});
   for(const [width,height,dpr] of profiles)for(const legacy of [false,true]){
    const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:dpr}),page=await context.newPage();
    try{
@@ -293,5 +283,5 @@ test('Auto-Equip closes empty disposal after feedback and preserves legacy salva
     await page.screenshot({path:`${directory}/${width}-auto-equip-${legacy?'legacy':'empty'}.png`});
    }finally{await context.close();}
   }
- }finally{await browser?.close();server.kill();}
+ }finally{await resources.close();}
 });

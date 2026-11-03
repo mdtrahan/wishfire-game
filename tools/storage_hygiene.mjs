@@ -253,11 +253,12 @@ const bytesLabel = bytes => bytes == null ? 'unknown' : Math.abs(bytes) < 1024 ?
   : Math.abs(bytes) < MiB ? `${(bytes / 1024).toFixed(1)} KiB` : size(bytes / 1024);
 const isRebuildable = target => /(?:^|\/)(?:target|node_modules|dist(?:-offline)?|__pycache__)$/.test(target) || target.endsWith('/.serena/cache');
 
-// Bound the entire optional hook, including synchronous filesystem work. Only its
-// dedicated measurement process group is stopped; application servers are untouched.
+// Bound checks, including synchronous filesystem work. Startup waits for completion
+// with per-command stall limits so scheduler contention cannot discard its baseline.
+// Only the dedicated measurement group is stopped; application servers are untouched.
 export function footprintHook(mode, args = [], cwd = process.cwd()) {
   const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), `footprint:${mode}`, ...args], {
-    cwd, encoding: 'utf8', detached: true, timeout: 1000, killSignal: 'SIGKILL', maxBuffer: MiB,
+    cwd, encoding: 'utf8', detached: true, timeout: mode === 'check' ? 1000 : 0, killSignal: 'SIGKILL', maxBuffer: MiB,
     env: { ...process.env, TASK_FOOTPRINT_HOOK: '1' },
   });
   // The worker may die while a synchronous subprocess is still running.

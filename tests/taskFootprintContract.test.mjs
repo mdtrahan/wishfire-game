@@ -115,6 +115,19 @@ test('automatic start keeps recursive baseline size unknown and completes quickl
   t.diagnostic(`normal automatic start: ${elapsed.toFixed(0)} ms`);
 });
 
+test('automatic start waits for a scheduled worker to finish its baseline', t => {
+  const { cwd, call } = fixture(t);
+  const startup = encodeURIComponent("if(process.argv[2]==='footprint:start')Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,1100)");
+  const result = spawnSync(process.execPath, [tool, 'footprint:hook-start', '--task', 'ORKA-test'], {
+    cwd, encoding: 'utf8', timeout: 5000, env: { ...process.env,
+      NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --import=data:text/javascript,${startup}` },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, '');
+  assert.match(result.stdout, /baseline after creation/);
+  assert.equal(call('start').record.baseline.paths, null);
+});
+
 test('discovery records owned builds, observes peaks and keeps dirty close provisional', t => {
   const { cwd, git, call } = fixture(t);
   const start = call('start');

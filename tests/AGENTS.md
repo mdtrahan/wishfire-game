@@ -303,3 +303,4 @@
 - Camera return regression moves the seed-7 boss through the .5s return and checks full puppet quads on every frame, exact zoom easing and immutable snapshots.
 
 - `verifyHandoffMerge.test.mjs` executes the handoff CLI with isolated command/probe stubs; full and cached quick runs require the head merge tier, pinned base/head evidence and its log, and propagate a heavy-proof failure.
+- Lamp presentation uses `browserTestResources.mjs` for startup and teardown; close owned resources in `finally` so browser failure cannot strand the server or Node worker.
