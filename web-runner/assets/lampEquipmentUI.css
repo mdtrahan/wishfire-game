@@ -223,15 +223,24 @@
 @container(max-width:260px){.lamp-hero-current-cp{font-size:8px;max-width:calc(100% - 10px);left:1px;padding:1px}.lamp-hero-current-cp span,.lamp-hero-current-cp b{display:block;white-space:nowrap}.lamp-hero.lamp-portrait>.lamp-cp-direction{width:14px;height:18px;right:-2px;bottom:-2px}}
 
 /* Entry is the strip edge, with no padded lead-in. Controls retain their anchors. */
-#wishfire-lamp .lamp-results.lamp-conveyor{position:absolute;left:0;top:14%;width:100%;flex:none}
+#wishfire-lamp .lamp-results.lamp-conveyor{position:absolute;left:0;top:calc(1px * var(--lamp-scale));width:calc(184px * var(--lamp-scale));height:calc(40px * var(--lamp-scale));flex:none}
+#wishfire-lamp .lamp-results.lamp-conveyor .lamp-conveyor-item{height:calc(40px * var(--lamp-scale));aspect-ratio:auto;border:0;border-radius:0;background:none;box-shadow:none}
+#wishfire-lamp .lamp-conveyor-item:disabled{opacity:1;pointer-events:none}
+#wishfire-lamp .lamp-results .lamp-art{position:absolute;left:calc(8px * var(--lamp-scale));top:0;width:calc(32px * var(--lamp-scale));height:calc(32px * var(--lamp-scale));margin:0}
+#wishfire-lamp .lamp-results .lamp-level{bottom:calc(-8px * var(--lamp-scale));font-size:1em}
+#wishfire-lamp .lamp-results .lamp-tile:before{display:none}
 
 /* The lamp opens storage only; it has no emission or AUTO action. */
-#wishfire-lamp .lamp-bag{left:76.52%;right:auto;top:17.4%;width:22.8%;height:83%;display:flex;align-items:center;justify-content:center;border:0;border-radius:0;background:transparent;box-shadow:none}
+#wishfire-lamp .lamp-bag{left:calc(312px * var(--lamp-scale));right:auto;top:calc(1px * var(--lamp-scale));width:calc(44px * var(--lamp-scale));height:calc(40px * var(--lamp-scale));display:flex;align-items:center;justify-content:center;border:0;border-radius:0;background:transparent;box-shadow:none}
 #wishfire-lamp .lamp-bag:after{display:none}
-#wishfire-lamp .lamp-bag .lamp-bag-art{position:absolute;left:0;top:-10.67%;width:100%;height:97.45%;object-fit:contain;background:none;translate:none;transform-origin:50% 50%;pointer-events:none}
+#wishfire-lamp .lamp-bag .lamp-bag-art{position:absolute;left:calc(1.5px * var(--lamp-scale));top:calc(1px * var(--lamp-scale));width:calc(41px * var(--lamp-scale));height:calc(36px * var(--lamp-scale));object-fit:contain;background:none;translate:none;transform-origin:50% 50%;pointer-events:none}
 #wishfire-lamp .lamp-bag .lamp-count{position:absolute;top:4%;right:0;left:auto;padding:1px 4px;border:2px solid #dba7f5;border-radius:9px;background:linear-gradient(#a44ae2,#4a167e);text-shadow:0 1px 2px #321742;font-size:1.15em;line-height:1.1}
 /* The painted bag base sits about5 logical pixels behind the upgrade bar. */
-#wishfire-lamp .lamp-tier-badge{z-index:3}
+#wishfire-lamp .lamp-tier-badge{z-index:3;left:calc(190px * var(--lamp-scale));top:calc(1px * var(--lamp-scale));width:calc(120px * var(--lamp-scale));height:calc(40px * var(--lamp-scale))}
+#wishfire-lamp .lamp-tier-badge .lamp-progress{left:3%;right:3%;top:26%;height:52%}
+#wishfire-lamp .lamp-tier-badge .lamp-level-disc{left:2.5%;top:5%;width:30%;height:90%}
+#wishfire-lamp .lamp-tier-badge .lamp-level-disc b{font-size:2.55em}
+#wishfire-lamp .lamp-tier-badge .lamp-level-disc small,#wishfire-lamp .lamp-exp-value{font-size:1em}
 
 /* Keep confirmation visible while disposal contents scroll on compact phones. */
 #lamp-dialog[data-view=dismantle]{display:flex;flex-direction:column;overflow:hidden;--disposal-tile-size:clamp(24px,13.7cqw,52px);height:min(100%,calc(4 * var(--disposal-tile-size) + 144px))}

@@ -72,7 +72,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
  function close(){if(feedbacks.size){closeRequested=true;return;}closeRequested=false;resetHelper();open=false;upgradeReceipt=null;modal.hidden=true;lastKey='';lastFocus?.focus?.();}
  function action(fn){if(busy)return;notice='';busy=true;lastKey='';render();return pendingAction=(async()=>{try{await fn();}catch(e){notice=e.message;}finally{busy=false;lastKey='';render();}})();}
  function onClick(e){
-  const b=e.target.closest('button[data-action]');if(!b||busy)return;
+  const b=e.target.closest('button[data-action]');if(!b||b.disabled||busy)return;
   const kind=b.dataset.action,id=b.dataset.id;
   if(kind==='close')return close();
   if(kind==='inspect')return openCollection(id);
@@ -221,7 +221,9 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
  }
  let bossFallbackVisible=false,bossFallbackReservePx=0;
  function position(){
-  const r=canvas.getBoundingClientRect(),s=r.width/360;Object.assign(strip.style,{left:r.left+'px',top:(r.top+488*s)+'px',width:r.width+'px',height:92*s+'px',fontSize:11*s+'px'});
+  const r=canvas.getBoundingClientRect(),s=r.width/360,nav=document.getElementById('game-meta-nav');
+  const bottom=nav&&!nav.hidden?nav.getBoundingClientRect().top:r.top+580*s;
+  strip.style.setProperty('--lamp-scale',s);Object.assign(strip.style,{left:r.left+'px',top:(bottom-46*s)+'px',width:r.width+'px',height:46*s+'px',fontSize:11*s+'px'});
   positionRewardReceipt(canvas);
   modal.style.setProperty('--bag-scale',s);modal.style.setProperty('--modal-close-scale',s);
   Object.assign(modal.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:(upgradeOpen?r.height:Math.min(r.height,480*s))+'px'});

@@ -3,7 +3,8 @@ import { COMBAT_VIEW } from './rustCombatCamera.mjs';
 export { COMBAT_VIEW } from './rustCombatCamera.mjs';
 export const SLICE_ACTOR_HEIGHT = 128;
 const authoredX = deriveCombatWorldBounds(), authoredY = deriveCombatWorldVerticalBounds();
-const height = (COMBAT_VIEW.bottom - COMBAT_VIEW.top) / (COMBAT_VIEW.zoom * COMBAT_VIEW.squash);
+// Simulation geometry stays fixed when presentation reveals more floor below the HUD.
+const height = 388 / (.5 * .75);
 export const SLICE_FLOOR = Object.freeze({ min: Object.freeze({ x: 96, y: 40 }), max: Object.freeze({ x: 816, y: 40 + height }) });
 export const SLICE_ORIGIN = Object.freeze({ x: 456, y: (SLICE_FLOOR.min.y + SLICE_FLOOR.max.y) / 2 + 80 + 1.5 * SLICE_ACTOR_HEIGHT * .6 / COMBAT_VIEW.squash });
 export const SLICE_TRAVEL_SLOTS = Object.freeze([

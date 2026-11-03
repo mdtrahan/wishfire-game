@@ -39,13 +39,18 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
           imagesLoaded: [...document.querySelectorAll('.hero-cooldown img')].every(image => image.complete && image.naturalWidth > 0) };
       });
       await page.waitForFunction(() => [...document.querySelectorAll('.hero-cooldown img')].every(image => image.naturalWidth > 0));
-      const current = await read(), scale = current.canvas.width / 360;
+      const current = await read(), scale = current.canvas.width / 360, hudScale = current.row.width / 344;
       assert.equal(current.slots.length, 8); assert.equal(current.slots.filter(slot => slot.state !== 'empty').length, 4);
       assert.ok(current.slots.slice(4).every(slot => slot.state === 'empty'));
       assert.equal(current.text, ''); assert.equal(current.overflow, false); assert.equal(current.imagesLoaded, true);
       assert.ok(Math.abs(current.row.x + current.row.width / 2 - current.canvas.x - current.canvas.width / 2) < 1);
       assert.ok(Math.abs(current.quest.x - current.canvas.x - 8 * scale) < 1);
       assert.ok(Math.abs(current.row.height / scale - 41.28) < .1);
+      assert.ok(Math.abs((current.row.top-current.canvas.top)/hudScale-487.6)<.1,JSON.stringify(current));
+      assert.ok(Math.abs((current.quest.top-current.canvas.top)/hudScale-416)<.1);
+      for(const slot of current.slots){assert.ok(Math.abs(slot.rect.width/hudScale-40)<.1);assert.ok(Math.abs(slot.rect.height/hudScale-40)<.1);}
+      const face=await page.locator('.hero-cooldown-face').first().boundingBox();
+      assert.ok(Math.abs(face.width/hudScale-39.5)<.1,'portrait pixels retain original size');
       assert.ok(current.quest.bottom <= current.row.top + .5, 'quest remains above cooldown row');
       assert.ok(current.row.bottom < current.lamp.top, 'equipment strip stays separate');
       await page.screenshot({ path: `${directory}/${width}-${height}-combat.png` });
@@ -59,7 +64,7 @@ test('eight-slot cooldown HUD preserves quest, equipment access and combat-time 
       await page.waitForFunction(() => {const node=document.querySelector('.hero-cooldown');return node.dataset.state==='cooldown'&&Math.abs(parseFloat(node.style.getPropertyValue('--cooldown'))-180)<.01;});
       const paused = (await read()).slots[0].shade;
       assert.ok(Math.abs(parseFloat(paused) - 180) < 3);
-      const reveal=await page.locator('.hero-cooldown').first().evaluate(node=>{const style=getComputedStyle(node,'::after');return{mask:style.maskImage,filter:style.backdropFilter};});
+      const reveal=await page.locator('.hero-cooldown').first().evaluate(node=>{const style=getComputedStyle(node.querySelector('.hero-cooldown-face'),'::after');return{mask:style.maskImage,filter:style.backdropFilter};});
       assert.equal(reveal.mask,'conic-gradient(rgba(0, 0, 0, 0) 0deg, rgba(0, 0, 0, 0) 180deg, rgb(0, 0, 0) 180deg, rgb(0, 0, 0) 360deg)','the colored half reveals clockwise from twelve o’clock');
       assert.equal(reveal.filter,'grayscale(1)','the remaining cooldown wedge is grayscale');
       const pausedFrames = await page.evaluate(async () => {

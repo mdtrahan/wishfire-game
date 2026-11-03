@@ -9,7 +9,7 @@ import {mkdir,writeFile} from 'node:fs/promises';
 const require=createRequire(import.meta.url),{detectChromeExecutable}=require('../tools/playwright_support.js');
 const directory=process.env.LAMP_QA_OUTPUT||'test-results/lamp-pause';
 const fixture=`<!doctype html><base href="/web-runner/"><link rel="stylesheet" href="/web-runner/assets/lampEquipmentUI.css">
-<section id="wishfire-lamp" style="left:0;top:0;width:360px;height:92px;font-size:11px"></section>
+<section id="wishfire-lamp" style="left:0;top:0;width:360px;height:46px;font-size:11px;--lamp-scale:1"></section>
 <script type="module">
 import {updateLampConveyor} from '/web-runner/systems/lampConveyorPresentation.mjs';
 import {createLampEconomy,generateLampItem} from '/web-runner/src/core/lampGear.mjs';
@@ -32,7 +32,7 @@ test('conveyor keeps active-time positions through repeated modal pauses and hid
   for(const [width,height,dpr] of [[360,640,1],[216,384,2],[233,452,2],[316,452,2]]){
    const page=await browser.newPage({viewport:{width,height},deviceScaleFactor:dpr});
    try{
-    await page.route('**/conveyor-pause-fixture.html',route=>route.fulfill({contentType:'text/html',body:fixture.replace('width:360px',`width:${width}px`)}));
+    await page.route('**/conveyor-pause-fixture.html',route=>route.fulfill({contentType:'text/html',body:fixture.replace('width:360px',`width:${width}px`).replace('height:46px',`height:${46*width/360}px`).replace('--lamp-scale:1',`--lamp-scale:${width/360}`)}));
     await page.goto(url);await page.waitForFunction(()=>window.fixtureReady,null,{timeout:5000});
     const initial=await page.evaluate(()=>window.conveyorSnapshot());
     for(let cycle=0;cycle<4;cycle++){

@@ -303,3 +303,5 @@
 - Camera return regression moves the seed-7 boss through the .5s return and checks full puppet quads on every frame, exact zoom easing and immutable snapshots.
 
 - `verifyHandoffMerge.test.mjs` executes the handoff CLI with isolated command/probe stubs; full and cached quick runs require the head merge tier, pinned base/head evidence and its log, and propagate a heavy-proof failure.
+
+- Option B strip proof locks46px height at navigation top, three32px previews,11px labels, original Bag count size, separate item/upgrade/Bag targets and disabled clipped previews. Cooldown proof preserves39.5px portrait art inside40px targets and shifts cooldown/quest anchors46px. Camera proof retains world geometry and projection anchor while extending the safe bottom to476.

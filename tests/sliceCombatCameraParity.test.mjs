@@ -23,11 +23,11 @@ test('recorded seed-7 WFM ordinary and boss snapshots match pinned Rust f32 form
 
 test('D13 keeps approved gameplay floor and viewport geometry', () => {
   const height = SLICE_FLOOR.max.y - SLICE_FLOOR.min.y;
-  const useful = (COMBAT_VIEW.bottom - COMBAT_VIEW.top) / (.5 * .75);
+  const useful = 388 / (.5 * .75); // World geometry stays fixed as the HUD reveals more floor.
   assert.equal((SLICE_FLOOR.max.x - SLICE_FLOOR.min.x) * .5, 360);
   near(height, useful, 1e-12);
   near(SLICE_FLOOR.max.y, 1074.6666666666667, 1e-9);
-  assert.equal(COMBAT_VIEW.top, 42); assert.equal(COMBAT_VIEW.bottom, 430);
+  assert.equal(COMBAT_VIEW.top, 42); assert.equal(COMBAT_VIEW.bottom, 476);
 });
 
 test('nearest spawn marker supplies 30% look-ahead; springs have no positional dead zone', () => {
@@ -107,7 +107,7 @@ test('spotlight enters with 1.2s smoothstep and corrects the asymmetric safe-ban
   s.time = 1.2; apply(camera, spot, s); near(camera.zoom, .8, 1e-12);
   // Hero fallback body at .6 visual scale, with 12 projected-world units of padding.
   const boxMid = 650 * .75 + (-110 * .6 + 5 * .6) / 2;
-  near(camera.centreY, (boxMid + 2 / .8) / .75, 1e-9);
+  near(camera.centreY, (boxMid - 21 / .8) / .75, 1e-9);
   assert.deepEqual(normal[2], .5);
 });
 

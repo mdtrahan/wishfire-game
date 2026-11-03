@@ -52,13 +52,9 @@ export function updateLampConveyor({strip,data,heroes,now,activeMs=data.lamp.con
  const laneWidth=lane.getBoundingClientRect().width;
  if(laneWidth<=0)return;
  const scale=strip.getBoundingClientRect().width/360;
- // The lane now extends behind the bag; retain the accepted art size and pace.
- const width=(strip.getBoundingClientRect().width*.7275-4.2*parseFloat(getComputedStyle(strip).fontSize))*.228;
- const entryWidth=width*1.121;
- // Keep full art size; reduce the previous visible empty gap by exactly 40%.
- // One shared pace still drives the regular off-left emitter, never pair placement.
- const gap=(30*scale*5-entryWidth)*.6*.7;
- const pitch=entryWidth+gap*.6,speed=pitch/5;
+ // Option B fits three 48px targets at 68px pitch, with independent 32px art.
+ const width=48*scale,entryWidth=width;
+ const speed=68*scale/5;
  lane.style.setProperty('--conveyor-start',-entryWidth+'px');
  const bag=strip.querySelector('.lamp-bag').getBoundingClientRect();
  const destination=bag.left+bag.width/2-lane.getBoundingClientRect().left-width/2;
@@ -84,6 +80,9 @@ export function updateLampConveyor({strip,data,heroes,now,activeMs=data.lamp.con
    conveyorAnimations.set(node,motion);
   }
   node.dataset.clockPaused=String(paused);
+  const target=node.getBoundingClientRect(),clip=lane.getBoundingClientRect();
+  // Clipped previews never offer a smaller or overlapping interactive target.
+  node.disabled=node.hidden||target.left<clip.left-.01||target.right>clip.right+.01;
   node.dataset.bestGain=bestGain;node.dataset.collected=String(e.collected);
   const arrow=node.querySelector('.lamp-review-arrow');
   if(bestGain>0&&!arrow){const badge=document.createElement('span');badge.className='lamp-review-arrow';badge.setAttribute('aria-hidden','true');badge.innerHTML='<span class="lamp-cp-direction up"></span>';node.querySelector('.lamp-art').append(badge);}else if(bestGain<=0)arrow?.remove();
