@@ -300,3 +300,6 @@
 - `preCommitRouting.mjs` executes the real commit/merge scripts with stub proof commands. `preCommitRouting.test.mjs`, lampRoster and UI-lock routing contracts retain every owner and failure assertion at its tier; command-removal mutations must fail. Fast-tier selection excludes browser imports, includes deterministic consumers and keeps Rust unit checks.
 
 - Lamp gameplay proof shares `browserTestResources.mjs` with the HUD proof. It waits for server readiness, retains production START readiness, registers abort cleanup before launch and waits for owned process termination rather than graceful browser shutdown; each browser case has a bounded cancellation deadline.
+- Camera return regression moves the seed-7 boss through the .5s return and checks full puppet quads on every frame, exact zoom easing and immutable snapshots.
+
+- `verifyHandoffMerge.test.mjs` executes the handoff CLI with isolated command/probe stubs; full and cached quick runs require the head merge tier, pinned base/head evidence and its log, and propagate a heavy-proof failure.

@@ -29,6 +29,7 @@
 - Reframe before implementation when acceptance language implies persistent timed stat stacks (`ORKA-9ri`, `ORKA-zih`, residual wording in `ORKA-69r`).
 
 ## Regression Triggers
+- Moving heavy owner proofs out of pre-commit requires an executable verifier gate. Run the head merge tier against the pinned base on every handoff, retain its log and reject missing or failed evidence even when broad suites share inherited failures.
 - Cross-revision tooling must use each checkout's provenance validator after that checkout builds its artifacts; a newer workspace schema cannot validate an older crate layout. Standalone npm test aliases that import generated modules must bootstrap before ESM resolution.
 - Special previews must read Rust stock-refill content and round the meter-rate input at the same f32 boundary as combat. Authored kit timings cannot establish parity; compare previews against real WASM meter increments with zero and earned Haste.
 - Derived status fields may exist only in Rust's rebuilt snapshot view. JSON bridges reading raw actor views must explicitly project validated status state; presence of a serialized field alone does not prove live values reach rendering.
@@ -727,3 +728,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - When a presentation owner moves, migrate test imports and exercise the new owner through its production call site. Source-text assertions against a removed duplicate cannot protect anchoring, geometry, visibility or paint order.
 
 - Camera ports must preserve production arena geometry and keep spotlight scheduling OFF. Compare identical captured host calls through every gameplay hash and ordered damage/death event; immutable rendering alone cannot prove simulation equality. Profile matched snapshots before attributing RAF tail changes to camera code.
+
+- Spotlight return must re-constrain live participants after interpolation: target movement continues while zoom eases out. Trace actor IDs, return participants and draw quads at the failing step; static active-shot bounds cannot prove return containment.

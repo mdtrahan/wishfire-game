@@ -202,3 +202,32 @@ test('spotlight contains caster and every target; nonparticipants may cross the 
   draw(.7, [], .3); assert.equal(spot.current, null);
   s.actors.forEach(contained);
 });
+
+
+test('spotlight return keeps the moving boss participant inside the visible band', () => {
+  const boxes = JSON.parse(fs.readFileSync(new URL('../web-runner/assets/rust-combat/manifest.json', import.meta.url))).actor_boxes;
+  const s = snapshot(), camera = createSliceCombatCamera(), spot = new SliceSpotlightCamera(boxes);
+  s.actors = [hero(1, 340, 910), { ...hero(5, 576, 934), kind: 'boss', team: 'enemy', scale: 2.2, state: 'walk' }];
+  camera.update(s, 0);
+  // Seed-7 Fara/boss frame at attack completion; the target keeps walking during return.
+  spot.current = { x: 503.735, y: 859.47, z: .8, participants: [1,5] };
+  spot.key = '1:cast'; spot.time = 0;
+  for (let step = 1; step <= 15; step++) {
+    s.time = step / 30;
+    s.actors[1].pos.x = 576 + step * 5.312;
+    s.actors[1].pos.y = 934 - step * 3.556;
+    const before = structuredClone(s);
+    camera.update(s, 1/30); spot.apply(camera, s, false);
+    const t = Math.min(1, s.time / .5);
+    near(camera.zoom, .8 + (.5 - .8) * t * t * (3 - 2 * t), 1e-12);
+    for (const a of s.actors) {
+      const q = [-64, -125, 64, 3], scale = a.scale * (a.kind === 'boss' ? 1 : .6);
+      assert.ok(camera.x(a.pos.x + q[0] * scale) >= COMBAT_VIEW.left, `step ${step}: ${a.actor_id} left`);
+      assert.ok(camera.x(a.pos.x + q[2] * scale) <= COMBAT_VIEW.right, `step ${step}: ${a.actor_id} right`);
+      assert.ok(camera.y(a.pos.y) + q[1] * scale * camera.zoom >= COMBAT_VIEW.top, `step ${step}: ${a.actor_id} top`);
+      assert.ok(camera.y(a.pos.y) + q[3] * scale * camera.zoom <= COMBAT_VIEW.bottom, `step ${step}: ${a.actor_id} bottom`);
+    }
+    assert.deepEqual(s, before);
+  }
+  assert.equal(spot.current, null);
+});
