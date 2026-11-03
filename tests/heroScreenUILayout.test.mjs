@@ -10,6 +10,7 @@ import {createHeroProgressStore,refreshHeroStats,newHeroProgress} from '../web-r
 import {equipmentStats} from '../web-runner/src/core/equipment.mjs';
 import {createLampEconomy,generateLampItem} from '../web-runner/src/core/lampGear.mjs';
 import {HERO_DEFINITIONS,heroDefinition,heroSkillUnlocked} from '../web-runner/src/core/heroDefinitions.mjs';
+import {formatHeroSpecialCooldown} from '../web-runner/src/core/heroSpecialCooldown.mjs';
 import {heroSpecialReach} from '../src/core/arenaCombatRules.mjs';
 import {heroTicketLevelCost} from '../web-runner/src/core/combatProgressionRules.mjs';
 import {heroBasicSkill,heroSkillCopy} from '../web-runner/systems/heroSkillCopy.mjs';
@@ -135,7 +136,7 @@ const plateText=hero=>heroDefinition(hero).name+'★★★★★★★★';
 const p_scale=profile=>Math.min(profile.width/360,profile.height/640);
 const heading=page=>page.locator('#hero-details .hero-name h1').textContent();
 
-test('Hero cooldown preview applies earned Haste to each existing authored base',{timeout:90000},async()=>{
+test('Hero cooldown preview displays Rust stock clocks with earned Haste',{timeout:90000},async()=>{
  const fixture=makeSavedFixture(),{server,url}=await startFixtureServer();
  const browser=await chromium.launch({headless:true,executablePath:detectChromeExecutable()});
  try{
@@ -144,7 +145,8 @@ test('Hero cooldown preview applies earned Haste to each existing authored base'
    try{
     await page.evaluate(()=>window.heroQa.setGrowth({stars:{Falie:2,Huun:2,Runa:2,Kojonn:2}}));
     const detail=page.locator('#hero-details');
-    for(const [index,seconds] of [110.4,18.4,18.4,18.4].entries()){
+    for(const [index,definition] of Object.values(HERO_DEFINITIONS).entries()){
+     const seconds=formatHeroSpecialCooldown(definition.key,{stars:{[definition.key]:2}});
      if(index)await detail.getByRole('button',{name:'Next hero'}).click();
      await page.waitForFunction(name=>document.querySelector('#hero-details h1')?.textContent===name,Object.values(HERO_DEFINITIONS)[index].name);
      assert.match(await detail.locator('.skill-meta').innerText(),/Cooldown: 0s/);
@@ -375,7 +377,7 @@ test('hero party screen uses saved canonical data and stays contained across por
      assert.equal(await article.locator('h2').textContent(),ability.displayName,'panel shows the stepped skill');
      assert.equal(await article.getAttribute('data-locked'),String(!!ability.scaffold));
      const copy=heroSkillCopy(ability);
-     assert.deepEqual(await article.locator('p').allTextContents(),[...copy.lines,...(ability.cooldownSeconds!=null?[`Range: ${expectedSkillRange(ability,hero)} · Cooldown: ${ability.cooldownSeconds}s${ability.provisionalCooldown?' (provisional)':''}`]:[]),...(copy.rules||[])]);
+     assert.deepEqual(await article.locator('p').allTextContents(),[...copy.lines,...(ability.slot==='special'?[`Range: ${expectedSkillRange(ability,hero)} · Cooldown: ${formatHeroSpecialCooldown(hero)}s${ability.provisionalCooldown?' (provisional)':''}`]:[]),...(copy.rules||[])]);
      reachedSkills.push(`${hero.heroInstanceKey}:${ability.skillId}`);
     }
    }

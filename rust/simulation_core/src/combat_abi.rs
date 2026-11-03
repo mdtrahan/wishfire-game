@@ -336,6 +336,7 @@ impl Transport {
     fn execute(&mut self, op: Operation) -> Result<Value, Value> {
         match op {
             Operation::Describe {} => Ok(json!({"abi_version":VERSION,"content_version":CONTENT_VERSION,"schema":SCHEMA,"hz":SIM_HZ,
+                "special_clocks":{"slice.hero.fara":tuning::RAGE_FILL_SECONDS,"slice.hero.hondo":tuning::COMBO_FILL_SECONDS,"slice.hero.runa":tuning::SUPER_FILL_SECONDS,"slice.hero.kaja":tuning::POWER_STOCK_SECONDS},
                 "capabilities":["headless_slice_v1","initial_enemies","events_after","ack_events_v1","spawn_enemies","end_encounter","wfm_enemies","autonomous_phoenix","wave_chest","replace_permanent_inputs_v1"],
                 "limits":{"request_bytes":MAX_REQUEST,"response_bytes":MAX_RESPONSE,"worlds":2,"responses":8,"inputs":8,"heroes":4,"enemies":MAX_ENEMIES,"hazards":MAX_EFFECTS,"projectiles":MAX_EFFECTS,"retained_events":MAX_EVENTS,"event_step_reserve":MAX_EVENTS/2,"floor_min_extent":256,"floor_max_extent":16384},
                 "resources":{"worlds":self.worlds.count(),"responses":self.responses.count(),"inputs":self.inputs.len()}})),

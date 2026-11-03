@@ -1,3 +1,4 @@
+import {formatHeroSpecialCooldown} from '../src/core/heroSpecialCooldown.mjs';
 import {heroBasicSkill,heroSkillCopy} from './heroSkillCopy.mjs';
 import {renderHeroGear} from './heroGearUI.mjs';
 import {runtimeAssetUrl} from './runtimeAssetUrl.mjs';
@@ -5,7 +6,7 @@ import {computeCombatPower} from '../src/core/combatPower.mjs';
 import {HERO_DEFINITIONS,heroDefinition,heroSkillUnlocked} from '../src/core/heroDefinitions.mjs';
 import {createHeroProgressStore} from '../src/core/heroProgression.mjs';
 import {heroTicketLevelCost} from '../src/core/combatProgressionRules.mjs';
-import {STAR_MAX,STAR_EFFECTS,STAR_STAT_BONUS,RESONANCE_SLOTS,starUpCost,heroStars,heroGrowthBreakdown,heroStarSkillMultipliers} from '../src/core/heroGrowthRules.mjs';
+import {STAR_MAX,STAR_EFFECTS,STAR_STAT_BONUS,RESONANCE_SLOTS,starUpCost,heroStars,heroGrowthBreakdown} from '../src/core/heroGrowthRules.mjs';
 import {MODAL_CLOSE_MARK,installModalCloseStyles,paintModalClose,bindModalCloseKeys} from './modalClose.mjs';
 import {heroArtKey} from '../state/heroArtAssets.mjs';
 import {heroSpecialReach} from '../../src/core/arenaCombatRules.mjs';
@@ -174,7 +175,7 @@ export function renderHeroScreen({equipmentProgress,combatProgression,canvas,gam
   el('h2',selectedAbility.displayName,detail);
   el('small',selectedAbility.scaffold?'Late-game resonance · Not yet available':selectedAbility.slot==='passive'?'Passive':selectedAbility.slot==='basic'?'Always available':'Special',detail);
   for(const line of heroSkillCopy(selectedAbility).lines)el('p',line,detail);
-  if(selectedAbility.cooldownSeconds!=null){const seconds=selectedAbility.cooldownSeconds*heroStarSkillMultipliers(growth,hero.heroInstanceKey).specialCooldown;el('p',`Range: ${heroSkillRange(selectedAbility,hero)} · Cooldown: ${Number(seconds.toFixed(2))}s${selectedAbility.provisionalCooldown?' (provisional)':''}`,detail).className='skill-meta';}
+  if(selectedAbility.slot==='basic'||selectedAbility.slot==='special'){const seconds=selectedAbility.slot==='basic'?0:formatHeroSpecialCooldown(hero,growth);el('p',`Range: ${heroSkillRange(selectedAbility,hero)} · Cooldown: ${seconds}s${selectedAbility.provisionalCooldown?' (provisional)':''}`,detail).className='skill-meta';}
   for(const rule of heroSkillCopy(selectedAbility).rules||[])el('p',rule,detail);
 
   const tabs=el('nav');tabs.className='tabs';tabs.setAttribute('aria-label','Hero management');
