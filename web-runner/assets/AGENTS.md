@@ -6,7 +6,7 @@
 
 ## Ownership
 - `layouts.json`, `objectTypes.json`, and `enemies.json` are structured runtime data.
-- `simulation_core.wasm` and `simulation_core.manifest.json` are a matched generated pair from `rust/simulation_core/`. Rebuild both through `npm run rust:build-wasm`; release builders reject stale Rust source or binary hashes.
+- `simulation_core.wasm`, `simulation_core.manifest.json` and `../src/core/specialClockContent.mjs` form one matched generated release from `rust/simulation_core/`. Rebuild them through `npm run rust:build-wasm`; release builders reject stale Rust source or binary hashes.
 - `images/`, `gems/`, and `fonts/` are presentation assets referenced by render/runtime code and tests.
 
 ## Local Contracts

@@ -1,6 +1,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const {HERO_DEFINITIONS,PROGRESSION}=require('../web-runner/src/core/heroDefinitions.mjs');
+const {formatHeroSpecialCooldown}=require('../web-runner/src/core/heroSpecialCooldown.mjs');
 const {newHeroProgress,awardHeroEXP,createHeroProgressStore,settleBattleEXP,attachHeroProgress,saveHeroProgress}=require('../web-runner/src/core/heroProgression.mjs');
 test('progress records retain the four internal hero keys without retired combat resources',()=>{
  const store=createHeroProgressStore();assert.deepEqual(Object.keys(store.heroes),['Falie','Huun','Runa','Kojonn']);
@@ -14,7 +15,7 @@ test('each internal hero key has one Special clock, a passive and two resonances
   for(const field of ['passives','actionSlotsPerTurn','startingSP','maxSP','flowMode'])assert.equal(Object.hasOwn(definition,field),false,`${key}.${field} is retired`);
   for(const skill of definition.actives){
    for(const field of ['rank','ranks','skillRank'])assert.equal(Object.hasOwn(skill,field),false,`${skill.skillId}.${field} is retired`);
-   assert.equal(skill.unlockLevel,1);assert.ok(skill.description);assert.ok(skill.cooldownSeconds>=0);assert.ok(skill.durationSeconds>=0);assert.ok(skill.targetType);
+   assert.equal(skill.unlockLevel,1);assert.ok(skill.description);assert.equal(Object.hasOwn(skill,'cooldownSeconds'),false,`${key} Special clock is Rust-owned`);assert.ok(formatHeroSpecialCooldown(key)>0,`${key} Rust-backed Special preview is positive`);assert.ok(skill.durationSeconds>=0);assert.ok(skill.targetType);
   }
  }
 });

@@ -2,7 +2,7 @@ import {MODAL_CLOSE_MARK,installModalCloseStyles,paintModalClose} from './modalC
 import { combatObjectivePresentation, combatObjectiveReward, TRAINING_STATS, trainingCost, TRAINING_BONUS_PER_LEVEL } from '../src/core/combatProgressionRules.mjs';
 import { positionRewardReceipt, showRewardReceipt } from './rewardReceiptUI.mjs';
 import { createHeroCooldownStrip, HERO_COOLDOWN_LAYOUT } from './heroCooldownStrip.mjs';
-import { PARTY_SKILLS } from '../src/core/partySkillCatalog.mjs';
+import { PARTY_SKILLS, partySkillClock } from '../src/core/partySkillCatalog.mjs';
 import { BUFF_SIGNAL_FRAMES, BUFF_SIGNAL_SHEET } from '../../src/core/buffSignalRules.mjs';
 import { runtimeAssetUrl } from './runtimeAssetUrl.mjs';
 
@@ -198,7 +198,7 @@ export function createTrainingGroundUI({ progression }) {
   content.append(tabs);
   // One scroll list built from the shared party-skill catalog (same source as the HUD icons).
   const partyList = document.createElement('ul'); partyList.className = 'tg-party'; partyList.setAttribute('aria-label', 'Party skills');
-  const partyCards = {};
+  const partyCards = {}, partyClocks = {};
   const sheetUrl = runtimeAssetUrl('images/ui/buff-signals.png');
   for (const entry of PARTY_SKILLS) {
     const card = document.createElement('li'); card.className = 'tg-skill'; card.dataset.partySkill = entry.id; card.tabIndex = -1;
@@ -213,6 +213,7 @@ export function createTrainingGroundUI({ progression }) {
     const effect = document.createElement('p'); effect.textContent = entry.effect;
     const values = document.createElement('ul'); values.setAttribute('aria-label', `${entry.name} values`);
     for (const value of entry.values) { const item = document.createElement('li'); item.textContent = value; values.append(item); }
+    const clock = document.createElement('li'); values.append(clock); partyClocks[entry.id] = clock;
     card.append(icons, heading, effect, values); partyList.append(card); partyCards[entry.id] = card;
   }
   content.append(partyList);
@@ -241,6 +242,7 @@ export function createTrainingGroundUI({ progression }) {
   }
   function refresh() {
     const state = progression.state();
+    for (const entry of PARTY_SKILLS) partyClocks[entry.id].textContent = partySkillClock(entry, state.growth);
     balanceValue.textContent = String(state.wallet.incense);
     for (const stat of TRAINING_STATS) {
       const level = state.training[stat] || 0, cost = trainingCost(state, stat);
