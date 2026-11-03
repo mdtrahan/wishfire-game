@@ -725,5 +725,3 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - When a presentation owner moves, migrate test imports and exercise the new owner through its production call site. Source-text assertions against a removed duplicate cannot protect anchoring, geometry, visibility or paint order.
 
 - Camera ports must preserve production arena geometry and keep spotlight scheduling OFF. Compare identical captured host calls through every gameplay hash and ordered damage/death event; immutable rendering alone cannot prove simulation equality. Profile matched snapshots before attributing RAF tail changes to camera code.
-
-- Contract tests should own environmental inputs: execute routing with command stubs, create disposable Git fixtures, and compare import side effects with the incoming diff. Browser entry waits for the painted START and startup readiness; frame-dependent fixtures wait for their complete rendered signature.

@@ -59,7 +59,7 @@ test('boss defeat is free, retains the full ready milestone, and resumes farming
  const recoveredHeroes=state.entities.filter(actor=>actor.kind==='hero');
  assert.equal(new Set(recoveredHeroes.map(hero=>hero.recoveryFadeStartedAt)).size,1,'the squad shares one reveal start');
  assert.ok(recoveredHeroes.every(hero=>Number.isFinite(hero.footX)&&Number.isFinite(hero.footY)&&hero.x===hero.footX&&hero.y===hero.footY));
- // c899baed (retained by 4bc092d0) replaced the compact huddle with fixed 2-4-2 slots.
+ // b81135e7 replaced the compact huddle with fixed slots; ab077f9a fixed deployment order.
  const {HERO_FORMATION_SLOTS}=await import('../src/core/heroFormationGeometry.mjs');
  const {deriveCombatWorldStartFormation,deriveCombatOrdinaryPatrolBounds}=await import('../src/core/combatOrientation.mjs');
  const {centerX}=deriveCombatWorldStartFormation(recoveredHeroes.length),patrol=deriveCombatOrdinaryPatrolBounds(),centerY=(patrol.minY+patrol.maxY)/2;
