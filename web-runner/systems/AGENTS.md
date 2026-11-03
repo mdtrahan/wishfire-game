@@ -356,4 +356,4 @@
 
 - GPU actor masks are built/uploaded only for Ground Pound dust, their sole shader consumer. Preserve matched RGBA controls for dust and ordinary frames when optimizing transfers.
 
-- Spotlight framing contains the caster and attack targets; other actors may cross the frame edge while `spotlightCamera.current` exists, including its .5s return. That presentation frame retains participant IDs through return and clears on completion/reset. Outside spotlight framing, preserve the unchanged all-living-body containment guard. Simulation state and actor positions remain untouched.
+- Spotlight framing contains the caster and attack targets; other actors may cross the frame edge while `spotlightCamera.current` exists, including its .5s return. That presentation frame retains participant IDs through return and clears on completion/reset. Constrain each return frame against live participant bounds after interpolation; movement continues during the unchanged .5s zoom curve. Outside spotlight framing, preserve the unchanged all-living-body containment guard. Simulation state and actor positions remain untouched.
