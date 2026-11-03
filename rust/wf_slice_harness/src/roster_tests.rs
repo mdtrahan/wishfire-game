@@ -43,11 +43,11 @@ fn high_orc_is_armored_slow_and_critical_and_periodic_damage_still_work() {
     let normal = s.combat.damage(1, 4, 50., false, true, Element::Physical);
     assert!(normal < 50.);
     s.combat.actors[4].view.hp = hp;
-    s.combat.combat_rng = (0..100)
+    s.combat.combat_rng = (0..10_000)
         .map(Rng)
         .find(|r| {
             let mut r = *r;
-            r.chance(CRIT_CHANCE)
+            wf_combat::prd::Counter::default().roll(&mut r, CRIT_CHANCE)
         })
         .unwrap();
     let crit = s.combat.damage(1, 4, 50., true, true, Element::Physical);
@@ -158,11 +158,11 @@ fn enemy_poison_hit(
     s.combat.actors[4].poison_potency = potency;
     s.combat.actors[4].state(ActorState::Idle, 0., 0.);
     s.combat.actors[0].view.ward = 1_000_000.;
-    s.combat.combat_rng = (0..100)
+    s.combat.combat_rng = (0..10_000)
         .map(Rng)
         .find(|r| {
             let mut r = *r;
-            !r.chance(CRIT_CHANCE)
+            !wf_combat::prd::Counter::default().roll(&mut r, CRIT_CHANCE)
         })
         .unwrap();
     s.combat
@@ -720,11 +720,11 @@ fn hunters_and_bastorto_survive_the_strongest_baseline_hero_hit() {
         for critical in [false, true] {
             let mut s = fixture(kind);
             assert!(s.combat.actors[1].view.elevate.is_none());
-            s.combat.combat_rng = (0..100)
+            s.combat.combat_rng = (0..10_000)
                 .map(Rng)
                 .find(|r| {
                     let mut r = *r;
-                    r.chance(CRIT_CHANCE) == critical
+                    wf_combat::prd::Counter::default().roll(&mut r, CRIT_CHANCE) == critical
                 })
                 .unwrap();
             s.combat.split_strike(1, 4);

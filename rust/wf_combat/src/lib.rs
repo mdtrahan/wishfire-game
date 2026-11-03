@@ -26,6 +26,7 @@ pub mod marid;
 pub mod math;
 pub mod revival;
 pub mod rng;
+pub mod prd;
 pub mod separation;
 pub mod snapshot;
 pub mod spotlight;
@@ -77,6 +78,8 @@ pub struct Sim {
     pub spring_healing: f64,
     pub spawn_rng: Rng,
     pub combat_rng: Rng,
+    /// Actor-keyed binary-check history, including sources of in-flight orphaned hits.
+    pub prd: Vec<(u32, prd::State)>,
     pub snapshot: Snapshot,
     pub events: events::Events,
     #[cfg(feature = "reference-diagnostics")]
@@ -121,6 +124,7 @@ impl Sim {
         }
         cfg.spotlight = spotlight::validated(cfg.spotlight);
         let snapshot = Snapshot {
+            prd: Vec::with_capacity(128),
             time: 0.,
             combat_time: 0.,
             spotlight: None,
@@ -181,6 +185,7 @@ impl Sim {
             diagnostic_tier: 1,
             spawn_rng: Rng(seed ^ 0x6a09e667f3bcc909),
             combat_rng: Rng(seed ^ 0xbb67ae8584caa73b),
+            prd: Vec::with_capacity(128),
             snapshot,
             events: events::Events::new(),
             #[cfg(feature = "reference-diagnostics")]
@@ -295,6 +300,7 @@ impl Sim {
             return;
         }
         self.actors.retain(|a| a.view.state != ActorState::Dead);
+        self.prune_prd();
         self.deaths();
         self.enemy_statuses();
         self.bubble_aura();
@@ -461,6 +467,8 @@ impl Sim {
 
 #[cfg(test)]
 mod host_inputs_tests;
+#[cfg(test)]
+mod prd_tests;
 #[cfg(test)]
 mod kaja_mend_tests;
 

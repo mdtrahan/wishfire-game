@@ -79,7 +79,8 @@ impl Sim {
             self.cancel_boss_moves_on_death(id);
             return;
         }
-        if boss && self.actors[target].push_rng.chance(0.5) {
+        let a = &mut self.actors[target];
+        if boss && crate::prd::state(&mut self.prd, id).push_resist.roll(&mut a.push_rng, 0.5) {
             self.events.push(Event::KnockbackResisted { id });
             return;
         }

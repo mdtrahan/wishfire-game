@@ -108,6 +108,11 @@ fn spatial_warnings_preserve_armor_crit_and_partial_or_full_ward() {
         for seed in 0..32 {
             let mut bare = fixture(seed, kind, true, 0.);
             bare.actors[0].stats.evade = 0.;
+            // Include a guaranteed PRD crit alongside the fresh-counter seed cases.
+            if seed == 0 {
+                let source = bare.actors[4].view.id;
+                wf_combat::prd::state(&mut bare.prd, source).damage_crit.next = 68;
+            }
             let hp = bare.actors[0].view.hp;
             let mut expected_rng = bare.combat_rng;
             expected_rng.next(); // Exactly one crit draw, with no evade draw.
@@ -117,6 +122,10 @@ fn spatial_warnings_preserve_armor_crit_and_partial_or_full_ward() {
             assert!(damage > 0.);
             for ward in [damage * 0.5, 10000.] {
                 let mut shielded = fixture(seed, kind, true, ward);
+                if seed == 0 {
+                    let source = shielded.actors[4].view.id;
+                    wf_combat::prd::state(&mut shielded.prd, source).damage_crit.next = 68;
+                }
                 resolve(&mut shielded);
                 let loss = hp - shielded.actors[0].view.hp;
                 assert!(

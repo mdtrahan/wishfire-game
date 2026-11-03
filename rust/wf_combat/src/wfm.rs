@@ -102,7 +102,8 @@ impl Sim {
         let min = (base + low).max(floor);
         let max = (base + high).max(min);
         let rolled = min + libm::floorf(self.actors[i].ai_rng.range(0., 1.) * (max - min + 1.));
-        let crit = self.actors[i].ai_rng.range(0., 1.) <= 0.1;
+        let healer = &mut self.actors[i];
+        let crit = crate::prd::state(&mut self.prd, healer.view.id).heal_crit.roll(&mut healer.ai_rng, 0.1);
         let multiplier = if a.committed_stats().mag > 0. {
             (1. + a.committed_stats().mag / 10.).min(3.)
         } else {
