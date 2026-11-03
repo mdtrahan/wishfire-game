@@ -1,7 +1,9 @@
 // camera.rs, adapted only to WFM's full-height floor beneath the UI (D13′/D13″).
-export const COMBAT_VIEW = Object.freeze({ left: 0, right: 360, top: 42, bottom: 430, zoom: .5, squash: .75 });
+export const COMBAT_VIEW = Object.freeze({ left: 0, right: 360, top: 42, bottom: 476, zoom: .5, squash: .75 });
+// Reclaimed HUD space extends containment below the existing projection anchor.
+export const COMBAT_FRAME_Y = 236;
 export const CAMERA_MAX_DT = .05;
-const MID = (COMBAT_VIEW.top + COMBAT_VIEW.bottom) / 2;
+const MID = COMBAT_FRAME_Y;
 const ZOOM = COMBAT_VIEW.zoom, SQUASH = COMBAT_VIEW.squash;
 const OMEGA_X = 3.5, OMEGA_Y = 7, BOSS_ENTRY_Y = 540;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -40,7 +42,7 @@ export function createSliceCombatCamera() {
     contain(s, boss);
   }
   function contain(s, boss) {
-    const floor = s.geometry.floor, halfX = 180 / ZOOM, halfY = (COMBAT_VIEW.bottom - COMBAT_VIEW.top) / (2 * ZOOM * SQUASH);
+    const floor = s.geometry.floor, halfX = 180 / ZOOM, halfY = (MID - COMBAT_VIEW.top) / (ZOOM * SQUASH);
     cx = floor.max.x - floor.min.x < halfX * 2 ? (floor.min.x + floor.max.x) / 2 : clamp(cx, floor.min.x + halfX, floor.max.x - halfX);
     cy = floor.max.y - floor.min.y < halfY * 2 ? (floor.min.y + floor.max.y) / 2 : clamp(cy, floor.min.y + halfY, floor.max.y - halfY);
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;

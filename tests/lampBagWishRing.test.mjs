@@ -36,6 +36,41 @@ function sequenceRandom() {
   return () => ((index++ * 7) % 29) / 29;
 }
 
+test('compact Bag art preserves main Wish Ring sizes at reference and compact widths', () => {
+  for (const width of [360, 216]) {
+    const s = width / 360;
+    const measure = compact => {
+      const { doc, clock, art } = setup();
+      const w = (compact ? 41 : 82.078125) * s, h = (compact ? 36 : 71.15625) * s;
+      art.getBoundingClientRect = () => ({ left: 139 - w / 2, top: 115 - h / 2, width: w, height: h });
+      if (compact) art.closest = () => ({ getBoundingClientRect: () => ({ width }) });
+      const effect = beginLampBagWishRing(art, { doc, timers: clock, reducedMotion: () => false, random: sequenceRandom() });
+      effect.crest(1.4375, 400);
+      const burst = doc.body.children[0];
+      return { glow: parseFloat(burst.children[0].style['--wish-glow-size']), ring: parseFloat(burst.children.at(-1).style['--wish-ring-size']), stars: burst.children.filter(n => n.className === 'lamp-wish-ring-star').map(n => parseFloat(n.style.width)) };
+    };
+    const main = measure(false), compact = measure(true);
+    assert.ok(Math.abs(compact.glow - main.glow) < 1e-9);
+    assert.ok(Math.abs(compact.ring - main.ring) < 1e-9);
+    compact.stars.forEach((size, i) => assert.ok(Math.abs(size - main.stars[i]) < 1e-9));
+    if (width === 360) assert.equal(compact.stars.filter(size => size >= 10).length, 5);
+  }
+});
+
+test('right-edge Bag retains the full reference crest and visible stars inside the stage', () => {
+  const { doc, clock, art } = setup();
+  doc.documentElement = { clientWidth: 360, clientHeight: 640 };
+  art.closest = () => ({ getBoundingClientRect: () => ({ width: 360 }) });
+  art.getBoundingClientRect = () => ({ left: 313.5, top: 538, width: 41, height: 36 });
+  const effect = beginLampBagWishRing(art, { doc, timers: clock, reducedMotion: () => false, random: sequenceRandom() });
+  effect.crest(1.4375, 400);
+  const burst = doc.body.children[0], radius = 71.15625 * .61;
+  assert.ok(Math.abs(parseFloat(burst.style.left) + radius - 360) < 1e-9);
+  assert.equal(burst.style.top, '556px');
+  assert.equal(burst.children.at(-1).style['--wish-ring-size'], '28.462500000000002px');
+  assert.equal(burst.children.filter(n => n.className === 'lamp-wish-ring-star' && parseFloat(n.style.width) >= 10).length, 5);
+});
+
 test('bag Wish Ring scatters asymmetrically and fades while traveling 25 percent beyond its initial spread', () => {
   const { doc, timers, clock, art } = setup();
   const effect = beginLampBagWishRing(art, { doc, timers: clock, reducedMotion: () => false, random: sequenceRandom() });

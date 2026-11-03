@@ -1,7 +1,7 @@
-import { COMBAT_VIEW } from './rustCombatCamera.mjs';
+import { COMBAT_VIEW, COMBAT_FRAME_Y } from './rustCombatCamera.mjs';
 import { clamp01 as c, smooth } from './rustCombatEffects.mjs';
 // spotlight_camera.rs participant bounds and easing, fitted to WFM's unobstructed lane.
-const LEFT=14,RIGHT=346,TOP=COMBAT_VIEW.top+6,BOTTOM=COMBAT_VIEW.bottom-10,MID=(COMBAT_VIEW.top+COMBAT_VIEW.bottom)/2;
+const LEFT=14,RIGHT=346,TOP=COMBAT_VIEW.top+6,BOTTOM=COMBAT_VIEW.bottom-10,MID=COMBAT_FRAME_Y;
 const RETURN=.5,MAX_ZOOM=.8;
 const OFFENSIVE = new Set(['shadow', 'split', 'bubble_pop', 'arcane_pulse', 'ground_pound']);
 const box=(x,y,right,bottom)=>({x,y,right,bottom});

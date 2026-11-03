@@ -9,15 +9,16 @@ import {mkdir,writeFile} from 'node:fs/promises';
 const require=createRequire(import.meta.url),{detectChromeExecutable}=require('../tools/playwright_support.js');
 const directory=process.env.LAMP_QA_OUTPUT||'test-results/lamp-pause';
 const fixture=`<!doctype html><base href="/web-runner/"><link rel="stylesheet" href="/web-runner/assets/lampEquipmentUI.css">
-<section id="wishfire-lamp" style="left:0;top:0;width:360px;height:92px;font-size:11px"></section>
+<section id="wishfire-lamp" style="left:0;top:0;width:360px;height:46px;font-size:11px;--lamp-scale:1"></section>
 <script type="module">
 import {updateLampConveyor} from '/web-runner/systems/lampConveyorPresentation.mjs';
-import {createLampEconomy,generateLampItem} from '/web-runner/src/core/lampGear.mjs';
+import {createLampEconomy,generateLampItem,lampUpgradeCost} from '/web-runner/src/core/lampGear.mjs';
 const strip=document.querySelector('#wishfire-lamp'),data=createLampEconomy(42);
 data.lamp.conveyorActiveMs=100000;
 data.lamp.emissions=[];
 for(const age of [13000,8000,3000])data.lamp.emissions.push({item:generateLampItem(42,data.lamp.sequence++,0),issuedAt:100000-age,issuedActiveMs:100000-age,collected:false});
 window.renderConveyor=(paused=true,advance=0)=>{data.lamp.conveyorActiveMs+=advance;updateLampConveyor({strip,data,heroes:[],now:100000,paused,gearBounds:Array(9),tile:item=>'<button class="lamp-tile" data-id="'+item.instanceId+'"><span class="lamp-art"></span></button>'});};
+window.setStripProgress=fraction=>{data.lamp.capacityTier=2;data.lamp.killPoints=0;data.lamp.essence=lampUpgradeCost(data)*fraction;window.renderConveyor();};
 window.conveyorSnapshot=()=>[...strip.querySelectorAll('.lamp-conveyor-item')].map(n=>({id:n.dataset.id,x:n.getBoundingClientRect().x,time:n.getAnimations()[0]?.currentTime,delay:n.style.animationDelay,arrived:n.dataset.arrived==='true'}));
 window.renderConveyor();window.fixtureReady=true;
 </script>`;
@@ -32,7 +33,7 @@ test('conveyor keeps active-time positions through repeated modal pauses and hid
   for(const [width,height,dpr] of [[360,640,1],[216,384,2],[233,452,2],[316,452,2]]){
    const page=await browser.newPage({viewport:{width,height},deviceScaleFactor:dpr});
    try{
-    await page.route('**/conveyor-pause-fixture.html',route=>route.fulfill({contentType:'text/html',body:fixture.replace('width:360px',`width:${width}px`)}));
+    await page.route('**/conveyor-pause-fixture.html',route=>route.fulfill({contentType:'text/html',body:fixture.replace('width:360px',`width:${width}px`).replace('height:46px',`height:${46*width/360}px`).replace('--lamp-scale:1',`--lamp-scale:${width/360}`)}));
     await page.goto(url);await page.waitForFunction(()=>window.fixtureReady,null,{timeout:5000});
     const initial=await page.evaluate(()=>window.conveyorSnapshot());
     for(let cycle=0;cycle<4;cycle++){
@@ -60,7 +61,15 @@ test('conveyor keeps active-time positions through repeated modal pauses and hid
     await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
     const runningReturn=await page.evaluate(()=>window.conveyorSnapshot());
     assert.ok(runningReturn.every((n,i)=>Math.abs(n.x-final[i].x)<.1),'leaving while running restores the same active positions');
-    report.push({width,height,dpr,initial,final});await page.screenshot({path:`${directory}/${width}-resumed.png`});
+    const progress=[];
+    for(const fraction of [0,.625,1]){
+     await page.evaluate(f=>window.setStripProgress(f),fraction);
+     await page.waitForFunction(f=>{const strip=document.querySelector('#wishfire-lamp'),fill=strip.querySelector('.lamp-progress>span');return Math.abs(fill.getBoundingClientRect().width/strip.getBoundingClientRect().width-f)<.0001;},fraction);
+     const m=await page.evaluate(()=>{const strip=document.querySelector('#wishfire-lamp'),meter=strip.querySelector('.lamp-progress'),fill=meter.firstElementChild,scale=strip.getBoundingClientRect().width/360;return{meters:strip.querySelectorAll('.lamp-progress').length,width:meter.getBoundingClientRect().width/scale,height:meter.getBoundingClientRect().height/scale,bottom:meter.getBoundingClientRect().bottom-strip.getBoundingClientRect().bottom,border:getComputedStyle(strip).borderBottomWidth,tip:getComputedStyle(fill,':after').borderRightColor,level:strip.querySelector('.lamp-bag-level text').textContent,current:Number(meter.getAttribute('aria-valuenow')),required:Number(meter.getAttribute('aria-valuemax')),transition:getComputedStyle(fill).transitionDuration};});
+     assert.equal(m.meters,1);assert.ok(Math.abs(m.width-360)<.1);assert.ok(Math.abs(m.height-3)<.1);assert.ok(Math.abs(m.bottom-3*width/360)<.1);assert.equal(m.border,'0px');assert.equal(m.level,'3');assert.equal(m.current/m.required,fraction);assert.equal(m.tip,'rgb(241, 255, 248)');assert.equal(m.transition,'0.25s');
+     progress.push({fraction,...m});await page.screenshot({path:`${directory}/${width}-progress-${fraction}.png`});
+    }
+    report.push({width,height,dpr,initial,final,progress});await page.screenshot({path:`${directory}/${width}-resumed.png`});
    }finally{await page.close();}
   }
  }finally{await browser.close();server.kill();await mkdir(directory,{recursive:true});await writeFile(`${directory}/report.json`,JSON.stringify(report,null,2));}

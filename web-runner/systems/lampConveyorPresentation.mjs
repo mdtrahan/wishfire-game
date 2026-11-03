@@ -42,7 +42,7 @@ function bounceBag(strip){
 export function updateLampConveyor({strip,data,heroes,now,activeMs=data.lamp.conveyorActiveMs,paused=false,tile,gearBounds=[],error=''}){
  strip.dataset.conveyorPaused=String(paused);
  const reconstructing=!strip.querySelector('.lamp-conveyor');
- if(reconstructing)strip.innerHTML='<div class="lamp-strip-body"><div class="lamp-results lamp-conveyor" aria-label="Moving equipment conveyor"></div><div class="lamp-side"><button class="lamp-collect lamp-bag" data-action="collect" aria-label="Open equipment cache"><img class="lamp-bag-art" src="assets/images/lamp/equipment-bag.png" alt=""><span class="lamp-count"></span></button><button class="lamp-tier-badge" data-action="lamp-upgrades" aria-label="Bag upgrades"><span class="lamp-progress" role="progressbar" aria-label="Bag progress"><span></span><small class="lamp-exp-value"></small></span><span class="lamp-level-disc"><b></b><small>Bag</small></span></button></div></div>';
+ if(reconstructing)strip.innerHTML='<div class="lamp-strip-body"><div class="lamp-results lamp-conveyor" aria-label="Moving equipment conveyor"></div><div class="lamp-side"><div class="lamp-bag"><button class="lamp-bag-upgrades" data-action="lamp-upgrades" aria-label="Bag upgrades"><img class="lamp-bag-art" src="assets/images/lamp/equipment-bag.png" alt=""><svg class="lamp-bag-level" viewBox="336 25 20 18" aria-hidden="true"><defs><linearGradient id="lamp-level-rim" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff0b5"/><stop offset=".4" stop-color="#d5ab5b"/><stop offset="1" stop-color="#785024"/></linearGradient><linearGradient id="lamp-level-jewel" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#8650b0"/><stop offset=".42" stop-color="#602a87"/><stop offset="1" stop-color="#341447"/></linearGradient></defs><path d="M346 25.75L355.5 34L346 42.25L336.5 34Z" fill="url(#lamp-level-rim)" stroke="#382219" stroke-width=".7"/><path d="M346 27.2L353.7 34L346 40.8L338.3 34Z" fill="url(#lamp-level-jewel)"/><path d="M338.5 33.8L346 27.4L353.5 33.8" fill="none" stroke="#c7a3dc" stroke-opacity=".48" stroke-width=".45"/><text x="346" y="34.35" text-anchor="middle" dominant-baseline="central" font-family="Arial,sans-serif" font-size="12" font-weight="900" fill="#fff8dd" stroke="#291035" stroke-width="1.1" paint-order="stroke"></text></svg></button><button class="lamp-collect" data-action="collect" aria-label="Open equipment cache"><span class="lamp-count"></span></button></div></div></div><div class="lamp-progress" role="progressbar" aria-label="Bag progress"><span></span></div>';
  bagRecords.set(strip,data);
  const l=data.lamp,lane=strip.querySelector('.lamp-conveyor'),live=new Set();
  let status=strip.querySelector('.lamp-conveyor-notice');
@@ -52,13 +52,9 @@ export function updateLampConveyor({strip,data,heroes,now,activeMs=data.lamp.con
  const laneWidth=lane.getBoundingClientRect().width;
  if(laneWidth<=0)return;
  const scale=strip.getBoundingClientRect().width/360;
- // The lane now extends behind the bag; retain the accepted art size and pace.
- const width=(strip.getBoundingClientRect().width*.7275-4.2*parseFloat(getComputedStyle(strip).fontSize))*.228;
- const entryWidth=width*1.121;
- // Keep full art size; reduce the previous visible empty gap by exactly 40%.
- // One shared pace still drives the regular off-left emitter, never pair placement.
- const gap=(30*scale*5-entryWidth)*.6*.7;
- const pitch=entryWidth+gap*.6,speed=pitch/5;
+ // Four previews share the reclaimed lane, retaining independent 32px art.
+ const width=48*scale,entryWidth=width;
+ const speed=78*scale/5;
  lane.style.setProperty('--conveyor-start',-entryWidth+'px');
  const bag=strip.querySelector('.lamp-bag').getBoundingClientRect();
  const destination=bag.left+bag.width/2-lane.getBoundingClientRect().left-width/2;
@@ -84,6 +80,9 @@ export function updateLampConveyor({strip,data,heroes,now,activeMs=data.lamp.con
    conveyorAnimations.set(node,motion);
   }
   node.dataset.clockPaused=String(paused);
+  const target=node.getBoundingClientRect(),clip=lane.getBoundingClientRect();
+  // Clipped previews never offer a smaller or overlapping interactive target.
+  node.disabled=node.hidden||target.left<clip.left-.01||target.right>clip.right+.01;
   node.dataset.bestGain=bestGain;node.dataset.collected=String(e.collected);
   const arrow=node.querySelector('.lamp-review-arrow');
   if(bestGain>0&&!arrow){const badge=document.createElement('span');badge.className='lamp-review-arrow';badge.setAttribute('aria-hidden','true');badge.innerHTML='<span class="lamp-cp-direction up"></span>';node.querySelector('.lamp-art').append(badge);}else if(bestGain<=0)arrow?.remove();
@@ -91,5 +90,5 @@ export function updateLampConveyor({strip,data,heroes,now,activeMs=data.lamp.con
  for(const node of lane.querySelectorAll('.lamp-conveyor-item'))if(!live.has(node.dataset.id))node.remove();
  updateBagCount(strip);
  const level=l.capacityTier+1,{current,required,max,fraction}=lampUpgradeProgress(data),p=strip.querySelector('.lamp-progress');
- p.setAttribute('aria-valuenow',String(max?1:Math.min(current,required)));p.setAttribute('aria-valuemax',String(required??1));p.setAttribute('aria-valuetext',max?'Maximum bag level':formatCompactCount(current)+' of '+formatCompactCount(required)+' Bag progress');p.title=max?'MAX':current.toLocaleString('en-US')+' / '+required.toLocaleString('en-US');p.firstElementChild.style.width=fraction*100+'%';p.querySelector('small').textContent=max?'MAX':formatCompactCount(Math.floor(fraction*100))+'%';strip.querySelector('.lamp-level-disc b').textContent=level;
+ p.setAttribute('aria-valuenow',String(max?1:Math.min(current,required)));p.setAttribute('aria-valuemax',String(required??1));p.setAttribute('aria-valuetext',max?'Maximum bag level':formatCompactCount(current)+' of '+formatCompactCount(required)+' Bag progress');p.title=max?'MAX':current.toLocaleString('en-US')+' / '+required.toLocaleString('en-US');p.firstElementChild.style.width=fraction*100+'%';strip.querySelector('.lamp-bag-level text').textContent=level;strip.querySelector('.lamp-bag-upgrades').setAttribute('aria-label','Bag upgrades, level '+level);
 }

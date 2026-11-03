@@ -126,9 +126,9 @@ test(`WFM boss admission and observed Special framing at ${width}x${height} DPR$
       assert.ok(f.y >= f.floor.min.y + halfY - .003 && f.y <= f.floor.max.y - halfY + .003);
       // Slice boss conservative body extent: -370..+40 world Y.
       assert.ok((f.boss.y - 370 - f.y) * .5 * .75 + 236 >= 42 - .003);
-      assert.ok((f.boss.y + 40 - f.y) * .5 * .75 + 236 <= 430 + .003);
+      assert.ok((f.boss.y + 40 - f.y) * .5 * .75 + 236 <= 476 + .003);
       assert.ok((f.boss.x - 160 - f.x) * .5 + 180 >= 8 - .003 && (f.boss.x + 160 - f.x) * .5 + 180 <= 352 + .003);
-      for (const h of f.heroes) assert.ok(h.x >= 8 && h.x <= 352 && h.y >= 42 && h.y <= 430);
+      for (const h of f.heroes) assert.ok(h.x >= 8 && h.x <= 352 && h.y >= 42 && h.y <= 476);
     }
     assert.ok(Math.abs(initial[1].y - initial[0].y) < .003, 'Idle entry never cuts and snaps back');
     const start = proof.frames.findIndex(f => f.spotlight), first = proof.frames[start];

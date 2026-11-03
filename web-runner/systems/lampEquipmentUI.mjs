@@ -72,7 +72,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
  function close(){if(feedbacks.size){closeRequested=true;return;}closeRequested=false;resetHelper();open=false;upgradeReceipt=null;modal.hidden=true;lastKey='';lastFocus?.focus?.();}
  function action(fn){if(busy)return;notice='';busy=true;lastKey='';render();return pendingAction=(async()=>{try{await fn();}catch(e){notice=e.message;}finally{busy=false;lastKey='';render();}})();}
  function onClick(e){
-  const b=e.target.closest('button[data-action]');if(!b||busy)return;
+  const b=e.target.closest('button[data-action]');if(!b||b.disabled||busy)return;
   const kind=b.dataset.action,id=b.dataset.id;
   if(kind==='close')return close();
   if(kind==='inspect')return openCollection(id);
@@ -101,7 +101,7 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
   const data=economy.data,l=data?.lamp;if(!l){helper.hidden=true;return;}
   let selectors;
   if(open)selectors=upgradeOpen?['[data-action="upgrade"]','[data-action="close"]']:selectedItem?(selectedHero?['[data-action="equip"]','[data-action="cache"]']:['[data-action="hero"][data-id="Huun"]:has(.lamp-cp-direction.up)','[data-action="hero"]:has(.lamp-cp-direction.up)','[data-action="cache"]']):(disposalView?['[data-action="dismantle"]','[data-action="close"]']:['[data-action="auto-equip"]','[data-action="disposal"]','[data-action="close"]']);
-  else if(l.capacityTier===0)selectors=lampStoredCount(data)?['[data-action="collect"]']:(!(l.guide&LAMP_GUIDE.preview)&&l.essence>0||l.essence>=lampUpgradeCost(data))?['[data-action="lamp-upgrades"]']:['[data-action="collect"]'];
+  else if(l.capacityTier===0)selectors=lampStoredCount(data)?['[data-action="collect"]']:(!(l.guide&LAMP_GUIDE.preview)&&l.essence>0||l.essence>=lampUpgradeCost(data))?['[data-action="lamp-upgrades"]']:['.lamp-bag-upgrades'];
   const scope=open?dialog:strip,target=selectors?.map(s=>scope.querySelector(s+':not(:disabled)')).find(Boolean);
   if(!target){helper.hidden=true;return;}
   let r=target.getBoundingClientRect();const bounds=scope.getBoundingClientRect();
@@ -221,7 +221,9 @@ export function createLampEquipmentUI({canvas,economy,globals,eventBus,isPaused=
  }
  let bossFallbackVisible=false,bossFallbackReservePx=0;
  function position(){
-  const r=canvas.getBoundingClientRect(),s=r.width/360;Object.assign(strip.style,{left:r.left+'px',top:(r.top+488*s)+'px',width:r.width+'px',height:92*s+'px',fontSize:11*s+'px'});
+  const r=canvas.getBoundingClientRect(),s=r.width/360,nav=document.getElementById('game-meta-nav');
+  const bottom=nav&&!nav.hidden?nav.getBoundingClientRect().top:r.top+580*s;
+  strip.style.setProperty('--lamp-scale',s);Object.assign(strip.style,{left:r.left+'px',top:(bottom-46*s)+'px',width:r.width+'px',height:46*s+'px',fontSize:11*s+'px'});
   positionRewardReceipt(canvas);
   modal.style.setProperty('--bag-scale',s);modal.style.setProperty('--modal-close-scale',s);
   Object.assign(modal.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:(upgradeOpen?r.height:Math.min(r.height,480*s))+'px'});

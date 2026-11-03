@@ -6,7 +6,7 @@ import { BUFF_SIGNAL_FRAMES, BUFF_SIGNAL_SHEET, projectBuffSignals } from '../..
 import { partySkillFor } from '../src/core/partySkillCatalog.mjs';
 
 // questTop keeps the mini-quest's whole box above the party buff row (row top = top - 14).
-export const HERO_COOLDOWN_LAYOUT = Object.freeze({ slots: 8, width: 344, height: 41.28, top: 441.6, questTop: 370 });
+export const HERO_COOLDOWN_LAYOUT = Object.freeze({ slots: 8, width: 344, height: 41.28, top: 487.6, questTop: 416 });
 
 // Party order and meters come directly from the Rust projection.
 export function heroCooldownSlots(entities = [], globals = {}) {
@@ -63,10 +63,12 @@ export function createHeroCooldownStrip({ onHero = () => {}, onPartySkill = () =
     const style = document.createElement('style'); style.id = 'hero-cooldown-style';
     style.textContent = `
       .hero-cooldowns{position:absolute;left:0;width:344px;height:41.28px;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px;align-items:center;pointer-events:none}
-      .hero-cooldown{position:relative;box-sizing:border-box;pointer-events:auto;cursor:pointer;width:100%;aspect-ratio:1;overflow:hidden;border:1px solid #c4a775;border-radius:3px;background:radial-gradient(#667277,#253039);box-shadow:inset 0 0 0 1px #151618,0 1px 3px #0008}
+      .hero-cooldown{position:relative;box-sizing:border-box;pointer-events:auto;cursor:pointer;width:40px;height:40px;justify-self:center}
+      .hero-cooldown-face{position:absolute;inset:.25px;box-sizing:border-box;overflow:hidden;border:1px solid #c4a775;border-radius:3px;background:radial-gradient(#667277,#253039);box-shadow:inset 0 0 0 1px #151618,0 1px 3px #0008}
       .hero-cooldown img{position:absolute;width:235%;height:auto;max-width:none;left:-67.5%;top:-22%}
-      .hero-cooldown::after{content:'';position:absolute;inset:0;background:#1010108f;backdrop-filter:grayscale(1);mask-image:conic-gradient(from 0deg,transparent 0deg calc(360deg - var(--cooldown,0deg)),#000 calc(360deg - var(--cooldown,0deg)) 360deg)}
-      .hero-cooldown[data-state=empty]{pointer-events:none;cursor:default;border-color:#a58d66;background:linear-gradient(#34332d9c,#252722b5);box-shadow:inset 0 0 0 1px #17191955}
+      .hero-cooldown-face::after{content:'';position:absolute;inset:0;background:#1010108f;backdrop-filter:grayscale(1);mask-image:conic-gradient(from 0deg,transparent 0deg calc(360deg - var(--cooldown,0deg)),#000 calc(360deg - var(--cooldown,0deg)) 360deg)}
+      .hero-cooldown[data-state=empty]{pointer-events:none;cursor:default}
+      .hero-cooldown[data-state=empty] .hero-cooldown-face{border-color:#a58d66;background:linear-gradient(#34332d9c,#252722b5);box-shadow:inset 0 0 0 1px #17191955}
       .hero-cooldown[data-state=ko] img,.hero-cooldown[data-state=locked] img{filter:grayscale(1);opacity:.45}
       .hero-buff{display:block;flex:none;background:url('${runtimeAssetUrl(BUFF_SHEET_PATH)}') no-repeat;background-size:${BUFF_SIGNAL_SHEET.columns * 100}% ${BUFF_SIGNAL_SHEET.rows * 100}%;image-rendering:auto}
       .hero-buff-party{position:absolute;left:0;width:344px;height:${BUFF_PARTY_ICON}px;display:flex;justify-content:center;gap:${BUFF_PARTY_GAP}px;pointer-events:none}
@@ -92,6 +94,7 @@ export function createHeroCooldownStrip({ onHero = () => {}, onPartySkill = () =
   };
   const slots = Array.from({ length: HERO_COOLDOWN_LAYOUT.slots }, () => {
     const slot = document.createElement('div'); slot.className = 'hero-cooldown'; slot.setAttribute('role', 'button'); slot.tabIndex = -1;
+    slot.face = document.createElement('div'); slot.face.className = 'hero-cooldown-face'; slot.append(slot.face);
     slot.badges = document.createElement('div'); slot.badges.className = 'hero-buffs'; slot.badges.setAttribute('aria-hidden', 'true');
     slot.addEventListener('click', event => { event.stopPropagation(); if (slot.dataset.heroKey) onHero(slot.dataset.heroKey); });
     element.append(slot); return slot;
@@ -111,8 +114,8 @@ export function createHeroCooldownStrip({ onHero = () => {}, onPartySkill = () =
         // Retry transient failures so a dropped request never leaves a blank clock.
         let attempts = 0; image.addEventListener('error', () => { if (++attempts < 3) setTimeout(() => { image.src = runtimeAssetUrl(hero.path) + `${runtimeAssetUrl(hero.path).includes('?') ? '&' : '?'}retry=${attempts}`; }, 400 * attempts); });
         image.src = runtimeAssetUrl(hero.path);
-        slot.replaceChildren(image, slot.badges); slot.dataset.uid = String(hero.uid); slot.dataset.heroKey = hero.heroKey;
-      } else if (!hero && slot.dataset.uid) { slot.replaceChildren(); delete slot.dataset.uid; delete slot.dataset.heroKey; }
+        slot.face.replaceChildren(image, slot.badges); slot.dataset.uid = String(hero.uid); slot.dataset.heroKey = hero.heroKey;
+      } else if (!hero && slot.dataset.uid) { slot.face.replaceChildren(); delete slot.dataset.uid; delete slot.dataset.heroKey; }
       syncBuffIcons(slot.badges, (hero ? signals.heroes[String(hero.uid)] || [] : []).map(group => `hero-${group}`));
       const label = !hero ? `Empty hero slot ${index + 1}` : `${hero.name}: ${hero.status === 'cooldown' ? `special meter ${Math.round((1 - hero.fraction) * 100)} percent` : hero.status === 'ready' ? 'special ready; casting waits for conditions and target' : hero.status === 'ko' ? 'KO' : 'special locked'}. Open hero skills`;
       slot.setAttribute('aria-label', label);
