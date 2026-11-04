@@ -1,0 +1,68 @@
+{
+  "changed_functions": {
+    ".beads/commit-check/ORKA-63bf.11.json": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/camera.rs": [
+      "change",
+      "useful_height",
+      "excess"
+    ],
+    "rust/wf_app/src/motion.rs": [
+      "age"
+    ],
+    "rust/wf_app/src/render/crowd_tests.rs": [
+      "x"
+    ],
+    "rust/wf_app/src/render/groove.rs": [
+      "t"
+    ],
+    "rust/wf_app/src/render/projectiles.rs": [
+      "d"
+    ],
+    "rust/wf_app/src/render/spotlight.rs": [
+      "delta"
+    ],
+    "rust/wf_app/src/testing.rs": [
+      "row"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 9,
+    "staged_line_count": 268,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/commit-check/ORKA-63bf.11.json",
+    "rust/wf_app/AGENTS.md",
+    "rust/wf_app/src/camera.rs",
+    "rust/wf_app/src/motion.rs",
+    "rust/wf_app/src/render/crowd_tests.rs",
+    "rust/wf_app/src/render/groove.rs",
+    "rust/wf_app/src/render/projectiles.rs",
+    "rust/wf_app/src/render/spotlight.rs",
+    "rust/wf_app/src/testing.rs"
+  ],
+  "issue_id": "ORKA-63bf.12",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/commit-check/ORKA-63bf.11.json": "0cd6e59261ddab6ea7f483f8c9227230ec17d541",
+    "rust/wf_app/AGENTS.md": "e579fb78ed4a100df0705d9f41ff70ec65581aa7",
+    "rust/wf_app/src/camera.rs": "b696664c5d3f3957fb9d9e20b194c13699c4448e",
+    "rust/wf_app/src/motion.rs": "e7ad18f6166665f456c7ba4eb0c7a3a38256a164",
+    "rust/wf_app/src/render/crowd_tests.rs": "776f67f8ad0034a131256b3686dfb1fbdb17b1fc",
+    "rust/wf_app/src/render/groove.rs": "cca992df5f0454afbf8606512f5695569b6ba6a7",
+    "rust/wf_app/src/render/projectiles.rs": "65251a55694004ea1b9d8e50c4ec11dc6fbb03b6",
+    "rust/wf_app/src/render/spotlight.rs": "f2e2fa253bfaaf97cb18fcc524f72e695425c2dc",
+    "rust/wf_app/src/testing.rs": "23339aeba0b61c52a8704baa8552d160402569d6"
+  }
+}
