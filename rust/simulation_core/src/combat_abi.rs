@@ -835,6 +835,18 @@ impl World {
         }
         Ok(after)
     }
+    /// One exact step with no commands and no host end, for native hosts.
+    pub fn step_now(&mut self) -> Result<usize, Value> {
+        self.step(StepRequest { commands: Vec::new(), end_encounter: None,
+            encounter_id: self.encounter_id.clone(), expected_previous_step: self.sim.step_number.to_string() })
+    }
+    /// Host end of the encounter (teardown facts only), for native hosts.
+    pub fn end_now(&mut self, reason: EndReason) -> Result<usize, Value> {
+        self.step(StepRequest { commands: Vec::new(), end_encounter: Some(reason),
+            encounter_id: self.encounter_id.clone(), expected_previous_step: self.sim.step_number.to_string() })
+    }
+    /// Host-presented stage view (never read by combat).
+    pub fn set_stage(&mut self, stage: StageView) { self.sim.snapshot.stage = stage; }
     pub fn sim(&self) -> &Sim { &self.sim }
     pub fn snapshot(&self) -> &Snapshot { self.sim.snapshot() }
     pub fn encounter_id(&self) -> &str { &self.encounter_id }

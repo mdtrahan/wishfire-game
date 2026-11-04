@@ -1,0 +1,16 @@
+[package]
+name = "wf_app"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Wishfire Rust app: macroquad client over the typed combat host."
+
+[dependencies]
+wf_combat = { path = "../wf_combat", features = ["serde"] }
+simulation_core = { path = "../simulation_core" }
+macroquad = { version = "0.4", default-features = false }
+nanoserde = { version = "0.2", default-features = false, features = ["json", "std"] }
+serde_json = "1"
+
+[features]
+crowd-proof = []

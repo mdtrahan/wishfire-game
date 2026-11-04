@@ -19,7 +19,7 @@
 - Fixture-driven behavior must match `tests/fixtures/*.csv` and JS packet expectations.
 - Do not flip ownership of a new rule family without updating Rust, JS packet routing, shadow markers, WASM, fixtures, and tests together.
 
-- `simulation_core/src/combat_abi.rs` owns the headless `wf_combat_call` JSON bridge and independent input/response/world registries. Its `describe.content_version` identifies the content definitions and must match the WFM host and generated manifest before startup. Its additive `spawn` operation atomically validates enemy batches, retains host identities and permits the host's next wave after an empty field. Only CP/meta RNG scalars remain; all combat uses this ABI.
+- `simulation_core/src/combat_abi.rs` owns the headless `wf_combat_call` JSON bridge and independent input/response/world registries. Its `World` and encounter inputs are public: native hosts (`wf_app`) call `create`/`step_now`/`spawn_batch`/`wave_chest`/`ordinary_clear`/`ack` directly and read the typed snapshot; the JSON transport wraps the same methods, and `typed_world_matches_json_transport` pins their equality. Its `describe.content_version` identifies the content definitions and must match the WFM host and generated manifest before startup. Its additive `spawn` operation atomically validates enemy batches, retains host identities and permits the host's next wave after an empty field. Only CP/meta RNG scalars remain; all combat uses this ABI.
 
 ## Work Guidance
 - CP durability uses `wf_combat::formulas::mitigation_multiplier`, matching the browser CP helper's 100-point armor scale.
@@ -37,6 +37,8 @@
 ## Child DOX Index
 - `wf_combat/AGENTS.md` - extracted combat mechanics and explicit host inputs; independent of production in step 1.
 - `wf_slice_harness/AGENTS.md` - frozen slice director, rewards, fixtures and equivalence proof.
+- `wf_app/AGENTS.md` - Rust app: macroquad client over the typed combat host (ORKA-63bf).
+- `wf_pack/` - build-time atlas packer for `web-runner/assets/puppets` and chapter arenas; output `rust/wf_app/gen/` stays untracked.
 
 - Energy is a macro balance: quest entry spends it, combat actions do not. Purple recovery remains active. Rust decides combat defeat; recovery never spends combat energy.
 

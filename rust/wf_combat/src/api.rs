@@ -348,10 +348,77 @@ pub struct PhoenixChannelView {
     pub progress: f32,
 }
 
+/// Host-presented stage phase (slice director lineage). The host fills `Snapshot::stage`;
+/// combat never reads it and `state_hash` never includes it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
+pub enum StagePhase {
+    #[default]
+    Lull,
+    Spike,
+    Boss,
+    BossEscalation,
+    Victory,
+}
+
+/// Host-presented stage view for the client HUD and scene transitions.
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct StageView {
+    pub phase: StagePhase,
+    pub wave: u32,
+    /// Seconds since stage start (resets on wipe).
+    pub elapsed: f32,
+    /// Seconds until the boss is forced in (max wait), 0 once arrived.
+    pub boss_eta: f32,
+    pub escalation_level: u32,
+    pub wipes: u32,
+    pub kills: u32,
+    /// Mini-wave counter within the stage (1-based) and how many precede the boss.
+    pub mini_wave: u32,
+    pub mini_waves_total: u32,
+    /// Boss/reward tier of the current stage.
+    pub tier: u8,
+    pub buffs: PartyBuffs,
+    /// Screen darkness 0..1 during scene changes (wipe reset or boss-defeat advance).
+    pub fade: f32,
+}
+
+/// Slice chest reward kinds; WFM chests carry no reward, so this stays presentation data.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
+pub enum Reward {
+    FullHeal,
+    Attack,
+    Defense,
+    Range,
+    AttackSpeed,
+    MaxHp,
+}
+
+/// Party-wide multipliers from chests (1.0 = none).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PartyBuffs {
+    pub attack: f32,
+    pub defense: f32,
+    pub range: f32,
+    pub attack_speed: f32,
+}
+impl Default for PartyBuffs {
+    fn default() -> Self {
+        Self { attack: 1., defense: 1., range: 1., attack_speed: 1. }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Snapshot {
     /// Actor-keyed PRD history, including actors removed while their attacks remain in flight.
     pub prd: Vec<(u32, crate::prd::State)>,
+    /// Live chests (copied from the sim each refresh).
+    pub chests: Vec<crate::chest::ChestView>,
+    /// Host-presented stage view; never touched by combat.
+    pub stage: StageView,
     /// Presentation clock: advances every step, including spotlight and hit-stop steps.
     pub time: f64,
     /// Combat clock: frozen during spotlights and hit-stop.
@@ -554,6 +621,32 @@ pub enum Event {
         groove: Groove,
         seconds: f32,
     },
+    // Host observations (slice director lineage): pushed by the host for presentation,
+    // never emitted by combat itself.
+    WaveReset,
+    BossArrived {
+        id: u32,
+    },
+    Escalated {
+        level: u32,
+    },
+    StageCleared,
+    /// A mini-wave's spawn markers appeared; enemies follow after the marker countdown.
+    WaveIncoming {
+        mini_wave: u32,
+        count: u32,
+    },
+    ChestDropped {
+        id: u32,
+    },
+    ChestOpened {
+        id: u32,
+        opener: u32,
+        reward: Reward,
+        tier: u8,
+    },
+    /// The screen is fully dark; the scene reset happens now (client clears bodies/effects).
+    SceneReset,
     /// Opaque reference-host observation, never interpreted by combat.
     #[cfg(feature = "reference-diagnostics")]
     HostObservation {
@@ -811,3 +904,5 @@ pub struct TrialOutcome {
     pub reaction_delay: f32,
     pub damage_taken: f32,
 }
+
+pub use crate::chest::{ChestState, ChestView};

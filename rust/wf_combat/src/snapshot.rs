@@ -53,6 +53,8 @@ impl Sim {
     pub fn refresh_snapshot(&mut self) {
         self.snapshot.prd.clear();
         self.snapshot.prd.extend(self.prd.iter().copied());
+        self.snapshot.chests.clear();
+        self.snapshot.chests.extend(self.chests.iter().copied());
         self.snapshot.arena_min = self.floor.min;
         self.snapshot.arena_max = self.floor.max;
         self.snapshot.step = self.step_number;

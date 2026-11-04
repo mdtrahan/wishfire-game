@@ -9,14 +9,14 @@ const CHEST_FRONT_GAP: f32 = 24.;
 const CHEST_STAND_TOLERANCE: f32 = 2.;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ChestState { Closed, Opening, Open }
-#[derive(Clone, Copy, Debug)]
-pub struct ChestView { pub id: u32, pub pos: Vec2, pub state: ChestState, pub state_age: f32, pub age: f32 }
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ChestView { pub id: u32, pub pos: Vec2, pub state: ChestState, pub state_age: f32, pub age: f32, pub reward: Option<Reward> }
 impl Sim {
     pub fn drop_wave_chest(&mut self) {
         self.encounter.complete = true;
         let id = self.next_id; self.next_id += 1;
         self.chests.clear();
-        self.chests.push(ChestView { id, pos: (self.floor.min + self.floor.max) * 0.5, state: ChestState::Closed, state_age: 0., age: 0. });
+        self.chests.push(ChestView { id, pos: (self.floor.min + self.floor.max) * 0.5, state: ChestState::Closed, state_age: 0., age: 0., reward: None });
         self.chest_opener = None; self.chest_approach = None;
     }
     pub fn wave_chest_ready(&self) -> bool {

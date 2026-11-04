@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="data:,">
+<title>Wishfire</title>
+<style>
+html, body { margin: 0; padding: 0; width: 100%; height: 100%; height: 100dvh; overflow: hidden; background: #000; overscroll-behavior: none; }
+canvas { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
+</style>
+</head>
+<body>
+<canvas id="glcanvas" tabindex="0" aria-label="Wishfire"></canvas>
+<!-- The strict-mode bundle assigns this plugin hook globally. -->
+<script>var register_plugin;</script>
+<script src="mq_js_bundle.js"></script>
+<script>
+const gameCanvas = document.getElementById("glcanvas");
+gameCanvas.addEventListener("pointerdown", () => gameCanvas.focus());
+// The bundle runs on_init before Rust main, so the initial scene has no flag race.
+miniquad_add_plugin({
+  name: "wf_app", version: 1,
+  on_init() {
+    const params = new URLSearchParams(location.search);
+    wasm_exports.wf_client_vfx_dpi(devicePixelRatio);
+    wasm_exports.wf_client_vfx_resolution(Number(params.get("vfxres") ?? 3), Number(params.get("ps1") !== "0"));
+    wasm_exports.wf_client_qa(Number(params.has("qa")));
+    if (params.has("qa") && params.has("seed")) wasm_exports.wf_client_qa_seed(Number(params.get("seed")));
+  }
+});
+load("wf_app.wasm?v=" + (document.currentScript?.dataset.rev ?? Date.now()));
+gameCanvas.focus();
+const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+function syncMotionPreference() {
+  if (typeof wasm_exports !== 'undefined' && wasm_exports?.wf_client_reduced_motion) {
+    wasm_exports.wf_client_reduced_motion(Number(motionPreference.matches));
+  } else { requestAnimationFrame(syncMotionPreference); }
+}
+function watchDpr() {
+  matchMedia(`(resolution: ${devicePixelRatio}dppx)`).addEventListener('change', () => {
+    if (typeof wasm_exports !== 'undefined') wasm_exports.wf_client_vfx_dpi(devicePixelRatio);
+    window.dispatchEvent(new Event('resize'));
+    watchDpr();
+  }, { once: true });
+}
+watchDpr();
+motionPreference.addEventListener('change', syncMotionPreference);
+syncMotionPreference();
+</script>
+</body>
+</html>
