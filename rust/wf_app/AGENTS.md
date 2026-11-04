@@ -12,7 +12,7 @@
 - Boot lands on the Quests map; `?qa&seed=N` boots straight into combat (`startCombatForQA`) and fixes the seed; keys 1/2/4 speed, P pause, R restart, B summons an available boss (same as the Summon Boss button). `wasm_exports.wf_app_probe(i)`: 0 step, 1 wave, 2 combat time, 3 hash low bits, 4 live enemies, 5 fps, 6 boss state (0 locked, 1 available, 2 armed, 3 active), 7 boss seconds left, 8 cleared bosses.
 - Art comes from `gen/` (packed by `rust/wf_pack` from `web-runner/assets/puppets` + chapter arenas) and `web-runner/assets/rust-combat/manifest.json` (effects, decals, font). `build.rs` fingerprints both; a stale atlas fails loading with a visible message.
 - Build and stage with `tools/build_wf_app.sh`; review at `tools/serve_wf_app.sh` on 127.0.0.1:8807. `gen/`, `web/gen`, `web/art`, `web/*.wasm` stay untracked.
-- Tests: `cargo test -p wf_app` (needs `gen/` packed). Ten tests are `#[ignore]`d with reasons: slice-director scenarios to re-enable on the WFM host loop (ORKA-63bf.6) and Mirewing art outside the live roster.
+- Tests: `cargo test -p wf_app` (needs `gen/` packed). Client scenarios run on the real host loop through `testing::HostRun` (a seeded `wf_host::Session`, level-1 party, one 30 Hz step per `step()`, last snapshot kept across attempt gaps): camera containment through the Chapter 1 boss and attack facing over 18000 steps. Two `#[ignore]`d tests are bounded crowd search tools, not gates. Retired slice-only scenarios (sim spotlight playback, Healing Spring glow, Mirewing art, the 32-High-Orc crowd pin, the boss-intro camera cut) are noted in place with their reasons (ORKA-63bf.12).
 
 ## Child DOX Index
 - None.

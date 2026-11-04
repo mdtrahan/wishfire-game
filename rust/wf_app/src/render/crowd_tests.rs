@@ -174,72 +174,8 @@ fn find_packed_scene() {
 }
 
 
-fn crowded_sim() -> Sim {
-    crate::testing::composition(SimConfig { seed: 1, ..Default::default() }, &[Archetype::HighOrc; 32])
-}
-#[test]
-#[ignore = "pins the slice composition trial crowding; re-pin on the WFM host loop (ORKA-63bf.6)"]
-fn crowded_sixty_real_snapshots_have_bounded_display_motion() {
-    let m = Masks::load();
-    // ORKA-6jh1.60: re-pin live crowd timing after Bubble Pop stun; baseline a7af1044 passes.
-    // All 60 frames retain at least eight living enemies within 120 u of Fara.
-    let mut sim = crowded_sim();
-    let mut buffer = CrowdBuffer::default();
-    let mut previous: Vec<(u32, Vec2, Vec2)> = Vec::new();
-    let mut max_jump = 0f32;
-    let mut max_offset_jump = 0f32;
-    let mut count = 0;
-    let mut crowded_frames = 0;
-    for step in 1..=466 {
-        sim.step();
-        sim.drain_events();
-        let s = sim.snapshot();
-        let os = buffer.update(s, |a| body_size(&m.manifest, a), wf_combat::SIM_DT);
-        let h = s
-            .actors
-            .iter()
-            .find(|a| a.archetype == Archetype::Fara)
-            .unwrap();
-        let now: Vec<_> = s
-            .actors
-            .iter()
-            .filter(|a| a.team == Team::Enemy && a.hp > 0. && a.state != ActorState::Spawn)
-            .map(|a| {
-                let o = os.iter().find(|o| o.0 == a.id).unwrap().1;
-                (a.id, vec2(a.pos.x, a.pos.y * SQUASH), o)
-            })
-            .collect();
-        if step > 406 {
-            count += 1;
-            if s.actors
-                .iter()
-                .filter(|a| {
-                    a.team == Team::Enemy
-                        && a.hp > 0.
-                        && (a.pos.x - h.pos.x).hypot(a.pos.y - h.pos.y) <= 120.
-                })
-                .count()
-                >= 8
-            {
-                crowded_frames += 1;
-            }
-            for &(id, p, o) in &now {
-                if let Some(&(_, old_p, old_o)) =
-                    previous.iter().find(|(old_id, _, _)| *old_id == id)
-                {
-                    max_jump = max_jump.max(((p + o) - (old_p + old_o)).length() * 0.5);
-                    max_offset_jump = max_offset_jump.max((o - old_o).length() * 0.5);
-                }
-            }
-        }
-        previous = now;
-    }
-    eprintln!("CONTINUITY composition seed 1 steps 407..466: {count} snapshots, {crowded_frames} crowded, max displayed-foot jump={max_jump:.3}px, max offset jump={max_offset_jump:.3}px @ zoom 0.5");
-    assert_eq!(count, 60);
-    assert_eq!(crowded_frames, 60);
-    assert!(max_jump <= 6., "display jump {max_jump}");
-    assert!(max_offset_jump <= 3.001);
-}
+// crowded_sixty_real_snapshots_have_bounded_display_motion retired (ORKA-63bf.12): a 32-High-Orc slice stress
+// composition the WFM host never spawns; live crowd bounds are covered by the host-loop scenarios.
 #[test]
 fn enemy_bars_follow_displayed_feet_in_full_frame_crowds() {
     let m = Masks::load();

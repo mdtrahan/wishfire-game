@@ -925,50 +925,8 @@ mod tests {
         assert!(live.lingering.is_empty());
         assert_eq!(live.director.count, 0);
     }
-    #[test]
-    #[ignore = "slice director scenario; re-enable on the WFM host loop (ORKA-63bf.6)"]
-    fn real_sim_playback_releases_packages_and_off_cancels() {
-        // Full stage playback now reaches Mirewing during this window; muzzle geometry
-        // reads its packed cast clip, so the fixture needs the real actor manifest.
-        let m: Manifest = nanoserde::DeJson::deserialize_json(include_str!("../../gen/assets.json")).unwrap();
-        let mut sim = crate::testing::sim_with(SimConfig {
-            seed: 69, // Reward reweighting invalidated seed43; the .67/.68 integration re-pinned this window.
-            spotlight: wf_combat::SpotlightConfig::AGGRESSIVE,
-            ..Default::default()
-        });
-        let mut live = Spotlight::default();
-        let mut bg = Presentation::default();
-        let mut bodies = Corpses::default();
-        let mut releases = 0;
-        let mut cancelled = false;
-        for _ in 0..3990 {
-            let old = sim.snapshot().clone();
-            sim.advance(wf_combat::SIM_DT);
-            let events = sim.drain_events();
-            live.ingest(
-                &m,
-                events,
-                sim.snapshot(),
-                &old,
-                &mut bg,
-                &mut bodies,
-                1. / 30.,
-            );
-            if live.ready(&m, sim.snapshot()) {
-                sim.release_spotlight();
-                assert!(sim.snapshot().spotlight.is_none(), "animation completion did not release spotlight");
-                releases += 1;
-            }
-            if releases >= 2 && sim.snapshot().spotlight.is_some() && !cancelled {
-                sim.set_spotlight(wf_combat::SpotlightConfig::OFF);
-                cancelled = true;
-                assert!(sim.snapshot().spotlight.is_none());
-            }
-        }
-        assert!(releases >= 2, "expected two animation-completion releases, got {releases}");
-        assert!(cancelled, "no mid-spotlight OFF cancellation after {releases} releases at t={}", sim.snapshot().time);
-        assert!(live.director.alpha == 0. && live.director.phase == Phase::Idle);
-    }
+    // real_sim_playback_releases_packages_and_off_cancels: slice sim-spotlight scenario retired (ORKA-63bf.12);
+    // WFM combat runs with SpotlightConfig::OFF and the client director owns spotlight presentation.
     #[test]
     fn phases_cancel_reset_and_missing_end_never_stick() {
         let mut d = Director::default();

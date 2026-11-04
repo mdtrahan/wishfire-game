@@ -271,62 +271,37 @@ mod tests {
         );
     }
     #[test]
-    #[ignore = "slice director scenario; re-enable on the WFM host loop (ORKA-63bf.6)"]
-    fn attacking_heroes_show_target_facing_in_seeded_combat_and_spotlights() {
-        // ORKA-6jh1.76: flat enemy poison uses seed1 for all four Performing within the same18000 steps.
+    fn attacking_heroes_show_target_facing_in_seeded_combat() {
+        // WFM host loop (ORKA-63bf.12): sim spotlights are off in WFM combat, so only the plain mode remains.
         let kinds = [Archetype::Hondo, Archetype::Fara, Archetype::Runa, Archetype::Kaja];
-        let mut failed = false;
-        for enabled in [false, true] {
-            let mut sim = crate::testing::sim_with(SimConfig {
-                seed: 1,
-                spotlight: SpotlightConfig { enabled, auto_release: true, ..SpotlightConfig::DEFAULT },
-                ..SimConfig::default()
-            });
-            let mut motion = Motion::new(sim.snapshot());
-            let mut checked = [[0usize; 4]; 2];
-            let mut performing_frames = [0usize; 4];
-            let mut mismatches = [[0usize; 4]; 2];
-            let mut sim_mismatches = [[0usize; 4]; 2];
-            for _ in 0..18000 {
-                motion.advance(&mut sim, SIM_DT);
-                let s = sim.snapshot();
-                let frame = motion.snapshot(&motion.presentation(s), 0.5);
-                for (hero, kind) in kinds.iter().enumerate() {
-                    let a = frame.actors.iter().find(|a| a.archetype == *kind).unwrap();
-                    let performing = s.spotlight.as_ref().is_some_and(|v|
-                        v.phase == SpotlightPhase::Performing && (v.caster == a.id || v.co_casters.contains(&a.id)));
-                    if !matches!(a.state, ActorState::Basic | ActorState::Cast) && !a.special_casting && !performing { continue; }
-                    let Some(target) = a.target.and_then(|id| frame.actors.iter().find(|t| t.id == id)) else { continue; };
-                    let dx = target.pos.x - a.pos.x;
-                    if dx.abs() <= 1. { continue; }
-                    let mode = usize::from(s.spotlight.is_some());
-                    checked[mode][hero] += 1;
-                    performing_frames[hero] += usize::from(performing);
-                    let expected = if dx < 0. { Facing::Left } else { Facing::Right };
-                    if a.facing != expected {
-                        mismatches[mode][hero] += 1;
-                        if mismatches[mode][hero] <= 2 {
-                            eprintln!("facing sample enabled={enabled} mode={mode} hero={kind:?} step={} state={:?} dx={dx:.2} shown={:?}",s.step,a.state,a.facing);
-                        }
-                    }
-                    let raw = s.actors.iter().find(|raw| raw.id == a.id).unwrap();
-                    let raw_target = s.actors.iter().find(|t| t.id == target.id).unwrap();
-                    let raw_dx = raw_target.pos.x - raw.pos.x;
-                    if raw_dx.abs() > 1. && raw.facing != if raw_dx < 0. { Facing::Left } else { Facing::Right } {
-                        sim_mismatches[mode][hero] += 1;
-                        if sim_mismatches[mode][hero] <= 3 {
-                            eprintln!("SIM sample enabled={enabled} mode={mode} hero={kind:?} step={} state={:?} age={:.3}/{:.3} special={} hp={} target_hp={} dx={raw_dx:.2} facing={:?}",s.step,raw.state,raw.state_age,raw.state_duration,raw.special_casting,raw.hp,raw_target.hp,raw.facing);
-                        }
-                    }
+        let mut run = crate::testing::HostRun::new(1);
+        let mut motion = Motion::new(run.snapshot());
+        let mut checked = [0usize; 4];
+        let mut mismatches = [0usize; 4];
+        for _ in 0..18000 {
+            run.step();
+            let events = run.drain_events();
+            let s = run.snapshot().clone();
+            if events.iter().any(|e| matches!(e, Event::SceneReset | Event::WaveReset)) { motion = Motion::new(&s); run.observations(); continue; }
+            for (before, after) in run.observations() { motion.observe_step(&before, &after); }
+            let frame = motion.snapshot(&motion.presentation(&s), 0.5);
+            for (hero, kind) in kinds.iter().enumerate() {
+                let Some(a) = frame.actors.iter().find(|a| a.archetype == *kind) else { continue };
+                if !matches!(a.state, ActorState::Basic | ActorState::Cast) && !a.special_casting { continue; }
+                let Some(target) = a.target.and_then(|id| frame.actors.iter().find(|t| t.id == id)) else { continue; };
+                let dx = target.pos.x - a.pos.x;
+                if dx.abs() <= 1. { continue; }
+                checked[hero] += 1;
+                let expected = if dx < 0. { Facing::Left } else { Facing::Right };
+                if a.facing != expected {
+                    mismatches[hero] += 1;
+                    if mismatches[hero] <= 2 { eprintln!("facing sample hero={kind:?} step={} state={:?} dx={dx:.2} shown={:?}", s.step, a.state, a.facing); }
                 }
-                sim.drain_events();
             }
-            eprintln!("FACING enabled={enabled} heroes=Hondo,Fara,Runa,Kaja checked={checked:?} performing={performing_frames:?} shown_mismatches={mismatches:?} sim_mismatches={sim_mismatches:?}");
-            assert!(checked[0].iter().all(|n| *n > 0));
-            if enabled { assert!(performing_frames.iter().all(|n| *n > 0)); }
-            failed |= mismatches != [[0; 4]; 2];
         }
-        assert!(!failed, "shown facing disagrees with attack targets");
+        eprintln!("FACING heroes=Hondo,Fara,Runa,Kaja checked={checked:?} shown_mismatches={mismatches:?}");
+        assert!(checked.iter().all(|n| *n > 0), "every hero attacked a target: {checked:?}");
+        assert_eq!(mismatches, [0; 4], "shown facing disagrees with attack targets");
     }
     #[test]
     fn locomotion_facing_hold_advances_during_spotlight() {

@@ -1,0 +1,176 @@
+{
+  "changed_functions": {
+    ".beads/commit-check/ORKA-63bf.10.json": [
+      "__MODULE__"
+    ],
+    "AGENTS.md": [
+      "__MODULE__"
+    ],
+    "ARCHITECTURE_SNAPSHOT.md": [
+      "__MODULE__"
+    ],
+    "README.md": [
+      "__MODULE__"
+    ],
+    "REPOSITORY_ARCHITECTURE.md": [
+      "__MODULE__"
+    ],
+    "ai-memory/context.md": [
+      "__MODULE__"
+    ],
+    "governance/execution/beads-process.md": [
+      "__MODULE__"
+    ],
+    "governance/execution/implementation-gate.md": [
+      "__MODULE__"
+    ],
+    "governance/execution/integration.md": [
+      "__MODULE__"
+    ],
+    "governance/execution/validation.md": [
+      "__MODULE__"
+    ],
+    "netlify.toml": [
+      "__MODULE__"
+    ],
+    "package-lock.json": [
+      "__MODULE__"
+    ],
+    "package.json": [
+      "__MODULE__"
+    ],
+    "rust/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "tests/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "tests/fixtures/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "tests/fixtures/rust-oracle/hero_progress.json": [
+      "__MODULE__"
+    ],
+    "tests/preCommitRouting.test.mjs": [
+      "__MODULE__"
+    ],
+    "tools/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "tools/README.md": [
+      "__MODULE__"
+    ],
+    "tools/build_runtime_release.mjs": [
+      "sha256",
+      "walk",
+      "__MODULE__"
+    ],
+    "tools/commit_compliance.py": [
+      "__MODULE__"
+    ],
+    "tools/enforce_commit_check.sh": [],
+    "tools/hot_file_scope.py": [
+      "__MODULE__"
+    ],
+    "tools/run_commit_tests.mjs": [
+      "affected",
+      "runCommitTests",
+      "__MODULE__"
+    ],
+    "tools/run_merge_tests.sh": [
+      "__MODULE__"
+    ],
+    "tools/run_test_suite.mjs": [],
+    "tools/rust_oracle/README.md": [
+      "__MODULE__"
+    ],
+    "web-runner/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/assets/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/index.html": [
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 31,
+    "staged_line_count": 298,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/commit-check/ORKA-63bf.10.json",
+    "AGENTS.md",
+    "ARCHITECTURE_SNAPSHOT.md",
+    "README.md",
+    "REPOSITORY_ARCHITECTURE.md",
+    "ai-memory/context.md",
+    "governance/execution/beads-process.md",
+    "governance/execution/implementation-gate.md",
+    "governance/execution/integration.md",
+    "governance/execution/validation.md",
+    "netlify.toml",
+    "package-lock.json",
+    "package.json",
+    "rust/AGENTS.md",
+    "tests/AGENTS.md",
+    "tests/fixtures/AGENTS.md",
+    "tests/fixtures/rust-oracle/hero_progress.json",
+    "tests/preCommitRouting.test.mjs",
+    "tools/AGENTS.md",
+    "tools/README.md",
+    "tools/build_runtime_release.mjs",
+    "tools/commit_compliance.py",
+    "tools/enforce_commit_check.sh",
+    "tools/hot_file_scope.py",
+    "tools/run_commit_tests.mjs",
+    "tools/run_merge_tests.sh",
+    "tools/run_test_suite.mjs",
+    "tools/rust_oracle/README.md",
+    "web-runner/AGENTS.md",
+    "web-runner/assets/AGENTS.md",
+    "web-runner/index.html"
+  ],
+  "issue_id": "ORKA-63bf.11",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/commit-check/ORKA-63bf.10.json": "913201c1c1e9e5f32c38d385ce80e2b888056a3f",
+    "AGENTS.md": "b099c4d9f0833edf4ede47d5b0ed6079aa231f8a",
+    "ARCHITECTURE_SNAPSHOT.md": "27bafa48ac6171c5f1da9c3f5efcf500a919e112",
+    "README.md": "fe807ac5078e7107edff262a4e6a53f8773d5dd7",
+    "REPOSITORY_ARCHITECTURE.md": "012063f90c742757977f2ada04068b140f3b9e68",
+    "ai-memory/context.md": "3bbccf0f70b276b24079fcb3ab07c02041c17328",
+    "governance/execution/beads-process.md": "ea0e352f3670330e10bb6a68d8ea1d856940692d",
+    "governance/execution/implementation-gate.md": "2799bbaf88384976e58ecfb89cb035bff56c437b",
+    "governance/execution/integration.md": "7f7ca4e66f0620547285888291ac33769d6b72b2",
+    "governance/execution/validation.md": "9f79b205f46053d3587a5f864675c4f188540364",
+    "netlify.toml": "5cad0ef91f61f3eb906ee301386a4a37cf216253",
+    "package-lock.json": "950333d1d805a61ba5ef9a42ab704c4ca135413f",
+    "package.json": "cb51bd4e9ebc1263fdeaaf1e01ec4cc212d49e65",
+    "rust/AGENTS.md": "ca9ebe937087b69a71c8e92fb49756d6da086bc0",
+    "tests/AGENTS.md": "5b43acf478246030be5ef3965bf46aa243dfe9b6",
+    "tests/fixtures/AGENTS.md": "e7a1cc0531ae1ee496a33c68a8c7c8fa5c5f43c4",
+    "tests/fixtures/rust-oracle/hero_progress.json": "5d28d0179b5d70852dcbb9e970b5dc20e3db5eda",
+    "tests/preCommitRouting.test.mjs": "b0f9a7712efaaf1d37249c5d0d77d1e8ff5a1e11",
+    "tools/AGENTS.md": "3134ce1777b509b45d60a4e70dcc49c1cfa5eb28",
+    "tools/README.md": "0a72b2015b9a20d84a6351e0ae5f9a82ff97f0d9",
+    "tools/build_runtime_release.mjs": "196831de0d56959beeac19d217fe7d882ad61ea7",
+    "tools/commit_compliance.py": "3652b752093056132faaf265a45e41c5063604c8",
+    "tools/enforce_commit_check.sh": "fe2954dd1a009b65f5dd4fbbc247df2bcb497b09",
+    "tools/hot_file_scope.py": "9deb4b93b69ba5ff5b9abd55c167305f4a0d663e",
+    "tools/run_commit_tests.mjs": "801eb84f157af0556bf263e206ba96ae36c0d43a",
+    "tools/run_merge_tests.sh": "f2a5bf53b1deb9d38884fb340fba84d68f43de7d",
+    "tools/run_test_suite.mjs": "e7c61fc61ba59ea6e89bf7f2342769571b2ec2d5",
+    "tools/rust_oracle/README.md": "248e57a57a8613931c67afffee2c1f0afb131484",
+    "web-runner/AGENTS.md": "697263818684295b102cf5cd519a90c3d1c7f2d1",
+    "web-runner/assets/AGENTS.md": "bc45be5f1a8ad11d1de3b590a6488c2dbb9a993a",
+    "web-runner/index.html": "81a75b6f7fcf18572458c7c7790d15e7bfae4be9"
+  }
+}

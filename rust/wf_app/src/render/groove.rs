@@ -130,69 +130,8 @@ impl CastGlows {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    #[ignore = "slice director scenario; re-enable on the WFM host loop (ORKA-63bf.6)"]
-    fn real_slice_healing_spring_glow_lasts_twice_cast_then_fades() {
-        use wf_combat::{Sim, SimConfig, SpotlightConfig};
-        for spotlight in [SpotlightConfig::OFF, SpotlightConfig::DEFAULT] {
-            let mut sim = crate::testing::sim_with(SimConfig { spotlight, ..SimConfig::default() });
-            let mut motion = crate::motion::Motion::new(sim.snapshot());
-            let runa = sim.snapshot().actors.iter().find(|a| a.archetype == Archetype::Runa).unwrap().id;
-            let hondo = sim.snapshot().actors.iter().find(|a| a.archetype == Archetype::Hondo).unwrap().id;
-            let mut glows = CastGlows::default();
-            let mut until = None;
-            let mut first_heal = None;
-            let (mut heals, mut bubbles, mut exits, mut tails, mut freezes) = (0, 0, 0, 0, 0);
-            for frame in 0..36_000 {
-                motion.advance_with_hold(&mut sim, 1. / 60., None);
-                let events = sim.drain_events();
-                if events.iter().any(|e| matches!(e, Event::SceneReset)) {
-                    motion = crate::motion::Motion::new(sim.snapshot());
-                    glows = CastGlows::default();
-                    until = None;
-                }
-                let snapshot = motion.presentation(sim.snapshot());
-                let actor = snapshot.actors.iter().find(|a| a.id == runa).unwrap();
-                for event in &events {
-                    if matches!(event, Event::WaveReset | Event::StageCleared) { until = None; }
-                    if let Event::SkillStarted { id, skill: started, .. } = event {
-                        if *id == runa {
-                            until = None;
-                            match started {
-                                Skill::HealingSpring => {
-                                    heals += 1;
-                                    until = Some(snapshot.combat_time - actor.state_age as f64 + 2. * actor.state_duration as f64);
-                                    first_heal.get_or_insert(snapshot.time);
-                                }
-                                Skill::BubblePop => bubbles += 1,
-                                _ => panic!("unexpected Runa special: {started:?}"),
-                            }
-                        }
-                    }
-                }
-                let was_healing = glows.level(runa) > 0.;
-                glows.update(&snapshot, snapshot.spotlight.as_ref(), &events);
-                if actor.hp <= 0. || matches!(actor.state, ActorState::Downed | ActorState::Dead) || actor.encased > 0. {
-                    until = None;
-                }
-                let expected = until.map_or(0., |end| {
-                    let t = ((snapshot.combat_time - end).max(0.) as f32 / FADE).clamp(0., 1.);
-                    1. - t*t*(3.-2.*t)
-                });
-                assert!((glows.level(runa) - expected).abs() < 0.00001, "frame {frame}");
-                assert_eq!(glows.level(hondo), 0., "Hondo frame {frame}");
-                if expected > 0. && actor.state != ActorState::Cast { tails += 1; }
-                if snapshot.hit_stop.is_some_and(|h| h.cause == wf_combat::HitStopCause::HealingSpring) {
-                    assert_eq!(glows.level(runa), 1., "aura must already be visible during cast-start freeze");
-                    assert!(snapshot.spotlight.is_none());
-                    freezes += 1;
-                }
-                if was_healing && expected == 0. { exits += 1; }
-            }
-            eprintln!("seed=1 spotlight={} 600s: HealingSpring={heals}, first={first_heal:?}, BubblePop={bubbles}, heal exits={exits}", spotlight.enabled);
-            assert!(heals > 0 && bubbles > 0 && exits > 0 && tails > 0 && freezes > 0);
-        }
-    }
+    // real_slice_healing_spring_glow_lasts_twice_cast_then_fades retired (ORKA-63bf.12): Healing Spring is the slice Runa kit;
+    // the accepted WFM kit gives Runa Bubble Pop only (rust/wf_meta/src/hero.rs).
     #[test]
     fn runa_heal_glows_for_twice_cast_then_fades_and_hondo_never_glows() {
         let mut s=crate::testing::sim().snapshot().clone();
