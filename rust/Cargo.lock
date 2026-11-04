@@ -477,6 +477,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "wf_meta"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "wf_pack"
 version = "0.1.0"
 dependencies = [

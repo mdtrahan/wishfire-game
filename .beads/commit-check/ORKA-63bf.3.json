@@ -1,0 +1,514 @@
+{
+  "changed_functions": {
+    ".beads/commit-check/ORKA-63bf.1.json": [
+      "__MODULE__"
+    ],
+    ".gitignore": [
+      "__MODULE__"
+    ],
+    "rust/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/Cargo.lock": [
+      "__MODULE__"
+    ],
+    "rust/Cargo.toml": [
+      "__MODULE__"
+    ],
+    "rust/simulation_core/src/combat_abi.rs": [
+      "heal"
+    ],
+    "rust/wf_app/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/Cargo.toml": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/build.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/assets.rs": [
+      "threshold",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/camera.rs": [
+      "decay",
+      "change",
+      "left",
+      "right",
+      "top",
+      "bottom",
+      "scale",
+      "p",
+      "useful_height",
+      "excess",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/clips.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/crowd_proof.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/debug.rs": [
+      "flip",
+      "visible_w",
+      "visible_h",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/host.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/impact_stop.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/input.rs": [
+      "t",
+      "active",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/main.rs": [
+      "t",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/motion.rs": [
+      "age",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/qa.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/actors.rs": [
+      "size",
+      "shimmer",
+      "u",
+      "sway",
+      "flip",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/arcane.rs": [
+      "j",
+      "q",
+      "r",
+      "v",
+      "fade",
+      "rx",
+      "inner",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/boss.rs": [
+      "age",
+      "r",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/boss_push.rs": [
+      "t",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/bubble.rs": [
+      "particles",
+      "outward",
+      "color",
+      "scale",
+      "q",
+      "core",
+      "alpha",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/bubble_aura.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/cast_hue.rs": [
+      "flip",
+      "r",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/charge.rs": [
+      "cycle",
+      "t",
+      "frame",
+      "age",
+      "breath",
+      "flare",
+      "count",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/crowd.rs": [
+      "dy",
+      "side",
+      "distance",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/crowd_tests.rs": [
+      "q",
+      "x",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/djinn.glsl": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/djinn.rs": [
+      "axis",
+      "normal",
+      "n",
+      "body",
+      "size",
+      "delta",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/elevate.rs": [
+      "fade",
+      "angle",
+      "bob",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/enemy_heal.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/enemy_status.rs": [
+      "t",
+      "age",
+      "density",
+      "p",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/groove.rs": [
+      "t",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/hazards.rs": [
+      "a",
+      "b",
+      "size",
+      "d",
+      "rate",
+      "remaining",
+      "density",
+      "da",
+      "alpha",
+      "age",
+      "fade",
+      "phase",
+      "r",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/healing.rs": [
+      "risers",
+      "shafts",
+      "motes",
+      "x",
+      "z",
+      "rise",
+      "lower",
+      "tw",
+      "age",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/hud.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/mod.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/phoenix.rs": [
+      "t",
+      "age",
+      "flip",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/poison.rs": [
+      "age",
+      "pulse",
+      "t",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/pound.rs": [
+      "p",
+      "u",
+      "d",
+      "tangent",
+      "bitangent",
+      "dist",
+      "q",
+      "body",
+      "slowed",
+      "r",
+      "tint",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/projectiles.rs": [
+      "flip",
+      "top",
+      "y",
+      "tail",
+      "window",
+      "frame",
+      "dir",
+      "length",
+      "d",
+      "relative",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/regen.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/resurrect.rs": [
+      "n",
+      "phase",
+      "x",
+      "frames",
+      "frame",
+      "t",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/rewards.rs": [
+      "t",
+      "bounce",
+      "rise",
+      "age",
+      "left",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/spawn.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/spotlight.rs": [
+      "t",
+      "delta",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/vfx.rs": [
+      "fire",
+      "_",
+      "t",
+      "age",
+      "pop",
+      "bob",
+      "cy",
+      "alpha",
+      "raster",
+      "r",
+      "blue",
+      "yellow",
+      "grey",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/vfx3d.rs": [
+      "scale",
+      "w",
+      "h",
+      "djinn",
+      "v",
+      "_",
+      "g",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/render/wishfire.rs": [
+      "t",
+      "travel",
+      "span",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/spotlight_camera.rs": [
+      "half",
+      "zoom",
+      "lo",
+      "hi",
+      "key",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/testing.rs": [
+      "column",
+      "row",
+      "__MODULE__"
+    ],
+    "rust/wf_app/web/index.html": [
+      "syncMotionPreference",
+      "watchDpr",
+      "__MODULE__"
+    ],
+    "rust/wf_app/web/mq_js_bundle.js": [
+      "__MODULE__"
+    ],
+    "rust/wf_combat/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/wf_combat/src/api.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_combat/src/chest.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_combat/src/lib.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_combat/src/snapshot.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_pack/Cargo.toml": [
+      "__MODULE__"
+    ],
+    "rust/wf_pack/src/main.rs": [
+      "height",
+      "__MODULE__"
+    ],
+    "rust/wf_pack/src/pack.rs": [
+      "__MODULE__"
+    ],
+    "tools/build_wf_app.sh": [
+      "__MODULE__"
+    ],
+    "tools/serve_wf_app.sh": [
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 66,
+    "staged_line_count": 19057,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/commit-check/ORKA-63bf.1.json",
+    ".gitignore",
+    "rust/AGENTS.md",
+    "rust/Cargo.lock",
+    "rust/Cargo.toml",
+    "rust/simulation_core/src/combat_abi.rs",
+    "rust/wf_app/AGENTS.md",
+    "rust/wf_app/Cargo.toml",
+    "rust/wf_app/build.rs",
+    "rust/wf_app/src/assets.rs",
+    "rust/wf_app/src/camera.rs",
+    "rust/wf_app/src/clips.rs",
+    "rust/wf_app/src/crowd_proof.rs",
+    "rust/wf_app/src/debug.rs",
+    "rust/wf_app/src/host.rs",
+    "rust/wf_app/src/impact_stop.rs",
+    "rust/wf_app/src/input.rs",
+    "rust/wf_app/src/main.rs",
+    "rust/wf_app/src/motion.rs",
+    "rust/wf_app/src/qa.rs",
+    "rust/wf_app/src/render/actors.rs",
+    "rust/wf_app/src/render/arcane.rs",
+    "rust/wf_app/src/render/boss.rs",
+    "rust/wf_app/src/render/boss_push.rs",
+    "rust/wf_app/src/render/bubble.rs",
+    "rust/wf_app/src/render/bubble_aura.rs",
+    "rust/wf_app/src/render/cast_hue.rs",
+    "rust/wf_app/src/render/charge.rs",
+    "rust/wf_app/src/render/crowd.rs",
+    "rust/wf_app/src/render/crowd_tests.rs",
+    "rust/wf_app/src/render/djinn.glsl",
+    "rust/wf_app/src/render/djinn.rs",
+    "rust/wf_app/src/render/elevate.rs",
+    "rust/wf_app/src/render/enemy_heal.rs",
+    "rust/wf_app/src/render/enemy_status.rs",
+    "rust/wf_app/src/render/groove.rs",
+    "rust/wf_app/src/render/hazards.rs",
+    "rust/wf_app/src/render/healing.rs",
+    "rust/wf_app/src/render/hud.rs",
+    "rust/wf_app/src/render/mod.rs",
+    "rust/wf_app/src/render/phoenix.rs",
+    "rust/wf_app/src/render/poison.rs",
+    "rust/wf_app/src/render/pound.rs",
+    "rust/wf_app/src/render/projectiles.rs",
+    "rust/wf_app/src/render/regen.rs",
+    "rust/wf_app/src/render/resurrect.rs",
+    "rust/wf_app/src/render/rewards.rs",
+    "rust/wf_app/src/render/spawn.rs",
+    "rust/wf_app/src/render/spotlight.rs",
+    "rust/wf_app/src/render/vfx.rs",
+    "rust/wf_app/src/render/vfx3d.rs",
+    "rust/wf_app/src/render/wishfire.rs",
+    "rust/wf_app/src/spotlight_camera.rs",
+    "rust/wf_app/src/testing.rs",
+    "rust/wf_app/web/index.html",
+    "rust/wf_app/web/mq_js_bundle.js",
+    "rust/wf_combat/AGENTS.md",
+    "rust/wf_combat/src/api.rs",
+    "rust/wf_combat/src/chest.rs",
+    "rust/wf_combat/src/lib.rs",
+    "rust/wf_combat/src/snapshot.rs",
+    "rust/wf_pack/Cargo.toml",
+    "rust/wf_pack/src/main.rs",
+    "rust/wf_pack/src/pack.rs",
+    "tools/build_wf_app.sh",
+    "tools/serve_wf_app.sh"
+  ],
+  "issue_id": "ORKA-63bf.3",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/commit-check/ORKA-63bf.1.json": "0a712d9c113b6b59e9f72a1b5bf270f540c8eb2f",
+    ".gitignore": "3c1b14d3eb31fd7cf712784c09a57ffb8c40f26f",
+    "rust/AGENTS.md": "49e342e388dfa8880134be3ae9c5607cc43746fb",
+    "rust/Cargo.lock": "21443b1abe3d69833943d785ce68e38feb5c44fc",
+    "rust/Cargo.toml": "22ba3972dacf4f2266ddacbc0f5e3695c9668b07",
+    "rust/simulation_core/src/combat_abi.rs": "eed576b249fa4c62fa8d8ea0d50994913558538d",
+    "rust/wf_app/AGENTS.md": "ecfee6ceb7af9063b3c847b1e540909ed2111fb4",
+    "rust/wf_app/Cargo.toml": "0d5e6deda108e4072e6ca55c0a9d98e2327bf22f",
+    "rust/wf_app/build.rs": "8eb28b9c7cc31d64a6f7660c2cd8a75ab3b6a921",
+    "rust/wf_app/src/assets.rs": "b959bc165d3271c214cd1fbd05cea768d6c49a7c",
+    "rust/wf_app/src/camera.rs": "b9c7348ae39e99a00474f1db862fcca1d48cd802",
+    "rust/wf_app/src/clips.rs": "74e12de4b65f4f226b913b3058d92a59b350d71f",
+    "rust/wf_app/src/crowd_proof.rs": "dc6cf0967574ebf74535fff516a240182ab2c5d0",
+    "rust/wf_app/src/debug.rs": "3b3e1e30a26ea39888ad95f922b96d29f6713eb2",
+    "rust/wf_app/src/host.rs": "5bf5857ab95c5bb19e1f1b71d80c504c316366d2",
+    "rust/wf_app/src/impact_stop.rs": "4a298fd47391feb979a7c20aead7819e50354f87",
+    "rust/wf_app/src/input.rs": "f880f1f7203dc020e3d727b19fa6595e5e320e89",
+    "rust/wf_app/src/main.rs": "96f3a6363d87c12ff54e0bdebf86e09120036b8f",
+    "rust/wf_app/src/motion.rs": "4c24a9b106ed798949f243b5ca161235cafb36e9",
+    "rust/wf_app/src/qa.rs": "ae9510b7aa7b46927beb341d1fde82111258089b",
+    "rust/wf_app/src/render/actors.rs": "540eaf2ada5a6dbbd81c41f3e9d84b8f42d6dd06",
+    "rust/wf_app/src/render/arcane.rs": "a08dfd0a28bacc96363947f1648840e49c41c648",
+    "rust/wf_app/src/render/boss.rs": "5e1711d26afe7b4b9f52591c1783d8e861c568e7",
+    "rust/wf_app/src/render/boss_push.rs": "bac9b5aaa15b63158b60625c851b781abb13202a",
+    "rust/wf_app/src/render/bubble.rs": "c1734a91f491b7709b495dc2187eef07557ea643",
+    "rust/wf_app/src/render/bubble_aura.rs": "2356a44dec25a8004e25d7043a1f7e2d23dd29da",
+    "rust/wf_app/src/render/cast_hue.rs": "413abf550ea3eca8b3e9f6c8272146761ffb4e16",
+    "rust/wf_app/src/render/charge.rs": "20892cedf1214da10f9e4f4ec2755f78218b3b29",
+    "rust/wf_app/src/render/crowd.rs": "7ba205a5fe8d61e64ca85c0dd1cff119d485bd37",
+    "rust/wf_app/src/render/crowd_tests.rs": "93b971f1e9885941287621078cf91cfef44d61fb",
+    "rust/wf_app/src/render/djinn.glsl": "1cf5ad8ee11a4252dfe6e816985a13520b557a12",
+    "rust/wf_app/src/render/djinn.rs": "76d070cbb3b77bca35c38a1b6ea8d175120543f0",
+    "rust/wf_app/src/render/elevate.rs": "e1261e0a93967bd2a54159612aeaba09a07f288f",
+    "rust/wf_app/src/render/enemy_heal.rs": "eef75eecac1599b2d20287b2dc9528a42805cd20",
+    "rust/wf_app/src/render/enemy_status.rs": "367d7228771dbfe34399d0c5b247445ddd545438",
+    "rust/wf_app/src/render/groove.rs": "edb80ef0c985b676e88ecf93bcc48e45a7946669",
+    "rust/wf_app/src/render/hazards.rs": "7a509e09adfceaf34ba818f50631c7359dd05553",
+    "rust/wf_app/src/render/healing.rs": "f74da3cdfbfca82904a85df65ff53466834f0c1f",
+    "rust/wf_app/src/render/hud.rs": "15d3c1141eb47392985821b6251ef52e6a8bd53f",
+    "rust/wf_app/src/render/mod.rs": "eaa292854243567623fd4612f36fd75b5d8cb05d",
+    "rust/wf_app/src/render/phoenix.rs": "15472a8cd337e4a6e5ca72e52b4bbee72925e3c8",
+    "rust/wf_app/src/render/poison.rs": "f77e6d2f561fa47688d2d861671b62b62e4fd610",
+    "rust/wf_app/src/render/pound.rs": "dc87ab69189d8abf888e015ca248bc42a726ef18",
+    "rust/wf_app/src/render/projectiles.rs": "9d8d3ad476618ca88c7346d094b3705ce4045aa5",
+    "rust/wf_app/src/render/regen.rs": "752d9288b6034bc20c8bc335d90e9ef9a12d0b11",
+    "rust/wf_app/src/render/resurrect.rs": "d139fe4d9c269ee184eef437ab69c98bcf677fba",
+    "rust/wf_app/src/render/rewards.rs": "4fe771a8920a2eeef83c16b9f7a22891129bf1b1",
+    "rust/wf_app/src/render/spawn.rs": "c7693057a32c4710c3ae5dc4b650e6c5bb2ff2a4",
+    "rust/wf_app/src/render/spotlight.rs": "f5bca41ffd60b829616e24191499d6834a24bf28",
+    "rust/wf_app/src/render/vfx.rs": "96621d248476733fb09e3e574cf3938f84641a21",
+    "rust/wf_app/src/render/vfx3d.rs": "eb6484f5a0ae49460f14329666083d1921488b7f",
+    "rust/wf_app/src/render/wishfire.rs": "518decda876df679fca1f9eaf30c9d4a96551ac2",
+    "rust/wf_app/src/spotlight_camera.rs": "5b0b3ed2c6947e8a63f60a0d4c0debb063e2cf30",
+    "rust/wf_app/src/testing.rs": "24629870d9be261a535de40fa373c924264ba07c",
+    "rust/wf_app/web/index.html": "45602cbd19ea2a2aa911d5a9c74d910c02edc2b8",
+    "rust/wf_app/web/mq_js_bundle.js": "b48bfc741cbf0c69298ea9e4964ef55b1ae4e508",
+    "rust/wf_combat/AGENTS.md": "3d2b1f069a23ff61a96b90bae95aa24ba5707807",
+    "rust/wf_combat/src/api.rs": "a8ebb1002fb6f41e6523c653cd110c3623a214dc",
+    "rust/wf_combat/src/chest.rs": "c33288ede26afb3704ee36b5e72bd57850362690",
+    "rust/wf_combat/src/lib.rs": "b6bf7fd6fc15f4005b657940571915e3c4b0691e",
+    "rust/wf_combat/src/snapshot.rs": "7c5d799bd2b89b856e2e31381b0d0146835aab5d",
+    "rust/wf_pack/Cargo.toml": "2381c6fcb17b2db15f9a25a7daa213703659d262",
+    "rust/wf_pack/src/main.rs": "3a83997be8e3396c75d4ee433bfb54271cfbb44b",
+    "rust/wf_pack/src/pack.rs": "84ee9ec9cc48c6c519f478901b93e378e8e8473c",
+    "tools/build_wf_app.sh": "7f442be2cb1609d5999dfedaa3f901e3b13ac3ee",
+    "tools/serve_wf_app.sh": "afd48a601b852ff53edd2c0c8ecb408a0b3dffd7"
+  }
+}

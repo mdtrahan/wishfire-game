@@ -1,0 +1,182 @@
+{
+ "world": {
+  "minX": 0,
+  "maxX": 2160,
+  "heroMinX": 40,
+  "heroMaxX": 2120,
+  "visibleWorldWidth": 720,
+  "worldWidth": 2160,
+  "zoom": 0.5
+ },
+ "vertical": {
+  "minY": -40.5,
+  "maxY": 679.5,
+  "safeViewportTop": 95,
+  "safeViewportBottom": 478,
+  "zoom": 0.5
+ },
+ "patrol": {
+  "minX": 520,
+  "maxX": 1640,
+  "minY": 290,
+  "maxY": 450
+ },
+ "formation4": {
+  "centerX": 1080,
+  "halfSpreadX": 26.400000000000002,
+  "worldWidth": 2160,
+  "heroX": [
+   1106.4,
+   1053.6,
+   1106.4,
+   1053.6
+  ]
+ },
+ "formation0": {
+  "centerX": 1080,
+  "halfSpreadX": 26.400000000000002,
+  "worldWidth": 2160,
+  "heroX": []
+ },
+ "arena": {
+  "heroBackCenterX": 40,
+  "heroRightEdgeX": 106,
+  "meleeLeftEdgeX": 130,
+  "rangedMinX": 225,
+  "rangedMaxX": 283,
+  "attackStartX": 290,
+  "visibleTopY": 170,
+  "visibleBottomY": 375
+ },
+ "moat": {
+  "centerX": 1080,
+  "centerY": 370,
+  "minimumEnemyCenterDistance": 150
+ },
+ "slice": {
+  "floor": {
+   "min": {
+    "x": 96,
+    "y": 40
+   },
+   "max": {
+    "x": 816,
+    "y": 1074.6666666666667
+   }
+  },
+  "origin": {
+   "x": 456,
+   "y": 790.9333333333334
+  },
+  "travelSlots": [
+   {
+    "x": -38,
+    "y": -120
+   },
+   {
+    "x": 38,
+    "y": -120
+   },
+   {
+    "x": -38,
+    "y": 120
+   },
+   {
+    "x": 38,
+    "y": 120
+   }
+  ],
+  "heroPositions": [
+   {
+    "x": 418,
+    "y": 670.9333333333334
+   },
+   {
+    "x": 494,
+    "y": 670.9333333333334
+   },
+   {
+    "x": 418,
+    "y": 910.9333333333334
+   },
+   {
+    "x": 494,
+    "y": 910.9333333333334
+   }
+  ]
+ },
+ "packPositions": [
+  {
+   "x": 0,
+   "y": 0,
+   "ordinary": {
+    "x": 208,
+    "y": 250
+   },
+   "boss": {
+    "x": 272,
+    "y": 410
+   }
+  },
+  {
+   "x": 100,
+   "y": 300,
+   "ordinary": {
+    "x": 208,
+    "y": 529.3111111111111
+   },
+   "boss": {
+    "x": 272,
+    "y": 529.3111111111111
+   }
+  },
+  {
+   "x": 1080,
+   "y": 420,
+   "ordinary": {
+    "x": 456,
+    "y": 701.7555555555556
+   },
+   "boss": {
+    "x": 456,
+    "y": 701.7555555555556
+   }
+  },
+  {
+   "x": 2160,
+   "y": 600,
+   "ordinary": {
+    "x": 704,
+    "y": 960.4222222222222
+   },
+   "boss": {
+    "x": 640,
+    "y": 960.4222222222222
+   }
+  },
+  {
+   "x": 540,
+   "y": 290,
+   "ordinary": {
+    "x": 276,
+    "y": 514.9407407407407
+   },
+   "boss": {
+    "x": 276,
+    "y": 514.9407407407407
+   }
+  },
+  {
+   "x": 1500,
+   "y": 500,
+   "ordinary": {
+    "x": 596,
+    "y": 816.7185185185185
+   },
+   "boss": {
+    "x": 596,
+    "y": 816.7185185185185
+   }
+  }
+ ]
+}

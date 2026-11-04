@@ -131,3 +131,5 @@
 - The handoff no-clipping probe reads `RustCombatPresentation.spotlightCamera.current.participants`. Only identified nonparticipants may cross the Canvas frame during that framing, including return. Missing framing/identity retains all-actor checks; participant clipping, explicit Canvas clips, WebGL scissors and every other probe remain enforced.
 
 - Fast selection follows module/fixture dependencies and direct source references, excludes browser tests through their import graph, and runs changed Rust crate unit tests (all local crates for shared Rust-root inputs). Tier-router edits require all merge proofs; routing contracts must reject omitted commands and failed proofs.
+
+- `rust_oracle/write_fixtures.mjs` runs the real JS rule modules (stage director, spawn plan, shadow adapter, hero rules, WFM config, a headless Rust-combat trace) and writes `tests/fixtures/rust-oracle/*.json` for `rust/wf_meta` parity tests. Deterministic; rerun only when the JS spec changes.

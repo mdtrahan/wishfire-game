@@ -1,0 +1,803 @@
+{
+ "definitions": {
+  "Falie": {
+   "name": "Fara",
+   "baseStats": {
+    "HP": 75,
+    "ATK": 7,
+    "DEF": 12,
+    "MAG": 4,
+    "RES": 8,
+    "SPD": 8
+   },
+   "growth": {
+    "HP": 8,
+    "ATK": 0.8,
+    "DEF": 1.8,
+    "MAG": 0.4,
+    "RES": 1.1,
+    "SPD": 0.15
+   },
+   "baseAttackInterval": 1.8
+  },
+  "Huun": {
+   "name": "Hondo",
+   "baseStats": {
+    "HP": 60,
+    "ATK": 16,
+    "DEF": 5,
+    "MAG": 3,
+    "RES": 4,
+    "SPD": 12
+   },
+   "growth": {
+    "HP": 6,
+    "ATK": 2.1,
+    "DEF": 0.7,
+    "MAG": 0.3,
+    "RES": 0.6,
+    "SPD": 0.35
+   },
+   "baseAttackInterval": 1.2
+  },
+  "Runa": {
+   "name": "Runa",
+   "baseStats": {
+    "HP": 60,
+    "ATK": 3,
+    "DEF": 4,
+    "MAG": 16,
+    "RES": 10,
+    "SPD": 11
+   },
+   "growth": {
+    "HP": 5,
+    "ATK": 0.3,
+    "DEF": 0.7,
+    "MAG": 2.1,
+    "RES": 1.4,
+    "SPD": 0.3
+   },
+   "baseAttackInterval": 1.4
+  },
+  "Kojonn": {
+   "name": "Kaja",
+   "baseStats": {
+    "HP": 65,
+    "ATK": 4,
+    "DEF": 7,
+    "MAG": 9,
+    "RES": 12,
+    "SPD": 10
+   },
+   "growth": {
+    "HP": 7,
+    "ATK": 0.4,
+    "DEF": 1.1,
+    "MAG": 1.4,
+    "RES": 1.7,
+    "SPD": 0.25
+   },
+   "baseAttackInterval": 1.6
+  }
+ },
+ "cases": [
+  {
+   "key": "Falie",
+   "level": 1,
+   "levelStats": {
+    "HP": 75,
+    "ATK": 7,
+    "DEF": 12,
+    "MAG": 4,
+    "RES": 8,
+    "SPD": 8
+   },
+   "maxHP": 75,
+   "stats": {
+    "ATK": 7,
+    "DEF": 12,
+    "MAG": 4,
+    "RES": 8,
+    "SPD": 8
+   },
+   "expToNext": 100,
+   "cp": 46.9
+  },
+  {
+   "key": "Huun",
+   "level": 1,
+   "levelStats": {
+    "HP": 60,
+    "ATK": 16,
+    "DEF": 5,
+    "MAG": 3,
+    "RES": 4,
+    "SPD": 12
+   },
+   "maxHP": 60,
+   "stats": {
+    "ATK": 16,
+    "DEF": 5,
+    "MAG": 3,
+    "RES": 4,
+    "SPD": 12
+   },
+   "expToNext": 100,
+   "cp": 105.6
+  },
+  {
+   "key": "Runa",
+   "level": 1,
+   "levelStats": {
+    "HP": 60,
+    "ATK": 3,
+    "DEF": 4,
+    "MAG": 16,
+    "RES": 10,
+    "SPD": 11
+   },
+   "maxHP": 60,
+   "stats": {
+    "ATK": 3,
+    "DEF": 4,
+    "MAG": 16,
+    "RES": 10,
+    "SPD": 11
+   },
+   "expToNext": 100,
+   "cp": 98.5
+  },
+  {
+   "key": "Kojonn",
+   "level": 1,
+   "levelStats": {
+    "HP": 65,
+    "ATK": 4,
+    "DEF": 7,
+    "MAG": 9,
+    "RES": 12,
+    "SPD": 10
+   },
+   "maxHP": 65,
+   "stats": {
+    "ATK": 4,
+    "DEF": 7,
+    "MAG": 9,
+    "RES": 12,
+    "SPD": 10
+   },
+   "expToNext": 100,
+   "cp": 60
+  },
+  {
+   "key": "Falie",
+   "level": 2,
+   "levelStats": {
+    "HP": 83,
+    "ATK": 7,
+    "DEF": 13,
+    "MAG": 4,
+    "RES": 9,
+    "SPD": 8
+   },
+   "maxHP": 83,
+   "stats": {
+    "ATK": 7,
+    "DEF": 13,
+    "MAG": 4,
+    "RES": 9,
+    "SPD": 8
+   },
+   "expToNext": 283,
+   "cp": 49
+  },
+  {
+   "key": "Huun",
+   "level": 2,
+   "levelStats": {
+    "HP": 66,
+    "ATK": 18,
+    "DEF": 5,
+    "MAG": 3,
+    "RES": 4,
+    "SPD": 12
+   },
+   "maxHP": 66,
+   "stats": {
+    "ATK": 18,
+    "DEF": 5,
+    "MAG": 3,
+    "RES": 4,
+    "SPD": 12
+   },
+   "expToNext": 283,
+   "cp": 117.6
+  },
+  {
+   "key": "Runa",
+   "level": 2,
+   "levelStats": {
+    "HP": 65,
+    "ATK": 3,
+    "DEF": 4,
+    "MAG": 18,
+    "RES": 11,
+    "SPD": 11
+   },
+   "maxHP": 65,
+   "stats": {
+    "ATK": 3,
+    "DEF": 4,
+    "MAG": 18,
+    "RES": 11,
+    "SPD": 11
+   },
+   "expToNext": 283,
+   "cp": 109.4
+  },
+  {
+   "key": "Kojonn",
+   "level": 2,
+   "levelStats": {
+    "HP": 72,
+    "ATK": 4,
+    "DEF": 8,
+    "MAG": 10,
+    "RES": 13,
+    "SPD": 10
+   },
+   "maxHP": 72,
+   "stats": {
+    "ATK": 4,
+    "DEF": 8,
+    "MAG": 10,
+    "RES": 13,
+    "SPD": 10
+   },
+   "expToNext": 283,
+   "cp": 66.3
+  },
+  {
+   "key": "Falie",
+   "level": 5,
+   "levelStats": {
+    "HP": 107,
+    "ATK": 10,
+    "DEF": 19,
+    "MAG": 5,
+    "RES": 12,
+    "SPD": 8
+   },
+   "maxHP": 107,
+   "stats": {
+    "ATK": 10,
+    "DEF": 19,
+    "MAG": 5,
+    "RES": 12,
+    "SPD": 8
+   },
+   "expToNext": 1119,
+   "cp": 67.2
+  },
+  {
+   "key": "Huun",
+   "level": 5,
+   "levelStats": {
+    "HP": 84,
+    "ATK": 24,
+    "DEF": 7,
+    "MAG": 4,
+    "RES": 6,
+    "SPD": 13
+   },
+   "maxHP": 84,
+   "stats": {
+    "ATK": 24,
+    "DEF": 7,
+    "MAG": 4,
+    "RES": 6,
+    "SPD": 13
+   },
+   "expToNext": 1119,
+   "cp": 163.8
+  },
+  {
+   "key": "Runa",
+   "level": 5,
+   "levelStats": {
+    "HP": 80,
+    "ATK": 4,
+    "DEF": 6,
+    "MAG": 24,
+    "RES": 15,
+    "SPD": 12
+   },
+   "maxHP": 80,
+   "stats": {
+    "ATK": 4,
+    "DEF": 6,
+    "MAG": 24,
+    "RES": 15,
+    "SPD": 12
+   },
+   "expToNext": 1119,
+   "cp": 152.6
+  },
+  {
+   "key": "Kojonn",
+   "level": 5,
+   "levelStats": {
+    "HP": 93,
+    "ATK": 5,
+    "DEF": 11,
+    "MAG": 14,
+    "RES": 18,
+    "SPD": 11
+   },
+   "maxHP": 93,
+   "stats": {
+    "ATK": 5,
+    "DEF": 11,
+    "MAG": 14,
+    "RES": 18,
+    "SPD": 11
+   },
+   "expToNext": 1119,
+   "cp": 96.4
+  },
+  {
+   "key": "Falie",
+   "level": 7,
+   "levelStats": {
+    "HP": 123,
+    "ATK": 11,
+    "DEF": 22,
+    "MAG": 6,
+    "RES": 14,
+    "SPD": 8
+   },
+   "maxHP": 123,
+   "stats": {
+    "ATK": 11,
+    "DEF": 22,
+    "MAG": 6,
+    "RES": 14,
+    "SPD": 8
+   },
+   "expToNext": 1853,
+   "cp": 75.5
+  },
+  {
+   "key": "Huun",
+   "level": 7,
+   "levelStats": {
+    "HP": 96,
+    "ATK": 28,
+    "DEF": 9,
+    "MAG": 4,
+    "RES": 7,
+    "SPD": 14
+   },
+   "maxHP": 96,
+   "stats": {
+    "ATK": 28,
+    "DEF": 9,
+    "MAG": 4,
+    "RES": 7,
+    "SPD": 14
+   },
+   "expToNext": 1853,
+   "cp": 200.7
+  },
+  {
+   "key": "Runa",
+   "level": 7,
+   "levelStats": {
+    "HP": 90,
+    "ATK": 4,
+    "DEF": 8,
+    "MAG": 28,
+    "RES": 18,
+    "SPD": 12
+   },
+   "maxHP": 90,
+   "stats": {
+    "ATK": 4,
+    "DEF": 8,
+    "MAG": 28,
+    "RES": 18,
+    "SPD": 12
+   },
+   "expToNext": 1853,
+   "cp": 175.3
+  },
+  {
+   "key": "Kojonn",
+   "level": 7,
+   "levelStats": {
+    "HP": 107,
+    "ATK": 6,
+    "DEF": 13,
+    "MAG": 17,
+    "RES": 22,
+    "SPD": 11
+   },
+   "maxHP": 107,
+   "stats": {
+    "ATK": 6,
+    "DEF": 13,
+    "MAG": 17,
+    "RES": 22,
+    "SPD": 11
+   },
+   "expToNext": 1853,
+   "cp": 114.8
+  },
+  {
+   "key": "Falie",
+   "level": 20,
+   "levelStats": {
+    "HP": 227,
+    "ATK": 22,
+    "DEF": 46,
+    "MAG": 11,
+    "RES": 28,
+    "SPD": 10
+   },
+   "maxHP": 227,
+   "stats": {
+    "ATK": 22,
+    "DEF": 46,
+    "MAG": 11,
+    "RES": 28,
+    "SPD": 10
+   },
+   "expToNext": 8945,
+   "cp": 166.6
+  },
+  {
+   "key": "Huun",
+   "level": 20,
+   "levelStats": {
+    "HP": 174,
+    "ATK": 55,
+    "DEF": 18,
+    "MAG": 8,
+    "RES": 15,
+    "SPD": 18
+   },
+   "maxHP": 174,
+   "stats": {
+    "ATK": 55,
+    "DEF": 18,
+    "MAG": 8,
+    "RES": 15,
+    "SPD": 18
+   },
+   "expToNext": 8945,
+   "cp": 450.5
+  },
+  {
+   "key": "Runa",
+   "level": 20,
+   "levelStats": {
+    "HP": 155,
+    "ATK": 8,
+    "DEF": 17,
+    "MAG": 55,
+    "RES": 36,
+    "SPD": 16
+   },
+   "maxHP": 155,
+   "stats": {
+    "ATK": 8,
+    "DEF": 17,
+    "MAG": 55,
+    "RES": 36,
+    "SPD": 16
+   },
+   "expToNext": 8945,
+   "cp": 404.5
+  },
+  {
+   "key": "Kojonn",
+   "level": 20,
+   "levelStats": {
+    "HP": 198,
+    "ATK": 11,
+    "DEF": 27,
+    "MAG": 35,
+    "RES": 44,
+    "SPD": 14
+   },
+   "maxHP": 198,
+   "stats": {
+    "ATK": 11,
+    "DEF": 27,
+    "MAG": 35,
+    "RES": 44,
+    "SPD": 14
+   },
+   "expToNext": 8945,
+   "cp": 265
+  },
+  {
+   "key": "Falie",
+   "level": 50,
+   "levelStats": {
+    "HP": 467,
+    "ATK": 46,
+    "DEF": 100,
+    "MAG": 23,
+    "RES": 61,
+    "SPD": 15
+   },
+   "maxHP": 467,
+   "stats": {
+    "ATK": 46,
+    "DEF": 100,
+    "MAG": 23,
+    "RES": 61,
+    "SPD": 15
+   },
+   "expToNext": 35356,
+   "cp": 439.6
+  },
+  {
+   "key": "Huun",
+   "level": 50,
+   "levelStats": {
+    "HP": 354,
+    "ATK": 118,
+    "DEF": 39,
+    "MAG": 17,
+    "RES": 33,
+    "SPD": 29
+   },
+   "maxHP": 354,
+   "stats": {
+    "ATK": 118,
+    "DEF": 39,
+    "MAG": 17,
+    "RES": 33,
+    "SPD": 29
+   },
+   "expToNext": 35356,
+   "cp": 825
+  },
+  {
+   "key": "Runa",
+   "level": 50,
+   "levelStats": {
+    "HP": 305,
+    "ATK": 17,
+    "DEF": 38,
+    "MAG": 118,
+    "RES": 78,
+    "SPD": 25
+   },
+   "maxHP": 305,
+   "stats": {
+    "ATK": 17,
+    "DEF": 38,
+    "MAG": 118,
+    "RES": 78,
+    "SPD": 25
+   },
+   "expToNext": 35356,
+   "cp": 825.1
+  },
+  {
+   "key": "Kojonn",
+   "level": 50,
+   "levelStats": {
+    "HP": 408,
+    "ATK": 23,
+    "DEF": 60,
+    "MAG": 77,
+    "RES": 95,
+    "SPD": 22
+   },
+   "maxHP": 408,
+   "stats": {
+    "ATK": 23,
+    "DEF": 60,
+    "MAG": 77,
+    "RES": 95,
+    "SPD": 22
+   },
+   "expToNext": 35356,
+   "cp": 640.8
+  },
+  {
+   "key": "Falie",
+   "level": 100,
+   "levelStats": {
+    "HP": 867,
+    "ATK": 86,
+    "DEF": 190,
+    "MAG": 43,
+    "RES": 116,
+    "SPD": 22
+   },
+   "maxHP": 867,
+   "stats": {
+    "ATK": 86,
+    "DEF": 190,
+    "MAG": 43,
+    "RES": 116,
+    "SPD": 22
+   },
+   "expToNext": 0,
+   "cp": 944.1
+  },
+  {
+   "key": "Huun",
+   "level": 100,
+   "levelStats": {
+    "HP": 654,
+    "ATK": 223,
+    "DEF": 74,
+    "MAG": 32,
+    "RES": 63,
+    "SPD": 46
+   },
+   "maxHP": 654,
+   "stats": {
+    "ATK": 223,
+    "DEF": 74,
+    "MAG": 32,
+    "RES": 63,
+    "SPD": 46
+   },
+   "expToNext": 0,
+   "cp": 1301.5
+  },
+  {
+   "key": "Runa",
+   "level": 100,
+   "levelStats": {
+    "HP": 555,
+    "ATK": 32,
+    "DEF": 73,
+    "MAG": 223,
+    "RES": 148,
+    "SPD": 40
+   },
+   "maxHP": 555,
+   "stats": {
+    "ATK": 32,
+    "DEF": 73,
+    "MAG": 223,
+    "RES": 148,
+    "SPD": 40
+   },
+   "expToNext": 0,
+   "cp": 1318.1
+  },
+  {
+   "key": "Kojonn",
+   "level": 100,
+   "levelStats": {
+    "HP": 758,
+    "ATK": 43,
+    "DEF": 115,
+    "MAG": 147,
+    "RES": 180,
+    "SPD": 34
+   },
+   "maxHP": 758,
+   "stats": {
+    "ATK": 43,
+    "DEF": 115,
+    "MAG": 147,
+    "RES": 180,
+    "SPD": 34
+   },
+   "expToNext": 0,
+   "cp": 1145.4
+  },
+  {
+   "key": "Falie",
+   "level": 7,
+   "equipmentStats": {
+    "ATK": 5,
+    "HP": 12
+   },
+   "levelStats": {
+    "HP": 135,
+    "ATK": 16,
+    "DEF": 22,
+    "MAG": 6,
+    "RES": 14,
+    "SPD": 8
+   },
+   "maxHP": 135,
+   "stats": {
+    "ATK": 16,
+    "DEF": 22,
+    "MAG": 6,
+    "RES": 14,
+    "SPD": 8
+   },
+   "cp": 96.9
+  },
+  {
+   "key": "Huun",
+   "level": 7,
+   "equipmentStats": {
+    "DEF": 3,
+    "MAG": 1
+   },
+   "levelStats": {
+    "HP": 96,
+    "ATK": 28,
+    "DEF": 12,
+    "MAG": 5,
+    "RES": 7,
+    "SPD": 14
+   },
+   "maxHP": 96,
+   "stats": {
+    "ATK": 28,
+    "DEF": 12,
+    "MAG": 5,
+    "RES": 7,
+    "SPD": 14
+   },
+   "cp": 201.1
+  },
+  {
+   "key": "Runa",
+   "level": 7,
+   "equipmentStats": {
+    "MAG": 9,
+    "RES": 2,
+    "HP": 4
+   },
+   "levelStats": {
+    "HP": 94,
+    "ATK": 4,
+    "DEF": 8,
+    "MAG": 37,
+    "RES": 20,
+    "SPD": 12
+   },
+   "maxHP": 94,
+   "stats": {
+    "ATK": 4,
+    "DEF": 8,
+    "MAG": 37,
+    "RES": 20,
+    "SPD": 12
+   },
+   "cp": 224.8
+  },
+  {
+   "key": "Kojonn",
+   "level": 7,
+   "equipmentStats": {
+    "RES": 6,
+    "SPD": 1
+   },
+   "levelStats": {
+    "HP": 107,
+    "ATK": 6,
+    "DEF": 13,
+    "MAG": 17,
+    "RES": 28,
+    "SPD": 12
+   },
+   "maxHP": 107,
+   "stats": {
+    "ATK": 6,
+    "DEF": 13,
+    "MAG": 17,
+    "RES": 28,
+    "SPD": 12
+   },
+   "cp": 123.2
+  }
+ ]
+}

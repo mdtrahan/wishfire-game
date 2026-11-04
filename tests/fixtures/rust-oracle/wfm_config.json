@@ -1,0 +1,4813 @@
+{
+ "definitions": {
+  "enemies": {
+   "Gobloc": {
+    "id": "slice.enemy.gobloc",
+    "stats": {
+     "hp": 140,
+     "atk": 10,
+     "def": 0,
+     "mag": 10,
+     "res": 0,
+     "speed": 55,
+     "reach": 40,
+     "interval": 2.6,
+     "evade": 0,
+     "special": 0
+    }
+   },
+   "High Gobloc": {
+    "id": "wfm.enemy.high_gobloc",
+    "stats": {
+     "hp": 70,
+     "atk": 14,
+     "def": 14,
+     "mag": 8,
+     "res": 12,
+     "speed": 25.2,
+     "reach": 46,
+     "interval": 3.6,
+     "evade": 0,
+     "special": 0
+    }
+   },
+   "Lizardo": {
+    "id": "slice.enemy.lizardo",
+    "stats": {
+     "hp": 100,
+     "atk": 22,
+     "def": 0,
+     "mag": 22,
+     "res": 0,
+     "speed": 45,
+     "reach": 220,
+     "interval": 4.5,
+     "evade": 0,
+     "special": 0
+    }
+   },
+   "Orc": {
+    "id": "slice.enemy.orc",
+    "stats": {
+     "hp": 210,
+     "atk": 11,
+     "def": 0,
+     "mag": 11,
+     "res": 0,
+     "speed": 45,
+     "reach": 63,
+     "interval": 3,
+     "evade": 0,
+     "special": 0
+    }
+   },
+   "High Orc": {
+    "id": "slice.enemy.high_orc",
+    "stats": {
+     "hp": 260,
+     "atk": 30,
+     "def": 80,
+     "mag": 30,
+     "res": 80,
+     "speed": 32,
+     "reach": 68,
+     "interval": 4.2,
+     "evade": 0,
+     "special": 0
+    }
+   },
+   "Chimerilass": {
+    "id": "wfm.enemy.chimerilass",
+    "stats": {
+     "hp": 80,
+     "atk": 8,
+     "def": 10,
+     "mag": 26,
+     "res": 16,
+     "speed": 25.2,
+     "reach": 146,
+     "interval": 5,
+     "evade": 0,
+     "special": 0
+    }
+   },
+   "Troll": {
+    "id": "slice.boss.troll_brute",
+    "stats": {
+     "hp": 1500,
+     "atk": 165,
+     "def": 0,
+     "mag": 165,
+     "res": 0,
+     "speed": 40,
+     "reach": 100,
+     "interval": 4.5,
+     "evade": 0,
+     "special": 0
+    }
+   },
+   "Skeleton": {
+    "id": "wfm.enemy.skeleton",
+    "stats": {
+     "hp": 35,
+     "atk": 8,
+     "def": 5,
+     "mag": 4,
+     "res": 4,
+     "speed": 25.2,
+     "reach": 46,
+     "interval": 3.6,
+     "evade": 0,
+     "special": 0
+    }
+   },
+   "Djinn": {
+    "id": "wfm.enemy.djinn",
+    "stats": {
+     "hp": 55,
+     "atk": 6,
+     "def": 6,
+     "mag": 28,
+     "res": 14,
+     "speed": 25.2,
+     "reach": 146,
+     "interval": 5,
+     "evade": 0,
+     "special": 0
+    }
+   },
+   "Marid": {
+    "id": "slice.enemy.marid",
+    "stats": {
+     "hp": 235,
+     "atk": 12,
+     "def": 10,
+     "mag": 12,
+     "res": 10,
+     "speed": 123.73217999999999,
+     "reach": 320,
+     "interval": 4.5,
+     "evade": 0,
+     "special": 0
+    }
+   }
+  },
+  "shadows": {
+   "Gobloc": {
+    "id": "slice.enemy.gobloc",
+    "stats": {
+     "hp": 140,
+     "atk": 10,
+     "def": 0,
+     "mag": 10,
+     "res": 0,
+     "speed": 55,
+     "reach": 40,
+     "interval": 2.6,
+     "evade": 0,
+     "special": 0
+    }
+   },
+   "High Gobloc": {
+    "id": "wfm.enemy.high_gobloc",
+    "stats": {
+     "hp": 70,
+     "atk": 14,
+     "def": 14,
+     "mag": 8,
+     "res": 12,
+     "speed": 25.2,
+     "reach": 46,
+     "interval": 3.6,
+     "evade": 0,
+     "special": 0
+    }
+   },
+   "Lizardo": {
+    "id": "slice.enemy.lizardo",
+    "stats": {
+     "hp": 100,
+     "atk": 22,
+     "def": 0,
+     "mag": 22,
+     "res": 0,
+     "speed": 45,
+     "reach": 220,
+     "interval": 4.5,
+     "evade": 0,
+     "special": 0
+    }
+   },
+   "Orc": {
+    "id": "slice.enemy.orc",
+    "stats": {
+     "hp": 210,
+     "atk": 11,
+     "def": 0,
+     "mag": 11,
+     "res": 0,
+     "speed": 45,
+     "reach": 63,
+     "interval": 3,
+     "evade": 0,
+     "special": 0
+    }
+   },
+   "High Orc": {
+    "id": "slice.enemy.high_orc",
+    "stats": {
+     "hp": 260,
+     "atk": 30,
+     "def": 80,
+     "mag": 30,
+     "res": 80,
+     "speed": 32,
+     "reach": 68,
+     "interval": 4.2,
+     "evade": 0,
+     "special": 0
+    }
+   },
+   "Chimerilass": {
+    "id": "wfm.enemy.chimerilass",
+    "stats": {
+     "hp": 80,
+     "atk": 8,
+     "def": 10,
+     "mag": 26,
+     "res": 16,
+     "speed": 25.2,
+     "reach": 146,
+     "interval": 5,
+     "evade": 0,
+     "special": 0
+    }
+   },
+   "Troll": {
+    "id": "slice.boss.troll_brute",
+    "stats": {
+     "hp": 1500,
+     "atk": 165,
+     "def": 0,
+     "mag": 165,
+     "res": 0,
+     "speed": 40,
+     "reach": 100,
+     "interval": 4.5,
+     "evade": 0,
+     "special": 0
+    }
+   },
+   "Skeleton": {
+    "id": "wfm.enemy.skeleton",
+    "stats": {
+     "hp": 35,
+     "atk": 8,
+     "def": 5,
+     "mag": 4,
+     "res": 4,
+     "speed": 25.2,
+     "reach": 46,
+     "interval": 3.6,
+     "evade": 0,
+     "special": 0
+    }
+   },
+   "Djinn": {
+    "id": "wfm.enemy.djinn",
+    "stats": {
+     "hp": 55,
+     "atk": 6,
+     "def": 6,
+     "mag": 28,
+     "res": 14,
+     "speed": 25.2,
+     "reach": 146,
+     "interval": 5,
+     "evade": 0,
+     "special": 0
+    }
+   },
+   "Marid": {
+    "id": "slice.enemy.marid",
+    "stats": {
+     "hp": 235,
+     "atk": 12,
+     "def": 10,
+     "mag": 12,
+     "res": 10,
+     "speed": 123.73217999999999,
+     "reach": 320,
+     "interval": 4.5,
+     "evade": 0,
+     "special": 0
+    }
+   },
+   "Falie": {
+    "id": "slice.hero.fara",
+    "stats": {
+     "hp": 420,
+     "atk": 26.4,
+     "def": 28,
+     "mag": 26.4,
+     "res": 28,
+     "speed": 130.24439999999998,
+     "reach": 100,
+     "interval": 1.8,
+     "evade": 0.09,
+     "special": 30
+    }
+   },
+   "Huun": {
+    "id": "slice.hero.hondo",
+    "stats": {
+     "hp": 300,
+     "atk": 40.8,
+     "def": 14,
+     "mag": 40.8,
+     "res": 14,
+     "speed": 143.26883999999998,
+     "reach": 45,
+     "interval": 1.2,
+     "evade": 0.12,
+     "special": 8
+    }
+   },
+   "Runa": {
+    "id": "slice.hero.runa",
+    "stats": {
+     "hp": 260,
+     "atk": 36,
+     "def": 10,
+     "mag": 36,
+     "res": 10,
+     "speed": 123.73217999999999,
+     "reach": 270,
+     "interval": 1.4,
+     "evade": 0.05,
+     "special": 10
+    }
+   },
+   "Kojonn": {
+    "id": "slice.hero.kaja",
+    "stats": {
+     "hp": 280,
+     "atk": 21.6,
+     "def": 16,
+     "mag": 21.6,
+     "res": 16,
+     "speed": 123.73217999999999,
+     "reach": 235,
+     "interval": 1.6,
+     "evade": 0.05,
+     "special": 16
+    }
+   }
+  }
+ },
+ "growth": [
+  {
+   "stars": 0,
+   "multipliers": {
+    "specialMagnitude": 1,
+    "specialCooldown": 1,
+    "passiveMagnitude": 1
+   }
+  },
+  {
+   "stars": 1,
+   "multipliers": {
+    "specialMagnitude": 1.1,
+    "specialCooldown": 1,
+    "passiveMagnitude": 1
+   }
+  },
+  {
+   "stars": 2,
+   "multipliers": {
+    "specialMagnitude": 1.1,
+    "specialCooldown": 0.92,
+    "passiveMagnitude": 1
+   }
+  },
+  {
+   "stars": 4,
+   "multipliers": {
+    "specialMagnitude": 1.1,
+    "specialCooldown": 0.92,
+    "passiveMagnitude": 1.3
+   }
+  },
+  {
+   "stars": 8,
+   "multipliers": {
+    "specialMagnitude": 1.1,
+    "specialCooldown": 0.92,
+    "passiveMagnitude": 1.3
+   }
+  }
+ ],
+ "modifiers": [
+  {
+   "training": {
+    "ATK": 3,
+    "DEF": 1,
+    "MATK": 2,
+    "RES": 0
+   },
+   "stars": {
+    "Falie": 4
+   },
+   "modifiers": [
+    {
+     "channel": "ATK",
+     "direction": "up",
+     "magnitude": 0.14
+    },
+    {
+     "channel": "DEF",
+     "direction": "up",
+     "magnitude": 0.1
+    },
+    {
+     "channel": "MAG",
+     "direction": "up",
+     "magnitude": 0.12
+    },
+    {
+     "channel": "HP",
+     "direction": "up",
+     "magnitude": 0.08
+    },
+    {
+     "channel": "RES",
+     "direction": "up",
+     "magnitude": 0.08
+    }
+   ]
+  },
+  {
+   "training": null,
+   "stars": null,
+   "modifiers": []
+  }
+ ],
+ "projection": [
+  {
+   "name": "Gobloc",
+   "stats": {
+    "hp": 196,
+    "atk": 10,
+    "def": 0,
+    "mag": 10,
+    "res": 0,
+    "speed": 55,
+    "reach": 40,
+    "interval": 2.6,
+    "evade": 0,
+    "special": 0
+   }
+  },
+  {
+   "name": "High Gobloc",
+   "stats": {
+    "hp": 91,
+    "atk": 14,
+    "def": 10,
+    "mag": 8,
+    "res": 8,
+    "speed": 25.2,
+    "reach": 46,
+    "interval": 3.6,
+    "evade": 0,
+    "special": 0
+   }
+  },
+  {
+   "name": "Lizardo",
+   "stats": {
+    "hp": 129,
+    "atk": 22,
+    "def": 0,
+    "mag": 22,
+    "res": 0,
+    "speed": 45,
+    "reach": 220,
+    "interval": 4.5,
+    "evade": 0,
+    "special": 0
+   }
+  },
+  {
+   "name": "Orc",
+   "stats": {
+    "hp": 273,
+    "atk": 11,
+    "def": 0,
+    "mag": 11,
+    "res": 0,
+    "speed": 45,
+    "reach": 63,
+    "interval": 3,
+    "evade": 0,
+    "special": 0
+   }
+  },
+  {
+   "name": "High Orc",
+   "stats": {
+    "hp": 416,
+    "atk": 30,
+    "def": 44,
+    "mag": 30,
+    "res": 45,
+    "speed": 32,
+    "reach": 68,
+    "interval": 4.2,
+    "evade": 0,
+    "special": 0
+   }
+  },
+  {
+   "name": "Chimerilass",
+   "stats": {
+    "hp": 128,
+    "atk": 8,
+    "def": 10,
+    "mag": 26,
+    "res": 9,
+    "speed": 25.2,
+    "reach": 146,
+    "interval": 5,
+    "evade": 0,
+    "special": 0
+   }
+  },
+  {
+   "name": "Troll",
+   "stats": {
+    "hp": 3300,
+    "atk": 165,
+    "def": 0,
+    "mag": 165,
+    "res": 0,
+    "speed": 40,
+    "reach": 100,
+    "interval": 4.5,
+    "evade": 0,
+    "special": 0
+   }
+  },
+  {
+   "name": "Skeleton",
+   "stats": {
+    "hp": 49,
+    "atk": 8,
+    "def": 5,
+    "mag": 4,
+    "res": 4,
+    "speed": 25.2,
+    "reach": 46,
+    "interval": 3.6,
+    "evade": 0,
+    "special": 0
+   }
+  },
+  {
+   "name": "Djinn",
+   "stats": {
+    "hp": 77,
+    "atk": 6,
+    "def": 6,
+    "mag": 28,
+    "res": 12,
+    "speed": 25.2,
+    "reach": 146,
+    "interval": 5,
+    "evade": 0,
+    "special": 0
+   }
+  },
+  {
+   "name": "Marid",
+   "stats": {
+    "hp": 329,
+    "atk": 12,
+    "def": 10,
+    "mag": 12,
+    "res": 6.666666666666666,
+    "speed": 123.73217999999999,
+    "reach": 320,
+    "interval": 4.5,
+    "evade": 0,
+    "special": 0
+   }
+  }
+ ],
+ "cases": [
+  {
+   "seed": 7,
+   "level": 1,
+   "hp": 1,
+   "boss": false,
+   "mask": 0,
+   "partyCP": 311,
+   "heroes": [
+    {
+     "key": "falie#1",
+     "hp": 75,
+     "maxHP": 75,
+     "stats": {
+      "ATK": 7,
+      "DEF": 12,
+      "MAG": 4,
+      "RES": 8,
+      "SPD": 8
+     },
+     "combatBaseMaxHP": 75,
+     "permanent": {
+      "stats": {
+       "hp": 420,
+       "atk": 26.4,
+       "def": 28,
+       "mag": 26.4,
+       "res": 28,
+       "speed": 130.24439999999998,
+       "reach": 100,
+       "interval": 1.8,
+       "evade": 0.09,
+       "special": 30
+      },
+      "host_max_hp": 75,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      }
+     }
+    },
+    {
+     "key": "huun#1",
+     "hp": 60,
+     "maxHP": 60,
+     "stats": {
+      "ATK": 16,
+      "DEF": 5,
+      "MAG": 3,
+      "RES": 4,
+      "SPD": 12
+     },
+     "combatBaseMaxHP": 60,
+     "permanent": {
+      "stats": {
+       "hp": 300,
+       "atk": 40.8,
+       "def": 14,
+       "mag": 40.8,
+       "res": 14,
+       "speed": 143.26883999999998,
+       "reach": 45,
+       "interval": 1.2,
+       "evade": 0.12,
+       "special": 8
+      },
+      "host_max_hp": 60,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      }
+     }
+    },
+    {
+     "key": "runa#1",
+     "hp": 60,
+     "maxHP": 60,
+     "stats": {
+      "ATK": 3,
+      "DEF": 4,
+      "MAG": 16,
+      "RES": 10,
+      "SPD": 11
+     },
+     "combatBaseMaxHP": 60,
+     "permanent": {
+      "stats": {
+       "hp": 260,
+       "atk": 36,
+       "def": 10,
+       "mag": 36,
+       "res": 10,
+       "speed": 123.73217999999999,
+       "reach": 270,
+       "interval": 1.4,
+       "evade": 0.05,
+       "special": 10
+      },
+      "host_max_hp": 60,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      }
+     }
+    },
+    {
+     "key": "kojonn#1",
+     "hp": 65,
+     "maxHP": 65,
+     "stats": {
+      "ATK": 4,
+      "DEF": 7,
+      "MAG": 9,
+      "RES": 12,
+      "SPD": 10
+     },
+     "combatBaseMaxHP": 65,
+     "permanent": {
+      "stats": {
+       "hp": 280,
+       "atk": 21.6,
+       "def": 16,
+       "mag": 21.6,
+       "res": 16,
+       "speed": 123.73217999999999,
+       "reach": 235,
+       "interval": 1.6,
+       "evade": 0.05,
+       "special": 16
+      },
+      "host_max_hp": 65,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      }
+     }
+    }
+   ],
+   "config": {
+    "continuous": true,
+    "encounter_id": "oracle:7",
+    "seed": "7",
+    "geometry": {
+     "floor": {
+      "min": {
+       "x": 96,
+       "y": 40
+      },
+      "max": {
+       "x": 816,
+       "y": 1074.6666666666667
+      }
+     },
+     "viewport_world": {
+      "x": 720,
+      "y": 1034.6666666666667
+     },
+     "formation_origin": {
+      "x": 456,
+      "y": 790.9333333333334
+     },
+     "screen_bound": false,
+     "contain_bodies": true
+    },
+    "heroes": [
+     {
+      "stats": {
+       "hp": 420,
+       "atk": 26.4,
+       "def": 28,
+       "mag": 26.4,
+       "res": 28,
+       "speed": 130.24439999999998,
+       "reach": 100,
+       "interval": 1.8,
+       "evade": 0.09,
+       "special": 30
+      },
+      "host_max_hp": 75,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      },
+      "instance_id": "falie#1",
+      "definition_id": "slice.hero.fara",
+      "slot": 0,
+      "formation_offset": {
+       "x": -38,
+       "y": -120
+      },
+      "hp": 420
+     },
+     {
+      "stats": {
+       "hp": 300,
+       "atk": 40.8,
+       "def": 14,
+       "mag": 40.8,
+       "res": 14,
+       "speed": 143.26883999999998,
+       "reach": 45,
+       "interval": 1.2,
+       "evade": 0.12,
+       "special": 8
+      },
+      "host_max_hp": 60,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      },
+      "instance_id": "huun#1",
+      "definition_id": "slice.hero.hondo",
+      "slot": 1,
+      "formation_offset": {
+       "x": 38,
+       "y": -120
+      },
+      "hp": 300
+     },
+     {
+      "stats": {
+       "hp": 260,
+       "atk": 36,
+       "def": 10,
+       "mag": 36,
+       "res": 10,
+       "speed": 123.73217999999999,
+       "reach": 270,
+       "interval": 1.4,
+       "evade": 0.05,
+       "special": 10
+      },
+      "host_max_hp": 60,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      },
+      "instance_id": "runa#1",
+      "definition_id": "slice.hero.runa",
+      "slot": 2,
+      "formation_offset": {
+       "x": -38,
+       "y": 120
+      },
+      "hp": 260
+     },
+     {
+      "stats": {
+       "hp": 280,
+       "atk": 21.6,
+       "def": 16,
+       "mag": 21.6,
+       "res": 16,
+       "speed": 123.73217999999999,
+       "reach": 235,
+       "interval": 1.6,
+       "evade": 0.05,
+       "special": 16
+      },
+      "host_max_hp": 65,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      },
+      "instance_id": "kojonn#1",
+      "definition_id": "slice.hero.kaja",
+      "slot": 3,
+      "formation_offset": {
+       "x": 38,
+       "y": 120
+      },
+      "hp": 280
+     }
+    ],
+    "enemies": [
+     {
+      "spawn_key": "90",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 208,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "91",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 208,
+       "y": 250
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 22.68,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "92",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 209.0873734293878,
+       "y": 250
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 28.224,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "93",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 457.4258606594263,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "94",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 472.7103265851943,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "95",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 470.476621733254,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "96",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "97",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 704,
+       "y": 250
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 22.68,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "98",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "99",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 208,
+       "y": 943.2034034338362
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "100",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 208,
+       "y": 980.2891727392145
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 22.68,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "101",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 208,
+       "y": 925.883412490464
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "102",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 451.1134065198712,
+       "y": 971.6941997331149
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 25.2,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "103",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 468.00227613390115,
+       "y": 983.8464660693475
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 22.68,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "104",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 465.3720830357634,
+       "y": 1028.6671111111114
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "105",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 954.2037676830358
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "106",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 701.4612916190632,
+       "y": 1012.7790815767415
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 22.68,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "107",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 703.5757973663964,
+       "y": 915.1599395800896
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "108",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 208,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "109",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 439.74849410468914,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "110",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 451.0294661905823,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "111",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 444.60923072685375,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "112",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 694.9310298772157,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "113",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 699.7820407728602,
+       "y": 250
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 29.483999999999998,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "114",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 219.1383903075176,
+       "y": 963.4769737560816
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "115",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 212.86780734473638,
+       "y": 896.1544648144908
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 29.483999999999998,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "116",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 208,
+       "y": 1028.6671111111114
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "117",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 439.51223431046435,
+       "y": 977.6940323506064
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 20.663999999999998,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "118",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 699.598738529827,
+       "y": 966.5634880964227
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "119",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 704,
+       "y": 969.4713315118619
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 29.483999999999998,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "120",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 1028.6671111111114
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "121",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 328.8006692581499,
+       "y": 397.12383267888686
+      },
+      "stats": {
+       "hp": 63,
+       "atk": 6,
+       "def": 0,
+       "mag": 6,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 4.42,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 63,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "122",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 208,
+       "y": 544.123011154709
+      },
+      "stats": {
+       "hp": 14,
+       "atk": 5,
+       "def": 3,
+       "mag": 2,
+       "res": 2,
+       "speed": 25.2,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 14,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "123",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 328.3807367961854,
+       "y": 880.5247485932562
+      },
+      "stats": {
+       "hp": 14,
+       "atk": 5,
+       "def": 3,
+       "mag": 2,
+       "res": 2,
+       "speed": 25.2,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 14,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "124",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 583.0911598325087,
+       "y": 392.8812773052925
+      },
+      "stats": {
+       "hp": 14,
+       "atk": 5,
+       "def": 3,
+       "mag": 2,
+       "res": 2,
+       "speed": 25.2,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 14,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "125",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 570.4774023703035
+      },
+      "stats": {
+       "hp": 63,
+       "atk": 6,
+       "def": 0,
+       "mag": 6,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 4.42,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 63,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "126",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 584.2974671822352,
+       "y": 900.0032820570249
+      },
+      "stats": {
+       "hp": 14,
+       "atk": 5,
+       "def": 3,
+       "mag": 2,
+       "res": 2,
+       "speed": 25.2,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 14,
+      "summon_profiles": []
+     }
+    ]
+   }
+  },
+  {
+   "seed": 7,
+   "level": 1,
+   "hp": 0.5,
+   "boss": false,
+   "mask": 21,
+   "partyCP": 311,
+   "heroes": [
+    {
+     "key": "falie#1",
+     "hp": 37.5,
+     "maxHP": 75,
+     "stats": {
+      "ATK": 7,
+      "DEF": 12,
+      "MAG": 4,
+      "RES": 8,
+      "SPD": 8
+     },
+     "combatBaseMaxHP": 75,
+     "permanent": {
+      "stats": {
+       "hp": 420,
+       "atk": 26.4,
+       "def": 28,
+       "mag": 26.4,
+       "res": 28,
+       "speed": 130.24439999999998,
+       "reach": 100,
+       "interval": 1.8,
+       "evade": 0.09,
+       "special": 30
+      },
+      "host_max_hp": 75,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      }
+     }
+    },
+    {
+     "key": "huun#1",
+     "hp": 30,
+     "maxHP": 60,
+     "stats": {
+      "ATK": 16,
+      "DEF": 5,
+      "MAG": 3,
+      "RES": 4,
+      "SPD": 12
+     },
+     "combatBaseMaxHP": 60,
+     "permanent": {
+      "stats": {
+       "hp": 300,
+       "atk": 40.8,
+       "def": 14,
+       "mag": 40.8,
+       "res": 14,
+       "speed": 143.26883999999998,
+       "reach": 45,
+       "interval": 1.2,
+       "evade": 0.12,
+       "special": 8
+      },
+      "host_max_hp": 60,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      }
+     }
+    },
+    {
+     "key": "runa#1",
+     "hp": 30,
+     "maxHP": 60,
+     "stats": {
+      "ATK": 3,
+      "DEF": 4,
+      "MAG": 16,
+      "RES": 10,
+      "SPD": 11
+     },
+     "combatBaseMaxHP": 60,
+     "permanent": {
+      "stats": {
+       "hp": 260,
+       "atk": 36,
+       "def": 10,
+       "mag": 36,
+       "res": 10,
+       "speed": 123.73217999999999,
+       "reach": 270,
+       "interval": 1.4,
+       "evade": 0.05,
+       "special": 10
+      },
+      "host_max_hp": 60,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      }
+     }
+    },
+    {
+     "key": "kojonn#1",
+     "hp": 32.5,
+     "maxHP": 65,
+     "stats": {
+      "ATK": 4,
+      "DEF": 7,
+      "MAG": 9,
+      "RES": 12,
+      "SPD": 10
+     },
+     "combatBaseMaxHP": 65,
+     "permanent": {
+      "stats": {
+       "hp": 280,
+       "atk": 21.6,
+       "def": 16,
+       "mag": 21.6,
+       "res": 16,
+       "speed": 123.73217999999999,
+       "reach": 235,
+       "interval": 1.6,
+       "evade": 0.05,
+       "special": 16
+      },
+      "host_max_hp": 65,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      }
+     }
+    }
+   ],
+   "config": {
+    "continuous": true,
+    "encounter_id": "oracle:7",
+    "seed": "7",
+    "geometry": {
+     "floor": {
+      "min": {
+       "x": 96,
+       "y": 40
+      },
+      "max": {
+       "x": 816,
+       "y": 1074.6666666666667
+      }
+     },
+     "viewport_world": {
+      "x": 720,
+      "y": 1034.6666666666667
+     },
+     "formation_origin": {
+      "x": 456,
+      "y": 790.9333333333334
+     },
+     "screen_bound": false,
+     "contain_bodies": true
+    },
+    "heroes": [
+     {
+      "stats": {
+       "hp": 420,
+       "atk": 26.4,
+       "def": 28,
+       "mag": 26.4,
+       "res": 28,
+       "speed": 130.24439999999998,
+       "reach": 100,
+       "interval": 1.8,
+       "evade": 0.09,
+       "special": 30
+      },
+      "host_max_hp": 75,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      },
+      "instance_id": "falie#1",
+      "definition_id": "slice.hero.fara",
+      "slot": 0,
+      "formation_offset": {
+       "x": -38,
+       "y": -120
+      },
+      "hp": 210
+     },
+     {
+      "stats": {
+       "hp": 300,
+       "atk": 40.8,
+       "def": 14,
+       "mag": 40.8,
+       "res": 14,
+       "speed": 143.26883999999998,
+       "reach": 45,
+       "interval": 1.2,
+       "evade": 0.12,
+       "special": 8
+      },
+      "host_max_hp": 60,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      },
+      "instance_id": "huun#1",
+      "definition_id": "slice.hero.hondo",
+      "slot": 1,
+      "formation_offset": {
+       "x": 38,
+       "y": -120
+      },
+      "hp": 150
+     },
+     {
+      "stats": {
+       "hp": 260,
+       "atk": 36,
+       "def": 10,
+       "mag": 36,
+       "res": 10,
+       "speed": 123.73217999999999,
+       "reach": 270,
+       "interval": 1.4,
+       "evade": 0.05,
+       "special": 10
+      },
+      "host_max_hp": 60,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      },
+      "instance_id": "runa#1",
+      "definition_id": "slice.hero.runa",
+      "slot": 2,
+      "formation_offset": {
+       "x": -38,
+       "y": 120
+      },
+      "hp": 130
+     },
+     {
+      "stats": {
+       "hp": 280,
+       "atk": 21.6,
+       "def": 16,
+       "mag": 21.6,
+       "res": 16,
+       "speed": 123.73217999999999,
+       "reach": 235,
+       "interval": 1.6,
+       "evade": 0.05,
+       "special": 16
+      },
+      "host_max_hp": 65,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      },
+      "instance_id": "kojonn#1",
+      "definition_id": "slice.hero.kaja",
+      "slot": 3,
+      "formation_offset": {
+       "x": 38,
+       "y": 120
+      },
+      "hp": 140
+     }
+    ],
+    "enemies": [
+     {
+      "spawn_key": "90",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 457.4258606594263,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "91",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 472.7103265851943,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "92",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 470.476621733254,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "93",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 208,
+       "y": 943.2034034338362
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "94",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 208,
+       "y": 980.2891727392145
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 22.68,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "95",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 208,
+       "y": 925.883412490464
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "96",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 954.2037676830358
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "97",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 701.4612916190632,
+       "y": 1012.7790815767415
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 22.68,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "98",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 703.5757973663964,
+       "y": 915.1599395800896
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "99",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 439.74849410468914,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "100",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 451.0294661905823,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "101",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 444.60923072685375,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "102",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 219.1383903075176,
+       "y": 963.4769737560816
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "103",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 212.86780734473638,
+       "y": 896.1544648144908
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 29.483999999999998,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "104",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 208,
+       "y": 1028.6671111111114
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "105",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 699.598738529827,
+       "y": 966.5634880964227
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "106",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 704,
+       "y": 969.4713315118619
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 29.483999999999998,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "107",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 1028.6671111111114
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "108",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 363.53033311804757,
+       "y": 705.9136037605413
+      },
+      "stats": {
+       "hp": 14,
+       "atk": 5,
+       "def": 3,
+       "mag": 2,
+       "res": 2,
+       "speed": 25.2,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 14,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "109",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 704,
+       "y": 250
+      },
+      "stats": {
+       "hp": 14,
+       "atk": 5,
+       "def": 3,
+       "mag": 2,
+       "res": 2,
+       "speed": 25.2,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 14,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "110",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 521.4729070348355,
+       "y": 1013.7236388877953
+      },
+      "stats": {
+       "hp": 14,
+       "atk": 5,
+       "def": 3,
+       "mag": 2,
+       "res": 2,
+       "speed": 25.2,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 14,
+      "summon_profiles": []
+     }
+    ]
+   }
+  },
+  {
+   "seed": 42,
+   "level": 7,
+   "hp": 0.8,
+   "training": {
+    "ATK": 3,
+    "DEF": 1,
+    "MATK": 2,
+    "RES": 0
+   },
+   "stars": {
+    "Falie": 2,
+    "Huun": 4,
+    "Runa": 1,
+    "Kojonn": 8
+   },
+   "equipment": [
+    {
+     "ATK": 5,
+     "HP": 12
+    },
+    {
+     "DEF": 3,
+     "MAG": 1
+    },
+    {
+     "MAG": 9,
+     "RES": 2,
+     "HP": 4
+    },
+    {
+     "RES": 6,
+     "SPD": 1
+    }
+   ],
+   "boss": false,
+   "mask": 0,
+   "partyCP": 646,
+   "heroes": [
+    {
+     "key": "falie#1",
+     "hp": 108,
+     "maxHP": 135,
+     "stats": {
+      "ATK": 16,
+      "DEF": 22,
+      "MAG": 6,
+      "RES": 14,
+      "SPD": 8
+     },
+     "combatBaseMaxHP": 135,
+     "permanent": {
+      "stats": {
+       "hp": 784,
+       "atk": 66.37714285714286,
+       "def": 54.413333333333334,
+       "mag": 42.768,
+       "res": 50.96,
+       "speed": 130.24439999999998,
+       "reach": 100,
+       "interval": 1.8,
+       "evade": 0.09,
+       "special": 30
+      },
+      "host_max_hp": 140,
+      "skill_modifiers": {
+       "special_potency": 1.1,
+       "meter_rate": 1.0869565217391304
+      }
+     }
+    },
+    {
+     "key": "huun#1",
+     "hp": 76.80000000000001,
+     "maxHP": 96,
+     "stats": {
+      "ATK": 28,
+      "DEF": 12,
+      "MAG": 5,
+      "RES": 7,
+      "SPD": 14
+     },
+     "combatBaseMaxHP": 96,
+     "permanent": {
+      "stats": {
+       "hp": 515,
+       "atk": 81.396,
+       "def": 36.96,
+       "mag": 76.16000000000001,
+       "res": 26.46,
+       "speed": 143.26883999999998,
+       "reach": 45,
+       "interval": 1.0285714285714285,
+       "evade": 0.12,
+       "special": 8
+      },
+      "host_max_hp": 103,
+      "skill_modifiers": {
+       "special_potency": 1.1,
+       "meter_rate": 1.0869565217391304
+      }
+     }
+    },
+    {
+     "key": "runa#1",
+     "hp": 75.2,
+     "maxHP": 94,
+     "stats": {
+      "ATK": 4,
+      "DEF": 8,
+      "MAG": 37,
+      "RES": 20,
+      "SPD": 12
+     },
+     "combatBaseMaxHP": 94,
+     "permanent": {
+      "stats": {
+       "hp": 411,
+       "atk": 51.84,
+       "def": 20.8,
+       "mag": 88.245,
+       "res": 20.4,
+       "speed": 123.73217999999999,
+       "reach": 270,
+       "interval": 1.2833333333333334,
+       "evade": 0.05,
+       "special": 10
+      },
+      "host_max_hp": 95,
+      "skill_modifiers": {
+       "special_potency": 1.1,
+       "meter_rate": 1
+      }
+     }
+    },
+    {
+     "key": "kojonn#1",
+     "hp": 85.60000000000001,
+     "maxHP": 107,
+     "stats": {
+      "ATK": 6,
+      "DEF": 13,
+      "MAG": 17,
+      "RES": 28,
+      "SPD": 12
+     },
+     "combatBaseMaxHP": 107,
+     "permanent": {
+      "stats": {
+       "hp": 534,
+       "atk": 39.528000000000006,
+       "def": 35.06285714285714,
+       "mag": 48.96,
+       "res": 43.306666666666665,
+       "speed": 123.73217999999999,
+       "reach": 235,
+       "interval": 1.3333333333333333,
+       "evade": 0.05,
+       "special": 16
+      },
+      "host_max_hp": 124,
+      "skill_modifiers": {
+       "special_potency": 1.1,
+       "meter_rate": 1.0869565217391304
+      }
+     }
+    }
+   ],
+   "config": {
+    "continuous": true,
+    "encounter_id": "oracle:42",
+    "seed": "42",
+    "geometry": {
+     "floor": {
+      "min": {
+       "x": 96,
+       "y": 40
+      },
+      "max": {
+       "x": 816,
+       "y": 1074.6666666666667
+      }
+     },
+     "viewport_world": {
+      "x": 720,
+      "y": 1034.6666666666667
+     },
+     "formation_origin": {
+      "x": 456,
+      "y": 790.9333333333334
+     },
+     "screen_bound": false,
+     "contain_bodies": true
+    },
+    "heroes": [
+     {
+      "stats": {
+       "hp": 784,
+       "atk": 66.37714285714286,
+       "def": 54.413333333333334,
+       "mag": 42.768,
+       "res": 50.96,
+       "speed": 130.24439999999998,
+       "reach": 100,
+       "interval": 1.8,
+       "evade": 0.09,
+       "special": 30
+      },
+      "host_max_hp": 140,
+      "skill_modifiers": {
+       "special_potency": 1.1,
+       "meter_rate": 1.0869565217391304
+      },
+      "instance_id": "falie#1",
+      "definition_id": "slice.hero.fara",
+      "slot": 0,
+      "formation_offset": {
+       "x": -38,
+       "y": -120
+      },
+      "hp": 627.2
+     },
+     {
+      "stats": {
+       "hp": 515,
+       "atk": 81.396,
+       "def": 36.96,
+       "mag": 76.16000000000001,
+       "res": 26.46,
+       "speed": 143.26883999999998,
+       "reach": 45,
+       "interval": 1.0285714285714285,
+       "evade": 0.12,
+       "special": 8
+      },
+      "host_max_hp": 103,
+      "skill_modifiers": {
+       "special_potency": 1.1,
+       "meter_rate": 1.0869565217391304
+      },
+      "instance_id": "huun#1",
+      "definition_id": "slice.hero.hondo",
+      "slot": 1,
+      "formation_offset": {
+       "x": 38,
+       "y": -120
+      },
+      "hp": 412.00000000000006
+     },
+     {
+      "stats": {
+       "hp": 411,
+       "atk": 51.84,
+       "def": 20.8,
+       "mag": 88.245,
+       "res": 20.4,
+       "speed": 123.73217999999999,
+       "reach": 270,
+       "interval": 1.2833333333333334,
+       "evade": 0.05,
+       "special": 10
+      },
+      "host_max_hp": 95,
+      "skill_modifiers": {
+       "special_potency": 1.1,
+       "meter_rate": 1
+      },
+      "instance_id": "runa#1",
+      "definition_id": "slice.hero.runa",
+      "slot": 2,
+      "formation_offset": {
+       "x": -38,
+       "y": 120
+      },
+      "hp": 328.8
+     },
+     {
+      "stats": {
+       "hp": 534,
+       "atk": 39.528000000000006,
+       "def": 35.06285714285714,
+       "mag": 48.96,
+       "res": 43.306666666666665,
+       "speed": 123.73217999999999,
+       "reach": 235,
+       "interval": 1.3333333333333333,
+       "evade": 0.05,
+       "special": 16
+      },
+      "host_max_hp": 124,
+      "skill_modifiers": {
+       "special_potency": 1.1,
+       "meter_rate": 1.0869565217391304
+      },
+      "instance_id": "kojonn#1",
+      "definition_id": "slice.hero.kaja",
+      "slot": 3,
+      "formation_offset": {
+       "x": 38,
+       "y": 120
+      },
+      "hp": 427.20000000000005
+     }
+    ],
+    "enemies": [
+     {
+      "spawn_key": "90",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 208,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "91",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 217.50506730946404,
+       "y": 250
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 22.68,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "92",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 208,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "93",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 451.84804276051,
+       "y": 250
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 25.2,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "94",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 470.5055463411845,
+       "y": 250
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 22.68,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "95",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 441.95582446254167,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "96",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 699.9332642921806,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "97",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "98",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 703.9657465952387,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "99",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 208,
+       "y": 945.1544608694084
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 25.2,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "100",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 218.35202177670476,
+       "y": 1006.2164792117245
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "101",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 208,
+       "y": 1028.6671111111114
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 28.224,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "102",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 450.4008403912186,
+       "y": 964.6098907817669
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 25.2,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "103",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 467.2087544427563,
+       "y": 979.8755600359805
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 22.68,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "104",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 459.2649891979992,
+       "y": 1028.6671111111114
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "105",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 1028.6671111111114
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "106",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 924.5798015554018
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "107",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 695.2203668471363,
+       "y": 999.6335066464312
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 28.224,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "108",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 208,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "109",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 459.6905864357638,
+       "y": 250
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 20.663999999999998,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "110",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "111",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "112",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 214.34065923275426,
+       "y": 947.7282788198955
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 20.663999999999998,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "113",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 457.60903237648307,
+       "y": 915.4982111614712
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 20.663999999999998,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "114",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 445.5163835915426,
+       "y": 903.916733649797
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 29.483999999999998,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "115",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 968.7028303299613
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "116",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 326.51190856673446,
+       "y": 391.1741623975981
+      },
+      "stats": {
+       "hp": 63,
+       "atk": 6,
+       "def": 0,
+       "mag": 6,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 4.42,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 63,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "117",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 208,
+       "y": 515.0866619897294
+      },
+      "stats": {
+       "hp": 63,
+       "atk": 6,
+       "def": 0,
+       "mag": 6,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 4.42,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 63,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "118",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 333.96871595565847,
+       "y": 1026.6137041008033
+      },
+      "stats": {
+       "hp": 14,
+       "atk": 5,
+       "def": 3,
+       "mag": 2,
+       "res": 2,
+       "speed": 25.2,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 14,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "119",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 582.9849537014961,
+       "y": 387.6266577230375
+      },
+      "stats": {
+       "hp": 63,
+       "atk": 6,
+       "def": 0,
+       "mag": 6,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 4.42,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 63,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "120",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 583.8383701737281
+      },
+      "stats": {
+       "hp": 63,
+       "atk": 6,
+       "def": 0,
+       "mag": 6,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 4.42,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 63,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "121",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 581.8850695469107,
+       "y": 913.0575962120553
+      },
+      "stats": {
+       "hp": 63,
+       "atk": 6,
+       "def": 0,
+       "mag": 6,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 4.42,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 63,
+      "summon_profiles": []
+     }
+    ]
+   }
+  },
+  {
+   "seed": 7,
+   "level": 20,
+   "hp": 1,
+   "boss": true,
+   "mask": 0,
+   "partyCP": 1286.6,
+   "heroes": [
+    {
+     "key": "falie#1",
+     "hp": 227,
+     "maxHP": 227,
+     "stats": {
+      "ATK": 22,
+      "DEF": 46,
+      "MAG": 11,
+      "RES": 28,
+      "SPD": 10
+     },
+     "combatBaseMaxHP": 227,
+     "permanent": {
+      "stats": {
+       "hp": 1271,
+       "atk": 82.97142857142856,
+       "def": 107.33333333333334,
+       "mag": 72.6,
+       "res": 98,
+       "speed": 130.24439999999998,
+       "reach": 100,
+       "interval": 1.44,
+       "evade": 0.09,
+       "special": 30
+      },
+      "host_max_hp": 227,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      }
+     }
+    },
+    {
+     "key": "huun#1",
+     "hp": 174,
+     "maxHP": 174,
+     "stats": {
+      "ATK": 55,
+      "DEF": 18,
+      "MAG": 8,
+      "RES": 15,
+      "SPD": 18
+     },
+     "combatBaseMaxHP": 174,
+     "permanent": {
+      "stats": {
+       "hp": 870,
+       "atk": 140.25,
+       "def": 50.4,
+       "mag": 108.79999999999998,
+       "res": 52.5,
+       "speed": 143.26883999999998,
+       "reach": 45,
+       "interval": 0.8,
+       "evade": 0.12,
+       "special": 8
+      },
+      "host_max_hp": 174,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      }
+     }
+    },
+    {
+     "key": "runa#1",
+     "hp": 155,
+     "maxHP": 155,
+     "stats": {
+      "ATK": 8,
+      "DEF": 17,
+      "MAG": 55,
+      "RES": 36,
+      "SPD": 16
+     },
+     "combatBaseMaxHP": 155,
+     "permanent": {
+      "stats": {
+       "hp": 671,
+       "atk": 96,
+       "def": 42.5,
+       "mag": 123.75,
+       "res": 36,
+       "speed": 123.73217999999999,
+       "reach": 270,
+       "interval": 0.9624999999999999,
+       "evade": 0.05,
+       "special": 10
+      },
+      "host_max_hp": 155,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      }
+     }
+    },
+    {
+     "key": "kojonn#1",
+     "hp": 198,
+     "maxHP": 198,
+     "stats": {
+      "ATK": 11,
+      "DEF": 27,
+      "MAG": 35,
+      "RES": 44,
+      "SPD": 14
+     },
+     "combatBaseMaxHP": 198,
+     "permanent": {
+      "stats": {
+       "hp": 852,
+       "atk": 59.400000000000006,
+       "def": 61.714285714285715,
+       "mag": 84,
+       "res": 58.666666666666664,
+       "speed": 123.73217999999999,
+       "reach": 235,
+       "interval": 1.1428571428571428,
+       "evade": 0.05,
+       "special": 16
+      },
+      "host_max_hp": 198,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      }
+     }
+    }
+   ],
+   "config": {
+    "continuous": true,
+    "encounter_id": "oracle:7",
+    "seed": "7",
+    "geometry": {
+     "floor": {
+      "min": {
+       "x": 96,
+       "y": 40
+      },
+      "max": {
+       "x": 816,
+       "y": 1074.6666666666667
+      }
+     },
+     "viewport_world": {
+      "x": 720,
+      "y": 1034.6666666666667
+     },
+     "formation_origin": {
+      "x": 456,
+      "y": 790.9333333333334
+     },
+     "screen_bound": false,
+     "contain_bodies": true
+    },
+    "heroes": [
+     {
+      "stats": {
+       "hp": 1271,
+       "atk": 82.97142857142856,
+       "def": 107.33333333333334,
+       "mag": 72.6,
+       "res": 98,
+       "speed": 130.24439999999998,
+       "reach": 100,
+       "interval": 1.44,
+       "evade": 0.09,
+       "special": 30
+      },
+      "host_max_hp": 227,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      },
+      "instance_id": "falie#1",
+      "definition_id": "slice.hero.fara",
+      "slot": 0,
+      "formation_offset": {
+       "x": -38,
+       "y": -120
+      },
+      "hp": 1271
+     },
+     {
+      "stats": {
+       "hp": 870,
+       "atk": 140.25,
+       "def": 50.4,
+       "mag": 108.79999999999998,
+       "res": 52.5,
+       "speed": 143.26883999999998,
+       "reach": 45,
+       "interval": 0.8,
+       "evade": 0.12,
+       "special": 8
+      },
+      "host_max_hp": 174,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      },
+      "instance_id": "huun#1",
+      "definition_id": "slice.hero.hondo",
+      "slot": 1,
+      "formation_offset": {
+       "x": 38,
+       "y": -120
+      },
+      "hp": 870
+     },
+     {
+      "stats": {
+       "hp": 671,
+       "atk": 96,
+       "def": 42.5,
+       "mag": 123.75,
+       "res": 36,
+       "speed": 123.73217999999999,
+       "reach": 270,
+       "interval": 0.9624999999999999,
+       "evade": 0.05,
+       "special": 10
+      },
+      "host_max_hp": 155,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      },
+      "instance_id": "runa#1",
+      "definition_id": "slice.hero.runa",
+      "slot": 2,
+      "formation_offset": {
+       "x": -38,
+       "y": 120
+      },
+      "hp": 671
+     },
+     {
+      "stats": {
+       "hp": 852,
+       "atk": 59.400000000000006,
+       "def": 61.714285714285715,
+       "mag": 84,
+       "res": 58.666666666666664,
+       "speed": 123.73217999999999,
+       "reach": 235,
+       "interval": 1.1428571428571428,
+       "evade": 0.05,
+       "special": 16
+      },
+      "host_max_hp": 198,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      },
+      "instance_id": "kojonn#1",
+      "definition_id": "slice.hero.kaja",
+      "slot": 3,
+      "formation_offset": {
+       "x": 38,
+       "y": 120
+      },
+      "hp": 852
+     }
+    ],
+    "enemies": [
+     {
+      "spawn_key": "90",
+      "definition_id": "slice.boss.troll_brute",
+      "position": {
+       "x": 272,
+       "y": 514.9407407407407
+      },
+      "stats": {
+       "hp": 3300,
+       "atk": 165,
+       "def": 0,
+       "mag": 165,
+       "res": 0,
+       "speed": 40,
+       "reach": 100,
+       "interval": 4.5,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 3300,
+      "summon_profiles": [
+       {
+        "definition_id": "slice.enemy.gobloc",
+        "stats": {
+         "hp": 196,
+         "atk": 10,
+         "def": 0,
+         "mag": 10,
+         "res": 0,
+         "speed": 55,
+         "reach": 40,
+         "interval": 2.6,
+         "evade": 0,
+         "special": 0
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "seed": 1,
+   "level": 100,
+   "hp": 1,
+   "boss": false,
+   "mask": 0,
+   "partyCP": 4709.1,
+   "heroes": [
+    {
+     "key": "falie#1",
+     "hp": 867,
+     "maxHP": 867,
+     "stats": {
+      "ATK": 86,
+      "DEF": 190,
+      "MAG": 43,
+      "RES": 116,
+      "SPD": 22
+     },
+     "combatBaseMaxHP": 867,
+     "permanent": {
+      "stats": {
+       "hp": 4855,
+       "atk": 324.34285714285716,
+       "def": 443.33333333333337,
+       "mag": 283.8,
+       "res": 406,
+       "speed": 130.24439999999998,
+       "reach": 100,
+       "interval": 0.6545454545454545,
+       "evade": 0.09,
+       "special": 30
+      },
+      "host_max_hp": 867,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      }
+     }
+    },
+    {
+     "key": "huun#1",
+     "hp": 654,
+     "maxHP": 654,
+     "stats": {
+      "ATK": 223,
+      "DEF": 74,
+      "MAG": 32,
+      "RES": 63,
+      "SPD": 46
+     },
+     "combatBaseMaxHP": 654,
+     "permanent": {
+      "stats": {
+       "hp": 3270,
+       "atk": 568.65,
+       "def": 207.20000000000002,
+       "mag": 435.19999999999993,
+       "res": 220.5,
+       "speed": 143.26883999999998,
+       "reach": 45,
+       "interval": 0.31304347826086953,
+       "evade": 0.12,
+       "special": 8
+      },
+      "host_max_hp": 654,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      }
+     }
+    },
+    {
+     "key": "runa#1",
+     "hp": 555,
+     "maxHP": 555,
+     "stats": {
+      "ATK": 32,
+      "DEF": 73,
+      "MAG": 223,
+      "RES": 148,
+      "SPD": 40
+     },
+     "combatBaseMaxHP": 555,
+     "permanent": {
+      "stats": {
+       "hp": 2405,
+       "atk": 384,
+       "def": 182.5,
+       "mag": 501.75,
+       "res": 148,
+       "speed": 123.73217999999999,
+       "reach": 270,
+       "interval": 0.385,
+       "evade": 0.05,
+       "special": 10
+      },
+      "host_max_hp": 555,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      }
+     }
+    },
+    {
+     "key": "kojonn#1",
+     "hp": 758,
+     "maxHP": 758,
+     "stats": {
+      "ATK": 43,
+      "DEF": 115,
+      "MAG": 147,
+      "RES": 180,
+      "SPD": 34
+     },
+     "combatBaseMaxHP": 758,
+     "permanent": {
+      "stats": {
+       "hp": 3265,
+       "atk": 232.20000000000002,
+       "def": 262.85714285714283,
+       "mag": 352.8,
+       "res": 240,
+       "speed": 123.73217999999999,
+       "reach": 235,
+       "interval": 0.47058823529411764,
+       "evade": 0.05,
+       "special": 16
+      },
+      "host_max_hp": 758,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      }
+     }
+    }
+   ],
+   "config": {
+    "continuous": true,
+    "encounter_id": "oracle:1",
+    "seed": "1",
+    "geometry": {
+     "floor": {
+      "min": {
+       "x": 96,
+       "y": 40
+      },
+      "max": {
+       "x": 816,
+       "y": 1074.6666666666667
+      }
+     },
+     "viewport_world": {
+      "x": 720,
+      "y": 1034.6666666666667
+     },
+     "formation_origin": {
+      "x": 456,
+      "y": 790.9333333333334
+     },
+     "screen_bound": false,
+     "contain_bodies": true
+    },
+    "heroes": [
+     {
+      "stats": {
+       "hp": 4855,
+       "atk": 324.34285714285716,
+       "def": 443.33333333333337,
+       "mag": 283.8,
+       "res": 406,
+       "speed": 130.24439999999998,
+       "reach": 100,
+       "interval": 0.6545454545454545,
+       "evade": 0.09,
+       "special": 30
+      },
+      "host_max_hp": 867,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      },
+      "instance_id": "falie#1",
+      "definition_id": "slice.hero.fara",
+      "slot": 0,
+      "formation_offset": {
+       "x": -38,
+       "y": -120
+      },
+      "hp": 4855
+     },
+     {
+      "stats": {
+       "hp": 3270,
+       "atk": 568.65,
+       "def": 207.20000000000002,
+       "mag": 435.19999999999993,
+       "res": 220.5,
+       "speed": 143.26883999999998,
+       "reach": 45,
+       "interval": 0.31304347826086953,
+       "evade": 0.12,
+       "special": 8
+      },
+      "host_max_hp": 654,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      },
+      "instance_id": "huun#1",
+      "definition_id": "slice.hero.hondo",
+      "slot": 1,
+      "formation_offset": {
+       "x": 38,
+       "y": -120
+      },
+      "hp": 3270
+     },
+     {
+      "stats": {
+       "hp": 2405,
+       "atk": 384,
+       "def": 182.5,
+       "mag": 501.75,
+       "res": 148,
+       "speed": 123.73217999999999,
+       "reach": 270,
+       "interval": 0.385,
+       "evade": 0.05,
+       "special": 10
+      },
+      "host_max_hp": 555,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      },
+      "instance_id": "runa#1",
+      "definition_id": "slice.hero.runa",
+      "slot": 2,
+      "formation_offset": {
+       "x": -38,
+       "y": 120
+      },
+      "hp": 2405
+     },
+     {
+      "stats": {
+       "hp": 3265,
+       "atk": 232.20000000000002,
+       "def": 262.85714285714283,
+       "mag": 352.8,
+       "res": 240,
+       "speed": 123.73217999999999,
+       "reach": 235,
+       "interval": 0.47058823529411764,
+       "evade": 0.05,
+       "special": 16
+      },
+      "host_max_hp": 758,
+      "skill_modifiers": {
+       "special_potency": 1,
+       "meter_rate": 1
+      },
+      "instance_id": "kojonn#1",
+      "definition_id": "slice.hero.kaja",
+      "slot": 3,
+      "formation_offset": {
+       "x": 38,
+       "y": 120
+      },
+      "hp": 3265
+     }
+    ],
+    "enemies": [
+     {
+      "spawn_key": "90",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 208,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "91",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 208,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "92",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 208,
+       "y": 250
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 28.224,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "93",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 463.32733919781947,
+       "y": 250
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 25.2,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "94",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 471.48797904575866,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "95",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 452.4108450201651,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "96",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "97",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "98",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "99",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 219.41463871217024,
+       "y": 966.9491576489576
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 25.2,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "100",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 208,
+       "y": 937.6213534627624
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "101",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 208,
+       "y": 973.7651848618456
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 28.224,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "102",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 448.4514821205909,
+       "y": 1007.4385012288161
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 25.2,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "103",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 469.4360920876885,
+       "y": 969.5970613804228
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 22.68,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "104",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 446.62083796194446,
+       "y": 901.8697045010098
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 28.224,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "105",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 928.1301980991431
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "106",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 704,
+       "y": 903.1988806661733
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 22.68,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "107",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 696.6887097305556,
+       "y": 977.278409295208
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "108",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 217.61356127908456,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "109",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 452.0758609374364,
+       "y": 250
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 20.663999999999998,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "110",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 440.69797579882044,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "111",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "112",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 691.7490393409133,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "113",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 208,
+       "y": 895.4510243293412
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 20.663999999999998,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "114",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 208,
+       "y": 995.1701214265593
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "115",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 208,
+       "y": 1028.6671111111114
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 25.2,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "116",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 459.49158782977617,
+       "y": 1028.6671111111114
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 20.663999999999998,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "117",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 981.6003681880005
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "118",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 704,
+       "y": 1028.6671111111114
+      },
+      "stats": {
+       "hp": 28,
+       "atk": 8,
+       "def": 5,
+       "mag": 4,
+       "res": 4,
+       "speed": 29.483999999999998,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 28,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "119",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 334.27842974849045,
+       "y": 392.6497239444543
+      },
+      "stats": {
+       "hp": 63,
+       "atk": 6,
+       "def": 0,
+       "mag": 6,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 4.42,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 63,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "120",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 208,
+       "y": 551.7258151015013
+      },
+      "stats": {
+       "hp": 63,
+       "atk": 6,
+       "def": 0,
+       "mag": 6,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 4.42,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 63,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "121",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 333.7992327480266,
+       "y": 1021.7903700777595
+      },
+      "stats": {
+       "hp": 14,
+       "atk": 5,
+       "def": 3,
+       "mag": 2,
+       "res": 2,
+       "speed": 25.2,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 14,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "122",
+      "definition_id": "wfm.enemy.skeleton",
+      "position": {
+       "x": 578.234884231817,
+       "y": 395.66568140560463
+      },
+      "stats": {
+       "hp": 14,
+       "atk": 5,
+       "def": 3,
+       "mag": 2,
+       "res": 2,
+       "speed": 25.2,
+       "reach": 46,
+       "interval": 3.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 14,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "123",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 551.2719770169737
+      },
+      "stats": {
+       "hp": 63,
+       "atk": 6,
+       "def": 0,
+       "mag": 6,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 4.42,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 63,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "124",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 583.4545210744254,
+       "y": 918.9122883683737
+      },
+      "stats": {
+       "hp": 63,
+       "atk": 6,
+       "def": 0,
+       "mag": 6,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 4.42,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 63,
+      "summon_profiles": []
+     }
+    ]
+   }
+  }
+ ]
+}

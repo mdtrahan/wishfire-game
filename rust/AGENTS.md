@@ -38,6 +38,7 @@
 - `wf_combat/AGENTS.md` - extracted combat mechanics and explicit host inputs; independent of production in step 1.
 - `wf_slice_harness/AGENTS.md` - frozen slice director, rewards, fixtures and equivalence proof.
 - `wf_app/AGENTS.md` - Rust app: macroquad client over the typed combat host (ORKA-63bf).
+- `wf_meta/AGENTS.md` - JS meta rules translated to Rust with oracle fixtures (stage director, spawn plan, shadow stats, hero rules, WFM config).
 - `wf_pack/` - build-time atlas packer for `web-runner/assets/puppets` and chapter arenas; output `rust/wf_app/gen/` stays untracked.
 
 - Energy is a macro balance: quest entry spends it, combat actions do not. Purple recovery remains active. Rust decides combat defeat; recovery never spends combat energy.
