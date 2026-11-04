@@ -244,6 +244,7 @@ fn hero_screen(assets: &Assets, game: &Game, ui: &mut HeroUi, hits: &mut Vec<Hit
                     let src = Rect::new(off_x / img_w * tex.width(), off_y / img_h * tex.height(), ccw / img_w * tex.width(), (cch / img_h * tex.height()).min(tex.height() - off_y / img_h * tex.height()));
                     let dest_h = src.h / tex.height() * img_h;
                     draw_texture_ex(tex, cx, cy, WHITE, DrawTextureParams { dest_size: Some(vec2(ccw, dest_h)), source: Some(src), ..Default::default() });
+                    chrome::clip_corners(cx, cy, ccw, cch, 3.6, border);
                 }
                 hits.push(Hit { rect: Rect::new(x, qy, card_w, card_h), kind: HitKind::Roster(i) });
                 // .ticket-bar: 86% of the strip content, 1.3em tall, radius 1em, inset top shadow.

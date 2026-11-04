@@ -93,6 +93,19 @@ pub fn baked(key: &str, w: f32, h: f32, radii: [f32; 4], shade: &dyn Fn(f32, f32
     BAKED.with(|b| b.borrow_mut().insert(full, texture.clone()));
     texture
 }
+/// `overflow: hidden` on a rounded box: after content was drawn over the square box, paints the
+/// four corner slivers outside radius `r` with `color` (the surface behind the content).
+pub fn clip_corners(x: f32, y: f32, w: f32, h: f32, r: f32, color: Color) {
+    if r <= 0. { return; }
+    let d = crate::camera::Portrait::density();
+    let tex = baked(&format!("corner:{:.3},{:.3},{:.3},{:.3}", color.r, color.g, color.b, color.a), r, r, [0.; 4], &|u, v| {
+        let dist = ((u - 1.).powi(2) + (v - 1.).powi(2)).sqrt() * r;
+        Color::new(color.r, color.g, color.b, color.a * ((dist - r) * d + 0.5).clamp(0., 1.))
+    });
+    for (px, py, fx, fy) in [(x, y, false, false), (x + w - r, y, true, false), (x, y + h - r, false, true), (x + w - r, y + h - r, true, true)] {
+        draw_texture_ex(&tex, px, py, WHITE, DrawTextureParams { dest_size: Some(vec2(r, r)), flip_x: fx, flip_y: fy, ..Default::default() });
+    }
+}
 pub fn draw_baked(tex: &Texture2D, x: f32, y: f32, w: f32, h: f32) { draw_texture_ex(tex, x, y, WHITE, DrawTextureParams { dest_size: Some(vec2(w, h)), ..Default::default() }); }
 /// `box-shadow <dx> <dy> <blur> <color>` under a rounded box (no spread).
 pub fn box_shadow(x: f32, y: f32, w: f32, h: f32, r: f32, dx: f32, dy: f32, blur: f32, color: Color) {
