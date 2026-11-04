@@ -1,9 +1,11 @@
 //! Combat chrome drawing + hit zones. Geometry is the JS layout (360x640 frame).
 use super::model::{format_number, CombatModel, SlotStatus, SLOTS};
-use super::{Panel, Screen};
+use super::{text, Panel, Screen};
 use crate::assets::Assets;
 use crate::camera::{BAND_BOTTOM, BAND_TOP, HEIGHT, WIDTH};
 use macroquad::prelude::*;
+use std::cell::RefCell;
+use std::collections::HashMap;
 use wf_meta::hero;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -38,34 +40,70 @@ pub const NAV_TOP: f32 = 580.; pub const NAV_H: f32 = 60.;
 
 pub fn rgb(hex: u32) -> Color { Color::from_rgba((hex >> 16) as u8, (hex >> 8 & 255) as u8, (hex & 255) as u8, 255) }
 pub fn rgba(hex: u32, a: f32) -> Color { Color::new((hex >> 16) as f32 / 255., (hex >> 8 & 255) as f32 / 255., (hex & 255) as f32 / 255., a) }
-#[derive(Clone, Copy, PartialEq)]
-pub enum Align { Left, Center, Right }
-/// Text with its vertical centre at `cy`.
-pub fn label(text: &str, x: f32, cy: f32, size: f32, color: Color, align: Align) -> f32 {
-    let d = measure_text(text, None, size as u16, 1.);
-    let x = match align { Align::Left => x, Align::Center => x - d.width / 2., Align::Right => x - d.width };
-    draw_text(text, x, cy + d.offset_y - d.height / 2., size, color);
-    d.width
+pub use super::text::{Align, Weight};
+/// Text with its vertical centre at `cy` (regular weight).
+pub fn label(text: &str, x: f32, cy: f32, size: f32, color: Color, align: Align) -> f32 { text::draw(text, x, cy, size, Weight::Regular, color, align) }
+/// Text with its vertical centre at `cy` at a CSS weight.
+pub fn label_w(text: &str, x: f32, cy: f32, size: f32, weight: Weight, color: Color, align: Align) -> f32 { text::draw(text, x, cy, size, weight, color, align) }
+pub fn measure(text: &str, size: f32, weight: Weight) -> f32 { text::measure(text, size, weight) }
+pub fn stroked(text: &str, x: f32, cy: f32, size: f32, fill: Color, stroke: Color, align: Align) { stroked_w(text, x, cy, size, Weight::Regular, fill, stroke, align) }
+/// Four-way 1px `text-shadow` outline.
+pub fn stroked_w(text: &str, x: f32, cy: f32, size: f32, weight: Weight, fill: Color, stroke: Color, align: Align) {
+    for (dx, dy) in [(-1., -1.), (1., -1.), (-1., 1.), (1., 1.)] { label_w(text, x + dx, cy + dy, size, weight, stroke, align); }
+    label_w(text, x, cy, size, weight, fill, align);
 }
-pub fn stroked(text: &str, x: f32, cy: f32, size: f32, fill: Color, stroke: Color, align: Align) {
-    for (dx, dy) in [(-1., 0.), (1., 0.), (0., -1.), (0., 1.), (0., 2.)] { label(text, x + dx, cy + dy, size, stroke, align); }
-    label(text, x, cy, size, fill, align);
+/// Word-wrapped paragraph (regular, line-height 1.3); returns the height used.
+pub fn paragraph(text: &str, x: f32, top: f32, width: f32, size: f32, color: Color) -> f32 { text::paragraph(text, x, top, width, size, size * 1.3, Weight::Regular, color) }
+pub fn paragraph_w(text: &str, x: f32, top: f32, width: f32, size: f32, line_h: f32, weight: Weight, color: Color) -> f32 { text::paragraph(text, x, top, width, size, line_h, weight, color) }
+
+// ---------------------------------------------------------------- baked CSS surfaces
+thread_local! { static BAKED: RefCell<HashMap<String, Texture2D>> = RefCell::new(HashMap::new()); }
+pub fn mix(a: Color, b: Color, t: f32) -> Color { let t = t.clamp(0., 1.); Color::new(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, a.a + (b.a - a.a) * t) }
+/// CSS gradient stops `(position 0..1, color)` sampled at `t`.
+pub fn stops(stops: &[(f32, Color)], t: f32) -> Color {
+    if t <= stops[0].0 { return stops[0].1; }
+    for pair in stops.windows(2) { if t <= pair[1].0 { return mix(pair[0].1, pair[1].1, (t - pair[0].0) / (pair[1].0 - pair[0].0).max(1e-6)); } }
+    stops[stops.len() - 1].1
 }
-/// Word-wrapped paragraph; returns the height used.
-pub fn paragraph(text: &str, x: f32, top: f32, width: f32, size: f32, color: Color) -> f32 {
-    let line_h = size * 1.3;
-    let mut y = top + line_h * 0.5;
-    let mut line = String::new();
-    for word in text.split_whitespace() {
-        let candidate = if line.is_empty() { word.to_string() } else { format!("{line} {word}") };
-        if measure_text(&candidate, None, size as u16, 1.).width > width && !line.is_empty() {
-            label(&line, x, y, size, color, Align::Left);
-            y += line_h;
-            line = word.to_string();
-        } else { line = candidate; }
+/// Signed distance from a point to a rounded rectangle of size `w`x`h` at the origin with
+/// per-corner radii `[tl, tr, br, bl]` (negative inside).
+fn rounded_sdf(x: f32, y: f32, w: f32, h: f32, r: [f32; 4]) -> f32 {
+    let r = if x < w / 2. { if y < h / 2. { r[0] } else { r[3] } } else if y < h / 2. { r[1] } else { r[2] };
+    let (qx, qy) = ((x - w / 2.).abs() - (w / 2. - r), (y - h / 2.).abs() - (h / 2. - r));
+    vec2(qx.max(0.), qy.max(0.)).length() + qx.max(qy).min(0.) - r
+}
+/// A surface rasterized once at device density: `shade(u, v)` gives the colour at a relative
+/// position, the per-corner radii cut the corners with 1px anti-aliasing. Cached by `key`.
+pub fn baked(key: &str, w: f32, h: f32, radii: [f32; 4], shade: &dyn Fn(f32, f32) -> Color) -> Texture2D {
+    let d = crate::camera::Portrait::density();
+    let full = format!("{key}:{w:.2}x{h:.2}@{d:.2}");
+    if let Some(t) = BAKED.with(|b| b.borrow().get(&full).cloned()) { return t; }
+    let (pw, ph) = ((w * d).ceil().max(1.) as u16, (h * d).ceil().max(1.) as u16);
+    let mut image = Image::gen_image_color(pw, ph, Color::new(0., 0., 0., 0.));
+    for py in 0..ph as u32 {
+        for px in 0..pw as u32 {
+            let (lx, ly) = ((px as f32 + 0.5) / d, (py as f32 + 0.5) / d);
+            let mut c = shade(lx / w, ly / h);
+            c.a *= (0.5 - rounded_sdf(lx, ly, w, h, radii) * d).clamp(0., 1.);
+            image.set_pixel(px, py, c);
+        }
     }
-    if !line.is_empty() { label(&line, x, y, size, color, Align::Left); y += line_h; }
-    y - top
+    let texture = Texture2D::from_image(&image);
+    texture.set_filter(FilterMode::Linear);
+    BAKED.with(|b| b.borrow_mut().insert(full, texture.clone()));
+    texture
+}
+pub fn draw_baked(tex: &Texture2D, x: f32, y: f32, w: f32, h: f32) { draw_texture_ex(tex, x, y, WHITE, DrawTextureParams { dest_size: Some(vec2(w, h)), ..Default::default() }); }
+/// `box-shadow <dx> <dy> <blur> <color>` under a rounded box (no spread).
+pub fn box_shadow(x: f32, y: f32, w: f32, h: f32, r: f32, dx: f32, dy: f32, blur: f32, color: Color) {
+    let pad = blur.max(0.5);
+    let (sw, sh) = (w + 2. * pad, h + 2. * pad);
+    let tex = baked(&format!("shadow:{r:.2}:{blur:.2}:{:.3}", color.a), sw, sh, [0.; 4], &|u, v| {
+        let sdf = rounded_sdf(u * sw - pad, v * sh - pad, w, h, [r; 4]);
+        let t = (0.5 - sdf / (2. * pad)).clamp(0., 1.);
+        Color::new(color.r, color.g, color.b, color.a * t * t * (3. - 2. * t))
+    });
+    draw_baked(&tex, x + dx - pad, y + dy - pad, sw, sh);
 }
 pub fn image(tex: &Texture2D, x: f32, y: f32, w: f32, h: f32) {
     // object-fit: contain
@@ -111,18 +149,23 @@ pub fn wedge(cx: f32, cy: f32, half: f32, fraction: f32, color: Color) {
     }
 }
 /// `border-radius` box: a rectangle with rounded corners.
-pub fn rounded(x: f32, y: f32, w: f32, h: f32, r: f32, fill: Color) {
-    let r = r.min(w / 2.).min(h / 2.);
-    draw_rectangle(x + r, y, w - 2. * r, h, fill);
-    draw_rectangle(x, y + r, w, h - 2. * r, fill);
-    for (cx, cy) in [(x + r, y + r), (x + w - r, y + r), (x + r, y + h - r), (x + w - r, y + h - r)] { draw_circle(cx, cy, r, fill); }
+pub fn rounded(x: f32, y: f32, w: f32, h: f32, r: f32, fill: Color) { rounded_corners(x, y, w, h, [r; 4], fill); }
+/// `border-radius` box with per-corner radii `[tl, tr, br, bl]`.
+pub fn rounded_corners(x: f32, y: f32, w: f32, h: f32, r: [f32; 4], fill: Color) {
+    let r = r.map(|r| r.min(w / 2.).min(h / 2.).max(0.));
+    let (top, bottom) = (r[0].max(r[1]), r[2].max(r[3]));
+    draw_rectangle(x, y + top, w, h - top - bottom, fill);
+    draw_rectangle(x + r[0], y, w - r[0] - r[1], top, fill);
+    draw_rectangle(x + r[3], y + h - bottom, w - r[3] - r[2], bottom, fill);
+    for (i, (cx, cy)) in [(x + r[0], y + r[0]), (x + w - r[1], y + r[1]), (x + w - r[2], y + h - r[2]), (x + r[3], y + h - r[3])].into_iter().enumerate() {
+        if r[i] > 0. { draw_circle(cx, cy, r[i], fill); }
+        // Fill the sliver a smaller corner leaves beside a larger one on the same edge.
+        let (side_x, side_w) = if i == 0 || i == 3 { (x, r[i]) } else { (x + w - r[i], r[i]) };
+        let (side_y, side_h) = if i < 2 { (y + r[i], top - r[i]) } else { (y + h - bottom, bottom - r[i]) };
+        if side_h > 0. && side_w > 0. { draw_rectangle(side_x, side_y, side_w, side_h, fill); }
+    }
 }
 pub fn rounded_outline(x: f32, y: f32, w: f32, h: f32, r: f32, fill: Color, stroke: Color) { rounded(x, y, w, h, r, stroke); rounded(x + 1., y + 1., w - 2., h - 2., (r - 1.).max(0.), fill); }
-/// A five-point star (the `★` glyph the default font lacks).
-pub fn star(cx: f32, cy: f32, r: f32, color: Color) {
-    let pts: Vec<Vec2> = (0..10).map(|i| { let a = -std::f32::consts::FRAC_PI_2 + i as f32 * std::f32::consts::PI / 5.; let d = if i % 2 == 0 { r } else { r * 0.45 }; vec2(cx + a.cos() * d, cy + a.sin() * d) }).collect();
-    for i in 0..10 { draw_triangle(vec2(cx, cy), pts[i], pts[(i + 1) % 10], color); }
-}
 /// Resource icon by COT resource key.
 pub fn resource_icon(assets: &Assets, resource: &str, x: f32, y: f32, size: f32) {
     let name = match resource { "incense" => "prog-incense", "essence" => "lamp-essence", "gold" => "coin", _ => return };
@@ -300,17 +343,24 @@ fn strip(assets: &Assets, m: &CombatModel, hits: &mut Vec<Hit>) {
 }
 /// `renderExistingNavigation`: DAILY / HERO / QUESTS / VAULT / POWER UP.
 pub fn nav(assets: &Assets, screen: Screen, hits: &mut Vec<Hit>) {
-    draw_rectangle(0., NAV_TOP, WIDTH, NAV_H, rgb(0x2e3133));
-    draw_rectangle(0., NAV_TOP, WIDTH, 3., rgb(0xc9a359));
+    // box-shadow 0 -2px 5px #181b1c66 above; linear-gradient(#414345,#242729); border-top 3px ridge #c9a359.
+    box_shadow(0., NAV_TOP, WIDTH, NAV_H, 0., 0., -2., 5., rgba(0x181b1c, 0.4));
+    let bg = baked("nav", WIDTH, NAV_H, [0.; 4], &|_, v| stops(&[(0., rgb(0x414345)), (1., rgb(0x242729))], v));
+    draw_baked(&bg, 0., NAV_TOP, WIDTH, NAV_H);
+    draw_rectangle(0., NAV_TOP, WIDTH, 1.5, rgb(0xe2c07a));
+    draw_rectangle(0., NAV_TOP + 1.5, WIDTH, 1.5, rgb(0x8c6f38));
     let items: [(&str, &str, Option<Screen>); 5] = [("DAILY", "nav-daily", None), ("HERO", "nav-hero", Some(Screen::Hero)), ("QUESTS", "nav-quests", Some(Screen::Quests)), ("VAULT", "nav-vault", Some(Screen::Vault)), ("POWER UP", "nav-power-up", Some(Screen::PowerUp))];
+    let _ = screen; // aria-current=page changes no pixels.
     let w = (WIDTH - 8. - 2. * 4.) / 5.;
     for (i, (text, icon, target)) in items.iter().enumerate() {
         let x = 4. + i as f32 * (w + 2.);
-        let active = target.is_some_and(|t| t.nav_label() == screen.nav_label());
-        if active { draw_rectangle(x, NAV_TOP + 3., w, NAV_H - 5., rgba(0xc9a359, 0.18)); }
-        let tint = if target.is_none() { rgba(0xffffff, 0.45) } else { WHITE };
-        if let Some(tex) = assets.ui.get(*icon) { image_tinted(tex, x + (w - 43.) / 2., NAV_TOP + 6., 43., 40., tint); }
-        label(text, x + w / 2., NAV_TOP + 52., 9., if target.is_none() { rgb(0xbfbcb4) } else { rgb(0xfff7e6) }, Align::Center);
+        // Buttons are 52px tall from y 586; icon 43x40 then an 11px label, the column centred.
+        if let Some(tex) = assets.ui.get(*icon) {
+            image_tinted(tex, x + (w - 43.) / 2., NAV_TOP + 6.5 + 1., 43., 40., rgba(0x614422, 0.33));
+            image(tex, x + (w - 43.) / 2., NAV_TOP + 6.5, 43., 40.);
+        }
+        let ink = if target.is_none() { rgb(0xbfbcb4) } else { rgb(0xfff7e6) };
+        text::draw_shadowed(text, x + w / 2., NAV_TOP + 52., 9., Weight::ExtraBold, ink, Align::Center, (0., 1., rgba(0x000000, 0.75)));
         if let Some(t) = target { hits.push(Hit { rect: Rect::new(x, NAV_TOP, w, NAV_H), kind: HitKind::Nav(*t) }); }
     }
 }

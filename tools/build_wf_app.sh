@@ -20,6 +20,9 @@ mkdir -p "$WEB/art/wishfire-skills" "$WEB/data"
 cp -p "$ROOT/web-runner/assets/enemies.json" "$WEB/data/enemies.json"
 cp -p "$ROOT/web-runner/assets/images/vfx_impact_g03_purple.png" "$WEB/art/wishfire-skills/vfx_impact_g03_purple.png"
 # Chrome art (wf_app assets::UI_ART): nav icons, boss HUD icons, hero portraits, buff sheet.
+# UI typography (ui/text.rs): Inter, OFL; the license travels with the font.
+mkdir -p "$WEB/art/fonts"
+cp -p "$ROOT"/web-runner/assets/fonts/Inter-*.ttf "$ROOT/web-runner/assets/fonts/Inter-OFL.txt" "$WEB/art/fonts/"
 mkdir -p "$WEB/art/ui"
 IMG="$ROOT/web-runner/assets/images"
 for n in daily hero quests vault power-up; do cp -p "$IMG/navigation/$n.png" "$WEB/art/ui/nav-$n.png"; done

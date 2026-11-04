@@ -7,6 +7,7 @@ pub mod lamp;
 pub mod model;
 pub mod screens;
 pub mod story;
+pub mod text;
 use crate::assets::Assets;
 use crate::game::Game;
 use macroquad::prelude::*;

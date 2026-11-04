@@ -243,6 +243,18 @@ impl Assets {
         let font_bytes = macroquad::file::load_file(&art_url(&format!("art/{}", bundle.font)))
             .await
             .map_err(|e| format!("label font: {e}"))?;
+        // UI typography: Inter (OFL) stands in for main's CSS `system-ui`; see ui/text.rs.
+        let mut ui_fonts = Vec::new();
+        for weight in ["Regular", "SemiBold", "Bold", "ExtraBold"] {
+            let bytes = macroquad::file::load_file(&art_url(&format!("art/fonts/Inter-{weight}.ttf")))
+                .await
+                .map_err(|e| format!("art/fonts/Inter-{weight}.ttf: {e}"))?;
+            let mut font = load_ttf_font_from_bytes(&bytes).map_err(|e| format!("Inter-{weight}: {e}"))?;
+            font.set_filter(FilterMode::Linear);
+            ui_fonts.push(font);
+        }
+        let mut ui_fonts = ui_fonts.into_iter();
+        crate::ui::text::install(crate::ui::text::Fonts { regular: ui_fonts.next().unwrap(), semibold: ui_fonts.next().unwrap(), bold: ui_fonts.next().unwrap(), extrabold: ui_fonts.next().unwrap() });
         let mut entries: Vec<(String, VfxEntry)> = bundle
             .effects
             .into_iter()

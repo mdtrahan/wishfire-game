@@ -141,7 +141,7 @@ impl LampUi {
         if let Some(tex) = assets.ui.get("lamp-bag") { image(tex, BAG_LEFT, BAG_TOP - BAG_H * 0.1067, BAG_W, BAG_H * 0.9745); }
         let stored = data.stored_count();
         let count = format!("{}{}", stored as u32, if data.review_hold().is_some() { "+1" } else { "" });
-        let cw = measure_text(&count, None, 12, 1.).width + 10.;
+        let cw = chrome::measure(&count, 12., chrome::Weight::Regular) + 10.;
         draw_rectangle(BAG_LEFT + BAG_W - cw, BAG_TOP + 2., cw, 16., rgb(0x7a2fb0));
         draw_rectangle_lines(BAG_LEFT + BAG_W - cw, BAG_TOP + 2., cw, 16., 2., rgb(0xdba7f5));
         label(&count, BAG_LEFT + BAG_W - cw / 2., BAG_TOP + 10., 12., WHITE, Align::Center);

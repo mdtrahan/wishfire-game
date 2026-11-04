@@ -2,7 +2,7 @@
 //! (Hero), `createTrainingGroundUI` in `combatProgressionUI.mjs` (Power Up) and `renderChests.js`
 //! (Vault). The routing is the JS one (`storyEntryFlow.navigate`): leaving combat pauses it,
 //! Quests shows the pause gate until bead ORKA-63bf.10 lands the real page.
-use super::chrome::{self, rgb, rgba, rounded, rounded_outline, star, Align, Hit, HitKind, NAV_TOP};
+use super::chrome::{self, rgb, rgba, rounded, rounded_outline, Align, Hit, HitKind, Weight, NAV_TOP};
 use super::Screen;
 use crate::assets::Assets;
 use crate::camera::WIDTH;
@@ -53,22 +53,58 @@ fn button(text: &str, x: f32, y: f32, w: f32, h: f32, size: f32, fill: Color, st
     chrome::label(text, x + w / 2., y + h / 2., size, ink, Align::Center);
     if enabled { hits.push(Hit { rect: Rect::new(x, y, w, h), kind }); }
 }
-fn contain_bottom(tex: &Texture2D, x: f32, y: f32, w: f32, h: f32) {
+fn contain_bottom(tex: &Texture2D, x: f32, y: f32, w: f32, h: f32) { contain_bottom_tinted(tex, x, y, w, h, WHITE); }
+/// `object-fit: contain; object-position: 50% 100%`.
+fn contain_bottom_tinted(tex: &Texture2D, x: f32, y: f32, w: f32, h: f32, tint: Color) {
     let (tw, th) = (tex.width(), tex.height());
     let s = (w / tw).min(h / th);
-    draw_texture_ex(tex, x + (w - tw * s) / 2., y + h - th * s, WHITE, DrawTextureParams { dest_size: Some(vec2(tw * s, th * s)), ..Default::default() });
+    draw_texture_ex(tex, x + (w - tw * s) / 2., y + h - th * s, tint, DrawTextureParams { dest_size: Some(vec2(tw * s, th * s)), ..Default::default() });
 }
-fn stars_row(cx: f32, cy: f32, count: u32, size: f32) {
-    let step = size * 1.15;
-    let x0 = cx - step * (STAR_MAX as f32 - 1.) / 2.;
-    for slot in 0..STAR_MAX { star(x0 + slot as f32 * step, cy, size / 2., if slot < count { rgb(0xd0884a) } else { rgb(0x59667a) }); }
-}
-fn pct(value: f64) -> String { let v = (value * 1000.).round() / 10.; let t = format!("{v:.1}"); format!("{}%", t.trim_end_matches('0').trim_end_matches('.')) }
 
 // ---------------------------------------------------------------- Hero (renderHeroScreen.js)
+// Geometry is main's live DOM at 360x640 (font-size 14px => 1em = 14px); see output/fable-reference.
 const PAD_X: f32 = 12.; const PAD_TOP: f32 = 14.; const PAD_BOTTOM: f32 = 66.;
+const IDENTITY_H: f32 = 294.;
+/// `.hero-actions button` / `.sheet-action`: cream gradient, 1px #b99c66 border, solid 1.38px shadow.
+fn action_button(text: &str, x: f32, y: f32, w: f32, h: f32, enabled: bool, kind: HitKind, hits: &mut Vec<Hit>) {
+    let r = 5.74;
+    if enabled {
+        rounded(x, y + 1.38, w, h, r, rgb(0xb99c66));
+        rounded(x, y, w, h, r, rgb(0xb99c66));
+        let face = chrome::baked("action-face", w - 2., h - 2., [r - 1.; 4], &|_, v| chrome::stops(&[(0., rgb(0xfffaf0)), (1., rgb(0xf1e2bf))], v));
+        chrome::draw_baked(&face, x + 1., y + 1., w - 2., h - 2.);
+        chrome::label_w(text, x + w / 2., y + h / 2., 11.48, Weight::ExtraBold, rgb(0x1d3150), Align::Center);
+        hits.push(Hit { rect: Rect::new(x, y, w, h), kind });
+    } else {
+        rounded_outline(x, y, w, h, r, rgb(0xe3e6ea), rgb(0xb8bfc8));
+        chrome::label_w(text, x + w / 2., y + h / 2., 11.48, Weight::ExtraBold, rgb(0x7d8794), Align::Center);
+    }
+}
+/// `.stars`: eight ★ glyphs (1.15em = 16.1px) in 16px spans with a .1em gap, centred on `cx`.
+fn stars_row(cx: f32, cy: f32, count: u32, size: f32) {
+    let step = size / 16.1 * 17.42;
+    for slot in 0..STAR_MAX {
+        let x = cx + (slot as f32 - (STAR_MAX as f32 - 1.) / 2.) * step;
+        let color = if slot < count { rgb(0xd0884a) } else { rgb(0x59667a) };
+        super::text::draw_shadowed("★", x, cy, size, Weight::Regular, color, Align::Center, (0., 1., rgba(0x0b1626, 0.9)));
+    }
+}
+fn pct(value: f64) -> String { let v = (value * 1000.).round() / 10.; let t = format!("{v:.1}"); format!("{}%", t.trim_end_matches('0').trim_end_matches('.')) }
+/// `.hero-ticket-art`: `background-size 240%` quadrant of hero-tickets.png at `TICKET_QUADRANT`.
+fn ticket_art(assets: &Assets, hero_name: &str, x: f32, y: f32, w: f32, h: f32) {
+    let Some(tex) = assets.ui.get("prog-hero-tickets") else { return };
+    // background-position p% => offset p * (box - 2.4 box) = -1.4 p box; the box shows 1/2.4 of the image.
+    let (px, py) = match hero_name { "Hondo" => (0.94, 0.12), "Kaja" => (0.12, 0.89), "Runa" => (0.94, 0.89), _ => (0.12, 0.12) };
+    let frac = |p: f32| 1.4 * p / 2.4;
+    let src = Rect::new(frac(px) * tex.width(), frac(py) * tex.height(), tex.width() / 2.4, tex.height() / 2.4);
+    let params = || DrawTextureParams { dest_size: Some(vec2(w, h)), source: Some(src), ..Default::default() };
+    draw_texture_ex(tex, x, y + 1., rgba(0x14213a, 0.6), params());
+    draw_texture_ex(tex, x, y, WHITE, params());
+}
 fn hero_screen(assets: &Assets, game: &Game, ui: &mut HeroUi, hits: &mut Vec<Hit>) {
-    draw_rectangle(0., 0., WIDTH, NAV_TOP, rgb(0x1a2840));
+    // #hero-details: linear-gradient(#20385c, #1a2840 60%, #121c2c) over the whole 640px stage.
+    let page = chrome::baked("hero-page", WIDTH, NAV_TOP, [0.; 4], &|_, v| chrome::stops(&[(0., rgb(0x20385c)), (0.6, rgb(0x1a2840)), (1., rgb(0x121c2c))], v * NAV_TOP / 640.));
+    chrome::draw_baked(&page, 0., 0., WIDTH, NAV_TOP);
     let roster = roster(game);
     if roster.is_empty() { return; }
     let index = hero_index(ui, roster.len());
@@ -80,102 +116,165 @@ fn hero_screen(assets: &Assets, game: &Game, ui: &mut HeroUi, hits: &mut Vec<Hit
     let stars = game.progression.state.hero_stars(&hero.hero_instance_key);
     let tickets = game.progression.ticket_count(&hero.hero_instance_key);
     let (cw, bottom) = (WIDTH - 2. * PAD_X, 640. - PAD_BOTTOM);
-    // identity header: 21em = 294px
-    let (ix, iy, iw, ih) = (PAD_X, PAD_TOP, cw, 294.);
-    rounded(ix, iy, iw, ih, 8., rgb(0x1b3150));
-    rounded(ix, iy, iw * 0.6, ih, 8., rgb(0x2d5079));
-    draw_circle(ix + iw * 0.28, iy + ih * 0.52, iw * 0.26, rgba(0x4f7fa8, 0.9));
-    if let Some(tex) = assets.ui.get(super::model::hero_art(key)) { contain_bottom(tex, ix + iw * 0.02, iy + 8.4, iw * 0.52, ih - 8.4 - 78.4); }
+    // .identity (12,14,336,294): radial light at 28% 52% plus the ::after ground ellipse.
+    let (ix, iy, iw, ih) = (PAD_X, PAD_TOP, cw, IDENTITY_H);
+    let identity = chrome::baked("identity", iw, ih, [8.4; 4], &|u, v| {
+        let t = (((u - 0.28) / 0.6).powi(2) + ((v - 0.52) / 0.55).powi(2)).sqrt();
+        let base = chrome::stops(&[(0., rgb(0x4f7fa8)), (0.45, rgb(0x2d5079)), (1., rgb(0x1b3150))], t);
+        // ::after: left 4%, width 48%, bottom 5.3em, height 1.6em; radial(#0b1626aa, transparent 70%).
+        let (gu, gv) = ((u - 0.28) / 0.24, (v - (ih - 74.2 - 11.2) / ih) / (11.2 / ih));
+        let g = (gu * gu + gv * gv).sqrt();
+        let a = (1. - g / 0.7).clamp(0., 1.) * 0.667;
+        chrome::mix(base, rgb(0x0b1626), a)
+    });
+    chrome::draw_baked(&identity, ix, iy, iw, ih);
+    // .hero-portrait: left 2%, width 52%, top .6em, height 100% - 6.2em, contain at 50% 100%,
+    // drop-shadow(0 .3em .25em #07172a80).
+    let (ppx, ppy, ppw, pph) = (ix + iw * 0.02, iy + 8.4, iw * 0.52, ih - 86.8);
+    if let Some(tex) = assets.ui.get(super::model::hero_art(key)) {
+        for (dx, dy) in [(-1.5, 4.2), (1.5, 4.2), (0., 2.7), (0., 5.7)] { contain_bottom_tinted(tex, ppx + dx, ppy + dy, ppw, pph, rgba(0x07172a, 0.16)); }
+        contain_bottom(tex, ppx, ppy, ppw, pph);
+    }
+    // .hero-arrows: top 38%, 2em 800 glyphs with text-shadow 0 1px 4px #07172a.
     let ay = iy + ih * 0.38 + 14.;
-    chrome::label("<", ix + 10., ay, 28., rgb(0xcfe9ff), Align::Left); hits.push(Hit { rect: Rect::new(ix, ay - 20., 36., 40.), kind: HitKind::HeroPrev });
-    chrome::label(">", ix + iw * 0.56 - 10., ay, 28., rgb(0xcfe9ff), Align::Right); hits.push(Hit { rect: Rect::new(ix + iw * 0.56 - 36., ay - 20., 36., 40.), kind: HitKind::HeroNext });
-    let (nx, nw) = (ix + iw * 0.02, iw * 0.52);
-    let ny = iy + ih - 7.7 - 16. - 4. - 26.;
-    rounded_outline(nx, ny, nw, 26., 8., rgb(0xf6ecc9), rgb(0xb88e3c));
-    chrome::label(name, nx + nw / 2., ny + 13., 18., rgb(0x2a2010), Align::Center);
-    stars_row(nx + nw / 2., ny + 26. + 4. + 8., stars, 14.);
-    // skill panel (43% wide, right)
+    super::text::draw_shadowed("‹", ix + 13.06, ay, 28., Weight::ExtraBold, rgb(0xcfe9ff), Align::Center, (0., 1., rgba(0x07172a, 0.8)));
+    hits.push(Hit { rect: Rect::new(ix, ay - 20., 36., 40.), kind: HitKind::HeroPrev });
+    super::text::draw_shadowed("›", ix + iw * 0.56 - 13.06, ay, 28., Weight::ExtraBold, rgb(0xcfe9ff), Align::Center, (0., 1., rgba(0x07172a, 0.8)));
+    hits.push(Hit { rect: Rect::new(ix + iw * 0.56 - 36., ay - 20., 36., 40.), kind: HitKind::HeroNext });
+    // .hero-name h1 (18.72,247.125,174.72,32.9): gradient plate, 2px #b88e3c border, radius .6em.
+    let (nx, nw, nh) = (ix + iw * 0.02, iw * 0.52, 32.9);
+    let ny = iy + ih - 7.7 - 16.1 - 4.2 - nh;
+    chrome::box_shadow(nx, ny, nw, nh, 10.92, 0., 2.73, 5.46, rgba(0x07172a, 0.5));
+    rounded(nx, ny, nw, nh, 10.92, rgb(0xb88e3c));
+    let plate = chrome::baked("nameplate", nw - 4., nh - 4., [8.92; 4], &|_, v| chrome::stops(&[(0., rgb(0xfff8e4)), (1., rgb(0xecd7a4))], v));
+    chrome::draw_baked(&plate, nx + 2., ny + 2., nw - 4., nh - 4.);
+    chrome::label_w(name, nx + nw / 2., ny + nh / 2., 18.2, Weight::Bold, rgb(0x2a2010), Align::Center);
+    stars_row(nx + nw / 2., ny + nh + 4.2 + 8.05, stars, 16.1);
+    // .skill-panel (197.23,52.5,144.47,249.2): 2px #f2c75c border, 2px #1b2a42 ring, soft shadow.
     let (px, py, pw, ph) = (ix + iw - 6.3 - iw * 0.43, iy + 38.5, iw * 0.43, ih - 38.5 - 6.3);
-    rounded_outline(px - 2., py - 2., pw + 4., ph + 4., 8., rgb(0xfffdf7), rgb(0x1b2a42));
-    rounded_outline(px, py, pw, ph, 7., rgb(0xfffdf7), rgb(0xf2c75c));
+    chrome::box_shadow(px - 2., py - 2., pw + 4., ph + 4., 9.7, 0., 4.9, 11.2, rgba(0x050b16, 0.69));
+    rounded(px - 2., py - 2., pw + 4., ph + 4., 9.7, rgb(0x1b2a42));
+    rounded(px, py, pw, ph, 7.7, rgb(0xf2c75c));
+    let (bx, by, bw, bh) = (px + 2., py + 2., pw - 4., ph - 4.);
+    rounded(bx, by, bw, bh, 5.7, rgb(0xfffdf7));
     let entries: [Option<SkillText>; 5] = { let r = hero::resonance_texts(key).unwrap(); [hero::special_text(key), hero::passive_text(key), Some(r[0]), Some(r[1]), None] };
     ui.skill = ui.skill.min(4);
-    let footer_h = 26.;
-    draw_rectangle(px + 1., py + ph - footer_h - 1., pw - 2., footer_h, rgb(0x1b2a42));
-    rounded(px + 1., py + ph - 8., pw - 2., 7., 6., rgb(0x1b2a42));
-    let fy = py + ph - footer_h / 2. - 1.;
-    chrome::label("<", px + 8., fy, 16., rgb(0xffd56e), Align::Left); hits.push(Hit { rect: Rect::new(px, py + ph - footer_h, 30., footer_h), kind: HitKind::SkillPrev });
-    chrome::label(">", px + pw - 8., fy, 16., rgb(0xffd56e), Align::Right); hits.push(Hit { rect: Rect::new(px + pw - 30., py + ph - footer_h, 30., footer_h), kind: HitKind::SkillNext });
-    chrome::label(&format!("{} / 5", ui.skill + 1), px + pw / 2., fy, 10., rgb(0xc9d6e6), Align::Center);
+    // footer (199.23,272.84,140.47,26.86)
+    let footer_h = 26.86;
+    let fy0 = by + bh - footer_h;
+    chrome::rounded_corners(bx, fy0, bw, footer_h, [0., 0., 5.7, 5.7], rgb(0x1b2a42));
+    let fy = fy0 + footer_h / 2.;
+    chrome::label_w("‹", bx + 4.9 + 8.02, fy, 15.4, Weight::ExtraBold, rgb(0xffd56e), Align::Center); hits.push(Hit { rect: Rect::new(bx, fy0, 30., footer_h), kind: HitKind::SkillPrev });
+    chrome::label_w("›", bx + bw - 4.9 - 8.02, fy, 15.4, Weight::ExtraBold, rgb(0xffd56e), Align::Center); hits.push(Hit { rect: Rect::new(bx + bw - 30., fy0, 30., footer_h), kind: HitKind::SkillNext });
+    chrome::label(&format!("{} / 5", ui.skill + 1), bx + bw / 2., fy, 10.08, rgb(0xc9d6e6), Align::Center);
+    // article: padding .4em .5em at .74em (10.36px); h2 1.3em/1.15; small .25em margins; p .3em margins (collapsed).
+    let locked = matches!(ui.skill, 2 | 3);
     let (skill_id, display, tag) = match &entries[ui.skill] {
-        Some(t) => (t.id, t.name, if ui.skill >= 2 { "Late-game resonance - Not yet available" } else if ui.skill == 1 { "Passive" } else { "Special" }),
+        Some(t) => (t.id, t.name, if locked { "Late-game resonance · Not yet available" } else if ui.skill == 1 { "Passive" } else { "Special" }),
         None => ("basic_attack", "Basic Attack", "Always available"),
     };
-    let mut ty = py + 8.;
-    chrome::label(display, px + 7., ty + 6., 13., rgb(0x13213a), Align::Left); ty += 17.;
-    let tag_w = measure_text(tag, None, 9, 1.).width + 10.;
-    rounded(px + 7., ty, tag_w.min(pw - 14.), 13., 6., if ui.skill >= 2 { rgb(0xeceff3) } else { rgb(0xdff3ea) });
-    chrome::label(tag, px + 12., ty + 6.5, 9., if ui.skill >= 2 { rgb(0x5b6678) } else { rgb(0x1f6a4f) }, Align::Left); ty += 18.;
+    let (tx, tw) = (bx + 5.18, bw - 2. * 5.18);
+    let mut ty = by + 4.144;
+    chrome::label_w(display, tx, ty + 15.49 / 2., 13.468, Weight::Bold, rgb(0x13213a), Align::Left); ty += 15.49;
+    ty += 2.16;
+    let tag_w = (chrome::measure(tag, 8.633, Weight::Bold) + 2. * 3.885).min(tw);
+    rounded(tx, ty, tag_w, 12.5, 5.18, if locked { rgb(0xeceff3) } else { rgb(0xdff3ea) });
+    chrome::label_w(tag, tx + 3.885, ty + 6.25, 8.633, Weight::Bold, if locked { rgb(0x5b6678) } else { rgb(0x1f6a4f) }, Align::Left);
+    ty += 12.5 + 2.16;
     let copy = hero::skill_copy(skill_id, key);
-    for line in &copy.lines { ty += chrome::paragraph(line, px + 7., ty, pw - 14., 10., rgb(0x1b2a42)) + 3.; }
+    let mut first = true;
+    let mut p = |text: &str, weight: Weight, color: Color, ty: &mut f32| {
+        let (size, line_h) = if first { (10.36, 13.986) } else { (9.5312, 12.8671) };
+        first = false;
+        *ty += 3.108;
+        *ty += chrome::paragraph_w(text, tx, *ty, tw, size, line_h, weight, color);
+    };
+    for line in &copy.lines { p(line, Weight::Regular, rgb(0x1b2a42), &mut ty); }
     if ui.skill == 0 || ui.skill == 4 {
         let seconds = if ui.skill == 4 { "0".to_string() } else { hero::format_special_cooldown(key, stars) };
         let range = if ui.skill == 4 { "Screen width".to_string() } else { hero::special_range_text(skill_id) };
         let provisional = ui.skill == 0 && hero::PROVISIONAL_SPECIAL_COOLDOWNS.contains(&skill_id);
-        ty += chrome::paragraph(&format!("Range: {range} - Cooldown: {seconds}s{}", if provisional { " (provisional)" } else { "" }), px + 7., ty, pw - 14., 9., rgb(0x3a4d6a)) + 3.;
+        p(&format!("Range: {range} · Cooldown: {seconds}s{}", if provisional { " (provisional)" } else { "" }), Weight::SemiBold, rgb(0x3a4d6a), &mut ty);
     }
-    for rule in &copy.rules { if ty > py + ph - footer_h - 14. { break; } ty += chrome::paragraph(rule, px + 7., ty, pw - 14., 9., rgb(0x1b2a42)) + 2.; }
-    // tabs
+    for rule in &copy.rules { if ty > fy0 - 14. { break; } p(rule, Weight::Regular, rgb(0x1b2a42), &mut ty); }
+    // .tabs (12,313.6,336,32.2): three buttons, gap .3em, min-height 2.3em, 700 14px.
     let tabs_y = iy + ih + 5.6;
     let tab_w = (cw - 2. * 4.2) / 3.;
     for (i, label) in ["Heroes", "Gear", "Resonance"].iter().enumerate() {
         let x = ix + i as f32 * (tab_w + 4.2);
         let selected = ui.tab == i as u8;
-        rounded_outline(x, tabs_y, tab_w, 32.2, 6., if selected { rgb(0xfff3d8) } else { rgb(0x1d3150) }, if selected { rgb(0xfff3d8) } else { rgb(0x3f5675) });
-        chrome::label(label, x + tab_w / 2., tabs_y + 16., 13., if selected { rgb(0x163052) } else { rgb(0xc8d5e6) }, Align::Center);
+        rounded_outline(x, tabs_y, tab_w, 32.2, 6.3, if selected { rgb(0xfff3d8) } else { rgb(0x1d3150) }, if selected { rgb(0xfff3d8) } else { rgb(0x3f5675) });
+        chrome::label_w(label, x + tab_w / 2., tabs_y + 16.1, 14., Weight::Bold, if selected { rgb(0x163052) } else { rgb(0xc8d5e6) }, Align::Center);
         hits.push(Hit { rect: Rect::new(x, tabs_y, tab_w, 32.2), kind: HitKind::HeroTab(i as u8) });
     }
-    // pane
+    // .pane (12,351.4,336,222.6): padding .55em .6em.
     let (vx, vy, vw, vh) = (ix, tabs_y + 32.2 + 5.6, cw, bottom - (tabs_y + 32.2 + 5.6));
-    rounded(vx, vy, vw, vh, 6., rgb(0xfff4df));
+    rounded(vx, vy, vw, vh, 6.3, rgb(0xfff4df));
     let (qx, qy, qw) = (vx + 8.4, vy + 7.7, vw - 16.8);
     match ui.tab {
         0 => {
+            // .roster: 4 columns, gap .45em; .card-select aspect 1/1.05, 2px border, radius .4em.
             let gap = 6.3;
             let card_w = (qw - 3. * gap) / 4.;
             let card_h = card_w * 1.05;
+            let strip_h = 49.67;
             for (i, member) in roster.iter().enumerate() {
                 let x = qx + i as f32 * (card_w + gap);
                 let d = member.definition();
                 let selected = i == index;
-                rounded_outline(x, qy, card_w, card_h, 5., rgb(0xeef2f6), if selected { rgb(0x2fb3a6) } else { rgb(0x6b8590) });
+                // .ticket-strip sits under the card (margin-top -1.1em, z below the card-select).
+                let (sx, sy, sw) = (x + 0.98, qy + card_h - 15.4, card_w - 1.96);
+                chrome::box_shadow(sx, sy, sw, strip_h, 7., 0., 1.4, 2.8, rgba(0x0b1626, 0.33));
+                let strip = chrome::baked("ticket-strip", sw, strip_h, [0., 0., 7., 7.], &|_, v| chrome::stops(&[(0., rgb(0x2a3446)), (1., rgb(0x1c2433))], v));
+                chrome::draw_baked(&strip, sx, sy, sw, strip_h);
+                let border = if selected { rgb(0x2fb3a6) } else { rgb(0x6b8590) };
+                if selected { rounded(x - 2., qy - 2., card_w + 4., card_h + 4., 7.6, rgba(0x2fb3a6, 0.33)); }
+                rounded(x, qy, card_w, card_h, 5.6, border);
+                let face = chrome::baked("roster-face", card_w - 4., card_h - 4., [3.6; 4], &|u, v| {
+                    let t = (((u - 0.5) / 0.75).powi(2) + ((v - 0.38) / 0.65).powi(2)).sqrt();
+                    chrome::stops(&[(0., WHITE), (0.55, rgb(0xeef2f6)), (1., rgb(0xd5dce5))], t)
+                });
+                chrome::draw_baked(&face, x + 2., qy + 2., card_w - 4., card_h - 4.);
                 if let Some(tex) = assets.ui.get(super::model::hero_art(d.key)) {
-                    let scale = 1.8 * card_w / tex.width();
-                    let src = Rect::new(0.222 * tex.width(), 0.02 * card_h / scale, 0.556 * tex.width(), ((card_h - 4.) / scale).min(tex.height()));
-                    draw_texture_ex(tex, x + 2., qy + 2., WHITE, DrawTextureParams { dest_size: Some(vec2(card_w - 4., src.h * scale)), source: Some(src), ..Default::default() });
+                    // img: left -40%, top -2%, width 180% of the content box, height auto, clipped.
+                    let (cx, cy, ccw, cch) = (x + 2., qy + 2., card_w - 4., card_h - 4.);
+                    let img_w = 1.8 * ccw;
+                    let img_h = img_w * tex.height() / tex.width();
+                    let (off_x, off_y) = (0.4 * ccw, 0.02 * ccw);
+                    let src = Rect::new(off_x / img_w * tex.width(), off_y / img_h * tex.height(), ccw / img_w * tex.width(), (cch / img_h * tex.height()).min(tex.height() - off_y / img_h * tex.height()));
+                    let dest_h = src.h / tex.height() * img_h;
+                    draw_texture_ex(tex, cx, cy, WHITE, DrawTextureParams { dest_size: Some(vec2(ccw, dest_h)), source: Some(src), ..Default::default() });
                 }
                 hits.push(Hit { rect: Rect::new(x, qy, card_w, card_h), kind: HitKind::Roster(i) });
-                // ticket strip
-                let sy = qy + card_h - 2.;
-                rounded(x + 1., sy, card_w - 2., 34., 5., rgb(0x1c2433));
+                // .ticket-bar: 86% of the strip content, 1.3em tall, radius 1em, inset top shadow.
                 let balance = game.progression.ticket_count(&member.hero_instance_key);
                 let cost = hero_ticket_level_cost(member.current_level as f64);
                 let maxed = member.current_level >= member.max_level;
-                let (bx, bw) = (x + 8., (card_w - 2.) * 0.86 - 6.);
-                let by = sy + 12.;
-                rounded(bx, by, bw, 14., 7., rgb(0x0a0e15));
+                let (bar_w, bar_h) = ((sw - 7.) * 0.86, 18.2);
+                let (bx, by) = (sx + 3.5 + (sw - 7. - bar_w) / 2., sy + 23.1);
+                let bar = chrome::baked("ticket-bar", bar_w, bar_h, [9.1; 4], &|_, v| chrome::mix(rgb(0x0a0e15), BLACK, 0.8 * (1. - v * bar_h / 3.5).clamp(0., 1.)));
+                chrome::draw_baked(&bar, bx, by, bar_w, bar_h);
                 let fill = if maxed { 1. } else { (balance / cost).min(1.) as f32 };
-                if fill > 0. { rounded(bx, by, (bw * fill).max(14.), 14., 7., rgb(0x38b8ff)); }
-                chrome::ticket_art(assets, d.name, x - 2., by - 2., 20., 14.);
-                chrome::stroked(&if maxed { "MAX".to_string() } else { format!("{}/{}", super::model::format_number(balance), super::model::format_number(cost)) }, bx + bw / 2. + 4., by + 7., 8., WHITE, rgb(0x14213a), Align::Center);
+                if fill > 0. {
+                    let fw = ((bar_w * fill * 2.).round() / 2.).max(bar_h);
+                    let fill_tex = chrome::baked("ticket-fill", fw, bar_h, [9.1; 4], &|_, v| {
+                        let c = chrome::stops(&[(0., rgb(0x9cecff)), (0.4, rgb(0x38b8ff)), (1., rgb(0x1a8cff))], v);
+                        chrome::mix(c, WHITE, 0.7 * (1. - v * bar_h / 1.68).clamp(0., 1.))
+                    });
+                    chrome::draw_baked(&fill_tex, bx, by, fw, bar_h);
+                }
+                ticket_art(assets, d.name, sx - 5.6, sy + strip_h - 10.78 - 13.58, 20.3, 13.58);
+                let text = if maxed { "MAX".to_string() } else { format!("{}/{}", super::model::format_number(balance), super::model::format_number(cost)) };
+                chrome::stroked_w(&text, bx + 3.85 + (bar_w - 3.85) / 2., by + bar_h / 2., 7.7, Weight::ExtraBold, WHITE, rgb(0x14213a), Align::Center);
             }
-            let ay = qy + card_h + 32. + 8.4;
+            // .hero-actions: margin-top .6em after the roster, 3 columns, gap .4em, 2.2em tall at .82em.
+            let ay = qy + card_h - 15.4 + strip_h + 8.4;
             let bw = (qw - 2. * 5.6) / 3.;
             let cost = hero_ticket_level_cost(hero.current_level as f64);
             let maxed = hero.current_level >= hero.max_level;
-            button("Level Up", qx, ay, bw, 30.8, 11.5, rgb(0xf8ecd4), rgb(0xb99c66), rgb(0x1d3150), !maxed && tickets >= cost, HitKind::LevelUp, hits);
-            button("Star Up", qx + bw + 5.6, ay, bw, 30.8, 11.5, rgb(0xf8ecd4), rgb(0xb99c66), rgb(0x1d3150), true, HitKind::StarOpen, hits);
-            if !ui.ticket_notice.is_empty() { chrome::paragraph(&ui.ticket_notice, qx, ay + 38., qw, 11., rgb(0x36465c)); }
+            action_button("Level Up", qx, ay, bw, 25.25, !maxed && tickets >= cost, HitKind::LevelUp, hits);
+            action_button("Star Up", qx + bw + 5.6, ay, bw, 25.25, true, HitKind::StarOpen, hits);
+            if !ui.ticket_notice.is_empty() { chrome::paragraph_w(&ui.ticket_notice, qx, ay + 25.25 + 7., qw, 11.2, 15.12, Weight::Regular, rgb(0x36465c)); }
         }
         1 => {
             // heroGearUI.mjs: Hat, Body, Boots + Accessory (no source yet)
@@ -278,7 +377,7 @@ fn hero_screen(assets: &Assets, game: &Game, ui: &mut HeroUi, hits: &mut Vec<Hit
             let (col, row) = (((i - 1) % 2) as f32, ((i - 1) / 2) as f32);
             let line = format!("*{i} - {skill} - +{} stats - {text}", pct(bonus));
             let mut clipped = line.clone();
-            while measure_text(&clipped, None, 8, 1.).width > sw / 2. - 14. && clipped.len() > 4 { clipped.truncate(clipped.len() - 4); clipped.push_str("..."); }
+            while chrome::measure(&clipped, 8., Weight::Regular) > sw / 2. - 14. && clipped.len() > 4 { clipped.truncate(clipped.len() - 4); clipped.push_str("..."); }
             chrome::label(&clipped, sx + 10. + col * (sw / 2.), sy + 106. + row * 14., 8., if earned { rgb(0x744016) } else { rgb(0x354b66) }, Align::Left);
         }
         let ry = sy + sh - 44.;
@@ -332,13 +431,13 @@ fn training_ground(assets: &Assets, game: &Game, ui: &TrainingUi, hits: &mut Vec
             for icon in entry.icons { chrome::buff_icon(assets, icon, ix, y + 8., 20.); ix += 22.; }
             chrome::label(&format!("{}   {} - Lv. 1", entry.name, entry.hero), lx + 48., y + 12., 11., rgb(0x2b2116), Align::Left);
             let mut t = entry.effect.to_string();
-            while measure_text(&t, None, 8, 1.).width > lw - 56. && t.len() > 4 { t.truncate(t.len() - 4); t.push_str("..."); }
+            while chrome::measure(&t, 8., Weight::Regular) > lw - 56. && t.len() > 4 { t.truncate(t.len() - 4); t.push_str("..."); }
             chrome::label(&t, lx + 48., y + 27., 8., rgb(0x3e3020), Align::Left);
             let stars = game.progression.state.hero_stars(hero::hero_key(entry.hero));
             let clock = format!("{} {}s", entry.clock_label, hero::format_special_cooldown(entry.hero, stars));
             let mut vx = lx + 48.;
             for value in entry.values.iter().copied().chain(std::iter::once(clock.as_str())) {
-                let w = measure_text(value, None, 8, 1.).width + 10.;
+                let w = chrome::measure(value, 8., Weight::Regular) + 10.;
                 if vx + w > lx + lw - 4. { break; }
                 rounded_outline(vx, y + 38., w, 14., 5., rgb(0xf4dfb5), rgb(0xa98b5a));
                 chrome::label(value, vx + 5., y + 45., 8., rgb(0x5d513c), Align::Left);

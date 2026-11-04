@@ -350,7 +350,7 @@ fn wrap(text: &str, width: f32, size: f32) -> Vec<String> {
     let mut line = String::new();
     for word in text.split_whitespace() {
         let candidate = if line.is_empty() { word.to_string() } else { format!("{line} {word}") };
-        if line.is_empty() || measure_text(&candidate, None, size as u16, 1.).width <= width { line = candidate; } else { lines.push(line); line = word.to_string(); }
+        if line.is_empty() || chrome::measure(&candidate, size, chrome::Weight::Regular) <= width { line = candidate; } else { lines.push(line); line = word.to_string(); }
     }
     if !line.is_empty() { lines.push(line); }
     lines
@@ -374,7 +374,7 @@ fn resource_strip(gold: f64, progress: &Progress) {
     for (i, (symbol, value)) in [("gold", super::model::format_number(gold)), ("resources", super::model::format_number(progress.resources)), ("energy", format!("{}/{}", progress.energy, MAX_ENERGY))].iter().enumerate() {
         let x = x0 + i as f32 * (w + 4.);
         rounded_outline(x, y, w, h, 10., rgb(0x30343c), rgb(0xae9661));
-        let tw = measure_text(value, None, 10, 1.).width;
+        let tw = chrome::measure(value, 10., chrome::Weight::Regular);
         let cx = x + w / 2. - (tw + 16.) / 2.;
         match *symbol {
             "gold" => { draw_circle(cx + 6., y + 10., 6.5, rgb(0xffe18a)); draw_circle(cx + 6., y + 10., 5., rgb(0xe8b53a)); chrome::label("G", cx + 6., y + 10., 9., rgb(0x8b5919), Align::Center); }
