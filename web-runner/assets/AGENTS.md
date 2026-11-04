@@ -1,13 +1,14 @@
 # Web Runner Assets DOX
 
 ## Purpose
-- Own runtime data and media consumed by the browser runner.
+- Own source art and runtime data consumed by the Rust app build (`tools/build_wf_app.sh`, `rust/wf_pack`).
 - Keep generated and hand-authored runtime assets from becoming hidden gameplay-code owners.
 
 ## Ownership
-- `layouts.json`, `objectTypes.json`, and `enemies.json` are structured runtime data.
-- `simulation_core.wasm`, `simulation_core.manifest.json` and `../src/core/specialClockContent.mjs` form one matched generated release from `rust/simulation_core/`. Server/test/release startup regenerates missing or stale products and validates the matched set.
-- `images/`, `gems/`, and `fonts/` are presentation assets referenced by render/runtime code and tests.
+- `enemies.json` is the enemy table (`wf_meta::enemy::parse_c2_table`), staged as `data/enemies.json`.
+- `puppets/` and `arenas/` are packed into the actor atlas by `rust/wf_pack`; `rust-combat/` is the effects/decals/font bundle the client loads by manifest.
+- `images/`, `narrative/`, `gems/` and `fonts/` are presentation assets; the build script copies the chrome subset into `rust/wf_app/web/art/ui`.
+- `layouts.json`, `objectTypes.json`, the lamp CSS and the JS-facing `simulation_core.wasm` left with the JS runtime (ORKA-63bf.11).
 
 ## Local Contracts
 - Equipment dialog portraits, CP arrows, tiles and controls stay fully opaque, including disabled controls. Eligibility stays enforced through disabled state and CP checks.
@@ -15,17 +16,14 @@
 - `images/lamp/ART.md` records original gear/device atlas hashes and grid order. Rarity is conveyed separately through white/green/blue/purple/gold frames/glow. Collector cells are unused; only the shared lamp appears in acquisition UI.
 - The `.lamp-level` badge is shared by lamp equipment and equipped hero gear art; keep its lower-right placement and legibility sizing consistent across both.
 - `narrative/characters/` contains the existing Hondo, Fara, Kaja, and Runa scene sprites. Content character IDs resolve these filenames through the narrative renderer; the opening uses the existing solo/pair shot contract.
-- Do not hand-edit `simulation_core.wasm`; rebuild it with `npm run rust:build-wasm`.
-- Treat `layouts.json` as large structured data from the retired Construct surface. Use JSON-aware edits and keep gameplay rules in code/product docs.
 - Asset filenames are often referenced directly by render code and tests; rename only with a full reference search.
-- Hero art files use the current display names `Fara.png`, `Hondo.png`, `Runa.png`, and `Kaja.png`; they are transparent full-body portraits; combat actors consume puppet packages. Legacy hero IDs resolve through `state/heroArtAssets.mjs` and never own filenames.
+- Hero art files use the current display names `Fara.png`, `Hondo.png`, `Runa.png`, and `Kaja.png`; they are transparent full-body portraits; combat actors consume puppet packages. Legacy hero IDs resolve through `rust/wf_app/src/ui/model.rs::hero_art` and never own filenames.
 - Battlefield selectors have no raster assets; actor readiness and enemy targeting are state-owned and render no marker.
 - Do not store secrets or environment-specific paths in assets.
 
 ## Work Guidance
-- For enemy/data changes, verify the runtime loader and tests that consume the data.
-- For image/font changes, run visual/browser QA if the changed asset is visible in `web-runner`.
-- For layout JSON changes, keep diffs as narrow as possible and validate JSON parseability.
+- For enemy/data changes, rerun the Rust oracle crates (`cargo test -p wf_meta -p wf_host`).
+- For image changes, rebuild (`tools/build_wf_app.sh`) and review at 127.0.0.1:8807.
 
 ## Verification
 - `node --test` focused tests for consumers of changed data.

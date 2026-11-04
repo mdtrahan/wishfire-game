@@ -1,31 +1,44 @@
+// Hosted release: build the Rust app (tools/build_wf_app.sh) and publish rust/wf_app/web as dist/web-runner,
+// the public URL the game has always served from. The previous release survives a failed build.
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { sha256, ensureWasmRelease, generatedRuntimeFiles, publishRelease } from './build_wasm_support.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
+const web = path.join(root, 'rust', 'wf_app', 'web');
 const output = path.join(root, 'dist');
 const candidate = `${output}.next-${process.pid}`;
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+const sha256 = buffer => createHash('sha256').update(buffer).digest('hex');
 const commit = git('rev-parse', 'HEAD');
-const simulationCore = ensureWasmRelease(root);
-const allowedExtensions = new Set(['.html', '.js', '.mjs', '.json', '.css', '.wasm', '.png', '.jpg', '.jpeg', '.webp', '.svg', '.woff', '.woff2', '.ttf', '.otf', '.mp3', '.ogg', '.wav']);
-const files = [...new Set([...git('ls-files', '-z', '--', 'web-runner', 'src').split('\0').filter(file =>
-  file && allowedExtensions.has(path.extname(file)) && !file.endsWith('/prompts.json')), ...generatedRuntimeFiles])];
-if (!files.includes('web-runner/app.js')) throw new Error('Release requires tracked runtime');
-if (!files.includes('web-runner/assets/simulation_core.manifest.json')) throw new Error('Release requires SimulationCore provenance');
+if (!process.argv.includes('--no-build')) execFileSync('bash', [path.join(root, 'tools', 'build_wf_app.sh')], { cwd: root, stdio: 'inherit' });
+for (const required of ['index.html', 'mq_js_bundle.js', 'wf_app.wasm', 'art/manifest.json', 'data/enemies.json']) {
+  if (!fs.existsSync(path.join(web, required))) throw new Error(`Release requires rust/wf_app/web/${required}; run tools/build_wf_app.sh`);
+}
+const walk = dir => fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+  const full = path.join(dir, entry.name);
+  if (entry.name.startsWith('.')) return [];
+  return entry.isDirectory() ? walk(full) : [full];
+});
 fs.rmSync(candidate, { recursive: true, force: true });
 try {
-  for (const file of files) {
-    fs.mkdirSync(path.dirname(path.join(candidate, file)), { recursive: true });
-    fs.copyFileSync(path.join(root, file), path.join(candidate, file));
+  const files = [];
+  for (const file of walk(web)) {
+    const rel = path.join('web-runner', path.relative(web, file));
+    fs.mkdirSync(path.dirname(path.join(candidate, rel)), { recursive: true });
+    fs.copyFileSync(file, path.join(candidate, rel));
+    files.push(rel);
   }
-  fs.writeFileSync(path.join(candidate, 'web-runner/runtime-fingerprint.js'), `window.__ORKA_RUNTIME_FINGERPRINT__ = ${JSON.stringify({ commit, release: true })};\n`);
-  if (!files.includes('web-runner/runtime-fingerprint.js')) files.push('web-runner/runtime-fingerprint.js');
+  fs.copyFileSync(path.join(root, 'favicon.ico'), path.join(candidate, 'favicon.ico'));
+  files.push('favicon.ico');
   fs.writeFileSync(path.join(candidate, '_redirects'), '/ /web-runner/ 301\n/web-runner /web-runner/ 301\n');
   files.push('_redirects');
-  const manifest = { commit, simulationCore, files: Object.fromEntries(files.sort().map(file => [file, sha256(fs.readFileSync(path.join(candidate, file)))])) };
+  const manifest = { commit, files: Object.fromEntries(files.sort().map(file => [file, sha256(fs.readFileSync(path.join(candidate, file)))])) };
   fs.writeFileSync(path.join(candidate, 'release-manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
-  publishRelease(candidate, output);
+  const previous = `${output}.previous-${process.pid}`;
+  if (fs.existsSync(output)) fs.renameSync(output, previous);
+  fs.renameSync(candidate, output);
+  fs.rmSync(previous, { recursive: true, force: true });
   console.log(`Runtime release: ${files.length} files from ${commit} in ${output}`);
 } finally { fs.rmSync(candidate, { recursive: true, force: true }); }

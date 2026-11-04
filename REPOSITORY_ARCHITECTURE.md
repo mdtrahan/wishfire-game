@@ -1,5 +1,7 @@
 # Repository Architecture
 
+> Superseded (2026-11-04): the JavaScript runtime this document maps was translated to Rust and removed (ORKA-63bf). Current architecture: `rust/AGENTS.md` and `README.md`. Kept as history.
+
 ## Retrieval Receipt
 - Tool used first: `jcodemunch-mcp`.
 - Repo/query used: `local/Codex-Orka-904e2bad`; `get_repo_health`, `get_symbol_importance`, `get_signal_chains`, and `get_dependency_graph`.

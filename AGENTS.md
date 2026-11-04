@@ -72,8 +72,8 @@ After startup, execution policy is governed by:
 
 ## Repository Map
 Runtime
-├── `Scripts/`, `web-runner/`, `src/`
-└── `rust/`
+├── `rust/` (the game: `wf_app` client, `wf_host`, `wf_meta`, `wf_combat`, `simulation_core`, `wf_pack`)
+└── `web-runner/` (source art + the public page path; JS runtime removed in ORKA-63bf.11)
 Product └── `governance/product/` (`abilities.html`)
 Execution └── `governance/execution/`
 Memory └── `ai-memory/`
@@ -85,10 +85,9 @@ Support ├── `agents/` (retired)
 ## Implementation Rules
 - Edit the minimum necessary files; avoid unrelated refactors; resolve conflicts locally.
 - Inspect unexpected tracked changes; preserve unrelated dirt and edit only clean or explicitly owned paths. Pause affected edits if ownership remains unclear. Keep one ownership lane per bead unless authorized.
-- Prefer deterministic shared logic in `src/` or Rust-owned SimulationCore seams over new browser-shell logic.
-- Keep `web-runner/app.js` orchestration-only; detailed ownership rules live in `governance/execution/implementation-gate.md`.
+- Deterministic rules live in `rust/wf_meta` (meta), `rust/wf_combat` (combat) and `rust/wf_host` (host loop, saves, economy); the client (`rust/wf_app`) reads snapshots and never recomputes rule outcomes. Detailed ownership rules live in `governance/execution/implementation-gate.md`.
 - Use `governance/execution/validation.md` for focused proof and `governance/execution/integration.md` for merge readiness.
-- Pre-commit runs fast deterministic owner checks through `test:commit` (typical target under two minutes). The PR verifier runs `test:merge -- --base <pinned-main>` once per final PR head: lamp browser containment, CP/equipment/roster gameplay and rendered UI locks retain their owner routes. Browser viewport profiles prove responsive web behavior; native-phone testing is not a commit gate.
+- Pre-commit runs fast deterministic checks through `test:commit` (retained Node contracts affected by the diff plus the touched Rust crates). The PR verifier runs `test:merge -- --base <pinned-main>` once per final PR head: the retained Node suite and every Rust crate. Owner review happens in the game at 127.0.0.1:8807; native-phone testing is not a commit gate.
 
 ## Investigation and experiments
 
@@ -108,17 +107,15 @@ Describe expected behavior, not a list of tools or activities. Skip this brief f
 - D17′ ordinary AllDown calls `restartAtSubwave(index)` to recreate the same authored subwave with healthy heroes at slice origins, without cost. Bosses retain checkpoint/manual-summon recovery. Story paid-Continue is retired.
 - `LAMP_EQUIPMENT_MVP.md` owns the approved lamp replacement; `goals/approved-bag-upgrades.md` owns the smooth full-cost Bag upgrade and reward contract; `goals/wishfire-lamp-progression.md` separates delivered paid progression from proposed quality tiers and pacing assumptions.
 - `COMBAT_ENGINE_CLEANUP_PLAN.md` owns the realtime foundation. Approved conditional-skill definitions and their progression supersede its earlier five-active kit contract. `COMBAT_MIGRATION_PLAN.md` retains the earlier hero-command contract as history; SP/FLOW, hidden Pals and playable turns are retired.
-- `web-runner/src/core/heroDefinitions.mjs` owns the accepted hero kits (owner, 2026-10-23): Basic + Special (the only clock) + Passive (no clock, no lingering) + two late-game Resonances (display-only scaffolding). Special cooldowns flagged provisional await owner tuning. `governance/planning/conditional-skill-catalog.md` is retired history for the deleted 33-skill kit.
+- `rust/wf_meta/src/hero.rs` owns the accepted hero kits (owner, 2026-10-23; translated from `web-runner/src/core/heroDefinitions.mjs`): Basic + Special (the only clock) + Passive (no clock, no lingering) + two late-game Resonances (display-only scaffolding). Special cooldowns flagged provisional await owner tuning. `governance/planning/conditional-skill-catalog.md` is retired history for the deleted 33-skill kit.
 
 
 - `docs/vfx-3d/` carries the pinned slice’s complete, unchanged presentation specs, reference code and provider-neutral skill. Every combat integration keeps that package intact.
 
 ## Child DOX Index
 - `history/AGENTS.md` - explicit opt-in boundary for preserved legacy material.
-- `Scripts/AGENTS.md` - retained meta/state adapters; combat mirrors are retired.
-- `web-runner/AGENTS.md` - browser runtime shell, rendering/input systems, runtime data, and browser-shipped core rules.
-- `src/AGENTS.md` - shared deterministic JS rules and layout contracts.
-- `rust/AGENTS.md` - Rust SimulationCore deterministic boundary and WASM exports.
-- `tests/AGENTS.md` - contract tests, fixtures, and regression proof surfaces.
-- `tools/AGENTS.md` - repo automation, QA harnesses, local server, and build helpers.
+- `web-runner/AGENTS.md` - source art, runtime data and the public page path.
+- `rust/AGENTS.md` - the Rust game: crate boundaries, translation contracts and WASM exports.
+- `tests/AGENTS.md` - retained tooling contracts and the frozen JS oracle fixtures.
+- `tools/AGENTS.md` - repo automation, Rust build/serve/release helpers and Beads/Git support.
 - `governance/AGENTS.md` - product, planning, audit, and Beads review documentation.

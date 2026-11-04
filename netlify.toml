@@ -16,7 +16,7 @@
   status = 301
 
 [[headers]]
-  for = "/web-runner/assets/images/*"
+  for = "/web-runner/art/*"
   [headers.values]
     Cache-Control = "public, max-age=86400"
 
@@ -26,16 +26,6 @@
     Cache-Control = "public, max-age=86400"
 
 [[headers]]
-  for = "/web-runner/assets/gems/*"
-  [headers.values]
-    Cache-Control = "public, max-age=86400"
-
-[[headers]]
-  for = "/web-runner/assets/fonts/*"
-  [headers.values]
-    Cache-Control = "public, max-age=86400"
-
-[[headers]]
-  for = "/web-runner/assets/*.wasm"
+  for = "/web-runner/*.wasm"
   [headers.values]
     Cache-Control = "public, max-age=86400"

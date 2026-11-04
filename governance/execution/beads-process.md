@@ -74,10 +74,7 @@ Minor exemption rules live in `governance/execution/implementation-gate.md`.
 - Only start beads with no unresolved blockers.
 
 ## Hot-File Discipline
-- Treat these as serialized hot files unless a bead explicitly proves isolation:
-  - `web-runner/app.js`
-  - `web-runner/modules/functionBank.js`
-  - `Scripts/functionBank.js`
+- No hot files are declared after the Rust cutover (ORKA-63bf.11); `HOT_FILE_SCOPE_HOT_FILES` can name new ones when a crate module becomes a serialized owner.
 - For hot-file beads:
   - stage the intended hot-file diff first
   - run `tools/prepare_hot_file_commit.sh <bd-id>` to generate `.beads/hot-file-lock/<bd-id>.scope`

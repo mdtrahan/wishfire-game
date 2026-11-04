@@ -9,7 +9,7 @@
 - Prefer focused deterministic validation over broad suites unless the touched surface requires broad proof.
 - Use `git diff --check` for docs-only or markdown-heavy changes.
 - Manual browser QA is acceptable for runtime behavior.
-- For local `web-runner` visual/manual QA, use the Codex in-app browser first. Use standalone Playwright, Chrome, or `agent-browser` only if Browser is unavailable, the user asks for another surface, or the check requires unsupported Browser capability.
+- For local visual/manual QA of the Rust app (`tools/build_wf_app.sh`, `tools/serve_wf_app.sh`, 127.0.0.1:8807), use the Codex in-app browser first. Use standalone Playwright, Chrome, or `agent-browser` only if Browser is unavailable, the user asks for another surface, or the check requires unsupported Browser capability.
 
 ## Test Tiers
 - `npm run test:commit` checks staged whitespace, changed JavaScript syntax, affected deterministic tests and Rust unit tests when `rust/` changes. Direct Node checks ensure source-matched WASM before imports. It follows module/fixture dependencies and direct source references, excludes browser-driven tests, and retains commit compliance, storage and hot-file ownership checks. Target: under two minutes for typical warm commits. Existing lint/format scripts must join this tier when introduced.

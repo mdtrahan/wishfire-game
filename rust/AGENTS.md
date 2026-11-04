@@ -1,6 +1,7 @@
 # Rust DOX
 
 ## Purpose
+- The whole game runs here since the Rust cutover (ORKA-63bf.11): `wf_app` is the shipped client, built and staged by `tools/build_wf_app.sh`, published by `tools/build_runtime_release.mjs` as `dist/web-runner/`.
 - Own the Rust SimulationCore deterministic simulation source and WASM export boundary.
 
 ## Ownership
