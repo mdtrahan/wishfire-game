@@ -212,7 +212,7 @@ fn wfm_config_matches() {
         let enemies: Vec<EnemyHost> = plan.iter().map(|p| {
             let a = activate_entry(&state, 40., p, boss, None).unwrap();
             uid += 1;
-            EnemyHost { uid: uid - 1, name: p.row.name.clone(), hp: p.row.hp, max_hp: p.row.hp, stats: shadow::Stats6 { hp: p.row.hp, atk: p.row.atk, def: p.row.def, mag: p.row.mag, res: p.row.res, spd: p.row.spd }, boss, combat_tier: p.row.combat_tier,
+            EnemyHost { uid, name: p.row.name.clone(), hp: p.row.hp, max_hp: p.row.hp, stats: shadow::Stats6 { hp: p.row.hp, atk: p.row.atk, def: p.row.def, mag: p.row.mag, res: p.row.res, spd: p.row.spd }, boss, combat_tier: p.row.combat_tier,
                 stream_walk_speed: a.stream_walk_speed, ranged: a.stream_delivery == "ranged", x: a.x, y: a.y, boss_interval_seconds: None }
         }).collect();
         let config = create_wfm_combat_config(&state, &heroes, &enemies, &data, &raws, &format!("oracle:{}", seed as u32), false, training, &stars).unwrap();

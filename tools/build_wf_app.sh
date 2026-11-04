@@ -16,7 +16,8 @@ mkdir -p "$WEB/gen" "$WEB/art"
 rsync -a --delete "$APP/gen/" "$WEB/gen/"
 # Runtime art is main's rust-combat bundle, read-only; staged by reference copy.
 rsync -a --delete --exclude='PROVENANCE.md' --exclude='vfx.json' "$ROOT/web-runner/assets/rust-combat/" "$WEB/art/"
-mkdir -p "$WEB/art/wishfire-skills"
+mkdir -p "$WEB/art/wishfire-skills" "$WEB/data"
+cp -p "$ROOT/web-runner/assets/enemies.json" "$WEB/data/enemies.json"
 cp -p "$ROOT/web-runner/assets/images/vfx_impact_g03_purple.png" "$WEB/art/wishfire-skills/vfx_impact_g03_purple.png"
 WASM_TMP="$(mktemp "$WEB/.wf_app.wasm.XXXXXX")"
 trap 'rm -f "$WASM_TMP"' EXIT

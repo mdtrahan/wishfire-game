@@ -62,7 +62,7 @@ impl Motion {
             }
         }
     }
-    fn observe_step(&mut self,before:&Snapshot,after:&Snapshot) {
+    pub fn observe_step(&mut self,before:&Snapshot,after:&Snapshot) {
         self.previous=self.presentation(before);
         if before.hit_stop.is_some() {self.stopped_time+=after.time-before.time;}
         self.observe(after);
@@ -97,10 +97,6 @@ impl Motion {
             remaining = (remaining - chunk).max(0.);
         }
         steps
-    }
-    /// Host stepping: the host runs whole fixed steps and reports each completed one here.
-    pub fn advance_host(&mut self, host: &mut crate::host::Host, dt: f32) -> u32 {
-        host.advance(dt, |before, after| self.observe_step(before, after))
     }
     pub fn snapshot(&self, s: &Snapshot, alpha: f32) -> Snapshot {
         let mut frame = s.clone();

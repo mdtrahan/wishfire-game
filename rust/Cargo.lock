@@ -465,6 +465,8 @@ dependencies = [
  "serde_json",
  "simulation_core",
  "wf_combat",
+ "wf_host",
+ "wf_meta",
 ]
 
 [[package]]
@@ -474,6 +476,17 @@ dependencies = [
  "libm",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "wf_host"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "simulation_core",
+ "wf_combat",
+ "wf_meta",
 ]
 
 [[package]]

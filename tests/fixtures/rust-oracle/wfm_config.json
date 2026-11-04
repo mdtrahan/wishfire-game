@@ -880,7 +880,7 @@
     ],
     "enemies": [
      {
-      "spawn_key": "90",
+      "spawn_key": "91",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 208,
@@ -902,7 +902,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "91",
+      "spawn_key": "92",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 208,
@@ -924,7 +924,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "92",
+      "spawn_key": "93",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 209.0873734293878,
@@ -946,7 +946,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "93",
+      "spawn_key": "94",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 457.4258606594263,
@@ -968,7 +968,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "94",
+      "spawn_key": "95",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 472.7103265851943,
@@ -990,7 +990,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "95",
+      "spawn_key": "96",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 470.476621733254,
@@ -1012,7 +1012,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "96",
+      "spawn_key": "97",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 704,
@@ -1034,7 +1034,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "97",
+      "spawn_key": "98",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 704,
@@ -1056,7 +1056,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "98",
+      "spawn_key": "99",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 704,
@@ -1078,7 +1078,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "99",
+      "spawn_key": "100",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 208,
@@ -1100,7 +1100,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "100",
+      "spawn_key": "101",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 208,
@@ -1122,7 +1122,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "101",
+      "spawn_key": "102",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 208,
@@ -1144,7 +1144,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "102",
+      "spawn_key": "103",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 451.1134065198712,
@@ -1166,7 +1166,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "103",
+      "spawn_key": "104",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 468.00227613390115,
@@ -1188,7 +1188,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "104",
+      "spawn_key": "105",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 465.3720830357634,
@@ -1210,7 +1210,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "105",
+      "spawn_key": "106",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 704,
@@ -1232,7 +1232,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "106",
+      "spawn_key": "107",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 701.4612916190632,
@@ -1254,7 +1254,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "107",
+      "spawn_key": "108",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 703.5757973663964,
@@ -1276,32 +1276,10 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "108",
-      "definition_id": "slice.enemy.gobloc",
-      "position": {
-       "x": 208,
-       "y": 250
-      },
-      "stats": {
-       "hp": 98,
-       "atk": 10,
-       "def": 0,
-       "mag": 10,
-       "res": 0,
-       "speed": 55,
-       "reach": 40,
-       "interval": 2.6,
-       "evade": 0,
-       "special": 0
-      },
-      "hp": 98,
-      "summon_profiles": []
-     },
-     {
       "spawn_key": "109",
       "definition_id": "slice.enemy.gobloc",
       "position": {
-       "x": 439.74849410468914,
+       "x": 208,
        "y": 250
       },
       "stats": {
@@ -1323,7 +1301,7 @@
       "spawn_key": "110",
       "definition_id": "slice.enemy.gobloc",
       "position": {
-       "x": 451.0294661905823,
+       "x": 439.74849410468914,
        "y": 250
       },
       "stats": {
@@ -1345,7 +1323,7 @@
       "spawn_key": "111",
       "definition_id": "slice.enemy.gobloc",
       "position": {
-       "x": 444.60923072685375,
+       "x": 451.0294661905823,
        "y": 250
       },
       "stats": {
@@ -1367,7 +1345,7 @@
       "spawn_key": "112",
       "definition_id": "slice.enemy.gobloc",
       "position": {
-       "x": 694.9310298772157,
+       "x": 444.60923072685375,
        "y": 250
       },
       "stats": {
@@ -1387,6 +1365,28 @@
      },
      {
       "spawn_key": "113",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 694.9310298772157,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "114",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 699.7820407728602,
@@ -1408,7 +1408,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "114",
+      "spawn_key": "115",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 219.1383903075176,
@@ -1430,7 +1430,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "115",
+      "spawn_key": "116",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 212.86780734473638,
@@ -1452,7 +1452,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "116",
+      "spawn_key": "117",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 208,
@@ -1474,7 +1474,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "117",
+      "spawn_key": "118",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 439.51223431046435,
@@ -1496,7 +1496,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "118",
+      "spawn_key": "119",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 699.598738529827,
@@ -1518,7 +1518,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "119",
+      "spawn_key": "120",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 704,
@@ -1540,7 +1540,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "120",
+      "spawn_key": "121",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 704,
@@ -1562,7 +1562,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "121",
+      "spawn_key": "122",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 328.8006692581499,
@@ -1584,7 +1584,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "122",
+      "spawn_key": "123",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 208,
@@ -1606,7 +1606,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "123",
+      "spawn_key": "124",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 328.3807367961854,
@@ -1628,7 +1628,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "124",
+      "spawn_key": "125",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 583.0911598325087,
@@ -1650,7 +1650,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "125",
+      "spawn_key": "126",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 704,
@@ -1672,7 +1672,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "126",
+      "spawn_key": "127",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 584.2974671822352,
@@ -1971,7 +1971,7 @@
     ],
     "enemies": [
      {
-      "spawn_key": "90",
+      "spawn_key": "91",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 457.4258606594263,
@@ -1993,7 +1993,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "91",
+      "spawn_key": "92",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 472.7103265851943,
@@ -2015,7 +2015,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "92",
+      "spawn_key": "93",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 470.476621733254,
@@ -2037,7 +2037,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "93",
+      "spawn_key": "94",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 208,
@@ -2059,7 +2059,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "94",
+      "spawn_key": "95",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 208,
@@ -2081,7 +2081,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "95",
+      "spawn_key": "96",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 208,
@@ -2103,7 +2103,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "96",
+      "spawn_key": "97",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 704,
@@ -2125,7 +2125,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "97",
+      "spawn_key": "98",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 701.4612916190632,
@@ -2147,7 +2147,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "98",
+      "spawn_key": "99",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 703.5757973663964,
@@ -2169,7 +2169,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "99",
+      "spawn_key": "100",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 439.74849410468914,
@@ -2191,7 +2191,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "100",
+      "spawn_key": "101",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 451.0294661905823,
@@ -2213,7 +2213,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "101",
+      "spawn_key": "102",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 444.60923072685375,
@@ -2235,7 +2235,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "102",
+      "spawn_key": "103",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 219.1383903075176,
@@ -2257,7 +2257,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "103",
+      "spawn_key": "104",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 212.86780734473638,
@@ -2279,7 +2279,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "104",
+      "spawn_key": "105",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 208,
@@ -2301,7 +2301,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "105",
+      "spawn_key": "106",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 699.598738529827,
@@ -2323,7 +2323,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "106",
+      "spawn_key": "107",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 704,
@@ -2345,7 +2345,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "107",
+      "spawn_key": "108",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 704,
@@ -2367,7 +2367,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "108",
+      "spawn_key": "109",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 363.53033311804757,
@@ -2389,7 +2389,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "109",
+      "spawn_key": "110",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 704,
@@ -2411,7 +2411,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "110",
+      "spawn_key": "111",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 521.4729070348355,
@@ -2741,7 +2741,7 @@
     ],
     "enemies": [
      {
-      "spawn_key": "90",
+      "spawn_key": "91",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 208,
@@ -2763,7 +2763,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "91",
+      "spawn_key": "92",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 217.50506730946404,
@@ -2785,7 +2785,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "92",
+      "spawn_key": "93",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 208,
@@ -2807,7 +2807,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "93",
+      "spawn_key": "94",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 451.84804276051,
@@ -2829,7 +2829,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "94",
+      "spawn_key": "95",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 470.5055463411845,
@@ -2851,7 +2851,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "95",
+      "spawn_key": "96",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 441.95582446254167,
@@ -2873,7 +2873,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "96",
+      "spawn_key": "97",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 699.9332642921806,
@@ -2895,7 +2895,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "97",
+      "spawn_key": "98",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 704,
@@ -2917,7 +2917,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "98",
+      "spawn_key": "99",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 703.9657465952387,
@@ -2939,7 +2939,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "99",
+      "spawn_key": "100",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 208,
@@ -2961,7 +2961,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "100",
+      "spawn_key": "101",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 218.35202177670476,
@@ -2983,7 +2983,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "101",
+      "spawn_key": "102",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 208,
@@ -3005,7 +3005,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "102",
+      "spawn_key": "103",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 450.4008403912186,
@@ -3027,7 +3027,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "103",
+      "spawn_key": "104",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 467.2087544427563,
@@ -3049,32 +3049,10 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "104",
-      "definition_id": "slice.enemy.gobloc",
-      "position": {
-       "x": 459.2649891979992,
-       "y": 1028.6671111111114
-      },
-      "stats": {
-       "hp": 98,
-       "atk": 10,
-       "def": 0,
-       "mag": 10,
-       "res": 0,
-       "speed": 55,
-       "reach": 40,
-       "interval": 2.6,
-       "evade": 0,
-       "special": 0
-      },
-      "hp": 98,
-      "summon_profiles": []
-     },
-     {
       "spawn_key": "105",
       "definition_id": "slice.enemy.gobloc",
       "position": {
-       "x": 704,
+       "x": 459.2649891979992,
        "y": 1028.6671111111114
       },
       "stats": {
@@ -3097,7 +3075,7 @@
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 704,
-       "y": 924.5798015554018
+       "y": 1028.6671111111114
       },
       "stats": {
        "hp": 98,
@@ -3116,6 +3094,28 @@
      },
      {
       "spawn_key": "107",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 924.5798015554018
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "108",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 695.2203668471363,
@@ -3137,7 +3137,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "108",
+      "spawn_key": "109",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 208,
@@ -3159,7 +3159,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "109",
+      "spawn_key": "110",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 459.6905864357638,
@@ -3178,28 +3178,6 @@
        "special": 0
       },
       "hp": 28,
-      "summon_profiles": []
-     },
-     {
-      "spawn_key": "110",
-      "definition_id": "slice.enemy.gobloc",
-      "position": {
-       "x": 704,
-       "y": 250
-      },
-      "stats": {
-       "hp": 98,
-       "atk": 10,
-       "def": 0,
-       "mag": 10,
-       "res": 0,
-       "speed": 55,
-       "reach": 40,
-       "interval": 2.6,
-       "evade": 0,
-       "special": 0
-      },
-      "hp": 98,
       "summon_profiles": []
      },
      {
@@ -3226,6 +3204,28 @@
      },
      {
       "spawn_key": "112",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "113",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 214.34065923275426,
@@ -3247,7 +3247,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "113",
+      "spawn_key": "114",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 457.60903237648307,
@@ -3269,7 +3269,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "114",
+      "spawn_key": "115",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 445.5163835915426,
@@ -3291,7 +3291,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "115",
+      "spawn_key": "116",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 704,
@@ -3313,7 +3313,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "116",
+      "spawn_key": "117",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 326.51190856673446,
@@ -3335,7 +3335,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "117",
+      "spawn_key": "118",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 208,
@@ -3357,7 +3357,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "118",
+      "spawn_key": "119",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 333.96871595565847,
@@ -3379,7 +3379,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "119",
+      "spawn_key": "120",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 582.9849537014961,
@@ -3401,7 +3401,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "120",
+      "spawn_key": "121",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 704,
@@ -3423,7 +3423,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "121",
+      "spawn_key": "122",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 581.8850695469107,
@@ -3722,7 +3722,7 @@
     ],
     "enemies": [
      {
-      "spawn_key": "90",
+      "spawn_key": "91",
       "definition_id": "slice.boss.troll_brute",
       "position": {
        "x": 272,
@@ -4037,28 +4037,6 @@
     ],
     "enemies": [
      {
-      "spawn_key": "90",
-      "definition_id": "slice.enemy.gobloc",
-      "position": {
-       "x": 208,
-       "y": 250
-      },
-      "stats": {
-       "hp": 98,
-       "atk": 10,
-       "def": 0,
-       "mag": 10,
-       "res": 0,
-       "speed": 55,
-       "reach": 40,
-       "interval": 2.6,
-       "evade": 0,
-       "special": 0
-      },
-      "hp": 98,
-      "summon_profiles": []
-     },
-     {
       "spawn_key": "91",
       "definition_id": "slice.enemy.gobloc",
       "position": {
@@ -4082,6 +4060,28 @@
      },
      {
       "spawn_key": "92",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 208,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "93",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 208,
@@ -4103,7 +4103,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "93",
+      "spawn_key": "94",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 463.32733919781947,
@@ -4125,7 +4125,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "94",
+      "spawn_key": "95",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 471.48797904575866,
@@ -4147,32 +4147,10 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "95",
-      "definition_id": "slice.enemy.gobloc",
-      "position": {
-       "x": 452.4108450201651,
-       "y": 250
-      },
-      "stats": {
-       "hp": 98,
-       "atk": 10,
-       "def": 0,
-       "mag": 10,
-       "res": 0,
-       "speed": 55,
-       "reach": 40,
-       "interval": 2.6,
-       "evade": 0,
-       "special": 0
-      },
-      "hp": 98,
-      "summon_profiles": []
-     },
-     {
       "spawn_key": "96",
       "definition_id": "slice.enemy.gobloc",
       "position": {
-       "x": 704,
+       "x": 452.4108450201651,
        "y": 250
       },
       "stats": {
@@ -4236,6 +4214,28 @@
      },
      {
       "spawn_key": "99",
+      "definition_id": "slice.enemy.gobloc",
+      "position": {
+       "x": 704,
+       "y": 250
+      },
+      "stats": {
+       "hp": 98,
+       "atk": 10,
+       "def": 0,
+       "mag": 10,
+       "res": 0,
+       "speed": 55,
+       "reach": 40,
+       "interval": 2.6,
+       "evade": 0,
+       "special": 0
+      },
+      "hp": 98,
+      "summon_profiles": []
+     },
+     {
+      "spawn_key": "100",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 219.41463871217024,
@@ -4257,7 +4257,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "100",
+      "spawn_key": "101",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 208,
@@ -4279,7 +4279,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "101",
+      "spawn_key": "102",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 208,
@@ -4301,7 +4301,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "102",
+      "spawn_key": "103",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 448.4514821205909,
@@ -4323,7 +4323,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "103",
+      "spawn_key": "104",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 469.4360920876885,
@@ -4345,7 +4345,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "104",
+      "spawn_key": "105",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 446.62083796194446,
@@ -4367,7 +4367,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "105",
+      "spawn_key": "106",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 704,
@@ -4389,7 +4389,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "106",
+      "spawn_key": "107",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 704,
@@ -4411,7 +4411,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "107",
+      "spawn_key": "108",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 696.6887097305556,
@@ -4433,7 +4433,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "108",
+      "spawn_key": "109",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 217.61356127908456,
@@ -4455,7 +4455,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "109",
+      "spawn_key": "110",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 452.0758609374364,
@@ -4477,7 +4477,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "110",
+      "spawn_key": "111",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 440.69797579882044,
@@ -4499,7 +4499,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "111",
+      "spawn_key": "112",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 704,
@@ -4521,7 +4521,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "112",
+      "spawn_key": "113",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 691.7490393409133,
@@ -4543,7 +4543,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "113",
+      "spawn_key": "114",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 208,
@@ -4565,7 +4565,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "114",
+      "spawn_key": "115",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 208,
@@ -4587,7 +4587,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "115",
+      "spawn_key": "116",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 208,
@@ -4609,7 +4609,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "116",
+      "spawn_key": "117",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 459.49158782977617,
@@ -4631,7 +4631,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "117",
+      "spawn_key": "118",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 704,
@@ -4653,7 +4653,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "118",
+      "spawn_key": "119",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 704,
@@ -4675,7 +4675,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "119",
+      "spawn_key": "120",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 334.27842974849045,
@@ -4697,7 +4697,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "120",
+      "spawn_key": "121",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 208,
@@ -4719,7 +4719,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "121",
+      "spawn_key": "122",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 333.7992327480266,
@@ -4741,7 +4741,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "122",
+      "spawn_key": "123",
       "definition_id": "wfm.enemy.skeleton",
       "position": {
        "x": 578.234884231817,
@@ -4763,7 +4763,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "123",
+      "spawn_key": "124",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 704,
@@ -4785,7 +4785,7 @@
       "summon_profiles": []
      },
      {
-      "spawn_key": "124",
+      "spawn_key": "125",
       "definition_id": "slice.enemy.gobloc",
       "position": {
        "x": 583.4545210744254,

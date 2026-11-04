@@ -1,5 +1,5 @@
 [workspace]
-members = ["simulation_core", "wf_combat", "wf_pack", "wf_app", "wf_meta"]
+members = ["simulation_core", "wf_combat", "wf_pack", "wf_app", "wf_meta", "wf_host"]
 exclude = ["wf_slice_harness"]
 resolver = "2"
 

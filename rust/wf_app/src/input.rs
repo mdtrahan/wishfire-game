@@ -11,6 +11,8 @@ pub struct Controls {
 }
 pub struct Action {
     pub restart: bool,
+    /// Placeholder for the boss control button (bead .7): B summons the available boss.
+    pub summon_boss: bool,
     pub step: bool,
     pub spotlight_changed: bool,
 }
@@ -91,6 +93,7 @@ impl Controls {
         }
         Action {
             restart,
+            summon_boss: is_key_pressed(KeyCode::B),
             step: self.paused && (is_key_pressed(KeyCode::N) || button == Some(1)),
             spotlight_changed,
         }

@@ -4,8 +4,9 @@ mod clips;
 mod debug;
 #[cfg(any(test, feature = "crowd-proof"))]
 mod crowd_proof;
-mod host;
+mod game;
 mod input;
+mod platform;
 mod impact_stop;
 mod motion;
 mod qa;
@@ -29,7 +30,7 @@ std::thread_local! {static ASSET_STATUS:std::cell::Cell<i32>=const{std::cell::Ce
 pub extern "C" fn wf_client_asset_status()->i32 {ASSET_STATUS.with(|s|s.get())}
 // Read-only live probe: step, wave, sim seconds, hash low bits, live enemies, fps.
 #[cfg(target_arch = "wasm32")]
-std::thread_local! { static PROBE: std::cell::Cell<[f64; 6]> = const { std::cell::Cell::new([0.; 6]) }; }
+std::thread_local! { static PROBE: std::cell::Cell<[f64; 9]> = const { std::cell::Cell::new([0.; 9]) }; }
 #[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub extern "C" fn wf_app_probe(index: u32) -> f64 {
@@ -54,6 +55,18 @@ fn conf() -> Conf {
         ..Default::default()
     }
 }
+/// Fatal boot/host errors stay on screen instead of a silent panic in the browser.
+async fn fatal(portrait: &mut camera::Portrait, title: &str, error: &str) -> ! {
+    loop {
+        portrait.begin();
+        draw_text(title, 20., 240., 24., PINK);
+        for (i, chunk) in error.as_bytes().chunks(44).enumerate() {
+            draw_text(&String::from_utf8_lossy(chunk), 12., 270. + i as f32 * 18., 13., WHITE);
+        }
+        portrait.present();
+        next_frame().await;
+    }
+}
 fn warm_text() {
     // Allocate glyphs before queuing text draws: atlas growth can invalidate queued textures.
     for size in [10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24] {
@@ -66,7 +79,7 @@ fn warm_text() {
     }
 }
 struct Scene {
-    host: host::Host,
+    game: game::Game,
     camera: camera::WorldCamera,
     presentation: render::vfx::Presentation,
     corpses: render::actors::Corpses,
@@ -85,15 +98,19 @@ struct Scene {
     interaction_camera: camera::WorldCamera,
 }
 impl Scene {
-    fn new(seed: u64) -> Result<Self, String> {
-        let host = host::Host::new(seed)?;
-        let camera = camera::WorldCamera::new(host.snapshot());
-        let motion = motion::Motion::new(host.snapshot());
+    fn new(rows: Vec<wf_meta::enemy::RawRow>, seed: Option<u32>) -> Result<Self, String> {
+        let mut game = game::Game::new(rows, seed);
+        // One host frame creates the first encounter so the client has a snapshot to frame.
+        game.tick(platform::now_ms());
+        if let Some(error) = &game.session.failed { return Err(error.clone()); }
+        let snapshot = game.snapshot().cloned().ok_or("combat host produced no snapshot")?;
+        let camera = camera::WorldCamera::new(&snapshot);
+        let motion = motion::Motion::new(&snapshot);
         Ok(Self {
             interaction_camera: camera.clone(),
             camera,
             motion,
-            host,
+            game,
             presentation: Default::default(),
             corpses: Default::default(),
             warcry_shell: Default::default(),
@@ -145,15 +162,18 @@ async fn main() {
     };
     warm_text();
     render::vfx3d::warmup();
+    let rows = match game::load_enemy_rows().await { Ok(rows) => rows, Err(error) => fatal(&mut portrait, "Enemy data failed", &error).await };
     let mut controls = input::Controls::new();
     if qa::enabled() { controls.seed = qa::seed(); }
-    let mut scene = match Scene::new(controls.seed) { Ok(scene) => scene, Err(error) => panic!("combat host: {error}") };
+    let boot_seed = if qa::enabled() { Some(controls.seed as u32) } else { None };
+    let mut scene = match Scene::new(rows.clone(), boot_seed) { Ok(scene) => scene, Err(error) => fatal(&mut portrait, "Combat host failed", &error).await };
     loop {
         portrait.resize();
         render::vfx3d::sampling_controls();
         let action = controls.read(&portrait);
         if action.restart {
-            scene = match Scene::new(controls.seed) { Ok(scene) => scene, Err(error) => panic!("combat host: {error}") };
+            scene.game.restart(Some(controls.seed as u32));
+            scene = match Scene::new(rows.clone(), Some(controls.seed as u32)) { Ok(scene) => scene, Err(error) => fatal(&mut portrait, "Combat host failed", &error).await };
         }
         let dt = if action.step {
             SIM_DT
@@ -162,34 +182,45 @@ async fn main() {
         } else {
             get_frame_time().min(0.0625) * controls.speed
         };
-        let Scene { host, camera, presentation, corpses, warcry_shell, cast_hue, poison_tint, crowd_buffer, cast_glows, heal_auras,
+        let Scene { game, camera, presentation, corpses, warcry_shell, cast_hue, poison_tint, crowd_buffer, cast_glows, heal_auras,
             motion, spotlight, cinematic_camera, phoenix, revival, impact_stop, interaction_camera } = &mut scene;
-        let hold = phoenix.read(&portrait, host.snapshot(), interaction_camera);
-        let _ = hold; // Phoenix is autonomous in WFM encounters; the host selects recipients.
-        let event_previous = motion.presentation(host.snapshot());
+        let previous_snapshot = game.snapshot().cloned().unwrap_or_else(|| motion.previous.clone());
+        let _hold = phoenix.read(&portrait, &previous_snapshot, interaction_camera); // Phoenix is autonomous in WFM encounters.
+        let event_previous = motion.presentation(&previous_snapshot);
         let start = get_time();
-        let steps = motion.advance_host(host, dt);
+        // Host pacing: the fixed-step debt uses wall time scaled by the dev speed; pause stops it.
+        game.session.dev_speed = controls.speed as f64;
+        if action.summon_boss {
+            if let Err(error) = game.session.summon_boss(platform::now_ms()) { fatal(&mut portrait, "Combat host failed", &error).await; }
+        }
+        if controls.paused && !action.step { game.session.pause(); } else { let _ = dt; game.tick(platform::now_ms()); }
+        let observations = game.drain_steps();
+        let steps = observations.len() as u32;
+        for (before, after) in &observations { motion.observe_step(before, after); }
         let timing = debug::Timing {
             steps,
             advance_ms: (get_time() - start) * 1000.,
         };
-        let events = host.drain_events();
+        let events = game.drain_events();
+        let live_snapshot = game.snapshot().cloned().unwrap_or(previous_snapshot);
         #[cfg(target_arch = "wasm32")]
         PROBE.with(|p| {
-            let s = host.snapshot();
-            p.set([s.step as f64, host.stage.wave as f64, s.combat_time, (host.world.gameplay_hash() & 0xffff_ffff) as f64,
-                host.world.live_enemies() as f64, get_fps() as f64]);
+            let s = &live_snapshot;
+            p.set([s.step as f64, game.session.stage.wave as f64, s.combat_time, (game.session.gameplay_hash().unwrap_or(0) & 0xffff_ffff) as f64,
+                game.session.world().map_or(0., |w| w.live_enemies() as f64), get_fps() as f64,
+                match game.session.boss_control_state() { "locked" => 0., "available" => 1., "armed" => 2., _ => 3. },
+                game.session.boss_time_remaining().unwrap_or(f64::NAN), game.session.stage.cleared_bosses as f64]);
         });
-        if events.iter().any(|e| matches!(e, wf_combat::Event::SceneReset)) {
+        if events.iter().any(|e| matches!(e, wf_combat::Event::SceneReset | wf_combat::Event::WaveReset)) {
             *warcry_shell = Default::default();
             *poison_tint = Default::default();
             *cast_hue = Default::default();
-            *motion = motion::Motion::new(host.snapshot());
+            *motion = motion::Motion::new(&live_snapshot);
             *cast_glows = Default::default();
             *heal_auras = Default::default();
             *cinematic_camera = Default::default();
         }
-        let snapshot = motion.presentation(host.snapshot());
+        let snapshot = motion.presentation(&live_snapshot);
         cast_hue.observe(&snapshot, &events);
         cast_glows.update(&snapshot, snapshot.spotlight.as_ref().or(spotlight.director.view.as_ref()), &events);
         heal_auras.update(&snapshot, &events);
@@ -198,8 +229,8 @@ async fn main() {
         impact_stop.ingest(&events, &snapshot, &event_previous, active_spot);
         camera.events(&events, &snapshot);
         spotlight.config = controls.spotlight_config();
-        spotlight.warning_timings = host.snapshot().hazards.iter().filter(|h| h.kind == wf_combat::HazardKind::BossSnipe)
-            .filter_map(|h| host.world.sim().warning_timing(h.id).map(|timing| (h.id, timing))).collect();
+        spotlight.warning_timings = game.session.world().map(|w| live_snapshot.hazards.iter().filter(|h| h.kind == wf_combat::HazardKind::BossSnipe)
+            .filter_map(|h| w.sim().warning_timing(h.id).map(|timing| (h.id, timing))).collect()).unwrap_or_default();
         spotlight.ingest(
             &assets.manifest,
             events,
@@ -209,7 +240,7 @@ async fn main() {
             corpses,
             if snapshot.hit_stop.is_some() { 0. } else { get_frame_time() as f64 },
         );
-        let mut frame = motion.snapshot(&snapshot, if controls.paused { 1. } else { host.alpha() });
+        let mut frame = motion.snapshot(&snapshot, if controls.paused { 1. } else { game.alpha() });
         frame.time = snapshot.time;
         #[cfg(feature = "crowd-proof")]
         crowd_proof::apply(&mut frame);
@@ -308,7 +339,7 @@ async fn main() {
             &timing,
             &spotlight.director,
             &stats,
-            if controls.debug { host.world.gameplay_hash() } else { 0 },
+            if controls.debug { game.session.gameplay_hash().unwrap_or(0) } else { 0 },
         );
         draw_rectangle(
             0.,

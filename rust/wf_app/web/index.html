@@ -20,8 +20,29 @@ canvas { display: block; width: 100%; height: 100%; outline: none; touch-action:
 const gameCanvas = document.getElementById("glcanvas");
 gameCanvas.addEventListener("pointerdown", () => gameCanvas.focus());
 // The bundle runs on_init before Rust main, so the initial scene has no flag race.
+// Durable saves: the Rust app reads and writes the same localStorage keys the JS game used.
+const textEncoder = new TextEncoder(), textDecoder = new TextDecoder();
+const readString = (ptr, len) => textDecoder.decode(new Uint8Array(wasm_memory.buffer, ptr, len));
 miniquad_add_plugin({
   name: "wf_app", version: 1,
+  register_plugin(importObject) {
+    importObject.env.wf_storage_get = (keyPtr, keyLen, outPtr, outCap) => {
+      let value;
+      try { value = localStorage.getItem(readString(keyPtr, keyLen)); } catch { return -1; }
+      if (value === null) return -1;
+      const bytes = textEncoder.encode(value);
+      if (outCap === 0) return bytes.length;
+      if (bytes.length > outCap) return -1;
+      new Uint8Array(wasm_memory.buffer, outPtr, bytes.length).set(bytes);
+      return bytes.length;
+    };
+    importObject.env.wf_storage_set = (keyPtr, keyLen, valPtr, valLen) => {
+      try { localStorage.setItem(readString(keyPtr, keyLen), readString(valPtr, valLen)); return 1; } catch { return 0; }
+    };
+    importObject.env.wf_storage_remove = (keyPtr, keyLen) => {
+      try { localStorage.removeItem(readString(keyPtr, keyLen)); return 1; } catch { return 0; }
+    };
+  },
   on_init() {
     const params = new URLSearchParams(location.search);
     wasm_exports.wf_client_vfx_dpi(devicePixelRatio);

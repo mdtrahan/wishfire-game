@@ -97,7 +97,8 @@ function spawnPlanCase(seed, { region = 1, wave = 1, transitions = wave - 1, cle
   const g = { ContinuousCombatStage: { ...state, spawnedPackMask: plan.reduce((m, p) => m | 1 << p.sectorIndex, 0) }, EnemySize: enemySize, time: 0, NextUID: 90, EnemySlots: [], EnemyIDs: [] };
   const spawned = plan.map(entry => {
     const row = { ...entry.row, enemyRole: boss ? 'boss' : String(entry.row.enemyRole || entry.row.role || 'fodder') };
-    const actor = { uid: g.NextUID++, kind: 'enemy', name: row.name, hp: Number(row.HP ?? 0), maxHP: Number(row.HP ?? row.maxHP ?? 0), stats: { ATK: Number(row.ATK ?? 0), DEF: Number(row.DEF ?? 0), MAG: Number(row.MAG ?? 0), RES: Number(row.RES ?? 0), SPD: Number(row.SPD ?? 0) }, enemyRole: String(row.enemyRole || 'fodder'), combatTier: String(row.combatTier || 'routine'), slotIndex: entry.slotIndex, x: 0, y: 0 };
+    g.NextUID = (g.NextUID || 1) + 1;
+    const actor = { uid: g.NextUID, kind: 'enemy', name: row.name, hp: Number(row.HP ?? 0), maxHP: Number(row.HP ?? row.maxHP ?? 0), stats: { ATK: Number(row.ATK ?? 0), DEF: Number(row.DEF ?? 0), MAG: Number(row.MAG ?? 0), RES: Number(row.RES ?? 0), SPD: Number(row.SPD ?? 0) }, enemyRole: String(row.enemyRole || 'fodder'), combatTier: String(row.combatTier || 'routine'), slotIndex: entry.slotIndex, x: 0, y: 0 };
     activateContinuousCombatSpawnedEnemy(g, actor, { ...entry, bossX: boss ? 1340 : undefined });
     return actor;
   });
@@ -144,7 +145,8 @@ function wfmConfigCase({ seed, level, hp, training, stars, equipment, boss = fal
   const entities = [...heroes];
   for (const entry of plan) {
     const row = { ...entry.row, enemyRole: boss ? 'boss' : 'fodder' };
-    const a = { uid: g.NextUID++, kind: 'enemy', name: row.name, stats: { ATK: Number(row.ATK ?? 0), DEF: Number(row.DEF ?? 0), MAG: Number(row.MAG ?? 0), RES: Number(row.RES ?? 0), SPD: Number(row.SPD ?? 0) }, enemyRole: row.enemyRole, combatTier: row.combatTier, slotIndex: entry.slotIndex, hp: row.HP, maxHP: row.HP, x: 0, y: 0 };
+    g.NextUID = (g.NextUID || 1) + 1;
+    const a = { uid: g.NextUID, kind: 'enemy', name: row.name, stats: { ATK: Number(row.ATK ?? 0), DEF: Number(row.DEF ?? 0), MAG: Number(row.MAG ?? 0), RES: Number(row.RES ?? 0), SPD: Number(row.SPD ?? 0) }, enemyRole: row.enemyRole, combatTier: row.combatTier, slotIndex: entry.slotIndex, hp: row.HP, maxHP: row.HP, x: 0, y: 0 };
     activateContinuousCombatSpawnedEnemy(g, a, entry); entities.push(a);
   }
   const config = createWfmCombatConfig({ globals: g, entities, enemyRows: rawRows, encounterId: `oracle:${seed}` });
@@ -164,7 +166,9 @@ write('wfm_config.json', { definitions: { enemies: WFM_ENEMY_DEFINITIONS, shadow
 
 // --- headless trace of the real JS runtime: the combat gate for the Rust host ---
 const wasm = new WebAssembly.Module(fs.readFileSync(path.join(root, 'web-runner/assets/simulation_core.wasm')));
-function trace({ seed = 7, ticks = 2400, level = 1, hp = 1 } = {}) {
+// [op, repeat] pairs without acks (every op is acked): the op sequence is tens of thousands of entries per long case.
+function runLength(ops) { const out = []; for (const op of ops) { if (out.length && out[out.length - 1][0] === op) out[out.length - 1][1] += 1; else out.push([op, 1]); } return out; }
+function trace({ seed = 7, ticks = 2400, level = 1, hp = 1, sampleEvery = 30 } = {}) {
   const real = createCombatBridge(new WebAssembly.Instance(wasm));
   const calls = [];
   const bridge = { ...real };
@@ -177,7 +181,8 @@ function trace({ seed = 7, ticks = 2400, level = 1, hp = 1 } = {}) {
   function call(name, ...args) {
     if (name === 'SpawnEnemy') {
       const [row, slotIndex] = args;
-      const actor = { uid: g.NextUID++, kind: 'enemy', name: row.name, stats: { ATK: Number(row.ATK ?? 0), DEF: Number(row.DEF ?? 0), MAG: Number(row.MAG ?? 0), RES: Number(row.RES ?? 0), SPD: Number(row.SPD ?? 0) }, enemyRole: row.enemyRole, combatTier: row.combatTier, slotIndex, hp: row.HP, maxHP: row.HP, x: 0, y: 0 };
+      g.NextUID = (g.NextUID || 1) + 1;
+      const actor = { uid: g.NextUID, kind: 'enemy', name: row.name, stats: { ATK: Number(row.ATK ?? 0), DEF: Number(row.DEF ?? 0), MAG: Number(row.MAG ?? 0), RES: Number(row.RES ?? 0), SPD: Number(row.SPD ?? 0) }, enemyRole: row.enemyRole, combatTier: row.combatTier, slotIndex, hp: row.HP, maxHP: row.HP, x: 0, y: 0 };
       state.entities.push(actor); g.EnemySlots[slotIndex] = actor.uid + 1; g.EnemyIDs[slotIndex] = actor.uid;
       spawnLog.push({ time: g.time, uid: actor.uid, name: actor.name, slotIndex });
       return actor;
@@ -187,22 +192,32 @@ function trace({ seed = 7, ticks = 2400, level = 1, hp = 1 } = {}) {
   const plan = buildContinuousCombatSpawnPlan(enemyData, g.ContinuousCombatStage, { partyCP: getContinuousCombatPartyCP(heroes) });
   g.ContinuousCombatStage.spawnedPackMask = plan.reduce((m, p) => m | 1 << p.sectorIndex, 0);
   for (const entry of plan) activateContinuousCombatSpawnedEnemy(g, call('SpawnEnemy', { ...entry.row, enemyRole: 'fodder' }, entry.slotIndex), entry);
+  // finalizeContinuousCombatProduction: the opening wave counts as spawned so pack progress records.
+  g.ContinuousCombatStage.spawnSerial = plan.length;
   const session = createQuestCombatSession({ state, gameState: {}, call, sync() {} });
   const clock = createCombatHostClock({ isBagProgressBlocked: () => false });
   const runtime = createRustCombatRuntime({ persistCheckpoint: () => true, state, bridge, session, call, persistProgress: () => true, getEnemyRows: () => rawRows, advanceHostTime: clock.advanceHostTime, warn(...a) { throw new Error(a.join(' ')); } });
   let frame = 0;
   const samples = [];
+  // The boss entry wipe gates on Date.now(); pin it to the frame clock so the headless run is deterministic (Rust uses now_ms for both).
+  const realNow = Date.now;
+  let nowMs = 0;
+  Date.now = () => nowMs;
+  try {
   for (let n = 0; n < ticks; n++) {
     const before = g.ContinuousCombatStage;
-    const moved = runtime.tick({ globals: g, entities: state.entities, call, nowMs: frame++ * 1000 / 30, onBossTimeout: () => session.surrenderBossAttempt('boss_timeout') });
+    nowMs = frame++ * 1000 / 30;
+    const moved = runtime.tick({ globals: g, entities: state.entities, call, nowMs, onBossTimeout: () => session.surrenderBossAttempt('boss_timeout') });
     if (moved) transitions.push({ tick: n, from: { wave: before.wave, transitions: before.transitions, bossActive: before.bossActive }, to: { wave: g.ContinuousCombatStage.wave, transitions: g.ContinuousCombatStage.transitions, bossActive: g.ContinuousCombatStage.bossActive }, time: g.time, heroes: heroes.map(h => [h.hp, h.maxHP]) });
     if (g.RustCombatError) throw new Error(g.RustCombatError);
     const read = runtime.read();
-    if (n % 30 === 0 || moved) samples.push({ tick: n, time: g.time, step: read.snapshot?.step ?? null, hash: read.snapshot?.gameplay_hash ?? null, live: read.snapshot?.live_enemies ?? null, state: read.snapshot?.state ?? null, wave: g.ContinuousCombatStage.wave, clearedPackMask: g.ContinuousCombatStage.clearedPackMask, heroes: heroes.map(h => [h.hp, h.maxHP]) });
+    if (n % sampleEvery === 0 || moved) samples.push({ tick: n, time: g.time, step: read.snapshot?.step ?? null, hash: read.snapshot?.gameplay_hash ?? null, live: read.snapshot?.live_enemies ?? null, state: read.snapshot?.state ?? null, wave: g.ContinuousCombatStage.wave, clearedPackMask: g.ContinuousCombatStage.clearedPackMask, heroes: heroes.map(h => [h.hp, h.maxHP]) });
   }
+  } finally { Date.now = realNow; }
   const checkpoint = g.ContinuousCombatStage.combatCheckpoint;
   runtime.dispose();
-  return { seed, level, hp, ticks, gold: g.goldTotal ?? 0, checkpoint: checkpoint && { subwaves: checkpoint.subwaves, generation: checkpoint.generation }, spawnLog, transitions, calls: calls.map(c => c.op), callHashes: calls.filter(c => c.hash).map(c => ({ op: c.op, step: c.step, hash: c.hash, live: c.live, state: c.state })), samples };
+  return { seed, level, hp, ticks, gold: g.goldTotal ?? 0, bossTimeout: g.ContinuousCombatStage.lastBossTimeout ?? null, checkpoint: checkpoint && { subwaves: checkpoint.subwaves, generation: checkpoint.generation }, spawnLog, transitions, calls: runLength(calls.map(c => c.op).filter(op => op !== 'ack')), samples };
 }
-write('stage_trace.json', [trace({ seed: 7, ticks: 2400 }), trace({ seed: 42, ticks: 900, level: 7, hp: 0.5 })]);
+// The long cases run through all ten Chapter 1 waves into the boss: level 1 times out and recovers, level 7 clears it.
+write('stage_trace.json', [trace({ seed: 7, ticks: 2400 }), trace({ seed: 42, ticks: 900, level: 7, hp: 0.5 }), trace({ seed: 7, ticks: 17500 }), trace({ seed: 42, ticks: 17500, level: 7 })]);
 console.log('wrote', fs.readdirSync(out).join(' '));
