@@ -42,6 +42,24 @@ miniquad_add_plugin({
     importObject.env.wf_storage_remove = (keyPtr, keyLen) => {
       try { localStorage.removeItem(readString(keyPtr, keyLen)); return 1; } catch { return 0; }
     };
+    // Tab-scoped checkpoints (sessionStorage) and crypto seeds, as the JS lamp economy used them.
+    importObject.env.wf_session_get = (keyPtr, keyLen, outPtr, outCap) => {
+      let value;
+      try { value = sessionStorage.getItem(readString(keyPtr, keyLen)); } catch { return -1; }
+      if (value === null) return -1;
+      const bytes = textEncoder.encode(value);
+      if (outCap === 0) return bytes.length;
+      if (bytes.length > outCap) return -1;
+      new Uint8Array(wasm_memory.buffer, outPtr, bytes.length).set(bytes);
+      return bytes.length;
+    };
+    importObject.env.wf_session_set = (keyPtr, keyLen, valPtr, valLen) => {
+      try { sessionStorage.setItem(readString(keyPtr, keyLen), readString(valPtr, valLen)); return 1; } catch { return 0; }
+    };
+    importObject.env.wf_session_remove = (keyPtr, keyLen) => {
+      try { sessionStorage.removeItem(readString(keyPtr, keyLen)); return 1; } catch { return 0; }
+    };
+    importObject.env.wf_random_u32 = () => crypto.getRandomValues(new Uint32Array(1))[0];
   },
   on_init() {
     const params = new URLSearchParams(location.search);

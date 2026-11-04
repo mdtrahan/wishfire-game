@@ -41,6 +41,8 @@ pub struct CombatModel {
     pub boss: Option<BossReadout>,
     pub slots: Vec<Option<HeroSlot>>,
     pub party: Vec<PartyIcon>,
+    /// `session.failed`: the combat host stopped with this error.
+    pub host_error: Option<String>,
     /// `previous.heroes`: badge arrival order per hero instance key.
     hero_groups: BTreeMap<String, Vec<&'static str>>,
 }
@@ -151,7 +153,7 @@ impl CombatModel {
             slots.push(slot.map(|mut s| { s.badges = ordered; s }));
         }
         slots.resize_with(SLOTS, || None);
-        CombatModel { chapter: s.region.max(1), wave_count, completed_waves: completed, progress_position: (completed as f64 + fraction).min(wave_count as f64), boss_ready, summon_visible, summon_enabled: summon_visible, boss, slots, party, hero_groups }
+        CombatModel { chapter: s.region.max(1), wave_count, completed_waves: completed, progress_position: (completed as f64 + fraction).min(wave_count as f64), boss_ready, summon_visible, summon_enabled: summon_visible, boss, slots, party, host_error: session.failed.clone(), hero_groups }
     }
 }
 #[cfg(test)]

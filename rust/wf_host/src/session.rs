@@ -4,7 +4,7 @@
 use crate::progress::{CombatCheckpoint, ContinuousStageCheckpoint, HeroProgress, HeroProgressStore, PendingBattleRewards, Stats5, SubwaveProgress, WFM_COMBAT_ABI_VERSION, WFM_COMBAT_CONTENT_VERSION};
 use crate::rewards::{self, ProgressionBattle};
 use serde_json::Value;
-use simulation_core::combat_abi::{EncounterConfig, EndReason, EnemyInput, World};
+use simulation_core::combat_abi::{EncounterConfig, EndReason, EnemyInput, StepRequest, World};
 use std::collections::{BTreeMap, BTreeSet};
 use wf_combat::{Event, Snapshot};
 use wf_meta::combat_power::{compute_combat_power, CpActor};
@@ -123,6 +123,12 @@ pub struct Session {
     ended_hash: Option<(u64, usize)>,
     /// `g.RestoredGoldSettlementReceipts`.
     restored_gold: BTreeSet<String>,
+    /// combatAuthorityDriver permanent-input revisions: desired signature, (issued, acknowledged), pending command bodies, submitted (revision, sequence) by actor.
+    desired_inputs: BTreeMap<String, String>,
+    revisions: BTreeMap<String, (u64, u64)>,
+    pending_inputs: BTreeMap<String, Value>,
+    submitted_inputs: BTreeMap<u32, (String, String)>,
+    command_sequence: u64,
     /// `g.ContinuousCombatStage` exists: saves capture the stage checkpoint.
     stage_configured: bool,
     frame_now_ms: f64,
@@ -178,7 +184,7 @@ impl Session {
         let mut session = Self { time: 0., stage, checkpoint: combat_checkpoint, enemy_data, raw_rows, heroes: Vec::new(), enemies: Vec::new(), benched: BTreeMap::new(), enemy_slots: Vec::new(), next_uid, enemy_size: 40., progress, battle,
             combat_session_id: combat_session_id.into(), dev_speed: 1., training: None, stars: BTreeMap::new(), gold_total: 0., pending_gold_settlements: BTreeMap::new(), reward_serial: 0, progress_dirty: false, storage_error: None,
             wfm_checkpoint_reload, quest_finite_encounter: true, intro_active: false, receipt: Receipt::default(), failed: None, bag_seconds: 0., bag_blocked: false, last_transition: None, wave_clear_events: Vec::new(),
-            persist, quest, encounter_counter: 0, ended_hash: None, restored_gold: BTreeSet::new(), stage_configured: false, frame_now_ms: 0., world: None, encounter: String::new(), sequence: 0, previous_now: None, debt: 0., attempt: None, base_time: 0., last_combat_time: 0., last_presentation_time: 0.,
+            persist, quest, encounter_counter: 0, ended_hash: None, restored_gold: BTreeSet::new(), desired_inputs: BTreeMap::new(), revisions: BTreeMap::new(), pending_inputs: BTreeMap::new(), submitted_inputs: BTreeMap::new(), command_sequence: 0, stage_configured: false, frame_now_ms: 0., world: None, encounter: String::new(), sequence: 0, previous_now: None, debt: 0., attempt: None, base_time: 0., last_combat_time: 0., last_presentation_time: 0.,
             host_transition: false, advanced: false, subwaves: Vec::new(), previous_subwave: Vec::new(), subwave_started: 0., pending_restart: None, hosts: BTreeMap::new(), hosts_seen_boss: BTreeSet::new(), seen_spawns: BTreeSet::new(), intro_now: None, tail: None,
             last_snapshot: None, presentation_events: Vec::new(), step_observations: Vec::new(), op_log: Vec::new() };
         // restoreHeroProgressFromStorage order: restored receipts settle (and may persist) before
@@ -310,6 +316,7 @@ impl Session {
     /// `persistHeroProgressIfDirty`: captures the stage checkpoint into the store and saves.
     pub fn persist_progress_if_dirty(&mut self) -> bool {
         if self.storage_error.is_some() { return false; }
+        if self.progress.dirty { self.progress.dirty = false; self.progress_dirty = true; }
         if self.stage_configured { self.capture_stage_checkpoint(); }
         if self.capture_pending_battle_rewards() { self.progress_dirty = true; }
         if !self.progress_dirty { return false; }
@@ -348,7 +355,7 @@ impl Session {
         true
     }
     /// `battle.persistPendingRewards(kill)`.
-    fn persist_pending_rewards(&mut self, kill: Option<(String, f64)>) -> bool {
+    pub fn persist_pending_rewards(&mut self, kill: Option<(String, f64)>) -> bool {
         if let Some((id, amount)) = kill { self.progress.bag_rewards_mut().insert(id, amount); }
         self.progress_dirty = true;
         self.capture_pending_battle_rewards();
@@ -467,6 +474,7 @@ impl Session {
         self.driver_stop(Some(EndReason::HostStageTransition));
         self.encounter = config.encounter_id.clone();
         self.sequence = 0;
+        self.revisions.clear(); self.pending_inputs.clear(); self.submitted_inputs.clear(); self.command_sequence = 0;
         let mut world = World::create(config).map_err(|e| e.to_string())?;
         world.retain_typed_events = true;
         self.world = Some(world);
@@ -503,9 +511,18 @@ impl Session {
         while self.world.as_ref().is_some_and(|w| w.state() == "running") && self.debt + 1e-9 >= 1. / 30. && budget < 8 {
             self.debt = (self.debt - 1. / 30.).max(0.);
             let before = self.world.as_ref().unwrap().snapshot().clone();
-            let after = self.world.as_mut().unwrap().step_now().map_err(|e| e.to_string())?;
+            let after = if self.pending_inputs.is_empty() { self.world.as_mut().unwrap().step_now().map_err(|e| e.to_string())? } else {
+                let (encounter, step) = { let w = self.world.as_ref().unwrap(); (w.encounter_id().to_string(), w.step_number()) };
+                let commands: Vec<Value> = self.pending_inputs.values().enumerate().map(|(index, data)| serde_json::json!({ "encounter_id": encounter, "step": (step + 1).to_string(), "sequence": (self.command_sequence + index as u64 + 1).to_string(), "body": { "kind": "replace_permanent_inputs", "data": data } })).collect();
+                for c in &commands { self.submitted_inputs.insert(c["body"]["data"]["actor"].as_u64().unwrap() as u32, (c["body"]["data"]["revision"].as_str().unwrap().to_string(), c["sequence"].as_str().unwrap().to_string())); }
+                let request: StepRequest = serde_json::from_value(serde_json::json!({ "encounter_id": encounter, "expected_previous_step": step.to_string(), "commands": commands })).map_err(|e| e.to_string())?;
+                let after = self.world.as_mut().unwrap().step(request).map_err(|e| e.to_string())?;
+                self.command_sequence += self.pending_inputs.len() as u64;
+                after
+            };
             self.op_log.push("step");
             self.accept(after, true)?;
+            if !self.submitted_inputs.is_empty() { return Err("Missing Rust revision ack".into()); }
             if let Some(w) = self.world.as_ref() { self.step_observations.push((before, w.snapshot().clone())); }
             budget += 1;
         }
@@ -662,7 +679,20 @@ impl Session {
                         self.record_committed_enemy_defeats();
                     }
                 }
-                "damage" | "spawned" | "downed" | "revived" | "all_down" | "ended" | "despawned" | "presentation" | "permanent_inputs_applied" => {}
+                "permanent_inputs_applied" => {
+                    let actor = event["body"]["data"]["actor"].as_u64().unwrap_or(0) as u32;
+                    let revision = event["body"]["data"]["revision"].as_str().unwrap_or("").to_string();
+                    let command = event["body"]["data"]["sequence"].as_str().unwrap_or("").to_string();
+                    let hero = self.heroes.iter().find(|h| h.rust_actor_id == Some(actor)).map(|h| h.instance_key.clone()).ok_or("Unknown Rust hero revision")?;
+                    let acknowledged: u64 = revision.parse().map_err(|_| "Rust revision ack conflict".to_string())?;
+                    let state = self.revisions.get(&hero).copied();
+                    let submitted = self.submitted_inputs.get(&actor).cloned();
+                    if state.is_none() || submitted.as_ref().map(|s| s.0.as_str()) != Some(revision.as_str()) || submitted.as_ref().map(|s| s.1.as_str()) != Some(command.as_str()) || acknowledged > state.unwrap().0 || acknowledged <= state.unwrap().1 { return Err("Rust revision ack conflict".into()); }
+                    self.revisions.insert(hero.clone(), (state.unwrap().0, acknowledged));
+                    self.submitted_inputs.remove(&actor);
+                    if self.pending_inputs.get(&hero).and_then(|p| p["revision"].as_str()) == Some(revision.as_str()) { self.pending_inputs.remove(&hero); }
+                }
+                "damage" | "spawned" | "downed" | "revived" | "all_down" | "ended" | "despawned" | "presentation" => {}
                 other => return Err(format!("Unknown Rust gameplay event: {other}")),
             }
         }
@@ -926,11 +956,49 @@ impl Session {
         rewards::begin_encounter(&mut self.progress.combat_reward_outbox, &encounter_id)?;
         self.progress_dirty = true;
         if !self.persist_progress_if_dirty() { return Err("Combat reward outbox save failed.".into()); }
-        let encounter: EncounterConfig = serde_json::from_value(config.to_json()).map_err(|e| e.to_string())?;
+        let config_json = config.to_json();
+        // driver.start seeds the desired permanent-input signature per hero from the config.
+        self.desired_inputs.clear();
+        for hero in config_json["heroes"].as_array().into_iter().flatten() { self.desired_inputs.insert(hero["instance_id"].as_str().unwrap_or("").to_string(), serde_json::to_string(&serde_json::json!({ "stats": hero["stats"], "host_max_hp": hero["host_max_hp"], "skill_modifiers": hero["skill_modifiers"] })).unwrap()); }
+        let encounter: EncounterConfig = serde_json::from_value(config_json).map_err(|e| e.to_string())?;
         self.driver_start(encounter)?;
         if self.world.is_some() { self.wfm_checkpoint_reload = false; }
         Ok(())
     }
+    /// `queuePermanentInputs(heroId)`: live heroes re-read their saved record (level, stats,
+    /// equipment) and the Rust world receives a permanent-input revision on the next step.
+    pub fn queue_permanent_inputs(&mut self, hero_key: Option<&str>) -> Result<(), String> {
+        if self.world.is_none() { return Ok(()); }
+        for i in 0..self.heroes.len() {
+            if hero_key.is_some_and(|k| k != self.heroes[i].instance_key) { continue; }
+            if self.heroes[i].bound_max_hp.is_none() { continue; }
+            if let Some(source) = self.progress.heroes.get(&self.heroes[i].instance_key) {
+                self.heroes[i].level = source.current_level;
+                self.heroes[i].stats = source.stats;
+                self.heroes[i].combat_base_max_hp = source.combat_base_max_hp.unwrap_or(source.max_hp);
+            }
+            let stars = self.stars.clone();
+            let star = hero::canonical_growth_id(&self.heroes[i].instance_key).and_then(|id| stars.get(id).copied()).unwrap_or(0);
+            let inputs = wfm_config::hero_permanent(&self.heroes[i].host(), self.training, star)?;
+            self.heroes[i].bound_max_hp = Some(inputs.host_max_hp);
+            let key = self.heroes[i].instance_key.clone();
+            let actor = self.heroes[i].rust_actor_id.ok_or_else(|| format!("Unknown Rust hero: {key}"))?;
+            let value = serde_json::json!({ "stats": serde_json::to_value(&inputs.stats).unwrap(), "host_max_hp": inputs.host_max_hp, "skill_modifiers": serde_json::to_value(&inputs.skill_modifiers).unwrap() });
+            let signature = serde_json::to_string(&value).unwrap();
+            if self.desired_inputs.get(&key) == Some(&signature) { continue; }
+            self.desired_inputs.insert(key.clone(), signature);
+            let base = self.world.as_ref().and_then(|w| w.permanent_revision(actor)).unwrap_or(0);
+            let (issued, acknowledged) = self.revisions.get(&key).copied().map_or((base + 1, base), |(i, a)| (i + 1, a));
+            self.revisions.insert(key.clone(), (issued, acknowledged));
+            let mut data = value;
+            data["actor"] = serde_json::json!(actor);
+            data["expected_revision"] = serde_json::json!(acknowledged.to_string());
+            data["revision"] = serde_json::json!(issued.to_string());
+            self.pending_inputs.insert(key, data);
+        }
+        Ok(())
+    }
+    pub fn battle_settled(&self) -> bool { self.battle.settled }
     fn tick_frame(&mut self, now_ms: f64) -> Result<bool, String> {
         self.frame_now_ms = now_ms;
         self.advanced = false;
@@ -1046,4 +1114,16 @@ impl Session {
         let mask = stage::normalize_pack_mask(self.stage.cleared_pack_mask) & stage::active_pack_mask(self.stage.region);
         ((0..PACKS_PER_WAVE).filter(|i| mask & (1 << i) != 0).count() as u32, packs)
     }
+}
+
+impl crate::equipment::LampHost for Session {
+    fn progress(&mut self) -> &mut HeroProgressStore { &mut self.progress }
+    fn gold_total(&self) -> f64 { self.gold_total }
+    fn set_gold_total(&mut self, gold: f64) { self.gold_total = gold; }
+    fn pending_gold_settlements(&mut self) -> &mut BTreeMap<String, f64> { &mut self.pending_gold_settlements }
+    fn progress_storage_error(&self) -> bool { self.storage_error.is_some() }
+    fn persist_progress(&mut self) -> bool { self.progress_dirty = true; self.persist_progress_if_dirty() }
+    fn live_hero_keys(&self) -> Vec<String> { self.heroes.iter().filter(|h| h.bound_max_hp.is_some() && h.rust_actor_id.is_some()).map(|h| h.instance_key.clone()).collect() }
+    fn revise_hero(&mut self, instance_key: &str) { if let Err(e) = self.queue_permanent_inputs(Some(instance_key)) { self.finish_failure(e); } }
+    fn stage_context(&self) -> (f64, f64) { (self.stage.region as f64, self.stage.stage as f64) }
 }

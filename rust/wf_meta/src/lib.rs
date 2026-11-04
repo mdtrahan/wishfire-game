@@ -9,5 +9,7 @@ pub mod geometry;
 pub mod stage;
 pub mod subwaves;
 pub mod shadow;
+pub mod equipment;
 pub mod hero;
+pub mod lamp;
 pub mod wfm_config;

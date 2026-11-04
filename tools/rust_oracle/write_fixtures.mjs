@@ -17,6 +17,12 @@ import { createQuestCombatSession } from '../../web-runner/systems/questCombatSe
 import { createCombatHostClock } from '../../web-runner/systems/combatHostClock.mjs';
 import { settleContinuousCombatRewards } from '../../web-runner/modules/heroCommands.mjs';
 import { newHeroProgress, refreshHeroStats, createHeroProgressStore, expToNextLevel, levelStats, attachHeroProgress, awardHeroEXP, setHeroProgressLevel } from '../../web-runner/src/core/heroProgression.mjs';
+import { LAMP_CONFIG, LAMP_CAPACITY_TIERS, seededUnit, progressionOrdinal, generateLampItem, salvageValue, createLampEconomy, validateLampEconomy, migrateLampEconomy, migrateFourStatLamp, migrateDraftLamp, migrateLegacyEquipment, awardLampKillPoints, advanceLampCombatProgress, lampUpgradeProgress, upgradeLamp, restorePaidLampUpgrade, markLampGuide, lampReviewCandidates, lampGearCP, compareLampItem, lampStoredCount, lampCapacity } from '../../web-runner/src/core/lampGear.mjs';
+import { validateConveyorState, conveyorReviewCandidates, classifyConveyorCache, emitConveyorItem, collectConveyorItem, equipConveyorItem, queueConveyorDisposal, planConveyorAutoEquip, conveyorDisposalPreview, dismantleConveyorItems } from '../../web-runner/src/core/lampConveyor.mjs';
+import { equipmentStats, RARITIES } from '../../web-runner/src/core/equipment.mjs';
+import { formatCompactCount } from '../../web-runner/src/core/formatCompactCount.mjs';
+import { lampHeroRoster } from '../../web-runner/src/core/lampHeroRoster.mjs';
+import { createEquipmentStorage, EQUIPMENT_SAVE_KEY } from '../../web-runner/systems/equipmentStorage.mjs';
 import { fillGearMaxHpGrowth } from '../../web-runner/src/core/heroMaxHpPolicy.mjs';
 import { heroSpecialCooldown } from '../../web-runner/src/core/heroSpecialCooldown.mjs';
 import { pathToFileURL } from 'node:url';
@@ -314,3 +320,124 @@ function heroProgressFixture() {
   return { award, stores, presets, fill, cooldowns, restores };
 }
 write('hero_progress.json', heroProgressFixture());
+
+// ---- lamp / bag economy (ORKA-63bf.8) ----
+const attempt = fn => { try { return { ok: fn() }; } catch (error) { return { error: error.message }; } };
+const attemptAsync = async fn => { try { return { ok: await fn() }; } catch (error) { return { error: error.message }; } };
+async function lampFixture() {
+  const tiers = LAMP_CAPACITY_TIERS.map(t => ({ capacity: t.capacity, cost: t.cost, rarityWeights: t.rarityWeights }));
+  const units = [];
+  for (const seed of [0, 7, 2467343298, 4294967295]) for (const sequence of [0, 1, 69, 1000]) for (const salt of [0, 1, 2, 6]) units.push({ seed, sequence, salt, value: seededUnit(seed, sequence, salt) });
+  const ordinals = [[1, 1], [1, 2], [2, 1], [3, 10], [3, 11], [100, 1], [0, 0], [120, 5]].map(([region, stage]) => ({ region, stage, value: progressionOrdinal({ region, stage }) }));
+  const items = [];
+  for (const seed of [7, 2467343298]) for (const tier of [0, 50, 99]) for (const ordinal of [0, 37, 990]) for (let sequence = 0; sequence < 12; sequence++) items.push({ seed, tier, ordinal, sequence, item: generateLampItem(seed, sequence, ordinal, LAMP_CAPACITY_TIERS[tier].rarityWeights) });
+  for (let sequence = 0; sequence < 8; sequence++) items.push({ seed: 42, tier: null, ordinal: 3, sequence, item: generateLampItem(42, sequence, 3) });
+  const compact = [0, 5, 999, 1000, 1525, 9999, 111, 8400, 1e6, 2.5e9, 1e9, -3, 0.5].map(value => ({ value, text: formatCompactCount(value) }));
+  const salvage = Object.keys(RARITIES).map(rarity => ({ rarity, value: salvageValue({ rarity }) }));
+  const captured = JSON.parse(fs.readFileSync(path.join(root, 'tests/fixtures/lamp-auto-earned-69.json'), 'utf8'));
+  const heroes = lampHeroRoster(captured.heroes);
+  const economy69 = validateLampEconomy(structuredClone(captured.economy));
+  const review = lampReviewCandidates(economy69, heroes).map(c => ({ id: c.item.instanceId, queue: c.queue, gains: c.gains, bestGain: c.bestGain, bestHeroId: c.bestHeroId }));
+  const gearCP = economy69.items.map(i => ({ id: i.instanceId, cp: lampGearCP(i) }));
+  const heroCP = heroes.map(h => ({ id: h.heroInstanceKey, level: h.currentLevel, cp: computeCombatPower(refreshHeroStats({ ...h, equipmentStats: equipmentStats(economy69.items, economy69.loadouts[h.heroInstanceKey] || {}) })) }));
+  const compare = economy69.items.slice(0, 6).flatMap(i => heroes.map(h => { const c = compareLampItem(economy69, i, h.heroInstanceKey); return { id: i.instanceId, hero: h.heroInstanceKey, upgrade: c.upgrade, deltas: c.deltas, current: c.current?.instanceId ?? null }; }));
+  const conveyorPlan = (() => { const { working, changes } = planConveyorAutoEquip(structuredClone(economy69), heroes); return { working, changes: changes.map(c => ({ heroId: c.heroId, item: c.item.instanceId })) }; })();
+  const kp = createLampEconomy(5, 0); const kills = [];
+  for (const [id, amount] of [['enemy:battle:s1:12', 5], ['enemy:battle:s1:12', 5], ['tick:battle:s1:1', 1], ['tick:battle:s1:3', 1], ['tick:battle:s1:2', 1], ['enemy:b2:7', 5], ['bad', 5], ['enemy:b:0', 1], ['tick:b:2', 3], ['tick:b:02', 1], ['enemy:b2:9', 5]]) kills.push({ id, amount, out: attempt(() => awardLampKillPoints(kp, id, amount)), receipts: structuredClone(kp.settledBagKillRewards), killPoints: kp.lamp.killPoints });
+  let clock = null; const ticks = [];
+  for (const seconds of [4, 12, 30.5, 0, -1, 14.9999999999, 0.0000000002, 2]) { const r = advanceLampCombatProgress(clock, { battleId: 'battle:s1', seconds, data: kp, pending: { 'tick:battle:s1:9': 1 } }); clock = r.clock; ticks.push({ seconds, clock: r.clock, rewards: r.rewards }); }
+  const maxed = createLampEconomy(5, 0); maxed.lamp.capacityTier = LAMP_CONFIG.lampLevels - 1;
+  ticks.push({ seconds: 20, maxed: true, ...advanceLampCombatProgress(null, { battleId: 'battle:s1', seconds: 20, data: maxed, pending: {} }) });
+  const up = createLampEconomy(9, 0); up.lamp.essence = 60; up.lamp.killPoints = 50;
+  const upgrade = { before: lampUpgradeProgress(up), first: attempt(() => upgradeLamp(up, 0)), after: lampUpgradeProgress(up), state: structuredClone(up), stale: attempt(() => upgradeLamp(up, 0)), short: attempt(() => upgradeLamp(up, 1)) };
+  const paid = createLampEconomy(3, 0); paid.lamp.upgradeStage = 2; paid.lamp.upgradeEndsAt = 0;
+  const restore = { applied: restorePaidLampUpgrade(paid), state: structuredClone(paid), again: restorePaidLampUpgrade(paid) };
+  const guide = structuredClone(economy69); const guideEmpty = createLampEconomy(1, 0);
+  const guides = { storage: attempt(() => markLampGuide(guide, 'storage')), comparison: attempt(() => markLampGuide(guide, 'comparison')), preview: attempt(() => markLampGuide(guide, 'preview')), unknown: attempt(() => markLampGuide(guide, 'x')), empty: attempt(() => markLampGuide(guideEmpty, 'storage')), state: guide.lamp.guide };
+  const created = createLampEconomy(42, 17);
+  const withItem = structuredClone(created); withItem.items.push(generateLampItem(42, 0, 0)); withItem.lamp.pending.push('lamp:42:0'); withItem.lamp.sequence = 1;
+  const twoItems = structuredClone(withItem); twoItems.items.push(generateLampItem(42, 1, 0)); twoItems.lamp.pending.push('lamp:42:1'); twoItems.lamp.sequence = 2;
+  const validation = [
+    ['fixture69', captured.economy], ['created', created], ['withItem', withItem],
+    ['badGold', { ...created, gold: -1 }], ['badVersion', { ...created, version: 4 }], ['negativePartyEXP', { ...created, partyEXP: -1 }],
+    ['dupItem', { ...withItem, items: [...withItem.items, withItem.items[0]] }],
+    ['unassigned', { ...withItem, lamp: { ...withItem.lamp, pending: [] } }],
+    ['wrongSlot', { ...withItem, lamp: { ...withItem.lamp, pending: [] }, loadouts: { Falie: { body: 'lamp:42:0' } } }],
+    ['equipped', { ...withItem, lamp: { ...withItem.lamp, pending: [] }, loadouts: { Falie: { [withItem.items[0].type]: 'lamp:42:0' } } }],
+    ['doubleAssigned', { ...withItem, loadouts: { Falie: { [withItem.items[0].type]: 'lamp:42:0' } } }],
+    ['pendingUnknown', { ...created, lamp: { ...created.lamp, pending: ['nope'] } }],
+    ['overCapacity', { ...created, lamp: { ...created.lamp, capacityTier: 0, pending: Array.from({ length: 21 }, (_, i) => 'x' + i) } }],
+    ['badReceipts', { ...created, settledBagKillRewards: { 'enemy:a': [[3, 2]] } }], ['overlapReceipts', { ...created, settledBagKillRewards: { 'tick:a': [[1, 2], [3, 4]] } }], ['goodReceipts', { ...created, settledBagKillRewards: { 'tick:a': [[1, 2], [4, 5]], 'enemy:b': [[7, 7]] } }],
+    ['badGuide', { ...created, lamp: { ...created.lamp, guide: 9 } }], ['badStage', { ...created, lamp: { ...created.lamp, upgradeStage: 5 } }],
+    ['badStat', { ...withItem, items: [{ ...withItem.items[0], stats: { ...withItem.items[0].stats, SPD: 1 } }] }], ['missingStat', { ...withItem, items: [{ ...withItem.items[0], stats: { ATK: 1, DEF: 1, MAG: 1, RES: 1 } }] }],
+    ['badRecent', { ...created, lamp: { ...created.lamp, recent: [{ instanceId: 'a', name: 'b', rarity: 'common', art: 9, level: 1 }] } }],
+    ['extraKeys', { ...created, foo: 1, lamp: { ...created.lamp, bar: 2 }, migration: { legacyVersion: 1 } }],
+    ['killPointsOdd', { ...created, lamp: { ...created.lamp, killPoints: -3 } }], ['killPointsMissing', { ...created, lamp: Object.fromEntries(Object.entries(created.lamp).filter(([k]) => k !== 'killPoints')) } ],
+    ['protoLoadout', { ...created, loadouts: { __proto__x: {} , constructor: {} } }],
+  ].map(([name, input]) => ({ name, input, ...attempt(() => validateLampEconomy(structuredClone(input))) }));
+  const v4 = structuredClone(twoItems); v4.version = 4; delete v4.partyEXP; delete v4.lamp.capacityTier; delete v4.lamp.essence; v4.loadouts = { Falie: { [twoItems.items[0].type]: 'lamp:42:0' } }; v4.lamp.pending = ['lamp:42:1'];
+  const v3 = structuredClone(v4); v3.version = 3; for (const i of v3.items) delete i.stats.HP;
+  const v2 = structuredClone(v3); v2.version = 2; v2.items.forEach((i, n) => { if (n % 2) { i.stats.SPD = 2; delete i.stats.MAG; } else { delete i.sequence; } });
+  const v1 = { version: 1, gold: 40, settledGoldRewards: ['g1', 7], market: { seed: 3, epoch: 1, lastSeen: 2 }, items: [{ instanceId: 'a', equipmentId: 'warden-helm' }, { instanceId: 'b', equipmentId: 'chain-mail' }, { instanceId: 'c', equipmentId: 'dawnbringer' }, { instanceId: 'd', equipmentId: 'trail-boots' }], loadouts: { Falie: { head: 'a', armor: 'b', weapon: 'c' }, Runa: { boots: 'd' } } };
+  const migrations = [['v4', v4, migrateLampEconomy], ['v3', v3, migrateFourStatLamp], ['v2', v2, migrateDraftLamp], ['v1', v1, old => migrateLegacyEquipment(old, 77)],
+    ['v1bad', { ...v1, items: [{ instanceId: 'a', equipmentId: 'nope' }] }, old => migrateLegacyEquipment(old, 77)], ['v1missing', { ...v1, loadouts: { Falie: { head: 'zz' } } }, old => migrateLegacyEquipment(old, 77)], ['v1slot', { ...v1, loadouts: { Falie: { head: 'b' } } }, old => migrateLegacyEquipment(old, 77)]]
+    .map(([name, input, fn]) => ({ name, input, ...attempt(() => fn(structuredClone(input))) }));
+  // conveyor script
+  const roster = lampHeroRoster(createHeroProgressStore());
+  const conv = validateConveyorState(createLampEconomy(11, 0)); const script = []; let t = 1000;
+  const step = (name, fn) => { const result = attempt(fn); script.push({ name, t, result, state: structuredClone(conv) }); };
+  step('emit', () => emitConveyorItem(conv, { region: 1, stage: 1 }, t));
+  t = 1500; step('emitCooldown', () => emitConveyorItem(conv, { region: 1, stage: 1 }, t));
+  t = 2000; step('collect', () => collectConveyorItem(conv, 'lamp:11:0', t));
+  step('collectAgain', () => collectConveyorItem(conv, 'lamp:11:0', t));
+  step('collectUnknown', () => collectConveyorItem(conv, 'lamp:11:9', t));
+  step('classify', () => classifyConveyorCache(conv, roster).map(c => ({ id: c.item.instanceId, queue: c.queue, bestGain: c.bestGain, bestHeroId: c.bestHeroId })));
+  for (let n = 1; n <= 21; n++) { t += 5000; step('emit' + n, () => emitConveyorItem(conv, { region: 2, stage: 3 }, t)); step('auto' + n, () => collectConveyorItem(conv, `lamp:11:${n}`, t, { automatic: true })); }
+  step('expired', () => collectConveyorItem(conv, 'lamp:11:1', t + 40000));
+  step('classify2', () => classifyConveyorCache(conv, roster).map(c => ({ id: c.item.instanceId, queue: c.queue, bestGain: c.bestGain, bestHeroId: c.bestHeroId })));
+  t += 5000; step('emitFull', () => emitConveyorItem(conv, { region: 2, stage: 3 }, t));
+  step('holdManual', () => collectConveyorItem(conv, 'lamp:11:22', t));
+  t += 5000; step('emitFull2', () => emitConveyorItem(conv, { region: 2, stage: 3 }, t)); step('holdSecond', () => collectConveyorItem(conv, 'lamp:11:23', t));
+  step('review', () => conveyorReviewCandidates(conv, roster).map(c => ({ id: c.item.instanceId, queue: c.queue, bestGain: c.bestGain, bestHeroId: c.bestHeroId })));
+  step('equipHeld', () => { const c = conveyorReviewCandidates(conv, roster).find(c => c.queue === 'held'); if (!c.bestHeroId) throw new Error('held item not an upgrade: ' + c.bestGain); return equipConveyorItem(conv, c.bestHeroId, c.item.instanceId, roster.find(h => h.heroInstanceKey === c.bestHeroId)); });
+  step('equipBad', () => equipConveyorItem(conv, 'Falie', 'lamp:11:2', roster.find(h => h.heroInstanceKey === 'Runa')));
+  step('autoPlan', () => { const { working, changes } = planConveyorAutoEquip(conv, roster); Object.assign(conv, working); return changes.map(c => ({ heroId: c.heroId, item: c.item.instanceId })); });
+  step('classify3', () => classifyConveyorCache(conv, roster).map(c => ({ id: c.item.instanceId, queue: c.queue, bestGain: c.bestGain })));
+  step('queueDisposal', () => queueConveyorDisposal(conv, conv.lamp.discarded[0], roster));
+  step('queueUseful', () => queueConveyorDisposal(conv, conv.lamp.pending[0] ?? 'lamp:11:0', roster));
+  step('preview', () => conveyorDisposalPreview(conv, roster));
+  step('previewUseful', () => conveyorDisposalPreview(conv, roster, [conv.lamp.pending[0] ?? 'lamp:11:0']));
+  step('dismantle', () => dismantleConveyorItems(conv, conveyorDisposalPreview(conv, roster), roster));
+  step('dismantleEmpty', () => dismantleConveyorItems(conv, conveyorDisposalPreview(conv, roster), roster));
+  step('validateConveyor', () => validateConveyorState(structuredClone(conv)) && true);
+  const conveyorInvalid = [['badEmission', { ...conv, lamp: { ...conv.lamp, emissions: [{ item: conv.items[0] ?? generateLampItem(11, 0, 0), issuedAt: 1, collected: 'x' }] } }], ['tooMany', { ...conv, lamp: { ...conv.lamp, emissions: Array.from({ length: 17 }, (_, i) => ({ item: generateLampItem(11, i, 0), issuedAt: 1, collected: false })) } }], ['holdOwned', { ...conv, lamp: { ...conv.lamp, reviewHold: { item: conv.items[0] ?? generateLampItem(11, 0, 0), disposal: false } } }], ['badRequested', { ...conv, lamp: { ...conv.lamp, disposalRequested: ['nope'] } }], ['nullHold', { ...conv, lamp: { ...conv.lamp, reviewHold: null } }]]
+    .map(([name, input]) => ({ name, input, ...attempt(() => validateConveyorState(structuredClone(input))) }));
+  // storage transaction script (equipmentStorage.mjs)
+  const values = new Map(); let now = 1000;
+  const storage = { getItem: k => values.get(k) ?? null, setItem: (k, v) => values.set(k, String(v)), removeItem: k => values.delete(k) };
+  const locks = { request: (key, fn) => fn() };
+  const globals = { goldTotal: 0, HeroProgress: createHeroProgressStore(), PendingGoldSettlements: { 'battle:s1': 12 }, ContinuousCombatStage: { region: 1, stage: 1 } };
+  globals.HeroProgress.pendingBagKillRewards = { 'enemy:battle:s1:12': 5, 'tick:battle:s1:1': 1 };
+  const store = createEquipmentStorage({ globals, storage, locks, seed: () => 42, now: () => now, reportError: () => {}, persistProgress: () => true });
+  const steps = [];
+  const snap = (name, result) => steps.push({ name, now, result: result === undefined ? null : result, save: JSON.parse(values.get(EQUIPMENT_SAVE_KEY) ?? 'null'), gold: globals.goldTotal, settledGold: globals.SettledGoldRewardReceipts ?? null, pendingGold: structuredClone(globals.PendingGoldSettlements), pendingKills: structuredClone(globals.HeroProgress.pendingBagKillRewards ?? null), dirty: !!globals.HeroProgressDirty,
+    heroes: Object.fromEntries(Object.entries(globals.HeroProgress.heroes).map(([k, h]) => [k, { level: h.currentLevel, hp: h.hp, maxHP: h.maxHP, stats: h.stats, equipmentStats: h.equipmentStats ?? null, lampEXPClaimed: h.lampEXPClaimed, combatPower: h.combatPower ?? null }])) });
+  snap('sync', await attemptAsync(() => store.sync()));
+  for (let i = 0; i < 6; i++) { now += 5000; snap('tick' + i, await attemptAsync(() => store.tickConveyor({ region: 1, stage: 1 }))); }
+  now += 1000; snap('tickEarly', await attemptAsync(() => store.tickConveyor({ region: 1, stage: 1 })));
+  now += 4000; snap('tickDeferred', await attemptAsync(() => store.tickConveyor({ region: 1, stage: 2 }, () => true, { deferCollection: true })));
+  const last = store.data.lamp.emissions.at(-1).item.instanceId; now += 1000; snap('collect', await attemptAsync(() => store.collect(last)));
+  snap('collectAvailable', await attemptAsync(() => store.collectAvailable([last, 'lamp:42:0'])));
+  snap('autoEquip', await attemptAsync(() => store.autoEquip()));
+  snap('equipBad', await attemptAsync(() => store.equip('Falie', store.data.lamp.discarded[0] ?? 'lamp:42:0')));
+  snap('queueDisposal', await attemptAsync(() => store.queueDisposal(store.data.lamp.discarded[0])));
+  const preview = store.disposalPreview(); snap('dismantle', await attemptAsync(() => store.dismantle(preview)));
+  globals.HeroProgress.pendingBagKillRewards = Object.fromEntries(Array.from({ length: 20 }, (_, i) => ['enemy:battle:s1:' + (40 + i), 5])); globals.goldTotal += 3; snap('sync2', await attemptAsync(() => store.sync()));
+  snap('upgrade', await attemptAsync(() => store.upgrade()));
+  snap('upgradeStale', await attemptAsync(() => store.upgrade(0)));
+  snap('essence', await attemptAsync(() => store.awardCombatEssence('cot:1', 7))); snap('essenceDup', await attemptAsync(() => store.awardCombatEssence('cot:1', 7)));
+  snap('guide', await attemptAsync(() => store.markGuide('preview')));
+  snap('finishReview', await attemptAsync(() => store.finishReview()));
+  return { tiers, units, ordinals, items, compact, salvage, fixture69: { economy: captured.economy, heroes: captured.heroes, normalized: economy69, review, gearCP, heroCP, compare, conveyorPlan }, kills, ticks, upgrade, restore, guides, validation, migrations, conveyor: { roster: roster.map(h => h.heroInstanceKey), script, invalid: conveyorInvalid }, storage: steps };
+}
+write('lamp.json', await lampFixture());

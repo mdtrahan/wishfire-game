@@ -110,14 +110,11 @@ pub fn draw(assets: &Assets, m: &CombatModel, panel: Option<&Panel>, hits: &mut 
     // Bands the arena never shows through (top strip, strip/nav area).
     draw_rectangle(0., 0., WIDTH, BAND_TOP, rgb(0x16181c));
     draw_rectangle(0., BAND_BOTTOM, WIDTH, HEIGHT - BAND_BOTTOM, rgb(0x1d1f23));
+    if let Some(error) = &m.host_error { stroked("Combat host failed", 8., 12., 12., rgb(0xff8fa0), rgb(0x000000), Align::Left); paragraph(error, 8., 20., WIDTH - 60., 9., rgb(0xffd0d0)); }
     if m.summon_visible { summon(assets, m, hits); } else { progress(assets, m); }
     if let Some(boss) = &m.boss { boss_hud(assets, boss, matches!(panel, Some(Panel::BossInfo)), hits); }
     party_row(assets, m, hits);
     strip(assets, m, hits);
-    // Lamp strip placeholder (bead ORKA-63bf.8).
-    draw_rectangle(0., LAMP_TOP, WIDTH, LAMP_H, rgb(0x2a2420));
-    draw_rectangle_lines(0., LAMP_TOP, WIDTH, LAMP_H, 1., rgba(0xc9a359, 0.5));
-    label("Bag / lamp strip (next bead)", WIDTH / 2., LAMP_TOP + LAMP_H / 2., 12., rgba(0xf6eedc, 0.6), Align::Center);
 }
 /// `drawCombatProgressHud`: chapter label, wave rail with notches, party marker, boss head.
 fn progress(assets: &Assets, m: &CombatModel) {

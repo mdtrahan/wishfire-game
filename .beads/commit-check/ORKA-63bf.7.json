@@ -1,0 +1,97 @@
+{
+  "changed_functions": {
+    ".beads/commit-check/ORKA-63bf.5.json": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/assets.rs": [
+      "threshold",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/camera.rs": [
+      "change",
+      "useful_height",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/input.rs": [
+      "t"
+    ],
+    "rust/wf_app/src/main.rs": [
+      "t",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/ui/chrome.rs": [
+      "s",
+      "start",
+      "steps",
+      "r",
+      "fill",
+      "notch_w",
+      "marker_x",
+      "x",
+      "size",
+      "w",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/ui/mod.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/ui/model.rs": [
+      "rounded",
+      "tenth",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/ui/screens.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/hero.rs": [
+      "haste"
+    ],
+    "tools/build_wf_app.sh": [
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 12,
+    "staged_line_count": 795,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/commit-check/ORKA-63bf.5.json",
+    "rust/wf_app/AGENTS.md",
+    "rust/wf_app/src/assets.rs",
+    "rust/wf_app/src/camera.rs",
+    "rust/wf_app/src/input.rs",
+    "rust/wf_app/src/main.rs",
+    "rust/wf_app/src/ui/chrome.rs",
+    "rust/wf_app/src/ui/mod.rs",
+    "rust/wf_app/src/ui/model.rs",
+    "rust/wf_app/src/ui/screens.rs",
+    "rust/wf_meta/src/hero.rs",
+    "tools/build_wf_app.sh"
+  ],
+  "issue_id": "ORKA-63bf.7",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/commit-check/ORKA-63bf.5.json": "f1d70a9ee96210277a1dc3fdd59e4ebc127d2424",
+    "rust/wf_app/AGENTS.md": "dee389f3a45be2ef1c0a78843fba487e8b5f36f3",
+    "rust/wf_app/src/assets.rs": "8a64994fa5bf8e8b0bf8d3e0e8002da1f112a7ee",
+    "rust/wf_app/src/camera.rs": "3eb30ab7dc8624129d7ff603a22c5620c45e1a18",
+    "rust/wf_app/src/input.rs": "09c4d502f65537e0b3d4e5b1e97312e5163b5a0f",
+    "rust/wf_app/src/main.rs": "614f6ffaf344c189104c87784822984cdb301949",
+    "rust/wf_app/src/ui/chrome.rs": "331960a1c3103287ede27bc58016f816927d7703",
+    "rust/wf_app/src/ui/mod.rs": "93a32f4021bab8a150919d84d2f46393f1294a1d",
+    "rust/wf_app/src/ui/model.rs": "75a7dbb30b288c2ea35d0c41304063df7c7dbf58",
+    "rust/wf_app/src/ui/screens.rs": "5a8074f9a8defae1d0252ce9340434a5c1e9aff9",
+    "rust/wf_meta/src/hero.rs": "52f004ad70eaff4f2f5bc00cad9fd5e23d75fdad",
+    "tools/build_wf_app.sh": "87de30370034fd4d2311b90f981536d6c59255d5"
+  }
+}

@@ -70,9 +70,9 @@ async fn fatal(portrait: &mut camera::Portrait, title: &str, error: &str) -> ! {
 }
 fn warm_text() {
     // Allocate glyphs before queuing text draws: atlas growth can invalidate queued textures.
-    for size in [10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24] {
+    for size in [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24] {
         measure_text(
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ×!?:;.,/+-_=()|~>",
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ×!?:;.,/+-_=()|~>%^#'\"",
             None,
             size,
             1.,
@@ -175,7 +175,8 @@ async fn main() {
         let click = is_mouse_button_pressed(MouseButton::Left).then(|| portrait.pointer()).flatten();
         // Meta screens: combat pauses underneath (storyEntryFlow.navigate departure).
         if !ui.in_combat() {
-            if let Some(p) = click { ui.tap(p); }
+            if let Some(p) = click { ui.tap(p, &mut scene.game); }
+            ui.lamp.frame(&mut scene.game, false, true);
             scene.game.session.pause();
             portrait.begin();
             ui.draw_screen(&assets, &scene.game.session);
@@ -183,7 +184,10 @@ async fn main() {
             next_frame().await;
             continue;
         }
-        let ui_action = click.and_then(|p| ui.tap(p));
+        let ui_action = click.and_then(|p| ui.tap(p, &mut scene.game));
+        // The strip's conveyor clock, arrivals and timed emissions run while the combat screen shows.
+        scene.game.session.bag_blocked = ui.blocks_bag_progress();
+        ui.lamp.frame(&mut scene.game, true, controls.paused || ui.pauses());
         if ui_action == Some(ui::UiAction::SummonBoss) {
             if let Err(error) = scene.game.session.summon_boss(platform::now_ms()) { fatal(&mut portrait, "Combat host failed", &error).await; }
         }
@@ -347,7 +351,7 @@ async fn main() {
             spotlight.bars(&assets, &camera, s, team, &mut stats);
         }
         render::rewards::buffs(&assets, s, &mut stats);
-        ui.draw_combat(&assets);
+        ui.draw_combat(&assets, game);
         controls.draw();
         presentation.rewards.banner(&assets, bg, &mut stats);
         stats.calls += 20;

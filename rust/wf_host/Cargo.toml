@@ -10,4 +10,4 @@ wf_meta = { path = "../wf_meta" }
 wf_combat = { path = "../wf_combat", features = ["serde"] }
 simulation_core = { path = "../simulation_core" }
 serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["float_roundtrip"] }
+serde_json = { version = "1", features = ["float_roundtrip", "preserve_order"] }

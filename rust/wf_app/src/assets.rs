@@ -59,7 +59,7 @@ pub struct Manifest {
     pub arenas: Vec<Arena>,
 }
 /// Chrome art staged by tools/build_wf_app.sh from web-runner/assets/images.
-pub const UI_ART: &[&str] = &["nav-daily", "nav-hero", "nav-quests", "nav-vault", "nav-power-up", "boss-boss", "boss-clock", "boss-inspect", "hero-Fara", "hero-Hondo", "hero-Runa", "hero-Kaja", "buff-signals"];
+pub const UI_ART: &[&str] = &["nav-daily", "nav-hero", "nav-quests", "nav-vault", "nav-power-up", "boss-boss", "boss-clock", "boss-inspect", "hero-Fara", "hero-Hondo", "hero-Runa", "hero-Kaja", "buff-signals", "lamp-gear-atlas", "lamp-bag", "lamp-essence", "bag-medallion"];
 /// Archetypes the live game can spawn; each owns one packed puppet (wf_pack::ACTORS).
 const ACTOR_ART:&[&str]=&["Fara","Hondo","Runa","Kaja","Gobloc","Orc","Lizardo","Boss","HighOrc","Marid",
     "WfmHighGobloc","WfmSkeleton","WfmChimerilass","WfmDjinn"];

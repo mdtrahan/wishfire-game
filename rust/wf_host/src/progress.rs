@@ -37,6 +37,8 @@ pub struct HeroProgress {
     #[serde(rename = "maxHP")] pub max_hp: f64,
     pub stats: Stats5,
     #[serde(rename = "EXPToNextLevel")] pub exp_to_next_level: f64,
+    /// `hero.combatPower`: written by the equipment economy's apply pass; dropped on normalization.
+    #[serde(default, skip_serializing_if = "Option::is_none")] pub combat_power: Option<f64>,
 }
 /// `awardHeroEXP` result.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -70,7 +72,7 @@ impl HeroProgress {
     /// `newHeroProgress(key, instanceKey)`.
     pub fn new(key: &str, instance_key: &str) -> Result<Self, String> {
         let def = hero::hero_definition(key).ok_or_else(|| format!("Unknown hero: {key}"))?;
-        let mut hero = HeroProgress { hero_instance_key: instance_key.into(), equipment_stats: None, base_hero_name: def.key.into(), name: def.key.into(), current_level: 1, current_exp: 0., lamp_exp_claimed: 0., max_level: hero::MAX_LEVEL, combat_base_max_hp: None, hp: 0., max_hp: 0., stats: Stats5::default(), exp_to_next_level: 0. };
+        let mut hero = HeroProgress { hero_instance_key: instance_key.into(), equipment_stats: None, base_hero_name: def.key.into(), name: def.key.into(), current_level: 1, current_exp: 0., lamp_exp_claimed: 0., max_level: hero::MAX_LEVEL, combat_base_max_hp: None, hp: 0., max_hp: 0., stats: Stats5::default(), exp_to_next_level: 0., combat_power: None };
         hero.refresh();
         hero.hp = hero.max_hp;
         Ok(hero)
@@ -102,7 +104,7 @@ impl HeroProgress {
     }
     /// `saveHeroProgress` record shape for a hero at `level` with the given HP and stats.
     pub fn saved_record(instance_key: &str, definition_key: &str, equipment: Option<&BTreeMap<String, f64>>, level: u32, exp: f64, lamp_exp_claimed: f64, hp: f64, max_hp: f64, stats: Stats5) -> Self {
-        HeroProgress { hero_instance_key: instance_key.into(), equipment_stats: Some(equipment.cloned().unwrap_or_default()), base_hero_name: definition_key.into(), name: definition_key.into(), current_level: level, current_exp: exp, lamp_exp_claimed, max_level: hero::MAX_LEVEL, combat_base_max_hp: None, hp: hp.min(max_hp), max_hp, stats, exp_to_next_level: hero::exp_to_next_level(level) }
+        HeroProgress { hero_instance_key: instance_key.into(), equipment_stats: Some(equipment.cloned().unwrap_or_default()), base_hero_name: definition_key.into(), name: definition_key.into(), current_level: level, current_exp: exp, lamp_exp_claimed, max_level: hero::MAX_LEVEL, combat_base_max_hp: None, hp: hp.min(max_hp), max_hp, stats, exp_to_next_level: hero::exp_to_next_level(level), combat_power: None }
     }
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
@@ -152,6 +154,8 @@ pub struct HeroProgressStore {
     pub combat_reward_outbox: crate::rewards::OutboxState,
     #[serde(default, skip_serializing_if = "Option::is_none")] pub pending_bag_kill_rewards: Option<BTreeMap<String, f64>>,
     #[serde(default, skip_serializing_if = "Option::is_none")] pub continuous_stage: Option<ContinuousStageCheckpoint>,
+    /// Not saved: set by economy writers; the session folds it into `progress_dirty`.
+    #[serde(skip)] pub dirty: bool,
 }
 fn object(v: Option<&Value>) -> Option<&Map<String, Value>> { v.and_then(Value::as_object) }
 /// `sanitizeRewardLedger`: finite non-negative amounts keyed by string.
@@ -233,7 +237,7 @@ pub fn normalize_continuous_stage_checkpoint(stage: Option<&Value>) -> Result<Op
 }
 impl HeroProgressStore {
     fn empty() -> Self {
-        HeroProgressStore { version: HERO_PROGRESS_VERSION, heroes: BTreeMap::new(), settled_battles: Vec::new(), pending_battle_rewards: None, pending_gold_settlements: BTreeMap::new(), settled_ticket_spends: Vec::new(), combat_reward_outbox: crate::rewards::OutboxState::default(), pending_bag_kill_rewards: None, continuous_stage: None }
+        HeroProgressStore { version: HERO_PROGRESS_VERSION, heroes: BTreeMap::new(), settled_battles: Vec::new(), pending_battle_rewards: None, pending_gold_settlements: BTreeMap::new(), settled_ticket_spends: Vec::new(), combat_reward_outbox: crate::rewards::OutboxState::default(), pending_bag_kill_rewards: None, continuous_stage: None, dirty: false }
     }
     /// `createHeroProgressStore()` with no snapshot: the four canonical heroes at level 1.
     pub fn fresh() -> Self { Self::from_snapshot(None).unwrap() }
@@ -289,4 +293,6 @@ impl HeroProgressStore {
         &self.heroes[instance_key]
     }
     pub fn bag_rewards_mut(&mut self) -> &mut BTreeMap<String, f64> { self.pending_bag_kill_rewards.get_or_insert_with(BTreeMap::new) }
+    /// `g.HeroProgressDirty = true` for callers that cannot reach the session flag.
+    pub fn mark_dirty(&mut self) { self.dirty = true; }
 }

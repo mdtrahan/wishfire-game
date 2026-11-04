@@ -852,6 +852,8 @@ impl World {
     pub fn encounter_id(&self) -> &str { &self.encounter_id }
     pub fn state(&self) -> &'static str { self.state }
     pub fn step_number(&self) -> u64 { self.sim.step_number }
+    /// Current permanent-input revision of an actor (0 until a revision applies).
+    pub fn permanent_revision(&self, actor: u32) -> Option<u64> { self.sim.actors.iter().find(|a| a.view.id == actor).map(|a| a.permanent_revision as u64) }
     pub fn host_id(&self, actor: u32) -> Option<&str> { self.host_ids.get(&actor).map(String::as_str) }
     pub fn host_max_hp(&self, actor: u32) -> Option<f32> { self.host_max_hp.get(&actor).copied() }
     pub fn pending_spawns(&self) -> impl Iterator<Item = (u32, &str, Vec2)> + '_ {

@@ -26,6 +26,10 @@ for n in daily hero quests vault power-up; do cp -p "$IMG/navigation/$n.png" "$W
 for n in boss clock inspect; do cp -p "$IMG/boss-hud/$n.png" "$WEB/art/ui/boss-$n.png"; done
 for n in Fara Hondo Runa Kaja; do cp -p "$IMG/$n.png" "$WEB/art/ui/hero-$n.png"; done
 cp -p "$IMG/ui/buff-signals.png" "$WEB/art/ui/buff-signals.png"
+cp -p "$IMG/lamp/gear-atlas.png" "$WEB/art/ui/lamp-gear-atlas.png"
+cp -p "$IMG/lamp/equipment-bag.png" "$WEB/art/ui/lamp-bag.png"
+cp -p "$IMG/lamp/essence-orb.png" "$WEB/art/ui/lamp-essence.png"
+cp -p "$IMG/ui/bag-tier-medallion.png" "$WEB/art/ui/bag-medallion.png"
 WASM_TMP="$(mktemp "$WEB/.wf_app.wasm.XXXXXX")"
 trap 'rm -f "$WASM_TMP"' EXIT
 cp -p "$CARGO_TARGET_DIR/wasm32-unknown-unknown/wasm-release/wf_app.wasm" "$WASM_TMP"
