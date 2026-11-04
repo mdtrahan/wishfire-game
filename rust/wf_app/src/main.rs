@@ -7,6 +7,7 @@ mod crowd_proof;
 mod game;
 mod input;
 mod platform;
+mod ui;
 mod impact_stop;
 mod motion;
 mod qa;
@@ -164,13 +165,29 @@ async fn main() {
     render::vfx3d::warmup();
     let rows = match game::load_enemy_rows().await { Ok(rows) => rows, Err(error) => fatal(&mut portrait, "Enemy data failed", &error).await };
     let mut controls = input::Controls::new();
+    let mut ui = ui::Ui::new();
     if qa::enabled() { controls.seed = qa::seed(); }
     let boot_seed = if qa::enabled() { Some(controls.seed as u32) } else { None };
     let mut scene = match Scene::new(rows.clone(), boot_seed) { Ok(scene) => scene, Err(error) => fatal(&mut portrait, "Combat host failed", &error).await };
     loop {
         portrait.resize();
         render::vfx3d::sampling_controls();
-        let action = controls.read(&portrait);
+        let click = is_mouse_button_pressed(MouseButton::Left).then(|| portrait.pointer()).flatten();
+        // Meta screens: combat pauses underneath (storyEntryFlow.navigate departure).
+        if !ui.in_combat() {
+            if let Some(p) = click { ui.tap(p); }
+            scene.game.session.pause();
+            portrait.begin();
+            ui.draw_screen(&assets, &scene.game.session);
+            portrait.present();
+            next_frame().await;
+            continue;
+        }
+        let ui_action = click.and_then(|p| ui.tap(p));
+        if ui_action == Some(ui::UiAction::SummonBoss) {
+            if let Err(error) = scene.game.session.summon_boss(platform::now_ms()) { fatal(&mut portrait, "Combat host failed", &error).await; }
+        }
+        let action = controls.read(if ui_action.is_some() { None } else { click });
         if action.restart {
             scene.game.restart(Some(controls.seed as u32));
             scene = match Scene::new(rows.clone(), Some(controls.seed as u32)) { Ok(scene) => scene, Err(error) => fatal(&mut portrait, "Combat host failed", &error).await };
@@ -193,7 +210,8 @@ async fn main() {
         if action.summon_boss {
             if let Err(error) = game.session.summon_boss(platform::now_ms()) { fatal(&mut portrait, "Combat host failed", &error).await; }
         }
-        if controls.paused && !action.step { game.session.pause(); } else { let _ = dt; game.tick(platform::now_ms()); }
+        // A chrome panel pauses combat like the JS hero/party-skill surfaces do.
+        if (controls.paused && !action.step) || ui.pauses() { game.session.pause(); } else { let _ = dt; game.tick(platform::now_ms()); }
         let observations = game.drain_steps();
         let steps = observations.len() as u32;
         for (before, after) in &observations { motion.observe_step(before, after); }
@@ -203,6 +221,7 @@ async fn main() {
         };
         let events = game.drain_events();
         let live_snapshot = game.snapshot().cloned().unwrap_or(previous_snapshot);
+        ui.update(&game.session, &live_snapshot);
         #[cfg(target_arch = "wasm32")]
         PROBE.with(|p| {
             let s = &live_snapshot;
@@ -327,7 +346,8 @@ async fn main() {
             render::actors::bars(&assets, &camera, bg, corpses, &presentation.held, team, &mut stats);
             spotlight.bars(&assets, &camera, s, team, &mut stats);
         }
-        render::hud::draw(&assets, s, &mut stats);
+        render::rewards::buffs(&assets, s, &mut stats);
+        ui.draw_combat(&assets);
         controls.draw();
         presentation.rewards.banner(&assets, bg, &mut stats);
         stats.calls += 20;

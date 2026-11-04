@@ -1,0 +1,92 @@
+{
+  "changed_functions": {
+    ".beads/commit-check/ORKA-63bf.6.json": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/game.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_host/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/wf_host/src/progress.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_host/src/rewards.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_host/src/session.rs": [
+      "safe",
+      "__MODULE__"
+    ],
+    "rust/wf_host/tests/progress.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_meta/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/hero.rs": [
+      "l",
+      "haste",
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/jsnum.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_meta/tests/oracle.rs": [
+      "__MODULE__"
+    ],
+    "tests/fixtures/rust-oracle/hero_progress.json": [
+      "__MODULE__"
+    ],
+    "tools/rust_oracle/write_fixtures.mjs": [
+      "call",
+      "fakeStorage",
+      "heroProgressFixture",
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 13,
+    "staged_line_count": 728,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/commit-check/ORKA-63bf.6.json",
+    "rust/wf_app/src/game.rs",
+    "rust/wf_host/AGENTS.md",
+    "rust/wf_host/src/progress.rs",
+    "rust/wf_host/src/rewards.rs",
+    "rust/wf_host/src/session.rs",
+    "rust/wf_host/tests/progress.rs",
+    "rust/wf_meta/AGENTS.md",
+    "rust/wf_meta/src/hero.rs",
+    "rust/wf_meta/src/jsnum.rs",
+    "rust/wf_meta/tests/oracle.rs",
+    "tests/fixtures/rust-oracle/hero_progress.json",
+    "tools/rust_oracle/write_fixtures.mjs"
+  ],
+  "issue_id": "ORKA-63bf.5",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/commit-check/ORKA-63bf.6.json": "3644d2aa60b4bd7d4fc927bc41c3dd238332122b",
+    "rust/wf_app/src/game.rs": "587e24761017bbc21984992e3a6309bdea8db7a5",
+    "rust/wf_host/AGENTS.md": "6ee11f100120aeba0f091461c96b551e351e9523",
+    "rust/wf_host/src/progress.rs": "687179d95a073a345a68ab3b8b20588bfdacf294",
+    "rust/wf_host/src/rewards.rs": "aca48d0890350325fab7e13e3bd858429e0ffd2b",
+    "rust/wf_host/src/session.rs": "21d17a987cdee10b81ea8ee8fe1c4b0b401c9f15",
+    "rust/wf_host/tests/progress.rs": "3a3d30d7c42e22d6a01e120b76214056c6a4c2c8",
+    "rust/wf_meta/AGENTS.md": "2a39af7e67d533aa52f1ffd3b77270a97d331e70",
+    "rust/wf_meta/src/hero.rs": "2e224b80fc8a9c55c6348d46bf38b6eec15eea4d",
+    "rust/wf_meta/src/jsnum.rs": "1809aca27637d587d29f0fb392bcd792d6150867",
+    "rust/wf_meta/tests/oracle.rs": "08926a8aaa975138814defce437c17a2771c2cc3",
+    "tests/fixtures/rust-oracle/hero_progress.json": "b6cb914e93549dd5f47fbd3ea5cbb237b0161cfe",
+    "tools/rust_oracle/write_fixtures.mjs": "cc971d517e773aa1bb45b57bfcfde8f32dc2218b"
+  }
+}

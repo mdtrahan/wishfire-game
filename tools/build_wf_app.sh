@@ -19,6 +19,13 @@ rsync -a --delete --exclude='PROVENANCE.md' --exclude='vfx.json' "$ROOT/web-runn
 mkdir -p "$WEB/art/wishfire-skills" "$WEB/data"
 cp -p "$ROOT/web-runner/assets/enemies.json" "$WEB/data/enemies.json"
 cp -p "$ROOT/web-runner/assets/images/vfx_impact_g03_purple.png" "$WEB/art/wishfire-skills/vfx_impact_g03_purple.png"
+# Chrome art (wf_app assets::UI_ART): nav icons, boss HUD icons, hero portraits, buff sheet.
+mkdir -p "$WEB/art/ui"
+IMG="$ROOT/web-runner/assets/images"
+for n in daily hero quests vault power-up; do cp -p "$IMG/navigation/$n.png" "$WEB/art/ui/nav-$n.png"; done
+for n in boss clock inspect; do cp -p "$IMG/boss-hud/$n.png" "$WEB/art/ui/boss-$n.png"; done
+for n in Fara Hondo Runa Kaja; do cp -p "$IMG/$n.png" "$WEB/art/ui/hero-$n.png"; done
+cp -p "$IMG/ui/buff-signals.png" "$WEB/art/ui/buff-signals.png"
 WASM_TMP="$(mktemp "$WEB/.wf_app.wasm.XXXXXX")"
 trap 'rm -f "$WASM_TMP"' EXIT
 cp -p "$CARGO_TARGET_DIR/wasm32-unknown-unknown/wasm-release/wf_app.wasm" "$WASM_TMP"

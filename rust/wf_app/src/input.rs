@@ -1,4 +1,3 @@
-use crate::camera::Portrait;
 use macroquad::prelude::*;
 use wf_combat::SpotlightConfig;
 pub struct Controls {
@@ -44,10 +43,8 @@ impl Controls {
             spotlight: 2,
         }
     }
-    pub fn read(&mut self, portrait: &Portrait) -> Action {
-        let click = is_mouse_button_pressed(MouseButton::Left)
-            .then(|| portrait.pointer())
-            .flatten();
+    /// `click` is the frame's pointer press in logical pixels, already filtered by the chrome.
+    pub fn read(&mut self, click: Option<Vec2>) -> Action {
         let menu_hit = click.is_some_and(|p| p.x >= 324. && p.y < 44.);
         let button = if self.menu_open && !menu_hit {
             click.filter(|p| p.x < 324. && p.y < 44.).map(|p| {

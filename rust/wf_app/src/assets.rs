@@ -58,6 +58,8 @@ pub struct Manifest {
     pub actors: BTreeMap<String, ActorArt>,
     pub arenas: Vec<Arena>,
 }
+/// Chrome art staged by tools/build_wf_app.sh from web-runner/assets/images.
+pub const UI_ART: &[&str] = &["nav-daily", "nav-hero", "nav-quests", "nav-vault", "nav-power-up", "boss-boss", "boss-clock", "boss-inspect", "hero-Fara", "hero-Hondo", "hero-Runa", "hero-Kaja", "buff-signals"];
 /// Archetypes the live game can spawn; each owns one packed puppet (wf_pack::ACTORS).
 const ACTOR_ART:&[&str]=&["Fara","Hondo","Runa","Kaja","Gobloc","Orc","Lizardo","Boss","HighOrc","Marid",
     "WfmHighGobloc","WfmSkeleton","WfmChimerilass","WfmDjinn"];
@@ -171,6 +173,8 @@ pub struct Assets {
     pub arenas: Vec<Texture2D>,
     pub arena: Texture2D,
     pub decals: BTreeMap<String, Texture2D>,
+    /// Chrome images (`art/ui/*.png`): nav icons, boss HUD icons, hero portraits, the buff sheet.
+    pub ui: BTreeMap<String, Texture2D>,
     pub pivots: BTreeMap<String, [f32; 2]>,
     pub vfx: BTreeMap<String, VfxTexture>,
     pub vfx_bytes: u64,
@@ -225,6 +229,12 @@ impl Assets {
             arenas.push(texture);
         }
         let Some(arena) = arenas.first().cloned() else { return Err("assets.json has no arenas".into()) };
+        let mut ui = BTreeMap::new();
+        for name in UI_ART {
+            let texture = load_texture(&format!("art/ui/{name}.png")).await.map_err(|e| format!("art/ui/{name}.png: {e}"))?;
+            texture.set_filter(FilterMode::Linear);
+            ui.insert(name.to_string(), texture);
+        }
         let bundle_json = load_string("art/manifest.json")
             .await
             .map_err(|e| format!("art/manifest.json: {e}"))?;
@@ -531,6 +541,7 @@ impl Assets {
             arenas,
             arena,
             decals,
+            ui,
             pivots,
             load_ms: (get_time() - start) * 1000.,
         })

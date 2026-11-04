@@ -4,9 +4,11 @@ pub const WIDTH: f32 = 360.;
 pub const HEIGHT: f32 = 640.;
 pub const ZOOM: f32 = 0.5;
 pub const SQUASH: f32 = 0.75;
-pub const BAND_TOP: f32 = 0.;
-pub const BAND_BOTTOM: f32 = HEIGHT;
-pub const BAND_CENTRE: f32 = HEIGHT * 0.5;
+/// The arena band inside the 360x640 frame (`rustCombatCamera.mjs` COMBAT_VIEW): the HUD owns
+/// the top strip and the strip/nav own the bottom.
+pub const BAND_TOP: f32 = 42.;
+pub const BAND_BOTTOM: f32 = 430.;
+pub const BAND_CENTRE: f32 = (BAND_TOP + BAND_BOTTOM) * 0.5;
 #[derive(Clone)]
 pub struct WorldCamera {
     pub centre: Vec2,
@@ -151,10 +153,10 @@ impl WorldCamera {
             (
                 &mut self.centre.y,
                 &mut self.velocity.y,
-                max.y - (576. - BAND_CENTRE) / (self.zoom * SQUASH),
-                min.y + (BAND_CENTRE - 52.) / (self.zoom * SQUASH),
-                hero_max.y - (576. - BAND_CENTRE) / (self.zoom * SQUASH),
-                hero_min.y + (BAND_CENTRE - 52.) / (self.zoom * SQUASH),
+                max.y - (BAND_BOTTOM - BAND_CENTRE) / (self.zoom * SQUASH),
+                min.y + (BAND_CENTRE - BAND_TOP) / (self.zoom * SQUASH),
+                hero_max.y - (BAND_BOTTOM - BAND_CENTRE) / (self.zoom * SQUASH),
+                hero_min.y + (BAND_CENTRE - BAND_TOP) / (self.zoom * SQUASH),
             ),
         ] {
             let fitted = if low <= high {
@@ -310,10 +312,10 @@ mod tests {
         let sim = crate::testing::sim();
         let snapshot = sim.snapshot();
         let height = snapshot.arena_max.y - snapshot.arena_min.y;
-        let useful_height = (576. - 52.) / (ZOOM * SQUASH);
+        let useful_height = (BAND_BOTTOM - BAND_TOP) / (ZOOM * SQUASH);
         assert_eq!(height, 1552.);
-        assert!((height - useful_height - 154.6667).abs() < 0.001);
-        assert!(((height - useful_height) / height - 0.0996564).abs() < 0.00001);
+        // The WFM band (42..430) shows less of the arena than the slice's full frame did.
+        assert!(height > useful_height);
     }
     #[test]
     fn arena_pixels_and_walkable_outline_share_world_registration() {

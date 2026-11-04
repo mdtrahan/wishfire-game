@@ -144,3 +144,41 @@ pub fn hero_special_cooldown(key: &str, stars: u32) -> Result<f32, String> {
     let haste = ((1. / multiplier) as f32 as f64 - 1.) * 100.;
     Ok(cooldown_seconds(base, haste) as f32)
 }
+
+// ---- kit text (heroDefinitions.mjs special/passive, partySkillCatalog.mjs) ----
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SkillText { pub id: &'static str, pub name: &'static str, pub icon: &'static str, pub condition: &'static str, pub description: &'static str }
+/// `heroDefinition(key).special`.
+pub fn special_text(key: &str) -> Option<SkillText> {
+    Some(match hero_key(key) {
+        "Falie" => SkillText { id: "crimson_ward", name: "Crimson Ward", icon: "party-ward", condition: "A foe in range", description: "Every hero gains its own temporary HP worth 8% of its max HP, stacking up to 50% of its original max HP. Hits drain only the struck hero's ward. Kept between waves, into a boss fight and after a boss clear; cleared when the party falls or a boss attempt fails." },
+        "Huun" => SkillText { id: "shadow", name: "Shadow", icon: "party-special", condition: "A foe in range", description: "Jump behind a foe and hit it for 240% damage." },
+        "Runa" => SkillText { id: "bubble_pop", name: "Bubble Pop", icon: "party-mag", condition: "A foe in range", description: "Hit every foe in range for 180% magic damage and push them back for 2 seconds." },
+        "Kojonn" => SkillText { id: "elevate", name: "Elevate", icon: "party-spd", condition: "Fight start, then each time the clock fills", description: "Roll one party set until the next roll: SPD +5% and ATK +5%, max HP +20% and MAG +5%, or attack range +10% and crit damage +5%. Ends if Kaja falls." },
+        _ => return None,
+    })
+}
+/// `heroDefinition(key).passive`.
+pub fn passive_text(key: &str) -> Option<SkillText> {
+    Some(match hero_key(key) {
+        "Falie" => SkillText { id: "smoke_form", name: "Smoke Form", icon: "party-dr", condition: "Own HP below 40%", description: "Below 40% HP, Fara takes 50% less damage." },
+        "Huun" => SkillText { id: "royalty", name: "Royalty", icon: "party-atk", condition: "Own HP below 50%", description: "Below 50% HP, Hondo's basic attacks deal double damage and lower the struck enemy's DEF by 5% for 4s (provisional), helping every hero." },
+        "Runa" => SkillText { id: "boast", name: "Boast", icon: "party-res", condition: "Own HP above 80%", description: "Above 80% HP, Runa gains MAG +5% and RES +5%." },
+        "Kojonn" => SkillText { id: "ethereal_aura", name: "Ethereal Aura", icon: "party-mag", condition: "Foes in range", description: "Foes in Kaja's range take Faze damage every second, rising with each chapter." },
+        _ => return None,
+    })
+}
+/// `PARTY_SKILLS`: every skill that can raise a party-wide buff icon.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PartySkill { pub id: &'static str, pub skill_id: &'static str, pub hero: &'static str, pub name: &'static str, pub clock_label: &'static str, pub icons: &'static [&'static str], pub effect: &'static str, pub values: &'static [&'static str] }
+pub const PARTY_SKILLS: [PartySkill; 4] = [
+    PartySkill { id: "crimson_ward", skill_id: "crimson_ward", hero: "Fara", name: "Crimson Ward", clock_label: "Cooldown", icons: &["party-ward"], effect: "Every hero gains its own temporary HP worth 8% of its max HP, stacking up to 50% of its original max HP. Hits drain only the struck hero's ward. Kept between waves, into a boss fight and after a boss clear; cleared when the party falls or a boss attempt fails.", values: &["Each hero: temporary HP +8% of own max HP per cast", "Stacks to 50% of own original max HP"] },
+    PartySkill { id: "elevate:swift", skill_id: "elevate", hero: "Kaja", name: "Elevate | Swift", clock_label: "Rerolls every", icons: &["party-spd", "party-atk"], effect: "One of Elevate's three party rolls. While rolled, every hero gains SPD +5%, ATK +5%. Replaced by the next roll; ends if Kaja falls.", values: &["SPD +5%, ATK +5%"] },
+    PartySkill { id: "elevate:vital", skill_id: "elevate", hero: "Kaja", name: "Elevate | Vital", clock_label: "Rerolls every", icons: &["party-hp", "party-mag"], effect: "One of Elevate's three party rolls. While rolled, every hero gains Max HP +20%, MAG +5%. Replaced by the next roll; ends if Kaja falls.", values: &["Max HP +20%, MAG +5%"] },
+    PartySkill { id: "elevate:reach", skill_id: "elevate", hero: "Kaja", name: "Elevate | Reach", clock_label: "Rerolls every", icons: &["party-range", "party-cd"], effect: "One of Elevate's three party rolls. While rolled, every hero gains Attack range +10%, crit damage +5%. Replaced by the next roll; ends if Kaja falls.", values: &["Attack range +10%, crit damage +5%"] },
+];
+/// `partySkillFor(ref)`: a live party buff (effect id plus optional Elevate set) to its catalog entry.
+pub fn party_skill_for(effect_id: &str, set: Option<&str>) -> Option<&'static PartySkill> {
+    let id = match (effect_id, set) { ("ward", _) | ("crimson_ward", _) => "crimson_ward".to_string(), ("elevate", Some(set)) => format!("elevate:{set}"), _ => return None };
+    PARTY_SKILLS.iter().find(|p| p.id == id)
+}
