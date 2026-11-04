@@ -1127,3 +1127,12 @@ impl crate::equipment::LampHost for Session {
     fn revise_hero(&mut self, instance_key: &str) { if let Err(e) = self.queue_permanent_inputs(Some(instance_key)) { self.finish_failure(e); } }
     fn stage_context(&self) -> (f64, f64) { (self.stage.region as f64, self.stage.stage as f64) }
 }
+
+impl crate::progression::QuestHost for Session {
+    fn quest_heroes(&self) -> Vec<wf_meta::progression::QuestHero> {
+        self.heroes.iter().map(|h| wf_meta::progression::QuestHero { instance_key: h.instance_key.clone(), base_hero_name: h.definition.key.to_string(), current_level: h.level, max_level: self.progress.heroes.get(&h.instance_key).map_or(hero::MAX_LEVEL, |p| p.max_level), hp: h.hp }).collect()
+    }
+    fn quest_stage(&self) -> (Option<u32>, bool) { if self.stage_configured { (Some(self.stage.region), self.stage.boss_active) } else { (None, false) } }
+    fn permanent_inputs(&mut self, hero: Option<&str>) { if let Err(e) = self.queue_permanent_inputs(hero) { self.finish_failure(e); } }
+    fn apply_growth(&mut self, training: wf_meta::progression::Training, stars: BTreeMap<String, u32>) { self.training = Some(training.to_hero_training()); self.stars = stars; }
+}

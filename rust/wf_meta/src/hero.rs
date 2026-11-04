@@ -182,3 +182,58 @@ pub fn party_skill_for(effect_id: &str, set: Option<&str>) -> Option<&'static Pa
     let id = match (effect_id, set) { ("ward", _) | ("crimson_ward", _) => "crimson_ward".to_string(), ("elevate", Some(set)) => format!("elevate:{set}"), _ => return None };
     PARTY_SKILLS.iter().find(|p| p.id == id)
 }
+
+/// `heroDefinition(key).resonances`: late-game scaffolding, Hero-screen text only.
+pub fn resonance_texts(key: &str) -> Option<[SkillText; 2]> {
+    Some(match hero_key(key) {
+        "Falie" => [SkillText { id: "phoenix_soul", name: "Phoenix Soul", icon: "party-heal", condition: "Own HP below 15%", description: "Below 15% HP, each basic attack heals Fara for 6% of max HP." }, SkillText { id: "chastise", name: "Chastise", icon: "party-reflect", condition: "When hit", description: "Reflect 80% of damage taken back to the attacker." }],
+        "Huun" => [SkillText { id: "chase", name: "Chase", icon: "party-atk", condition: "Exactly one foe in range", description: "Against a lone foe in range, deal +160% damage." }, SkillText { id: "weaken", name: "Weaken", icon: "party-cr", condition: "Three or more foes in range", description: "When surrounded by three or more foes, crit rate +5% and crit damage +5%." }],
+        "Runa" => [SkillText { id: "vengeance", name: "Vengeance", icon: "party-mag", condition: "Own HP below 45%", description: "Below 45% HP, MAG rises by the share of HP lost." }, SkillText { id: "stare", name: "Stare", icon: "party-res", condition: "Exactly one foe in range", description: "Against a lone foe, add twice RES to MAG." }],
+        "Kojonn" => [SkillText { id: "cornered", name: "Cornered", icon: "party-def", condition: "Three or more foes in range", description: "When surrounded by three or more foes, DEF +8% and RES +8%." }, SkillText { id: "timeless", name: "Timeless", icon: "party-special", condition: "Own HP below 55%", description: "Below 55% HP, every special deals +20% damage and crit rate rises 1%." }],
+        _ => return None,
+    })
+}
+/// `kit(..., magic)`: Runa and Kaja attack with MAG.
+pub fn basic_is_magic(key: &str) -> bool { matches!(hero_key(key), "Runa" | "Kojonn") }
+pub const PROVISIONAL_SPECIAL_COOLDOWNS: [&str; 3] = ["shadow", "bubble_pop", "elevate"];
+/// `heroSpecialReach`: max(2 * HERO_FORMATION_WIDTH, 92 * attackRangeMultiplier) with no multiplier.
+pub const HERO_SPECIAL_REACH: f64 = 211.2;
+/// `heroSkillRange(ability, hero)` for a special by target rule.
+pub fn special_range_text(skill_id: &str) -> String {
+    match skill_id { "crimson_ward" | "elevate" => "Whole party".into(), "bubble_pop" => format!("Every foe within {HERO_SPECIAL_REACH} units"), "shadow" => format!("{HERO_SPECIAL_REACH}-unit actor reach"), _ => "Self".into() }
+}
+/// `formatHeroSpecialCooldown`: `Number(seconds.toFixed(2))` printed like a JS number.
+pub fn format_special_cooldown(key: &str, stars: u32) -> String {
+    let seconds = hero_special_cooldown(key, stars).map(|s| (s as f64 * 100.).round() / 100.).unwrap_or(0.);
+    let text = format!("{seconds:.2}");
+    text.trim_end_matches('0').trim_end_matches('.').to_string()
+}
+/// `heroSkillCopy(skill)` (`heroSkillCopy.mjs`): player-facing lines + rules.
+pub struct SkillCopy { pub lines: Vec<String>, pub rules: Vec<&'static str> }
+pub fn skill_copy(skill_id: &str, key: &str) -> SkillCopy {
+    let lines = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+    match skill_id {
+        "basic_attack" => SkillCopy { lines: vec![format!("Deals 100% of {} to the current target.", if basic_is_magic(key) { "MAG" } else { "ATK" })], rules: vec![] },
+        "crimson_ward" => SkillCopy { lines: lines(&["Grants each hero temporary HP equal to 8% of max HP.", "Stacks to 50% of original max HP."]), rules: vec!["Each hero has a separate ward. Hits drain only the struck hero's ward.", "Persists between waves, into boss fights and after boss clears.", "Clears when the party falls or a boss attempt fails. A fallen hero loses its ward."] },
+        "smoke_form" => SkillCopy { lines: lines(&["Below 40% HP, takes 50% less damage."]), rules: vec![] },
+        "phoenix_soul" => SkillCopy { lines: lines(&["Below 15% HP, each basic attack heals 6% of max HP."]), rules: vec![] },
+        "chastise" => SkillCopy { lines: lines(&["Reflects 80% of damage taken to the attacker."]), rules: vec![] },
+        "shadow" => SkillCopy { lines: lines(&["Jumps behind a foe and deals 240% damage."]), rules: vec![] },
+        "royalty" => SkillCopy { lines: lines(&["Below 50% HP: basic damage x2.", "Hits: target DEF -5% for 4s."]), rules: vec!["The DEF reduction benefits every hero. Duration is provisional."] },
+        "chase" => SkillCopy { lines: lines(&["Against a lone foe in range, deals +160% damage."]), rules: vec![] },
+        "weaken" => SkillCopy { lines: lines(&["Surrounded by 3+ foes: crit rate +5% and crit damage +5%."]), rules: vec![] },
+        "bubble_pop" => SkillCopy { lines: lines(&["Deals 180% magic damage to every foe in range.", "Pushes them back for 2s."]), rules: vec![] },
+        "boast" => SkillCopy { lines: lines(&["Above 80% HP: MAG +5% and RES +5%."]), rules: vec![] },
+        "vengeance" => SkillCopy { lines: lines(&["Below 45% HP, MAG rises by the share of HP lost."]), rules: vec![] },
+        "stare" => SkillCopy { lines: lines(&["Against a lone foe, adds twice RES to MAG."]), rules: vec![] },
+        "elevate" => SkillCopy { lines: lines(&["Rolls one party bonus set:"]), rules: vec!["SPD +5% and ATK +5%.", "Max HP +20% and MAG +5%.", "Attack range +10% and crit damage +5%.", "Rolls at fight start, then on cooldown. Lasts until the next roll; ends if Kaja falls."] },
+        "ethereal_aura" => SkillCopy { lines: lines(&["Foes in range take Faze damage every second."]), rules: vec!["Damage rises with each chapter."] },
+        "cornered" => SkillCopy { lines: lines(&["Surrounded by 3+ foes: DEF +8% and RES +8%."]), rules: vec![] },
+        "timeless" => SkillCopy { lines: lines(&["Below 55% HP, specials deal +20% damage.", "Crit rate rises 1%."]), rules: vec![] },
+        _ => SkillCopy { lines: vec![], rules: vec![] },
+    }
+}
+/// `STAR_EFFECTS` text per star index (1-based): (skill slot, stat bonus, effect text).
+pub fn star_effect(index: u32) -> (&'static str, f64, &'static str) {
+    match index { 1 => ("special", STAR_STAT_BONUS, "+10% Special damage/healing"), 2 => ("special", STAR_STAT_BONUS, "-8% Special cooldown"), 3 => ("passive", STAR_STAT_BONUS, "+15% Passive magnitude"), 4 => ("passive", STAR_STAT_BONUS, "+15% Passive magnitude"), 5 | 6 => ("resonance1", STAR_STAT_BONUS, "Unlocks with Resonance crystals"), _ => ("resonance2", STAR_STAT_BONUS, "Unlocks with Resonance crystals") }
+}

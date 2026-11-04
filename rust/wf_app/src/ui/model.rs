@@ -29,8 +29,36 @@ pub struct BossReadout {
 /// Party icon with the first buff behind it (`partyRefs`): effect id and Elevate set.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PartyIcon { pub icon: &'static str, pub skill_id: &'static str }
+/// `combatProgressionUI.update`: resources row + objective box read model.
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct QuestView {
+    pub category: String,
+    pub challenge: String,
+    pub count: String,
+    pub ready: bool,
+    pub claim_id: String,
+    /// (resource, amount, hero name) from `combatObjectiveReward`.
+    pub reward: Option<(String, f64, String)>,
+    pub incense: f64,
+    pub essence: f64,
+}
+pub fn quest_view(game: &crate::game::Game) -> QuestView {
+    use wf_meta::progression::{objective_presentation, objective_reward};
+    let state = &game.progression.state;
+    let view = objective_presentation(state.objective.as_ref());
+    let ready = state.objective.as_ref().is_some_and(|o| o.progress >= o.target);
+    QuestView {
+        category: if ready { "Claim reward".into() } else { view.category },
+        challenge: view.challenge, count: view.count, ready,
+        claim_id: if ready { state.objective.as_ref().map(|o| o.id.clone()).unwrap_or_default() } else { String::new() },
+        reward: objective_reward(state.objective.as_ref()).map(|r| (r.resource, r.amount, r.hero_name.unwrap_or_default())),
+        incense: state.wallet.incense,
+        essence: game.economy.data().map_or(0., |d| d.lamp.essence),
+    }
+}
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct CombatModel {
+    pub quest: QuestView,
     pub chapter: u32,
     pub wave_count: u32,
     pub completed_waves: u32,
@@ -153,7 +181,7 @@ impl CombatModel {
             slots.push(slot.map(|mut s| { s.badges = ordered; s }));
         }
         slots.resize_with(SLOTS, || None);
-        CombatModel { chapter: s.region.max(1), wave_count, completed_waves: completed, progress_position: (completed as f64 + fraction).min(wave_count as f64), boss_ready, summon_visible, summon_enabled: summon_visible, boss, slots, party, host_error: session.failed.clone(), hero_groups }
+        CombatModel { quest: previous.quest.clone(), chapter: s.region.max(1), wave_count, completed_waves: completed, progress_position: (completed as f64 + fraction).min(wave_count as f64), boss_ready, summon_visible, summon_enabled: summon_visible, boss, slots, party, host_error: session.failed.clone(), hero_groups }
     }
 }
 #[cfg(test)]

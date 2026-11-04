@@ -26,6 +26,9 @@ import { createEquipmentStorage, EQUIPMENT_SAVE_KEY } from '../../web-runner/sys
 import { fillGearMaxHpGrowth } from '../../web-runner/src/core/heroMaxHpPolicy.mjs';
 import { heroSpecialCooldown } from '../../web-runner/src/core/heroSpecialCooldown.mjs';
 import { pathToFileURL } from 'node:url';
+import { TRAINING_STATS, createCombatProgressionState, ensureCombatObjective, recordCombatObjectiveEvent, claimCombatObjectiveReward, combatObjectivePresentation, combatObjectiveReward, combatObjectiveActionTarget, spendHeroTickets, settleHeroTicketSpend, purchasePartyTraining, trainingCost, heroTicketLevelCost, eligibleTicketHeroes, eligibleHeroUpgradeTargets } from '../../web-runner/src/core/combatProgressionRules.mjs';
+import { observeChapterMilestones, milestoneCandidates, milestonePresentation, validMilestoneObjective, questFamily } from '../../web-runner/src/core/questMilestones.mjs';
+import { starUpHero, sanitizeHeroGrowth } from '../../web-runner/src/core/heroGrowthRules.mjs';
 // heroProgressStorage.js is CommonJS-typed under Node: load its ESM source through a data URL with absolute imports.
 const heroProgressStorage = await (async () => {
   const file = new URL('../../web-runner/systems/heroProgressStorage.js', import.meta.url);
@@ -441,3 +444,86 @@ async function lampFixture() {
   return { tiers, units, ordinals, items, compact, salvage, fixture69: { economy: captured.economy, heroes: captured.heroes, normalized: economy69, review, gearCP, heroCP, compare, conveyorPlan }, kills, ticks, upgrade, restore, guides, validation, migrations, conveyor: { roster: roster.map(h => h.heroInstanceKey), script, invalid: conveyorInvalid }, storage: steps };
 }
 write('lamp.json', await lampFixture());
+
+// ---- combat progression (quest objective, Incense/ticket wallet, training) ----
+function progressionFixture() {
+  const heroes = [['falie#1', 'Falie'], ['hondo#1', 'Hondo'], ['runa#1', 'Runa'], ['kaja#1', 'Kaja']].map(([key, name]) => ({ kind: 'hero', heroInstanceKey: key, baseHeroName: name, name, currentLevel: 1, maxLevel: 60, hp: 100 }));
+  const economy = createLampEconomy(7, 0);
+  for (let i = 0; i < 150; i++) economy.items.push(generateLampItem(7, i, Math.floor(i / 2)));
+  economy.lamp.highestOrdinal = 74;
+  const economyInitial = structuredClone(economy);
+  const snapshots = {
+    empty: null, array: [1], garbage: { version: 'x', seed: 'nope', cursor: -3, objective: { type: 'bogus' }, wallet: { incense: '50', ticketsByHero: { 'falie#1': 12, __proto__x: 3, '': 4 } }, training: { ATK: 300, DEF: -1, MATK: 2.7, RES: 'z' }, processedEvents: ['a', 'a', 7, 'b'], claimedMilestones: ['x', 'x'], chaptersCleared: 2.5 },
+    objective: { seed: 99, cursor: 5, objective: { id: 'cot-5-63', type: 'enemy_defeat', target: 99, progress: 7, seed: 99, heroId: 'falie#1', heroName: 'Falie' }, lastFamily: 'battle' },
+    milestone: { seed: 5, cursor: 9, objective: { id: 'cot-9-5', type: 'equip_level', target: 4, progress: 1, seed: 5, key: 'equip_level::5', threshold: 5, slot: 'hat', rarity: 'rare', stat: 'ATK', chapter: 0 } },
+    badMilestone: { seed: 5, cursor: 9, objective: { id: 'cot-9-5', type: 'equip_level', target: 4, progress: 1, seed: 5, key: 'equip_level::7', threshold: 7 } },
+    heroLevel: { objective: { id: 'm', type: 'hero_level', target: 1, progress: 0, seed: 1, key: 'hero_level:falie#1:3', threshold: 3, heroId: 'falie#1', heroName: 'Falie' }, pendingTicketSpends: { s1: { id: 's1', heroId: 'falie#1', cost: 100, fromLevel: 2 }, bad: { heroId: '', cost: 5 }, zero: { heroId: 'x', cost: 0 } }, rewardReceipts: [{ id: 'r1', essence: 2 }, { id: 'r2', resource: 'hero_ticket', amount: 5, heroId: 'falie#1', heroName: 'Falie' }, { id: 'r3', incense: 5 }, { bad: true }, { id: 'r4', resource: 'essence', amount: 2 }], lastReward: { label: 'Objective cleared', icon: 'hero_ticket', count: 5, shownAt: 12.5, receiptId: 'r2', heroId: 'falie#1', heroName: 'Falie' }, growth: { stars: { Falie: 2, Bogus: 3, Runa: 0, Kaja: 99 } } },
+    training: { objective: { id: 't', type: 'training_upgrade', target: 1, progress: 0, seed: 3, heroId: 'runa#1', rewardHeroName: 'Runa', heroName: 'ignored' } },
+  };
+  const states = Object.fromEntries(Object.entries(snapshots).map(([name, raw]) => [name, createCombatProgressionState(raw)]));
+  const targets = []; for (const type of ['enemy_defeat', 'gear_collect', 'wave_clear', 'hero_upgrade']) for (const chapter of [0, 1, 2, 3, 5, 9]) for (const roll of [0, 7, 4294967295]) targets.push({ type, chapter, roll, target: combatObjectiveActionTarget(type, chapter, roll) });
+  const sampleObjectives = [null, ...Object.values(states).map(s => s.objective).filter(Boolean), { type: 'hero_upgrade', target: 1, progress: 0, heroName: 'Falie', heroId: 'falie#1' }, { type: 'hero_upgrade', target: 1, progress: 1 }, { type: 'chapter_clear', chapter: 2, target: 1, progress: 1 }, { type: 'boss_defeat', chapter: 1, target: 1, progress: 0 }, { type: 'equip_slot', slot: 'boots', target: 4, progress: 2 }, { type: 'equip_rarity', rarity: 'uncommon', target: 4, progress: 2 }, { type: 'party_level', threshold: 5, target: 4, progress: 2 }, { type: 'training_level', stat: 'RES', threshold: 3, target: 1, progress: 0 }, { type: 'training_upgrade', target: 1, progress: 0, rewardHeroName: 'Kaja', heroId: 'kaja#1' }, { type: 'wave_clear', target: 3, progress: 5 }];
+  const presentations = sampleObjectives.map(o => ({ objective: o, presentation: combatObjectivePresentation(o), reward: combatObjectiveReward(o), milestone: o ? milestonePresentation(o) : null, family: o ? questFamily(o.type) : null, valid: o ? validMilestoneObjective(o) : null }));
+  // driven session: the driver satisfies whatever objective the rules hand out and emits concrete steps for Rust to replay.
+  let state = createCombatProgressionState(null, 0x43544f), chapter = 1, now = 0, counter = 0;
+  const context = () => ({ equipment: economy, chapter });
+  const steps = [];
+  const snapshot = () => ({ state: structuredClone(state), heroes: heroes.map(h => h.currentLevel), loadouts: structuredClone(economy.loadouts), chapter });
+  const step = (op, args, result) => steps.push({ op, args, result: result === undefined ? null : result, ...(op === 'record' ? { objective: structuredClone(state.objective), processed: state.processedEvents.length } : snapshot()) });
+  const ops = {
+    ensure: () => { state = ensureCombatObjective(state, heroes, context()); step('ensure', {}); },
+    record: (id, type, heroId) => { const r = recordCombatObjectiveEvent(state, { id, type, heroId }, heroes, now); state = r.state; step('record', { id, type, heroId: heroId ?? null }, { changed: r.changed }); },
+    claim: id => { now += 1234.5; const r = claimCombatObjectiveReward(state, id, heroes, now, context()); state = r.state; step('claim', { id, now }, { ok: r.ok, reason: r.reason ?? null, receipt: r.receipt ?? null }); },
+    train: stat => { const r = purchasePartyTraining(state, stat); state = r.state; step('train', { stat }, { ok: r.ok, reason: r.reason ?? null, cost: r.cost ?? null, level: r.level ?? null }); },
+    spend: (heroId, spendId) => { const hero = heroes.find(h => h.heroInstanceKey === heroId); const r = spendHeroTickets(state, heroId, hero, spendId); state = r.state; step('spend', { heroId, spendId }, { ok: r.ok, reason: r.reason ?? null, cost: r.cost ?? null }); },
+    settle: spendId => { const r = settleHeroTicketSpend(state, spendId, heroes, now); state = r.state; step('settle', { spendId }, { changed: r.changed }); },
+    observe: region => { state = ensureCombatObjective(observeChapterMilestones(createCombatProgressionState(state), heroes, { region }), heroes, context()); step('observe', { region }); },
+    starUp: heroId => { const r = starUpHero(state, heroId); state = r.state; step('starUp', { heroId }, { ok: r.ok, reason: r.reason ?? null, cost: r.cost ?? null, stars: r.stars ?? null }); },
+    setLevel: (heroId, level) => { heroes.find(h => h.heroInstanceKey === heroId).currentLevel = level; step('setLevel', { heroId, level }); },
+    setIncense: n => { state = createCombatProgressionState({ ...state, wallet: { ...state.wallet, incense: n } }); step('setIncense', { n }); },
+    setTickets: (heroId, n) => { state = createCombatProgressionState({ ...state, wallet: { ...state.wallet, ticketsByHero: { ...state.wallet.ticketsByHero, [heroId]: n } } }); step('setTickets', { heroId, n }); },
+    equip: (heroId, slot, itemId) => { (economy.loadouts[heroId] ||= {})[slot] = itemId; step('equip', { heroId, slot, itemId }); },
+    setChapter: c => { chapter = c; step('setChapter', { chapter: c }); },
+    abandon: () => { state = createCombatProgressionState({ ...state, objective: null }); step('abandon', {}); },
+    candidates: () => step('candidates', {}, milestoneCandidates(state, heroes, context())),
+  };
+  const used = new Set();
+  const pick = (slot, test) => { const item = economy.items.find(i => i.type === slot && !used.has(i.instanceId) && test(i)); if (item) used.add(item.instanceId); return item?.instanceId; };
+  const satisfy = o => {
+    const slots = ['hat', 'body', 'boots'];
+    switch (o.type) {
+      case 'enemy_defeat': case 'gear_collect': case 'wave_clear': for (let i = o.progress; i < o.target; i++) ops.record(`${o.type}:${counter++}`, o.type); return true;
+      case 'training_upgrade': { const stat = TRAINING_STATS[counter % 4]; if (state.wallet.incense < trainingCost(state, stat)) ops.setIncense(300); ops.train(stat); ops.record(`training:${counter++}`, 'training_upgrade'); return true; }
+      case 'hero_upgrade': { const hero = heroes.find(h => h.heroInstanceKey === o.heroId); if (!hero) return false; const cost = heroTicketLevelCost(hero.currentLevel); if ((state.wallet.ticketsByHero[o.heroId] || 0) < cost) ops.setTickets(o.heroId, cost); const id = `spend:${counter++}`; ops.spend(o.heroId, id); ops.setLevel(o.heroId, hero.currentLevel + 1); ops.settle(id); return true; }
+      case 'equip_slot': for (const h of heroes) if (!economy.loadouts[h.heroInstanceKey]?.[o.slot]) { const id = pick(o.slot, () => true); if (!id) return false; ops.equip(h.heroInstanceKey, o.slot, id); } return true;
+      case 'equip_all': for (const h of heroes) for (const slot of slots) if (!economy.loadouts[h.heroInstanceKey]?.[slot]) { const id = pick(slot, () => true); if (!id) return false; ops.equip(h.heroInstanceKey, slot, id); } return true;
+      case 'equip_level': for (const h of heroes) for (const slot of slots) { const current = economy.items.find(i => i.instanceId === economy.loadouts[h.heroInstanceKey]?.[slot]); if (!current || current.level < o.threshold) { const id = pick(slot, i => i.level >= o.threshold); if (!id) return false; ops.equip(h.heroInstanceKey, slot, id); } } return true;
+      case 'equip_rarity': { const rank = Object.keys(RARITIES); for (const h of heroes) for (const slot of slots) { const current = economy.items.find(i => i.instanceId === economy.loadouts[h.heroInstanceKey]?.[slot]); if (!current || rank.indexOf(current.rarity) < rank.indexOf(o.rarity)) { const id = pick(slot, i => rank.indexOf(i.rarity) >= rank.indexOf(o.rarity)); if (!id) return false; ops.equip(h.heroInstanceKey, slot, id); } } return true; }
+      case 'hero_level': { const hero = heroes.find(h => h.heroInstanceKey === o.heroId); if (!hero || o.threshold > hero.maxLevel) return false; if (hero.currentLevel < o.threshold) ops.setLevel(o.heroId, o.threshold); return true; }
+      case 'party_level': for (const h of heroes) if (h.currentLevel < o.threshold) ops.setLevel(h.heroInstanceKey, o.threshold); return true;
+      case 'training_level': { if (state.training[o.stat] >= o.threshold) return true; if (state.wallet.incense < 200) ops.setIncense(600); while (state.training[o.stat] < o.threshold) ops.train(o.stat); return true; }
+      case 'chapter_clear': case 'boss_defeat': ops.observe(o.chapter + 1); return true;
+      default: return false;
+    }
+  };
+  ops.ensure(); ops.candidates();
+  ops.record('enemy_defeat:dup', 'enemy_defeat'); ops.record('enemy_defeat:dup', 'enemy_defeat'); ops.record('bogus', 'nothing'); ops.claim('cot-nope'); ops.claim(state.objective.id);
+  ops.train('HP'); ops.train('ATK'); ops.spend('falie#1', 'nope'); ops.spend('ghost', 'nope'); ops.settle('nope'); ops.starUp('Falie'); ops.starUp('Nobody');
+  for (let round = 0; round < 72; round++) {
+    ops.ensure();
+    if (round === 12) ops.setChapter(2);
+    if (round === 4) { ops.setTickets('hondo#1', 700); ops.setLevel('falie#1', 2); ops.setLevel('runa#1', 3); }
+    if (round === 20) { ops.setTickets('kaja#1', 1200); for (const h of heroes) ops.setLevel(h.heroInstanceKey, Math.max(h.currentLevel, 4)); }
+    if (round === 30) ops.setChapter(3);
+    if (round % 11 === 10) ops.candidates();
+    const objective = state.objective;
+    if (!objective) { ops.abandon(); continue; }
+    if (!satisfy(objective)) { ops.abandon(); continue; }
+    ops.ensure();
+    if (state.objective?.progress >= state.objective?.target) ops.claim(state.objective.id); else ops.abandon();
+  }
+  ops.setTickets('Falie', 400); ops.starUp('Falie'); ops.starUp('Falie'); ops.starUp('Falie'); ops.setTickets('Falie', 10); ops.starUp('Falie');
+  ops.setLevel('kaja#1', 60); ops.ensure(); ops.candidates();
+  return { heroes: heroes.map(h => ({ ...h, currentLevel: 1 })), economy: economyInitial, states: { ...states, raw: snapshots }, targets, presentations, eligible: { all: eligibleTicketHeroes(heroes), ready: eligibleHeroUpgradeTargets(state, heroes) }, growth: [null, { stars: { Falie: 3, Bogus: 1 } }, { stars: { Runa: '2', Kaja: -1, Hondo: 12 } }, { stars: [] }, 'x'].map(raw => ({ raw, clean: sanitizeHeroGrowth(raw) })), steps };
+}
+write('progression.json', progressionFixture());

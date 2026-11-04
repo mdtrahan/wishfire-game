@@ -76,10 +76,12 @@ pub struct EquipmentStorage {
     bag_clock: Option<BagClock>,
     bag_seconds_seen: f64,
     pub on_gear_collected: Option<Box<dyn FnMut(&LampItem) -> bool>>,
+    /// Bumps whenever the applied record changes (JS compares the data object identity).
+    pub generation: u64,
 }
 impl EquipmentStorage {
     pub fn new(storage: Box<dyn Storage>, checkpoint: Option<Box<dyn Storage>>, now: Box<dyn FnMut() -> f64>, seed: Box<dyn FnMut() -> u32>) -> Self {
-        Self { storage, checkpoint, now, seed, record: None, applied_gold: None, dirty: false, last_clock: 0., classified_heroes: None, conveyor_clock: None, conveyor_frame: 0., conveyor_origin: 0., conveyor_origin_wall: 0., conveyor_running: false, error: None, settled_gold_receipts: Vec::new(), bag_clock: None, bag_seconds_seen: 0., on_gear_collected: None }
+        Self { storage, checkpoint, now, seed, record: None, applied_gold: None, dirty: false, last_clock: 0., classified_heroes: None, conveyor_clock: None, conveyor_frame: 0., conveyor_origin: 0., conveyor_origin_wall: 0., conveyor_running: false, error: None, settled_gold_receipts: Vec::new(), bag_clock: None, bag_seconds_seen: 0., on_gear_collected: None, generation: 0 }
     }
     pub fn data(&self) -> Option<&LampEconomy> { self.record.as_ref() }
     /// `time()`: monotonic over the wall clock and the last activation.
@@ -203,6 +205,7 @@ impl EquipmentStorage {
             record.combat_power = Some(compute_combat_power(CpActor::new(record.current_level as f64, record.stats.atk, record.stats.mag, record.stats.def, record.stats.res, record.max_hp, record.stats.spd)));
             host.progress().heroes.insert(key, record);
         }
+        self.generation += 1;
         self.record = Some(next);
         if dirty { host.persist_progress(); }
     }

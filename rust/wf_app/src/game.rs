@@ -1,6 +1,9 @@
 //! The live game over `wf_host::Session`: save load, party, combat pacing and the client bridge.
 use crate::platform;
 use wf_combat::{Event, Snapshot};
+use std::cell::RefCell;
+use std::rc::Rc;
+use wf_host::progression::{CombatProgression, SpendOutcome};
 use wf_host::equipment::{EquipmentStorage, Storage};
 use wf_host::progress::HeroProgressStore;
 use wf_host::session::Session;
@@ -11,6 +14,10 @@ const PARTY: [(&str, &str); 4] = [("Falie", "falie#1"), ("Huun", "huun#1"), ("Ru
 
 pub struct Game {
     pub session: Session,
+    /// `createCombatProgression(...)`: the COT quest system over the same browser storage.
+    pub progression: CombatProgression,
+    /// `onGearCollected` acknowledgements waiting for `record(gear:<id>)` on the next frame.
+    gear_events: Rc<RefCell<Vec<String>>>,
     pub session_id: u32,
     pub save_error: Option<String>,
     /// `createEquipmentStorage(...)`: the lamp/bag economy over the same browser storage.
@@ -56,9 +63,15 @@ impl Game {
         let salt = (macroquad::miniquad::date::now() * 1000.) as u64;
         let mut session = Session::new(seed, rows, store, &PARTY, &format!("s{session_id}-{salt:x}"), 1, Box::new(persist), Box::new(|_, _| {}));
         let mut economy = new_economy();
-        // app.js boot: the equipment economy syncs right after the hero progress restore.
+        let gear_events: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(Vec::new()));
+        let queue = gear_events.clone();
+        economy.on_gear_collected = Some(Box::new(move |item| { queue.borrow_mut().push(item.instance_id.clone()); true }));
+        // app.js boot: the equipment economy syncs right after the hero progress restore, then the
+        // quest system boots (ensure, reconcile ticket spends, settle Essence receipts).
         let _ = economy.sync(&mut session);
-        Game { session, session_id, save_error, economy }
+        let mut progression = CombatProgression::new(Box::new(LocalStorage), Box::new(platform::epoch_ms));
+        progression.boot(&mut session, &mut economy);
+        Game { session, session_id, save_error, economy, progression, gear_events }
     }
     pub fn restart(&mut self, seed: Option<u32>) {
         self.session.dispose();
@@ -67,9 +80,13 @@ impl Game {
         let next = Game::new(rows, seed);
         self.session = next.session;
         self.economy = next.economy;
+        self.progression = next.progression;
+        self.gear_events = next.gear_events;
         self.session_id += 1;
     }
     pub fn tick(&mut self, now_ms: f64) -> bool {
+        // app.js frame: observe quest milestones, tick the host, then record the combat events.
+        self.progression.observe(&mut self.session, &mut self.economy);
         let moved = self.session.tick(now_ms);
         // combatHostClock: active combat seconds mint Bag progress receipts on the battle ledger.
         let pending = self.session.progress.pending_bag_kill_rewards.clone().unwrap_or_default();
@@ -80,8 +97,17 @@ impl Game {
         }
         // Pending kill receipts and gold deltas reach the lamp save through sync().
         if self.economy_needs_sync() { let _ = self.economy.sync(&mut self.session); }
+        let battle = self.session.battle.clone();
+        self.progression.record_committed_enemy_defeats(&battle, &mut self.session, &mut self.economy);
+        for id in std::mem::take(&mut self.session.wave_clear_events) { let _ = self.progression.record(&id, "wave_clear", None, &mut self.session, &mut self.economy); }
+        let gear: Vec<String> = std::mem::take(&mut *self.gear_events.borrow_mut());
+        for id in gear { let _ = self.progression.record(&format!("gear:{id}"), "gear_collect", None, &mut self.session, &mut self.economy); }
         moved
     }
+    pub fn claim_objective(&mut self, id: &str) -> wf_meta::progression::ClaimResult { self.progression.claim(id, &mut self.session, &mut self.economy) }
+    pub fn train(&mut self, stat: &str) -> wf_meta::progression::TrainResult { self.progression.train(stat, &mut self.session, &mut self.economy) }
+    pub fn spend_level_up(&mut self, hero: &str) -> SpendOutcome { self.progression.spend_level_up(hero, &mut self.session, &mut self.economy) }
+    pub fn star_up(&mut self, hero: &str) -> wf_meta::progression::StarUpResult { self.progression.star_up(hero, &mut self.session) }
     fn economy_needs_sync(&self) -> bool {
         self.session.progress.pending_bag_kill_rewards.as_ref().is_some_and(|p| !p.is_empty()) || self.economy.data().is_none_or(|d| d.gold != self.session.gold_total)
     }

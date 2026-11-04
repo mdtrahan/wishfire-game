@@ -72,7 +72,7 @@ fn warm_text() {
     // Allocate glyphs before queuing text draws: atlas growth can invalidate queued textures.
     for size in [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24] {
         measure_text(
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ×!?:;.,/+-_=()|~>%^#'\"",
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ×!?:;.,/+-_=()|~<>%^#'\"*",
             None,
             size,
             1.,
@@ -179,7 +179,7 @@ async fn main() {
             ui.lamp.frame(&mut scene.game, false, true);
             scene.game.session.pause();
             portrait.begin();
-            ui.draw_screen(&assets, &scene.game.session);
+            ui.draw_screen(&assets, &scene.game);
             portrait.present();
             next_frame().await;
             continue;
@@ -225,7 +225,7 @@ async fn main() {
         };
         let events = game.drain_events();
         let live_snapshot = game.snapshot().cloned().unwrap_or(previous_snapshot);
-        ui.update(&game.session, &live_snapshot);
+        ui.update(game, &live_snapshot);
         #[cfg(target_arch = "wasm32")]
         PROBE.with(|p| {
             let s = &live_snapshot;

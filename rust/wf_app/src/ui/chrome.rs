@@ -1,5 +1,5 @@
 //! Combat chrome drawing + hit zones. Geometry is the JS layout (360x640 frame).
-use super::model::{CombatModel, SlotStatus, SLOTS};
+use super::model::{format_number, CombatModel, SlotStatus, SLOTS};
 use super::{Panel, Screen};
 use crate::assets::Assets;
 use crate::camera::{BAND_BOTTOM, BAND_TOP, HEIGHT, WIDTH};
@@ -7,7 +7,17 @@ use macroquad::prelude::*;
 use wf_meta::hero;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum HitKind { Nav(Screen), Summon, Inspect, Hero(&'static str), Party(&'static str), Continue, PanelBody }
+pub enum HitKind {
+    Nav(Screen), Summon, Inspect, Hero(&'static str), Party(&'static str), Continue, PanelBody,
+    /// Quest objective box when the reward is ready.
+    Claim,
+    // renderHeroScreen.js
+    HeroPrev, HeroNext, SkillPrev, SkillNext, HeroTab(u8), Roster(usize), LevelUp, StarOpen, StarUp, SheetClose, GearSlot(u8),
+    // createTrainingGroundUI
+    TgTab(u8), Train(&'static str),
+    // renderChests.js
+    VaultTab(u8), VaultBack,
+}
 #[derive(Clone, Copy, Debug)]
 pub struct Hit { pub rect: Rect, pub kind: HitKind }
 
@@ -98,6 +108,76 @@ pub fn wedge(cx: f32, cy: f32, half: f32, fraction: f32, color: Color) {
         prev = next;
     }
 }
+/// `border-radius` box: a rectangle with rounded corners.
+pub fn rounded(x: f32, y: f32, w: f32, h: f32, r: f32, fill: Color) {
+    let r = r.min(w / 2.).min(h / 2.);
+    draw_rectangle(x + r, y, w - 2. * r, h, fill);
+    draw_rectangle(x, y + r, w, h - 2. * r, fill);
+    for (cx, cy) in [(x + r, y + r), (x + w - r, y + r), (x + r, y + h - r), (x + w - r, y + h - r)] { draw_circle(cx, cy, r, fill); }
+}
+pub fn rounded_outline(x: f32, y: f32, w: f32, h: f32, r: f32, fill: Color, stroke: Color) { rounded(x, y, w, h, r, stroke); rounded(x + 1., y + 1., w - 2., h - 2., (r - 1.).max(0.), fill); }
+/// A five-point star (the `★` glyph the default font lacks).
+pub fn star(cx: f32, cy: f32, r: f32, color: Color) {
+    let pts: Vec<Vec2> = (0..10).map(|i| { let a = -std::f32::consts::FRAC_PI_2 + i as f32 * std::f32::consts::PI / 5.; let d = if i % 2 == 0 { r } else { r * 0.45 }; vec2(cx + a.cos() * d, cy + a.sin() * d) }).collect();
+    for i in 0..10 { draw_triangle(vec2(cx, cy), pts[i], pts[(i + 1) % 10], color); }
+}
+/// Resource icon by COT resource key.
+pub fn resource_icon(assets: &Assets, resource: &str, x: f32, y: f32, size: f32) {
+    let name = match resource { "incense" => "prog-incense", "essence" => "lamp-essence", "gold" => "coin", _ => return };
+    if let Some(tex) = assets.ui.get(name) { image(tex, x, y, size, size); }
+}
+/// `hero-tickets.png` quadrant for a hero name (`TICKET_QUADRANT`).
+pub fn ticket_art(assets: &Assets, hero_name: &str, x: f32, y: f32, w: f32, h: f32) {
+    let Some(tex) = assets.ui.get("prog-hero-tickets") else { return };
+    let (col, row) = match hero_name { "Hondo" => (1., 0.), "Kaja" => (0., 1.), "Runa" => (1., 1.), _ => (0., 0.) };
+    let (cw, ch) = (tex.width() / 2., tex.height() / 2.);
+    let src = Rect::new(col * cw, row * ch, cw, ch);
+    let s = (w / cw).min(h / ch);
+    draw_texture_ex(tex, x + (w - cw * s) / 2., y + (h - ch * s) / 2., WHITE, DrawTextureParams { dest_size: Some(vec2(cw * s, ch * s)), source: Some(src), ..Default::default() });
+}
+/// `.cot-resources`: Incense, Essence and the Gold display fixture (three 112x22 pills at the top).
+fn resources(assets: &Assets, m: &CombatModel) {
+    let q = &m.quest;
+    for (i, (key, value)) in [("incense", format_number(q.incense)), ("essence", format_number(q.essence)), ("gold", "999,999,999".into())].iter().enumerate() {
+        let x = 8. + i as f32 * 116.;
+        capsule(x, 8., 112., 22., rgba(0x0e0c14, 0.72));
+        let size = if *key == "gold" { 22. } else { 26. };
+        resource_icon(assets, key, x + if *key == "gold" { 0. } else { -4. }, 8. + (22. - size) / 2., size);
+        label(value, x + 104., 19., 12., rgb(0xf6eedc), Align::Right);
+    }
+}
+/// `.cot-objective`: 270x52 box at the quest top (370) with the reward plate and the challenge text.
+fn objective(assets: &Assets, m: &CombatModel, hits: &mut Vec<Hit>) {
+    let q = &m.quest;
+    let (x, y) = (8., 370.);
+    // ::before gradient backer from the plate's right edge.
+    for i in 0..25 { let t = i as f32 / 25.; draw_rectangle(x + 20. + t * 250., y + 2., 10., 34., rgba(0x808080, (0.52 - 0.5 * t).max(0.))); }
+    if q.reward.is_some() {
+        draw_circle(x + 19., y + 19., 19., rgb(0x41443f));
+        draw_circle(x + 19., y + 19., 17., rgb(0xd6d5cb));
+        draw_circle(x + 19., y + 19., 15., rgb(0x9a9b96));
+    }
+    if let Some((resource, amount, hero_name)) = &q.reward {
+        if resource == "hero_ticket" { ticket_art(assets, hero_name, x + 2.5, y + 8., 33., 22.); } else { resource_icon(assets, resource, x + 4., y + 4., 30.); }
+        stroked(&format_number(*amount), x + 19., y + 40., 14., rgb(0xffffff), rgb(0x171208), Align::Center);
+    }
+    stroked(&q.category.to_uppercase(), x + 48., y + 9., 11., rgb(0xffd45c), rgb(0x171208), Align::Left);
+    let text = format!("{} {}", q.challenge, q.count);
+    let mut line = text.clone();
+    while measure_text(&line, None, 13, 1.).width > 220. && line.len() > 4 { line.truncate(line.len() - 4); line.push_str("..."); }
+    stroked(&line, x + 48., y + 25., 13., rgb(0xffffff), rgb(0x171208), Align::Left);
+    if q.ready { hits.push(Hit { rect: Rect::new(x, y, 270., 52.), kind: HitKind::Claim }); }
+}
+/// `showRewardReceipt(canvas, receipt, 'Reward Obtained', 1500)`: a centred receipt card.
+pub fn toast(assets: &Assets, title: &str, resource: &str, amount: f64, hero_name: &str) {
+    let (w, h) = (200., 72.);
+    let (x, y) = ((WIDTH - w) / 2., 250.);
+    rounded_outline(x, y, w, h, 12., rgba(0x1b1410, 0.94), rgb(0xd0a45b));
+    label(title, x + w / 2., y + 16., 13., rgb(0xffd45c), Align::Center);
+    if resource == "hero_ticket" { ticket_art(assets, hero_name, x + 54., y + 32., 33., 22.); } else { resource_icon(assets, resource, x + 56., y + 28., 30.); }
+    let name = match resource { "hero_ticket" => format!("{} tickets", if hero_name.is_empty() { "Hero" } else { hero_name }), "essence" => "Essence".into(), "incense" => "Incense".into(), other => other.to_string() };
+    label(&format!("+{} {name}", format_number(amount)), x + 96., y + 44., 14., rgb(0xfff9ed), Align::Left);
+}
 fn capsule(x: f32, y: f32, w: f32, h: f32, color: Color) {
     let r = (h / 2.).min(w / 2.);
     if w <= 0. { return; }
@@ -112,6 +192,8 @@ pub fn draw(assets: &Assets, m: &CombatModel, panel: Option<&Panel>, hits: &mut 
     draw_rectangle(0., BAND_BOTTOM, WIDTH, HEIGHT - BAND_BOTTOM, rgb(0x1d1f23));
     if let Some(error) = &m.host_error { stroked("Combat host failed", 8., 12., 12., rgb(0xff8fa0), rgb(0x000000), Align::Left); paragraph(error, 8., 20., WIDTH - 60., 9., rgb(0xffd0d0)); }
     if m.summon_visible { summon(assets, m, hits); } else { progress(assets, m); }
+    resources(assets, m);
+    objective(assets, m, hits);
     if let Some(boss) = &m.boss { boss_hud(assets, boss, matches!(panel, Some(Panel::BossInfo)), hits); }
     party_row(assets, m, hits);
     strip(assets, m, hits);

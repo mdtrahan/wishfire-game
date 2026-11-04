@@ -4,5 +4,6 @@
 //! The host owns stage pacing, checkpoints and rewards; combat state lives in `World`.
 pub mod equipment;
 pub mod progress;
+pub mod progression;
 pub mod rewards;
 pub mod session;

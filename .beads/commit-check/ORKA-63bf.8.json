@@ -1,0 +1,197 @@
+{
+  "changed_functions": {
+    ".beads/commit-check/ORKA-63bf.7.json": [
+      "__MODULE__"
+    ],
+    "rust/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/simulation_core/src/combat_abi.rs": [
+      "heal"
+    ],
+    "rust/wf_app/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/assets.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/game.rs": [
+      "salt",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/main.rs": [
+      "t",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/platform.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/ui/chrome.rs": [
+      "r"
+    ],
+    "rust/wf_app/src/ui/lamp.rs": [
+      "gap",
+      "next",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/ui/mod.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/ui/model.rs": [
+      "tenth",
+      "__MODULE__"
+    ],
+    "rust/wf_app/web/index.html": [
+      "readString"
+    ],
+    "rust/wf_host/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/wf_host/Cargo.toml": [
+      "__MODULE__"
+    ],
+    "rust/wf_host/src/equipment.rs": [
+      "seed",
+      "count",
+      "__MODULE__"
+    ],
+    "rust/wf_host/src/lib.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_host/src/progress.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_host/src/session.rs": [
+      "safe",
+      "center_y",
+      "age",
+      "__MODULE__"
+    ],
+    "rust/wf_host/tests/lamp_storage.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_host/tests/revision.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_meta/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/wf_meta/Cargo.toml": [
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/equipment.rs": [
+      "tenths",
+      "whole",
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/lamp.rs": [
+      "x",
+      "region",
+      "stage",
+      "prior_envelope",
+      "count",
+      "rewards",
+      "paid",
+      "guide",
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/lib.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_meta/tests/lamp.rs": [
+      "__MODULE__"
+    ],
+    "tests/fixtures/rust-oracle/lamp.json": [
+      "__MODULE__"
+    ],
+    "tools/build_wf_app.sh": [
+      "__MODULE__"
+    ],
+    "tools/rust_oracle/write_fixtures.mjs": [
+      "heroProgressFixture",
+      "attempt",
+      "attemptAsync",
+      "conveyorPlan",
+      "step",
+      "snap",
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 30,
+    "staged_line_count": 2480,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/commit-check/ORKA-63bf.7.json",
+    "rust/AGENTS.md",
+    "rust/simulation_core/src/combat_abi.rs",
+    "rust/wf_app/AGENTS.md",
+    "rust/wf_app/src/assets.rs",
+    "rust/wf_app/src/game.rs",
+    "rust/wf_app/src/main.rs",
+    "rust/wf_app/src/platform.rs",
+    "rust/wf_app/src/ui/chrome.rs",
+    "rust/wf_app/src/ui/lamp.rs",
+    "rust/wf_app/src/ui/mod.rs",
+    "rust/wf_app/src/ui/model.rs",
+    "rust/wf_app/web/index.html",
+    "rust/wf_host/AGENTS.md",
+    "rust/wf_host/Cargo.toml",
+    "rust/wf_host/src/equipment.rs",
+    "rust/wf_host/src/lib.rs",
+    "rust/wf_host/src/progress.rs",
+    "rust/wf_host/src/session.rs",
+    "rust/wf_host/tests/lamp_storage.rs",
+    "rust/wf_host/tests/revision.rs",
+    "rust/wf_meta/AGENTS.md",
+    "rust/wf_meta/Cargo.toml",
+    "rust/wf_meta/src/equipment.rs",
+    "rust/wf_meta/src/lamp.rs",
+    "rust/wf_meta/src/lib.rs",
+    "rust/wf_meta/tests/lamp.rs",
+    "tests/fixtures/rust-oracle/lamp.json",
+    "tools/build_wf_app.sh",
+    "tools/rust_oracle/write_fixtures.mjs"
+  ],
+  "issue_id": "ORKA-63bf.8",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/commit-check/ORKA-63bf.7.json": "28bad3fd479d64e563de84e1a73cb29a904c0b54",
+    "rust/AGENTS.md": "5e4990194e56c490e99d69deebf565d3496a1046",
+    "rust/simulation_core/src/combat_abi.rs": "8f524372d1e9752c031848fec61a3c3c4fe65f79",
+    "rust/wf_app/AGENTS.md": "d8c153bf9ac8f91d99e1b9304d84829d6cee515d",
+    "rust/wf_app/src/assets.rs": "4effb68c802e24f295ba127b3d4ba98067aefaad",
+    "rust/wf_app/src/game.rs": "90b22ba0b8830dc7e810454858f631b2ba21f65d",
+    "rust/wf_app/src/main.rs": "9ca782d784ac6f13cbaec049183563667ac01b13",
+    "rust/wf_app/src/platform.rs": "3e0efe484235c452c3138a9f02731f0c2e7737d4",
+    "rust/wf_app/src/ui/chrome.rs": "0ea37b3394b25ea1471aaf8caa9a42a451184c13",
+    "rust/wf_app/src/ui/lamp.rs": "66f45d85629584a63b6fe8083ab6f0bdb4a8a675",
+    "rust/wf_app/src/ui/mod.rs": "7eceee340678bd356eb4f54b0b2b70648430c5be",
+    "rust/wf_app/src/ui/model.rs": "8fd957b01208a07a89f7dc60c73e9c78b81b4c72",
+    "rust/wf_app/web/index.html": "dae3f15a86c5edffa3b1158aced450c510dbd6b9",
+    "rust/wf_host/AGENTS.md": "42214cad658917369caaab0cc0d7e49725b0d522",
+    "rust/wf_host/Cargo.toml": "aaf449e2b7b5b5c420a7deedd6b67cf5b42dab44",
+    "rust/wf_host/src/equipment.rs": "ceccd1bd24963835be671489fab4295da980eea9",
+    "rust/wf_host/src/lib.rs": "c0241c8e8866a0ee331cd35b5fa08aca89313203",
+    "rust/wf_host/src/progress.rs": "e942689b7df2f0022e120dde4aa1d146932c640b",
+    "rust/wf_host/src/session.rs": "56d69edc710bb11a6f113c02f7d62a55845a4f6e",
+    "rust/wf_host/tests/lamp_storage.rs": "07add15e6d43a76e3152f835f7a0e21f6d7761b9",
+    "rust/wf_host/tests/revision.rs": "173181091e17a80aaffdfbf8dddf310b92d57468",
+    "rust/wf_meta/AGENTS.md": "3978576dfbf91a9095c63fe4137ce0d869caa81a",
+    "rust/wf_meta/Cargo.toml": "952375e40781c898daca72093a0a2650953ed486",
+    "rust/wf_meta/src/equipment.rs": "ca1092a4d901a2ade905790029cf5d4b259b062c",
+    "rust/wf_meta/src/lamp.rs": "3e69f8dec64a3cf9cdd253659317f37de4388982",
+    "rust/wf_meta/src/lib.rs": "2658a04c0925276de89549f2ae8e1b8f7e19e017",
+    "rust/wf_meta/tests/lamp.rs": "2d2f94361b36a0dab465a6f3e8ed80ccbf2fe910",
+    "tests/fixtures/rust-oracle/lamp.json": "f0b7a5449982ab5523d41b9e039d5b9d576d7541",
+    "tools/build_wf_app.sh": "9062deabfedd457edae119edd3fba7017aad0dc4",
+    "tools/rust_oracle/write_fixtures.mjs": "1fa39f23629c2ac5537a9ef76a0b5fdd3471ff9a"
+  }
+}
