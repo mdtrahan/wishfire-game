@@ -17,6 +17,8 @@ pub enum HitKind {
     TgTab(u8), Train(&'static str),
     // renderChests.js
     VaultTab(u8), VaultBack,
+    // storyEntryFlow / questLadderUI / renderNarrativeScene
+    StoryStart, StoryTown, StoryCard(usize), StoryBack, NarrativeTap, SkipCancel, SkipConfirm, PauseQuit, PauseContinue, HeroClose,
 }
 #[derive(Clone, Copy, Debug)]
 pub struct Hit { pub rect: Rect, pub kind: HitKind }

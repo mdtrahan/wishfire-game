@@ -32,6 +32,9 @@ cp -p "$IMG/lamp/essence-orb.png" "$WEB/art/ui/lamp-essence.png"
 cp -p "$IMG/ui/bag-tier-medallion.png" "$WEB/art/ui/bag-medallion.png"
 for n in incense stat-atk stat-def stat-matk stat-res hero-tickets training-scene; do cp -p "$IMG/progression/$n.png" "$WEB/art/ui/prog-$n.png"; done
 cp -p "$ROOT/web-runner/assets/gems/coin.png" "$WEB/art/ui/coin.png"
+cp -p "$ROOT/web-runner/assets/narrative/chapter-1-map.png" "$WEB/art/ui/story-map.png"
+cp -p "$ROOT/web-runner/assets/narrative/chapter-town-token.png" "$WEB/art/ui/story-token.png"
+for n in hondo fara kaja runa; do cp -p "$ROOT/web-runner/assets/narrative/characters/$n.png" "$WEB/art/ui/story-$n.png"; done
 WASM_TMP="$(mktemp "$WEB/.wf_app.wasm.XXXXXX")"
 trap 'rm -f "$WASM_TMP"' EXIT
 cp -p "$CARGO_TARGET_DIR/wasm32-unknown-unknown/wasm-release/wf_app.wasm" "$WASM_TMP"

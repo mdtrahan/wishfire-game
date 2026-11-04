@@ -6,10 +6,12 @@ pub mod chrome;
 pub mod lamp;
 pub mod model;
 pub mod screens;
+pub mod story;
 use crate::assets::Assets;
 use crate::game::Game;
 use macroquad::prelude::*;
 pub use model::CombatModel;
+fn platform_now() -> f64 { crate::platform::now_ms() }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Screen { Combat, Hero, Vault, PowerUp, Quests }
@@ -31,11 +33,14 @@ pub struct Ui {
     pub hero: screens::HeroUi,
     pub training: screens::TrainingUi,
     pub vault: screens::VaultUi,
+    pub story: story::StoryFlow,
     pub toast: Option<Toast>,
     hits: Vec<chrome::Hit>,
 }
 impl Ui {
-    pub fn new() -> Self { Self { screen: Screen::Combat, panel: None, model: CombatModel::default(), lamp: lamp::LampUi::default(), hero: screens::HeroUi::default(), training: screens::TrainingUi::default(), vault: screens::VaultUi::default(), toast: None, hits: Vec::new() } }
+    pub fn new() -> Self { Self { screen: Screen::Combat, panel: None, model: CombatModel::default(), lamp: lamp::LampUi::default(), hero: screens::HeroUi::default(), training: screens::TrainingUi::default(), vault: screens::VaultUi::default(), story: story::StoryFlow::default(), toast: None, hits: Vec::new() } }
+    /// Boot lands on the Quests map (`activateInitialLayout('storyMock')`).
+    pub fn boot(&mut self, qa_direct_combat: bool) { if qa_direct_combat { self.story.qa_direct_combat(); self.screen = Screen::Combat; } else { self.screen = Screen::Quests; } }
     fn now_ms() -> f64 { macroquad::time::get_time() * 1000. }
     fn show_receipt(&mut self, title: &str, receipt: &wf_meta::progression::Receipt, ms: f64) {
         self.toast = Some(Toast { title: title.into(), resource: receipt.resource.clone(), amount: receipt.amount, hero_name: receipt.hero_name.clone().unwrap_or_default(), until: Self::now_ms() + ms });
@@ -72,15 +77,44 @@ impl Ui {
         if self.screen == Screen::Combat && self.lamp.tap(p, game) { return Some(UiAction::None); }
         let hit = self.hits.iter().rev().find(|h| h.rect.contains(p)).map(|h| h.kind)?;
         use chrome::HitKind as K;
+        let now_ms = platform_now();
+        let now_sec = now_ms / 1000.;
+        if self.story.pending() { return Some(UiAction::None); }
+        if self.story.modal.is_some() {
+            match hit {
+                K::SkipCancel => self.story.cancel_skip(now_sec),
+                K::SkipConfirm => { self.story.confirm_skip(now_sec, now_ms); }
+                K::PauseContinue => { if self.story.continue_paused_combat() == story::Request::ResumeCombat { self.screen = Screen::Combat; } }
+                K::PauseQuit => { if self.story.quit_paused_combat() == story::Request::QuitCombat { let _ = game.session.surrender_for_departure(); game.session.dispose(); } }
+                _ => {}
+            }
+            return Some(UiAction::None);
+        }
+        match hit {
+            K::Nav(screen) => {
+                let from = self.screen;
+                if screen == from { return Some(UiAction::None); }
+                match self.story.navigate(screen, from) {
+                    story::Request::DepartCombat(target) => { if from == Screen::Combat { if let Err(e) = game.session.surrender_for_departure() { self.model.host_error = Some(e); } } self.screen = target; }
+                    _ => {}
+                }
+                return Some(UiAction::None);
+            }
+            K::StoryStart | K::StoryTown => { self.story.start_combat(now_ms); return Some(UiAction::None); }
+            K::StoryCard(i) => { self.story.start_card(i, now_sec); return Some(UiAction::None); }
+            K::StoryBack => { self.story.back_to_map(); return Some(UiAction::None); }
+            K::NarrativeTap => { self.story.narrative_tap(p.x as f64, p.y as f64, now_sec, now_ms); return Some(UiAction::None); }
+            K::HeroClose => { self.story.open_ladder(); self.screen = Screen::Quests; return Some(UiAction::None); }
+            _ => {}
+        }
         let roster_len = screens::roster(game).len().max(1);
         let hero_key = |ui: &Ui| screens::roster(game).get(screens::hero_index(&ui.hero, roster_len)).map(|h| (h.hero_instance_key.clone(), h.definition().name));
         Some(match hit {
-            K::Nav(screen) => { if screen != self.screen { self.screen = screen; } UiAction::None }
             K::Summon => UiAction::SummonBoss,
             K::Inspect => { self.panel = Some(Panel::BossInfo); UiAction::None }
             K::Hero(key) => { self.panel = Some(Panel::HeroSpecial(key)); UiAction::None }
             K::Party(id) => { self.panel = Some(Panel::PartySkill(id)); UiAction::None }
-            K::Continue | K::VaultBack => { self.screen = Screen::Combat; UiAction::None }
+            K::Continue | K::VaultBack => { if self.story.continue_paused_combat() == story::Request::ResumeCombat || self.story.phase == story::Phase::Combat { self.screen = Screen::Combat; } UiAction::None }
             K::PanelBody => UiAction::None,
             K::Claim => { self.claim(game); UiAction::None }
             K::HeroPrev => { self.hero.index = (screens::hero_index(&self.hero, roster_len) + roster_len - 1) % roster_len; UiAction::None }
@@ -113,6 +147,7 @@ impl Ui {
                 UiAction::None
             }
             K::VaultTab(tab) => { self.vault.tab = tab; UiAction::None }
+            K::Nav(_) | K::StoryStart | K::StoryTown | K::StoryCard(_) | K::StoryBack | K::NarrativeTap | K::SkipCancel | K::SkipConfirm | K::PauseQuit | K::PauseContinue | K::HeroClose => UiAction::None,
         })
     }
     /// Combat chrome over the arena frame.
@@ -124,10 +159,19 @@ impl Ui {
         if let Some(panel) = &self.panel { chrome::panel(assets, panel, &self.model, &mut self.hits); }
         self.lamp.draw_modal(assets, game, &mut self.hits);
         if let Some(t) = &self.toast { chrome::toast(assets, &t.title, &t.resource, t.amount, &t.hero_name); }
+        self.story.draw_transition(platform_now());
     }
     /// A meta screen (combat paused underneath).
     pub fn draw_screen(&mut self, assets: &Assets, game: &Game) {
         self.hits.clear();
+        if self.screen == Screen::Quests {
+            let now = platform_now();
+            self.story.update(now / 1000., now);
+            self.story.draw(assets, game.session.gold_total, now / 1000., &mut self.hits);
+            if !self.story.in_opening() { chrome::nav(assets, self.screen, &mut self.hits); }
+            self.story.draw_transition(now);
+            return;
+        }
         screens::draw(assets, self.screen, game, &mut self.hero, &self.training, &self.vault, &mut self.hits);
         chrome::nav(assets, self.screen, &mut self.hits);
         if self.toast.as_ref().is_some_and(|t| t.until <= Self::now_ms()) { self.toast = None; }

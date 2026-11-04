@@ -26,6 +26,9 @@ import { createEquipmentStorage, EQUIPMENT_SAVE_KEY } from '../../web-runner/sys
 import { fillGearMaxHpGrowth } from '../../web-runner/src/core/heroMaxHpPolicy.mjs';
 import { heroSpecialCooldown } from '../../web-runner/src/core/heroSpecialCooldown.mjs';
 import { pathToFileURL } from 'node:url';
+import { WISHFIRE_WARP_CROSSING_CONTENT } from '../../web-runner/src/core/wishfireWarpCrossingContent.mjs';
+import { createNarrativeState, getCurrentNarrativeLine } from '../../web-runner/src/core/narrativeRuntime.mjs';
+import { restartNarrativeScene, skipNarrativeScene, handleNarrativeScenePointer, updateNarrativeSceneAuto, getNarrativeScenePages, getNarrativeSceneReadSeconds, ensureNarrativeScenePresentation } from '../../web-runner/systems/narrativeSceneController.mjs';
 import { TRAINING_STATS, createCombatProgressionState, ensureCombatObjective, recordCombatObjectiveEvent, claimCombatObjectiveReward, combatObjectivePresentation, combatObjectiveReward, combatObjectiveActionTarget, spendHeroTickets, settleHeroTicketSpend, purchasePartyTraining, trainingCost, heroTicketLevelCost, eligibleTicketHeroes, eligibleHeroUpgradeTargets } from '../../web-runner/src/core/combatProgressionRules.mjs';
 import { observeChapterMilestones, milestoneCandidates, milestonePresentation, validMilestoneObjective, questFamily } from '../../web-runner/src/core/questMilestones.mjs';
 import { starUpHero, sanitizeHeroGrowth } from '../../web-runner/src/core/heroGrowthRules.mjs';
@@ -36,6 +39,12 @@ const heroProgressStorage = await (async () => {
   return import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
 })();
 const { persistHeroProgressIfDirty, restoreHeroProgressFromStorage, HERO_PROGRESS_SAVE_KEY } = heroProgressStorage;
+// renderNarrativeScene.js is CommonJS-typed too: same data-URL load with absolute imports.
+const { renderNarrativeScene } = await (async () => {
+  const file = new URL('../../web-runner/systems/renderNarrativeScene.js', import.meta.url);
+  const source = fs.readFileSync(file, 'utf8').replace(/from '([^']+)'/g, (_, p) => `from '${new URL(p, pathToFileURL(fileURLToPath(file))).href}'`);
+  return import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+})();
 import { HERO_DEFINITIONS } from '../../web-runner/src/core/heroDefinitions.mjs';
 import { heroStarSkillMultipliers } from '../../web-runner/src/core/heroGrowthRules.mjs';
 import { permanentHeroModifiers } from '../../web-runner/src/core/heroPermanentModifiers.mjs';
@@ -527,3 +536,44 @@ function progressionFixture() {
   return { heroes: heroes.map(h => ({ ...h, currentLevel: 1 })), economy: economyInitial, states: { ...states, raw: snapshots }, targets, presentations, eligible: { all: eligibleTicketHeroes(heroes), ready: eligibleHeroUpgradeTargets(state, heroes) }, growth: [null, { stars: { Falie: 3, Bogus: 1 } }, { stars: { Runa: '2', Kaja: -1, Hondo: 12 } }, { stars: [] }, 'x'].map(raw => ({ raw, clean: sanitizeHeroGrowth(raw) })), steps };
 }
 write('progression.json', progressionFixture());
+
+// ---- opening narrative scene (narrativeRuntime + narrativeSceneController + renderNarrativeScene sync) ----
+function narrativeFixture() {
+  const scene = WISHFIRE_WARP_CROSSING_CONTENT.scenes[0];
+  const handoff = scene.steps.findIndex(step => step.id === scene.combatHandoffStepId);
+  const segment = steps => ({ ...WISHFIRE_WARP_CROSSING_CONTENT, scenes: [{ ...scene, steps }] });
+  const content = segment(scene.steps.slice(0, handoff));
+  const strings = WISHFIRE_WARP_CROSSING_CONTENT.locales.en;
+  const pages = scene.steps.map(step => ({ id: step.id, text: strings[step.textKey], pages: getNarrativeScenePages(strings[step.textKey]), readSeconds: getNarrativeScenePages(strings[step.textKey]).map(p => getNarrativeSceneReadSeconds(p, { readingSpeedWordsPerSecond: 3 })) }));
+  // Frame clock under our control: the controller and renderer read performance.now().
+  let t = 100;
+  globalThis.performance = { now: () => t * 1000 };
+  const ctx = new Proxy({}, { get: (_, key) => key === 'measureText' ? (text => ({ width: String(text).length * 7 })) : (() => ({ addColorStop() {} })), set: () => true });
+  const gameState = { narrative: createNarrativeState(), storyEntry: {} };
+  const steps = [];
+  const snapshot = (op, args, result) => {
+    const p = gameState.narrativeScene;
+    const r = p?.lastRender;
+    steps.push({ t, op, args, result: result ?? null,
+      narrative: { active: !!gameState.narrative.activeSceneId, stepIndex: gameState.narrative.stepIndex, completedScene: gameState.narrative.completedSceneIds.length > 0, lastEvent: gameState.narrative.lastEvent?.type ?? null },
+      presentation: p ? { auto: p.auto, completed: p.completed, completionStartedAtSec: p.completionStartedAtSec, lineId: p.lineId, lineStartedAtSec: p.lineStartedAtSec, pageIndex: p.pageIndex, pageStartedAtSec: p.pageStartedAtSec, forcedCompleteLineId: p.forcedCompleteLineId, forcedCompletePageIndex: p.forcedCompletePageIndex, stageInitialized: p.stageInitialized, shotTransitionLineId: p.shotTransitionLineId, shotTransitionStartedAtSec: p.shotTransitionStartedAtSec, shotTransitionMode: p.shotTransitionMode, playedAudioLineIds: [...p.playedAudioLineIds], hitZones: p.hitZones } : null,
+      render: r ? { lineId: r.lineId, pageIndex: r.pageIndex, pageCount: r.pageCount, speakerId: r.speakerId, shotId: r.shotId, shotKind: r.shotKind, itemId: r.itemId, transitionMode: r.transitionMode, transitionPhase: r.transitionPhase, backgroundAlpha: r.backgroundAlpha, subjectAlpha: r.subjectAlpha, dialogueAlpha: r.dialogueAlpha, coverAlpha: r.coverAlpha, actorsVisible: r.actorsVisible, completed: r.completed } : null });
+  };
+  const render = () => { const out = renderNarrativeScene(ctx, gameState, { viewWidth: 360, viewHeight: 640 }, content); if (out && out.completed) gameState.narrativeScene.lastRender = { completed: true, lineId: null }; snapshot('render', {}, out && out.completed ? { completed: true } : null); };
+  const tap = (x, y) => snapshot('tap', { x, y }, handleNarrativeScenePointer(gameState, content, { x, y }).action);
+  const auto = () => snapshot('auto', {}, updateNarrativeSceneAuto(gameState, content, t));
+  const wait = dt => { t = Math.round((t + dt) * 1000) / 1000; };
+  restartNarrativeScene(gameState, content, scene.id); snapshot('restart', {});
+  render(); wait(0.1); render(); wait(0.2); tap(180, 300); wait(0.2); render(); wait(0.5); render(); tap(180, 300); render();
+  for (let i = 0; i < 4; i++) { wait(0.3); render(); tap(180, 300); render(); }
+  // ordered + black-cover transitions and multi-page lines
+  for (let i = 0; i < 6; i++) { wait(0.2); render(); tap(180, 300); render(); wait(0.5); render(); tap(180, 300); render(); wait(3); render(); }
+  // auto mode through the rest, with taps on the Auto button and occasional pointer taps
+  tap(228, 437); render();
+  for (let i = 0; i < 40; i++) { wait(0.75); render(); auto(); render(); if (i % 9 === 4) tap(180, 300); if (gameState.narrativeScene.completed) break; }
+  render(); wait(0.2); render(); tap(180, 371 + 20); render(); wait(0.3); render(); tap(294, 437); render(); wait(1); render();
+  // restart via the completion button after a skip
+  restartNarrativeScene(gameState, content, scene.id); snapshot('restart', {}); render(); wait(0.6); render(); tap(294, 437); render(); wait(0.1); render(); tap(180, 393); render(); wait(0.3); render();
+  return { handoff, pages, steps };
+}
+write('narrative.json', narrativeFixture());

@@ -169,12 +169,21 @@ async fn main() {
     if qa::enabled() { controls.seed = qa::seed(); }
     let boot_seed = if qa::enabled() { Some(controls.seed as u32) } else { None };
     let mut scene = match Scene::new(rows.clone(), boot_seed) { Ok(scene) => scene, Err(error) => fatal(&mut portrait, "Combat host failed", &error).await };
+    ui.boot(qa::enabled());
     loop {
+        // combatEntryTransition: at the hold's end the fresh combat session replaces the scene.
+        if ui.story.transition_tick(platform::now_ms()) {
+            scene.game.session.dispose();
+            scene = match Scene::new(rows.clone(), boot_seed) { Ok(scene) => scene, Err(error) => fatal(&mut portrait, "Combat host failed", &error).await };
+            ui.screen = ui::Screen::Combat;
+        }
         portrait.resize();
         render::vfx3d::sampling_controls();
         let click = is_mouse_button_pressed(MouseButton::Left).then(|| portrait.pointer()).flatten();
         // Meta screens: combat pauses underneath (storyEntryFlow.navigate departure).
         if !ui.in_combat() {
+            // Dev scenario key: L opens the quest ladder from the map (JS storyEntry.skip() first step).
+            if is_key_pressed(KeyCode::L) { ui.story.dev_ladder(); }
             if let Some(p) = click { ui.tap(p, &mut scene.game); }
             ui.lamp.frame(&mut scene.game, false, true);
             scene.game.session.pause();

@@ -59,7 +59,7 @@ pub struct Manifest {
     pub arenas: Vec<Arena>,
 }
 /// Chrome art staged by tools/build_wf_app.sh from web-runner/assets/images.
-pub const UI_ART: &[&str] = &["nav-daily", "nav-hero", "nav-quests", "nav-vault", "nav-power-up", "boss-boss", "boss-clock", "boss-inspect", "hero-Fara", "hero-Hondo", "hero-Runa", "hero-Kaja", "buff-signals", "lamp-gear-atlas", "lamp-bag", "lamp-essence", "bag-medallion", "prog-incense", "prog-stat-atk", "prog-stat-def", "prog-stat-matk", "prog-stat-res", "prog-hero-tickets", "prog-training-scene", "coin"];
+pub const UI_ART: &[&str] = &["nav-daily", "nav-hero", "nav-quests", "nav-vault", "nav-power-up", "boss-boss", "boss-clock", "boss-inspect", "hero-Fara", "hero-Hondo", "hero-Runa", "hero-Kaja", "buff-signals", "lamp-gear-atlas", "lamp-bag", "lamp-essence", "bag-medallion", "prog-incense", "prog-stat-atk", "prog-stat-def", "prog-stat-matk", "prog-stat-res", "prog-hero-tickets", "prog-training-scene", "coin", "story-map", "story-token", "story-hondo", "story-fara", "story-kaja", "story-runa"];
 /// Archetypes the live game can spawn; each owns one packed puppet (wf_pack::ACTORS).
 const ACTOR_ART:&[&str]=&["Fara","Hondo","Runa","Kaja","Gobloc","Orc","Lizardo","Boss","HighOrc","Marid",
     "WfmHighGobloc","WfmSkeleton","WfmChimerilass","WfmDjinn"];

@@ -12,5 +12,6 @@ pub mod shadow;
 pub mod equipment;
 pub mod hero;
 pub mod lamp;
+pub mod narrative;
 pub mod progression;
 pub mod wfm_config;

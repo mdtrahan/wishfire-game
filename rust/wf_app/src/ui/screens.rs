@@ -247,6 +247,8 @@ fn hero_screen(assets: &Assets, game: &Game, ui: &mut HeroUi, hits: &mut Vec<Hit
             chrome::paragraph("Slot 2 opens at *5. Crystals are coming soon.", qx, qy + 104., qw, 11., rgb(0x36465c));
         }
     }
+    // getHeroStyleCloseRect: the canvas close control at (180, 608), under the nav like the JS DOM nav.
+    hits.push(Hit { rect: Rect::new(165., 593., 30., 30.), kind: HitKind::HeroClose });
     // Star Up sheet (hero-modal over the whole content)
     if ui.sheet {
         draw_rectangle(PAD_X, PAD_TOP, cw, bottom - PAD_TOP, rgba(0x10213a, 0.92));
