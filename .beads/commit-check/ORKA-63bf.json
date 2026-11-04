@@ -1,0 +1,26 @@
+{
+  "changed_functions": {
+    "node_modules/.package-lock.json": [
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 1,
+    "staged_line_count": 1,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    "node_modules/.package-lock.json"
+  ],
+  "issue_id": "ORKA-63bf",
+  "out_of_scope_hot_file_touch": false,
+  "significant": false,
+  "staged_blobs": {
+    "node_modules/.package-lock.json": "8a1a3a64df5ab6cd3eee517fbe3da6dddd8f7769"
+  }
+}
