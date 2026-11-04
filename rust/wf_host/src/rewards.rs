@@ -22,6 +22,49 @@ pub struct OutboxState {
     #[serde(default, skip_serializing_if = "Option::is_none")] pub active_encounter: Option<String>,
 }
 impl Default for OutboxState { fn default() -> Self { Self { version: 1, streams: BTreeMap::new(), active_encounter: None } } }
+impl OutboxState {
+    /// `createCombatRewardOutboxState(saved)`: a missing outbox is fresh; a malformed one is an error.
+    pub fn from_saved(saved: Option<&Value>) -> Result<Self, String> {
+        let Some(saved) = saved else { return Ok(Self::default()) };
+        let invalid = || "Invalid combat reward outbox. Original save must be preserved.".to_string();
+        let s = saved.as_object().ok_or_else(invalid)?;
+        if s.get("version") != Some(&Value::from(1)) { return Err(invalid()); }
+        let streams = s.get("streams").and_then(Value::as_object).ok_or_else(invalid)?;
+        if streams.len() > 64 { return Err(invalid()); }
+        let active_encounter = match s.get("activeEncounter") { None => None, Some(v) => Some(v.as_str().filter(|a| !a.is_empty() && a.len() <= 256).ok_or_else(invalid)?.to_string()) };
+        let mut out = BTreeMap::new();
+        for (id, stream) in streams {
+            let st = stream.as_object().filter(|_| !id.is_empty() && id.len() <= 256).ok_or_else(invalid)?;
+            let sequence = decimal(&st["sequence"]).ok_or_else(invalid)?;
+            decimal(&st["step"]).ok_or_else(invalid)?;
+            let recent = st.get("recent").and_then(Value::as_object).ok_or_else(invalid)?;
+            let pending = st.get("pending").and_then(Value::as_array).ok_or_else(invalid)?;
+            if pending.len() > 512 || recent.len() > COMBAT_RECEIPT_WINDOW { return Err(invalid()); }
+            let mut recent_out = BTreeMap::new();
+            for (seq, body) in recent {
+                let n = decimal(&Value::String(seq.clone())).ok_or_else(invalid)?;
+                if n > sequence { return Err(invalid()); }
+                recent_out.insert(seq.clone(), body.as_str().ok_or_else(invalid)?.to_string());
+            }
+            let mut seen = std::collections::BTreeSet::new();
+            let mut rows = Vec::new();
+            for row in pending {
+                let r = row.as_object().ok_or_else(invalid)?;
+                let seq = decimal(&r["sequence"]).ok_or_else(invalid)?;
+                let battle_id = r.get("battleId").and_then(Value::as_str).filter(|b| !b.is_empty()).ok_or_else(invalid)?;
+                let enemy = r.get("enemy").and_then(Value::as_object).ok_or_else(invalid)?;
+                let uid = enemy.get("uid").and_then(Value::as_f64).filter(|u| u.fract() == 0. && *u >= 1. && *u <= 9007199254740991.).ok_or_else(invalid)?;
+                let role = enemy.get("enemyRole").and_then(Value::as_str).filter(|r| ["boss", "ordinary"].contains(r)).ok_or_else(invalid)?;
+                let row_id = r.get("id").and_then(Value::as_str).ok_or_else(invalid)?;
+                let amount = r.get("amount").and_then(Value::as_f64).ok_or_else(invalid)?;
+                if seq > sequence || !seen.insert(seq) || enemy.get("kind").and_then(Value::as_str) != Some("enemy") || row_id != format!("enemy:{battle_id}:{uid}") || row_id.len() > 180 || amount != if role == "boss" { 5. } else { 0. } { return Err(invalid()); }
+                rows.push(PendingRow { sequence: r["sequence"].as_str().unwrap().into(), battle_id: battle_id.into(), id: row_id.into(), amount, enemy: PendingEnemyRef { kind: "enemy".into(), uid: uid as u32, enemy_role: role.into() } });
+            }
+            out.insert(id.clone(), Stream { sequence: st["sequence"].as_str().unwrap().into(), step: st["step"].as_str().unwrap().into(), recent: recent_out, pending: rows });
+        }
+        Ok(Self { version: 1, streams: out, active_encounter })
+    }
+}
 
 /// `g.ProgressionBattle`: the per-attempt kill ledger.
 #[derive(Clone, Debug, PartialEq)]

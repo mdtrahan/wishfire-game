@@ -16,11 +16,21 @@ import { createRustCombatRuntime } from '../../web-runner/systems/rustCombatRunt
 import { createQuestCombatSession } from '../../web-runner/systems/questCombatSession.mjs';
 import { createCombatHostClock } from '../../web-runner/systems/combatHostClock.mjs';
 import { settleContinuousCombatRewards } from '../../web-runner/modules/heroCommands.mjs';
-import { newHeroProgress, refreshHeroStats, createHeroProgressStore, expToNextLevel, levelStats, attachHeroProgress } from '../../web-runner/src/core/heroProgression.mjs';
+import { newHeroProgress, refreshHeroStats, createHeroProgressStore, expToNextLevel, levelStats, attachHeroProgress, awardHeroEXP, setHeroProgressLevel } from '../../web-runner/src/core/heroProgression.mjs';
+import { fillGearMaxHpGrowth } from '../../web-runner/src/core/heroMaxHpPolicy.mjs';
+import { heroSpecialCooldown } from '../../web-runner/src/core/heroSpecialCooldown.mjs';
+import { pathToFileURL } from 'node:url';
+// heroProgressStorage.js is CommonJS-typed under Node: load its ESM source through a data URL with absolute imports.
+const heroProgressStorage = await (async () => {
+  const file = new URL('../../web-runner/systems/heroProgressStorage.js', import.meta.url);
+  const source = fs.readFileSync(file, 'utf8').replace(/from '([^']+)'/g, (_, p) => `from '${new URL(p, pathToFileURL(fileURLToPath(file))).href}'`);
+  return import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+})();
+const { persistHeroProgressIfDirty, restoreHeroProgressFromStorage, HERO_PROGRESS_SAVE_KEY } = heroProgressStorage;
 import { HERO_DEFINITIONS } from '../../web-runner/src/core/heroDefinitions.mjs';
 import { heroStarSkillMultipliers } from '../../web-runner/src/core/heroGrowthRules.mjs';
 import { permanentHeroModifiers } from '../../web-runner/src/core/heroPermanentModifiers.mjs';
-import { buildContinuousCombatSpawnPlan, activateContinuousCombatSpawnedEnemy, createContinuousCombatStageState, getContinuousCombatStage, getContinuousCombatPartyCP, advanceContinuousCombatStage, resetContinuousCombatAfterDefeat, continuousCombatWaveClearEventId, buildChapterOneSubwaveStages, deriveContinuousCombatWavePackProgress } from '../../web-runner/src/core/continuousCombatStage.mjs';
+import { configureContinuousCombatProduction, buildContinuousCombatSpawnPlan, activateContinuousCombatSpawnedEnemy, createContinuousCombatStageState, getContinuousCombatStage, getContinuousCombatPartyCP, advanceContinuousCombatStage, resetContinuousCombatAfterDefeat, continuousCombatWaveClearEventId, buildChapterOneSubwaveStages, deriveContinuousCombatWavePackProgress } from '../../web-runner/src/core/continuousCombatStage.mjs';
 import { deriveCombatWorldBounds, deriveCombatWorldVerticalBounds, deriveCombatOrdinaryPatrolBounds, deriveCombatWorldStartFormation, deriveCombatArenaBounds } from '../../src/core/combatOrientation.mjs';
 import { deriveContinuousCombatSpawnMoat, placeContinuousCombatHeroesInRecoveryHuddle } from '../../web-runner/src/core/arenaCombat.mjs';
 // combatSessionInitializer.js is CommonJS-typed under Node; these four helpers are copied verbatim.
@@ -216,8 +226,91 @@ function trace({ seed = 7, ticks = 2400, level = 1, hp = 1, sampleEvery = 30 } =
   } finally { Date.now = realNow; }
   const checkpoint = g.ContinuousCombatStage.combatCheckpoint;
   runtime.dispose();
+  // The real save envelope at this point (heroProgressStorage.persistHeroProgressIfDirty).
+  const storage = fakeStorage();
+  g.HeroProgressDirty = true;
+  persistHeroProgressIfDirty({ stateGlobals: g });
+  if (ticks === 2400 || level === 7 && ticks === 17500) traceSaves[`trace-seed${seed}-lvl${level}-${ticks}`] = JSON.parse(storage.map.get(HERO_PROGRESS_SAVE_KEY));
   return { seed, level, hp, ticks, gold: g.goldTotal ?? 0, bossTimeout: g.ContinuousCombatStage.lastBossTimeout ?? null, checkpoint: checkpoint && { subwaves: checkpoint.subwaves, generation: checkpoint.generation }, spawnLog, transitions, calls: runLength(calls.map(c => c.op).filter(op => op !== 'ack')), samples };
+}
+const traceSaves = {};
+function fakeStorage() {
+  const map = new Map();
+  globalThis.window = { localStorage: { map, getItem: k => map.has(k) ? map.get(k) : null, setItem: (k, v) => map.set(k, String(v)), removeItem: k => map.delete(k), get length() { return map.size; }, key: i => [...map.keys()][i] ?? null } };
+  return globalThis.window.localStorage;
 }
 // The long cases run through all ten Chapter 1 waves into the boss: level 1 times out and recovers, level 7 clears it.
 write('stage_trace.json', [trace({ seed: 7, ticks: 2400 }), trace({ seed: 42, ticks: 900, level: 7, hp: 0.5 }), trace({ seed: 7, ticks: 17500 }), trace({ seed: 42, ticks: 17500, level: 7 })]);
 console.log('wrote', fs.readdirSync(out).join(' '));
+
+// ---- hero progression (ORKA-63bf.5) ----
+function heroProgressFixture() {
+  const award = [];
+  for (const level of [1, 3, 99, 100]) for (const key of ['Falie', 'Runa']) for (const hpFrac of [1, 0.3, 0]) for (const amount of [0, 50, 100, 250, 5000, 1e6, -5, 12.7, NaN]) {
+    const hero = newHeroProgress(key, key.toLowerCase() + '#1');
+    hero.currentLevel = level; if (level === 3) hero.equipmentStats = { ATK: 3, HP: 10 };
+    refreshHeroStats(hero); hero.hp = Math.floor(hero.maxHP * hpFrac); hero.currentEXP = 40;
+    const before = structuredClone(hero); const result = awardHeroEXP(hero, amount);
+    award.push({ before, amount: Number.isNaN(amount) ? 'NaN' : amount, result, after: structuredClone(hero) });
+  }
+  const checkpoint = { version: 1, id: 'cp-s1-7', generation: 3, rewardLineage: 'battle:s1', contentVersion: 'wfm-slice-v1', abiVersion: 65536 };
+  const storeInputs = {
+    fresh: undefined,
+    empty: {},
+    wrongVersion: { version: 1, heroes: { Falie: { name: 'Falie', currentLevel: 9 } } },
+    sanitized: { version: 2, heroes: {
+      'falie#1': { baseHeroName: 'Fara', currentLevel: 2.7, currentEXP: '12', hp: 999, lampEXPClaimed: 30, equipmentStats: { ATK: 3, HP: 10, SPD: -1, MAG: 1.5, LUCK: 4 } },
+      'bogus#1': { name: 'Nobody', currentLevel: 3 },
+      Runa: { name: 'Runa', currentLevel: 500, currentEXP: 10, hp: -5 },
+      'huun#1': { baseHeroName: 'Huun', currentLevel: 0, currentEXP: -3, hp: 'x', lampEXPClaimed: -2, equipmentStats: 'none' },
+      'kojonn#1': { baseHeroName: 'Kojonn', currentLevel: 100, currentEXP: 77, hp: 12 } },
+      settledBattles: [...Array(120).keys()].map(i => 'b' + i).concat([5, null, 'last']),
+      pendingBattleRewards: { id: 'battle:x', participants: ['falie#1', 7, 'runa#1'], defeated: { 12: 0, 13: -1, 14: 'abc', 15: '2' }, defeatedGold: { 12: 3, 16: 2.5 } },
+      pendingGoldSettlements: { a: 5, b: -1, c: 'q', d: 0 },
+      settledTicketSpends: ['t1', 't2', 't1', 3, 't3'],
+      pendingBagKillRewards: { 'enemy:x:1': 5, 'enemy:x:2': 1, 'enemy:x:3': 2, '': 5, 'enemy:x:4': '5' },
+      combatRewardOutbox: { version: 1, streams: { 'rust:cp:1': { sequence: '9', step: '30', recent: { 9: 'died' }, pending: [{ sequence: '9', battleId: 'battle:s1', id: 'enemy:battle:s1:12', amount: 5, enemy: { kind: 'enemy', uid: 12, enemyRole: 'boss' } }] } }, activeEncounter: 'rust:cp:1' },
+      continuousStage: { topologyVersion: 2, region: 3, stage: 1, wave: 4, bossAvailable: false, bossSummonRequired: 'yes', clearedBosses: 2, clearedPackMask: 9, bossUID: 44 },
+      junk: 1 },
+    pendingSettled: { version: 2, heroes: {}, settledBattles: ['battle:y'], pendingBattleRewards: { id: 'battle:y', participants: ['falie#1'], defeated: { 3: 0 }, defeatedGold: { 3: 4 } } },
+    legacy: { version: 2, heroes: {}, continuousStage: { region: 2, stage: 3, wave: 2, bossAvailable: true, clearedBosses: 1, clearedPackMask: 5, bossUID: 9 } },
+    legacyBadWave: { version: 2, heroes: {}, continuousStage: { region: 2, stage: 3, wave: 5, bossAvailable: true, clearedBosses: 1 } },
+    legacyWithCheckpoint: { version: 2, heroes: {}, continuousStage: { region: 2, stage: 3, wave: 2, bossAvailable: true, clearedBosses: 1, seed: 7, transitions: 2, combatCheckpoint: checkpoint } },
+    withCheckpoint: { version: 2, heroes: {}, continuousStage: { topologyVersion: 2, region: 1, stage: 1, wave: 6, bossAvailable: false, bossSummonRequired: false, clearedBosses: 0, clearedPackMask: 70, seed: 7, transitions: 41, combatCheckpoint: { ...checkpoint, subwaves: { position: '7:1:1:6:41', index: 3, partyCP: 311, entryPackMask: 2 } } } },
+    badTopology: { version: 2, heroes: {}, continuousStage: { topologyVersion: 2, region: 1, stage: 1, wave: 99, bossAvailable: false, clearedBosses: 0, seed: 7, transitions: 0, combatCheckpoint: checkpoint } },
+    badTopologyVersion: { version: 2, heroes: {}, continuousStage: { topologyVersion: 3, region: 1, stage: 1, wave: 1, bossAvailable: false, clearedBosses: 0 } },
+    badCheckpointVersion: { version: 2, heroes: {}, continuousStage: { topologyVersion: 2, region: 1, stage: 1, wave: 1, bossAvailable: false, clearedBosses: 0, seed: 7, transitions: 0, combatCheckpoint: { ...checkpoint, version: 2 } } },
+    badContentVersion: { version: 2, heroes: {}, continuousStage: { topologyVersion: 2, region: 1, stage: 1, wave: 1, bossAvailable: false, clearedBosses: 0, seed: 7, transitions: 0, combatCheckpoint: { ...checkpoint, contentVersion: 'old' } } },
+    badSeed: { version: 2, heroes: {}, continuousStage: { topologyVersion: 2, region: 1, stage: 1, wave: 1, bossAvailable: false, clearedBosses: 0, seed: 0, transitions: 0, combatCheckpoint: checkpoint } },
+    badSubwaves: { version: 2, heroes: {}, continuousStage: { topologyVersion: 2, region: 1, stage: 1, wave: 1, bossAvailable: false, clearedBosses: 0, seed: 7, transitions: 0, combatCheckpoint: { ...checkpoint, subwaves: { position: 'p', index: 42, partyCP: 1, entryPackMask: 0 } } } },
+    nullCheckpoint: { version: 2, heroes: {}, continuousStage: { topologyVersion: 2, region: 1, stage: 1, wave: 1, bossAvailable: false, clearedBosses: 0, combatCheckpoint: null } },
+    badOutbox: { version: 2, heroes: {}, combatRewardOutbox: { version: 2 } },
+    badOutboxRow: { version: 2, heroes: {}, combatRewardOutbox: { version: 1, streams: { a: { sequence: '3', step: '1', recent: {}, pending: [{ sequence: '4', battleId: 'b', id: 'enemy:b:1', amount: 0, enemy: { kind: 'enemy', uid: 1, enemyRole: 'ordinary' } }] } } } },
+    noStage: { version: 2, heroes: {}, continuousStage: { region: 'x' } },
+    ...traceSaves,
+  };
+  const stores = Object.entries(storeInputs).map(([name, input]) => {
+    try { return { name, input: input ?? null, output: createHeroProgressStore(input) }; }
+    catch (error) { return { name, input: input ?? null, error: String(error.message) }; }
+  });
+  const presets = [[7, 0], [100, 250], [1, 0]].map(([level, partyEXP]) => { const store = createHeroProgressStore(storeInputs.sanitized); setHeroProgressLevel(store, level, partyEXP); return { level, partyEXP, heroes: store.heroes }; });
+  const fill = [[10, 50, 60], [0, 50, 60], [55, 60, 50], [12.9, 10.2, 20.7], [-3, 5, 9]].map(([hp, before, after]) => ({ hp, before, after, result: fillGearMaxHpGrowth(hp, before, after) }));
+  const cooldowns = [];
+  for (const key of Object.keys(HERO_DEFINITIONS)) for (let stars = 0; stars <= 8; stars++) cooldowns.push({ key, stars, seconds: heroSpecialCooldown({ baseHeroName: key, heroInstanceKey: `${key.toLowerCase()}#1` }, { stars: { [key]: stars } }) });
+  // restoreHeroProgressFromStorage on a save: receipts settle, pending battle rewards recover, participants re-save.
+  const restores = Object.entries(storeInputs).filter(([name]) => ['sanitized', 'pendingSettled', 'withCheckpoint'].includes(name) || name.startsWith('trace-')).map(([name, saved]) => {
+    const storage = fakeStorage(); storage.setItem(HERO_PROGRESS_SAVE_KEY, JSON.stringify(saved));
+    const heroes = party();
+    // app.js order: the store restores at boot, combat entry configures the stage from it and restores again.
+    const g = { ContinuousCombatStageLoop: 1, EncounterSeed: 7 };
+    const fnContext = { state: { globals: g, entities: heroes } };
+    restoreHeroProgressFromStorage({ fnContext });
+    configureContinuousCombatProduction(g, { productionPath: true });
+    restoreHeroProgressFromStorage({ fnContext });
+    const st = g.ContinuousCombatStage;
+    return { name, error: g.HeroProgressStorageError ?? null, store: g.HeroProgress, stage: { region: st.region, stage: st.stage, wave: st.wave, bossAvailable: !!st.bossAvailable, bossSummonRequired: !!st.bossSummonRequired, clearedBosses: st.clearedBosses, bossUID: st.bossUID ?? null, clearedPackMask: st.clearedPackMask, seed: st.seed, transitions: st.transitions }, saved: storage.map.has(HERO_PROGRESS_SAVE_KEY) ? JSON.parse(storage.map.get(HERO_PROGRESS_SAVE_KEY)) : null, goldTotal: g.goldTotal ?? 0, pendingGold: g.PendingGoldSettlements ?? {}, wfmReload: !!g.WfmCheckpointReload,
+      heroes: heroes.map(h => ({ key: h.heroInstanceKey, level: h.currentLevel, hp: h.hp, maxHP: h.maxHP, exp: h.currentEXP })) };
+  });
+  return { award, stores, presets, fill, cooldowns, restores };
+}
+write('hero_progress.json', heroProgressFixture());

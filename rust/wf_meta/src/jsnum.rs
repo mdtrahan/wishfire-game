@@ -49,3 +49,21 @@ mod tests {
         assert_eq!(hypot(3., 4.), 5.);
     }
 }
+
+/// `Number(value)` for a JSON value: numbers, booleans, null and numeric strings; anything else is NaN.
+pub fn number(value: Option<&serde_json::Value>) -> f64 {
+    use serde_json::Value;
+    match value {
+        None | Some(Value::Null) => if value.is_none() { f64::NAN } else { 0. },
+        Some(Value::Number(n)) => n.as_f64().unwrap_or(f64::NAN),
+        Some(Value::Bool(b)) => if *b { 1. } else { 0. },
+        Some(Value::String(s)) => { let t = s.trim(); if t.is_empty() { 0. } else { t.parse::<f64>().unwrap_or(f64::NAN) } }
+        Some(_) => f64::NAN,
+    }
+}
+/// `Number(value) || fallback`: NaN and 0 fall back.
+pub fn number_or(value: Option<&serde_json::Value>, fallback: f64) -> f64 { let n = number(value); if n.is_nan() || n == 0. { fallback } else { n } }
+/// `Number.isSafeInteger(value)` for a JSON value (numbers only).
+pub fn is_safe_integer(value: Option<&serde_json::Value>) -> bool {
+    match value { Some(serde_json::Value::Number(n)) => n.as_f64().is_some_and(|f| f.is_finite() && f.fract() == 0. && f.abs() <= 9007199254740991.), _ => false }
+}

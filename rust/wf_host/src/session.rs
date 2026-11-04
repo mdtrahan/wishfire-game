@@ -121,6 +121,10 @@ pub struct Session {
     quest: QuestRecorder,
     encounter_counter: u64,
     ended_hash: Option<(u64, usize)>,
+    /// `g.RestoredGoldSettlementReceipts`.
+    restored_gold: BTreeSet<String>,
+    /// `g.ContinuousCombatStage` exists: saves capture the stage checkpoint.
+    stage_configured: bool,
     frame_now_ms: f64,
     // driver
     world: Option<World>,
@@ -159,7 +163,7 @@ impl Session {
         let mut stage = checkpoint.as_ref().map_or_else(|| stage::create_stage_state(seed as f64, 1, 1), |c| {
             let mut s = stage::create_stage_state(seed as f64, c.region, c.stage);
             s.wave = c.wave; s.boss_available = c.boss_available; s.boss_summon_required = c.boss_summon_required; s.cleared_bosses = c.cleared_bosses; s.boss_uid = c.boss_uid;
-            s.cleared_pack_mask = stage::normalize_pack_mask(c.cleared_pack_mask);
+            s.cleared_pack_mask = stage::normalize_pack_mask(c.cleared_pack_mask.unwrap_or(0));
             if let Some(seed) = c.seed { s.seed = seed; }
             if let Some(t) = c.transitions { s.transitions = t; }
             s
@@ -170,14 +174,21 @@ impl Session {
         let combat_checkpoint = checkpoint.as_ref().and_then(|c| c.combat_checkpoint.clone());
         if let Some(c) = &checkpoint { if c.combat_checkpoint.is_some() { if let Some(seed) = c.seed { stage.seed = seed; } } }
         let wfm_checkpoint_reload = checkpoint.is_some();
-        let heroes: Vec<HeroActor> = party.iter().enumerate().map(|(i, (key, instance))| { let saved = progress.attach(key, instance).clone(); HeroActor::from_progress(i as u32 + 1, &saved, i) }).collect();
-        let battle = ProgressionBattle::new(&format!("battle:{combat_session_id}"), heroes.iter().map(|h| h.instance_key.clone()).collect());
-        let mut session = Self { time: 0., stage, checkpoint: combat_checkpoint, enemy_data, raw_rows, heroes, enemies: Vec::new(), benched: BTreeMap::new(), enemy_slots: Vec::new(), next_uid, enemy_size: 40., progress, battle,
+        let battle = ProgressionBattle::new(&format!("battle:{combat_session_id}"), party.iter().map(|(_, instance)| instance.to_string()).collect());
+        let mut session = Self { time: 0., stage, checkpoint: combat_checkpoint, enemy_data, raw_rows, heroes: Vec::new(), enemies: Vec::new(), benched: BTreeMap::new(), enemy_slots: Vec::new(), next_uid, enemy_size: 40., progress, battle,
             combat_session_id: combat_session_id.into(), dev_speed: 1., training: None, stars: BTreeMap::new(), gold_total: 0., pending_gold_settlements: BTreeMap::new(), reward_serial: 0, progress_dirty: false, storage_error: None,
             wfm_checkpoint_reload, quest_finite_encounter: true, intro_active: false, receipt: Receipt::default(), failed: None, bag_seconds: 0., bag_blocked: false, last_transition: None, wave_clear_events: Vec::new(),
-            persist, quest, encounter_counter: 0, ended_hash: None, frame_now_ms: 0., world: None, encounter: String::new(), sequence: 0, previous_now: None, debt: 0., attempt: None, base_time: 0., last_combat_time: 0., last_presentation_time: 0.,
+            persist, quest, encounter_counter: 0, ended_hash: None, restored_gold: BTreeSet::new(), stage_configured: false, frame_now_ms: 0., world: None, encounter: String::new(), sequence: 0, previous_now: None, debt: 0., attempt: None, base_time: 0., last_combat_time: 0., last_presentation_time: 0.,
             host_transition: false, advanced: false, subwaves: Vec::new(), previous_subwave: Vec::new(), subwave_started: 0., pending_restart: None, hosts: BTreeMap::new(), hosts_seen_boss: BTreeSet::new(), seen_spawns: BTreeSet::new(), intro_now: None, tail: None,
             last_snapshot: None, presentation_events: Vec::new(), step_observations: Vec::new(), op_log: Vec::new() };
+        // restoreHeroProgressFromStorage order: restored receipts settle (and may persist) before
+        // the party attaches; pending gold and battle rewards recover after.
+        session.restore_receipts();
+        session.heroes = party.iter().enumerate().map(|(i, (key, instance))| { let saved = session.progress.attach(key, instance).clone(); HeroActor::from_progress(i as u32 + 1, &saved, i) }).collect();
+        session.restore_progress();
+        // configureContinuousCombatProduction, then the combat-entry restore persists the configured checkpoint.
+        session.stage_configured = true;
+        session.persist_progress_if_dirty();
         session.spawn_initial_wave();
         session
     }
@@ -299,10 +310,18 @@ impl Session {
     /// `persistHeroProgressIfDirty`: captures the stage checkpoint into the store and saves.
     pub fn persist_progress_if_dirty(&mut self) -> bool {
         if self.storage_error.is_some() { return false; }
+        if self.stage_configured { self.capture_stage_checkpoint(); }
+        if self.capture_pending_battle_rewards() { self.progress_dirty = true; }
+        if !self.progress_dirty { return false; }
+        if (self.persist)(&self.progress) { self.progress_dirty = false; true } else { self.storage_error = Some("Hero progress could not be saved.".into()); false }
+    }
+    /// The `ContinuousCombatStage` capture inside `persistHeroProgressIfDirty`; only once the
+    /// stage is configured (JS: after `configureContinuousCombatProduction`).
+    fn capture_stage_checkpoint(&mut self) {
         let s = &self.stage;
         let mut checkpoint = ContinuousStageCheckpoint { topology_version: 2, region: s.region, stage: s.stage, wave: if s.boss_active { 1 } else { s.wave }, boss_available: s.boss_available || s.boss_active,
             boss_summon_required: s.boss_summon_required || s.boss_active, cleared_bosses: s.cleared_bosses, boss_uid: if s.boss_active { s.boss_uid.filter(|u| *u > 0) } else { None },
-            cleared_pack_mask: stage::normalize_pack_mask(s.cleared_pack_mask), seed: None, transitions: None, combat_checkpoint: None };
+            cleared_pack_mask: Some(stage::normalize_pack_mask(s.cleared_pack_mask)), seed: None, transitions: None, combat_checkpoint: None };
         if let Some(cp) = &self.checkpoint {
             checkpoint.seed = Some(s.seed);
             checkpoint.transitions = Some(s.transitions);
@@ -320,9 +339,6 @@ impl Session {
             checkpoint.combat_checkpoint = Some(combat);
         }
         if self.progress.continuous_stage.as_ref() != Some(&checkpoint) { self.progress.continuous_stage = Some(checkpoint); self.progress_dirty = true; }
-        if self.capture_pending_battle_rewards() { self.progress_dirty = true; }
-        if !self.progress_dirty { return false; }
-        if (self.persist)(&self.progress) { self.progress_dirty = false; true } else { self.storage_error = Some("Hero progress could not be saved.".into()); false }
     }
     fn capture_pending_battle_rewards(&mut self) -> bool {
         let b = &self.battle;
@@ -352,12 +368,58 @@ impl Session {
         let key = hero.instance_key.clone();
         let definition_key = hero.definition.key;
         let level = hero.level;
-        let entry = self.progress.heroes.entry(key.clone()).or_insert_with(|| HeroProgress::new(definition_key, &key).unwrap());
-        entry.current_level = level;
-        entry.hp = hp.min(max_hp);
-        entry.max_hp = max_hp;
-        entry.stats = stats;
-        entry.exp_to_next_level = hero::exp_to_next_level(level);
+        let previous = self.progress.heroes.get(&key).cloned().unwrap_or_else(|| HeroProgress::new(definition_key, &key).unwrap());
+        let (exp, lamp, equipment) = (previous.current_exp, previous.lamp_exp_claimed, previous.equipment());
+        self.progress.heroes.insert(key.clone(), HeroProgress::saved_record(&key, definition_key, Some(&equipment), level, exp, lamp, hp, max_hp, stats));
+    }
+    /// `restoreHeroProgressFromStorage` after `createHeroProgressStore`: settle restored receipts,
+    /// drop a stale boss attempt, recover pending gold and battle rewards, persist.
+    fn restore_receipts(&mut self) {
+        if let Err(error) = self.settle_pending_receipts() { self.storage_error = Some(error); }
+    }
+    fn restore_progress(&mut self) {
+        if self.storage_error.is_some() { return; }
+        for (id, amount) in self.progress.pending_gold_settlements.clone() {
+            let amount = amount.max(0.).floor();
+            if !self.restored_gold.insert(id.clone()) { continue; }
+            self.pending_gold_settlements.insert(id, amount);
+            self.gold_total += amount;
+        }
+        // restorePendingBattleRewards: a saved boss attempt is abandoned on reload.
+        if let Some(uid) = self.progress.continuous_stage.as_ref().and_then(|s| s.boss_uid) {
+            if let Some(active) = self.progress.pending_battle_rewards.as_mut() { active.defeated.remove(&uid.to_string()); active.defeated_gold.remove(&uid.to_string()); }
+            if let Some(s) = self.progress.continuous_stage.as_mut() { s.boss_uid = None; }
+            self.stage.boss_uid = None;
+            self.progress_dirty = true;
+        }
+        let Some(pending) = self.progress.pending_battle_rewards.clone() else { self.persist_progress_if_dirty(); return };
+        if self.progress.settled_battles.contains(&pending.id) {
+            self.progress.pending_battle_rewards = None;
+            self.progress_dirty = true;
+            self.persist_progress_if_dirty();
+            return;
+        }
+        let gold = pending.defeated_gold.values().map(|v| v.max(0.)).sum::<f64>();
+        self.gold_total += gold;
+        if gold > 0. {
+            self.pending_gold_settlements.insert(pending.id.clone(), gold);
+            self.progress.pending_gold_settlements.insert(pending.id.clone(), gold);
+            self.restored_gold.insert(pending.id.clone());
+        }
+        // settleBattleEXP: zero EXP, then every participant is re-saved in the saveHeroProgress shape.
+        self.progress.settled_battles.push(pending.id.clone());
+        if self.progress.settled_battles.len() > 100 { let drop = self.progress.settled_battles.len() - 100; self.progress.settled_battles.drain(..drop); }
+        for id in &pending.participants {
+            let Some(mut record) = self.progress.heroes.get(id).cloned() else { continue };
+            record.award_exp(0.);
+            let max_hp = record.combat_base_max_hp.unwrap_or(record.max_hp);
+            let saved = HeroProgress::saved_record(id, record.definition().key, Some(&record.equipment()), record.current_level, record.current_exp, record.lamp_exp_claimed, record.hp, max_hp, record.stats);
+            if let Some(h) = self.heroes.iter_mut().find(|h| &h.instance_key == id) { h.level = saved.current_level; h.hp = saved.hp.min(saved.max_hp); h.max_hp = saved.max_hp; h.combat_base_max_hp = saved.max_hp; h.stats = saved.stats; }
+            self.progress.heroes.insert(id.clone(), saved);
+        }
+        self.progress.pending_battle_rewards = None;
+        self.progress_dirty = true;
+        self.persist_progress_if_dirty();
     }
     /// `settlePendingReceipts()`: pending kill rows into the Bag queue and the quest recorder.
     fn settle_pending_receipts(&mut self) -> Result<(), String> {

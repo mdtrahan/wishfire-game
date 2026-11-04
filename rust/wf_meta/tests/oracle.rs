@@ -219,3 +219,15 @@ fn wfm_config_matches() {
         assert_subset(get(case, "config"), &config.to_json(), &format!("config seed {seed} boss {boss}"));
     }
 }
+
+#[test]
+fn hero_progress_rules_match() {
+    let f = fixture("hero_progress.json");
+    for case in get(&f, "fill").as_array().unwrap() {
+        assert_eq!(hero::fill_gear_max_hp_growth(n(get(case, "hp")), n(get(case, "before")), n(get(case, "after"))), n(get(case, "result")), "fill {case}");
+    }
+    for case in get(&f, "cooldowns").as_array().unwrap() {
+        let seconds = hero::hero_special_cooldown(get(case, "key").as_str().unwrap(), n(get(case, "stars")) as u32).unwrap();
+        assert_eq!(seconds as f64, n(get(case, "seconds")), "cooldown {case}");
+    }
+}

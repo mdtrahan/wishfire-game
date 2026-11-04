@@ -16,7 +16,9 @@ pub struct Game {
 /// `restoreHeroProgressFromStorage`: the saved store, or a fresh one; save failures stay visible.
 pub fn load_store() -> (HeroProgressStore, Option<String>) {
     match platform::storage_get(HERO_PROGRESS_SAVE_KEY) {
-        Some(json) => match serde_json::from_str::<HeroProgressStore>(&json) { Ok(store) => (store, None), Err(e) => (HeroProgressStore::fresh(), Some(format!("save unreadable: {e}"))) },
+        // createHeroProgressStore(JSON.parse(raw)): normalizes any JS or Rust save; a corrupt checkpoint
+        // or outbox is a storage error (JS keeps the original save and plays fresh).
+        Some(json) => match serde_json::from_str::<serde_json::Value>(&json).map_err(|e| e.to_string()).and_then(|v| HeroProgressStore::from_snapshot(Some(&v))) { Ok(store) => (store, None), Err(e) => (HeroProgressStore::fresh(), Some(e)) },
         None => (HeroProgressStore::fresh(), None),
     }
 }

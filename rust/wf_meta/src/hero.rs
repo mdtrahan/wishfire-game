@@ -1,5 +1,6 @@
 //! `web-runner/src/core/heroDefinitions.mjs` (stats/growth), `heroProgression.mjs` (levels),
-//! `heroGrowthRules.mjs` (stars), `heroPermanentModifiers.mjs` + `src/core/combatModifierRules.mjs`.
+//! `heroGrowthRules.mjs` (stars), `heroPermanentModifiers.mjs` + `src/core/combatModifierRules.mjs`,
+//! `heroMaxHpPolicy.mjs`, `heroSpecialCooldown.mjs`.
 use crate::combat_power::cooldown_seconds;
 use crate::jsnum::round;
 use crate::shadow::{self, Stats6};
@@ -122,4 +123,24 @@ pub fn wfm_hero_permanent_inputs(definition: &HeroDefinition, saved_stats: &Stat
     let shadow = shadow::shadow_definition(definition.key).ok_or("Unsupported shadow combatant")?;
     Ok(PermanentInputs { stats: shadow::project_shadow_stats(resolved, definition.base, shadow)?, host_max_hp: resolved.hp,
         skill_modifiers: SkillModifiers { special_potency: growth.special_magnitude, meter_rate: 1. / growth.special_cooldown } })
+}
+
+/// `fillGearMaxHpGrowth(hp, beforeMaxHp, afterMaxHp)`: gear max-HP growth fills current HP.
+pub fn fill_gear_max_hp_growth(hp: f64, before_max_hp: f64, after_max_hp: f64) -> f64 {
+    let nz = |v: f64| if v.is_nan() { 0. } else { v };
+    let before = nz(before_max_hp).floor().max(0.);
+    let after = nz(after_max_hp).floor().max(0.);
+    let current = nz(hp).floor().max(0.);
+    after.min(if current > 0. { current + (after - before).max(0.) } else { 0. })
+}
+/// `specialClockContent.mjs`: Rust `describe.special_clocks` by shadow definition id.
+pub fn special_clock(key: &str) -> Option<f64> {
+    match hero_key(key) { "Falie" => Some(10.), "Huun" => Some(10.), "Kojonn" => Some(5.65217399597168), "Runa" => Some(10.), _ => None }
+}
+/// `heroSpecialCooldown(hero, growth)`: f32 haste input and f32 cooldown like Rust groove_timers.
+pub fn hero_special_cooldown(key: &str, stars: u32) -> Result<f32, String> {
+    let base = special_clock(key).ok_or_else(|| format!("Missing Rust special clock for {key}"))?;
+    let multiplier = star_skill_multipliers(stars).special_cooldown;
+    let haste = ((1. / multiplier) as f32 as f64 - 1.) * 100.;
+    Ok(cooldown_seconds(base, haste) as f32)
 }
