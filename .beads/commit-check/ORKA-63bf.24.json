@@ -1,38 +1,13 @@
 {
   "changed_functions": {
-    "rust/wf_app/AGENTS.md": [
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/input.rs": [
-      "t"
-    ],
-    "rust/wf_app/src/main.rs": [
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/render/vfx3d.rs": [
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/ui/chrome.rs": [
-      "marker_x",
-      "x"
-    ],
-    "rust/wf_app/src/ui/css/stage.css": [
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/ui/lamp.rs": [
-      "gap",
-      "fill",
-      "next",
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/ui/mod.rs": [
+    ".beads/commit-check/ORKA-63bf.24.json": [
       "__MODULE__"
     ]
   },
   "details": {
     "hot_files_touched": [],
-    "staged_file_count": 8,
-    "staged_line_count": 105,
+    "staged_file_count": 1,
+    "staged_line_count": 65,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -40,26 +15,12 @@
     }
   },
   "files": [
-    "rust/wf_app/AGENTS.md",
-    "rust/wf_app/src/input.rs",
-    "rust/wf_app/src/main.rs",
-    "rust/wf_app/src/render/vfx3d.rs",
-    "rust/wf_app/src/ui/chrome.rs",
-    "rust/wf_app/src/ui/css/stage.css",
-    "rust/wf_app/src/ui/lamp.rs",
-    "rust/wf_app/src/ui/mod.rs"
+    ".beads/commit-check/ORKA-63bf.24.json"
   ],
   "issue_id": "ORKA-63bf.24",
   "out_of_scope_hot_file_touch": false,
-  "significant": true,
+  "significant": false,
   "staged_blobs": {
-    "rust/wf_app/AGENTS.md": "7a934daa1b48426c39de0573835e67d860ad4de6",
-    "rust/wf_app/src/input.rs": "0bbcf23c80989bf00069cdd9c2a1e45bfc87d931",
-    "rust/wf_app/src/main.rs": "e615dfc16af616e644bb9265f98afe2902ec7bc8",
-    "rust/wf_app/src/render/vfx3d.rs": "70d7c08b03ad1d6bbf7beb8faea2ea2adc02c2ec",
-    "rust/wf_app/src/ui/chrome.rs": "45fc1d4958386bfa41630652472cfbc35e5e8d6a",
-    "rust/wf_app/src/ui/css/stage.css": "90551ea068d0d68248ace112afb1bc8794195cfb",
-    "rust/wf_app/src/ui/lamp.rs": "689ec24ea50cd1a6dd4118601d4db8be38cae1d1",
-    "rust/wf_app/src/ui/mod.rs": "3625c38fe0a1c2a5fc45f33de14cab40a7c1f5be"
+    ".beads/commit-check/ORKA-63bf.24.json": "957e6ff66abdb4386eaeae8d47d35b7c5af7c324"
   }
 }
