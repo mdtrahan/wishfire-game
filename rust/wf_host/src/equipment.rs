@@ -409,6 +409,8 @@ impl EquipmentStorage {
         let tier = expected_tier.or_else(|| self.record.as_ref().map(|r| r.lamp.capacity_tier)).unwrap_or(0);
         self.transact(host, move |next, _| upgrade_lamp(next, tier))
     }
+    /// A full Bag bar while levels are frozen (`complete_bag_fill`): returns the cost paid.
+    pub fn complete_fill(&mut self, host: &mut dyn LampHost, expected_fills: f64) -> Result<f64, String> { self.transact(host, move |next, _| complete_bag_fill(next, expected_fills)) }
     pub fn queue_disposal(&mut self, host: &mut dyn LampHost, id: &str) -> Result<(), String> {
         let roster = lamp_hero_roster(host.progress(), false)?;
         let id = id.to_string();

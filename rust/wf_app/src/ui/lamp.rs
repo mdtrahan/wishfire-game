@@ -58,8 +58,10 @@ enum BarPhase { #[default] Hidden, SlideOut, Beat, Fill, Celebrate, Hold, SlideI
 /// The **Cascade Fill** ceremony (owner's name for this kind of progress presentation, 2026-11-05):
 /// slide out, beat, fill, and for every full bar a burst, a beat and a refill with the overflow,
 /// then a hold and the slide back; input is locked while it plays. It shows the saved progress,
-/// never its own: every level is applied through `EquipmentStorage::upgrade` when the fill
-/// reaches the end of the bar, and the next bar starts from whatever the save holds after that.
+/// never its own: every full bar is settled through `EquipmentStorage::complete_fill` when the
+/// fill reaches the end, and the next bar starts from whatever the save holds after that. Bag
+/// levels are frozen until hero EXP exists (owner 2026-11-05), so a full bar banks a fill and
+/// leaves capacity and rarity odds alone.
 #[derive(Default)]
 struct BagBar { phase: BarPhase, t: f32, fraction: f32, synced: bool, wanted: bool,
     /// Bar fractions per second of the fill in progress.
@@ -75,8 +77,8 @@ impl BagBar {
     /// `visible`: the bag icon is on screen and nothing covers it.
     fn update(&mut self, economy: &mut wf_host::equipment::EquipmentStorage, session: &mut wf_host::session::Session, dt: f32, visible: bool) -> Option<String> {
         let data = economy.data()?;
-        let progress = data.upgrade_progress();
-        let tier = data.lamp.capacity_tier;
+        let progress = data.fill_progress();
+        let fills = data.bag_fills();
         let ready = !progress.max && progress.required.is_some_and(|r| progress.current >= r);
         let target = if ready { 1. } else { progress.fraction as f32 };
         if !self.synced { self.synced = true; self.fraction = progress.fraction as f32; }
@@ -98,7 +100,7 @@ impl BagBar {
             BarPhase::Celebrate => {
                 self.t += dt;
                 if self.t >= CELEBRATE_SECONDS {
-                    match economy.upgrade(session, Some(tier)) {
+                    match economy.complete_fill(session, fills) {
                         // The emptied bar rests a beat, then fills with the overflow.
                         Ok(_) => { self.fraction = 0.; self.phase = BarPhase::Beat; self.t = 0.; }
                         Err(error) => { self.phase = BarPhase::Hold; self.t = 0.; return Some(error); }
@@ -429,21 +431,21 @@ fn bag_upgrade_complete(receipt: &UpgradeReceipt) -> Node<Act> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    /// Runs the bar at 60 fps until it is hidden again; returns the levels it celebrated.
+    /// Runs the bar at 60 fps until it is hidden again; returns the fill counts it celebrated.
     fn play(bar: &mut BagBar, economy: &mut wf_host::equipment::EquipmentStorage, run: &mut crate::testing::HostRun) -> (Vec<u32>, Vec<BarPhase>) {
         let (mut levels, mut phases) = (Vec::new(), vec![bar.phase]);
         for _ in 0..3000 {
-            let tier = economy.data().unwrap().lamp.capacity_tier;
+            let fills = economy.data().unwrap().bag_fills();
             assert!(bar.update(economy, &mut run.session, 1. / 60., true).is_none());
-            let now = economy.data().unwrap().lamp.capacity_tier;
-            if now != tier { assert_eq!(now, tier + 1); assert_eq!(bar.fraction, 0., "the bar resets after an upgrade"); levels.push(now + 1); }
+            let now = economy.data().unwrap().bag_fills();
+            if now != fills { assert_eq!(now, fills + 1.); assert_eq!(bar.fraction, 0., "the bar resets after a full bar"); levels.push(now as u32); }
             if phases.last() != Some(&bar.phase) { phases.push(bar.phase); }
             if bar.phase == BarPhase::Hidden && phases.len() > 1 { break; }
         }
         (levels, phases)
     }
     #[test]
-    fn a_completed_dismantle_slides_the_bar_out_and_successive_upgrades_carry_the_overflow() {
+    fn a_completed_dismantle_slides_the_bar_out_and_successive_full_bars_carry_the_overflow() {
         use BarPhase::*;
         let mut run = crate::testing::HostRun::new(1);
         let mut economy = super::super::orbs::tests::economy(&mut run);
@@ -451,7 +453,7 @@ mod tests {
         assert!(bar.update(&mut economy, &mut run.session, 1. / 60., true).is_none());
         assert_eq!((bar.phase, bar.reveal()), (Hidden, 0.));
         // Essence alone (a quest reward, combat-time points) never brings the bar out.
-        economy.award_combat_essence(&mut run.session, "test:small", 40.).unwrap();
+        economy.award_combat_essence(&mut run.session, "test:small", 20.).unwrap();
         for _ in 0..300 { bar.update(&mut economy, &mut run.session, 1. / 60., true); }
         assert_eq!((bar.phase, bar.fraction), (Hidden, 0.));
         // A dismantle completed: out, fill from the last shown value to the saved one, hold, in.
@@ -460,15 +462,16 @@ mod tests {
         assert!(levels.is_empty());
         assert_eq!(phases, [Hidden, SlideOut, Beat, Fill, Hold, SlideIn, Hidden]);
         assert_eq!(bar.fraction, 0.4);
-        // 1000 more Essence crosses three thresholds (100, 300, 525) without closing the bar.
-        economy.award_combat_essence(&mut run.session, "test:large", 1000.).unwrap();
+        // 255 more Essence completes three bars (50, 75, 100) without closing the bar.
+        economy.award_combat_essence(&mut run.session, "test:large", 255.).unwrap();
         bar.request();
         let (levels, phases) = play(&mut bar, &mut economy, &mut run);
-        assert_eq!(levels, [2, 3, 4]);
+        assert_eq!(levels, [1, 2, 3]);
         assert_eq!(phases, [Hidden, SlideOut, Beat, Fill, Celebrate, Beat, Fill, Celebrate, Beat, Fill, Celebrate, Beat, Fill, Hold, SlideIn, Hidden]);
         let data = economy.data().unwrap();
-        assert_eq!((data.lamp.capacity_tier, data.lamp.essence, data.capacity()), (3, 115., 72.));
-        assert!((bar.fraction - 115. / 775.).abs() < 1e-6);
+        // Bag levels are frozen: the fills are banked, the level and capacity stay.
+        assert_eq!((data.bag_fills(), data.lamp.capacity_tier, data.lamp.essence, data.capacity()), (3., 0, 50., 20.));
+        assert!((bar.fraction - 50. / 125.).abs() < 1e-6);
     }
     #[test]
     fn the_hold_lasts_two_and_a_half_seconds_from_the_last_fill() {
@@ -476,7 +479,7 @@ mod tests {
         let mut economy = super::super::orbs::tests::economy(&mut run);
         let mut bar = BagBar::default();
         bar.update(&mut economy, &mut run.session, 1. / 60., true);
-        economy.award_combat_essence(&mut run.session, "test:two", 430.).unwrap();
+        economy.award_combat_essence(&mut run.session, "test:two", 140.).unwrap();
         bar.request();
         // Time each phase at 1 ms steps.
         let (mut clock, mut entered) = (0.0f32, Vec::new());
@@ -488,13 +491,13 @@ mod tests {
             if bar.phase == BarPhase::Hidden && !entered.is_empty() { break; }
         }
         let at = |phase: BarPhase| entered.iter().rev().find(|(p, _)| *p == phase).map(|(_, t)| *t).unwrap();
-        // Two upgrades (100, 300) then the 30/525 overflow; the hold starts when that last fill ends.
+        // Two full bars (50, 75) then the 15/100 overflow; the hold starts when that last fill ends.
         assert_eq!(entered.iter().filter(|(p, _)| *p == BarPhase::Celebrate).count(), 2);
         assert_eq!(entered.iter().filter(|(p, _)| *p == BarPhase::Hold).count(), 1, "one hold, after everything");
         let hold = at(BarPhase::SlideIn) - at(BarPhase::Hold);
         assert!((hold - 2.5).abs() < 0.005, "hold lasted {hold} s");
-        assert!(at(BarPhase::Hold) > entered.iter().rev().find(|(p, _)| *p == BarPhase::Celebrate).unwrap().1, "the hold starts after the final upgrade and fill");
-        assert_eq!(economy.data().unwrap().lamp.capacity_tier, 2);
+        assert!(at(BarPhase::Hold) > entered.iter().rev().find(|(p, _)| *p == BarPhase::Celebrate).unwrap().1, "the hold starts after the final full bar and fill");
+        assert_eq!((economy.data().unwrap().bag_fills(), economy.data().unwrap().lamp.capacity_tier), (2., 0));
     }
     #[test]
     fn every_fill_waits_half_a_second_and_is_slow_enough_to_follow() {
@@ -503,8 +506,8 @@ mod tests {
         let mut bar = BagBar::default();
         bar.update(&mut economy, &mut run.session, 1. / 60., true);
         assert!(!bar.active());
-        // 110 Essence: a whole first bar (100), then 10 of 300 on the second.
-        economy.award_combat_essence(&mut run.session, "test:pace", 110.).unwrap();
+        // 55 Essence: a whole first bar (50), then 5 of 75 on the second.
+        economy.award_combat_essence(&mut run.session, "test:pace", 55.).unwrap();
         bar.request();
         let (mut clock, mut entered, mut last) = (0.0f32, Vec::new(), bar.phase);
         for _ in 0..20000 {
@@ -519,7 +522,7 @@ mod tests {
         let span = |i: usize| entered[i + 1].1 - entered[i].1;
         assert!((span(1) - 0.5).abs() < 0.005, "the first beat lasted {} s", span(1));
         assert!((span(2) - 1.2).abs() < 0.005, "a whole bar filled in {} s", span(2));
-        assert!((span(4) - 0.5).abs() < 0.005, "the beat after the upgrade lasted {} s", span(4));
+        assert!((span(4) - 0.5).abs() < 0.005, "the beat after the full bar lasted {} s", span(4));
         assert!((span(5) - 0.6).abs() < 0.005, "a small gain still took {} s", span(5));
         assert!(!bar.active(), "the ceremony is over once the bar is back in the bag");
     }
@@ -529,12 +532,12 @@ mod tests {
         let mut economy = super::super::orbs::tests::economy(&mut run);
         let mut bar = BagBar::default();
         bar.update(&mut economy, &mut run.session, 1. / 60., true);
-        economy.award_combat_essence(&mut run.session, "test:hidden", 100.).unwrap();
+        economy.award_combat_essence(&mut run.session, "test:hidden", 50.).unwrap();
         bar.request();
         for _ in 0..600 { bar.update(&mut economy, &mut run.session, 1. / 60., false); }
-        assert_eq!((bar.phase, economy.data().unwrap().lamp.capacity_tier), (BarPhase::Hidden, 0), "no upgrade is applied unseen");
+        assert_eq!((bar.phase, economy.data().unwrap().bag_fills()), (BarPhase::Hidden, 0.), "no full bar is settled unseen");
         let (levels, _) = play(&mut bar, &mut economy, &mut run);
-        assert_eq!(levels, [2]);
+        assert_eq!(levels, [1]);
         for _ in 0..120 { bar.update(&mut economy, &mut run.session, 1. / 60., true); }
         assert_eq!(bar.phase, BarPhase::Hidden);
     }

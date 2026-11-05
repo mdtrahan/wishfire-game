@@ -249,7 +249,7 @@ async fn main() {
                 live_enemies: game.session.world().map_or(0, |w| w.live_enemies() as u32), enemy_names: names.join(", "),
                 party: game::party_members().into_iter().map(|(key, _, on)| (wf_meta::hero::hero_definition(key).map_or(key, |d| d.name).to_string(), on)).collect(),
                 level: game.party_level(), gold: game.session.gold_total, essence: data.map_or(0., |d| d.lamp.essence), incense: game.progression.incense(),
-                bag_stored: data.map_or(0., |d| d.stored_count()), bag_capacity: data.map_or(0., |d| d.capacity()), bag_level: data.map_or(1, |d| d.lamp.capacity_tier + 1),
+                bag_stored: data.map_or(0., |d| d.stored_count()), bag_capacity: data.map_or(0., |d| d.capacity()), bag_level: data.map_or(1, |d| d.lamp.capacity_tier + 1), bag_fills: data.map_or(0, |d| d.bag_fills() as u32),
                 orbs: ui.lamp.orbs.count(), drop_percent: (ui.lamp.orbs.drop_chance() * 100.).round() as u32, snapshot: game::has_reset_snapshot(),
             };
         }

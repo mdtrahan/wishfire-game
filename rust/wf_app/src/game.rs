@@ -75,6 +75,8 @@ impl Game {
         Game { session, session_id, save_error, economy, progression, gear_events }
     }
     pub fn restart(&mut self, seed: Option<u32>) {
+        // A run starts from zero: the previous run's Bag contents and field orbs go with it.
+        let _ = self.economy.transact(&mut self.session, |next, _| { wf_meta::lamp::clear_run_loot(next); Ok(()) });
         self.session.dispose();
         let rows = self.session.raw_rows.clone();
         let _ = platform::storage_remove(HERO_PROGRESS_SAVE_KEY);

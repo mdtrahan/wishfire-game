@@ -43,6 +43,11 @@ pub fn tier_upgrade_cost(n: u32, capacity: f64) -> Option<f64> {
     let unit = 25.;
     Some((round(trend * wave / unit) * unit).max((5. * capacity / unit).ceil() * unit))
 }
+/// Bag levels are frozen until hero EXP exists to gate them (owner 2026-11-05): the Bag bar
+/// still fills and empties, but a full bar adds one banked fill instead of a level, so capacity
+/// and rarity odds stay where they are. Cost of the bar after `fills` completed ones: 50, 75,
+/// 100 ... rising by 25 to a ceiling of 500. Owner-adjustable tuning.
+pub fn bag_fill_cost(fills: f64) -> f64 { (50. + 25. * fills.max(0.)).min(500.) }
 #[derive(Clone, Debug, PartialEq)]
 pub struct CapacityTier { pub capacity: f64, pub cost: Option<f64>, pub rarity_weights: [(&'static str, f64); 5] }
 /// `LAMP_CAPACITY_TIERS[n]`.
@@ -170,6 +175,8 @@ pub struct LampState {
     #[serde(default, skip_serializing_if = "Option::is_none")] pub disposal_requested: Option<Value>,
     /// Equipment drops lying on the battlefield, oldest first: rolled, not yet in the Bag.
     #[serde(default, skip_serializing_if = "Option::is_none")] pub orbs: Option<Value>,
+    /// Completed Cascade Fill bars while Bag levels are frozen (`bag_fill_cost`).
+    #[serde(default, skip_serializing_if = "Option::is_none")] pub bag_fills: Option<f64>,
     #[serde(flatten)] pub extra: Map<String, Value>,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -202,7 +209,7 @@ impl LampEconomy {
     /// `createLampEconomy(seed, gold)`.
     pub fn create(seed: u32, gold: f64) -> Self {
         LampEconomy { version: 5, party_exp: 0., gold: gold.floor().max(0.), items: Vec::new(), loadouts: BTreeMap::new(), settled_gold_rewards: Vec::new(),
-            lamp: LampState { capacity_tier: 0, essence: 0., kill_points: Some(0.), seed, sequence: 0., pending: Vec::new(), discarded: Some(Vec::new()), recent: Some(Vec::new()), salvage: Salvage::default(), auto_enabled: false, highest_ordinal: 0., last_activation_at: 0., guide: None, conveyor_active_ms: None, emissions: None, review_hold: None, disposal_requested: None, orbs: None, extra: Map::new() },
+            lamp: LampState { capacity_tier: 0, essence: 0., kill_points: Some(0.), seed, sequence: 0., pending: Vec::new(), discarded: Some(Vec::new()), recent: Some(Vec::new()), salvage: Salvage::default(), auto_enabled: false, highest_ordinal: 0., last_activation_at: 0., guide: None, conveyor_active_ms: None, emissions: None, review_hold: None, disposal_requested: None, orbs: None, bag_fills: None, extra: Map::new() },
             migration: Map::new(), settled_bag_kill_rewards: None, pending_gear_collections: None, settled_combat_essence_rewards: None, extra: Map::new() }
     }
     pub fn to_value(&self) -> Value { serde_json::to_value(self).expect("lamp economy serializes") }
@@ -227,6 +234,13 @@ impl LampEconomy {
     /// `lampStoredCount`.
     pub fn stored_count(&self) -> f64 { self.lamp.pending.len() as f64 + self.discarded().len() as f64 + self.lamp.salvage.count }
     pub fn cooldown_remaining(&self, now: f64) -> f64 { if self.lamp.sequence != 0. { (self.lamp.last_activation_at + MIN_EMISSION_INTERVAL_MS - now).max(0.) } else { 0. } }
+    pub fn bag_fills(&self) -> f64 { self.lamp.bag_fills.filter(|f| is_safe_integer(*f) && *f >= 0.).unwrap_or(0.) }
+    /// The Bag bar while levels are frozen: progress points plus Essence toward `bag_fill_cost`.
+    pub fn fill_progress(&self) -> UpgradeProgress {
+        let required = bag_fill_cost(self.bag_fills());
+        let current = self.kill_points() + self.lamp.essence;
+        UpgradeProgress { current, required: Some(required), max: false, fraction: (current / required).min(1.) }
+    }
     /// `lampUpgradeProgress`.
     pub fn upgrade_progress(&self) -> UpgradeProgress {
         let required = self.upgrade_cost();
@@ -256,6 +270,7 @@ pub fn validate_lamp_economy(data: &Value, version: u32) -> Result<LampEconomy, 
     let tier = vnum(lg("capacityTier"));
     if let Some(s) = lg("upgradeStage") { if !vint(Some(s)) || vnum(Some(s)) < 0. || vnum(Some(s)) > 4. || (tier == LAMP_LEVELS as f64 - 1. && vnum(Some(s)) != 0.) { return Err(bad()); } }
     if let Some(e) = lg("upgradeEndsAt") { if !vsafe(Some(e)) || vnum(Some(e)) < 0. || (vnum(Some(e)) > 0. && (vnum(lg("upgradeStage")) != 4. || tier >= LAMP_LEVELS as f64 - 1.)) { return Err(bad()); } }
+    if let Some(f) = lg("bagFills") { if !vsafe(Some(f)) || vnum(Some(f)) < 0. { return Err(bad()); } }
     if let Some(t) = lg("speedUpTickets") { if !vsafe(Some(t)) || vnum(Some(t)) < 0. { return Err(bad()); } }
     if version == 5 && (l.is_none() || !vint(lg("capacityTier")) || tier < 0. || tier >= LAMP_LEVELS as f64 || !vsafe(lg("essence")) || vnum(lg("essence")) < 0.) { return Err(bad()); }
     let Some(lo) = l else { return Err(bad()) };
@@ -527,6 +542,36 @@ pub fn upgrade_lamp(data: &mut LampEconomy, expected_tier: u32) -> Result<Upgrad
     data.lamp.essence -= cost - spent;
     data.lamp.capacity_tier += 1;
     Ok(UpgradeReceipt { level_before: before + 1, level_after: data.lamp.capacity_tier + 1, capacity_before: capacity_tier(before).capacity, capacity_after: data.capacity(), cost })
+}
+/// A full Bag bar while levels are frozen: spends its cost like `upgrade_lamp` (progress points
+/// first, then Essence) and banks one fill. The Bag level, capacity and rarity odds are unchanged.
+/// Returns the cost paid.
+pub fn complete_bag_fill(data: &mut LampEconomy, expected_fills: f64) -> Result<f64, String> {
+    let fills = data.bag_fills();
+    if fills != expected_fills { return Err("Bag progress changed. Review the updated bar.".into()); }
+    let cost = bag_fill_cost(fills);
+    let points = data.kill_points();
+    let current = points + data.lamp.essence;
+    if current < cost { return Err(format!("Need {} more Bag progress.", equipment::format_compact_count(cost - current))); }
+    let spent = points.min(cost);
+    data.lamp.kill_points = Some(points - spent);
+    data.lamp.essence -= cost - spent;
+    data.lamp.bag_fills = Some(fills + 1.);
+    Ok(cost)
+}
+/// A restarted run begins with an empty Bag and a clear field: stored and discarded items, the
+/// salvage pile, a held review item and every orb go. Equipped gear, currencies and Bag progress
+/// are not run state and stay.
+pub fn clear_run_loot(data: &mut LampEconomy) {
+    let stored: Vec<String> = data.lamp.pending.iter().chain(data.discarded()).cloned().collect();
+    data.items.retain(|i| !stored.contains(&i.instance_id));
+    data.lamp.pending.clear();
+    if data.lamp.discarded.is_some() { data.lamp.discarded = Some(Vec::new()); }
+    data.lamp.salvage = Salvage::default();
+    if data.review_hold().is_some() { data.set_review_hold(None); }
+    if data.lamp.disposal_requested.is_some() { data.set_disposal_requested(Vec::new()); }
+    if data.lamp.emissions.is_some() { data.set_emissions(Vec::new()); }
+    if data.lamp.orbs.is_some() { data.set_orbs(Vec::new()); }
 }
 /// `markLampGuide(data, step)`.
 pub fn mark_lamp_guide(data: &mut LampEconomy, step: &str) -> Result<u32, String> {

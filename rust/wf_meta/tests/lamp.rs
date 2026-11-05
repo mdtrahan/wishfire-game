@@ -274,3 +274,41 @@ fn a_full_field_trades_its_oldest_lowest_rarity_orb_for_each_new_drop() {
     let kept: Vec<String> = loaded.orbs().into_iter().map(|o| o.instance_id).collect();
     assert!(every.iter().filter(|o| !kept.contains(&o.instance_id)).all(|o| rarity_index(&o.rarity).unwrap() <= worst_kept), "nothing better than a kept orb was dropped");
 }
+#[test]
+fn a_full_bag_bar_banks_a_fill_and_leaves_the_bag_level_alone() {
+    use wf_meta::lamp::{bag_fill_cost, complete_bag_fill, validate_conveyor_state, LampEconomy};
+    assert_eq!((0..5).map(|n| bag_fill_cost(n as f64)).collect::<Vec<_>>(), [50., 75., 100., 125., 150.]);
+    assert_eq!((bag_fill_cost(18.), bag_fill_cost(19.), bag_fill_cost(5000.)), (500., 500., 500.), "the cost stops rising at 500");
+    let mut data = LampEconomy::create(20261105, 0.);
+    assert_eq!((data.bag_fills(), data.fill_progress().required, data.fill_progress().fraction), (0., Some(50.), 0.));
+    data.lamp.kill_points = Some(30.);
+    data.lamp.essence = 60.;
+    assert!(complete_bag_fill(&mut data, 1.).is_err(), "a stale request is refused");
+    // Progress points are spent first, then Essence for the rest.
+    assert_eq!(complete_bag_fill(&mut data, 0.), Ok(50.));
+    assert_eq!((data.bag_fills(), data.kill_points(), data.lamp.essence), (1., 0., 40.));
+    assert_eq!((data.lamp.capacity_tier, data.capacity()), (0, 20.), "no level, no capacity");
+    assert!(complete_bag_fill(&mut data, 1.).is_err(), "40 of 75 is not a full bar");
+    assert_eq!((data.bag_fills(), data.lamp.essence), (1., 40.));
+    let loaded = validate_conveyor_state(&data.to_value()).expect("banked fills are a valid save");
+    assert_eq!(loaded.bag_fills(), 1.);
+    let mut bad = data.to_value();
+    bad["lamp"]["bagFills"] = serde_json::json!(-1);
+    assert!(validate_conveyor_state(&bad).is_err());
+}
+#[test]
+fn a_restarted_run_has_an_empty_bag_and_a_clear_field() {
+    use wf_meta::lamp::{clear_run_loot, collect_orb_items, drop_orb_item, validate_conveyor_state, LampEconomy};
+    let mut data = LampEconomy::create(20261105, 0.);
+    let ids: Vec<String> = (0..12).map(|_| drop_orb_item(&mut data, 1., 1.).instance_id).collect();
+    assert_eq!(collect_orb_items(&mut data, &ids[..8]).len(), 8);
+    data.lamp.essence = 33.;
+    data.lamp.bag_fills = Some(2.);
+    assert_eq!((data.stored_count(), data.orb_count(), data.items.len()), (8., 4, 8));
+    clear_run_loot(&mut data);
+    assert_eq!((data.stored_count(), data.orb_count(), data.items.len()), (0., 0, 0));
+    assert_eq!((data.lamp.essence, data.bag_fills()), (33., 2.), "currencies and Bag progress are not run state");
+    validate_conveyor_state(&data.to_value()).expect("the cleared save is valid");
+    // The next drop continues the item sequence, so no id is ever reused.
+    assert!(!ids.contains(&drop_orb_item(&mut data, 1., 1.).instance_id));
+}

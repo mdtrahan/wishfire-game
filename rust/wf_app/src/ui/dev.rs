@@ -38,7 +38,7 @@ pub struct DevState {
     pub party: Vec<(String, bool)>,
     pub level: u32,
     pub gold: f64, pub essence: f64, pub incense: f64,
-    pub bag_stored: f64, pub bag_capacity: f64, pub bag_level: u32,
+    pub bag_stored: f64, pub bag_capacity: f64, pub bag_level: u32, pub bag_fills: u32,
     pub orbs: usize, pub drop_percent: u32,
     pub snapshot: bool,
 }
@@ -117,7 +117,7 @@ impl DevUi {
             row("Incense", vec![value(count(s.incense)), button("+100", DevHit::Incense(100)), button("+1K", DevHit::Incense(1_000))]),
             row("Orbs", vec![value(format!("{} on field", s.orbs)), button("Drop 10", DevHit::DropOrbs(10)), button("Clear", DevHit::ClearOrbs)]),
             row("Drop rate", DROP_RATES.iter().map(|rate| toggle(&format!("{rate}%"), DevHit::DropRate(*rate), s.drop_percent == *rate)).collect()),
-            row("Bag", vec![value(format!("Lv {} · {} / {}", s.bag_level, s.bag_stored, s.bag_capacity)), button("Play Cascade Fill", DevHit::CascadeFill)]),
+            row("Bag", vec![value(format!("Lv {} · {} / {} · {} fills", s.bag_level, s.bag_stored, s.bag_capacity, s.bag_fills)), button("Play Cascade Fill", DevHit::CascadeFill)]),
         ]);
         let view = section("View", String::new(), vec![
             row("Overlays", vec![toggle("Diagnostics", DevHit::Diagnostics, self.diagnostics), toggle("Pickup circles", DevHit::Circles, self.circles)]),
@@ -139,7 +139,7 @@ mod tests {
     fn state() -> DevState {
         DevState { paused: false, speed: 2., spotlight: 2, seed: 77, fps: 60, chapter: 1, wave: 3, waves: 10, boss: "locked", live_enemies: 12, enemy_names: "Imp, Marid".into(),
             party: vec![("Fara".into(), true), ("Hondo".into(), true), ("Runa".into(), false), ("Kaja".into(), true)], level: 25, gold: 1234., essence: 40., incense: 10.,
-            bag_stored: 12., bag_capacity: 20., bag_level: 2, orbs: 7, drop_percent: 10, snapshot: false }
+            bag_stored: 12., bag_capacity: 20., bag_level: 2, bag_fills: 3, orbs: 7, drop_percent: 10, snapshot: false }
     }
     #[test]
     fn launchers_are_mains_two_pills() {
