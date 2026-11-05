@@ -23,7 +23,7 @@
 
 - Production `contain_bodies` constrains actor spawn, planning, travel, separation and displacement through `actor_floor`/`spawn_floor`, reserving the slice camera body bounds plus side gutters. Default false preserves the frozen reference hash and behaviour; include the enabled constraint in gameplay hashes. Hazard/ray geometry still uses the actual world floor.
 
-- `chest.rs` ports the slice side approach, footprint avoidance, nearest living opener, 0.6-second open and 2-second post-open beat. The host decides admission; chest code grants no rewards and imports no director. Default-empty chest state preserves frozen harness hashes.
+- `chest.rs` ports the slice side approach, footprint avoidance, nearest living opener, 0.6-second open and 2-second post-open beat. The footprint blocks heroes for as long as the chest exists, the opened chest's fade included (owner 2026-11-05, ORKA-63bf.29; the slice released it at open). The host decides admission; chest code grants no rewards and imports no director. Default-empty chest state preserves frozen harness hashes.
 
 - `permanent.rs` owns atomic hero input replacement with expected/current revisions and R1 HP growth/clamp; downed HP stays zero. Preserve clocks, targets, ward, statuses and RNG. Committed action stats, source/recipient maximum HP and potency survive revisions; later actions use the replacement. Hash revision state without changing unrevised harness hashes. R6 changes passive meter refill only, preserving earned meter and hit gains.
 
@@ -38,3 +38,4 @@
 - SimulationCore and wf_combat share `rust/Cargo.toml` and `rust/Cargo.lock` so Cargo crate identities stay relative across checkouts. The reference harness retains its separate lock/workspace. Release profile settings live at the workspace root.
 
 - Host presentation additions (ORKA-63bf): `api::StageView`/`StagePhase`/`Reward`/`PartyBuffs`, `Snapshot.stage` and `Snapshot.chests`, `ChestView.reward`, and the host-observation `Event` variants (`WaveReset`, `BossArrived`, `Escalated`, `StageCleared`, `WaveIncoming`, `ChestDropped`, `ChestOpened`, `SceneReset`) are presentation data the host fills; combat never emits or reads them and `state_hash` excludes them. `chest` types re-export through `api`.
+- Arcane Pulse blast (owner 2026-11-05, ORKA-63bf.29): at resolution every living enemy within the distance from Kaja to the blast centre is hit, never fewer than the drawn `ARCANE_PULSE_RADIUS` circle covers. The hazard's shape, centre tracking, countdown and damage scaling are unchanged, so the presentation is too; only the hit test in `update_hazards` widened.

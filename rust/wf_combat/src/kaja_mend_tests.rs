@@ -118,3 +118,50 @@ fn caps_hp_excludes_dead_spawning_and_enemies_and_spends_empty_ticks() {
     s.actions();
     assert_eq!(s.actors[3].mend_cd, MEND_INTERVAL);
 }
+
+/// Owner 2026-11-05: Arcane Pulse is a blast on its target whose radius is the distance the
+/// pulse travelled from Kaja (never less than the drawn burst), hitting living enemies only.
+#[test]
+fn arcane_pulse_hits_every_living_enemy_within_the_distance_it_travelled() {
+    let pulse = |kaja_y: f32, near: f32| {
+        let mut s = Sim::new(SimConfig::default());
+        let centre = Vec2::new(480., 600.);
+        s.spawn_actor(Archetype::Kaja, Vec2::new(480., kaja_y), HERO_STATS[3]);
+        let ids: Vec<u32> = [0., near, -270.]
+            .into_iter()
+            .map(|dx| s.spawn_actor(Archetype::Gobloc, centre + Vec2::new(dx, 0.), stats(Archetype::Gobloc)))
+            .collect();
+        let fallen = s.spawn_actor(Archetype::Gobloc, centre + Vec2::new(-40., 0.), stats(Archetype::Gobloc));
+        for a in &mut s.actors {
+            a.state(ActorState::Idle, 0., 0.);
+        }
+        let i = s.actor_index(fallen).unwrap();
+        s.actors[i].view.hp = 0.;
+        s.actors[i].state(ActorState::Dead, 0., 0.);
+        s.start_arcane_pulse(0, ids[0]);
+        s.actors[0].view.state_age = s.actors[0].view.impact_at;
+        s.action(0);
+        let h = s.hazards.iter().find(|h| h.view.kind == HazardKind::ArcanePulse).unwrap();
+        assert_eq!(h.view.shape, Shape::Circle { radius: ARCANE_PULSE_RADIUS }, "the drawn burst is unchanged");
+        assert_eq!(h.view.origin, centre, "centred on the target");
+        // The countdown runs with everyone moving as they would in a fight.
+        let mut victims = None;
+        for _ in 0..60 {
+            s.step();
+            victims = s.drain_events().into_iter().find_map(|e| match e {
+                Event::HazardResolved { kind: HazardKind::ArcanePulse, victims, .. } => Some(victims),
+                _ => None,
+            });
+            if victims.is_some() { break; }
+        }
+        (ids, fallen, victims.expect("the pulse resolved"))
+    };
+    // Cast from 200 away: the blast reaches 200, past the drawn 95.
+    let (ids, fallen, victims) = pulse(800., 140.);
+    assert!(victims.contains(&ids[0]) && victims.contains(&ids[1]), "target and the enemy 140 away: {victims:?}");
+    assert!(!victims.contains(&ids[2]), "270 away is out of the blast");
+    assert!(!victims.contains(&fallen), "the fallen are never hit");
+    // Cast from 60 away: the blast is still the drawn burst, so 190 away is safe.
+    let (ids, _, victims) = pulse(660., 190.);
+    assert_eq!(victims, vec![ids[0]]);
+}

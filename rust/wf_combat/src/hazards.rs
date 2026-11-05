@@ -1071,16 +1071,28 @@ impl Sim {
                 } else {
                     1.
                 };
+                // Arcane Pulse blast (owner 2026-11-05): every living enemy within the distance
+                // the pulse travelled from Kaja to the blast centre is hit, and never fewer than
+                // the drawn burst covers. The centre stays where the pulse landed on its target.
+                let blast = pulse.then(|| {
+                    self.actor_index(h.view.owner)
+                        .filter(|&c| self.actors[c].alive())
+                        .map_or(0., |c| self.actors[c].view.pos.distance(h.view.origin))
+                        .max(ARCANE_PULSE_RADIUS)
+                });
                 let victims = self.events.victim_start();
                 for j in 0..self.actors.len() {
                     if h.view.hostile
                         && self.actors[j].tangible()
                         && self.actors[j].view.team != h.view.team
-                        && h.affects(
+                        && (h.affects(
                             self.actors[j].view.id,
                             self.actors[j].view.pos,
                             self.actors[j].view.radius,
-                        )
+                        ) || blast.is_some_and(|radius| {
+                            self.actors[j].view.pos.distance(h.view.origin)
+                                <= radius + self.actors[j].view.radius
+                        }))
                     {
                         #[cfg(feature = "bound-diagnostics")]
                         crate::bound::caught(self, &h, j);
