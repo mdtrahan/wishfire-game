@@ -335,13 +335,14 @@ impl EquipmentStorage {
             Ok((0..count).filter_map(|_| drop_orb_item(next, region, stage)).collect())
         })
     }
-    /// Collects the oldest orbs into the Bag, at most `limit` and never past its capacity; the
-    /// stored items report to the quest system like any gear collection.
-    pub fn collect_orbs(&mut self, host: &mut dyn LampHost, limit: usize) -> Result<Vec<LampItem>, String> {
+    /// Collects the named orbs into the Bag in drop order, never past its capacity; the stored
+    /// items report to the quest system like any gear collection.
+    pub fn collect_orbs(&mut self, host: &mut dyn LampHost, ids: &[String]) -> Result<Vec<LampItem>, String> {
         let on = self.on_gear_collected.is_some();
+        let ids = ids.to_vec();
         let result = self.transact(host, move |next, _| {
             adopt_conveyor_emissions(next);
-            let collected = collect_orb_items(next, limit);
+            let collected = collect_orb_items(next, &ids);
             if on && !collected.is_empty() {
                 let mut events = next.pending_gear_collections();
                 for item in &collected { if !events.iter().any(|e| e.id == item.instance_id) { events.push(GearCollection { id: item.instance_id.clone(), item: item.clone() }); } }

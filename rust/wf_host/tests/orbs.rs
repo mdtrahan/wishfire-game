@@ -38,6 +38,9 @@ fn bench() -> Bench {
 impl Bench {
     fn stored(&self) -> f64 { self.store.data().unwrap().stored_count() }
     fn orbs(&self) -> usize { self.store.data().unwrap().orb_count() }
+    /// Ids of the oldest `n` orbs on the field.
+    fn oldest(&self, n: usize) -> Vec<String> { self.store.data().unwrap().orbs().into_iter().take(n).map(|o| o.instance_id).collect() }
+    fn collect(&mut self, n: usize) -> Vec<wf_meta::lamp::LampItem> { let ids = self.oldest(n); self.store.collect_orbs(&mut self.host, &ids).unwrap() }
     /// Every equipment id the save knows, with where it lives; an id in two places is a duplicate.
     fn ledger(&self) -> BTreeMap<String, &'static str> {
         let data = self.store.data().unwrap();
@@ -73,15 +76,15 @@ fn collection_fills_only_free_slots_and_blocked_orbs_stay() {
     let capacity = b.store.data().unwrap().capacity();
     assert_eq!(capacity, 20.);
     // A partial event: only three orbs are eligible.
-    let some = b.store.collect_orbs(&mut b.host, 3).unwrap();
+    let some = b.collect(3);
     assert_eq!(some.iter().map(|i| i.instance_id.as_str()).collect::<Vec<_>>(), dropped[..3].iter().map(|i| i.instance_id.as_str()).collect::<Vec<_>>(), "oldest first");
     assert_eq!((b.stored(), b.orbs()), (3., 23));
     // Everything eligible: the Bag takes 17 more and stops at its capacity.
-    let more = b.store.collect_orbs(&mut b.host, 100).unwrap();
+    let more = b.collect(100);
     assert_eq!(more.len(), 17);
     assert_eq!((b.stored(), b.orbs()), (20., 6));
     // Full Bag: further collection events take nothing and discard nothing.
-    for _ in 0..3 { assert!(b.store.collect_orbs(&mut b.host, 100).unwrap().is_empty()); }
+    for _ in 0..3 { assert!(b.collect(100).is_empty()); }
     assert_eq!((b.stored(), b.orbs()), (20., 6));
     assert_eq!(b.ledger().len(), 26, "no orb was lost or duplicated");
     // More kills while full keep dropping.
@@ -92,7 +95,7 @@ fn collection_fills_only_free_slots_and_blocked_orbs_stay() {
 fn freed_capacity_resumes_collection_and_dismantling_pays_essence() {
     let mut b = bench();
     b.store.drop_orbs(&mut b.host, 1., 1., 30).unwrap();
-    b.store.collect_orbs(&mut b.host, 100).unwrap();
+    b.collect(100);
     assert_eq!((b.stored(), b.orbs()), (20., 10));
     // Equipping moves pieces out of the Bag's stored count; the leftovers dismantle for Essence.
     let equipped = b.store.auto_equip(&mut b.host).unwrap();
@@ -105,7 +108,7 @@ fn freed_capacity_resumes_collection_and_dismantling_pays_essence() {
     assert_eq!(b.store.data().unwrap().lamp.essence, essence_before + receipt.essence);
     let free = b.store.data().unwrap().free_slots();
     assert!(free > 0);
-    let resumed = b.store.collect_orbs(&mut b.host, 100).unwrap();
+    let resumed = b.collect(100);
     assert_eq!(resumed.len(), free.min(10));
     assert_eq!(b.orbs(), 10 - resumed.len());
     assert!(b.stored() <= b.store.data().unwrap().capacity());
@@ -147,4 +150,17 @@ fn conveyor_leftovers_from_an_older_save_become_orbs() {
     assert!(data.emissions().is_empty());
     assert_eq!(data.orbs().iter().map(|o| o.instance_id.clone()).collect::<Vec<_>>(), [emitted.instance_id.clone(), dropped[0].instance_id.clone()]);
     assert!(b.values.borrow().get(EQUIPMENT_SAVE_KEY).unwrap().contains("\"orbs\""));
+}
+
+#[test]
+fn only_the_named_orbs_are_collected_whatever_their_age() {
+    let mut b = bench();
+    let dropped = b.store.drop_orbs(&mut b.host, 1., 1., 6).unwrap();
+    // A hero stands near the fourth and second drops only.
+    let near = vec![dropped[3].instance_id.clone(), dropped[1].instance_id.clone(), "lamp:42:999".to_string()];
+    let stored = b.store.collect_orbs(&mut b.host, &near).unwrap();
+    assert_eq!(stored.iter().map(|i| i.instance_id.clone()).collect::<Vec<_>>(), [dropped[1].instance_id.clone(), dropped[3].instance_id.clone()], "drop order, unknown ids ignored");
+    assert_eq!((b.stored(), b.orbs()), (2., 4));
+    assert!(b.store.collect_orbs(&mut b.host, &near).unwrap().is_empty(), "an orb is stored once");
+    b.ledger();
 }

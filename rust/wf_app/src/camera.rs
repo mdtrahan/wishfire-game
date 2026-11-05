@@ -4,10 +4,11 @@ pub const WIDTH: f32 = 360.;
 pub const HEIGHT: f32 = 640.;
 pub const ZOOM: f32 = 0.5;
 pub const SQUASH: f32 = 0.75;
-/// The arena band inside the 360x640 frame (`rustCombatCamera.mjs` COMBAT_VIEW): the HUD owns
-/// the top strip and the strip/nav own the bottom.
+/// The arena band inside the 360x640 frame: the HUD owns the top strip; the hero clocks and the
+/// nav own the bottom. The JS COMBAT_VIEW ended at 430 above the Bag strip; that strip is gone
+/// (ORKA-63bf.21) and the arena takes its 92 px.
 pub const BAND_TOP: f32 = 42.;
-pub const BAND_BOTTOM: f32 = 430.;
+pub const BAND_BOTTOM: f32 = 522.;
 pub const BAND_CENTRE: f32 = (BAND_TOP + BAND_BOTTOM) * 0.5;
 #[derive(Clone)]
 pub struct WorldCamera {

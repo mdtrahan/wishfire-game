@@ -237,6 +237,7 @@ fn orb_rarity_follows_the_bag_level_weights() {
             assert!((share - weight).abs() < 1.5, "tier {tier} {key}: {share:.2}% rolled for a {weight}% weight");
             if weight == 0. { assert_eq!(share, 0., "tier {tier} never rolls {key}"); }
         }
-        assert!(collect_orb_items(&mut data, 5).len() <= 5);
+        let first: Vec<String> = data.orbs().iter().take(5).map(|o| o.instance_id.clone()).collect();
+        assert_eq!(collect_orb_items(&mut data, &first).len(), 5);
     }
 }

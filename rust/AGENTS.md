@@ -70,4 +70,4 @@
 - WASM, manifest, Special clock content and provenance are ignored build products. Server/test/release entry points rebuild missing or stale products; never stage generated products after Rust edits. Rebuild with the same Rust version and flags for byte reproduction.
 
 - SimulationCore and wf_combat share `rust/Cargo.toml` and `rust/Cargo.lock` so Cargo crate identities stay relative across checkouts. The reference harness retains its separate lock/workspace. Release profile settings live at the workspace root.
-- WFM keeps the Rust spotlight scheduler OFF. Attack framing observes existing cast events and snapshot attack lifetimes in JS; camera presentation must preserve gameplay hashes, damage and deaths.
+- WFM keeps the Rust spotlight scheduler OFF. Attack framing observes existing cast events and snapshot attack lifetimes in JS; camera presentation must preserve gameplay hashes, damage and deaths. The JSON transport still cannot enable it; the typed host can (`EncounterConfig::spotlight`, `Session::spotlight`), and `wf_app` does (ORKA-63bf.21, owner 2026-11-04). JS-parity traces and oracle fixtures run with it off.

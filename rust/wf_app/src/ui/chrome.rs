@@ -30,7 +30,10 @@ const FALLBACK_W: f32 = 360.; const FALLBACK_H: f32 = 82.;
 // renderBossBattleHud.mjs
 const BOSS_HUD_W: f32 = 248.; const BOSS_HUD_TOP: f32 = 86.;
 // heroCooldownStrip.mjs
-pub const STRIP_W: f32 = 344.; pub const STRIP_H: f32 = 41.28; pub const STRIP_TOP: f32 = 441.6; pub const STRIP_LEFT: f32 = 8.;
+// The hero clocks sit directly above the nav now that the Bag strip is gone (JS: 441.6).
+pub const STRIP_W: f32 = 344.; pub const STRIP_H: f32 = 41.28; pub const STRIP_TOP: f32 = 533.6; pub const STRIP_LEFT: f32 = 8.;
+/// Top of the quest tracker (`HERO_COOLDOWN_LAYOUT.questTop`): 71.6 px above the hero clocks.
+pub const QUEST_TOP: f32 = STRIP_TOP - 71.6;
 const BUFF_ICON: f32 = 12.; const BUFF_GAP: f32 = 2.;
 
 pub fn rgb(hex: u32) -> Color { Color::from_rgba((hex >> 16) as u8, (hex >> 8 & 255) as u8, (hex & 255) as u8, 255) }
@@ -134,10 +137,10 @@ fn resources(assets: &Assets, m: &CombatModel) {
         label(value, x + 104., 19., 12., rgb(0xf6eedc), Align::Right);
     }
 }
-/// `.cot-objective`: 270x52 box at the quest top (370) with the reward plate and the challenge text.
+/// `.cot-objective`: 270x52 box at the quest top with the reward plate and the challenge text.
 fn objective(assets: &Assets, m: &CombatModel, hits: &mut Vec<Hit>) {
     let q = &m.quest;
-    let (x, y) = (8., 370.);
+    let (x, y) = (8., QUEST_TOP);
     // ::before gradient backer from the plate's right edge.
     for i in 0..25 { let t = i as f32 / 25.; draw_rectangle(x + 20. + t * 250., y + 2., 10., 34., rgba(0x808080, (0.52 - 0.5 * t).max(0.))); }
     if q.reward.is_some() {

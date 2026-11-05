@@ -1067,3 +1067,69 @@ impl Spotlight {
         });
     }
 }
+
+#[cfg(test)]
+mod host_loop_tests {
+    use wf_combat::{SpotlightConfig, SpotlightPhase, Team};
+    /// ORKA-63bf.21: on the real host loop with the default preset, a featured special freezes
+    /// the combat clock, only the caster and its targets take part, and combat resumes as soon
+    /// as the presentation releases the Tail phase.
+    #[test]
+    fn a_spotlight_freezes_combat_around_the_special_and_resumes_on_release() {
+        let mut run = crate::testing::HostRun::new(1);
+        run.session.set_spotlight(SpotlightConfig::DEFAULT);
+        let (mut seen, mut frozen_steps, mut resumed_after) = (0u32, 0u32, 0u32);
+        let mut active: Option<(f64, f64, u32)> = None; // (combat time, presentation time, steps) at start
+        let mut tail_steps = 0;
+        let mut last_combat = run.snapshot().combat_time;
+        let mut last_end: Option<f64> = None;
+        for _ in 0..12000 {
+            run.step();
+            let s = run.snapshot().clone();
+            match (&s.spotlight, active) {
+                (Some(view), None) => {
+                    seen += 1;
+                    active = Some((s.combat_time, s.time, 0));
+                    tail_steps = 0;
+                    let caster = s.actors.iter().find(|a| a.id == view.caster).expect("the caster is on the field");
+                    assert_eq!(caster.team, Team::Hero);
+                    assert!(view.participants.iter().any(|id| s.actors.iter().any(|a| a.id == *id && a.team == Team::Enemy)), "a spotlight features a struck enemy");
+                    if let Some(end) = last_end { assert!(s.combat_time - end >= SpotlightConfig::DEFAULT.global_gap as f64 - 0.05, "spotlights keep their gap"); }
+                }
+                (Some(view), Some((combat_start, time_start, steps))) => {
+                    active = Some((combat_start, time_start, steps + 1));
+                    frozen_steps += 1;
+                    // Other combat is suspended: the combat clock barely moves while the
+                    // presentation clock runs on.
+                    assert!(s.combat_time - combat_start < 0.5, "combat advanced {} s inside a spotlight", s.combat_time - combat_start);
+                    if view.phase == SpotlightPhase::Tail {
+                        tail_steps += 1;
+                        // The client releases once its effects have settled (a quarter second here).
+                        if tail_steps == 8 { run.session.release_spotlight(); }
+                    }
+                }
+                (None, Some((combat_start, time_start, steps))) => {
+                    assert!(steps >= 10, "a spotlight lasts long enough to read ({steps} steps)");
+                    assert!(s.time - time_start > s.combat_time - combat_start + 0.3, "the presentation clock ran while combat held");
+                    assert!(tail_steps <= 9, "combat resumed right after the release, not at the tail cap");
+                    active = None;
+                    last_end = Some(s.combat_time);
+                    resumed_after = 0;
+                }
+                (None, None) => {
+                    if last_end.is_some() { resumed_after += 1; if resumed_after == 30 { assert!(s.combat_time > last_combat, "combat runs again after the spotlight"); } }
+                }
+            }
+            last_combat = s.combat_time;
+            if seen >= 2 && active.is_none() && resumed_after > 60 { break; }
+        }
+        assert!(seen >= 1, "the host loop produced a spotlight");
+        assert!(frozen_steps >= 10);
+    }
+    /// The JS-parity host (traces, oracle fixtures) never opts in: no spotlight is ever scheduled.
+    #[test]
+    fn the_scheduler_stays_off_unless_the_client_turns_it_on() {
+        let mut run = crate::testing::HostRun::new(1);
+        for _ in 0..3000 { run.step(); assert!(run.snapshot().spotlight.is_none()); }
+    }
+}

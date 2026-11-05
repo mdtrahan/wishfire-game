@@ -174,6 +174,10 @@ pub struct EncounterConfig {
     pub geometry: GeometryInput,
     pub heroes: Vec<HeroInput>,
     pub enemies: Vec<EnemyInput>,
+    /// Cinematic Skill Spotlight scheduling. Typed hosts only: the JSON transport cannot set it
+    /// (WFM's JS host keeps the scheduler off), so a decoded config is always `OFF`.
+    #[serde(skip)]
+    pub spotlight: SpotlightConfig,
 }
 #[derive(Clone, Copy, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -551,6 +555,7 @@ impl World {
             } else {
                 Cohesion::None
             },
+            spotlight: c.spotlight,
             ..SimConfig::default()
         });
         sim.floor = floor;
@@ -849,6 +854,10 @@ impl World {
     pub fn set_stage(&mut self, stage: StageView) { self.sim.snapshot.stage = stage; }
     pub fn sim(&self) -> &Sim { &self.sim }
     pub fn snapshot(&self) -> &Snapshot { self.sim.snapshot() }
+    /// The presentation finished the featured attack's effects: ends the spotlight's Tail phase.
+    pub fn release_spotlight(&mut self) { self.sim.release_spotlight(); }
+    /// Runtime spotlight preset change; disabling cancels an active spotlight.
+    pub fn set_spotlight(&mut self, config: SpotlightConfig) { self.sim.set_spotlight(config); }
     pub fn encounter_id(&self) -> &str { &self.encounter_id }
     pub fn state(&self) -> &'static str { self.state }
     pub fn step_number(&self) -> u64 { self.sim.step_number }

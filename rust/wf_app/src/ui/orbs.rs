@@ -1,33 +1,36 @@
-//! Equipment orbs on the battlefield (ORKA-63bf.20). Every defeated enemy drops one orb: an
-//! equipment item rolled and saved by `wf_host::equipment` (`lamp.orbs`), coloured by its rarity.
-//! When a subwave completes, the orbs lying there become eligible and fly to one random hero;
-//! the Bag's capacity decides how many are stored, and the rest stay where they fell until room
-//! appears. This module owns only where the orbs are and how they move: which orbs exist and
-//! which enter the Bag is decided in one saved transaction before any animation starts.
+//! Equipment orbs on the battlefield (ORKA-63bf.20/.21). A defeated enemy drops an orb one time
+//! in ten: an equipment item rolled and saved by `wf_host::equipment` (`lamp.orbs`), coloured by
+//! its rarity. An orb can be picked up once its subwave has completed, by a living hero whose
+//! feet come within the pickup circle (a diameter of three hero heights, in world units); the
+//! Bag's capacity decides whether it is stored, and an orb that does not fit stays where it fell.
+//! This module owns only where the orbs are and how they move: which orbs exist and which enter
+//! the Bag is decided in one saved transaction before any animation starts.
 use crate::camera::WorldCamera;
 use macroquad::prelude::*;
 use std::collections::HashSet;
-use wf_combat::{Event, Snapshot, Team};
+use wf_combat::{ActorView, Event, Snapshot, Team};
 use wf_host::equipment::EquipmentStorage;
 use wf_host::session::Session;
 use wf_meta::equipment::rarity;
+use wf_meta::lamp::ORB_DROP_CHANCE;
 
-/// Orb diameter in world units: about 13 px on a 509 px wide viewport (9.2 logical px at the
-/// combat zoom), the same for every rarity.
-const DIAMETER: f32 = 18.4;
+/// Orb diameter in world units: about 10 px on a 509 px wide viewport (6.9 logical px at the
+/// combat zoom), the same for every rarity. The glow scales with it.
+const DIAMETER: f32 = 13.8;
+/// The pickup circle around a hero's feet: its diameter in hero heights.
+pub const PICKUP_DIAMETER_IN_HERO_HEIGHTS: f32 = 3.;
 const FLIGHT_SECONDS: f32 = 0.55;
 const FLIGHT_STAGGER: f32 = 0.025;
 const APPEAR_SECONDS: f32 = 0.18;
 
 struct Flight { hero: u32, start: f32, from: Vec2 }
-struct Orb { id: String, color: Color, pos: Vec2, born: f32, flight: Option<Flight> }
+struct Orb { id: String, color: Color, pos: Vec2, born: f32, /// Its subwave has completed.
+    eligible: bool, flight: Option<Flight> }
 #[derive(Default)]
 pub struct OrbField {
     orbs: Vec<Orb>,
-    /// Kill positions whose orbs are not saved yet (retried until the save succeeds).
+    /// Drop positions whose orbs are not saved yet (retried until the save succeeds).
     waiting_drops: Vec<Vec2>,
-    /// How many of the oldest resting orbs belong to completed subwaves.
-    eligible: usize,
     seen_completions: Option<u32>,
     clock: f32,
     seed: u32,
@@ -37,30 +40,33 @@ pub struct OrbField {
 fn world(p: wf_combat::Vec2) -> Vec2 { vec2(p.x, p.y) }
 impl OrbField {
     fn random(&mut self) -> f32 {
-        // xorshift32; presentation only (scatter offsets, which hero the orbs fly to).
+        // xorshift32; presentation and drop chance only, never the item roll.
         if self.seed == 0 { self.seed = crate::platform::random_u32() | 1; }
         self.seed ^= self.seed << 13; self.seed ^= self.seed >> 17; self.seed ^= self.seed << 5;
         (self.seed >> 8) as f32 / (1u32 << 24) as f32
     }
+    /// One kill: does it drop an orb?
+    fn rolls_drop(&mut self) -> bool { self.random() < ORB_DROP_CHANCE }
     /// Orbs still in the air: already stored in the Bag, not yet arrived (the bag count waits for them).
     pub fn flying(&self) -> usize { self.orbs.iter().filter(|o| o.flight.is_some()).count() }
     fn resting(&self) -> usize { self.orbs.len() - self.flying() }
-    /// Enemy deaths in this frame's events become drop positions.
+    /// Enemy deaths in this frame's events: each has `ORB_DROP_CHANCE` to leave a drop position.
     pub fn ingest(&mut self, events: &[Event], now: &Snapshot, before: &Snapshot) {
         for event in events {
             let Event::Died { id } = event else { continue };
             let Some(actor) = before.actors.iter().chain(now.actors.iter()).find(|a| a.id == *id) else { continue };
-            if actor.team != Team::Enemy { continue; }
+            if actor.team != Team::Enemy || !self.rolls_drop() { continue; }
             let scatter = vec2((self.random() - 0.5) * 28., (self.random() - 0.5) * 18.);
             if self.waiting_drops.len() < wf_meta::lamp::ORB_LIMIT { self.waiting_drops.push(world(actor.pos) + scatter); }
         }
     }
-    /// Saves new drops, makes completed subwaves' orbs eligible, stores as many as the Bag has
-    /// room for and advances the flights. `can_collect` is false while a Bag window is open.
-    pub fn update(&mut self, economy: &mut EquipmentStorage, session: &mut Session, s: &Snapshot, dt: f32, can_collect: bool) {
+    /// Saves new drops, makes completed subwaves' orbs eligible, and stores the eligible orbs
+    /// inside a living hero's pickup circle while the Bag has room. `hero_height` is a hero's
+    /// body height in world units; `can_collect` is false while a Bag window is open.
+    pub fn update(&mut self, economy: &mut EquipmentStorage, session: &mut Session, s: &Snapshot, dt: f32, can_collect: bool, hero_height: &dyn Fn(&ActorView) -> f32) {
         self.clock += dt;
         let (lo, hi) = (world(s.arena_min), world(s.arena_max));
-        // Drops: one saved item per kill, in kill order.
+        // Drops: one saved item per dropping kill, in kill order.
         if !self.waiting_drops.is_empty() && economy.data().is_some() {
             let (region, stage) = (session.stage.region as f64, session.stage.stage as f64);
             match economy.drop_orbs(session, region, stage, self.waiting_drops.len()) {
@@ -68,7 +74,7 @@ impl OrbField {
                     let positions = std::mem::take(&mut self.waiting_drops);
                     for (item, pos) in items.into_iter().zip(positions) {
                         let color = rarity_color(&item.rarity);
-                        self.orbs.push(Orb { id: item.instance_id, color, pos: pos.clamp(lo, hi), born: self.clock, flight: None });
+                        self.orbs.push(Orb { id: item.instance_id, color, pos: pos.clamp(lo, hi), born: self.clock, eligible: false, flight: None });
                     }
                     self.notice = None;
                 }
@@ -86,38 +92,40 @@ impl OrbField {
                 self.orbs.retain(|o| o.flight.is_some() || ids.contains(o.id.as_str()));
                 let heroes: Vec<Vec2> = s.actors.iter().filter(|a| a.team == Team::Hero).map(|a| world(a.pos)).collect();
                 let centre = if heroes.is_empty() { (lo + hi) / 2. } else { heroes.iter().copied().sum::<Vec2>() / heroes.len() as f32 };
-                let adopted = missing.len();
                 let mut restored: Vec<Orb> = Vec::new();
                 for (id, color) in missing {
                     let offset = vec2((self.random() - 0.5) * 360., (self.random() - 0.5) * 260.);
-                    restored.push(Orb { id, color, pos: (centre + offset).clamp(lo, hi), born: self.clock, flight: None });
+                    // Saved drops predate this session: their subwaves are long complete.
+                    restored.push(Orb { id, color, pos: (centre + offset).clamp(lo, hi), born: self.clock, eligible: true, flight: None });
                 }
                 // Saved order is drop order: older than anything dropped this session.
                 restored.append(&mut self.orbs);
                 self.orbs = restored;
-                self.eligible += adopted;
             }
         }
         // Subwave completion: everything lying on the field now is eligible.
         let completions = session.subwave_completions;
-        if self.seen_completions.is_some_and(|seen| seen != completions) { self.eligible = self.resting(); }
+        if self.seen_completions.is_some_and(|seen| seen != completions) { for orb in &mut self.orbs { orb.eligible = true; } }
         self.seen_completions = Some(completions);
-        self.eligible = self.eligible.min(self.resting());
-        // Collection: the Bag's free slots are authoritative; the stored set is committed first,
-        // then exactly those orbs fly to one hero.
-        if can_collect && self.eligible > 0 && economy.data().is_some_and(|d| d.free_slots() > 0) {
-            let living: Vec<u32> = s.actors.iter().filter(|a| a.team == Team::Hero && a.hp > 0.).map(|a| a.id).collect();
-            if !living.is_empty() {
-                match economy.collect_orbs(session, self.eligible) {
+        // Pickup: an eligible orb inside a living hero's circle goes to the nearest such hero.
+        // The Bag's free slots are authoritative: the stored set is committed first, then exactly
+        // those orbs fly.
+        if can_collect && economy.data().is_some_and(|d| d.free_slots() > 0) {
+            let heroes: Vec<(u32, Vec2, f32)> = s.actors.iter().filter(|a| a.team == Team::Hero && a.hp > 0.).map(|a| (a.id, world(a.pos), hero_height(a) * PICKUP_DIAMETER_IN_HERO_HEIGHTS / 2.)).collect();
+            let reach: Vec<(String, u32)> = self.orbs.iter().filter(|o| o.eligible && o.flight.is_none()).filter_map(|o| {
+                heroes.iter().filter(|(_, feet, radius)| o.pos.distance(*feet) <= *radius).min_by(|a, b| o.pos.distance(a.1).total_cmp(&o.pos.distance(b.1))).map(|(hero, _, _)| (o.id.clone(), *hero))
+            }).collect();
+            if !reach.is_empty() {
+                let ids: Vec<String> = reach.iter().map(|(id, _)| id.clone()).collect();
+                match economy.collect_orbs(session, &ids) {
                     Ok(items) => {
-                        let hero = living[((self.random() * living.len() as f32) as usize).min(living.len() - 1)];
                         let stored: HashSet<&str> = items.iter().map(|i| i.instance_id.as_str()).collect();
                         let mut order = 0;
                         for orb in self.orbs.iter_mut().filter(|o| o.flight.is_none() && stored.contains(o.id.as_str())) {
+                            let hero = reach.iter().find(|(id, _)| *id == orb.id).map_or(0, |(_, hero)| *hero);
                             orb.flight = Some(Flight { hero, start: self.clock + order as f32 * FLIGHT_STAGGER, from: orb.pos });
                             order += 1;
                         }
-                        self.eligible = self.eligible.saturating_sub(items.len());
                         self.notice = None;
                     }
                     Err(error) => self.notice = Some(error),
@@ -131,7 +139,7 @@ impl OrbField {
             let t = ((clock - flight.start) / FLIGHT_SECONDS).clamp(0., 1.);
             let target = s.actors.iter().find(|a| a.id == flight.hero).map_or(flight.from, |a| world(a.pos) + vec2(0., -44.));
             let eased = t * t;
-            orb.pos = flight.from.lerp(target, eased) + vec2(0., -36. * (std::f32::consts::PI * t).sin());
+            orb.pos = flight.from.lerp(target, eased) + vec2(0., -24. * (std::f32::consts::PI * t).sin());
         }
         self.orbs.retain(|o| o.flight.as_ref().is_none_or(|f| clock - f.start < FLIGHT_SECONDS));
     }
@@ -174,10 +182,6 @@ impl OrbField {
         }
     }
 }
-#[cfg(test)]
-impl OrbField {
-    fn flight_heroes(&self) -> Vec<u32> { self.orbs.iter().filter_map(|o| o.flight.as_ref().map(|f| f.hero)).collect() }
-}
 fn rarity_color(key: &str) -> Color {
     let hex = rarity(key).map_or(0xf3f3ee, |r| r.color);
     Color::from_rgba((hex >> 16) as u8, (hex >> 8 & 255) as u8, (hex & 255) as u8, 255)
@@ -202,80 +206,152 @@ pub(crate) mod tests {
         economy.sync(&mut run.session).unwrap();
         economy
     }
+    /// A hero's body height in world units for the tests (the packed idle art is 107 px at 0.7).
+    pub(crate) const HERO_HEIGHT: f32 = 75.;
+    fn height(_: &ActorView) -> f32 { HERO_HEIGHT }
+    const RADIUS: f32 = HERO_HEIGHT * PICKUP_DIAMETER_IN_HERO_HEIGHTS / 2.;
+    fn hero(s: &Snapshot) -> &ActorView { s.actors.iter().find(|a| a.team == Team::Hero && a.hp > 0.).unwrap() }
+    fn stored(economy: &EquipmentStorage) -> f64 { economy.data().unwrap().stored_count() }
+    /// Lays `count` saved drops at `offset` from the first living hero (the drop roll is bypassed).
+    fn lay(field: &mut OrbField, economy: &mut EquipmentStorage, run: &mut crate::testing::HostRun, s: &Snapshot, count: usize, offset: Vec2) {
+        let feet = world(hero(s).pos);
+        for _ in 0..count { field.waiting_drops.push(feet + offset); }
+        field.update(economy, &mut run.session, s, 0.016, false, &height);
+    }
+    /// A snapshot where only the first living hero remains, so distances are to one hero.
+    fn solo(s: &Snapshot) -> Snapshot { let keep = hero(s).id; let mut s = s.clone(); s.actors.retain(|a| a.team != Team::Hero || a.id == keep); s }
+
     /// The real host loop: Chapter 1 from a fresh save, the orb field fed like the frame loop does.
     #[test]
-    fn kills_drop_orbs_and_completed_subwaves_fill_the_bag_to_capacity_only() {
+    fn on_the_host_loop_orbs_drop_rarely_and_are_stored_only_in_reach_after_their_subwave() {
         let mut run = crate::testing::HostRun::new(1);
         let mut economy = economy(&mut run);
-        let mut field = OrbField::default();
+        let mut field = OrbField { seed: 20261104, ..Default::default() };
         let mut before = run.snapshot().clone();
-        let (mut kills, mut events_seen, mut blocked_frames, mut resumed, mut used) = (0usize, 0u32, 0, false, 0usize);
+        let (mut kills, mut picked) = (0usize, 0usize);
         for frame in 0..9000 {
             run.step();
             let events = run.drain_events();
             let s = run.snapshot().clone();
             kills += events.iter().filter(|e| matches!(e, Event::Died { id } if before.actors.iter().chain(s.actors.iter()).any(|a| a.id == *id && a.team == Team::Enemy))).count();
             field.ingest(&events, &s, &before);
-            let completions_before = field.seen_completions;
-            let stored_before = economy.data().unwrap().stored_count();
-            field.update(&mut economy, &mut run.session, &s, 1. / 30., true);
+            let resting: Vec<(String, Vec2, bool)> = field.orbs.iter().filter(|o| o.flight.is_none()).map(|o| (o.id.clone(), o.pos, o.eligible)).collect();
+            let _ = resting.iter().map(|r| r.1).count();
+            let completed = field.seen_completions.is_some_and(|seen| seen != run.session.subwave_completions);
+            field.update(&mut economy, &mut run.session, &s, 1. / 30., true, &height);
             let data = economy.data().unwrap();
-            // Every kill is exactly one item: stored in the Bag or still an orb, never both or lost.
-            assert_eq!(data.lamp.sequence as usize, kills, "frame {frame}: one drop per kill");
-            assert_eq!(data.items.len() + data.orb_count() + used, kills, "frame {frame}: no orb lost or duplicated");
-            assert!(data.stored_count() <= data.capacity(), "frame {frame}: the Bag never exceeds its capacity");
-            // Nothing is stored by a kill alone: the stored count moves only with a completed subwave
-            // (or, once blocked orbs are eligible, when room appears).
-            if data.stored_count() > stored_before {
-                let new_event = completions_before.is_some_and(|seen| seen != run.session.subwave_completions);
-                assert!(new_event || resumed, "frame {frame}: collection without a completed subwave");
-                if new_event { events_seen += 1; }
-                let heroes = field.flight_heroes();
-                assert!(heroes.windows(2).all(|w| w[0] == w[1]) || field.flying() > data.stored_count() as usize - stored_before as usize, "frame {frame}: one event targets one hero");
-            }
-            if data.stored_count() == data.capacity() && data.orb_count() > 0 {
-                blocked_frames += 1;
-                // The player makes room once: equip what helps, dismantle the rest.
-                if blocked_frames == 300 {
-                    let (orbs_before, items_before) = (data.orb_count(), data.items.len());
-                    economy.auto_equip(&mut run.session).unwrap();
-                    let preview = economy.disposal_preview(&mut run.session, None).unwrap();
-                    economy.dismantle(&mut run.session, &preview).unwrap();
-                    // Replaced and dismantled pieces leave the save; they are no longer orbs or items.
-                    used += items_before - economy.data().unwrap().items.len();
-                    let free = economy.data().unwrap().free_slots();
-                    assert!(free > 0);
-                    resumed = true;
-                    field.update(&mut economy, &mut run.session, &s, 1. / 30., true);
-                    let after = economy.data().unwrap();
-                    assert_eq!(after.orb_count(), orbs_before - free.min(orbs_before).min(field.flying()), "blocked orbs resume once the Bag has room");
-                    assert!(after.orb_count() < orbs_before);
-                    assert!(after.stored_count() <= after.capacity());
-                    assert_eq!(after.items.len() + after.orb_count() + used, kills);
-                }
+            let drops = data.lamp.sequence as usize;
+            assert!(drops <= kills, "frame {frame}: an orb needs a kill");
+            assert_eq!(data.items.len() + data.orb_count(), drops, "frame {frame}: every drop is stored or still an orb");
+            assert!(data.stored_count() <= data.capacity());
+            // Each orb that started flying this frame had completed its subwave and lay inside
+            // the pickup circle of the hero it flies to.
+            for orb in field.orbs.iter().filter(|o| o.flight.as_ref().is_some_and(|f| f.start >= field.clock - 1e-4)) {
+                let flight = orb.flight.as_ref().unwrap();
+                // An orb dropped in this very update can only fly if the subwave completed with it.
+                let eligible = resting.iter().find(|(id, _, _)| *id == orb.id).is_some_and(|(_, _, eligible)| *eligible);
+                let from = &flight.from;
+                assert!(eligible || completed, "frame {frame}: picked up before its subwave completed");
+                let feet = world(s.actors.iter().find(|a| a.id == flight.hero).expect("the collecting hero").pos);
+                assert!(from.distance(feet) <= RADIUS + 0.01, "frame {frame}: picked up from {} units away", from.distance(feet));
+                assert!(s.actors.iter().filter(|a| a.team == Team::Hero && a.hp > 0.).all(|a| from.distance(world(a.pos)) >= from.distance(feet) - 0.01), "frame {frame}: the nearest hero collects");
+                picked += 1;
             }
             before = s;
         }
-        assert!(kills > 20, "the run defeats enough enemies to fill a 20-slot Bag ({kills})");
-        assert!(events_seen >= 2, "orbs are collected at subwave completions ({events_seen})");
-        assert!(blocked_frames >= 300, "the Bag filled up and orbs waited on the field ({blocked_frames} frames)");
+        let drops = economy.data().unwrap().lamp.sequence as usize;
+        assert!(kills >= 150, "the run defeats plenty of enemies ({kills})");
+        assert!(drops >= kills / 25 && drops <= kills / 5, "about a tenth of {kills} kills drop an orb ({drops})");
+        assert!(picked >= 1, "heroes walked onto some orbs ({picked} of {drops})");
     }
     #[test]
-    fn a_window_over_the_bag_holds_collection_and_saved_orbs_return_after_a_reload() {
+    fn one_kill_in_ten_drops_an_orb() {
+        // The frequency and the dry spells of the 10% roll, over a million kills.
+        let mut field = OrbField { seed: 0x9E37_79B9, ..Default::default() };
+        let (mut drops, mut dry, mut longest, mut over_30, mut over_50) = (0u32, 0u32, 0u32, 0u32, 0u32);
+        let kills = 1_000_000;
+        for _ in 0..kills {
+            if field.rolls_drop() { drops += 1; if dry >= 30 { over_30 += 1; } if dry >= 50 { over_50 += 1; } dry = 0; } else { dry += 1; longest = longest.max(dry); }
+        }
+        let rate = drops as f64 / kills as f64;
+        assert!((rate - 0.1).abs() < 0.002, "drop rate {rate}");
+        // A 10% roll goes 30 kills without a drop about 4.2% of the time, 50 kills about 0.5%.
+        let (p30, p50) = (over_30 as f64 / drops as f64, over_50 as f64 / drops as f64);
+        assert!((p30 - 0.9f64.powi(30)).abs() < 0.005 && (p50 - 0.9f64.powi(50)).abs() < 0.003, "dry spells: {p30} over 30, {p50} over 50, longest {longest}");
+    }
+    #[test]
+    fn pickup_needs_a_completed_subwave_and_a_hero_within_one_and_a_half_heights() {
+        let mut run = crate::testing::HostRun::new(1);
+        let mut economy = economy(&mut run);
+        let s = solo(run.snapshot());
+        let mut field = OrbField::default();
+        field.update(&mut economy, &mut run.session, &s, 0.016, true, &height);
+        // Two drops: one just inside the circle, one just outside (world units from the feet).
+        lay(&mut field, &mut economy, &mut run, &s, 1, vec2(RADIUS - 1., 0.));
+        lay(&mut field, &mut economy, &mut run, &s, 1, vec2(0., RADIUS + 1.));
+        // In reach but the subwave is still running: nothing is collected.
+        for _ in 0..30 { field.update(&mut economy, &mut run.session, &s, 0.016, true, &height); }
+        assert_eq!((stored(&economy), field.resting()), (0., 2));
+        // The subwave completes: only the orb inside the circle is stored.
+        run.session.subwave_completions += 1;
+        field.update(&mut economy, &mut run.session, &s, 0.016, true, &height);
+        assert_eq!((stored(&economy), field.resting(), field.flying()), (1., 1, 1));
+        for _ in 0..60 { field.update(&mut economy, &mut run.session, &s, 0.016, true, &height); }
+        assert_eq!((stored(&economy), field.resting(), field.flying()), (1., 1, 0), "the far orb waits however long");
+        // The hero walks two units closer: now the far orb is within the circle.
+        let mut near = s.clone();
+        let id = hero(&s).id;
+        near.actors.iter_mut().find(|a| a.id == id).unwrap().pos.y += 2.;
+        field.update(&mut economy, &mut run.session, &near, 0.016, true, &height);
+        assert_eq!((stored(&economy), field.resting(), field.flying()), (2., 0, 1));
+        // The circle is measured in world units: the same distances at any camera zoom.
+        assert_eq!(RADIUS, 112.5);
+        // Orbs and their glow are three quarters of the first version's 18.4 units.
+        assert!((DIAMETER - 18.4 * 0.75).abs() < 1e-4);
+    }
+    #[test]
+    fn a_full_bag_leaves_orbs_in_reach_on_the_field_until_room_appears() {
+        let mut run = crate::testing::HostRun::new(1);
+        let mut economy = economy(&mut run);
+        let s = solo(run.snapshot());
+        let mut field = OrbField::default();
+        field.update(&mut economy, &mut run.session, &s, 0.016, true, &height);
+        lay(&mut field, &mut economy, &mut run, &s, 26, vec2(10., 0.));
+        run.session.subwave_completions += 1;
+        field.update(&mut economy, &mut run.session, &s, 0.016, true, &height);
+        assert_eq!((stored(&economy), field.resting(), economy.data().unwrap().capacity()), (20., 6, 20.));
+        for _ in 0..120 { field.update(&mut economy, &mut run.session, &s, 0.016, true, &height); }
+        assert_eq!((stored(&economy), field.resting(), field.flying(), economy.data().unwrap().orb_count()), (20., 6, 0, 6), "a full Bag takes nothing and loses nothing");
+        // The player equips and dismantles in the equipment screen (collection holds meanwhile).
+        economy.auto_equip(&mut run.session).unwrap();
+        let preview = economy.disposal_preview(&mut run.session, None).unwrap();
+        field.update(&mut economy, &mut run.session, &s, 0.016, false, &height);
+        economy.dismantle(&mut run.session, &preview).unwrap();
+        field.update(&mut economy, &mut run.session, &s, 0.016, false, &height);
+        assert_eq!(field.resting(), 6, "nothing is collected while a Bag window is open");
+        let free = economy.data().unwrap().free_slots();
+        assert!(free >= 6);
+        field.update(&mut economy, &mut run.session, &s, 0.016, true, &height);
+        assert_eq!((field.resting(), field.flying(), economy.data().unwrap().orb_count()), (0, 6, 0), "blocked orbs resume once there is room");
+        assert!(stored(&economy) <= economy.data().unwrap().capacity());
+    }
+    #[test]
+    fn saved_orbs_return_after_a_reload_and_are_stored_once() {
         let mut run = crate::testing::HostRun::new(1);
         let mut economy = economy(&mut run);
         economy.drop_orbs(&mut run.session, 1., 1., 6).unwrap();
         let s = run.snapshot().clone();
-        // A fresh field (a reload): the six saved orbs are placed on the field and are eligible.
+        // A fresh field (a reload): the six saved orbs are placed on the field inside the arena.
         let mut field = OrbField::default();
-        field.update(&mut economy, &mut run.session, &s, 0.016, false);
-        assert_eq!((field.resting(), field.flying(), economy.data().unwrap().stored_count()), (6, 0, 0.));
+        field.update(&mut economy, &mut run.session, &s, 0.016, false, &height);
+        assert_eq!((field.resting(), field.flying(), stored(&economy)), (6, 0, 0.));
         let (lo, hi) = (world(s.arena_min), world(s.arena_max));
-        assert!(field.orbs.iter().all(|o| o.pos.x >= lo.x && o.pos.x <= hi.x && o.pos.y >= lo.y && o.pos.y <= hi.y));
-        // With the window closed they fly, and they are stored exactly once.
-        field.update(&mut economy, &mut run.session, &s, 0.016, true);
-        assert_eq!((field.resting(), field.flying(), economy.data().unwrap().stored_count()), (0, 6, 6.));
-        for _ in 0..90 { field.update(&mut economy, &mut run.session, &s, 0.016, true); }
-        assert_eq!((field.resting(), field.flying(), economy.data().unwrap().stored_count(), economy.data().unwrap().orb_count()), (0, 0, 6., 0));
+        assert!(field.orbs.iter().all(|o| o.eligible && o.pos.x >= lo.x && o.pos.x <= hi.x && o.pos.y >= lo.y && o.pos.y <= hi.y));
+        // A reach that covers the arena collects them all, each exactly once.
+        let wide = |_: &ActorView| 10_000.;
+        field.update(&mut economy, &mut run.session, &s, 0.016, true, &wide);
+        assert_eq!((field.resting(), field.flying(), stored(&economy)), (0, 6, 6.));
+        for _ in 0..90 { field.update(&mut economy, &mut run.session, &s, 0.016, true, &wide); }
+        assert_eq!((field.resting(), field.flying(), stored(&economy), economy.data().unwrap().orb_count()), (0, 0, 6., 0));
     }
 }

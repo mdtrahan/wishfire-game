@@ -25,6 +25,8 @@ pub const GEAR_STATS: [&str; 5] = ["ATK", "DEF", "MAG", "RES", "HP"];
 /// Most equipment drops that can lie uncollected on the battlefield (the save stays within the
 /// browser's storage quota); further kills drop nothing until some are collected.
 pub const ORB_LIMIT: usize = 4096;
+/// Chance that a defeated enemy drops an equipment orb (owner 2026-11-04: a tenth of every kill).
+pub const ORB_DROP_CHANCE: f32 = 0.1;
 pub const GUIDE_STORAGE: u32 = 1;
 pub const GUIDE_COMPARISON: u32 = 2;
 pub const GUIDE_PREVIEW: u32 = 4;
@@ -796,11 +798,21 @@ pub fn drop_orb_item(data: &mut LampEconomy, region: f64, stage: f64) -> Option<
     orb_list(data).push(serde_json::to_value(&item).unwrap());
     Some(item)
 }
-/// Moves the oldest orbs into the Bag: at most `limit`, never beyond the free slots. Each one
-/// becomes a stored item exactly once; the rest stay on the battlefield.
-pub fn collect_orb_items(data: &mut LampEconomy, limit: usize) -> Vec<LampItem> {
-    let take = limit.min(data.free_slots()).min(data.orb_count());
-    let collected: Vec<LampItem> = orb_list(data).drain(..take).filter_map(|v| serde_json::from_value(v).ok()).collect();
+/// Moves the named orbs into the Bag in drop order, never beyond the free slots. Each one
+/// becomes a stored item exactly once; orbs that do not fit, and every unnamed orb, stay on the
+/// battlefield.
+pub fn collect_orb_items(data: &mut LampEconomy, ids: &[String]) -> Vec<LampItem> {
+    let mut free = data.free_slots();
+    let mut collected = Vec::new();
+    let mut kept = Vec::new();
+    for value in std::mem::take(orb_list(data)) {
+        let wanted = free > 0 && value.get("instanceId").and_then(Value::as_str).is_some_and(|id| ids.iter().any(|w| w == id));
+        match wanted.then(|| serde_json::from_value::<LampItem>(value.clone()).ok()).flatten() {
+            Some(item) => { free -= 1; collected.push(item); }
+            None => kept.push(value),
+        }
+    }
+    *orb_list(data) = kept;
     for item in &collected {
         if data.item(&item.instance_id).is_some() { continue; }
         data.items.push(item.clone());

@@ -102,6 +102,8 @@ impl Scene {
     fn new(rows: Vec<wf_meta::enemy::RawRow>, seed: Option<u32>) -> Result<Self, String> {
         let mut game = game::Game::new(rows, seed);
         // One host frame creates the first encounter so the client has a snapshot to frame.
+        // Skill Spotlight: the sim freezes combat around a featured special; default preset.
+        game.session.spotlight = wf_combat::SpotlightConfig::DEFAULT;
         game.tick(platform::now_ms());
         if let Some(error) = &game.session.failed { return Err(error.clone()); }
         let snapshot = game.snapshot().cloned().ok_or("combat host produced no snapshot")?;
@@ -218,6 +220,7 @@ async fn main() {
         };
         let Scene { game, camera, presentation, corpses, warcry_shell, cast_hue, poison_tint, crowd_buffer, cast_glows, heal_auras,
             motion, spotlight, cinematic_camera, phoenix, revival, impact_stop, interaction_camera } = &mut scene;
+        if action.spotlight_changed { game.session.set_spotlight(controls.spotlight_config()); }
         let previous_snapshot = game.snapshot().cloned().unwrap_or_else(|| motion.previous.clone());
         let _hold = phoenix.read(&portrait, &previous_snapshot, interaction_camera); // Phoenix is autonomous in WFM encounters.
         let event_previous = motion.presentation(&previous_snapshot);
@@ -241,7 +244,7 @@ async fn main() {
         // Equipment orbs: kills drop them, completed subwaves send them to a hero and into the Bag.
         ui.lamp.orbs.ingest(&events, &live_snapshot, &event_previous);
         let can_collect = !ui.pauses();
-        ui.lamp.orbs.update(&mut game.economy, &mut game.session, &live_snapshot, if controls.paused { 0. } else { get_frame_time().min(0.0625) }, can_collect);
+        ui.lamp.orbs.update(&mut game.economy, &mut game.session, &live_snapshot, if controls.paused { 0. } else { get_frame_time().min(0.0625) }, can_collect, &|hero| render::crowd::body_size(&assets.manifest, hero).y);
         ui.update(game, &live_snapshot);
         #[cfg(target_arch = "wasm32")]
         PROBE.with(|p| {
@@ -280,6 +283,9 @@ async fn main() {
             corpses,
             if snapshot.hit_stop.is_some() { 0. } else { get_frame_time() as f64 },
         );
+        // The spotlight ends with its attack: once the featured effects have played out and
+        // settled, the sim leaves the Tail phase and combat resumes.
+        if spotlight.ready(&assets.manifest, &snapshot) { game.session.release_spotlight(); }
         let mut frame = motion.snapshot(&snapshot, if controls.paused { 1. } else { game.alpha() });
         frame.time = snapshot.time;
         #[cfg(feature = "crowd-proof")]

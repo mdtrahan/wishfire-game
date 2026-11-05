@@ -33,9 +33,9 @@ pub struct LampUi {
     bar: BagBar,
 }
 // The bag icon keeps the x centre it had in the old strip, at half its size, centred on the
-// quest tracker (the 52 px objective box at y 370).
+// quest tracker (the 52 px objective box).
 const BAG_CX: f32 = 360. * 0.7652 + 360. * 0.228 / 2.;
-const BAG_CY: f32 = 370. + 52. / 2.;
+const BAG_CY: f32 = chrome::QUEST_TOP + 52. / 2.;
 const BAG_W: f32 = 360. * 0.228 * 0.5;
 const BAG_H: f32 = 92. * 0.83 * 0.9745 * 0.5;
 // The Bag progress bar: slides out to the left from behind the icon.
@@ -44,32 +44,30 @@ const SLIDE_SECONDS: f32 = 0.22;
 /// A whole bar fills in this long; partial gains take their share.
 const FILL_SECONDS: f32 = 0.45;
 const CELEBRATE_SECONDS: f32 = 0.3;
-const HOLD_SECONDS: f32 = 0.6;
+/// The finished display stays this long after the last fill or upgrade before sliding back.
+const HOLD_SECONDS: f32 = 2.5;
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 enum BarPhase { #[default] Hidden, SlideOut, Fill, Celebrate, Hold, SlideIn }
 /// The Bag progress presentation. It shows the saved progress, never its own: every level is
 /// applied through `EquipmentStorage::upgrade` when the fill reaches the end of the bar, and the
 /// next bar starts from whatever the save holds after that (the overflow).
 #[derive(Default)]
-struct BagBar { phase: BarPhase, t: f32, tier: u32, fraction: f32, essence: Option<f64>, wanted: bool }
+struct BagBar { phase: BarPhase, t: f32, tier: u32, fraction: f32, synced: bool, wanted: bool }
 impl BagBar {
     /// `visible`: the bag icon is on screen and nothing covers it.
     fn update(&mut self, economy: &mut wf_host::equipment::EquipmentStorage, session: &mut wf_host::session::Session, dt: f32, visible: bool) -> Option<String> {
         let data = economy.data()?;
         let progress = data.upgrade_progress();
-        let (tier, essence) = (data.lamp.capacity_tier, data.lamp.essence);
+        let tier = data.lamp.capacity_tier;
         let ready = !progress.max && progress.required.is_some_and(|r| progress.current >= r);
-        if self.essence.is_none() { self.tier = tier; self.fraction = progress.fraction as f32; }
-        // Essence awarded (dismantling, quest rewards): the bar comes out to show it.
-        if self.essence.is_some_and(|before| essence > before) { self.wanted = true; }
-        self.essence = Some(essence);
+        if !self.synced { self.synced = true; self.tier = tier; self.fraction = progress.fraction as f32; }
         if progress.max { self.wanted = false; }
         if !visible { return None; }
         match self.phase {
             BarPhase::Hidden => {
-                if self.wanted || ready { self.wanted = false; self.phase = BarPhase::SlideOut; self.t = 0.; }
-                // Combat-time progress points arrive one at a time and are not announced.
-                else { self.tier = tier; self.fraction = progress.fraction as f32; }
+                // Only a completed dismantle brings the bar out (`request`); it then shows
+                // everything earned since it was last out.
+                if self.wanted { self.wanted = false; self.phase = BarPhase::SlideOut; self.t = 0.; }
             }
             BarPhase::SlideOut => { self.t += dt; if self.t >= SLIDE_SECONDS { self.phase = BarPhase::Fill; } }
             BarPhase::Fill => {
@@ -96,6 +94,8 @@ impl BagBar {
         }
         None
     }
+    /// A dismantle has completed: show the progress once the bag icon is uncovered.
+    fn request(&mut self) { self.wanted = true; }
     /// How far the bar is out of the icon, 0..1.
     fn reveal(&self) -> f32 {
         let ease = |t: f32| { let t = t.clamp(0., 1.); 1. - (1. - t) * (1. - t) };
@@ -143,15 +143,14 @@ impl LampUi {
         self.hits.clear();
         let _ = hits;
         let trouble = game.economy.error.clone().or_else(|| self.orbs.notice.clone());
-        if let Some(e) = &trouble { stroked(e, 4., 496., 10., rgb(0xfff1d1), rgb(0x502c25), Align::Left); }
+        if let Some(e) = &trouble { stroked(e, 4., chrome::QUEST_TOP - 10., 10., rgb(0xfff1d1), rgb(0x502c25), Align::Left); }
         let Some(data) = game.economy.data() else { return };
         self.bar.draw();
         let pop = 1. + 0.22 * self.bar.celebration().map_or(0., |c| (std::f32::consts::PI * c).sin());
         if let Some(tex) = assets.ui.get("lamp-bag") { image(tex, BAG_CX - BAG_W * pop / 2., BAG_CY - BAG_H * pop / 2., BAG_W * pop, BAG_H * pop); }
         let capacity = data.capacity();
         let stored = (data.stored_count() - self.orbs.flying() as f64).max(0.);
-        let full = stored >= capacity;
-        stroked(&format!("{}/{}", stored, capacity), BAG_CX, BAG_CY + BAG_H / 2. + 3., 9., if full { rgb(0xff9a8a) } else { rgb(0xfff1d1) }, rgb(0x000000), Align::Center);
+        stroked(&format!("{}/{}", stored, capacity), BAG_CX, BAG_CY + BAG_H / 2. + 3., 9., WHITE, rgb(0x000000), Align::Center);
         self.hits.push(LHit { rect: Rect::new(BAG_CX - BAG_W / 2. - 4., BAG_CY - BAG_H / 2. - 4., BAG_W + 8., BAG_H + 16.), kind: LampHit::Bag });
     }
     /// Route a canvas tap on the bag icon. The windows are page elements.
@@ -219,7 +218,7 @@ impl LampUi {
                 let Some(preview) = self.disposal_preview.clone() else { return };
                 match game.economy.dismantle(&mut game.session, &preview) {
                     // The Essence shows on the Bag progress bar once the window is gone.
-                    Ok(_) => self.close(),
+                    Ok(_) => { self.close(); self.bar.request(); }
                     Err(e) => self.notice = e,
                 }
             }
@@ -331,8 +330,8 @@ impl LampUi {
                 notice(&mut dialog, &self.notice);
             }
         }
-        // The overlay is the frame rectangle; a cache window stops at 480 logical px.
-        let height = if self.upgrade_open { 640. } else { 480. } * scale;
+        // The overlay is the frame rectangle; a cache window stops above the nav.
+        let height = if self.upgrade_open { 640. } else { 580. } * scale;
         let mut overlay = el("div").key("lamp").id("lamp-overlay").attr("data-boss-fallback", "false").style(format!("height:{height:.2}px;--bag-scale:{scale:.4};--modal-close-scale:{scale:.4};--boss-fallback-reserve:0px")).on(on(LampHit::Close)).child(dialog);
         // showEquipFeedback: "CP +n" rising from the hero's portrait for 1.8 s (the portrait row sits
         // about 92 px down in the review window and 124 px in the cache window).
@@ -425,21 +424,26 @@ mod tests {
         (levels, phases)
     }
     #[test]
-    fn essence_slides_the_bar_out_and_successive_upgrades_carry_the_overflow() {
+    fn a_completed_dismantle_slides_the_bar_out_and_successive_upgrades_carry_the_overflow() {
         use BarPhase::*;
         let mut run = crate::testing::HostRun::new(1);
         let mut economy = super::super::orbs::tests::economy(&mut run);
         let mut bar = BagBar::default();
         assert!(bar.update(&mut economy, &mut run.session, 1. / 60., true).is_none());
         assert_eq!((bar.phase, bar.reveal()), (Hidden, 0.));
-        // A gain below the threshold: out, fill to the new value, hold, back in. No upgrade.
+        // Essence alone (a quest reward, combat-time points) never brings the bar out.
         economy.award_combat_essence(&mut run.session, "test:small", 40.).unwrap();
+        for _ in 0..300 { bar.update(&mut economy, &mut run.session, 1. / 60., true); }
+        assert_eq!((bar.phase, bar.fraction), (Hidden, 0.));
+        // A dismantle completed: out, fill from the last shown value to the saved one, hold, in.
+        bar.request();
         let (levels, phases) = play(&mut bar, &mut economy, &mut run);
         assert!(levels.is_empty());
         assert_eq!(phases, [Hidden, SlideOut, Fill, Hold, SlideIn, Hidden]);
         assert_eq!((bar.tier, bar.fraction), (0, 0.4));
         // 1000 more Essence crosses three thresholds (100, 300, 525) without closing the bar.
         economy.award_combat_essence(&mut run.session, "test:large", 1000.).unwrap();
+        bar.request();
         let (levels, phases) = play(&mut bar, &mut economy, &mut run);
         assert_eq!(levels, [2, 3, 4]);
         assert_eq!(phases, [Hidden, SlideOut, Fill, Celebrate, Fill, Celebrate, Fill, Celebrate, Fill, Hold, SlideIn, Hidden]);
@@ -449,17 +453,43 @@ mod tests {
         assert!((bar.fraction - 115. / 775.).abs() < 1e-6);
     }
     #[test]
-    fn the_bar_waits_while_a_window_covers_the_bag_and_quiet_progress_is_not_announced() {
+    fn the_hold_lasts_two_and_a_half_seconds_from_the_last_fill() {
+        let mut run = crate::testing::HostRun::new(1);
+        let mut economy = super::super::orbs::tests::economy(&mut run);
+        let mut bar = BagBar::default();
+        bar.update(&mut economy, &mut run.session, 1. / 60., true);
+        economy.award_combat_essence(&mut run.session, "test:two", 430.).unwrap();
+        bar.request();
+        // Time each phase at 1 ms steps.
+        let (mut clock, mut entered) = (0.0f32, Vec::new());
+        let mut last = bar.phase;
+        for _ in 0..20000 {
+            bar.update(&mut economy, &mut run.session, 0.001, true);
+            clock += 0.001;
+            if bar.phase != last { entered.push((bar.phase, clock)); last = bar.phase; }
+            if bar.phase == BarPhase::Hidden && !entered.is_empty() { break; }
+        }
+        let at = |phase: BarPhase| entered.iter().rev().find(|(p, _)| *p == phase).map(|(_, t)| *t).unwrap();
+        // Two upgrades (100, 300) then the 30/525 overflow; the hold starts when that last fill ends.
+        assert_eq!(entered.iter().filter(|(p, _)| *p == BarPhase::Celebrate).count(), 2);
+        assert_eq!(entered.iter().filter(|(p, _)| *p == BarPhase::Hold).count(), 1, "one hold, after everything");
+        let hold = at(BarPhase::SlideIn) - at(BarPhase::Hold);
+        assert!((hold - 2.5).abs() < 0.005, "hold lasted {hold} s");
+        assert!(at(BarPhase::Hold) > entered.iter().rev().find(|(p, _)| *p == BarPhase::Celebrate).unwrap().1, "the hold starts after the final upgrade and fill");
+        assert_eq!(economy.data().unwrap().lamp.capacity_tier, 2);
+    }
+    #[test]
+    fn the_bar_waits_while_a_window_covers_the_bag() {
         let mut run = crate::testing::HostRun::new(1);
         let mut economy = super::super::orbs::tests::economy(&mut run);
         let mut bar = BagBar::default();
         bar.update(&mut economy, &mut run.session, 1. / 60., true);
         economy.award_combat_essence(&mut run.session, "test:hidden", 100.).unwrap();
+        bar.request();
         for _ in 0..600 { bar.update(&mut economy, &mut run.session, 1. / 60., false); }
         assert_eq!((bar.phase, economy.data().unwrap().lamp.capacity_tier), (BarPhase::Hidden, 0), "no upgrade is applied unseen");
         let (levels, _) = play(&mut bar, &mut economy, &mut run);
         assert_eq!(levels, [2]);
-        // Without an Essence gain and below the threshold the bar stays in the icon.
         for _ in 0..120 { bar.update(&mut economy, &mut run.session, 1. / 60., true); }
         assert_eq!(bar.phase, BarPhase::Hidden);
     }

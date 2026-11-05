@@ -100,6 +100,9 @@ pub struct Session {
     pub battle: ProgressionBattle,
     pub combat_session_id: String,
     pub dev_speed: f64,
+    /// Cinematic Skill Spotlight preset for the worlds this session creates. Off unless the
+    /// client turns it on (the JS host and its traces never do).
+    pub spotlight: wf_combat::SpotlightConfig,
     pub training: Option<Training>,
     pub stars: BTreeMap<String, u32>,
     pub gold_total: f64,
@@ -186,7 +189,7 @@ impl Session {
         let battle = ProgressionBattle::new(&format!("battle:{combat_session_id}"), party.iter().map(|(_, instance)| instance.to_string()).collect());
         let mut session = Self { time: 0., stage, checkpoint: combat_checkpoint, enemy_data, raw_rows, heroes: Vec::new(), enemies: Vec::new(), benched: BTreeMap::new(), enemy_slots: Vec::new(), next_uid, enemy_size: 40., progress, battle,
             combat_session_id: combat_session_id.into(), dev_speed: 1., training: None, stars: BTreeMap::new(), gold_total: 0., pending_gold_settlements: BTreeMap::new(), reward_serial: 0, progress_dirty: false, storage_error: None,
-            wfm_checkpoint_reload, quest_finite_encounter: true, intro_active: false, receipt: Receipt::default(), failed: None, bag_seconds: 0., bag_blocked: false, last_transition: None, subwave_completions: 0, wave_clear_events: Vec::new(),
+            wfm_checkpoint_reload, quest_finite_encounter: true, intro_active: false, receipt: Receipt::default(), failed: None, bag_seconds: 0., bag_blocked: false, last_transition: None, spotlight: wf_combat::SpotlightConfig::OFF, subwave_completions: 0, wave_clear_events: Vec::new(),
             persist, quest, encounter_counter: 0, ended_hash: None, restored_gold: BTreeSet::new(), desired_inputs: BTreeMap::new(), revisions: BTreeMap::new(), pending_inputs: BTreeMap::new(), submitted_inputs: BTreeMap::new(), command_sequence: 0, stage_configured: false, frame_now_ms: 0., world: None, encounter: String::new(), sequence: 0, previous_now: None, debt: 0., attempt: None, base_time: 0., last_combat_time: 0., last_presentation_time: 0.,
             host_transition: false, advanced: false, subwaves: Vec::new(), previous_subwave: Vec::new(), subwave_started: 0., pending_restart: None, hosts: BTreeMap::new(), hosts_seen_boss: BTreeSet::new(), seen_spawns: BTreeSet::new(), intro_now: None, tail: None,
             last_snapshot: None, presentation_events: Vec::new(), step_observations: Vec::new(), op_log: Vec::new() };
@@ -217,6 +220,15 @@ impl Session {
         for entry in &plan { let _ = self.spawn_entry(entry, false, None); }
     }
     pub fn world(&self) -> Option<&World> { self.world.as_ref() }
+    /// Applies a spotlight preset to this and later worlds.
+    pub fn set_spotlight(&mut self, config: wf_combat::SpotlightConfig) {
+        self.spotlight = config;
+        if let Some(world) = &mut self.world { world.set_spotlight(config); self.last_snapshot = Some(world.snapshot().clone()); }
+    }
+    /// The client finished presenting the featured attack: combat resumes.
+    pub fn release_spotlight(&mut self) {
+        if let Some(world) = &mut self.world { world.release_spotlight(); self.last_snapshot = Some(world.snapshot().clone()); }
+    }
     /// Interpolation fraction between the previous and current fixed step.
     pub fn alpha(&self) -> f32 { ((self.debt / (1. / 30.)) as f32).clamp(0., 1.) }
     /// Host-presented stage view for the client (never read by combat).
@@ -478,6 +490,8 @@ impl Session {
         self.encounter = config.encounter_id.clone();
         self.sequence = 0;
         self.revisions.clear(); self.pending_inputs.clear(); self.submitted_inputs.clear(); self.command_sequence = 0;
+        let mut config = config;
+        config.spotlight = self.spotlight;
         let mut world = World::create(config).map_err(|e| e.to_string())?;
         world.retain_typed_events = true;
         self.world = Some(world);
