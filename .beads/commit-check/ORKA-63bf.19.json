@@ -3,20 +3,31 @@
     ".beads/commit-check/ORKA-63bf.19.json": [
       "__MODULE__"
     ],
+    "rust/wf_app/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/assets.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/main.rs": [
+      "__MODULE__"
+    ],
     "rust/wf_app/src/ui/chrome.rs": [
-      "s",
       "__MODULE__"
     ],
     "rust/wf_app/src/ui/css.rs": [
       "__MODULE__"
     ],
-    "rust/wf_app/src/ui/css/progression.css": [
+    "rust/wf_app/src/ui/css/bag_upgrade.css": [
       "__MODULE__"
     ],
-    "rust/wf_app/src/ui/css/quest.css": [
+    "rust/wf_app/src/ui/css/lamp.css": [
       "__MODULE__"
     ],
-    "rust/wf_app/src/ui/css/quest_map.css": [
+    "rust/wf_app/src/ui/css/lamp_adapter.css": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/ui/css/receipt.css": [
       "__MODULE__"
     ],
     "rust/wf_app/src/ui/css/stage.css": [
@@ -25,7 +36,18 @@
     "rust/wf_app/src/ui/css/vault.css": [
       "__MODULE__"
     ],
+    "rust/wf_app/src/ui/dom.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/ui/lamp.rs": [
+      "gap",
+      "left",
+      "next",
+      "__MODULE__"
+    ],
     "rust/wf_app/src/ui/mod.rs": [
+      "em",
+      "size_scale",
       "__MODULE__"
     ],
     "rust/wf_app/src/ui/screens.rs": [
@@ -34,12 +56,21 @@
     ],
     "rust/wf_app/src/ui/story.rs": [
       "__MODULE__"
+    ],
+    "rust/wf_app/src/ui/text.rs": [
+      "__MODULE__"
+    ],
+    "tools/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "tools/build_wf_app.sh": [
+      "__MODULE__"
     ]
   },
   "details": {
     "hot_files_touched": [],
-    "staged_file_count": 11,
-    "staged_line_count": 342,
+    "staged_file_count": 20,
+    "staged_line_count": 757,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -48,31 +79,49 @@
   },
   "files": [
     ".beads/commit-check/ORKA-63bf.19.json",
+    "rust/wf_app/AGENTS.md",
+    "rust/wf_app/src/assets.rs",
+    "rust/wf_app/src/main.rs",
     "rust/wf_app/src/ui/chrome.rs",
     "rust/wf_app/src/ui/css.rs",
-    "rust/wf_app/src/ui/css/progression.css",
-    "rust/wf_app/src/ui/css/quest.css",
-    "rust/wf_app/src/ui/css/quest_map.css",
+    "rust/wf_app/src/ui/css/bag_upgrade.css",
+    "rust/wf_app/src/ui/css/lamp.css",
+    "rust/wf_app/src/ui/css/lamp_adapter.css",
+    "rust/wf_app/src/ui/css/receipt.css",
     "rust/wf_app/src/ui/css/stage.css",
     "rust/wf_app/src/ui/css/vault.css",
+    "rust/wf_app/src/ui/dom.rs",
+    "rust/wf_app/src/ui/lamp.rs",
     "rust/wf_app/src/ui/mod.rs",
     "rust/wf_app/src/ui/screens.rs",
-    "rust/wf_app/src/ui/story.rs"
+    "rust/wf_app/src/ui/story.rs",
+    "rust/wf_app/src/ui/text.rs",
+    "tools/AGENTS.md",
+    "tools/build_wf_app.sh"
   ],
   "issue_id": "ORKA-63bf.19",
   "out_of_scope_hot_file_touch": false,
   "significant": true,
   "staged_blobs": {
-    ".beads/commit-check/ORKA-63bf.19.json": "8e1186560fff583db3c440434b8b329a2c30f5a5",
-    "rust/wf_app/src/ui/chrome.rs": "ea13931851b54c63ec902e9248eccb3bb5d21c85",
-    "rust/wf_app/src/ui/css.rs": "c6dd851acaf59de7723d2df0c82dcf40e17e9b26",
-    "rust/wf_app/src/ui/css/progression.css": "99e218aa8f80fe2e9a26d19a86971790dfcce7a0",
-    "rust/wf_app/src/ui/css/quest.css": "509ef1970e871a9356f94e2787f7ddd55a005481",
-    "rust/wf_app/src/ui/css/quest_map.css": "a890600e7619a91c2f8671620664475954532287",
-    "rust/wf_app/src/ui/css/stage.css": "8e1b119269c7326f7396ed2c2f09c713f6db2c5b",
-    "rust/wf_app/src/ui/css/vault.css": "9b7992b54f175b6c429c0f7773f46ad6b2a9dacd",
-    "rust/wf_app/src/ui/mod.rs": "81877f97f00c847a2b435ec4f279b15930358d39",
-    "rust/wf_app/src/ui/screens.rs": "b2e3c0b9859d1c49577c0325ffb74de7a239d71e",
-    "rust/wf_app/src/ui/story.rs": "ab239dde1905a859b12a01c008947e1e6a7460fd"
+    ".beads/commit-check/ORKA-63bf.19.json": "0deaf240b465166c8286c02c98a97cc174427097",
+    "rust/wf_app/AGENTS.md": "1f2f5ff275cd4fbd46ad4f280d0a9ce744070397",
+    "rust/wf_app/src/assets.rs": "94bd46b6e2a32f8c4af4de5fa0db38e1ad518064",
+    "rust/wf_app/src/main.rs": "f908e49be2fea9f723a4eca4d653e2486b3afbf0",
+    "rust/wf_app/src/ui/chrome.rs": "c6885d315e0621996519ff68ad0bb553f17c7787",
+    "rust/wf_app/src/ui/css.rs": "fb7831ea7a9d5667f8cb4bfd22a4ca8617a4dc7d",
+    "rust/wf_app/src/ui/css/bag_upgrade.css": "0b58a306bbc0d5296c566f99b7c2d346fa06db2e",
+    "rust/wf_app/src/ui/css/lamp.css": "2aa015934a8160de5ac2f108947564de05e41ceb",
+    "rust/wf_app/src/ui/css/lamp_adapter.css": "e9ab98184e8fbee6e60a1f96d5e8ba2647bacf26",
+    "rust/wf_app/src/ui/css/receipt.css": "170b65c4fa79e3cfe485302cbaebf4cf98637238",
+    "rust/wf_app/src/ui/css/stage.css": "96c96515ab63ba5a2a67eafb4ee9014d372d5956",
+    "rust/wf_app/src/ui/css/vault.css": "c0e5909fc404c8d09199b15737a5b149c1a9a461",
+    "rust/wf_app/src/ui/dom.rs": "bd60a20cfdd29d16f686aa4811547d13ccc74d08",
+    "rust/wf_app/src/ui/lamp.rs": "9cb5c9d1e5ccdee0c899b48ee5414f4e9db3f1c1",
+    "rust/wf_app/src/ui/mod.rs": "e35789de3f5001db8c166cba111c4cc735b498a3",
+    "rust/wf_app/src/ui/screens.rs": "40eac838ec5bc022bc3dfd4486e4e880191afbda",
+    "rust/wf_app/src/ui/story.rs": "153e6673131c1492284ec58b2ea6d83bbdccfa60",
+    "rust/wf_app/src/ui/text.rs": "ed32d2dc61aa29df5bfec58370f6106aa6c012ec",
+    "tools/AGENTS.md": "534531f4e094a1a89c0b99f032740ffb9a383f1b",
+    "tools/build_wf_app.sh": "6700261489621c082381dac546406abade7d3a11"
   }
 }

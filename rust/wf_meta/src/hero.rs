@@ -151,7 +151,7 @@ pub struct SkillText { pub id: &'static str, pub name: &'static str, pub icon: &
 /// `heroDefinition(key).special`.
 pub fn special_text(key: &str) -> Option<SkillText> {
     Some(match hero_key(key) {
-        "Falie" => SkillText { id: "crimson_ward", name: "Crimson Ward", icon: "party-ward", condition: "A foe in range", description: "Every hero gains its own temporary HP worth 8% of its max HP, stacking up to 50% of its original max HP. Hits drain only the struck hero's ward. Kept between waves, into a boss fight and after a boss clear; cleared when the party falls or a boss attempt fails." },
+        "Falie" => SkillText { id: "crimson_ward", name: "Crimson Ward", icon: "party-ward", condition: "A foe in range", description: "Every hero gains its own temporary HP worth 8% of its max HP, stacking up to 50% of its original max HP. Hits drain only the struck hero’s ward. Kept between waves, into a boss fight and after a boss clear; cleared when the party falls or a boss attempt fails." },
         "Huun" => SkillText { id: "shadow", name: "Shadow", icon: "party-special", condition: "A foe in range", description: "Jump behind a foe and hit it for 240% damage." },
         "Runa" => SkillText { id: "bubble_pop", name: "Bubble Pop", icon: "party-mag", condition: "A foe in range", description: "Hit every foe in range for 180% magic damage and push them back for 2 seconds." },
         "Kojonn" => SkillText { id: "elevate", name: "Elevate", icon: "party-spd", condition: "Fight start, then each time the clock fills", description: "Roll one party set until the next roll: SPD +5% and ATK +5%, max HP +20% and MAG +5%, or attack range +10% and crit damage +5%. Ends if Kaja falls." },
@@ -162,9 +162,9 @@ pub fn special_text(key: &str) -> Option<SkillText> {
 pub fn passive_text(key: &str) -> Option<SkillText> {
     Some(match hero_key(key) {
         "Falie" => SkillText { id: "smoke_form", name: "Smoke Form", icon: "party-dr", condition: "Own HP below 40%", description: "Below 40% HP, Fara takes 50% less damage." },
-        "Huun" => SkillText { id: "royalty", name: "Royalty", icon: "party-atk", condition: "Own HP below 50%", description: "Below 50% HP, Hondo's basic attacks deal double damage and lower the struck enemy's DEF by 5% for 4s (provisional), helping every hero." },
+        "Huun" => SkillText { id: "royalty", name: "Royalty", icon: "party-atk", condition: "Own HP below 50%", description: "Below 50% HP, Hondo’s basic attacks deal double damage and lower the struck enemy’s DEF by 5% for 4s (provisional), helping every hero." },
         "Runa" => SkillText { id: "boast", name: "Boast", icon: "party-res", condition: "Own HP above 80%", description: "Above 80% HP, Runa gains MAG +5% and RES +5%." },
-        "Kojonn" => SkillText { id: "ethereal_aura", name: "Ethereal Aura", icon: "party-mag", condition: "Foes in range", description: "Foes in Kaja's range take Faze damage every second, rising with each chapter." },
+        "Kojonn" => SkillText { id: "ethereal_aura", name: "Ethereal Aura", icon: "party-mag", condition: "Foes in range", description: "Foes in Kaja’s range take Faze damage every second, rising with each chapter." },
         _ => return None,
     })
 }
@@ -172,10 +172,10 @@ pub fn passive_text(key: &str) -> Option<SkillText> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PartySkill { pub id: &'static str, pub skill_id: &'static str, pub hero: &'static str, pub name: &'static str, pub clock_label: &'static str, pub icons: &'static [&'static str], pub effect: &'static str, pub values: &'static [&'static str] }
 pub const PARTY_SKILLS: [PartySkill; 4] = [
-    PartySkill { id: "crimson_ward", skill_id: "crimson_ward", hero: "Fara", name: "Crimson Ward", clock_label: "Cooldown", icons: &["party-ward"], effect: "Every hero gains its own temporary HP worth 8% of its max HP, stacking up to 50% of its original max HP. Hits drain only the struck hero's ward. Kept between waves, into a boss fight and after a boss clear; cleared when the party falls or a boss attempt fails.", values: &["Each hero: temporary HP +8% of own max HP per cast", "Stacks to 50% of own original max HP"] },
-    PartySkill { id: "elevate:swift", skill_id: "elevate", hero: "Kaja", name: "Elevate | Swift", clock_label: "Rerolls every", icons: &["party-spd", "party-atk"], effect: "One of Elevate's three party rolls. While rolled, every hero gains SPD +5%, ATK +5%. Replaced by the next roll; ends if Kaja falls.", values: &["SPD +5%, ATK +5%"] },
-    PartySkill { id: "elevate:vital", skill_id: "elevate", hero: "Kaja", name: "Elevate | Vital", clock_label: "Rerolls every", icons: &["party-hp", "party-mag"], effect: "One of Elevate's three party rolls. While rolled, every hero gains Max HP +20%, MAG +5%. Replaced by the next roll; ends if Kaja falls.", values: &["Max HP +20%, MAG +5%"] },
-    PartySkill { id: "elevate:reach", skill_id: "elevate", hero: "Kaja", name: "Elevate | Reach", clock_label: "Rerolls every", icons: &["party-range", "party-cd"], effect: "One of Elevate's three party rolls. While rolled, every hero gains Attack range +10%, crit damage +5%. Replaced by the next roll; ends if Kaja falls.", values: &["Attack range +10%, crit damage +5%"] },
+    PartySkill { id: "crimson_ward", skill_id: "crimson_ward", hero: "Fara", name: "Crimson Ward", clock_label: "Cooldown", icons: &["party-ward"], effect: "Every hero gains its own temporary HP worth 8% of its max HP, stacking up to 50% of its original max HP. Hits drain only the struck hero’s ward. Kept between waves, into a boss fight and after a boss clear; cleared when the party falls or a boss attempt fails.", values: &["Each hero: temporary HP +8% of own max HP per cast", "Stacks to 50% of own original max HP"] },
+    PartySkill { id: "elevate:swift", skill_id: "elevate", hero: "Kaja", name: "Elevate · Swift", clock_label: "Rerolls every", icons: &["party-spd", "party-atk"], effect: "One of Elevate’s three party rolls. While rolled, every hero gains SPD +5%, ATK +5%. Replaced by the next roll; ends if Kaja falls.", values: &["SPD +5%, ATK +5%"] },
+    PartySkill { id: "elevate:vital", skill_id: "elevate", hero: "Kaja", name: "Elevate · Vital", clock_label: "Rerolls every", icons: &["party-hp", "party-mag"], effect: "One of Elevate’s three party rolls. While rolled, every hero gains Max HP +20%, MAG +5%. Replaced by the next roll; ends if Kaja falls.", values: &["Max HP +20%, MAG +5%"] },
+    PartySkill { id: "elevate:reach", skill_id: "elevate", hero: "Kaja", name: "Elevate · Reach", clock_label: "Rerolls every", icons: &["party-range", "party-cd"], effect: "One of Elevate’s three party rolls. While rolled, every hero gains Attack range +10%, crit damage +5%. Replaced by the next roll; ends if Kaja falls.", values: &["Attack range +10%, crit damage +5%"] },
 ];
 /// `partySkillFor(ref)`: a live party buff (effect id plus optional Elevate set) to its catalog entry.
 pub fn party_skill_for(effect_id: &str, set: Option<&str>) -> Option<&'static PartySkill> {
@@ -214,12 +214,12 @@ pub fn skill_copy(skill_id: &str, key: &str) -> SkillCopy {
     let lines = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
     match skill_id {
         "basic_attack" => SkillCopy { lines: vec![format!("Deals 100% of {} to the current target.", if basic_is_magic(key) { "MAG" } else { "ATK" })], rules: vec![] },
-        "crimson_ward" => SkillCopy { lines: lines(&["Grants each hero temporary HP equal to 8% of max HP.", "Stacks to 50% of original max HP."]), rules: vec!["Each hero has a separate ward. Hits drain only the struck hero's ward.", "Persists between waves, into boss fights and after boss clears.", "Clears when the party falls or a boss attempt fails. A fallen hero loses its ward."] },
+        "crimson_ward" => SkillCopy { lines: lines(&["Grants each hero temporary HP equal to 8% of max HP.", "Stacks to 50% of original max HP."]), rules: vec!["Each hero has a separate ward. Hits drain only the struck hero’s ward.", "Persists between waves, into boss fights and after boss clears.", "Clears when the party falls or a boss attempt fails. A fallen hero loses its ward."] },
         "smoke_form" => SkillCopy { lines: lines(&["Below 40% HP, takes 50% less damage."]), rules: vec![] },
         "phoenix_soul" => SkillCopy { lines: lines(&["Below 15% HP, each basic attack heals 6% of max HP."]), rules: vec![] },
         "chastise" => SkillCopy { lines: lines(&["Reflects 80% of damage taken to the attacker."]), rules: vec![] },
         "shadow" => SkillCopy { lines: lines(&["Jumps behind a foe and deals 240% damage."]), rules: vec![] },
-        "royalty" => SkillCopy { lines: lines(&["Below 50% HP: basic damage x2.", "Hits: target DEF -5% for 4s."]), rules: vec!["The DEF reduction benefits every hero. Duration is provisional."] },
+        "royalty" => SkillCopy { lines: lines(&["Below 50% HP: basic damage ×2.", "Hits: target DEF −5% for 4s."]), rules: vec!["The DEF reduction benefits every hero. Duration is provisional."] },
         "chase" => SkillCopy { lines: lines(&["Against a lone foe in range, deals +160% damage."]), rules: vec![] },
         "weaken" => SkillCopy { lines: lines(&["Surrounded by 3+ foes: crit rate +5% and crit damage +5%."]), rules: vec![] },
         "bubble_pop" => SkillCopy { lines: lines(&["Deals 180% magic damage to every foe in range.", "Pushes them back for 2s."]), rules: vec![] },

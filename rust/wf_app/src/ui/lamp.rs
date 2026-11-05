@@ -336,13 +336,14 @@ impl LampUi {
         // The overlay is the frame rectangle; a cache window stops at 480 logical px.
         let height = if self.upgrade_open { 640. } else { 480. } * scale;
         let mut overlay = el("div").key("lamp").id("lamp-overlay").attr("data-boss-fallback", "false").style(format!("height:{height:.2}px;--bag-scale:{scale:.4};--modal-close-scale:{scale:.4};--boss-fallback-reserve:0px")).on(on(LampHit::Close)).child(dialog);
-        // showEquipFeedback: "CP +n" rising over the hero's portrait for 1.8 s.
+        // showEquipFeedback: "CP +n" rising from the hero's portrait for 1.8 s (the portrait row sits
+        // about 92 px down in the review window and 124 px in the cache window).
         for (hero_id, change, until) in &self.feedbacks {
             if *until <= now { continue; }
             let column = roster.iter().position(|h| &h.instance_key == hero_id).unwrap_or(0) as f32;
             let left = (20. + (column + 0.5) / roster.len().max(1) as f32 * (360. * scale - 40.)).round();
             overlay.push(el("div").class(if *change > 0. { "lamp-cp-feedback positive" } else if *change < 0. { "lamp-cp-feedback negative" } else { "lamp-cp-feedback neutral" }).attr("role", "status").attr("data-hero", hero_id.as_str())
-                .style(format!("width:48px;left:{left}px;top:{}px", (64. * scale).round())).t(format!("CP {}{change}", if *change > 0. { "+" } else { "" })));
+                .style(format!("width:48px;left:{left}px;top:{}px", (if candidate.is_some() { 92. } else { 124. } * scale).round())).t(format!("CP {}{change}", if *change > 0. { "+" } else { "" })));
         }
         Some(overlay)
     }
