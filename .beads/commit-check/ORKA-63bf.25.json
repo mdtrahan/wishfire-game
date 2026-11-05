@@ -1,0 +1,79 @@
+{
+  "changed_functions": {
+    "rust/wf_app/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/game.rs": [
+      "salt"
+    ],
+    "rust/wf_app/src/input.rs": [
+      "t",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/main.rs": [
+      "level",
+      "t",
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/ui/css/dev.css": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/ui/dev.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/ui/lamp.rs": [
+      "fill"
+    ],
+    "rust/wf_app/src/ui/mod.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/ui/orbs.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_host/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/wf_host/src/progression.rs": [
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 11,
+    "staged_line_count": 344,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    "rust/wf_app/AGENTS.md",
+    "rust/wf_app/src/game.rs",
+    "rust/wf_app/src/input.rs",
+    "rust/wf_app/src/main.rs",
+    "rust/wf_app/src/ui/css/dev.css",
+    "rust/wf_app/src/ui/dev.rs",
+    "rust/wf_app/src/ui/lamp.rs",
+    "rust/wf_app/src/ui/mod.rs",
+    "rust/wf_app/src/ui/orbs.rs",
+    "rust/wf_host/AGENTS.md",
+    "rust/wf_host/src/progression.rs"
+  ],
+  "issue_id": "ORKA-63bf.25",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    "rust/wf_app/AGENTS.md": "917a1a82fb7ca8ff998af54dd538d58e97b269cb",
+    "rust/wf_app/src/game.rs": "1d45045a8e08c66ae9a496988b7a4bc0783b5654",
+    "rust/wf_app/src/input.rs": "7c3c897eb980cd7c930ba43d02d15bbe3386856c",
+    "rust/wf_app/src/main.rs": "f5192f41070dcae3161b918b79208938b6a03423",
+    "rust/wf_app/src/ui/css/dev.css": "4a7fc4b277491f1570b652bb1c0bca9ba6ff2cac",
+    "rust/wf_app/src/ui/dev.rs": "4ab173e1ae6dca19139766539f5b83e7cfa4e792",
+    "rust/wf_app/src/ui/lamp.rs": "a7d41951633654f440ab5d9938adaaa26ff95fe9",
+    "rust/wf_app/src/ui/mod.rs": "8338255bfc96390e044fb8973686bda471a5487c",
+    "rust/wf_app/src/ui/orbs.rs": "a43188347a4ea5c4b7ca3fe5f245f84beed539c5",
+    "rust/wf_host/AGENTS.md": "3671339ebe8c4c7cf6c706d841fd39f7eb5cb4a8",
+    "rust/wf_host/src/progression.rs": "3d55308c2f04198dd75166d7e34afce38fb2b201"
+  }
+}
