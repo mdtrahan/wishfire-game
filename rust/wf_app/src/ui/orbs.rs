@@ -3,6 +3,9 @@
 //! its rarity. An orb can be picked up once its subwave has completed, by a living hero whose
 //! feet come within the pickup circle (a diameter of three hero heights, in world units); the
 //! Bag's capacity decides whether it is stored, and an orb that does not fit stays where it fell.
+//! When the wave chest is on the field (the wave is cleared), every orb still lying there is
+//! swept to the nearest living hero whatever the distance, so none is stranded where the heroes
+//! never walked (owner 2026-11-05); the Bag's capacity still decides.
 //! The field holds `ORB_LIMIT` orbs: on a full field each new drop displaces the oldest orb of
 //! the lowest rarity (decided in the save), which fades out here.
 //! This module owns only where the orbs are and how they move: which orbs exist and which enter
@@ -131,11 +134,13 @@ impl OrbField {
         self.seen_completions = Some(completions);
         // Pickup: an eligible orb inside a living hero's circle goes to the nearest such hero.
         // The Bag's free slots are authoritative: the stored set is committed first, then exactly
-        // those orbs fly.
+        // those orbs fly. During the wave chest pause the circle does not apply: every orb goes
+        // to its nearest living hero.
+        let sweep = !s.chests.is_empty() && !s.actors.iter().any(|a| a.team == Team::Enemy && a.hp > 0.);
         if can_collect && economy.data().is_some_and(|d| d.free_slots() > 0) {
             let heroes: Vec<(u32, Vec2, f32)> = s.actors.iter().filter(|a| a.team == Team::Hero && a.hp > 0.).map(|a| (a.id, world(a.pos), hero_height(a) * PICKUP_DIAMETER_IN_HERO_HEIGHTS / 2.)).collect();
-            let reach: Vec<(String, u32)> = self.orbs.iter().filter(|o| o.eligible && o.flight.is_none()).filter_map(|o| {
-                heroes.iter().filter(|(_, feet, radius)| o.pos.distance(*feet) <= *radius).min_by(|a, b| o.pos.distance(a.1).total_cmp(&o.pos.distance(b.1))).map(|(hero, _, _)| (o.id.clone(), *hero))
+            let reach: Vec<(String, u32)> = self.orbs.iter().filter(|o| (o.eligible || sweep) && o.flight.is_none()).filter_map(|o| {
+                heroes.iter().filter(|(_, feet, radius)| sweep || o.pos.distance(*feet) <= *radius).min_by(|a, b| o.pos.distance(a.1).total_cmp(&o.pos.distance(b.1))).map(|(hero, _, _)| (o.id.clone(), *hero))
             }).collect();
             if !reach.is_empty() {
                 let ids: Vec<String> = reach.iter().map(|(id, _)| id.clone()).collect();
@@ -254,12 +259,12 @@ pub(crate) mod tests {
 
     /// The real host loop: Chapter 1 from a fresh save, the orb field fed like the frame loop does.
     #[test]
-    fn on_the_host_loop_orbs_drop_rarely_and_are_stored_only_in_reach_after_their_subwave() {
+    fn on_the_host_loop_orbs_drop_rarely_and_are_stored_in_reach_or_swept_at_the_wave_chest() {
         let mut run = crate::testing::HostRun::new(1);
         let mut economy = economy(&mut run);
         let mut field = OrbField { seed: 20261104, ..Default::default() };
         let mut before = run.snapshot().clone();
-        let (mut kills, mut picked) = (0usize, 0usize);
+        let (mut kills, mut picked, mut swept) = (0usize, 0usize, 0usize);
         for frame in 0..9000 {
             run.step();
             let events = run.drain_events();
@@ -276,15 +281,17 @@ pub(crate) mod tests {
             assert_eq!(data.items.len() + data.orb_count(), drops, "frame {frame}: every drop is stored or still an orb");
             assert!(data.stored_count() <= data.capacity());
             // Each orb that started flying this frame had completed its subwave and lay inside
-            // the pickup circle of the hero it flies to.
+            // the pickup circle of the hero it flies to, or the wave chest was on a cleared field.
+            let sweep = !s.chests.is_empty() && !s.actors.iter().any(|a| a.team == Team::Enemy && a.hp > 0.);
             for orb in field.orbs.iter().filter(|o| o.flight.as_ref().is_some_and(|f| f.start >= field.clock - 1e-4)) {
                 let flight = orb.flight.as_ref().unwrap();
                 // An orb dropped in this very update can only fly if the subwave completed with it.
                 let eligible = resting.iter().find(|(id, _, _)| *id == orb.id).is_some_and(|(_, _, eligible)| *eligible);
                 let from = &flight.from;
-                assert!(eligible || completed, "frame {frame}: picked up before its subwave completed");
+                assert!(eligible || completed || sweep, "frame {frame}: picked up before its subwave completed");
                 let feet = world(s.actors.iter().find(|a| a.id == flight.hero).expect("the collecting hero").pos);
-                assert!(from.distance(feet) <= RADIUS + 0.01, "frame {frame}: picked up from {} units away", from.distance(feet));
+                assert!(sweep || from.distance(feet) <= RADIUS + 0.01, "frame {frame}: picked up from {} units away", from.distance(feet));
+                if from.distance(feet) > RADIUS + 0.01 { swept += 1; }
                 assert!(s.actors.iter().filter(|a| a.team == Team::Hero && a.hp > 0.).all(|a| from.distance(world(a.pos)) >= from.distance(feet) - 0.01), "frame {frame}: the nearest hero collects");
                 picked += 1;
             }
@@ -294,6 +301,8 @@ pub(crate) mod tests {
         assert!(kills >= 150, "the run defeats plenty of enemies ({kills})");
         assert!(drops >= kills / 25 && drops <= kills / 5, "about a tenth of {kills} kills drop an orb ({drops})");
         assert!(picked >= 1, "heroes walked onto some orbs ({picked} of {drops})");
+        assert!(swept >= 1, "the wave chest swept in orbs no hero walked onto ({swept} of {picked})");
+        println!("orbs: {kills} kills, {drops} drops, {picked} collected, {swept} of them swept at a wave chest, {} left on the field", field.resting());
     }
     #[test]
     fn one_kill_in_ten_drops_an_orb() {
@@ -339,6 +348,42 @@ pub(crate) mod tests {
         assert_eq!(RADIUS, 112.5);
         // Orbs and their glow are three quarters of the first version's 18.4 units.
         assert!((DIAMETER - 18.4 * 0.75).abs() < 1e-4);
+    }
+    #[test]
+    fn the_wave_chest_sweeps_stranded_orbs_to_the_nearest_hero_while_the_bag_has_room() {
+        let mut run = crate::testing::HostRun::new(1);
+        let mut economy = economy(&mut run);
+        let mut s = solo(run.snapshot());
+        s.actors.retain(|a| a.team == Team::Hero);
+        let mut field = OrbField::default();
+        field.update(&mut economy, &mut run.session, &s, 0.016, true, &height);
+        // 24 drops far outside the pickup circle, their subwave complete: stranded.
+        lay(&mut field, &mut economy, &mut run, &s, 24, vec2(RADIUS * 3., RADIUS * 2.));
+        run.session.subwave_completions += 1;
+        for _ in 0..120 { field.update(&mut economy, &mut run.session, &s, 0.016, true, &height); }
+        assert_eq!((stored(&economy), field.resting()), (0., 24), "out of reach, they wait");
+        // The wave chest drops: they fly to the hero, up to the Bag's 20 slots.
+        let mut chest = s.clone();
+        chest.chests.push(wf_combat::ChestView { id: 9001, pos: wf_combat::Vec2 { x: 0., y: 0. }, state: wf_combat::ChestState::Closed, state_age: 0., age: 0., reward: None });
+        field.update(&mut economy, &mut run.session, &chest, 0.016, true, &height);
+        assert_eq!((stored(&economy), field.resting(), field.flying()), (20., 4, 20));
+        for _ in 0..120 { field.update(&mut economy, &mut run.session, &chest, 0.016, true, &height); }
+        assert_eq!((stored(&economy), field.resting(), field.flying(), economy.data().unwrap().orb_count()), (20., 4, 0, 4), "a full Bag leaves the rest on the field");
+        // A chest still listed while an enemy is alive is no sweep.
+        let mut run = crate::testing::HostRun::new(1);
+        let mut economy = self::economy(&mut run);
+        let mut fight = chest.clone();
+        let mut foe = hero(&s).clone();
+        foe.id = 9002;
+        foe.team = Team::Enemy;
+        foe.pos.x -= RADIUS * 4.;
+        fight.actors.push(foe);
+        let mut field = OrbField::default();
+        field.update(&mut economy, &mut run.session, &fight, 0.016, true, &height);
+        lay(&mut field, &mut economy, &mut run, &fight, 3, vec2(RADIUS * 3., RADIUS * 2.));
+        run.session.subwave_completions += 1;
+        for _ in 0..30 { field.update(&mut economy, &mut run.session, &fight, 0.016, true, &height); }
+        assert_eq!((stored(&economy), field.resting()), (0., 3), "the circle rule holds during combat");
     }
     #[test]
     fn a_full_bag_leaves_orbs_in_reach_on_the_field_until_room_appears() {
