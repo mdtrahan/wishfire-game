@@ -1,0 +1,80 @@
+{
+  "changed_functions": {
+    "goals/approved-bag-upgrades.md": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/game.rs": [
+      "salt"
+    ],
+    "rust/wf_app/src/main.rs": [
+      "level"
+    ],
+    "rust/wf_app/src/ui/dev.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/ui/lamp.rs": [
+      "gap",
+      "next",
+      "__MODULE__"
+    ],
+    "rust/wf_host/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/wf_host/src/equipment.rs": [
+      "seed"
+    ],
+    "rust/wf_meta/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/lamp.rs": [
+      "prior_envelope",
+      "paid",
+      "__MODULE__"
+    ],
+    "rust/wf_meta/tests/lamp.rs": [
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 11,
+    "staged_line_count": 128,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    "goals/approved-bag-upgrades.md",
+    "rust/wf_app/AGENTS.md",
+    "rust/wf_app/src/game.rs",
+    "rust/wf_app/src/main.rs",
+    "rust/wf_app/src/ui/dev.rs",
+    "rust/wf_app/src/ui/lamp.rs",
+    "rust/wf_host/AGENTS.md",
+    "rust/wf_host/src/equipment.rs",
+    "rust/wf_meta/AGENTS.md",
+    "rust/wf_meta/src/lamp.rs",
+    "rust/wf_meta/tests/lamp.rs"
+  ],
+  "issue_id": "ORKA-63bf.26",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    "goals/approved-bag-upgrades.md": "067d18b34200b690ef971a97ce3946b33f4d529d",
+    "rust/wf_app/AGENTS.md": "af89f88831c360514d187b630c832ac26b68fca3",
+    "rust/wf_app/src/game.rs": "53dbd07a9a7641cedbeccf752e1732903dce6d20",
+    "rust/wf_app/src/main.rs": "5788d707cb066eaeccc27e8375408b78a28be672",
+    "rust/wf_app/src/ui/dev.rs": "9494a5cff91f7f0b605433d8fca670cf164dc663",
+    "rust/wf_app/src/ui/lamp.rs": "4eb8398f7c426eab0185522ffae7f401297e397a",
+    "rust/wf_host/AGENTS.md": "1569746a2586084b71283686d8d42d520f68d5c8",
+    "rust/wf_host/src/equipment.rs": "18d4cc3d5d8ed695582b87283dafa96dbea1d965",
+    "rust/wf_meta/AGENTS.md": "5d099a734e8085e263a6088da0ba6b96627f24bf",
+    "rust/wf_meta/src/lamp.rs": "2c0000620f5f2653ea564a0aa26e7a8ead9d7725",
+    "rust/wf_meta/tests/lamp.rs": "cddd369babf30ebda26f6b39abf5b48917b22b3a"
+  }
+}
