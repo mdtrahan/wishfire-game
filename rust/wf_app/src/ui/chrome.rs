@@ -216,6 +216,8 @@ fn summon(assets: &Assets, m: &CombatModel, hits: &mut Vec<Hit>) {
     if m.summon_enabled { hits.push(Hit { rect: Rect::new(bx, by, bw, bh), kind: HitKind::Summon }); }
     let _ = FALLBACK_H;
 }
+/// The boss battle timer's fill; the Bag progress bar fills in the same blue.
+pub const TIMER_BLUE: u32 = 0x00b6d6;
 /// `updateBossBattleHud`: name, inspect button, HP meter, timer meter.
 fn boss_hud(assets: &Assets, boss: &super::model::BossReadout, open: bool, hits: &mut Vec<Hit>) {
     let x = (WIDTH - BOSS_HUD_W) / 2.;
@@ -235,7 +237,7 @@ fn boss_hud(assets: &Assets, boss: &super::model::BossReadout, open: bool, hits:
     };
     let percent = format!("{}%", (boss.hp_fraction * 100.).ceil() as u32);
     meter(y + 30., boss.hp_fraction, rgb(0xed3455), "boss-boss", Some(&percent));
-    meter(y + 52., boss.time_fraction, rgb(0x00b6d6), "boss-clock", None);
+    meter(y + 52., boss.time_fraction, rgb(TIMER_BLUE), "boss-clock", None);
 }
 /// Party-wide buff icons centred above the strip (`hero-buff-party`).
 fn party_row(assets: &Assets, m: &CombatModel, hits: &mut Vec<Hit>) {

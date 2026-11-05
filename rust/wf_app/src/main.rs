@@ -180,10 +180,13 @@ async fn main() {
             ui.screen = ui::Screen::Combat;
         }
         portrait.resize();
-        render::vfx3d::sampling_controls();
-        let click = is_mouse_button_pressed(MouseButton::Left).then(|| portrait.pointer()).flatten();
+        // The Cascade Fill ceremony (Bag progress bar) locks input until it completes: taps,
+        // page clicks and keys of this frame are dropped.
+        let locked = ui.lamp.locks_input();
+        render::vfx3d::sampling_controls(!locked);
+        let click = if locked { None } else { is_mouse_button_pressed(MouseButton::Left).then(|| portrait.pointer()).flatten() };
         // Page-element clicks (menus, nav) arrive between frames; the canvas owns the rest.
-        let web_action = ui.web_clicks(&mut scene.game);
+        let web_action = if locked { ui.drop_clicks(); None } else { ui.web_clicks(&mut scene.game) };
         // Dev Tooling Modal requests: the clock controls go to `controls`; a level preset or
         // RESET GAME changes the saves and the session is rebuilt from them.
         for hit in ui.dev.take() {
@@ -232,7 +235,7 @@ async fn main() {
         if ui_action == Some(ui::UiAction::SummonBoss) {
             if let Err(error) = scene.game.session.summon_boss(platform::now_ms()) { fatal(&mut portrait, "Combat host failed", &error).await; }
         }
-        let action = controls.read();
+        let action = controls.read(!locked);
         if action.restart {
             scene.game.restart(Some(controls.seed as u32));
             scene = match Scene::new(rows.clone(), Some(controls.seed as u32)) { Ok(scene) => scene, Err(error) => fatal(&mut portrait, "Combat host failed", &error).await };

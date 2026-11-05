@@ -62,19 +62,21 @@ impl Controls {
             D::Open | D::Close | D::ResetGame | D::Level(_) => {}
         }
     }
-    /// The developer keys and any pending modal requests (combat screen only).
-    pub fn read(&mut self) -> Action {
-        if is_key_pressed(KeyCode::D) { self.debug = !self.debug; }
-        if is_key_pressed(KeyCode::P) { self.paused = !self.paused; }
-        if is_key_pressed(KeyCode::Key1) { self.speed = 1.; }
-        if is_key_pressed(KeyCode::Key2) { self.speed = 2.; }
-        if is_key_pressed(KeyCode::Key4) { self.speed = 4.; }
-        let restart = is_key_pressed(KeyCode::R) || std::mem::take(&mut self.restart);
+    /// The developer keys (ignored when `keys` is false: an input-locked ceremony is playing)
+    /// and any pending modal requests (combat screen only).
+    pub fn read(&mut self, keys: bool) -> Action {
+        let pressed = |key: KeyCode| keys && is_key_pressed(key);
+        if pressed(KeyCode::D) { self.debug = !self.debug; }
+        if pressed(KeyCode::P) { self.paused = !self.paused; }
+        if pressed(KeyCode::Key1) { self.speed = 1.; }
+        if pressed(KeyCode::Key2) { self.speed = 2.; }
+        if pressed(KeyCode::Key4) { self.speed = 4.; }
+        let restart = pressed(KeyCode::R) || std::mem::take(&mut self.restart);
         if restart { self.seed = self.seed.wrapping_add(1); }
-        let spotlight_changed = is_key_pressed(KeyCode::S) || std::mem::take(&mut self.cycle_spotlight);
+        let spotlight_changed = pressed(KeyCode::S) || std::mem::take(&mut self.cycle_spotlight);
         if spotlight_changed { self.spotlight = (self.spotlight + 1) % 4; }
-        let step = std::mem::take(&mut self.step) || is_key_pressed(KeyCode::N);
-        Action { restart, summon_boss: is_key_pressed(KeyCode::B), step: self.paused && step, spotlight_changed }
+        let step = std::mem::take(&mut self.step) || pressed(KeyCode::N);
+        Action { restart, summon_boss: pressed(KeyCode::B), step: self.paused && step, spotlight_changed }
     }
     pub fn draw(&self) {
         if self.paused { draw_text("PAUSED", 242., 38., 11., YELLOW); }

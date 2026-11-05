@@ -17,3 +17,5 @@
 /* Main places the receipt at 38% of the canvas height with font-size max(12px, 18px * scale). */
 #wf-ui .lamp-reward-banner{position:absolute;left:0;top:38%;width:100%;font-size:max(12px,calc(18px * var(--s)))}
 #wf-fade{position:absolute;inset:0;z-index:90;background:#000}
+/* The Cascade Fill ceremony locks input: a transparent cover over the whole frame, above the DEV pills. */
+#wf-input-lock{position:absolute;inset:0;z-index:10002}

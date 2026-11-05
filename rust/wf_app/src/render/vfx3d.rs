@@ -47,8 +47,8 @@ fn sampling_dpi() -> f32 {
     { screen_dpi_scale() }
 }
 /// V cycles L0/L1/L2/L3; Shift+V toggles native snap/dither.
-pub fn sampling_controls() {
-    if is_key_pressed(KeyCode::V) {
+pub fn sampling_controls(keys: bool) {
+    if keys && is_key_pressed(KeyCode::V) {
         SAMPLING.with(|s| {
             let mut value = s.get();
             if is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift) {

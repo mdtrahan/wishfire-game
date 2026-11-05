@@ -31,6 +31,8 @@ pub struct LampUi {
     hits: Vec<LHit>,
     pub orbs: OrbField,
     bar: BagBar,
+    /// The Cascade Fill ceremony advanced this frame: taps, page clicks and keys are ignored.
+    locked: bool,
 }
 // The bag icon keeps the x centre it had in the old strip, at half its size, centred on the
 // quest tracker (the 52 px objective box).
@@ -41,26 +43,43 @@ const BAG_H: f32 = 92. * 0.83 * 0.9745 * 0.5;
 // The Bag progress bar: slides out to the left from behind the icon.
 const BAR_W: f32 = 92.; const BAR_H: f32 = 12.;
 const SLIDE_SECONDS: f32 = 0.22;
-/// A whole bar fills in this long; partial gains take their share.
-const FILL_SECONDS: f32 = 0.45;
+/// The bar rests this long before each fill starts (once it is out, and again after every
+/// upgrade), so the player sees there is something to watch.
+const BEAT_SECONDS: f32 = 0.5;
+/// A whole bar fills in this long; a smaller gain takes its share, but never less than
+/// `MIN_FILL_SECONDS`.
+const FILL_SECONDS: f32 = 1.2;
+const MIN_FILL_SECONDS: f32 = 0.6;
 const CELEBRATE_SECONDS: f32 = 0.3;
 /// The finished display stays this long after the last fill or upgrade before sliding back.
 const HOLD_SECONDS: f32 = 2.5;
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-enum BarPhase { #[default] Hidden, SlideOut, Fill, Celebrate, Hold, SlideIn }
-/// The Bag progress presentation. It shows the saved progress, never its own: every level is
-/// applied through `EquipmentStorage::upgrade` when the fill reaches the end of the bar, and the
-/// next bar starts from whatever the save holds after that (the overflow).
+enum BarPhase { #[default] Hidden, SlideOut, Beat, Fill, Celebrate, Hold, SlideIn }
+/// The **Cascade Fill** ceremony (owner's name for this kind of progress presentation, 2026-11-05):
+/// slide out, beat, fill, and for every full bar a burst, a beat and a refill with the overflow,
+/// then a hold and the slide back; input is locked while it plays. It shows the saved progress,
+/// never its own: every level is applied through `EquipmentStorage::upgrade` when the fill
+/// reaches the end of the bar, and the next bar starts from whatever the save holds after that.
 #[derive(Default)]
-struct BagBar { phase: BarPhase, t: f32, tier: u32, fraction: f32, synced: bool, wanted: bool }
+struct BagBar { phase: BarPhase, t: f32, fraction: f32, synced: bool, wanted: bool,
+    /// Bar fractions per second of the fill in progress.
+    rate: f32 }
 impl BagBar {
+    /// The ceremony is on screen.
+    fn active(&self) -> bool { self.phase != BarPhase::Hidden }
+    fn start_fill(&mut self, target: f32) {
+        let gap = (target - self.fraction).max(0.);
+        self.rate = if gap > 0. { gap / (FILL_SECONDS * gap).max(MIN_FILL_SECONDS) } else { 1. / FILL_SECONDS };
+        self.phase = BarPhase::Fill;
+    }
     /// `visible`: the bag icon is on screen and nothing covers it.
     fn update(&mut self, economy: &mut wf_host::equipment::EquipmentStorage, session: &mut wf_host::session::Session, dt: f32, visible: bool) -> Option<String> {
         let data = economy.data()?;
         let progress = data.upgrade_progress();
         let tier = data.lamp.capacity_tier;
         let ready = !progress.max && progress.required.is_some_and(|r| progress.current >= r);
-        if !self.synced { self.synced = true; self.tier = tier; self.fraction = progress.fraction as f32; }
+        let target = if ready { 1. } else { progress.fraction as f32 };
+        if !self.synced { self.synced = true; self.fraction = progress.fraction as f32; }
         if progress.max { self.wanted = false; }
         if !visible { return None; }
         match self.phase {
@@ -69,26 +88,26 @@ impl BagBar {
                 // everything earned since it was last out.
                 if self.wanted { self.wanted = false; self.phase = BarPhase::SlideOut; self.t = 0.; }
             }
-            BarPhase::SlideOut => { self.t += dt; if self.t >= SLIDE_SECONDS { self.phase = BarPhase::Fill; } }
+            BarPhase::SlideOut => { self.t += dt; if self.t >= SLIDE_SECONDS { self.phase = BarPhase::Beat; self.t = 0.; } }
+            BarPhase::Beat => { self.wanted = false; self.t += dt; if self.t >= BEAT_SECONDS { self.start_fill(target); } }
             BarPhase::Fill => {
                 self.wanted = false;
-                self.tier = tier;
-                let target = if ready { 1. } else { progress.fraction as f32 };
-                self.fraction = if self.fraction > target { target } else { (self.fraction + dt / FILL_SECONDS).min(target) };
+                self.fraction = if self.fraction > target { target } else { (self.fraction + dt * self.rate).min(target) };
                 if self.fraction >= target { self.phase = if ready { BarPhase::Celebrate } else { BarPhase::Hold }; self.t = 0.; }
             }
             BarPhase::Celebrate => {
                 self.t += dt;
                 if self.t >= CELEBRATE_SECONDS {
                     match economy.upgrade(session, Some(tier)) {
-                        Ok(receipt) => { self.tier = receipt.level_after - 1; self.fraction = 0.; self.phase = BarPhase::Fill; }
+                        // The emptied bar rests a beat, then fills with the overflow.
+                        Ok(_) => { self.fraction = 0.; self.phase = BarPhase::Beat; self.t = 0.; }
                         Err(error) => { self.phase = BarPhase::Hold; self.t = 0.; return Some(error); }
                     }
                 }
             }
             BarPhase::Hold => {
                 self.t += dt;
-                if self.wanted || ready { self.phase = BarPhase::Fill; } else if self.t >= HOLD_SECONDS { self.phase = BarPhase::SlideIn; self.t = 0.; }
+                if self.wanted || ready { self.start_fill(target); } else if self.t >= HOLD_SECONDS { self.phase = BarPhase::SlideIn; self.t = 0.; }
             }
             BarPhase::SlideIn => { self.t += dt; if self.t >= SLIDE_SECONDS { self.phase = BarPhase::Hidden; } }
         }
@@ -103,6 +122,8 @@ impl BagBar {
     }
     /// 0..1 through the upgrade celebration, else `None`.
     fn celebration(&self) -> Option<f32> { (self.phase == BarPhase::Celebrate).then(|| (self.t / CELEBRATE_SECONDS).clamp(0., 1.)) }
+    /// The bar alone: no numbers on it (owner 2026-11-05). The fill is the boss timer's blue
+    /// and flashes white on an upgrade.
     fn draw(&self) {
         let reveal = self.reveal();
         if reveal <= 0. { return; }
@@ -113,17 +134,7 @@ impl BagBar {
         chrome::capsule(x - 1.5, y - 1.5, width + 3., BAR_H + 3., rgb(0xb777d8));
         chrome::capsule(x, y, width, BAR_H, rgb(0x242130));
         let fill = (width - 2.) * self.fraction.clamp(0., 1.);
-        if fill > BAR_H - 2. { chrome::capsule(x + 1., y + 1., fill, BAR_H - 2., chrome::mix(rgb(0xa829e0), WHITE, flash)); }
-        if reveal > 0.6 {
-            let text = if self.celebration().is_some() { "100%".to_string() } else { format!("{}%", (self.fraction * 100.).floor()) };
-            label(&text, x + width / 2. + 4., BAG_CY, 8., WHITE, Align::Center);
-            // The level disc at the bar's far end; the upgrade bursts from it.
-            let disc = vec2(x + 2., BAG_CY);
-            if let Some(c) = self.celebration() { draw_circle(disc.x, disc.y, 9. + 14. * c, rgba(0xffffff, 0.7 * (1. - c))); }
-            draw_circle(disc.x, disc.y, 9., rgb(0xdba7f5));
-            draw_circle(disc.x, disc.y, 7.5, rgb(0x4a167e));
-            label(&format!("{}", self.tier + 1), disc.x, disc.y, 9., WHITE, Align::Center);
-        }
+        if fill > BAR_H - 2. { chrome::capsule(x + 1., y + 1., fill, BAR_H - 2., chrome::mix(rgb(chrome::TIMER_BLUE), WHITE, flash)); }
     }
 }
 fn roster_of(game: &Game) -> Vec<LampHero> { lamp_hero_roster(&game.session.progress, false).unwrap_or_default() }
@@ -135,8 +146,14 @@ impl LampUi {
     pub fn frame(&mut self, game: &mut Game, visible: bool, dt: f32) {
         let now = game.economy.time();
         self.feedbacks.retain(|f| f.2 > now);
-        if let Some(error) = self.bar.update(&mut game.economy, &mut game.session, dt, visible && !self.modal_open()) { self.notice = error; }
+        let shown = visible && !self.modal_open();
+        if let Some(error) = self.bar.update(&mut game.economy, &mut game.session, dt, shown) { self.notice = error; }
+        // Only while the ceremony is actually moving: a paused clock or a covered bag icon
+        // must never leave the game locked.
+        self.locked = shown && dt > 0. && self.bar.active();
     }
+    /// The Bag progress ceremony is playing: ignore taps, page clicks and keys until it ends.
+    pub fn locks_input(&self) -> bool { self.locked }
     /// The bag icon: opens the equipment screen and shows stored / capacity. The count waits for
     /// orbs still flying, so it rises as they arrive.
     pub fn draw_bag(&mut self, assets: &Assets, game: &mut Game, hits: &mut Vec<Hit>) {
@@ -439,17 +456,16 @@ mod tests {
         bar.request();
         let (levels, phases) = play(&mut bar, &mut economy, &mut run);
         assert!(levels.is_empty());
-        assert_eq!(phases, [Hidden, SlideOut, Fill, Hold, SlideIn, Hidden]);
-        assert_eq!((bar.tier, bar.fraction), (0, 0.4));
+        assert_eq!(phases, [Hidden, SlideOut, Beat, Fill, Hold, SlideIn, Hidden]);
+        assert_eq!(bar.fraction, 0.4);
         // 1000 more Essence crosses three thresholds (100, 300, 525) without closing the bar.
         economy.award_combat_essence(&mut run.session, "test:large", 1000.).unwrap();
         bar.request();
         let (levels, phases) = play(&mut bar, &mut economy, &mut run);
         assert_eq!(levels, [2, 3, 4]);
-        assert_eq!(phases, [Hidden, SlideOut, Fill, Celebrate, Fill, Celebrate, Fill, Celebrate, Fill, Hold, SlideIn, Hidden]);
+        assert_eq!(phases, [Hidden, SlideOut, Beat, Fill, Celebrate, Beat, Fill, Celebrate, Beat, Fill, Celebrate, Beat, Fill, Hold, SlideIn, Hidden]);
         let data = economy.data().unwrap();
         assert_eq!((data.lamp.capacity_tier, data.lamp.essence, data.capacity()), (3, 115., 72.));
-        assert_eq!(bar.tier, 3);
         assert!((bar.fraction - 115. / 775.).abs() < 1e-6);
     }
     #[test]
@@ -477,6 +493,33 @@ mod tests {
         assert!((hold - 2.5).abs() < 0.005, "hold lasted {hold} s");
         assert!(at(BarPhase::Hold) > entered.iter().rev().find(|(p, _)| *p == BarPhase::Celebrate).unwrap().1, "the hold starts after the final upgrade and fill");
         assert_eq!(economy.data().unwrap().lamp.capacity_tier, 2);
+    }
+    #[test]
+    fn every_fill_waits_half_a_second_and_is_slow_enough_to_follow() {
+        let mut run = crate::testing::HostRun::new(1);
+        let mut economy = super::super::orbs::tests::economy(&mut run);
+        let mut bar = BagBar::default();
+        bar.update(&mut economy, &mut run.session, 1. / 60., true);
+        assert!(!bar.active());
+        // 110 Essence: a whole first bar (100), then 10 of 300 on the second.
+        economy.award_combat_essence(&mut run.session, "test:pace", 110.).unwrap();
+        bar.request();
+        let (mut clock, mut entered, mut last) = (0.0f32, Vec::new(), bar.phase);
+        for _ in 0..20000 {
+            bar.update(&mut economy, &mut run.session, 0.001, true);
+            clock += 0.001;
+            if bar.phase != last { entered.push((bar.phase, clock)); last = bar.phase; }
+            assert_eq!(bar.active(), bar.phase != BarPhase::Hidden);
+            if bar.phase == BarPhase::Hidden { break; }
+        }
+        use BarPhase::*;
+        assert_eq!(entered.iter().map(|(p, _)| *p).collect::<Vec<_>>(), [SlideOut, Beat, Fill, Celebrate, Beat, Fill, Hold, SlideIn, Hidden]);
+        let span = |i: usize| entered[i + 1].1 - entered[i].1;
+        assert!((span(1) - 0.5).abs() < 0.005, "the first beat lasted {} s", span(1));
+        assert!((span(2) - 1.2).abs() < 0.005, "a whole bar filled in {} s", span(2));
+        assert!((span(4) - 0.5).abs() < 0.005, "the beat after the upgrade lasted {} s", span(4));
+        assert!((span(5) - 0.6).abs() < 0.005, "a small gain still took {} s", span(5));
+        assert!(!bar.active(), "the ceremony is over once the bar is back in the bag");
     }
     #[test]
     fn the_bar_waits_while_a_window_covers_the_bag() {

@@ -106,6 +106,8 @@ impl Ui {
         }
         result
     }
+    /// Forget the page clicks since the last frame (an input-locked ceremony is playing).
+    pub fn drop_clicks(&mut self) { let _ = self.dom.take_clicks(); }
     /// One chrome action (from a canvas hit zone or a page element).
     fn perform(&mut self, hit: chrome::HitKind, p: Vec2, game: &mut Game) -> UiAction {
         use chrome::HitKind as K;
@@ -209,6 +211,8 @@ impl Ui {
         // Last, so nothing before them shifts when a menu opens: the developer pills and modal.
         stage.kids.extend(self.dev.launchers());
         if let Some(view) = self.dev.view() { stage.push(view); }
+        // Over everything while the Bag progress ceremony plays, so nothing under it reacts.
+        if self.lamp.locks_input() { stage.push(el("div").key("lock").id("wf-input-lock").on(Act::Stay)); }
         self.dom.render(vec![stage]);
     }
     /// `renderExistingNavigation`: DAILY / HERO / QUESTS / VAULT / POWER UP.
