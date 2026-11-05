@@ -1,64 +1,13 @@
 {
   "changed_functions": {
-    "rust/wf_app/AGENTS.md": [
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/debug.rs": [
-      "visible_h"
-    ],
-    "rust/wf_app/src/game.rs": [
-      "salt"
-    ],
-    "rust/wf_app/src/input.rs": [
-      "t",
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/main.rs": [
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/ui/css.rs": [
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/ui/css/dev.css": [
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/ui/dev.rs": [
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/ui/mod.rs": [
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/ui/orbs.rs": [
-      "t",
-      "halo",
-      "grow",
-      "__MODULE__"
-    ],
-    "rust/wf_host/AGENTS.md": [
-      "__MODULE__"
-    ],
-    "rust/wf_host/src/equipment.rs": [
-      "seed",
-      "__MODULE__"
-    ],
-    "rust/wf_host/tests/orbs.rs": [
-      "__MODULE__"
-    ],
-    "rust/wf_meta/AGENTS.md": [
-      "__MODULE__"
-    ],
-    "rust/wf_meta/src/lamp.rs": [
-      "guide",
-      "__MODULE__"
-    ],
-    "rust/wf_meta/tests/lamp.rs": [
+    ".beads/commit-check/ORKA-63bf.22.json": [
       "__MODULE__"
     ]
   },
   "details": {
     "hot_files_touched": [],
-    "staged_file_count": 16,
-    "staged_line_count": 354,
+    "staged_file_count": 1,
+    "staged_line_count": 107,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -66,42 +15,12 @@
     }
   },
   "files": [
-    "rust/wf_app/AGENTS.md",
-    "rust/wf_app/src/debug.rs",
-    "rust/wf_app/src/game.rs",
-    "rust/wf_app/src/input.rs",
-    "rust/wf_app/src/main.rs",
-    "rust/wf_app/src/ui/css.rs",
-    "rust/wf_app/src/ui/css/dev.css",
-    "rust/wf_app/src/ui/dev.rs",
-    "rust/wf_app/src/ui/mod.rs",
-    "rust/wf_app/src/ui/orbs.rs",
-    "rust/wf_host/AGENTS.md",
-    "rust/wf_host/src/equipment.rs",
-    "rust/wf_host/tests/orbs.rs",
-    "rust/wf_meta/AGENTS.md",
-    "rust/wf_meta/src/lamp.rs",
-    "rust/wf_meta/tests/lamp.rs"
+    ".beads/commit-check/ORKA-63bf.22.json"
   ],
   "issue_id": "ORKA-63bf.22",
   "out_of_scope_hot_file_touch": false,
   "significant": true,
   "staged_blobs": {
-    "rust/wf_app/AGENTS.md": "53060b2a975dba0d3c62a6bfac36c61500117094",
-    "rust/wf_app/src/debug.rs": "531a71250fef7fd0f0ad55560a0b8122ebbe9e4f",
-    "rust/wf_app/src/game.rs": "f617b383b9f20cfe2822de6ea44a98d6ee2564d8",
-    "rust/wf_app/src/input.rs": "6f5fe0cf7f4f1ab0f2664e1eae3759a621947884",
-    "rust/wf_app/src/main.rs": "af4bbfb4d88478561d45fc5cfa8bddb58c9e6efd",
-    "rust/wf_app/src/ui/css.rs": "769058dccd88845dd70bce98ee8d69a314223177",
-    "rust/wf_app/src/ui/css/dev.css": "e710b5c7bca65f715fbf115ca8d5e3d2d07511f6",
-    "rust/wf_app/src/ui/dev.rs": "eb02a183d9408701b3adf7b3a245475bd2d1f730",
-    "rust/wf_app/src/ui/mod.rs": "52816f55b9cc3cae01930731ea59bd1edd195015",
-    "rust/wf_app/src/ui/orbs.rs": "538f2d410d50d294d0b4f660647eae392a4f9b65",
-    "rust/wf_host/AGENTS.md": "9ed1d33c12c39568872bc23b68282f5a255b7402",
-    "rust/wf_host/src/equipment.rs": "7c9034fcf203e2a6b8bb2034950e4292d8fdeb4e",
-    "rust/wf_host/tests/orbs.rs": "d3e2488cc86b664176282f0a0d9f6f25d124680f",
-    "rust/wf_meta/AGENTS.md": "6f25e9a26b769e9ed1d56f09fad4cd30612206fe",
-    "rust/wf_meta/src/lamp.rs": "10542c71a3520fe0414c7e0044eaf6d59667eeaf",
-    "rust/wf_meta/tests/lamp.rs": "8415e866fdd161130f2db84e895708660a84edc6"
+    ".beads/commit-check/ORKA-63bf.22.json": "0aafa332aaaaef5097bde64c3a5a4a51e22b2f17"
   }
 }
