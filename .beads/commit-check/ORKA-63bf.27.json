@@ -1,17 +1,13 @@
 {
   "changed_functions": {
-    "rust/wf_app/AGENTS.md": [
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/ui/orbs.rs": [
-      "grow",
+    ".beads/commit-check/ORKA-63bf.27.json": [
       "__MODULE__"
     ]
   },
   "details": {
     "hot_files_touched": [],
-    "staged_file_count": 2,
-    "staged_line_count": 54,
+    "staged_file_count": 1,
+    "staged_line_count": 32,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -19,14 +15,12 @@
     }
   },
   "files": [
-    "rust/wf_app/AGENTS.md",
-    "rust/wf_app/src/ui/orbs.rs"
+    ".beads/commit-check/ORKA-63bf.27.json"
   ],
   "issue_id": "ORKA-63bf.27",
   "out_of_scope_hot_file_touch": false,
   "significant": false,
   "staged_blobs": {
-    "rust/wf_app/AGENTS.md": "af5532cf54ac543dde9547b2030c30bfeb8b1d4f",
-    "rust/wf_app/src/ui/orbs.rs": "64814266dfec8e1a348cbfcbecb6b69172b7faaf"
+    ".beads/commit-check/ORKA-63bf.27.json": "41c9550d77b6cbc2ba2381012fcbfc4c6bfd0c42"
   }
 }
