@@ -261,7 +261,9 @@ impl Portrait {
             self.target.texture.set_filter(FilterMode::Linear);
         }
     }
-    pub fn layout(&self) -> (f32, Vec2) {
+    pub fn layout(&self) -> (f32, Vec2) { Self::frame() }
+    /// The 360x640 frame inside the window: CSS px per logical px and the top-left corner.
+    pub fn frame() -> (f32, Vec2) {
         let scale = (screen_width() / WIDTH).min(screen_height() / HEIGHT);
         (
             scale,

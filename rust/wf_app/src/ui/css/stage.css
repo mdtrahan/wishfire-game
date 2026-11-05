@@ -1,0 +1,9 @@
+/* The 360x640 game frame as page elements over the canvas. Rust sets the frame rectangle and
+   --s (CSS px per logical px) on #wf-ui each frame; main sets the same numbers inline per overlay. */
+#wf-ui{position:fixed;z-index:10;overflow:hidden;pointer-events:none;font-family:system-ui,Segoe UI,Arial,sans-serif;color:#f8fafc;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+#wf-ui *{box-sizing:border-box}
+#wf-ui>*{pointer-events:auto}
+#wf-ui img{-webkit-user-drag:none}
+#wf-ui #hero-details{position:absolute;inset:0;padding:calc(14px * var(--s)) calc(12px * var(--s)) calc(66px * var(--s));font-size:calc(14px * var(--s))}
+#wf-ui #game-meta-nav{position:absolute;left:0;top:calc(580px * var(--s));transform:scale(var(--s))}
+#wf-fade{position:absolute;inset:0;z-index:90;background:#000}

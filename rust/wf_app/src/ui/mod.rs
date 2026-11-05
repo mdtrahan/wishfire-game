@@ -3,11 +3,14 @@
 //! `heroCooldownStrip.mjs` + `src/core/buffSignalRules.mjs`, `renderExistingNavigation.mjs`.
 //! Placement and purpose match the JS; pixels are placeholder-grade.
 pub mod chrome;
+pub mod css;
+pub mod dom;
 pub mod lamp;
 pub mod model;
 pub mod screens;
 pub mod story;
 pub mod text;
+use self::dom::{el, Node};
 use crate::assets::Assets;
 use crate::game::Game;
 use macroquad::prelude::*;
@@ -19,6 +22,10 @@ pub enum Screen { Combat, Hero, Vault, PowerUp, Quests }
 impl Screen {
     pub fn nav_label(self) -> &'static str { match self { Screen::Combat | Screen::Quests => "Quests", Screen::Hero => "Hero", Screen::Vault => "Vault", Screen::PowerUp => "Power Up" } }
 }
+/// What a page element does when clicked: a chrome action, a lamp window action, or nothing
+/// (`Stay` keeps a click on a panel from reaching the backdrop behind it).
+#[derive(Clone, Debug, PartialEq)]
+pub enum Act { Hit(chrome::HitKind), Lamp(lamp::LampHit), Stay }
 /// What the frame loop must do after a tap.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum UiAction { None, SummonBoss }
@@ -37,9 +44,10 @@ pub struct Ui {
     pub story: story::StoryFlow,
     pub toast: Option<Toast>,
     hits: Vec<chrome::Hit>,
+    dom: dom::Dom<Act>,
 }
 impl Ui {
-    pub fn new() -> Self { Self { screen: Screen::Combat, panel: None, model: CombatModel::default(), lamp: lamp::LampUi::default(), hero: screens::HeroUi::default(), training: screens::TrainingUi::default(), vault: screens::VaultUi::default(), story: story::StoryFlow::default(), toast: None, hits: Vec::new() } }
+    pub fn new() -> Self { Self { screen: Screen::Combat, panel: None, model: CombatModel::default(), lamp: lamp::LampUi::default(), hero: screens::HeroUi::default(), training: screens::TrainingUi::default(), vault: screens::VaultUi::default(), story: story::StoryFlow::default(), toast: None, hits: Vec::new(), dom: dom::Dom::new() } }
     /// Boot lands on the Quests map (`activateInitialLayout('storyMock')`).
     pub fn boot(&mut self, qa_direct_combat: bool) { if qa_direct_combat { self.story.qa_direct_combat(); self.screen = Screen::Combat; } else { self.screen = Screen::Quests; } }
     fn now_ms() -> f64 { macroquad::time::get_time() * 1000. }
@@ -77,10 +85,26 @@ impl Ui {
         }
         if self.screen == Screen::Combat && self.lamp.tap(p, game) { return Some(UiAction::None); }
         let hit = self.hits.iter().rev().find(|h| h.rect.contains(p)).map(|h| h.kind)?;
+        Some(self.perform(hit, p, game))
+    }
+    /// Clicks on page elements since the last frame, applied in order.
+    pub fn web_clicks(&mut self, game: &mut Game) -> Option<UiAction> {
+        let mut result = None;
+        for act in self.dom.take_clicks() {
+            match act {
+                Act::Hit(kind) => { let action = self.perform(kind, Vec2::ZERO, game); if result.is_none() || action != UiAction::None { result = Some(action); } }
+                Act::Lamp(kind) => { self.lamp.act(kind, game); result.get_or_insert(UiAction::None); }
+                Act::Stay => { result.get_or_insert(UiAction::None); }
+            }
+        }
+        result
+    }
+    /// One chrome action (from a canvas hit zone or a page element).
+    fn perform(&mut self, hit: chrome::HitKind, p: Vec2, game: &mut Game) -> UiAction {
         use chrome::HitKind as K;
         let now_ms = platform_now();
         let now_sec = now_ms / 1000.;
-        if self.story.pending() { return Some(UiAction::None); }
+        if self.story.pending() { return UiAction::None; }
         if self.story.modal.is_some() {
             match hit {
                 K::SkipCancel => self.story.cancel_skip(now_sec),
@@ -89,28 +113,28 @@ impl Ui {
                 K::PauseQuit => { if self.story.quit_paused_combat() == story::Request::QuitCombat { let _ = game.session.surrender_for_departure(); game.session.dispose(); } }
                 _ => {}
             }
-            return Some(UiAction::None);
+            return UiAction::None;
         }
         match hit {
             K::Nav(screen) => {
                 let from = self.screen;
-                if screen == from { return Some(UiAction::None); }
+                if screen == from { return UiAction::None; }
                 match self.story.navigate(screen, from) {
                     story::Request::DepartCombat(target) => { if from == Screen::Combat { if let Err(e) = game.session.surrender_for_departure() { self.model.host_error = Some(e); } } self.screen = target; }
                     _ => {}
                 }
-                return Some(UiAction::None);
+                return UiAction::None;
             }
-            K::StoryStart | K::StoryTown => { self.story.start_combat(now_ms); return Some(UiAction::None); }
-            K::StoryCard(i) => { self.story.start_card(i, now_sec); return Some(UiAction::None); }
-            K::StoryBack => { self.story.back_to_map(); return Some(UiAction::None); }
-            K::NarrativeTap => { self.story.narrative_tap(p.x as f64, p.y as f64, now_sec, now_ms); return Some(UiAction::None); }
-            K::HeroClose => { self.story.open_ladder(); self.screen = Screen::Quests; return Some(UiAction::None); }
+            K::StoryStart | K::StoryTown => { self.story.start_combat(now_ms); return UiAction::None; }
+            K::StoryCard(i) => { self.story.start_card(i, now_sec); return UiAction::None; }
+            K::StoryBack => { self.story.back_to_map(); return UiAction::None; }
+            K::NarrativeTap => { self.story.narrative_tap(p.x as f64, p.y as f64, now_sec, now_ms); return UiAction::None; }
+            K::HeroClose => { self.story.open_ladder(); self.screen = Screen::Quests; return UiAction::None; }
             _ => {}
         }
         let roster_len = screens::roster(game).len().max(1);
         let hero_key = |ui: &Ui| screens::roster(game).get(screens::hero_index(&ui.hero, roster_len)).map(|h| (h.hero_instance_key.clone(), h.definition().name));
-        Some(match hit {
+        match hit {
             K::Summon => UiAction::SummonBoss,
             K::Inspect => { self.panel = Some(Panel::BossInfo); UiAction::None }
             K::Hero(key) => { self.panel = Some(Panel::HeroSpecial(key)); UiAction::None }
@@ -128,7 +152,7 @@ impl Ui {
             K::LevelUp => {
                 if let Some((id, name)) = hero_key(self) {
                     let result = game.spend_level_up(&id);
-                    self.hero.ticket_notice = if result.ok { format!("{name} reached level {}.", result.level) } else { match result.reason { Some("insufficient_tickets") => format!("Need {} {name} tickets.", model::format_number(result.cost)), Some("max_level") => "This hero is at the current level cap.".into(), _ => "Ticket spend could not be saved.".into() } };
+                    self.hero.ticket_notice = if result.ok { format!("{name} reached level {}.", result.level) } else { match result.reason { Some("insufficient_tickets") => format!("Need {} {name} tickets.", result.cost), Some("max_level") => "This hero is at the current level cap.".into(), _ => "Ticket spend could not be saved.".into() } };
                 }
                 UiAction::None
             }
@@ -137,7 +161,7 @@ impl Ui {
             K::StarUp => {
                 if let Some((id, name)) = hero_key(self) {
                     let result = game.star_up(&id);
-                    self.hero.sheet_notice = if result.ok { format!("{name} reached *{}.", result.stars) } else { match result.reason { Some("insufficient_tickets") => "Not enough tickets yet.".into(), Some("max_stars") => "All stars earned.".into(), _ => "The change could not be saved.".into() } };
+                    self.hero.sheet_notice = if result.ok { format!("{name} reached ★{}.", result.stars) } else { match result.reason { Some("insufficient_tickets") => "Not enough tickets yet.".into(), Some("max_stars") => "All stars earned.".into(), _ => "The change could not be saved.".into() } };
                 }
                 UiAction::None
             }
@@ -149,18 +173,47 @@ impl Ui {
             }
             K::VaultTab(tab) => { self.vault.tab = tab; UiAction::None }
             K::Nav(_) | K::StoryStart | K::StoryTown | K::StoryCard(_) | K::StoryBack | K::NarrativeTap | K::SkipCancel | K::SkipConfirm | K::PauseQuit | K::PauseContinue | K::HeroClose => UiAction::None,
-        })
+        }
+    }
+    /// The page elements for this frame: the stage at the frame rectangle, the nav, the entry
+    /// fade and the open menu. Called once per frame after input and state updates.
+    pub fn web(&mut self, game: &mut Game) {
+        let (scale, offset) = crate::camera::Portrait::frame();
+        let mut stage: Node<Act> = el("div").id("wf-ui").style(format!("left:{:.2}px;top:{:.2}px;width:{:.2}px;height:{:.2}px;--s:{:.4}", offset.x, offset.y, crate::camera::WIDTH * scale, crate::camera::HEIGHT * scale, scale))
+            .child(el("style").t(css::sheet()))
+            .child(self.nav_view());
+        let fade = self.story.transition.map_or(0., |t| t.alpha(platform_now()));
+        stage.push(el("div").id("wf-fade").flag("hidden", fade <= 0.).style(format!("opacity:{fade:.3}")));
+        if self.screen == Screen::Hero { if let Some(view) = screens::hero_view(game, &mut self.hero) { stage.push(view); } }
+        self.dom.render(vec![stage]);
+    }
+    /// `renderExistingNavigation`: DAILY / HERO / QUESTS / VAULT / POWER UP.
+    fn nav_view(&self) -> Node<Act> {
+        let hidden = self.story.in_opening();
+        let inert = hidden || self.story.pending() || self.story.modal.is_some();
+        let active = self.screen.nav_label();
+        let items: [(&str, &str, &str, Option<Screen>); 5] = [("DAILY", "Daily", "daily", None), ("HERO", "Hero", "hero", Some(Screen::Hero)), ("QUESTS", "Quests", "quests", Some(Screen::Quests)), ("VAULT", "Vault", "vault", Some(Screen::Vault)), ("POWER UP", "Power Up", "power-up", Some(Screen::PowerUp))];
+        // Hero details fills the stage at z-index 30; the nav rises above it only there.
+        let mut nav = el("nav").id("game-meta-nav").label("Game navigation").flag("hidden", hidden).flag("inert", inert).style(format!("z-index:{}", if self.screen == Screen::Hero { 32 } else { 19 }));
+        for (text, label, asset, target) in items {
+            let mut button = el("button").attr("type", "button").flag("disabled", inert || target.is_none())
+                .child(el("img").attr("src", css::asset(&format!("images/navigation/{asset}.png"))).attr("alt", "").attr("draggable", "false"))
+                .child(el("span").t(text));
+            if label == active { button = button.attr("aria-current", "page"); }
+            if target.is_none() { button = button.attr("title", format!("{text} is not available yet")); }
+            if let Some(screen) = target { button = button.on(Act::Hit(chrome::HitKind::Nav(screen))); }
+            nav.push(button);
+        }
+        nav
     }
     /// Combat chrome over the arena frame.
     pub fn draw_combat(&mut self, assets: &Assets, game: &mut Game) {
         self.hits.clear();
         chrome::draw(assets, &self.model, self.panel.as_ref(), &mut self.hits);
         self.lamp.draw_strip(assets, game, &mut self.hits);
-        chrome::nav(assets, self.screen, &mut self.hits);
         if let Some(panel) = &self.panel { chrome::panel(assets, panel, &self.model, &mut self.hits); }
         self.lamp.draw_modal(assets, game, &mut self.hits);
         if let Some(t) = &self.toast { chrome::toast(assets, &t.title, &t.resource, t.amount, &t.hero_name); }
-        self.story.draw_transition(platform_now());
     }
     /// A meta screen (combat paused underneath).
     pub fn draw_screen(&mut self, assets: &Assets, game: &Game) {
@@ -169,12 +222,9 @@ impl Ui {
             let now = platform_now();
             self.story.update(now / 1000., now);
             self.story.draw(assets, game.session.gold_total, now / 1000., &mut self.hits);
-            if !self.story.in_opening() { chrome::nav(assets, self.screen, &mut self.hits); }
-            self.story.draw_transition(now);
             return;
         }
-        screens::draw(assets, self.screen, game, &mut self.hero, &self.training, &self.vault, &mut self.hits);
-        chrome::nav(assets, self.screen, &mut self.hits);
+        screens::draw(assets, self.screen, game, &self.training, &self.vault, &mut self.hits);
         if self.toast.as_ref().is_some_and(|t| t.until <= Self::now_ms()) { self.toast = None; }
         if let Some(t) = &self.toast { chrome::toast(assets, &t.title, &t.resource, t.amount, &t.hero_name); }
     }

@@ -1,55 +1,20 @@
 {
   "changed_functions": {
-    "rust/wf_app/src/assets.rs": [
+    ".beads/commit-check/ORKA-63bf.18.json": [
       "__MODULE__"
     ],
     "rust/wf_app/src/ui/chrome.rs": [
-      "t",
-      "steps",
-      "size",
-      "w",
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/ui/lamp.rs": [
-      "gap"
-    ],
-    "rust/wf_app/src/ui/mod.rs": [
+      "dist",
       "__MODULE__"
     ],
     "rust/wf_app/src/ui/screens.rs": [
-      "s",
-      "t",
-      "g",
-      "a",
-      "tag_w",
-      "tab_w",
-      "card_w",
-      "fw",
-      "bw",
-      "slot_w",
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/ui/story.rs": [
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/ui/text.rs": [
-      "__MODULE__"
-    ],
-    "tools/build_wf_app.sh": [
-      "__MODULE__"
-    ],
-    "web-runner/assets/fonts/Inter-Bold.ttf": [],
-    "web-runner/assets/fonts/Inter-ExtraBold.ttf": [],
-    "web-runner/assets/fonts/Inter-OFL.txt": [
-      "__MODULE__"
-    ],
-    "web-runner/assets/fonts/Inter-Regular.ttf": [],
-    "web-runner/assets/fonts/Inter-SemiBold.ttf": []
+      "t"
+    ]
   },
   "details": {
     "hot_files_touched": [],
-    "staged_file_count": 13,
-    "staged_line_count": 473,
+    "staged_file_count": 3,
+    "staged_line_count": 106,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -57,36 +22,16 @@
     }
   },
   "files": [
-    "rust/wf_app/src/assets.rs",
+    ".beads/commit-check/ORKA-63bf.18.json",
     "rust/wf_app/src/ui/chrome.rs",
-    "rust/wf_app/src/ui/lamp.rs",
-    "rust/wf_app/src/ui/mod.rs",
-    "rust/wf_app/src/ui/screens.rs",
-    "rust/wf_app/src/ui/story.rs",
-    "rust/wf_app/src/ui/text.rs",
-    "tools/build_wf_app.sh",
-    "web-runner/assets/fonts/Inter-Bold.ttf",
-    "web-runner/assets/fonts/Inter-ExtraBold.ttf",
-    "web-runner/assets/fonts/Inter-OFL.txt",
-    "web-runner/assets/fonts/Inter-Regular.ttf",
-    "web-runner/assets/fonts/Inter-SemiBold.ttf"
+    "rust/wf_app/src/ui/screens.rs"
   ],
   "issue_id": "ORKA-63bf.18",
   "out_of_scope_hot_file_touch": false,
   "significant": true,
   "staged_blobs": {
-    "rust/wf_app/src/assets.rs": "fb33fec7d3755464097c8b4b5564ffab0e730afd",
-    "rust/wf_app/src/ui/chrome.rs": "a4c383515a98cd6edd11270e40b387d47023a764",
-    "rust/wf_app/src/ui/lamp.rs": "841ecf1c7e583eef85c1922cb18f3e9126dc8e72",
-    "rust/wf_app/src/ui/mod.rs": "c6ded1d9d001ee0fef1d266ba04195bc632a60da",
-    "rust/wf_app/src/ui/screens.rs": "a3c1183beacb98c426f080fa91f317068bfeefcc",
-    "rust/wf_app/src/ui/story.rs": "9284257e6e813179c639e73f223600e2e39582a3",
-    "rust/wf_app/src/ui/text.rs": "4a31dcb3fd6590d441e7114ee0255bda74e31304",
-    "tools/build_wf_app.sh": "39eedae4bbd522531182467de4b2cc9113910378",
-    "web-runner/assets/fonts/Inter-Bold.ttf": "41cc2ab158fa4e65623003d5f60ce93845ca129e",
-    "web-runner/assets/fonts/Inter-ExtraBold.ttf": "737c81c6438aedf19afe6d315d36535e6706fc17",
-    "web-runner/assets/fonts/Inter-OFL.txt": "9b2ca37b3ffc77391d8b2ebef4a974ef32bf46ea",
-    "web-runner/assets/fonts/Inter-Regular.ttf": "f7b510b79ed215dbc526bbfd2d895c596f4dc2c7",
-    "web-runner/assets/fonts/Inter-SemiBold.ttf": "deff2743212acaa4148c05404615cfaecf350259"
+    ".beads/commit-check/ORKA-63bf.18.json": "3814caa5d244e962321265477d5aab8c9fae1a7c",
+    "rust/wf_app/src/ui/chrome.rs": "93d1ba4cdd14326fb96539c8a5b0f51e8f694402",
+    "rust/wf_app/src/ui/screens.rs": "ce488a868c1d452025259020dcde2a4ee8664eb3"
   }
 }

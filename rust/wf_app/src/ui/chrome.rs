@@ -354,29 +354,6 @@ fn strip(assets: &Assets, m: &CombatModel, hits: &mut Vec<Hit>) {
         }
     }
 }
-/// `renderExistingNavigation`: DAILY / HERO / QUESTS / VAULT / POWER UP.
-pub fn nav(assets: &Assets, screen: Screen, hits: &mut Vec<Hit>) {
-    // box-shadow 0 -2px 5px #181b1c66 above; linear-gradient(#414345,#242729); border-top 3px ridge #c9a359.
-    box_shadow(0., NAV_TOP, WIDTH, NAV_H, 0., 0., -2., 5., rgba(0x181b1c, 0.4));
-    let bg = baked("nav", WIDTH, NAV_H, [0.; 4], &|_, v| stops(&[(0., rgb(0x414345)), (1., rgb(0x242729))], v));
-    draw_baked(&bg, 0., NAV_TOP, WIDTH, NAV_H);
-    draw_rectangle(0., NAV_TOP, WIDTH, 1.5, rgb(0xe2c07a));
-    draw_rectangle(0., NAV_TOP + 1.5, WIDTH, 1.5, rgb(0x8c6f38));
-    let items: [(&str, &str, Option<Screen>); 5] = [("DAILY", "nav-daily", None), ("HERO", "nav-hero", Some(Screen::Hero)), ("QUESTS", "nav-quests", Some(Screen::Quests)), ("VAULT", "nav-vault", Some(Screen::Vault)), ("POWER UP", "nav-power-up", Some(Screen::PowerUp))];
-    let _ = screen; // aria-current=page changes no pixels.
-    let w = (WIDTH - 8. - 2. * 4.) / 5.;
-    for (i, (text, icon, target)) in items.iter().enumerate() {
-        let x = 4. + i as f32 * (w + 2.);
-        // Buttons are 52px tall from y 586; icon 43x40 then an 11px label, the column centred.
-        if let Some(tex) = assets.ui.get(*icon) {
-            image_tinted(tex, x + (w - 43.) / 2., NAV_TOP + 6.5 + 1., 43., 40., rgba(0x614422, 0.33));
-            image(tex, x + (w - 43.) / 2., NAV_TOP + 6.5, 43., 40.);
-        }
-        let ink = if target.is_none() { rgb(0xbfbcb4) } else { rgb(0xfff7e6) };
-        text::draw_shadowed(text, x + w / 2., NAV_TOP + 52., 9., Weight::ExtraBold, ink, Align::Center, (0., 1., rgba(0x000000, 0.75)));
-        if let Some(t) = target { hits.push(Hit { rect: Rect::new(x, NAV_TOP, w, NAV_H), kind: HitKind::Nav(*t) }); }
-    }
-}
 /// Modal panels: boss stats, a hero's Special, a Party Skill entry.
 pub fn panel(assets: &Assets, panel: &Panel, m: &CombatModel, hits: &mut Vec<Hit>) {
     let _ = assets;

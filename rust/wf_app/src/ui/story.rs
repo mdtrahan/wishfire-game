@@ -199,9 +199,6 @@ impl StoryFlow {
         if t.done(now_ms) && t.switched { self.transition = None; } else { self.transition = Some(t); }
         switch
     }
-    pub fn draw_transition(&self, now_ms: f64) {
-        if let Some(t) = &self.transition { let a = t.alpha(now_ms); if a > 0. { draw_rectangle(0., 0., WIDTH, HEIGHT, Color::new(0., 0., 0., a)); } }
-    }
     /// Developer scenario (`skip()` in storyEntryFlow): the map opens the quest ladder.
     pub fn dev_ladder(&mut self) { if self.phase == Phase::Map && !self.pending() && self.modal.is_none() { self.phase = Phase::Ladder; } }
     pub fn qa_direct_combat(&mut self) { self.active_card = Some(0); self.content = self.cards[0].content; self.combat_unlocked = true; self.phase = Phase::Combat; }

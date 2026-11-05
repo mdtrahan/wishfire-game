@@ -180,6 +180,8 @@ async fn main() {
         portrait.resize();
         render::vfx3d::sampling_controls();
         let click = is_mouse_button_pressed(MouseButton::Left).then(|| portrait.pointer()).flatten();
+        // Page-element clicks (menus, nav) arrive between frames; the canvas owns the rest.
+        let web_action = ui.web_clicks(&mut scene.game);
         // Meta screens: combat pauses underneath (storyEntryFlow.navigate departure).
         if !ui.in_combat() {
             // Dev scenario key: L opens the quest ladder from the map (JS storyEntry.skip() first step).
@@ -189,11 +191,12 @@ async fn main() {
             scene.game.session.pause();
             portrait.begin();
             ui.draw_screen(&assets, &scene.game);
+            ui.web(&mut scene.game);
             portrait.present();
             next_frame().await;
             continue;
         }
-        let ui_action = click.and_then(|p| ui.tap(p, &mut scene.game));
+        let ui_action = click.and_then(|p| ui.tap(p, &mut scene.game)).or(web_action);
         // The strip's conveyor clock, arrivals and timed emissions run while the combat screen shows.
         scene.game.session.bag_blocked = ui.blocks_bag_progress();
         ui.lamp.frame(&mut scene.game, true, controls.paused || ui.pauses());
@@ -361,6 +364,7 @@ async fn main() {
         }
         render::rewards::buffs(&assets, s, &mut stats);
         ui.draw_combat(&assets, game);
+        ui.web(game);
         controls.draw();
         presentation.rewards.banner(&assets, bg, &mut stats);
         stats.calls += 20;

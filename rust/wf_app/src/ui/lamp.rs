@@ -210,7 +210,7 @@ impl LampUi {
         }
     }
     fn show_feedback(&mut self, game: &Game, r: &EquipReceipt) { let until = game.economy.data().map_or(0., |d| d.lamp.last_activation_at).max(0.); let _ = until; self.feedbacks.push((r.hero_id.clone(), r.cp_change, macroquad::time::get_time() * 1000. + 1800.)); }
-    fn act(&mut self, kind: LampHit, game: &mut Game) {
+    pub fn act(&mut self, kind: LampHit, game: &mut Game) {
         self.notice.clear();
         match kind {
             LampHit::Close => self.close(),

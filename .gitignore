@@ -57,6 +57,7 @@ web-runner/runtime-fingerprint.js
 /rust/wf_app/gen/
 /rust/wf_app/web/gen/
 /rust/wf_app/web/art/
+/rust/wf_app/web/assets/
 /rust/wf_app/web/*.wasm
 /rust/wf_app/.qa-*.png
 /rust/wf_app/web/data/

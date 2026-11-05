@@ -38,6 +38,12 @@ cp -p "$ROOT/web-runner/assets/gems/coin.png" "$WEB/art/ui/coin.png"
 cp -p "$ROOT/web-runner/assets/narrative/chapter-1-map.png" "$WEB/art/ui/story-map.png"
 cp -p "$ROOT/web-runner/assets/narrative/chapter-town-token.png" "$WEB/art/ui/story-token.png"
 for n in hondo fara kaja runa; do cp -p "$ROOT/web-runner/assets/narrative/characters/$n.png" "$WEB/art/ui/story-$n.png"; done
+# Menu art for the page elements (ui/dom.rs menus), at main's own paths under assets/.
+mkdir -p "$WEB/assets/images" "$WEB/assets/gems" "$WEB/assets/narrative"
+for d in navigation progression lamp ui; do rsync -a --delete --exclude='*.md' "$IMG/$d/" "$WEB/assets/images/$d/"; done
+for n in Fara Hondo Runa Kaja; do cp -p "$IMG/$n.png" "$WEB/assets/images/$n.png"; done
+cp -p "$ROOT/web-runner/assets/gems/coin.png" "$WEB/assets/gems/coin.png"
+rsync -a --delete "$ROOT/web-runner/assets/narrative/" "$WEB/assets/narrative/"
 WASM_TMP="$(mktemp "$WEB/.wf_app.wasm.XXXXXX")"
 trap 'rm -f "$WASM_TMP"' EXIT
 cp -p "$CARGO_TARGET_DIR/wasm32-unknown-unknown/wasm-release/wf_app.wasm" "$WASM_TMP"
