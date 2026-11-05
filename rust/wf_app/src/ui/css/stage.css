@@ -2,8 +2,14 @@
    --s (CSS px per logical px) on #wf-ui each frame; main sets the same numbers inline per overlay. */
 #wf-ui{position:fixed;z-index:10;overflow:hidden;pointer-events:none;font-family:system-ui,Segoe UI,Arial,sans-serif;color:#f8fafc;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;touch-action:manipulation}
 #wf-ui *{box-sizing:border-box}
-#wf-ui>*{pointer-events:auto}
+/* Zero specificity: an overlay's own rule (main's #quest-ui is click-through) still wins. */
+:where(#wf-ui>*){pointer-events:auto}
 #wf-ui img{-webkit-user-drag:none}
 #wf-ui #hero-details{position:absolute;inset:0;padding:calc(14px * var(--s)) calc(12px * var(--s)) calc(66px * var(--s));font-size:calc(14px * var(--s))}
 #wf-ui #game-meta-nav{position:absolute;left:0;top:calc(580px * var(--s));transform:scale(var(--s))}
+#wf-ui #training-ground{position:absolute}
+#wf-ui #quest-ui{position:absolute;left:0;top:0;transform:scale(var(--s))}
+/* Main's back and story-book icons are inline <svg>; here the same drawings are <img> data URIs. */
+#quest-ui .back img{display:block;width:2.43em;height:1.86em}
+#quest-ui .story-book img{display:block;width:34px;height:34px}
 #wf-fade{position:absolute;inset:0;z-index:90;background:#000}

@@ -1,14 +1,11 @@
-//! Meta screens reached from the nav, translated from `renderHeroScreen.js` + `heroGearUI.mjs`
-//! (Hero), `createTrainingGroundUI` in `combatProgressionUI.mjs` (Power Up) and `renderChests.js`
-//! (Vault). The routing is the JS one (`storyEntryFlow.navigate`): leaving combat pauses it,
-//! Quests shows the pause gate until bead ORKA-63bf.10 lands the real page.
-use super::chrome::{self, rgb, rgba, rounded_outline, Align, Hit, HitKind, Weight, NAV_TOP};
+//! Meta screens reached from the nav, as page elements (`ui/dom.rs`): `renderHeroScreen.js` +
+//! `heroGearUI.mjs` (Hero), `createTrainingGroundUI` in `combatProgressionUI.mjs` (Power Up, a
+//! dialog over the current screen) and `renderChests.js` (Vault). Element trees and class names
+//! are main's; the rules are in `css/`.
+use super::chrome::{self, HitKind};
 use super::dom::{el, Node};
-use super::{css, Act, Screen};
-use crate::assets::Assets;
-use crate::camera::WIDTH;
+use super::{css, Act};
 use crate::game::Game;
-use macroquad::prelude::*;
 use wf_host::progress::HeroProgress;
 use wf_meta::combat_power::{compute_combat_power, CpActor};
 use wf_meta::equipment::{rarity, SLOTS};
@@ -17,10 +14,15 @@ use wf_meta::progression::{hero_ticket_level_cost, training_cost, TRAINING_BONUS
 
 /// `renderHeroScreen` module state.
 pub struct HeroUi { pub index: usize, pub tab: u8, pub sheet: bool, pub skill: usize, pub ticket_notice: String, pub sheet_notice: String, pub gear_slot: u8, seen_index: Option<usize> }
+impl HeroUi {
+    /// `focusHeroSpecial`: land on the Heroes tab with this hero's Special showing.
+    pub fn focus_special(&mut self, index: usize) { self.index = index; self.seen_index = Some(index); self.tab = 0; self.sheet = false; self.skill = 0; self.ticket_notice.clear(); self.sheet_notice.clear(); }
+}
 impl Default for HeroUi { fn default() -> Self { Self { index: 0, tab: 0, sheet: false, skill: 4, ticket_notice: String::new(), sheet_notice: String::new(), gear_slot: 0, seen_index: None } } }
 /// `createTrainingGroundUI` state: tab (0 Training Ground, 1 Party Skills) and the status line.
 #[derive(Default)]
-pub struct TrainingUi { pub tab: u8, pub status: String }
+pub struct TrainingUi { pub open: bool, pub tab: u8, pub status: String, /// The Party Skills entry a HUD party icon opened (`data-focused`).
+    pub focus: Option<&'static str> }
 /// `gameState.chestsLayout` state: the active tier tab.
 #[derive(Default)]
 pub struct VaultUi { pub tab: u8 }
@@ -29,31 +31,6 @@ pub struct VaultUi { pub tab: u8 }
 pub fn roster(game: &Game) -> Vec<&HeroProgress> { hero::HERO_DEFINITIONS.iter().filter_map(|d| game.session.progress.heroes.get(d.key)).collect() }
 pub fn hero_index(ui: &HeroUi, len: usize) -> usize { if len == 0 { 0 } else { ui.index % len } }
 
-pub fn draw(assets: &Assets, screen: Screen, game: &Game, training_ui: &TrainingUi, vault_ui: &VaultUi, hits: &mut Vec<Hit>) {
-    match screen {
-        Screen::Hero => {}
-        Screen::PowerUp => training_ground(assets, game, training_ui, hits),
-        Screen::Vault => vault(assets, vault_ui, hits),
-        Screen::Quests => {
-            draw_rectangle(0., 0., WIDTH, NAV_TOP, rgb(0x241c17));
-            chrome::label("Quests", WIDTH / 2., 28., 20., rgb(0xfff9ed), Align::Center);
-            draw_line(20., 46., WIDTH - 20., 46., 1., rgb(0xaa8960));
-            chrome::paragraph("Combat is paused. The quest map, ladder and opening narrative arrive with bead ORKA-63bf.10.", 24., 70., WIDTH - 48., 13., rgba(0xfff9ed, 0.8));
-            let (bx, by, bw, bh) = ((WIDTH - 160.) / 2., 160., 160., 44.);
-            draw_rectangle(bx, by, bw, bh, rgb(0x25454a));
-            draw_rectangle_lines(bx, by, bw, bh, 2., rgb(0xd0a45b));
-            chrome::label("Continue battle", bx + bw / 2., by + bh / 2., 14., rgb(0xfff9ed), Align::Center);
-            hits.push(Hit { rect: Rect::new(bx, by, bw, bh), kind: HitKind::Continue });
-        }
-        Screen::Combat => {}
-    }
-}
-fn canvas_button(text: &str, x: f32, y: f32, w: f32, h: f32, size: f32, fill: Color, stroke: Color, ink: Color, enabled: bool, kind: HitKind, hits: &mut Vec<Hit>) {
-    let (fill, ink, stroke) = if enabled { (fill, ink, stroke) } else { (rgb(0xe3e6ea), rgb(0x7d8794), rgb(0xb8bfc8)) };
-    rounded_outline(x, y, w, h, 6., fill, stroke);
-    chrome::label(text, x + w / 2., y + h / 2., size, ink, Align::Center);
-    if enabled { hits.push(Hit { rect: Rect::new(x, y, w, h), kind }); }
-}
 // ---------------------------------------------------------------- Hero (renderHeroScreen.js)
 // The element tree is main's (`renderHeroScreen` + `heroGearUI.mjs`), styled by `css/hero.css`.
 type N = Node<Act>;
@@ -241,79 +218,64 @@ pub fn hero_view(game: &Game, ui: &mut HeroUi) -> Option<N> {
 }
 
 // ---------------------------------------------------------------- Power Up (Training Ground)
-/// `#training-ground`: the 360x515 stage centred in the frame; content offsets from the CSS cqw values.
-fn training_ground(assets: &Assets, game: &Game, ui: &TrainingUi, hits: &mut Vec<Hit>) {
-    draw_rectangle(0., 0., WIDTH, NAV_TOP, rgba(0x08070c, 1.));
-    let s = 62.;
+/// `createTrainingGroundUI` (`combatProgressionUI.mjs`): the Growth dialog over the current
+/// screen, styled by `css/progression.css`. `viewport` is the window size in CSS px: the stage
+/// is main's `min(100vw - 24px, 56.25dvh)` wide and ends at the close mark (`layoutClose`).
+pub fn training_view(game: &Game, ui: &TrainingUi, viewport: (f32, f32)) -> N {
     let state = &game.progression.state;
-    // sheet, scene, ribbon
-    rounded_outline(6., s + 14., 348., 386., 2., rgb(0xe6d2ac), rgb(0xbd8749));
-    if let Some(tex) = assets.ui.get("prog-training-scene") { draw_texture_ex(tex, 16., s + 24., WHITE, DrawTextureParams { dest_size: Some(vec2(328., 164.)), ..Default::default() }); }
-    draw_rectangle_lines(16., s + 24., 328., 164., 1., rgb(0x8f6436));
-    rounded_outline(64., s, 232., 28., 2., rgb(0x25454a), rgb(0xd0a45b));
-    chrome::label("Training Ground", 180., s + 14., 14., rgb(0xffe0a0), Align::Center);
-    if ui.tab == 0 {
-        // balance + status
-        chrome::resource_icon(assets, "incense", 18., s + 189., 16.);
-        chrome::label(&super::model::format_number(state.wallet.incense), 38., s + 197., 10., rgb(0x2b2116), Align::Left);
-        if !ui.status.is_empty() { chrome::label(&ui.status, 342., s + 197., 8., rgb(0x513d24), Align::Right); }
-        // four stat cards
-        for (i, stat) in TRAINING_STATS.iter().enumerate() {
-            let x = 14. + i as f32 * 84.;
-            let y = s + 206.;
-            rounded_outline(x, y, 80., 156., 12., rgb(0xf6ead0), rgb(0x866a44));
-            if let Some(tex) = assets.ui.get(&format!("prog-stat-{}", stat.to_lowercase())) { chrome::image(tex, x + 25., y + 20., 28., 28.); }
-            chrome::label(stat, x + 40., y + 55., 10., rgb(0x2b1e12), Align::Center);
-            let level = state.training.get(stat);
-            let cost = training_cost(state, stat);
-            chrome::label("Permanent party bonus", x + 40., y + 70., 7., rgb(0x6c5a3d), Align::Center);
-            chrome::label(&format!("+{}%", (level as f64 * TRAINING_BONUS_PER_LEVEL * 100.).round()), x + 40., y + 80., 7., rgb(0x6c5a3d), Align::Center);
-            let enabled = state.wallet.incense >= cost && level < 100;
-            let stat_static: &'static str = TRAINING_STATS[i];
-            canvas_button(&format!("Train - {}", super::model::format_number(cost)), x + 6., y + 156. - 6. - 24., 68., 24., 8., rgb(0xead2a1), rgb(0xa98b5a), rgb(0x5d513c), enabled, HitKind::Train(stat_static), hits);
-        }
-    } else {
-        // Party Skills list (tg-party)
-        let (lx, ly, lw) = (14., s + 191.5, 332.);
-        let mut y = ly;
-        for entry in hero::PARTY_SKILLS.iter() {
-            let h = 58.;
-            if y + h > ly + 203. { break; }
-            rounded_outline(lx, y, lw, h, 8., rgb(0xf6ead0), rgb(0x866a44));
-            let mut ix = lx + 8.;
-            for icon in entry.icons { chrome::buff_icon(assets, icon, ix, y + 8., 20.); ix += 22.; }
-            chrome::label(&format!("{}   {} - Lv. 1", entry.name, entry.hero), lx + 48., y + 12., 11., rgb(0x2b2116), Align::Left);
-            let mut t = entry.effect.to_string();
-            while chrome::measure(&t, 8., Weight::Regular) > lw - 56. && t.len() > 4 { t.truncate(t.len() - 4); t.push_str("..."); }
-            chrome::label(&t, lx + 48., y + 27., 8., rgb(0x3e3020), Align::Left);
-            let stars = game.progression.state.hero_stars(hero::hero_key(entry.hero));
-            let clock = format!("{} {}s", entry.clock_label, hero::format_special_cooldown(entry.hero, stars));
-            let mut vx = lx + 48.;
-            for value in entry.values.iter().copied().chain(std::iter::once(clock.as_str())) {
-                let w = chrome::measure(value, 8., Weight::Regular) + 10.;
-                if vx + w > lx + lw - 4. { break; }
-                rounded_outline(vx, y + 38., w, 14., 5., rgb(0xf4dfb5), rgb(0xa98b5a));
-                chrome::label(value, vx + 5., y + 45., 8., rgb(0x5d513c), Align::Left);
-                vx += w + 4.;
-            }
-            y += h + 6.;
-        }
+    let k = (viewport.0 - 24.).min(0.5625 * viewport.1) / 360.;
+    // .tg-close sits at 127.7778cqw (460/360 of the width) with no margin; its mark is centred in it.
+    let height = 460. * k + ((66. * k).max(44.) + 44. * k) / 2.;
+    let asset = |path: &str, alt: &str, size: u32| el("img").attr("src", css::asset(path)).attr("alt", alt).attr("width", size.to_string()).attr("height", size.to_string()).attr("draggable", "false");
+    let party = ui.tab == 1;
+    let mut tabs = el("nav").class("tg-tabs").attr("role", "tablist").label("Growth sections");
+    for (i, (label, live)) in [("Training Ground", true), ("Party Skills", true), ("Aquafarm", false), ("Hatchery", false)].into_iter().enumerate() {
+        let tab = el("button").class("tg-tab").attr("type", "button").attr("role", "tab").flag("disabled", !live).attr("aria-selected", (live && ui.tab == i as u8).to_string()).t(label);
+        tabs.push(if live { tab.on(Act::Hit(HitKind::TgTab(i as u8))) } else { tab });
     }
-    // tabs
-    let ty = s + 406.;
-    rounded_outline(8., ty, 344., 30., 2., rgb(0x142f3a), rgb(0x8b7047));
-    for (i, (label, live)) in [("Training Ground", true), ("Party Skills", true), ("Aquafarm", false), ("Hatchery", false)].iter().enumerate() {
-        let x = 11. + i as f32 * 85.;
-        let selected = ui.tab == i as u8;
-        rounded_outline(x, ty + 3., 81., 24., 2., if selected { rgb(0xe8c276) } else { rgb(0x17313b) }, if selected { rgb(0xfff0bc) } else { rgb(0x62634f) });
-        chrome::label(label, x + 40.5, ty + 15., 8., if selected { rgb(0x2e2417) } else { rgb(0xb9ae94) }, Align::Center);
-        if *live { hits.push(Hit { rect: Rect::new(x, ty, 85., 30.), kind: HitKind::TgTab(i as u8) }); }
+    // One scroll list built from the shared party-skill catalog (same source as the HUD icons).
+    let sheet_url = css::asset("images/ui/buff-signals.png");
+    let mut list = el("ul").class("tg-party").label("Party skills");
+    for entry in hero::PARTY_SKILLS.iter() {
+        let mut icons = el("span").class("tg-skill-icons").attr("aria-hidden", "true");
+        for id in entry.icons {
+            let index = chrome::BUFF_FRAMES.iter().position(|f| f == id).unwrap_or(0);
+            icons.push(el("i").style(format!("background-image:url('{sheet_url}');background-size:600% 300%;background-position:{}% {}%", (index % 6) as f32 / 5. * 100., (index / 6) as f32 / 2. * 100.)));
+        }
+        let stars = state.hero_stars(hero::hero_key(entry.hero));
+        let mut values = el("ul").label(format!("{} values", entry.name)).children(entry.values.iter().map(|v| el("li").t(*v)));
+        values.push(el("li").t(format!("{} {}s", entry.clock_label, hero::format_special_cooldown(entry.hero, stars))));
+        let mut card = el("li").class("tg-skill").attr("data-party-skill", entry.id).attr("tabindex", "-1")
+            .child(icons)
+            .child(el("h3").t(entry.name).child(el("small").t(format!("{} · Lv. 1", entry.hero))))
+            .child(el("p").t(entry.effect))
+            .child(values);
+        if ui.focus == Some(entry.id) { card = card.attr("data-focused", "true"); }
+        list.push(card);
     }
-    // close (returns to combat like the modal's dismiss)
-    let cy = s + 460. + 14.;
-    draw_circle(180., cy, 14., rgb(0xf0dfbb)); draw_circle_lines(180., cy, 14., 2., rgb(0x8f6436));
-    chrome::label("X", 180., cy, 14., rgb(0x2b2116), Align::Center);
-    hits.push(Hit { rect: Rect::new(160., cy - 20., 40., 40.), kind: HitKind::Continue });
+    let mut stats = el("div").class("tg-stats").label("Party stat upgrades");
+    for stat in TRAINING_STATS.iter().copied() {
+        let level = state.training.get(stat);
+        let cost = training_cost(state, stat);
+        stats.push(el("article").class("tg-stat").label(format!("{stat} party upgrade"))
+            .child(asset(&format!("images/progression/stat-{}.png", stat.to_lowercase()), &format!("{stat} icon"), 28))
+            .child(el("b").t(stat))
+            .child(el("small").t(format!("Permanent party bonus +{:.0}%", level as f64 * TRAINING_BONUS_PER_LEVEL * 100.)))
+            .child(el("button").class("tg-train").attr("type", "button").flag("disabled", state.wallet.incense < cost || level >= 100).t(format!("Train · {}", num(cost))).on(Act::Hit(HitKind::Train(stat)))));
+    }
+    let content = el("div").class("tg-content")
+        .child(el("h1").class("tg-ribbon").id("training-ground-title").t("Training Ground"))
+        .child(el("section").class("tg-sheet").label("Training Ground"))
+        .child(asset("images/progression/training-scene.png", "Approved training courtyard with four training stations", 328).class("tg-scene"))
+        .child(tabs)
+        .child(list)
+        .child(el("div").class("tg-balance").child(asset("images/progression/incense.png", "Incense", 22)).child(el("span").label("Incense balance").t(num(state.wallet.incense))))
+        .child(el("p").class("tg-status").attr("role", "status").t(ui.status.as_str()))
+        .child(stats);
+    el("section").key("training").id("training-ground").attr("role", "dialog").attr("aria-modal", "true").attr("aria-labelledby", "training-ground-title").attr("data-tab", if party { "party" } else { "training" })
+        .child(el("div").class("tg-stage").style(format!("--modal-close-scale:{k:.4};height:{height:.2}px"))
+            .child(content)
+            .child(el("button").class("game-modal-close tg-close").attr("type", "button").label("Close Growth").on(Act::Hit(HitKind::TgClose)).child(el("span").attr("aria-hidden", "true").t("×"))))
 }
 
 // ---------------------------------------------------------------- Vault (renderChests.js)
@@ -325,41 +287,18 @@ const RETENTION: [(&str, &str, u32, u32, u32); 8] = [
 fn vault_rewards(tab: u8) -> [&'static str; 3] {
     match tab { 0 => ["Pet Fragment x5", "Relic Scrap x8", "Coins x250"], 1 => ["Pet Fragment x10", "Relic Token x2", "Coins x600"], 2 => ["Pet Core x1", "Relic Token x4", "Coins x1200"], _ => ["Pet Core x2", "Ancient Relic x1", "Coins x3000"] }
 }
-fn vault(_assets: &Assets, ui: &VaultUi, hits: &mut Vec<Hit>) {
-    for i in 0..29 { let t = i as f32 / 29.; let c = Color::new(0.165 + t * 0.125, 0.122 + t * 0.098, 0.055 + t * 0.07, 1.); draw_rectangle(0., i as f32 * 20., WIDTH, 20., c); }
-    let (px, py, pw, ph) = (14., 16., WIDTH - 28., NAV_TOP - 16. - 6.);
-    rounded_outline(px, py, pw, ph, 14., rgb(0xf4ecd6), rgb(0xc7b489));
-    let (bx, by, bw, bh) = (px + pw - 120., py + 12., 108., 28.);
-    rounded_outline(bx, by, bw, bh, 9., rgb(0xefe3c4), rgb(0xb89f6f));
-    chrome::label("Back To Combat", bx + bw / 2., by + 14., 11., rgb(0x3c2a12), Align::Center);
-    hits.push(Hit { rect: Rect::new(bx, by, bw, bh), kind: HitKind::VaultBack });
-    chrome::label("Vault", px + 14., py + 52., 18., rgb(0x3c2a12), Align::Left);
-    chrome::label("Tier tabs and dopamine-progress reward shell.", px + 14., py + 72., 11., rgb(0x7b6641), Align::Left);
-    let mut y = py + 88.;
+/// The Vault shell: locale rows, tier tabs, the milestone meter and the tier's rewards (`css/vault.css`).
+pub fn vault_view(ui: &VaultUi) -> N {
+    let mut rows = el("div").class("rows");
     for (title, subtitle, fill, stroke, ink) in RETENTION {
-        rounded_outline(px + 12., y, pw - 24., 36., 8., rgb(fill), rgb(stroke));
-        chrome::label(title, px + 22., y + 12., 12., rgb(ink), Align::Left);
-        chrome::label(subtitle, px + 22., y + 27., 10., rgb(ink), Align::Left);
-        y += 44.;
+        rows.push(el("div").class("entry").style(format!("background:#{fill:06x};border-color:#{stroke:06x};color:#{ink:06x}")).child(el("b").t(title)).child(el("small").t(subtitle)));
     }
-    let tab_y = y + 4.;
-    let tab_w = ((pw - 24. - 3. * 8.) / 4.).floor().max(62.);
-    for (i, tab) in VAULT_TABS.iter().enumerate() {
-        let x = px + 12. + i as f32 * (tab_w + 8.);
-        rounded_outline(x, tab_y, tab_w, 28., 8., if ui.tab == i as u8 { rgb(0xf1ddad) } else { rgb(0xf8f1dd) }, rgb(0xccb88d));
-        chrome::label(tab, x + tab_w / 2., tab_y + 14., 10., rgb(0x3c2a12), Align::Center);
-        hits.push(Hit { rect: Rect::new(x, tab_y, tab_w, 28.), kind: HitKind::VaultTab(i as u8) });
-    }
-    let (wx, wy, ww, wh) = (px + 12., tab_y + 40., pw - 24., 44.);
-    rounded_outline(wx, wy, ww, wh, 10., rgb(0xf8f1dd), rgb(0xccb88d));
-    let (mx, my, mw, mh) = (wx + 10., wy + 24., ww - 20., 12.);
-    draw_rectangle(mx, my, mw, mh, rgb(0xe0d5bb)); draw_rectangle(mx, my, mw * 0.36, mh, rgb(0xd2a739)); draw_rectangle_lines(mx, my, mw, mh, 1., rgb(0xa98a45));
-    chrome::label("Progress 36/100 - Milestone: Tier Chest", wx + 10., wy + 12., 10., rgb(0x3c2a12), Align::Left);
-    let mut ry = wy + wh + 10.;
-    for reward in vault_rewards(ui.tab) {
-        if ry + 36. > NAV_TOP { break; }
-        rounded_outline(px + 12., ry, pw - 24., 36., 8., rgb(0xfff8e8), rgb(0xd7c7a2));
-        chrome::label(reward, px + 22., ry + 18., 11., rgb(0x3c2a12), Align::Left);
-        ry += 44.;
-    }
+    rows.push(el("nav").class("tabs").label("Vault tiers").children(VAULT_TABS.iter().enumerate().map(|(i, tab)| button(tab, HitKind::VaultTab(i as u8)).attr("aria-pressed", (ui.tab == i as u8).to_string()))));
+    rows.push(el("div").class("progress").child(el("span").t("Progress 36/100 · Milestone: Tier Chest")).child(el("i")));
+    for reward in vault_rewards(ui.tab) { rows.push(el("div").class("reward").child(el("span").t(reward))); }
+    el("section").key("vault").id("vault").label("Vault").child(el("div").class("panel")
+        .child(button("Back To Combat", HitKind::VaultBack).class("back"))
+        .child(el("h1").t("Vault"))
+        .child(el("p").class("sub").t("Tier tabs and dopamine-progress reward shell."))
+        .child(rows))
 }

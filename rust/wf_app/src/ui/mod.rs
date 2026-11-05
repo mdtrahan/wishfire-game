@@ -18,9 +18,9 @@ pub use model::CombatModel;
 fn platform_now() -> f64 { crate::platform::now_ms() }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Screen { Combat, Hero, Vault, PowerUp, Quests }
+pub enum Screen { Combat, Hero, Vault, Quests }
 impl Screen {
-    pub fn nav_label(self) -> &'static str { match self { Screen::Combat | Screen::Quests => "Quests", Screen::Hero => "Hero", Screen::Vault => "Vault", Screen::PowerUp => "Power Up" } }
+    pub fn nav_label(self) -> &'static str { match self { Screen::Combat | Screen::Quests => "Quests", Screen::Hero => "Hero", Screen::Vault => "Vault" } }
 }
 /// What a page element does when clicked: a chrome action, a lamp window action, or nothing
 /// (`Stay` keeps a click on a panel from reaching the backdrop behind it).
@@ -30,7 +30,7 @@ pub enum Act { Hit(chrome::HitKind), Lamp(lamp::LampHit), Stay }
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum UiAction { None, SummonBoss }
 #[derive(Clone, Debug, PartialEq)]
-pub enum Panel { BossInfo, HeroSpecial(&'static str), PartySkill(&'static str) }
+pub enum Panel { BossInfo }
 /// `showRewardReceipt`: (title, resource, amount, hero name, hide-at ms).
 pub struct Toast { pub title: String, pub resource: String, pub amount: f64, pub hero_name: String, pub until: f64 }
 pub struct Ui {
@@ -62,11 +62,10 @@ impl Ui {
         if let (true, Some(receipt)) = (result.ok, result.receipt.as_ref()) { self.show_receipt("Reward Obtained", receipt, 1500.); }
     }
     pub fn in_combat(&self) -> bool { self.screen == Screen::Combat }
-    /// Hero and party-skill panels pause combat (JS navigates to the Hero screen / opens the
-    /// Training Ground modal); the boss stats popover does not.
-    pub fn pauses(&self) -> bool { matches!(self.panel, Some(Panel::HeroSpecial(_)) | Some(Panel::PartySkill(_))) || self.lamp.modal_open() }
+    /// The Growth dialog and the lamp windows pause combat; the boss stats popover does not.
+    pub fn pauses(&self) -> bool { self.training.open || self.lamp.modal_open() }
     /// `isBagProgressBlocked`: any dialog blocks Bag progress time.
-    pub fn blocks_bag_progress(&self) -> bool { self.panel.is_some() || self.lamp.modal_open() }
+    pub fn blocks_bag_progress(&self) -> bool { self.panel.is_some() || self.training.open || self.lamp.modal_open() }
     /// Refresh the frame model from the live session (combat screen only).
     pub fn update(&mut self, game: &Game, snapshot: &wf_combat::Snapshot) {
         self.model = CombatModel::build(&game.session, snapshot, &self.model);
@@ -137,9 +136,16 @@ impl Ui {
         match hit {
             K::Summon => UiAction::SummonBoss,
             K::Inspect => { self.panel = Some(Panel::BossInfo); UiAction::None }
-            K::Hero(key) => { self.panel = Some(Panel::HeroSpecial(key)); UiAction::None }
-            K::Party(id) => { self.panel = Some(Panel::PartySkill(id)); UiAction::None }
-            K::Continue | K::VaultBack => { if self.story.continue_paused_combat() == story::Request::ResumeCombat || self.story.phase == story::Phase::Combat { self.screen = Screen::Combat; } UiAction::None }
+            // A hero clock opens that hero's Special on the Hero screen (`focusHeroSpecial`).
+            K::Hero(key) => {
+                if let Some(index) = screens::roster(game).iter().position(|h| h.definition().key == key) { self.hero.focus_special(index); return self.perform(K::Nav(Screen::Hero), p, game); }
+                UiAction::None
+            }
+            // A party icon opens its Party Skills entry in the Growth dialog.
+            K::Party(id) => { self.training.open = true; self.training.tab = 1; self.training.focus = wf_meta::hero::PARTY_SKILLS.iter().find(|s| s.id == id || s.skill_id == id).map(|s| s.id); UiAction::None }
+            K::Growth => { self.training.open = true; self.training.tab = 0; self.training.focus = None; UiAction::None }
+            K::TgClose => { self.training.open = false; UiAction::None }
+            K::VaultBack => { if self.story.continue_paused_combat() == story::Request::ResumeCombat || self.story.phase == story::Phase::Combat { self.screen = Screen::Combat; } UiAction::None }
             K::PanelBody => UiAction::None,
             K::Claim => { self.claim(game); UiAction::None }
             K::HeroPrev => { self.hero.index = (screens::hero_index(&self.hero, roster_len) + roster_len - 1) % roster_len; UiAction::None }
@@ -184,7 +190,13 @@ impl Ui {
             .child(self.nav_view());
         let fade = self.story.transition.map_or(0., |t| t.alpha(platform_now()));
         stage.push(el("div").id("wf-fade").flag("hidden", fade <= 0.).style(format!("opacity:{fade:.3}")));
-        if self.screen == Screen::Hero { if let Some(view) = screens::hero_view(game, &mut self.hero) { stage.push(view); } }
+        match self.screen {
+            Screen::Hero => { if let Some(view) = screens::hero_view(game, &mut self.hero) { stage.push(view); } }
+            Screen::Vault => stage.push(screens::vault_view(&self.vault)),
+            Screen::Combat | Screen::Quests => {}
+        }
+        stage.kids.extend(self.story.view(game.session.gold_total, self.screen == Screen::Quests));
+        if self.training.open { stage.push(screens::training_view(game, &self.training, (macroquad::window::screen_width(), macroquad::window::screen_height()))); }
         self.dom.render(vec![stage]);
     }
     /// `renderExistingNavigation`: DAILY / HERO / QUESTS / VAULT / POWER UP.
@@ -192,7 +204,8 @@ impl Ui {
         let hidden = self.story.in_opening();
         let inert = hidden || self.story.pending() || self.story.modal.is_some();
         let active = self.screen.nav_label();
-        let items: [(&str, &str, &str, Option<Screen>); 5] = [("DAILY", "Daily", "daily", None), ("HERO", "Hero", "hero", Some(Screen::Hero)), ("QUESTS", "Quests", "quests", Some(Screen::Quests)), ("VAULT", "Vault", "vault", Some(Screen::Vault)), ("POWER UP", "Power Up", "power-up", Some(Screen::PowerUp))];
+        use chrome::HitKind as K;
+        let items: [(&str, &str, &str, Option<K>); 5] = [("DAILY", "Daily", "daily", None), ("HERO", "Hero", "hero", Some(K::Nav(Screen::Hero))), ("QUESTS", "Quests", "quests", Some(K::Nav(Screen::Quests))), ("VAULT", "Vault", "vault", Some(K::Nav(Screen::Vault))), ("POWER UP", "Power Up", "power-up", Some(K::Growth))];
         // Hero details fills the stage at z-index 30; the nav rises above it only there.
         let mut nav = el("nav").id("game-meta-nav").label("Game navigation").flag("hidden", hidden).flag("inert", inert).style(format!("z-index:{}", if self.screen == Screen::Hero { 32 } else { 19 }));
         for (text, label, asset, target) in items {
@@ -201,7 +214,7 @@ impl Ui {
                 .child(el("span").t(text));
             if label == active { button = button.attr("aria-current", "page"); }
             if target.is_none() { button = button.attr("title", format!("{text} is not available yet")); }
-            if let Some(screen) = target { button = button.on(Act::Hit(chrome::HitKind::Nav(screen))); }
+            if let Some(kind) = target { button = button.on(Act::Hit(kind)); }
             nav.push(button);
         }
         nav
@@ -221,10 +234,9 @@ impl Ui {
         if self.screen == Screen::Quests {
             let now = platform_now();
             self.story.update(now / 1000., now);
-            self.story.draw(assets, game.session.gold_total, now / 1000., &mut self.hits);
+            self.story.draw(assets, now / 1000., &mut self.hits);
             return;
         }
-        screens::draw(assets, self.screen, game, &self.training, &self.vault, &mut self.hits);
         if self.toast.as_ref().is_some_and(|t| t.until <= Self::now_ms()) { self.toast = None; }
         if let Some(t) = &self.toast { chrome::toast(assets, &t.title, &t.resource, t.amount, &t.hero_name); }
     }

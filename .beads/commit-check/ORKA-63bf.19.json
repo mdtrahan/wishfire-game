@@ -55,7 +55,7 @@
   "details": {
     "hot_files_touched": [],
     "staged_file_count": 18,
-    "staged_line_count": 799,
+    "staged_line_count": 705,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -87,7 +87,7 @@
   "significant": true,
   "staged_blobs": {
     ".beads/commit-check/ORKA-63bf.18.json": "53785503fe1f3cad9d78fdc43514355fedeb8e0d",
-    ".beads/commit-check/ORKA-63bf.19.json": "b1a520863895f24ada11c2474cab115ae6b6329b",
+    ".beads/commit-check/ORKA-63bf.19.json": "f0f5f8a3d529e8d76b4771717cc699b6fa0ba5ce",
     ".gitignore": "91ebd79dfe4fc779619ab99ec0475f5ada312024",
     "rust/wf_app/src/camera.rs": "e22658095267840ed05c4c8d78dd5a7a3ba45453",
     "rust/wf_app/src/main.rs": "fa6d80676191015b63bf7d9d323849569ddb23fd",

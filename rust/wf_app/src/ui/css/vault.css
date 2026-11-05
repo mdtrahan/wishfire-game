@@ -1,0 +1,23 @@
+/* Vault. Main draws this screen on its canvas (renderChests.js: Arial, fixed 360x640 boxes);
+   the same boxes, colours and text positions as page elements. A canvas 1px stroke straddles
+   its rectangle, so each bordered box here starts half a pixel earlier and is one pixel larger. */
+#vault{position:absolute;left:0;top:0;width:360px;height:640px;transform:scale(var(--s));transform-origin:top left;z-index:12;background:linear-gradient(#2a1f0e,#4a3820);color:#3c2a12;font-family:Arial,sans-serif}
+#vault .panel{position:absolute;left:13.5px;top:15.5px;width:333px;height:607px;border:1px solid #c7b489;border-radius:14px;background:#f4ecd6}
+#vault button{margin:0;padding:0 0 1px;color:inherit;cursor:pointer}
+#vault .back{position:absolute;right:11px;top:11px;width:109px;height:29px;border:1px solid #b89f6f;border-radius:9px;background:#efe3c4;font:700 11px/1 Arial}
+#vault h1{position:absolute;left:13.5px;top:42.3px;margin:0;font:700 18px/1 Arial}
+#vault .sub{position:absolute;left:13.5px;top:66.2px;margin:0;color:#7b6641;font:500 11px/1 Arial;white-space:nowrap}
+#vault .rows{position:absolute;left:11px;right:11px;top:87px;display:flex;flex-direction:column;gap:7px}
+#vault .entry{position:relative;flex:none;height:37px;border:1px solid;border-radius:8px}
+#vault .entry b{position:absolute;left:9.5px;top:5.3px;font:700 12px/1 Arial}
+#vault .entry small{position:absolute;left:9.5px;top:21px;font:500 10px/1 Arial}
+#vault .tabs{flex:none;display:flex;gap:7px;height:29px;margin-top:4px}
+#vault .tabs button{flex:1;border:1px solid #ccb88d;border-radius:8px;background:#f8f1dd;font:700 10px/1 Arial}
+#vault .tabs button[aria-pressed=true]{background:#f1ddad}
+#vault .progress{position:relative;flex:none;height:45px;margin-top:4px;border:1px solid #ccb88d;border-radius:10px;background:#f8f1dd}
+#vault .progress span{position:absolute;left:9.5px;top:8px;font:600 10px/1 Arial;white-space:nowrap}
+#vault .progress i{position:absolute;left:9px;right:9px;top:23px;height:13px;border:1px solid #a98a45;background:#e0d5bb}
+#vault .progress i::after{content:'';position:absolute;left:0;top:0;bottom:0;width:36%;background:#d2a739}
+#vault .reward{position:relative;flex:none;height:37px;border:1px solid #d7c7a2;border-radius:8px;background:#fff8e8}
+#vault .rows .reward:first-of-type{margin-top:2px}
+#vault .reward span{position:absolute;left:9px;top:11.7px;font:600 11px/1 Arial}

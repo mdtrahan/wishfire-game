@@ -10,13 +10,15 @@ use wf_meta::hero;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum HitKind {
-    Nav(Screen), Summon, Inspect, Hero(&'static str), Party(&'static str), Continue, PanelBody,
+    Nav(Screen), Summon, Inspect, Hero(&'static str), Party(&'static str), PanelBody,
+    /// POWER UP: the Growth dialog (`growth:open`).
+    Growth,
     /// Quest objective box when the reward is ready.
     Claim,
     // renderHeroScreen.js
     HeroPrev, HeroNext, SkillPrev, SkillNext, HeroTab(u8), Roster(usize), LevelUp, StarOpen, StarUp, SheetClose, GearSlot(u8),
     // createTrainingGroundUI
-    TgTab(u8), Train(&'static str),
+    TgTab(u8), Train(&'static str), TgClose,
     // renderChests.js
     VaultTab(u8), VaultBack,
     // storyEntryFlow / questLadderUI / renderNarrativeScene
@@ -138,7 +140,7 @@ pub fn portrait(tex: &Texture2D, x: f32, y: f32, size: f32, tint: Color) {
     let src = Rect::new(tw * 0.675 * scale, th * 0.22 * scale, tw * scale, th * scale);
     draw_texture_ex(tex, x, y, tint, DrawTextureParams { dest_size: Some(vec2(size, size)), source: Some(src), ..Default::default() });
 }
-const BUFF_FRAMES: [&str; 17] = ["party-spd", "party-atk", "party-mag", "party-def", "party-res", "party-hp", "party-cr", "party-cd", "party-range", "party-dr", "party-ward", "party-heal", "party-special", "party-reflect", "hero-tempo", "hero-offense", "hero-defense"];
+pub const BUFF_FRAMES: [&str; 17] = ["party-spd", "party-atk", "party-mag", "party-def", "party-res", "party-hp", "party-cr", "party-cd", "party-range", "party-dr", "party-ward", "party-heal", "party-special", "party-reflect", "hero-tempo", "hero-offense", "hero-defense"];
 pub fn buff_icon(assets: &Assets, id: &str, x: f32, y: f32, size: f32) {
     let Some(tex) = assets.ui.get("buff-signals") else { return };
     let Some(index) = BUFF_FRAMES.iter().position(|f| *f == id) else { return };
@@ -374,38 +376,7 @@ pub fn panel(assets: &Assets, panel: &Panel, m: &CombatModel, hits: &mut Vec<Hit
             }
             hits.push(Hit { rect: Rect::new(x, y, w, h), kind: HitKind::PanelBody });
         }
-        Panel::HeroSpecial(key) => {
-            let Some(special) = hero::special_text(key) else { return };
-            let passive = hero::passive_text(key);
-            let name = hero::hero_definition(key).map_or(*key, |d| d.name);
-            card(&format!("{name} - {}", special.name), &[("Special", special.condition, special.description), ("Passive", passive.map_or("", |p| p.condition), passive.map_or("", |p| p.description))], hits);
-        }
-        Panel::PartySkill(id) => {
-            let Some(entry) = hero::PARTY_SKILLS.iter().find(|p| p.id == *id || p.skill_id == *id) else { return card("Party buff", &[("", "", "No catalog entry for this buff.")], hits) };
-            card(&format!("{} - {}", entry.hero, entry.name), &[("Party Skill", entry.values.join(" / ").leak(), entry.effect)], hits);
-        }
     }
-}
-fn card(title: &str, sections: &[(&str, &str, &str)], hits: &mut Vec<Hit>) {
-    draw_rectangle(0., 0., WIDTH, HEIGHT, rgba(0x000000, 0.45));
-    let (x, w) = (20., WIDTH - 40.);
-    let mut h = 48.;
-    let body: Vec<f32> = sections.iter().map(|(_, _, d)| paragraph_height(d, w - 26., 12.) + 34.).collect();
-    h += body.iter().sum::<f32>();
-    let y = 140.;
-    draw_rectangle(x - 2., y - 2., w + 4., h + 4., rgb(0x302218));
-    draw_rectangle(x, y, w, h, rgb(0x3d2b21));
-    draw_rectangle_lines(x, y, w, h, 3., rgb(0xaa8960));
-    label(title, x + w / 2., y + 20., 15., rgb(0xfff9ed), Align::Center);
-    let mut cy = y + 42.;
-    for ((heading, condition, description), bh) in sections.iter().zip(body) {
-        let head = if condition.is_empty() { heading.to_string() } else { format!("{heading}: {condition}") };
-        label(&head, x + 13., cy + 8., 11., rgb(0xffd45c), Align::Left);
-        paragraph(description, x + 13., cy + 20., w - 26., 12., rgb(0xfff9ed));
-        cy += bh;
-    }
-    label("tap to close", x + w / 2., y + h - 10., 10., rgba(0xfff9ed, 0.6), Align::Center);
-    hits.push(Hit { rect: Rect::new(x, y, w, h), kind: HitKind::PanelBody });
 }
 fn paragraph_height(text: &str, width: f32, size: f32) -> f32 {
     let line_h = size * 1.3;

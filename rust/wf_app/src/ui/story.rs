@@ -3,8 +3,9 @@
 //! Phases: map (Chapter 1 entry), ladder (quest cards), opening (the narrative scene), combat,
 //! combat-paused (the pause gate over the map). The JS `defeat` phase and `victory()` card
 //! completion are unreachable in the continuous-combat game and are not translated.
-use super::chrome::{self, rgb, rgba, rounded, rounded_outline, Align, Hit, HitKind};
-use super::Screen;
+use super::chrome::{self, rgba, rounded_outline, Align, Hit, HitKind};
+use super::dom::{el, Node};
+use super::{css, Act, Screen};
 use crate::assets::Assets;
 use crate::camera::{HEIGHT, WIDTH};
 use macroquad::prelude::*;
@@ -203,87 +204,75 @@ impl StoryFlow {
     pub fn dev_ladder(&mut self) { if self.phase == Phase::Map && !self.pending() && self.modal.is_none() { self.phase = Phase::Ladder; } }
     pub fn qa_direct_combat(&mut self) { self.active_card = Some(0); self.content = self.cards[0].content; self.combat_unlocked = true; self.phase = Phase::Combat; }
 
-    // ------------------------------------------------------------------ drawing
-    pub fn draw(&mut self, assets: &Assets, gold: f64, now_sec: f64, hits: &mut Vec<Hit>) {
-        match self.phase {
-            Phase::Opening => self.draw_opening(assets, now_sec, hits),
-            _ => {
-                self.draw_map(assets, hits);
-                if matches!(self.phase, Phase::Map | Phase::Ladder) { resource_strip(gold, &self.progress); }
-                if self.phase == Phase::Ladder { self.draw_ladder(hits); }
+    // ------------------------------------------------------------------ page elements
+    /// The Quests layout as page elements: the chapter map (`renderStoryChapterMap`, canvas on
+    /// main, `css/quest_map.css`) and main's `#quest-ui` (`questLadderUI.mjs`, `css/quest.css`):
+    /// wallet, quest ladder, and the skip / paused-battle dialogs. `on_quests` is the storyMock
+    /// layout; the dialogs show on any layout like main's.
+    pub fn view(&self, gold: f64, on_quests: bool) -> Vec<Node<Act>> {
+        use HitKind as K;
+        let mut out = Vec::new();
+        let pending = self.pending();
+        let button = |text: &str, class: &str, kind: K| el("button").class(class).flag("disabled", pending).t(text).on(Act::Hit(kind));
+        if on_quests && self.phase != Phase::Opening {
+            let is_map = self.phase == Phase::Map;
+            let live = is_map && !self.combat_paused && !pending;
+            let mut map = el("section").key("quest-map").id("quest-map").label("Chapter map")
+                .child(el("img").class("bg").attr("src", css::asset("narrative/chapter-1-map.png")).attr("alt", "").attr("draggable", "false"))
+                .child(el("button").class("town").attr("type", "button").label("Chapter 1 town").flag("disabled", !live).on(Act::Hit(K::StoryTown)).child(el("img").attr("src", css::asset("narrative/chapter-town-token.png")).attr("alt", "").attr("draggable", "false")))
+                // drawPageBanner: gradient pennant with a 2px #e2c775 outline.
+                .child(el("img").class("banner").attr("alt", "").attr("src", css::svg_uri("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"-2 -2 116 28\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#a88d50\"/><stop offset=\".5\" stop-color=\"#79643b\"/><stop offset=\"1\" stop-color=\"#54452d\"/></linearGradient></defs><path d=\"M0 0H100L112 12L100 24H0Z\" fill=\"url(#g)\" stroke=\"#e2c775\" stroke-width=\"2\" stroke-linejoin=\"round\"/></svg>")))
+                .child(el("h1").class("heading").t("QUESTS"));
+            if is_map {
+                map.push(el("img").class("divider").attr("alt", "").attr("src", css::svg_uri("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"-2 -6 244 12\"><path d=\"M0 0H240\" stroke=\"#dbc17c\" stroke-width=\"1\"/><path d=\"M120 -4L124 0L120 4L116 0Z\" fill=\"#685536\" stroke=\"#dbc17c\" stroke-width=\"1\"/></svg>")));
+                map.push(el("p").class("chapter").t("Chapter 1"));
+                map.push(el("button").class("start").attr("type", "button").flag("disabled", !live).on(Act::Hit(K::StoryStart)).t("START"));
             }
+            out.push(map);
         }
-        match self.modal {
-            Some(Modal::Skip) => modal("Skip story?", "Are you sure you want to skip this story?", ("Cancel", HitKind::SkipCancel, false), ("Skip", HitKind::SkipConfirm, true), hits),
-            Some(Modal::CombatPause) => modal("Battle paused", "Your battle is saved at this moment. Continue when you are ready.", ("Quit Battle", HitKind::PauseQuit, false), ("Continue Battle", HitKind::PauseContinue, true), hits),
-            None => {}
+        let mut ui = el("div").key("quest-ui").id("quest-ui");
+        if on_quests && matches!(self.phase, Phase::Map | Phase::Ladder) {
+            // resourceStrip({gold, resources, energy})
+            ui.push(el("div").class("quest-wallet").label("Resources")
+                .child(el("span").class("balance").label(format!("Gold {gold}")).attr("title", "Gold").child(el("span").class("coin-symbol").attr("aria-hidden", "true").t("G")).t(super::model::format_number(gold)))
+                .child(el("span").class("balance").label(format!("Resources {}", self.progress.resources)).child(el("span").class("resource-symbol").attr("aria-hidden", "true").t("◆")).t(format!("{}", self.progress.resources)))
+                .child(el("span").class("balance").label(format!("Energy {} of 200", self.progress.energy)).child(el("span").class("energy-symbol").attr("aria-hidden", "true").t("ϟ")).t(format!("{}/200", self.progress.energy))));
         }
-    }
-    /// `renderStoryChapterMap`: CHAPTER_ONE_MAP overlays in the 360x640 frame.
-    fn draw_map(&self, assets: &Assets, hits: &mut Vec<Hit>) {
-        draw_rectangle(0., 0., WIDTH, HEIGHT, rgb(0x243d3c));
-        let is_map = self.phase == Phase::Map;
-        match assets.ui.get("story-map") {
-            Some(tex) => draw_texture_ex(tex, 0., 0., WHITE, DrawTextureParams { dest_size: Some(vec2(WIDTH, HEIGHT)), ..Default::default() }),
-            None => { chrome::label("Loading map...", 180., 320., 16., WHITE, Align::Center); return; }
-        }
-        if let Some(tex) = assets.ui.get("story-token") { draw_texture_ex(tex, 115., 270., WHITE, DrawTextureParams { dest_size: Some(vec2(139., 129.)), ..Default::default() }); }
-        page_banner("QUESTS", 0., 48., 112., 24.);
-        if is_map {
-            draw_line(64.5, 236., 304.5, 236., 1., rgb(0xdbc17c));
-            let c = 184.5;
-            for (a, b) in [((c, 232.), (c + 4., 236.)), ((c + 4., 236.), (c, 240.)), ((c, 240.), (c - 4., 236.)), ((c - 4., 236.), (c, 232.))] { draw_line(a.0, a.1, b.0, b.1, 1., rgb(0xdbc17c)); }
-            draw_triangle(vec2(c, 232.), vec2(c + 4., 236.), vec2(c - 4., 236.), rgb(0x685536));
-            draw_triangle(vec2(c, 240.), vec2(c + 4., 236.), vec2(c - 4., 236.), rgb(0x685536));
-            chrome::stroked("Chapter 1", 184.5, 254., 17., rgb(0xfff0b9), rgb(0x514021), Align::Center);
-            let (x, y, w, h) = (111.4, 405., 146.2, 44.);
-            rounded(x - 3., y - 3., w + 6., h + 6., 8., rgb(0x514021));
-            rounded(x - 1.5, y - 1.5, w + 3., h + 3., 6., rgb(0xe2c775));
-            for i in 0..3 { let col = [0x747cff, 0x4546bc, 0x242164][i]; rounded(x, y + i as f32 * h / 3., w, h / 3. + 1., if i == 1 { 0. } else { 5. }, rgb(col)); }
-            chrome::stroked("START", x + w / 2., y + h / 2. + 1., 22., WHITE, rgb(0x242146), Align::Center);
-            if !self.combat_paused {
-                hits.push(Hit { rect: Rect::new(115., 270., 139., 129.), kind: HitKind::StoryTown });
-                hits.push(Hit { rect: Rect::new(x, y, w, h), kind: HitKind::StoryStart });
+        if on_quests && self.phase == Phase::Ladder {
+            let done = self.progress.completed.len();
+            let mut cards = el("div").class("cards");
+            for i in (0..self.progress.revealed.min(self.cards.len())).rev() {
+                let c = &self.cards[i];
+                let completed = self.progress.completed.contains(&c.id);
+                let mut copy = el("span").class("card-copy").child(el("strong").t(c.title));
+                if c.cost > 0. { copy.push(el("small").child(el("span").class("energy-symbol").attr("aria-hidden", "true").t("ϟ")).t(format!(" {}", c.cost))); }
+                let mut reward = el("span").class(if completed { "reward claimed" } else { "reward " }).label(if completed { "Reward claimed".to_string() } else { format!("First clear +{}", c.reward) })
+                    .child(el("span").class("resource-symbol").attr("aria-hidden", "true").t("◆"))
+                    .child(el("span").class("quantity").t(format!("×{}", c.reward)));
+                if completed { reward.push(el("b").attr("aria-hidden", "true").t("✓")); }
+                cards.push(el("button").class("card").flag("disabled", pending).on(Act::Hit(K::StoryCard(i)))
+                    .child(el("span").class("story-book").attr("aria-hidden", "true").child(el("img").attr("alt", "").attr("src", css::svg_uri("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 40\"><path d=\"M3 7Q12 4 19 10V34Q12 28 3 31ZM37 7Q28 4 21 10V34Q28 28 37 31Z\" fill=\"#967342\"/><path d=\"M1 10V34Q11 31 20 37Q29 31 39 34V10\" fill=\"none\" stroke=\"#967342\" stroke-width=\"2\"/></svg>"))))
+                    .child(el("span").class("eyebrow").t(if completed { "Complete" } else { "New" }))
+                    .child(copy)
+                    .child(reward.child(el("small").t("1st Clear"))));
             }
+            ui.push(el("section").class("screen").label("Quests")
+                .child(el("header").class("chapter").child(el("h1").t("Chapter 1")).child(el("div").class("chapter-progress").child(el("progress").attr("value", done.to_string()).attr("max", self.cards.len().to_string()).label("Completed sub-chapters")).t(format!("{done}/{}", self.cards.len()))))
+                .child(cards)
+                .child(el("p").class("error").attr("role", "status").t(self.error.clone().unwrap_or_default()))
+                .child(el("button").class("back").label("Back").flag("disabled", pending).on(Act::Hit(K::StoryBack)).child(el("img").attr("alt", "").attr("src", css::svg_uri("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 48 32\" width=\"34\" height=\"26\"><path d=\"M19 5 5 15l14 9v-6h12c9 0 9 9 0 9H18v4h14C50 31 49 11 32 11H19Z\" fill=\"#f6dc80\" stroke=\"#7b5826\" stroke-width=\"1.5\"/></svg>")))));
         }
+        let dialog = |label: &str, title: &str, body: &str, secondary: (&str, K), primary: (&str, K)| el("div").class("shade").child(el("section").class("modal").attr("role", "dialog").attr("aria-modal", "true").label(label)
+            .child(el("h2").t(title)).child(el("p").t(body))
+            .child(el("div").class("actions").child(button(secondary.0, "", secondary.1)).child(button(primary.0, "primary", primary.1))));
+        if self.modal == Some(Modal::Skip) { ui.push(dialog("Skip story", "Skip story?", "Are you sure you want to skip this story?", ("Cancel", K::SkipCancel), ("Skip", K::SkipConfirm))); }
+        if self.phase == Phase::CombatPaused { ui.push(dialog("Paused battle", "Battle paused", "Your battle is saved at this moment. Continue when you are ready.", ("Quit Battle", K::PauseQuit), ("Continue Battle", K::PauseContinue))); }
+        out.push(ui);
+        out
     }
-    /// `questLadderUI` ladder screen (HTML over the map).
-    fn draw_ladder(&self, hits: &mut Vec<Hit>) {
-        let (sx, sy, sw, bottom) = (20., 92., 320., HEIGHT - 78.);
-        rounded_outline(sx, sy, sw, 140., 4., rgb(0xefddb5), rgb(0xcfb16a));
-        chrome::label("Chapter 1", sx + sw / 2., sy + 24., 18., rgb(0x513e26), Align::Center);
-        let (bw, bx, by) = (sw * 0.9, sx + sw * 0.05, sy + 140. - 12. - 24.);
-        draw_rectangle(bx, by, bw, 8., rgb(0xe3d7bc));
-        let done = self.progress.completed.len();
-        if done > 0 { draw_rectangle(bx, by, bw * done as f32 / self.cards.len() as f32, 8., rgb(0xd8ab35)); }
-        chrome::label(&format!("{done}/{}", self.cards.len()), sx + sw / 2., by + 18., 11., rgb(0x48371e), Align::Center);
-        let mut y = sy + 140. + 12.;
-        for i in (0..self.progress.revealed.min(self.cards.len())).rev() {
-            let c = &self.cards[i];
-            let completed = self.progress.completed.contains(&c.id);
-            rounded_outline(sx, y, sw, 56., 4., rgb(0xf3e6c8), rgb(0xc6ab65));
-            rounded(sx + 8., y + 6., 44., 44., 3., rgb(0xdeca9f));
-            draw_rectangle(sx + 15., y + 14., 13., 26., rgb(0x967342)); draw_rectangle(sx + 32., y + 14., 13., 26., rgb(0x967342)); draw_rectangle_lines(sx + 13., y + 12., 34., 30., 2., rgb(0x967342));
-            chrome::stroked(if completed { "COMPLETE" } else { "NEW" }, sx + 2., y - 2., 9., rgb(0xfff0af), rgb(0x4c381b), Align::Left);
-            chrome::label(c.title, sx + 64., y + 28., 15., rgb(0x513e26), Align::Left);
-            let (rx, ry) = (sx + sw - 8. - 44., y + 6.);
-            rounded_outline(rx, ry, 44., 44., 3., if completed { rgb(0xaba596) } else { rgb(0xefe5cc) }, rgb(0xa18a5e));
-            diamond(rx + 22., ry + 12., 8., rgb(0xef76ba));
-            chrome::label(&format!("x{}", c.reward), rx + 22., ry + 26., 10., rgb(0x463717), Align::Center);
-            rounded_outline(rx + 2., ry + 35., 40., 11., 2., rgb(0xefd181), rgb(0x9f8045));
-            chrome::label("1st Clear", rx + 22., ry + 40.5, 8., rgb(0x463717), Align::Center);
-            if completed { chrome::label("v", rx + 36., ry + 12., 20., rgb(0xd52224), Align::Center); }
-            hits.push(Hit { rect: Rect::new(sx, y, sw, 56.), kind: HitKind::StoryCard(i) });
-            y += 66.;
-        }
-        if let Some(error) = &self.error { chrome::label(error, sx, y + 8., 12., rgb(0x9c3424), Align::Left); }
-        let (kx, ky, kw, kh) = (sx, bottom - 8. - 38., 54., 38.);
-        draw_rectangle(kx, ky, kw / 2., kh, rgb(0x5f4535));
-        rounded(kx, ky, kw, kh, 15., rgb(0x5f4535));
-        draw_rectangle_lines(kx, ky, kw, kh, 1., rgb(0xc3a679));
-        draw_triangle(vec2(kx + 8., ky + kh / 2.), vec2(kx + 20., ky + 8.), vec2(kx + 20., ky + kh - 8.), rgb(0xf6dc80));
-        draw_rectangle(kx + 18., ky + kh / 2. - 4., 22., 8., rgb(0xf6dc80));
-        hits.push(Hit { rect: Rect::new(kx, ky, kw, kh), kind: HitKind::StoryBack });
+    /// The opening narrative stays a canvas scene (`renderNarrativeScene`).
+    pub fn draw(&mut self, assets: &Assets, now_sec: f64, hits: &mut Vec<Hit>) {
+        if self.phase == Phase::Opening { self.draw_opening(assets, now_sec, hits); }
     }
     /// `renderNarrativeScene`: background, cast or item, dialogue panel, cover, completion.
     fn draw_opening(&mut self, assets: &Assets, now_sec: f64, hits: &mut Vec<Hit>) {
@@ -356,49 +345,6 @@ fn button(r: nar::Rect, label: &str, active: bool, alpha: f32) {
     let (x, y, w, h) = (r.x as f32, r.y as f32, r.w as f32, r.h as f32);
     rounded_outline(x, y, w, h, 6., if active { rgba(0xe6b74d, alpha) } else { Color::new(1., 1., 1., 0.12 * alpha) }, if active { rgba(0xfff0b5, alpha) } else { Color::new(1., 1., 1., 0.28 * alpha) });
     chrome::label(label, x + w / 2., y + h / 2. + 0.5, 12., if active { rgba(0x17171b, alpha) } else { rgba(0xf4efe4, alpha) }, Align::Center);
-}
-fn diamond(cx: f32, cy: f32, r: f32, color: Color) { draw_triangle(vec2(cx, cy - r), vec2(cx + r * 0.7, cy), vec2(cx - r * 0.7, cy), color); draw_triangle(vec2(cx, cy + r), vec2(cx + r * 0.7, cy), vec2(cx - r * 0.7, cy), color); }
-fn page_banner(text: &str, x: f32, y: f32, w: f32, h: f32) {
-    draw_rectangle(x, y, w - 12., h, rgb(0x79643b));
-    draw_triangle(vec2(x + w - 12., y), vec2(x + w, y + h / 2.), vec2(x + w - 12., y + h), rgb(0x79643b));
-    draw_rectangle(x, y, w - 12., h / 2., rgba(0xa88d50, 0.6));
-    for (a, b) in [((x, y), (x + w - 12., y)), ((x + w - 12., y), (x + w, y + h / 2.)), ((x + w, y + h / 2.), (x + w - 12., y + h)), ((x + w - 12., y + h), (x, y + h)), ((x, y + h), (x, y))] { draw_line(a.0, a.1, b.0, b.1, 2., rgb(0xe2c775)); }
-    chrome::stroked(text, x + (w - 8.) / 2., y + h / 2., 13., rgb(0xfff4dc), rgb(0x514021), Align::Center);
-}
-/// `resourceStrip({gold, resources, energy})` at (122, 48): Gold, resources, energy/200.
-fn resource_strip(gold: f64, progress: &Progress) {
-    let (x0, y, w, h) = (122., 50., (230. - 8.) / 3., 20.);
-    for (i, (symbol, value)) in [("gold", super::model::format_number(gold)), ("resources", super::model::format_number(progress.resources)), ("energy", format!("{}/{}", progress.energy, MAX_ENERGY))].iter().enumerate() {
-        let x = x0 + i as f32 * (w + 4.);
-        rounded_outline(x, y, w, h, 10., rgb(0x30343c), rgb(0xae9661));
-        let tw = chrome::measure(value, 10., chrome::Weight::Regular);
-        let cx = x + w / 2. - (tw + 16.) / 2.;
-        match *symbol {
-            "gold" => { draw_circle(cx + 6., y + 10., 6.5, rgb(0xffe18a)); draw_circle(cx + 6., y + 10., 5., rgb(0xe8b53a)); chrome::label("G", cx + 6., y + 10., 9., rgb(0x8b5919), Align::Center); }
-            "resources" => diamond(cx + 6., y + 10., 7., rgb(0xef76ba)),
-            _ => { draw_triangle(vec2(cx + 8., y + 3.), vec2(cx + 2., y + 11.), vec2(cx + 7., y + 11.), rgb(0xffe057)); draw_triangle(vec2(cx + 5., y + 17.), vec2(cx + 11., y + 9.), vec2(cx + 6., y + 9.), rgb(0xffe057)); }
-        }
-        chrome::label(value, cx + 16., y + 10., 10., WHITE, Align::Left);
-    }
-}
-fn modal(title: &str, body: &str, secondary: (&str, HitKind, bool), primary: (&str, HitKind, bool), hits: &mut Vec<Hit>) {
-    draw_rectangle(0., 0., WIDTH, HEIGHT, rgba(0x070917, 0.66));
-    let (mx, mw) = (22., WIDTH - 44.);
-    let body_lines = wrap(body, mw - 40., 15.);
-    let mh = 24. + 38. + 18. + body_lines.len() as f32 * 21. + 24. + 42. + 24.;
-    let my = (HEIGHT - mh) / 2.;
-    rounded_outline(mx, my, mw, mh, 18., rgb(0xfff4db), rgb(0xbb995a));
-    hits.push(Hit { rect: Rect::new(mx, my, mw, mh), kind: HitKind::PanelBody });
-    chrome::label(title, mx + 20., my + 24. + 19., 27., rgb(0x574222), Align::Left);
-    for (i, line) in body_lines.iter().enumerate() { chrome::label(line, mx + 20., my + 24. + 38. + 18. + 10. + i as f32 * 21., 15., rgb(0x423821), Align::Left); }
-    let by = my + mh - 24. - 42.;
-    let bw = (mw - 40. - 12.) / 2.;
-    for (i, (label, kind, is_primary)) in [secondary, primary].into_iter().enumerate() {
-        let x = mx + 20. + i as f32 * (bw + 12.);
-        rounded_outline(x, by, bw, 42., 10., if is_primary { rgb(0xa8d1c3) } else { rgb(0xf2e4c2) }, if is_primary { rgb(0x497e6e) } else { rgb(0xb59456) });
-        chrome::label(label, x + bw / 2., by + 21., 15., rgb(0x423821), Align::Center);
-        hits.push(Hit { rect: Rect::new(x, by, bw, 42.), kind });
-    }
 }
 fn fill_under(points: &[(f32, f32)], bottom: f32, color: Color) {
     for pair in points.windows(2) {
