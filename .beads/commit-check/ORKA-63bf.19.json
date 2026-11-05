@@ -1,61 +1,45 @@
 {
   "changed_functions": {
-    ".beads/commit-check/ORKA-63bf.18.json": [
-      "__MODULE__"
-    ],
     ".beads/commit-check/ORKA-63bf.19.json": [
       "__MODULE__"
     ],
-    ".gitignore": [
+    "rust/wf_app/src/ui/chrome.rs": [
+      "s",
       "__MODULE__"
     ],
-    "rust/wf_app/src/camera.rs": [
-      "bottom"
-    ],
-    "rust/wf_app/src/main.rs": [
-      "t",
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/ui/chrome.rs": [],
     "rust/wf_app/src/ui/css.rs": [
       "__MODULE__"
     ],
-    "rust/wf_app/src/ui/css/hero.css": [
+    "rust/wf_app/src/ui/css/progression.css": [
       "__MODULE__"
     ],
-    "rust/wf_app/src/ui/css/modal_close.css": [
+    "rust/wf_app/src/ui/css/quest.css": [
       "__MODULE__"
     ],
-    "rust/wf_app/src/ui/css/nav.css": [
+    "rust/wf_app/src/ui/css/quest_map.css": [
       "__MODULE__"
     ],
     "rust/wf_app/src/ui/css/stage.css": [
       "__MODULE__"
     ],
-    "rust/wf_app/src/ui/dom.rs": [
+    "rust/wf_app/src/ui/css/vault.css": [
       "__MODULE__"
-    ],
-    "rust/wf_app/src/ui/lamp.rs": [
-      "gap"
     ],
     "rust/wf_app/src/ui/mod.rs": [
       "__MODULE__"
     ],
     "rust/wf_app/src/ui/screens.rs": [
+      "k",
       "__MODULE__"
     ],
-    "rust/wf_app/src/ui/story.rs": [],
-    "rust/wf_app/web/index.html": [
-      "readString"
-    ],
-    "tools/build_wf_app.sh": [
+    "rust/wf_app/src/ui/story.rs": [
       "__MODULE__"
     ]
   },
   "details": {
     "hot_files_touched": [],
-    "staged_file_count": 18,
-    "staged_line_count": 705,
+    "staged_file_count": 11,
+    "staged_line_count": 342,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -63,46 +47,32 @@
     }
   },
   "files": [
-    ".beads/commit-check/ORKA-63bf.18.json",
     ".beads/commit-check/ORKA-63bf.19.json",
-    ".gitignore",
-    "rust/wf_app/src/camera.rs",
-    "rust/wf_app/src/main.rs",
     "rust/wf_app/src/ui/chrome.rs",
     "rust/wf_app/src/ui/css.rs",
-    "rust/wf_app/src/ui/css/hero.css",
-    "rust/wf_app/src/ui/css/modal_close.css",
-    "rust/wf_app/src/ui/css/nav.css",
+    "rust/wf_app/src/ui/css/progression.css",
+    "rust/wf_app/src/ui/css/quest.css",
+    "rust/wf_app/src/ui/css/quest_map.css",
     "rust/wf_app/src/ui/css/stage.css",
-    "rust/wf_app/src/ui/dom.rs",
-    "rust/wf_app/src/ui/lamp.rs",
+    "rust/wf_app/src/ui/css/vault.css",
     "rust/wf_app/src/ui/mod.rs",
     "rust/wf_app/src/ui/screens.rs",
-    "rust/wf_app/src/ui/story.rs",
-    "rust/wf_app/web/index.html",
-    "tools/build_wf_app.sh"
+    "rust/wf_app/src/ui/story.rs"
   ],
   "issue_id": "ORKA-63bf.19",
   "out_of_scope_hot_file_touch": false,
   "significant": true,
   "staged_blobs": {
-    ".beads/commit-check/ORKA-63bf.18.json": "53785503fe1f3cad9d78fdc43514355fedeb8e0d",
-    ".beads/commit-check/ORKA-63bf.19.json": "f0f5f8a3d529e8d76b4771717cc699b6fa0ba5ce",
-    ".gitignore": "91ebd79dfe4fc779619ab99ec0475f5ada312024",
-    "rust/wf_app/src/camera.rs": "e22658095267840ed05c4c8d78dd5a7a3ba45453",
-    "rust/wf_app/src/main.rs": "fa6d80676191015b63bf7d9d323849569ddb23fd",
-    "rust/wf_app/src/ui/chrome.rs": "89b61682990b3ab77e8ba5c2329ae9e4db59b283",
-    "rust/wf_app/src/ui/css.rs": "023e7fa088ee6d542538df380ef07e65f0723216",
-    "rust/wf_app/src/ui/css/hero.css": "d4acd423de6936b4044aec0612dd2056355563ce",
-    "rust/wf_app/src/ui/css/modal_close.css": "99fdd3dabdab6da70552ceb5eac3d49ad7a0baae",
-    "rust/wf_app/src/ui/css/nav.css": "08e3f708c603adc22d6b4578a00ec806008a561b",
-    "rust/wf_app/src/ui/css/stage.css": "3d29c74d050befb3438596557555fc3abe2757b1",
-    "rust/wf_app/src/ui/dom.rs": "6956d8b44384277dd243c721e71648a9c26841d8",
-    "rust/wf_app/src/ui/lamp.rs": "7b843fbbc327e04b7778a5f806f2ac8560a14e82",
-    "rust/wf_app/src/ui/mod.rs": "b4c354ae4f6f62733fc336f91a8ad907a4a95e48",
-    "rust/wf_app/src/ui/screens.rs": "46c83c0dbe584264fe89ad024964574914e0b29b",
-    "rust/wf_app/src/ui/story.rs": "541140161d86f5a7d4e1753ea8fb1a7bcfa87d4c",
-    "rust/wf_app/web/index.html": "63444b77dc43747be281326eab4a83a458390874",
-    "tools/build_wf_app.sh": "d2aa88fecacaa209bc1913c5e95f2f43d682960b"
+    ".beads/commit-check/ORKA-63bf.19.json": "8e1186560fff583db3c440434b8b329a2c30f5a5",
+    "rust/wf_app/src/ui/chrome.rs": "ea13931851b54c63ec902e9248eccb3bb5d21c85",
+    "rust/wf_app/src/ui/css.rs": "c6dd851acaf59de7723d2df0c82dcf40e17e9b26",
+    "rust/wf_app/src/ui/css/progression.css": "99e218aa8f80fe2e9a26d19a86971790dfcce7a0",
+    "rust/wf_app/src/ui/css/quest.css": "509ef1970e871a9356f94e2787f7ddd55a005481",
+    "rust/wf_app/src/ui/css/quest_map.css": "a890600e7619a91c2f8671620664475954532287",
+    "rust/wf_app/src/ui/css/stage.css": "8e1b119269c7326f7396ed2c2f09c713f6db2c5b",
+    "rust/wf_app/src/ui/css/vault.css": "9b7992b54f175b6c429c0f7773f46ad6b2a9dacd",
+    "rust/wf_app/src/ui/mod.rs": "81877f97f00c847a2b435ec4f279b15930358d39",
+    "rust/wf_app/src/ui/screens.rs": "b2e3c0b9859d1c49577c0325ffb74de7a239d71e",
+    "rust/wf_app/src/ui/story.rs": "ab239dde1905a859b12a01c008947e1e6a7460fd"
   }
 }

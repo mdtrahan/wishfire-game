@@ -32,7 +32,9 @@ pub enum UiAction { None, SummonBoss }
 #[derive(Clone, Debug, PartialEq)]
 pub enum Panel { BossInfo }
 /// `showRewardReceipt`: (title, resource, amount, hero name, hide-at ms).
-pub struct Toast { pub title: String, pub resource: String, pub amount: f64, pub hero_name: String, pub until: f64 }
+pub struct Toast { pub title: String, pub resource: String, pub amount: f64, pub hero_name: String, pub until: f64, pub duration_ms: f64,
+    /// Alternates per receipt so each one is a fresh element (its fade and fanfare restart).
+    pub flip: bool }
 pub struct Ui {
     pub screen: Screen,
     pub panel: Option<Panel>,
@@ -52,7 +54,8 @@ impl Ui {
     pub fn boot(&mut self, qa_direct_combat: bool) { if qa_direct_combat { self.story.qa_direct_combat(); self.screen = Screen::Combat; } else { self.screen = Screen::Quests; } }
     fn now_ms() -> f64 { macroquad::time::get_time() * 1000. }
     fn show_receipt(&mut self, title: &str, receipt: &wf_meta::progression::Receipt, ms: f64) {
-        self.toast = Some(Toast { title: title.into(), resource: receipt.resource.clone(), amount: receipt.amount, hero_name: receipt.hero_name.clone().unwrap_or_default(), until: Self::now_ms() + ms });
+        let flip = !self.toast.as_ref().is_some_and(|t| t.flip);
+        self.toast = Some(Toast { title: title.into(), resource: receipt.resource.clone(), amount: receipt.amount, hero_name: receipt.hero_name.clone().unwrap_or_default(), until: Self::now_ms() + ms, duration_ms: ms, flip });
     }
     /// `claimObjectiveWithReceipt`.
     fn claim(&mut self, game: &mut Game) {
@@ -128,7 +131,6 @@ impl Ui {
             K::StoryCard(i) => { self.story.start_card(i, now_sec); return UiAction::None; }
             K::StoryBack => { self.story.back_to_map(); return UiAction::None; }
             K::NarrativeTap => { self.story.narrative_tap(p.x as f64, p.y as f64, now_sec, now_ms); return UiAction::None; }
-            K::HeroClose => { self.story.open_ladder(); self.screen = Screen::Quests; return UiAction::None; }
             _ => {}
         }
         let roster_len = screens::roster(game).len().max(1);
@@ -178,7 +180,7 @@ impl Ui {
                 UiAction::None
             }
             K::VaultTab(tab) => { self.vault.tab = tab; UiAction::None }
-            K::Nav(_) | K::StoryStart | K::StoryTown | K::StoryCard(_) | K::StoryBack | K::NarrativeTap | K::SkipCancel | K::SkipConfirm | K::PauseQuit | K::PauseContinue | K::HeroClose => UiAction::None,
+            K::Nav(_) | K::StoryStart | K::StoryTown | K::StoryCard(_) | K::StoryBack | K::NarrativeTap | K::SkipCancel | K::SkipConfirm | K::PauseQuit | K::PauseContinue => UiAction::None,
         }
     }
     /// The page elements for this frame: the stage at the frame rectangle, the nav, the entry
@@ -196,6 +198,9 @@ impl Ui {
             Screen::Combat | Screen::Quests => {}
         }
         stage.kids.extend(self.story.view(game.session.gold_total, self.screen == Screen::Quests));
+        if let Some(view) = self.lamp.view(game, scale) { stage.push(view); }
+        if let Some(t) = &self.toast { if let Some(view) = receipt_view(if t.flip { "receipt-a" } else { "receipt-b" }, &t.title, &t.resource, t.amount, &t.hero_name, t.duration_ms, scale) { stage.push(view); } }
+        if let Some((title, amount)) = self.lamp.banner() { if let Some(view) = receipt_view("receipt-lamp", title, "essence", amount, "", 2000., scale) { stage.push(view); } }
         if self.training.open { stage.push(screens::training_view(game, &self.training, (macroquad::window::screen_width(), macroquad::window::screen_height()))); }
         self.dom.render(vec![stage]);
     }
@@ -225,11 +230,9 @@ impl Ui {
         chrome::draw(assets, &self.model, self.panel.as_ref(), &mut self.hits);
         self.lamp.draw_strip(assets, game, &mut self.hits);
         if let Some(panel) = &self.panel { chrome::panel(assets, panel, &self.model, &mut self.hits); }
-        self.lamp.draw_modal(assets, game, &mut self.hits);
-        if let Some(t) = &self.toast { chrome::toast(assets, &t.title, &t.resource, t.amount, &t.hero_name); }
     }
     /// A meta screen (combat paused underneath).
-    pub fn draw_screen(&mut self, assets: &Assets, game: &Game) {
+    pub fn draw_screen(&mut self, assets: &Assets) {
         self.hits.clear();
         if self.screen == Screen::Quests {
             let now = platform_now();
@@ -238,6 +241,111 @@ impl Ui {
             return;
         }
         if self.toast.as_ref().is_some_and(|t| t.until <= Self::now_ms()) { self.toast = None; }
-        if let Some(t) = &self.toast { chrome::toast(assets, &t.title, &t.resource, t.amount, &t.hero_name); }
+    }
+}
+
+/// `showRewardReceipt` (`rewardReceiptUI.mjs`, `css/receipt.css`): the banner across the frame
+/// with the reward icon, its amount and the star fanfare around the icon.
+fn receipt_view(key: &'static str, title: &str, resource: &str, amount: f64, hero_name: &str, duration_ms: f64, scale: f32) -> Option<Node<Act>> {
+    let label = match resource { "incense" => "Incense".to_string(), "essence" => "Essence".to_string(), "hero_ticket" if !hero_name.is_empty() => format!("{hero_name} Hero tickets"), "hero_ticket" => "Hero tickets".to_string(), _ => return None };
+    let amount = amount.floor().max(0.);
+    let em = (18. * scale).max(12.);
+    let (icon, icon_w, icon_h, icon_top) = if resource == "hero_ticket" {
+        let quadrant = match hero_name { "Hondo" => "100% 0%", "Kaja" => "0% 100%", "Runa" => "100% 100%", _ => "0% 0%" };
+        (el("span").class("lamp-reward-ticket-art").attr("aria-hidden", "true").style(format!("background-position:{quadrant}")), 3. * em, 2. * em, 0.5 * em)
+    } else {
+        (el("img").attr("src", css::asset(if resource == "incense" { "images/progression/incense.png" } else { "images/lamp/essence-orb.png" })).attr("alt", label.as_str()), 3. * em, 3. * em, 0.)
+    };
+    // showFanfare: twelve particles sweep out from the icon; offsets scale with the icon box.
+    const PARTICLES: [(&str, f32, f32, f32, f32, f32, u32); 12] = [
+        ("star", -0.66, -0.24, -0.98, -0.82, 12., 780), ("star", -0.25, -0.66, -0.48, -1.05, 10., 840), ("star", 0.22, -0.66, 0.55, -1.04, 14., 900), ("star", 0.66, -0.24, 0.98, -0.78, 11., 800),
+        ("star", 0.66, 0.08, 1.04, -0.32, 13., 880), ("star", 0.62, 0.50, 0.98, 0.12, 10., 820), ("star", -0.66, 0.08, -0.98, -0.34, 11., 860), ("star", -0.62, 0.50, -0.96, 0.14, 10., 760),
+        ("speck", -0.42, -0.68, -0.74, -1.06, 4., 790), ("speck", 0.40, -0.68, 0.78, -1.08, 5., 870), ("speck", -0.68, 0.26, -1.04, -0.04, 4., 830), ("speck", 0.68, 0.28, 1.05, -0.06, 5., 890),
+    ];
+    let size_scale = (icon_w / 48.).clamp(0.85, 1.25);
+    let mut fanfare = el("span").class("reward-fanfare").attr("aria-hidden", "true").style(format!("left:{:.2}px;top:{:.2}px", (3.5 * em + 2.) / 2., 1. + icon_top + icon_h / 2.));
+    for (kind, sx, sy, ex, ey, size, duration) in PARTICLES {
+        let (x, y) = ((ex - sx) * icon_w * 1.15, (ey - sy) * icon_h * 1.15);
+        fanfare.push(el("i").class(format!("reward-fanfare-particle reward-fanfare-{kind}")).attr("aria-hidden", "true").style(format!(
+            "--fanfare-start-x:{:.2}px;--fanfare-start-y:{:.2}px;--fanfare-x:{x:.2}px;--fanfare-y:{y:.2}px;--fanfare-mid-x:{:.2}px;--fanfare-mid-y:{:.2}px;--fanfare-size:{:.2}px;--fanfare-duration:{duration}ms",
+            sx * icon_w * 1.15, sy * icon_h * 1.15, x * 0.82, y * 0.82, size * size_scale)));
+    }
+    Some(el("section").key(key).class("lamp-reward-banner").attr("role", "status").label(format!("{title}: {amount} {label}")).attr("aria-live", "polite").style(format!("--reward-duration:{duration_ms}ms"))
+        .child(el("strong").t(title))
+        .child(el("div").child(icon).child(el("b").t(model::format_number(amount))).child(fanfare)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::chrome::HitKind as K;
+    use super::*;
+    fn buttons(node: &Node<Act>) -> Vec<&Node<Act>> { let mut out = Vec::new(); node.all(&|n| n.tag == "button", &mut out); out }
+    fn by_text<'a>(node: &'a Node<Act>, text: &str) -> &'a Node<Act> { buttons(node).into_iter().find(|b| b.inner_text() == text).unwrap_or_else(|| panic!("no button {text}")) }
+    #[test]
+    fn nav_is_mains_five_buttons_and_power_up_opens_growth() {
+        let mut ui = Ui::new();
+        ui.boot(false);
+        let nav = ui.nav_view();
+        assert_eq!(nav.get("id"), Some("game-meta-nav"));
+        assert_eq!(buttons(&nav).iter().map(|b| b.inner_text()).collect::<Vec<_>>(), ["DAILY", "HERO", "QUESTS", "VAULT", "POWER UP"]);
+        assert!(by_text(&nav, "DAILY").get("disabled").is_some() && by_text(&nav, "DAILY").click.is_none());
+        assert_eq!(by_text(&nav, "QUESTS").get("aria-current"), Some("page"));
+        assert_eq!(by_text(&nav, "HERO").click, Some(Act::Hit(K::Nav(Screen::Hero))));
+        assert_eq!(by_text(&nav, "POWER UP").click, Some(Act::Hit(K::Growth)));
+        // The Hero screen fills the stage at z-index 30; the nav rises above it only there.
+        ui.screen = Screen::Hero;
+        assert_eq!(ui.nav_view().get("style"), Some("z-index:32"));
+    }
+    #[test]
+    fn nav_hides_in_the_opening_and_goes_inert_under_a_dialog() {
+        let mut ui = Ui::new();
+        ui.boot(false);
+        ui.story.dev_ladder();
+        assert!(ui.story.start_card(0, 0.));
+        assert!(ui.nav_view().get("hidden").is_some());
+        assert!(ui.story.request_skip());
+        let nav = ui.nav_view();
+        assert!(nav.get("inert").is_some() && buttons(&nav).iter().all(|b| b.get("disabled").is_some()));
+    }
+    #[test]
+    fn quests_layout_is_map_then_ladder_then_dialogs() {
+        let mut ui = Ui::new();
+        ui.boot(false);
+        let view = ui.story.view(1234., true);
+        let map = view.iter().find(|n| n.get("id") == Some("quest-map")).expect("map");
+        assert_eq!(by_text(map, "START").click, Some(Act::Hit(K::StoryStart)));
+        let quest = view.iter().find(|n| n.get("id") == Some("quest-ui")).unwrap();
+        assert_eq!(quest.find(&|n| n.has_class("quest-wallet")).unwrap().inner_text(), "G1,234◆150ϟ200/200");
+        ui.story.dev_ladder();
+        let view = ui.story.view(0., true);
+        let quest = view.iter().find(|n| n.get("id") == Some("quest-ui")).unwrap();
+        let card = quest.find(&|n| n.has_class("card")).expect("card");
+        assert_eq!(card.click, Some(Act::Hit(K::StoryCard(0))));
+        assert_eq!(card.find(&|n| n.tag == "strong").unwrap().inner_text(), "Main Story 1");
+        assert!(view.iter().find(|n| n.get("id") == Some("quest-map")).unwrap().find(&|n| n.has_class("start")).is_none());
+        // The skip dialog shows over the canvas narrative on any layout.
+        assert!(ui.story.start_card(0, 0.) && ui.story.request_skip());
+        let view = ui.story.view(0., true);
+        assert!(view.iter().all(|n| n.get("id") != Some("quest-map")));
+        let quest = view.iter().find(|n| n.get("id") == Some("quest-ui")).unwrap();
+        assert_eq!(by_text(quest, "Cancel").click, Some(Act::Hit(K::SkipCancel)));
+        assert_eq!(by_text(quest, "Skip").click, Some(Act::Hit(K::SkipConfirm)));
+        assert!(by_text(quest, "Skip").has_class("primary"));
+    }
+    #[test]
+    fn vault_and_receipt_views_carry_their_state() {
+        let vault = screens::vault_view(&screens::VaultUi { tab: 2 });
+        assert_eq!(by_text(&vault, "Epic").get("aria-pressed"), Some("true"));
+        assert_eq!(by_text(&vault, "Rare").click, Some(Act::Hit(K::VaultTab(1))));
+        assert_eq!(by_text(&vault, "Back To Combat").click, Some(Act::Hit(K::VaultBack)));
+        assert!(vault.inner_text().contains("Pet Core x1"));
+        let receipt = receipt_view("receipt-a", "Reward Obtained", "hero_ticket", 12.9, "Runa", 1500., 1.).unwrap();
+        assert_eq!(receipt.get("aria-label"), Some("Reward Obtained: 12 Runa Hero tickets"));
+        assert_eq!(receipt.find(&|n| n.has_class("lamp-reward-ticket-art")).unwrap().get("style"), Some("background-position:100% 100%"));
+        assert_eq!(receipt.find(&|n| n.tag == "b").unwrap().inner_text(), "12");
+        let mut particles = Vec::new();
+        receipt.all(&|n| n.has_class("reward-fanfare-particle"), &mut particles);
+        assert_eq!(particles.len(), 12);
+        assert!(receipt_view("receipt-a", "Reward Obtained", "gold", 5., "", 1500., 1.).is_none());
     }
 }

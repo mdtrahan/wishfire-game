@@ -59,7 +59,8 @@ pub struct Manifest {
     pub arenas: Vec<Arena>,
 }
 /// Chrome art staged by tools/build_wf_app.sh from web-runner/assets/images.
-pub const UI_ART: &[&str] = &["nav-daily", "nav-hero", "nav-quests", "nav-vault", "nav-power-up", "boss-boss", "boss-clock", "boss-inspect", "hero-Fara", "hero-Hondo", "hero-Runa", "hero-Kaja", "buff-signals", "lamp-gear-atlas", "lamp-bag", "lamp-essence", "bag-medallion", "prog-incense", "prog-stat-atk", "prog-stat-def", "prog-stat-matk", "prog-stat-res", "prog-hero-tickets", "prog-training-scene", "coin", "story-map", "story-token", "story-hondo", "story-fara", "story-kaja", "story-runa"];
+/// Canvas chrome art (HUD, lamp strip, narrative cast). Menu art is fetched by the page from `assets/`.
+pub const UI_ART: &[&str] = &["boss-boss", "boss-clock", "boss-inspect", "hero-Fara", "hero-Hondo", "hero-Runa", "hero-Kaja", "buff-signals", "lamp-gear-atlas", "lamp-bag", "lamp-essence", "prog-incense", "prog-hero-tickets", "coin", "story-hondo", "story-fara", "story-kaja", "story-runa"];
 /// Archetypes the live game can spawn; each owns one packed puppet (wf_pack::ACTORS).
 const ACTOR_ART:&[&str]=&["Fara","Hondo","Runa","Kaja","Gobloc","Orc","Lizardo","Boss","HighOrc","Marid",
     "WfmHighGobloc","WfmSkeleton","WfmChimerilass","WfmDjinn"];
@@ -67,6 +68,20 @@ const ACTOR_ART:&[&str]=&["Fara","Hondo","Runa","Kaja","Gobloc","Orc","Lizardo",
 /// file; these shadow macroquad's loaders for every load in this module.
 fn art_url(path:&str)->String {
     if cfg!(target_arch="wasm32") && !path.contains('?') {format!("{path}?v={}",env!("WF_ART_REV"))} else {path.into()}
+}
+/// Per 3x3 atlas cell: the downward shift (in cell heights) that centres the visible piece, and
+/// the piece's vertical midpoint in percent (`gearBounds` in lampEquipmentUI.mjs).
+fn gear_cells(atlas: &Image) -> [(f32, f32); 9] {
+    let (width, size) = (atlas.width as usize, atlas.height as usize / 3);
+    let pixels = atlas.get_image_data();
+    let mut cells = [(0., 50.); 9];
+    for (n, cell) in cells.iter_mut().enumerate() {
+        let (left, row) = (n % 3 * size, n / 3 * size);
+        let (mut top, mut bottom) = (size, None);
+        for y in 0..size { for x in 0..size { if pixels[(row + y) * width + left + x][3] > 8 { top = top.min(y); bottom = Some(y); } } }
+        if let Some(bottom) = bottom { *cell = ((size as f32 - top as f32 - bottom as f32 - 1.) / 2. / size as f32, (top + bottom + 1) as f32 / 2. / size as f32 * 100.); }
+    }
+    cells
 }
 async fn load_texture(path:&str)->Result<Texture2D,macroquad::Error> {
     macroquad::texture::load_texture(&art_url(path)).await
@@ -235,6 +250,8 @@ impl Assets {
             texture.set_filter(FilterMode::Linear);
             ui.insert(name.to_string(), texture);
         }
+        // Main re-centres each gear cell on its visible pixels at boot; the menus use the same offsets.
+        if let Ok(atlas) = load_image("art/ui/lamp-gear-atlas.png").await { crate::ui::lamp::set_gear_cells(gear_cells(&atlas)); }
         let bundle_json = load_string("art/manifest.json")
             .await
             .map_err(|e| format!("art/manifest.json: {e}"))?;
@@ -243,18 +260,11 @@ impl Assets {
         let font_bytes = macroquad::file::load_file(&art_url(&format!("art/{}", bundle.font)))
             .await
             .map_err(|e| format!("label font: {e}"))?;
-        // UI typography: Inter (OFL) stands in for main's CSS `system-ui`; see ui/text.rs.
-        let mut ui_fonts = Vec::new();
-        for weight in ["Regular", "SemiBold", "Bold", "ExtraBold"] {
-            let bytes = macroquad::file::load_file(&art_url(&format!("art/fonts/Inter-{weight}.ttf")))
-                .await
-                .map_err(|e| format!("art/fonts/Inter-{weight}.ttf: {e}"))?;
-            let mut font = load_ttf_font_from_bytes(&bytes).map_err(|e| format!("Inter-{weight}: {e}"))?;
-            font.set_filter(FilterMode::Linear);
-            ui_fonts.push(font);
-        }
-        let mut ui_fonts = ui_fonts.into_iter();
-        crate::ui::text::install(crate::ui::text::Fonts { regular: ui_fonts.next().unwrap(), semibold: ui_fonts.next().unwrap(), bold: ui_fonts.next().unwrap(), extrabold: ui_fonts.next().unwrap() });
+        // Canvas typography (HUD, narrative): Inter Regular (OFL); see ui/text.rs.
+        let bytes = macroquad::file::load_file(&art_url("art/fonts/Inter-Regular.ttf")).await.map_err(|e| format!("art/fonts/Inter-Regular.ttf: {e}"))?;
+        let mut ui_font = load_ttf_font_from_bytes(&bytes).map_err(|e| format!("Inter-Regular: {e}"))?;
+        ui_font.set_filter(FilterMode::Linear);
+        crate::ui::text::install(ui_font);
         let mut entries: Vec<(String, VfxEntry)> = bundle
             .effects
             .into_iter()

@@ -3,7 +3,7 @@
 //! `position:fixed` overlays to the `#wf-ui` frame element. Art paths are main's
 //! (`assets/images/...`), staged by `tools/build_wf_app.sh` and versioned with the art revision.
 use std::cell::RefCell;
-const SHEETS: &[&str] = &[include_str!("css/stage.css"), include_str!("css/nav.css"), include_str!("css/modal_close.css"), include_str!("css/hero.css"), include_str!("css/progression.css"), include_str!("css/vault.css"), include_str!("css/quest.css"), include_str!("css/quest_map.css")];
+const SHEETS: &[&str] = &[include_str!("css/stage.css"), include_str!("css/nav.css"), include_str!("css/modal_close.css"), include_str!("css/hero.css"), include_str!("css/progression.css"), include_str!("css/vault.css"), include_str!("css/quest.css"), include_str!("css/quest_map.css"), include_str!("css/lamp.css"), include_str!("css/bag_upgrade.css"), include_str!("css/lamp_adapter.css"), include_str!("css/receipt.css")];
 thread_local! { static SHEET: RefCell<Option<String>> = const { RefCell::new(None) }; }
 /// `assets/<path>` with the art revision, so a browser never shows stale art.
 pub fn asset(path: &str) -> String { format!("assets/{path}?v={}", env!("WF_ART_REV")) }
@@ -17,7 +17,8 @@ pub fn svg_uri(svg: &str) -> String {
 pub fn sheet() -> String {
     SHEET.with(|s| s.borrow_mut().get_or_insert_with(|| {
         let rev = format!(".png?v={}", env!("WF_ART_REV"));
-        SHEETS.concat().replace(".png'", &format!("{rev}'")).replace(".png\"", &format!("{rev}\"")).replace(".png)", &format!("{rev})"))
+        // The lamp sheets are files under assets/ on main; their url()s are relative to that folder.
+        SHEETS.concat().replace("url('images/", "url('assets/images/").replace(".png'", &format!("{rev}'")).replace(".png\"", &format!("{rev}\"")).replace(".png)", &format!("{rev})"))
     }).clone())
 }
 #[cfg(test)]

@@ -190,8 +190,6 @@ impl StoryFlow {
         self.error = None;
         Request::QuitCombat
     }
-    /// The hero screen's close control sends the player to the quest ladder.
-    pub fn open_ladder(&mut self) { if !self.pending() && self.modal.is_none() && self.phase != Phase::Opening { self.phase = Phase::Ladder; } }
     /// Entry transition bookkeeping: true when the frame loop must switch to a fresh combat scene now.
     pub fn transition_tick(&mut self, now_ms: f64) -> bool {
         let Some(mut t) = self.transition else { return false };
@@ -336,7 +334,7 @@ fn wrap(text: &str, width: f32, size: f32) -> Vec<String> {
     let mut line = String::new();
     for word in text.split_whitespace() {
         let candidate = if line.is_empty() { word.to_string() } else { format!("{line} {word}") };
-        if line.is_empty() || chrome::measure(&candidate, size, chrome::Weight::Regular) <= width { line = candidate; } else { lines.push(line); line = word.to_string(); }
+        if line.is_empty() || chrome::measure(&candidate, size) <= width { line = candidate; } else { lines.push(line); line = word.to_string(); }
     }
     if !line.is_empty() { lines.push(line); }
     lines

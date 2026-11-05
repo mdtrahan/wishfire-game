@@ -166,7 +166,7 @@ pub fn hero_view(game: &Game, ui: &mut HeroUi) -> Option<N> {
                             .style(format!("--rarity:#{:06x}", tier.map_or(0x758597, |r| r.color)))
                             .label(format!("Inspect {slot_label}: {}", item.map_or("Empty".to_string(), |it| format!("{}, {}, level {}", it.name, tier.map_or(it.rarity.as_str(), |r| r.label), num(it.level)))));
                         match item {
-                            Some(it) => card.push(el("span").class("lamp-art").attr("aria-hidden", "true").style(format!("--col:{};--row:{}", it.art % 3, it.art / 3)).child(el("span").class("lamp-level").t(format!("Lv.{}", num(it.level))))),
+                            Some(it) => card.push(el("span").class("lamp-art").attr("aria-hidden", "true").style(super::lamp::art_style(it.art)).child(el("span").class("lamp-level").t(format!("Lv.{}", num(it.level))))),
                             None => { card.push(el("small").t(slot_label)); card.push(el("span").class("gear-empty").t("Empty")); }
                         }
                         slots.push(card);
@@ -291,7 +291,7 @@ fn vault_rewards(tab: u8) -> [&'static str; 3] {
 pub fn vault_view(ui: &VaultUi) -> N {
     let mut rows = el("div").class("rows");
     for (title, subtitle, fill, stroke, ink) in RETENTION {
-        rows.push(el("div").class("entry").style(format!("background:#{fill:06x};border-color:#{stroke:06x};color:#{ink:06x}")).child(el("b").t(title)).child(el("small").t(subtitle)));
+        rows.push(el("div").class("entry").style(format!("background:#{fill:06x};--ring:#{stroke:06x};color:#{ink:06x}")).child(el("b").t(title)).child(el("small").t(subtitle)));
     }
     rows.push(el("nav").class("tabs").label("Vault tiers").children(VAULT_TABS.iter().enumerate().map(|(i, tab)| button(tab, HitKind::VaultTab(i as u8)).attr("aria-pressed", (ui.tab == i as u8).to_string()))));
     rows.push(el("div").class("progress").child(el("span").t("Progress 36/100 · Milestone: Tier Chest")).child(el("i")));

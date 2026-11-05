@@ -37,12 +37,17 @@ impl<A> Node<A> {
     pub fn children(mut self, nodes: impl IntoIterator<Item = Node<A>>) -> Self { self.kids.extend(nodes); self }
     pub fn on(mut self, action: A) -> Self { self.click = Some(action); self }
     pub fn push(&mut self, node: Node<A>) { self.kids.push(node); }
+    #[cfg(test)]
     pub fn get(&self, name: &str) -> Option<&str> { self.attrs.iter().find(|(n, _)| *n == name).map(|(_, v)| v.as_str()) }
+    #[cfg(test)]
     pub fn has_class(&self, class: &str) -> bool { self.get("class").is_some_and(|c| c.split_whitespace().any(|x| x == class)) }
-    /// Depth-first search (tests and probes).
+    /// Depth-first search (tests).
+    #[cfg(test)]
     pub fn find(&self, pred: &dyn Fn(&Node<A>) -> bool) -> Option<&Node<A>> { if pred(self) { return Some(self); } self.kids.iter().find_map(|k| k.find(pred)) }
+    #[cfg(test)]
     pub fn all<'a>(&'a self, pred: &dyn Fn(&Node<A>) -> bool, out: &mut Vec<&'a Node<A>>) { if pred(self) { out.push(self); } for k in &self.kids { k.all(pred, out); } }
     /// Concatenated text of the subtree.
+    #[cfg(test)]
     pub fn inner_text(&self) -> String { if self.tag.is_empty() { return self.text.clone(); } self.kids.iter().map(|k| k.inner_text()).collect() }
 }
 

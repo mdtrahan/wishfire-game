@@ -12,4 +12,8 @@
 /* Main's back and story-book icons are inline <svg>; here the same drawings are <img> data URIs. */
 #quest-ui .back img{display:block;width:2.43em;height:1.86em}
 #quest-ui .story-book img{display:block;width:34px;height:34px}
+/* Main crops the close glyph to its painted pixels in a <canvas>; as text it sits about 2px low. */
+.game-modal-close>span{padding-bottom:calc(4.4px * var(--modal-close-scale,1))}
+/* Main places the receipt at 38% of the canvas height with font-size max(12px, 18px * scale). */
+#wf-ui .lamp-reward-banner{position:absolute;left:0;top:38%;width:100%;font-size:max(12px,calc(18px * var(--s)))}
 #wf-fade{position:absolute;inset:0;z-index:90;background:#000}

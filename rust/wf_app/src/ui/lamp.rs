@@ -2,19 +2,20 @@
 //! `lampConveyorPresentation.mjs`, `bagUpgradePresentation.mjs`, `rewardReceiptUI.mjs`.
 //! Placement follows the JS CSS (strip 360x92 at y 488; cache overlay 480 tall; upgrade window
 //! full height); the rules and saves are `wf_host::equipment` / `wf_meta::lamp`.
-use super::chrome::{self, image, label, paragraph, rgb, rgba, stroked, Align, Hit, HitKind, LAMP_H, LAMP_TOP, NAV_TOP};
+use super::chrome::{self, image, label, rgb, rgba, stroked, Align, Hit, LAMP_H, LAMP_TOP};
+use super::dom::{el, Node};
+use super::{css, Act};
 use crate::assets::Assets;
 use crate::camera::WIDTH;
 use crate::game::Game;
 use macroquad::prelude::*;
 use std::collections::BTreeSet;
-use wf_host::equipment::{lamp_hero_roster, EquipReceipt};
+use wf_host::equipment::lamp_hero_roster;
 use wf_meta::equipment::{format_compact_count, rarity, slot_label, RARITIES};
-use wf_meta::hero;
 use wf_meta::lamp::*;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum LampHit { Tile(String), Bag, Tier, Close, Hero(String), Queue(String), Equip, AutoEquip, Disposal, Cache, QueueDisposal, Dismantle, Upgrade(u32), Body }
+pub enum LampHit { Tile(String), Bag, Tier, Close, Hero(String), Queue(String), Equip, AutoEquip, Disposal, Cache, QueueDisposal, Dismantle, Upgrade(u32) }
 #[derive(Clone, Debug)]
 struct LHit { rect: Rect, kind: LampHit }
 #[derive(Default)]
@@ -40,7 +41,6 @@ const TILE_W: f32 = (360. * 0.7275 - 4.2 * 11.) * 0.228;
 const ENTRY_W: f32 = TILE_W * 1.121;
 const LANE_TOP: f32 = LAMP_TOP + LAMP_H * 0.14;
 const BAG_LEFT: f32 = 360. * 0.7652; const BAG_TOP: f32 = LAMP_TOP + LAMP_H * 0.174; const BAG_W: f32 = 360. * 0.228; const BAG_H: f32 = LAMP_H * 0.83;
-const CACHE_H: f32 = 480.;
 fn conveyor_duration_ms() -> f64 {
     let gap = (30. * 5. - ENTRY_W) * 0.6 * 0.7;
     let pitch = ENTRY_W + gap * 0.6;
@@ -58,23 +58,11 @@ pub fn gear_art(assets: &Assets, item: &LampItem, x: f32, y: f32, size: f32) {
     let src = Rect::new((item.art % 3) as f32 * cell, (item.art / 3) as f32 * cell, cell, cell);
     draw_texture_ex(tex, x, y, WHITE, DrawTextureParams { dest_size: Some(vec2(size, size)), source: Some(src), ..Default::default() });
 }
-fn rarity_color(key: &str) -> Color { rgb(rarity(key).map_or(0xf3f3ee, |r| r.color)) }
-fn tile(assets: &Assets, item: &LampItem, x: f32, y: f32, size: f32, upgrade: bool, selected: bool, cp: bool) {
-    draw_rectangle(x, y, size, size, rgb(0x2a2b2d));
-    gear_art(assets, item, x, y, size);
-    draw_rectangle_lines(x, y, size, size, 2., if selected { rgb(0xfff2a0) } else { rarity_color(&item.rarity) });
-    stroked(&format!("Lv.{}", item.level as u32), x + 3., y + size - 7., 9., rgb(0xfff1d1), rgb(0x000000), Align::Left);
-    if upgrade { stroked("^", x + size - 8., y + size - 8., 14., rgb(0x6fe07a), rgb(0x000000), Align::Center); }
-    if cp { label(&format!("CP {}", format_compact_count(lamp_gear_cp(item))), x + size - 2., y + 7., 8., rgb(0xfff1d1), Align::Right); }
-}
-fn button(text: &str, x: f32, y: f32, w: f32, h: f32, enabled: bool, primary: bool) {
-    draw_rectangle(x, y, w, h, if primary { rgb(0x25454a) } else { rgb(0x3a3a3c) });
-    draw_rectangle_lines(x, y, w, h, 2., if enabled { rgb(0xd0a45b) } else { rgba(0xd0a45b, 0.4) });
-    label(text, x + w / 2., y + h / 2., 13., if enabled { rgb(0xfff9ed) } else { rgba(0xfff9ed, 0.45) }, Align::Center);
-}
 fn roster_of(game: &Game) -> Vec<LampHero> { lamp_hero_roster(&game.session.progress, false).unwrap_or_default() }
 impl LampUi {
     pub fn modal_open(&self) -> bool { self.open || self.upgrade_open }
+    /// The DISMANTLED receipt while it shows: title and Essence amount.
+    pub fn banner(&self) -> Option<(&str, f64)> { self.banner.as_ref().map(|(title, amount, _)| (title.as_str(), *amount)) }
     fn item_of(data: &LampEconomy, id: &str) -> Option<LampItem> { data.item(id).cloned().or_else(|| data.review_hold().map(|h| h.item).filter(|i| i.instance_id == id)) }
     /// `draw()` per frame: conveyor clock, arrivals and timed emissions (combat screen only).
     pub fn frame(&mut self, game: &mut Game, visible: bool, paused: bool) {
@@ -141,7 +129,7 @@ impl LampUi {
         if let Some(tex) = assets.ui.get("lamp-bag") { image(tex, BAG_LEFT, BAG_TOP - BAG_H * 0.1067, BAG_W, BAG_H * 0.9745); }
         let stored = data.stored_count();
         let count = format!("{}{}", stored as u32, if data.review_hold().is_some() { "+1" } else { "" });
-        let cw = chrome::measure(&count, 12., chrome::Weight::Regular) + 10.;
+        let cw = chrome::measure(&count, 12.) + 10.;
         draw_rectangle(BAG_LEFT + BAG_W - cw, BAG_TOP + 2., cw, 16., rgb(0x7a2fb0));
         draw_rectangle_lines(BAG_LEFT + BAG_W - cw, BAG_TOP + 2., cw, 16., 2., rgb(0xdba7f5));
         label(&count, BAG_LEFT + BAG_W - cw / 2., BAG_TOP + 10., 12., WHITE, Align::Center);
@@ -162,27 +150,11 @@ impl LampUi {
         label("Bag", bx + disc_r, by + bh * 0.82, 6., rgb(0xffe38e), Align::Center);
         self.hits.push(LHit { rect: Rect::new(bx - 4., by - 4., bw + 8., bh + 8.), kind: LampHit::Tier });
         if let Some(e) = &game.economy.error { stroked(e, 4., LAMP_TOP - 8., 10., rgb(0xfff1d1), rgb(0x502c25), Align::Left); }
-        if let Some((title, amount, _)) = &self.banner {
-            let y = 640. * 0.38;
-            draw_rectangle(0., y, WIDTH, 70., rgba(0x80602c, 0.85));
-            draw_rectangle(0., y, WIDTH, 2., rgb(0xd6b770)); draw_rectangle(0., y + 68., WIDTH, 2., rgb(0xd6b770));
-            label(title, WIDTH / 2., y + 14., 14., rgb(0xfff1bf), Align::Center);
-            if let Some(tex) = assets.ui.get("lamp-essence") { image(tex, WIDTH / 2. - 32., y + 24., 28., 28.); }
-            label(&format!("{}", *amount as u64), WIDTH / 2. + 10., y + 40., 16., rgb(0xfff1bf), Align::Left);
-        }
         let _ = hits;
     }
-    /// Route a tap: modals first, then the strip. Returns true when handled.
+    /// Route a canvas tap on the strip (tiles, bag, tier badge). The windows are page elements.
     pub fn tap(&mut self, p: Vec2, game: &mut Game) -> bool {
-        // Topmost first: the window body is pushed before the controls drawn over it.
-        if self.modal_open() {
-            let hit = self.hits.iter().rev().find(|h| h.rect.contains(p)).map(|h| h.kind.clone());
-            match hit {
-                None => { if !self.upgrade_open || p.y < 20. || p.y > NAV_TOP { self.close(); } }
-                Some(kind) => self.act(kind, game),
-            }
-            return true;
-        }
+        if self.modal_open() { return true; }
         let Some(hit) = self.hits.iter().rev().find(|h| h.rect.contains(p)).map(|h| h.kind.clone()) else { return false };
         self.act(hit, game);
         true
@@ -209,12 +181,10 @@ impl LampUi {
             Err(e) => { self.notice = e; }
         }
     }
-    fn show_feedback(&mut self, game: &Game, r: &EquipReceipt) { let until = game.economy.data().map_or(0., |d| d.lamp.last_activation_at).max(0.); let _ = until; self.feedbacks.push((r.hero_id.clone(), r.cp_change, macroquad::time::get_time() * 1000. + 1800.)); }
     pub fn act(&mut self, kind: LampHit, game: &mut Game) {
         self.notice.clear();
         match kind {
             LampHit::Close => self.close(),
-            LampHit::Body => {}
             LampHit::Tile(id) => {
                 if !self.creation_active { return; }
                 match game.economy.collect(&mut game.session, &id, true) { Ok(Some(_)) => self.open_collection(game, Some(id), false), Ok(None) => {}, Err(e) => self.notice = e }
@@ -257,159 +227,184 @@ impl LampUi {
             }
         }
     }
-    /// The cache / review / disposal / upgrade windows.
-    pub fn draw_modal(&mut self, assets: &Assets, game: &mut Game, hits: &mut Vec<Hit>) {
-        if !self.modal_open() { return; }
-        self.hits.clear();
-        let Some(data) = game.economy.data().cloned() else { return };
+    /// The cache / review / dismantle / Bag upgrade windows as page elements: main's
+    /// `#lamp-overlay` tree (`lampEquipmentUI.mjs` render + `bagUpgradePresentation.mjs`),
+    /// styled by `css/lamp.css` and `css/bag_upgrade.css`.
+    pub fn view(&mut self, game: &mut Game, scale: f32) -> Option<Node<Act>> {
+        if !self.modal_open() { return None; }
+        let data = game.economy.data().cloned()?;
         let roster = roster_of(game);
         let candidates = conveyor_review_candidates(&data, &roster);
         let now = game.economy.time();
-        draw_rectangle(0., 0., WIDTH, 640., rgba(0x000000, 0.55));
-        let h = if self.upgrade_open { NAV_TOP } else { CACHE_H };
-        draw_rectangle(8., 8., WIDTH - 16., h - 16., rgb(0x2b2622));
-        draw_rectangle_lines(8., 8., WIDTH - 16., h - 16., 2., rgb(0xaa8960));
-        self.hits.push(LHit { rect: Rect::new(8., 8., WIDTH - 16., h - 16.), kind: LampHit::Body });
-        hits.push(Hit { rect: Rect::new(0., 0., WIDTH, 640.), kind: HitKind::PanelBody });
-        let close = |hits: &mut Vec<LHit>, y: f32| { let r = Rect::new(WIDTH - 40., y, 28., 24.); draw_rectangle_lines(r.x, r.y, r.w, r.h, 1., rgb(0xaa8960)); label("X", r.x + 14., r.y + 12., 14., rgb(0xfff9ed), Align::Center); hits.push(LHit { rect: r, kind: LampHit::Close }); };
-        if self.upgrade_open { self.draw_upgrade(assets, &data, close); return; }
+        let on = |kind: LampHit| Act::Lamp(kind);
         let candidate = self.selected_item.as_ref().and_then(|id| Self::item_of(&data, id));
-        if candidate.is_none() { self.selected_item = None; }
-        let title = if candidate.is_some() { "EQUIPMENT REVIEW" } else if self.disposal_view { "DISMANTLE" } else { "EQUIPMENT CACHE" };
-        label(title, 20., 24., 13., rgb(0xffd45c), Align::Left);
-        if !self.disposal_view {
-            let enabled = !candidates.iter().any(|c| c.best_gain > 0.);
-            let r = Rect::new(190., 12., 120., 24.);
-            label("Done / Dismantle", r.x + r.w / 2., r.y + 12., 10., if enabled { rgb(0xfff9ed) } else { rgba(0xfff9ed, 0.4) }, Align::Center);
-            if enabled { self.hits.push(LHit { rect: r, kind: LampHit::Disposal }); }
-        }
-        close(&mut self.hits, 12.);
-        let useful: Vec<&Candidate> = candidates.iter().filter(|c| c.best_gain > 0. && !data.disposal_requested().contains(&c.item.instance_id)).collect();
-        // Hero row: portraits with current CP and the comparison arrow.
-        let hero_row = |hits: &mut Vec<LHit>, y: f32, candidate: Option<&LampItem>, selected: Option<&String>| {
-            for (i, h) in roster.iter().enumerate() {
-                let x = 14. + i as f32 * 86.;
-                let gain = match candidate { Some(c) => lamp_item_cp_gain(&data, c, h), None => candidates.iter().map(|c| lamp_item_cp_gain(&data, &c.item, h)).fold(0., f64::max) };
-                let cp = lamp_hero_cp(&data, h);
-                let chosen = selected == Some(&h.instance_key);
-                draw_rectangle(x, y, 64., 64., rgb(0x253039));
-                if let Some(tex) = assets.ui.get(super::model::hero_art(h.definition.key)) { chrome::portrait(tex, x, y, 64., WHITE); }
-                draw_rectangle_lines(x, y, 64., 64., 2., if chosen { rgb(0xfff2a0) } else { rgb(0xc4a775) });
-                stroked(&format!("CP {}", cp as u64), x + 32., y + 56., 9., rgb(0xfff9ed), rgb(0x000000), Align::Center);
-                if candidate.is_some() || !candidates.is_empty() { stroked(if gain > 0. { "^" } else { "v" }, x + 56., y + 10., 14., if gain > 0. { rgb(0x6fe07a) } else { rgb(0xe05a5a) }, rgb(0x000000), Align::Center); }
-                if candidate.is_some() { hits.push(LHit { rect: Rect::new(x, y, 64., 64.), kind: LampHit::Hero(h.instance_key.clone()) }); }
-                if let Some((_, change, _)) = self.feedbacks.iter().find(|f| f.0 == h.instance_key && f.2 > now) {
-                    stroked(&format!("CP {}{}", if *change > 0. { "+" } else { "" }, change), x + 32., y - 10., 11., if *change > 0. { rgb(0x6fe07a) } else { rgb(0xe05a5a) }, rgb(0x000000), Align::Center);
-                }
-            }
+        if candidate.is_none() { self.selected_item = None; self.selected_hero = None; }
+        let view = if self.upgrade_receipt.is_some() { "upgrade-complete" } else if self.upgrade_open { "upgrade" } else if candidate.is_some() { "equip" } else if self.disposal_view { "dismantle" } else { "cache" };
+        let label = match view { "upgrade-complete" => "Upgrade Complete", "upgrade" => "Bag upgrades", "equip" => "Choose a hero for lamp equipment", "dismantle" => "Confirm equipment disposal", _ => "Equipment cache" };
+        let mut dialog = el("section").id("lamp-dialog").attr("role", "dialog").attr("aria-modal", "true").attr("tabindex", "-1").attr("data-view", view).label(label).on(Act::Stay);
+        let notice = |dialog: &mut Node<Act>, text: &str| { if !text.is_empty() { dialog.push(el("p").class("lamp-modal-notice").attr("role", "status").t(text)); } };
+        let tile = |c: &Candidate, art_only: bool, selected: bool, disposal: Option<bool>| {
+            let item = &c.item;
+            let tier = rarity(&item.rarity);
+            let mut node = el("button").class("lamp-tile").style(format!("--rarity:#{:06x}", tier.map_or(0xf3f3ee, |r| r.color))).attr("data-action", "queue").attr("data-cp", format!("{}", lamp_gear_cp(item))).attr("data-id", item.instance_id.as_str())
+                .attr("data-queue", c.queue).attr("data-best-gain", format!("{}", c.best_gain))
+                .label(format!("Inspect {}, {}, level {}", item.name, tier.map_or(item.rarity.as_str(), |r| r.label), item.level))
+                .on(on(LampHit::Queue(item.instance_id.clone())))
+                .child(atlas(item, c.best_gain > 0., !art_only));
+            if selected { node = node.attr("aria-current", "true"); }
+            if let Some(marked) = disposal { node = node.attr("data-disposal-selected", marked.to_string()); }
+            if !art_only { node.push(el("small").t(format!("CP {}", format_compact_count(lamp_gear_cp(item))))); }
+            node
         };
-        let queue = |hits: &mut Vec<LHit>, y: f32, rows: usize, items: Vec<(&LampItem, bool, bool)>, action: fn(String) -> LampHit| {
-            let size = 72.;
-            for (n, (item, upgrade, marked)) in items.iter().enumerate().take(rows * 4) {
-                let (col, row) = (n % 4, n / 4);
-                let (x, ty) = (14. + col as f32 * 84., y + row as f32 * 84.);
-                tile(assets, item, x, ty, size, *upgrade, self.selected_item.as_deref() == Some(item.instance_id.as_str()), true);
-                if *marked { draw_rectangle(x + size - 16., ty + 2., 14., 14., rgb(0xe05a5a)); }
-                hits.push(LHit { rect: Rect::new(x, ty, size, size), kind: action(item.instance_id.clone()) });
-            }
-        };
-        if let Some(c) = &candidate {
-            hero_row(&mut self.hits, 44., Some(c), self.selected_hero.as_ref());
-            if data.review_hold().is_some() { label("Cache full - one item held for review", WIDTH / 2., 118., 10., rgb(0xffd45c), Align::Center); }
-            let cy = 126.;
-            tile(assets, c, 14., cy, 58., roster.iter().any(|h| lamp_item_cp_gain(&data, c, h) > 0.), false, false);
-            label(&format!("{} | {} | Lv. {}", rarity(&c.rarity).map_or("", |r| r.label), slot_label(&c.kind).unwrap_or(""), c.level as u32), 82., cy + 8., 9., rarity_color(&c.rarity), Align::Left);
-            label(&c.name, 82., cy + 24., 14., rgb(0xfff9ed), Align::Left);
-            label(&format!("CP {}", lamp_gear_cp(c)), 82., cy + 40., 11., rgb(0xd9b88c), Align::Left);
-            let comparison = self.selected_hero.as_ref().map(|h| compare_lamp_item(&data, c, h));
-            let mut sx = 82.;
-            for k in ["HP", "ATK", "DEF", "MAG", "RES"] {
-                if !c.stats.contains_key(k) { continue; }
-                let delta = comparison.as_ref().and_then(|cmp| cmp.deltas.get(k)).copied().unwrap_or(0.);
-                label(k, sx, cy + 54., 8., rgb(0xd9b88c), Align::Left);
-                label(&format!("{}", c.stat(k) as i64), sx, cy + 66., 11., rgb(0xfff9ed), Align::Left);
-                if delta != 0. { label(if delta > 0. { "^" } else { "v" }, sx + 22., cy + 66., 11., if delta > 0. { rgb(0x6fe07a) } else { rgb(0xe05a5a) }, Align::Left); }
-                sx += 52.;
-            }
-            let items: Vec<(&LampItem, bool, bool)> = candidates.iter().filter(|q| self.disposal_view || (q.best_gain > 0. && !data.disposal_requested().contains(&q.item.instance_id))).map(|q| (&q.item, q.best_gain > 0., false)).collect();
-            queue(&mut self.hits, 206., 2, items, LampHit::Queue);
-            let can_dispose = !roster.iter().any(|h| lamp_item_cp_gain(&data, c, h) > 0.);
-            let r = Rect::new(14., 378., 220., 20.);
-            label("Send selected item to disposal", r.x, r.y + 10., 10., if can_dispose { rgb(0xfff9ed) } else { rgba(0xfff9ed, 0.4) }, Align::Left);
-            if can_dispose { self.hits.push(LHit { rect: r, kind: LampHit::QueueDisposal }); }
-            let can_equip = self.selected_hero.as_ref().is_some_and(|hid| roster.iter().any(|h| &h.instance_key == hid && lamp_item_cp_gain(&data, c, h) > 0.));
-            button("Equip", 14., 420., 160., 36., can_equip, true);
-            if can_equip { self.hits.push(LHit { rect: Rect::new(14., 420., 160., 36.), kind: LampHit::Equip }); }
-            button("Back to cache", 186., 420., 160., 36., true, false);
-            self.hits.push(LHit { rect: Rect::new(186., 420., 160., 36.), kind: LampHit::Cache });
-        } else if self.disposal_view {
-            let preview = self.disposal_preview.clone().or_else(|| game.economy.disposal_preview(&mut game.session, None).ok());
-            self.disposal_preview = preview.clone();
-            let ids = preview.as_ref().map(|p| p.ids.clone()).unwrap_or_default();
-            let items: Vec<(&LampItem, bool, bool)> = candidates.iter().map(|q| (&q.item, q.best_gain > 0., ids.contains(&q.item.instance_id))).collect();
-            queue(&mut self.hits, 44., 4, items, LampHit::Queue);
-            let essence = preview.as_ref().map_or(0., |p| p.essence);
-            label(&format!("Dismantle {} pieces for {} Essence", ids.len() as f64 + data.lamp.salvage.count, essence), WIDTH / 2., 400., 11., rgb(0xd9b88c), Align::Center);
-            let enabled = !ids.is_empty() || data.lamp.salvage.count > 0.;
-            button("Dismantle all", 100., 420., 160., 36., enabled, true);
-            if enabled { self.hits.push(LHit { rect: Rect::new(100., 420., 160., 36.), kind: LampHit::Dismantle }); }
+        if self.upgrade_open {
+            dialog.push(match &self.upgrade_receipt { Some(receipt) => bag_upgrade_complete(receipt), None => bag_upgrade(&data) });
+            if self.upgrade_receipt.is_none() { dialog.push(el("p").class("bag-upgrade-disclaimer").t("Probabilities shown are rounded and may not add up to 100%.")); }
+            notice(&mut dialog, &self.notice);
+            dialog.push(el("button").class("game-modal-close bag-modal-close").attr("data-action", "close").label("Close bag modal").on(on(LampHit::Close)).child(el("span").attr("aria-hidden", "true").t("×")));
         } else {
-            hero_row(&mut self.hits, 44., None, None);
-            if let Some(h) = data.review_hold() { label(&format!("Held: {}. Cache full - equip it or review disposal.", h.item.name), WIDTH / 2., 116., 9., rgb(0xffd45c), Align::Center); }
-            label(&format!("{} / {} stored", data.stored_count() as u32, data.capacity() as u32), 14., 130., 11., rgb(0xd9b88c), Align::Left);
-            let items: Vec<(&LampItem, bool, bool)> = useful.iter().map(|q| (&q.item, true, false)).collect();
-            queue(&mut self.hits, 142., 3, items, LampHit::Queue);
-            button("Equip", 14., 420., 160., 36., false, false);
-            let can_auto = !useful.is_empty();
-            button("Auto-Equip", 186., 420., 160., 36., can_auto, true);
-            if can_auto { self.hits.push(LHit { rect: Rect::new(186., 420., 160., 36.), kind: LampHit::AutoEquip }); }
+            let any_useful = candidates.iter().any(|c| c.best_gain > 0.);
+            let mut header = el("header").class("lamp-modal-header").child(el("span").t(if candidate.is_some() { "EQUIPMENT REVIEW" } else if self.disposal_view { "" } else { "EQUIPMENT CACHE" }));
+            if !self.disposal_view { header.push(el("button").class("lamp-disposal-link").attr("data-action", "disposal").flag("disabled", any_useful).t("Done / Dismantle").on(on(LampHit::Disposal))); }
+            header.push(el("button").attr("data-action", "close").label("Close equipment comparison").t("×").on(on(LampHit::Close)));
+            dialog.push(header);
+            if let (Some(hold), None, false) = (data.review_hold(), &candidate, self.disposal_view) { dialog.push(el("p").class("lamp-held").attr("role", "status").t(format!("Held: {}. Cache full — equip it or review disposal.", hold.item.name))); }
+            let hero_row = |candidate: Option<&LampItem>, selected: Option<&String>| {
+                let mut row = el("div").class("lamp-hero-row").label("Choose equipment recipient");
+                for h in &roster {
+                    let name = h.definition.name;
+                    let gain = match candidate { Some(c) => lamp_item_cp_gain(&data, c, h), None => candidates.iter().map(|c| lamp_item_cp_gain(&data, &c.item, h)).fold(0., f64::max) };
+                    let position = match name { "Fara" => "54% 7%", "Hondo" => "57% 7%", "Runa" => "50% 6%", _ => "53% 6%" };
+                    let mut button = el("button").flag("disabled", candidate.is_none()).class("lamp-hero lamp-portrait").attr("data-action", "hero").attr("data-id", h.instance_key.as_str()).attr("data-cp-change", format!("{gain}"))
+                        .attr("aria-pressed", (selected == Some(&h.instance_key)).to_string()).label(format!("Choose {name}")).attr("aria-description", format!("{name} CP change {}{gain}", if gain > 0. { "+" } else { "" }))
+                        .style(format!("--portrait-position:{position}")).on(on(LampHit::Hero(h.instance_key.clone())))
+                        .child(el("img").attr("decoding", "sync").attr("src", css::asset(&format!("images/{name}.png"))).attr("alt", ""))
+                        .child(el("span").class("lamp-hero-current-cp").child(el("span").t("CP")).t(" ").child(el("b").t(format!("{}", lamp_hero_cp(&data, h)))));
+                    if candidate.is_some() || !candidates.is_empty() { button.push(el("span").class(if gain > 0. { "lamp-cp-direction up" } else { "lamp-cp-direction down" }).attr("aria-hidden", "true")); }
+                    row.push(button);
+                }
+                row
+            };
+            if let Some(c) = &candidate {
+                let comparison = self.selected_hero.as_ref().map(|h| compare_lamp_item(&data, c, h));
+                let tier = rarity(&c.rarity);
+                let upgrade = roster.iter().any(|h| lamp_item_cp_gain(&data, c, h) > 0.);
+                let mut body = el("div").class("lamp-review-body");
+                if data.review_hold().is_some() { body.push(el("p").class("lamp-held").attr("role", "status").t("Cache full · one item held for review")); }
+                body.push(hero_row(Some(c), self.selected_hero.as_ref()));
+                let mut stats = el("dl").class("lamp-item-stats");
+                for k in ["HP", "ATK", "DEF", "MAG", "RES"] {
+                    if !c.stats.contains_key(k) { continue; }
+                    let delta = comparison.as_ref().and_then(|cmp| cmp.deltas.get(k)).copied().unwrap_or(0.);
+                    let mut value = el("span").class("lamp-stat-value").child(el("span").class("lamp-stat-number").attr("aria-hidden", "true").t(format!("{}", c.stat(k))));
+                    if delta != 0. { value.push(el("span").class(if delta > 0. { "lamp-stat-arrow up" } else { "lamp-stat-arrow down" }).attr("aria-hidden", "true")); }
+                    let spoken = if self.selected_hero.is_some() { format!(", {}{}", if delta > 0. { "increase " } else if delta < 0. { "decrease " } else { "no change " }, delta.abs()) } else { String::new() };
+                    stats.push(el("div").child(el("dt").t(k)).child(el("dd").attr("data-delta", format!("{delta}")).label(format!("{k} {}{spoken}", c.stat(k))).child(value)));
+                }
+                body.push(el("div").class("lamp-candidate").style(format!("--rarity:#{:06x}", tier.map_or(0xf3f3ee, |r| r.color)))
+                    .child(atlas(c, upgrade, true))
+                    .child(el("div")
+                        .child(el("div").class("lamp-quality-band")
+                            .child(el("small").t(format!("{} · {} · Lv. {}", tier.map_or("", |r| r.label), slot_label(&c.kind).unwrap_or(""), c.level)))
+                            .child(el("h2").t(c.name.as_str()))
+                            .child(el("p").class("lamp-item-cp").t(format!("CP {}", lamp_gear_cp(c)))))
+                        .child(stats)));
+                body.push(el("div").class("lamp-queue").label("Actionable upgrades").children(candidates.iter().filter(|q| q.best_gain > 0. && !data.disposal_requested().contains(&q.item.instance_id)).map(|q| tile(q, false, q.item.instance_id == c.instance_id, None))));
+                body.push(el("button").class("lamp-disposal-link lamp-item-disposal").attr("data-action", "queue-disposal").flag("disabled", upgrade).t("Send selected item to disposal").on(on(LampHit::QueueDisposal)));
+                dialog.push(body);
+                notice(&mut dialog, &self.notice);
+                let can_equip = self.selected_hero.as_ref().is_some_and(|id| roster.iter().any(|h| &h.instance_key == id && lamp_item_cp_gain(&data, c, h) > 0.));
+                dialog.push(el("div").class("lamp-actions lamp-review-actions")
+                    .child(el("button").class("primary").attr("data-action", "equip").flag("disabled", !can_equip).t("Equip").on(on(LampHit::Equip)))
+                    .child(el("button").attr("data-action", "cache").t("Back to cache").on(on(LampHit::Cache))));
+            } else if self.disposal_view {
+                let preview = self.disposal_preview.clone().or_else(|| game.economy.disposal_preview(&mut game.session, None).ok());
+                self.disposal_preview = preview.clone();
+                let ids = preview.map(|p| p.ids).unwrap_or_default();
+                dialog.push(el("div").class("lamp-disposal-body").child(el("div").class("lamp-queue").label("Disposal candidates").children(candidates.iter().map(|q| tile(q, true, false, Some(ids.contains(&q.item.instance_id)))))));
+                dialog.push(el("div").class("lamp-actions").child(el("button").class("primary").attr("data-action", "dismantle").flag("disabled", ids.is_empty() && data.lamp.salvage.count <= 0.).t("Dismantle all").on(on(LampHit::Dismantle))));
+                notice(&mut dialog, &self.notice);
+            } else {
+                dialog.push(hero_row(None, None));
+                dialog.push(el("p").t(format!("{} / {} stored", data.stored_count(), data.capacity())));
+                dialog.push(el("div").class("lamp-queue").label("Actionable upgrades").children(candidates.iter().filter(|q| q.best_gain > 0. && !data.disposal_requested().contains(&q.item.instance_id)).map(|q| tile(q, false, false, None))));
+                dialog.push(el("div").class("lamp-actions")
+                    .child(el("button").attr("data-action", "equip").flag("disabled", true).t("Equip"))
+                    .child(el("button").class("primary").attr("data-action", "auto-equip").flag("disabled", !any_useful).t("Auto-Equip").on(on(LampHit::AutoEquip))));
+                notice(&mut dialog, &self.notice);
+            }
         }
-        if !self.notice.is_empty() { paragraph(&self.notice, 14., 456., WIDTH - 28., 10., rgb(0xffb0a0)); }
+        // The overlay is the frame rectangle; a cache window stops at 480 logical px.
+        let height = if self.upgrade_open { 640. } else { 480. } * scale;
+        let mut overlay = el("div").key("lamp").id("lamp-overlay").attr("data-boss-fallback", "false").style(format!("height:{height:.2}px;--bag-scale:{scale:.4};--modal-close-scale:{scale:.4};--boss-fallback-reserve:0px")).on(on(LampHit::Close)).child(dialog);
+        // showEquipFeedback: "CP +n" rising over the hero's portrait for 1.8 s.
+        for (hero_id, change, until) in &self.feedbacks {
+            if *until <= now { continue; }
+            let column = roster.iter().position(|h| &h.instance_key == hero_id).unwrap_or(0) as f32;
+            let left = (20. + (column + 0.5) / roster.len().max(1) as f32 * (360. * scale - 40.)).round();
+            overlay.push(el("div").class(if *change > 0. { "lamp-cp-feedback positive" } else if *change < 0. { "lamp-cp-feedback negative" } else { "lamp-cp-feedback neutral" }).attr("role", "status").attr("data-hero", hero_id.as_str())
+                .style(format!("width:48px;left:{left}px;top:{}px", (64. * scale).round())).t(format!("CP {}{change}", if *change > 0. { "+" } else { "" })));
+        }
+        Some(overlay)
     }
-    fn draw_upgrade(&mut self, assets: &Assets, data: &LampEconomy, close: impl Fn(&mut Vec<LHit>, f32)) {
-        let level = data.lamp.capacity_tier + 1;
-        let tier = capacity_tier(data.lamp.capacity_tier);
-        let next = (data.lamp.capacity_tier as usize + 1 < LAMP_LEVELS).then(|| capacity_tier(data.lamp.capacity_tier + 1));
-        if let Some(r) = &self.upgrade_receipt {
-            label("Upgrade Complete", WIDTH / 2., 120., 20., rgb(0xffd45c), Align::Center);
-            if let Some(tex) = assets.ui.get("lamp-bag") { image(tex, WIDTH / 2. - 60., 150., 120., 120.); }
-            label(&format!("Bag Lv. {}", r.level_after), WIDTH / 2., 300., 16., rgb(0xfff9ed), Align::Center);
-            label(&format!("Bag Capacity {} > {}", r.capacity_before as u64, r.capacity_after as u64), WIDTH / 2., 330., 13., rgb(0xd9b88c), Align::Center);
-            close(&mut self.hits, 380.);
-            return;
-        }
-        label(&format!("Bag Upgrade Lv.{level}"), WIDTH / 2., 28., 16., rgb(0xfff9ed), Align::Center);
-        if let Some(tex) = assets.ui.get("bag-medallion") { image(tex, 60., 48., 36., 36.); }
-        label(&format!("Lv. {level}"), 130., 66., 14., rgb(0xfff9ed), Align::Center);
-        label(">", 180., 66., 14., rgb(0xd9b88c), Align::Center);
-        label(&next.as_ref().map_or("MAX".to_string(), |_| format!("Lv. {}", level + 1)), 230., 66., 14., rgb(0xfff9ed), Align::Center);
-        let rate = |n: f64| format!("{:.1}%", (n * 10.).ceil() / 10.);
-        for (i, r) in RARITIES.iter().enumerate() {
-            let y = 100. + i as f32 * 30.;
-            draw_rectangle(20., y, WIDTH - 40., 26., rgba(r.color, 0.25));
-            draw_rectangle_lines(20., y, WIDTH - 40., 26., 1., rgb(r.color));
-            label(r.label, 30., y + 13., 11., rgb(0xfff9ed), Align::Left);
-            label(&rate(tier.rarity_weights.iter().find(|(k, _)| *k == r.key).map_or(0., |(_, v)| *v)), 190., y + 13., 11., rgb(0xfff9ed), Align::Right);
-            label(">", 212., y + 13., 11., rgb(0xd9b88c), Align::Center);
-            label(&next.as_ref().map_or("-".to_string(), |n| rate(n.rarity_weights.iter().find(|(k, _)| *k == r.key).map_or(0., |(_, v)| *v))), 330., y + 13., 11., rgb(0xfff9ed), Align::Right);
-        }
-        label(&format!("Bag Capacity {} {}", tier.capacity as u64, next.as_ref().map_or("(MAX)".to_string(), |n| format!("> {}", n.capacity as u64))), WIDTH / 2., 270., 12., rgb(0xd9b88c), Align::Center);
-        let progress = data.upgrade_progress();
-        draw_circle(36., 306., 14., rgb(0x4a167e)); draw_circle_lines(36., 306., 14., 1.5, rgb(0xdba7f5));
-        label(&format!("{level}"), 36., 306., 12., WHITE, Align::Center);
-        draw_rectangle(58., 296., 244., 20., rgb(0x242130));
-        draw_rectangle(59., 297., 242. * progress.fraction as f32, 18., rgb(0xa829e0));
-        draw_rectangle_lines(58., 296., 244., 20., 1.5, rgb(0xb777d8));
-        let total = if progress.max { "MAX".to_string() } else { format!("({}/{})", format_compact_count(progress.current), format_compact_count(progress.required.unwrap_or(0.))) };
-        label(&total, 180., 306., 11., WHITE, Align::Center);
-        draw_circle(324., 306., 14., rgb(0x4a167e)); draw_circle_lines(324., 306., 14., 1.5, rgb(0xdba7f5));
-        label(&next.as_ref().map_or("MAX".to_string(), |_| format!("{}", level + 1)), 324., 306., 11., WHITE, Align::Center);
-        let can = !progress.max && progress.required.is_some_and(|r| progress.current >= r);
-        button(if progress.max { "MAX" } else { "Level Up" }, 105., 340., 150., 40., can, true);
-        if can { self.hits.push(LHit { rect: Rect::new(105., 340., 150., 40.), kind: LampHit::Upgrade(data.lamp.capacity_tier) }); }
-        paragraph("Probabilities shown are rounded and may not add up to 100%.", 30., 396., WIDTH - 60., 9., rgba(0xfff9ed, 0.6));
-        if !self.notice.is_empty() { paragraph(&self.notice, 14., 430., WIDTH - 28., 10., rgb(0xffb0a0)); }
-        close(&mut self.hits, 470.);
-        let _ = hero::MAX_LEVEL;
-    }
+}
+/// `atlas(item)`: the gear sprite cell, vertically centred like main's re-centred atlas.
+pub fn atlas(item: &LampItem, upgrade: bool, labels: bool) -> Node<Act> {
+    let mut art = el("span").class("lamp-art ").attr("aria-hidden", "true").style(art_style(item.art));
+    if labels { art.push(el("span").class("lamp-level").t(format!("Lv.{}", item.level))); }
+    if upgrade { art.push(el("span").class("lamp-review-arrow").child(el("span").class("lamp-cp-direction up"))); }
+    art
+}
+thread_local! { static GEAR_CELLS: std::cell::Cell<[(f32, f32); 9]> = const { std::cell::Cell::new([(0., 50.); 9]) }; }
+/// Per atlas cell: how far (in cell heights) the visible piece sits above the cell centre, and
+/// its midpoint in percent. Main measures the same from the atlas pixels at boot.
+pub fn set_gear_cells(cells: [(f32, f32); 9]) { GEAR_CELLS.with(|c| c.set(cells)); }
+pub fn art_style(art: u32) -> String {
+    let (offset, midpoint) = GEAR_CELLS.with(|c| c.get())[(art % 9) as usize];
+    format!("--col:{};--row:{:.4};--gear-midpoint:{midpoint:.3}%", art % 3, (art / 3) as f32 - offset)
+}
+/// `renderBagUpgrade`.
+fn bag_upgrade(data: &LampEconomy) -> Node<Act> {
+    let level = data.lamp.capacity_tier + 1;
+    let tier = capacity_tier(data.lamp.capacity_tier);
+    let next = (data.lamp.capacity_tier as usize + 1 < LAMP_LEVELS).then(|| capacity_tier(data.lamp.capacity_tier + 1));
+    let progress = data.upgrade_progress();
+    let rate = |n: f64| format!("{:.1}%", (n * 10.).ceil() / 10.);
+    let exact = |n: f64| super::model::format_number(n);
+    let weight = |t: &CapacityTier, key: &str| t.rarity_weights.iter().find(|(k, _)| *k == key).map_or(0., |(_, v)| *v);
+    let arrow = || el("span").class("bag-comparison-arrow").attr("aria-hidden", "true");
+    let total = if progress.max { "MAX".to_string() } else { format!("({}/{})", format_compact_count(progress.current), format_compact_count(progress.required.unwrap_or(0.))) };
+    let rows = RARITIES.iter().map(|r| el("tr").style(format!("--bag-pill:#{:06x}", r.color))
+        .child(el("th").attr("scope", "row").t(r.label)).child(el("td").t(rate(weight(&tier, r.key))))
+        .child(el("td").class("bag-odds-arrow").attr("aria-hidden", "true").child(el("span").class("bag-comparison-arrow")))
+        .child(el("td").t(next.as_ref().map_or("—".to_string(), |n| rate(weight(n, r.key))))));
+    let can = !progress.max && progress.required.is_some_and(|r| progress.current >= r);
+    let required = progress.required.unwrap_or(1.);
+    el("section").class("bag-upgrade-panel")
+        .child(el("header").class("bag-window-header").t(format!("Bag Upgrade Lv.{level}")))
+        .child(el("div").class("bag-upgrade-main")
+            .child(el("div").class("bag-level-transition")
+                .child(el("span").class("bag-tier-emblem").child(el("img").attr("src", css::asset("images/ui/bag-tier-medallion.png")).attr("alt", "")))
+                .child(el("b").t(format!("Lv. {level}"))).child(arrow()).child(el("b").t(next.as_ref().map_or("MAX".to_string(), |_| format!("Lv. {}", level + 1)))))
+            .child(el("div").class("lamp-odds-scroll").child(el("table").class("lamp-odds").label("Current and next equipment drop rates")
+                .child(el("colgroup").child(el("col").style("width:38%")).child(el("col").style("width:27.5%")).child(el("col").style("width:7%")).child(el("col").style("width:27.5%")))
+                .child(el("thead").class("bag-sr-only").child(el("tr").child(el("th").t("Quality")).child(el("th").t("Current")).child(el("th")).child(el("th").t("Next"))))
+                .child(el("tbody").children(rows))))
+            .child(el("section").class("bag-upgrade-controls")
+                .child(el("p").class("bag-next-capacity").t(format!("Bag Capacity {} {}", exact(tier.capacity), next.as_ref().map_or("(MAX)".to_string(), |n| format!("> {}", exact(n.capacity))))))
+                .child(el("div").class("bag-upgrade-actions")
+                    .child(el("div").class("bag-progress-group")
+                        .child(el("span").class(if level >= 100 { "bag-progress-level long" } else { "bag-progress-level " }).child(el("b").t(level.to_string())))
+                        .child(el("div").class("bag-upgrade-progress").attr("role", "progressbar").label("Bag progress").attr("aria-valuemin", "0").attr("aria-valuenow", format!("{}", if progress.max { 1. } else { progress.current.min(required) })).attr("aria-valuemax", format!("{required}"))
+                            .attr("title", if progress.max { "MAX".to_string() } else { format!("{} / {}", exact(progress.current), exact(required)) })
+                            .child(el("span").style(format!("width:{}%", progress.fraction * 100.))).child(el("b").t(total)))
+                        .child(el("span").class(if level >= 99 { "bag-progress-level next long" } else { "bag-progress-level next " }).child(el("b").t(next.as_ref().map_or("MAX".to_string(), |_| (level + 1).to_string())))))
+                    .child(el("button").class("bag-level-up").attr("data-action", "upgrade").attr("data-tier", data.lamp.capacity_tier.to_string()).flag("disabled", !can).t(if progress.max { "MAX" } else { "Level Up" }).on(Act::Lamp(LampHit::Upgrade(data.lamp.capacity_tier)))))))
+}
+/// `renderBagUpgradeComplete`.
+fn bag_upgrade_complete(receipt: &UpgradeReceipt) -> Node<Act> {
+    el("section").class("bag-upgrade-complete").label("Bag upgrade reward")
+        .child(el("h2").class("bag-reward-banner").t("Upgrade Complete"))
+        .child(el("div").class("bag-reward-art").child(el("img").attr("src", css::asset("images/lamp/equipment-bag.png")).attr("alt", "Bag")))
+        .child(el("p").class("bag-reward-level").t(format!("Bag Lv. {}", receipt.level_after)))
+        .child(el("p").class("bag-reward-capacity").t(format!("Bag Capacity {} > {}", super::model::format_number(receipt.capacity_before), super::model::format_number(receipt.capacity_after))))
 }

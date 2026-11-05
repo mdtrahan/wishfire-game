@@ -190,7 +190,7 @@ async fn main() {
             ui.lamp.frame(&mut scene.game, false, true);
             scene.game.session.pause();
             portrait.begin();
-            ui.draw_screen(&assets, &scene.game);
+            ui.draw_screen(&assets);
             ui.web(&mut scene.game);
             portrait.present();
             next_frame().await;
