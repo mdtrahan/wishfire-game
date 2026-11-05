@@ -42,6 +42,10 @@ pub struct OrbField {
     seed: u32,
     sprite: Option<Texture2D>,
     pub notice: Option<String>,
+    /// Dev Tools: a drop chance for this page session instead of `ORB_DROP_CHANCE`.
+    pub dev_drop_chance: Option<f32>,
+    /// Dev Tools drops are ready to pick up at once (no subwave to wait for).
+    dev_eligible: bool,
 }
 fn world(p: wf_combat::Vec2) -> Vec2 { vec2(p.x, p.y) }
 impl OrbField {
@@ -52,7 +56,16 @@ impl OrbField {
         (self.seed >> 8) as f32 / (1u32 << 24) as f32
     }
     /// One kill: does it drop an orb?
-    fn rolls_drop(&mut self) -> bool { self.random() < ORB_DROP_CHANCE }
+    fn rolls_drop(&mut self) -> bool { self.random() < self.dev_drop_chance.unwrap_or(ORB_DROP_CHANCE) }
+    pub fn drop_chance(&self) -> f32 { self.dev_drop_chance.unwrap_or(ORB_DROP_CHANCE) }
+    pub fn count(&self) -> usize { self.orbs.len() }
+    /// Dev Tools: `count` drops scattered around the party, eligible as soon as they are saved.
+    pub fn dev_drop(&mut self, count: usize, s: &Snapshot) {
+        let heroes: Vec<Vec2> = s.actors.iter().filter(|a| a.team == Team::Hero).map(|a| world(a.pos)).collect();
+        let centre = if heroes.is_empty() { (world(s.arena_min) + world(s.arena_max)) / 2. } else { heroes.iter().copied().sum::<Vec2>() / heroes.len() as f32 };
+        for _ in 0..count { let offset = vec2((self.random() - 0.5) * 420., (self.random() - 0.5) * 300.); self.waiting_drops.push(centre + offset); }
+        self.dev_eligible = true;
+    }
     /// Orbs still in the air: already stored in the Bag, not yet arrived (the bag count waits for them).
     pub fn flying(&self) -> usize { self.orbs.iter().filter(|o| o.flight.is_some()).count() }
     fn resting(&self) -> usize { self.orbs.len() - self.flying() }
@@ -111,6 +124,7 @@ impl OrbField {
                 self.orbs = restored;
             }
         }
+        if std::mem::take(&mut self.dev_eligible) { for orb in &mut self.orbs { orb.eligible = true; } }
         // Subwave completion: everything lying on the field now is eligible.
         let completions = session.subwave_completions;
         if self.seen_completions.is_some_and(|seen| seen != completions) { for orb in &mut self.orbs { orb.eligible = true; } }

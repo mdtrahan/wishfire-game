@@ -184,6 +184,17 @@ impl CombatProgression {
         let level = host.progress().heroes.get(hero_id).map_or(0, |h| h.current_level);
         SpendOutcome { ok: true, reason: None, pending: false, cost: result.cost, level }
     }
+    /// Developer grant (the app's Dev Tools): Incense added to the wallet and saved like any
+    /// other quest change. Not a game rule; nothing else calls it.
+    pub fn dev_grant_incense(&mut self, amount: f64, host: &mut dyn QuestHost, economy: &EquipmentStorage) -> Result<f64, String> {
+        let mut next = self.state.clone();
+        next.wallet.incense += amount.max(0.).floor();
+        let heroes = host.quest_heroes();
+        let committed = ensure_objective(&next, &heroes, Self::context(host, economy));
+        self.commit(committed, host)?;
+        Ok(self.state.wallet.incense)
+    }
+    pub fn incense(&self) -> f64 { self.state.wallet.incense }
     /// `train(stat)`: Incense buys one party training level and records the objective event.
     pub fn train(&mut self, stat: &str, host: &mut dyn QuestHost, economy: &mut EquipmentStorage) -> TrainResult {
         if !TRAINING_STATS.contains(&stat) { return TrainResult { state: self.state.clone(), ok: false, reason: Some("invalid_stat"), stat: stat.into(), cost: 0., level: 0 }; }

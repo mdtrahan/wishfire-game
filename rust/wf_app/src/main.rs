@@ -167,6 +167,8 @@ async fn main() {
     render::vfx3d::warmup();
     let rows = match game::load_enemy_rows().await { Ok(rows) => rows, Err(error) => fatal(&mut portrait, "Enemy data failed", &error).await };
     let mut controls = input::Controls::new();
+    // A single step on a paused clock: the host runs at 1x until the sim reaches this step.
+    let mut step_until: Option<u64> = None;
     let mut ui = ui::Ui::new();
     if qa::enabled() { controls.seed = qa::seed(); }
     let boot_seed = if qa::enabled() { Some(controls.seed as u32) } else { None };
@@ -187,32 +189,70 @@ async fn main() {
         let click = if locked { None } else { is_mouse_button_pressed(MouseButton::Left).then(|| portrait.pointer()).flatten() };
         // Page-element clicks (menus, nav) arrive between frames; the canvas owns the rest.
         let web_action = if locked { ui.drop_clicks(); None } else { ui.web_clicks(&mut scene.game) };
-        // Dev Tooling Modal requests: the clock controls go to `controls`; a level preset or
-        // RESET GAME changes the saves and the session is rebuilt from them.
+        // Dev Tools requests (`ui/dev.rs`). Clock controls go to `controls`; currencies and orbs
+        // change the live game; a level, stage, party or save change rewrites the saves and the
+        // session is rebuilt from them.
         for hit in ui.dev.take() {
             use ui::dev::DevHit as D;
-            match hit {
-                D::Level(level) => match scene.game.dev_level(level) {
-                    Ok(()) => {
+            let stage = scene.game.session.stage.clone();
+            let (mut rebuild, mut summon, mut fresh_ui) = (false, false, false);
+            let outcome: Result<String, String> = match hit {
+                D::Level(level) => { rebuild = true; scene.game.dev_level(level).map(|_| format!("All heroes set to Lv. {level}.")) }
+                D::LevelStep(step) => {
+                    let level = (scene.game.party_level() as i32 + step).clamp(1, wf_meta::hero::MAX_LEVEL as i32) as u32;
+                    rebuild = true;
+                    scene.game.dev_level(level).map(|_| format!("All heroes set to Lv. {level}."))
+                }
+                D::Chapter(step) => { rebuild = true; scene.game.dev_stage((stage.region as i32 + step).max(1) as u32, 1, false).map(|(chapter, wave)| format!("Chapter {chapter}, wave {wave}.")) }
+                D::Wave(step) => { rebuild = true; scene.game.dev_stage(stage.region, (stage.wave as i32 + step).max(1) as u32, false).map(|(chapter, wave)| format!("Chapter {chapter}, wave {wave}.")) }
+                D::WaveFirst => { rebuild = true; scene.game.dev_stage(stage.region, 1, false).map(|(chapter, wave)| format!("Chapter {chapter}, wave {wave}.")) }
+                D::WaveLast => { rebuild = true; scene.game.dev_stage(stage.region, u32::MAX, false).map(|(chapter, wave)| format!("Chapter {chapter}, wave {wave}.")) }
+                D::Boss => { rebuild = true; summon = true; scene.game.dev_stage(stage.region, 1, true).map(|(chapter, _)| format!("Chapter {chapter} boss.")) }
+                D::Member(index) => if game::toggle_member(index) { rebuild = true; Ok("Party changed.".into()) } else { Err("The party needs at least one hero.".into()) },
+                D::Gold(amount) => scene.game.dev_gold(amount as f64).map(|_| format!("+{amount} gold.")),
+                D::Essence(amount) => scene.game.dev_essence(amount as f64).map(|_| format!("+{amount} Essence. A dismantle or Play Cascade Fill shows it on the Bag.")),
+                D::Incense(amount) => scene.game.dev_incense(amount as f64).map(|_| format!("+{amount} Incense.")),
+                D::DropOrbs(amount) => match scene.game.snapshot().cloned() {
+                    Some(snapshot) => { ui.lamp.orbs.dev_drop(amount as usize, &snapshot); Ok(format!("{amount} orbs dropped around the party.")) }
+                    None => Err("There is no battlefield yet.".into()),
+                },
+                D::ClearOrbs => scene.game.dev_clear_orbs().map(|_| "Orbs cleared.".into()),
+                D::DropRate(percent) => { ui.lamp.orbs.dev_drop_chance = Some(percent as f32 / 100.); Ok(format!("Drop rate {percent}% until the page reloads.")) }
+                D::CascadeFill => { ui.lamp.dev_ceremony(); Ok(String::new()) }
+                D::ResetGame => { rebuild = true; fresh_ui = true; game::reset_saves().map(|_| String::new()) }
+                D::RestoreSnapshot => { rebuild = true; fresh_ui = true; game::restore_saves().map(|_| String::new()) }
+                other => { controls.dev(other); Ok(String::new()) }
+            };
+            match outcome {
+                Ok(text) => {
+                    let mut text = text;
+                    if rebuild {
                         scene.game.session.dispose();
                         scene = match Scene::new(rows.clone(), boot_seed) { Ok(scene) => scene, Err(error) => fatal(&mut portrait, "Combat host failed", &error).await };
-                        ui.dev.status = format!("All heroes set to Lv. {level} with EXP 0 and matching skills.");
+                        if summon { match scene.game.session.summon_boss(platform::now_ms()) { Ok(true) => text.push_str(" Summoned."), Ok(false) => text.push_str(" Press Summon Boss."), Err(error) => text = error } }
+                        if fresh_ui { ui.reset(); ui.boot(qa::enabled()); }
                     }
-                    Err(error) => ui.dev.status = error,
-                },
-                D::ResetGame => match game::reset_saves() {
-                    Ok(_) => {
-                        scene.game.session.dispose();
-                        scene = match Scene::new(rows.clone(), boot_seed) { Ok(scene) => scene, Err(error) => fatal(&mut portrait, "Combat host failed", &error).await };
-                        ui = ui::Ui::new();
-                        ui.boot(qa::enabled());
-                    }
-                    Err(error) => ui.dev.status = error,
-                },
-                other => controls.dev(other),
+                    if !text.is_empty() { ui.dev.status = text; }
+                }
+                Err(error) => ui.dev.status = error,
             }
         }
-        ui.dev.state = ui::dev::DevState { paused: controls.paused, speed: controls.speed as u8, spotlight: controls.spotlight_label(), diagnostics: controls.debug };
+        ui.dev.diagnostics = controls.debug;
+        if ui.dev.open {
+            let game = &scene.game;
+            let mut names: Vec<&str> = Vec::new();
+            for enemy in game.session.enemies.iter().filter(|e| e.alive()) { if !names.contains(&enemy.name()) { names.push(enemy.name()); } }
+            let data = game.economy.data();
+            ui.dev.state = ui::dev::DevState {
+                paused: controls.paused, speed: controls.speed, spotlight: controls.spotlight, seed: controls.seed, fps: get_fps(),
+                chapter: game.session.stage.region, wave: game.session.stage.wave, waves: wf_meta::stage::waves_for_stage(game.session.stage.region), boss: game.session.boss_control_state(),
+                live_enemies: game.session.world().map_or(0, |w| w.live_enemies() as u32), enemy_names: names.join(", "),
+                party: game::party_members().into_iter().map(|(key, _, on)| (wf_meta::hero::hero_definition(key).map_or(key, |d| d.name).to_string(), on)).collect(),
+                level: game.party_level(), gold: game.session.gold_total, essence: data.map_or(0., |d| d.lamp.essence), incense: game.progression.incense(),
+                bag_stored: data.map_or(0., |d| d.stored_count()), bag_capacity: data.map_or(0., |d| d.capacity()), bag_level: data.map_or(1, |d| d.lamp.capacity_tier + 1),
+                orbs: ui.lamp.orbs.count(), drop_percent: (ui.lamp.orbs.drop_chance() * 100.).round() as u32, snapshot: game::has_reset_snapshot(),
+            };
+        }
         // Meta screens: combat pauses underneath (storyEntryFlow.navigate departure).
         if !ui.in_combat() {
             // Dev scenario key: L opens the quest ladder from the map (JS storyEntry.skip() first step).
@@ -255,12 +295,15 @@ async fn main() {
         let event_previous = motion.presentation(&previous_snapshot);
         let start = get_time();
         // Host pacing: the fixed-step debt uses wall time scaled by the dev speed; pause stops it.
-        game.session.dev_speed = controls.speed as f64;
+        if action.step { step_until = Some(previous_snapshot.step + 1); }
+        if step_until.is_some_and(|target| previous_snapshot.step >= target) { step_until = None; }
+        let stepping = step_until.is_some();
+        game.session.dev_speed = if stepping { 1. } else { controls.speed as f64 };
         if action.summon_boss {
             if let Err(error) = game.session.summon_boss(platform::now_ms()) { fatal(&mut portrait, "Combat host failed", &error).await; }
         }
         // A chrome panel pauses combat like the JS hero/party-skill surfaces do.
-        if !action.step && (controls.paused || ui.pauses()) { game.session.pause(); } else { let _ = dt; game.tick(platform::now_ms()); }
+        if !stepping && (controls.paused || ui.pauses()) { game.session.pause(); } else { let _ = dt; game.tick(platform::now_ms()); }
         let observations = game.drain_steps();
         let steps = observations.len() as u32;
         for (before, after) in &observations { motion.observe_step(before, after); }
@@ -374,6 +417,14 @@ async fn main() {
         presentation.hostile(&assets, &camera, bg, bg_previous, &mut stats);
         presentation.under_actors(&assets, &camera, bg, warcry_shell, &mut stats);
         ui.lamp.orbs.draw(&camera, false);
+        // Dev Tools overlay: each living hero's orb pickup circle (1.5 body heights around the feet).
+        if ui.dev.circles {
+            for hero in bg.actors.iter().filter(|a| a.team == wf_combat::Team::Hero && a.hp > 0.) {
+                let feet = camera.project(hero.pos);
+                let radius = render::crowd::body_size(&assets.manifest, hero).y * ui::orbs::PICKUP_DIAMETER_IN_HERO_HEIGHTS / 2. * camera.zoom;
+                draw_circle_lines(feet.x, feet.y, radius, 1., Color::new(0.35, 0.9, 1., 0.85));
+            }
+        }
         let ground_bodies = spotlight.ground_bodies(s, corpses);
         let draw_chests = |stats: &mut assets::DrawStats| {
             presentation.rewards.draw_chests(&assets, &camera, bg, stats)

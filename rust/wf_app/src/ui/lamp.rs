@@ -152,6 +152,8 @@ impl LampUi {
         // must never leave the game locked.
         self.locked = shown && dt > 0. && self.bar.active();
     }
+    /// Dev Tools: play the Cascade Fill ceremony now with whatever progress the save holds.
+    pub fn dev_ceremony(&mut self) { self.bar.request(); }
     /// The Bag progress ceremony is playing: ignore taps, page clicks and keys until it ends.
     pub fn locks_input(&self) -> bool { self.locked }
     /// The bag icon: opens the equipment screen and shows stored / capacity. The count waits for

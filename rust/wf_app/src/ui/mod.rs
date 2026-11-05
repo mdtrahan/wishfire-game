@@ -53,6 +53,9 @@ pub struct Ui {
 }
 impl Ui {
     pub fn new() -> Self { Self { screen: Screen::Combat, panel: None, model: CombatModel::default(), lamp: lamp::LampUi::default(), hero: screens::HeroUi::default(), training: screens::TrainingUi::default(), vault: screens::VaultUi::default(), story: story::StoryFlow::default(), toast: None, dev: dev::DevUi::default(), hits: Vec::new(), dom: dom::Dom::new() } }
+    /// A fresh menu state over the same page elements (RESET GAME, a restored snapshot). The
+    /// page layer must survive: a new `Dom` would leave the old elements on the page, dead.
+    pub fn reset(&mut self) { let dom = std::mem::take(&mut self.dom); *self = Self::new(); self.dom = dom; }
     /// Boot lands on the Quests map (`activateInitialLayout('storyMock')`).
     pub fn boot(&mut self, qa_direct_combat: bool) { if qa_direct_combat { self.story.qa_direct_combat(); self.screen = Screen::Combat; } else { self.screen = Screen::Quests; } }
     fn now_ms() -> f64 { macroquad::time::get_time() * 1000. }
@@ -194,7 +197,8 @@ impl Ui {
     /// fade and the open menu. Called once per frame after input and state updates.
     pub fn web(&mut self, game: &mut Game) {
         let (scale, offset) = crate::camera::Portrait::frame();
-        let mut stage: Node<Act> = el("div").id("wf-ui").style(format!("left:{:.2}px;top:{:.2}px;width:{:.2}px;height:{:.2}px;--s:{:.4}", offset.x, offset.y, crate::camera::WIDTH * scale, crate::camera::HEIGHT * scale, scale))
+        // --cs: main's control scale for the developer pills and panel (never above 1).
+        let mut stage: Node<Act> = el("div").id("wf-ui").style(format!("left:{:.2}px;top:{:.2}px;width:{:.2}px;height:{:.2}px;--s:{:.4};--cs:{:.4}", offset.x, offset.y, crate::camera::WIDTH * scale, crate::camera::HEIGHT * scale, scale, scale.min(1.)))
             .child(el("style").t(css::sheet()))
             .child(self.nav_view());
         let fade = self.story.transition.map_or(0., |t| t.alpha(platform_now()));
@@ -210,7 +214,7 @@ impl Ui {
         if self.training.open { stage.push(screens::training_view(game, &self.training, (macroquad::window::screen_width(), macroquad::window::screen_height()))); }
         // Last, so nothing before them shifts when a menu opens: the developer pills and modal.
         stage.kids.extend(self.dev.launchers());
-        if let Some(view) = self.dev.view() { stage.push(view); }
+        if let Some(view) = self.dev.view(crate::camera::HEIGHT * scale / scale.min(1.)) { stage.push(view); }
         // Over everything while the Bag progress ceremony plays, so nothing under it reacts.
         if self.lamp.locks_input() { stage.push(el("div").key("lock").id("wf-input-lock").on(Act::Stay)); }
         self.dom.render(vec![stage]);

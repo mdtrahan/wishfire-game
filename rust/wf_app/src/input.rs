@@ -9,7 +9,7 @@ pub struct Controls {
     /// Requests from the Dev Tooling Modal, applied by the next `read`.
     restart: bool,
     step: bool,
-    cycle_spotlight: bool,
+    set_spotlight: Option<usize>,
 }
 pub struct Action {
     pub restart: bool,
@@ -42,24 +42,21 @@ impl Controls {
             spotlight: 2,
             restart: false,
             step: false,
-            cycle_spotlight: false,
+            set_spotlight: None,
         }
     }
-    pub fn spotlight_label(&self) -> &'static str {
-        ["Spot: Off", "Spot: Con", "Spot: Def", "Spot: Agg"][self.spotlight]
-    }
-    /// A Dev Tooling Modal button (`ui::dev`): pause, speed and diagnostics apply at once; a
-    /// restart, a single step and the spotlight preset wait for the next `read`.
+    /// A Dev Tools button (`ui::dev`): pause, speed and diagnostics apply at once; a restart,
+    /// a single step and the spotlight preset wait for the next `read`.
     pub fn dev(&mut self, hit: crate::ui::dev::DevHit) {
         use crate::ui::dev::DevHit as D;
         match hit {
             D::Pause => self.paused = !self.paused,
-            D::Speed(speed) => self.speed = speed as f32,
+            D::Speed(speed) => self.speed = speed,
             D::Diagnostics => self.debug = !self.debug,
             D::Restart => self.restart = true,
             D::Step => self.step = true,
-            D::Spotlight => self.cycle_spotlight = true,
-            D::Open | D::Close | D::ResetGame | D::Level(_) => {}
+            D::Spotlight(preset) => self.set_spotlight = Some(preset.min(3)),
+            _ => {}
         }
     }
     /// The developer keys (ignored when `keys` is false: an input-locked ceremony is playing)
@@ -73,8 +70,9 @@ impl Controls {
         if pressed(KeyCode::Key4) { self.speed = 4.; }
         let restart = pressed(KeyCode::R) || std::mem::take(&mut self.restart);
         if restart { self.seed = self.seed.wrapping_add(1); }
-        let spotlight_changed = pressed(KeyCode::S) || std::mem::take(&mut self.cycle_spotlight);
-        if spotlight_changed { self.spotlight = (self.spotlight + 1) % 4; }
+        let chosen = self.set_spotlight.take();
+        let spotlight_changed = pressed(KeyCode::S) || chosen.is_some();
+        if let Some(preset) = chosen { self.spotlight = preset; } else if spotlight_changed { self.spotlight = (self.spotlight + 1) % 4; }
         let step = std::mem::take(&mut self.step) || pressed(KeyCode::N);
         Action { restart, summon_boss: pressed(KeyCode::B), step: self.paused && step, spotlight_changed }
     }
