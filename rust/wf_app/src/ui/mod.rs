@@ -7,6 +7,7 @@ pub mod css;
 pub mod dom;
 pub mod lamp;
 pub mod model;
+pub mod orbs;
 pub mod screens;
 pub mod story;
 pub mod text;
@@ -200,7 +201,6 @@ impl Ui {
         stage.kids.extend(self.story.view(game.session.gold_total, self.screen == Screen::Quests));
         if let Some(view) = self.lamp.view(game, scale) { stage.push(view); }
         if let Some(t) = &self.toast { if let Some(view) = receipt_view(if t.flip { "receipt-a" } else { "receipt-b" }, &t.title, &t.resource, t.amount, &t.hero_name, t.duration_ms, scale) { stage.push(view); } }
-        if let Some((title, amount)) = self.lamp.banner() { if let Some(view) = receipt_view("receipt-lamp", title, "essence", amount, "", 2000., scale) { stage.push(view); } }
         if self.training.open { stage.push(screens::training_view(game, &self.training, (macroquad::window::screen_width(), macroquad::window::screen_height()))); }
         self.dom.render(vec![stage]);
     }
@@ -228,7 +228,7 @@ impl Ui {
     pub fn draw_combat(&mut self, assets: &Assets, game: &mut Game) {
         self.hits.clear();
         chrome::draw(assets, &self.model, self.panel.as_ref(), &mut self.hits);
-        self.lamp.draw_strip(assets, game, &mut self.hits);
+        self.lamp.draw_bag(assets, game, &mut self.hits);
         if let Some(panel) = &self.panel { chrome::panel(assets, panel, &self.model, &mut self.hits); }
     }
     /// A meta screen (combat paused underneath).

@@ -32,12 +32,11 @@ const BOSS_HUD_W: f32 = 248.; const BOSS_HUD_TOP: f32 = 86.;
 // heroCooldownStrip.mjs
 pub const STRIP_W: f32 = 344.; pub const STRIP_H: f32 = 41.28; pub const STRIP_TOP: f32 = 441.6; pub const STRIP_LEFT: f32 = 8.;
 const BUFF_ICON: f32 = 12.; const BUFF_GAP: f32 = 2.;
-// lampEquipmentUI.mjs (bead ORKA-63bf.8 fills it)
-pub const LAMP_TOP: f32 = 488.; pub const LAMP_H: f32 = 92.;
 
 pub fn rgb(hex: u32) -> Color { Color::from_rgba((hex >> 16) as u8, (hex >> 8 & 255) as u8, (hex & 255) as u8, 255) }
 pub fn rgba(hex: u32, a: f32) -> Color { Color::new((hex >> 16) as f32 / 255., (hex >> 8 & 255) as f32 / 255., (hex & 255) as f32 / 255., a) }
 pub use super::text::Align;
+pub fn mix(a: Color, b: Color, t: f32) -> Color { let t = t.clamp(0., 1.); Color::new(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, a.a + (b.a - a.a) * t) }
 /// Text with its vertical centre at `cy`.
 pub fn label(text: &str, x: f32, cy: f32, size: f32, color: Color, align: Align) -> f32 { text::draw(text, x, cy, size, color, align) }
 pub fn measure(text: &str, size: f32) -> f32 { text::measure(text, size) }
@@ -157,7 +156,7 @@ fn objective(assets: &Assets, m: &CombatModel, hits: &mut Vec<Hit>) {
     stroked(&line, x + 48., y + 25., 13., rgb(0xffffff), rgb(0x171208), Align::Left);
     if q.ready { hits.push(Hit { rect: Rect::new(x, y, 270., 52.), kind: HitKind::Claim }); }
 }
-fn capsule(x: f32, y: f32, w: f32, h: f32, color: Color) {
+pub fn capsule(x: f32, y: f32, w: f32, h: f32, color: Color) {
     let r = (h / 2.).min(w / 2.);
     if w <= 0. { return; }
     draw_rectangle(x + r, y, (w - 2. * r).max(0.), h, color);

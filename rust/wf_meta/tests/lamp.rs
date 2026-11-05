@@ -215,3 +215,28 @@ fn conveyor_script_matches() {
         assert_json(&conv.to_value(), &step["state"], &format!("conveyor step {name} state"));
     }
 }
+
+/// Orbs roll the item rarity with the current Bag level's weights (the Bag upgrade odds table).
+#[test]
+fn orb_rarity_follows_the_bag_level_weights() {
+    use wf_meta::lamp::{capacity_tier, collect_orb_items, drop_orb_item, LampEconomy, ORB_LIMIT};
+    for tier in [0u32, 50, 99] {
+        let mut data = LampEconomy::create(20261104, 0.);
+        data.lamp.capacity_tier = tier;
+        let mut counts = std::collections::BTreeMap::new();
+        let mut total = 0;
+        while total < 8000 {
+            let Some(item) = drop_orb_item(&mut data, 1., 1.) else { panic!("drop refused below the limit") };
+            *counts.entry(item.rarity).or_insert(0usize) += 1;
+            total += 1;
+            // Keep the field below its limit like a player collecting and dismantling.
+            if data.orb_count() == ORB_LIMIT { assert!(drop_orb_item(&mut data, 1., 1.).is_none(), "the limit refuses a drop"); data.set_orbs(Vec::new()); }
+        }
+        for (key, weight) in capacity_tier(tier).rarity_weights {
+            let share = *counts.get(key).unwrap_or(&0) as f64 / total as f64 * 100.;
+            assert!((share - weight).abs() < 1.5, "tier {tier} {key}: {share:.2}% rolled for a {weight}% weight");
+            if weight == 0. { assert_eq!(share, 0., "tier {tier} never rolls {key}"); }
+        }
+        assert!(collect_orb_items(&mut data, 5).len() <= 5);
+    }
+}

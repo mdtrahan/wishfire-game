@@ -117,6 +117,9 @@ pub struct Session {
     pub bag_blocked: bool,
     pub last_transition: Option<(String, String, f64)>,
     pub wave_clear_events: Vec<String>,
+    /// Counts completed subwaves for the client (orb collection): the host released the next
+    /// subwave, an ordinary wave cleared, or a boss fell. Observational; no rule reads it.
+    pub subwave_completions: u32,
     persist: Persist,
     quest: QuestRecorder,
     encounter_counter: u64,
@@ -183,7 +186,7 @@ impl Session {
         let battle = ProgressionBattle::new(&format!("battle:{combat_session_id}"), party.iter().map(|(_, instance)| instance.to_string()).collect());
         let mut session = Self { time: 0., stage, checkpoint: combat_checkpoint, enemy_data, raw_rows, heroes: Vec::new(), enemies: Vec::new(), benched: BTreeMap::new(), enemy_slots: Vec::new(), next_uid, enemy_size: 40., progress, battle,
             combat_session_id: combat_session_id.into(), dev_speed: 1., training: None, stars: BTreeMap::new(), gold_total: 0., pending_gold_settlements: BTreeMap::new(), reward_serial: 0, progress_dirty: false, storage_error: None,
-            wfm_checkpoint_reload, quest_finite_encounter: true, intro_active: false, receipt: Receipt::default(), failed: None, bag_seconds: 0., bag_blocked: false, last_transition: None, wave_clear_events: Vec::new(),
+            wfm_checkpoint_reload, quest_finite_encounter: true, intro_active: false, receipt: Receipt::default(), failed: None, bag_seconds: 0., bag_blocked: false, last_transition: None, subwave_completions: 0, wave_clear_events: Vec::new(),
             persist, quest, encounter_counter: 0, ended_hash: None, restored_gold: BTreeSet::new(), desired_inputs: BTreeMap::new(), revisions: BTreeMap::new(), pending_inputs: BTreeMap::new(), submitted_inputs: BTreeMap::new(), command_sequence: 0, stage_configured: false, frame_now_ms: 0., world: None, encounter: String::new(), sequence: 0, previous_now: None, debt: 0., attempt: None, base_time: 0., last_combat_time: 0., last_presentation_time: 0.,
             host_transition: false, advanced: false, subwaves: Vec::new(), previous_subwave: Vec::new(), subwave_started: 0., pending_restart: None, hosts: BTreeMap::new(), hosts_seen_boss: BTreeSet::new(), seen_spawns: BTreeSet::new(), intro_now: None, tail: None,
             last_snapshot: None, presentation_events: Vec::new(), step_observations: Vec::new(), op_log: Vec::new() };
@@ -732,6 +735,7 @@ impl Session {
                 let result = self.release_subwave(snapshot.combat_time);
                 self.host_transition = false;
                 result?;
+                self.subwave_completions += 1;
             }
             return Ok(());
         }
@@ -837,6 +841,7 @@ impl Session {
         }
         self.last_transition = Some((current.id, stage::get_stage(&self.stage).id, now));
         if !before.boss_active { self.wave_clear_events.push(stage::wave_clear_event_id(&before)); }
+        if !before.boss_active || transition.cleared_boss.is_some() { self.subwave_completions += 1; }
         Ok(true)
     }
     fn place_recovery_huddle(&mut self) {

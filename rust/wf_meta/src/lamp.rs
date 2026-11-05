@@ -22,6 +22,9 @@ pub const TICK_POINTS: f64 = 1.;
 pub const BOSS_KILL_POINTS: f64 = 5.;
 pub const CONVEYOR_TRAVEL_MS: f64 = 28000.;
 pub const GEAR_STATS: [&str; 5] = ["ATK", "DEF", "MAG", "RES", "HP"];
+/// Most equipment drops that can lie uncollected on the battlefield (the save stays within the
+/// browser's storage quota); further kills drop nothing until some are collected.
+pub const ORB_LIMIT: usize = 4096;
 pub const GUIDE_STORAGE: u32 = 1;
 pub const GUIDE_COMPARISON: u32 = 2;
 pub const GUIDE_PREVIEW: u32 = 4;
@@ -162,6 +165,8 @@ pub struct LampState {
     #[serde(default, skip_serializing_if = "Option::is_none")] pub emissions: Option<Value>,
     #[serde(default, deserialize_with = "keep_null", skip_serializing_if = "Option::is_none")] pub review_hold: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")] pub disposal_requested: Option<Value>,
+    /// Equipment drops lying on the battlefield, oldest first: rolled, not yet in the Bag.
+    #[serde(default, skip_serializing_if = "Option::is_none")] pub orbs: Option<Value>,
     #[serde(flatten)] pub extra: Map<String, Value>,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -194,7 +199,7 @@ impl LampEconomy {
     /// `createLampEconomy(seed, gold)`.
     pub fn create(seed: u32, gold: f64) -> Self {
         LampEconomy { version: 5, party_exp: 0., gold: gold.floor().max(0.), items: Vec::new(), loadouts: BTreeMap::new(), settled_gold_rewards: Vec::new(),
-            lamp: LampState { capacity_tier: 0, essence: 0., kill_points: Some(0.), seed, sequence: 0., pending: Vec::new(), discarded: Some(Vec::new()), recent: Some(Vec::new()), salvage: Salvage::default(), auto_enabled: false, highest_ordinal: 0., last_activation_at: 0., guide: None, conveyor_active_ms: None, emissions: None, review_hold: None, disposal_requested: None, extra: Map::new() },
+            lamp: LampState { capacity_tier: 0, essence: 0., kill_points: Some(0.), seed, sequence: 0., pending: Vec::new(), discarded: Some(Vec::new()), recent: Some(Vec::new()), salvage: Salvage::default(), auto_enabled: false, highest_ordinal: 0., last_activation_at: 0., guide: None, conveyor_active_ms: None, emissions: None, review_hold: None, disposal_requested: None, orbs: None, extra: Map::new() },
             migration: Map::new(), settled_bag_kill_rewards: None, pending_gear_collections: None, settled_combat_essence_rewards: None, extra: Map::new() }
     }
     pub fn to_value(&self) -> Value { serde_json::to_value(self).expect("lamp economy serializes") }
@@ -207,6 +212,11 @@ impl LampEconomy {
     pub fn discarded(&self) -> &[String] { self.lamp.discarded.as_deref().unwrap_or(&[]) }
     pub fn emissions(&self) -> Vec<Emission> { self.lamp.emissions.as_ref().and_then(|v| serde_json::from_value(v.clone()).ok()).unwrap_or_default() }
     pub fn set_emissions(&mut self, emissions: Vec<Emission>) { self.lamp.emissions = Some(serde_json::to_value(emissions).unwrap()); }
+    pub fn orbs(&self) -> Vec<LampItem> { self.lamp.orbs.as_ref().and_then(|v| serde_json::from_value(v.clone()).ok()).unwrap_or_default() }
+    pub fn orb_count(&self) -> usize { self.lamp.orbs.as_ref().and_then(Value::as_array).map_or(0, Vec::len) }
+    pub fn set_orbs(&mut self, orbs: Vec<LampItem>) { self.lamp.orbs = Some(serde_json::to_value(orbs).unwrap()); }
+    /// Free Bag slots (`lampCapacity - lampStoredCount`); a held review item keeps its claim on one.
+    pub fn free_slots(&self) -> usize { (self.capacity() - self.stored_count() - if self.review_hold().is_some() { 1. } else { 0. }).max(0.) as usize }
     pub fn disposal_requested(&self) -> Vec<String> { self.lamp.disposal_requested.as_ref().and_then(Value::as_array).map(|a| a.iter().filter_map(Value::as_str).map(String::from).collect()).unwrap_or_default() }
     pub fn set_disposal_requested(&mut self, ids: Vec<String>) { self.lamp.disposal_requested = Some(json!(ids)); }
     pub fn pending_gear_collections(&self) -> Vec<GearCollection> { self.pending_gear_collections.as_ref().and_then(|v| serde_json::from_value(v.clone()).ok()).unwrap_or_default() }
@@ -410,6 +420,16 @@ pub fn validate_conveyor_state(data: &Value) -> Result<LampEconomy, String> {
             seen.push(id);
             let s = id.as_str().unwrap_or("");
             if !economy.lamp.pending.iter().any(|p| p == s) && !economy.discarded().iter().any(|p| p == s) && hold_id.as_deref() != Some(s) { return Err(bad()); }
+        }
+    }
+    if let Some(orbs) = l.get("orbs") {
+        let a = orbs.as_array().filter(|a| a.len() <= ORB_LIMIT).ok_or_else(bad)?;
+        let mut ids: Vec<&str> = Vec::new();
+        for item in a {
+            let seq = item.get("sequence");
+            let id = item.get("instanceId").and_then(Value::as_str).unwrap_or("");
+            if !vsafe(seq) || vnum(seq) >= economy.lamp.sequence || id != format!("lamp:{}:{}", economy.lamp.seed, vnum(seq)) || ids.contains(&id) || economy.items.iter().any(|i| i.instance_id == id) || serde_json::from_value::<LampItem>(item.clone()).is_err() || rarity_index(item["rarity"].as_str().unwrap_or("")).is_none() { return Err(bad()); }
+            ids.push(id);
         }
     }
     if let Some(events) = data.get("pendingGearCollections") {
@@ -743,4 +763,48 @@ pub fn plan_conveyor_auto_equip(data: &LampEconomy, heroes: &[LampHero]) -> (Lam
         changes.push(AutoEquipChange { hero_id, item: candidate.item });
     }
     (working, changes)
+}
+
+// ---- battlefield orbs (ORKA-63bf.20): a defeated enemy drops one equipment item as an orb ----
+fn orb_list(data: &mut LampEconomy) -> &mut Vec<Value> {
+    let list = data.lamp.orbs.get_or_insert_with(|| Value::Array(Vec::new()));
+    if !list.is_array() { *list = Value::Array(Vec::new()); }
+    list.as_array_mut().unwrap()
+}
+/// Uncollected conveyor emissions from an older save become orbs; the conveyor is retired.
+pub fn adopt_conveyor_emissions(data: &mut LampEconomy) {
+    let emissions = data.emissions();
+    if emissions.is_empty() { return; }
+    let mut orbs = data.orbs();
+    for e in emissions {
+        let id = &e.item.instance_id;
+        if e.collected || orbs.len() >= ORB_LIMIT || data.item(id).is_some() || orbs.iter().any(|o| &o.instance_id == id) || data.review_hold().is_some_and(|h| &h.item.instance_id == id) { continue; }
+        orbs.push(e.item);
+    }
+    orbs.sort_by(|a, b| a.sequence.partial_cmp(&b.sequence).unwrap_or(std::cmp::Ordering::Equal));
+    data.set_orbs(orbs);
+    data.set_emissions(Vec::new());
+}
+/// One drop: the next item of the lamp sequence, rolled with the current Bag level's rarity
+/// weights and the highest stage reached (the same roll the conveyor made). `None` at `ORB_LIMIT`.
+pub fn drop_orb_item(data: &mut LampEconomy, region: f64, stage: f64) -> Option<LampItem> {
+    if data.orb_count() >= ORB_LIMIT { return None; }
+    data.lamp.highest_ordinal = data.lamp.highest_ordinal.max(progression_ordinal(region, stage) as f64);
+    let tier = capacity_tier(data.lamp.capacity_tier);
+    let item = generate_lamp_item(data.lamp.seed, data.lamp.sequence as u32, data.lamp.highest_ordinal as u32, &tier.rarity_weights);
+    data.lamp.sequence += 1.;
+    orb_list(data).push(serde_json::to_value(&item).unwrap());
+    Some(item)
+}
+/// Moves the oldest orbs into the Bag: at most `limit`, never beyond the free slots. Each one
+/// becomes a stored item exactly once; the rest stay on the battlefield.
+pub fn collect_orb_items(data: &mut LampEconomy, limit: usize) -> Vec<LampItem> {
+    let take = limit.min(data.free_slots()).min(data.orb_count());
+    let collected: Vec<LampItem> = orb_list(data).drain(..take).filter_map(|v| serde_json::from_value(v).ok()).collect();
+    for item in &collected {
+        if data.item(&item.instance_id).is_some() { continue; }
+        data.items.push(item.clone());
+        data.lamp.pending.push(item.instance_id.clone());
+    }
+    collected
 }

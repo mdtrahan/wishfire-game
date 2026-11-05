@@ -187,7 +187,7 @@ async fn main() {
             // Dev scenario key: L opens the quest ladder from the map (JS storyEntry.skip() first step).
             if is_key_pressed(KeyCode::L) { ui.story.dev_ladder(); }
             if let Some(p) = click { ui.tap(p, &mut scene.game); }
-            ui.lamp.frame(&mut scene.game, false, true);
+            ui.lamp.frame(&mut scene.game, false, 0.);
             scene.game.session.pause();
             portrait.begin();
             ui.draw_screen(&assets);
@@ -199,7 +199,8 @@ async fn main() {
         let ui_action = click.and_then(|p| ui.tap(p, &mut scene.game)).or(web_action);
         // The strip's conveyor clock, arrivals and timed emissions run while the combat screen shows.
         scene.game.session.bag_blocked = ui.blocks_bag_progress();
-        ui.lamp.frame(&mut scene.game, true, controls.paused || ui.pauses());
+        let bag_visible = !ui.pauses() && ui.panel.is_none() && !ui.story.pending();
+        ui.lamp.frame(&mut scene.game, bag_visible, if controls.paused { 0. } else { get_frame_time().min(0.0625) });
         if ui_action == Some(ui::UiAction::SummonBoss) {
             if let Err(error) = scene.game.session.summon_boss(platform::now_ms()) { fatal(&mut portrait, "Combat host failed", &error).await; }
         }
@@ -237,6 +238,10 @@ async fn main() {
         };
         let events = game.drain_events();
         let live_snapshot = game.snapshot().cloned().unwrap_or(previous_snapshot);
+        // Equipment orbs: kills drop them, completed subwaves send them to a hero and into the Bag.
+        ui.lamp.orbs.ingest(&events, &live_snapshot, &event_previous);
+        let can_collect = !ui.pauses();
+        ui.lamp.orbs.update(&mut game.economy, &mut game.session, &live_snapshot, if controls.paused { 0. } else { get_frame_time().min(0.0625) }, can_collect);
         ui.update(game, &live_snapshot);
         #[cfg(target_arch = "wasm32")]
         PROBE.with(|p| {
@@ -333,6 +338,7 @@ async fn main() {
         render::actors::ornaments(&assets, &camera, bg, corpses, &mut stats);
         presentation.hostile(&assets, &camera, bg, bg_previous, &mut stats);
         presentation.under_actors(&assets, &camera, bg, warcry_shell, &mut stats);
+        ui.lamp.orbs.draw(&camera, false);
         let ground_bodies = spotlight.ground_bodies(s, corpses);
         let draw_chests = |stats: &mut assets::DrawStats| {
             presentation.rewards.draw_chests(&assets, &camera, bg, stats)
@@ -353,6 +359,7 @@ async fn main() {
             render::rewards::Rewards::chest_depth(bg).map(|y| (y, &draw_chests as &dyn Fn(&mut assets::DrawStats))),
             &mut stats,
         );
+        ui.lamp.orbs.draw(&camera, true);
         presentation.impacts(&assets, &camera, bg, true, reduced_motion(), &mut stats);
         presentation.labels(&assets, &camera, bg, &mut stats);
         stats.fx_quads -= charge_reserve;

@@ -1,21 +1,20 @@
-//! The Bag/lamp strip, equipment cache and Bag upgrade windows: `lampEquipmentUI.mjs`,
-//! `lampConveyorPresentation.mjs`, `bagUpgradePresentation.mjs`, `rewardReceiptUI.mjs`.
-//! Placement follows the JS CSS (strip 360x92 at y 488; cache overlay 480 tall; upgrade window
-//! full height); the rules and saves are `wf_host::equipment` / `wf_meta::lamp`.
-use super::chrome::{self, image, label, rgb, rgba, stroked, Align, Hit, LAMP_H, LAMP_TOP};
+//! The Bag: its icon beside the quest tracker (collection and capacity indicator), the Bag
+//! progress bar that slides out of it, and the equipment windows (`lampEquipmentUI.mjs`,
+//! `bagUpgradePresentation.mjs`). Equipment arrives as battlefield orbs (`ui/orbs.rs`); the
+//! rules and saves are `wf_host::equipment` / `wf_meta::lamp`.
+use super::chrome::{self, image, label, rgb, rgba, stroked, Align, Hit};
 use super::dom::{el, Node};
+use super::orbs::OrbField;
 use super::{css, Act};
 use crate::assets::Assets;
-use crate::camera::WIDTH;
 use crate::game::Game;
 use macroquad::prelude::*;
-use std::collections::BTreeSet;
 use wf_host::equipment::lamp_hero_roster;
 use wf_meta::equipment::{format_compact_count, rarity, slot_label, RARITIES};
 use wf_meta::lamp::*;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum LampHit { Tile(String), Bag, Tier, Close, Hero(String), Queue(String), Equip, AutoEquip, Disposal, Cache, QueueDisposal, Dismantle, Upgrade(u32) }
+pub enum LampHit { Bag, Close, Hero(String), Queue(String), Equip, AutoEquip, Disposal, Cache, QueueDisposal, Dismantle, Upgrade(u32) }
 #[derive(Clone, Debug)]
 struct LHit { rect: Rect, kind: LampHit }
 #[derive(Default)]
@@ -29,130 +28,133 @@ pub struct LampUi {
     upgrade_receipt: Option<UpgradeReceipt>,
     notice: String,
     feedbacks: Vec<(String, f64, f64)>,
-    banner: Option<(String, f64, f64)>,
-    last_emission_frame: Option<f64>,
-    emission_elapsed: f64,
-    creation_active: bool,
-    arrival_attempted: BTreeSet<String>,
     hits: Vec<LHit>,
+    pub orbs: OrbField,
+    bar: BagBar,
 }
-// Conveyor geometry at the 360-wide reference (lampConveyorPresentation.updateLampConveyor).
-const TILE_W: f32 = (360. * 0.7275 - 4.2 * 11.) * 0.228;
-const ENTRY_W: f32 = TILE_W * 1.121;
-const LANE_TOP: f32 = LAMP_TOP + LAMP_H * 0.14;
-const BAG_LEFT: f32 = 360. * 0.7652; const BAG_TOP: f32 = LAMP_TOP + LAMP_H * 0.174; const BAG_W: f32 = 360. * 0.228; const BAG_H: f32 = LAMP_H * 0.83;
-fn conveyor_duration_ms() -> f64 {
-    let gap = (30. * 5. - ENTRY_W) * 0.6 * 0.7;
-    let pitch = ENTRY_W + gap * 0.6;
-    let speed = pitch / 5.;
-    let destination = BAG_LEFT + BAG_W / 2. - TILE_W / 2.;
-    ((destination + ENTRY_W) / speed) as f64 * 1000.
-}
-fn conveyor_x(age_ms: f64) -> f32 {
-    let destination = BAG_LEFT + BAG_W / 2. - TILE_W / 2.;
-    -ENTRY_W + (age_ms / conveyor_duration_ms()) as f32 * (destination + ENTRY_W)
-}
-pub fn gear_art(assets: &Assets, item: &LampItem, x: f32, y: f32, size: f32) {
-    let Some(tex) = assets.ui.get("lamp-gear-atlas") else { return };
-    let cell = tex.width() / 3.;
-    let src = Rect::new((item.art % 3) as f32 * cell, (item.art / 3) as f32 * cell, cell, cell);
-    draw_texture_ex(tex, x, y, WHITE, DrawTextureParams { dest_size: Some(vec2(size, size)), source: Some(src), ..Default::default() });
+// The bag icon keeps the x centre it had in the old strip, at half its size, centred on the
+// quest tracker (the 52 px objective box at y 370).
+const BAG_CX: f32 = 360. * 0.7652 + 360. * 0.228 / 2.;
+const BAG_CY: f32 = 370. + 52. / 2.;
+const BAG_W: f32 = 360. * 0.228 * 0.5;
+const BAG_H: f32 = 92. * 0.83 * 0.9745 * 0.5;
+// The Bag progress bar: slides out to the left from behind the icon.
+const BAR_W: f32 = 92.; const BAR_H: f32 = 12.;
+const SLIDE_SECONDS: f32 = 0.22;
+/// A whole bar fills in this long; partial gains take their share.
+const FILL_SECONDS: f32 = 0.45;
+const CELEBRATE_SECONDS: f32 = 0.3;
+const HOLD_SECONDS: f32 = 0.6;
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+enum BarPhase { #[default] Hidden, SlideOut, Fill, Celebrate, Hold, SlideIn }
+/// The Bag progress presentation. It shows the saved progress, never its own: every level is
+/// applied through `EquipmentStorage::upgrade` when the fill reaches the end of the bar, and the
+/// next bar starts from whatever the save holds after that (the overflow).
+#[derive(Default)]
+struct BagBar { phase: BarPhase, t: f32, tier: u32, fraction: f32, essence: Option<f64>, wanted: bool }
+impl BagBar {
+    /// `visible`: the bag icon is on screen and nothing covers it.
+    fn update(&mut self, economy: &mut wf_host::equipment::EquipmentStorage, session: &mut wf_host::session::Session, dt: f32, visible: bool) -> Option<String> {
+        let data = economy.data()?;
+        let progress = data.upgrade_progress();
+        let (tier, essence) = (data.lamp.capacity_tier, data.lamp.essence);
+        let ready = !progress.max && progress.required.is_some_and(|r| progress.current >= r);
+        if self.essence.is_none() { self.tier = tier; self.fraction = progress.fraction as f32; }
+        // Essence awarded (dismantling, quest rewards): the bar comes out to show it.
+        if self.essence.is_some_and(|before| essence > before) { self.wanted = true; }
+        self.essence = Some(essence);
+        if progress.max { self.wanted = false; }
+        if !visible { return None; }
+        match self.phase {
+            BarPhase::Hidden => {
+                if self.wanted || ready { self.wanted = false; self.phase = BarPhase::SlideOut; self.t = 0.; }
+                // Combat-time progress points arrive one at a time and are not announced.
+                else { self.tier = tier; self.fraction = progress.fraction as f32; }
+            }
+            BarPhase::SlideOut => { self.t += dt; if self.t >= SLIDE_SECONDS { self.phase = BarPhase::Fill; } }
+            BarPhase::Fill => {
+                self.wanted = false;
+                self.tier = tier;
+                let target = if ready { 1. } else { progress.fraction as f32 };
+                self.fraction = if self.fraction > target { target } else { (self.fraction + dt / FILL_SECONDS).min(target) };
+                if self.fraction >= target { self.phase = if ready { BarPhase::Celebrate } else { BarPhase::Hold }; self.t = 0.; }
+            }
+            BarPhase::Celebrate => {
+                self.t += dt;
+                if self.t >= CELEBRATE_SECONDS {
+                    match economy.upgrade(session, Some(tier)) {
+                        Ok(receipt) => { self.tier = receipt.level_after - 1; self.fraction = 0.; self.phase = BarPhase::Fill; }
+                        Err(error) => { self.phase = BarPhase::Hold; self.t = 0.; return Some(error); }
+                    }
+                }
+            }
+            BarPhase::Hold => {
+                self.t += dt;
+                if self.wanted || ready { self.phase = BarPhase::Fill; } else if self.t >= HOLD_SECONDS { self.phase = BarPhase::SlideIn; self.t = 0.; }
+            }
+            BarPhase::SlideIn => { self.t += dt; if self.t >= SLIDE_SECONDS { self.phase = BarPhase::Hidden; } }
+        }
+        None
+    }
+    /// How far the bar is out of the icon, 0..1.
+    fn reveal(&self) -> f32 {
+        let ease = |t: f32| { let t = t.clamp(0., 1.); 1. - (1. - t) * (1. - t) };
+        match self.phase { BarPhase::Hidden => 0., BarPhase::SlideOut => ease(self.t / SLIDE_SECONDS), BarPhase::SlideIn => 1. - ease(self.t / SLIDE_SECONDS), _ => 1. }
+    }
+    /// 0..1 through the upgrade celebration, else `None`.
+    fn celebration(&self) -> Option<f32> { (self.phase == BarPhase::Celebrate).then(|| (self.t / CELEBRATE_SECONDS).clamp(0., 1.)) }
+    fn draw(&self) {
+        let reveal = self.reveal();
+        if reveal <= 0. { return; }
+        let right = BAG_CX - 6.;
+        let width = BAR_W * reveal;
+        let (x, y) = (right - width, BAG_CY - BAR_H / 2.);
+        let flash = self.celebration().map_or(0., |c| 1. - c);
+        chrome::capsule(x - 1.5, y - 1.5, width + 3., BAR_H + 3., rgb(0xb777d8));
+        chrome::capsule(x, y, width, BAR_H, rgb(0x242130));
+        let fill = (width - 2.) * self.fraction.clamp(0., 1.);
+        if fill > BAR_H - 2. { chrome::capsule(x + 1., y + 1., fill, BAR_H - 2., chrome::mix(rgb(0xa829e0), WHITE, flash)); }
+        if reveal > 0.6 {
+            let text = if self.celebration().is_some() { "100%".to_string() } else { format!("{}%", (self.fraction * 100.).floor()) };
+            label(&text, x + width / 2. + 4., BAG_CY, 8., WHITE, Align::Center);
+            // The level disc at the bar's far end; the upgrade bursts from it.
+            let disc = vec2(x + 2., BAG_CY);
+            if let Some(c) = self.celebration() { draw_circle(disc.x, disc.y, 9. + 14. * c, rgba(0xffffff, 0.7 * (1. - c))); }
+            draw_circle(disc.x, disc.y, 9., rgb(0xdba7f5));
+            draw_circle(disc.x, disc.y, 7.5, rgb(0x4a167e));
+            label(&format!("{}", self.tier + 1), disc.x, disc.y, 9., WHITE, Align::Center);
+        }
+    }
 }
 fn roster_of(game: &Game) -> Vec<LampHero> { lamp_hero_roster(&game.session.progress, false).unwrap_or_default() }
 impl LampUi {
     pub fn modal_open(&self) -> bool { self.open || self.upgrade_open }
-    /// The DISMANTLED receipt while it shows: title and Essence amount.
-    pub fn banner(&self) -> Option<(&str, f64)> { self.banner.as_ref().map(|(title, amount, _)| (title.as_str(), *amount)) }
     fn item_of(data: &LampEconomy, id: &str) -> Option<LampItem> { data.item(id).cloned().or_else(|| data.review_hold().map(|h| h.item).filter(|i| i.instance_id == id)) }
-    /// `draw()` per frame: conveyor clock, arrivals and timed emissions (combat screen only).
-    pub fn frame(&mut self, game: &mut Game, visible: bool, paused: bool) {
+    /// Per frame: expires the CP feedback and runs the Bag progress bar. `visible`: the combat
+    /// screen shows with nothing over the bag icon.
+    pub fn frame(&mut self, game: &mut Game, visible: bool, dt: f32) {
         let now = game.economy.time();
         self.feedbacks.retain(|f| f.2 > now);
-        if self.banner.as_ref().is_some_and(|b| b.2 <= now) { self.banner = None; }
-        let Some(data) = game.economy.data().cloned() else { return };
-        let can_convey = |d: &LampEconomy| visible && !self.open && !self.upgrade_open && !paused && d.stored_count() < d.capacity();
-        self.creation_active = can_convey(&data);
-        if let Err(e) = game.economy.set_conveyor_active(self.creation_active, &mut game.session) { self.notice = e; }
-        let Some(data) = game.economy.data().cloned() else { return };
-        if self.creation_active {
-            let active_ms = game.economy.conveyor_time();
-            let duration = conveyor_duration_ms();
-            let arrivals: Vec<String> = data.emissions().iter().filter(|e| !e.collected && conveyor_item_age(&data.lamp, e, now, Some(active_ms)) >= duration && !self.arrival_attempted.contains(&e.item.instance_id)).map(|e| e.item.instance_id.clone()).collect();
-            if !arrivals.is_empty() {
-                for id in &arrivals { self.arrival_attempted.insert(id.clone()); }
-                match game.economy.collect_available(&mut game.session, &arrivals, true) {
-                    Ok(_) => {}
-                    Err(e) => { self.notice = e; for id in &arrivals { self.arrival_attempted.remove(id); } }
-                }
-            }
-        }
-        let Some(data) = game.economy.data().cloned() else { return };
-        self.creation_active = can_convey(&data);
-        if !self.creation_active { self.last_emission_frame = None; return; }
-        if let Some(last) = self.last_emission_frame { self.emission_elapsed += (now - last).max(0.); }
-        self.last_emission_frame = Some(now);
-        if let Some(issued) = data.emissions().last().and_then(|e| e.issued_active_ms) { self.emission_elapsed = (game.economy.conveyor_time() - issued).max(0.); }
-        if self.emission_elapsed >= AUTO_INTERVAL_MS && now - data.lamp.last_activation_at >= AUTO_INTERVAL_MS {
-            self.emission_elapsed = 0.;
-            let (region, stage) = (game.session.stage.region as f64, game.session.stage.stage as f64);
-            if let Err(e) = game.economy.tick_conveyor(&mut game.session, region, stage, true, true) { self.notice = e; }
-        }
+        if let Some(error) = self.bar.update(&mut game.economy, &mut game.session, dt, visible && !self.modal_open()) { self.notice = error; }
     }
-    /// The strip: conveyor lane, bag with count, tier badge with progress.
-    pub fn draw_strip(&mut self, assets: &Assets, game: &mut Game, hits: &mut Vec<Hit>) {
+    /// The bag icon: opens the equipment screen and shows stored / capacity. The count waits for
+    /// orbs still flying, so it rises as they arrive.
+    pub fn draw_bag(&mut self, assets: &Assets, game: &mut Game, hits: &mut Vec<Hit>) {
         self.hits.clear();
-        draw_rectangle(0., LAMP_TOP, WIDTH, LAMP_H, rgb(0x353336));
-        draw_rectangle(0., LAMP_TOP, WIDTH, 2., rgb(0xd8b46c));
-        draw_rectangle(0., LAMP_TOP + LAMP_H - 2., WIDTH, 2., rgb(0x8b6835));
-        let Some(data) = game.economy.data().cloned() else {
-            label(game.economy.error.as_deref().unwrap_or("Preparing the lamp..."), WIDTH / 2., LAMP_TOP + LAMP_H / 2., 11., rgb(0xfff1d1), Align::Center);
-            return;
-        };
-        let now = game.economy.time();
-        let active_ms = game.economy.conveyor_time();
-        let duration = conveyor_duration_ms();
-        let roster = roster_of(game);
-        for e in data.emissions() {
-            let age = conveyor_item_age(&data.lamp, &e, now, Some(active_ms));
-            if age >= CONVEYOR_TRAVEL_MS || age >= duration { continue; }
-            let x = conveyor_x(age);
-            if x + TILE_W < 0. { continue; }
-            let best = roster.iter().map(|h| lamp_item_cp_gain(&data, &e.item, h)).fold(0., f64::max);
-            // Rarity glow under the piece, then the atlas art.
-            draw_rectangle(x + TILE_W * 0.09, LANE_TOP + TILE_W * 0.86, TILE_W * 0.82, TILE_W * 0.14, rgba(rarity(&e.item.rarity).map_or(0xf3f3ee, |r| r.color), 0.6));
-            gear_art(assets, &e.item, x, LANE_TOP, TILE_W);
-            stroked(&format!("Lv.{}", e.item.level as u32), x + 2., LANE_TOP + TILE_W - 5., 9., rgb(0xfff1d1), rgb(0x000000), Align::Left);
-            if best > 0. { stroked("^", x + TILE_W - 6., LANE_TOP + TILE_W - 8., 14., rgb(0x6fe07a), rgb(0x000000), Align::Center); }
-            if !e.collected { self.hits.push(LHit { rect: Rect::new(x, LANE_TOP, TILE_W, TILE_W), kind: LampHit::Tile(e.item.instance_id.clone()) }); }
-        }
-        // Bag (collect button) with the stored count.
-        if let Some(tex) = assets.ui.get("lamp-bag") { image(tex, BAG_LEFT, BAG_TOP - BAG_H * 0.1067, BAG_W, BAG_H * 0.9745); }
-        let stored = data.stored_count();
-        let count = format!("{}{}", stored as u32, if data.review_hold().is_some() { "+1" } else { "" });
-        let cw = chrome::measure(&count, 12.) + 10.;
-        draw_rectangle(BAG_LEFT + BAG_W - cw, BAG_TOP + 2., cw, 16., rgb(0x7a2fb0));
-        draw_rectangle_lines(BAG_LEFT + BAG_W - cw, BAG_TOP + 2., cw, 16., 2., rgb(0xdba7f5));
-        label(&count, BAG_LEFT + BAG_W - cw / 2., BAG_TOP + 10., 12., WHITE, Align::Center);
-        self.hits.push(LHit { rect: Rect::new(BAG_LEFT, BAG_TOP, BAG_W, BAG_H), kind: LampHit::Bag });
-        // Tier badge: level disc + progress bar.
-        let (bx, by, bw, bh) = (360. * 0.805, LAMP_TOP + LAMP_H * 0.74, 360. * 0.175, LAMP_H * 0.225);
-        let progress = data.upgrade_progress();
-        let (px, py, pw, ph) = (bx + bw * 0.05, by + bh * 0.26, bw * 0.95, bh * 0.52);
-        draw_rectangle(px, py, pw, ph, rgb(0x242130));
-        draw_rectangle(px + 1., py + 1., (pw - 2.) * progress.fraction as f32, ph - 2., rgb(0xa829e0));
-        draw_rectangle_lines(px, py, pw, ph, 1.5, rgb(0xb777d8));
-        let pct = if progress.max { "MAX".to_string() } else { format!("{}%", format_compact_count((progress.fraction * 100.).floor())) };
-        label(&pct, px + pw * 0.62, py + ph / 2., 7., WHITE, Align::Center);
-        let disc_r = bh * 0.5;
-        draw_circle(bx + disc_r, by + bh * 0.5, disc_r, rgb(0x4a167e));
-        draw_circle_lines(bx + disc_r, by + bh * 0.5, disc_r, 1.5, rgb(0xdba7f5));
-        label(&format!("{}", data.lamp.capacity_tier + 1), bx + disc_r, by + bh * 0.42, 12., WHITE, Align::Center);
-        label("Bag", bx + disc_r, by + bh * 0.82, 6., rgb(0xffe38e), Align::Center);
-        self.hits.push(LHit { rect: Rect::new(bx - 4., by - 4., bw + 8., bh + 8.), kind: LampHit::Tier });
-        if let Some(e) = &game.economy.error { stroked(e, 4., LAMP_TOP - 8., 10., rgb(0xfff1d1), rgb(0x502c25), Align::Left); }
         let _ = hits;
+        let trouble = game.economy.error.clone().or_else(|| self.orbs.notice.clone());
+        if let Some(e) = &trouble { stroked(e, 4., 496., 10., rgb(0xfff1d1), rgb(0x502c25), Align::Left); }
+        let Some(data) = game.economy.data() else { return };
+        self.bar.draw();
+        let pop = 1. + 0.22 * self.bar.celebration().map_or(0., |c| (std::f32::consts::PI * c).sin());
+        if let Some(tex) = assets.ui.get("lamp-bag") { image(tex, BAG_CX - BAG_W * pop / 2., BAG_CY - BAG_H * pop / 2., BAG_W * pop, BAG_H * pop); }
+        let capacity = data.capacity();
+        let stored = (data.stored_count() - self.orbs.flying() as f64).max(0.);
+        let full = stored >= capacity;
+        stroked(&format!("{}/{}", stored, capacity), BAG_CX, BAG_CY + BAG_H / 2. + 3., 9., if full { rgb(0xff9a8a) } else { rgb(0xfff1d1) }, rgb(0x000000), Align::Center);
+        self.hits.push(LHit { rect: Rect::new(BAG_CX - BAG_W / 2. - 4., BAG_CY - BAG_H / 2. - 4., BAG_W + 8., BAG_H + 16.), kind: LampHit::Bag });
     }
-    /// Route a canvas tap on the strip (tiles, bag, tier badge). The windows are page elements.
+    /// Route a canvas tap on the bag icon. The windows are page elements.
     pub fn tap(&mut self, p: Vec2, game: &mut Game) -> bool {
         if self.modal_open() { return true; }
         let Some(hit) = self.hits.iter().rev().find(|h| h.rect.contains(p)).map(|h| h.kind.clone()) else { return false };
@@ -185,12 +187,7 @@ impl LampUi {
         self.notice.clear();
         match kind {
             LampHit::Close => self.close(),
-            LampHit::Tile(id) => {
-                if !self.creation_active { return; }
-                match game.economy.collect(&mut game.session, &id, true) { Ok(Some(_)) => self.open_collection(game, Some(id), false), Ok(None) => {}, Err(e) => self.notice = e }
-            }
             LampHit::Bag => self.open_collection(game, None, false),
-            LampHit::Tier => self.open_collection(game, None, true),
             LampHit::Disposal => self.review_disposal(game),
             LampHit::QueueDisposal => {
                 if let Some(id) = self.selected_item.clone() {
@@ -221,7 +218,8 @@ impl LampUi {
             LampHit::Dismantle => {
                 let Some(preview) = self.disposal_preview.clone() else { return };
                 match game.economy.dismantle(&mut game.session, &preview) {
-                    Ok(r) => { self.close(); self.banner = Some(("DISMANTLED".into(), r.essence, game.economy.time() + 2000.)); }
+                    // The Essence shows on the Bag progress bar once the window is gone.
+                    Ok(_) => self.close(),
                     Err(e) => self.notice = e,
                 }
             }
@@ -408,4 +406,61 @@ fn bag_upgrade_complete(receipt: &UpgradeReceipt) -> Node<Act> {
         .child(el("div").class("bag-reward-art").child(el("img").attr("src", css::asset("images/lamp/equipment-bag.png")).attr("alt", "Bag")))
         .child(el("p").class("bag-reward-level").t(format!("Bag Lv. {}", receipt.level_after)))
         .child(el("p").class("bag-reward-capacity").t(format!("Bag Capacity {} > {}", super::model::format_number(receipt.capacity_before), super::model::format_number(receipt.capacity_after))))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    /// Runs the bar at 60 fps until it is hidden again; returns the levels it celebrated.
+    fn play(bar: &mut BagBar, economy: &mut wf_host::equipment::EquipmentStorage, run: &mut crate::testing::HostRun) -> (Vec<u32>, Vec<BarPhase>) {
+        let (mut levels, mut phases) = (Vec::new(), vec![bar.phase]);
+        for _ in 0..3000 {
+            let tier = economy.data().unwrap().lamp.capacity_tier;
+            assert!(bar.update(economy, &mut run.session, 1. / 60., true).is_none());
+            let now = economy.data().unwrap().lamp.capacity_tier;
+            if now != tier { assert_eq!(now, tier + 1); assert_eq!(bar.fraction, 0., "the bar resets after an upgrade"); levels.push(now + 1); }
+            if phases.last() != Some(&bar.phase) { phases.push(bar.phase); }
+            if bar.phase == BarPhase::Hidden && phases.len() > 1 { break; }
+        }
+        (levels, phases)
+    }
+    #[test]
+    fn essence_slides_the_bar_out_and_successive_upgrades_carry_the_overflow() {
+        use BarPhase::*;
+        let mut run = crate::testing::HostRun::new(1);
+        let mut economy = super::super::orbs::tests::economy(&mut run);
+        let mut bar = BagBar::default();
+        assert!(bar.update(&mut economy, &mut run.session, 1. / 60., true).is_none());
+        assert_eq!((bar.phase, bar.reveal()), (Hidden, 0.));
+        // A gain below the threshold: out, fill to the new value, hold, back in. No upgrade.
+        economy.award_combat_essence(&mut run.session, "test:small", 40.).unwrap();
+        let (levels, phases) = play(&mut bar, &mut economy, &mut run);
+        assert!(levels.is_empty());
+        assert_eq!(phases, [Hidden, SlideOut, Fill, Hold, SlideIn, Hidden]);
+        assert_eq!((bar.tier, bar.fraction), (0, 0.4));
+        // 1000 more Essence crosses three thresholds (100, 300, 525) without closing the bar.
+        economy.award_combat_essence(&mut run.session, "test:large", 1000.).unwrap();
+        let (levels, phases) = play(&mut bar, &mut economy, &mut run);
+        assert_eq!(levels, [2, 3, 4]);
+        assert_eq!(phases, [Hidden, SlideOut, Fill, Celebrate, Fill, Celebrate, Fill, Celebrate, Fill, Hold, SlideIn, Hidden]);
+        let data = economy.data().unwrap();
+        assert_eq!((data.lamp.capacity_tier, data.lamp.essence, data.capacity()), (3, 115., 72.));
+        assert_eq!(bar.tier, 3);
+        assert!((bar.fraction - 115. / 775.).abs() < 1e-6);
+    }
+    #[test]
+    fn the_bar_waits_while_a_window_covers_the_bag_and_quiet_progress_is_not_announced() {
+        let mut run = crate::testing::HostRun::new(1);
+        let mut economy = super::super::orbs::tests::economy(&mut run);
+        let mut bar = BagBar::default();
+        bar.update(&mut economy, &mut run.session, 1. / 60., true);
+        economy.award_combat_essence(&mut run.session, "test:hidden", 100.).unwrap();
+        for _ in 0..600 { bar.update(&mut economy, &mut run.session, 1. / 60., false); }
+        assert_eq!((bar.phase, economy.data().unwrap().lamp.capacity_tier), (BarPhase::Hidden, 0), "no upgrade is applied unseen");
+        let (levels, _) = play(&mut bar, &mut economy, &mut run);
+        assert_eq!(levels, [2]);
+        // Without an Essence gain and below the threshold the bar stays in the icon.
+        for _ in 0..120 { bar.update(&mut economy, &mut run.session, 1. / 60., true); }
+        assert_eq!(bar.phase, BarPhase::Hidden);
+    }
 }

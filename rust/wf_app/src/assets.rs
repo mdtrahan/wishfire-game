@@ -60,7 +60,7 @@ pub struct Manifest {
 }
 /// Chrome art staged by tools/build_wf_app.sh from web-runner/assets/images.
 /// Canvas chrome art (HUD, lamp strip, narrative cast). Menu art is fetched by the page from `assets/`.
-pub const UI_ART: &[&str] = &["boss-boss", "boss-clock", "boss-inspect", "hero-Fara", "hero-Hondo", "hero-Runa", "hero-Kaja", "buff-signals", "lamp-gear-atlas", "lamp-bag", "lamp-essence", "prog-incense", "prog-hero-tickets", "coin", "story-hondo", "story-fara", "story-kaja", "story-runa"];
+pub const UI_ART: &[&str] = &["boss-boss", "boss-clock", "boss-inspect", "hero-Fara", "hero-Hondo", "hero-Runa", "hero-Kaja", "buff-signals", "lamp-bag", "lamp-essence", "prog-incense", "prog-hero-tickets", "coin", "story-hondo", "story-fara", "story-kaja", "story-runa"];
 /// Archetypes the live game can spawn; each owns one packed puppet (wf_pack::ACTORS).
 const ACTOR_ART:&[&str]=&["Fara","Hondo","Runa","Kaja","Gobloc","Orc","Lizardo","Boss","HighOrc","Marid",
     "WfmHighGobloc","WfmSkeleton","WfmChimerilass","WfmDjinn"];

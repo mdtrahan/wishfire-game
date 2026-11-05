@@ -326,6 +326,32 @@ impl EquipmentStorage {
         Ok(result)
     }
     /// `tickConveyor(context, canCreate, {deferCollection})`: one emission per 5 s of active combat.
+    /// Defeated enemies drop equipment orbs: `count` items rolled and saved as uncollected drops
+    /// in one transaction (older saves' conveyor leftovers join them). Fewer than `count` come
+    /// back only at `ORB_LIMIT`.
+    pub fn drop_orbs(&mut self, host: &mut dyn LampHost, region: f64, stage: f64, count: usize) -> Result<Vec<LampItem>, String> {
+        self.transact(host, move |next, _| {
+            adopt_conveyor_emissions(next);
+            Ok((0..count).filter_map(|_| drop_orb_item(next, region, stage)).collect())
+        })
+    }
+    /// Collects the oldest orbs into the Bag, at most `limit` and never past its capacity; the
+    /// stored items report to the quest system like any gear collection.
+    pub fn collect_orbs(&mut self, host: &mut dyn LampHost, limit: usize) -> Result<Vec<LampItem>, String> {
+        let on = self.on_gear_collected.is_some();
+        let result = self.transact(host, move |next, _| {
+            adopt_conveyor_emissions(next);
+            let collected = collect_orb_items(next, limit);
+            if on && !collected.is_empty() {
+                let mut events = next.pending_gear_collections();
+                for item in &collected { if !events.iter().any(|e| e.id == item.instance_id) { events.push(GearCollection { id: item.instance_id.clone(), item: item.clone() }); } }
+                next.set_pending_gear_collections(events);
+            }
+            Ok(collected)
+        })?;
+        self.flush_gear_collections(host);
+        Ok(result)
+    }
     pub fn tick_conveyor(&mut self, host: &mut dyn LampHost, region: f64, stage: f64, can_create: bool, defer_collection: bool) -> Result<Option<LampItem>, String> {
         let on = self.on_gear_collected.is_some();
         let result = self.transact(host, move |next, t| {
