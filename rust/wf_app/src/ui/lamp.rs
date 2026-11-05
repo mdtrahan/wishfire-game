@@ -317,7 +317,7 @@ impl LampUi {
                 let preview = self.disposal_preview.clone().or_else(|| game.economy.disposal_preview(&mut game.session, None).ok());
                 self.disposal_preview = preview.clone();
                 let ids = preview.map(|p| p.ids).unwrap_or_default();
-                dialog.push(el("div").class("lamp-disposal-body").child(el("div").class("lamp-queue").label("Disposal candidates").children(candidates.iter().map(|q| tile(q, true, false, Some(ids.contains(&q.item.instance_id)))))));
+                dialog.push(el("div").class("lamp-disposal-body").child(el("div").class("lamp-queue").label("Disposal candidates").children(candidates.iter().map(|q| tile(q, false, false, Some(ids.contains(&q.item.instance_id)))))));
                 dialog.push(el("div").class("lamp-actions").child(el("button").class("primary").attr("data-action", "dismantle").flag("disabled", ids.is_empty() && data.lamp.salvage.count <= 0.).t("Dismantle all").on(on(LampHit::Dismantle))));
                 notice(&mut dialog, &self.notice);
             } else {
