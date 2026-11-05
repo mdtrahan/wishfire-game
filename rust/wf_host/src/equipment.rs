@@ -137,7 +137,7 @@ impl EquipmentStorage {
     /// `read()`: the current save, or the newest older save migrated once.
     fn read(&mut self, host: &mut dyn LampHost) -> Result<LampEconomy, String> {
         let parse = |raw: String| serde_json::from_str::<Value>(&raw).map_err(|e| format!("Lamp save could not be parsed: {e}"));
-        if let Some(raw) = self.storage.get(EQUIPMENT_SAVE_KEY) { return validate_conveyor_state(&parse(raw)?); }
+        if let Some(raw) = self.storage.get(EQUIPMENT_SAVE_KEY) { let mut save = parse(raw)?; trim_saved_orbs(&mut save); return validate_conveyor_state(&save); }
         if let Some(raw) = self.storage.get(FOUR_STAT_HP_KEY) { return migrate_v4(&parse(raw)?); }
         if let Some(raw) = self.storage.get(PREVIOUS_KEY) { return migrate_v3(&parse(raw)?); }
         if let Some(raw) = self.storage.get(DRAFT_KEY) { return migrate_v2(&parse(raw)?); }
@@ -327,12 +327,12 @@ impl EquipmentStorage {
     }
     /// `tickConveyor(context, canCreate, {deferCollection})`: one emission per 5 s of active combat.
     /// Defeated enemies drop equipment orbs: `count` items rolled and saved as uncollected drops
-    /// in one transaction (older saves' conveyor leftovers join them). Fewer than `count` come
-    /// back only at `ORB_LIMIT`.
+    /// in one transaction (older saves' conveyor leftovers join them). The field holds
+    /// `ORB_LIMIT` orbs: past it each drop displaces the oldest orb of the lowest rarity.
     pub fn drop_orbs(&mut self, host: &mut dyn LampHost, region: f64, stage: f64, count: usize) -> Result<Vec<LampItem>, String> {
         self.transact(host, move |next, _| {
             adopt_conveyor_emissions(next);
-            Ok((0..count).filter_map(|_| drop_orb_item(next, region, stage)).collect())
+            Ok((0..count).map(|_| drop_orb_item(next, region, stage)).collect())
         })
     }
     /// Collects the named orbs into the Bag in drop order, never past its capacity; the stored

@@ -22,9 +22,10 @@ pub const TICK_POINTS: f64 = 1.;
 pub const BOSS_KILL_POINTS: f64 = 5.;
 pub const CONVEYOR_TRAVEL_MS: f64 = 28000.;
 pub const GEAR_STATS: [&str; 5] = ["ATK", "DEF", "MAG", "RES", "HP"];
-/// Most equipment drops that can lie uncollected on the battlefield (the save stays within the
-/// browser's storage quota); further kills drop nothing until some are collected.
-pub const ORB_LIMIT: usize = 4096;
+/// Most equipment orbs that lie uncollected on the battlefield (owner 2026-11-04: an idle or
+/// full-Bag party once left 2,488, a 564 KB save rewritten on every action). Kills keep dropping
+/// past it: each new orb takes the place of the oldest orb of the lowest rarity on the field.
+pub const ORB_LIMIT: usize = 40;
 /// Chance that a defeated enemy drops an equipment orb (owner 2026-11-04: a tenth of every kill).
 pub const ORB_DROP_CHANCE: f32 = 0.1;
 pub const GUIDE_STORAGE: u32 = 1;
@@ -787,16 +788,32 @@ pub fn adopt_conveyor_emissions(data: &mut LampEconomy) {
     data.set_orbs(orbs);
     data.set_emissions(Vec::new());
 }
+/// Makes room on a full field: removes the oldest orb of the lowest rarity until `keep` remain.
+fn evict_orbs(orbs: &mut Vec<Value>, keep: usize) {
+    let rank = |v: &Value| v.get("rarity").and_then(Value::as_str).and_then(rarity_index).unwrap_or(0);
+    while orbs.len() > keep {
+        let lowest = orbs.iter().map(rank).min().unwrap_or(0);
+        let at = orbs.iter().position(|v| rank(v) == lowest).unwrap_or(0);
+        orbs.remove(at);
+    }
+}
+/// A save from before the field limit can hold thousands of orbs: keep `ORB_LIMIT` of them (the
+/// same rule as a drop on a full field) before the save is validated.
+pub fn trim_saved_orbs(save: &mut Value) {
+    if let Some(orbs) = save.get_mut("lamp").and_then(|l| l.get_mut("orbs")).and_then(Value::as_array_mut) { evict_orbs(orbs, ORB_LIMIT); }
+}
 /// One drop: the next item of the lamp sequence, rolled with the current Bag level's rarity
-/// weights and the highest stage reached (the same roll the conveyor made). `None` at `ORB_LIMIT`.
-pub fn drop_orb_item(data: &mut LampEconomy, region: f64, stage: f64) -> Option<LampItem> {
-    if data.orb_count() >= ORB_LIMIT { return None; }
+/// weights and the highest stage reached (the same roll the conveyor made). On a full field the
+/// oldest orb of the lowest rarity gives way to it.
+pub fn drop_orb_item(data: &mut LampEconomy, region: f64, stage: f64) -> LampItem {
     data.lamp.highest_ordinal = data.lamp.highest_ordinal.max(progression_ordinal(region, stage) as f64);
     let tier = capacity_tier(data.lamp.capacity_tier);
     let item = generate_lamp_item(data.lamp.seed, data.lamp.sequence as u32, data.lamp.highest_ordinal as u32, &tier.rarity_weights);
     data.lamp.sequence += 1.;
-    orb_list(data).push(serde_json::to_value(&item).unwrap());
-    Some(item)
+    let orbs = orb_list(data);
+    evict_orbs(orbs, ORB_LIMIT - 1);
+    orbs.push(serde_json::to_value(&item).unwrap());
+    item
 }
 /// Moves the named orbs into the Bag in drop order, never beyond the free slots. Each one
 /// becomes a stored item exactly once; orbs that do not fit, and every unnamed orb, stay on the

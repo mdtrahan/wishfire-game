@@ -5,8 +5,11 @@ pub struct Controls {
     pub speed: f32,
     pub debug: bool,
     pub seed: u64,
-    pub menu_open: bool,
     pub spotlight: usize,
+    /// Requests from the Dev Tooling Modal, applied by the next `read`.
+    restart: bool,
+    step: bool,
+    cycle_spotlight: bool,
 }
 pub struct Action {
     pub restart: bool,
@@ -24,9 +27,6 @@ impl Controls {
             SpotlightConfig::AGGRESSIVE,
         ][self.spotlight]
     }
-    fn spotlight_label(&self) -> &'static str {
-        ["Spot: Off", "Spot: Con", "Spot: Def", "Spot: Agg"][self.spotlight]
-    }
 
     pub fn new() -> Self {
         Self {
@@ -39,101 +39,44 @@ impl Controls {
                 let t = (macroquad::miniquad::date::now() * 1000.) as u64;
                 (t ^ (t >> 29)).wrapping_mul(0x9E37_79B9_7F4A_7C15) % 1_000_000 + 1
             },
-            menu_open: false,
             spotlight: 2,
+            restart: false,
+            step: false,
+            cycle_spotlight: false,
         }
     }
-    /// `click` is the frame's pointer press in logical pixels, already filtered by the chrome.
-    pub fn read(&mut self, click: Option<Vec2>) -> Action {
-        let menu_hit = click.is_some_and(|p| p.x >= 324. && p.y < 44.);
-        let button = if self.menu_open && !menu_hit {
-            click.filter(|p| p.x < 324. && p.y < 44.).map(|p| {
-                if p.x < 252. {
-                    (p.x / 42.) as usize
-                } else {
-                    6
-                }
-            })
-        } else {
-            None
-        };
-        if is_key_pressed(KeyCode::D)
-            || (!self.menu_open && !menu_hit && click.is_some_and(|p| p.x < 36. && p.y < 44.))
-        {
-            self.debug = !self.debug;
+    pub fn spotlight_label(&self) -> &'static str {
+        ["Spot: Off", "Spot: Con", "Spot: Def", "Spot: Agg"][self.spotlight]
+    }
+    /// A Dev Tooling Modal button (`ui::dev`): pause, speed and diagnostics apply at once; a
+    /// restart, a single step and the spotlight preset wait for the next `read`.
+    pub fn dev(&mut self, hit: crate::ui::dev::DevHit) {
+        use crate::ui::dev::DevHit as D;
+        match hit {
+            D::Pause => self.paused = !self.paused,
+            D::Speed(speed) => self.speed = speed as f32,
+            D::Diagnostics => self.debug = !self.debug,
+            D::Restart => self.restart = true,
+            D::Step => self.step = true,
+            D::Spotlight => self.cycle_spotlight = true,
+            D::Open | D::Close | D::ResetGame | D::Level(_) => {}
         }
-        if menu_hit {
-            self.menu_open = !self.menu_open;
-        }
-        if click.is_some_and(|p| p.y >= 44.) {
-            self.menu_open = false;
-        }
-        if is_key_pressed(KeyCode::P) || button == Some(0) {
-            self.paused = !self.paused;
-        }
-        if is_key_pressed(KeyCode::Key1) || button == Some(2) {
-            self.speed = 1.;
-        }
-        if is_key_pressed(KeyCode::Key2) || button == Some(3) {
-            self.speed = 2.;
-        }
-        if is_key_pressed(KeyCode::Key4) || button == Some(4) {
-            self.speed = 4.;
-        }
-        let restart = is_key_pressed(KeyCode::R) || button == Some(5);
-        if restart {
-            self.seed = self.seed.wrapping_add(1);
-        }
-        let spotlight_changed = is_key_pressed(KeyCode::S) || button == Some(6);
-        if spotlight_changed {
-            self.spotlight = (self.spotlight + 1) % 4;
-        }
-        Action {
-            restart,
-            summon_boss: is_key_pressed(KeyCode::B),
-            step: self.paused && (is_key_pressed(KeyCode::N) || button == Some(1)),
-            spotlight_changed,
-        }
+    }
+    /// The developer keys and any pending modal requests (combat screen only).
+    pub fn read(&mut self) -> Action {
+        if is_key_pressed(KeyCode::D) { self.debug = !self.debug; }
+        if is_key_pressed(KeyCode::P) { self.paused = !self.paused; }
+        if is_key_pressed(KeyCode::Key1) { self.speed = 1.; }
+        if is_key_pressed(KeyCode::Key2) { self.speed = 2.; }
+        if is_key_pressed(KeyCode::Key4) { self.speed = 4.; }
+        let restart = is_key_pressed(KeyCode::R) || std::mem::take(&mut self.restart);
+        if restart { self.seed = self.seed.wrapping_add(1); }
+        let spotlight_changed = is_key_pressed(KeyCode::S) || std::mem::take(&mut self.cycle_spotlight);
+        if spotlight_changed { self.spotlight = (self.spotlight + 1) % 4; }
+        let step = std::mem::take(&mut self.step) || is_key_pressed(KeyCode::N);
+        Action { restart, summon_boss: is_key_pressed(KeyCode::B), step: self.paused && step, spotlight_changed }
     }
     pub fn draw(&self) {
-        if self.menu_open {
-            // Replace the existing top overlay so controls add no occlusion below 44px.
-            draw_rectangle(0., 0., 324., 44., Color::from_rgba(15, 24, 38, 245));
-            for (i, label) in [
-                if self.paused { "Play" } else { "Pause" },
-                "Step",
-                "1x",
-                "2x",
-                "4x",
-                "New",
-                self.spotlight_label(),
-            ]
-            .iter()
-            .enumerate()
-            {
-                let active = (i == 2 && self.speed == 1.)
-                    || (i == 3 && self.speed == 2.)
-                    || (i == 4 && self.speed == 4.);
-                let x = i as f32 * 42.;
-                let width = if i == 6 { 72. } else { 42. };
-                if active {
-                    draw_rectangle(x + 2., 3., 38., 38., Color::from_rgba(44, 97, 126, 220));
-                }
-                draw_text(
-                    label,
-                    x + (width - measure_text(label, None, 12, 1.).width) / 2.,
-                    27.,
-                    12.,
-                    if i == 1 && !self.paused { GRAY } else { WHITE },
-                );
-            }
-        } else if self.paused {
-            draw_text("PAUSED", 242., 38., 11., YELLOW);
-        }
-        draw_rectangle(324., 0., 36., 44., Color::from_rgba(15, 24, 38, 165));
-        // Three strokes avoid relying on a font's Unicode coverage for the menu glyph.
-        for y in [15., 21., 27.] {
-            draw_line(334., y, 350., y, 1.6, WHITE);
-        }
+        if self.paused { draw_text("PAUSED", 242., 38., 11., YELLOW); }
     }
 }

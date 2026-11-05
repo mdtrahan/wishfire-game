@@ -184,6 +184,32 @@ async fn main() {
         let click = is_mouse_button_pressed(MouseButton::Left).then(|| portrait.pointer()).flatten();
         // Page-element clicks (menus, nav) arrive between frames; the canvas owns the rest.
         let web_action = ui.web_clicks(&mut scene.game);
+        // Dev Tooling Modal requests: the clock controls go to `controls`; a level preset or
+        // RESET GAME changes the saves and the session is rebuilt from them.
+        for hit in ui.dev.take() {
+            use ui::dev::DevHit as D;
+            match hit {
+                D::Level(level) => match scene.game.dev_level(level) {
+                    Ok(()) => {
+                        scene.game.session.dispose();
+                        scene = match Scene::new(rows.clone(), boot_seed) { Ok(scene) => scene, Err(error) => fatal(&mut portrait, "Combat host failed", &error).await };
+                        ui.dev.status = format!("All heroes set to Lv. {level} with EXP 0 and matching skills.");
+                    }
+                    Err(error) => ui.dev.status = error,
+                },
+                D::ResetGame => match game::reset_saves() {
+                    Ok(_) => {
+                        scene.game.session.dispose();
+                        scene = match Scene::new(rows.clone(), boot_seed) { Ok(scene) => scene, Err(error) => fatal(&mut portrait, "Combat host failed", &error).await };
+                        ui = ui::Ui::new();
+                        ui.boot(qa::enabled());
+                    }
+                    Err(error) => ui.dev.status = error,
+                },
+                other => controls.dev(other),
+            }
+        }
+        ui.dev.state = ui::dev::DevState { paused: controls.paused, speed: controls.speed as u8, spotlight: controls.spotlight_label(), diagnostics: controls.debug };
         // Meta screens: combat pauses underneath (storyEntryFlow.navigate departure).
         if !ui.in_combat() {
             // Dev scenario key: L opens the quest ladder from the map (JS storyEntry.skip() first step).
@@ -206,7 +232,7 @@ async fn main() {
         if ui_action == Some(ui::UiAction::SummonBoss) {
             if let Err(error) = scene.game.session.summon_boss(platform::now_ms()) { fatal(&mut portrait, "Combat host failed", &error).await; }
         }
-        let action = controls.read(if ui_action.is_some() { None } else { click });
+        let action = controls.read();
         if action.restart {
             scene.game.restart(Some(controls.seed as u32));
             scene = match Scene::new(rows.clone(), Some(controls.seed as u32)) { Ok(scene) => scene, Err(error) => fatal(&mut portrait, "Combat host failed", &error).await };
@@ -231,7 +257,7 @@ async fn main() {
             if let Err(error) = game.session.summon_boss(platform::now_ms()) { fatal(&mut portrait, "Combat host failed", &error).await; }
         }
         // A chrome panel pauses combat like the JS hero/party-skill surfaces do.
-        if (controls.paused && !action.step) || ui.pauses() { game.session.pause(); } else { let _ = dt; game.tick(platform::now_ms()); }
+        if !action.step && (controls.paused || ui.pauses()) { game.session.pause(); } else { let _ = dt; game.tick(platform::now_ms()); }
         let observations = game.drain_steps();
         let steps = observations.len() as u32;
         for (before, after) in &observations { motion.observe_step(before, after); }

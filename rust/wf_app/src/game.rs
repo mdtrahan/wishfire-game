@@ -84,6 +84,13 @@ impl Game {
         self.gear_events = next.gear_events;
         self.session_id += 1;
     }
+    /// `applyDeveloperLevel`: every saved hero at `level` with EXP 0 (the lamp's party EXP stays
+    /// claimed), saved; the caller rebuilds the session from the save.
+    pub fn dev_level(&mut self, level: u32) -> Result<(), String> {
+        let bank = self.economy.data().map_or(0., |d| d.party_exp);
+        self.session.progress.set_level(level, bank)?;
+        if persist(&self.session.progress) { Ok(()) } else { Err("The progression preset could not be saved.".into()) }
+    }
     pub fn tick(&mut self, now_ms: f64) -> bool {
         // app.js frame: observe quest milestones, tick the host, then record the combat events.
         self.progression.observe(&mut self.session, &mut self.economy);
@@ -115,6 +122,20 @@ impl Game {
     pub fn drain_events(&mut self) -> Vec<Event> { std::mem::take(&mut self.session.presentation_events) }
     pub fn drain_steps(&mut self) -> Vec<(Snapshot, Snapshot)> { std::mem::take(&mut self.session.step_observations) }
     pub fn alpha(&self) -> f32 { self.session.alpha() }
+}
+/// Every save this game writes (hero progress, quests, the equipment economy and its older
+/// versions).
+const GAME_SAVE_KEYS: [&str; 9] = [HERO_PROGRESS_SAVE_KEY, wf_meta::progression::SAVE_KEY, wf_host::equipment::EQUIPMENT_SAVE_KEY, wf_host::equipment::BAG_UPGRADE_BACKUP_KEY,
+    "wishfire.equipment-economy.v4", "wishfire.equipment-economy.v3", "wishfire.equipment-economy.v2", "wishfire.equipment-economy.v1", "wishfire.gold.v1"];
+pub const RESET_BACKUP_KEY: &str = "wishfire.qa.reset-backup.v1";
+/// `resetDeveloperGame`: keeps a recoverable snapshot of this game's saves under
+/// `RESET_BACKUP_KEY`, then removes them. Returns how many saves were cleared.
+pub fn reset_saves() -> Result<usize, String> {
+    let saved: serde_json::Map<String, serde_json::Value> = GAME_SAVE_KEYS.iter().filter_map(|key| platform::storage_get(key).map(|value| (key.to_string(), serde_json::Value::String(value)))).collect();
+    if !platform::storage_set(RESET_BACKUP_KEY, &serde_json::Value::Object(saved.clone()).to_string()) { return Err("The recovery snapshot could not be saved; nothing was reset.".into()); }
+    for key in saved.keys() { let _ = platform::storage_remove(key); }
+    let _ = platform::session_remove(wf_host::equipment::CONVEYOR_CLOCK_KEY);
+    Ok(saved.len())
 }
 pub async fn load_enemy_rows() -> Result<Vec<RawRow>, String> {
     let json = macroquad::file::load_string("data/enemies.json").await.map_err(|e| format!("enemies.json: {e}"))?;

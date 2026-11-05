@@ -164,3 +164,28 @@ fn only_the_named_orbs_are_collected_whatever_their_age() {
     assert!(b.store.collect_orbs(&mut b.host, &near).unwrap().is_empty(), "an orb is stored once");
     b.ledger();
 }
+
+#[test]
+fn the_field_is_bounded_and_an_oversized_older_save_loads_trimmed() {
+    use wf_meta::lamp::{drop_orb_item, LampEconomy, ORB_LIMIT};
+    // An idle party: kills keep dropping, the field and the save stay bounded.
+    let mut b = bench();
+    for _ in 0..30 { assert_eq!(b.store.drop_orbs(&mut b.host, 1., 1., 25).unwrap().len(), 25, "every drop lands"); }
+    assert_eq!(b.orbs(), ORB_LIMIT);
+    assert_eq!(b.store.data().unwrap().lamp.sequence, 750.);
+    let bytes = b.values.borrow().get(EQUIPMENT_SAVE_KEY).unwrap().len();
+    assert!(bytes < 16_000, "the save stays small ({bytes} bytes)");
+    b.ledger();
+    // A save written before the limit, holding 2,488 orbs, loads as a bounded field and saves small.
+    let mut old = LampEconomy::create(42, 0.);
+    let pile: Vec<_> = (0..2488).map(|_| { let item = drop_orb_item(&mut old, 1., 1.); item }).collect();
+    old.set_orbs(pile);
+    let values = Rc::new(RefCell::new(BTreeMap::new()));
+    values.borrow_mut().insert(EQUIPMENT_SAVE_KEY.to_string(), serde_json::to_string(&old.to_value()).unwrap());
+    let mut store = EquipmentStorage::new(Box::new(MemStore { values: values.clone() }), None, Box::new(|| 1000.), Box::new(|| 42));
+    let mut host = Host { progress: HeroProgressStore::fresh(), gold: 0., pending_gold: BTreeMap::new() };
+    store.sync(&mut host).expect("the oversized save still loads");
+    assert_eq!(store.data().unwrap().orb_count(), ORB_LIMIT);
+    assert!(values.borrow().get(EQUIPMENT_SAVE_KEY).unwrap().len() < 16_000);
+    assert_eq!(store.collect_orbs(&mut host, &store.data().unwrap().orbs().into_iter().map(|o| o.instance_id).collect::<Vec<_>>()).unwrap().len(), 20, "and collects into the Bag as usual");
+}

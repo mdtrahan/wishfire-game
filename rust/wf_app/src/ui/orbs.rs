@@ -3,6 +3,8 @@
 //! its rarity. An orb can be picked up once its subwave has completed, by a living hero whose
 //! feet come within the pickup circle (a diameter of three hero heights, in world units); the
 //! Bag's capacity decides whether it is stored, and an orb that does not fit stays where it fell.
+//! The field holds `ORB_LIMIT` orbs: on a full field each new drop displaces the oldest orb of
+//! the lowest rarity (decided in the save), which fades out here.
 //! This module owns only where the orbs are and how they move: which orbs exist and which enter
 //! the Bag is decided in one saved transaction before any animation starts.
 use crate::camera::WorldCamera;
@@ -22,6 +24,7 @@ pub const PICKUP_DIAMETER_IN_HERO_HEIGHTS: f32 = 3.;
 const FLIGHT_SECONDS: f32 = 0.55;
 const FLIGHT_STAGGER: f32 = 0.025;
 const APPEAR_SECONDS: f32 = 0.18;
+const FADE_SECONDS: f32 = 0.3;
 
 struct Flight { hero: u32, start: f32, from: Vec2 }
 struct Orb { id: String, color: Color, pos: Vec2, born: f32, /// Its subwave has completed.
@@ -29,6 +32,9 @@ struct Orb { id: String, color: Color, pos: Vec2, born: f32, /// Its subwave has
 #[derive(Default)]
 pub struct OrbField {
     orbs: Vec<Orb>,
+    /// Orbs that left the save without being collected (displaced on a full field): position,
+    /// colour and when they left, drawn fading out.
+    fading: Vec<(Vec2, Color, f32)>,
     /// Drop positions whose orbs are not saved yet (retried until the save succeeds).
     waiting_drops: Vec<Vec2>,
     seen_completions: Option<u32>,
@@ -89,6 +95,8 @@ impl OrbField {
                 let known: HashSet<&str> = self.orbs.iter().map(|o| o.id.as_str()).collect();
                 let missing: Vec<(String, Color)> = saved.iter().filter(|i| !known.contains(i.instance_id.as_str())).map(|i| (i.instance_id.clone(), rarity_color(&i.rarity))).collect();
                 let ids: HashSet<&str> = saved.iter().map(|i| i.instance_id.as_str()).collect();
+                let clock = self.clock;
+                self.fading.extend(self.orbs.iter().filter(|o| o.flight.is_none() && !ids.contains(o.id.as_str())).map(|o| (o.pos, o.color, clock)));
                 self.orbs.retain(|o| o.flight.is_some() || ids.contains(o.id.as_str()));
                 let heroes: Vec<Vec2> = s.actors.iter().filter(|a| a.team == Team::Hero).map(|a| world(a.pos)).collect();
                 let centre = if heroes.is_empty() { (lo + hi) / 2. } else { heroes.iter().copied().sum::<Vec2>() / heroes.len() as f32 };
@@ -142,6 +150,7 @@ impl OrbField {
             orb.pos = flight.from.lerp(target, eased) + vec2(0., -24. * (std::f32::consts::PI * t).sin());
         }
         self.orbs.retain(|o| o.flight.as_ref().is_none_or(|f| clock - f.start < FLIGHT_SECONDS));
+        self.fading.retain(|f| clock - f.2 < FADE_SECONDS);
     }
     /// One white sprite sheet (glow left, body right) tinted per rarity: a soft halo, a shaded
     /// body with a darker rim and a small highlight. No pulsing and no particles.
@@ -165,7 +174,7 @@ impl OrbField {
     }
     /// Resting orbs lie on the ground under the actors; flying orbs pass over them.
     pub fn draw(&mut self, camera: &WorldCamera, flying: bool) {
-        if self.orbs.is_empty() { return; }
+        if self.orbs.is_empty() && self.fading.is_empty() { return; }
         let sprite = self.sprite();
         let half = sprite.width() / 2.;
         let (glow, body) = (Rect::new(0., 0., half, sprite.height()), Rect::new(half, 0., half, sprite.height()));
@@ -179,6 +188,14 @@ impl OrbField {
             quad(glow, p, size * 2.1, Color::new(orb.color.r, orb.color.g, orb.color.b, 0.34));
             quad(body, p, size, orb.color);
             quad(glow, p - vec2(size * 0.16, size * 0.18), size * 0.42, Color::new(1., 1., 1., 0.85));
+        }
+        if flying { return; }
+        // A displaced orb shrinks and fades where it lay.
+        for (pos, color, left) in &self.fading {
+            let p = camera.project(wf_combat::Vec2::new(pos.x, pos.y));
+            let k = 1. - ((self.clock - left) / FADE_SECONDS).clamp(0., 1.);
+            quad(glow, p, d * 2.1 * k, Color::new(color.r, color.g, color.b, 0.34 * k));
+            quad(body, p, d * k, Color::new(color.r, color.g, color.b, k));
         }
     }
 }
@@ -334,6 +351,27 @@ pub(crate) mod tests {
         field.update(&mut economy, &mut run.session, &s, 0.016, true, &height);
         assert_eq!((field.resting(), field.flying(), economy.data().unwrap().orb_count()), (0, 6, 0), "blocked orbs resume once there is room");
         assert!(stored(&economy) <= economy.data().unwrap().capacity());
+    }
+    #[test]
+    fn a_full_field_keeps_dropping_and_stays_bounded() {
+        use wf_meta::lamp::ORB_LIMIT;
+        let mut run = crate::testing::HostRun::new(1);
+        let mut economy = economy(&mut run);
+        let s = solo(run.snapshot());
+        let mut field = OrbField::default();
+        field.update(&mut economy, &mut run.session, &s, 0.016, false, &height);
+        // Far out of reach, a Bag window open: nothing is collected for 300 kills' worth of drops.
+        for round in 0..30 {
+            lay(&mut field, &mut economy, &mut run, &s, 10, vec2(400. + round as f32, 0.));
+            assert!(field.resting() <= ORB_LIMIT && economy.data().unwrap().orb_count() == field.resting(), "round {round}: the field shows exactly the saved orbs");
+        }
+        assert_eq!((field.resting(), economy.data().unwrap().orb_count()), (ORB_LIMIT, ORB_LIMIT));
+        // The newest drop is on the field; displaced orbs fade and are gone a moment later.
+        assert_eq!(field.orbs.last().map(|o| o.id.clone()), economy.data().unwrap().orbs().last().map(|o| o.instance_id.clone()));
+        assert!(!field.fading.is_empty());
+        for _ in 0..30 { field.update(&mut economy, &mut run.session, &s, 0.016, false, &height); }
+        assert!(field.fading.is_empty());
+        assert_eq!(stored(&economy), 0.);
     }
     #[test]
     fn saved_orbs_return_after_a_reload_and_are_stored_once() {

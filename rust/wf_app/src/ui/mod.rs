@@ -4,6 +4,7 @@
 //! Placement and purpose match the JS; pixels are placeholder-grade.
 pub mod chrome;
 pub mod css;
+pub mod dev;
 pub mod dom;
 pub mod lamp;
 pub mod model;
@@ -26,7 +27,7 @@ impl Screen {
 /// What a page element does when clicked: a chrome action, a lamp window action, or nothing
 /// (`Stay` keeps a click on a panel from reaching the backdrop behind it).
 #[derive(Clone, Debug, PartialEq)]
-pub enum Act { Hit(chrome::HitKind), Lamp(lamp::LampHit), Stay }
+pub enum Act { Hit(chrome::HitKind), Lamp(lamp::LampHit), Dev(dev::DevHit), Stay }
 /// What the frame loop must do after a tap.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum UiAction { None, SummonBoss }
@@ -46,11 +47,12 @@ pub struct Ui {
     pub vault: screens::VaultUi,
     pub story: story::StoryFlow,
     pub toast: Option<Toast>,
+    pub dev: dev::DevUi,
     hits: Vec<chrome::Hit>,
     dom: dom::Dom<Act>,
 }
 impl Ui {
-    pub fn new() -> Self { Self { screen: Screen::Combat, panel: None, model: CombatModel::default(), lamp: lamp::LampUi::default(), hero: screens::HeroUi::default(), training: screens::TrainingUi::default(), vault: screens::VaultUi::default(), story: story::StoryFlow::default(), toast: None, hits: Vec::new(), dom: dom::Dom::new() } }
+    pub fn new() -> Self { Self { screen: Screen::Combat, panel: None, model: CombatModel::default(), lamp: lamp::LampUi::default(), hero: screens::HeroUi::default(), training: screens::TrainingUi::default(), vault: screens::VaultUi::default(), story: story::StoryFlow::default(), toast: None, dev: dev::DevUi::default(), hits: Vec::new(), dom: dom::Dom::new() } }
     /// Boot lands on the Quests map (`activateInitialLayout('storyMock')`).
     pub fn boot(&mut self, qa_direct_combat: bool) { if qa_direct_combat { self.story.qa_direct_combat(); self.screen = Screen::Combat; } else { self.screen = Screen::Quests; } }
     fn now_ms() -> f64 { macroquad::time::get_time() * 1000. }
@@ -66,10 +68,11 @@ impl Ui {
         if let (true, Some(receipt)) = (result.ok, result.receipt.as_ref()) { self.show_receipt("Reward Obtained", receipt, 1500.); }
     }
     pub fn in_combat(&self) -> bool { self.screen == Screen::Combat }
-    /// The Growth dialog and the lamp windows pause combat; the boss stats popover does not.
-    pub fn pauses(&self) -> bool { self.training.open || self.lamp.modal_open() }
+    /// The Growth dialog, the lamp windows and the Dev Tooling Modal pause combat; the boss stats
+    /// popover does not.
+    pub fn pauses(&self) -> bool { self.training.open || self.lamp.modal_open() || self.dev.open }
     /// `isBagProgressBlocked`: any dialog blocks Bag progress time.
-    pub fn blocks_bag_progress(&self) -> bool { self.panel.is_some() || self.training.open || self.lamp.modal_open() }
+    pub fn blocks_bag_progress(&self) -> bool { self.panel.is_some() || self.training.open || self.lamp.modal_open() || self.dev.open }
     /// Refresh the frame model from the live session (combat screen only).
     pub fn update(&mut self, game: &Game, snapshot: &wf_combat::Snapshot) {
         self.model = CombatModel::build(&game.session, snapshot, &self.model);
@@ -97,6 +100,7 @@ impl Ui {
             match act {
                 Act::Hit(kind) => { let action = self.perform(kind, Vec2::ZERO, game); if result.is_none() || action != UiAction::None { result = Some(action); } }
                 Act::Lamp(kind) => { self.lamp.act(kind, game); result.get_or_insert(UiAction::None); }
+                Act::Dev(kind) => { self.dev.act(kind); result.get_or_insert(UiAction::None); }
                 Act::Stay => { result.get_or_insert(UiAction::None); }
             }
         }
@@ -202,6 +206,9 @@ impl Ui {
         if let Some(view) = self.lamp.view(game, scale) { stage.push(view); }
         if let Some(t) = &self.toast { if let Some(view) = receipt_view(if t.flip { "receipt-a" } else { "receipt-b" }, &t.title, &t.resource, t.amount, &t.hero_name, t.duration_ms, scale) { stage.push(view); } }
         if self.training.open { stage.push(screens::training_view(game, &self.training, (macroquad::window::screen_width(), macroquad::window::screen_height()))); }
+        // Last, so nothing before them shifts when a menu opens: the developer pills and modal.
+        stage.kids.extend(self.dev.launchers());
+        if let Some(view) = self.dev.view() { stage.push(view); }
         self.dom.render(vec![stage]);
     }
     /// `renderExistingNavigation`: DAILY / HERO / QUESTS / VAULT / POWER UP.

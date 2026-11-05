@@ -204,7 +204,7 @@ pub fn record(assets: &Assets, camera: &WorldCamera, s: &Snapshot, controls: &Co
                         && h.phase == HazardPhase::Locked
                 })
                 .count() as f32,
-            if controls.menu_open { 1. } else { 0. },
+            0.,
             s.actors
                 .iter()
                 .filter(|a| a.state == wf_combat::api::ActorState::Spawn)

@@ -226,11 +226,10 @@ fn orb_rarity_follows_the_bag_level_weights() {
         let mut counts = std::collections::BTreeMap::new();
         let mut total = 0;
         while total < 8000 {
-            let Some(item) = drop_orb_item(&mut data, 1., 1.) else { panic!("drop refused below the limit") };
+            let item = drop_orb_item(&mut data, 1., 1.);
             *counts.entry(item.rarity).or_insert(0usize) += 1;
             total += 1;
-            // Keep the field below its limit like a player collecting and dismantling.
-            if data.orb_count() == ORB_LIMIT { assert!(drop_orb_item(&mut data, 1., 1.).is_none(), "the limit refuses a drop"); data.set_orbs(Vec::new()); }
+            assert!(data.orb_count() <= ORB_LIMIT, "the field never holds more than its limit");
         }
         for (key, weight) in capacity_tier(tier).rarity_weights {
             let share = *counts.get(key).unwrap_or(&0) as f64 / total as f64 * 100.;
@@ -240,4 +239,38 @@ fn orb_rarity_follows_the_bag_level_weights() {
         let first: Vec<String> = data.orbs().iter().take(5).map(|o| o.instance_id.clone()).collect();
         assert_eq!(collect_orb_items(&mut data, &first).len(), 5);
     }
+}
+
+/// A full field keeps dropping: the newest orb always lands and the oldest orb of the lowest
+/// rarity gives way, so an idle party's pile stays bounded and drifts toward its best drops.
+#[test]
+fn a_full_field_trades_its_oldest_lowest_rarity_orb_for_each_new_drop() {
+    use wf_meta::equipment::rarity_index;
+    use wf_meta::lamp::{drop_orb_item, trim_saved_orbs, validate_conveyor_state, LampEconomy, ORB_LIMIT};
+    let mut data = LampEconomy::create(20261104, 0.);
+    let mut every = Vec::new();
+    for _ in 0..ORB_LIMIT { every.push(drop_orb_item(&mut data, 1., 1.)); }
+    assert_eq!(data.orb_count(), ORB_LIMIT);
+    for _ in 0..400 {
+        let before = data.orbs();
+        let lowest = before.iter().map(|o| rarity_index(&o.rarity).unwrap()).min().unwrap();
+        let leaving = before.iter().find(|o| rarity_index(&o.rarity).unwrap() == lowest).unwrap().instance_id.clone();
+        let item = drop_orb_item(&mut data, 1., 1.);
+        let after = data.orbs();
+        assert_eq!(after.len(), ORB_LIMIT);
+        assert_eq!(after.last().unwrap().instance_id, item.instance_id, "the new drop is on the field");
+        assert!(after.iter().all(|o| o.instance_id != leaving), "the oldest orb of the lowest rarity left");
+        assert_eq!(before.iter().filter(|o| after.iter().all(|a| a.instance_id != o.instance_id)).count(), 1, "exactly one orb gives way");
+        every.push(item);
+    }
+    validate_conveyor_state(&data.to_value()).expect("a full field is a valid save");
+    // A save from before the limit (thousands of orbs) loads as the same bounded field.
+    data.set_orbs(every.clone());
+    let mut save = data.to_value();
+    trim_saved_orbs(&mut save);
+    let loaded = validate_conveyor_state(&save).expect("the trimmed save is valid");
+    assert_eq!(loaded.orb_count(), ORB_LIMIT);
+    let worst_kept = loaded.orbs().iter().map(|o| rarity_index(&o.rarity).unwrap()).min().unwrap();
+    let kept: Vec<String> = loaded.orbs().into_iter().map(|o| o.instance_id).collect();
+    assert!(every.iter().filter(|o| !kept.contains(&o.instance_id)).all(|o| rarity_index(&o.rarity).unwrap() <= worst_kept), "nothing better than a kept orb was dropped");
 }
