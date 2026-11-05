@@ -1,70 +1,13 @@
 {
   "changed_functions": {
-    "goals/approved-bag-upgrades.md": [
-      "__MODULE__"
-    ],
-    "rust/AGENTS.md": [
-      "__MODULE__"
-    ],
-    "rust/simulation_core/src/combat_abi.rs": [
-      "heal",
-      "__MODULE__"
-    ],
-    "rust/wf_app/AGENTS.md": [
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/camera.rs": [
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/main.rs": [
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/render/spotlight.rs": [
-      "delta"
-    ],
-    "rust/wf_app/src/ui/chrome.rs": [
-      "s",
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/ui/lamp.rs": [
-      "fill",
-      "stored",
-      "next",
-      "__MODULE__"
-    ],
-    "rust/wf_app/src/ui/orbs.rs": [
-      "t",
-      "grow",
-      "__MODULE__"
-    ],
-    "rust/wf_host/AGENTS.md": [
-      "__MODULE__"
-    ],
-    "rust/wf_host/src/equipment.rs": [
-      "seed"
-    ],
-    "rust/wf_host/src/session.rs": [
-      "safe",
-      "__MODULE__"
-    ],
-    "rust/wf_host/tests/orbs.rs": [
-      "__MODULE__"
-    ],
-    "rust/wf_meta/AGENTS.md": [
-      "__MODULE__"
-    ],
-    "rust/wf_meta/src/lamp.rs": [
-      "guide",
-      "__MODULE__"
-    ],
-    "rust/wf_meta/tests/lamp.rs": [
+    ".beads/commit-check/ORKA-63bf.21.json": [
       "__MODULE__"
     ]
   },
   "details": {
     "hot_files_touched": [],
-    "staged_file_count": 17,
-    "staged_line_count": 378,
+    "staged_file_count": 1,
+    "staged_line_count": 115,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -72,44 +15,12 @@
     }
   },
   "files": [
-    "goals/approved-bag-upgrades.md",
-    "rust/AGENTS.md",
-    "rust/simulation_core/src/combat_abi.rs",
-    "rust/wf_app/AGENTS.md",
-    "rust/wf_app/src/camera.rs",
-    "rust/wf_app/src/main.rs",
-    "rust/wf_app/src/render/spotlight.rs",
-    "rust/wf_app/src/ui/chrome.rs",
-    "rust/wf_app/src/ui/lamp.rs",
-    "rust/wf_app/src/ui/orbs.rs",
-    "rust/wf_host/AGENTS.md",
-    "rust/wf_host/src/equipment.rs",
-    "rust/wf_host/src/session.rs",
-    "rust/wf_host/tests/orbs.rs",
-    "rust/wf_meta/AGENTS.md",
-    "rust/wf_meta/src/lamp.rs",
-    "rust/wf_meta/tests/lamp.rs"
+    ".beads/commit-check/ORKA-63bf.21.json"
   ],
   "issue_id": "ORKA-63bf.21",
   "out_of_scope_hot_file_touch": false,
   "significant": true,
   "staged_blobs": {
-    "goals/approved-bag-upgrades.md": "18f48ca4d3ad429a18017749c1a78cce0bdc0ccc",
-    "rust/AGENTS.md": "3ee8acd80eec478c57b05bdff6d17960341c19cc",
-    "rust/simulation_core/src/combat_abi.rs": "09375795d9292b57d76c9c5d4f5f99d6772fdb7a",
-    "rust/wf_app/AGENTS.md": "6e601674d230afcb708dfaca4486c42d27160cc2",
-    "rust/wf_app/src/camera.rs": "b1d2adcba4320a46dba11292eb62a4f7f5b81d53",
-    "rust/wf_app/src/main.rs": "41a3d69be7e0a701f408149a462d018056a89dc5",
-    "rust/wf_app/src/render/spotlight.rs": "19a8559714d6baa2bc560dbaffc41b3b38b73d5e",
-    "rust/wf_app/src/ui/chrome.rs": "29248e9867559ea54a1b2ec849e0fe9dc2e004ca",
-    "rust/wf_app/src/ui/lamp.rs": "ec1f2dad08d26ea0e08c0edb4592ce67062f51f4",
-    "rust/wf_app/src/ui/orbs.rs": "34fc2c60a8724292f30250226045f1225e803249",
-    "rust/wf_host/AGENTS.md": "752df8364ce466efa8c7b52ebbf350f1d793bc8d",
-    "rust/wf_host/src/equipment.rs": "0e7d1e4d333e9d8b81e4703311c18ae5887a0d62",
-    "rust/wf_host/src/session.rs": "c31528f6467a6d2234bc0182360834388f302061",
-    "rust/wf_host/tests/orbs.rs": "d4c8d14f8077169ebc1569f343d3b78f6e6dad70",
-    "rust/wf_meta/AGENTS.md": "a78f6a326d99f7e7f1a2d27fc557927507051c5d",
-    "rust/wf_meta/src/lamp.rs": "28a4469b34608c40bf3a121d91dc9b6e98e1ab20",
-    "rust/wf_meta/tests/lamp.rs": "e814ae301c6fac7615cce5aeb645fe8569fd1dec"
+    ".beads/commit-check/ORKA-63bf.21.json": "a71f3dbcdb5820c13c0678d3e617c15f5ccdcc61"
   }
 }
