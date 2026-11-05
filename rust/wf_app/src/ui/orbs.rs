@@ -171,6 +171,9 @@ impl OrbField {
         self.orbs.retain(|o| o.flight.as_ref().is_none_or(|f| clock - f.start < FLIGHT_SECONDS));
         self.fading.retain(|f| clock - f.2 < FADE_SECONDS);
     }
+    /// A fresh field keeps the orb sprite of the one it replaces: a dropped texture that is still
+    /// bound makes the next texture upload log a WebGL error.
+    pub fn adopt_art(&mut self, from: &mut OrbField) { self.sprite = from.sprite.take(); }
     /// One white sprite sheet (glow left, body right) tinted per rarity: a soft halo, a shaded
     /// body with a darker rim and a small highlight. No pulsing and no particles.
     fn sprite(&mut self) -> Texture2D {

@@ -55,7 +55,12 @@ impl Ui {
     pub fn new() -> Self { Self { screen: Screen::Combat, panel: None, model: CombatModel::default(), lamp: lamp::LampUi::default(), hero: screens::HeroUi::default(), training: screens::TrainingUi::default(), vault: screens::VaultUi::default(), story: story::StoryFlow::default(), toast: None, dev: dev::DevUi::default(), hits: Vec::new(), dom: dom::Dom::new() } }
     /// A fresh menu state over the same page elements (RESET GAME, a restored snapshot). The
     /// page layer must survive: a new `Dom` would leave the old elements on the page, dead.
-    pub fn reset(&mut self) { let dom = std::mem::take(&mut self.dom); *self = Self::new(); self.dom = dom; }
+    pub fn reset(&mut self) {
+        let dom = std::mem::take(&mut self.dom);
+        let mut old = std::mem::replace(self, Self::new());
+        self.lamp.orbs.adopt_art(&mut old.lamp.orbs);
+        self.dom = dom;
+    }
     /// Boot lands on the Quests map (`activateInitialLayout('storyMock')`).
     pub fn boot(&mut self, qa_direct_combat: bool) { if qa_direct_combat { self.story.qa_direct_combat(); self.screen = Screen::Combat; } else { self.screen = Screen::Quests; } }
     fn now_ms() -> f64 { macroquad::time::get_time() * 1000. }

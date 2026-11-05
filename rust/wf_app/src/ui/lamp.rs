@@ -40,8 +40,12 @@ const BAG_CX: f32 = 360. * 0.7652 + 360. * 0.228 / 2.;
 const BAG_CY: f32 = chrome::QUEST_TOP + 52. / 2.;
 const BAG_W: f32 = 360. * 0.228 * 0.5;
 const BAG_H: f32 = 92. * 0.83 * 0.9745 * 0.5;
-// The Bag progress bar: slides out to the left from behind the icon.
-const BAR_W: f32 = 92.; const BAR_H: f32 = 12.;
+// The Bag progress bar: slides out to the left from behind the icon. Its bag-side end stays
+// under the bag's painted silhouette (owner 2026-11-05): the rounded cap never shows, only the
+// straight body leaves the bag. `BAR_TUCK` is how much of the bar's length lies under the bag.
+const BAR_TUCK: f32 = 10.;
+const BAR_W: f32 = 92. + BAR_TUCK; const BAR_H: f32 = 12.;
+const BAR_RIGHT: f32 = BAG_CX - 6. + BAR_TUCK;
 const SLIDE_SECONDS: f32 = 0.22;
 /// The bar rests this long before each fill starts (once it is out, and again after every
 /// upgrade), so the player sees there is something to watch.
@@ -51,8 +55,15 @@ const BEAT_SECONDS: f32 = 0.5;
 const FILL_SECONDS: f32 = 1.2;
 const MIN_FILL_SECONDS: f32 = 0.6;
 const CELEBRATE_SECONDS: f32 = 0.3;
-/// The finished display stays this long after the last fill or upgrade before sliding back.
-const HOLD_SECONDS: f32 = 2.5;
+/// The finished display stays this long after the last fill or upgrade before sliding back
+/// (owner 2026-11-05: 0.6 s, was 2.5 s).
+const HOLD_SECONDS: f32 = 0.6;
+/// Small round sparks thrown from the bar's far end the moment the slide-out completes
+/// (owner 2026-11-05).
+const SPARKS: usize = 14;
+const SPARK_TINTS: [u32; 4] = [0xb777d8, 0xffffff, chrome::TIMER_BLUE, 0xe3c4f5];
+#[derive(Clone, Copy, Debug)]
+struct Spark { pos: Vec2, vel: Vec2, radius: f32, age: f32, life: f32, tint: u32 }
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 enum BarPhase { #[default] Hidden, SlideOut, Beat, Fill, Celebrate, Hold, SlideIn }
 /// The **Cascade Fill** ceremony (owner's name for this kind of progress presentation, 2026-11-05):
@@ -65,7 +76,8 @@ enum BarPhase { #[default] Hidden, SlideOut, Beat, Fill, Celebrate, Hold, SlideI
 #[derive(Default)]
 struct BagBar { phase: BarPhase, t: f32, fraction: f32, synced: bool, wanted: bool,
     /// Bar fractions per second of the fill in progress.
-    rate: f32 }
+    rate: f32,
+    sparks: Vec<Spark>, spark_seed: u32 }
 impl BagBar {
     /// The ceremony is on screen.
     fn active(&self) -> bool { self.phase != BarPhase::Hidden }
@@ -74,8 +86,23 @@ impl BagBar {
         self.rate = if gap > 0. { gap / (FILL_SECONDS * gap).max(MIN_FILL_SECONDS) } else { 1. / FILL_SECONDS };
         self.phase = BarPhase::Fill;
     }
+    /// The slide-out has just completed: a burst of various-sized sparks leaves the bar's far end.
+    fn burst(&mut self) {
+        let mut seed = self.spark_seed.wrapping_add(0x9e37_79b9);
+        let mut unit = || { seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223); (seed >> 8) as f32 / 16_777_216. };
+        for _ in 0..SPARKS {
+            let angle = (unit() - 0.5) * 2.8;
+            let speed = 30. + 60. * unit();
+            let spark = Spark { pos: vec2(BAR_RIGHT - BAR_W + 2., BAG_CY + (unit() - 0.5) * BAR_H), vel: vec2(-angle.cos(), angle.sin()) * speed,
+                radius: 1. + 2.2 * unit(), age: 0., life: 0.35 + 0.35 * unit(), tint: SPARK_TINTS[(unit() * SPARK_TINTS.len() as f32) as usize % SPARK_TINTS.len()] };
+            self.sparks.push(spark);
+        }
+        self.spark_seed = seed;
+    }
     /// `visible`: the bag icon is on screen and nothing covers it.
     fn update(&mut self, economy: &mut wf_host::equipment::EquipmentStorage, session: &mut wf_host::session::Session, dt: f32, visible: bool) -> Option<String> {
+        for spark in &mut self.sparks { spark.age += dt; spark.pos += spark.vel * dt; spark.vel *= (1. - 3. * dt).max(0.); }
+        self.sparks.retain(|spark| spark.age < spark.life);
         let data = economy.data()?;
         let progress = data.fill_progress();
         let fills = data.bag_fills();
@@ -90,7 +117,7 @@ impl BagBar {
                 // everything earned since it was last out.
                 if self.wanted { self.wanted = false; self.phase = BarPhase::SlideOut; self.t = 0.; }
             }
-            BarPhase::SlideOut => { self.t += dt; if self.t >= SLIDE_SECONDS { self.phase = BarPhase::Beat; self.t = 0.; } }
+            BarPhase::SlideOut => { self.t += dt; if self.t >= SLIDE_SECONDS { self.phase = BarPhase::Beat; self.t = 0.; self.burst(); } }
             BarPhase::Beat => { self.wanted = false; self.t += dt; if self.t >= BEAT_SECONDS { self.start_fill(target); } }
             BarPhase::Fill => {
                 self.wanted = false;
@@ -127,15 +154,21 @@ impl BagBar {
     /// The bar alone: no numbers on it (owner 2026-11-05). The fill is the boss timer's blue
     /// and flashes white on an upgrade.
     fn draw(&self) {
+        for spark in &self.sparks {
+            let left = 1. - spark.age / spark.life;
+            draw_circle(spark.pos.x, spark.pos.y, spark.radius * (0.4 + 0.6 * left), chrome::rgba(spark.tint, left));
+        }
         let reveal = self.reveal();
         if reveal <= 0. { return; }
-        let right = BAG_CX - 6.;
+        let right = BAR_RIGHT;
         let width = BAR_W * reveal;
         let (x, y) = (right - width, BAG_CY - BAR_H / 2.);
         let flash = self.celebration().map_or(0., |c| 1. - c);
         chrome::capsule(x - 1.5, y - 1.5, width + 3., BAR_H + 3., rgb(0xb777d8));
         chrome::capsule(x, y, width, BAR_H, rgb(0x242130));
-        let fill = (width - 2.) * self.fraction.clamp(0., 1.);
+        // A full fill ends where it always did, just inside the bag's edge; the tucked length
+        // beyond it is never seen.
+        let fill = (width - 2. - BAR_TUCK).max(0.) * self.fraction.clamp(0., 1.);
         if fill > BAR_H - 2. { chrome::capsule(x + 1., y + 1., fill, BAR_H - 2., chrome::mix(rgb(chrome::TIMER_BLUE), WHITE, flash)); }
     }
 }
@@ -474,7 +507,7 @@ mod tests {
         assert!((bar.fraction - 50. / 125.).abs() < 1e-6);
     }
     #[test]
-    fn the_hold_lasts_two_and_a_half_seconds_from_the_last_fill() {
+    fn the_hold_lasts_six_tenths_of_a_second_from_the_last_fill_and_the_slide_out_throws_sparks() {
         let mut run = crate::testing::HostRun::new(1);
         let mut economy = super::super::orbs::tests::economy(&mut run);
         let mut bar = BagBar::default();
@@ -484,10 +517,15 @@ mod tests {
         // Time each phase at 1 ms steps.
         let (mut clock, mut entered) = (0.0f32, Vec::new());
         let mut last = bar.phase;
+        let mut sparks_at_beat = None;
         for _ in 0..20000 {
             bar.update(&mut economy, &mut run.session, 0.001, true);
             clock += 0.001;
-            if bar.phase != last { entered.push((bar.phase, clock)); last = bar.phase; }
+            if bar.phase != last {
+                // The burst appears with the first beat only (the slide-out's end), in several sizes.
+                if bar.phase == BarPhase::Beat && sparks_at_beat.is_none() { sparks_at_beat = Some(bar.sparks.clone()); }
+                entered.push((bar.phase, clock)); last = bar.phase;
+            }
             if bar.phase == BarPhase::Hidden && !entered.is_empty() { break; }
         }
         let at = |phase: BarPhase| entered.iter().rev().find(|(p, _)| *p == phase).map(|(_, t)| *t).unwrap();
@@ -495,7 +533,13 @@ mod tests {
         assert_eq!(entered.iter().filter(|(p, _)| *p == BarPhase::Celebrate).count(), 2);
         assert_eq!(entered.iter().filter(|(p, _)| *p == BarPhase::Hold).count(), 1, "one hold, after everything");
         let hold = at(BarPhase::SlideIn) - at(BarPhase::Hold);
-        assert!((hold - 2.5).abs() < 0.005, "hold lasted {hold} s");
+        assert!((hold - 0.6).abs() < 0.005, "hold lasted {hold} s");
+        let sparks = sparks_at_beat.unwrap();
+        assert_eq!(sparks.len(), SPARKS);
+        let (small, large) = sparks.iter().fold((f32::MAX, 0.0f32), |(lo, hi), s| (lo.min(s.radius), hi.max(s.radius)));
+        assert!(small >= 1. && large <= 3.2 && large - small > 0.8, "small round sparks of various sizes: {small}..{large}");
+        assert!(sparks.iter().all(|s| s.vel.x < 0.), "they fly away from the bag");
+        assert!(bar.sparks.is_empty(), "all gone by the end of the ceremony");
         assert!(at(BarPhase::Hold) > entered.iter().rev().find(|(p, _)| *p == BarPhase::Celebrate).unwrap().1, "the hold starts after the final full bar and fill");
         assert_eq!((economy.data().unwrap().bag_fills(), economy.data().unwrap().lamp.capacity_tier), (2., 0));
     }

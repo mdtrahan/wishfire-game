@@ -296,19 +296,3 @@ fn a_full_bag_bar_banks_a_fill_and_leaves_the_bag_level_alone() {
     bad["lamp"]["bagFills"] = serde_json::json!(-1);
     assert!(validate_conveyor_state(&bad).is_err());
 }
-#[test]
-fn a_restarted_run_has_an_empty_bag_and_a_clear_field() {
-    use wf_meta::lamp::{clear_run_loot, collect_orb_items, drop_orb_item, validate_conveyor_state, LampEconomy};
-    let mut data = LampEconomy::create(20261105, 0.);
-    let ids: Vec<String> = (0..12).map(|_| drop_orb_item(&mut data, 1., 1.).instance_id).collect();
-    assert_eq!(collect_orb_items(&mut data, &ids[..8]).len(), 8);
-    data.lamp.essence = 33.;
-    data.lamp.bag_fills = Some(2.);
-    assert_eq!((data.stored_count(), data.orb_count(), data.items.len()), (8., 4, 8));
-    clear_run_loot(&mut data);
-    assert_eq!((data.stored_count(), data.orb_count(), data.items.len()), (0., 0, 0));
-    assert_eq!((data.lamp.essence, data.bag_fills()), (33., 2.), "currencies and Bag progress are not run state");
-    validate_conveyor_state(&data.to_value()).expect("the cleared save is valid");
-    // The next drop continues the item sequence, so no id is ever reused.
-    assert!(!ids.contains(&drop_orb_item(&mut data, 1., 1.).instance_id));
-}

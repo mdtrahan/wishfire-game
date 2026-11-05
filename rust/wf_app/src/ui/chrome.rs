@@ -28,7 +28,9 @@ pub struct Hit { pub rect: Rect, pub kind: HitKind }
 const HUD_LEFT: f32 = 127.5; const HUD_TOP: f32 = 44.; const HUD_RIGHT: f32 = 232.5; const HUD_BOTTOM: f32 = 84.;
 const FALLBACK_W: f32 = 360.; const FALLBACK_H: f32 = 82.;
 // renderBossBattleHud.mjs
-const BOSS_HUD_W: f32 = 248.; const BOSS_HUD_TOP: f32 = 86.;
+// A boss battle hides the chapter progress and shows the boss block in its place, at 80% of
+// main's size about the same centre line (owner 2026-11-05; main: full size at top 86).
+const BOSS_HUD_W: f32 = 248.; const BOSS_HUD_SCALE: f32 = 0.8; const BOSS_HUD_TOP: f32 = HUD_TOP;
 // heroCooldownStrip.mjs
 // The hero clocks sit directly above the nav now that the Bag strip is gone (JS: 441.6).
 pub const STRIP_W: f32 = 344.; pub const STRIP_H: f32 = 41.28; pub const STRIP_TOP: f32 = 533.6; pub const STRIP_LEFT: f32 = 8.;
@@ -172,7 +174,8 @@ pub fn draw(assets: &Assets, m: &CombatModel, panel: Option<&Panel>, hits: &mut 
     draw_rectangle(0., 0., WIDTH, BAND_TOP, rgb(0x16181c));
     draw_rectangle(0., BAND_BOTTOM, WIDTH, HEIGHT - BAND_BOTTOM, rgb(0x1d1f23));
     if let Some(error) = &m.host_error { stroked("Combat host failed", 8., 12., 12., rgb(0xff8fa0), rgb(0x000000), Align::Left); paragraph(error, 8., 20., WIDTH - 60., 9., rgb(0xffd0d0)); }
-    if m.summon_visible { summon(assets, m, hits); } else { progress(assets, m); }
+    // The chapter progress is hidden, not gone, during a boss battle; it returns with the waves.
+    if m.summon_visible { summon(assets, m, hits); } else if m.boss.is_none() { progress(assets, m); }
     resources(assets, m);
     objective(assets, m, hits);
     if let Some(boss) = &m.boss { boss_hud(assets, boss, matches!(panel, Some(Panel::BossInfo)), hits); }
@@ -220,24 +223,26 @@ fn summon(assets: &Assets, m: &CombatModel, hits: &mut Vec<Hit>) {
 pub const TIMER_BLUE: u32 = 0x00b6d6;
 /// `updateBossBattleHud`: name, inspect button, HP meter, timer meter.
 fn boss_hud(assets: &Assets, boss: &super::model::BossReadout, open: bool, hits: &mut Vec<Hit>) {
-    let x = (WIDTH - BOSS_HUD_W) / 2.;
+    let k = BOSS_HUD_SCALE;
+    let w = BOSS_HUD_W * k;
+    let x = (WIDTH - w) / 2.;
     let y = BOSS_HUD_TOP;
-    stroked(&boss.name, x + BOSS_HUD_W / 2., y + 12.5, 16., rgb(0xfff7e1), rgb(0x21160e), Align::Center);
-    let (ix, iy, isz) = (x + BOSS_HUD_W + 5. - 36., y - 7., 36.);
-    if let Some(tex) = assets.ui.get("boss-inspect") { image_tinted(tex, ix + 3., iy + 3., isz - 6., isz - 6., if open { rgb(0xffe29d) } else { WHITE }); }
+    stroked(&boss.name, x + w / 2., y + 12.5 * k, 16. * k, rgb(0xfff7e1), rgb(0x21160e), Align::Center);
+    let (ix, iy, isz) = (x + w + (5. - 36.) * k, y - 7. * k, 36. * k);
+    if let Some(tex) = assets.ui.get("boss-inspect") { image_tinted(tex, ix + 3. * k, iy + 3. * k, isz - 6. * k, isz - 6. * k, if open { rgb(0xffe29d) } else { WHITE }); }
     hits.push(Hit { rect: Rect::new(ix, iy, isz, isz), kind: HitKind::Inspect });
     let meter = |top: f32, fraction: f32, fill: Color, icon: &str, text: Option<&str>| {
-        let h = 12.;
-        draw_rectangle(x - 1., top - 1., BOSS_HUD_W + 2., h + 2., rgb(0xd1ba8e));
-        draw_rectangle(x, top, BOSS_HUD_W, h, rgb(0x281c15));
-        draw_rectangle(x + 2., top + 2., BOSS_HUD_W - 4., h - 4., rgb(0x181a16));
-        draw_rectangle(x + 2., top + 2., (BOSS_HUD_W - 4.) * fraction.clamp(0., 1.), h - 4., fill);
-        if let Some(tex) = assets.ui.get(icon) { image(tex, x - 19., top - 10., 26., 26.); }
-        if let Some(t) = text { stroked(t, x + BOSS_HUD_W / 2., top + h / 2. - 1., 12., rgb(0xfff7e1), rgb(0x21160e), Align::Center); }
+        let (h, inset) = (12. * k, 2. * k);
+        draw_rectangle(x - 1., top - 1., w + 2., h + 2., rgb(0xd1ba8e));
+        draw_rectangle(x, top, w, h, rgb(0x281c15));
+        draw_rectangle(x + inset, top + inset, w - 2. * inset, h - 2. * inset, rgb(0x181a16));
+        draw_rectangle(x + inset, top + inset, (w - 2. * inset) * fraction.clamp(0., 1.), h - 2. * inset, fill);
+        if let Some(tex) = assets.ui.get(icon) { image(tex, x - 19. * k, top - 10. * k, 26. * k, 26. * k); }
+        if let Some(t) = text { stroked(t, x + w / 2., top + h / 2. - k, 12. * k, rgb(0xfff7e1), rgb(0x21160e), Align::Center); }
     };
     let percent = format!("{}%", (boss.hp_fraction * 100.).ceil() as u32);
-    meter(y + 30., boss.hp_fraction, rgb(0xed3455), "boss-boss", Some(&percent));
-    meter(y + 52., boss.time_fraction, rgb(TIMER_BLUE), "boss-clock", None);
+    meter(y + 30. * k, boss.hp_fraction, rgb(0xed3455), "boss-boss", Some(&percent));
+    meter(y + 52. * k, boss.time_fraction, rgb(TIMER_BLUE), "boss-clock", None);
 }
 /// Party-wide buff icons centred above the strip (`hero-buff-party`).
 fn party_row(assets: &Assets, m: &CombatModel, hits: &mut Vec<Hit>) {
@@ -285,7 +290,7 @@ pub fn panel(assets: &Assets, panel: &Panel, m: &CombatModel, hits: &mut Vec<Hit
     match panel {
         Panel::BossInfo => {
             let Some(boss) = &m.boss else { return };
-            let (x, y, w) = ((WIDTH - 250.) / 2., BOSS_HUD_TOP + 77., 250.);
+            let (x, y, w) = ((WIDTH - 250.) / 2., BOSS_HUD_TOP + 77. * BOSS_HUD_SCALE, 250.);
             let row_h = 31.;
             let h = 24. + row_h * boss.rows.len() as f32;
             draw_rectangle(x - 2., y - 2., w + 4., h + 4., rgb(0x302218));

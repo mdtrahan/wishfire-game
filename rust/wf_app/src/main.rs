@@ -277,8 +277,17 @@ async fn main() {
         }
         let action = controls.read(!locked);
         if action.restart {
-            scene.game.restart(Some(controls.seed as u32));
-            scene = match Scene::new(rows.clone(), Some(controls.seed as u32)) { Ok(scene) => scene, Err(error) => fatal(&mut portrait, "Combat host failed", &error).await };
+            // A restarted run starts from zero (owner 2026-11-05): every tracked save goes (Bag
+            // level, items, chapter progress, resources; a recovery snapshot is kept) and the
+            // fight begins again on the next seed.
+            match game::reset_saves() {
+                Ok(_) => {
+                    scene.game.session.dispose();
+                    scene = match Scene::new(rows.clone(), Some(controls.seed as u32)) { Ok(scene) => scene, Err(error) => fatal(&mut portrait, "Combat host failed", &error).await };
+                    ui.reset(); ui.boot(true);
+                }
+                Err(error) => ui.dev.status = error,
+            }
         }
         let dt = if action.step {
             SIM_DT

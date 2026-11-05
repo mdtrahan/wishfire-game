@@ -55,8 +55,7 @@ fn value(reward: Reward, b: PartyBuffs) -> Option<(&'static str, f32)> {
 }
 impl Rewards {
     pub fn ingest(&mut self, event: &Event, s: &Snapshot, previous: &Snapshot) {
-        self.drops.retain(|(_, born)| s.time - born < 0.5);
-        self.opens.retain(|(_, born)| s.time - born < 0.6);
+        self.expire(s.time);
         self.pickups.retain(|(_, born)| s.time - *born < 0.6);
         match *event {
             Event::ChestDropped { id } => self.drops.push((id, s.time)),
@@ -88,6 +87,26 @@ impl Rewards {
             }
             _ => {}
         }
+    }
+    /// The wave chest sends no events (the host only asks combat to drop it), so its landing
+    /// bounce and its opening sparkle are read off the snapshots: a chest that was not there
+    /// lands, and a chest that turns `Open` sparkles (owner 2026-11-05: the sparkle was missing).
+    pub fn observe(&mut self, s: &Snapshot, previous: &Snapshot) {
+        self.expire(s.time);
+        for chest in &s.chests {
+            let before = previous.chests.iter().find(|c| c.id == chest.id);
+            if before.is_none() && chest.age < 0.5 && !self.drops.iter().any(|(id, _)| *id == chest.id) {
+                self.drops.push((chest.id, s.time - chest.age as f64));
+            }
+            if chest.state == ChestState::Open && before.is_some_and(|c| c.state != ChestState::Open) && !self.opens.iter().any(|(pos, _)| *pos == chest.pos) {
+                self.opens.push((chest.pos, s.time - chest.state_age as f64));
+            }
+        }
+    }
+    /// A landing record lasts until the chest floats at full height (1 s), so the lift never jumps.
+    fn expire(&mut self, time: f64) {
+        self.drops.retain(|(_, born)| time - born < 1.);
+        self.opens.retain(|(_, born)| time - born < 0.6);
     }
     pub fn records(&self) -> usize {
         self.drops.len() + self.opens.len() + self.pickups.len()
@@ -307,6 +326,29 @@ pub fn buffs(assets: &Assets, s: &Snapshot, stats: &mut DrawStats) {
 #[cfg(test)]
 mod float_tests {
     use super::*;
+    #[test]
+    fn the_wave_chest_lands_and_sparkles_once_when_it_opens_without_any_event() {
+        let chest = |state, state_age, age| wf_combat::ChestView { id: 7, pos: wf_combat::Vec2::new(360., 520.), state, state_age, age, reward: None };
+        let base = crate::testing::sim().snapshot().clone();
+        let frame = |time: f64, chests: Vec<wf_combat::ChestView>| { let mut s = base.clone(); s.time = time; s.chests = chests; s };
+        let mut rewards = Rewards::default();
+        let empty = frame(10., vec![]);
+        let landed = frame(10.033, vec![chest(ChestState::Closed, 0.033, 0.033)]);
+        rewards.observe(&landed, &empty);
+        assert_eq!(rewards.drops.len(), 1, "a new chest lands with its bounce");
+        assert!((rewards.drops[0].1 - 10.).abs() < 0.001);
+        let opening = frame(12., vec![chest(ChestState::Opening, 0.5, 2.)]);
+        rewards.observe(&opening, &landed);
+        assert!(rewards.opens.is_empty(), "no sparkle before the lid opens");
+        let open = frame(12.1, vec![chest(ChestState::Open, 0.033, 2.1)]);
+        rewards.observe(&open, &opening);
+        assert_eq!(rewards.opens.len(), 1, "the sparkle plays when the chest opens");
+        let still = frame(12.2, vec![chest(ChestState::Open, 0.133, 2.2)]);
+        rewards.observe(&still, &open);
+        assert_eq!(rewards.opens.len(), 1, "once per opening");
+        rewards.observe(&frame(13., vec![chest(ChestState::Open, 0.933, 3.)]), &still);
+        assert!(rewards.opens.is_empty() && rewards.drops.is_empty(), "records end with their animations");
+    }
     #[test]
     fn chest_rises_smoothly_after_landing_then_bobs_within_its_band() {
         assert_eq!(float_lift(3., 1, 0.), 0.);

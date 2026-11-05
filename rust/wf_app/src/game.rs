@@ -18,7 +18,6 @@ pub struct Game {
     pub progression: CombatProgression,
     /// `onGearCollected` acknowledgements waiting for `record(gear:<id>)` on the next frame.
     gear_events: Rc<RefCell<Vec<String>>>,
-    pub session_id: u32,
     pub save_error: Option<String>,
     /// `createEquipmentStorage(...)`: the lamp/bag economy over the same browser storage.
     pub economy: EquipmentStorage,
@@ -72,20 +71,7 @@ impl Game {
         let _ = economy.sync(&mut session);
         let mut progression = CombatProgression::new(Box::new(LocalStorage), Box::new(platform::epoch_ms));
         progression.boot(&mut session, &mut economy);
-        Game { session, session_id, save_error, economy, progression, gear_events }
-    }
-    pub fn restart(&mut self, seed: Option<u32>) {
-        // A run starts from zero: the previous run's Bag contents and field orbs go with it.
-        let _ = self.economy.transact(&mut self.session, |next, _| { wf_meta::lamp::clear_run_loot(next); Ok(()) });
-        self.session.dispose();
-        let rows = self.session.raw_rows.clone();
-        let _ = platform::storage_remove(HERO_PROGRESS_SAVE_KEY);
-        let next = Game::new(rows, seed);
-        self.session = next.session;
-        self.economy = next.economy;
-        self.progression = next.progression;
-        self.gear_events = next.gear_events;
-        self.session_id += 1;
+        Game { session, save_error, economy, progression, gear_events }
     }
     // ---- Dev Tools (`ui/dev.rs`): developer changes to the saves and the live session ----
     /// `applyDeveloperLevel`: every saved hero at `level` with EXP 0 (the lamp's party EXP stays

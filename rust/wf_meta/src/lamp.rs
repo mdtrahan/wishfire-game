@@ -559,20 +559,6 @@ pub fn complete_bag_fill(data: &mut LampEconomy, expected_fills: f64) -> Result<
     data.lamp.bag_fills = Some(fills + 1.);
     Ok(cost)
 }
-/// A restarted run begins with an empty Bag and a clear field: stored and discarded items, the
-/// salvage pile, a held review item and every orb go. Equipped gear, currencies and Bag progress
-/// are not run state and stay.
-pub fn clear_run_loot(data: &mut LampEconomy) {
-    let stored: Vec<String> = data.lamp.pending.iter().chain(data.discarded()).cloned().collect();
-    data.items.retain(|i| !stored.contains(&i.instance_id));
-    data.lamp.pending.clear();
-    if data.lamp.discarded.is_some() { data.lamp.discarded = Some(Vec::new()); }
-    data.lamp.salvage = Salvage::default();
-    if data.review_hold().is_some() { data.set_review_hold(None); }
-    if data.lamp.disposal_requested.is_some() { data.set_disposal_requested(Vec::new()); }
-    if data.lamp.emissions.is_some() { data.set_emissions(Vec::new()); }
-    if data.lamp.orbs.is_some() { data.set_orbs(Vec::new()); }
-}
 /// `markLampGuide(data, step)`.
 pub fn mark_lamp_guide(data: &mut LampEconomy, step: &str) -> Result<u32, String> {
     let bit = match step { "storage" => GUIDE_STORAGE, "comparison" => GUIDE_COMPARISON, "preview" => GUIDE_PREVIEW, _ => return Err("Unknown lamp guide step.".into()) };

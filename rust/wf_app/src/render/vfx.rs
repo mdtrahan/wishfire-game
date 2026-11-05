@@ -481,6 +481,7 @@ impl Presentation {
                 }
             }
         }
+        self.rewards.observe(&event_frame, &event_previous);
         for event in &events {
             self.rewards.ingest(event, s, previous);
             self.resurrect.ingest(event, s, previous);
