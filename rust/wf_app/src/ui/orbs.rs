@@ -1,5 +1,5 @@
-//! Equipment orbs on the battlefield (ORKA-63bf.20/.21). A defeated enemy drops an orb one time
-//! in ten: an equipment item rolled and saved by `wf_host::equipment` (`lamp.orbs`), coloured by
+//! Equipment orbs on the battlefield (ORKA-63bf.20/.21). A defeated enemy drops an orb about
+//! one time in eight (`ORB_DROP_CHANCE`, 13.3%): an equipment item rolled and saved by `wf_host::equipment` (`lamp.orbs`), coloured by
 //! its rarity. An orb can be picked up once its subwave has completed, by a living hero whose
 //! feet come within the pickup circle (a diameter of three hero heights, in world units). The
 //! item is judged at that moment (owner 2026-11-05, ORKA-63bf.34): one that raises a hero's CP is
@@ -390,14 +390,15 @@ pub(crate) mod tests {
         }
         let drops = economy.data().unwrap().lamp.sequence as usize;
         assert!(kills >= 150, "the run defeats plenty of enemies ({kills})");
-        assert!(drops >= kills / 25 && drops <= kills / 5, "about a tenth of {kills} kills drop an orb ({drops})");
+        assert!(drops >= kills / 25 && drops <= kills / 5, "about 13% of {kills} kills drop an orb ({drops})");
         assert!(picked >= 1, "heroes walked onto some orbs ({picked} of {drops})");
         assert!(swept >= 1, "the wave chest swept in orbs no hero walked onto ({swept} of {picked})");
         println!("orbs: {kills} kills, {drops} drops, {picked} collected, {swept} of them swept at a wave chest, {} left on the field", field.resting());
     }
     #[test]
-    fn one_kill_in_ten_drops_an_orb() {
-        // The frequency and the dry spells of the 10% roll, over a million kills.
+    fn the_equipment_roll_drops_at_its_rate_and_its_dry_spells_are_the_expected_ones() {
+        // The frequency and the dry spells of the 13.3% roll (10% before ORKA-63bf.43), over a
+        // million kills.
         let mut field = OrbField { seed: 0x9E37_79B9, ..Default::default() };
         let (mut drops, mut dry, mut longest, mut over_30, mut over_50) = (0u32, 0u32, 0u32, 0u32, 0u32);
         let kills = 1_000_000;
@@ -405,14 +406,18 @@ pub(crate) mod tests {
             if field.rolls_drop() == Some(FieldDrop::Equipment) { drops += 1; if dry >= 30 { over_30 += 1; } if dry >= 50 { over_50 += 1; } dry = 0; } else { dry += 1; longest = longest.max(dry); }
         }
         let rate = drops as f64 / kills as f64;
-        assert!((rate - 0.1).abs() < 0.002, "drop rate {rate}");
-        // A 10% roll goes 30 kills without a drop about 4.2% of the time, 50 kills about 0.5%.
+        assert!((rate - ORB_DROP_CHANCE as f64).abs() < 0.002, "drop rate {rate}");
+        // Kills in a row without a drop: 30 or more after 1.4% of drops (4.2% at the old 10%),
+        // 50 or more after 0.08% (0.5%).
         let (p30, p50) = (over_30 as f64 / drops as f64, over_50 as f64 / drops as f64);
-        assert!((p30 - 0.9f64.powi(30)).abs() < 0.005 && (p50 - 0.9f64.powi(50)).abs() < 0.003, "dry spells: {p30} over 30, {p50} over 50, longest {longest}");
+        let miss = 1. - ORB_DROP_CHANCE as f64;
+        assert!((p30 - miss.powi(30)).abs() < 0.003 && (p50 - miss.powi(50)).abs() < 0.001, "dry spells: {p30} over 30, {p50} over 50, longest {longest}");
+        assert!((miss.powi(30) - 0.0138).abs() < 0.0005 && (miss.powi(50) - 0.0008).abs() < 0.0001 && (0.9f64.powi(30) - 0.0424).abs() < 0.0005);
+        println!("equipment roll {rate:.4}: {:.2}% of drops follow 30+ dry kills, {:.3}% follow 50+, longest dry spell {longest}", p30 * 100., p50 * 100.);
     }
     /// Owner 2026-11-05 (temporary): Gold, Essence and single hero tickets drop in low quantities.
     #[test]
-    fn kills_also_drop_a_little_gold_essence_or_one_ticket_and_equipment_keeps_its_tenth() {
+    fn kills_also_drop_a_little_gold_essence_or_one_ticket_beside_the_equipment_roll() {
         let mut run = crate::testing::HostRun::new(1);
         for _ in 0..600 { if run.snapshot().actors.iter().any(|a| a.team == Team::Enemy) { break; } run.step(); }
         let s = run.snapshot().clone();
@@ -434,7 +439,7 @@ pub(crate) mod tests {
         }
         let rate = |n: u32| n as f64 / kills as f64;
         let ticket_total: u32 = tickets.values().sum();
-        assert!((rate(orbs) - 0.10).abs() < 0.003 && (rate(gold) - 0.05).abs() < 0.003 && (rate(essence) - 0.04).abs() < 0.003 && (rate(ticket_total) - 0.03).abs() < 0.003, "orbs {orbs} gold {gold} essence {essence} tickets {ticket_total}");
+        assert!((rate(orbs) - ORB_DROP_CHANCE as f64).abs() < 0.003 && (rate(gold) - 0.05).abs() < 0.003 && (rate(essence) - 0.04).abs() < 0.003 && (rate(ticket_total) - 0.03).abs() < 0.003, "orbs {orbs} gold {gold} essence {essence} tickets {ticket_total}");
         // One ticket at a time, spread evenly across all four heroes.
         assert_eq!(tickets.len(), 4);
         for (hero, count) in &tickets { assert!((*count as f64 / ticket_total as f64 - 0.25).abs() < 0.03, "{hero}: {count} of {ticket_total}"); }

@@ -26,8 +26,10 @@ pub const GEAR_STATS: [&str; 5] = ["ATK", "DEF", "MAG", "RES", "HP"];
 /// full-Bag party once left 2,488, a 564 KB save rewritten on every action). Kills keep dropping
 /// past it: each new orb takes the place of the oldest orb of the lowest rarity on the field.
 pub const ORB_LIMIT: usize = 40;
-/// Chance that a defeated enemy drops an equipment orb (owner 2026-11-04: a tenth of every kill).
-pub const ORB_DROP_CHANCE: f32 = 0.1;
+/// Chance that a defeated enemy drops an equipment orb. Owner 2026-11-04: a tenth of every
+/// kill; owner 2026-11-05 (ORKA-63bf.43): a third more, 13.3%, because gear came in too slowly
+/// once orbs were judged at pickup.
+pub const ORB_DROP_CHANCE: f32 = 0.133;
 // Field drops besides equipment (owner 2026-11-05; temporary, until a hero EXP system exists):
 // a kill that leaves no equipment orb may leave a little Gold, a little Essence or one hero
 // ticket instead. One roll per kill decides; the amounts are Fable's first numbers.

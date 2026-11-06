@@ -305,14 +305,15 @@ fn a_full_bag_bar_banks_a_fill_and_leaves_the_bag_level_alone() {
 #[test]
 fn a_kill_drops_equipment_gold_essence_a_ticket_or_nothing() {
     use wf_meta::lamp::{field_drop, grant_essence, FieldDrop, LampEconomy, ESSENCE_DROP_CHANCE, GOLD_DROP_CHANCE, ORB_DROP_CHANCE, TICKET_DROP_CHANCE};
-    // Equipment keeps its tenth; the three resources share the next 12%, most kills drop nothing.
+    // Equipment takes 13.3%; the three resources share the next 12%, most kills drop nothing.
     assert_eq!((GOLD_DROP_CHANCE, ESSENCE_DROP_CHANCE, TICKET_DROP_CHANCE), (0.05, 0.04, 0.03));
     let mut counts = [0u32; 5];
     for i in 0..10_000 {
         let roll = (i as f32 + 0.5) / 10_000.;
         counts[match field_drop(roll, ORB_DROP_CHANCE) { Some(FieldDrop::Equipment) => 0, Some(FieldDrop::Gold) => 1, Some(FieldDrop::Essence) => 2, Some(FieldDrop::Ticket) => 3, None => 4 }] += 1;
     }
-    assert_eq!(counts, [1000, 500, 400, 300, 7800]);
+    assert_eq!(ORB_DROP_CHANCE, 0.133);
+    assert_eq!(counts, [1330, 500, 400, 300, 7470]);
     // Dev Tools' equipment rate moves the equipment share only.
     assert_eq!(field_drop(0.99, 1.), Some(FieldDrop::Equipment));
     assert_eq!((field_drop(0.0, 0.), field_drop(0.049, 0.), field_drop(0.06, 0.), field_drop(0.1, 0.), field_drop(0.125, 0.)), (Some(FieldDrop::Gold), Some(FieldDrop::Gold), Some(FieldDrop::Essence), Some(FieldDrop::Ticket), None));
