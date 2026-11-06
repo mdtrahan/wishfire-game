@@ -5,9 +5,14 @@ use crate::{tuning::*, *};
 
 /// Hondo with a full bar and sturdy stats, and Goblocs on his line at the given x offsets.
 fn scene(offsets: &[f32], hp: f32) -> (Sim, u32, Vec<u32>) {
+    let placed: Vec<(f32, f32)> = offsets.iter().map(|dx| (*dx, 0.)).collect();
+    scene_at(&placed, hp)
+}
+/// The same, with each Gobloc at an (x, y) offset from Hondo.
+fn scene_at(offsets: &[(f32, f32)], hp: f32) -> (Sim, u32, Vec<u32>) {
     let mut s = Sim::new(SimConfig::default());
     let hondo = s.spawn_actor(Archetype::Hondo, Vec2::new(480., 800.), HERO_STATS[1]);
-    let foes: Vec<u32> = offsets.iter().map(|dx| s.spawn_actor(Archetype::Gobloc, Vec2::new(480. + dx, 800.), stats(Archetype::Gobloc))).collect();
+    let foes: Vec<u32> = offsets.iter().map(|(dx, dy)| s.spawn_actor(Archetype::Gobloc, Vec2::new(480. + dx, 800. + dy), stats(Archetype::Gobloc))).collect();
     for a in &mut s.actors { a.state(ActorState::Idle, 0., 0.); }
     for id in &foes { let i = s.actor_index(*id).unwrap(); s.actors[i].view.max_hp = hp; s.actors[i].view.hp = hp; }
     let h = s.actor_index(hondo).unwrap();
@@ -97,4 +102,52 @@ fn a_full_burst_still_drains_the_whole_bar_and_ends_with_split() {
     assert!(ended >= COMBO_SECONDS - 0.2, "it ran the whole {COMBO_SECONDS} s drain: {ended} s");
     assert!(strikes >= 3 && split, "{strikes} more Shadow strikes, Split: {split}");
     assert!(lowest < 0.02, "a burst that ran to its end used the whole bar: {lowest}");
+}
+
+/// Shadow strikes Hondo landed on each foe, in foe order, until the burst ends; foes are held
+/// in place so only the burst's own rules decide who is struck.
+fn strikes_per_foe(s: &mut Sim, id: u32, foes: &[u32], sturdy: bool) -> (Vec<u32>, f32) {
+    let marks: Vec<(u32, Vec2)> = foes.iter().map(|f| (*f, s.actors[s.actor_index(*f).unwrap()].view.pos)).collect();
+    let mut hits = vec![0u32; foes.len()];
+    for _ in 0..400 {
+        for (foe, pos) in &marks {
+            if let Some(i) = s.actor_index(*foe) { if s.actors[i].alive() { s.actors[i].view.pos = *pos; if sturdy { s.actors[i].view.hp = 1e7; } } }
+        }
+        s.step();
+        for e in s.drain_events() {
+            if let Event::Blink { hero, target, .. } = e { if hero == id { if let Some(k) = foes.iter().position(|f| *f == target) { hits[k] += 1; } } }
+        }
+        if hondo(s, id).combo_phase == 0 && hits.iter().sum::<u32>() > 0 { break; }
+    }
+    (hits, hondo(s, id).view.meter)
+}
+
+#[test]
+fn a_burst_strikes_every_foe_in_its_reach_even_when_they_are_off_hondos_line() {
+    // Owner 2026-11-06 (ORKA-63bf.50): one foe on his line to open on, three more well off it
+    // (steeper than the 18 degree dash line), all inside the burst's 300-unit reach. Each
+    // falls to one strike, so the burst must go on to the next one while the bar lasts.
+    let (mut s, id, foes) = scene_at(&[(70., 0.), (40., 150.), (-120., -140.), (-60., 190.)], 1.);
+    let (hits, kept) = strikes_per_foe(&mut s, id, &foes, false);
+    assert_eq!(hits, vec![1, 1, 1, 1], "every foe in reach was struck once");
+    assert!(foes.iter().all(|f| s.actor_index(*f).is_none_or(|i| !s.actors[i].alive())), "and fell");
+    // Four strikes: the opening one is free, each later one costs its time on the 4 s bar.
+    assert!(kept > 0.3 && kept < 0.6, "the bar paid for three follow-up strikes and kept the rest: {kept}");
+}
+
+#[test]
+fn a_full_burst_spreads_its_strikes_over_sturdy_foes_off_the_line() {
+    let (mut s, id, foes) = scene_at(&[(70., 0.), (40., 150.), (-120., -140.)], 1e7);
+    let (hits, kept) = strikes_per_foe(&mut s, id, &foes, true);
+    assert!(hits.iter().all(|h| *h >= 1), "each foe was struck: {hits:?}");
+    assert!(hits.iter().sum::<u32>() >= 5, "the whole bar was spent on strikes: {hits:?}");
+    assert!(kept < 0.02, "a burst with targets to the end uses the whole bar: {kept}");
+}
+
+#[test]
+fn the_opening_strike_still_needs_hondos_own_line() {
+    // Only an off-line foe: no burst starts from here; he lines up first (the AI's job).
+    let (s, id, foes) = scene_at(&[(40., 150.)], 1e7);
+    let (h, f) = (s.actor_index(id).unwrap(), s.actor_index(foes[0]).unwrap());
+    assert!(s.combo_landing(h, f, hondo(&s, id).view.pos).is_none());
 }

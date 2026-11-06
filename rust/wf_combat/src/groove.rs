@@ -312,12 +312,31 @@ impl Sim {
             .active
             .as_ref()
             .is_some_and(|s| s.performer_running(a.view.id));
-        if !staged && !shadow_line_aligned(a.view.pos, e.view.pos) {
+        // The opening Shadow is a dash along Hondo's own line. Once the burst is running he
+        // strikes every foe in its reach wherever they stand (owner 2026-11-06, ORKA-63bf.50):
+        // a follow-up hop needs no line and may land anywhere safe around its target.
+        let chained = !staged && a.combo_phase == 2;
+        if !staged && !chained && !shadow_line_aligned(a.view.pos, e.view.pos) {
             return None;
         }
         let angle = libm::atan2f(a.view.pos.y - e.view.pos.y, a.view.pos.x - e.view.pos.x);
         let radius = a.view.radius + e.view.radius + a.committed_reach() * 0.6;
-        let turns: &[f32] = if staged {
+        let turns: &[f32] = if chained {
+            // Straight through the target first, then fanning out to either flank.
+            &[
+                core::f32::consts::PI,
+                core::f32::consts::PI - TAU / 24.,
+                core::f32::consts::PI + TAU / 24.,
+                core::f32::consts::PI - TAU / 12.,
+                core::f32::consts::PI + TAU / 12.,
+                core::f32::consts::PI - TAU / 8.,
+                core::f32::consts::PI + TAU / 8.,
+                core::f32::consts::PI - TAU / 6.,
+                core::f32::consts::PI + TAU / 6.,
+                core::f32::consts::PI - TAU / 4.,
+                core::f32::consts::PI + TAU / 4.,
+            ]
+        } else if staged {
             &[
                 COMBO_TURN,
                 COMBO_TURN - TAU / 24.,
@@ -338,6 +357,7 @@ impl Sim {
         for &turn in turns {
             let p = e.view.pos + crate::math::direction(angle + turn) * radius;
             if !staged
+                && !chained
                 && (!shadow_line_aligned(p, e.view.pos)
                     || !shadow_line_aligned(a.view.pos, p)
                     || (p.x - e.view.pos.x) * (a.view.pos.x - e.view.pos.x) >= 0.)
@@ -369,7 +389,9 @@ impl Sim {
     }
     pub fn combo_target(&self, i: usize) -> Option<usize> {
         let a = &self.actors[i];
-        // Stable ID order, with the previous recipient considered last.
+        // Round robin in stable ID order, starting after the previous recipient, so every foe
+        // in reach takes its turn before anyone is struck again (owner 2026-11-06,
+        // ORKA-63bf.50; it used to alternate between the two lowest IDs).
         (0..self.actors.len())
             .filter(|&t| {
                 self.can_engage(i, t)
@@ -377,10 +399,8 @@ impl Sim {
                     && self.combo_landing(i, t, a.combo_origin).is_some()
             })
             .min_by_key(|&t| {
-                (
-                    Some(self.actors[t].view.id) == a.combo_previous,
-                    self.actors[t].view.id,
-                )
+                let id = self.actors[t].view.id;
+                (a.combo_previous.is_some_and(|previous| id <= previous), id)
             })
     }
     /// Exact body-edge weapon reach matches melee admission without an extra margin.
