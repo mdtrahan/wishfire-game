@@ -435,6 +435,8 @@ impl Sim {
                 let bars = match kind {
                     Archetype::Hondo => 0.,
                     Archetype::Kaja if !pulse => 2.,
+                    // Arcane Pulse is paid by its totem's drain, not by a stock at the cast.
+                    Archetype::Kaja => 0.,
                     _ => 1.,
                 };
                 // Combo displays its remaining drain after the one-bar commitment.

@@ -28,6 +28,8 @@ impl Sim {
     }
     pub fn groove_timers(&mut self) {
         for i in 0..self.actors.len() {
+            // A standing Arcane Pulse totem is paid from the bar: no refill, no other special.
+            let channelling = self.arcane_totem(self.actors[i].view.id);
             let a = &mut self.actors[i];
             let passive = match a.view.archetype {
                 Archetype::Fara if a.alive() => Some((RAGE_FILL_SECONDS, RAGE_STOCK_CAP)),
@@ -35,7 +37,7 @@ impl Sim {
                     Some((COMBO_FILL_SECONDS, 1.))
                 }
                 Archetype::Runa if a.alive() => Some((SUPER_FILL_SECONDS, 3.)),
-                Archetype::Kaja => Some((POWER_STOCK_SECONDS, 3.)),
+                Archetype::Kaja if !channelling => Some((POWER_STOCK_SECONDS, POWER_STOCK_CAP)),
                 _ => None,
             };
             if let Some((seconds, cap)) = passive {
@@ -55,7 +57,7 @@ impl Sim {
                 && a.view.meter + 0.00001 >= 1.
                 && match a.view.archetype {
                     Archetype::Runa => true,
-                    Archetype::Kaja => a.power_choice != Some(true),
+                    Archetype::Kaja => a.power_choice != Some(true) && !channelling,
                     _ => false,
                 };
             let eligible = ready
@@ -251,7 +253,7 @@ impl Sim {
                     return true;
                 }
             }
-            Archetype::Kaja => {
+            Archetype::Kaja if !self.arcane_totem(a.view.id) => {
                 // Owner 2026-10-27: hold every stock until a foe has fully formed.
                 let enemies = self.actors.iter().any(|e| {
                     e.alive() && e.view.team == Team::Enemy && e.view.state != ActorState::Spawn

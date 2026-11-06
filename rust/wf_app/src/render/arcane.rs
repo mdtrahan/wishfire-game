@@ -1,4 +1,7 @@
 //! Approved v4c-f: five immutable projected paths; every arrival is cosmetic.
+//! Owner 2026-11-05 (ORKA-63bf.41): the floor ring of each arrival is as wide as the blast
+//! really reached, and the burst's light stays as a totem (the sim's `ArcaneTotem` hazard): the
+//! arrival's light, lines and floor ring keep looping there until the sim dissolves it.
 use super::vfx3d::*;
 use crate::{
     assets::{Assets, DrawStats},
@@ -9,6 +12,13 @@ use wf_combat::api::{Event, HazardKind, HazardPhase, Shape, Skill, Snapshot, Vec
 pub const IMPACT_ART: &str = "arcane-pulse-impact"; // Existing read-only asset availability probe.
 pub const BURST_SECONDS: f64 = 1.50;
 const CAST_SECONDS: f64 = 0.50;
+/// One arrival flash; the totem loops it.
+const ARRIVAL_SECONDS: f32 = 0.44;
+const TOTEM_FADE_IN: f32 = 0.25;
+const TOTEM_DISSOLVE: f32 = 0.45;
+/// The arrival ring starts at this share of the blast's radius and grows to all of it (the
+/// first design grew from 17 to 27 px).
+const RING_START: f32 = 17. / 27.;
 #[derive(Clone)]
 struct Beam {
     path: usize,
@@ -109,10 +119,29 @@ struct Burst {
     source: WorldPos,
     model: Model,
 }
+/// The light a pulse leaves standing: where, how wide (world units), and when the sim ended it.
+struct Totem {
+    id: u32,
+    origin: WorldPos,
+    radius: f32,
+    born: f64,
+    ended: Option<f64>,
+    angle: f32,
+}
 #[derive(Default)]
 pub struct ArcanePulse {
     casts: Vec<Cast>,
     bursts: Vec<Burst>,
+    totems: Vec<Totem>,
+}
+/// World radius of a pulse's blast: the distance it travelled from Kaja, never less than the
+/// drawn burst (`wf_combat` resolves the hits with the same rule).
+fn blast_radius(source: WorldPos, origin: WorldPos) -> f32 {
+    source.distance(origin).max(wf_combat::tuning::ARCANE_PULSE_RADIUS)
+}
+/// A floor circle of `radius` world units as screen radii.
+fn floor_radii(camera: &WorldCamera, radius: f32) -> Vec2 {
+    vec2(radius * camera.zoom, radius * camera.zoom * crate::camera::SQUASH)
 }
 impl ArcanePulse {
     pub(super) fn take_combo(&mut self, from: &mut Self, delta: f64) {
@@ -136,6 +165,12 @@ impl ArcanePulse {
         for x in &mut self.bursts {
             x.born += delta;
         }
+        for x in &mut self.totems {
+            x.born += delta;
+            if let Some(ended) = &mut x.ended {
+                *ended += delta;
+            }
+        }
     }
     pub fn ingest(&mut self, events: &[Event], s: &Snapshot, previous: &Snapshot) {
         self.casts.retain(|x| {
@@ -148,6 +183,35 @@ impl ArcanePulse {
         });
         self.bursts
             .retain(|x| s.time - x.born < (x.model.end - 0.9) as f64);
+        // Totems follow the sim's hazards; one that left the snapshot dissolves here.
+        for h in s.hazards.iter().filter(|h| h.kind == HazardKind::ArcaneTotem) {
+            let Shape::Circle { radius } = h.shape else { continue };
+            match self.totems.iter_mut().find(|t| t.id == h.id) {
+                Some(t) => {
+                    t.origin = h.origin;
+                    t.radius = radius;
+                    if h.phase == HazardPhase::Resolved && t.ended.is_none() {
+                        t.ended = Some(s.time);
+                    }
+                }
+                None if h.phase != HazardPhase::Resolved => self.totems.push(Totem {
+                    id: h.id,
+                    origin: h.origin,
+                    radius,
+                    born: s.time,
+                    ended: None,
+                    angle: Rng(seed(h.id, 0.)).next() * TAU,
+                }),
+                None => {}
+            }
+        }
+        for t in &mut self.totems {
+            if t.ended.is_none() && !s.hazards.iter().any(|h| h.id == t.id) {
+                t.ended = Some(s.time);
+            }
+        }
+        self.totems
+            .retain(|t| t.ended.is_none_or(|ended| s.time - ended < TOTEM_DISSOLVE as f64));
         for e in events {
             match *e {
                 Event::SkillStarted {
@@ -213,6 +277,11 @@ impl ArcanePulse {
     pub fn records(&self) -> usize {
         self.casts.len() + self.bursts.len()
     }
+    /// Standing totems as (hazard id, world radius, opacity 0..1) for tests and probes.
+    #[cfg(any(target_arch = "wasm32", test))]
+    pub fn totems(&self, time: f64) -> Vec<(u32, f32, f32)> {
+        self.totems.iter().map(|t| (t.id, t.radius, t.opacity(time))).collect()
+    }
     #[cfg(any(target_arch = "wasm32", test))]
     pub fn probe(&self, s: &Snapshot) -> [f32; 4] {
         [
@@ -268,6 +337,7 @@ impl ArcanePulse {
                 h.progress * 0.9,
                 z,
                 back,
+                floor_radii(camera, blast_radius(source, h.origin)),
             );
         }
         for b in &self.bursts {
@@ -279,7 +349,11 @@ impl ArcanePulse {
                 0.9 + (s.time - b.born) as f32,
                 z,
                 back,
+                floor_radii(camera, blast_radius(b.source, b.origin)),
             );
+        }
+        for t in &self.totems {
+            draw_totem(&mut f, t, camera, s.time, z, back);
         }
         f.draw(stats);
         if !back {
@@ -338,7 +412,52 @@ fn along(b: &Beam, a: Vec2, end: Vec2, t: f32) -> Vec2 {
         path(b, a, end, 0.6).lerp(end, 0.25 * q + 0.75 * q * q)
     }
 }
-fn draw_model(f: &mut Frame, model: &Model, hand: Vec2, foot: Vec2, time: f32, z: f32, back: bool) {
+impl Totem {
+    fn opacity(&self, time: f64) -> f32 {
+        let appear = ((time - self.born) as f32 / TOTEM_FADE_IN).clamp(0., 1.);
+        appear * self.ended.map_or(1., |ended| 1. - ((time - ended) as f32 / TOTEM_DISSOLVE).clamp(0., 1.))
+    }
+}
+/// The standing light: the arrival's flash looped. On the floor (`back`), the blast's own
+/// circle with a ripple running out to it; above it, the light ball with its radial lines.
+fn draw_totem(f: &mut Frame, t: &Totem, camera: &WorldCamera, time: f64, z: f32, back: bool) {
+    let opacity = t.opacity(time);
+    if opacity <= 0. {
+        return;
+    }
+    let age = (time - t.born) as f32;
+    let foot = camera.project(t.origin);
+    let reach = floor_radii(camera, t.radius);
+    if back {
+        let breathe = 0.8 + 0.2 * (age * TAU / (ARRIVAL_SECONDS * 4.)).sin();
+        f.ring(foot, reach, 1.1 * z, 0xffd83c, opacity * 0.6 * breathe, 72);
+        let q = (age / (ARRIVAL_SECONDS * 2.)).fract();
+        f.ring(foot, reach * (RING_START + (1. - RING_START) * q), 1.1 * z, 0xfff4a0, opacity * 0.55 * (1. - q).powf(1.7), 72);
+        return;
+    }
+    let hit = foot - vec2(0., 58. * 0.48 * z);
+    // A steady core so the ball never goes dark between flashes.
+    f.glow(hit, 20. * z, 0xffc92e, opacity * 0.45);
+    f.glow(hit, 8. * z, 0xffffff, opacity * 1.1);
+    // Two arrival flashes half a loop apart.
+    for (k, phase) in [0., 0.5].into_iter().enumerate() {
+        let q = (age / ARRIVAL_SECONDS + phase).fract();
+        let fade = (1. - q).powf(1.7) * opacity;
+        for (size, col, alpha) in [(28. + 15. * q, 0xffc92e, 0.6), (15. + 9. * q, 0xfff1b4, 1.2), (7. + 4. * q, 0xffffff, 1.6)] {
+            f.glow(hit, size * z, col, fade * alpha);
+        }
+        let lines = 12;
+        for j in 0..lines {
+            let a = t.angle + k as f32 * 0.26 + j as f32 / lines as f32 * TAU;
+            let v = vec2(a.cos(), a.sin());
+            let inner = (5. + 18. * q) * z;
+            let outer = inner + (23. + 10. * (j as f32 * 4.3).sin()) * (1. - q) * z;
+            f.line(hit + v * inner, hit + v * outer, 1.05 * z, 0xffe36a, fade);
+        }
+    }
+}
+/// `reach`: the blast's floor circle as screen radii; each arrival's ring grows to it.
+fn draw_model(f: &mut Frame, model: &Model, hand: Vec2, foot: Vec2, time: f32, z: f32, back: bool, reach: Vec2) {
     let hit = foot - vec2(0., 58. * 0.48 * z);
     record(
         0,
@@ -465,21 +584,15 @@ fn draw_model(f: &mut Frame, model: &Model, hand: Vec2, foot: Vec2, time: f32, z
         let q = a / 0.44;
         let fade = (1. - q).powf(1.7);
         let g = if b.arrival == latest { 1.12 } else { 1. };
-        let rx = (17. + 10. * q) * z * g;
-        f.ring(
-            foot,
-            vec2(rx, rx * 0.47),
-            1.1 * z,
-            0xffd83c,
-            fade * 0.85,
-            40,
-        );
+        // The floor ring is the blast's own circle: it grows to the radius the hits reach.
+        let ring = reach * (RING_START + (1. - RING_START) * q) * g;
+        f.ring(foot, ring, 1.1 * z, 0xffd83c, fade * 0.85, 72);
         for j in 0..4 {
             let a = j as f32 * TAU / 4.;
             let v = vec2(a.cos(), a.sin());
             f.line(
-                foot + v * vec2(rx - 3. * z, rx * 0.47 - 2. * z),
-                foot + v * vec2(rx + 4. * z, rx * 0.47 + 4. * z),
+                foot + v * (ring - vec2(3., 2.) * z),
+                foot + v * (ring + vec2(4., 4.) * z),
                 1.1 * z,
                 0xfff4a0,
                 fade,
@@ -532,6 +645,47 @@ mod tests {
             );
             assert!(m.end <= 2.39001);
         }
+    }
+    /// Owner 2026-11-05 (ORKA-63bf.41): the standing light follows the sim's totem hazard, keeps
+    /// the radius the blast reached, and dissolves when the sim ends it; it never holds a
+    /// Skill Spotlight open.
+    #[test]
+    fn the_totem_follows_its_hazard_at_the_blast_radius_and_dissolves_when_it_ends() {
+        use wf_combat::{FillMode, HazardView, Team};
+        let mut s = crate::testing::sim().snapshot().clone();
+        let caster = s.actors[3].id;
+        let origin = s.actors[0].pos;
+        let totem = |phase| HazardView { id: 77, kind: HazardKind::ArcaneTotem, team: Team::Hero, hostile: true, shape: Shape::Circle { radius: 200. }, origin,
+            dir: WorldPos::new(1., 0.), fill: FillMode::Loop, phase, progress: 0., width_scale: 1., owner: caster, tier: 0 };
+        let mut pulse = ArcanePulse::default();
+        s.hazards.push(totem(HazardPhase::Active));
+        pulse.ingest(&[], &s, &s);
+        assert_eq!(pulse.totems(s.time), [(77, 200., 0.)], "it fades in from nothing");
+        assert!(!pulse.busy(s.time) && pulse.records() == 0, "a standing totem is not a pending burst");
+        // It loops for as long as the hazard stands: still whole after 8 s.
+        for _ in 0..240 { s.time += 1. / 30.; pulse.ingest(&[], &s, &s); }
+        assert_eq!(pulse.totems(s.time), [(77, 200., 1.)]);
+        assert!(!pulse.busy(s.time));
+        // The floor ring is the blast's circle: 200 world units, squashed like the floor.
+        let camera = WorldCamera::new(&s);
+        let reach = floor_radii(&camera, 200.);
+        assert_eq!((reach.x, reach.y), (200. * camera.zoom, 200. * camera.zoom * crate::camera::SQUASH));
+        assert_eq!(blast_radius(WorldPos::new(0., 0.), WorldPos::new(0., 200.)), 200.);
+        assert_eq!(blast_radius(WorldPos::new(0., 0.), WorldPos::new(0., 40.)), wf_combat::tuning::ARCANE_PULSE_RADIUS, "never smaller than the drawn burst");
+        // The sim dissolves it: it fades over TOTEM_DISSOLVE and is forgotten.
+        s.hazards.retain(|h| h.id != 77);
+        pulse.ingest(&[], &s, &s);
+        s.time += TOTEM_DISSOLVE as f64 / 2.;
+        pulse.ingest(&[], &s, &s);
+        let fading = pulse.totems(s.time);
+        assert!(fading.len() == 1 && (fading[0].2 - 0.5).abs() < 0.02, "half dissolved: {fading:?}");
+        s.time += TOTEM_DISSOLVE as f64;
+        pulse.ingest(&[], &s, &s);
+        assert!(pulse.totems(s.time).is_empty());
+        // A hazard that arrives already resolved leaves nothing.
+        s.hazards.push(totem(HazardPhase::Resolved));
+        pulse.ingest(&[], &s, &s);
+        assert!(pulse.totems(s.time).is_empty());
     }
     #[test]
     fn models_replay_and_paths_ignore_count() {

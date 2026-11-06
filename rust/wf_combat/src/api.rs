@@ -266,6 +266,9 @@ pub enum HazardKind {
     BubblePop,
     /// Kaja's Arcane Pulse: one-shot arcane burst on her target's position (enemies only).
     ArcanePulse,
+    /// The light totem an Arcane Pulse leaves at its blast centre (owner 2026-11-05): a circle of
+    /// the blast's radius that ticks enemies inside each second while Kaja's special bar drains.
+    ArcaneTotem,
     /// Fara's Ground Pound: one-shot Line from Fara toward her target; the eruption travels
     /// along it (Xenogears reference). Enemies only.
     GroundPound,
@@ -691,7 +694,7 @@ impl Archetype {
 impl HazardKind {
     pub fn damage_channel(self) -> DamageChannel {
         match self {
-            Self::BubblePop | Self::FazePool | Self::ArcanePulse | Self::KajaAura | Self::LizardoDrop => DamageChannel::Magic,
+            Self::BubblePop | Self::FazePool | Self::ArcanePulse | Self::ArcaneTotem | Self::KajaAura | Self::LizardoDrop => DamageChannel::Magic,
             _ => DamageChannel::Physical,
         }
     }

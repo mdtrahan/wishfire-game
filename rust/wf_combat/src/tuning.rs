@@ -567,6 +567,19 @@ pub const ARCANE_PULSE_POTENCY: f32 = 2.2;
 pub const ARCANE_PULSE_RANGE_NEAR: f32 = 60.;
 pub const ARCANE_PULSE_RANGE_FAR: f32 = 235.;
 pub const ARCANE_PULSE_RANGE_MAX_MULT: f32 = 2.15;
+// ORKA-63bf.41 (owner, 2026-11-05): Arcane Pulse is a channelled spell. After the blast a light
+// totem stays at the blast centre, covering the blast's own radius. It ticks enemies standing
+// inside it with the Faze pool's math (a pulse each second, 35% of Kaja's MAG) as Arcane damage,
+// and it drains Kaja's special bar instead of the cast costing a stock: a full 3-stock bar lasts
+// 8 s. It dissolves when the bar is empty, when Kaja falls, or after 10 s at the latest; Kaja's
+// bar does not refill and he casts no other special while it stands. One totem at a time.
+pub const ARCANE_TOTEM_MAX_SECONDS: f32 = 10.;
+pub const ARCANE_TOTEM_FULL_BAR_SECONDS: f32 = 8.;
+/// Stocks drained per combat second (0.375: a full bar in 8 s, one stock in 2.67 s).
+pub const ARCANE_TOTEM_DRAIN: f32 = POWER_STOCK_CAP / ARCANE_TOTEM_FULL_BAR_SECONDS;
+pub const ARCANE_TOTEM_PULSE: f32 = FAZE_PULSE;
+pub const ARCANE_TOTEM_POTENCY: f32 = FAZE_POTENCY;
+pub const POWER_STOCK_CAP: f32 = 3.;
 
 // Warcry and Ground Pound cost 1 Rage stock; Warcry refreshes a persistent self-ward.
 pub const GROUND_POUND_LENGTH: f32 = 300.;
