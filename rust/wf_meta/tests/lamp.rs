@@ -290,6 +290,11 @@ fn a_full_bag_bar_banks_a_fill_and_leaves_the_bag_level_alone() {
     assert_eq!((data.lamp.capacity_tier, data.capacity()), (0, 20.), "no level, no capacity");
     assert!(complete_bag_fill(&mut data, 1.).is_err(), "40 of 75 is not a full bar");
     assert_eq!((data.bag_fills(), data.lamp.essence), (1., 40.));
+    // The cascade has finished: the leftover Essence moves into the bar, which shows the same.
+    let shown = data.fill_progress();
+    assert_eq!(wf_meta::lamp::bank_bag_essence(&mut data), Ok(40.));
+    assert_eq!((data.lamp.essence, data.kill_points(), data.fill_progress()), (0., 40., shown));
+    assert_eq!(wf_meta::lamp::bank_bag_essence(&mut data), Ok(0.), "nothing left to move");
     let loaded = validate_conveyor_state(&data.to_value()).expect("banked fills are a valid save");
     assert_eq!(loaded.bag_fills(), 1.);
     let mut bad = data.to_value();

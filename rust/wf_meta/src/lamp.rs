@@ -559,6 +559,18 @@ pub fn complete_bag_fill(data: &mut LampEconomy, expected_fills: f64) -> Result<
     data.lamp.bag_fills = Some(fills + 1.);
     Ok(cost)
 }
+/// The Cascade Fill has finished (owner 2026-11-05): the Essence left over, less than one bar,
+/// moves into the bar's saved progress points, so the Essence counter reads zero and the bar
+/// keeps what it showed. Returns the Essence moved.
+pub fn bank_bag_essence(data: &mut LampEconomy) -> Result<f64, String> {
+    let essence = data.lamp.essence;
+    if essence <= 0. { return Ok(0.); }
+    let points = data.kill_points() + essence;
+    if !is_safe_integer(points) { return Err("Bag progress exceeds the safe save limit. Original data is preserved.".into()); }
+    data.lamp.kill_points = Some(points);
+    data.lamp.essence = 0.;
+    Ok(essence)
+}
 /// `markLampGuide(data, step)`.
 pub fn mark_lamp_guide(data: &mut LampEconomy, step: &str) -> Result<u32, String> {
     let bit = match step { "storage" => GUIDE_STORAGE, "comparison" => GUIDE_COMPARISON, "preview" => GUIDE_PREVIEW, _ => return Err("Unknown lamp guide step.".into()) };

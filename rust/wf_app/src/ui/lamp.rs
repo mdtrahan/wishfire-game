@@ -28,6 +28,9 @@ pub struct LampUi {
     upgrade_receipt: Option<UpgradeReceipt>,
     notice: String,
     feedbacks: Vec<(String, f64, f64)>,
+    /// The dismantle screen was asked for while a CP float is still rising: it opens when the
+    /// last float has finished (owner 2026-11-05).
+    disposal_waiting: bool,
     hits: Vec<LHit>,
     pub orbs: OrbField,
     bar: BagBar,
@@ -44,7 +47,8 @@ const BAG_H: f32 = 92. * 0.83 * 0.9745 * 0.5;
 // under the bag's painted silhouette (owner 2026-11-05): the rounded cap never shows, only the
 // straight body leaves the bag. `BAR_TUCK` is how much of the bar's length lies under the bag.
 const BAR_TUCK: f32 = 10.;
-const BAR_W: f32 = 92. + BAR_TUCK; const BAR_H: f32 = 12.;
+// Height: 9 (owner 2026-11-05: a quarter thinner than the first 12).
+const BAR_W: f32 = 92. + BAR_TUCK; const BAR_H: f32 = 9.;
 const BAR_RIGHT: f32 = BAG_CX - 6. + BAR_TUCK;
 const SLIDE_SECONDS: f32 = 0.22;
 /// The bar rests this long before each fill starts (once it is out, and again after every
@@ -56,8 +60,8 @@ const FILL_SECONDS: f32 = 1.2;
 const MIN_FILL_SECONDS: f32 = 0.6;
 const CELEBRATE_SECONDS: f32 = 0.3;
 /// The finished display stays this long after the last fill or upgrade before sliding back
-/// (owner 2026-11-05: 0.6 s, was 2.5 s).
-const HOLD_SECONDS: f32 = 0.6;
+/// (owner 2026-11-05: 0.4 s; was 0.6 s, first 2.5 s).
+const HOLD_SECONDS: f32 = 0.4;
 /// Small round sparks thrown from the bar's far end the moment the slide-out completes
 /// (owner 2026-11-05).
 const SPARKS: usize = 14;
@@ -74,7 +78,7 @@ enum BarPhase { #[default] Hidden, SlideOut, Beat, Fill, Celebrate, Hold, SlideI
 /// levels are frozen until hero EXP exists (owner 2026-11-05), so a full bar banks a fill and
 /// leaves capacity and rarity odds alone.
 #[derive(Default)]
-struct BagBar { phase: BarPhase, t: f32, fraction: f32, synced: bool, wanted: bool,
+struct BagBar { phase: BarPhase, t: f32, fraction: f32, wanted: bool,
     /// Bar fractions per second of the fill in progress.
     rate: f32,
     sparks: Vec<Spark>, spark_seed: u32 }
@@ -108,21 +112,25 @@ impl BagBar {
         let fills = data.bag_fills();
         let ready = !progress.max && progress.required.is_some_and(|r| progress.current >= r);
         let target = if ready { 1. } else { progress.fraction as f32 };
-        if !self.synced { self.synced = true; self.fraction = progress.fraction as f32; }
         if progress.max { self.wanted = false; }
         if !visible { return None; }
         match self.phase {
             BarPhase::Hidden => {
-                // Only a completed dismantle brings the bar out (`request`); it then shows
-                // everything earned since it was last out.
-                if self.wanted { self.wanted = false; self.phase = BarPhase::SlideOut; self.t = 0.; }
+                // Only a completed dismantle brings the bar out (`request`). It always comes out
+                // empty and fills up to what the save holds (owner 2026-11-05): a bar that came
+                // out part-filled read as a right-to-left fill while it slid.
+                if self.wanted { self.wanted = false; self.fraction = 0.; self.phase = BarPhase::SlideOut; self.t = 0.; }
             }
             BarPhase::SlideOut => { self.t += dt; if self.t >= SLIDE_SECONDS { self.phase = BarPhase::Beat; self.t = 0.; self.burst(); } }
             BarPhase::Beat => { self.wanted = false; self.t += dt; if self.t >= BEAT_SECONDS { self.start_fill(target); } }
             BarPhase::Fill => {
                 self.wanted = false;
                 self.fraction = if self.fraction > target { target } else { (self.fraction + dt * self.rate).min(target) };
-                if self.fraction >= target { self.phase = if ready { BarPhase::Celebrate } else { BarPhase::Hold }; self.t = 0.; }
+                if self.fraction >= target {
+                    self.phase = if ready { BarPhase::Celebrate } else { BarPhase::Hold }; self.t = 0.;
+                    // The count is satisfied: what is left of the Essence now lives in the bar.
+                    if !ready { if let Err(error) = economy.bank_essence(session) { return Some(error); } }
+                }
             }
             BarPhase::Celebrate => {
                 self.t += dt;
@@ -181,6 +189,7 @@ impl LampUi {
     pub fn frame(&mut self, game: &mut Game, visible: bool, dt: f32) {
         let now = game.economy.time();
         self.feedbacks.retain(|f| f.2 > now);
+        if self.disposal_waiting && self.feedbacks.is_empty() { self.disposal_waiting = false; if self.open { self.review_disposal(game); } }
         let shown = visible && !self.modal_open();
         if let Some(error) = self.bar.update(&mut game.economy, &mut game.session, dt, shown) { self.notice = error; }
         // Only while the ceremony is actually moving: a paused clock or a covered bag icon
@@ -214,7 +223,7 @@ impl LampUi {
         self.act(hit, game);
         true
     }
-    fn close(&mut self) { self.open = false; self.upgrade_open = false; self.upgrade_receipt = None; self.selected_item = None; self.selected_hero = None; self.disposal_view = false; self.disposal_preview = None; self.notice.clear(); }
+    fn close(&mut self) { self.open = false; self.upgrade_open = false; self.upgrade_receipt = None; self.selected_item = None; self.selected_hero = None; self.disposal_view = false; self.disposal_preview = None; self.disposal_waiting = false; self.notice.clear(); }
     fn open_collection(&mut self, game: &mut Game, id: Option<String>, upgrades: bool) {
         if let Err(e) = game.economy.sync(&mut game.session) { self.notice = e; }
         let Some(data) = game.economy.data().cloned() else { return };
@@ -225,6 +234,11 @@ impl LampUi {
         let step = if upgrades { "preview" } else { "storage" };
         let bit = if upgrades { GUIDE_PREVIEW } else { GUIDE_STORAGE };
         if data.lamp.guide.unwrap_or(0.) as u32 & bit == 0 { let _ = game.economy.mark_guide(&mut game.session, step); }
+    }
+    /// The dismantle screen never takes the window over while a CP float is still playing.
+    fn review_disposal_after_floats(&mut self, game: &mut Game) {
+        let now = game.economy.time();
+        if self.feedbacks.iter().any(|f| f.2 > now) { self.disposal_waiting = true; } else { self.review_disposal(game); }
     }
     fn review_disposal(&mut self, game: &mut Game) {
         let Some(data) = game.economy.data().cloned() else { return };
@@ -238,10 +252,12 @@ impl LampUi {
     }
     pub fn act(&mut self, kind: LampHit, game: &mut Game) {
         self.notice.clear();
+        // Anything else the player does replaces a dismantle screen that was waiting for a float.
+        self.disposal_waiting = false;
         match kind {
             LampHit::Close => self.close(),
             LampHit::Bag => self.open_collection(game, None, false),
-            LampHit::Disposal => self.review_disposal(game),
+            LampHit::Disposal => self.review_disposal_after_floats(game),
             LampHit::QueueDisposal => {
                 if let Some(id) = self.selected_item.clone() {
                     match game.economy.queue_disposal(&mut game.session, &id) {
@@ -263,7 +279,7 @@ impl LampUi {
             }
             LampHit::AutoEquip => {
                 match game.economy.auto_equip(&mut game.session) {
-                    Ok(results) => { let t = game.economy.time(); for r in results { self.feedbacks.push((r.hero_id, r.cp_change, t + 1800.)); } self.selected_item = None; self.selected_hero = None; self.review_disposal(game); }
+                    Ok(results) => { let t = game.economy.time(); for r in results { self.feedbacks.push((r.hero_id, r.cp_change, t + 1800.)); } self.selected_item = None; self.selected_hero = None; self.review_disposal_after_floats(game); }
                     Err(e) => self.notice = e,
                 }
             }
@@ -495,6 +511,8 @@ mod tests {
         assert!(levels.is_empty());
         assert_eq!(phases, [Hidden, SlideOut, Beat, Fill, Hold, SlideIn, Hidden]);
         assert_eq!(bar.fraction, 0.4);
+        // The count is satisfied: the leftover Essence now lives in the bar, the counter reads zero.
+        assert_eq!((economy.data().unwrap().lamp.essence, economy.data().unwrap().kill_points()), (0., 20.));
         // 255 more Essence completes three bars (50, 75, 100) without closing the bar.
         economy.award_combat_essence(&mut run.session, "test:large", 255.).unwrap();
         bar.request();
@@ -503,11 +521,11 @@ mod tests {
         assert_eq!(phases, [Hidden, SlideOut, Beat, Fill, Celebrate, Beat, Fill, Celebrate, Beat, Fill, Celebrate, Beat, Fill, Hold, SlideIn, Hidden]);
         let data = economy.data().unwrap();
         // Bag levels are frozen: the fills are banked, the level and capacity stay.
-        assert_eq!((data.bag_fills(), data.lamp.capacity_tier, data.lamp.essence, data.capacity()), (3., 0, 50., 20.));
+        assert_eq!((data.bag_fills(), data.lamp.capacity_tier, data.lamp.essence, data.kill_points(), data.capacity()), (3., 0, 0., 50., 20.));
         assert!((bar.fraction - 50. / 125.).abs() < 1e-6);
     }
     #[test]
-    fn the_hold_lasts_six_tenths_of_a_second_from_the_last_fill_and_the_slide_out_throws_sparks() {
+    fn the_hold_lasts_four_tenths_of_a_second_from_the_last_fill_and_the_slide_out_throws_sparks() {
         let mut run = crate::testing::HostRun::new(1);
         let mut economy = super::super::orbs::tests::economy(&mut run);
         let mut bar = BagBar::default();
@@ -533,7 +551,7 @@ mod tests {
         assert_eq!(entered.iter().filter(|(p, _)| *p == BarPhase::Celebrate).count(), 2);
         assert_eq!(entered.iter().filter(|(p, _)| *p == BarPhase::Hold).count(), 1, "one hold, after everything");
         let hold = at(BarPhase::SlideIn) - at(BarPhase::Hold);
-        assert!((hold - 0.6).abs() < 0.005, "hold lasted {hold} s");
+        assert!((hold - 0.4).abs() < 0.005, "hold lasted {hold} s");
         let sparks = sparks_at_beat.unwrap();
         assert_eq!(sparks.len(), SPARKS);
         let (small, large) = sparks.iter().fold((f32::MAX, 0.0f32), |(lo, hi), s| (lo.min(s.radius), hi.max(s.radius)));
@@ -542,6 +560,32 @@ mod tests {
         assert!(bar.sparks.is_empty(), "all gone by the end of the ceremony");
         assert!(at(BarPhase::Hold) > entered.iter().rev().find(|(p, _)| *p == BarPhase::Celebrate).unwrap().1, "the hold starts after the final full bar and fill");
         assert_eq!((economy.data().unwrap().bag_fills(), economy.data().unwrap().lamp.capacity_tier), (2., 0));
+    }
+    /// Owner 2026-11-05: never right-to-left. The bar comes out empty however much it showed
+    /// last time, and its fill only ever grows, except the reset to empty after a full bar.
+    #[test]
+    fn the_bar_always_comes_out_empty_and_its_fill_only_grows() {
+        let mut run = crate::testing::HostRun::new(1);
+        let mut economy = super::super::orbs::tests::economy(&mut run);
+        let mut bar = BagBar::default();
+        for (round, essence) in [40., 90., 10.].into_iter().enumerate() {
+            economy.award_combat_essence(&mut run.session, &format!("test:round{round}"), essence).unwrap();
+            bar.request();
+            let (mut last, mut before, mut resets, mut peak) = (bar.phase, 0.0f32, 0, 0.0f32);
+            for _ in 0..20000 {
+                bar.update(&mut economy, &mut run.session, 0.001, true);
+                if bar.phase != last && last == BarPhase::Hidden { assert_eq!(bar.fraction, 0., "round {round}: the bar slides out empty"); before = 0.; }
+                if matches!(bar.phase, BarPhase::SlideOut) { assert_eq!(bar.fraction, 0., "round {round}: nothing fills while it slides out"); }
+                if bar.fraction < before { assert_eq!((bar.fraction, last), (0., BarPhase::Celebrate), "round {round}: the fill went backwards"); resets += 1; }
+                before = bar.fraction; peak = peak.max(bar.fraction); last = bar.phase;
+                if bar.phase == BarPhase::Hidden { break; }
+            }
+            let data = economy.data().unwrap();
+            assert_eq!(data.lamp.essence, 0., "round {round}: the Essence is all in the bar");
+            // 40 of 50; then 130 fills the 50 and the 75 bars and leaves 5; then 15 of 100.
+            assert_eq!(resets, [0, 2, 0][round], "round {round}");
+            assert!((bar.fraction as f64 - data.fill_progress().fraction).abs() < 1e-6 && peak > 0.);
+        }
     }
     #[test]
     fn every_fill_waits_half_a_second_and_is_slow_enough_to_follow() {
