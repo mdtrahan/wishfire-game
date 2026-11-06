@@ -185,8 +185,23 @@ impl BagBar {
         // A full fill ends where it always did, just inside the bag's edge; the tucked length
         // beyond it is never seen.
         let fill = (width - 2. - BAR_TUCK).max(0.) * self.fraction.clamp(0., 1.);
-        if fill > BAR_H - 2. { chrome::capsule(x + 1., y + 1., fill, BAR_H - 2., chrome::mix(rgb(chrome::TIMER_BLUE), WHITE, flash)); }
+        let color = chrome::mix(rgb(chrome::TIMER_BLUE), WHITE, flash);
+        let (cap, (rx, ry, rw, rh)) = fill_shape(fill, BAR_H - 2.);
+        if let Some(radius) = cap { draw_circle(x + 1. + radius, y + 1. + radius, radius, color); }
+        if rw > 0. { draw_rectangle(x + 1. + rx, y + 1. + ry, rw, rh, color); }
     }
+}
+/// The blue fill's shape for a fill `length` in a track `height` high (owner 2026-11-05,
+/// ORKA-63bf.44): its far end follows the track's round cap, and its leading edge is a straight
+/// vertical line exactly `length` along the bar, so the length can be judged. Returns the cap's
+/// radius (once the fill is past the cap) and one rectangle (x, y, w, h) from the fill's origin.
+/// Inside the cap the rectangle is only as tall as the cap is there.
+fn fill_shape(length: f32, height: f32) -> (Option<f32>, (f32, f32, f32, f32)) {
+    let radius = height / 2.;
+    if length <= 0. { return (None, (0., 0., 0., 0.)); }
+    if length >= radius { return (Some(radius), (radius, 0., length - radius, height)); }
+    let half = (radius * radius - (radius - length) * (radius - length)).sqrt();
+    (None, (0., radius - half, length, half * 2.))
 }
 fn roster_of(game: &Game) -> Vec<LampHero> { lamp_hero_roster(&game.session.progress, false).unwrap_or_default() }
 impl LampUi {
@@ -536,6 +551,22 @@ mod tests {
             assert_eq!(resets, [0, 2, 0][round], "round {round}");
             assert!((bar.fraction as f64 - data.fill_progress().fraction).abs() < 1e-6 && peak > 0.);
         }
+    }
+    /// Owner 2026-11-05 (ORKA-63bf.44): the fill's leading edge is a straight line at its length.
+    #[test]
+    fn the_blue_fill_ends_in_a_straight_edge_exactly_at_its_length() {
+        let height = BAR_H - 2.;
+        for length in [3.5, 4., 10., 21.6, 43.2] {
+            let (cap, (x, y, w, h)) = fill_shape(length, height);
+            assert_eq!(cap, Some(height / 2.), "the far end keeps the track's round cap");
+            assert_eq!((x + w, y, h), (length, 0., height), "a full-height straight edge at {length}");
+        }
+        // Shorter than the cap: still a straight edge at its length, as tall as the cap is there.
+        let (cap, (x, y, w, h)) = fill_shape(1., height);
+        assert!(cap.is_none() && x == 0. && w == 1. && h > 0. && h < height && (y + h / 2. - height / 2.).abs() < 1e-5);
+        assert_eq!(fill_shape(0., height), (None, (0., 0., 0., 0.)), "nothing at zero");
+        // Any progress shows: the old capsule drew nothing below 7 px (16% of the bar).
+        assert!(fill_shape(0.5, height).1 .2 > 0.);
     }
     /// Owner 2026-11-05: 40% shorter, the right (bag-side) edge anchored.
     #[test]
