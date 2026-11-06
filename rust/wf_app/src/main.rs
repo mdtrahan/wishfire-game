@@ -31,7 +31,7 @@ std::thread_local! {static ASSET_STATUS:std::cell::Cell<i32>=const{std::cell::Ce
 pub extern "C" fn wf_client_asset_status()->i32 {ASSET_STATUS.with(|s|s.get())}
 // Read-only live probe: step, wave, sim seconds, hash low bits, live enemies, fps.
 #[cfg(target_arch = "wasm32")]
-std::thread_local! { static PROBE: std::cell::Cell<[f64; 9]> = const { std::cell::Cell::new([0.; 9]) }; }
+std::thread_local! { static PROBE: std::cell::Cell<[f64; 12]> = const { std::cell::Cell::new([0.; 12]) }; }
 #[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub extern "C" fn wf_app_probe(index: u32) -> f64 {
@@ -339,7 +339,8 @@ async fn main() {
             p.set([s.step as f64, game.session.stage.wave as f64, s.combat_time, (game.session.gameplay_hash().unwrap_or(0) & 0xffff_ffff) as f64,
                 game.session.world().map_or(0., |w| w.live_enemies() as f64), get_fps() as f64,
                 match game.session.boss_control_state() { "locked" => 0., "available" => 1., "armed" => 2., _ => 3. },
-                game.session.boss_time_remaining().unwrap_or(f64::NAN), game.session.stage.cleared_bosses as f64]);
+                game.session.boss_time_remaining().unwrap_or(f64::NAN), game.session.stage.cleared_bosses as f64,
+                ui.lamp.bag_probe(game).0, ui.lamp.bag_probe(game).1, ui.lamp.bag_probe(game).2]);
         });
         if events.iter().any(|e| matches!(e, wf_combat::Event::SceneReset | wf_combat::Event::WaveReset)) {
             *warcry_shell = Default::default();

@@ -54,6 +54,9 @@ pub struct OrbField {
     loot: Vec<Pickup>,
     /// Resource drops whose flight started this frame: the caller awards and clears them.
     pub collected: Vec<Loot>,
+    /// Rarity colours of the stored orbs whose flight ended since the bag last looked: each is
+    /// one item going into the bag (the bag bounces and splashes for it).
+    pub arrived: Vec<Color>,
     /// Orbs that left the save without being collected (displaced on a full field): position,
     /// colour and when they left, drawn fading out.
     fading: Vec<(Vec2, Color, f32)>,
@@ -243,7 +246,9 @@ impl OrbField {
             let eased = t * t;
             orb.pos = flight.from.lerp(target, eased) + vec2(0., -24. * (std::f32::consts::PI * t).sin());
         }
-        self.orbs.retain(|o| o.flight.as_ref().is_none_or(|f| clock - f.start < FLIGHT_SECONDS));
+        let landed = |o: &Orb| o.flight.as_ref().is_some_and(|f| clock - f.start >= FLIGHT_SECONDS);
+        self.arrived.extend(self.orbs.iter().filter(|o| landed(o) && o.flight.as_ref().is_some_and(|f| f.stored)).map(|o| o.color));
+        self.orbs.retain(|o| !landed(o));
         self.fading.retain(|f| clock - f.2 < FADE_SECONDS);
     }
     /// A fresh field keeps the orb sprite of the one it replaces: a dropped texture that is still
@@ -601,7 +606,10 @@ pub(crate) mod tests {
         run.session.subwave_completions += 1;
         field.update(&mut economy, &mut run.session, &s, 0.016, true, &height);
         assert_eq!((stored(&economy), field.flying(), economy.data().unwrap().lamp.essence), (12., 12, 0.));
+        assert!(field.arrived.is_empty(), "nothing has gone into the bag while the orbs are still flying");
         for _ in 0..60 { field.update(&mut economy, &mut run.session, &s, 0.016, true, &height); }
+        // Each stored orb goes into the bag once, when its flight ends (the bag bounces for it).
+        assert_eq!(std::mem::take(&mut field.arrived).len(), 12);
         // The Bag is opened: Auto-Equip, then the leftovers are dismantled.
         assert!(!economy.auto_equip(&mut run.session).unwrap().is_empty());
         let preview = economy.disposal_preview(&mut run.session, None).unwrap();
@@ -624,6 +632,9 @@ pub(crate) mod tests {
         assert_eq!(field.orbs.iter().filter(|o| o.flight.is_some()).count(), 30 - left, "every picked-up orb flies to the hero");
         assert_eq!((field.flying(), data.stored_count()), (kept.len(), kept.len() as f64), "only upgrades use Bag slots");
         assert_eq!(data.lamp.essence, essence + gone.iter().map(|o| salvage_value(&o.rarity)).sum::<f64>(), "the others paid their salvage Essence at once");
+        // Only the stored ones go into the bag; a dismantled orb's flight ends without a bounce.
+        for _ in 0..90 { field.update(&mut economy, &mut run.session, &s, 0.016, false, &height); }
+        assert_eq!(field.arrived.len(), kept.len());
         // What was stored is all still an upgrade: nothing in the Bag waits to be dismantled.
         assert!(economy.disposal_preview(&mut run.session, None).unwrap().ids.is_empty());
         println!("judged at pickup: {} stored, {} dismantled for {} Essence", kept.len(), gone.len(), economy.data().unwrap().lamp.essence - essence);

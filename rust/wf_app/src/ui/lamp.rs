@@ -9,7 +9,7 @@
 //! want to study the heroes' CP, the items, or just leave it open): Done goes to the dismantle
 //! screen for items that stopped being upgrades, or closes; when the Bag is empty the Essence
 //! held since the last time fills the bar.
-use super::chrome::{self, image, rgb, stroked, Align, Hit};
+use super::chrome::{self, rgb, stroked, Align, Hit};
 use super::dom::{el, Node};
 use super::orbs::OrbField;
 use super::{css, Act};
@@ -44,6 +44,34 @@ pub struct LampUi {
     bar: BagBar,
     /// The Cascade Fill ceremony advanced this frame: taps, page clicks and keys are ignored.
     locked: bool,
+    /// Seconds left of the bounce an item going into the bag started (owner 2026-11-05).
+    bounce: f32,
+    /// Sparks splashed by items going into the bag.
+    splash: Vec<Spark>,
+    splash_seed: u32,
+    /// Runs while the bag holds items to process: the bag jiggles at intervals on this clock.
+    agitated: f32,
+}
+/// An item going into the bag: the bag hops and swells for this long.
+const BOUNCE_SECONDS: f32 = 0.28;
+const SPLASH_SPARKS: usize = 7;
+/// The agitated jiggle: a short shake at the start of every period while items wait.
+const JIGGLE_PERIOD: f32 = 2.2;
+const JIGGLE_SECONDS: f32 = 0.55;
+/// Scale and upward hop (px) of the bag `left` seconds before its bounce ends.
+fn bag_bounce(left: f32) -> (f32, f32) {
+    if left <= 0. { return (1., 0.); }
+    let arc = (std::f32::consts::PI * (1. - left / BOUNCE_SECONDS).clamp(0., 1.)).sin();
+    (1. + 0.24 * arc, 3. * arc)
+}
+/// Rotation (radians) and scale of the agitated bag at `clock` seconds of waiting: a decaying
+/// shake for `JIGGLE_SECONDS`, then rest until the next period.
+fn bag_jiggle(clock: f32) -> (f32, f32) {
+    if clock <= 0. { return (0., 1.); }
+    let t = clock % JIGGLE_PERIOD;
+    if t >= JIGGLE_SECONDS { return (0., 1.); }
+    let decay = 1. - t / JIGGLE_SECONDS;
+    ((t * std::f32::consts::TAU * 6.).sin() * 0.16 * decay, 1. + 0.06 * decay)
 }
 // The bag icon keeps the x centre it had in the old strip, at half its size, centred on the
 // quest tracker (the 52 px objective box).
@@ -217,10 +245,36 @@ impl LampUi {
         self.feedbacks.retain(|f| f.2 > now);
         if self.disposal_waiting && self.feedbacks.is_empty() { self.disposal_waiting = false; if self.open { self.review_disposal(game); } }
         let shown = visible && !self.modal_open();
+        // Items going into the bag: one bounce and a splash of sparks in the item's colour.
+        for color in std::mem::take(&mut self.orbs.arrived) { self.bounce = BOUNCE_SECONDS; self.splash_from_bag(color); }
+        self.bounce = (self.bounce - dt).max(0.);
+        for spark in &mut self.splash { spark.age += dt; spark.pos += spark.vel * dt; spark.vel.y += 160. * dt; }
+        self.splash.retain(|spark| spark.age < spark.life);
+        // Agitated while items wait to be processed, and only where the player can see it.
+        let waiting = game.economy.data().is_some_and(|d| (d.stored_count() - self.orbs.flying() as f64) > 0. || d.review_hold().is_some());
+        self.agitated = if waiting && shown && !self.bar.active() { self.agitated + dt } else { 0. };
         if let Some(error) = self.bar.update(&mut game.economy, &mut game.session, dt, shown) { self.notice = error; }
         // Only while the ceremony is actually moving: a paused clock or a covered bag icon
         // must never leave the game locked.
         self.locked = shown && dt > 0. && self.bar.active();
+    }
+    /// Read-only probe for browser checks: items shown on the bag (stored minus those still
+    /// flying), the agitated clock, and seconds left of the bounce.
+    pub fn bag_probe(&self, game: &Game) -> (f64, f64, f64) {
+        (game.economy.data().map_or(0., |d| (d.stored_count() - self.orbs.flying() as f64).max(0.)), self.agitated as f64, self.bounce as f64)
+    }
+    /// A few round sparks thrown up and out of the bag, tinted like the item that went in.
+    fn splash_from_bag(&mut self, color: Color) {
+        let mut seed = self.splash_seed.wrapping_add(0x9e37_79b9);
+        let mut unit = || { seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223); (seed >> 8) as f32 / 16_777_216. };
+        for i in 0..SPLASH_SPARKS {
+            let angle = -std::f32::consts::FRAC_PI_2 + (unit() - 0.5) * 2.4;
+            let speed = 45. + 55. * unit();
+            let tint = if i % 3 == 0 { 0xffffff } else { ((color.r * 255.) as u32) << 16 | ((color.g * 255.) as u32) << 8 | (color.b * 255.) as u32 };
+            self.splash.push(Spark { pos: vec2(BAG_CX + (unit() - 0.5) * BAG_W * 0.5, BAG_CY - BAG_H * 0.2), vel: vec2(angle.cos(), angle.sin()) * speed, radius: 1. + 1.8 * unit(), age: 0., life: 0.3 + 0.3 * unit(), tint });
+        }
+        self.splash_seed = seed;
+        if self.splash.len() > 60 { let extra = self.splash.len() - 60; self.splash.drain(..extra); }
     }
     /// Dev Tools: play the Cascade Fill ceremony now with whatever progress the save holds.
     pub fn dev_ceremony(&mut self) { self.bar.request(); }
@@ -236,7 +290,20 @@ impl LampUi {
         let Some(data) = game.economy.data() else { return };
         self.bar.draw();
         let pop = 1. + 0.22 * self.bar.celebration().map_or(0., |c| (std::f32::consts::PI * c).sin());
-        if let Some(tex) = assets.ui.get("lamp-bag") { image(tex, BAG_CX - BAG_W * pop / 2., BAG_CY - BAG_H * pop / 2., BAG_W * pop, BAG_H * pop); }
+        // The bag hops and swells when an item goes in, and shakes while items wait in it.
+        let (bounce, hop) = bag_bounce(self.bounce);
+        let (tilt, swell) = bag_jiggle(self.agitated);
+        let scale = pop * bounce * swell;
+        if let Some(tex) = assets.ui.get("lamp-bag") {
+            // object-fit: contain, then scaled about the bag's centre and tilted.
+            let fit = (BAG_W / tex.width()).min(BAG_H / tex.height()) * scale;
+            let (w, h) = (tex.width() * fit, tex.height() * fit);
+            draw_texture_ex(tex, BAG_CX - w / 2., BAG_CY - hop - h / 2., WHITE, DrawTextureParams { dest_size: Some(vec2(w, h)), rotation: tilt, ..Default::default() });
+        }
+        for spark in &self.splash {
+            let left = 1. - spark.age / spark.life;
+            draw_circle(spark.pos.x, spark.pos.y, spark.radius * (0.4 + 0.6 * left), chrome::rgba(spark.tint, left));
+        }
         let capacity = data.capacity();
         let stored = (data.stored_count() - self.orbs.flying() as f64).max(0.);
         stroked(&format!("{}/{}", stored, capacity), BAG_CX, BAG_CY + BAG_H / 2. + 3., 9., WHITE, rgb(0x000000), Align::Center);
@@ -560,6 +627,30 @@ mod tests {
             assert_eq!(resets, [0, 2, 0][round], "round {round}");
             assert!((bar.fraction as f64 - data.fill_progress().fraction).abs() < 1e-6 && peak > 0.);
         }
+    }
+    /// Owner 2026-11-05 (ORKA-63bf.46): an item going in makes the bag hop and swell once; items
+    /// waiting in it make it shake briefly at intervals.
+    #[test]
+    fn the_bag_bounces_once_per_item_and_jiggles_at_intervals_while_items_wait() {
+        assert_eq!((bag_bounce(0.), bag_bounce(BOUNCE_SECONDS)), ((1., 0.), (1., 0.)), "at rest before and after");
+        let (peak, hop) = bag_bounce(BOUNCE_SECONDS / 2.);
+        assert!((peak - 1.24).abs() < 1e-4 && (hop - 3.).abs() < 1e-4, "swells by a quarter and hops 3 px at the middle");
+        // Idle bag: never moves.
+        assert_eq!(bag_jiggle(0.), (0., 1.));
+        // Waiting bag: shakes both ways during the first 0.55 s of every 2.2 s, then rests.
+        let shake: Vec<f32> = (1..55).map(|i| bag_jiggle(i as f32 * 0.01).0).collect();
+        let (lo, hi) = shake.iter().fold((0.0f32, 0.0f32), |(lo, hi), a| (lo.min(*a), hi.max(*a)));
+        assert!(hi > 0.1 && lo < -0.1 && hi < 0.17, "about nine degrees each way: {lo}..{hi}");
+        assert!(shake.iter().rev().take(5).all(|a| a.abs() < 0.03), "it settles before it rests");
+        for rest in [0.56, 1., 2.19] { assert_eq!(bag_jiggle(rest), (0., 1.)); }
+        assert!(bag_jiggle(JIGGLE_PERIOD + 0.1).0.abs() > 0.05, "and shakes again in the next period");
+        // The splash: a handful of sparks leaving the bag upwards, gone within 0.6 s.
+        let mut ui = LampUi::default();
+        ui.splash_from_bag(Color::new(0.2, 0.6, 1., 1.));
+        assert_eq!(ui.splash.len(), SPLASH_SPARKS);
+        assert!(ui.splash.iter().all(|s| s.vel.y < 0. && s.life <= 0.6 && (s.pos.x - BAG_CX).abs() <= BAG_W / 2.));
+        for _ in 0..40 { ui.splash_from_bag(WHITE); }
+        assert!(ui.splash.len() <= 60, "a pile of arrivals stays bounded");
     }
     /// Owner 2026-11-05 (ORKA-63bf.44): the fill's leading edge is a straight line at its length.
     #[test]
