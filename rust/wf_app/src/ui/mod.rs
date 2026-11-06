@@ -6,6 +6,7 @@ pub mod chrome;
 pub mod css;
 pub mod dev;
 pub mod dom;
+pub mod kit;
 pub mod lamp;
 pub mod model;
 pub mod orbs;
@@ -170,8 +171,8 @@ impl Ui {
             K::HeroPrev => { self.hero.index = (screens::hero_index(&self.hero, roster_len) + roster_len - 1) % roster_len; UiAction::None }
             K::HeroNext => { self.hero.index = (screens::hero_index(&self.hero, roster_len) + 1) % roster_len; UiAction::None }
             K::Roster(i) => { self.hero.index = i % roster_len; UiAction::None }
-            K::SkillPrev => { self.hero.skill = (self.hero.skill + 4) % 5; UiAction::None }
-            K::SkillNext => { self.hero.skill = (self.hero.skill + 1) % 5; UiAction::None }
+            K::SkillPrev => { let n = screens::skill_count(game, &self.hero); self.hero.skill = (self.hero.skill.min(n - 1) + n - 1) % n; UiAction::None }
+            K::SkillNext => { let n = screens::skill_count(game, &self.hero); self.hero.skill = (self.hero.skill.min(n - 1) + 1) % n; UiAction::None }
             K::HeroTab(tab) => { self.hero.tab = tab; self.hero.sheet = false; UiAction::None }
             K::GearSlot(slot) => { self.hero.gear_slot = slot; UiAction::None }
             K::LevelUp => {

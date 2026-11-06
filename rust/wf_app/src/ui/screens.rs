@@ -9,7 +9,7 @@ use crate::game::Game;
 use wf_host::progress::HeroProgress;
 use wf_meta::combat_power::{compute_combat_power, CpActor};
 use wf_meta::equipment::{rarity, SLOTS};
-use wf_meta::hero::{self, SkillText, STAR_MAX};
+use wf_meta::hero::{self, STAR_MAX};
 use wf_meta::progression::{hero_ticket_level_cost, training_cost, TRAINING_BONUS_PER_LEVEL, TRAINING_STATS};
 
 /// `renderHeroScreen` module state.
@@ -18,7 +18,7 @@ impl HeroUi {
     /// `focusHeroSpecial`: land on the Heroes tab with this hero's Special showing.
     pub fn focus_special(&mut self, index: usize) { self.index = index; self.seen_index = Some(index); self.tab = 0; self.sheet = false; self.skill = 0; self.ticket_notice.clear(); self.sheet_notice.clear(); }
 }
-impl Default for HeroUi { fn default() -> Self { Self { index: 0, tab: 0, sheet: false, skill: 4, ticket_notice: String::new(), sheet_notice: String::new(), gear_slot: 0, seen_index: None } } }
+impl Default for HeroUi { fn default() -> Self { Self { index: 0, tab: 0, sheet: false, skill: usize::MAX, ticket_notice: String::new(), sheet_notice: String::new(), gear_slot: 0, seen_index: None } } }
 /// `createTrainingGroundUI` state: tab (0 Training Ground, 1 Party Skills) and the status line.
 #[derive(Default)]
 pub struct TrainingUi { pub open: bool, pub tab: u8, pub status: String, /// The Party Skills entry a HUD party icon opened (`data-focused`).
@@ -30,6 +30,11 @@ pub struct VaultUi { pub tab: u8 }
 /// Canonical records in `HERO_DEFINITIONS` order (`roster` in renderHeroScreen).
 pub fn roster(game: &Game) -> Vec<&HeroProgress> { hero::HERO_DEFINITIONS.iter().filter_map(|d| game.session.progress.heroes.get(d.key)).collect() }
 pub fn hero_index(ui: &HeroUi, len: usize) -> usize { if len == 0 { 0 } else { ui.index % len } }
+/// How many entries the shown hero's skill panel has.
+pub fn skill_count(game: &Game, ui: &HeroUi) -> usize {
+    let roster = roster(game);
+    roster.get(hero_index(ui, roster.len())).map_or(1, |h| super::kit::combat_kit(h.definition().key).len())
+}
 
 // ---------------------------------------------------------------- Hero (renderHeroScreen.js)
 // The element tree is main's (`renderHeroScreen` + `heroGearUI.mjs`), styled by `css/hero.css`.
@@ -55,8 +60,8 @@ pub fn hero_view(game: &Game, ui: &mut HeroUi) -> Option<N> {
     let roster = roster(game);
     if roster.is_empty() { return None; }
     let index = hero_index(ui, roster.len());
-    if ui.seen_index != Some(index) { ui.seen_index = Some(index); ui.skill = 4; ui.ticket_notice.clear(); ui.sheet_notice.clear(); }
-    ui.skill = ui.skill.min(4);
+    // A newly shown hero opens on its last entry, the basic attack (`usize::MAX` clamps to it).
+    if ui.seen_index != Some(index) { ui.seen_index = Some(index); ui.skill = usize::MAX; ui.ticket_notice.clear(); ui.sheet_notice.clear(); }
     let hero = roster[index];
     let definition = hero.definition();
     let (key, name) = (definition.key, definition.name);
@@ -67,22 +72,18 @@ pub fn hero_view(game: &Game, ui: &mut HeroUi) -> Option<N> {
     let portrait = |hero_name: &str| el("img").attr("src", css::asset(&format!("images/{hero_name}.png"))).attr("alt", hero_name);
 
     // .identity: portrait, hero arrows, name plate + stars, skill panel.
-    let entries: [Option<SkillText>; 5] = { let r = hero::resonance_texts(key).unwrap(); [hero::special_text(key), hero::passive_text(key), Some(r[0]), Some(r[1]), None] };
-    let locked = matches!(ui.skill, 2 | 3);
-    let (skill_id, display, tag) = match &entries[ui.skill] {
-        Some(t) => (t.id, t.name, if locked { "Late-game resonance · Not yet available" } else if ui.skill == 1 { "Passive" } else { "Special" }),
-        None => ("basic_attack", "Basic Attack", "Always available"),
-    };
-    let copy = hero::skill_copy(skill_id, key);
-    let mut detail = el("article").attr("data-skill", skill_id).attr("data-locked", locked.to_string()).child(el("h2").t(display)).child(el("small").t(tag));
-    for line in &copy.lines { detail.push(el("p").t(line.as_str())); }
-    if ui.skill == 0 || ui.skill == 4 {
-        let seconds = if ui.skill == 4 { "0".to_string() } else { hero::format_special_cooldown(key, stars) };
-        let range = if ui.skill == 4 { "Screen width".to_string() } else { hero::special_range_text(skill_id) };
-        let provisional = ui.skill == 0 && hero::PROVISIONAL_SPECIAL_COOLDOWNS.contains(&skill_id);
-        detail.push(el("p").class("skill-meta").t(format!("Range: {range} · Cooldown: {seconds}s{}", if provisional { " (provisional)" } else { "" })));
+    // The hero's combat kit (`ui/kit.rs`): what `wf_combat` runs for this hero, not the retired
+    // 2026-10-23 kit text (owner 2026-11-05, ORKA-63bf.40).
+    let entries = super::kit::combat_kit(key);
+    ui.skill = ui.skill.min(entries.len() - 1);
+    let entry = &entries[ui.skill];
+    let mut detail = el("article").attr("data-skill", entry.id).attr("data-locked", "false").child(el("h2").t(entry.name)).child(el("small").t(entry.tag.as_str()));
+    for line in &entry.lines { detail.push(el("p").t(line.as_str())); }
+    if let Some(range) = &entry.range {
+        let bar = if entry.slot == super::kit::KitSlot::Special { format!(" · {}", super::kit::bar_text(key, &hero::format_special_cooldown(key, stars))) } else { String::new() };
+        detail.push(el("p").class("skill-meta").t(format!("Range: {range}{bar}")));
     }
-    for rule in &copy.rules { detail.push(el("p").t(*rule)); }
+    for rule in &entry.rules { detail.push(el("p").t(rule.as_str())); }
     let panel = el("aside").class("skill-panel").label("Hero skills").child(detail).child(el("footer")
         .child(button("‹", K::SkillPrev).label("Previous skill"))
         .child(el("small").label("Skill index").t(format!("{} / {}", ui.skill + 1, entries.len())))
@@ -103,8 +104,8 @@ pub fn hero_view(game: &Game, ui: &mut HeroUi) -> Option<N> {
             let maxed = stars >= STAR_MAX;
             let cost = hero::star_up_cost(stars);
             let own = hero::growth_own(stars);
-            let special = hero::special_text(key).map_or("", |t| t.name);
-            let passive = hero::passive_text(key).map_or("", |t| t.name);
+            let (special, passive) = super::kit::slot_names(key);
+            let (special, passive) = (special.as_str(), if passive.is_empty() { "Passive" } else { passive.as_str() });
             let res = hero::resonance_texts(key).unwrap();
             let effects = el("ol").class("star-effects").label("Star effects").children((1..=STAR_MAX).map(|i| {
                 let (slot, bonus, text) = hero::star_effect(i);
