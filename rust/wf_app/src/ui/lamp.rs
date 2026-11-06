@@ -338,10 +338,18 @@ impl LampUi {
                 for h in &roster {
                     let name = h.definition.name;
                     let position = match name { "Fara" => "54% 7%", "Hondo" => "57% 7%", "Runa" => "50% 6%", _ => "53% 6%" };
-                    row.push(el("button").flag("disabled", true).class("lamp-hero lamp-portrait").attr("data-id", h.instance_key.as_str()).label(name)
+                    let mut portrait = el("button").flag("disabled", true).class("lamp-hero lamp-portrait").attr("data-id", h.instance_key.as_str()).label(name)
                         .style(format!("--portrait-position:{position}"))
                         .child(el("img").attr("decoding", "sync").attr("src", css::asset(&format!("images/{name}.png"))).attr("alt", ""))
-                        .child(el("span").class("lamp-hero-current-cp").child(el("span").t("CP")).t(" ").child(el("b").t(format!("{}", lamp_hero_cp(&data, h))))));
+                        .child(el("span").class("lamp-hero-current-cp").child(el("span").t("CP")).t(" ").child(el("b").t(format!("{}", lamp_hero_cp(&data, h)))));
+                    // showEquipFeedback: "CP +n" for 1.8 s. It is a child of its hero's portrait
+                    // (owner 2026-11-05, ORKA-63bf.38), so it starts on that hero wherever the
+                    // window puts the row, and rises from there.
+                    for (_, change, _) in self.feedbacks.iter().filter(|f| f.0 == h.instance_key && f.2 > now) {
+                        portrait.push(el("div").class(if *change > 0. { "lamp-cp-feedback positive" } else if *change < 0. { "lamp-cp-feedback negative" } else { "lamp-cp-feedback neutral" }).attr("role", "status").attr("data-hero", h.instance_key.as_str())
+                            .style("width:48px;left:50%;top:calc(50% - 21px)").t(format!("CP {}{change}", if *change > 0. { "+" } else { "" })));
+                    }
+                    row.push(portrait);
                 }
                 dialog.push(row);
                 dialog.push(el("p").t(format!("{} / {} stored", data.stored_count(), data.capacity())));
@@ -353,16 +361,7 @@ impl LampUi {
         }
         // The overlay is the frame rectangle; a cache window stops above the nav.
         let height = if self.upgrade_open { 640. } else { 580. } * scale;
-        let mut overlay = el("div").key("lamp").id("lamp-overlay").attr("data-boss-fallback", "false").style(format!("height:{height:.2}px;--bag-scale:{scale:.4};--modal-close-scale:{scale:.4};--boss-fallback-reserve:0px")).on(on(LampHit::Close)).child(dialog);
-        // showEquipFeedback: "CP +n" rising from the hero's portrait for 1.8 s (the portrait row sits
-        // about 124 px down in the cache window).
-        for (hero_id, change, until) in &self.feedbacks {
-            if *until <= now { continue; }
-            let column = roster.iter().position(|h| &h.instance_key == hero_id).unwrap_or(0) as f32;
-            let left = (20. + (column + 0.5) / roster.len().max(1) as f32 * (360. * scale - 40.)).round();
-            overlay.push(el("div").class(if *change > 0. { "lamp-cp-feedback positive" } else if *change < 0. { "lamp-cp-feedback negative" } else { "lamp-cp-feedback neutral" }).attr("role", "status").attr("data-hero", hero_id.as_str())
-                .style(format!("width:48px;left:{left}px;top:{}px", (124. * scale).round())).t(format!("CP {}{change}", if *change > 0. { "+" } else { "" })));
-        }
+        let overlay = el("div").key("lamp").id("lamp-overlay").attr("data-boss-fallback", "false").style(format!("height:{height:.2}px;--bag-scale:{scale:.4};--modal-close-scale:{scale:.4};--boss-fallback-reserve:0px")).on(on(LampHit::Close)).child(dialog);
         Some(overlay)
     }
 }
