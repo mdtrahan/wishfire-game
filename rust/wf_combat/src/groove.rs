@@ -98,14 +98,15 @@ impl Sim {
                 .iter()
                 .any(|a| a.alive() && a.view.team == Team::Enemy)
         {
-            let a = &mut self.actors[i];
-            a.combo_phase = 4; // Empty burst: discard drain, finish the committed cast recovery.
-            a.view.meter = 0.;
-            a.view.groove_active = 0.;
-            return;
+            // Empty burst: nothing is left to strike, so only the committed cast recovery
+            // remains. The bar keeps what the burst did not use (owner 2026-11-05, ORKA-63bf.49).
+            self.actors[i].combo_phase = 4;
         }
         let a = &mut self.actors[i];
-        if a.combo_phase == 2 {
+        // The bar pays for the time Hondo spends on the burst: it drains while the burst is
+        // running, and through the last strike of a burst that ran out of targets, never while
+        // he stands free.
+        if a.combo_phase == 2 || (a.combo_phase == 4 && a.committed() && a.view.groove_active > 0.) {
             a.view.groove_active = if a.view.groove_active <= SIM_DT + 0.00001 {
                 0.
             } else {
@@ -437,13 +438,20 @@ impl Sim {
             self.actors[i].combo_phase = 3;
             self.actors[i].view.meter = 0.;
             self.start_extra(i, target);
+        } else {
+            // Nothing can be struck right now (the target fell, moved out of the burst's reach,
+            // or every landing is blocked). Owner 2026-11-05 (ORKA-63bf.49): Hondo never stands
+            // waiting while the bar drains. The burst ends here, he goes back to seeking and
+            // attacking, and the bar keeps what was not used.
+            self.end_combo(i);
         }
-        // A temporarily blocked landing waits safely while the earned drain continues.
     }
+    /// Ends the burst. The bar keeps whatever the burst left in it: nothing after a full drain
+    /// or a Split, the unused remainder when it ended early.
     pub fn end_combo(&mut self, i: usize) {
         let a = &mut self.actors[i];
         a.combo_phase = 0;
-        a.view.meter = 0.;
+        a.view.meter = a.view.meter.clamp(0., 1.);
         a.view.groove_active = 0.;
         a.view.special_casting =
             a.view.state == ActorState::Cast && a.committed() && !a.action_revive;

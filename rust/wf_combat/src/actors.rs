@@ -562,9 +562,7 @@ impl crate::Sim {
                 a.view.hp = 0.;
                 a.velocity = Vec2::default();
                 if a.view.team == Team::Hero {
-                    if a.view.archetype == Archetype::Hondo && a.combo_phase != 0 {
-                        a.view.meter = 0.;
-                    }
+                    // A burst cut short by a fall keeps its unused bar, like any other early end.
                     a.combo_phase = 0;
                     a.view.groove_active = 0.;
                     a.view.special_casting = false;

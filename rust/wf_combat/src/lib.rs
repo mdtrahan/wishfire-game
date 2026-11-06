@@ -474,6 +474,8 @@ mod host_inputs_tests;
 mod prd_tests;
 #[cfg(test)]
 mod kaja_mend_tests;
+#[cfg(test)]
+mod combo_bar_tests;
 
 #[cfg(feature = "bound-diagnostics")]
 pub mod bound;
