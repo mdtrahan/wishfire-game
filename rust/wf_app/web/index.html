@@ -90,12 +90,18 @@ function syncMotionPreference() {
     wasm_exports.wf_client_reduced_motion(Number(motionPreference.matches));
   } else { requestAnimationFrame(syncMotionPreference); }
 }
+// Keep the canvas backing at the live pixel ratio. Checked each frame: emulated ratio changes
+// (preview panes, device toolbars) raise no media-query or resize event.
+let seenDpr = devicePixelRatio;
 function watchDpr() {
-  matchMedia(`(resolution: ${devicePixelRatio}dppx)`).addEventListener('change', () => {
-    if (typeof wasm_exports !== 'undefined') wasm_exports.wf_client_vfx_dpi(devicePixelRatio);
+  if (typeof wasm_exports !== 'undefined' && (devicePixelRatio !== seenDpr
+      || gameCanvas.width !== Math.floor(gameCanvas.clientWidth * dpi_scale())
+      || gameCanvas.height !== Math.floor(gameCanvas.clientHeight * dpi_scale()))) {
+    seenDpr = devicePixelRatio;
+    wasm_exports.wf_client_vfx_dpi(devicePixelRatio);
     window.dispatchEvent(new Event('resize'));
-    watchDpr();
-  }, { once: true });
+  }
+  requestAnimationFrame(watchDpr);
 }
 watchDpr();
 motionPreference.addEventListener('change', syncMotionPreference);

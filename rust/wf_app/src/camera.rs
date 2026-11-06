@@ -237,6 +237,17 @@ impl WorldCamera {
 pub struct Portrait {
     pub target: RenderTarget,
 }
+/// The page's pixel ratio right now: miniquad's own loader import, asked again.
+fn live_dpi() -> f32 {
+    #[cfg(target_arch = "wasm32")]
+    { unsafe { macroquad::miniquad::native::wasm::dpi_scale() } }
+    #[cfg(not(target_arch = "wasm32"))]
+    { screen_dpi_scale() }
+}
+/// CSS px per miniquad logical px: the ratio cached at load over the ratio now.
+fn page_px(cached_dpi: f32, live_dpi: f32) -> f32 {
+    if cached_dpi > 0. && live_dpi > 0. { cached_dpi / live_dpi } else { 1. }
+}
 impl Portrait {
     pub fn new() -> Self {
         let (w, h) = Self::target_size();
@@ -273,6 +284,19 @@ impl Portrait {
                 (screen_height() - HEIGHT * scale) * 0.5,
             ),
         )
+    }
+    /// The frame in CSS px, for page elements. Miniquad keeps the pixel ratio it saw at load,
+    /// so after a ratio change (zoom, another display, a preview pane) its logical px are no
+    /// longer CSS px; canvas drawing and the pointer stay self-consistent, page elements do not.
+    pub fn page_frame() -> (f32, Vec2) {
+        let (scale, offset) = Self::frame();
+        let k = page_px(screen_dpi_scale(), live_dpi());
+        (scale * k, offset * k)
+    }
+    /// The window in CSS px.
+    pub fn page_size() -> (f32, f32) {
+        let k = page_px(screen_dpi_scale(), live_dpi());
+        (screen_width() * k, screen_height() * k)
     }
     pub fn pointer(&self) -> Option<Vec2> {
         let (s, offset) = self.layout();
@@ -311,6 +335,14 @@ impl Portrait {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn page_elements_follow_the_live_pixel_ratio_not_the_one_cached_at_load() {
+        // Loaded at ratio 2, now 1: a 602 px canvas reads as 301 logical px, so CSS px are doubled.
+        assert_eq!(page_px(2., 1.), 2.);
+        assert_eq!(page_px(1., 2.), 0.5);
+        assert_eq!(page_px(2., 2.), 1.);
+        assert_eq!(page_px(2., 0.), 1.);
+    }
     use wf_combat::{Sim, SimConfig};
     #[test]
     fn compact_arena_height_exceeds_useful_view_by_about_ten_percent() {

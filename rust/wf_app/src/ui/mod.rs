@@ -201,7 +201,7 @@ impl Ui {
     /// The page elements for this frame: the stage at the frame rectangle, the nav, the entry
     /// fade and the open menu. Called once per frame after input and state updates.
     pub fn web(&mut self, game: &mut Game) {
-        let (scale, offset) = crate::camera::Portrait::frame();
+        let (scale, offset) = crate::camera::Portrait::page_frame();
         // --cs: main's control scale for the developer pills and panel (never above 1).
         let mut stage: Node<Act> = el("div").id("wf-ui").style(format!("left:{:.2}px;top:{:.2}px;width:{:.2}px;height:{:.2}px;--s:{:.4};--cs:{:.4}", offset.x, offset.y, crate::camera::WIDTH * scale, crate::camera::HEIGHT * scale, scale, scale.min(1.)))
             .child(el("style").t(css::sheet()))
@@ -216,7 +216,7 @@ impl Ui {
         stage.kids.extend(self.story.view(game.session.gold_total, self.screen == Screen::Quests));
         if let Some(view) = self.lamp.view(game, scale) { stage.push(view); }
         if let Some(t) = &self.toast { if let Some(view) = receipt_view(if t.flip { "receipt-a" } else { "receipt-b" }, &t.title, &t.resource, t.amount, &t.hero_name, t.duration_ms, scale) { stage.push(view); } }
-        if self.training.open { stage.push(screens::training_view(game, &self.training, (macroquad::window::screen_width(), macroquad::window::screen_height()))); }
+        if self.training.open { stage.push(screens::training_view(game, &self.training, crate::camera::Portrait::page_size())); }
         // Last, so nothing before them shifts when a menu opens: the developer pills and modal.
         stage.kids.extend(self.dev.launchers());
         if let Some(view) = self.dev.view(crate::camera::HEIGHT * scale / scale.min(1.)) { stage.push(view); }
