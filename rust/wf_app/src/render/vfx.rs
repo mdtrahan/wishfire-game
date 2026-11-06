@@ -1168,6 +1168,30 @@ mod tests {
     }
 
 
+    /// Owner 2026-11-05 (ORKA-63bf.48): a bomb blast is its fire plume and then its smoke. The
+    /// fire sheet was never brought over from the slice, so only the smoke drew.
+    #[test]
+    fn a_bomb_blast_has_its_fire_sheet_as_well_as_its_smoke() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../web-runner/assets/rust-combat");
+        let manifest: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(root.join("manifest.json")).unwrap()).unwrap();
+        for (id, sheet) in [("bomb-fireball", "vfx-astra/bomb-fireball.png"), ("blast-smoke", "vfx-astra/blast-smoke.png")] {
+            let effect = &manifest["effects"][id];
+            assert_eq!(effect["file"], sheet, "{id} is in the effect manifest");
+            assert_eq!((effect["frame_count"].as_u64(), effect["frame_size"][0].as_u64(), effect["pivot"][1].as_u64()), (Some(4), Some(128), Some(122)));
+            assert!(manifest["sha256"][sheet].is_string(), "{sheet} is fingerprinted");
+            let image = Image::from_file_with_format(&std::fs::read(root.join(sheet)).unwrap(), None).unwrap();
+            assert_eq!((image.width, image.height), (512, 128));
+            for frame in 0..4 {
+                let painted = (0..128).any(|y| (0..128).any(|x| image.bytes[(y * 512 + frame * 128 + x) * 4 + 3] >= 64));
+                assert!(painted, "{sheet} frame {frame}: empty painting");
+            }
+        }
+        // The fire leads and the smoke follows 70 ms later: over the blast's 0.55 s both play.
+        let fire: u64 = manifest["effects"]["bomb-fireball"]["frame_ms"].as_array().unwrap().iter().map(|v| v.as_u64().unwrap()).sum();
+        let smoke: u64 = manifest["effects"]["blast-smoke"]["frame_ms"].as_array().unwrap().iter().map(|v| v.as_u64().unwrap()).sum();
+        assert_eq!((fire, smoke), (340, 480));
+        assert!((smoke + 70) as f64 / 1000. <= EXPLOSION_SECONDS);
+    }
     #[test]
     fn other_explosion_sizes_preserve_original_formula() {
         for boss in [false, true] {
