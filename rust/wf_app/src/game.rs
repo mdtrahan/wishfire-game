@@ -146,7 +146,12 @@ impl Game {
     }
     pub fn claim_objective(&mut self, id: &str) -> wf_meta::progression::ClaimResult { self.progression.claim(id, &mut self.session, &mut self.economy) }
     pub fn train(&mut self, stat: &str) -> wf_meta::progression::TrainResult { self.progression.train(stat, &mut self.session, &mut self.economy) }
-    pub fn spend_level_up(&mut self, hero: &str) -> SpendOutcome { self.progression.spend_level_up(hero, &mut self.session, &mut self.economy) }
+    /// The Hero screen's Level Up: levels the hero's fighting party copy and the saved hero together.
+    pub fn spend_level_up(&mut self, hero: &str) -> SpendOutcome {
+        let outcome = self.progression.level_up_saved_hero(hero, &mut self.session, &mut self.economy);
+        if outcome.ok { if let Err(e) = self.economy.refresh(&mut self.session) { self.save_error = Some(e); } }
+        outcome
+    }
     pub fn star_up(&mut self, hero: &str) -> wf_meta::progression::StarUpResult { self.progression.star_up(hero, &mut self.session) }
     fn economy_needs_sync(&self) -> bool {
         self.session.progress.pending_bag_kill_rewards.as_ref().is_some_and(|p| !p.is_empty()) || self.economy.data().is_none_or(|d| d.gold != self.session.gold_total)

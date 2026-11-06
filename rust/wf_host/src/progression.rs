@@ -166,14 +166,58 @@ impl CombatProgression {
         }
         recorded
     }
-    pub fn ticket_count(&self, hero_id: &str) -> f64 { self.state.wallet.tickets(hero_id) }
+    /// A hero's tickets are one pool (owner 2026-11-05, ORKA-63bf.39). The wallet can hold them
+    /// under two keys: the party copy (`falie#1`: quest rewards, battlefield drops, level-ups)
+    /// and the saved hero the Hero screen shows (`Falie`: Star Up). Every key of the same hero
+    /// counts.
+    pub fn ticket_count(&self, hero_id: &str) -> f64 { Self::ticket_keys(&self.state, hero_id).iter().map(|k| self.state.wallet.tickets(k)).sum() }
+    fn ticket_keys(state: &ProgressionState, hero_id: &str) -> Vec<String> {
+        let Some(hero) = hero::canonical_growth_id(hero_id) else { return vec![hero_id.to_string()] };
+        let mut keys: Vec<String> = state.wallet.tickets_by_hero.keys().filter(|k| hero::canonical_growth_id(k) == Some(hero)).cloned().collect();
+        if !keys.iter().any(|k| k == hero_id) { keys.push(hero_id.to_string()); }
+        keys
+    }
+    /// The state with that hero's whole pool under `hero_id`, the key a spend rule reads.
+    fn pooled(&self, hero_id: &str) -> ProgressionState {
+        let mut next = self.state.clone();
+        let keys = Self::ticket_keys(&next, hero_id);
+        let total: f64 = keys.iter().map(|k| next.wallet.tickets(k)).sum();
+        for key in keys.iter().filter(|k| k.as_str() != hero_id) { next.wallet.tickets_by_hero.remove(key); }
+        if total > 0. || next.wallet.tickets_by_hero.contains_key(hero_id) { next.wallet.tickets_by_hero.insert(hero_id.to_string(), serde_json::json!(total)); }
+        next
+    }
+    /// The Hero screen's Level Up (Rust app, ORKA-63bf.39). The screen shows the saved hero
+    /// (`Falie`), but its party copy (`falie#1`) is the one that fights and the one the quest
+    /// rules know. The spend therefore levels the party copy, which the live hero re-reads, and
+    /// the saved hero is brought to the same level so the screen and the Bag's CP comparisons
+    /// agree with the fight. A hero without a party copy spends as before.
+    pub fn level_up_saved_hero(&mut self, hero_id: &str, host: &mut dyn QuestHost, economy: &mut EquipmentStorage) -> SpendOutcome {
+        let party = format!("{}#1", hero_id.to_lowercase());
+        if hero::canonical_growth_id(hero_id) != Some(hero_id) || !host.progress().heroes.contains_key(&party) { return self.spend_level_up(hero_id, host, economy); }
+        let outcome = self.spend_level_up(&party, host, economy);
+        if outcome.ok {
+            let store = host.progress();
+            if let Some(saved) = store.heroes.get_mut(hero_id) {
+                while saved.current_level < outcome.level && saved.current_level < saved.max_level {
+                    let before = saved.current_level;
+                    let required = hero::exp_to_next_level(before) - saved.current_exp;
+                    if required <= 0. { break; }
+                    saved.award_exp(required);
+                    if saved.current_level == before { break; }
+                }
+            }
+            store.mark_dirty();
+            host.persist_progress();
+        }
+        outcome
+    }
     /// `spendLevelUp(heroId)`: tickets reserve, the save levels the hero, the spend settles.
     pub fn spend_level_up(&mut self, hero_id: &str, host: &mut dyn QuestHost, economy: &mut EquipmentStorage) -> SpendOutcome {
         self.reconcile_ticket_spends(host, economy);
         let hero = host.progress().heroes.get(hero_id).map(|h| QuestHero { instance_key: h.hero_instance_key.clone(), base_hero_name: h.base_hero_name.clone(), current_level: h.current_level, max_level: h.max_level, hp: h.hp });
         self.ticket_spend_sequence += 1;
         let spend_id = format!("ticket-spend:{hero_id}:{}:{}:{}:{}", self.state.cursor, self.state.reward_receipts.len(), (self.now)(), self.ticket_spend_sequence);
-        let result = spend_hero_tickets(&self.state, hero_id, hero.as_ref(), &spend_id);
+        let result = spend_hero_tickets(&self.pooled(hero_id), hero_id, hero.as_ref(), &spend_id);
         if !result.ok { return SpendOutcome { ok: false, reason: result.reason, pending: false, cost: result.cost, level: 0 }; }
         if let Err(error) = self.commit(result.state.clone(), host) { self.report("Hero ticket reservation save failed", error); return SpendOutcome { ok: false, reason: Some("save_failed"), pending: false, cost: result.cost, level: 0 }; }
         let spend = self.state.pending_spends().into_iter().find(|s| s.id == spend_id).unwrap();
@@ -224,7 +268,7 @@ impl CombatProgression {
     }
     /// `starUp(heroId)`.
     pub fn star_up(&mut self, hero_id: &str, host: &mut dyn QuestHost) -> StarUpResult {
-        let result = star_up_hero(&self.state, hero_id);
+        let result = star_up_hero(&self.pooled(hero_id), hero_id);
         if !result.ok { return result; }
         if let Err(error) = self.commit(result.state.clone(), host) { self.report("Star Up save failed", error); return StarUpResult { state: result.state, ok: false, reason: Some("save_failed"), cost: result.cost, stars: result.stars }; }
         self.notify("star-up", host);

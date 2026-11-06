@@ -21,6 +21,7 @@
 - Parity proof: `tests/trace.rs` replays `tests/fixtures/rust-oracle/stage_trace.json` (seed 7 and seed 42 at level 7, short runs plus 17500-tick runs through all ten Chapter 1 waves: the level-1 party times out on the boss and recovers, the level-7 party clears it into stage 2) and requires identical gameplay hashes, op sequence, transitions, spawn log, boss timeout record and checkpoint.
 - Wall-clock gates (`Date.now()` in JS: boss entry wipe, boss-clear tail) read the frame clock passed to `tick`; the JS harness pins `Date.now` to the same clock so the trace is deterministic.
 - Regenerate fixtures with `node tools/rust_oracle/write_fixtures.mjs`; run `cargo test -p wf_host`.
+- Ticket pool (ORKA-63bf.39, owner 2026-11-05, Rust-only glue): the wallet holds a hero's tickets under the party copy (`falie#1`: quest rewards, drops, level-ups) and under the saved hero the Hero screen shows (`Falie`: Star Up). `ticket_count` sums every key of the same hero (`hero::canonical_growth_id`); `spend_level_up` and `star_up` run the unchanged wf_meta rule on a state where the whole pool sits under the key being spent, so the remainder is saved under one key. `level_up_saved_hero(saved_key)` is the Hero screen's Level Up: it spends against the party copy (the live hero re-reads it) and brings the saved hero to the same level, so the screen and the Bag's CP comparisons match the fight. `tests/quest.rs` covers the pool, Star Up reaching `Session::stars` and both records levelling.
 
 ## Child DOX Index
 - None.

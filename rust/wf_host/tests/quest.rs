@@ -85,8 +85,45 @@ fn ticket_level_up_and_essence_settlement() {
     assert_eq!(economy.data().map(|d| d.lamp.essence), Some(2.), "Essence reward reached the lamp save");
     assert!(quest.sync(&mut s, &mut economy));
     assert_eq!(economy.data().map(|d| d.lamp.essence), Some(2.), "settled once");
+    // The hero's tickets are one pool: the 50 left on the party copy pay the first star on the
+    // saved hero, and the star reaches the live hero.
+    assert_eq!((quest.ticket_count("Falie"), quest.ticket_count("falie#1")), (50., 50.));
     let star = quest.star_up("Falie", &mut s);
-    assert!(!star.ok, "no canonical tickets yet: {:?}", star.reason);
+    assert!(star.ok, "{:?}", star.reason);
+    assert_eq!((star.stars, star.cost, quest.ticket_count("Falie"), quest.ticket_count("falie#1")), (1, 50., 0., 0.));
+    assert_eq!(s.stars.get("Falie").copied(), Some(1));
+    assert!(!quest.star_up("Falie", &mut s).ok, "nothing left for a second star");
+}
+
+/// Owner 2026-11-05 (ORKA-63bf.39): tickets picked up in combat show on the Hero screen, which
+/// looks the hero up by its saved key, and can be spent there.
+#[test]
+fn tickets_collected_by_the_party_copy_count_for_the_saved_hero_on_the_hero_screen() {
+    let (mut s, mut economy, mut quest, values, _now) = world();
+    for n in 0..30 { s.tick(n as f64 * 1000. / 30.); }
+    // Sixty single-ticket drops for Huun, saved under the party copy as before.
+    for _ in 0..60 { quest.grant_hero_ticket("huun#1", &mut s, &economy).unwrap(); }
+    assert_eq!((quest.ticket_count("Huun"), quest.ticket_count("huun#1"), quest.ticket_count("Falie")), (60., 60., 0.));
+    // Star Up from the Hero screen spends them and keeps the remainder in the pool.
+    let star = quest.star_up("Huun", &mut s);
+    assert!(star.ok, "{:?}", star.reason);
+    assert_eq!((star.stars, quest.ticket_count("Huun"), quest.ticket_count("huun#1")), (1, 10., 10.));
+    let saved: serde_json::Value = serde_json::from_str(&values.borrow()[wf_meta::progression::SAVE_KEY]).unwrap();
+    let wallet = saved["wallet"]["ticketsByHero"].as_object().unwrap();
+    assert_eq!(wallet.iter().filter(|(k, _)| k.to_lowercase().starts_with("huun")).map(|(_, v)| v.as_f64().unwrap()).sum::<f64>(), 10., "saved once, not twice: {wallet:?}");
+    // Level Up from the Hero screen: 100 tickets at level 1. Not enough yet, nothing is spent.
+    let short = quest.level_up_saved_hero("Huun", &mut s, &mut economy);
+    assert_eq!((short.ok, short.reason, quest.ticket_count("Huun")), (false, Some("insufficient_tickets"), 10.));
+    for _ in 0..95 { quest.grant_hero_ticket("huun#1", &mut s, &economy).unwrap(); }
+    let up = quest.level_up_saved_hero("Huun", &mut s, &mut economy);
+    assert!(up.ok, "{:?}", up.reason);
+    assert_eq!((up.level, up.cost, quest.ticket_count("Huun")), (2, 100., 5.));
+    // The fighting copy and the saved hero the screen shows are both level 2.
+    assert_eq!((s.progress.heroes["huun#1"].current_level, s.progress.heroes["Huun"].current_level), (2, 2));
+    for n in 30..40 { s.tick(n as f64 * 1000. / 30.); assert!(s.failed.is_none(), "{:?}", s.failed); }
+    assert_eq!(s.heroes.iter().find(|h| h.instance_key == "huun#1").map(|h| h.level), Some(2), "the live hero fights at the new level");
+    // Another hero's tickets are untouched.
+    assert_eq!(quest.ticket_count("Runa"), 0.);
 }
 
 #[test]
