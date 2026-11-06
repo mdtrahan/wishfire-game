@@ -4,8 +4,11 @@
 //! rules and saves are `wf_host::equipment` / `wf_meta::lamp`.
 //! The player makes no equipment choices (owner 2026-11-05, ORKA-63bf.34): orbs are judged at
 //! pickup, so the Bag holds only items that raised a hero's CP when they were picked up. Tapping
-//! the bag runs Auto-Equip at once; items that stopped being upgrades meanwhile are shown on the
-//! dismantle screen; when the Bag is empty the Essence held since the last time fills the bar.
+//! the bag runs Auto-Equip at once and shows what was equipped. The window then stays until the
+//! player moves on (owner 2026-11-05, ORKA-63bf.45: never advance by itself; the player may
+//! want to study the heroes' CP, the items, or just leave it open): Done goes to the dismantle
+//! screen for items that stopped being upgrades, or closes; when the Bag is empty the Essence
+//! held since the last time fills the bar.
 use super::chrome::{self, image, rgb, stroked, Align, Hit};
 use super::dom::{el, Node};
 use super::orbs::OrbField;
@@ -18,7 +21,7 @@ use wf_meta::equipment::{format_compact_count, rarity, RARITIES};
 use wf_meta::lamp::*;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum LampHit { Bag, Close, Dismantle, Upgrade(u32) }
+pub enum LampHit { Bag, Close, Done, Dismantle, Upgrade(u32) }
 #[derive(Clone, Debug)]
 struct LHit { rect: Rect, kind: LampHit }
 #[derive(Default)]
@@ -32,8 +35,9 @@ pub struct LampUi {
     upgrade_receipt: Option<UpgradeReceipt>,
     notice: String,
     feedbacks: Vec<(String, f64, f64)>,
-    /// The window opened with CP floats rising: the dismantle screen (or the close, when nothing
-    /// is left to dismantle) waits until the last float has finished (owner 2026-11-05).
+    /// The player pressed Done while CP floats are rising: the dismantle screen (or the close,
+    /// when nothing is left to dismantle) waits until the last float has finished (owner
+    /// 2026-11-05). Nothing sets this but the player's press.
     disposal_waiting: bool,
     hits: Vec<LHit>,
     pub orbs: OrbField,
@@ -252,9 +256,9 @@ impl LampUi {
         if game.economy.data().is_some_and(|d| d.stored_count() == 0. && d.review_hold().is_none() && d.lamp.essence > 0.) { self.bar.request(); }
     }
     /// A tap on the bag. Everything in it was an upgrade when it was picked up, so there is
-    /// nothing to choose: Auto-Equip runs at once and the window shows what was equipped while
-    /// the CP floats rise, then the dismantle screen for what is no longer an upgrade. An empty
-    /// Bag opens no window.
+    /// nothing to choose: Auto-Equip runs at once and the window shows what was equipped, with
+    /// the CP floats rising, for as long as the player likes. With nothing to equip it opens on
+    /// the dismantle screen. An empty Bag opens no window.
     fn open_bag(&mut self, game: &mut Game) {
         self.close();
         if let Err(e) = game.economy.sync(&mut game.session) { self.notice = e; }
@@ -269,7 +273,8 @@ impl LampUi {
             }
             Err(e) => self.notice = e,
         }
-        self.review_disposal_after_floats(game);
+        // Nothing was equipped and nothing went wrong: only leftovers are stored.
+        if self.equipped.is_empty() && self.notice.is_empty() { self.review_disposal(game); }
     }
     /// The dismantle screen never takes the window over while a CP float is still playing.
     fn review_disposal_after_floats(&mut self, game: &mut Game) {
@@ -295,6 +300,8 @@ impl LampUi {
         match kind {
             LampHit::Close => { self.close(); self.settle(game); }
             LampHit::Bag => self.open_bag(game),
+            // The player is done looking at what was equipped.
+            LampHit::Done => self.review_disposal_after_floats(game),
             LampHit::Upgrade(tier) => match game.economy.upgrade(&mut game.session, Some(tier)) { Ok(r) => self.upgrade_receipt = Some(r), Err(e) => self.notice = e },
             LampHit::Dismantle => {
                 let Some(preview) = self.disposal_preview.clone() else { return };
@@ -309,8 +316,8 @@ impl LampUi {
     /// The cache / dismantle / Bag upgrade windows as page elements: main's `#lamp-overlay`
     /// tree (`lampEquipmentUI.mjs` render + `bagUpgradePresentation.mjs`), styled by
     /// `css/lamp.css` and `css/bag_upgrade.css`. Main's review window (choose a hero, Equip,
-    /// send to disposal) and the cache's Equip / Auto-Equip / Done buttons are not built: the
-    /// tiles are not buttons to press.
+    /// send to disposal) and the cache's Equip / Auto-Equip buttons are not built, and the tiles
+    /// are not buttons to press; the cache keeps one button, Done.
     pub fn view(&mut self, game: &mut Game, scale: f32) -> Option<Node<Act>> {
         if !self.modal_open() { return None; }
         let data = game.economy.data().cloned()?;
@@ -371,6 +378,8 @@ impl LampUi {
                 dialog.push(el("div").class("lamp-queue").label("Equipped just now")
                     .children(self.equipped.iter().map(|item| tile(item, true, None)))
                     .children(candidates.iter().filter(|q| q.best_gain > 0.).map(|q| tile(&q.item, true, None))));
+                // The only way forward is the player's: nothing here advances on a timer.
+                dialog.push(el("div").class("lamp-actions").child(el("button").class("primary").attr("data-action", "done").t("Done").on(on(LampHit::Done))));
                 notice(&mut dialog, &self.notice);
             }
         }
