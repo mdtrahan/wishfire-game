@@ -2,7 +2,11 @@
 //! progress bar that slides out of it, and the equipment windows (`lampEquipmentUI.mjs`,
 //! `bagUpgradePresentation.mjs`). Equipment arrives as battlefield orbs (`ui/orbs.rs`); the
 //! rules and saves are `wf_host::equipment` / `wf_meta::lamp`.
-use super::chrome::{self, image, label, rgb, rgba, stroked, Align, Hit};
+//! The player makes no equipment choices (owner 2026-11-05, ORKA-63bf.34): orbs are judged at
+//! pickup, so the Bag holds only items that raised a hero's CP when they were picked up. Tapping
+//! the bag runs Auto-Equip at once; items that stopped being upgrades meanwhile are shown on the
+//! dismantle screen; when the Bag is empty the Essence held since the last time fills the bar.
+use super::chrome::{self, image, rgb, stroked, Align, Hit};
 use super::dom::{el, Node};
 use super::orbs::OrbField;
 use super::{css, Act};
@@ -10,26 +14,26 @@ use crate::assets::Assets;
 use crate::game::Game;
 use macroquad::prelude::*;
 use wf_host::equipment::lamp_hero_roster;
-use wf_meta::equipment::{format_compact_count, rarity, slot_label, RARITIES};
+use wf_meta::equipment::{format_compact_count, rarity, RARITIES};
 use wf_meta::lamp::*;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum LampHit { Bag, Close, Hero(String), Queue(String), Equip, AutoEquip, Disposal, Cache, QueueDisposal, Dismantle, Upgrade(u32) }
+pub enum LampHit { Bag, Close, Dismantle, Upgrade(u32) }
 #[derive(Clone, Debug)]
 struct LHit { rect: Rect, kind: LampHit }
 #[derive(Default)]
 pub struct LampUi {
     pub open: bool,
     pub upgrade_open: bool,
-    selected_item: Option<String>,
-    selected_hero: Option<String>,
+    /// What Auto-Equip put on the heroes when this window opened: shown while the CP floats rise.
+    equipped: Vec<LampItem>,
     disposal_view: bool,
     disposal_preview: Option<DisposalPreview>,
     upgrade_receipt: Option<UpgradeReceipt>,
     notice: String,
     feedbacks: Vec<(String, f64, f64)>,
-    /// The dismantle screen was asked for while a CP float is still rising: it opens when the
-    /// last float has finished (owner 2026-11-05).
+    /// The window opened with CP floats rising: the dismantle screen (or the close, when nothing
+    /// is left to dismantle) waits until the last float has finished (owner 2026-11-05).
     disposal_waiting: bool,
     hits: Vec<LHit>,
     pub orbs: OrbField,
@@ -116,7 +120,7 @@ impl BagBar {
         if !visible { return None; }
         match self.phase {
             BarPhase::Hidden => {
-                // Only a completed dismantle brings the bar out (`request`). It always comes out
+                // Only a cleared Bag brings the bar out (`request`). It always comes out
                 // empty and fills up to what the save holds (owner 2026-11-05): a bar that came
                 // out part-filled read as a right-to-left fill while it slid.
                 if self.wanted { self.wanted = false; self.fraction = 0.; self.phase = BarPhase::SlideOut; self.t = 0.; }
@@ -150,7 +154,8 @@ impl BagBar {
         }
         None
     }
-    /// A dismantle has completed: show the progress once the bag icon is uncovered.
+    /// The Bag has been cleared (a dismantle completed, or nothing is stored and Essence is
+    /// held): show the progress once the bag icon is uncovered.
     fn request(&mut self) { self.wanted = true; }
     /// How far the bar is out of the icon, 0..1.
     fn reveal(&self) -> f32 {
@@ -183,7 +188,6 @@ impl BagBar {
 fn roster_of(game: &Game) -> Vec<LampHero> { lamp_hero_roster(&game.session.progress, false).unwrap_or_default() }
 impl LampUi {
     pub fn modal_open(&self) -> bool { self.open || self.upgrade_open }
-    fn item_of(data: &LampEconomy, id: &str) -> Option<LampItem> { data.item(id).cloned().or_else(|| data.review_hold().map(|h| h.item).filter(|i| i.instance_id == id)) }
     /// Per frame: expires the CP feedback and runs the Bag progress bar. `visible`: the combat
     /// screen shows with nothing over the bag icon.
     pub fn frame(&mut self, game: &mut Game, visible: bool, dt: f32) {
@@ -223,66 +227,56 @@ impl LampUi {
         self.act(hit, game);
         true
     }
-    fn close(&mut self) { self.open = false; self.upgrade_open = false; self.upgrade_receipt = None; self.selected_item = None; self.selected_hero = None; self.disposal_view = false; self.disposal_preview = None; self.disposal_waiting = false; self.notice.clear(); }
-    fn open_collection(&mut self, game: &mut Game, id: Option<String>, upgrades: bool) {
+    fn close(&mut self) { self.open = false; self.upgrade_open = false; self.upgrade_receipt = None; self.equipped.clear(); self.disposal_view = false; self.disposal_preview = None; self.disposal_waiting = false; self.notice.clear(); }
+    /// The Bag holds nothing more to equip or dismantle: the Essence held since the last Cascade
+    /// Fill (orbs dismantled at pickup, Essence drops, quest rewards) now fills the bar.
+    fn settle(&mut self, game: &Game) {
+        if game.economy.data().is_some_and(|d| d.stored_count() == 0. && d.review_hold().is_none() && d.lamp.essence > 0.) { self.bar.request(); }
+    }
+    /// A tap on the bag. Everything in it was an upgrade when it was picked up, so there is
+    /// nothing to choose: Auto-Equip runs at once and the window shows what was equipped while
+    /// the CP floats rise, then the dismantle screen for what is no longer an upgrade. An empty
+    /// Bag opens no window.
+    fn open_bag(&mut self, game: &mut Game) {
+        self.close();
         if let Err(e) = game.economy.sync(&mut game.session) { self.notice = e; }
         let Some(data) = game.economy.data().cloned() else { return };
-        if !upgrades && data.stored_count() == 0. && data.review_hold().is_none() { return; }
-        self.open = true; self.upgrade_open = upgrades; self.upgrade_receipt = None; self.disposal_view = false; self.disposal_preview = None;
-        self.selected_item = if upgrades { None } else { id }; self.selected_hero = None; self.notice.clear();
-        if !upgrades && self.selected_item.is_none() && !conveyor_review_candidates(&data, &roster_of(game)).iter().any(|c| c.best_gain > 0.) { self.review_disposal(game); }
-        let step = if upgrades { "preview" } else { "storage" };
-        let bit = if upgrades { GUIDE_PREVIEW } else { GUIDE_STORAGE };
-        if data.lamp.guide.unwrap_or(0.) as u32 & bit == 0 { let _ = game.economy.mark_guide(&mut game.session, step); }
+        if data.stored_count() == 0. && data.review_hold().is_none() { self.settle(game); return; }
+        self.open = true;
+        if data.lamp.guide.unwrap_or(0.) as u32 & GUIDE_STORAGE == 0 { let _ = game.economy.mark_guide(&mut game.session, "storage"); }
+        match game.economy.auto_equip(&mut game.session) {
+            Ok(results) => {
+                let until = game.economy.time() + 1800.;
+                for r in results { self.feedbacks.push((r.hero_id, r.cp_change, until)); self.equipped.extend(r.items); }
+            }
+            Err(e) => self.notice = e,
+        }
+        self.review_disposal_after_floats(game);
     }
     /// The dismantle screen never takes the window over while a CP float is still playing.
     fn review_disposal_after_floats(&mut self, game: &mut Game) {
         let now = game.economy.time();
         if self.feedbacks.iter().any(|f| f.2 > now) { self.disposal_waiting = true; } else { self.review_disposal(game); }
     }
+    /// After Auto-Equip: the dismantle screen for what is left in the Bag, or, with nothing
+    /// left, the window closes and the held Essence fills the bar.
     fn review_disposal(&mut self, game: &mut Game) {
         let Some(data) = game.economy.data().cloned() else { return };
-        let roster = roster_of(game);
-        if conveyor_review_candidates(&data, &roster).iter().any(|c| c.best_gain > 0.) { self.selected_item = None; self.selected_hero = None; self.disposal_view = false; self.disposal_preview = None; self.notice.clear(); return; }
-        self.selected_item = None; self.selected_hero = None; self.notice.clear();
+        // Auto-Equip failed and upgrades remain: the window keeps showing them with the notice.
+        if conveyor_review_candidates(&data, &roster_of(game)).iter().any(|c| c.best_gain > 0.) { return; }
         match game.economy.disposal_preview(&mut game.session, None) {
-            Ok(p) => { self.disposal_view = !p.ids.is_empty() || data.lamp.salvage.count > 0.; self.disposal_preview = Some(p); if !self.disposal_view { self.close(); } }
+            Ok(p) if p.ids.is_empty() && data.lamp.salvage.count <= 0. => { self.close(); self.settle(game); }
+            Ok(p) => { self.equipped.clear(); self.disposal_view = true; self.disposal_preview = Some(p); }
             Err(e) => { self.notice = e; }
         }
     }
     pub fn act(&mut self, kind: LampHit, game: &mut Game) {
         self.notice.clear();
-        // Anything else the player does replaces a dismantle screen that was waiting for a float.
+        // Anything the player does replaces a dismantle screen that was waiting for a float.
         self.disposal_waiting = false;
         match kind {
-            LampHit::Close => self.close(),
-            LampHit::Bag => self.open_collection(game, None, false),
-            LampHit::Disposal => self.review_disposal_after_floats(game),
-            LampHit::QueueDisposal => {
-                if let Some(id) = self.selected_item.clone() {
-                    match game.economy.queue_disposal(&mut game.session, &id) {
-                        Ok(()) => { self.selected_item = None; self.selected_hero = None; self.disposal_view = true; self.disposal_preview = game.economy.disposal_preview(&mut game.session, None).ok(); }
-                        Err(e) => self.notice = e,
-                    }
-                }
-            }
-            LampHit::Hero(id) => {
-                self.selected_hero = Some(id);
-                if game.economy.data().is_some_and(|d| d.lamp.guide.unwrap_or(0.) as u32 & GUIDE_COMPARISON == 0) { let _ = game.economy.mark_guide(&mut game.session, "comparison"); }
-            }
-            LampHit::Cache => { self.selected_item = None; self.selected_hero = None; self.disposal_view = false; self.disposal_preview = None; }
-            LampHit::Queue(id) => { self.selected_item = Some(id); self.selected_hero = None; }
-            LampHit::Equip => {
-                if let (Some(hero), Some(item)) = (self.selected_hero.clone(), self.selected_item.clone()) {
-                    match game.economy.equip(&mut game.session, &hero, &item) { Ok(r) => { self.feedbacks.push((r.hero_id.clone(), r.cp_change, game.economy.time() + 1800.)); self.selected_item = None; self.selected_hero = None; } Err(e) => self.notice = e }
-                }
-            }
-            LampHit::AutoEquip => {
-                match game.economy.auto_equip(&mut game.session) {
-                    Ok(results) => { let t = game.economy.time(); for r in results { self.feedbacks.push((r.hero_id, r.cp_change, t + 1800.)); } self.selected_item = None; self.selected_hero = None; self.review_disposal_after_floats(game); }
-                    Err(e) => self.notice = e,
-                }
-            }
+            LampHit::Close => { self.close(); self.settle(game); }
+            LampHit::Bag => self.open_bag(game),
             LampHit::Upgrade(tier) => match game.economy.upgrade(&mut game.session, Some(tier)) { Ok(r) => self.upgrade_receipt = Some(r), Err(e) => self.notice = e },
             LampHit::Dismantle => {
                 let Some(preview) = self.disposal_preview.clone() else { return };
@@ -294,9 +288,11 @@ impl LampUi {
             }
         }
     }
-    /// The cache / review / dismantle / Bag upgrade windows as page elements: main's
-    /// `#lamp-overlay` tree (`lampEquipmentUI.mjs` render + `bagUpgradePresentation.mjs`),
-    /// styled by `css/lamp.css` and `css/bag_upgrade.css`.
+    /// The cache / dismantle / Bag upgrade windows as page elements: main's `#lamp-overlay`
+    /// tree (`lampEquipmentUI.mjs` render + `bagUpgradePresentation.mjs`), styled by
+    /// `css/lamp.css` and `css/bag_upgrade.css`. Main's review window (choose a hero, Equip,
+    /// send to disposal) and the cache's Equip / Auto-Equip / Done buttons are not built: the
+    /// tiles are not buttons to press.
     pub fn view(&mut self, game: &mut Game, scale: f32) -> Option<Node<Act>> {
         if !self.modal_open() { return None; }
         let data = game.economy.data().cloned()?;
@@ -304,23 +300,17 @@ impl LampUi {
         let candidates = conveyor_review_candidates(&data, &roster);
         let now = game.economy.time();
         let on = |kind: LampHit| Act::Lamp(kind);
-        let candidate = self.selected_item.as_ref().and_then(|id| Self::item_of(&data, id));
-        if candidate.is_none() { self.selected_item = None; self.selected_hero = None; }
-        let view = if self.upgrade_receipt.is_some() { "upgrade-complete" } else if self.upgrade_open { "upgrade" } else if candidate.is_some() { "equip" } else if self.disposal_view { "dismantle" } else { "cache" };
-        let label = match view { "upgrade-complete" => "Upgrade Complete", "upgrade" => "Bag upgrades", "equip" => "Choose a hero for lamp equipment", "dismantle" => "Confirm equipment disposal", _ => "Equipment cache" };
+        let view = if self.upgrade_receipt.is_some() { "upgrade-complete" } else if self.upgrade_open { "upgrade" } else if self.disposal_view { "dismantle" } else { "cache" };
+        let label = match view { "upgrade-complete" => "Upgrade Complete", "upgrade" => "Bag upgrades", "dismantle" => "Confirm equipment disposal", _ => "Equipment cache" };
         let mut dialog = el("section").id("lamp-dialog").attr("role", "dialog").attr("aria-modal", "true").attr("tabindex", "-1").attr("data-view", view).label(label).on(Act::Stay);
         let notice = |dialog: &mut Node<Act>, text: &str| { if !text.is_empty() { dialog.push(el("p").class("lamp-modal-notice").attr("role", "status").t(text)); } };
-        let tile = |c: &Candidate, art_only: bool, selected: bool, disposal: Option<bool>| {
-            let item = &c.item;
+        let tile = |item: &LampItem, upgrade: bool, disposal: Option<bool>| {
             let tier = rarity(&item.rarity);
-            let mut node = el("button").class("lamp-tile").style(format!("--rarity:#{:06x}", tier.map_or(0xf3f3ee, |r| r.color))).attr("data-action", "queue").attr("data-cp", format!("{}", lamp_gear_cp(item))).attr("data-id", item.instance_id.as_str())
-                .attr("data-queue", c.queue).attr("data-best-gain", format!("{}", c.best_gain))
-                .label(format!("Inspect {}, {}, level {}", item.name, tier.map_or(item.rarity.as_str(), |r| r.label), item.level))
-                .on(on(LampHit::Queue(item.instance_id.clone())))
-                .child(atlas(item, c.best_gain > 0., !art_only));
-            if selected { node = node.attr("aria-current", "true"); }
+            let mut node = el("button").class("lamp-tile").style(format!("--rarity:#{:06x}", tier.map_or(0xf3f3ee, |r| r.color))).attr("data-cp", format!("{}", lamp_gear_cp(item))).attr("data-id", item.instance_id.as_str())
+                .label(format!("{}, {}, level {}", item.name, tier.map_or(item.rarity.as_str(), |r| r.label), item.level))
+                .child(atlas(item, upgrade, true));
             if let Some(marked) = disposal { node = node.attr("data-disposal-selected", marked.to_string()); }
-            if !art_only { node.push(el("small").t(format!("CP {}", format_compact_count(lamp_gear_cp(item))))); }
+            node.push(el("small").t(format!("CP {}", format_compact_count(lamp_gear_cp(item)))));
             node
         };
         if self.upgrade_open {
@@ -329,74 +319,32 @@ impl LampUi {
             notice(&mut dialog, &self.notice);
             dialog.push(el("button").class("game-modal-close bag-modal-close").attr("data-action", "close").label("Close bag modal").on(on(LampHit::Close)).child(el("span").attr("aria-hidden", "true").t("×")));
         } else {
-            let any_useful = candidates.iter().any(|c| c.best_gain > 0.);
-            let mut header = el("header").class("lamp-modal-header").child(el("span").t(if candidate.is_some() { "EQUIPMENT REVIEW" } else if self.disposal_view { "" } else { "EQUIPMENT CACHE" }));
-            if !self.disposal_view { header.push(el("button").class("lamp-disposal-link").attr("data-action", "disposal").flag("disabled", any_useful).t("Done / Dismantle").on(on(LampHit::Disposal))); }
-            header.push(el("button").attr("data-action", "close").label("Close equipment comparison").t("×").on(on(LampHit::Close)));
-            dialog.push(header);
-            if let (Some(hold), None, false) = (data.review_hold(), &candidate, self.disposal_view) { dialog.push(el("p").class("lamp-held").attr("role", "status").t(format!("Held: {}. Cache full — equip it or review disposal.", hold.item.name))); }
-            let hero_row = |candidate: Option<&LampItem>, selected: Option<&String>| {
-                let mut row = el("div").class("lamp-hero-row").label("Choose equipment recipient");
-                for h in &roster {
-                    let name = h.definition.name;
-                    let gain = match candidate { Some(c) => lamp_item_cp_gain(&data, c, h), None => candidates.iter().map(|c| lamp_item_cp_gain(&data, &c.item, h)).fold(0., f64::max) };
-                    let position = match name { "Fara" => "54% 7%", "Hondo" => "57% 7%", "Runa" => "50% 6%", _ => "53% 6%" };
-                    let mut button = el("button").flag("disabled", candidate.is_none()).class("lamp-hero lamp-portrait").attr("data-action", "hero").attr("data-id", h.instance_key.as_str()).attr("data-cp-change", format!("{gain}"))
-                        .attr("aria-pressed", (selected == Some(&h.instance_key)).to_string()).label(format!("Choose {name}")).attr("aria-description", format!("{name} CP change {}{gain}", if gain > 0. { "+" } else { "" }))
-                        .style(format!("--portrait-position:{position}")).on(on(LampHit::Hero(h.instance_key.clone())))
-                        .child(el("img").attr("decoding", "sync").attr("src", css::asset(&format!("images/{name}.png"))).attr("alt", ""))
-                        .child(el("span").class("lamp-hero-current-cp").child(el("span").t("CP")).t(" ").child(el("b").t(format!("{}", lamp_hero_cp(&data, h)))));
-                    if candidate.is_some() || !candidates.is_empty() { button.push(el("span").class(if gain > 0. { "lamp-cp-direction up" } else { "lamp-cp-direction down" }).attr("aria-hidden", "true")); }
-                    row.push(button);
-                }
-                row
-            };
-            if let Some(c) = &candidate {
-                let comparison = self.selected_hero.as_ref().map(|h| compare_lamp_item(&data, c, h));
-                let tier = rarity(&c.rarity);
-                let upgrade = roster.iter().any(|h| lamp_item_cp_gain(&data, c, h) > 0.);
-                let mut body = el("div").class("lamp-review-body");
-                if data.review_hold().is_some() { body.push(el("p").class("lamp-held").attr("role", "status").t("Cache full · one item held for review")); }
-                body.push(hero_row(Some(c), self.selected_hero.as_ref()));
-                let mut stats = el("dl").class("lamp-item-stats");
-                for k in ["HP", "ATK", "DEF", "MAG", "RES"] {
-                    if !c.stats.contains_key(k) { continue; }
-                    let delta = comparison.as_ref().and_then(|cmp| cmp.deltas.get(k)).copied().unwrap_or(0.);
-                    let mut value = el("span").class("lamp-stat-value").child(el("span").class("lamp-stat-number").attr("aria-hidden", "true").t(format!("{}", c.stat(k))));
-                    if delta != 0. { value.push(el("span").class(if delta > 0. { "lamp-stat-arrow up" } else { "lamp-stat-arrow down" }).attr("aria-hidden", "true")); }
-                    let spoken = if self.selected_hero.is_some() { format!(", {}{}", if delta > 0. { "increase " } else if delta < 0. { "decrease " } else { "no change " }, delta.abs()) } else { String::new() };
-                    stats.push(el("div").child(el("dt").t(k)).child(el("dd").attr("data-delta", format!("{delta}")).label(format!("{k} {}{spoken}", c.stat(k))).child(value)));
-                }
-                body.push(el("div").class("lamp-candidate").style(format!("--rarity:#{:06x}", tier.map_or(0xf3f3ee, |r| r.color)))
-                    .child(atlas(c, upgrade, true))
-                    .child(el("div")
-                        .child(el("div").class("lamp-quality-band")
-                            .child(el("small").t(format!("{} · {} · Lv. {}", tier.map_or("", |r| r.label), slot_label(&c.kind).unwrap_or(""), c.level)))
-                            .child(el("h2").t(c.name.as_str()))
-                            .child(el("p").class("lamp-item-cp").t(format!("CP {}", lamp_gear_cp(c)))))
-                        .child(stats)));
-                body.push(el("div").class("lamp-queue").label("Actionable upgrades").children(candidates.iter().filter(|q| q.best_gain > 0. && !data.disposal_requested().contains(&q.item.instance_id)).map(|q| tile(q, false, q.item.instance_id == c.instance_id, None))));
-                body.push(el("button").class("lamp-disposal-link lamp-item-disposal").attr("data-action", "queue-disposal").flag("disabled", upgrade).t("Send selected item to disposal").on(on(LampHit::QueueDisposal)));
-                dialog.push(body);
-                notice(&mut dialog, &self.notice);
-                let can_equip = self.selected_hero.as_ref().is_some_and(|id| roster.iter().any(|h| &h.instance_key == id && lamp_item_cp_gain(&data, c, h) > 0.));
-                dialog.push(el("div").class("lamp-actions lamp-review-actions")
-                    .child(el("button").class("primary").attr("data-action", "equip").flag("disabled", !can_equip).t("Equip").on(on(LampHit::Equip)))
-                    .child(el("button").attr("data-action", "cache").t("Back to cache").on(on(LampHit::Cache))));
-            } else if self.disposal_view {
+            dialog.push(el("header").class("lamp-modal-header").child(el("span").t(if self.disposal_view { "" } else { "EQUIPMENT CACHE" }))
+                .child(el("button").attr("data-action", "close").label("Close equipment cache").t("×").on(on(LampHit::Close))));
+            if self.disposal_view {
                 let preview = self.disposal_preview.clone().or_else(|| game.economy.disposal_preview(&mut game.session, None).ok());
                 self.disposal_preview = preview.clone();
                 let ids = preview.map(|p| p.ids).unwrap_or_default();
-                dialog.push(el("div").class("lamp-disposal-body").child(el("div").class("lamp-queue").label("Disposal candidates").children(candidates.iter().map(|q| tile(q, false, false, Some(ids.contains(&q.item.instance_id)))))));
+                dialog.push(el("div").class("lamp-disposal-body").child(el("div").class("lamp-queue").label("Disposal candidates").children(candidates.iter().map(|q| tile(&q.item, q.best_gain > 0., Some(ids.contains(&q.item.instance_id)))))));
                 dialog.push(el("div").class("lamp-actions").child(el("button").class("primary").attr("data-action", "dismantle").flag("disabled", ids.is_empty() && data.lamp.salvage.count <= 0.).t("Dismantle all").on(on(LampHit::Dismantle))));
                 notice(&mut dialog, &self.notice);
             } else {
-                dialog.push(hero_row(None, None));
+                // The heroes with their CP (the floats rise from these portraits) and what
+                // Auto-Equip just put on them; upgrades still stored appear only if it failed.
+                let mut row = el("div").class("lamp-hero-row").label("Heroes");
+                for h in &roster {
+                    let name = h.definition.name;
+                    let position = match name { "Fara" => "54% 7%", "Hondo" => "57% 7%", "Runa" => "50% 6%", _ => "53% 6%" };
+                    row.push(el("button").flag("disabled", true).class("lamp-hero lamp-portrait").attr("data-id", h.instance_key.as_str()).label(name)
+                        .style(format!("--portrait-position:{position}"))
+                        .child(el("img").attr("decoding", "sync").attr("src", css::asset(&format!("images/{name}.png"))).attr("alt", ""))
+                        .child(el("span").class("lamp-hero-current-cp").child(el("span").t("CP")).t(" ").child(el("b").t(format!("{}", lamp_hero_cp(&data, h))))));
+                }
+                dialog.push(row);
                 dialog.push(el("p").t(format!("{} / {} stored", data.stored_count(), data.capacity())));
-                dialog.push(el("div").class("lamp-queue").label("Actionable upgrades").children(candidates.iter().filter(|q| q.best_gain > 0. && !data.disposal_requested().contains(&q.item.instance_id)).map(|q| tile(q, false, false, None))));
-                dialog.push(el("div").class("lamp-actions")
-                    .child(el("button").attr("data-action", "equip").flag("disabled", true).t("Equip"))
-                    .child(el("button").class("primary").attr("data-action", "auto-equip").flag("disabled", !any_useful).t("Auto-Equip").on(on(LampHit::AutoEquip))));
+                dialog.push(el("div").class("lamp-queue").label("Equipped just now")
+                    .children(self.equipped.iter().map(|item| tile(item, true, None)))
+                    .children(candidates.iter().filter(|q| q.best_gain > 0.).map(|q| tile(&q.item, true, None))));
                 notice(&mut dialog, &self.notice);
             }
         }
@@ -404,13 +352,13 @@ impl LampUi {
         let height = if self.upgrade_open { 640. } else { 580. } * scale;
         let mut overlay = el("div").key("lamp").id("lamp-overlay").attr("data-boss-fallback", "false").style(format!("height:{height:.2}px;--bag-scale:{scale:.4};--modal-close-scale:{scale:.4};--boss-fallback-reserve:0px")).on(on(LampHit::Close)).child(dialog);
         // showEquipFeedback: "CP +n" rising from the hero's portrait for 1.8 s (the portrait row sits
-        // about 92 px down in the review window and 124 px in the cache window).
+        // about 124 px down in the cache window).
         for (hero_id, change, until) in &self.feedbacks {
             if *until <= now { continue; }
             let column = roster.iter().position(|h| &h.instance_key == hero_id).unwrap_or(0) as f32;
             let left = (20. + (column + 0.5) / roster.len().max(1) as f32 * (360. * scale - 40.)).round();
             overlay.push(el("div").class(if *change > 0. { "lamp-cp-feedback positive" } else if *change < 0. { "lamp-cp-feedback negative" } else { "lamp-cp-feedback neutral" }).attr("role", "status").attr("data-hero", hero_id.as_str())
-                .style(format!("width:48px;left:{left}px;top:{}px", (if candidate.is_some() { 92. } else { 124. } * scale).round())).t(format!("CP {}{change}", if *change > 0. { "+" } else { "" })));
+                .style(format!("width:48px;left:{left}px;top:{}px", (124. * scale).round())).t(format!("CP {}{change}", if *change > 0. { "+" } else { "" })));
         }
         Some(overlay)
     }

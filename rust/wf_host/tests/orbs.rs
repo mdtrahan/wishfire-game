@@ -40,7 +40,7 @@ impl Bench {
     fn orbs(&self) -> usize { self.store.data().unwrap().orb_count() }
     /// Ids of the oldest `n` orbs on the field.
     fn oldest(&self, n: usize) -> Vec<String> { self.store.data().unwrap().orbs().into_iter().take(n).map(|o| o.instance_id).collect() }
-    fn collect(&mut self, n: usize) -> Vec<wf_meta::lamp::LampItem> { let ids = self.oldest(n); self.store.collect_orbs(&mut self.host, &ids).unwrap() }
+    fn collect(&mut self, n: usize) -> Vec<wf_meta::lamp::LampItem> { let ids = self.oldest(n); self.store.collect_orbs(&mut self.host, &ids).unwrap().stored }
     /// Every equipment id the save knows, with where it lives; an id in two places is a duplicate.
     fn ledger(&self) -> BTreeMap<String, &'static str> {
         let data = self.store.data().unwrap();
@@ -108,9 +108,13 @@ fn freed_capacity_resumes_collection_and_dismantling_pays_essence() {
     assert_eq!(b.store.data().unwrap().lamp.essence, essence_before + receipt.essence);
     let free = b.store.data().unwrap().free_slots();
     assert!(free > 0);
-    let resumed = b.collect(100);
-    assert_eq!(resumed.len(), free.min(10));
-    assert_eq!(b.orbs(), 10 - resumed.len());
+    // The ten waiting orbs are judged against what the heroes wear now: upgrades take the free
+    // slots, the others are dismantled at once, and only an upgrade without a slot stays.
+    let ids = b.oldest(100);
+    let resumed = b.store.collect_orbs(&mut b.host, &ids).unwrap();
+    assert!(resumed.stored.len() <= free);
+    assert_eq!(b.orbs(), 10 - resumed.stored.len() - resumed.dismantled.len());
+    assert!(b.orbs() == 0 || b.store.data().unwrap().free_slots() == 0);
     assert!(b.stored() <= b.store.data().unwrap().capacity());
     b.ledger();
 }
@@ -158,10 +162,10 @@ fn only_the_named_orbs_are_collected_whatever_their_age() {
     let dropped = b.store.drop_orbs(&mut b.host, 1., 1., 6).unwrap();
     // A hero stands near the fourth and second drops only.
     let near = vec![dropped[3].instance_id.clone(), dropped[1].instance_id.clone(), "lamp:42:999".to_string()];
-    let stored = b.store.collect_orbs(&mut b.host, &near).unwrap();
+    let stored = b.store.collect_orbs(&mut b.host, &near).unwrap().stored;
     assert_eq!(stored.iter().map(|i| i.instance_id.clone()).collect::<Vec<_>>(), [dropped[1].instance_id.clone(), dropped[3].instance_id.clone()], "drop order, unknown ids ignored");
     assert_eq!((b.stored(), b.orbs()), (2., 4));
-    assert!(b.store.collect_orbs(&mut b.host, &near).unwrap().is_empty(), "an orb is stored once");
+    assert_eq!(b.store.collect_orbs(&mut b.host, &near).unwrap(), wf_meta::lamp::OrbPickup::default(), "an orb is stored once");
     b.ledger();
 }
 
@@ -187,5 +191,43 @@ fn the_field_is_bounded_and_an_oversized_older_save_loads_trimmed() {
     store.sync(&mut host).expect("the oversized save still loads");
     assert_eq!(store.data().unwrap().orb_count(), ORB_LIMIT);
     assert!(values.borrow().get(EQUIPMENT_SAVE_KEY).unwrap().len() < 16_000);
-    assert_eq!(store.collect_orbs(&mut host, &store.data().unwrap().orbs().into_iter().map(|o| o.instance_id).collect::<Vec<_>>()).unwrap().len(), 20, "and collects into the Bag as usual");
+    assert_eq!(store.collect_orbs(&mut host, &store.data().unwrap().orbs().into_iter().map(|o| o.instance_id).collect::<Vec<_>>()).unwrap().stored.len(), 20, "and collects into the Bag as usual");
+}
+
+/// Owner 2026-11-05 (ORKA-63bf.34): orbs are judged when they are picked up.
+#[test]
+fn once_the_party_is_equipped_weaker_orbs_are_dismantled_at_pickup_and_pay_essence() {
+    use wf_meta::lamp::salvage_value;
+    let mut b = bench();
+    let reported = Rc::new(RefCell::new(Vec::<String>::new()));
+    let sink = reported.clone();
+    b.store.on_gear_collected = Some(Box::new(move |item| { sink.borrow_mut().push(item.instance_id.clone()); true }));
+    // A bare party: every drop raises somebody's CP, so all twelve enter the Bag.
+    b.store.drop_orbs(&mut b.host, 1., 1., 12).unwrap();
+    assert_eq!((b.collect(100).len(), b.stored(), b.store.data().unwrap().lamp.essence), (12, 12., 0.));
+    // The Bag is opened: Auto-Equip, then the leftovers are dismantled.
+    assert!(!b.store.auto_equip(&mut b.host).unwrap().is_empty());
+    let preview = b.store.disposal_preview(&mut b.host, None).unwrap();
+    if !preview.ids.is_empty() { b.store.dismantle(&mut b.host, &preview).unwrap(); }
+    assert_eq!(b.stored(), 0.);
+    let essence = b.store.data().unwrap().lamp.essence;
+    // Forty more drops picked up in one go.
+    b.store.drop_orbs(&mut b.host, 1., 1., 40).unwrap();
+    let ids = b.oldest(40);
+    let pickup = b.store.collect_orbs(&mut b.host, &ids).unwrap();
+    assert!(!pickup.stored.is_empty() && !pickup.dismantled.is_empty(), "{} stored, {} dismantled", pickup.stored.len(), pickup.dismantled.len());
+    assert_eq!(pickup.stored.len() + pickup.dismantled.len() + b.orbs(), 40);
+    assert_eq!(b.stored(), pickup.stored.len() as f64, "only upgrades use Bag slots");
+    assert_eq!(pickup.essence, pickup.dismantled.iter().map(|i| salvage_value(&i.rarity)).sum::<f64>());
+    assert_eq!(b.store.data().unwrap().lamp.essence, essence + pickup.essence, "the Essence is saved with the pickup");
+    let ledger = b.ledger();
+    assert!(pickup.dismantled.iter().all(|i| !ledger.contains_key(&i.instance_id)), "a dismantled orb is neither an orb nor an item");
+    // Everything stored is still an upgrade: nothing in the Bag waits to be dismantled.
+    assert!(b.store.disposal_preview(&mut b.host, None).unwrap().ids.is_empty());
+    // Every picked-up orb counts as collected equipment for the quest system, stored or not.
+    assert_eq!(reported.borrow().len(), 12 + pickup.stored.len() + pickup.dismantled.len());
+    // The same pickup again settles nothing twice.
+    let again = b.store.collect_orbs(&mut b.host, &ids).unwrap();
+    assert_eq!((again.dismantled.len(), again.essence), (0, 0.));
+    assert_eq!(b.store.data().unwrap().lamp.essence, essence + pickup.essence);
 }

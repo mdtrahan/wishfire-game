@@ -237,7 +237,7 @@ fn orb_rarity_follows_the_bag_level_weights() {
             if weight == 0. { assert_eq!(share, 0., "tier {tier} never rolls {key}"); }
         }
         let first: Vec<String> = data.orbs().iter().take(5).map(|o| o.instance_id.clone()).collect();
-        assert_eq!(collect_orb_items(&mut data, &first).len(), 5);
+        assert_eq!(collect_orb_items(&mut data, &first, &[]).stored.len(), 5);
     }
 }
 
@@ -322,4 +322,61 @@ fn a_kill_drops_equipment_gold_essence_a_ticket_or_nothing() {
     assert_eq!(grant_essence(&mut data, -5.), Ok(3.));
     assert!(grant_essence(&mut data, 9_007_199_254_740_992.).is_err());
     assert_eq!(data.lamp.essence, 3.);
+}
+
+/// Owner 2026-11-05 (ORKA-63bf.34): an orb is judged when it is picked up. It enters the Bag
+/// only if it raises some hero's CP over what that hero wears; otherwise it is dismantled at
+/// once for its salvage Essence and uses no Bag slot.
+#[test]
+fn a_picked_up_orb_is_stored_if_it_raises_a_hero_cp_and_dismantled_for_essence_if_not() {
+    use wf_meta::hero::HERO_DEFINITIONS;
+    use wf_meta::lamp::{classify_conveyor_cache, collect_orb_items, drop_orb_item, lamp_item_cp_gain, plan_conveyor_auto_equip, salvage_value, LampEconomy, LampHero, OrbPickup};
+    let heroes: Vec<LampHero> = HERO_DEFINITIONS.iter().map(|d| LampHero { instance_key: d.key.into(), definition: d, level: 1 }).collect();
+    let ids = |data: &LampEconomy| data.orbs().iter().map(|o| o.instance_id.clone()).collect::<Vec<_>>();
+    let mut data = LampEconomy::create(20261105, 0.);
+    // A bare party: every drop raises somebody's CP and is stored.
+    for _ in 0..12 { drop_orb_item(&mut data, 1., 1.); }
+    let named = ids(&data);
+    let first = collect_orb_items(&mut data, &named, &heroes);
+    assert_eq!((first.stored.len(), first.dismantled.len(), first.essence, data.lamp.essence, data.orb_count()), (12, 0, 0., 0., 0));
+    // The party equips the best of them (the Bag's Auto-Equip).
+    classify_conveyor_cache(&mut data, &heroes);
+    let (working, changes) = plan_conveyor_auto_equip(&data, &heroes);
+    assert!(!changes.is_empty());
+    data = working;
+    classify_conveyor_cache(&mut data, &heroes);
+    // Forty more drops, judged against what the heroes wear now.
+    for _ in 0..40 { drop_orb_item(&mut data, 1., 1.); }
+    let orbs = data.orbs();
+    let upgrade = |data: &LampEconomy, id: &str| { let item = orbs.iter().find(|o| o.instance_id == id).unwrap(); heroes.iter().any(|h| lamp_item_cp_gain(data, item, h) > 0.) };
+    let before = data.clone();
+    let named = ids(&data);
+    let pickup = collect_orb_items(&mut data, &named, &heroes);
+    assert!(!pickup.stored.is_empty() && !pickup.dismantled.is_empty(), "{} stored, {} dismantled", pickup.stored.len(), pickup.dismantled.len());
+    assert!(pickup.stored.iter().all(|i| upgrade(&before, &i.instance_id)) && pickup.dismantled.iter().all(|i| !upgrade(&before, &i.instance_id)));
+    assert_eq!(pickup.essence, pickup.dismantled.iter().map(|i| salvage_value(&i.rarity)).sum::<f64>());
+    assert_eq!(data.lamp.essence, before.lamp.essence + pickup.essence);
+    assert_eq!(data.stored_count(), before.stored_count() + pickup.stored.len() as f64, "a dismantled orb uses no Bag slot");
+    assert!(pickup.dismantled.iter().all(|i| data.item(&i.instance_id).is_none()), "and never becomes an item");
+    assert_eq!(pickup.stored.len() + pickup.dismantled.len() + data.orb_count(), 40);
+    // Whatever still lies there is an upgrade the full Bag could not take.
+    assert!(data.orbs().iter().all(|o| upgrade(&before, &o.instance_id)) && (data.orb_count() == 0 || data.free_slots() == 0));
+    // Picking the same orbs up again settles nothing twice.
+    let names: Vec<String> = orbs.iter().map(|o| o.instance_id.clone()).collect();
+    let left = data.orb_count();
+    let again = collect_orb_items(&mut data, &names, &heroes);
+    assert_eq!((again.dismantled.len(), again.essence, data.orb_count() + again.stored.len()), (0, 0., left));
+    // A full Bag: upgrades wait on the field, everything else is still dismantled.
+    let mut full = before.clone();
+    full.lamp.salvage.count = full.capacity() - full.stored_count();
+    assert_eq!(full.free_slots(), 0);
+    let blocked = collect_orb_items(&mut full, &names, &heroes);
+    assert_eq!((blocked.stored.len(), blocked.dismantled.len(), blocked.essence), (0, pickup.dismantled.len(), pickup.essence));
+    assert_eq!(full.orb_count(), 40 - pickup.dismantled.len());
+    // Unnamed orbs are never touched; without a roster nothing can be judged and all are stored.
+    let mut unjudged = before.clone();
+    assert_eq!(collect_orb_items(&mut unjudged, &[], &heroes), OrbPickup::default());
+    let some: Vec<String> = names.iter().take(3).cloned().collect();
+    let stored = collect_orb_items(&mut unjudged, &some, &[]);
+    assert_eq!((stored.stored.len(), stored.dismantled.len(), unjudged.orb_count()), (3, 0, 37));
 }

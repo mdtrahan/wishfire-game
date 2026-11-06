@@ -1,8 +1,10 @@
 //! Equipment orbs on the battlefield (ORKA-63bf.20/.21). A defeated enemy drops an orb one time
 //! in ten: an equipment item rolled and saved by `wf_host::equipment` (`lamp.orbs`), coloured by
 //! its rarity. An orb can be picked up once its subwave has completed, by a living hero whose
-//! feet come within the pickup circle (a diameter of three hero heights, in world units); the
-//! Bag's capacity decides whether it is stored, and an orb that does not fit stays where it fell.
+//! feet come within the pickup circle (a diameter of three hero heights, in world units). The
+//! item is judged at that moment (owner 2026-11-05, ORKA-63bf.34): one that raises a hero's CP is
+//! stored in the Bag, and stays where it fell if the Bag is full; any other is dismantled at
+//! once for Essence. Both kinds fly to the hero.
 //! When the wave chest is on the field (the wave is cleared), every orb still lying there is
 //! swept to the nearest living hero whatever the distance, so none is stranded where the heroes
 //! never walked (owner 2026-11-05); the Bag's capacity still decides.
@@ -35,9 +37,11 @@ const FLIGHT_STAGGER: f32 = 0.025;
 const APPEAR_SECONDS: f32 = 0.18;
 const FADE_SECONDS: f32 = 0.3;
 
-struct Flight { hero: u32, start: f32, from: Vec2 }
+struct Flight { hero: u32, start: f32, from: Vec2, /// It was stored in the Bag (not dismantled, not a resource).
+    stored: bool }
 struct Orb { id: String, color: Color, pos: Vec2, born: f32, /// Its subwave has completed.
-    eligible: bool, flight: Option<Flight> }
+    eligible: bool, /// An upgrade the full Bag turned away: asked again only when a slot is free.
+    blocked: bool, flight: Option<Flight> }
 /// A resource drop: what the party gains when a hero picks it up.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Loot { Gold(f64), Essence(f64), Ticket { hero_id: String, hero_name: String } }
@@ -99,9 +103,10 @@ impl OrbField {
             if self.loot.len() < LOOT_LIMIT { self.loot.push(Pickup { loot, pos: centre + offset, born: self.clock, eligible: true, flight: None }); }
         }
     }
-    /// Orbs still in the air: already stored in the Bag, not yet arrived (the bag count waits for them).
-    pub fn flying(&self) -> usize { self.orbs.iter().filter(|o| o.flight.is_some()).count() }
-    fn resting(&self) -> usize { self.orbs.len() - self.flying() }
+    /// Orbs still in the air that are already stored in the Bag (the bag count waits for them);
+    /// orbs dismantled at pickup fly too but were never stored.
+    pub fn flying(&self) -> usize { self.orbs.iter().filter(|o| o.flight.as_ref().is_some_and(|f| f.stored)).count() }
+    fn resting(&self) -> usize { self.orbs.iter().filter(|o| o.flight.is_none()).count() }
     /// Enemy deaths in this frame's events: each has `ORB_DROP_CHANCE` to leave an orb's drop
     /// position, or else a small chance of a resource drop. `ticket_heroes`: who a ticket can be for.
     pub fn ingest(&mut self, events: &[Event], now: &Snapshot, before: &Snapshot, ticket_heroes: &[TicketHero]) {
@@ -140,7 +145,7 @@ impl OrbField {
                     let positions = std::mem::take(&mut self.waiting_drops);
                     for (item, pos) in items.into_iter().zip(positions) {
                         let color = rarity_color(&item.rarity);
-                        self.orbs.push(Orb { id: item.instance_id, color, pos: pos.clamp(lo, hi), born: self.clock, eligible: false, flight: None });
+                        self.orbs.push(Orb { id: item.instance_id, color, pos: pos.clamp(lo, hi), born: self.clock, eligible: false, blocked: false, flight: None });
                     }
                     self.notice = None;
                 }
@@ -164,7 +169,7 @@ impl OrbField {
                 for (id, color) in missing {
                     let offset = vec2((self.random() - 0.5) * 360., (self.random() - 0.5) * 260.);
                     // Saved drops predate this session: their subwaves are long complete.
-                    restored.push(Orb { id, color, pos: (centre + offset).clamp(lo, hi), born: self.clock, eligible: true, flight: None });
+                    restored.push(Orb { id, color, pos: (centre + offset).clamp(lo, hi), born: self.clock, eligible: true, blocked: false, flight: None });
                 }
                 // Saved order is drop order: older than anything dropped this session.
                 restored.append(&mut self.orbs);
@@ -178,24 +183,30 @@ impl OrbField {
         if self.seen_completions.is_some_and(|seen| seen != completions) { for orb in &mut self.orbs { orb.eligible = true; } for drop in &mut self.loot { drop.eligible = true; } }
         self.seen_completions = Some(completions);
         // Pickup: an eligible orb inside a living hero's circle goes to the nearest such hero.
-        // The Bag's free slots are authoritative: the stored set is committed first, then exactly
-        // those orbs fly. During the wave chest pause the circle does not apply: every orb goes
-        // to its nearest living hero.
+        // The save is authoritative: one transaction judges every orb in reach (an upgrade is
+        // stored while the Bag has a free slot, anything else is dismantled for Essence), then
+        // exactly the settled orbs fly. An upgrade the full Bag turned away is not asked about
+        // again until a slot is free. During the wave chest pause the circle does not apply:
+        // every orb goes to its nearest living hero.
         let sweep = !s.chests.is_empty() && !s.actors.iter().any(|a| a.team == Team::Enemy && a.hp > 0.);
-        if can_collect && economy.data().is_some_and(|d| d.free_slots() > 0) {
+        let room = economy.data().is_some_and(|d| d.free_slots() > 0);
+        if can_collect && economy.data().is_some() {
             let heroes: Vec<(u32, Vec2, f32)> = s.actors.iter().filter(|a| a.team == Team::Hero && a.hp > 0.).map(|a| (a.id, world(a.pos), hero_height(a) * PICKUP_DIAMETER_IN_HERO_HEIGHTS / 2.)).collect();
-            let reach: Vec<(String, u32)> = self.orbs.iter().filter(|o| (o.eligible || sweep) && o.flight.is_none()).filter_map(|o| {
+            let reach: Vec<(String, u32)> = self.orbs.iter().filter(|o| (o.eligible || sweep) && o.flight.is_none() && (room || !o.blocked)).filter_map(|o| {
                 heroes.iter().filter(|(_, feet, radius)| sweep || o.pos.distance(*feet) <= *radius).min_by(|a, b| o.pos.distance(a.1).total_cmp(&o.pos.distance(b.1))).map(|(hero, _, _)| (o.id.clone(), *hero))
             }).collect();
             if !reach.is_empty() {
                 let ids: Vec<String> = reach.iter().map(|(id, _)| id.clone()).collect();
                 match economy.collect_orbs(session, &ids) {
-                    Ok(items) => {
-                        let stored: HashSet<&str> = items.iter().map(|i| i.instance_id.as_str()).collect();
+                    Ok(pickup) => {
+                        let stored: HashSet<&str> = pickup.stored.iter().map(|i| i.instance_id.as_str()).collect();
+                        let dismantled: HashSet<&str> = pickup.dismantled.iter().map(|i| i.instance_id.as_str()).collect();
                         let mut order = 0;
-                        for orb in self.orbs.iter_mut().filter(|o| o.flight.is_none() && stored.contains(o.id.as_str())) {
-                            let hero = reach.iter().find(|(id, _)| *id == orb.id).map_or(0, |(_, hero)| *hero);
-                            orb.flight = Some(Flight { hero, start: self.clock + order as f32 * FLIGHT_STAGGER, from: orb.pos });
+                        for orb in self.orbs.iter_mut().filter(|o| o.flight.is_none()) {
+                            let Some((_, hero)) = reach.iter().find(|(id, _)| *id == orb.id) else { continue };
+                            let kept = stored.contains(orb.id.as_str());
+                            if !kept && !dismantled.contains(orb.id.as_str()) { orb.blocked = true; continue; }
+                            orb.flight = Some(Flight { hero: *hero, start: self.clock + order as f32 * FLIGHT_STAGGER, from: orb.pos, stored: kept });
                             order += 1;
                         }
                         self.notice = None;
@@ -211,7 +222,7 @@ impl OrbField {
             let mut order = 0;
             for drop in self.loot.iter_mut().filter(|d| (d.eligible || sweep) && d.flight.is_none()) {
                 let Some((hero, _, _)) = heroes.iter().filter(|(_, feet, radius)| sweep || drop.pos.distance(*feet) <= *radius).min_by(|a, b| drop.pos.distance(a.1).total_cmp(&drop.pos.distance(b.1))) else { continue };
-                drop.flight = Some(Flight { hero: *hero, start: self.clock + order as f32 * FLIGHT_STAGGER, from: drop.pos });
+                drop.flight = Some(Flight { hero: *hero, start: self.clock + order as f32 * FLIGHT_STAGGER, from: drop.pos, stored: false });
                 self.collected.push(drop.loot.clone());
                 order += 1;
             }
@@ -547,8 +558,10 @@ pub(crate) mod tests {
         run.session.subwave_completions += 1;
         field.update(&mut economy, &mut run.session, &s, 0.016, true, &height);
         assert_eq!((stored(&economy), field.resting(), economy.data().unwrap().capacity()), (20., 6, 20.));
+        let asked = economy.generation;
         for _ in 0..120 { field.update(&mut economy, &mut run.session, &s, 0.016, true, &height); }
         assert_eq!((stored(&economy), field.resting(), field.flying(), economy.data().unwrap().orb_count()), (20., 6, 0, 6), "a full Bag takes nothing and loses nothing");
+        assert_eq!(economy.generation, asked, "upgrades a full Bag turned away are not asked about again every frame");
         // The player equips and dismantles in the equipment screen (collection holds meanwhile).
         economy.auto_equip(&mut run.session).unwrap();
         let preview = economy.disposal_preview(&mut run.session, None).unwrap();
@@ -558,9 +571,57 @@ pub(crate) mod tests {
         assert_eq!(field.resting(), 6, "nothing is collected while a Bag window is open");
         let free = economy.data().unwrap().free_slots();
         assert!(free >= 6);
+        let essence = economy.data().unwrap().lamp.essence;
         field.update(&mut economy, &mut run.session, &s, 0.016, true, &height);
-        assert_eq!((field.resting(), field.flying(), economy.data().unwrap().orb_count()), (0, 6, 0), "blocked orbs resume once there is room");
-        assert!(stored(&economy) <= economy.data().unwrap().capacity());
+        // Room again: the six are picked up and judged against what the heroes wear now. The
+        // ones that still raise a hero's CP are stored; the others are dismantled for Essence.
+        let data = economy.data().unwrap();
+        assert_eq!((field.resting(), data.orb_count()), (0, 0), "blocked orbs resume once there is room");
+        assert_eq!(field.orbs.iter().filter(|o| o.flight.is_some()).count(), 6, "stored or dismantled, every one flies to the hero");
+        assert_eq!(field.flying() as f64, data.stored_count(), "the bag count waits only for the stored ones");
+        assert_eq!(data.lamp.essence > essence, field.flying() < 6, "the rest paid Essence");
+        assert!(data.stored_count() <= data.capacity());
+    }
+    /// Owner 2026-11-05 (ORKA-63bf.34): the item is judged when a hero picks the orb up.
+    #[test]
+    fn once_the_party_is_equipped_orbs_that_raise_nobodys_cp_are_dismantled_at_pickup() {
+        use wf_meta::lamp::salvage_value;
+        let mut run = crate::testing::HostRun::new(1);
+        let mut economy = economy(&mut run);
+        let s = solo(run.snapshot());
+        let mut field = OrbField::default();
+        field.update(&mut economy, &mut run.session, &s, 0.016, true, &height);
+        // A bare party: all twelve drops raise somebody's CP and are stored.
+        lay(&mut field, &mut economy, &mut run, &s, 12, vec2(10., 0.));
+        run.session.subwave_completions += 1;
+        field.update(&mut economy, &mut run.session, &s, 0.016, true, &height);
+        assert_eq!((stored(&economy), field.flying(), economy.data().unwrap().lamp.essence), (12., 12, 0.));
+        for _ in 0..60 { field.update(&mut economy, &mut run.session, &s, 0.016, true, &height); }
+        // The Bag is opened: Auto-Equip, then the leftovers are dismantled.
+        assert!(!economy.auto_equip(&mut run.session).unwrap().is_empty());
+        let preview = economy.disposal_preview(&mut run.session, None).unwrap();
+        if !preview.ids.is_empty() { economy.dismantle(&mut run.session, &preview).unwrap(); }
+        assert_eq!(stored(&economy), 0.);
+        // Thirty more drops in reach, judged in one transaction when their subwave completes.
+        lay(&mut field, &mut economy, &mut run, &s, 30, vec2(10., 0.));
+        let orbs = economy.data().unwrap().orbs();
+        let essence = economy.data().unwrap().lamp.essence;
+        run.session.subwave_completions += 1;
+        field.update(&mut economy, &mut run.session, &s, 0.016, true, &height);
+        let data = economy.data().unwrap();
+        let kept: Vec<&wf_meta::lamp::LampItem> = orbs.iter().filter(|o| data.item(&o.instance_id).is_some()).collect();
+        let lying = data.orbs();
+        let gone: Vec<&wf_meta::lamp::LampItem> = orbs.iter().filter(|o| data.item(&o.instance_id).is_none() && !lying.iter().any(|l| l.instance_id == o.instance_id)).collect();
+        // Only an upgrade the full Bag could not take is left lying.
+        let left = lying.len();
+        assert!(!gone.is_empty() && gone.len() + kept.len() + left == 30, "{} stored, {} dismantled, {left} left", kept.len(), gone.len());
+        assert!(field.resting() == left && (left == 0 || data.free_slots() == 0), "{left} left on the field");
+        assert_eq!(field.orbs.iter().filter(|o| o.flight.is_some()).count(), 30 - left, "every picked-up orb flies to the hero");
+        assert_eq!((field.flying(), data.stored_count()), (kept.len(), kept.len() as f64), "only upgrades use Bag slots");
+        assert_eq!(data.lamp.essence, essence + gone.iter().map(|o| salvage_value(&o.rarity)).sum::<f64>(), "the others paid their salvage Essence at once");
+        // What was stored is all still an upgrade: nothing in the Bag waits to be dismantled.
+        assert!(economy.disposal_preview(&mut run.session, None).unwrap().ids.is_empty());
+        println!("judged at pickup: {} stored, {} dismantled for {} Essence", kept.len(), gone.len(), economy.data().unwrap().lamp.essence - essence);
     }
     #[test]
     fn a_full_field_keeps_dropping_and_stays_bounded() {

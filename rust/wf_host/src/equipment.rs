@@ -335,20 +335,23 @@ impl EquipmentStorage {
             Ok((0..count).map(|_| drop_orb_item(next, region, stage)).collect())
         })
     }
-    /// Collects the named orbs into the Bag in drop order, never past its capacity; the stored
-    /// items report to the quest system like any gear collection.
-    pub fn collect_orbs(&mut self, host: &mut dyn LampHost, ids: &[String]) -> Result<Vec<LampItem>, String> {
+    /// Picks up the named orbs in drop order (`collect_orb_items`): an item that raises a
+    /// hero's CP is stored, never past the Bag's capacity; any other is dismantled at once for
+    /// Essence. Every picked-up item, stored or dismantled, reports to the quest system as a
+    /// gear collection.
+    pub fn collect_orbs(&mut self, host: &mut dyn LampHost, ids: &[String]) -> Result<OrbPickup, String> {
         let on = self.on_gear_collected.is_some();
         let ids = ids.to_vec();
+        let roster = lamp_hero_roster(host.progress(), false)?;
         let result = self.transact(host, move |next, _| {
             adopt_conveyor_emissions(next);
-            let collected = collect_orb_items(next, &ids);
-            if on && !collected.is_empty() {
+            let pickup = collect_orb_items(next, &ids, &roster);
+            if on && !(pickup.stored.is_empty() && pickup.dismantled.is_empty()) {
                 let mut events = next.pending_gear_collections();
-                for item in &collected { if !events.iter().any(|e| e.id == item.instance_id) { events.push(GearCollection { id: item.instance_id.clone(), item: item.clone() }); } }
+                for item in pickup.stored.iter().chain(&pickup.dismantled) { if !events.iter().any(|e| e.id == item.instance_id) { events.push(GearCollection { id: item.instance_id.clone(), item: item.clone() }); } }
                 next.set_pending_gear_collections(events);
             }
-            Ok(collected)
+            Ok(pickup)
         })?;
         self.flush_gear_collections(host);
         Ok(result)

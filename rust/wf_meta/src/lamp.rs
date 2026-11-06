@@ -888,25 +888,37 @@ pub fn drop_orb_item(data: &mut LampEconomy, region: f64, stage: f64) -> LampIte
     orbs.push(serde_json::to_value(&item).unwrap());
     item
 }
-/// Moves the named orbs into the Bag in drop order, never beyond the free slots. Each one
-/// becomes a stored item exactly once; orbs that do not fit, and every unnamed orb, stay on the
-/// battlefield.
-pub fn collect_orb_items(data: &mut LampEconomy, ids: &[String]) -> Vec<LampItem> {
+/// What became of the orbs a pickup named: `stored` entered the Bag, `dismantled` paid `essence`.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct OrbPickup { pub stored: Vec<LampItem>, pub dismantled: Vec<LampItem>, pub essence: f64 }
+/// Picks up the named orbs in drop order and judges each one on the spot (owner 2026-11-05,
+/// ORKA-63bf.34): an item that would raise some hero's CP over what that hero wears now enters
+/// the Bag, never beyond the free slots; any other item is dismantled at once for its salvage
+/// Essence and needs no slot. Each orb is settled exactly once; an upgrade that does not fit,
+/// and every unnamed orb, stays on the battlefield. Without a hero roster nothing can be judged
+/// and every named orb is stored as before.
+pub fn collect_orb_items(data: &mut LampEconomy, ids: &[String], heroes: &[LampHero]) -> OrbPickup {
     let mut free = data.free_slots();
-    let mut collected = Vec::new();
+    let mut pickup = OrbPickup::default();
     let mut kept = Vec::new();
     for value in std::mem::take(orb_list(data)) {
-        let wanted = free > 0 && value.get("instanceId").and_then(Value::as_str).is_some_and(|id| ids.iter().any(|w| w == id));
-        match wanted.then(|| serde_json::from_value::<LampItem>(value.clone()).ok()).flatten() {
-            Some(item) => { free -= 1; collected.push(item); }
-            None => kept.push(value),
+        let named = value.get("instanceId").and_then(Value::as_str).is_some_and(|id| ids.iter().any(|w| w == id));
+        let Some(item) = named.then(|| serde_json::from_value::<LampItem>(value.clone()).ok()).flatten() else { kept.push(value); continue };
+        if heroes.is_empty() || select_auto_equip_hero(data, &item, heroes).is_some() {
+            if free == 0 { kept.push(value); continue; }
+            free -= 1;
+            pickup.stored.push(item);
+        } else {
+            pickup.essence += salvage_value(&item.rarity);
+            pickup.dismantled.push(item);
         }
     }
     *orb_list(data) = kept;
-    for item in &collected {
+    for item in &pickup.stored {
         if data.item(&item.instance_id).is_some() { continue; }
         data.items.push(item.clone());
         data.lamp.pending.push(item.instance_id.clone());
     }
-    collected
+    data.lamp.essence += pickup.essence;
+    pickup
 }
