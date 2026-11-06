@@ -8,6 +8,11 @@
 //! never walked (owner 2026-11-05); the Bag's capacity still decides.
 //! The field holds `ORB_LIMIT` orbs: on a full field each new drop displaces the oldest orb of
 //! the lowest rarity (decided in the save), which fades out here.
+//! Resource drops (owner 2026-11-05, temporary until a hero EXP system exists): a kill that
+//! leaves no orb may leave a little Gold, a little Essence or a single hero ticket instead
+//! (`wf_meta::lamp::field_drop`). They are picked up like orbs, need no Bag slot, are drawn with
+//! the HUD's own icons, and are not saved while they lie on the field: `collected` hands each one
+//! to `Game::award_loot` the moment its flight starts.
 //! This module owns only where the orbs are and how they move: which orbs exist and which enter
 //! the Bag is decided in one saved transaction before any animation starts.
 use crate::camera::WorldCamera;
@@ -17,7 +22,8 @@ use wf_combat::{ActorView, Event, Snapshot, Team};
 use wf_host::equipment::EquipmentStorage;
 use wf_host::session::Session;
 use wf_meta::equipment::rarity;
-use wf_meta::lamp::ORB_DROP_CHANCE;
+use wf_meta::lamp::{field_drop, FieldDrop, ESSENCE_DROP_AMOUNT, GOLD_DROP_AMOUNT, LOOT_LIMIT, ORB_DROP_CHANCE};
+use wf_meta::progression::TicketHero;
 
 /// Orb diameter in world units: about 10 px on a 509 px wide viewport (6.9 logical px at the
 /// combat zoom), the same for every rarity. The glow scales with it.
@@ -32,9 +38,18 @@ const FADE_SECONDS: f32 = 0.3;
 struct Flight { hero: u32, start: f32, from: Vec2 }
 struct Orb { id: String, color: Color, pos: Vec2, born: f32, /// Its subwave has completed.
     eligible: bool, flight: Option<Flight> }
+/// A resource drop: what the party gains when a hero picks it up.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Loot { Gold(f64), Essence(f64), Ticket { hero_id: String, hero_name: String } }
+struct Pickup { loot: Loot, pos: Vec2, born: f32, eligible: bool, flight: Option<Flight> }
+/// Icon height on the field in world units (a little larger than an orb, so the art reads).
+const LOOT_SIZE: f32 = 22.;
 #[derive(Default)]
 pub struct OrbField {
     orbs: Vec<Orb>,
+    loot: Vec<Pickup>,
+    /// Resource drops whose flight started this frame: the caller awards and clears them.
+    pub collected: Vec<Loot>,
     /// Orbs that left the save without being collected (displaced on a full field): position,
     /// colour and when they left, drawn fading out.
     fading: Vec<(Vec2, Color, f32)>,
@@ -58,8 +73,11 @@ impl OrbField {
         self.seed ^= self.seed << 13; self.seed ^= self.seed >> 17; self.seed ^= self.seed << 5;
         (self.seed >> 8) as f32 / (1u32 << 24) as f32
     }
-    /// One kill: does it drop an orb?
-    fn rolls_drop(&mut self) -> bool { self.random() < self.dev_drop_chance.unwrap_or(ORB_DROP_CHANCE) }
+    /// One kill: what does it drop?
+    fn rolls_drop(&mut self) -> Option<FieldDrop> { let roll = self.random(); field_drop(roll, self.drop_chance()) }
+    /// Dev Tools "clear the field": the resource drops go with the orbs.
+    pub fn clear_loot(&mut self) { self.loot.clear(); }
+    pub fn loot_count(&self) -> usize { self.loot.len() }
     pub fn drop_chance(&self) -> f32 { self.dev_drop_chance.unwrap_or(ORB_DROP_CHANCE) }
     pub fn count(&self) -> usize { self.orbs.len() }
     /// Dev Tools: `count` drops scattered around the party, eligible as soon as they are saved.
@@ -69,17 +87,43 @@ impl OrbField {
         for _ in 0..count { let offset = vec2((self.random() - 0.5) * 420., (self.random() - 0.5) * 300.); self.waiting_drops.push(centre + offset); }
         self.dev_eligible = true;
     }
+    /// Dev Tools: two Gold drops, two Essence drops and one ticket per hero around the party,
+    /// ready to pick up at once.
+    pub fn dev_loot(&mut self, s: &Snapshot, ticket_heroes: &[TicketHero]) {
+        let heroes: Vec<Vec2> = s.actors.iter().filter(|a| a.team == Team::Hero).map(|a| world(a.pos)).collect();
+        let centre = if heroes.is_empty() { (world(s.arena_min) + world(s.arena_max)) / 2. } else { heroes.iter().copied().sum::<Vec2>() / heroes.len() as f32 };
+        let mut drops = vec![Loot::Gold(GOLD_DROP_AMOUNT), Loot::Gold(GOLD_DROP_AMOUNT), Loot::Essence(ESSENCE_DROP_AMOUNT), Loot::Essence(ESSENCE_DROP_AMOUNT)];
+        drops.extend(ticket_heroes.iter().map(|h| Loot::Ticket { hero_id: h.id.clone(), hero_name: h.name.clone() }));
+        for loot in drops {
+            let offset = vec2((self.random() - 0.5) * 420., (self.random() - 0.5) * 300.);
+            if self.loot.len() < LOOT_LIMIT { self.loot.push(Pickup { loot, pos: centre + offset, born: self.clock, eligible: true, flight: None }); }
+        }
+    }
     /// Orbs still in the air: already stored in the Bag, not yet arrived (the bag count waits for them).
     pub fn flying(&self) -> usize { self.orbs.iter().filter(|o| o.flight.is_some()).count() }
     fn resting(&self) -> usize { self.orbs.len() - self.flying() }
-    /// Enemy deaths in this frame's events: each has `ORB_DROP_CHANCE` to leave a drop position.
-    pub fn ingest(&mut self, events: &[Event], now: &Snapshot, before: &Snapshot) {
+    /// Enemy deaths in this frame's events: each has `ORB_DROP_CHANCE` to leave an orb's drop
+    /// position, or else a small chance of a resource drop. `ticket_heroes`: who a ticket can be for.
+    pub fn ingest(&mut self, events: &[Event], now: &Snapshot, before: &Snapshot, ticket_heroes: &[TicketHero]) {
         for event in events {
             let Event::Died { id } = event else { continue };
             let Some(actor) = before.actors.iter().chain(now.actors.iter()).find(|a| a.id == *id) else { continue };
-            if actor.team != Team::Enemy || !self.rolls_drop() { continue; }
+            if actor.team != Team::Enemy { continue; }
+            let Some(drop) = self.rolls_drop() else { continue };
             let scatter = vec2((self.random() - 0.5) * 28., (self.random() - 0.5) * 18.);
-            if self.waiting_drops.len() < wf_meta::lamp::ORB_LIMIT { self.waiting_drops.push(world(actor.pos) + scatter); }
+            let pos = world(actor.pos) + scatter;
+            let loot = match drop {
+                FieldDrop::Equipment => { if self.waiting_drops.len() < wf_meta::lamp::ORB_LIMIT { self.waiting_drops.push(pos); } continue }
+                FieldDrop::Gold => Loot::Gold(GOLD_DROP_AMOUNT),
+                FieldDrop::Essence => Loot::Essence(ESSENCE_DROP_AMOUNT),
+                FieldDrop::Ticket => {
+                    // One ticket, for one hero chosen evenly among those that can still level.
+                    if ticket_heroes.is_empty() { continue; }
+                    let hero = &ticket_heroes[((self.random() * ticket_heroes.len() as f32) as usize).min(ticket_heroes.len() - 1)];
+                    Loot::Ticket { hero_id: hero.id.clone(), hero_name: hero.name.clone() }
+                }
+            };
+            if self.loot.len() < LOOT_LIMIT { self.loot.push(Pickup { loot, pos, born: self.clock, eligible: false, flight: None }); }
         }
     }
     /// Saves new drops, makes completed subwaves' orbs eligible, and stores the eligible orbs
@@ -127,10 +171,11 @@ impl OrbField {
                 self.orbs = restored;
             }
         }
+        for drop in &mut self.loot { if drop.flight.is_none() { drop.pos = drop.pos.clamp(lo, hi); } }
         if std::mem::take(&mut self.dev_eligible) { for orb in &mut self.orbs { orb.eligible = true; } }
         // Subwave completion: everything lying on the field now is eligible.
         let completions = session.subwave_completions;
-        if self.seen_completions.is_some_and(|seen| seen != completions) { for orb in &mut self.orbs { orb.eligible = true; } }
+        if self.seen_completions.is_some_and(|seen| seen != completions) { for orb in &mut self.orbs { orb.eligible = true; } for drop in &mut self.loot { drop.eligible = true; } }
         self.seen_completions = Some(completions);
         // Pickup: an eligible orb inside a living hero's circle goes to the nearest such hero.
         // The Bag's free slots are authoritative: the stored set is committed first, then exactly
@@ -159,8 +204,27 @@ impl OrbField {
                 }
             }
         }
+        // Resource drops follow the same reach rule and need no Bag slot: the flight starts and
+        // the gain is handed to the caller in the same frame.
+        if can_collect && self.loot.iter().any(|d| (d.eligible || sweep) && d.flight.is_none()) {
+            let heroes: Vec<(u32, Vec2, f32)> = s.actors.iter().filter(|a| a.team == Team::Hero && a.hp > 0.).map(|a| (a.id, world(a.pos), hero_height(a) * PICKUP_DIAMETER_IN_HERO_HEIGHTS / 2.)).collect();
+            let mut order = 0;
+            for drop in self.loot.iter_mut().filter(|d| (d.eligible || sweep) && d.flight.is_none()) {
+                let Some((hero, _, _)) = heroes.iter().filter(|(_, feet, radius)| sweep || drop.pos.distance(*feet) <= *radius).min_by(|a, b| drop.pos.distance(a.1).total_cmp(&drop.pos.distance(b.1))) else { continue };
+                drop.flight = Some(Flight { hero: *hero, start: self.clock + order as f32 * FLIGHT_STAGGER, from: drop.pos });
+                self.collected.push(drop.loot.clone());
+                order += 1;
+            }
+        }
         // Flights home in on the hero's current position.
         let clock = self.clock;
+        for drop in &mut self.loot {
+            let Some(flight) = &drop.flight else { continue };
+            let t = ((clock - flight.start) / FLIGHT_SECONDS).clamp(0., 1.);
+            let target = s.actors.iter().find(|a| a.id == flight.hero).map_or(flight.from, |a| world(a.pos) + vec2(0., -44.));
+            drop.pos = flight.from.lerp(target, t * t) + vec2(0., -24. * (std::f32::consts::PI * t).sin());
+        }
+        self.loot.retain(|d| d.flight.as_ref().is_none_or(|f| clock - f.start < FLIGHT_SECONDS));
         for orb in &mut self.orbs {
             let Some(flight) = &orb.flight else { continue };
             let t = ((clock - flight.start) / FLIGHT_SECONDS).clamp(0., 1.);
@@ -195,8 +259,8 @@ impl OrbField {
         texture
     }
     /// Resting orbs lie on the ground under the actors; flying orbs pass over them.
-    pub fn draw(&mut self, camera: &WorldCamera, flying: bool) {
-        if self.orbs.is_empty() && self.fading.is_empty() { return; }
+    pub fn draw(&mut self, assets: &crate::assets::Assets, camera: &WorldCamera, flying: bool) {
+        if self.orbs.is_empty() && self.fading.is_empty() && self.loot.is_empty() { return; }
         let sprite = self.sprite();
         let half = sprite.width() / 2.;
         let (glow, body) = (Rect::new(0., 0., half, sprite.height()), Rect::new(half, 0., half, sprite.height()));
@@ -210,6 +274,19 @@ impl OrbField {
             quad(glow, p, size * 2.1, Color::new(orb.color.r, orb.color.g, orb.color.b, 0.34));
             quad(body, p, size, orb.color);
             quad(glow, p - vec2(size * 0.16, size * 0.18), size * 0.42, Color::new(1., 1., 1., 0.85));
+        }
+        // Resource drops: the HUD's own icon for the resource, over the orb halo in its colour.
+        for drop in self.loot.iter().filter(|d| d.flight.is_some() == flying) {
+            let p = camera.project(wf_combat::Vec2::new(drop.pos.x, drop.pos.y));
+            let h = LOOT_SIZE * camera.zoom * (0.4 + 0.6 * ((self.clock - drop.born) / APPEAR_SECONDS).clamp(0., 1.));
+            if p.x < -h || p.x > crate::camera::WIDTH + h || p.y < -h || p.y > crate::camera::HEIGHT + h { continue; }
+            let tint = match drop.loot { Loot::Gold(_) => 0xf2c94c, Loot::Essence(_) => super::chrome::TIMER_BLUE, Loot::Ticket { .. } => 0xfff0af };
+            quad(glow, p, h * 1.9, super::chrome::rgba(tint, 0.42));
+            match &drop.loot {
+                Loot::Gold(_) => super::chrome::resource_icon(assets, "gold", p.x - h / 2., p.y - h / 2., h),
+                Loot::Essence(_) => super::chrome::resource_icon(assets, "essence", p.x - h / 2., p.y - h / 2., h),
+                Loot::Ticket { hero_name, .. } => super::chrome::ticket_art(assets, wf_meta::hero::hero_definition(hero_name).map_or(hero_name.as_str(), |d| d.name), p.x - h * 0.75, p.y - h / 2., h * 1.5, h),
+            }
         }
         if flying { return; }
         // A displaced orb shrinks and fades where it lay.
@@ -273,7 +350,7 @@ pub(crate) mod tests {
             let events = run.drain_events();
             let s = run.snapshot().clone();
             kills += events.iter().filter(|e| matches!(e, Event::Died { id } if before.actors.iter().chain(s.actors.iter()).any(|a| a.id == *id && a.team == Team::Enemy))).count();
-            field.ingest(&events, &s, &before);
+            field.ingest(&events, &s, &before, &[]);
             let resting: Vec<(String, Vec2, bool)> = field.orbs.iter().filter(|o| o.flight.is_none()).map(|o| (o.id.clone(), o.pos, o.eligible)).collect();
             let _ = resting.iter().map(|r| r.1).count();
             let completed = field.seen_completions.is_some_and(|seen| seen != run.session.subwave_completions);
@@ -314,13 +391,84 @@ pub(crate) mod tests {
         let (mut drops, mut dry, mut longest, mut over_30, mut over_50) = (0u32, 0u32, 0u32, 0u32, 0u32);
         let kills = 1_000_000;
         for _ in 0..kills {
-            if field.rolls_drop() { drops += 1; if dry >= 30 { over_30 += 1; } if dry >= 50 { over_50 += 1; } dry = 0; } else { dry += 1; longest = longest.max(dry); }
+            if field.rolls_drop() == Some(FieldDrop::Equipment) { drops += 1; if dry >= 30 { over_30 += 1; } if dry >= 50 { over_50 += 1; } dry = 0; } else { dry += 1; longest = longest.max(dry); }
         }
         let rate = drops as f64 / kills as f64;
         assert!((rate - 0.1).abs() < 0.002, "drop rate {rate}");
         // A 10% roll goes 30 kills without a drop about 4.2% of the time, 50 kills about 0.5%.
         let (p30, p50) = (over_30 as f64 / drops as f64, over_50 as f64 / drops as f64);
         assert!((p30 - 0.9f64.powi(30)).abs() < 0.005 && (p50 - 0.9f64.powi(50)).abs() < 0.003, "dry spells: {p30} over 30, {p50} over 50, longest {longest}");
+    }
+    /// Owner 2026-11-05 (temporary): Gold, Essence and single hero tickets drop in low quantities.
+    #[test]
+    fn kills_also_drop_a_little_gold_essence_or_one_ticket_and_equipment_keeps_its_tenth() {
+        let mut run = crate::testing::HostRun::new(1);
+        for _ in 0..600 { if run.snapshot().actors.iter().any(|a| a.team == Team::Enemy) { break; } run.step(); }
+        let s = run.snapshot().clone();
+        let enemy = s.actors.iter().find(|a| a.team == Team::Enemy).expect("an enemy on the first wave").id;
+        let heroes: Vec<TicketHero> = ["falie#1", "huun#1", "kojonn#1", "runa#1"].iter().zip(["Falie", "Huun", "Kojonn", "Runa"]).map(|(id, name)| TicketHero { id: id.to_string(), name: name.into() }).collect();
+        let mut field = OrbField { seed: 0x9E37_79B9, ..Default::default() };
+        let (mut orbs, mut gold, mut essence, mut tickets) = (0u32, 0u32, 0u32, std::collections::BTreeMap::<String, u32>::new());
+        let kills = 200_000;
+        for _ in 0..kills {
+            field.ingest(&[Event::Died { id: enemy }], &s, &s, &heroes);
+            orbs += field.waiting_drops.len() as u32; field.waiting_drops.clear();
+            for drop in field.loot.drain(..) {
+                match drop.loot {
+                    Loot::Gold(amount) => { assert_eq!(amount, GOLD_DROP_AMOUNT); gold += 1; }
+                    Loot::Essence(amount) => { assert_eq!(amount, ESSENCE_DROP_AMOUNT); essence += 1; }
+                    Loot::Ticket { hero_id, hero_name } => { assert!(heroes.iter().any(|h| h.id == hero_id && h.name == hero_name)); *tickets.entry(hero_id).or_default() += 1; }
+                }
+            }
+        }
+        let rate = |n: u32| n as f64 / kills as f64;
+        let ticket_total: u32 = tickets.values().sum();
+        assert!((rate(orbs) - 0.10).abs() < 0.003 && (rate(gold) - 0.05).abs() < 0.003 && (rate(essence) - 0.04).abs() < 0.003 && (rate(ticket_total) - 0.03).abs() < 0.003, "orbs {orbs} gold {gold} essence {essence} tickets {ticket_total}");
+        // One ticket at a time, spread evenly across all four heroes.
+        assert_eq!(tickets.len(), 4);
+        for (hero, count) in &tickets { assert!((*count as f64 / ticket_total as f64 - 0.25).abs() < 0.03, "{hero}: {count} of {ticket_total}"); }
+        // Nobody can use a ticket: that roll drops nothing. A hero death drops nothing.
+        let mut none = OrbField { seed: 0x9E37_79B9, ..Default::default() };
+        for _ in 0..5000 { none.ingest(&[Event::Died { id: enemy }], &s, &s, &[]); }
+        assert!(!none.loot.is_empty() && none.loot.iter().all(|d| !matches!(d.loot, Loot::Ticket { .. })));
+        assert!(none.loot.len() <= LOOT_LIMIT, "the field holds a bounded number of resource drops");
+        let hero_id = hero(&s).id;
+        let mut quiet = OrbField { seed: 7, ..Default::default() };
+        for _ in 0..2000 { quiet.ingest(&[Event::Died { id: hero_id }], &s, &s, &heroes); }
+        assert!(quiet.loot.is_empty() && quiet.waiting_drops.is_empty());
+    }
+    #[test]
+    fn resource_drops_are_picked_up_like_orbs_without_a_bag_slot_and_handed_over_once() {
+        let mut run = crate::testing::HostRun::new(1);
+        let mut economy = economy(&mut run);
+        let s = solo(run.snapshot());
+        let feet = world(hero(&s).pos);
+        let mut field = OrbField::default();
+        field.update(&mut economy, &mut run.session, &s, 0.016, true, &height);
+        let ticket = Loot::Ticket { hero_id: "huun#1".into(), hero_name: "Huun".into() };
+        for (loot, offset) in [(Loot::Gold(25.), vec2(RADIUS - 1., 0.)), (ticket.clone(), vec2(0., 10.)), (Loot::Essence(3.), vec2(0., RADIUS + 1.))] {
+            field.loot.push(Pickup { loot, pos: feet + offset, born: 0., eligible: false, flight: None });
+        }
+        // In reach but the subwave is still running: nothing is collected.
+        for _ in 0..30 { field.update(&mut economy, &mut run.session, &s, 0.016, true, &height); }
+        assert!(field.collected.is_empty() && field.loot_count() == 3);
+        // The subwave completes: the two inside the circle fly, each handed over exactly once.
+        run.session.subwave_completions += 1;
+        field.update(&mut economy, &mut run.session, &s, 0.016, true, &height);
+        assert_eq!(std::mem::take(&mut field.collected), [Loot::Gold(25.), ticket]);
+        for _ in 0..60 { field.update(&mut economy, &mut run.session, &s, 0.016, true, &height); }
+        assert!(field.collected.is_empty(), "never handed over twice");
+        assert_eq!(field.loot_count(), 1, "the far drop waits; the flown ones are gone");
+        // A Bag window is open: nothing is collected. The wave chest on a cleared field sweeps it.
+        let mut cleared = s.clone();
+        cleared.actors.retain(|a| a.team == Team::Hero);
+        cleared.chests.push(wf_combat::ChestView { id: 1, pos: wf_combat::Vec2::new(0., 0.), state: wf_combat::ChestState::Closed, age: 0., state_age: 0., reward: None });
+        field.update(&mut economy, &mut run.session, &cleared, 0.016, false, &height);
+        assert!(field.collected.is_empty());
+        field.update(&mut economy, &mut run.session, &cleared, 0.016, true, &height);
+        assert_eq!(field.collected, [Loot::Essence(3.)]);
+        // No Bag slot was used by any of it.
+        assert_eq!(stored(&economy), 0.);
     }
     #[test]
     fn pickup_needs_a_completed_subwave_and_a_hero_within_one_and_a_half_heights() {

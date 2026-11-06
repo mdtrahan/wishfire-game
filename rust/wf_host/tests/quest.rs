@@ -88,3 +88,15 @@ fn ticket_level_up_and_essence_settlement() {
     let star = quest.star_up("Falie", &mut s);
     assert!(!star.ok, "no canonical tickets yet: {:?}", star.reason);
 }
+
+#[test]
+fn a_ticket_drop_adds_one_ticket_to_that_hero_and_is_saved() {
+    let (mut s, economy, mut quest, values, _now) = world();
+    assert_eq!(quest.ticket_count("huun#1"), 0.);
+    assert_eq!(quest.grant_hero_ticket("huun#1", &mut s, &economy), Ok(1.));
+    assert_eq!(quest.grant_hero_ticket("huun#1", &mut s, &economy), Ok(2.));
+    assert_eq!((quest.ticket_count("huun#1"), quest.ticket_count("falie#1")), (2., 0.), "singles, for that hero only");
+    let saved: serde_json::Value = serde_json::from_str(&values.borrow()[wf_meta::progression::SAVE_KEY]).unwrap();
+    assert_eq!(saved["wallet"]["ticketsByHero"]["huun#1"], serde_json::json!(2.0));
+    assert!(quest.grant_hero_ticket("nobody#1", &mut s, &economy).is_err());
+}

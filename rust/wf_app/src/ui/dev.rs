@@ -20,7 +20,7 @@ pub enum DevHit {
     Chapter(i32), Wave(i32), WaveFirst, WaveLast, Boss,
     /// Roster index in or out of the party.
     Member(usize), Level(u32), LevelStep(i32),
-    Gold(u32), Essence(u32), Incense(u32), DropOrbs(u32), ClearOrbs,
+    Gold(u32), Essence(u32), Incense(u32), DropOrbs(u32), DropLoot, ClearOrbs,
     /// Orb drop chance in percent, for this page session.
     DropRate(u32), CascadeFill,
     ResetGame, RestoreSnapshot,
@@ -115,7 +115,7 @@ impl DevUi {
             row("Gold", vec![value(count(s.gold)), button("+1K", DevHit::Gold(1_000)), button("+100K", DevHit::Gold(100_000))]),
             row("Essence", vec![value(count(s.essence)), button("+100", DevHit::Essence(100)), button("+1K", DevHit::Essence(1_000))]),
             row("Incense", vec![value(count(s.incense)), button("+100", DevHit::Incense(100)), button("+1K", DevHit::Incense(1_000))]),
-            row("Orbs", vec![value(format!("{} on field", s.orbs)), button("Drop 10", DevHit::DropOrbs(10)), button("Clear", DevHit::ClearOrbs)]),
+            row("Orbs", vec![value(format!("{} on field", s.orbs)), button("Drop 10", DevHit::DropOrbs(10)), button("Drop loot", DevHit::DropLoot), button("Clear", DevHit::ClearOrbs)]),
             row("Drop rate", DROP_RATES.iter().map(|rate| toggle(&format!("{rate}%"), DevHit::DropRate(*rate), s.drop_percent == *rate)).collect()),
             row("Bag", vec![value(format!("Lv {} · {} / {} · {} fills", s.bag_level, s.bag_stored, s.bag_capacity, s.bag_fills)), button("Play Cascade Fill", DevHit::CascadeFill)]),
         ]);

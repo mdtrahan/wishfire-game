@@ -101,6 +101,20 @@ impl Game {
         if persist(&self.session.progress) { Ok((region, wave)) } else { Err("The stage could not be saved.".into()) }
     }
     /// Gold straight into the wallet; the lamp save takes it through the usual sync.
+    /// Heroes a ticket drop can be for (below max level).
+    pub fn ticket_heroes(&self) -> Vec<wf_meta::progression::TicketHero> {
+        use wf_host::progression::QuestHost;
+        wf_meta::progression::eligible_ticket_heroes(&self.session.quest_heroes())
+    }
+    /// A resource drop was picked up on the battlefield (`ui/orbs.rs`).
+    pub fn award_loot(&mut self, loot: &crate::ui::orbs::Loot) -> Result<(), String> {
+        use crate::ui::orbs::Loot;
+        match loot {
+            Loot::Gold(amount) => { self.session.gold_total += amount; self.economy.sync(&mut self.session) }
+            Loot::Essence(amount) => self.economy.grant_essence(&mut self.session, *amount).map(|_| ()),
+            Loot::Ticket { hero_id, .. } => self.progression.grant_hero_ticket(hero_id, &mut self.session, &self.economy).map(|_| ()),
+        }
+    }
     pub fn dev_gold(&mut self, amount: f64) -> Result<(), String> { self.session.gold_total += amount; self.economy.sync(&mut self.session) }
     /// Essence through the combat-reward receipt path (so Bag progress sees it like any other).
     pub fn dev_essence(&mut self, amount: f64) -> Result<(), String> {

@@ -216,7 +216,11 @@ async fn main() {
                     Some(snapshot) => { ui.lamp.orbs.dev_drop(amount as usize, &snapshot); Ok(format!("{amount} orbs dropped around the party.")) }
                     None => Err("There is no battlefield yet.".into()),
                 },
-                D::ClearOrbs => scene.game.dev_clear_orbs().map(|_| "Orbs cleared.".into()),
+                D::DropLoot => match scene.game.snapshot().cloned() {
+                    Some(snapshot) => { ui.lamp.orbs.dev_loot(&snapshot, &scene.game.ticket_heroes()); Ok("Gold, Essence and one ticket per hero dropped around the party.".into()) }
+                    None => Err("No battle is running.".into()),
+                },
+                D::ClearOrbs => { ui.lamp.orbs.clear_loot(); scene.game.dev_clear_orbs().map(|_| "Orbs cleared.".into()) }
                 D::DropRate(percent) => { ui.lamp.orbs.dev_drop_chance = Some(percent as f32 / 100.); Ok(format!("Drop rate {percent}% until the page reloads.")) }
                 D::CascadeFill => { ui.lamp.dev_ceremony(); Ok(String::new()) }
                 D::ResetGame => { rebuild = true; fresh_ui = true; game::reset_saves().map(|_| String::new()) }
@@ -323,9 +327,11 @@ async fn main() {
         let events = game.drain_events();
         let live_snapshot = game.snapshot().cloned().unwrap_or(previous_snapshot);
         // Equipment orbs: kills drop them, completed subwaves send them to a hero and into the Bag.
-        ui.lamp.orbs.ingest(&events, &live_snapshot, &event_previous);
+        ui.lamp.orbs.ingest(&events, &live_snapshot, &event_previous, &game.ticket_heroes());
         let can_collect = !ui.pauses();
         ui.lamp.orbs.update(&mut game.economy, &mut game.session, &live_snapshot, if controls.paused { 0. } else { get_frame_time().min(0.0625) }, can_collect, &|hero| render::crowd::body_size(&assets.manifest, hero).y);
+        // Resource drops picked up this frame: Gold, Essence or a hero ticket.
+        for loot in std::mem::take(&mut ui.lamp.orbs.collected) { if let Err(error) = game.award_loot(&loot) { ui.lamp.orbs.notice = Some(error); } }
         ui.update(game, &live_snapshot);
         #[cfg(target_arch = "wasm32")]
         PROBE.with(|p| {
@@ -425,7 +431,7 @@ async fn main() {
         render::actors::ornaments(&assets, &camera, bg, corpses, &mut stats);
         presentation.hostile(&assets, &camera, bg, bg_previous, &mut stats);
         presentation.under_actors(&assets, &camera, bg, warcry_shell, &mut stats);
-        ui.lamp.orbs.draw(&camera, false);
+        ui.lamp.orbs.draw(&assets, &camera, false);
         // Dev Tools overlay: each living hero's orb pickup circle (1.5 body heights around the feet).
         if ui.dev.circles {
             for hero in bg.actors.iter().filter(|a| a.team == wf_combat::Team::Hero && a.hp > 0.) {
@@ -454,7 +460,7 @@ async fn main() {
             render::rewards::Rewards::chest_depth(bg).map(|y| (y, &draw_chests as &dyn Fn(&mut assets::DrawStats))),
             &mut stats,
         );
-        ui.lamp.orbs.draw(&camera, true);
+        ui.lamp.orbs.draw(&assets, &camera, true);
         presentation.impacts(&assets, &camera, bg, true, reduced_motion(), &mut stats);
         presentation.labels(&assets, &camera, bg, &mut stats);
         stats.fx_quads -= charge_reserve;

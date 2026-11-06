@@ -194,6 +194,19 @@ impl CombatProgression {
         self.commit(committed, host)?;
         Ok(self.state.wallet.incense)
     }
+    /// A hero ticket drop was picked up on the battlefield (owner 2026-11-05, temporary): one
+    /// ticket for a hero that can still level, saved like any other quest change. Returns the
+    /// hero's ticket count.
+    pub fn grant_hero_ticket(&mut self, hero_id: &str, host: &mut dyn QuestHost, economy: &EquipmentStorage) -> Result<f64, String> {
+        let heroes = host.quest_heroes();
+        if !eligible_ticket_heroes(&heroes).iter().any(|h| h.id == hero_id) { return Err("That hero cannot use tickets.".into()); }
+        let mut next = self.state.clone();
+        let count = (next.wallet.tickets(hero_id) + 1.).min(1e9);
+        next.wallet.tickets_by_hero.insert(hero_id.to_string(), serde_json::json!(count));
+        let committed = ensure_objective(&next, &heroes, Self::context(host, economy));
+        self.commit(committed, host)?;
+        Ok(self.state.wallet.tickets(hero_id))
+    }
     pub fn incense(&self) -> f64 { self.state.wallet.incense }
     /// `train(stat)`: Incense buys one party training level and records the objective event.
     pub fn train(&mut self, stat: &str, host: &mut dyn QuestHost, economy: &mut EquipmentStorage) -> TrainResult {

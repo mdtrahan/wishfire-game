@@ -128,10 +128,11 @@ pub fn ticket_art(assets: &Assets, hero_name: &str, x: f32, y: f32, w: f32, h: f
     let s = (w / cw).min(h / ch);
     draw_texture_ex(tex, x + (w - cw * s) / 2., y + (h - ch * s) / 2., WHITE, DrawTextureParams { dest_size: Some(vec2(cw * s, ch * s)), source: Some(src), ..Default::default() });
 }
-/// `.cot-resources`: Incense, Essence and the Gold display fixture (three 112x22 pills at the top).
+/// `.cot-resources`: Incense, Essence and Gold (three 112x22 pills at the top). Gold is the
+/// party's real total since ORKA-63bf.33; main drew a fixed 999,999,999.
 fn resources(assets: &Assets, m: &CombatModel) {
     let q = &m.quest;
-    for (i, (key, value)) in [("incense", format_number(q.incense)), ("essence", format_number(q.essence)), ("gold", "999,999,999".into())].iter().enumerate() {
+    for (i, (key, value)) in [("incense", format_number(q.incense)), ("essence", format_number(q.essence)), ("gold", format_number(q.gold))].iter().enumerate() {
         let x = 8. + i as f32 * 116.;
         capsule(x, 8., 112., 22., rgba(0x0e0c14, 0.72));
         let size = if *key == "gold" { 22. } else { 26. };

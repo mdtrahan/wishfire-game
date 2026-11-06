@@ -28,6 +28,36 @@ pub const GEAR_STATS: [&str; 5] = ["ATK", "DEF", "MAG", "RES", "HP"];
 pub const ORB_LIMIT: usize = 40;
 /// Chance that a defeated enemy drops an equipment orb (owner 2026-11-04: a tenth of every kill).
 pub const ORB_DROP_CHANCE: f32 = 0.1;
+// Field drops besides equipment (owner 2026-11-05; temporary, until a hero EXP system exists):
+// a kill that leaves no equipment orb may leave a little Gold, a little Essence or one hero
+// ticket instead. One roll per kill decides; the amounts are Fable's first numbers.
+pub const GOLD_DROP_CHANCE: f32 = 0.05;
+pub const GOLD_DROP_AMOUNT: f64 = 25.;
+pub const ESSENCE_DROP_CHANCE: f32 = 0.04;
+pub const ESSENCE_DROP_AMOUNT: f64 = 3.;
+/// Always a single ticket, for one hero chosen evenly among those that can still level.
+pub const TICKET_DROP_CHANCE: f32 = 0.03;
+/// Most resource drops lying uncollected on the battlefield; kills past it drop nothing.
+pub const LOOT_LIMIT: usize = 40;
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum FieldDrop { Equipment, Gold, Essence, Ticket }
+/// What a kill drops. `roll` is uniform in 0..1; `orb_chance` is `ORB_DROP_CHANCE` unless Dev
+/// Tools set another equipment rate for the page session.
+pub fn field_drop(roll: f32, orb_chance: f32) -> Option<FieldDrop> {
+    let mut edge = orb_chance;
+    for (chance, drop) in [(0., FieldDrop::Equipment), (GOLD_DROP_CHANCE, FieldDrop::Gold), (ESSENCE_DROP_CHANCE, FieldDrop::Essence), (TICKET_DROP_CHANCE, FieldDrop::Ticket)] {
+        edge += chance;
+        if roll < edge { return Some(drop); }
+    }
+    None
+}
+/// An Essence drop was picked up: returns the new Essence total.
+pub fn grant_essence(data: &mut LampEconomy, amount: f64) -> Result<f64, String> {
+    let count = if amount.is_nan() { 0. } else { amount.floor().max(0.) };
+    if !is_safe_integer(data.lamp.essence + count) { return Err("Essence exceeds the safe save limit. Original data is preserved.".into()); }
+    data.lamp.essence += count;
+    Ok(data.lamp.essence)
+}
 pub const GUIDE_STORAGE: u32 = 1;
 pub const GUIDE_COMPARISON: u32 = 2;
 pub const GUIDE_PREVIEW: u32 = 4;

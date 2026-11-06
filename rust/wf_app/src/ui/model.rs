@@ -41,6 +41,8 @@ pub struct QuestView {
     pub reward: Option<(String, f64, String)>,
     pub incense: f64,
     pub essence: f64,
+    /// The party's real Gold (main showed a fixed 999,999,999 here; Gold drops made it live).
+    pub gold: f64,
 }
 pub fn quest_view(game: &crate::game::Game) -> QuestView {
     use wf_meta::progression::{objective_presentation, objective_reward};
@@ -54,6 +56,7 @@ pub fn quest_view(game: &crate::game::Game) -> QuestView {
         reward: objective_reward(state.objective.as_ref()).map(|r| (r.resource, r.amount, r.hero_name.unwrap_or_default())),
         incense: state.wallet.incense,
         essence: game.economy.data().map_or(0., |d| d.lamp.essence),
+        gold: game.session.gold_total,
     }
 }
 #[derive(Clone, Debug, PartialEq, Default)]

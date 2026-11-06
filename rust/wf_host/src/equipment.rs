@@ -411,6 +411,8 @@ impl EquipmentStorage {
     }
     /// A full Bag bar while levels are frozen (`complete_bag_fill`): returns the cost paid.
     pub fn complete_fill(&mut self, host: &mut dyn LampHost, expected_fills: f64) -> Result<f64, String> { self.transact(host, move |next, _| complete_bag_fill(next, expected_fills)) }
+    /// An Essence drop was picked up on the battlefield (`grant_essence`): returns the new total.
+    pub fn grant_essence(&mut self, host: &mut dyn LampHost, amount: f64) -> Result<f64, String> { self.transact(host, move |next, _| grant_essence(next, amount)) }
     /// The Cascade Fill has finished (`bank_bag_essence`): returns the Essence moved into the bar.
     pub fn bank_essence(&mut self, host: &mut dyn LampHost) -> Result<f64, String> { self.transact(host, |next, _| bank_bag_essence(next)) }
     pub fn queue_disposal(&mut self, host: &mut dyn LampHost, id: &str) -> Result<(), String> {
