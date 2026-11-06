@@ -138,6 +138,8 @@ impl Ui {
                 if screen == from { return UiAction::None; }
                 match self.story.navigate(screen, from) {
                     story::Request::DepartCombat(target) => { if from == Screen::Combat { if let Err(e) = game.session.surrender_for_departure() { self.model.host_error = Some(e); } } self.screen = target; }
+                    // Quests pressed on another screen while a battle waits: straight back in.
+                    story::Request::ResumeCombat => self.screen = Screen::Combat,
                     _ => {}
                 }
                 return UiAction::None;

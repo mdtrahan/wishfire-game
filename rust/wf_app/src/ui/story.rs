@@ -155,6 +155,14 @@ impl StoryFlow {
     pub fn navigate(&mut self, target: Screen, from: Screen) -> Request {
         if self.pending() || self.modal.is_some() || matches!(self.phase, Phase::Opening) { return Request::None; }
         if (self.phase == Phase::Combat || self.combat_paused) && target == Screen::Quests {
+            // Coming back from another screen goes straight into the battle, like the Vault's
+            // back-to-combat button (owner 2026-11-05, ORKA-63bf.35). The Battle paused choice
+            // is skipped here, not removed: it still opens from the combat screen itself.
+            if from != Screen::Combat {
+                self.phase = Phase::Combat;
+                self.combat_paused = false;
+                return Request::ResumeCombat;
+            }
             self.combat_paused = true;
             self.phase = Phase::CombatPaused;
             self.modal = Some(Modal::CombatPause);
@@ -395,4 +403,41 @@ fn draw_item(visual: &str, r: nar::Rect, alpha: f32) {
     }
     let colors = if visual == "procedural:red-orbs" { [0xdc4b4b, 0xef6660, 0xb9293e, 0xff7b62] } else { [0xdc4b4b, 0x58b7d8, 0xe0b23f, 0x62ba73] };
     for (i, (ox, oy)) in [(0.22, 0.56), (0.42, 0.37), (0.62, 0.58), (0.79, 0.36)].iter().enumerate() { draw_orb(x + w * ox, y + h * oy, 24., colors[i], alpha); }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    /// Owner 2026-11-05 (ORKA-63bf.35): re-entry only.
+    #[test]
+    fn the_quests_button_re_enters_a_left_battle_directly_and_first_entry_is_unchanged() {
+        // No battle yet: Quests shows the map, as before.
+        let mut flow = StoryFlow::new();
+        assert_eq!(flow.navigate(Screen::Quests, Screen::Hero), Request::DepartCombat(Screen::Quests));
+        assert_eq!((flow.phase, flow.modal, flow.combat_paused), (Phase::Map, None, false));
+        // A battle is running; the player leaves it for the Hero screen, then the Vault.
+        for other in [Screen::Hero, Screen::Vault] {
+            let mut flow = StoryFlow::new();
+            flow.qa_direct_combat();
+            assert_eq!(flow.navigate(other, Screen::Combat), Request::DepartCombat(other));
+            assert!(flow.combat_paused);
+            // Quests goes straight back in: no Battle paused choice.
+            assert_eq!(flow.navigate(Screen::Quests, other), Request::ResumeCombat);
+            assert_eq!((flow.phase, flow.modal, flow.combat_paused), (Phase::Combat, None, false));
+            // And again after a second trip away.
+            assert_eq!(flow.navigate(other, Screen::Combat), Request::DepartCombat(other));
+            assert_eq!(flow.navigate(Screen::Quests, other), Request::ResumeCombat);
+        }
+        // The choice is kept: Quests pressed on the combat screen itself still opens it.
+        let mut flow = StoryFlow::new();
+        flow.qa_direct_combat();
+        assert_eq!(flow.navigate(Screen::Quests, Screen::Combat), Request::DepartCombat(Screen::Quests));
+        assert_eq!((flow.phase, flow.modal), (Phase::CombatPaused, Some(Modal::CombatPause)));
+        assert_eq!(flow.navigate(Screen::Hero, Screen::Quests), Request::None, "the choice must be answered first");
+        assert_eq!(flow.continue_paused_combat(), Request::ResumeCombat);
+        assert_eq!((flow.phase, flow.modal, flow.combat_paused), (Phase::Combat, None, false));
+        assert_eq!(flow.navigate(Screen::Quests, Screen::Combat), Request::DepartCombat(Screen::Quests));
+        assert_eq!(flow.quit_paused_combat(), Request::QuitCombat);
+        assert_eq!((flow.phase, flow.modal, flow.combat_paused), (Phase::Map, None, false));
+    }
 }
