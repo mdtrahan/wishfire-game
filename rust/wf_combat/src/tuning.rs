@@ -440,6 +440,10 @@ pub const BODY_RADIUS: f32 = 14.;
 /// Owner (2026-10-27): moat around every hero/enemy body so actors never stack (world units).
 pub const ACTOR_MOAT: f32 = 8.;
 pub const ACTOR_MOAT_PASSES: usize = 3;
+/// ORKA-63bf.47 (owner, 2026-11-05): an enemy that has just finished spawning in holds its
+/// place for this long when bodies are spaced, so a passer-by yields to it and it is not pushed
+/// off the spot it emerged on. It still walks and fights freely.
+pub const SPAWN_SETTLE_SECONDS: f32 = 0.5;
 /// Moat stretch along depth (y). Must keep 2*(BODY_RADIUS+ACTOR_MOAT)*depth below the shortest
 /// melee centre reach (Gobloc 40 + 28 = 68) so attackers above/below still connect.
 pub const ACTOR_MOAT_DEPTH: f32 = 1.4;

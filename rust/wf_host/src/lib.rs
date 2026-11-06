@@ -7,3 +7,4 @@ pub mod progress;
 pub mod progression;
 pub mod rewards;
 pub mod session;
+pub mod spawn_spacing;

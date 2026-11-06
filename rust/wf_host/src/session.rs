@@ -123,6 +123,8 @@ pub struct Session {
     /// Counts completed subwaves for the client (orb collection): the host released the next
     /// subwave, an ordinary wave cleared, or a boss fell. Observational; no rule reads it.
     pub subwave_completions: u32,
+    /// Spawn points moved apart by `spawn_spacing` so far (observation only; no rule reads it).
+    pub spawn_points_spread: u32,
     persist: Persist,
     quest: QuestRecorder,
     encounter_counter: u64,
@@ -189,7 +191,7 @@ impl Session {
         let battle = ProgressionBattle::new(&format!("battle:{combat_session_id}"), party.iter().map(|(_, instance)| instance.to_string()).collect());
         let mut session = Self { time: 0., stage, checkpoint: combat_checkpoint, enemy_data, raw_rows, heroes: Vec::new(), enemies: Vec::new(), benched: BTreeMap::new(), enemy_slots: Vec::new(), next_uid, enemy_size: 40., progress, battle,
             combat_session_id: combat_session_id.into(), dev_speed: 1., training: None, stars: BTreeMap::new(), gold_total: 0., pending_gold_settlements: BTreeMap::new(), reward_serial: 0, progress_dirty: false, storage_error: None,
-            wfm_checkpoint_reload, quest_finite_encounter: true, intro_active: false, receipt: Receipt::default(), failed: None, bag_seconds: 0., bag_blocked: false, last_transition: None, spotlight: wf_combat::SpotlightConfig::OFF, subwave_completions: 0, wave_clear_events: Vec::new(),
+            wfm_checkpoint_reload, quest_finite_encounter: true, intro_active: false, receipt: Receipt::default(), failed: None, bag_seconds: 0., bag_blocked: false, last_transition: None, spotlight: wf_combat::SpotlightConfig::OFF, subwave_completions: 0, spawn_points_spread: 0, wave_clear_events: Vec::new(),
             persist, quest, encounter_counter: 0, ended_hash: None, restored_gold: BTreeSet::new(), desired_inputs: BTreeMap::new(), revisions: BTreeMap::new(), pending_inputs: BTreeMap::new(), submitted_inputs: BTreeMap::new(), command_sequence: 0, stage_configured: false, frame_now_ms: 0., world: None, encounter: String::new(), sequence: 0, previous_now: None, debt: 0., attempt: None, base_time: 0., last_combat_time: 0., last_presentation_time: 0.,
             host_transition: false, advanced: false, subwaves: Vec::new(), previous_subwave: Vec::new(), subwave_started: 0., pending_restart: None, hosts: BTreeMap::new(), hosts_seen_boss: BTreeSet::new(), seen_spawns: BTreeSet::new(), intro_now: None, tail: None,
             last_snapshot: None, presentation_events: Vec::new(), step_observations: Vec::new(), op_log: Vec::new() };
@@ -492,6 +494,8 @@ impl Session {
         self.revisions.clear(); self.pending_inputs.clear(); self.submitted_inputs.clear(); self.command_sequence = 0;
         let mut config = config;
         config.spotlight = self.spotlight;
+        // The opening enemies of an encounter are spaced like any later batch (`spawn_spacing`).
+        self.spawn_points_spread += crate::spawn_spacing::spread_inputs(&mut config.enemies, &[]) as u32;
         let mut world = World::create(config).map_err(|e| e.to_string())?;
         world.retain_typed_events = true;
         self.world = Some(world);
@@ -545,9 +549,18 @@ impl Session {
         }
         Ok(())
     }
-    fn driver_spawn(&mut self, enemies: Vec<EnemyInput>) -> Result<(), String> {
+    fn driver_spawn(&mut self, mut enemies: Vec<EnemyInput>) -> Result<(), String> {
         let Some(world) = self.world.as_mut() else { return Ok(()) };
         let id = world.encounter_id().to_string();
+        // No two enemies emerge inside each other (`spawn_spacing`): spread the batch's points
+        // against each other, the markers still counting down and the enemies still spawning.
+        {
+            let snapshot = world.snapshot();
+            let mut occupied: Vec<(f32, f32)> = snapshot.hazards.iter().filter(|h| h.kind == wf_combat::HazardKind::SpawnMarker && h.phase != wf_combat::HazardPhase::Resolved).map(|h| (h.origin.x, h.origin.y)).collect();
+            occupied.extend(snapshot.actors.iter().filter(|a| a.team == wf_combat::Team::Enemy && a.state == wf_combat::ActorState::Spawn).map(|a| (a.pos.x, a.pos.y)));
+            let moved = crate::spawn_spacing::spread_inputs(&mut enemies, &occupied);
+            self.spawn_points_spread += moved as u32;
+        }
         let after = world.spawn_batch(&id, enemies).map_err(|e| e.to_string())?;
         self.op_log.push("spawn");
         self.accept(after, true)
