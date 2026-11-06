@@ -395,6 +395,10 @@ pub const MIREWING_ARRIVAL: f32 = 8.;
 pub const BOMB_TIME: f32 = 4.56;
 /// Bomb arc time; the bomb then rests on the ground (fuse) until the drop resolves at BOMB_TIME.
 pub const BOMB_FLIGHT: f32 = 0.75;
+/// ORKA-63bf.37 (owner, 2026-11-05): a fodder bomb-tosser's bomb explodes in half the time
+/// (0.75 s arc, then 1.53 s on the ground). Radius and damage are unchanged. Chimerilass keeps
+/// BOMB_TIME and CHIMERA_BOMB_FUSE.
+pub const LIZARDO_BOMB_TIME: f32 = BOMB_TIME / 2.;
 pub const BOMB_RADIUS: f32 = 69.;
 /// Chimerilass open/scatter/fortress bombs: seconds on the ground, including during enrage.
 pub const CHIMERA_BOMB_FUSE: f32 = 3.0;

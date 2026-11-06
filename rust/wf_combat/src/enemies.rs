@@ -634,8 +634,12 @@ impl Sim {
                     origin,
                     aim,
                 );
+                // The fodder's own, shorter clock; the boss barrage keeps the table's BOMB_TIME.
+                let bomb = self.hazards.last_mut().unwrap();
+                bomb.duration = LIZARDO_BOMB_TIME;
+                bomb.base_duration = LIZARDO_BOMB_TIME;
                 self.projectile(i, None, origin, true, 0., Some(hazard));
-                self.enemy_cast(i, BOMB_TIME);
+                self.enemy_cast(i, LIZARDO_BOMB_TIME);
                 self.actors[i].enemy_phase = 2;
                 return;
             }
