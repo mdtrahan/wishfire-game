@@ -135,7 +135,7 @@ pub fn fill_gear_max_hp_growth(hp: f64, before_max_hp: f64, after_max_hp: f64) -
 }
 /// `specialClockContent.mjs`: Rust `describe.special_clocks` by shadow definition id.
 pub fn special_clock(key: &str) -> Option<f64> {
-    match hero_key(key) { "Falie" => Some(10.), "Huun" => Some(10.), "Kojonn" => Some(5.65217399597168), "Runa" => Some(10.), _ => None }
+    match hero_key(key) { "Falie" => Some(10.), "Huun" => Some(20.), "Kojonn" => Some(5.65217399597168), "Runa" => Some(20.), _ => None }
 }
 /// `heroSpecialCooldown(hero, growth)`: f32 haste input and f32 cooldown like Rust groove_timers.
 pub fn hero_special_cooldown(key: &str, stars: u32) -> Result<f32, String> {

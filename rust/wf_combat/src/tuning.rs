@@ -682,9 +682,10 @@ pub const RAGE_FILL_SECONDS: f32 = 10.;
 pub const RAGE_STOCK_CAP: f32 = 3.;
 pub const RAGE_HIT_FLAT: f32 = 0.04;
 pub const RAGE_HIT_CAP: f32 = 0.30;
-// Passive fallback matches Rage; landed basics still add their existing gains.
-pub const COMBO_FILL_SECONDS: f32 = 10.;
-pub const SUPER_FILL_SECONDS: f32 = 10.;
+// ORKA-63bf.30 (owner, 2026-11-05): Hondo and Runa refill at half Fara's passive rate;
+// landed basics still add their existing gains.
+pub const COMBO_FILL_SECONDS: f32 = 20.;
+pub const SUPER_FILL_SECONDS: f32 = 20.;
 pub const COMBO_BASIC_GAIN: f32 = 0.1;
 pub const SUPER_BASIC_GAIN: f32 = 1. / 7.;
 pub const POWER_STOCK_SECONDS: f32 = 6.5 / 1.15;
