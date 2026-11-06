@@ -52,7 +52,10 @@ const BAG_H: f32 = 92. * 0.83 * 0.9745 * 0.5;
 // straight body leaves the bag. `BAR_TUCK` is how much of the bar's length lies under the bag.
 const BAR_TUCK: f32 = 10.;
 // Height: 9 (owner 2026-11-05: a quarter thinner than the first 12).
-const BAR_W: f32 = 92. + BAR_TUCK; const BAR_H: f32 = 9.;
+// Length out of the bag: 55.2 (owner 2026-11-05: 40% shorter than the first 92; the bag-side
+// end stays where it was, so the bar reaches less far to the left).
+const BAR_REACH: f32 = 92. * 0.6;
+const BAR_W: f32 = BAR_REACH + BAR_TUCK; const BAR_H: f32 = 9.;
 const BAR_RIGHT: f32 = BAG_CX - 6. + BAR_TUCK;
 const SLIDE_SECONDS: f32 = 0.22;
 /// The bar rests this long before each fill starts (once it is out, and again after every
@@ -534,6 +537,14 @@ mod tests {
             assert_eq!(resets, [0, 2, 0][round], "round {round}");
             assert!((bar.fraction as f64 - data.fill_progress().fraction).abs() < 1e-6 && peak > 0.);
         }
+    }
+    /// Owner 2026-11-05: 40% shorter, the right (bag-side) edge anchored.
+    #[test]
+    fn the_bar_is_forty_percent_shorter_and_still_ends_at_the_bag() {
+        assert!((BAR_REACH - 55.2).abs() < 1e-4 && (BAR_W - (55.2 + BAR_TUCK)).abs() < 1e-4);
+        assert_eq!(BAR_RIGHT, BAG_CX - 6. + BAR_TUCK, "the bag-side end has not moved");
+        let was_left = BAR_RIGHT - (92. + BAR_TUCK);
+        assert!((BAR_RIGHT - BAR_W - was_left - 36.8).abs() < 1e-3, "the far end comes 36.8 px closer to the bag");
     }
     #[test]
     fn every_fill_waits_half_a_second_and_is_slow_enough_to_follow() {
