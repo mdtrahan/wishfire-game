@@ -103,6 +103,17 @@ impl Sim {
                 && !h.cancelled
         })
     }
+    /// That hero has an Arcane Pulse in flight or its totem standing. The cast costs no stock,
+    /// so nothing else may be started until the pulse has burst and its totem has dissolved.
+    pub fn arcane_channel(&self, owner: u32) -> bool {
+        self.arcane_totem(owner)
+            || self.hazards.iter().any(|h| {
+                h.view.kind == HazardKind::ArcanePulse
+                    && h.view.owner == owner
+                    && h.view.phase != HazardPhase::Resolved
+                    && !h.cancelled
+            })
+    }
     pub fn sync_hero_areas(&mut self) {
         for i in 0..self.hazards.len() {
             if matches!(
@@ -1124,14 +1135,15 @@ impl Sim {
                 } else {
                     1.
                 };
-                // Arcane Pulse blast (owner 2026-11-05): every living enemy within the distance
-                // the pulse travelled from Kaja to the blast centre is hit, and never fewer than
-                // the drawn burst covers. The centre stays where the pulse landed on its target.
+                // Arcane Pulse blast (owner 2026-11-05): every living enemy within half the
+                // distance the pulse travelled from Kaja to the blast centre is hit, and never
+                // fewer than the drawn burst covers. The centre stays where the pulse landed.
                 let blast = pulse.then(|| {
-                    self.actor_index(h.view.owner)
-                        .filter(|&c| self.actors[c].alive())
-                        .map_or(0., |c| self.actors[c].view.pos.distance(h.view.origin))
-                        .max(ARCANE_PULSE_RADIUS)
+                    arcane_pulse_blast_radius(
+                        self.actor_index(h.view.owner)
+                            .filter(|&c| self.actors[c].alive())
+                            .map_or(0., |c| self.actors[c].view.pos.distance(h.view.origin)),
+                    )
                 });
                 let victims = self.events.victim_start();
                 for j in 0..self.actors.len() {

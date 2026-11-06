@@ -567,6 +567,11 @@ pub const ARCANE_PULSE_POTENCY: f32 = 2.2;
 pub const ARCANE_PULSE_RANGE_NEAR: f32 = 60.;
 pub const ARCANE_PULSE_RANGE_FAR: f32 = 235.;
 pub const ARCANE_PULSE_RANGE_MAX_MULT: f32 = 2.15;
+/// ORKA-63bf.42 (owner, 2026-11-05): the blast reaches half the distance from Kaja to its centre
+/// (the full distance was too large), and never less than the drawn `ARCANE_PULSE_RADIUS`.
+pub const ARCANE_PULSE_BLAST_SCALE: f32 = 0.5;
+/// World radius of an Arcane Pulse blast cast from `distance` away; the totem keeps it.
+pub fn arcane_pulse_blast_radius(distance: f32) -> f32 { (distance * ARCANE_PULSE_BLAST_SCALE).max(ARCANE_PULSE_RADIUS) }
 // ORKA-63bf.41 (owner, 2026-11-05): Arcane Pulse is a channelled spell. After the blast a light
 // totem stays at the blast centre, covering the blast's own radius. It ticks enemies standing
 // inside it with the Faze pool's math (a pulse each second, 35% of Kaja's MAG) as Arcane damage,

@@ -78,12 +78,12 @@ pub fn combat_kit(key: &str) -> Vec<KitEntry> {
             ]),
         ],
         "Kojonn" => vec![
-            special("arcane_pulse", "Arcane Pulse", "drains the bar", "Kaja's distance to the target".into(), vec![
+            special("arcane_pulse", "Arcane Pulse", "drains the bar", "Half Kaja's distance to the target".into(), vec![
                 format!("Blasts every foe around the target for {} MAG, up to {} from afar.", pct(ARCANE_PULSE_POTENCY), pct(ARCANE_PULSE_POTENCY * ARCANE_PULSE_RANGE_MAX_MULT)),
                 format!("Leaves a light totem: foes inside take {} MAG every {}s.", pct(ARCANE_TOTEM_POTENCY), num(ARCANE_TOTEM_PULSE)),
             ], vec![
                 format!("The totem drains the bar: a full bar lasts {}s. One at a time, and no other special meanwhile.", num(ARCANE_TOTEM_FULL_BAR_SECONDS)),
-                format!("The blast is as wide as Kaja stands from the target, at least {} units.", num(ARCANE_PULSE_RADIUS)),
+                format!("The blast reaches half as far as Kaja stands from the target, at least {} units.", num(ARCANE_PULSE_RADIUS)),
             ]),
             special("elevate", "Elevate", "2 stocks", "Whole party".into(), vec![
                 format!("For {}s every hero gains one set, chosen at random:", num(ELEVATE_DURATION)),
@@ -138,7 +138,7 @@ mod tests {
         assert_eq!(text("Runa", "bubble_pop"), "Deals 209% MAG to every foe within 140 units of the target. Pushes them back and traps them in a bubble for 1.5s. Bosses are not pushed or trapped.");
         assert_eq!(text("Runa", "healing_spring"), "Heals the most hurt hero for 35% of max HP. Used when a hero is below 60% HP.");
         assert_eq!(text("Runa", "bubble_aura"), "Foes within 90 units of Runa move 30% slower (bosses 15%). Each has a 5% chance to be trapped in a bubble for 1.5s.");
-        assert_eq!(text("Kojonn", "arcane_pulse"), "Blasts every foe around the target for 220% MAG, up to 473% from afar. Leaves a light totem: foes inside take 35% MAG every 1s. The totem drains the bar: a full bar lasts 8s. One at a time, and no other special meanwhile. The blast is as wide as Kaja stands from the target, at least 95 units.");
+        assert_eq!(text("Kojonn", "arcane_pulse"), "Blasts every foe around the target for 220% MAG, up to 473% from afar. Leaves a light totem: foes inside take 35% MAG every 1s. The totem drains the bar: a full bar lasts 8s. One at a time, and no other special meanwhile. The blast reaches half as far as Kaja stands from the target, at least 95 units.");
         assert_eq!(text("Kojonn", "elevate"), "For 8s every hero gains one set, chosen at random: Sword: damage +25%, move speed +15%. Wings: attack range +22%, evade +22%. Winged Boots: move speed +12%, DEF and RES +12%. Ends if Kaja falls.");
         assert_eq!(text("Kojonn", "mend"), "Every 3s, heals every hero within Kaja's attack range for 3% of max HP.");
         assert_eq!(text("Runa", "basic_attack"), "Deals 100% of MAG to the current target.");

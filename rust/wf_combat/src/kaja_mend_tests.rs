@@ -156,9 +156,13 @@ fn arcane_pulse_hits_every_living_enemy_within_the_distance_it_travelled() {
         }
         (ids, fallen, victims.expect("the pulse resolved"))
     };
-    // Cast from 200 away: the blast reaches 200, past the drawn 95.
-    let (ids, fallen, victims) = pulse(800., 140.);
-    assert!(victims.contains(&ids[0]) && victims.contains(&ids[1]), "target and the enemy 140 away: {victims:?}");
+    // Cast from 230 away: the blast reaches half of that, 115, past the drawn 95.
+    let (ids, fallen, victims) = pulse(830., 108.);
+    assert!(victims.contains(&ids[0]) && victims.contains(&ids[1]), "target and the enemy 108 away: {victims:?}");
+    // The same cast with an enemy 140 away: outside 115 now (it was inside the old full-distance blast).
+    let (ids, _, victims) = pulse(830., 140.);
+    assert_eq!(victims, vec![ids[0]]);
+    assert_eq!((arcane_pulse_blast_radius(230.), arcane_pulse_blast_radius(120.), ARCANE_PULSE_BLAST_SCALE), (115., ARCANE_PULSE_RADIUS, 0.5));
     assert!(!victims.contains(&ids[2]), "270 away is out of the blast");
     assert!(!victims.contains(&fallen), "the fallen are never hit");
     // Cast from 60 away: the blast is still the drawn burst, so 190 away is safe.
@@ -166,17 +170,17 @@ fn arcane_pulse_hits_every_living_enemy_within_the_distance_it_travelled() {
     assert_eq!(victims, vec![ids[0]]);
 }
 
-/// A held scene for the totem tests: Kaja 200 below the blast centre, three sturdy Goblocs that
+/// A held scene for the totem tests: Kaja 230 below the blast centre (a 115 blast), three sturdy Goblocs that
 /// are put back on their marks after every step so only the totem decides who is inside.
 struct TotemScene { s: Sim, kaja: u32, marks: Vec<(u32, Vec2)> }
 const TOTEM_CENTRE: Vec2 = Vec2 { x: 480., y: 600. };
 impl TotemScene {
     fn new(meter: f32) -> Self {
         let mut s = Sim::new(SimConfig::default());
-        let kaja = s.spawn_actor(Archetype::Kaja, TOTEM_CENTRE + Vec2::new(0., 200.), HERO_STATS[3]);
-        let mut marks = vec![(kaja, TOTEM_CENTRE + Vec2::new(0., 200.))];
-        // On the centre, 150 away (inside a 200 blast, outside the drawn 95), and 270 away.
-        for dx in [0., 150., -270.] {
+        let kaja = s.spawn_actor(Archetype::Kaja, TOTEM_CENTRE + Vec2::new(0., 230.), HERO_STATS[3]);
+        let mut marks = vec![(kaja, TOTEM_CENTRE + Vec2::new(0., 230.))];
+        // On the centre, 105 away (inside a 115 blast, outside the drawn 95), and 270 away.
+        for dx in [0., 105., -270.] {
             let pos = TOTEM_CENTRE + Vec2::new(dx, 0.);
             marks.push((s.spawn_actor(Archetype::Gobloc, pos, stats(Archetype::Gobloc)), pos));
         }
@@ -227,7 +231,7 @@ fn arcane_pulse_leaves_a_totem_as_wide_as_the_blast_that_drains_the_bar_and_tick
     // The pulse follows its target until it bursts, so the centre is where that Gobloc stood then.
     assert!(totem.view.origin.distance(TOTEM_CENTRE) < 3., "where the pulse burst: {:?}", totem.view.origin);
     let Shape::Circle { radius } = totem.view.shape else { panic!("a circle") };
-    assert!((radius - 200.).abs() < 3. && radius > ARCANE_PULSE_RADIUS * 2., "as wide as the blast reached, not the drawn 95: {radius}");
+    assert!((radius - 115.).abs() < 2. && radius > ARCANE_PULSE_RADIUS + 15., "as wide as the blast reached (half of 230), not the drawn 95: {radius}");
     assert_eq!((totem.view.team, totem.view.hostile, totem.view.fill, totem.policy), (Team::Hero, true, FillMode::Loop, crate::hazards::HitPolicy::Continuous));
     assert!((totem.damage - scene.kaja().committed_stats().attack(DamageChannel::Magic) * FAZE_POTENCY).abs() < 1e-4, "the Faze pool's potency");
     assert_eq!((ARCANE_TOTEM_DRAIN, ARCANE_TOTEM_PULSE, ARCANE_TOTEM_POTENCY), (0.375, FAZE_PULSE, FAZE_POTENCY));
@@ -274,7 +278,7 @@ fn the_totem_ticks_only_enemies_standing_inside_it() {
     let mut scene = TotemScene::new(3.);
     scene.cast();
     let walker = scene.marks[2].0;
-    let (inside, outside) = (TOTEM_CENTRE + Vec2::new(150., 0.), TOTEM_CENTRE + Vec2::new(230., 0.));
+    let (inside, outside) = (TOTEM_CENTRE + Vec2::new(105., 0.), TOTEM_CENTRE + Vec2::new(150., 0.));
     let mut hits = Vec::new();
     let mut time = 0.0f32;
     while scene.totem().is_some() {

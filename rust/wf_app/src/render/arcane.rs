@@ -134,10 +134,10 @@ pub struct ArcanePulse {
     bursts: Vec<Burst>,
     totems: Vec<Totem>,
 }
-/// World radius of a pulse's blast: the distance it travelled from Kaja, never less than the
-/// drawn burst (`wf_combat` resolves the hits with the same rule).
+/// World radius of a pulse's blast: `wf_combat`'s own rule (half the distance it travelled from
+/// Kaja, never less than the drawn burst).
 fn blast_radius(source: WorldPos, origin: WorldPos) -> f32 {
-    source.distance(origin).max(wf_combat::tuning::ARCANE_PULSE_RADIUS)
+    wf_combat::tuning::arcane_pulse_blast_radius(source.distance(origin))
 }
 /// A floor circle of `radius` world units as screen radii.
 fn floor_radii(camera: &WorldCamera, radius: f32) -> Vec2 {
@@ -670,7 +670,7 @@ mod tests {
         let camera = WorldCamera::new(&s);
         let reach = floor_radii(&camera, 200.);
         assert_eq!((reach.x, reach.y), (200. * camera.zoom, 200. * camera.zoom * crate::camera::SQUASH));
-        assert_eq!(blast_radius(WorldPos::new(0., 0.), WorldPos::new(0., 200.)), 200.);
+        assert_eq!(blast_radius(WorldPos::new(0., 0.), WorldPos::new(0., 230.)), 115., "half the distance");
         assert_eq!(blast_radius(WorldPos::new(0., 0.), WorldPos::new(0., 40.)), wf_combat::tuning::ARCANE_PULSE_RADIUS, "never smaller than the drawn burst");
         // The sim dissolves it: it fades over TOTEM_DISSOLVE and is forgotten.
         s.hazards.retain(|h| h.id != 77);

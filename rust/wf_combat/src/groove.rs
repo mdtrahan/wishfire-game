@@ -253,7 +253,7 @@ impl Sim {
                     return true;
                 }
             }
-            Archetype::Kaja if !self.arcane_totem(a.view.id) => {
+            Archetype::Kaja if !self.arcane_channel(a.view.id) => {
                 // Owner 2026-10-27: hold every stock until a foe has fully formed.
                 let enemies = self.actors.iter().any(|e| {
                     e.alive() && e.view.team == Team::Enemy && e.view.state != ActorState::Spawn
