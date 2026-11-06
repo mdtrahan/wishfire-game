@@ -55,9 +55,9 @@ pub fn combat_kit(key: &str) -> Vec<KitEntry> {
             ], Vec::new()),
         ],
         "Huun" => vec![
-            special("shadow", "Shadow", "a full bar", format!("Foes within {} units", num(COMBO_RADIUS)), vec![
+            special("shadow", "Shadow", &format!("at least {} of the bar", pct(COMBO_START_METER)), format!("Foes within {} units", num(COMBO_RADIUS)), vec![
                 format!("Blinks behind a foe and strikes for {} ATK.", pct(SHADOW_POTENCY)),
-                format!("Keeps striking foes within {} units for {}s.", num(COMBO_RADIUS), num(COMBO_SECONDS)),
+                format!("Keeps striking foes within {} units for up to {}s; a fuller bar lasts longer.", num(COMBO_RADIUS), num(COMBO_SECONDS)),
                 format!("Each strike wards Hondo for {} of his max HP for {}s.", pct(SHADOW_WARD_FRACTION), num(SHADOW_WARD_SECONDS)),
             ], Vec::new()),
             special("split", "Split", "ends the Shadow burst", format!("{} units around the last foe", num(SPLIT_RADIUS)), vec![
@@ -133,7 +133,7 @@ mod tests {
         let text = |key: &str, id: &str| { let e = combat_kit(key).into_iter().find(|e| e.id == id).unwrap(); [e.lines, e.rules].concat().join(" ") };
         assert_eq!(text("Falie", "warcry"), "Taunts every foe within 440 units for 6s. Fara gains a ward of 30% of her max HP that lasts until it breaks. Used when a foe threatens another hero.");
         assert_eq!(text("Falie", "ground_pound"), "Deals 240% ATK to every foe on a line up to 300 units long. Pushes them back.");
-        assert_eq!(text("Huun", "shadow"), "Blinks behind a foe and strikes for 240% ATK. Keeps striking foes within 300 units for 4s. Each strike wards Hondo for 20% of his max HP for 3s.");
+        assert_eq!(text("Huun", "shadow"), "Blinks behind a foe and strikes for 240% ATK. Keeps striking foes within 300 units for up to 4s; a fuller bar lasts longer. Each strike wards Hondo for 20% of his max HP for 3s.");
         assert_eq!(text("Huun", "split"), "Finishes the burst with 300% ATK to every foe within 140 units.");
         assert_eq!(text("Runa", "bubble_pop"), "Deals 209% MAG to every foe within 140 units of the target. Pushes them back and traps them in a bubble for 1.5s. Bosses are not pushed or trapped.");
         assert_eq!(text("Runa", "healing_spring"), "Heals the most hurt hero for 35% of max HP. Used when a hero is below 60% HP.");

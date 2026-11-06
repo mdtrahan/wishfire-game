@@ -716,6 +716,10 @@ pub const COMBO_BASIC_GAIN: f32 = 0.1;
 pub const SUPER_BASIC_GAIN: f32 = 1. / 7.;
 pub const POWER_STOCK_SECONDS: f32 = 6.5 / 1.15;
 pub const COMBO_SECONDS: f32 = 4.;
+/// ORKA-63bf.51 (owner, 2026-11-06): a burst starts on any bar of at least this much, not
+/// only a full one, and runs for that share of COMBO_SECONDS. Half pays for the opening
+/// strike, two more and Split. Fable's first choice, owner-adjustable.
+pub const COMBO_START_METER: f32 = 0.5;
 pub const COMBO_RADIUS: f32 = 300.;
 pub const COMBO_MIN_HOP: f32 = 80.;
 pub const COMBO_TURN: f32 = 135. * core::f32::consts::PI / 180.;

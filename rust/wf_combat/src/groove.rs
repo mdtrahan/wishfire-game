@@ -228,7 +228,7 @@ impl Sim {
                     return true;
                 }
             }
-            Archetype::Hondo if a.view.meter >= 1. => {
+            Archetype::Hondo if a.view.meter + 0.00001 >= COMBO_START_METER => {
                 let t = (0..self.actors.len()).find(|&t| {
                     self.can_engage(i, t)
                         && a.view.pos.distance(self.actors[t].view.pos)

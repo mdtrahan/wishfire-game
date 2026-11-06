@@ -145,7 +145,9 @@ impl CombatModel {
             let view: Option<&ActorView> = h.rust_actor_id.and_then(|id| snapshot.actors.iter().find(|a| a.id == id && a.team == Team::Hero));
             let meter = view.map_or(0., |v| v.meter).clamp(0., 1.);
             let downed = view.is_some_and(|v| v.hp <= 0. || v.state == wf_combat::ActorState::Downed) || h.hp <= 0.;
-            let status = if downed { SlotStatus::Ko } else if meter >= 1. { SlotStatus::Ready } else { SlotStatus::Cooldown };
+            // Hondo's burst opens on COMBO_START_METER of his bar (ORKA-63bf.51); the overlay still shows the bar itself.
+            let needed = if view.is_some_and(|v| v.archetype == Archetype::Hondo) { wf_combat::tuning::COMBO_START_METER } else { 1. };
+            let status = if downed { SlotStatus::Ko } else if meter + 0.00001 >= needed { SlotStatus::Ready } else { SlotStatus::Cooldown };
             let mut buffs = Vec::new();
             if let Some(v) = view {
                 if v.ward > 0. || v.warcry_shield { buffs.push(Buff { key: "ward".into(), channels: vec!["ward"], skill_id: "crimson_ward" }); }

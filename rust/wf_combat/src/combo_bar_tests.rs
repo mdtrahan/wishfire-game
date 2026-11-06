@@ -151,3 +151,20 @@ fn the_opening_strike_still_needs_hondos_own_line() {
     let (h, f) = (s.actor_index(id).unwrap(), s.actor_index(foes[0]).unwrap());
     assert!(s.combo_landing(h, f, hondo(&s, id).view.pos).is_none());
 }
+
+#[test]
+fn half_a_bar_opens_a_shorter_burst_and_less_does_not() {
+    // Owner 2026-11-06 (ORKA-63bf.51): leftover bar starts a burst; it runs for the share of
+    // the 4 s the bar held, still ending with Split.
+    let (mut s, id, foes) = scene(&[70.], 1e7);
+    let h = s.actor_index(id).unwrap();
+    // Under the threshold (with room for a landed basic's gain) no burst opens.
+    s.actors[h].view.meter = COMBO_START_METER - COMBO_BASIC_GAIN - 0.1;
+    for _ in 0..15 { s.step(); assert_eq!(hondo(&s, id).combo_phase, 0, "under the threshold no burst opens"); }
+    s.actors[h].view.meter = 0.6;
+    start_burst(&mut s, id);
+    assert!((hondo(&s, id).view.groove_active - 0.6 * COMBO_SECONDS).abs() < 0.1, "the burst holds 60% of the full time: {}", hondo(&s, id).view.groove_active);
+    let (hits, kept) = strikes_per_foe(&mut s, id, &foes, true);
+    assert!(hits[0] >= 2 && hits[0] <= 5, "a shorter burst, still a burst: {hits:?}");
+    assert!(kept < 0.02, "and it ends with the bar spent: {kept}");
+}
