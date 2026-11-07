@@ -1,6 +1,7 @@
 # Rust DOX
 
 ## Purpose
+- The whole game runs here since the Rust cutover (ORKA-63bf.11): `wf_app` is the shipped client, built and staged by `tools/build_wf_app.sh`, published by `tools/build_runtime_release.mjs` as `dist/web-runner/`.
 - Own the Rust SimulationCore deterministic simulation source and WASM export boundary.
 
 ## Ownership
@@ -19,7 +20,7 @@
 - Fixture-driven behavior must match `tests/fixtures/*.csv` and JS packet expectations.
 - Do not flip ownership of a new rule family without updating Rust, JS packet routing, shadow markers, WASM, fixtures, and tests together.
 
-- `simulation_core/src/combat_abi.rs` owns the headless `wf_combat_call` JSON bridge and independent input/response/world registries. Its `describe.content_version` identifies the content definitions and must match the WFM host and generated manifest before startup. Its additive `spawn` operation atomically validates enemy batches, retains host identities and permits the host's next wave after an empty field. Only CP/meta RNG scalars remain; all combat uses this ABI.
+- `simulation_core/src/combat_abi.rs` owns the headless `wf_combat_call` JSON bridge and independent input/response/world registries. Its `World` and encounter inputs are public: native hosts (`wf_app`) call `create`/`step_now`/`spawn_batch`/`wave_chest`/`ordinary_clear`/`ack` directly and read the typed snapshot; the JSON transport wraps the same methods, and `typed_world_matches_json_transport` pins their equality. Its `describe.content_version` identifies the content definitions and must match the WFM host and generated manifest before startup. Its additive `spawn` operation atomically validates enemy batches, retains host identities and permits the host's next wave after an empty field. Only CP/meta RNG scalars remain; all combat uses this ABI.
 
 ## Work Guidance
 - CP durability uses `wf_combat::formulas::mitigation_multiplier`, matching the browser CP helper's 100-point armor scale.
@@ -37,6 +38,10 @@
 ## Child DOX Index
 - `wf_combat/AGENTS.md` - extracted combat mechanics and explicit host inputs; independent of production in step 1.
 - `wf_slice_harness/AGENTS.md` - frozen slice director, rewards, fixtures and equivalence proof.
+- `wf_app/AGENTS.md` - Rust app: macroquad client over the typed combat host (ORKA-63bf).
+- `wf_meta/AGENTS.md` - JS meta rules translated to Rust with oracle fixtures (stage director, spawn plan, shadow stats, hero rules, WFM config, lamp/Bag economy).
+- `wf_host/AGENTS.md` - the JS combat host loop (runtime, authority driver, quest session, stage runtime, reward outbox, save envelope) as `Session`, trace-proven against JS.
+- `wf_pack/` - build-time atlas packer for `web-runner/assets/puppets` and chapter arenas; output `rust/wf_app/gen/` stays untracked.
 
 - Energy is a macro balance: quest entry spends it, combat actions do not. Purple recovery remains active. Rust decides combat defeat; recovery never spends combat energy.
 
@@ -65,4 +70,4 @@
 - WASM, manifest, Special clock content and provenance are ignored build products. Server/test/release entry points rebuild missing or stale products; never stage generated products after Rust edits. Rebuild with the same Rust version and flags for byte reproduction.
 
 - SimulationCore and wf_combat share `rust/Cargo.toml` and `rust/Cargo.lock` so Cargo crate identities stay relative across checkouts. The reference harness retains its separate lock/workspace. Release profile settings live at the workspace root.
-- WFM keeps the Rust spotlight scheduler OFF. Attack framing observes existing cast events and snapshot attack lifetimes in JS; camera presentation must preserve gameplay hashes, damage and deaths.
+- WFM keeps the Rust spotlight scheduler OFF. Attack framing observes existing cast events and snapshot attack lifetimes in JS; camera presentation must preserve gameplay hashes, damage and deaths. The JSON transport still cannot enable it; the typed host can (`EncounterConfig::spotlight`, `Session::spotlight`), and `wf_app` does (ORKA-63bf.21, owner 2026-11-04). JS-parity traces and oracle fixtures run with it off.

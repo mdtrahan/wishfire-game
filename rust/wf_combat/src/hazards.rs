@@ -94,6 +94,26 @@ impl Hazard {
     }
 }
 impl Sim {
+    /// That hero's Arcane Pulse totem is standing: the channel that drains the special bar.
+    pub fn arcane_totem(&self, owner: u32) -> bool {
+        self.hazards.iter().any(|h| {
+            h.view.kind == HazardKind::ArcaneTotem
+                && h.view.owner == owner
+                && h.view.phase != HazardPhase::Resolved
+                && !h.cancelled
+        })
+    }
+    /// That hero has an Arcane Pulse in flight or its totem standing. The cast costs no stock,
+    /// so nothing else may be started until the pulse has burst and its totem has dissolved.
+    pub fn arcane_channel(&self, owner: u32) -> bool {
+        self.arcane_totem(owner)
+            || self.hazards.iter().any(|h| {
+                h.view.kind == HazardKind::ArcanePulse
+                    && h.view.owner == owner
+                    && h.view.phase != HazardPhase::Resolved
+                    && !h.cancelled
+            })
+    }
     pub fn sync_hero_areas(&mut self) {
         for i in 0..self.hazards.len() {
             if matches!(
@@ -329,6 +349,18 @@ impl Sim {
                 1,
                 HitPolicy::Continuous,
             ),
+            HazardKind::ArcaneTotem => (
+                // The caller replaces this with the radius the blast reached.
+                Shape::Circle {
+                    radius: ARCANE_PULSE_RADIUS,
+                },
+                0.,
+                ARCANE_TOTEM_MAX_SECONDS,
+                FillMode::Loop,
+                true,
+                0,
+                HitPolicy::Continuous,
+            ),
             HazardKind::HealingSpring => (
                 Shape::Circle {
                     radius: FAZE_RADIUS,
@@ -539,9 +571,11 @@ impl Sim {
                 BUBBLE_POTENCY
             } else if kind == HazardKind::GroundPound {
                 GROUND_POUND_POTENCY
-            } else if matches!(kind, HazardKind::FazePool | HazardKind::ArcanePulse) {
+            } else if matches!(kind, HazardKind::FazePool | HazardKind::ArcanePulse | HazardKind::ArcaneTotem) {
                 (if kind == HazardKind::ArcanePulse {
                     ARCANE_PULSE_POTENCY
+                } else if kind == HazardKind::ArcaneTotem {
+                    ARCANE_TOTEM_POTENCY
                 } else {
                     FAZE_POTENCY
                 }) * if source
@@ -948,9 +982,39 @@ impl Sim {
             if h.policy == HitPolicy::Continuous {
                 if !matches!(
                     h.view.kind,
-                    HazardKind::FazePool | HazardKind::HealingSpring
+                    HazardKind::FazePool | HazardKind::HealingSpring | HazardKind::ArcaneTotem
                 ) {
                     h.pulse += SIM_DT;
+                }
+                if h.view.kind == HazardKind::ArcaneTotem {
+                    // The channel: the totem lives on Kaja's special bar and dissolves when it
+                    // is empty or Kaja has fallen. Enemies inside take the Faze pool's tick.
+                    let channel = self
+                        .actor_index(h.view.owner)
+                        .filter(|&c| self.actors[c].alive())
+                        .map(|c| {
+                            let a = &mut self.actors[c];
+                            a.view.meter = (a.view.meter - ARCANE_TOTEM_DRAIN * SIM_DT).max(0.);
+                            a.view.meter > 0.00001
+                        });
+                    if h.phase_age - h.pulse + 0.00001 >= ARCANE_TOTEM_PULSE {
+                        h.pulse += ARCANE_TOTEM_PULSE;
+                        for j in 0..self.actors.len() {
+                            if self.actors[j].tangible()
+                                && self.actors[j].view.team != h.view.team
+                                && h.affects(self.actors[j].view.id, self.actors[j].view.pos, 0.)
+                            {
+                                self.damage(h.view.owner, j, h.damage, false, true, Element::Arcane);
+                            }
+                        }
+                    }
+                    if channel != Some(true) {
+                        if let Some(c) = self.actor_index(h.view.owner).filter(|_| channel.is_some()) {
+                            self.actors[c].view.meter = 0.;
+                        }
+                        // The shared clock below ends it this step.
+                        h.duration = h.phase_age;
+                    }
                 }
                 if h.view.kind == HazardKind::HealingSpring
                     && h.phase_age - h.pulse + 0.00001 >= HEALING_SPRING_TICK
@@ -1071,16 +1135,29 @@ impl Sim {
                 } else {
                     1.
                 };
+                // Arcane Pulse blast (owner 2026-11-05): every living enemy within half the
+                // distance the pulse travelled from Kaja to the blast centre is hit, and never
+                // fewer than the drawn burst covers. The centre stays where the pulse landed.
+                let blast = pulse.then(|| {
+                    arcane_pulse_blast_radius(
+                        self.actor_index(h.view.owner)
+                            .filter(|&c| self.actors[c].alive())
+                            .map_or(0., |c| self.actors[c].view.pos.distance(h.view.origin)),
+                    )
+                });
                 let victims = self.events.victim_start();
                 for j in 0..self.actors.len() {
                     if h.view.hostile
                         && self.actors[j].tangible()
                         && self.actors[j].view.team != h.view.team
-                        && h.affects(
+                        && (h.affects(
                             self.actors[j].view.id,
                             self.actors[j].view.pos,
                             self.actors[j].view.radius,
-                        )
+                        ) || blast.is_some_and(|radius| {
+                            self.actors[j].view.pos.distance(h.view.origin)
+                                <= radius + self.actors[j].view.radius
+                        }))
                     {
                         #[cfg(feature = "bound-diagnostics")]
                         crate::bound::caught(self, &h, j);
@@ -1147,6 +1224,17 @@ impl Sim {
                     }
                 }
                 self.events.resolved(h.view.id, h.view.kind, victims);
+                if let Some(radius) = blast {
+                    // The pulse leaves its light totem where it burst, as wide as the blast
+                    // reached. One per caster: a totem still standing keeps its place.
+                    let standing = self.arcane_totem(h.view.owner);
+                    if !standing
+                        && self.actor_index(h.view.owner).is_some_and(|c| self.actors[c].alive())
+                    {
+                        self.hazard(HazardKind::ArcaneTotem, h.view.owner, None, h.view.origin, h.view.dir);
+                        self.hazards.last_mut().unwrap().view.shape = Shape::Circle { radius };
+                    }
+                }
                 if let Some(kind) = h.spawn_kind.take() {
                     let actor = self.spawn_profile(kind, h.view.origin);
                     self.actors.last_mut().unwrap().begin_spawn();

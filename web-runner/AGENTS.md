@@ -1,81 +1,16 @@
 # Web Runner DOX
 
 ## Purpose
-- Own the browser-playable runtime: HTML shell, app orchestration, shipped assets, rendering/input systems, runtime modules, and browser-local core helpers.
-- Keep browser integration separate from deterministic rule ownership.
+- `web-runner/` is the asset tree and the public page path of the game. The game itself is the Rust app in `rust/wf_app` (see `rust/AGENTS.md`); the JavaScript runtime was removed in the Rust cutover (ORKA-63bf.11).
 
 ## Ownership
-- `app.js` is orchestration and composition wiring.
-- `modules/` owns Construct-style runtime state and gameplay functions.
-- `systems/` owns rendering, input, supergem runtime, persistence wrappers, dev tooling, and SimulationCore shadow wiring.
-- `state/` owns small UI/layout state holders for browser presentation surfaces.
-- `src/core/` owns browser-shipped ESM rule modules and runtime helpers.
-- `assets/` owns runtime JSON, media, fonts, gems, and the shipped SimulationCore WASM artifact.
+- `index.html` is a thin loader that points at `rust/wf_app/web/`. Hosted builds (`tools/build_runtime_release.mjs`) publish the built Rust page as `dist/web-runner/`, so the public `/web-runner/` URL keeps serving the game.
+- `assets/` owns source art and runtime data the Rust build reads: `puppets/` and `arenas/` (packed by `rust/wf_pack`), `rust-combat/` (effects, decals, font manifest), `images/` (chrome art copied by `tools/build_wf_app.sh`), `narrative/` (chapter map, town token, scene cast), `gems/coin.png`, `enemies.json`, `fonts/`.
+- No gameplay rule lives here. Rules live in `rust/wf_meta`, `rust/wf_host` and `rust/wf_combat`.
 
 ## Local Contracts
-- Keep `app.js` thin. Add business logic to contextual modules or shared core files, then wire minimally through `app.js`.
-- Fresh entry uses Chapter 1 dialogue in the retained `storyMock` layout slot. `systems/storyEntryFlow.mjs` owns combat access and the existing Skip handoff; ordinary dialogue clicks must never route directly to Town or combat.
-- Before expanding `app.js`, read `governance/planning/app-js-thinning-playbook.md` and apply `governance/planning/js-orchestration-review-checklist.md`.
-- Changes touching `app.js` must pass `npm run test:appjs-boundary`; update `governance/planning/app-js-ownership-contract.json` only when ownership policy changes, not to dodge extraction.
-- JavaScript owns browser integration: Canvas rendering, input, menus, overlays, audio, save/load wrappers, deployment, and presentation timing.
-- Rust SimulationCore owns deterministic simulation rule families that have owner markers and fixture contracts.
-- Browser runtime code may apply returned state and render presentation events; it must not recompute Rust-owned outcomes.
-- Production and developer QA enter the same Rust authority loop. A single downed hero does not pause combat; ordinary AllDown recreates the current subwave through `restartAtSubwave`. Paused/background frames discard wall-time debt.
-- Do not store durable gameplay rules in render modules, asset JSON, or `app.js` when a module/core owner exists.
-
-- The combat HUD shows chapter progress and the ready/active boss control. Chapter 1 has 10 ordinary waves, Chapter 2 has 15, and later chapters have 20 except every fifth chapter has 5; chapter/stage reads authoritative stage state. A clean first approach enters automatically. Any hero KO or boss defeat preserves earned progress and latches manual retry for that stage; once readiness is earned, fodder farming continues at 100% until summon. The latch survives reload and clears on boss victory.
-- `app.js` passes continuous boss expiry to the combat session; stage core owns the fixed 30-second deadline, session owns recovery, and the HUD reads remaining time.
-
-## Work Guidance
-- Before editing, read the child AGENTS.md for the touched subfolder.
-- Treat `app.js`, `modules/functionBank.js`, `systems/renderRuntime.js`, and `systems/simulationCoreShadow.js` as hot files.
-- For gameplay behavior, start from `web-runner/modules/` plus shared `src/core/` or `web-runner/src/core/` rules.
-- For visual behavior, start from `web-runner/systems/render*.js` and keep deterministic state changes outside render code.
-
-## Verification
-- Use focused `node --test tests/<relevant-contract>.test.js` first.
-- For runtime/manual QA, start `npm run serve:qa` and use the Codex in-app Browser when a visual check is needed.
-- For batch game automation, prefer the repo-owned `npm run balance-harness` path.
-
-## Modal Contract
-- Owner hard rule: every modal, overlay or sheet presents its content panel above one centered close button (rounded square with an X) at the bottom center, detached below the panel with a clear gap. No top-corner or alternate close positions. The Bag upgrade window's detached X is the reference; reuse its shared shape, keyboard focus and Escape behavior.
-
-## Viewport QA Contract
-- Read this file from the exact checkout being served before release QA. Guidance in another branch or worktree does not certify the current checkout.
-- Treat the in-app Browser's natural CSS viewport as variable across Codex and Browser-plugin releases. Measure each visual pass; screenshot pixel dimensions are not viewport dimensions.
-- Before changing layout code, inventory every app-owned presentation layer: Canvas drawing, Canvas hit zones, HTML launchers, HTML modals, and CSS overlays. Name the failing layer in the QA record.
-- Record `document.documentElement.clientWidth/clientHeight`, `window.devicePixelRatio`, the canvas `getBoundingClientRect()`, the canvas backing `width/height`, and each visible app-owned DOM overlay rectangle with the QA evidence.
-- Wishfire's reference layout is `360x640` logical pixels. Also validate compact `216x384`, live-narrow `233x452`, and natural-preview `316x452` CSS viewports.
-- Render from CSS-logical canvas dimensions (`canvas.width / dpr`, `canvas.height / dpr`). Scale type, portraits, panel contents, spacing, and hit zones from the same layout scale. Pre-compensate transformed panel shells so their final physical bounds keep 16px viewport gutters.
-- Canvas-adjacent HTML overlays do not inherit the Canvas transform. Compare each overlay's width-to-canvas-width ratio and edge offsets between reference and compact captures. Keep ratio drift within 20% unless the user approves a design change; keep gutter controls fully outside the canvas.
-- Scale viewport-fixed DEV launchers from the measured Canvas layout scale below the `360x640` reference size. They reserve zero rail width and use the available right gutter whenever the contained Canvas is narrower than the viewport.
-- Fix only the failing layer and property. Preserve opacity, placement, scale, and interaction behavior unless the request or reference evidence changes them.
-- Visual QA requires readable text, distinct controls, in-bounds hit zones, and no overlap, clipping, or truncated labels at both reference and compact sizes.
-- Run the natural in-app Browser size first. When it is below `360x640`, classify that evidence as the compact pass and run a reference-size external-browser pass too. External-browser evidence alone does not clear a compact-layout regression.
-- After the final visual change, reload and display the exact live page to the user. Earlier screenshots, source inspection, and green tests do not prove the currently displayed frame.
-- A Browser viewport override is diagnostic evidence only. It counts only after measured CSS dimensions confirm it took effect, and it cannot clear a failure at the natural in-app size. Browser implementations may interpret override arguments as device pixels, so never infer CSS size from the request. Reset temporary overrides after QA.
-- Before calling a release candidate QA-ready, visually inspect its final screenshot after the last reload. Any clipped text, truncated label, Canvas/DOM overlap, or material reference mismatch blocks push and deployment even when tests and console checks pass.
+- Add chrome art by copying it in `tools/build_wf_app.sh` and listing it in `rust/wf_app/src/assets.rs` (`UI_ART`).
+- Asset filenames are referenced by the build script and Rust code; rename only with a full reference search.
 
 ## Child DOX Index
-- `web-runner/modules/AGENTS.md` - gameplay state, function registry, combat, skills, progression bridges.
-- `web-runner/systems/AGENTS.md` - rendering, input, local persistence, supergem runtime, dev tooling, SimulationCore shadow.
-- `web-runner/src/core/AGENTS.md` - browser-shipped deterministic rules and runtime helpers.
-- `web-runner/assets/AGENTS.md` - runtime data, images, fonts, gems, and WASM artifact.
-
-- Quest entry: map -> ladder -> authored sub-chapter. Navigation uses one shared charcoal/brass menu with a teal active glow across non-dialogue screens. The test-only questQA query exposes deterministic defeat/monster-clear controls for browser proof.
-
-- Progression recovery separates earned readiness from boss-entry authorization: clean first readiness enters automatically, while any stage KO or boss defeat latches manual retry until boss victory. The latch and full approach survive reload; ready farming waves continue until explicit Summon Boss.
-
-- Bag progression uses continuous combat emissions and durable arrival collection, including a single held item when full. New gear grants zero EXP; Hero tickets from COT fund individual levels. Existing saved EXP remains intact. Essence funds one explicit full-cost upgrade that grants the next Bag level after a successful save.
-
-- Canonical product source is mdtrahan/wishfire-game main. Current combat equipment presentation is the Bag conveyor (lampConveyorPresentation.mjs and equipment-bag.png). Before editing or QA, verify repository, commit and renderer; exported Cloud snapshots are historical sources. COT/resources remain combat-only; Growth opens the approved Training Ground without changing navigation backers.
-
-- COT quest milestones include chapter/boss clears, party equipment coverage and level/rarity thresholds, plus Hero and Training milestones. Zero-KO quests are retired. app.js only wires pre-recovery and pre-restoration observation; deterministic progression stays in core and the controller.
-
-- Developer refresh and QA reset stop the outgoing Rust encounter before replacing actors or restoring HP. Rust heal fixtures refuse unsupported mutations explicitly.
-
-- Rust loads for combat without a flag; initialization failures remain visible. No JS fallback or shadow world exists. CP and meta RNG retain their separate scalar exports. Story defeat offers return navigation; paid-Continue is retired.
-
-- Startup awaits Rust readiness before combat setup or encounter admission. WASM/ABI failure uses the existing startup error frame. Ordinary navigation and visibility changes pause the retained world and authored subwave queue; only teardown or boss-checkpoint departure stops it.
-
-- SimulationCore WASM/manifest and `src/core/specialClockContent.mjs` are ignored build products. Start through `node tools/serve_web.js`; hosted/offline staging explicitly includes source-validated generated runtime files.
+- `assets/AGENTS.md` - runtime data and media contracts.

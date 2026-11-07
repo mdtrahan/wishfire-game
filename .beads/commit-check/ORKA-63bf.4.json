@@ -1,0 +1,212 @@
+{
+  "changed_functions": {
+    ".beads/commit-check/ORKA-63bf.3.json": [
+      "__MODULE__"
+    ],
+    "rust/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/Cargo.lock": [
+      "__MODULE__"
+    ],
+    "rust/Cargo.toml": [
+      "__MODULE__"
+    ],
+    "rust/wf_meta/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/wf_meta/Cargo.toml": [
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/combat_power.rs": [
+      "value",
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/enemy.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/geometry.rs": [
+      "y_center",
+      "half",
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/hero.rs": [
+      "l",
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/jsnum.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/lib.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/seeded_rng.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/shadow.rs": [
+      "hp",
+      "interval",
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/stage.rs": [
+      "hp",
+      "scale",
+      "enemy_size",
+      "seed_mix",
+      "sector_order",
+      "member_count",
+      "pack_seed",
+      "radius",
+      "min_spacing",
+      "y_inset",
+      "dx",
+      "dy",
+      "band_height",
+      "band",
+      "seed",
+      "composition_seed",
+      "stage_ordinal",
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/subwaves.rs": [
+      "count",
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/wfm_config.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_meta/tests/oracle.rs": [
+      "__MODULE__"
+    ],
+    "tests/fixtures/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "tests/fixtures/rust-oracle/combat_power.json": [
+      "__MODULE__"
+    ],
+    "tests/fixtures/rust-oracle/enemy_rows.json": [
+      "__MODULE__"
+    ],
+    "tests/fixtures/rust-oracle/geometry.json": [
+      "__MODULE__"
+    ],
+    "tests/fixtures/rust-oracle/hero_levels.json": [
+      "__MODULE__"
+    ],
+    "tests/fixtures/rust-oracle/seeded_rng.json": [
+      "__MODULE__"
+    ],
+    "tests/fixtures/rust-oracle/spawn_plans.json": [
+      "__MODULE__"
+    ],
+    "tests/fixtures/rust-oracle/stage_trace.json": [
+      "__MODULE__"
+    ],
+    "tests/fixtures/rust-oracle/stage_transitions.json": [
+      "__MODULE__"
+    ],
+    "tests/fixtures/rust-oracle/subwaves.json": [
+      "__MODULE__"
+    ],
+    "tests/fixtures/rust-oracle/wfm_config.json": [
+      "__MODULE__"
+    ],
+    "tools/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "tools/rust_oracle/write_fixtures.mjs": [
+      "normalizeBiomeTags",
+      "normalizeEnemyRole",
+      "normalizeFaction",
+      "resolveEnemyEncounterCombatPower",
+      "write",
+      "parseC2ArrayTable",
+      "party",
+      "spawnPlanCase",
+      "wfmConfigCase",
+      "createContinuousCombatStateState",
+      "trace",
+      "call",
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 31,
+    "staged_line_count": 11655,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/commit-check/ORKA-63bf.3.json",
+    "rust/AGENTS.md",
+    "rust/Cargo.lock",
+    "rust/Cargo.toml",
+    "rust/wf_meta/AGENTS.md",
+    "rust/wf_meta/Cargo.toml",
+    "rust/wf_meta/src/combat_power.rs",
+    "rust/wf_meta/src/enemy.rs",
+    "rust/wf_meta/src/geometry.rs",
+    "rust/wf_meta/src/hero.rs",
+    "rust/wf_meta/src/jsnum.rs",
+    "rust/wf_meta/src/lib.rs",
+    "rust/wf_meta/src/seeded_rng.rs",
+    "rust/wf_meta/src/shadow.rs",
+    "rust/wf_meta/src/stage.rs",
+    "rust/wf_meta/src/subwaves.rs",
+    "rust/wf_meta/src/wfm_config.rs",
+    "rust/wf_meta/tests/oracle.rs",
+    "tests/fixtures/AGENTS.md",
+    "tests/fixtures/rust-oracle/combat_power.json",
+    "tests/fixtures/rust-oracle/enemy_rows.json",
+    "tests/fixtures/rust-oracle/geometry.json",
+    "tests/fixtures/rust-oracle/hero_levels.json",
+    "tests/fixtures/rust-oracle/seeded_rng.json",
+    "tests/fixtures/rust-oracle/spawn_plans.json",
+    "tests/fixtures/rust-oracle/stage_trace.json",
+    "tests/fixtures/rust-oracle/stage_transitions.json",
+    "tests/fixtures/rust-oracle/subwaves.json",
+    "tests/fixtures/rust-oracle/wfm_config.json",
+    "tools/AGENTS.md",
+    "tools/rust_oracle/write_fixtures.mjs"
+  ],
+  "issue_id": "ORKA-63bf.4",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/commit-check/ORKA-63bf.3.json": "c5acd21088ca0a1f59624c219178d6b616463918",
+    "rust/AGENTS.md": "302e18e522a0fca138866e8057d62eac44a82c7f",
+    "rust/Cargo.lock": "2a98c92a6e92f8e4cbbd44b89c4f280c47c20146",
+    "rust/Cargo.toml": "db5dd03b1a6731bfa306fdc8349928d2c3fde3af",
+    "rust/wf_meta/AGENTS.md": "1bdf5821704c0b252338dda8acbe81d0396627e7",
+    "rust/wf_meta/Cargo.toml": "44a83c5a4a5a251131bf5098621ab4a7290e103b",
+    "rust/wf_meta/src/combat_power.rs": "ff4e45d895904da35066cd86f30e2404ff7bc925",
+    "rust/wf_meta/src/enemy.rs": "7f23410828fda1003d53a13848e4647a16928fcd",
+    "rust/wf_meta/src/geometry.rs": "8e7d14d861f1480f048a07baf09afd32b08e9490",
+    "rust/wf_meta/src/hero.rs": "fd44486f1051fcde0df1938a47cb0194fc433fb4",
+    "rust/wf_meta/src/jsnum.rs": "26f6c7bda4ba07ee79dc82be39a149b7f8ec0197",
+    "rust/wf_meta/src/lib.rs": "9a7bad3a12eccda06a500c65f792f08da45e29c2",
+    "rust/wf_meta/src/seeded_rng.rs": "9583fbd16fb00f969db58cd26fbacf8bde2f79ff",
+    "rust/wf_meta/src/shadow.rs": "0db3de7932a6794075ec5127c59d9c5f8a362422",
+    "rust/wf_meta/src/stage.rs": "86b197ea551112da6ae0bfb5b0ca44f5621d1ffa",
+    "rust/wf_meta/src/subwaves.rs": "68f4a6b2e9b95d35b85b688eeaaece4fcd9eaa71",
+    "rust/wf_meta/src/wfm_config.rs": "ba360c96c54806ba6965f4c02a8b502645f56a75",
+    "rust/wf_meta/tests/oracle.rs": "21c8d16445293726b6ef16954c42c189ecff88b8",
+    "tests/fixtures/AGENTS.md": "da3707933b69da3f304ac704582d1bec9af1bb81",
+    "tests/fixtures/rust-oracle/combat_power.json": "c7121af99e2a17b2d1dcb521add8da1e97863d37",
+    "tests/fixtures/rust-oracle/enemy_rows.json": "c1a023dd8d17aaa5206d854e2e368b5f67341cfc",
+    "tests/fixtures/rust-oracle/geometry.json": "df52de64513817fea03087f842166666cb7fe4d5",
+    "tests/fixtures/rust-oracle/hero_levels.json": "f997dec253cd35892bf87dc2f3f2e0aa5dac8ee9",
+    "tests/fixtures/rust-oracle/seeded_rng.json": "ae1a890ed8dc7da5f828a70c63070a8b753adad6",
+    "tests/fixtures/rust-oracle/spawn_plans.json": "1e7235139ce1a06049c6c4da93815824d6c224ff",
+    "tests/fixtures/rust-oracle/stage_trace.json": "99d17e99b0b311d07e8ba575066405ef20683964",
+    "tests/fixtures/rust-oracle/stage_transitions.json": "17f495aa6065d0e25991c7898c5c30b878fbfee4",
+    "tests/fixtures/rust-oracle/subwaves.json": "d6b3054defc9b7624375200611195146dd37f7f5",
+    "tests/fixtures/rust-oracle/wfm_config.json": "73110517e6d09486b19a096e416b103456fdaa84",
+    "tools/AGENTS.md": "71c0c36319fa420c7faf4ffd5652ae7828c9e5a1",
+    "tools/rust_oracle/write_fixtures.mjs": "279d73ae36b7d336ac0d02bc5a8f2a914f6619cf"
+  }
+}

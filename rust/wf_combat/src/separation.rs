@@ -24,7 +24,8 @@ impl Sim {
                 && a.committed())
         {
             2
-        } else if a.committed() {
+        } else if a.committed() || (a.view.team == Team::Enemy && a.formed_age < SPAWN_SETTLE_SECONDS) {
+            // Holding: a committed action, or an enemy that has only just spawned in.
             1
         } else {
             0

@@ -1,0 +1,14 @@
+/* main ea8bc3f2 web-runner/systems/rewardReceiptUI.mjs installStyle, verbatim. */
+.lamp-reward-banner{position:fixed;z-index:66;box-sizing:border-box;pointer-events:none;color:#fff1bf;text-align:center;font-family:system-ui,sans-serif;background:linear-gradient(90deg,#5e431ab8,#80602cd9,#5e431ab8);border-block:2px solid #d6b770;box-shadow:0 3px 16px #0005;padding:.35em 0 .5em;animation:lamp-reward-out var(--reward-duration,2s) linear forwards}
+.lamp-reward-banner>strong{position:relative;z-index:2;display:block;letter-spacing:.05em;text-shadow:0 2px 3px #211506;font-size:1em}
+.lamp-reward-banner>div{position:relative;isolation:isolate;display:grid;justify-items:center;margin:.2em auto 0;width:3.5em;border:1px solid #d9bc77;border-radius:.3em;background:#183c3dd9}
+.lamp-reward-banner>div>img,.lamp-reward-banner>div>b,.lamp-reward-banner>div>.lamp-reward-ticket-art{position:relative;z-index:1}
+.lamp-reward-banner img{display:block;width:3em;height:3em;object-fit:contain}
+.lamp-reward-banner .lamp-reward-ticket-art{width:3em;height:2em;margin:.5em 0;background-image:url('assets/images/progression/hero-tickets.png');background-size:200% 200%;background-repeat:no-repeat}
+.lamp-reward-banner b{font-size:1.1em;line-height:1.2;padding:0 .15em .15em;text-shadow:0 2px 2px #000}
+.reward-fanfare{position:absolute;left:0;top:0;width:0;height:0;overflow:visible;pointer-events:none;z-index:0}
+.reward-fanfare-particle{position:absolute;left:calc(50% + var(--fanfare-start-x));top:calc(50% + var(--fanfare-start-y));display:block;width:var(--fanfare-size);height:var(--fanfare-size);opacity:0;animation:reward-fanfare-sweep var(--fanfare-duration) linear both}
+.reward-fanfare-star{background:linear-gradient(135deg,#fffbe0,#f5c54e);clip-path:polygon(50% 0,59% 41%,100% 50%,59% 59%,50% 100%,41% 59%,0 50%,41% 41%);filter:drop-shadow(0 0 2px #ffdc74)}
+.reward-fanfare-speck{border-radius:50%;background:#fff8d5;box-shadow:0 0 3px #f2c64f}
+@keyframes reward-fanfare-sweep{0%{opacity:0;transform:translate(-50%,-50%) scale(.8)}8%{opacity:1;transform:translate(-50%,-50%) scale(1)}65%{opacity:.95;transform:translate(calc(-50% + var(--fanfare-mid-x)),calc(-50% + var(--fanfare-mid-y))) scale(1)}100%{opacity:0;transform:translate(calc(-50% + var(--fanfare-x)),calc(-50% + var(--fanfare-y))) scale(.72)}}
+@keyframes lamp-reward-out{0%,92.3077%{opacity:1}100%{opacity:0}}

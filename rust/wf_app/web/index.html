@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="data:,">
+<title>Wishfire</title>
+<style>
+html, body { margin: 0; padding: 0; width: 100%; height: 100%; height: 100dvh; overflow: hidden; background: #000; overscroll-behavior: none; }
+canvas { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
+</style>
+</head>
+<body>
+<canvas id="glcanvas" tabindex="0" aria-label="Wishfire"></canvas>
+<!-- The strict-mode bundle assigns this plugin hook globally. -->
+<script>var register_plugin;</script>
+<script src="mq_js_bundle.js"></script>
+<script>
+const gameCanvas = document.getElementById("glcanvas");
+gameCanvas.addEventListener("pointerdown", () => gameCanvas.focus());
+// The bundle runs on_init before Rust main, so the initial scene has no flag race.
+// Durable saves: the Rust app reads and writes the same localStorage keys the JS game used.
+const textEncoder = new TextEncoder(), textDecoder = new TextDecoder();
+const readString = (ptr, len) => textDecoder.decode(new Uint8Array(wasm_memory.buffer, ptr, len));
+miniquad_add_plugin({
+  name: "wf_app", version: 1,
+  register_plugin(importObject) {
+    importObject.env.wf_storage_get = (keyPtr, keyLen, outPtr, outCap) => {
+      let value;
+      try { value = localStorage.getItem(readString(keyPtr, keyLen)); } catch { return -1; }
+      if (value === null) return -1;
+      const bytes = textEncoder.encode(value);
+      if (outCap === 0) return bytes.length;
+      if (bytes.length > outCap) return -1;
+      new Uint8Array(wasm_memory.buffer, outPtr, bytes.length).set(bytes);
+      return bytes.length;
+    };
+    importObject.env.wf_storage_set = (keyPtr, keyLen, valPtr, valLen) => {
+      try { localStorage.setItem(readString(keyPtr, keyLen), readString(valPtr, valLen)); return 1; } catch { return 0; }
+    };
+    importObject.env.wf_storage_remove = (keyPtr, keyLen) => {
+      try { localStorage.removeItem(readString(keyPtr, keyLen)); return 1; } catch { return 0; }
+    };
+    // Tab-scoped checkpoints (sessionStorage) and crypto seeds, as the JS lamp economy used them.
+    importObject.env.wf_session_get = (keyPtr, keyLen, outPtr, outCap) => {
+      let value;
+      try { value = sessionStorage.getItem(readString(keyPtr, keyLen)); } catch { return -1; }
+      if (value === null) return -1;
+      const bytes = textEncoder.encode(value);
+      if (outCap === 0) return bytes.length;
+      if (bytes.length > outCap) return -1;
+      new Uint8Array(wasm_memory.buffer, outPtr, bytes.length).set(bytes);
+      return bytes.length;
+    };
+    importObject.env.wf_session_set = (keyPtr, keyLen, valPtr, valLen) => {
+      try { sessionStorage.setItem(readString(keyPtr, keyLen), readString(valPtr, valLen)); return 1; } catch { return 0; }
+    };
+    importObject.env.wf_session_remove = (keyPtr, keyLen) => {
+      try { sessionStorage.removeItem(readString(keyPtr, keyLen)); return 1; } catch { return 0; }
+    };
+    importObject.env.wf_random_u32 = () => crypto.getRandomValues(new Uint32Array(1))[0];
+    // Element bridge for the Rust menus (ui/dom.rs). Generic on purpose: Rust decides every
+    // element, attribute, style and action; a listened event only reports its element back.
+    const elements = new Map();
+    importObject.env.wf_dom_create = (handle, ptr, len) => { elements.set(handle, document.createElement(readString(ptr, len))); };
+    importObject.env.wf_dom_text = (handle, ptr, len) => {
+      const node = elements.get(handle);
+      if (node) node.data = readString(ptr, len); else elements.set(handle, document.createTextNode(readString(ptr, len)));
+    };
+    importObject.env.wf_dom_attr = (handle, namePtr, nameLen, valuePtr, valueLen) => { elements.get(handle).setAttribute(readString(namePtr, nameLen), readString(valuePtr, valueLen)); };
+    importObject.env.wf_dom_unattr = (handle, namePtr, nameLen) => { elements.get(handle).removeAttribute(readString(namePtr, nameLen)); };
+    importObject.env.wf_dom_insert = (parent, child, before) => { (parent ? elements.get(parent) : document.body).insertBefore(elements.get(child), before ? elements.get(before) : null); };
+    importObject.env.wf_dom_remove = handle => { elements.get(handle)?.remove(); elements.delete(handle); };
+    importObject.env.wf_dom_listen = (handle, typePtr, typeLen) => { elements.get(handle).addEventListener(readString(typePtr, typeLen), event => wasm_exports.wf_dom_event(handle, event.timeStamp)); };
+  },
+  on_init() {
+    const params = new URLSearchParams(location.search);
+    wasm_exports.wf_client_vfx_dpi(devicePixelRatio);
+    wasm_exports.wf_client_vfx_resolution(Number(params.get("vfxres") ?? 3), Number(params.get("ps1") !== "0"));
+    wasm_exports.wf_client_qa(Number(params.has("qa")));
+    if (params.has("qa") && params.has("seed")) wasm_exports.wf_client_qa_seed(Number(params.get("seed")));
+  }
+});
+load("wf_app.wasm?v=" + (document.currentScript?.dataset.rev ?? Date.now()));
+gameCanvas.focus();
+const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+function syncMotionPreference() {
+  if (typeof wasm_exports !== 'undefined' && wasm_exports?.wf_client_reduced_motion) {
+    wasm_exports.wf_client_reduced_motion(Number(motionPreference.matches));
+  } else { requestAnimationFrame(syncMotionPreference); }
+}
+// Keep the canvas backing at the live pixel ratio. Checked each frame: emulated ratio changes
+// (preview panes, device toolbars) raise no media-query or resize event.
+let seenDpr = devicePixelRatio;
+function watchDpr() {
+  if (typeof wasm_exports !== 'undefined' && (devicePixelRatio !== seenDpr
+      || gameCanvas.width !== Math.floor(gameCanvas.clientWidth * dpi_scale())
+      || gameCanvas.height !== Math.floor(gameCanvas.clientHeight * dpi_scale()))) {
+    seenDpr = devicePixelRatio;
+    wasm_exports.wf_client_vfx_dpi(devicePixelRatio);
+    window.dispatchEvent(new Event('resize'));
+  }
+  requestAnimationFrame(watchDpr);
+}
+watchDpr();
+motionPreference.addEventListener('change', syncMotionPreference);
+syncMotionPreference();
+</script>
+</body>
+</html>

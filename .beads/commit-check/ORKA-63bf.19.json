@@ -1,0 +1,37 @@
+{
+  "changed_functions": {
+    ".beads/commit-check/ORKA-63bf.19.json": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/ui/lamp.rs": [
+      "gap",
+      "left"
+    ],
+    "rust/wf_meta/src/hero.rs": [
+      "haste"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 3,
+    "staged_line_count": 82,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/commit-check/ORKA-63bf.19.json",
+    "rust/wf_app/src/ui/lamp.rs",
+    "rust/wf_meta/src/hero.rs"
+  ],
+  "issue_id": "ORKA-63bf.19",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/commit-check/ORKA-63bf.19.json": "473d3cfa37bb7b26a52f91712e54f11942f3204a",
+    "rust/wf_app/src/ui/lamp.rs": "87e3398da0c754be122a12bcb881b476123628b4",
+    "rust/wf_meta/src/hero.rs": "e0eb2ef740cc525596926f53ef60a7bad7257ffa"
+  }
+}

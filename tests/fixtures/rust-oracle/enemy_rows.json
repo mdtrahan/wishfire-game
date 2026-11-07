@@ -1,0 +1,416 @@
+{
+ "raw": [
+  {
+   "name": "Gobloc",
+   "HP": 40,
+   "ATK": 10,
+   "DEF": 8,
+   "MAG": 5,
+   "RES": 6,
+   "SPD": 17,
+   "hp_red": 20,
+   "hp_blue": 20,
+   "hp_green": 20,
+   "EncounterCP": 47,
+   "combatTier": "fodder"
+  },
+  {
+   "name": "High Gobloc",
+   "HP": 70,
+   "ATK": 14,
+   "DEF": 14,
+   "MAG": 8,
+   "RES": 12,
+   "SPD": 15,
+   "hp_red": 30,
+   "hp_blue": 30,
+   "hp_green": 30,
+   "EncounterCP": 29.5,
+   "combatTier": "routine"
+  },
+  {
+   "name": "Lizardo",
+   "HP": 65,
+   "ATK": 18,
+   "DEF": 10,
+   "MAG": 4,
+   "RES": 6,
+   "SPD": 10,
+   "hp_red": 50,
+   "hp_blue": 30,
+   "hp_green": 60,
+   "EncounterCP": 41,
+   "combatTier": "routine"
+  },
+  {
+   "name": "Orc",
+   "HP": 60,
+   "ATK": 15,
+   "DEF": 12,
+   "MAG": 6,
+   "RES": 8,
+   "SPD": 8,
+   "hp_red": 35,
+   "hp_blue": 40,
+   "hp_green": 60,
+   "EncounterCP": 38,
+   "combatTier": "routine"
+  },
+  {
+   "name": "High Orc",
+   "HP": 95,
+   "ATK": 18,
+   "DEF": 20,
+   "MAG": 10,
+   "RES": 16,
+   "SPD": 7,
+   "hp_red": 70,
+   "hp_blue": 80,
+   "hp_green": 100,
+   "EncounterCP": 55,
+   "combatTier": "elite"
+  },
+  {
+   "name": "Chimerilass",
+   "HP": 80,
+   "ATK": 8,
+   "DEF": 10,
+   "MAG": 26,
+   "RES": 16,
+   "SPD": 8,
+   "hp_red": 90,
+   "hp_blue": 50,
+   "hp_green": 70,
+   "EncounterCP": 34,
+   "combatTier": "elite"
+  },
+  {
+   "name": "Troll",
+   "HP": 105,
+   "ATK": 20,
+   "DEF": 22,
+   "MAG": 6,
+   "RES": 18,
+   "SPD": 5,
+   "hp_red": 160,
+   "hp_blue": 40,
+   "hp_green": 60,
+   "EncounterCP": 17,
+   "combatTier": "boss"
+  },
+  {
+   "name": "Skeleton",
+   "HP": 35,
+   "ATK": 8,
+   "DEF": 5,
+   "MAG": 4,
+   "RES": 4,
+   "SPD": 22,
+   "hp_red": 20,
+   "hp_blue": 20,
+   "hp_green": 50,
+   "EncounterCP": 47,
+   "combatTier": "fodder"
+  },
+  {
+   "name": "Djinn",
+   "HP": 55,
+   "ATK": 6,
+   "DEF": 6,
+   "MAG": 28,
+   "RES": 14,
+   "SPD": 11,
+   "hp_red": 70,
+   "hp_blue": 40,
+   "hp_green": 0,
+   "EncounterCP": 32,
+   "combatTier": "hard"
+  },
+  {
+   "name": "Marid",
+   "HP": 60,
+   "ATK": 8,
+   "DEF": 10,
+   "MAG": 22,
+   "RES": 18,
+   "SPD": 9,
+   "hp_red": 25,
+   "hp_blue": 60,
+   "hp_green": 30,
+   "EncounterCP": 21,
+   "combatTier": "hard"
+  }
+ ],
+ "mapped": [
+  {
+   "name": "Gobloc",
+   "HP": 56,
+   "ATK": 10,
+   "DEF": 8,
+   "MAG": 5,
+   "RES": 6,
+   "SPD": 17,
+   "hp_red": 20,
+   "hp_blue": 20,
+   "hp_green": 20,
+   "EncounterCP": 47,
+   "combatTier": "fodder",
+   "maxHP": 56,
+   "routineTier": "fodder",
+   "faction": "wishless",
+   "enemyRole": "fodder",
+   "locale": "all",
+   "biome": "all",
+   "biomeTags": [
+    "all"
+   ],
+   "localeTags": [
+    "all"
+   ],
+   "CombatPower": 94.6
+  },
+  {
+   "name": "High Gobloc",
+   "HP": 91,
+   "ATK": 14,
+   "DEF": 10,
+   "MAG": 8,
+   "RES": 8,
+   "SPD": 15,
+   "hp_red": 30,
+   "hp_blue": 30,
+   "hp_green": 30,
+   "EncounterCP": 29.5,
+   "combatTier": "routine",
+   "maxHP": 91,
+   "routineTier": "routine",
+   "faction": "wishless",
+   "enemyRole": "fodder",
+   "locale": "all",
+   "biome": "all",
+   "biomeTags": [
+    "all"
+   ],
+   "localeTags": [
+    "all"
+   ],
+   "CombatPower": 123.2
+  },
+  {
+   "name": "Lizardo",
+   "HP": 84,
+   "ATK": 18,
+   "DEF": 10,
+   "MAG": 4,
+   "RES": 6,
+   "SPD": 10,
+   "hp_red": 50,
+   "hp_blue": 30,
+   "hp_green": 60,
+   "EncounterCP": 41,
+   "combatTier": "routine",
+   "maxHP": 84,
+   "routineTier": "routine",
+   "faction": "wishless",
+   "enemyRole": "fodder",
+   "locale": "all",
+   "biome": "all",
+   "biomeTags": [
+    "all"
+   ],
+   "localeTags": [
+    "all"
+   ],
+   "CombatPower": 107
+  },
+  {
+   "name": "Orc",
+   "HP": 78,
+   "ATK": 15,
+   "DEF": 10,
+   "MAG": 6,
+   "RES": 8,
+   "SPD": 8,
+   "hp_red": 35,
+   "hp_blue": 40,
+   "hp_green": 60,
+   "EncounterCP": 38,
+   "combatTier": "routine",
+   "maxHP": 78,
+   "routineTier": "routine",
+   "faction": "wishless",
+   "enemyRole": "fodder",
+   "locale": "all",
+   "biome": "all",
+   "biomeTags": [
+    "all"
+   ],
+   "localeTags": [
+    "all"
+   ],
+   "CombatPower": 77.5
+  },
+  {
+   "name": "High Orc",
+   "HP": 152,
+   "ATK": 18,
+   "DEF": 11,
+   "MAG": 10,
+   "RES": 9,
+   "SPD": 7,
+   "hp_red": 70,
+   "hp_blue": 80,
+   "hp_green": 100,
+   "EncounterCP": 55,
+   "combatTier": "elite",
+   "maxHP": 152,
+   "routineTier": "elite",
+   "faction": "wishless",
+   "enemyRole": "fodder",
+   "locale": "all",
+   "biome": "all",
+   "biomeTags": [
+    "all"
+   ],
+   "localeTags": [
+    "all"
+   ],
+   "CombatPower": 100.8
+  },
+  {
+   "name": "Chimerilass",
+   "HP": 128,
+   "ATK": 8,
+   "DEF": 10,
+   "MAG": 26,
+   "RES": 9,
+   "SPD": 8,
+   "hp_red": 90,
+   "hp_blue": 50,
+   "hp_green": 70,
+   "EncounterCP": 34,
+   "combatTier": "elite",
+   "maxHP": 128,
+   "routineTier": "elite",
+   "faction": "wishless",
+   "enemyRole": "fodder",
+   "locale": "all",
+   "biome": "all",
+   "biomeTags": [
+    "all"
+   ],
+   "localeTags": [
+    "all"
+   ],
+   "CombatPower": 132.5
+  },
+  {
+   "name": "Troll",
+   "HP": 231,
+   "ATK": 20,
+   "DEF": 12,
+   "MAG": 6,
+   "RES": 10,
+   "SPD": 5,
+   "hp_red": 160,
+   "hp_blue": 40,
+   "hp_green": 60,
+   "EncounterCP": 17,
+   "combatTier": "boss",
+   "maxHP": 231,
+   "routineTier": "boss",
+   "faction": "wishless",
+   "enemyRole": "fodder",
+   "locale": "all",
+   "biome": "all",
+   "biomeTags": [
+    "all"
+   ],
+   "localeTags": [
+    "all"
+   ],
+   "CombatPower": 120.3
+  },
+  {
+   "name": "Skeleton",
+   "HP": 49,
+   "ATK": 8,
+   "DEF": 5,
+   "MAG": 4,
+   "RES": 4,
+   "SPD": 22,
+   "hp_red": 20,
+   "hp_blue": 20,
+   "hp_green": 50,
+   "EncounterCP": 47,
+   "combatTier": "fodder",
+   "maxHP": 49,
+   "routineTier": "fodder",
+   "faction": "wishless",
+   "enemyRole": "fodder",
+   "locale": "all",
+   "biome": "all",
+   "biomeTags": [
+    "all"
+   ],
+   "localeTags": [
+    "all"
+   ],
+   "CombatPower": 80.3
+  },
+  {
+   "name": "Djinn",
+   "HP": 77,
+   "ATK": 6,
+   "DEF": 6,
+   "MAG": 28,
+   "RES": 12,
+   "SPD": 11,
+   "hp_red": 70,
+   "hp_blue": 40,
+   "hp_green": 0,
+   "EncounterCP": 32,
+   "combatTier": "hard",
+   "maxHP": 77,
+   "routineTier": "hard",
+   "faction": "wishless",
+   "enemyRole": "fodder",
+   "locale": "all",
+   "biome": "all",
+   "biomeTags": [
+    "all"
+   ],
+   "localeTags": [
+    "all"
+   ],
+   "CombatPower": 165.3
+  },
+  {
+   "name": "Marid",
+   "HP": 84,
+   "ATK": 8,
+   "DEF": 10,
+   "MAG": 22,
+   "RES": 12,
+   "SPD": 9,
+   "hp_red": 25,
+   "hp_blue": 60,
+   "hp_green": 30,
+   "EncounterCP": 21,
+   "combatTier": "hard",
+   "maxHP": 84,
+   "routineTier": "hard",
+   "faction": "wishless",
+   "enemyRole": "fodder",
+   "locale": "all",
+   "biome": "all",
+   "biomeTags": [
+    "all"
+   ],
+   "localeTags": [
+    "all"
+   ],
+   "CombatPower": 116.1
+  }
+ ]
+}

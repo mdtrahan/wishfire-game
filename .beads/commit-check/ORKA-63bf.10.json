@@ -1,0 +1,110 @@
+{
+  "changed_functions": {
+    ".beads/commit-check/ORKA-63bf.9.json": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/assets.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/main.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/ui/chrome.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/ui/mod.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_app/src/ui/screens.rs": [
+      "slot_w"
+    ],
+    "rust/wf_app/src/ui/story.rs": [
+      "my",
+      "bw",
+      "__MODULE__"
+    ],
+    "rust/wf_meta/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/lib.rs": [
+      "__MODULE__"
+    ],
+    "rust/wf_meta/src/narrative.rs": [
+      "elapsed",
+      "background_alpha",
+      "subject_alpha",
+      "count",
+      "__MODULE__"
+    ],
+    "rust/wf_meta/tests/narrative.rs": [
+      "__MODULE__"
+    ],
+    "tests/fixtures/rust-oracle/narrative.json": [
+      "__MODULE__"
+    ],
+    "tools/build_wf_app.sh": [
+      "__MODULE__"
+    ],
+    "tools/rust_oracle/write_fixtures.mjs": [
+      "satisfy",
+      "narrativeFixture",
+      "segment",
+      "snapshot",
+      "render",
+      "tap",
+      "auto",
+      "wait",
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 15,
+    "staged_line_count": 1175,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/commit-check/ORKA-63bf.9.json",
+    "rust/wf_app/AGENTS.md",
+    "rust/wf_app/src/assets.rs",
+    "rust/wf_app/src/main.rs",
+    "rust/wf_app/src/ui/chrome.rs",
+    "rust/wf_app/src/ui/mod.rs",
+    "rust/wf_app/src/ui/screens.rs",
+    "rust/wf_app/src/ui/story.rs",
+    "rust/wf_meta/AGENTS.md",
+    "rust/wf_meta/src/lib.rs",
+    "rust/wf_meta/src/narrative.rs",
+    "rust/wf_meta/tests/narrative.rs",
+    "tests/fixtures/rust-oracle/narrative.json",
+    "tools/build_wf_app.sh",
+    "tools/rust_oracle/write_fixtures.mjs"
+  ],
+  "issue_id": "ORKA-63bf.10",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/commit-check/ORKA-63bf.9.json": "5a2f958c0d1072efb4679d1962381c31dca385bd",
+    "rust/wf_app/AGENTS.md": "b0ea5deae87a5249368196ae5373d3f643520efb",
+    "rust/wf_app/src/assets.rs": "2ae42d16d67db15ca138a02588d2dca06ca2d9e3",
+    "rust/wf_app/src/main.rs": "91ee0e5cbd39bd31e35c6bce4e6d6b36a70af513",
+    "rust/wf_app/src/ui/chrome.rs": "03ae2ed293227546d75ad61d8ed8d2b139c752df",
+    "rust/wf_app/src/ui/mod.rs": "86c40df3f66b2c35ea315d5b069f82b77356cc4f",
+    "rust/wf_app/src/ui/screens.rs": "3de9c83aa69b70a0bdc98a830bf42dd780f45df3",
+    "rust/wf_app/src/ui/story.rs": "cc96c18c680617515f6195e8a6a93c1f8e9bad78",
+    "rust/wf_meta/AGENTS.md": "7d694d49a72e669fb73edb9565c5934b842903c0",
+    "rust/wf_meta/src/lib.rs": "f1abeef7776d8f70cc4e0b81bcd012f37b7d1b4e",
+    "rust/wf_meta/src/narrative.rs": "3492d94b380bc4f7c0ebc9d37a0ae4156bab8953",
+    "rust/wf_meta/tests/narrative.rs": "c8c9e8265897423c23923219b39392502c481dd4",
+    "tests/fixtures/rust-oracle/narrative.json": "f1b17c19aa297c54bcf0a67f880ba03f09c5779c",
+    "tools/build_wf_app.sh": "efac945bbdd27078ecd542e6fe0f1606a4f00d69",
+    "tools/rust_oracle/write_fixtures.mjs": "8729c92ae11f2806a6637c668095e319d6fbd0ca"
+  }
+}

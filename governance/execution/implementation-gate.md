@@ -41,11 +41,9 @@ Minor exemption does not apply when touching runtime code, hot files, package/bu
 - For gameplay/content bead creation, check `governance/product/player-living-guide.md`; if it conflicts with the request, ask before implementation.
 
 ## Runtime Ownership
-- Prefer deterministic shared logic in `src/` or Rust-owned SimulationCore seams over new browser-shell logic.
-- Keep `web-runner/app.js` orchestration-only: lifecycle, imports, init, and composition wiring.
-- Do not add business logic, utilities, feature state, or large implementations to `web-runner/app.js`.
-- Extend contextual modules or create dedicated modules, then wire them through minimal `web-runner/app.js` changes.
-- Treat `web-runner/app.js` growth as architectural debt.
+- The game is the Rust app: rules live in `rust/wf_meta`, `rust/wf_combat` and `rust/wf_host`; `rust/wf_app` is presentation and input over snapshots (`rust/AGENTS.md`).
+- Keep `rust/wf_app/src/main.rs` orchestration-only: boot, the frame loop and composition wiring. Put behavior in the owning module (`ui/`, `render/`, `game.rs`).
+- A rule change edits the owning crate and its oracle or contract test; the client never recomputes a rule outcome.
 
 ## Containment
 - Stay inside the repo root.

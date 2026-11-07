@@ -1,0 +1,23 @@
+/* Vault. Main draws this screen on its canvas (renderChests.js: Arial, fixed 360x640 boxes);
+   the same boxes, colours and text positions as page elements. A canvas 1px stroke straddles
+   its rectangle, so each outline here is half a pixel outside plus half a pixel inside the box
+   (--ring), which keeps every box on whole pixels. */
+#vault{position:absolute;left:0;top:0;width:360px;height:640px;transform:scale(var(--s));transform-origin:top left;z-index:12;background:linear-gradient(#2a1f0e,#4a3820);color:#3c2a12;font-family:Arial,sans-serif}
+#vault .panel{position:absolute;left:14px;top:16px;width:332px;height:606px;border-radius:14px;background:#f4ecd6;box-shadow:0 0 0 .5px #c7b489,inset 0 0 0 .5px #c7b489}
+#vault button{margin:0;padding:0;border:0;color:inherit;cursor:pointer}
+#vault .back{position:absolute;right:12px;top:12px;width:108px;height:28px;border-radius:9px;background:#efe3c4;box-shadow:0 0 0 .5px #b89f6f,inset 0 0 0 .5px #b89f6f;font:700 11px/1 Arial}
+#vault h1{position:absolute;left:14px;top:42.8px;margin:0;font:700 18px/1 Arial}
+#vault .sub{position:absolute;left:14px;top:66.7px;margin:0;color:#7b6641;font:500 11px/1 Arial;white-space:nowrap}
+#vault .rows{position:absolute;left:12px;right:12px;top:88px;display:flex;flex-direction:column;gap:8px}
+#vault .entry{position:relative;flex:none;height:36px;border-radius:8px;box-shadow:0 0 0 .5px var(--ring),inset 0 0 0 .5px var(--ring)}
+#vault .entry b{position:absolute;left:10px;top:5.8px;font:700 12px/1 Arial}
+#vault .entry small{position:absolute;left:10px;top:21.5px;font:500 10px/1 Arial}
+#vault .tabs{flex:none;display:flex;gap:8px;height:28px;margin-top:4px}
+#vault .tabs button{flex:1;border-radius:8px;background:#f8f1dd;box-shadow:0 0 0 .5px #ccb88d,inset 0 0 0 .5px #ccb88d;font:700 10px/1 Arial}
+#vault .tabs button[aria-pressed=true]{background:#f1ddad}
+#vault .progress{position:relative;flex:none;height:44px;margin-top:4px;border-radius:10px;background:#f8f1dd;box-shadow:0 0 0 .5px #ccb88d,inset 0 0 0 .5px #ccb88d}
+#vault .progress span{position:absolute;left:10px;top:8.5px;font:600 10px/1 Arial;white-space:nowrap}
+#vault .progress i{position:absolute;left:10px;right:10px;top:24px;height:12px;background:linear-gradient(90deg,#d2a739 36%,#e0d5bb 36%);box-shadow:0 0 0 .5px #a98a45,inset 0 0 0 .5px #a98a45}
+#vault .reward{position:relative;flex:none;height:36px;border-radius:8px;background:#fff8e8;box-shadow:0 0 0 .5px #d7c7a2,inset 0 0 0 .5px #d7c7a2}
+#vault .rows .reward:first-of-type{margin-top:2px}
+#vault .reward span{position:absolute;left:10px;top:12.7px;font:600 11px/1 Arial}

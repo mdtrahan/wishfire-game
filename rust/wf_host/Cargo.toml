@@ -1,0 +1,13 @@
+[package]
+name = "wf_host"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "WFM combat host: the continuous-stage runtime over the typed combat World (rustCombatRuntime.mjs lineage)."
+
+[dependencies]
+wf_meta = { path = "../wf_meta" }
+wf_combat = { path = "../wf_combat", features = ["serde"] }
+simulation_core = { path = "../simulation_core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["float_roundtrip", "preserve_order"] }

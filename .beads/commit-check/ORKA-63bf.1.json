@@ -1,0 +1,33 @@
+{
+  "changed_functions": {
+    "rust/simulation_core/src/combat_abi.rs": [
+      "heal",
+      "last",
+      "__MODULE__"
+    ],
+    "rust/simulation_core/src/lib.rs": [
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 2,
+    "staged_line_count": 360,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    "rust/simulation_core/src/combat_abi.rs",
+    "rust/simulation_core/src/lib.rs"
+  ],
+  "issue_id": "ORKA-63bf.1",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    "rust/simulation_core/src/combat_abi.rs": "408c71be2ceb20067635d6efe1c5a9195ebb237d",
+    "rust/simulation_core/src/lib.rs": "03c8ce9276477822cb9339bdaf9b4449dc70a61d"
+  }
+}

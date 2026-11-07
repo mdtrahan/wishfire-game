@@ -1,32 +1,4 @@
-# Test Fixtures DOX
-
-## Purpose
-- Own deterministic fixture rows used by JS, Rust, and WASM parity tests.
-
-## Ownership
-- `*.csv` files define named input/output cases for deterministic rule families.
-
-## Local Contracts
-- Preserve headers unless all readers are updated in the same bead.
-- Fixture rows should be deterministic, seed-aware when randomness is involved, and independent of DOM/canvas/localStorage state.
-- Case names should describe the edge or invariant being protected.
-- Do not update expected values merely to match a changed implementation unless the product/architecture contract changed too.
-
-## Work Guidance
-- Update the corresponding JS and Rust/WASM tests when adding or changing fixture columns.
-- Include edge cases for empty queues, dead/disabled actors, threshold values, invalid inputs, and owner disagreements where relevant.
-
-## Verification
-- Run the fixture contract test that reads the changed CSV.
-- Run Rust/WASM fixture checks when the CSV is shared with `rust/simulation_core/`.
-
-## Child DOX Index
-- None.
-
-- Combat migration fixtures require individual HP eligibility even with stale pool totals and pending groups. Enemy-target rows contain six hero records and exercise slots five/six, preferences and KO exclusion.
-
-- lamp-auto-earned-69.json preserves a disclosed ordinary saved batch to catch early item-CP truncation; it is a replay fixture and provides no timing proof.
-
-- lampTrust.mjs builds disclosed synthetic cache/loadout fixtures and projects CP independently of lamp eligibility, sorting and allocation. Seed once per browser context so reload checks cannot overwrite the result.
-
-- `slice-camera-stage7.json` records real WFM seed7 Chapter1 ordinary/boss snapshots with approved base gameplay geometry and the Rust spotlight scheduler OFF. Recapture with `RECORD_SLICE_CAMERA=1 node --test tests/sliceCombatCameraBrowser.test.mjs`, then regenerate the Rust oracle. `node tests/fixtures/slice-camera-reference.mjs` regenerates expectations by compiling pinned slice `camera.rs` with only DTO/render stubs and declared WFM viewport constants; run the parity test afterwards. No Cargo suite is needed.
+# Fixtures DOX
+- `rust-oracle/` is owned by the Rust translation: each JSON file was written by `tools/rust_oracle/write_fixtures.mjs` from the real JavaScript modules at commit `03fb30e9` and is asserted exactly by `rust/wf_meta` and `rust/wf_host` tests. Treat them as the frozen rule specification. Exception: `stage_trace.json` records combat outcomes, which are Rust-only rules now; after an owner combat change it is re-recorded from the Rust host (`rust/wf_host/AGENTS.md`, last 2026-11-05 for ORKA-63bf.30). The `cooldowns` cases in `hero_progress.json` mirror the Rust special clocks and follow an owner refill change the same way (Hondo and Runa 20 s, ORKA-63bf.30).
+- `lamp-auto-earned-69.json` is the real 69-item lamp save the lamp fixture replays.
+- The CSV fixtures of the retired JavaScript rule families left with the JS runtime (ORKA-63bf.11).

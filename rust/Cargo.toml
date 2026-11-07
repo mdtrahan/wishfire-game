@@ -1,5 +1,5 @@
 [workspace]
-members = ["simulation_core", "wf_combat"]
+members = ["simulation_core", "wf_combat", "wf_pack", "wf_app", "wf_meta", "wf_host"]
 exclude = ["wf_slice_harness"]
 resolver = "2"
 
@@ -9,3 +9,12 @@ lto = true
 codegen-units = 1
 strip = true
 panic = "abort"
+
+# Browser client build: size-first like the slice, with a separate target directory per profile.
+[profile.wasm-release]
+inherits = "release"
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

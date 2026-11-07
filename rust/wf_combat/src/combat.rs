@@ -435,6 +435,8 @@ impl Sim {
                 let bars = match kind {
                     Archetype::Hondo => 0.,
                     Archetype::Kaja if !pulse => 2.,
+                    // Arcane Pulse is paid by its totem's drain, not by a stock at the cast.
+                    Archetype::Kaja => 0.,
                     _ => 1.,
                 };
                 // Combo displays its remaining drain after the one-bar commitment.
@@ -796,12 +798,15 @@ impl Sim {
                         self.actors[i].view.pos = landing;
                         self.face_target(i);
                         if a.combo_phase == 1 {
+                            // The burst runs for the share of COMBO_SECONDS the bar held
+                            // when it opened (ORKA-63bf.51).
+                            let seconds = a.view.meter.clamp(0., 1.) * COMBO_SECONDS;
                             self.actors[i].combo_phase = 2;
-                            self.actors[i].view.groove_active = COMBO_SECONDS;
+                            self.actors[i].view.groove_active = seconds;
                             self.events.push(Event::GrooveActivated {
                                 hero: a.view.id,
                                 groove: Groove::Combo,
-                                seconds: COMBO_SECONDS,
+                                seconds,
                             });
                         }
                         if a.combo_phase != 0 {

@@ -1,5 +1,7 @@
 # Architecture Snapshot
 
+> Superseded (2026-11-04): the JavaScript runtime this document maps was translated to Rust and removed (ORKA-63bf). Current architecture: `rust/AGENTS.md` and `README.md`. Kept as history.
+
 ## Render Modules
 
 - `web-runner/systems/renderHUD.js`

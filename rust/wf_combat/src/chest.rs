@@ -9,14 +9,14 @@ const CHEST_FRONT_GAP: f32 = 24.;
 const CHEST_STAND_TOLERANCE: f32 = 2.;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ChestState { Closed, Opening, Open }
-#[derive(Clone, Copy, Debug)]
-pub struct ChestView { pub id: u32, pub pos: Vec2, pub state: ChestState, pub state_age: f32, pub age: f32 }
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ChestView { pub id: u32, pub pos: Vec2, pub state: ChestState, pub state_age: f32, pub age: f32, pub reward: Option<Reward> }
 impl Sim {
     pub fn drop_wave_chest(&mut self) {
         self.encounter.complete = true;
         let id = self.next_id; self.next_id += 1;
         self.chests.clear();
-        self.chests.push(ChestView { id, pos: (self.floor.min + self.floor.max) * 0.5, state: ChestState::Closed, state_age: 0., age: 0. });
+        self.chests.push(ChestView { id, pos: (self.floor.min + self.floor.max) * 0.5, state: ChestState::Closed, state_age: 0., age: 0., reward: None });
         self.chest_opener = None; self.chest_approach = None;
     }
     pub fn wave_chest_ready(&self) -> bool {
@@ -238,7 +238,9 @@ impl Sim {
         .unwrap_or(a.view.pos)
     }
     pub(crate) fn constrain_chests(&mut self) {
-        let Some(c) = self.chests.first().filter(|c| c.state != ChestState::Open) else {
+        // The footprint blocks heroes for as long as the chest exists, the opened chest's
+        // fade included: they walk around it until the host removes it (owner 2026-11-05).
+        let Some(c) = self.chests.first() else {
             return;
         };
         let (pos, opening) = (c.pos, c.state == ChestState::Opening);
@@ -327,8 +329,18 @@ mod tests {
         assert_eq!(actor.view.max_hp, before.max_hp);
         assert_eq!(actor.stats.atk, HERO_STATS[0].atk);
         assert!(!sim.wave_chest_ready());
-        for _ in 0..59 { sim.step(); assert!(!sim.wave_chest_ready()); }
+        // The opened chest keeps its footprint while it fades: a hero sent straight across it
+        // goes around and never stands inside.
+        let across = center + Vec2::new(180., 2.);
+        sim.interest_points.push((id, across));
+        for _ in 0..59 {
+            sim.step(); assert!(!sim.wave_chest_ready());
+            let a = sim.actors.iter().find(|a| a.view.id == id).unwrap();
+            assert!(chest_clearance(a.view.pos - center, a.view.radius) >= 0.999, "inside the open chest at {:?}", a.view.pos);
+        }
         sim.step(); assert!(sim.wave_chest_ready());
+        let a = sim.actors.iter().find(|a| a.view.id == id).unwrap();
+        assert!(a.view.pos.distance(opening_pos) > 20., "the hero did move: {:?}", a.view.pos);
         assert!(!sim.drain_events().iter().any(|e| matches!(e, Event::Healed { .. })));
     }
 }

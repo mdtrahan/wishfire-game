@@ -14,12 +14,7 @@ sys.dont_write_bytecode = True
 from git_diff_parsing import parse_changed_lines, parse_function_ranges
 
 
-DEFAULT_HOT_FILES = [
-    "web-runner/modules/functionBank.js",
-    "Scripts/functionBank.js",
-    "web-runner/app.js",
-    "web-runner/systems/renderRuntime.js",
-]
+DEFAULT_HOT_FILES = []  # The JS hot files retired with the Rust cutover (ORKA-63bf.11); HOT_FILE_SCOPE_HOT_FILES can name new ones.
 
 MODULE_SCOPE_TOKEN = "__MODULE__"
 

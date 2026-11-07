@@ -1,0 +1,15 @@
+/* Chapter map. Main draws it on its canvas (renderStoryChapterMap + drawPageBanner): the same
+   art, rectangles, colours and fonts as page elements in the 360x640 frame. */
+#quest-map{position:absolute;left:0;top:0;width:360px;height:640px;transform:scale(var(--s));transform-origin:top left;z-index:11;overflow:hidden;background:#243d3c}
+#quest-map img{display:block}
+#quest-map .bg{position:absolute;left:0;top:0;width:360px;height:640px}
+#quest-map .town{position:absolute;left:115px;top:270px;width:139px;height:129px;margin:0;padding:0;border:0;background:none;cursor:pointer}
+#quest-map .town:disabled{cursor:default}
+#quest-map .town img{width:139px;height:129px}
+#quest-map .banner{position:absolute;left:-2px;top:46px;width:116px;height:28px}
+#quest-map .heading{position:absolute;left:0;top:47px;width:104px;height:24px;margin:0;display:grid;place-items:center;font:bold 13px sans-serif;color:#fff4dc;-webkit-text-stroke:3px #514021;paint-order:stroke fill}
+#quest-map .divider{position:absolute;left:62.5px;top:230px;width:244px;height:12px}
+#quest-map .chapter{position:absolute;left:84.5px;top:241.5px;width:200px;height:22px;margin:0;display:grid;place-items:center;white-space:nowrap;font:bold 17px Georgia;color:#fff0b9;-webkit-text-stroke:3px #514021;paint-order:stroke fill}
+#quest-map .start{position:absolute;left:111.4px;top:405px;width:146.2px;height:44px;margin:0;padding:0 0 1px;border:0;border-radius:5px;background:linear-gradient(#747cff,#4546bc 50%,#242164);box-shadow:0 0 0 1.5px #e2c775,0 0 0 3px #514021,inset 0 0 0 1.5px #e2c775,inset 0 0 0 3px #514021;font:bold 22px sans-serif;color:#fff;-webkit-text-stroke:3px #242146;paint-order:stroke fill;cursor:pointer}
+#quest-map .start:disabled{cursor:default}
+#quest-map .loading{position:absolute;left:0;top:310px;width:360px;margin:0;text-align:center;font:16px sans-serif;color:#fff}

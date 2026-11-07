@@ -1,17 +1,18 @@
 # Codex-Orka
 
-Codex-Orka is the Wishfire HTML5 game workspace.
+Codex-Orka is the Wishfire game workspace. The game is one Rust application
+(`rust/wf_app`, macroquad client) over the Rust combat simulation
+(`rust/wf_combat` through `rust/simulation_core`) with the meta rules in
+`rust/wf_meta` and the host loop, saves and economy in `rust/wf_host`. The
+JavaScript runtime was translated and removed (ORKA-63bf); `web-runner/`
+keeps the source art and the public page path.
 
 ## Runtime Surfaces
 
-- Browser runner: `web-runner/`
-- Construct-style runtime mirror: `Scripts/`
-- Shared deterministic JavaScript contracts: `src/`
-- Rust SimulationCore source: `rust/simulation_core/`
+- Rust app and crates: `rust/` (see `rust/AGENTS.md`)
+- Source art and runtime data: `web-runner/assets/`
 - Product, planning, audit, and workflow truth: `governance/`
-
-Legacy Construct 3 JSON artifacts and conversion tooling are retired. See
-`docs/construct3-retirement.md`.
+- Presentation specs that travel with every combat integration: `docs/vfx-3d/`
 
 ## Working In This Repo
 
@@ -19,29 +20,22 @@ Before editing, read `AGENTS.md`, `ai-memory/context.md`, and every applicable
 child `AGENTS.md` on the path you will touch. Beads controls implementation
 scope; Git is the transport layer.
 
-For runtime work, prefer focused owner modules over adding behavior to
-`web-runner/app.js`. Keep deterministic rules in `src/`, `web-runner/src/core/`,
-or Rust-owned SimulationCore seams when the local contract requires it.
-
 ## Useful Commands
 
 ```bash
-npm run serve:qa
-npm test
-npm run test:appjs-boundary
-npm run test:hot-file-gate
-npm run rust:build-wasm
-cargo test --manifest-path rust/simulation_core/Cargo.toml
+npm run build            # pack art, build wf_app for wasm32, stage rust/wf_app/web
+npm run serve            # serve the staged app on http://127.0.0.1:8807/
+npm test                 # retained Node tooling contracts
+cargo test --manifest-path rust/wf_meta/Cargo.toml   # one crate (also wf_host, wf_combat, wf_app, ...)
+npm run test:merge -- --base origin/main             # full merge tier
 ```
 
-Prefer focused `node --test tests/<file>.test.js` checks during development and
-use broad validation only when the change requires it.
+The JS oracle fixtures under `tests/fixtures/rust-oracle/` are the frozen rule
+specification; `tools/rust_oracle/README.md` explains how they were produced.
 
 ## Primary References
 
 - `AGENTS.md` - repo workflow, Beads gate, DOX chain, and ownership rules.
+- `rust/AGENTS.md` - crate boundaries and the translation contracts.
 - `governance/product/player-living-guide.md` - player-facing product truth.
 - `governance/product/abilities.html` - ability system map and drift register.
-- `governance/execution/repo-context-retrieval.md` - retrieval/tool routing.
-- `governance/planning/app-js-thinning-playbook.md` - `app.js` ownership rules.
-- `governance/planning/simulation-core-rust-js-contract.md` - Rust/JS boundary.

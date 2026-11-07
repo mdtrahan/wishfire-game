@@ -7,7 +7,4 @@ cd "$REPO_ROOT"
 
 node "$ROOT/tools/enforce_storage_budget.mjs"
 
-# Prepare ignored runtime products before hook-driven Node/browser imports.
-node "$ROOT/tools/build_simulation_core_wasm.js" --ensure
-
 exec python3 "$ROOT/tools/commit_compliance.py" enforce

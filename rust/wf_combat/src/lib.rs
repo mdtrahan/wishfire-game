@@ -1,6 +1,7 @@
 //! Fixed-step, headless autonomous combat. All gameplay randomness is seed-owned.
 pub mod api;
 pub use api::*;
+pub use chest::{ChestState, ChestView};
 pub mod actors;
 pub mod permanent;
 pub mod ai;
@@ -125,6 +126,8 @@ impl Sim {
         cfg.spotlight = spotlight::validated(cfg.spotlight);
         let snapshot = Snapshot {
             prd: Vec::with_capacity(128),
+            chests: Vec::new(),
+            stage: StageView::default(),
             time: 0.,
             combat_time: 0.,
             spotlight: None,
@@ -471,6 +474,8 @@ mod host_inputs_tests;
 mod prd_tests;
 #[cfg(test)]
 mod kaja_mend_tests;
+#[cfg(test)]
+mod combo_bar_tests;
 
 #[cfg(feature = "bound-diagnostics")]
 pub mod bound;

@@ -1,0 +1,22 @@
+/* Developer controls. The two pills are main's (ea8bc3f2 web-runner/systems/devToolingRuntime.js DEV launcher, web-runner/index.html .dev2-launcher), restated inside the #wf-ui frame; --cs is main's --orka-control-scale (never above 1). The Dev Tools panel is this build's own design (owner 2026-11-05). */
+#wf-ui .dev-launcher{position:absolute;top:calc(10px * var(--cs));right:calc(10px * var(--cs));z-index:10000;border:1px solid #1f2937;background:#f8fafc;color:#111827;padding:4px 6px;border-radius:999px;font:700 8px/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.18);transform:scale(var(--cs));transform-origin:top right}
+#wf-ui .dev2-launcher{position:absolute;top:calc(30px * var(--cs));right:calc(10px * var(--cs));z-index:10000;border:1px solid #334155;background:#0f172a;color:#f8fafc;padding:4px 6px;border-radius:999px;font:700 8px/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.28);transform:scale(var(--cs));transform-origin:top right}
+#wf-ui .dev2-launcher[aria-pressed="true"]{background:#1d4ed8;border-color:#93c5fd}
+#dev-tools{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);z-index:9999}
+#dev-tools .dev-panel{flex:none;width:340px;overflow-y:auto;overscroll-behavior:contain;padding:10px 12px 12px;border-radius:10px;border:1px solid #1f2937;background:#f7f4ec;box-shadow:0 14px 40px rgba(0,0,0,0.45);font:11px/1.3 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827;transform:scale(var(--cs));transform-origin:center;scrollbar-width:thin}
+#dev-tools header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+#dev-tools header strong{font-size:13px;font-weight:800;letter-spacing:.02em}
+#dev-tools .dev-status{margin:0 0 6px;padding:4px 6px;border-radius:5px;background:#e7f0e4;border:1px solid #9db894;color:#1f3d1a}
+#dev-tools section{padding:6px 0 2px;border-top:1px solid #cbc3b0}
+#dev-tools h3{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:0 0 4px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#6b5f45}
+#dev-tools h3 small{font-size:9px;font-weight:500;letter-spacing:0;text-transform:none;color:#6b7280;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#dev-tools .dev-row{display:grid;grid-template-columns:58px minmax(0,1fr);align-items:center;gap:6px;margin-bottom:4px}
+#dev-tools .dev-label{color:#374151}
+#dev-tools .dev-controls{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+#dev-tools .dev-value{min-width:26px;padding:0 3px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+#dev-tools button{appearance:none;-webkit-appearance:none;display:inline-flex;align-items:center;justify-content:center;min-height:22px;min-width:24px;padding:2px 7px;border:1px solid #6b7280;border-radius:5px;background:#e8e6df;color:#172033;font:inherit;line-height:1;white-space:nowrap;cursor:pointer;user-select:none}
+#dev-tools button:active{background:#d3d0c5}
+#dev-tools button[aria-pressed="true"]{background:#1f8f4a;border-color:#14532d;color:#fff;font-weight:700}
+#dev-tools button:disabled{opacity:.4;cursor:default}
+#dev-tools button.dev-warn{border-color:#92400e;background:#fff7ed;color:#9a3412}
+#dev-tools button.dev-close{border-color:#334155;background:#fff;font-weight:700;padding:2px 10px}

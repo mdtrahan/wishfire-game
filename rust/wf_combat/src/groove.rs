@@ -28,6 +28,8 @@ impl Sim {
     }
     pub fn groove_timers(&mut self) {
         for i in 0..self.actors.len() {
+            // A standing Arcane Pulse totem is paid from the bar: no refill, no other special.
+            let channelling = self.arcane_totem(self.actors[i].view.id);
             let a = &mut self.actors[i];
             let passive = match a.view.archetype {
                 Archetype::Fara if a.alive() => Some((RAGE_FILL_SECONDS, RAGE_STOCK_CAP)),
@@ -35,7 +37,7 @@ impl Sim {
                     Some((COMBO_FILL_SECONDS, 1.))
                 }
                 Archetype::Runa if a.alive() => Some((SUPER_FILL_SECONDS, 3.)),
-                Archetype::Kaja => Some((POWER_STOCK_SECONDS, 3.)),
+                Archetype::Kaja if !channelling => Some((POWER_STOCK_SECONDS, POWER_STOCK_CAP)),
                 _ => None,
             };
             if let Some((seconds, cap)) = passive {
@@ -55,7 +57,7 @@ impl Sim {
                 && a.view.meter + 0.00001 >= 1.
                 && match a.view.archetype {
                     Archetype::Runa => true,
-                    Archetype::Kaja => a.power_choice != Some(true),
+                    Archetype::Kaja => a.power_choice != Some(true) && !channelling,
                     _ => false,
                 };
             let eligible = ready
@@ -96,14 +98,15 @@ impl Sim {
                 .iter()
                 .any(|a| a.alive() && a.view.team == Team::Enemy)
         {
-            let a = &mut self.actors[i];
-            a.combo_phase = 4; // Empty burst: discard drain, finish the committed cast recovery.
-            a.view.meter = 0.;
-            a.view.groove_active = 0.;
-            return;
+            // Empty burst: nothing is left to strike, so only the committed cast recovery
+            // remains. The bar keeps what the burst did not use (owner 2026-11-05, ORKA-63bf.49).
+            self.actors[i].combo_phase = 4;
         }
         let a = &mut self.actors[i];
-        if a.combo_phase == 2 {
+        // The bar pays for the time Hondo spends on the burst: it drains while the burst is
+        // running, and through the last strike of a burst that ran out of targets, never while
+        // he stands free.
+        if a.combo_phase == 2 || (a.combo_phase == 4 && a.committed() && a.view.groove_active > 0.) {
             a.view.groove_active = if a.view.groove_active <= SIM_DT + 0.00001 {
                 0.
             } else {
@@ -225,7 +228,7 @@ impl Sim {
                     return true;
                 }
             }
-            Archetype::Hondo if a.view.meter >= 1. => {
+            Archetype::Hondo if a.view.meter + 0.00001 >= COMBO_START_METER => {
                 let t = (0..self.actors.len()).find(|&t| {
                     self.can_engage(i, t)
                         && a.view.pos.distance(self.actors[t].view.pos)
@@ -251,7 +254,7 @@ impl Sim {
                     return true;
                 }
             }
-            Archetype::Kaja => {
+            Archetype::Kaja if !self.arcane_channel(a.view.id) => {
                 // Owner 2026-10-27: hold every stock until a foe has fully formed.
                 let enemies = self.actors.iter().any(|e| {
                     e.alive() && e.view.team == Team::Enemy && e.view.state != ActorState::Spawn
@@ -309,12 +312,31 @@ impl Sim {
             .active
             .as_ref()
             .is_some_and(|s| s.performer_running(a.view.id));
-        if !staged && !shadow_line_aligned(a.view.pos, e.view.pos) {
+        // The opening Shadow is a dash along Hondo's own line. Once the burst is running he
+        // strikes every foe in its reach wherever they stand (owner 2026-11-06, ORKA-63bf.50):
+        // a follow-up hop needs no line and may land anywhere safe around its target.
+        let chained = !staged && a.combo_phase == 2;
+        if !staged && !chained && !shadow_line_aligned(a.view.pos, e.view.pos) {
             return None;
         }
         let angle = libm::atan2f(a.view.pos.y - e.view.pos.y, a.view.pos.x - e.view.pos.x);
         let radius = a.view.radius + e.view.radius + a.committed_reach() * 0.6;
-        let turns: &[f32] = if staged {
+        let turns: &[f32] = if chained {
+            // Straight through the target first, then fanning out to either flank.
+            &[
+                core::f32::consts::PI,
+                core::f32::consts::PI - TAU / 24.,
+                core::f32::consts::PI + TAU / 24.,
+                core::f32::consts::PI - TAU / 12.,
+                core::f32::consts::PI + TAU / 12.,
+                core::f32::consts::PI - TAU / 8.,
+                core::f32::consts::PI + TAU / 8.,
+                core::f32::consts::PI - TAU / 6.,
+                core::f32::consts::PI + TAU / 6.,
+                core::f32::consts::PI - TAU / 4.,
+                core::f32::consts::PI + TAU / 4.,
+            ]
+        } else if staged {
             &[
                 COMBO_TURN,
                 COMBO_TURN - TAU / 24.,
@@ -335,6 +357,7 @@ impl Sim {
         for &turn in turns {
             let p = e.view.pos + crate::math::direction(angle + turn) * radius;
             if !staged
+                && !chained
                 && (!shadow_line_aligned(p, e.view.pos)
                     || !shadow_line_aligned(a.view.pos, p)
                     || (p.x - e.view.pos.x) * (a.view.pos.x - e.view.pos.x) >= 0.)
@@ -366,7 +389,9 @@ impl Sim {
     }
     pub fn combo_target(&self, i: usize) -> Option<usize> {
         let a = &self.actors[i];
-        // Stable ID order, with the previous recipient considered last.
+        // Round robin in stable ID order, starting after the previous recipient, so every foe
+        // in reach takes its turn before anyone is struck again (owner 2026-11-06,
+        // ORKA-63bf.50; it used to alternate between the two lowest IDs).
         (0..self.actors.len())
             .filter(|&t| {
                 self.can_engage(i, t)
@@ -374,10 +399,8 @@ impl Sim {
                     && self.combo_landing(i, t, a.combo_origin).is_some()
             })
             .min_by_key(|&t| {
-                (
-                    Some(self.actors[t].view.id) == a.combo_previous,
-                    self.actors[t].view.id,
-                )
+                let id = self.actors[t].view.id;
+                (a.combo_previous.is_some_and(|previous| id <= previous), id)
             })
     }
     /// Exact body-edge weapon reach matches melee admission without an extra margin.
@@ -435,13 +458,20 @@ impl Sim {
             self.actors[i].combo_phase = 3;
             self.actors[i].view.meter = 0.;
             self.start_extra(i, target);
+        } else {
+            // Nothing can be struck right now (the target fell, moved out of the burst's reach,
+            // or every landing is blocked). Owner 2026-11-05 (ORKA-63bf.49): Hondo never stands
+            // waiting while the bar drains. The burst ends here, he goes back to seeking and
+            // attacking, and the bar keeps what was not used.
+            self.end_combo(i);
         }
-        // A temporarily blocked landing waits safely while the earned drain continues.
     }
+    /// Ends the burst. The bar keeps whatever the burst left in it: nothing after a full drain
+    /// or a Split, the unused remainder when it ended early.
     pub fn end_combo(&mut self, i: usize) {
         let a = &mut self.actors[i];
         a.combo_phase = 0;
-        a.view.meter = 0.;
+        a.view.meter = a.view.meter.clamp(0., 1.);
         a.view.groove_active = 0.;
         a.view.special_casting =
             a.view.state == ActorState::Cast && a.committed() && !a.action_revive;

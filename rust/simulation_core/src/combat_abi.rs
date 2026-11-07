@@ -14,16 +14,16 @@ const MAX_EFFECTS: usize = 2048;
 
 #[derive(Clone, Copy, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-struct Version {
-    major: u16,
-    minor: u16,
+pub struct Version {
+    pub major: u16,
+    pub minor: u16,
 }
 const SCHEMA: Version = Version { major: 1, minor: 1 };
 #[derive(Clone, Copy, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-struct Point {
-    x: f32,
-    y: f32,
+pub struct Point {
+    pub x: f32,
+    pub y: f32,
 }
 impl From<Point> for Vec2 {
     fn from(p: Point) -> Self {
@@ -32,38 +32,38 @@ impl From<Point> for Vec2 {
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Bounds {
-    min: Point,
-    max: Point,
+pub struct Bounds {
+    pub min: Point,
+    pub max: Point,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct GeometryInput {
-    floor: Bounds,
-    viewport_world: Point,
-    formation_origin: Point,
-    screen_bound: bool,
+pub struct GeometryInput {
+    pub floor: Bounds,
+    pub viewport_world: Point,
+    pub formation_origin: Point,
+    pub screen_bound: bool,
     #[serde(default)]
-    contain_bodies: bool,
+    pub contain_bodies: bool,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct StatInput {
+pub struct StatInput {
     #[serde(default)]
-    mag: Option<f32>,
+    pub mag: Option<f32>,
     #[serde(default)]
-    res: Option<f32>,
-    hp: f32,
-    atk: f32,
-    def: f32,
-    speed: f32,
-    reach: f32,
-    interval: f32,
-    evade: f32,
-    special: f32,
+    pub res: Option<f32>,
+    pub hp: f32,
+    pub atk: f32,
+    pub def: f32,
+    pub speed: f32,
+    pub reach: f32,
+    pub interval: f32,
+    pub evade: f32,
+    pub special: f32,
 }
 impl StatInput {
-    fn resolved(&self) -> Stats {
+    pub fn resolved(&self) -> Stats {
         Stats {
             mag: self.mag.unwrap_or(self.atk),
             res: self.res.unwrap_or(self.def),
@@ -77,7 +77,7 @@ impl StatInput {
             special: self.special,
         }
     }
-    fn valid(&self) -> bool {
+    pub fn valid(&self) -> bool {
         [
             self.hp,
             self.atk,
@@ -101,24 +101,24 @@ impl StatInput {
 fn one() -> f32 { 1. }
 #[derive(Clone, Copy, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct SkillModifiers {
+pub struct SkillModifiers {
     #[serde(default = "one")]
-    special_potency: f32,
+    pub special_potency: f32,
     #[serde(default = "one")]
-    meter_rate: f32,
+    pub meter_rate: f32,
 }
 impl Default for SkillModifiers { fn default() -> Self { Self { special_potency: 1., meter_rate: 1. } } }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct PermanentCommand {
-    encounter_id: String,
-    step: String,
-    sequence: String,
-    body: PermanentBody,
+pub struct PermanentCommand {
+    pub encounter_id: String,
+    pub step: String,
+    pub sequence: String,
+    pub body: PermanentBody,
 }
 #[derive(Deserialize)]
 #[serde(tag = "kind", content = "data", rename_all = "snake_case", deny_unknown_fields)]
-enum PermanentBody {
+pub enum PermanentBody {
     ReplacePermanentInputs {
         actor: u32,
         expected_revision: String,
@@ -131,59 +131,63 @@ enum PermanentBody {
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct HeroInput {
+pub struct HeroInput {
     #[serde(default)]
-    skill_modifiers: SkillModifiers,
-    instance_id: String,
-    definition_id: String,
-    slot: u8,
+    pub skill_modifiers: SkillModifiers,
+    pub instance_id: String,
+    pub definition_id: String,
+    pub slot: u8,
     #[serde(default)]
-    host_max_hp: Option<f32>,
-    formation_offset: Point,
-    stats: StatInput,
-    hp: f32,
+    pub host_max_hp: Option<f32>,
+    pub formation_offset: Point,
+    pub stats: StatInput,
+    pub hp: f32,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct EnemyInput {
-    spawn_key: String,
-    definition_id: String,
-    position: Point,
-    stats: StatInput,
-    hp: f32,
+pub struct EnemyInput {
+    pub spawn_key: String,
+    pub definition_id: String,
+    pub position: Point,
+    pub stats: StatInput,
+    pub hp: f32,
     #[serde(default)]
-    summon_profiles: Vec<SummonProfile>,
+    pub summon_profiles: Vec<SummonProfile>,
     #[serde(default)]
-    wfm_magic: Option<f32>,
+    pub wfm_magic: Option<f32>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct SummonProfile {
-    definition_id: String,
-    stats: StatInput,
+pub struct SummonProfile {
+    pub definition_id: String,
+    pub stats: StatInput,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct EncounterConfig {
+pub struct EncounterConfig {
     #[serde(default)]
-    continuous: bool,
+    pub continuous: bool,
     #[serde(default)]
-    spawn_markers: bool,
-    encounter_id: String,
-    seed: String,
-    geometry: GeometryInput,
-    heroes: Vec<HeroInput>,
-    enemies: Vec<EnemyInput>,
+    pub spawn_markers: bool,
+    pub encounter_id: String,
+    pub seed: String,
+    pub geometry: GeometryInput,
+    pub heroes: Vec<HeroInput>,
+    pub enemies: Vec<EnemyInput>,
+    /// Cinematic Skill Spotlight scheduling. Typed hosts only: the JSON transport cannot set it
+    /// (WFM's JS host keeps the scheduler off), so a decoded config is always `OFF`.
+    #[serde(skip)]
+    pub spotlight: SpotlightConfig,
 }
 #[derive(Clone, Copy, Deserialize)]
 #[serde(rename_all = "snake_case")]
-enum EndReason {
+pub enum EndReason {
     HostStageTransition,
     HostTimeout,
     AllDownRouted,
 }
 impl EndReason {
-    fn name(self) -> &'static str {
+    pub fn name(self) -> &'static str {
         match self {
             Self::HostStageTransition => "host_stage_transition",
             Self::HostTimeout => "host_timeout",
@@ -193,13 +197,13 @@ impl EndReason {
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct StepRequest {
+pub struct StepRequest {
     #[serde(default)]
-    commands: Vec<PermanentCommand>,
+    pub commands: Vec<PermanentCommand>,
     #[serde(default)]
-    end_encounter: Option<EndReason>,
-    encounter_id: String,
-    expected_previous_step: String,
+    pub end_encounter: Option<EndReason>,
+    pub encounter_id: String,
+    pub expected_previous_step: String,
 }
 #[derive(Deserialize)]
 #[serde(
@@ -208,7 +212,7 @@ struct StepRequest {
     rename_all = "snake_case",
     deny_unknown_fields
 )]
-enum Operation {
+pub enum Operation {
     Describe {},
     Create {
         config: EncounterConfig,
@@ -239,10 +243,10 @@ enum Operation {
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Envelope {
-    schema: Version,
-    request_id: String,
-    operation: Operation,
+pub struct Envelope {
+    pub schema: Version,
+    pub request_id: String,
+    pub operation: Operation,
 }
 
 // Fixed slots and non-wrapping generations prevent stale handles from aliasing new values.
@@ -305,35 +309,38 @@ impl<T> Registry<T> {
         self.slots.iter().filter(|s| s.value.is_some()).count()
     }
 }
-struct World {
-    sim: Sim,
-    command_sequence: u64,
-    encounter_id: String,
-    state: &'static str,
-    continuous: bool,
-    spawn_markers: bool,
-    pending_spawns: Vec<(u32, Archetype, String, Vec2, Stats, f32, Option<f32>)>,
-    host_max_hp: BTreeMap<u32, f32>,
-    ordinary_clears: std::collections::BTreeSet<String>,
-    events: Vec<Value>,
-    acknowledged_sequence: u64,
-    identities: std::collections::BTreeSet<String>,
-    host_ids: BTreeMap<u32, String>,
+pub struct World {
+    pub sim: Sim,
+    pub command_sequence: u64,
+    pub encounter_id: String,
+    pub state: &'static str,
+    pub continuous: bool,
+    pub spawn_markers: bool,
+    pub pending_spawns: Vec<(u32, Archetype, String, Vec2, Stats, f32, Option<f32>)>,
+    pub host_max_hp: BTreeMap<u32, f32>,
+    pub ordinary_clears: std::collections::BTreeSet<String>,
+    pub events: Vec<Value>,
+    pub acknowledged_sequence: u64,
+    pub identities: std::collections::BTreeSet<String>,
+    pub host_ids: BTreeMap<u32, String>,
+    /// Typed copies of drained combat events for native hosts; empty unless `retain_typed_events`.
+    pub typed_events: Vec<Event>,
+    pub retain_typed_events: bool,
 }
-struct Transport {
+pub struct Transport {
     inputs: BTreeMap<u32, Box<[u8]>>,
     worlds: Registry<World>,
     responses: Registry<Box<[u8]>>,
 }
 impl Transport {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             inputs: BTreeMap::new(),
             worlds: Registry::new(2),
             responses: Registry::new(8),
         }
     }
-    fn execute(&mut self, op: Operation) -> Result<Value, Value> {
+    pub fn execute(&mut self, op: Operation) -> Result<Value, Value> {
         match op {
             Operation::Describe {} => Ok(json!({"abi_version":VERSION,"content_version":CONTENT_VERSION,"schema":SCHEMA,"hz":SIM_HZ,
                 "special_clocks":{"slice.hero.fara":tuning::RAGE_FILL_SECONDS,"slice.hero.hondo":tuning::COMBO_FILL_SECONDS,"slice.hero.runa":tuning::SUPER_FILL_SECONDS,"slice.hero.kaja":tuning::POWER_STOCK_SECONDS},
@@ -359,60 +366,12 @@ impl Transport {
             }
             Operation::WaveChest { world, encounter_id } => {
                 let w = self.worlds.get_mut(world).ok_or_else(bad_world)?;
-                if encounter_id != w.encounter_id || !w.continuous || w.state != "running"
-                    || !w.pending_spawns.is_empty() || w.sim.actors.iter().any(|a| a.view.team == Team::Enemy && a.alive()) {
-                    return Err(error("invalid_transition", "wave_chest", "Chest requires an empty ordinary wave", Some(w.sim.step_number)));
-                }
-                if w.sim.chests.is_empty() { w.sim.drop_wave_chest(); }
-                Ok(w.result(w.events.len()))
+                let after = w.wave_chest(&encounter_id)?;
+                Ok(w.result(after))
             }
-            Operation::OrdinaryClear {
-                world,
-                encounter_id,
-                transition_id,
-            } => {
+            Operation::OrdinaryClear { world, encounter_id, transition_id } => {
                 let w = self.worlds.get_mut(world).ok_or_else(bad_world)?;
-                if encounter_id != w.encounter_id
-                    || !w.continuous
-                    || w.state != "running"
-                    || transition_id.is_empty()
-                    || transition_id.len() > 256
-                    || !w.pending_spawns.is_empty()
-                    || w.sim
-                        .actors
-                        .iter()
-                        .any(|a| a.view.team == Team::Enemy && a.alive())
-                {
-                    return Err(error(
-                        "invalid_transition",
-                        "ordinary_clear",
-                        "WFM respite requires a cleared ordinary wave",
-                        Some(w.sim.step_number),
-                    ));
-                }
-                let after = w.events.len();
-                if w.ordinary_clears.insert(transition_id) {
-                    for a in w
-                        .sim
-                        .actors
-                        .iter_mut()
-                        .filter(|a| a.view.team == Team::Hero && a.alive())
-                    {
-                        let max = w.host_max_hp[&a.view.id];
-                        let heal = ((f64::from(max) * 0.15).ceil() as f32) / max * a.view.max_hp;
-                        let before = a.view.hp;
-                        a.view.hp = (before + heal).min(a.view.max_hp);
-                        if a.view.hp > before {
-                            w.sim.events.push(Event::Healed {
-                                target: a.view.id,
-                                amount: a.view.hp - before,
-                                source: HealSource::PartyRestore,
-                            });
-                        }
-                    }
-                    w.collect();
-                    w.sim.refresh_snapshot();
-                }
+                let after = w.ordinary_clear(&encounter_id, transition_id)?;
                 Ok(w.result(after))
             }
             Operation::Destroy { world } => {
@@ -430,157 +389,17 @@ impl Transport {
             Operation::Ack { world, encounter_id, sequence } => {
                 let w = self.worlds.get_mut(world).ok_or_else(bad_world)?;
                 let sequence = decimal(&sequence, "operation.data.sequence")?;
-                let last = w.acknowledged_sequence + w.events.len() as u64;
-                if encounter_id != w.encounter_id || sequence < w.acknowledged_sequence || sequence > last {
-                    return Err(error("invalid_cursor", "sequence", "invalid acknowledgement cursor", Some(w.sim.step_number)));
-                }
-                w.events.drain(..(sequence - w.acknowledged_sequence) as usize);
-                w.acknowledged_sequence = sequence;
-                Ok(json!({"acknowledged_sequence": sequence.to_string()}))
+                let acknowledged = w.ack(&encounter_id, sequence)?;
+                Ok(json!({"acknowledged_sequence": acknowledged.to_string()}))
             }
-            Operation::Inspect {
-                world,
-                events_after,
-            } => {
+            Operation::Inspect { world, events_after } => {
                 let w = self.worlds.get(world).ok_or_else(bad_world)?;
                 let after = decimal(&events_after, "operation.data.events_after")?;
-                if after < w.acknowledged_sequence || after > w.acknowledged_sequence + w.events.len() as u64 {
-                    return Err(error(
-                        "invalid_cursor",
-                        "events_after",
-                        "cursor is beyond the event stream",
-                        Some(w.sim.step_number),
-                    ));
-                }
-                Ok(w.result((after - w.acknowledged_sequence) as usize))
+                Ok(w.result(w.inspect(after)?))
             }
             Operation::Step { world, request } => {
                 let w = self.worlds.get_mut(world).ok_or_else(bad_world)?;
-                let previous = decimal(
-                    &request.expected_previous_step,
-                    "request.expected_previous_step",
-                )?;
-                if request.encounter_id != w.encounter_id || previous != w.sim.step_number {
-                    return Err(error(
-                        "step_conflict",
-                        "request",
-                        "encounter or previous step differs",
-                        Some(w.sim.step_number),
-                    ));
-                }
-                let revisions = w.validate_revisions(&request)?;
-                if let Some(reason) = request.end_encounter {
-                    if w.state == "host_ended" {
-                        return Err(error(
-                            "terminal",
-                            "world",
-                            "encounter is terminal",
-                            Some(w.sim.step_number),
-                        ));
-                    }
-                    let after = w.events.len();
-                    w.sim.step_number += 1;
-                    w.sim.cancel_phoenix();
-                    let actors: Vec<_> = w.sim.actors.iter().map(|a| a.view.id).collect();
-                    for id in actors {
-                        w.event(
-                            json!({"kind":"despawned","data":{"actor":id,"reason":reason.name()}}),
-                        );
-                    }
-                    w.sim.actors.clear();
-                    w.sim.hazards.clear();
-                    w.sim.projectiles.clear();
-                    w.sim.encounter.complete = true;
-                    w.state = "host_ended";
-                    w.sim.refresh_snapshot();
-                    w.event(json!({"kind":"ended","data":{"reason":reason.name()}}));
-                    return Ok(w.result(after));
-                }
-                if w.state != "running" {
-                    return Err(error(
-                        "terminal",
-                        "world",
-                        "encounter is terminal",
-                        Some(w.sim.step_number),
-                    ));
-                }
-                // Reserve a complete tick; only acknowledged events can be pruned.
-                if w.events.len() >= MAX_EVENTS / 2 {
-                    return Err(error(
-                        "event_backpressure",
-                        "events",
-                        "retained event capacity requires acknowledgement",
-                        Some(w.sim.step_number),
-                    ));
-                }
-                let after = w.events.len();
-                w.sim.replace_permanent_inputs(&revisions.iter().map(|r| r.0).collect::<Vec<_>>())
-                    .map_err(|message| error("revision_conflict", "request.commands", message, Some(w.sim.step_number)))?;
-                for (input, host_max) in &revisions { w.host_max_hp.insert(input.actor, *host_max); }
-                w.command_sequence += revisions.len() as u64;
-                if w.continuous {
-                    // Actors were created in party-slot order, never saved formation-cell order.
-                    if let Some(id) = w
-                        .sim
-                        .phoenix
-                        .hero
-                        .filter(|id| {
-                            w.sim
-                                .actors
-                                .iter()
-                                .any(|a| a.view.id == *id && a.view.state == ActorState::Downed)
-                        })
-                        .or_else(|| {
-                            w.sim
-                                .actors
-                                .iter()
-                                .find(|a| {
-                                    a.view.team == Team::Hero && a.view.state == ActorState::Downed
-                                })
-                                .map(|a| a.view.id)
-                        })
-                    {
-                        w.sim.phoenix_hold(id);
-                    }
-                }
-                w.sim.step();
-                for (index, (input, _)) in revisions.iter().enumerate() {
-                    w.event(json!({"kind":"permanent_inputs_applied","data":{"actor":input.actor,
-                        "revision":input.revision.to_string(),"sequence":(w.command_sequence - revisions.len() as u64 + index as u64 + 1).to_string()}}));
-                }
-                for (marker, kind, id, point, stats, hp, magic) in std::mem::take(&mut w.pending_spawns) {
-                    if w.sim.hazards.iter().any(|h| h.view.id == marker && h.view.phase != HazardPhase::Resolved) {
-                        w.pending_spawns.push((marker, kind, id, point, stats, hp, magic));
-                    } else {
-                        w.sim.spawn_actor(kind, point, stats);
-                        let actor = w.sim.actors.last_mut().unwrap();
-                        actor.begin_spawn(); actor.view.hp = hp; actor.stats.mag = magic.unwrap_or(stats.mag);
-                        w.host_ids.insert(actor.view.id, id);
-                    }
-                }
-                w.sim.refresh_snapshot();
-                w.collect();
-                w.sim.defeats.clear();
-                w.sim.materialized.clear();
-                w.sim.finish_requested = false;
-                if w.events.len() > MAX_EVENTS
-                    || w.sim
-                        .actors
-                        .iter()
-                        .filter(|a| a.view.team == Team::Enemy && a.alive())
-                        .count()
-                        > MAX_ENEMIES
-                    || w.sim.hazards.len() > MAX_EFFECTS
-                    || w.sim.projectiles.len() > MAX_EFFECTS
-                {
-                    w.state = "faulted";
-                    return Err(error(
-                        "capacity_fault",
-                        "world",
-                        "encounter capacity exceeded; destroy and restart",
-                        Some(w.sim.step_number),
-                    ));
-                }
+                let after = w.step(request)?;
                 Ok(w.result(after))
             }
         }
@@ -604,7 +423,7 @@ fn decimal(s: &str, field: &str) -> Result<u64, Value> {
     s.parse()
         .map_err(|_| error("invalid_input", field, "u64 overflow", None))
 }
-fn kind(id: &str) -> Option<Archetype> {
+pub fn kind(id: &str) -> Option<Archetype> {
     Some(match id {
         "slice.hero.fara" => Archetype::Fara,
         "slice.hero.hondo" => Archetype::Hondo,
@@ -631,7 +450,7 @@ fn kind(id: &str) -> Option<Archetype> {
     })
 }
 impl World {
-    fn create(c: EncounterConfig) -> Result<Self, Value> {
+    pub fn create(c: EncounterConfig) -> Result<Self, Value> {
         let invalid = |field: &str| error("invalid_input", field, "invalid encounter input", None);
         let seed = decimal(&c.seed, "config.seed")?;
         if c.encounter_id.is_empty() || c.encounter_id.len() > 256 {
@@ -736,6 +555,7 @@ impl World {
             } else {
                 Cohesion::None
             },
+            spotlight: c.spotlight,
             ..SimConfig::default()
         });
         sim.floor = floor;
@@ -822,10 +642,239 @@ impl World {
             acknowledged_sequence: 0,
             identities,
             host_ids,
+            typed_events: Vec::new(),
+            retain_typed_events: false,
         };
         w.collect();
         Ok(w)
     }
+    /// Drops the wave chest once the ordinary field is empty; returns the retained-event index after this call.
+    pub fn wave_chest(&mut self, encounter_id: &str) -> Result<usize, Value> {
+        if encounter_id != self.encounter_id || !self.continuous || self.state != "running"
+            || !self.pending_spawns.is_empty() || self.sim.actors.iter().any(|a| a.view.team == Team::Enemy && a.alive()) {
+            return Err(error("invalid_transition", "wave_chest", "Chest requires an empty ordinary wave", Some(self.sim.step_number)));
+        }
+        if self.sim.chests.is_empty() { self.sim.drop_wave_chest(); }
+        Ok(self.events.len())
+    }
+    /// WFM ordinary-clear respite: 15% of host max HP, once per transition id.
+    pub fn ordinary_clear(&mut self, encounter_id: &str, transition_id: String) -> Result<usize, Value> {
+        if encounter_id != self.encounter_id
+            || !self.continuous
+            || self.state != "running"
+            || transition_id.is_empty()
+            || transition_id.len() > 256
+            || !self.pending_spawns.is_empty()
+            || self.sim.actors.iter().any(|a| a.view.team == Team::Enemy && a.alive())
+        {
+            return Err(error(
+                "invalid_transition",
+                "ordinary_clear",
+                "WFM respite requires a cleared ordinary wave",
+                Some(self.sim.step_number),
+            ));
+        }
+        let after = self.events.len();
+        if self.ordinary_clears.insert(transition_id) {
+            for a in self.sim.actors.iter_mut().filter(|a| a.view.team == Team::Hero && a.alive()) {
+                let max = self.host_max_hp[&a.view.id];
+                let heal = ((f64::from(max) * 0.15).ceil() as f32) / max * a.view.max_hp;
+                let before = a.view.hp;
+                a.view.hp = (before + heal).min(a.view.max_hp);
+                if a.view.hp > before {
+                    self.sim.events.push(Event::Healed {
+                        target: a.view.id,
+                        amount: a.view.hp - before,
+                        source: HealSource::PartyRestore,
+                    });
+                }
+            }
+            self.collect();
+            self.sim.refresh_snapshot();
+        }
+        Ok(after)
+    }
+    /// Prunes acknowledged retained events; returns the acknowledged cursor.
+    pub fn ack(&mut self, encounter_id: &str, sequence: u64) -> Result<u64, Value> {
+        let last = self.acknowledged_sequence + self.events.len() as u64;
+        if encounter_id != self.encounter_id || sequence < self.acknowledged_sequence || sequence > last {
+            return Err(error("invalid_cursor", "sequence", "invalid acknowledgement cursor", Some(self.sim.step_number)));
+        }
+        self.events.drain(..(sequence - self.acknowledged_sequence) as usize);
+        self.acknowledged_sequence = sequence;
+        Ok(sequence)
+    }
+    /// Retained-event index for events after the absolute cursor `after`.
+    pub fn inspect(&self, after: u64) -> Result<usize, Value> {
+        if after < self.acknowledged_sequence || after > self.acknowledged_sequence + self.events.len() as u64 {
+            return Err(error("invalid_cursor", "events_after", "cursor is beyond the event stream", Some(self.sim.step_number)));
+        }
+        Ok((after - self.acknowledged_sequence) as usize)
+    }
+    /// One exact 30 Hz step, or the host end; returns the retained-event index before this call's events.
+    pub fn step(&mut self, request: StepRequest) -> Result<usize, Value> {
+        let previous = decimal(
+            &request.expected_previous_step,
+            "request.expected_previous_step",
+        )?;
+        if request.encounter_id != self.encounter_id || previous != self.sim.step_number {
+            return Err(error(
+                "step_conflict",
+                "request",
+                "encounter or previous step differs",
+                Some(self.sim.step_number),
+            ));
+        }
+        let revisions = self.validate_revisions(&request)?;
+        if let Some(reason) = request.end_encounter {
+            if self.state == "host_ended" {
+                return Err(error(
+                    "terminal",
+                    "world",
+                    "encounter is terminal",
+                    Some(self.sim.step_number),
+                ));
+            }
+            let after = self.events.len();
+            self.sim.step_number += 1;
+            self.sim.cancel_phoenix();
+            let actors: Vec<_> = self.sim.actors.iter().map(|a| a.view.id).collect();
+            for id in actors {
+                self.event(
+                    json!({"kind":"despawned","data":{"actor":id,"reason":reason.name()}}),
+                );
+            }
+            self.sim.actors.clear();
+            self.sim.hazards.clear();
+            self.sim.projectiles.clear();
+            self.sim.encounter.complete = true;
+            self.state = "host_ended";
+            self.sim.refresh_snapshot();
+            self.event(json!({"kind":"ended","data":{"reason":reason.name()}}));
+            return Ok(after);
+        }
+        if self.state != "running" {
+            return Err(error(
+                "terminal",
+                "world",
+                "encounter is terminal",
+                Some(self.sim.step_number),
+            ));
+        }
+        // Reserve a complete tick; only acknowledged events can be pruned.
+        if self.events.len() >= MAX_EVENTS / 2 {
+            return Err(error(
+                "event_backpressure",
+                "events",
+                "retained event capacity requires acknowledgement",
+                Some(self.sim.step_number),
+            ));
+        }
+        let after = self.events.len();
+        self.sim.replace_permanent_inputs(&revisions.iter().map(|r| r.0).collect::<Vec<_>>())
+            .map_err(|message| error("revision_conflict", "request.commands", message, Some(self.sim.step_number)))?;
+        for (input, host_max) in &revisions { self.host_max_hp.insert(input.actor, *host_max); }
+        self.command_sequence += revisions.len() as u64;
+        if self.continuous {
+            // Actors were created in party-slot order, never saved formation-cell order.
+            if let Some(id) = self
+                .sim
+                .phoenix
+                .hero
+                .filter(|id| {
+                    self.sim
+                        .actors
+                        .iter()
+                        .any(|a| a.view.id == *id && a.view.state == ActorState::Downed)
+                })
+                .or_else(|| {
+                    self.sim
+                        .actors
+                        .iter()
+                        .find(|a| {
+                            a.view.team == Team::Hero && a.view.state == ActorState::Downed
+                        })
+                        .map(|a| a.view.id)
+                })
+            {
+                self.sim.phoenix_hold(id);
+            }
+        }
+        self.sim.step();
+        for (index, (input, _)) in revisions.iter().enumerate() {
+            self.event(json!({"kind":"permanent_inputs_applied","data":{"actor":input.actor,
+                "revision":input.revision.to_string(),"sequence":(self.command_sequence - revisions.len() as u64 + index as u64 + 1).to_string()}}));
+        }
+        for (marker, kind, id, point, stats, hp, magic) in std::mem::take(&mut self.pending_spawns) {
+            if self.sim.hazards.iter().any(|h| h.view.id == marker && h.view.phase != HazardPhase::Resolved) {
+                self.pending_spawns.push((marker, kind, id, point, stats, hp, magic));
+            } else {
+                self.sim.spawn_actor(kind, point, stats);
+                let actor = self.sim.actors.last_mut().unwrap();
+                actor.begin_spawn(); actor.view.hp = hp; actor.stats.mag = magic.unwrap_or(stats.mag);
+                self.host_ids.insert(actor.view.id, id);
+            }
+        }
+        self.sim.refresh_snapshot();
+        self.collect();
+        self.sim.defeats.clear();
+        self.sim.materialized.clear();
+        self.sim.finish_requested = false;
+        if self.events.len() > MAX_EVENTS
+            || self.sim
+                .actors
+                .iter()
+                .filter(|a| a.view.team == Team::Enemy && a.alive())
+                .count()
+                > MAX_ENEMIES
+            || self.sim.hazards.len() > MAX_EFFECTS
+            || self.sim.projectiles.len() > MAX_EFFECTS
+        {
+            self.state = "faulted";
+            return Err(error(
+                "capacity_fault",
+                "world",
+                "encounter capacity exceeded; destroy and restart",
+                Some(self.sim.step_number),
+            ));
+        }
+        Ok(after)
+    }
+    /// One exact step with no commands and no host end, for native hosts.
+    pub fn step_now(&mut self) -> Result<usize, Value> {
+        self.step(StepRequest { commands: Vec::new(), end_encounter: None,
+            encounter_id: self.encounter_id.clone(), expected_previous_step: self.sim.step_number.to_string() })
+    }
+    /// Host end of the encounter (teardown facts only), for native hosts.
+    pub fn end_now(&mut self, reason: EndReason) -> Result<usize, Value> {
+        self.step(StepRequest { commands: Vec::new(), end_encounter: Some(reason),
+            encounter_id: self.encounter_id.clone(), expected_previous_step: self.sim.step_number.to_string() })
+    }
+    /// Host-presented stage view (never read by combat).
+    pub fn set_stage(&mut self, stage: StageView) { self.sim.snapshot.stage = stage; }
+    pub fn sim(&self) -> &Sim { &self.sim }
+    pub fn snapshot(&self) -> &Snapshot { self.sim.snapshot() }
+    /// The presentation finished the featured attack's effects: ends the spotlight's Tail phase.
+    pub fn release_spotlight(&mut self) { self.sim.release_spotlight(); }
+    /// Runtime spotlight preset change; disabling cancels an active spotlight.
+    pub fn set_spotlight(&mut self, config: SpotlightConfig) { self.sim.set_spotlight(config); }
+    pub fn encounter_id(&self) -> &str { &self.encounter_id }
+    pub fn state(&self) -> &'static str { self.state }
+    pub fn step_number(&self) -> u64 { self.sim.step_number }
+    /// Current permanent-input revision of an actor (0 until a revision applies).
+    pub fn permanent_revision(&self, actor: u32) -> Option<u64> { self.sim.actors.iter().find(|a| a.view.id == actor).map(|a| a.permanent_revision as u64) }
+    pub fn host_id(&self, actor: u32) -> Option<&str> { self.host_ids.get(&actor).map(String::as_str) }
+    pub fn host_max_hp(&self, actor: u32) -> Option<f32> { self.host_max_hp.get(&actor).copied() }
+    pub fn pending_spawns(&self) -> impl Iterator<Item = (u32, &str, Vec2)> + '_ {
+        self.pending_spawns.iter().map(|(marker, _, id, p, ..)| (*marker, id.as_str(), *p))
+    }
+    pub fn live_enemies(&self) -> usize {
+        self.pending_spawns.len() + self.sim.actors.iter().filter(|a| a.view.team == Team::Enemy && a.alive()).count()
+    }
+    pub fn chest(&self) -> Option<(&chest::ChestView, bool)> { self.sim.chests.first().map(|c| (c, self.sim.wave_chest_ready())) }
+    pub fn last_event_sequence(&self) -> u64 { self.acknowledged_sequence + self.events.len() as u64 }
+    pub fn retained_events(&self, after: usize) -> &[Value] { &self.events[after..] }
+    pub fn drain_typed_events(&mut self) -> Vec<Event> { std::mem::take(&mut self.typed_events) }
     fn validate_revisions(&self, request: &StepRequest) -> Result<Vec<(permanent::PermanentInputs, f32)>, Value> {
         let invalid = || error("invalid_input", "request.commands", "invalid permanent-input command batch", Some(self.sim.step_number));
         if request.commands.len() > 4 || (request.end_encounter.is_some() && !request.commands.is_empty()) { return Err(invalid()); }
@@ -841,7 +890,12 @@ impl World {
                 special_potency: skill_modifiers.special_potency, meter_rate: skill_modifiers.meter_rate }, *host_max_hp))
         }).collect()
     }
-    fn spawn(&mut self, encounter_id: &str, enemies: Vec<EnemyInput>) -> Result<Value, Value> {
+    pub fn spawn(&mut self, encounter_id: &str, enemies: Vec<EnemyInput>) -> Result<Value, Value> {
+        let after = self.spawn_batch(encounter_id, enemies)?;
+        Ok(self.result(after))
+    }
+    /// Validates and admits an enemy batch; returns the retained-event index before this call's events.
+    pub fn spawn_batch(&mut self, encounter_id: &str, enemies: Vec<EnemyInput>) -> Result<usize, Value> {
         if !self.sim.chests.is_empty() && !self.sim.wave_chest_ready() {
             return Err(error("invalid_transition", "spawn.chest", "Chest pause has not finished", Some(self.sim.step_number)));
         }
@@ -952,7 +1006,7 @@ impl World {
         self.sim.deaths();
         self.sim.refresh_snapshot();
         self.collect();
-        Ok(self.result(after))
+        Ok(after)
     }
     fn event(&mut self, body: Value) {
         self.events.push(json!({"schema":SCHEMA,"encounter_id":self.encounter_id,"step":self.sim.step_number.to_string(),"combat_step":self.sim.combat_steps.to_string(),"sequence":(self.acknowledged_sequence+self.events.len() as u64+1).to_string(),"body":body}));
@@ -960,6 +1014,7 @@ impl World {
     fn collect(&mut self) {
         let hp_losses = self.sim.events.hp_losses();
         for (event_index, e) in self.sim.drain_events().into_iter().enumerate() {
+            if self.retain_typed_events { self.typed_events.push(e.clone()); }
             let body = match e {
                 Event::Hit {
                     source,
@@ -1006,7 +1061,7 @@ impl World {
             }
         }
     }
-    fn gameplay_hash(&self) -> u64 {
+    pub fn gameplay_hash(&self) -> u64 {
         let mut hash = wf_combat::snapshot::Hash(self.sim.state_hash());
         hash.u(0x484f5354494e5055);
         hash.u(self.command_sequence);
@@ -1034,7 +1089,7 @@ impl World {
         }
         hash.0
     }
-    fn result(&self, after: usize) -> Value {
+    pub fn result(&self, after: usize) -> Value {
         let actors:Vec<_> = self.sim.actors.iter().enumerate().map(|(index,a)| {
             let taunted_by = self.sim.taunt_target(index).map(|target| self.sim.actors[target].view.id);
             let taunt_age = taunted_by.map(|_| tuning::TAUNT_DURATION - a.taunt_left);
@@ -1292,6 +1347,36 @@ mod tests {
         assert_eq!(after["snapshot"]["step"], "1");
         assert_eq!(after["snapshot"]["acknowledged_event_sequence"], last.to_string());
         for e in after["events"].as_array().unwrap() { assert!(e["sequence"].as_str().unwrap().parse::<u64>().unwrap() > last); }
+    }
+    #[test]
+    fn typed_world_matches_json_transport() {
+        let fixture: Value = serde_json::from_str(include_str!("../tests/permanent_revision_scenario.json")).unwrap();
+        let mut transport = Transport::new();
+        let created = transport.execute(serde_json::from_value(json!({"kind":"create","data":{"config":fixture["config"]}})).unwrap()).unwrap();
+        let handle = created["world"].as_u64().unwrap() as u32;
+        let mut typed = World::create(serde_json::from_value(fixture["config"].clone()).unwrap()).unwrap();
+        typed.retain_typed_events = true;
+        assert_eq!(created["snapshot"], typed.result(0)["snapshot"]);
+        let mut typed_count = 0;
+        for step in 0..12u64 {
+            let request = json!({"encounter_id":"permanent-parity","expected_previous_step":step.to_string(),
+                "commands":if step==0 { fixture["commands"].clone() } else { json!([]) }});
+            let via_json = transport.execute(serde_json::from_value(json!({"kind":"step","data":{"world":handle,"request":request}})).unwrap()).unwrap();
+            let after = typed.step(serde_json::from_value(request).unwrap()).unwrap();
+            assert_eq!(via_json, typed.result(after), "step {step}");
+            typed_count += typed.drain_typed_events().len();
+        }
+        let last = typed.last_event_sequence();
+        assert!(last > 0);
+        let via_json = transport.execute(serde_json::from_value(json!({"kind":"inspect","data":{"world":handle,"events_after":(last-1).to_string()}})).unwrap()).unwrap();
+        assert_eq!(via_json, typed.result(typed.inspect(last-1).unwrap()));
+        assert_eq!(transport.execute(serde_json::from_value(json!({"kind":"ack","data":{"world":handle,"encounter_id":"permanent-parity","sequence":last.to_string()}})).unwrap()).unwrap()["acknowledged_sequence"], last.to_string());
+        assert_eq!(typed.ack("permanent-parity", last).unwrap(), last);
+        assert_eq!(typed.result(0), transport.worlds.get(handle).unwrap().result(0));
+        // Typed retention sees every drained combat event the JSON stream carried, minus host-only records.
+        let presentation = typed.retained_events(0).iter().filter(|e| !matches!(e["body"]["kind"].as_str(), Some("all_down"|"ended"|"despawned"|"permanent_inputs_applied"))).count();
+        assert!(typed_count >= presentation);
+        assert_eq!(typed.gameplay_hash(), transport.worlds.get(handle).unwrap().gameplay_hash());
     }
     #[test]
     fn generation_rejects_stale_and_double_free() {

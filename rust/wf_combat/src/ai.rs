@@ -734,7 +734,7 @@ impl Sim {
             let shadow_spot = (a.view.archetype == Archetype::Hondo
                 && self.autonomous()
                 && a.combo_phase == 0
-                && a.view.meter + 0.00001 >= 1. - COMBO_BASIC_GAIN
+                && a.view.meter + 0.00001 >= COMBO_START_METER - COMBO_BASIC_GAIN
                 && !crate::groove::shadow_line_aligned(a.view.pos, p))
             .then(|| self.shadow_approach(i, t))
             .flatten();

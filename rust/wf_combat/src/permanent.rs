@@ -408,6 +408,37 @@ mod tests {
         assert_eq!(projectile.damage, 100.);
     }
 
+    /// ORKA-63bf.37 (owner, 2026-11-05): fodder bombs explode in half the time; the boss's do not.
+    #[test]
+    fn a_fodder_bomb_explodes_in_half_the_time_and_the_boss_bomb_keeps_its_clock() {
+        use crate::tuning::{BOMB_FLIGHT, BOMB_RADIUS, BOMB_TIME, LIZARDO_BOMB_TIME};
+        let mut s = sim();
+        s.spawn_actor(Archetype::Lizardo, Vec2::new(440., 800.), crate::tuning::stats(Archetype::Lizardo));
+        s.lizardo_throw(2, Some(0));
+        let bomb = s.hazards.last().expect("the Lizardo threw").clone();
+        assert_eq!(bomb.view.kind, HazardKind::LizardoDrop);
+        assert_eq!((LIZARDO_BOMB_TIME, bomb.duration, bomb.base_duration), (2.28, 2.28, 2.28));
+        assert_eq!(bomb.view.shape, Shape::Circle { radius: BOMB_RADIUS });
+        assert_eq!(bomb.damage, bomb.base_damage, "the shorter fuse does not change the damage");
+        // The thrower waits out its own bomb, so its cast is as long as the bomb.
+        assert_eq!((s.actors[2].view.state, s.actors[2].view.state_duration), (ActorState::Cast, 2.28));
+        // It is on the ground for 1.53 s after the 0.75 s arc, then resolves: nothing is left at 2.3 s.
+        assert!((LIZARDO_BOMB_TIME - BOMB_FLIGHT - 1.53).abs() < 1e-5);
+        let (id, boss) = (bomb.view.id, s.actors[2].view.id);
+        let mut resolved = None;
+        for step in 0..200 {
+            s.step();
+            if resolved.is_none() && !s.hazards.iter().any(|h| h.view.id == id && h.view.phase != HazardPhase::Resolved) { resolved = Some((step + 1) as f32 * SIM_DT); }
+        }
+        let at = resolved.expect("the bomb resolved");
+        assert!((at - 2.28).abs() <= 2. * SIM_DT, "resolved after {at} s");
+        // The hazard the boss barrage starts from is the table's: the full clock.
+        s.hazard(HazardKind::LizardoDrop, boss, None, Vec2::new(480., 800.), Vec2::new(1., 0.));
+        let bomb = s.hazards.last().unwrap();
+        assert_eq!((bomb.duration, bomb.base_duration), (BOMB_TIME, BOMB_TIME));
+        assert_eq!(BOMB_TIME, 4.56);
+    }
+
     #[test]
     fn physical_and_magic_hits_use_independent_incoming_defence() {
         let mut s = sim();

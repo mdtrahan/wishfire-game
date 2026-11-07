@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Fast tier: syntax, affected deterministic contracts and changed Rust crates.
+// Fast tier: syntax, affected deterministic contracts and changed Rust crates (the Rust game is the runtime; tests/ holds tooling contracts).
 import {execFileSync, spawnSync} from 'node:child_process';
 import {existsSync, globSync, readFileSync, statSync} from 'node:fs';
 import {dirname, basename, resolve, relative} from 'node:path';
@@ -39,9 +39,8 @@ export function commitPlan(files) {
  const stems=files.map(file=>basename(file).replace(/\.[^.]+$/,''));
  const routing=files.some(file=>/^(\.beads\/hooks\/|package\.json$|tools\/(run_(commit|merge)_tests|enforce_commit_check)|tests\/preCommitRouting)/.test(file));
  const tests=globSync('tests/**/*.test.{js,mjs,cjs}',{cwd:root}).sort().filter(file=>{
-  // This contract imports only the gate's pure invariant helper; it never launches a browser.
-  if(file!=='tests/uiPresentationLockGateContract.test.js'&&browser(file))return false;
-  if(routing&&/\/(preCommitRouting|lampRoster|uiPresentationLockGateContract)\.test\./.test(file))return true;
+  if(browser(file))return false;
+  if(routing&&/\/preCommitRouting\.test\./.test(file))return true;
   return affected(file)||stems.some(stem=>stem.length>3&&metadata(file).text.includes(stem));
  });
  const touchedCrates=[...new Set(files.filter(file=>/^rust\/[^/]+\//.test(file)).map(file=>`rust/${file.split('/')[1]}/Cargo.toml`))].filter(file=>existsSync(resolve(root,file)));
@@ -67,7 +66,7 @@ export function runCommitTests(args=process.argv.slice(2)){
  if(args.includes('--plan')){console.log(JSON.stringify(plan,null,2));return;}
  run('git',flags.length?['diff','--check',`${flags[1]}...HEAD`]:['diff','--cached','--check']);
  for(const file of plan.syntax)run(process.execPath,['--check',file]);
- if(plan.tests.length)run(process.execPath,['--import','./tools/ensure_simulation_core.cjs','--test','--test-concurrency=4',...plan.tests],true);
+ if(plan.tests.length)run(process.execPath,['--test','--test-concurrency=4',...plan.tests],true);
  for(const manifest of plan.crates)run('cargo',['test','--manifest-path',manifest,'--color','never'],true);
  console.log(`Fast tier passed: ${plan.syntax.length} syntax files, ${plan.tests.length} deterministic test files, ${plan.crates.length} Rust crates.`);
 }

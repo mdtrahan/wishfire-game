@@ -395,6 +395,10 @@ pub const MIREWING_ARRIVAL: f32 = 8.;
 pub const BOMB_TIME: f32 = 4.56;
 /// Bomb arc time; the bomb then rests on the ground (fuse) until the drop resolves at BOMB_TIME.
 pub const BOMB_FLIGHT: f32 = 0.75;
+/// ORKA-63bf.37 (owner, 2026-11-05): a fodder bomb-tosser's bomb explodes in half the time
+/// (0.75 s arc, then 1.53 s on the ground). Radius and damage are unchanged. Chimerilass keeps
+/// BOMB_TIME and CHIMERA_BOMB_FUSE.
+pub const LIZARDO_BOMB_TIME: f32 = BOMB_TIME / 2.;
 pub const BOMB_RADIUS: f32 = 69.;
 /// Chimerilass open/scatter/fortress bombs: seconds on the ground, including during enrage.
 pub const CHIMERA_BOMB_FUSE: f32 = 3.0;
@@ -436,6 +440,10 @@ pub const BODY_RADIUS: f32 = 14.;
 /// Owner (2026-10-27): moat around every hero/enemy body so actors never stack (world units).
 pub const ACTOR_MOAT: f32 = 8.;
 pub const ACTOR_MOAT_PASSES: usize = 3;
+/// ORKA-63bf.47 (owner, 2026-11-05): an enemy that has just finished spawning in holds its
+/// place for this long when bodies are spaced, so a passer-by yields to it and it is not pushed
+/// off the spot it emerged on. It still walks and fights freely.
+pub const SPAWN_SETTLE_SECONDS: f32 = 0.5;
 /// Moat stretch along depth (y). Must keep 2*(BODY_RADIUS+ACTOR_MOAT)*depth below the shortest
 /// melee centre reach (Gobloc 40 + 28 = 68) so attackers above/below still connect.
 pub const ACTOR_MOAT_DEPTH: f32 = 1.4;
@@ -563,6 +571,24 @@ pub const ARCANE_PULSE_POTENCY: f32 = 2.2;
 pub const ARCANE_PULSE_RANGE_NEAR: f32 = 60.;
 pub const ARCANE_PULSE_RANGE_FAR: f32 = 235.;
 pub const ARCANE_PULSE_RANGE_MAX_MULT: f32 = 2.15;
+/// ORKA-63bf.42 (owner, 2026-11-05): the blast reaches half the distance from Kaja to its centre
+/// (the full distance was too large), and never less than the drawn `ARCANE_PULSE_RADIUS`.
+pub const ARCANE_PULSE_BLAST_SCALE: f32 = 0.5;
+/// World radius of an Arcane Pulse blast cast from `distance` away; the totem keeps it.
+pub fn arcane_pulse_blast_radius(distance: f32) -> f32 { (distance * ARCANE_PULSE_BLAST_SCALE).max(ARCANE_PULSE_RADIUS) }
+// ORKA-63bf.41 (owner, 2026-11-05): Arcane Pulse is a channelled spell. After the blast a light
+// totem stays at the blast centre, covering the blast's own radius. It ticks enemies standing
+// inside it with the Faze pool's math (a pulse each second, 35% of Kaja's MAG) as Arcane damage,
+// and it drains Kaja's special bar instead of the cast costing a stock: a full 3-stock bar lasts
+// 8 s. It dissolves when the bar is empty, when Kaja falls, or after 10 s at the latest; Kaja's
+// bar does not refill and he casts no other special while it stands. One totem at a time.
+pub const ARCANE_TOTEM_MAX_SECONDS: f32 = 10.;
+pub const ARCANE_TOTEM_FULL_BAR_SECONDS: f32 = 8.;
+/// Stocks drained per combat second (0.375: a full bar in 8 s, one stock in 2.67 s).
+pub const ARCANE_TOTEM_DRAIN: f32 = POWER_STOCK_CAP / ARCANE_TOTEM_FULL_BAR_SECONDS;
+pub const ARCANE_TOTEM_PULSE: f32 = FAZE_PULSE;
+pub const ARCANE_TOTEM_POTENCY: f32 = FAZE_POTENCY;
+pub const POWER_STOCK_CAP: f32 = 3.;
 
 // Warcry and Ground Pound cost 1 Rage stock; Warcry refreshes a persistent self-ward.
 pub const GROUND_POUND_LENGTH: f32 = 300.;
@@ -682,13 +708,18 @@ pub const RAGE_FILL_SECONDS: f32 = 10.;
 pub const RAGE_STOCK_CAP: f32 = 3.;
 pub const RAGE_HIT_FLAT: f32 = 0.04;
 pub const RAGE_HIT_CAP: f32 = 0.30;
-// Passive fallback matches Rage; landed basics still add their existing gains.
-pub const COMBO_FILL_SECONDS: f32 = 10.;
-pub const SUPER_FILL_SECONDS: f32 = 10.;
+// ORKA-63bf.30 (owner, 2026-11-05): Hondo and Runa refill at half Fara's passive rate;
+// landed basics still add their existing gains.
+pub const COMBO_FILL_SECONDS: f32 = 20.;
+pub const SUPER_FILL_SECONDS: f32 = 20.;
 pub const COMBO_BASIC_GAIN: f32 = 0.1;
 pub const SUPER_BASIC_GAIN: f32 = 1. / 7.;
 pub const POWER_STOCK_SECONDS: f32 = 6.5 / 1.15;
 pub const COMBO_SECONDS: f32 = 4.;
+/// ORKA-63bf.51 (owner, 2026-11-06): a burst starts on any bar of at least this much, not
+/// only a full one, and runs for that share of COMBO_SECONDS. Half pays for the opening
+/// strike, two more and Split. Fable's first choice, owner-adjustable.
+pub const COMBO_START_METER: f32 = 0.5;
 pub const COMBO_RADIUS: f32 = 300.;
 pub const COMBO_MIN_HOP: f32 = 80.;
 pub const COMBO_TURN: f32 = 135. * core::f32::consts::PI / 180.;

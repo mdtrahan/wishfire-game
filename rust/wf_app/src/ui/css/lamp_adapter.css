@@ -1,0 +1,16 @@
+/* The lamp windows inside the #wf-ui frame (main sets left/top/width inline from the canvas rect). */
+#wf-ui #lamp-overlay{position:absolute;left:0;top:0;width:100%}
+/* Main paints stat numbers and their arrows into a <canvas> so they crop to the glyph; here
+   the number is text and the arrow is the same seven-point shape as an element. */
+#lamp-dialog .lamp-stat-value{display:inline-flex;align-items:center;gap:3px;line-height:1}
+#lamp-dialog .lamp-stat-number{display:inline}
+#lamp-dialog .lamp-stat-arrow{display:inline-block;flex:none;width:.56em;height:.74em;background:currentColor;clip-path:polygon(50% 0,100% 45%,70% 45%,70% 100%,30% 100%,30% 45%,0 45%)}
+#lamp-dialog .lamp-stat-arrow.down{rotate:180deg}
+/* Main sizes the cache queue to 3.5 tiles inline, which its own max-height:150px always clamps. */
+#lamp-dialog[data-view=cache] .lamp-queue{height:150px}
+/* Owner 2026-11-05: one equipment tile in every window. Main's dismantle window shows smaller
+   art-only tiles (13.7cqw squares, centred); here it uses the cache's five-column grid and the
+   same tile (level and CP), three rows tall before it scrolls, like the cache window. */
+#lamp-dialog[data-view=dismantle]{--disposal-tile-size:calc(17.44cqw + 16px);height:min(100%,calc(3 * var(--disposal-tile-size) + 144px))}
+#lamp-dialog[data-view=dismantle]>.lamp-disposal-body{max-height:calc(3 * var(--disposal-tile-size) + 21px)}
+#lamp-dialog[data-view=dismantle] .lamp-queue{grid-template-columns:repeat(5,minmax(0,1fr));justify-content:start}

@@ -1,7 +1,6 @@
 // Full `npm test` runner. Browser-driven files each launch Chromium and time out when the
 // default node --test concurrency runs a dozen of them at once, so they run one at a time
 // after the parallel pass over every other test file. Extra arguments pass through to both runs.
-import './ensure_simulation_core.cjs';
 import { globSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 

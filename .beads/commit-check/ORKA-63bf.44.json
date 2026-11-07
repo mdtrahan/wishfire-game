@@ -1,0 +1,26 @@
+{
+  "changed_functions": {
+    ".beads/commit-check/ORKA-63bf.44.json": [
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 1,
+    "staged_line_count": 33,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/commit-check/ORKA-63bf.44.json"
+  ],
+  "issue_id": "ORKA-63bf.44",
+  "out_of_scope_hot_file_touch": false,
+  "significant": false,
+  "staged_blobs": {
+    ".beads/commit-check/ORKA-63bf.44.json": "ebfe76f798faa8ac720f74ec90c8b79ea78eda4f"
+  }
+}

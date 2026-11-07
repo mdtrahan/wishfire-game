@@ -1,0 +1,1318 @@
+{
+ "chapterOne": [
+  {
+   "seed": 7,
+   "partyCP": 120,
+   "stages": [
+    {
+     "stage": 1,
+     "waves": [
+      {
+       "subwaves": [
+        [
+         {
+          "key": "Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Skeleton",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 3
+         },
+         {
+          "key": "Skeleton",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 3
+         },
+         {
+          "key": "Skeleton",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Skeleton",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Skeleton",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Skeleton",
+          "count": 3
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         }
+        ]
+       ]
+      },
+      {
+       "subwaves": [
+        [
+         {
+          "key": "Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Lizardo",
+          "count": 2
+         },
+         {
+          "key": "High Gobloc",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 1
+         },
+         {
+          "key": "High Gobloc",
+          "count": 3
+         },
+         {
+          "key": "Lizardo",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "High Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Skeleton",
+          "count": 3
+         }
+        ]
+       ]
+      },
+      {
+       "subwaves": [
+        [
+         {
+          "key": "High Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Lizardo",
+          "count": 3
+         }
+        ],
+        [
+         {
+          "key": "Orc",
+          "count": 3
+         },
+         {
+          "key": "Lizardo",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "High Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Lizardo",
+          "count": 1
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Skeleton",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Skeleton",
+          "count": 3
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         }
+        ]
+       ]
+      },
+      {
+       "subwaves": [
+        [
+         {
+          "key": "Orc",
+          "count": 1
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         },
+         {
+          "key": "High Gobloc",
+          "count": 3
+         }
+        ],
+        [
+         {
+          "key": "High Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Lizardo",
+          "count": 1
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Orc",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 3
+         },
+         {
+          "key": "Skeleton",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 3
+         },
+         {
+          "key": "Skeleton",
+          "count": 1
+         }
+        ]
+       ]
+      },
+      {
+       "subwaves": [
+        [
+         {
+          "key": "Skeleton",
+          "count": 4
+         }
+        ],
+        [
+         {
+          "key": "Skeleton",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Skeleton",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 3
+         },
+         {
+          "key": "Skeleton",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 3
+         },
+         {
+          "key": "Skeleton",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 3
+         },
+         {
+          "key": "Skeleton",
+          "count": 1
+         }
+        ]
+       ]
+      },
+      {
+       "subwaves": [
+        [
+         {
+          "key": "High Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Skeleton",
+          "count": 3
+         },
+         {
+          "key": "Lizardo",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Lizardo",
+          "count": 4
+         },
+         {
+          "key": "High Gobloc",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "High Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Skeleton",
+          "count": 2
+         }
+        ]
+       ]
+      },
+      {
+       "subwaves": [
+        [
+         {
+          "key": "Orc",
+          "count": 3
+         },
+         {
+          "key": "Lizardo",
+          "count": 1
+         },
+         {
+          "key": "High Gobloc",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Orc",
+          "count": 3
+         },
+         {
+          "key": "Lizardo",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Lizardo",
+          "count": 1
+         },
+         {
+          "key": "High Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Skeleton",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 3
+         },
+         {
+          "key": "Skeleton",
+          "count": 1
+         }
+        ]
+       ]
+      },
+      {
+       "subwaves": [
+        [
+         {
+          "key": "High Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Orc",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Orc",
+          "count": 1
+         },
+         {
+          "key": "Lizardo",
+          "count": 2
+         },
+         {
+          "key": "High Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "High Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Orc",
+          "count": 1
+         },
+         {
+          "key": "Skeleton",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Skeleton",
+          "count": 2
+         }
+        ]
+       ]
+      },
+      {
+       "subwaves": [
+        [
+         {
+          "key": "Skeleton",
+          "count": 3
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 4
+         }
+        ],
+        [
+         {
+          "key": "Skeleton",
+          "count": 4
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Skeleton",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Skeleton",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 3
+         },
+         {
+          "key": "Skeleton",
+          "count": 1
+         }
+        ]
+       ]
+      },
+      {
+       "subwaves": [
+        [
+         {
+          "key": "Skeleton",
+          "count": 1
+         },
+         {
+          "key": "Lizardo",
+          "count": 1
+         },
+         {
+          "key": "Gobloc",
+          "count": 2
+         },
+         {
+          "key": "High Gobloc",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Lizardo",
+          "count": 3
+         },
+         {
+          "key": "Skeleton",
+          "count": 1
+         },
+         {
+          "key": "High Gobloc",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Skeleton",
+          "count": 2
+         },
+         {
+          "key": "High Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 4
+         }
+        ]
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "seed": 1,
+   "partyCP": 120,
+   "stages": [
+    {
+     "stage": 1,
+     "waves": [
+      {
+       "subwaves": [
+        [
+         {
+          "key": "Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Skeleton",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 4
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Skeleton",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Skeleton",
+          "count": 3
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Skeleton",
+          "count": 1
+         },
+         {
+          "key": "Gobloc",
+          "count": 3
+         }
+        ],
+        [
+         {
+          "key": "Skeleton",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 2
+         }
+        ]
+       ]
+      },
+      {
+       "subwaves": [
+        [
+         {
+          "key": "Gobloc",
+          "count": 2
+         },
+         {
+          "key": "High Gobloc",
+          "count": 3
+         }
+        ],
+        [
+         {
+          "key": "Skeleton",
+          "count": 1
+         },
+         {
+          "key": "High Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Lizardo",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "High Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Lizardo",
+          "count": 1
+         },
+         {
+          "key": "Skeleton",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 3
+         },
+         {
+          "key": "Skeleton",
+          "count": 1
+         }
+        ]
+       ]
+      },
+      {
+       "subwaves": [
+        [
+         {
+          "key": "High Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Lizardo",
+          "count": 2
+         },
+         {
+          "key": "Orc",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Lizardo",
+          "count": 1
+         },
+         {
+          "key": "High Gobloc",
+          "count": 3
+         },
+         {
+          "key": "Orc",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Orc",
+          "count": 1
+         },
+         {
+          "key": "Lizardo",
+          "count": 1
+         },
+         {
+          "key": "Skeleton",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Skeleton",
+          "count": 2
+         }
+        ]
+       ]
+      },
+      {
+       "subwaves": [
+        [
+         {
+          "key": "Orc",
+          "count": 1
+         },
+         {
+          "key": "Lizardo",
+          "count": 1
+         },
+         {
+          "key": "High Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Orc",
+          "count": 2
+         },
+         {
+          "key": "Lizardo",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "High Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Skeleton",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 4
+         }
+        ]
+       ]
+      },
+      {
+       "subwaves": [
+        [
+         {
+          "key": "Skeleton",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Skeleton",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Skeleton",
+          "count": 4
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Skeleton",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 3
+         },
+         {
+          "key": "Skeleton",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Skeleton",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 2
+         }
+        ]
+       ]
+      },
+      {
+       "subwaves": [
+        [
+         {
+          "key": "High Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Lizardo",
+          "count": 2
+         },
+         {
+          "key": "Skeleton",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "High Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Skeleton",
+          "count": 2
+         },
+         {
+          "key": "Lizardo",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "High Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Skeleton",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Skeleton",
+          "count": 2
+         }
+        ]
+       ]
+      },
+      {
+       "subwaves": [
+        [
+         {
+          "key": "Orc",
+          "count": 1
+         },
+         {
+          "key": "High Gobloc",
+          "count": 4
+         }
+        ],
+        [
+         {
+          "key": "Lizardo",
+          "count": 2
+         },
+         {
+          "key": "Orc",
+          "count": 3
+         }
+        ],
+        [
+         {
+          "key": "High Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Skeleton",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Skeleton",
+          "count": 4
+         }
+        ]
+       ]
+      },
+      {
+       "subwaves": [
+        [
+         {
+          "key": "High Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Orc",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Lizardo",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "High Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Orc",
+          "count": 1
+         },
+         {
+          "key": "Lizardo",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Lizardo",
+          "count": 1
+         },
+         {
+          "key": "Orc",
+          "count": 1
+         },
+         {
+          "key": "Gobloc",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Skeleton",
+          "count": 1
+         },
+         {
+          "key": "Gobloc",
+          "count": 3
+         }
+        ]
+       ]
+      },
+      {
+       "subwaves": [
+        [
+         {
+          "key": "Skeleton",
+          "count": 1
+         },
+         {
+          "key": "Gobloc",
+          "count": 3
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Skeleton",
+          "count": 3
+         }
+        ],
+        [
+         {
+          "key": "Skeleton",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 2
+         },
+         {
+          "key": "Skeleton",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 1
+         },
+         {
+          "key": "Skeleton",
+          "count": 3
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 3
+         },
+         {
+          "key": "Skeleton",
+          "count": 1
+         }
+        ]
+       ]
+      },
+      {
+       "subwaves": [
+        [
+         {
+          "key": "Skeleton",
+          "count": 2
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         },
+         {
+          "key": "High Gobloc",
+          "count": 2
+         }
+        ],
+        [
+         {
+          "key": "High Gobloc",
+          "count": 3
+         },
+         {
+          "key": "Lizardo",
+          "count": 1
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Skeleton",
+          "count": 2
+         },
+         {
+          "key": "Lizardo",
+          "count": 1
+         },
+         {
+          "key": "Gobloc",
+          "count": 1
+         }
+        ],
+        [
+         {
+          "key": "Gobloc",
+          "count": 4
+         }
+        ]
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "author": [
+  {
+   "keys": [
+    "Gobloc"
+   ],
+   "subwaves": [
+    [
+     {
+      "key": "Gobloc",
+      "count": 1
+     }
+    ]
+   ]
+  },
+  {
+   "keys": [
+    "Gobloc",
+    "Skeleton",
+    "Gobloc"
+   ],
+   "subwaves": [
+    [
+     {
+      "key": "Gobloc",
+      "count": 2
+     },
+     {
+      "key": "Skeleton",
+      "count": 1
+     }
+    ]
+   ]
+  },
+  {
+   "keys": [
+    "Orc",
+    "Orc",
+    "Orc",
+    "Orc",
+    "Orc",
+    "Orc",
+    "Orc"
+   ],
+   "subwaves": [
+    [
+     {
+      "key": "Orc",
+      "count": 4
+     }
+    ],
+    [
+     {
+      "key": "Orc",
+      "count": 3
+     }
+    ]
+   ]
+  },
+  {
+   "keys": [
+    "Gobloc",
+    "Gobloc",
+    "Skeleton",
+    "Skeleton",
+    "Lizardo",
+    "Lizardo",
+    "Orc",
+    "Gobloc",
+    "Skeleton",
+    "Gobloc",
+    "Orc",
+    "Lizardo"
+   ],
+   "subwaves": [
+    [
+     {
+      "key": "Gobloc",
+      "count": 2
+     },
+     {
+      "key": "Skeleton",
+      "count": 2
+     }
+    ],
+    [
+     {
+      "key": "Lizardo",
+      "count": 2
+     },
+     {
+      "key": "Orc",
+      "count": 1
+     },
+     {
+      "key": "Gobloc",
+      "count": 1
+     }
+    ],
+    [
+     {
+      "key": "Skeleton",
+      "count": 1
+     },
+     {
+      "key": "Gobloc",
+      "count": 1
+     },
+     {
+      "key": "Orc",
+      "count": 1
+     },
+     {
+      "key": "Lizardo",
+      "count": 1
+     }
+    ]
+   ]
+  },
+  {
+   "keys": [
+    "Skeleton",
+    "Gobloc",
+    "Gobloc",
+    "Skeleton",
+    "Gobloc",
+    "Gobloc",
+    "Skeleton",
+    "Gobloc",
+    "Gobloc",
+    "Skeleton",
+    "Gobloc",
+    "Gobloc",
+    "Skeleton"
+   ],
+   "subwaves": [
+    [
+     {
+      "key": "Skeleton",
+      "count": 2
+     },
+     {
+      "key": "Gobloc",
+      "count": 3
+     }
+    ],
+    [
+     {
+      "key": "Gobloc",
+      "count": 3
+     },
+     {
+      "key": "Skeleton",
+      "count": 1
+     }
+    ],
+    [
+     {
+      "key": "Skeleton",
+      "count": 2
+     },
+     {
+      "key": "Gobloc",
+      "count": 2
+     }
+    ]
+   ]
+  }
+ ]
+}
