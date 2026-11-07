@@ -21,3 +21,4 @@
 - None.
 
 - `verify_rust_handoff.mjs` compares pinned native builds/tests and seeded production-host replays in disposable clones; `--quick` caches only SHA/protocol/toolchain-matched base evidence. `capture_rust_replays.mjs` optionally drives the shipped renderer with browser time and existing controls; game code has no verifier mode. Each snapshot owns a temporary Cargo target because compiled tests embed their checkout fixture paths; sharing target directories across snapshots can silently test the wrong source.
+- Cargo test evidence requires each started binary's result line, records passed/failed/ignored counts, and rejects child signals, newly empty suites or fewer executed tests. Named baseline failures cannot excuse these failures.

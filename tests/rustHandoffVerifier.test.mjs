@@ -30,6 +30,47 @@ test('crashes, timeouts and command failures without test names fail closed', as
   assert.match(timeout.infrastructure_error, /Timeout/);
   assert.equal(testCheck(timeout, timeout).status, 'FAIL');
 });
+const cargoOutput = (binary, tests, passed, failed = 0, ignored = 0) =>
+  `Running unittests src/lib.rs (/tmp/debug/deps/${binary}-abcdef123456)\nrunning ${passed + failed + ignored} tests\n${tests}\ntest result: ${failed ? 'FAILED' : 'ok'}. ${passed} passed; ${failed} failed; ${ignored} ignored; 0 measured; 0 filtered out; finished in 0.01s\n`;
+const fakeCargo = (name, output, exit = 0) => command(process.execPath,
+  ['-e', 'process.stdout.write(process.argv[1]); process.exitCode = +process.argv[2]', output, String(exit)],
+  { cwd: temp, env: process.env, log: join(temp, `${name}.log`), timeout: 2 });
+test('a crashed test binary after an inherited failure fails even when Cargo only exits 101', async () => {
+  const inherited = cargoOutput('wf_host', 'test tests::old ... FAILED', 0, 1);
+  const base = await fakeCargo('crash-base', inherited + cargoOutput('wf_meta', 'test tests::later ... ok', 1), 101);
+  const head = await fakeCargo('crash-head', inherited +
+    "Running unittests src/lib.rs (/tmp/debug/deps/wf_meta-abcdef123456)\nrunning 1 test\nerror: test failed\nprocess didn't exit successfully: `/tmp/debug/deps/wf_meta-abcdef123456` (signal: 6, SIGABRT: process abort signal)\n", 101);
+  const result = testCheck(base, head);
+  assert.equal(result.status, 'FAIL');
+  assert.deepEqual(result.new_failures, []);
+  assert.match(result.infrastructure_errors.join('\n'), /SIGABRT/);
+  assert.match(result.infrastructure_errors.join('\n'), /wf_meta: missing test result/);
+  const unfinished = await fakeCargo('unfinished-head', inherited +
+    'Running unittests src/lib.rs (/tmp/debug/deps/wf_meta-abcdef123456)\nrunning 1 test\n', 101);
+  assert.match(testCheck(base, unfinished).infrastructure_errors.join('\n'), /missing test result/);
+});
+test('zero tests in a previously populated binary fails even if another binary keeps the total', async () => {
+  const base = await fakeCargo('zero-base', cargoOutput('wf_host', 'test tests::one ... ok', 1));
+  const head = await fakeCargo('zero-head', cargoOutput('wf_host', '', 0) + cargoOutput('wf_meta', 'test tests::other ... ok', 1));
+  const result = testCheck(base, head);
+  assert.equal(result.status, 'FAIL');
+  assert.deepEqual(result.count_regressions, ['wf_host: head ran zero tests']);
+  assert.deepEqual(result.missing_tests, ['wf_host::tests::one']);
+});
+test('a lower run count fails and reports deleted or newly ignored tests', async () => {
+  const base = await fakeCargo('count-base', cargoOutput('wf_host', 'test tests::one ... ok\ntest tests::two ... ok', 2));
+  const head = await fakeCargo('count-head', cargoOutput('wf_host', 'test tests::one ... ok', 1));
+  const result = testCheck(base, head);
+  assert.equal(result.status, 'FAIL');
+  assert.deepEqual(result.count_regressions, ['run count dropped: 2 -> 1']);
+  assert.deepEqual(result.missing_tests, ['wf_host::tests::two']);
+  const ignored = await fakeCargo('ignored-head', cargoOutput('wf_host', 'test tests::one ... ok\ntest tests::two ... ignored, disabled', 1, 0, 1));
+  const ignoredResult = testCheck(base, ignored);
+  assert.equal(ignoredResult.status, 'FAIL');
+  assert.deepEqual(ignoredResult.test_counts.head, { passed: 1, failed: 0, ignored: 1 });
+  assert.deepEqual(ignoredResult.newly_ignored_tests, ['wf_host::tests::two']);
+  assert.equal(testCheck(base, base).status, 'PASS');
+});
 test('digest/timing changes are observations; soft locks and missed outcomes fail', () => {
   const head = receipt(); head.scenarios[0].event_digest = 'fnv1a64:0000000000000000'; head.scenarios[0].step_us.p95 = 1000;
   let result = compareReplays(receipt(), head);

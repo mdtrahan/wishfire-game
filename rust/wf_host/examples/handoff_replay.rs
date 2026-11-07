@@ -77,6 +77,7 @@ fn play(name: &str, seed: u32, level: u32, boss: bool, pause: bool) -> Value {
     let mut previous_progress = String::new();
     let mut last_progress = 0;
     let mut ticks = 0;
+    let mut paused_state = None;
     // 180 s without damage, death, movement or a host transition is a soft lock.
     // Clocks/hash alone are deliberately excluded: an idle sim still advances them.
     const STALL_TICKS: u64 = 180 * 30;
@@ -92,16 +93,53 @@ fn play(name: &str, seed: u32, level: u32, boss: bool, pause: bool) -> Value {
         }
         if pause && tick == 90 {
             script.push(json!({"tick":tick,"action":"pause"}));
+            paused_state = Some((
+                session.time,
+                session.gameplay_hash(),
+                session.last_snapshot.clone(),
+            ));
         }
         if pause && tick == 120 {
             script.push(json!({"tick":tick,"action":"resume"}));
         }
         if pause && (90..120).contains(&tick) {
             session.pause();
+            assert_eq!(
+                Some((
+                    session.time,
+                    session.gameplay_hash(),
+                    session.last_snapshot.clone()
+                )),
+                paused_state,
+                "simulation time and state must stay frozen while paused"
+            );
             continue;
         }
         let start = Instant::now();
         session.tick(now);
+        if pause && tick == 120 {
+            assert_eq!(
+                Some((
+                    session.time,
+                    session.gameplay_hash(),
+                    session.last_snapshot.clone()
+                )),
+                paused_state,
+                "resume must rebase the clock without applying paused time"
+            );
+            assert!(
+                session.step_observations.is_empty(),
+                "resume must not step the simulation"
+            );
+            assert_eq!(session.alpha(), 0., "resume must retain no time debt");
+        }
+        if pause && tick == 121 {
+            assert_eq!(
+                session.step_observations.len(),
+                1,
+                "the next frame must apply only one fresh step"
+            );
+        }
         timings.push(start.elapsed().as_secs_f64() * 1e6);
         if let Some(error) = &session.failed {
             outcome = format!("host_error: {error}");

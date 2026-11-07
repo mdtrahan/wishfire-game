@@ -27,14 +27,57 @@ export function failureNames(log) {
   }
   return [...failures].sort();
 }
+export function cargoEvidence(log) {
+  const test_suites = [], abnormal_exits = [];
+  let suite;
+  for (const line of log.split('\n')) {
+    const running = line.match(/Running .*\((?:.*\/)?([^/()\s]+)-[a-f0-9]{8,}\)/);
+    const docs = line.match(/^\s*Doc-tests (\S+)/);
+    if (running || docs) {
+      suite = { name: running ? running[1] : `doc::${docs[1]}`, completed: false, tests: {} };
+      test_suites.push(suite);
+    }
+    const result = line.match(/^test result: \w+\. (\d+) passed; (\d+) failed; (\d+) ignored;/);
+    if (result && suite) {
+      Object.assign(suite, { completed: true, passed: +result[1], failed: +result[2], ignored: +result[3] });
+      suite = undefined;
+    }
+    const named = line.match(/^test (.+?) \.\.\. (ok|FAILED|ignored)(?:,.*)?$/);
+    if (named && suite) suite.tests[named[1]] = named[2];
+    // Cargo itself exits 101 when a test child dies, so the parent's signal is insufficient.
+    if (/process didn't exit successfully:.*\(signal:/.test(line)) abnormal_exits.push(line.trim());
+  }
+  for (const row of test_suites) if (!row.completed) abnormal_exits.push(`${row.name}: missing test result`);
+  return { test_suites, abnormal_exits };
+}
 export function testCheck(base, head) {
   const baseline = new Set(base.failures);
   const introduced = head.failures.filter(name => !baseline.has(name));
-  const fatal = [base, head].filter(run => run.infrastructure_error || run.signal || run.exit_code === null || (run.exit_code !== 0 && !run.failures.length));
-  return { status: introduced.length || fatal.length ? 'FAIL' : 'PASS', new_failures: introduced,
+  const fatal = [base, head].flatMap(run => [
+    ...(run.abnormal_exits || []),
+    ...(run.infrastructure_error || run.signal || run.exit_code === null || (run.exit_code !== 0 && !run.failures.length)
+      ? [run.infrastructure_error || (run.signal ? `signal ${run.signal}` : `exit ${run.exit_code} without named failures`)] : [])
+  ]);
+  const counts = run => (run.test_suites || []).reduce((total, suite) => ({
+    passed: total.passed + (suite.passed || 0), failed: total.failed + (suite.failed || 0), ignored: total.ignored + (suite.ignored || 0)
+  }), { passed: 0, failed: 0, ignored: 0 });
+  const a = counts(base), b = counts(head), count_regressions = [];
+  for (const suite of base.test_suites || []) {
+    const matching = (head.test_suites || []).filter(row => row.name === suite.name);
+    if (suite.passed + suite.failed > 0 && !matching.some(row => row.passed + row.failed > 0)) count_regressions.push(`${suite.name}: head ran zero tests`);
+  }
+  if (b.passed + b.failed < a.passed + a.failed) count_regressions.push(`run count dropped: ${a.passed + a.failed} -> ${b.passed + b.failed}`);
+  const missing_tests = [], newly_ignored_tests = [];
+  for (const suite of base.test_suites || []) for (const [name, state] of Object.entries(suite.tests)) {
+    if (state === 'ignored') continue;
+    const states = (head.test_suites || []).filter(row => row.name === suite.name).map(row => row.tests[name]).filter(Boolean);
+    if (!states.length) missing_tests.push(`${suite.name}::${name}`);
+    else if (states.every(state => state === 'ignored')) newly_ignored_tests.push(`${suite.name}::${name}`);
+  }
+  return { status: introduced.length || fatal.length || count_regressions.length ? 'FAIL' : 'PASS', new_failures: introduced,
     inherited_failures: head.failures.filter(name => baseline.has(name)),
     fixed_failures: base.failures.filter(name => !head.failures.includes(name)),
-    infrastructure_errors: fatal.map(run => run.infrastructure_error || `exit ${run.exit_code} without named failures`) };
+    infrastructure_errors: fatal, test_counts: { base: a, head: b }, count_regressions, missing_tests, newly_ignored_tests };
 }
 export function validateReplays(data) {
   if (data?.schema !== 1 || !Array.isArray(data.scenarios) || data.scenarios.length !== names.length) throw Error('Incomplete replay receipt');
@@ -95,6 +138,7 @@ export async function command(executable, args, { cwd, env, log, timeout }) {
         resolveResult({ command: [executable, ...args], exit_code: code, signal,
           duration_seconds: (performance.now() - started) / 1000, log,
           failures: failureNames(output),
+          ...cargoEvidence(output),
           ...(/error: could not compile|error\[E\d+\]/.test(output) ? { infrastructure_error: 'Rust compilation failed' } : {}),
           ...(timedOut ? { infrastructure_error: `Timeout after ${timeout}s` } : infrastructure_error ? { infrastructure_error } : {}) });
       });

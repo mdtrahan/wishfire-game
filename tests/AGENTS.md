@@ -21,4 +21,4 @@
 ## Child DOX Index
 - `fixtures/AGENTS.md` - fixture ownership.
 
-- `rustHandoffVerifier.test.mjs` covers named regression detection, failed commands/timeouts, replay receipt completeness, observation-only digest changes and cache evidence integrity.
+- `rustHandoffVerifier.test.mjs` covers named regression detection, child crashes after inherited failures, empty suites/decreased run counts (including ignored tests), failed commands/timeouts, replay receipt completeness, observation-only digest changes and cache evidence integrity.

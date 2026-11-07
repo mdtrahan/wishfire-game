@@ -1,5 +1,7 @@
 # Insights (Canonical, Minimal)
 
+- Baseline-relative test checks must compare completed binaries and executed counts separately from named failures: Cargo can report an inherited failure before another child aborts, and ignored/deleted tests can silently reduce coverage.
+
 ## Purpose
 - This is the only active insights log.
 - Capture only decisions that change future behavior.
