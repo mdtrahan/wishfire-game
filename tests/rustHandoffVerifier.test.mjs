@@ -71,6 +71,53 @@ test('a lower run count fails and reports deleted or newly ignored tests', async
   assert.deepEqual(ignoredResult.newly_ignored_tests, ['wf_host::tests::two']);
   assert.equal(testCheck(base, base).status, 'PASS');
 });
+test('ignored-on-head fails when a replacement test keeps the executed count', async () => {
+  const base = await fakeCargo('ignore-plant-base', cargoOutput('wf_host', 'test original ... ok', 1));
+  const head = await fakeCargo('ignore-plant-head', cargoOutput('wf_host', 'test original ... ignored\ntest replacement ... ok', 1, 0, 1));
+  const result = testCheck(base, head);
+  assert.equal(result.status, 'FAIL');
+  assert.deepEqual(result.count_regressions, []);
+  assert.deepEqual(result.newly_ignored_tests, ['wf_host::original']);
+});
+test('missing-on-head fails when a replacement test keeps the executed count', async () => {
+  const base = await fakeCargo('missing-plant-base', cargoOutput('wf_host', 'test original ... ok', 1));
+  const head = await fakeCargo('missing-plant-head', cargoOutput('wf_host', 'test replacement ... ok', 1));
+  const result = testCheck(base, head);
+  assert.equal(result.status, 'FAIL');
+  assert.deepEqual(result.count_regressions, []);
+  assert.deepEqual(result.missing_tests, ['wf_host::original']);
+});
+test('same-name Node failures with changed error codes fail', async () => {
+  const tap = code => `not ok 1 - same name\n  ---\n  error: 'failure'\n  code: '${code}'\n  name: 'Error'\n  ...\n`;
+  const base = await fakeCargo('signature-base', tap('ERR_ASSERTION'), 1);
+  const head = await fakeCargo('signature-head', tap('ERR_INVALID_ARG_TYPE'), 1);
+  assert.equal(testCheck(base, base).status, 'PASS');
+  const result = testCheck(base, head);
+  assert.equal(result.status, 'FAIL');
+  assert.deepEqual(result.inherited_failures, []);
+  assert.deepEqual(result.changed_failures, [{ name: 'node::same name', base: 'ERR_ASSERTION', head: 'ERR_INVALID_ARG_TYPE' }]);
+});
+test('same-name Rust failures with changed panic message heads fail', async () => {
+  const output = message => cargoOutput('wf_host', `test original ... FAILED\n---- original stdout ----\nthread 'original' (123) panicked at src/lib.rs:12:3:\n${message}`, 0, 1);
+  const base = await fakeCargo('panic-base', output('original panic'), 101);
+  const head = await fakeCargo('panic-head', output('changed panic'), 101);
+  assert.equal(testCheck(base, base).status, 'PASS');
+  assert.equal(testCheck(base, head).status, 'FAIL');
+});
+test('environment errors on either revision are INCONCLUSIVE and reported', async () => {
+  const clean = { exit_code: 0, failures: [] };
+  for (const code of ['EPERM', 'EACCES', 'ENOSPC']) {
+    const run = await fakeCargo(code, `not ok 1 - fixture\n  ---\n  error: '${code}: blocked'\n  code: '${code}'\n  ...\n`, 1);
+    for (const [base, head] of [[run, clean], [clean, run], [run, run]]) {
+      const result = testCheck(base, head);
+      assert.equal(result.status, 'INCONCLUSIVE');
+      assert.match(result.infrastructure_errors.join('\n'), new RegExp(code));
+      assert.deepEqual(result.inherited_failures, []);
+    }
+  }
+  const missing = await command(join(temp, 'missing-binary'), [], { cwd: temp, env: process.env, log: join(temp, 'missing.log'), timeout: 2 });
+  assert.equal(testCheck(clean, missing).status, 'INCONCLUSIVE');
+});
 test('digest/timing changes are observations; soft locks and missed outcomes fail', () => {
   const head = receipt(); head.scenarios[0].event_digest = 'fnv1a64:0000000000000000'; head.scenarios[0].step_us.p95 = 1000;
   let result = compareReplays(receipt(), head);

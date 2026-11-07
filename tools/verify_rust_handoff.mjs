@@ -27,6 +27,37 @@ export function failureNames(log) {
   }
   return [...failures].sort();
 }
+export function failureSignatures(log) {
+  const signatures = {};
+  let suite = 'node', name, code, errorClass, error;
+  const save = () => { if (name) signatures[name] = code || errorClass || error || 'unknown'; };
+  for (const line of log.split('\n')) {
+    const running = line.match(/Running .*\((?:.*\/)?([^/()\s]+)-[a-f0-9]{8,}\)/);
+    if (running) { save(); name = undefined; suite = running[1]; }
+    const node = line.match(/^\s*not ok \d+ - (.+)$/);
+    const panic = line.match(/^thread '(.+?)'(?: \(\d+\))? panicked at (.*)$/);
+    if (node || panic) {
+      save(); code = undefined; errorClass = undefined; error = undefined;
+      name = node ? `node::${node[1]}` : `${suite}::${panic[1]}`;
+      // Rust usually prints a source location here, then the panic message on the next line.
+      if (panic && !/:\d+:\d+:$/.test(panic[2])) error = panic[2].slice(0, 160);
+      continue;
+    }
+    if (!name) continue;
+    const field = line.match(/^\s+(code|name|error):\s*['"]?(.+?)['"]?\s*$/);
+    if (field?.[1] === 'code') code = field[2];
+    else if (field?.[1] === 'name') errorClass = field[2];
+    else if (!error && field) error = field[2].slice(0, 160);
+    else if (!error && !name.startsWith('node::') && line.trim()) error = line.trim().slice(0, 160);
+  }
+  save();
+  return signatures;
+}
+function environmentErrors(log) {
+  return [...new Set(log.split('\n').filter(line =>
+    /(?:code:|error:|Error:|error\[).*\b(?:EPERM|EACCES|ENOSPC)\b|spawn .*\bENOENT\b|(?:command|executable|binary).*not found|could not execute process.*No such file/i.test(line)
+  ).map(line => line.trim().slice(0, 240)))];
+}
 export function cargoEvidence(log) {
   const test_suites = [], abnormal_exits = [];
   let suite;
@@ -52,7 +83,13 @@ export function cargoEvidence(log) {
 }
 export function testCheck(base, head) {
   const baseline = new Set(base.failures);
-  const introduced = head.failures.filter(name => !baseline.has(name));
+  const changed_failures = head.failures.filter(name => baseline.has(name) &&
+    (base.failure_signatures?.[name] || 'unknown') !== (head.failure_signatures?.[name] || 'unknown'));
+  const introduced = head.failures.filter(name => !baseline.has(name) || changed_failures.includes(name));
+  const environment = [base, head].flatMap((run, index) => [...new Set([
+    ...(run.environment_errors || []),
+    ...Object.entries(run.failure_signatures || {}).filter(([, signature]) => /\b(?:EPERM|EACCES|ENOSPC|ENOENT)\b/.test(signature)).map(([name, signature]) => `${name}: ${signature}`)
+  ])].map(error => `${index ? 'head' : 'base'}: ${error}`));
   const fatal = [base, head].flatMap(run => [
     ...(run.abnormal_exits || []),
     ...(run.infrastructure_error || run.signal || run.exit_code === null || (run.exit_code !== 0 && !run.failures.length)
@@ -74,10 +111,12 @@ export function testCheck(base, head) {
     if (!states.length) missing_tests.push(`${suite.name}::${name}`);
     else if (states.every(state => state === 'ignored')) newly_ignored_tests.push(`${suite.name}::${name}`);
   }
-  return { status: introduced.length || fatal.length || count_regressions.length ? 'FAIL' : 'PASS', new_failures: introduced,
-    inherited_failures: head.failures.filter(name => baseline.has(name)),
+  return { status: environment.length ? 'INCONCLUSIVE' : introduced.length || fatal.length || count_regressions.length || missing_tests.length || newly_ignored_tests.length ? 'FAIL' : 'PASS', new_failures: introduced,
+    changed_failures: changed_failures.map(name => ({ name, base: base.failure_signatures?.[name] || 'unknown', head: head.failure_signatures?.[name] || 'unknown' })),
+    inherited_failures: head.failures.filter(name => baseline.has(name) && !changed_failures.includes(name) &&
+      !/\b(?:EPERM|EACCES|ENOSPC|ENOENT)\b/.test(head.failure_signatures?.[name] || '')),
     fixed_failures: base.failures.filter(name => !head.failures.includes(name)),
-    infrastructure_errors: fatal, test_counts: { base: a, head: b }, count_regressions, missing_tests, newly_ignored_tests };
+    infrastructure_errors: [...environment, ...fatal], test_counts: { base: a, head: b }, count_regressions, missing_tests, newly_ignored_tests };
 }
 export function validateReplays(data) {
   if (data?.schema !== 1 || !Array.isArray(data.scenarios) || data.scenarios.length !== names.length) throw Error('Incomplete replay receipt');
@@ -138,6 +177,8 @@ export async function command(executable, args, { cwd, env, log, timeout }) {
         resolveResult({ command: [executable, ...args], exit_code: code, signal,
           duration_seconds: (performance.now() - started) / 1000, log,
           failures: failureNames(output),
+          failure_signatures: failureSignatures(output),
+          environment_errors: [...environmentErrors(output), ...(infrastructure_error ? [infrastructure_error] : [])],
           ...cargoEvidence(output),
           ...(/error: could not compile|error\[E\d+\]/.test(output) ? { infrastructure_error: 'Rust compilation failed' } : {}),
           ...(timedOut ? { infrastructure_error: `Timeout after ${timeout}s` } : infrastructure_error ? { infrastructure_error } : {}) });
@@ -235,7 +276,8 @@ export async function verify(options) {
       const x = a.checks[name], y = b.checks[name];
       if (!x || !y) { report.checks[name] = { status: 'FAIL', reason: 'Test route missing from one revision' }; continue; }
       report.checks[name] = ['pack', 'build', 'replays'].includes(name)
-        ? { status: [x, y].every(c => c.exit_code === 0 && !c.infrastructure_error) ? 'PASS' : 'FAIL' }
+        ? { status: [x, y].some(c => c.environment_errors?.length) ? 'INCONCLUSIVE' : [x, y].every(c => c.exit_code === 0 && !c.infrastructure_error) ? 'PASS' : 'FAIL',
+          infrastructure_errors: [x, y].flatMap(c => c.environment_errors || []) }
         : testCheck(x, y);
     }
     report.replay_comparison = compareReplays(a.replays, b.replays);
@@ -246,14 +288,14 @@ export async function verify(options) {
         env: { ...process.env, CARGO_TARGET_DIR: join(scratch, 'head-target') }, timeout: options.timeout });
       report.checks.gif = capture;
     }
-    report.status = Object.values(report.checks).every(c => c.status === 'PASS') ? 'PASS' : 'FAIL';
   } catch (error) { report.checks.verifier = { status: 'FAIL', reason: error.stack }; }
   finally {
+    report.status = Object.values(report.checks).some(c => c.status === 'INCONCLUSIVE') ? 'INCONCLUSIVE' : Object.values(report.checks).every(c => c.status === 'PASS') ? 'PASS' : 'FAIL';
     rmSync(scratch, { recursive: true, force: true });
     report.duration_seconds = (performance.now() - started) / 1000;
     writeFileSync(join(out, 'verdict.json'), JSON.stringify(report, null, 2) + '\n');
     const summary = `${report.status} base=${base} head=${head}\n` +
-      Object.entries(report.checks).map(([name, c]) => `${c.status} ${name}${c.new_failures?.length ? ': ' + c.new_failures.join(', ') : ''}${c.inherited_failures?.length ? ` (${c.inherited_failures.length} inherited failures)` : ''}${c.digest_changed ? ' (event digest changed)' : ''}${c.reason ? ': ' + c.reason.split('\n')[0] : ''}`).join('\n') +
+      Object.entries(report.checks).map(([name, c]) => `${c.status} ${name}${c.new_failures?.length ? ': ' + c.new_failures.join(', ') : ''}${c.inherited_failures?.length ? ` (${c.inherited_failures.length} inherited failures)` : ''}${c.newly_ignored_tests?.length ? ': newly ignored ' + c.newly_ignored_tests.join(', ') : ''}${c.missing_tests?.length ? ': missing ' + c.missing_tests.join(', ') : ''}${c.changed_failures?.length ? ': changed signatures ' + JSON.stringify(c.changed_failures) : ''}${c.infrastructure_errors?.length ? ': infrastructure errors ' + c.infrastructure_errors.join('; ') : ''}${c.digest_changed ? ' (event digest changed)' : ''}${c.reason ? ': ' + c.reason.split('\n')[0] : ''}`).join('\n') +
       `\nTime: ${report.duration_seconds.toFixed(2)}s; base cache: ${report.base_cache_hit ? 'hit' : 'miss'}\n${join(out, 'verdict.json')}\n`;
     writeFileSync(join(out, 'summary.txt'), summary); console.log(summary);
   }
