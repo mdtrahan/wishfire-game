@@ -26,3 +26,5 @@
 
 ## Child DOX Index
 - None.
+
+- `examples/handoff_replay.rs` is a verifier consumer of the public Session API and shipped enemy data: fixed seeded Chapter 1, boss and pause/resume scripts, ordered event digests, bounded progress/outcome checks and host-step timings. Pause asserts frozen time, gameplay hash and snapshot; resume asserts no step/debt, followed by one fresh frame step. It changes no simulation rules or frozen oracle fixtures.

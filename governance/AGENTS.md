@@ -45,3 +45,5 @@
 - Permanent commitment audits apply the lead's A6/§3.3 boundary: capture permanent inputs and definition/modifier parameters; read transient Elevate live at impact with or without a revision. Record CPU-profile attribution and measured performance separately from hypotheses.
 
 - The integration playbook owns the ignored generated-WASM lifecycle and mechanical source-integration rebuilds.
+
+- Rust handoffs use `tools/verify_rust_handoff.mjs` for pinned base/head builds, named test regressions and seeded host replays; optional renderer capture stays separate from the default native proof.

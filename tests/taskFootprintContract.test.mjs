@@ -11,7 +11,7 @@ const linker = new URL('../tools/link_beads_worktree.mjs', import.meta.url).path
 const prepare = new URL('../tools/prepare_commit_check.sh', import.meta.url).pathname;
 
 function fixture(t) {
-  const base = path.join(os.homedir(), '.cache/task-footprint/test-fixtures');
+  const base = path.join(os.tmpdir(), 'task-footprint-test-fixtures');
   fs.mkdirSync(base, { recursive: true });
   const cwd = fs.realpathSync(fs.mkdtempSync(path.join(base, 'repo-')));
   const run = (command, args, options = {}) => {

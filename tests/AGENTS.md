@@ -8,6 +8,7 @@
 - `storageBudgetContract.test.mjs` proves oversized payload/tree/runtime rejection and staged generated-output refusal.
 - `storageHygieneContract.test.mjs` covers audit, dry-run cleanup, detached/unmerged refusal, the opt-in historical path and superseded-ancestor refusal.
 - `taskFootprintContract.test.mjs` covers footprint baseline/resume, shallow checks, retained peaks and warn-only commit preparation.
+- Footprint repository fixtures use `os.tmpdir()` so sandboxed runs can create them without writing fixture repositories under the user's cache.
 - `linkBeadsWorktreeContract.test.mjs` verifies a fresh checkout points at the root Beads database and refuses lane-local Dolt state.
 - `gitDiffParsingContract.test.js` covers the hot-file scope parser used by commit compliance.
 
@@ -20,3 +21,5 @@
 
 ## Child DOX Index
 - `fixtures/AGENTS.md` - fixture ownership.
+
+- `rustHandoffVerifier.test.mjs` covers exact normalized failure inheritance, changed assertion values/panic messages/repository frames, missing failure text, permitted run differences, named regression detection, child crashes after inherited failures, empty suites/decreased run counts (including ignored tests), failed commands/timeouts, replay receipt completeness, observation-only digest changes and cache evidence integrity.

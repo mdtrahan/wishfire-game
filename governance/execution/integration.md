@@ -53,7 +53,7 @@ QA PASS validates the feature. Integration Ready validates merge readiness again
 Development Complete means acceptance criteria are implemented, scoped work is complete, and no known blocking defects remain. Do not request QA PASS while implementation scope is still open.
 
 ## QA PASS
-The commit hook certifies the fast deterministic tier. Before merge, the assigned PR verifier must run `npm run test:merge -- --base <pinned-current-main>` once on the final committed PR head and record base/head plus results. Changed PR content or integration base requires a fresh receipt. This command retains every heavy owner route from the former pre-commit gate; browser containment and gameplay proofs remain required for their owners. Run broad baseline-relative validation when Integration Ready requires it, using `verify_handoff.mjs` and its SHA-matched cache rather than repeating a full audit per commit.
+The commit hook certifies the fast deterministic tier. Before merge, the assigned PR verifier must run `npm run test:merge -- --base <pinned-current-main>` once on the final committed PR head and record base/head plus results. Changed PR content or integration base requires a fresh receipt. This command retains every heavy owner route from the former pre-commit gate; browser containment and gameplay proofs remain required for their owners. Run broad baseline-relative validation when Integration Ready requires it, using `tools/verify_rust_handoff.mjs --base <pinned-main> --head <pr-head>` and its SHA-matched base cache rather than repeating a full audit per commit.
 
 Required evidence:
 - human QA complete when the feature needs human judgment
