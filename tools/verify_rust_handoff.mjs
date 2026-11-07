@@ -7,6 +7,7 @@ import { tmpdir, platform, arch } from 'node:os';
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { performance } from 'node:perf_hooks';
+import { stripVTControlCharacters } from 'node:util';
 import { captureReplays } from './capture_rust_replays.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const replayPath = 'rust/wf_host/examples/handoff_replay.rs';
@@ -17,7 +18,7 @@ const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8'
 export function failureNames(log) {
   let suite = 'node';
   const failures = new Set();
-  for (const line of log.split('\n')) {
+  for (const line of stripVTControlCharacters(log).split('\n')) {
     const running = line.match(/Running .*\((?:.*\/)?([^/()\s]+)-[a-f0-9]{8,}\)/);
     if (running) suite = running[1];
     const rust = line.match(/^test (.+?) \.\.\. FAILED$/);
@@ -27,41 +28,56 @@ export function failureNames(log) {
   }
   return [...failures].sort();
 }
-export function failureSignatures(log) {
-  const signatures = {};
-  let suite = 'node', name, code, errorClass, error;
-  const save = () => { if (name) signatures[name] = code || errorClass || error || 'unknown'; };
-  for (const line of log.split('\n')) {
-    const running = line.match(/Running .*\((?:.*\/)?([^/()\s]+)-[a-f0-9]{8,}\)/);
-    if (running) { save(); name = undefined; suite = running[1]; }
-    const node = line.match(/^\s*not ok \d+ - (.+)$/);
-    const panic = line.match(/^thread '(.+?)'(?: \(\d+\))? panicked at (.*)$/);
-    if (node || panic) {
-      save(); code = undefined; errorClass = undefined; error = undefined;
-      name = node ? `node::${node[1]}` : `${suite}::${panic[1]}`;
-      // Rust usually prints a source location here, then the panic message on the next line.
-      if (panic && !/:\d+:\d+:$/.test(panic[2])) error = panic[2].slice(0, 160);
-      continue;
+export function failureTexts(log, cwd) {
+  const failures = {};
+  let suite = 'node', name, lines = [], tap = false;
+  const normalize = text => {
+    // Keep repository-relative source locations and every assertion/message byte.
+    text = text.replaceAll('file://', '');
+    if (cwd) text = text.replaceAll(cwd, '<repo>');
+    return text
+      .replace(/(?<![\w>])(?:[A-Za-z]:[\\/]|\/)[^\s'"`()<>:]+/g, '<absolute-path>')
+      .replace(/^(\s*duration_(?:ms|seconds):\s*)[\d.e+-]+$/gm, '$1<time>')
+      .replace(/^(\s*\d+:\s*)0x[\da-f]+/gmi, '$1<address>')
+      .replace(/(\b(?:address|pointer|ptr)[=: ]+)0x[\da-f]+/gi, '$1<address>')
+      .replace(/(thread '[^']+') \(\d+\)/g, '$1 (<thread>)')
+      .replace(/\bThreadId\(\d+\)/g, 'ThreadId(<thread>)');
+  };
+  const save = () => {
+    if (name) {
+      // Blank lines separate libtest records; they are outside the failure text.
+      while (lines.at(-1) === '') lines.pop();
+      failures[name] = normalize(lines.join('\n'));
     }
-    if (!name) continue;
-    const field = line.match(/^\s+(code|name|error):\s*['"]?(.+?)['"]?\s*$/);
-    if (field?.[1] === 'code') code = field[2];
-    else if (field?.[1] === 'name') errorClass = field[2];
-    else if (!error && field) error = field[2].slice(0, 160);
-    else if (!error && !name.startsWith('node::') && line.trim()) error = line.trim().slice(0, 160);
+    name = undefined; lines = []; tap = false;
+  };
+  for (const line of stripVTControlCharacters(log).split('\n')) {
+    const running = line.match(/Running .*\((?:.*\/)?([^/()\s]+)-[a-f0-9]{8,}\)/);
+    const rust = line.match(/^---- (.+?) stdout ----$/);
+    const node = line.match(/^\s*not ok \d+ - (.+)$/);
+    if (running) { save(); suite = running[1]; }
+    else if (rust) { save(); name = `${suite}::${rust[1]}`; }
+    else if (node) { save(); name = `node::${node[1]}`; tap = true; }
+    else if (name) {
+      if (!tap && /^(?:failures:|test result:|\s*Doc-tests )/.test(line)) save();
+      else {
+        lines.push(line);
+        if (tap && /^\s*\.\.\.$/.test(line)) save();
+      }
+    }
   }
   save();
-  return signatures;
+  return failures;
 }
 function environmentErrors(log) {
   return [...new Set(log.split('\n').filter(line =>
-    /(?:code:|error:|Error:|error\[).*\b(?:EPERM|EACCES|ENOSPC)\b|spawn .*\bENOENT\b|(?:command|executable|binary).*not found|could not execute process.*No such file/i.test(line)
+    /^\s*code:\s*[\'"]?ENOENT\b|(?:code:|error:|Error:|error\[).*\b(?:EPERM|EACCES|ENOSPC)\b|spawn .*\bENOENT\b|(?:command|executable|binary).*not found|could not execute process.*No such file/i.test(line)
   ).map(line => line.trim().slice(0, 240)))];
 }
 export function cargoEvidence(log) {
   const test_suites = [], abnormal_exits = [];
   let suite;
-  for (const line of log.split('\n')) {
+  for (const line of stripVTControlCharacters(log).split('\n')) {
     const running = line.match(/Running .*\((?:.*\/)?([^/()\s]+)-[a-f0-9]{8,}\)/);
     const docs = line.match(/^\s*Doc-tests (\S+)/);
     if (running || docs) {
@@ -83,12 +99,13 @@ export function cargoEvidence(log) {
 }
 export function testCheck(base, head) {
   const baseline = new Set(base.failures);
-  const changed_failures = head.failures.filter(name => baseline.has(name) &&
-    (base.failure_signatures?.[name] || 'unknown') !== (head.failure_signatures?.[name] || 'unknown'));
+  const changed_failures = head.failures.filter(name => baseline.has(name) && (
+    !base.failure_texts?.[name] || !head.failure_texts?.[name] ||
+    base.failure_texts[name] !== head.failure_texts[name]));
   const introduced = head.failures.filter(name => !baseline.has(name) || changed_failures.includes(name));
   const environment = [base, head].flatMap((run, index) => [...new Set([
     ...(run.environment_errors || []),
-    ...Object.entries(run.failure_signatures || {}).filter(([, signature]) => /\b(?:EPERM|EACCES|ENOSPC|ENOENT)\b/.test(signature)).map(([name, signature]) => `${name}: ${signature}`)
+    ...Object.entries(run.failure_texts || {}).flatMap(([name, text]) => environmentErrors(text).map(error => `${name}: ${error}`))
   ])].map(error => `${index ? 'head' : 'base'}: ${error}`));
   const fatal = [base, head].flatMap(run => [
     ...(run.abnormal_exits || []),
@@ -112,9 +129,9 @@ export function testCheck(base, head) {
     else if (states.every(state => state === 'ignored')) newly_ignored_tests.push(`${suite.name}::${name}`);
   }
   return { status: environment.length ? 'INCONCLUSIVE' : introduced.length || fatal.length || count_regressions.length || missing_tests.length || newly_ignored_tests.length ? 'FAIL' : 'PASS', new_failures: introduced,
-    changed_failures: changed_failures.map(name => ({ name, base: base.failure_signatures?.[name] || 'unknown', head: head.failure_signatures?.[name] || 'unknown' })),
+    changed_failures: changed_failures.map(name => ({ name, base: base.failure_texts?.[name] ?? null, head: head.failure_texts?.[name] ?? null })),
     inherited_failures: head.failures.filter(name => baseline.has(name) && !changed_failures.includes(name) &&
-      !/\b(?:EPERM|EACCES|ENOSPC|ENOENT)\b/.test(head.failure_signatures?.[name] || '')),
+      !environmentErrors(head.failure_texts?.[name] || '').length),
     fixed_failures: base.failures.filter(name => !head.failures.includes(name)),
     infrastructure_errors: [...environment, ...fatal], test_counts: { base: a, head: b }, count_regressions, missing_tests, newly_ignored_tests };
 }
@@ -177,7 +194,7 @@ export async function command(executable, args, { cwd, env, log, timeout }) {
         resolveResult({ command: [executable, ...args], exit_code: code, signal,
           duration_seconds: (performance.now() - started) / 1000, log,
           failures: failureNames(output),
-          failure_signatures: failureSignatures(output),
+          failure_texts: failureTexts(output, cwd),
           environment_errors: [...environmentErrors(output), ...(infrastructure_error ? [infrastructure_error] : [])],
           ...cargoEvidence(output),
           ...(/error: could not compile|error\[E\d+\]/.test(output) ? { infrastructure_error: 'Rust compilation failed' } : {}),
@@ -295,7 +312,7 @@ export async function verify(options) {
     report.duration_seconds = (performance.now() - started) / 1000;
     writeFileSync(join(out, 'verdict.json'), JSON.stringify(report, null, 2) + '\n');
     const summary = `${report.status} base=${base} head=${head}\n` +
-      Object.entries(report.checks).map(([name, c]) => `${c.status} ${name}${c.new_failures?.length ? ': ' + c.new_failures.join(', ') : ''}${c.inherited_failures?.length ? ` (${c.inherited_failures.length} inherited failures)` : ''}${c.newly_ignored_tests?.length ? ': newly ignored ' + c.newly_ignored_tests.join(', ') : ''}${c.missing_tests?.length ? ': missing ' + c.missing_tests.join(', ') : ''}${c.changed_failures?.length ? ': changed signatures ' + JSON.stringify(c.changed_failures) : ''}${c.infrastructure_errors?.length ? ': infrastructure errors ' + c.infrastructure_errors.join('; ') : ''}${c.digest_changed ? ' (event digest changed)' : ''}${c.reason ? ': ' + c.reason.split('\n')[0] : ''}`).join('\n') +
+      Object.entries(report.checks).map(([name, c]) => `${c.status} ${name}${c.new_failures?.length ? ': ' + c.new_failures.join(', ') : ''}${c.inherited_failures?.length ? ` (${c.inherited_failures.length} inherited failures)` : ''}${c.newly_ignored_tests?.length ? ': newly ignored ' + c.newly_ignored_tests.join(', ') : ''}${c.missing_tests?.length ? ': missing ' + c.missing_tests.join(', ') : ''}${c.changed_failures?.length ? ': changed failure text ' + JSON.stringify(c.changed_failures) : ''}${c.infrastructure_errors?.length ? ': infrastructure errors ' + c.infrastructure_errors.join('; ') : ''}${c.digest_changed ? ' (event digest changed)' : ''}${c.reason ? ': ' + c.reason.split('\n')[0] : ''}`).join('\n') +
       `\nTime: ${report.duration_seconds.toFixed(2)}s; base cache: ${report.base_cache_hit ? 'hit' : 'miss'}\n${join(out, 'verdict.json')}\n`;
     writeFileSync(join(out, 'summary.txt'), summary); console.log(summary);
   }
